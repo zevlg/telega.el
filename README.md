@@ -1,14 +1,21 @@
 # telega.el
 GNU Emacs telegram client (unofficial)
 
+Uses nice https://core.telegram.org/tdlib
+
 # Dependences
 
 * circe for lui
 
 # Building
 
-* apt-get install libevent-dev
-* git clone --recursive https://github.com/zevlg/tg.git && cd tg
-* ./configure --disable-libconfig --disable-liblua --disable-json
-* make libs/libtgl.so
-* cp libs/libtgl.so /usr/local/lib
+* apt-get install gperf
+* git clone https://github.com/tdlib/td.git
+* cd td
+* mkdir build && cd build && cmake ../ && make && make install
+
+# Compiling telega-server
+
+* git clone https://github.com/zevlg/telega.el
+* cd telega.el/server
+* make

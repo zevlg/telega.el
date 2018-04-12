@@ -1,10 +1,11 @@
 ;;; telega.el --- Telegram client
 
-;; Copyright (C) 2016 by Zajcev Evgeny
+;; Copyright (C) 2016-2018 by Zajcev Evgeny
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords: 
+;; Version: 0.1.0
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,13 +22,12 @@
 
 ;;; Commentary:
 
-;; 
+;; Some code taken from circe
+
 
 ;;; Code:
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.1")
-(defconst telega-env
-  '(:dc 2 :test-server-1 "149.154.167.40" :server-1 "149.154.167.50"))
+(defconst telega-version "0.1.0")
 
 
 (defgroup telega nil
@@ -40,7 +40,7 @@
   :type 'string
   :group 'telega)
 
-(defcustom telega-downloads-dir (expand-file-name "downloads" telega-directory)
+(defcustom telega-cache-dir (expand-file-name "cache" telega-directory)
   "*Directory for telegram downloads."
   :type 'string
   :group 'telega)
@@ -50,142 +50,105 @@
   :type 'string
   :group 'telega)
 
-(defcustom telega-link-preview t
-  "*Non-nil to preview links."
+(defcustom telega-server-command "telega-server"
+  "Command to run is telega server."
+  :type 'string
+  :group 'telegram)
+
+(defcustom telega-server-logfile nil
+  "*Non-nil to write server logs to file."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-test-mode-enable t
-  "*Non-nil to enable test mode."
-  :type 'boolean
-  :group 'telega)
-
-(defcustom telega-pfs-enable t
-  "*Non-nil to enable Perfect Forward Secrecy mode."
-  :type 'boolean
-  :group 'telega)
-
-(defcustom telega-binlog-enable nil
-  "*Non-nil to use binlog mode."
-  :type 'boolean
-  :group 'telega)
-
-(defcustom telega-verbosity 2
-  "*Verbosity level for telegram."
+(defcustom telega-server-verbosity 5
+  "*Verbosity level for server process."
   :type 'number
   :group 'telega)
 
-(defvar telega--state nil)
-(defvar telega--event-base nil)
-(defvar telega--timer nil
-  "Timer used to check for events.")
+;;; Faces
 
-(defun telega--file (fwhat)
-  (expand-file-name 
-   (cl-ecase fwhat
-     (:downloads telega-downloads-dir)
-     (:rsa-key telega-rsa-key-file)
-     (:config "config")
-     ((:auth :auth-key) "auth")
-     (:state "state")
-     (:secret "secret")
-     (:binlog "binlog"))
-   telega-directory))
+(defface telega-atsign-face
+  '((default (:weight bold))
+    (((type tty)) (:foreground "cyan"))
+    (((background dark)) (:foreground "#82e2ed"))
+    (((background light)) (:foreground "#0445b7"))
+    (t (:foreground "CadetBlue3")))
+  "The face used to highlight text starting with @."
+  :group 'telega)
+
+
+(defcustom telega-prompt-string "> "
+  "The string to initialize the prompt with.
+To change the prompt dynamically or just in specific buffers, use
+`lui-set-prompt' in the appropriate hooks."
+  :type 'string
+  :group 'telega)
+
+;;; Utility functions
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
   (ignore-errors
     (mkdir telega-directory))
   (ignore-errors
-    (mkdir telega-downloads-dir)))
+    (mkdir telega-cache-dir)))
 
-(defun telega--state-save ()
-  "Save telega state to file."
-  )
-(defun telega--state-load ()
-  )
+(define-derived-mode telegram-mode lui-mode "Telega"
+  "Base mode for all telega buffers.
 
-(defun telega--auth-save ()
-  )
-(defun telega--auth-load ()
-  )
+A buffer should never be in this mode directly, but rather in
+modes that derive from this.
+
+The mode inheritance hierarchy looks like this:
+
+lui-mode
+`--telega-mode
+   `--telega-root-mode
+   `--telega-chat-mode"
+  (add-hook 'lui-pre-output-hook 'lui-irc-colors t t)
+  (add-hook 'lui-pre-output-hook 'telega--pre-output t t)
+  (add-hook 'completion-at-point-functions
+            'telega--completion-at-point nil t)
+  (lui-set-prompt telega-prompt-string)
+  (goto-char (point-max))
+  (setq lui-input-function 'telega--input
+        default-directory (expand-file-name telega-directory))
+  ;; Tab completion should be case-insensitive
+  (set (make-local-variable 'completion-ignore-case) t)
+  (set (make-local-variable 'tracking-faces-priorities)
+       telega-track-faces-priorities))
 
 (defun telega ()
   "Start telegramming."
   (interactive)
-  (unless telega--state
-    (telega--create-hier)
+  (telega--create-hier)
+  (let ((rootbuf (telega--root-genbuffer)))
+    (with-current-buffer rootbuf
+      (telega--root-mode)
+      (telega--server-connect))
+    (pop-to-buffer-same-window rootbuf)))
 
-    (setq telega--state (tgl:state_alloc))
-    (tgl:set_verbosity telega--state telega-verbosity)
+(defun telega-quit ()
+  "Quit from current telegram account.
+Next call to M-x telega RET will request account info."
+  ;; TODO
+  )
 
-    (when telega-test-mode-enable
-      (tgl:set_test_mode telega--state))
 
-    (when telega-pfs-enable
-      (tgl:enable_pfs telega--state))
+;;; Highlighting output
+(defun telega--pre-output ()
+  "Highlight usernames started with @.
+This is used in `lui-pre-output-hook'."
+  )
 
-    (if telega-binlog-enable
-        (progn
-          (tgl:set_binlog_mode telega--state 1)
-          (tgl--set-binlog-path telega--state (telega--file :binlog)))
+;;; Completion
+(defun telega--completion-at-point ()
+  "Return a list of possible completions for the current buffer.
+This is used in `completion-at-point-functions'."
+  ;; Use markers so they move when input happens
+  ;; TODO
+  )
 
-      (tgl:set_binlog_mode telega--state 0))
-
-    (tgl--set-download-dir telega--state telega-downloads-dir)
-    (tgl--set-key telega--state (telega--file :rsa-key))
-
-    (tgl:set_rsa_key_direct telega--state
-                            tgl--mtproto-default-e
-                            tgl--mtproto-default-key-len
-                            tgl--mtproto-default_key)
-
-    (setq telega--event-base (event:base_new))
-    (tgl:set_ev_base telega--state telega--event-base)
-    (tgl:set_net_methods tgl--conn-methods)
-    (tgl:set_timer_methods tgl--timer-methods)
-
-    (tgl--register-app-id telega--state
-                          telega-app-id telega-app-hash)
-    (tgl--set-app-version telega--state
-                          (concat "telega-" telega-version))
-    (unless telega-link-preview
-      (tgl:disable_link_preview telega--state))
-    (tgl:init telega--state)
-
-    (if telega-test-mode-enable
-        (progn
-          (tgl--bl-do-dc-option
-           telega--state "DC" telega-test-dc telega-test-server-1)
-          (tgl:bl_do_set_working_dc tls telega-test-dc))
-
-      (tgl--bl-do-dc-option
-       telega--state "DC" telega-dc telega-server-1)
-      (tgl:bl_do_set_working_dc telega--state telega-dc))
-
-    ;; NOTE: Crashes
-    (tgl:login telega--state)
-
-    ;; Start event loop using timer function
-    (setq telega--timer
-          (run-at-time 1 t 'telega--event-timer))
-    ))
-
-(defun telega--disconnect ()
-  "Disconnect from telegram."
-  ;; TODO:
-  ;;   - really disconnect
-  (when telega--state
-    (cancel-timer telega--timer)
-    (setq telega--state nil)
-  ))
-
-(defun telega--event-timer ()
-  (when telega--state
-    (while (== 0 (event--base-loop telega--event-base :once :nonblock))
-      ;; pass
-      )
-    ))
 
 (provide 'telega)
 
