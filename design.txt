@@ -1,0 +1,38 @@
+Идеи
+====
+
+Вести в 'Saved Messages' документ, в котором хранятся список
+"<buffer-name> . <telegram-id>" таким образом можно будет хранить
+файлы в телеграме.  Но нужно проверить можно ли пересохранять файлы с
+тем же id.
+
+telega root buffer
+==================
+
+Можно засетапить header-line чтобы показывать состояние telega-server, 
+и самарайз то что происходит
+
+Widget based buffer
+
+State:  Connecting..
+Search: [here is something to search]
+
+Chats                      Contacts             Channels
+-----                      --------             --------
+                           
+[Friday here       32]p    [super     4]        [Korporacyia zla 3]
+[We are supp..      1]     [asntehu   5]
+[asnoehtaeo         4]         
+
+где 'p' - символ булавки
+
+Unicode Character 'PUSHPIN' (U+1F4CC)
+UTF-8 (hex): 0xF0 0x9F 0x93 0x8C (f09f938c)
+
+
+telega chat buffer
+==================
+
+- use lui based mode
+
+TODO: подумать чо как тут должно выглядить
