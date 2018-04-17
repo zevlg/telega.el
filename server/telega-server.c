@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
@@ -46,6 +47,7 @@ static void
 on_error_cb(const char* errmsg)
 {
         printf("error %zu\n%s\n", strlen(errmsg), errmsg);
+        fflush(stdout);
 }
 
 static void*
@@ -53,10 +55,22 @@ tdlib_loop(void* cln)
 {
         while (true) {
                 const char *res = td_json_client_receive(cln, 1);
-                if (res)
+                if (res) {
                         printf("event %zu\n%s\n", strlen(res), res);
+                        fflush(stdout);
+                }
         }
         return NULL;
+}
+
+/*
+ * NOTE: Emacs sends HUP when associated buffer is killed
+ * kind of graceful exit
+ */
+static void
+on_sighup(int sig)
+{
+        close(0);
 }
 
 static void
@@ -66,6 +80,7 @@ stdin_loop(void* cln)
         char* jsonv = NULL;
         size_t jsonsz = 0;
 
+        signal(SIGHUP, on_sighup);
         while (fgets(cmdline, 33, stdin)) {
                 cmdline[32] = '\0';
 
