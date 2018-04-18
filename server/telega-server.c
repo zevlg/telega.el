@@ -30,7 +30,7 @@
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.1.1";
+const char* version = "0.1.2";
 
 
 void
@@ -86,7 +86,7 @@ stdin_loop(void* cln)
 
                 char cmd[33];
                 size_t cmdsz;
-                if (2 != sscanf(cmd, "%s %zu\n", cmd, &cmdsz)) {
+                if (2 != sscanf(cmdline, "%s %zu\n", cmd, &cmdsz)) {
                         fprintf(stderr, "Unexpected cmdline format: %s", cmdline);
                         continue;
                 }
@@ -99,8 +99,11 @@ stdin_loop(void* cln)
 
                 /* read including newline */
                 ssize_t rc = read(0, jsonv, jsonsz + 1);
-                if (rc != jsonsz)
+                if (rc != jsonsz + 1) {
+                        fprintf(stderr, "read(0, %zu) failed: rc =%zd",
+                                jsonsz + 1, rc);
                         break;  /* EOF */
+                }
 
                 jsonv[jsonsz] = '\0';
                 if (!strcmp(cmd, "send"))
