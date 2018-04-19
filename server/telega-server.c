@@ -16,21 +16,21 @@
  *   <COMMAND> <SPACE> <JSON-LEN> <NEWLINE>
  *   <JSON of JSON-LEN length> <NEWLINE>
  *
- * COMMAND is one of `exec', `send', `event' or `error'
+ * COMMAND is one of `send', `event' or `error'
  * `event' and `error' is used for output
  *
  * For example:
  *   event 108
  *   {"@type":"updateAuthorizationState","authorization_state":{"@type":"authorizationStateWaitTdlibParameters"}}
  *
- *   exec 118
+ *   send 118
  *   {"@type": "getTextEntities", "text": "@telegram /test_command https://telegram.org telegram.me", "@extra": ["5", 7.0]}
  *
  */
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.1.3";
+const char* version = "0.1.4";
 
 
 void
@@ -108,8 +108,6 @@ stdin_loop(void* cln)
                 jsonv[cmdsz] = '\0';
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, jsonv);
-                else if (!strcmp(cmd, "exec"))
-                        td_json_client_execute(cln, jsonv);
                 else
                         fprintf(stderr, "Unknown command: %s", cmd);
         }
