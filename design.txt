@@ -17,22 +17,72 @@ Widget based buffer
 State:  Connecting..
 Search: [here is something to search]
 
-Chats                      Contacts             Channels
------                      --------             --------
+Chats
+-----
                            
-[Friday here       32]p    [super     4]        [Korporacyia zla 3]
-[We are supp..      1]     [asntehu   5]
-[asnoehtaeo         4]         
+[Saved Messages                  4]p
+    14:15 some photo here
+[Pig's Thursday               32@2]p
+    17:15W @zevlg> last message in chatroom
+|Vasya Pupkin                    1|
+    11:11V hello there
+#FBI leaks                    11@1#
+    10:04:18V just wipe the file and forget
+[Telegram Resistance             1]
+    14:14V @vpupkin> Can you see it?
+(Seliger                       4@1)
+    MonW @vpupkin> I will not go
 
-где 'p' - символ булавки
+Количество сообщений (справа от title) - ВСЕГО[@MENTIONS]
 
-Unicode Character 'PUSHPIN' (U+1F4CC)
-UTF-8 (hex): 0xF0 0x9F 0x93 0x8C (f09f938c)
+|name    | - private chat with user
+(name ...) - basic groups
+[name ...] - super groups
+#name    # - secret chat
+<name ...> - channels
+{name ...} - bots
 
+Символ о статусе доставки сообщения возле времени
+O - В процессе доставки на сервер
+V - Одна галка
+W - Двойная галка
+
+Символы после title чата
+p - pinned  -- Unicode Character 'PUSHPIN' (U+1F4CC) UTF-8 (hex): 0xF0 0x9F 0x93 0x8C (f09f938c)
+* - online
+o - away
+v - verified (+4277 for example)
+
+Дата:
+- Если сегодня, то формат ЧАС:МИНУТА
+- Eсли не на этой неделе то трёхбуквенный ДЕНЬ НЕДЕЛИ
+- Если другое то ДЕНЬ:МЕСЯЦ:ГОД (год двухбуквенный)
+
+Bots
+----
+
+Same as in chats, but only bots
+
+Contacts
+--------
+
+PIC Vasya Pupkin @vpupkin         last seen recently
+PIC Evgeny Zajcev @zevlg          last seen long ago
+
+Channels
+--------
+
+Same as in chats, but only channels
 
 telega chat buffer
 ==================
 
 - use lui based mode
+
+17:15W @vpupkin> message from v pupkin
+17:19V @zevlg> message from me, highlighted with different background color
+------------------------[text here for page cut]------------------------
+
+- Поддержка мультилайна по Ctrl-Enter
 
 TODO: подумать чо как тут должно выглядить
