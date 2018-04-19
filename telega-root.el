@@ -36,8 +36,14 @@
   "Hook run when telega root buffer is created.")
 
 (defvar telega-root-mode-map (make-sparse-keymap)
-  "The key map for telega root buffer."
-  )
+  "The key map for telega root buffer.")
+
+(define-derived-mode telega-root-mode nil "Telega-Root"
+  "The mode for telega root buffer.
+
+\\{telega-root-mode-map}"
+  (telega-root--redisplay)
+  (add-hook 'kill-buffer-hook 'telega-root-killed nil t))
 
 (defun telega-root-killed ()
   "Run when telega root buffer is killed.
@@ -59,6 +65,15 @@ Terminate telega-server and kill all chat buffers."
 (defun telega-root--redisplay ()
   "Redisplay telega root buffer."
   (with-current-buffer telega-root-buffer-name
+    (erase-buffer)
+    (setq telega-root--widget-state
+          (widget-create 'string :format "State: %v" :value "Unknown"))
+    (setq telega-root--widget-search
+          (widget-create 'string :format "Search: %v"))
+
+    (widget-insert "\n")
+    (widget-insert "Chats           Contacts        Channels\n")
+    (widget-insert "-----           --------        --------\n")
     ))
 
 (provide 'telega-root)

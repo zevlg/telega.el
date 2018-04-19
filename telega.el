@@ -5,7 +5,7 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.1.1
+;; Version: 0.1.3
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -22,14 +22,15 @@
 
 ;;; Commentary:
 
-;; Some code taken from circe
-
+;;
 
 ;;; Code:
 (require 'telega-root)
+(require 'telega-notifications)
+
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.1.1")
+(defconst telega-version "0.1.3")
 
 
 (defgroup telega nil
@@ -47,6 +48,11 @@
   :type 'string
   :group 'telega)
 
+(defcustom telega-debug nil
+  "*Non-nil to enable telega debugging buffer."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-use-test-dc nil
   "*Non-nil to use telegram's test environment instead of production."
   :type 'bool
@@ -57,25 +63,42 @@
   :type 'string
   :group 'telega)
 
+(defcustom telega-options-plist nil
+  "*Plist of options to set.
+Only writable options can be set.  See: https://core.telegram.org/tdlib/options
+NOT IMPLEMENTED"
+  :type 'plist
+  :group 'telega)
+
 (defcustom telega-rsa-key-file (expand-file-name "server.pub" telega-directory)
   "*RSA key to use."
   :type 'string
   :group 'telega)
 
+(defgroup telega-server nil
+  "Customisation for telega-server."
+  :prefix "telega-server-"
+  :group 'telega)
+
 (defcustom telega-server-command "telega-server"
   "Command to run as telega server."
   :type 'string
-  :group 'telegram)
+  :group 'telega-server)
 
 (defcustom telega-server-logfile (expand-file-name "telega-server.log" telega-directory)
   "*Write server logs to this file."
   :type 'string
-  :group 'telega)
+  :group 'telega-server)
 
 (defcustom telega-server-verbosity 5
   "*Verbosity level for server process."
   :type 'number
-  :group 'telega)
+  :group 'telega-server)
+
+(defcustom telega-server-call-timeout 0.5
+  "*Timeout for `telega-server--call'."
+  :type 'number
+  :group 'telega-server)
 
 (defcustom telega-tracking '(chats contacts)
   "*Buffers to track activity on."
@@ -142,12 +165,6 @@ lui-mode
   (set (make-local-variable 'tracking-faces-priorities)
        telega-track-faces-priorities))
 
-(define-derived-mode telega-root-mode nil "Telega-Root"
-  "The mode for telega root buffer.
-
-\\{telega-root-mode-map}"
-  (add-hook 'kill-buffer-hook 'telega-root-killed nil t))
-
 (define-derived-mode telega-chat-mode telega-mode "Telega-Chat"
   "The mode for telega chat buffers.
 
@@ -170,6 +187,12 @@ lui-mode
   ;; TODO
   )
 
+(defsubst telega-debug (fmt &rest args)
+  (when telega-debug
+    (with-current-buffer (get-buffer-create "*telega-debug*")
+      (goto-char (point-max))
+      (insert (apply 'format (cons (concat fmt "\n") args))))))
+
 
 ;;; telega-server stuff
 (defmacro telega--tl-type (tl-obj)
@@ -179,6 +202,8 @@ lui-mode
 
 (defvar telega-server--bin nil)
 (defvar telega-server--buffer nil)
+(defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
+(defvar telega--options nil "Current options values.")
 
 (defun telega-server--find-bin ()
   "Find telega-server executable.
@@ -192,82 +217,207 @@ Raise error if not found"
   "Sentinel for the telega-server process."
   (message "telega-server: %s" event))
 
+(defun telega--set-tdlib-parameters ()
+  "Sets the parameters for TDLib initialization."
+  (telega-server--send
+   `(:@type "setTdlibParameters"
+            :parameters
+            (:@type "tdlibParameters"
+                    :use_test_dc ,(or telega-use-test-dc json-false)
+                    :database_directory ,telega-directory
+                    :files_directory ,telega-cache-dir
+                    :use_file_database t
+                    :use_chat_info_database t
+                    :use_message_database t
+                    :api_id ,(car telega-app)
+                    :api_hash ,(cdr telega-app)
+                    :system_language_code ,telega-language
+                    :application_version ,telega-version
+                    :device_model "desktop"
+                    :system_version "unknown"
+                    :ignore_file_names ,json-false
+                    :enable_storage_optimizer t
+            ))))
+
+(defun telega--check-database-encryption-key ()
+  "Set database encryption key, if any."
+  ;; NOTE: database encryption is disabled
+  ;;   consider encryption as todo in futuru
+  (telega-server--send
+   `(:@type "checkDatabaseEncryptionKey"
+            :encryption_key "")))
+
+(defun telega--set-auth-phone-number ()
+  "Sets the phone number of the user."
+  (let ((phone (read-string "Telega phone number: " "+")))
+    (telega-server--send
+     `(:@type "setAuthenticationPhoneNumber"
+              :phone_number ,phone
+              :allow_flash_call ,json-false
+              :is_current_phone_number ,json-false))))
+
+(defun telega--resend-auth-code ()
+  "Resends auth code, works only if current state is authorizationStateWaitCode."
+  )
+
+(defun telega--check-auth-code (registered-p)
+  "Send login auth code."
+  (let ((code (read-string "Telega login code: ")))
+    (assert registered-p)
+    (telega-server--send
+     `(:@type "checkAuthenticationCode"
+              :code ,code
+              :first_name ""
+              :last_name ""))))
+
+(defun telega--authorization-ready ()
+  "Called when tdlib is ready to receive queries."
+  (cl-loop for (prop-name value) in telega-options-plist
+           do (telega-server--send
+               `(:@type "setOption" :name ,prop-name
+                        :value (:@type ,(cond ((memq value '(t nil))
+                                               "optionValueBoolean")
+                                              ((integerp value)
+                                               "optionValueInteger")
+                                              ((stringp value)
+                                               "optionValueString"))
+                                       :value (or value ,json-false)))))
+  )
+
+(defun telega--on-ok (event)
+  "On ok result from command function call."
+  )
+
+(defun telega--on-updateConnectionState (event)
+  "Update telega connection state."
+  (let* ((conn-state (plist-get (plist-get event :state) :@type))
+         (root-state (substring conn-state 15)))
+    (telega-root--state root-state)))
+
+(defun telega--on-updateOption (event)
+  "Proceed with option update from telega server."
+  (setq telega--options
+        (plist-put telega--options
+                   (intern (concat ":" (plist-get event :name)))
+                   (plist-get (plist-get event :value) :value))))
+
 (defun telega--on-updateAuthorizationState (event)
   (let ((state (plist-get event :authorization_state)))
-    (message "state: %S" (stringp (plist-get state :@type)))
     (ecase (telega--tl-type state)
       (authorizationStateWaitTdlibParameters
-       (telega-root--state 'connecting)
-       (telega--provide-tdlib-params))
+       (telega-root--state "Connecting..")
+       (telega--set-tdlib-parameters))
+
+      (authorizationStateWaitEncryptionKey
+       (telega--check-database-encryption-key))
+
+      (authorizationStateWaitPhoneNumber
+       (telega--set-auth-phone-number))
+
+      (authorizationStateWaitCode
+       (telega--check-auth-code (plist-get state :is_registered)))
+
+      (authorizationStateReady
+       ;; TDLib is now ready to answer queries
+       (telega--authorization-ready))
+
+      (authorizationStateClosing
+       (telega-root--state "Closing.."))
 
       (authorizationStateClosed
-       (telega-root--state 'closed))
+       (telega-root--state "Closed"))
       )))
 
 (defun telega--on-event (event)
-  (message "Telega event: %s" event)
+  (telega-debug "IN event: %s" event)
+
   (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
     (if (symbol-function event-sym)
         (funcall (symbol-function event-sym) event)
-      (message "Telega TODO: define `%S'" event-sym)
-      )))
+
+      (telega-debug "TODO: define `%S'" event-sym))))
 
 (defun telega--on-error (err)
-  (message "Telega error: %s" err)
-  )
+  (telega-debug "IN error: %s" err)
 
-(defun telega-server--parse-events ()
-  "Parse events from telega-server."
-  (while (progn
-           (goto-char (point-min))
-           (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t))
+  (message "Telega error: %s" err))
+
+(defsubst telega-server--parse-cmd ()
+  "Parse single reply from telega-server."
+  (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
     (let ((cmd (match-string 1))
           (jsonsz (string-to-number (match-string 2))))
       (when (> (- (point-max) (point)) jsonsz)
         (let* ((json-object-type 'plist)
                (value (json-read)))
-          (unwind-protect
-              (cond ((string= cmd "event")
-                     (telega--on-event value))
-                    ((string= cmd "error")
-                     (telega--on-error value))
-                    (t (error "Unknown cmd from telega-server: %s" cmd)))
+          (prog1
+              (list cmd value)
             (delete-region (point-min) (point))))))))
+
+(defsubst telega-server--dispatch-cmd (cmd value)
+  "Dispatch command CMD."
+  (declare (special telega-server--extra-value))
+  (cond ((string= cmd "event")
+         (if (and (boundp 'telega-server--extra-value)
+                  (eq (plist-get value :@extra) telega-server--extra))
+             (setq telega-server--extra-value value)
+           (telega--on-event value)))
+        ((string= cmd "error")
+         (telega--on-error value))
+        (t (error "Unknown cmd from telega-server: %s" cmd))))
+
+(defun telega-server--parse-commands ()
+  "Parse all available events from telega-server."
+  (goto-char (point-min))
+  (let (cmd-val)
+    (while (setq cmd-val (telega-server--parse-cmd))
+      (apply 'telega-server--dispatch-cmd cmd-val))))
 
 (defun telega-server--filter (proc output)
   "Filter for the telega-server process."
   (let ((buffer (process-buffer proc)))
-    (message "telega (live=%s) output: %s" (buffer-live-p buffer) output)
     (if (buffer-live-p buffer)
         (with-current-buffer buffer
           (goto-char (point-max))
           (insert output)
-          (telega-server--parse-events))
+          (telega-server--parse-commands))
 
       ;; telega-server buffer is killed, but telega-server process
       ;; still sends us some events
       (with-temp-buffer
         (insert output)
-        (telega-server--parse-events)))))
+        (telega-server--parse-commands)))))
 
-(defun telega-server--send (sexp &optional exec-p)
-  "Compose SEXP to json and send to telega-server.
-If EXEC-P is non-nil then send `exec' command instead of default `send'."
+(defun telega-server--send (sexp)
+  "Compose SEXP to json and send to telega-server."
   (let* ((json-object-type 'plist)
          (value (json-encode sexp))
          (proc (get-buffer-process telega-server--buffer)))
     (process-send-string
      proc
-     (format "%s %d\n" (or (and exec-p "exec") "send") (length value)))
-    (process-send-string
-     proc
-     sexp)
-    (process-send-string
-     proc
-     "\n")))
+     (concat "send " (number-to-string (length value)) "\n"))
+    (process-send-string proc value)
+    (process-send-string proc "\n")))
+
+(defun telega-server--call (sexp)
+  "Same as `telega-server--send', but waits for answer from telega-server."
+  (let ((sexp-with-extra (plist-put sexp :@extra (incf telega-server--extra)))
+        telega-server--extra-value)
+    (telega-server--send sexp-with-extra)
+    (accept-process-output
+     (get-buffer-process telega-server--buffer) telega-server-call-timeout)
+    telega-server--extra-value))
 
 (defun telega-server--start ()
   "Start telega-server process."
+  (when (process-live-p (get-buffer-process telega-server--buffer))
+    (error "Error: telega-server already running"))
+
+  (when telega-debug
+    (with-current-buffer (get-buffer-create "*telega-debug*")
+      (erase-buffer)
+      (insert (format "%s ---[ telega-server started\n" (current-time-string)))))
+
   (unless telega-server--bin
     (setq telega-server--bin (telega-server--find-bin)))
   (let ((process-connection-type nil)
