@@ -30,6 +30,7 @@
 
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
+(defconst telega-app-test '(1111 . "xxx"))
 (defconst telega-version "0.1.3")
 
 
@@ -100,10 +101,11 @@ NOT IMPLEMENTED"
   :type 'number
   :group 'telega-server)
 
-(defcustom telega-tracking '(chats contacts)
+(defcustom telega-tracking '(chats users)
   "*Buffers to track activity on."
   :type '(repeat (choice (const :tag "Chats" chats)
-                         (const :tag "Contacts" contacts)
+                         (const :tag "Users" users)
+                         (const :tag "Bots" bots)
                          (const :tag "Channels" channels)))
   :group 'telega)
 
@@ -130,6 +132,19 @@ To change the prompt dynamically or just in specific buffers, use
 `lui-set-prompt' in the appropriate hooks."
   :type 'string
   :group 'telega)
+
+;;; Runtime variables
+(defstruct (telega-context (:type vector) :named)
+  chats
+  users
+
+  ;; ordered list of chats
+  ordered-chats
+  ;; non-nil if got all available chats
+  chats-fullset-p
+  )
+
+(defvar telega-ctx nil "Context for telega.")
 
 ;;; Utility functions
 
@@ -181,10 +196,10 @@ lui-mode
   (pop-to-buffer-same-window telega-root-buffer-name))
 
 ;;;###autoload
-(defun telega-switch-account ()
+(defun telega-logout ()
   "Switch to another telegram account."
   (interactive)
-  ;; TODO
+  (telega-server--send `(:@type "logOut"))
   )
 
 (defsubst telega-debug (fmt &rest args)
@@ -204,6 +219,22 @@ lui-mode
 (defvar telega-server--buffer nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega--options nil "Current options values.")
+
+;; Server callbacks
+(defvar telega-server--callbacks nil "Callbacks ruled by extra")
+
+(defsubst telega-server--callback-add (extra cb)
+  (setq telega-server--callbacks
+        (plist-put telega-server--callbacks extra cb)))
+
+(defsubst telega-server--callback-rm (extra)
+  (if (eq extra (car telega-server--callbacks))
+       (setq telega-server--callbacks (cddr telega-server--callbacks))
+     (cl--do-remf telega-server--callbacks extra)))
+
+(defsubst telega-server--callback-get (extra)
+  (plist-get telega-server--callbacks extra))
+
 
 (defun telega-server--find-bin ()
   "Find telega-server executable.
@@ -229,8 +260,8 @@ Raise error if not found"
                     :use_file_database t
                     :use_chat_info_database t
                     :use_message_database t
-                    :api_id ,(car telega-app)
-                    :api_hash ,(cdr telega-app)
+                    :api_id ,(car (if telega-use-test-dc telega-app-test telega-app))
+                    :api_hash ,(cdr (if telega-use-test-dc telega-app-test telega-app))
                     :system_language_code ,telega-language
                     :application_version ,telega-version
                     :device_model "desktop"
@@ -272,6 +303,14 @@ Raise error if not found"
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
+  (setq telega-ctx
+        (make-telega-context
+         :chats (make-hash-table :test 'eq)
+         :users (make-hash-table :test 'eq)))
+
+  ;; Request for chats/users/etc
+  (run-hooks 'telega-ready-hook)
+
   (cl-loop for (prop-name value) in telega-options-plist
            do (telega-server--send
                `(:@type "setOption" :name ,prop-name
@@ -282,7 +321,16 @@ Raise error if not found"
                                               ((stringp value)
                                                "optionValueString"))
                                        :value (or value ,json-false)))))
+  (telega-chat--getChatList)
   )
+
+(defun telega--authorization-closed ()
+  (when (buffer-live-p telega-server--buffer)
+    (kill-buffer telega-server--buffer)
+    (setq telega-server--buffer nil))
+
+  (telega-root--state "Auth Closed")
+  (run-hooks 'telega-closed-hook))
 
 (defun telega--on-ok (event)
   "On ok result from command function call."
@@ -292,7 +340,7 @@ Raise error if not found"
   "Update telega connection state."
   (let* ((conn-state (plist-get (plist-get event :state) :@type))
          (root-state (substring conn-state 15)))
-    (telega-root--state root-state)))
+    (telega-root--state (concat "Conn " root-state))))
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server."
@@ -302,8 +350,12 @@ Raise error if not found"
                    (plist-get (plist-get event :value) :value))))
 
 (defun telega--on-updateAuthorizationState (event)
-  (let ((state (plist-get event :authorization_state)))
-    (ecase (telega--tl-type state)
+  (let* ((state (plist-get event :authorization_state))
+         (stype (plist-get state :@type)))
+
+    (telega-root--state (concat "Auth " (substring stype 18)))
+
+    (ecase (intern stype)
       (authorizationStateWaitTdlibParameters
        (telega-root--state "Connecting..")
        (telega--set-tdlib-parameters))
@@ -321,11 +373,14 @@ Raise error if not found"
        ;; TDLib is now ready to answer queries
        (telega--authorization-ready))
 
+      (authorizationStateLoggingOut
+       (telega-root--state "Auth Logging Out"))
+
       (authorizationStateClosing
-       (telega-root--state "Closing.."))
+       (telega-root--state "Auth Closing"))
 
       (authorizationStateClosed
-       (telega-root--state "Closed"))
+       (telega--authorization-closed))
       )))
 
 (defun telega--on-event (event)
@@ -356,14 +411,18 @@ Raise error if not found"
 
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
-  (declare (special telega-server--extra-value))
   (cond ((string= cmd "event")
-         (if (and (boundp 'telega-server--extra-value)
-                  (eq (plist-get value :@extra) telega-server--extra))
-             (setq telega-server--extra-value value)
-           (telega--on-event value)))
+         (let* ((extra (plist-get value :@extra))
+                (call-cb (telega-server--callback-get extra)))
+           (if call-cb
+               (progn
+                 (telega-server--callback-rm extra)
+                 (funcall call-cb value))
+             (telega--on-event value))))
+
         ((string= cmd "error")
          (telega--on-error value))
+
         (t (error "Unknown cmd from telega-server: %s" cmd))))
 
 (defun telega-server--parse-commands ()
@@ -399,14 +458,24 @@ Raise error if not found"
     (process-send-string proc value)
     (process-send-string proc "\n")))
 
-(defun telega-server--call (sexp)
-  "Same as `telega-server--send', but waits for answer from telega-server."
-  (let ((sexp-with-extra (plist-put sexp :@extra (incf telega-server--extra)))
-        telega-server--extra-value)
-    (telega-server--send sexp-with-extra)
-    (accept-process-output
-     (get-buffer-process telega-server--buffer) telega-server-call-timeout)
-    telega-server--extra-value))
+(defun telega-server--call (sexp &optional callback)
+  "Same as `telega-server--send', but waits for answer from telega-server.
+If CALLBACK is specified, then make async call and call CALLBACK when result is received."
+  (telega-server--send (plist-put sexp :@extra (incf telega-server--extra)))
+
+  (if callback
+      (telega-server--callback-add telega-server--extra callback)
+
+    ;; synchronous call aka exec
+    (let (telega-server--result)
+      (telega-server--callback-add
+       telega-server--extra
+       (lambda (event) (setq telega-server--result event)))
+      
+      (accept-process-output
+       (get-buffer-process telega-server--buffer)
+       telega-server-call-timeout)
+      telega-server--result)))
 
 (defun telega-server--start ()
   "Start telega-server process."

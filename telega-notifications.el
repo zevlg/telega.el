@@ -37,9 +37,16 @@
   "Notifications settings")
 
 (defun telega--on-updateNotificationSettings (event)
-  (telega-debug
-   "TODO: updateNotificationSettings@telega-notifications.el,  event=%s" event)
-  )
+  (let ((scope (plist-get event :scope)))
+    (case (intern (plist-get scope :@type))
+      (notificationSettingsScopeChat
+       (let ((chat (telega-chat--get scope)))
+         (plist-put chat :notification_settings
+                    (plist-get event :notification_settings))))
+      (t
+       (telega-debug
+        "TODO scope: `telega--on-updateNotificationSettings' event=%s" event))
+      )))
 
 (defun telega--on-xxx-todo-notification (event)
   ;; TODO: use `notifications-notify' to notify
