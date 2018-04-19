@@ -30,7 +30,7 @@
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.1.2";
+const char* version = "0.1.3";
 
 
 void
@@ -98,14 +98,14 @@ stdin_loop(void* cln)
                 }
 
                 /* read including newline */
-                ssize_t rc = read(0, jsonv, jsonsz + 1);
-                if (rc != jsonsz + 1) {
-                        fprintf(stderr, "read(0, %zu) failed: rc =%zd",
-                                jsonsz + 1, rc);
-                        break;  /* EOF */
+                size_t rc = fread(jsonv, 1, cmdsz + 1, stdin);
+                if (rc != cmdsz + 1) {
+                        /* EOF or error */
+                        fprintf(stderr, "fread() error: %d\n", ferror(stdin));
+                        break;
                 }
 
-                jsonv[jsonsz] = '\0';
+                jsonv[cmdsz] = '\0';
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, jsonv);
                 else if (!strcmp(cmd, "exec"))
