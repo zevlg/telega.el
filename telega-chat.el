@@ -1,4 +1,4 @@
-;;; telega-chats.el --- Chats support for telegram
+;;; telega-chat.el --- Chat mode for telega
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 
@@ -27,19 +27,24 @@
 
 ;;; Code:
 (defmacro telega-chat--get (event)
-  `(gethash (plist-get ,event :chat_id) (telega-context-chats telega-ctx)))
+  `(gethash (plist-get ,event :chat_id) telega--chats))
 
-(defun telega-chat--brackets (chat)
-  (let ((chat-type (plist-get chat :type)))
-    (case (intern (plist-get chat-type :@type))
-      (chatTypePrivate (cons "|" "|"))
-      (chatTypeBasicGroup (cons "(" ")"))
-      (chatTypeSupergroup
-       (if (eq (plist-get chat-type :is_channel) :json-false)
-           (cons "<" ">")
-         (cons "[" "]")))
-      (chatTypeSecret (cons "#" "#"))
-      (t (cons "(" ")")))))
+(defun telega-chat--type (chat)
+  "Return type of the CHAT.
+Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
+  (let* ((chat-type (plist-get chat :type))
+         (type-sym (intern (downcase (substring (plist-get chat-type :@type) 8)))))
+    (cond ((and (eq type-sym 'supergroup)
+                (telega--tl-bool chat-type :is_channel))
+           'channel)
+          ((and (eq type-sym 'private)
+                (telega-user--bot-p
+                 (telega-user--get (plist-get chat-type :user_id))))
+           'bot)
+          (t type-sym))))
+
+(defun telega-chat--order (chat)
+  (plist-get chat :order))
 
 (defun telega-chat--title (chat)
   "Return title for the CHAT."
@@ -53,20 +58,17 @@
 
       title)))
 
-(defun telega-chat--order (chat) (plist-get chat :order))
-
 (defun telega-chat--reorder (chat order)
   (plist-put chat :order order)
-  (cl-sort (telega-context-ordered-chats telega-ctx)
-           'string< :key 'telega-chat--order)
+  (cl-sort telega--ordered-chats 'string< :key 'telega-chat--order)
   (telega-root--chat-reorder chat))
 
 (defun telega-chat--new (chat)
   "Create new CHAT."
-  (puthash (plist-get chat :id) chat (telega-context-chats telega-ctx))
+  (puthash (plist-get chat :id) chat telaga--chats)
   (telega-root--chat-new chat)
 
-  (push chat (telega-context-ordered-chats telega-ctx))
+  (push chat telega--ordered-chats)
   (telega-chat--reorder chat (telega-chat--order chat)))
   
 (defun telega--on-updateNewChat (event)
@@ -89,17 +91,19 @@
 
 (defun telega--on-updateChatUnreadMentionCount (event)
   (let ((chat (telega-chat--get event)))
-    (plist-put chat :unread_mention_count (plist-get event :unread_mention_count))
+    (plist-put chat :unread_mention_count
+               (plist-get event :unread_mention_count))
     (telega-root--chat-update chat)))
 
-(defalias 'telega--on-updateChatUnreadMentionRead 'telega--on-updateChatUnreadMentionCount)
+(defalias 'telega--on-updateChatUnreadMentionRead
+  'telega--on-updateChatUnreadMentionCount)
 
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (let ((chat_ids (plist-get result :chat_ids)))
     (telega-debug "on-getChats: %s" (plist-get result :chat_ids))
     (mapc (lambda (chat_id)
-            (unless (gethash chat_id (telega-context-chats telega-ctx))
+            (unless (gethash chat_id telega--chats)
               (telega-chat--new
                (telega-server--call
                 `(:@type "getChat" :chat_id ,chat_id)))))
@@ -111,17 +115,17 @@
 
 (defun telega-chat--getChatList ()
   "Retreive all chats from the server."
-  (let* ((last-chat (car (telega-context-ordered-chats telega-ctx)))
-         (offset-order (or (and last-chat (plist-get last-chat :order)) "9223372036854775807"))
+  (let* ((last-chat (car telega--ordered-chats))
+         (offset-order (or (and last-chat (plist-get last-chat :order))
+                           "9223372036854775807"))
          (offset-chatid (or (and last-chat (plist-get last-chat :id)) 0)))
-    
     (telega-server--call
      `(:@type "getChats"
-       :offset_order ,offset-order
-       :offset_chat_id ,offset-chatid
-       :limit 1000000)
+              :offset_order ,offset-order
+              :offset_chat_id ,offset-chatid
+              :limit 1000000)
      #'telega-chat--on-getChats)))
 
-(provide 'telega-chats)
+(provide 'telega-chat)
 
-;;; telega-chats.el ends here
+;;; telega-chat.el ends here

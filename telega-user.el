@@ -1,4 +1,4 @@
-;;; telega-users.el --- Telega users
+;;; telega-user.el --- User related stuff for telega
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 
@@ -27,19 +27,27 @@
 
 ;;; Code:
 (defun telega-user--get (user_id)
+  "Get user by USER_ID."
   (telega-server--call
    `(:@type "getUser" :user_id ,user_id)))
 
+(defun telega-user--type (user)
+  "Return USER type."
+  (intern (downcase (substring (plist-get (plist-get user :type) :@type) 8))))
+
+(defun telega-user--bot-p (user)
+  "Return non-nil if USER is bot."
+  (eq (telega-user--type user) 'bot))
+
 (defun telega-user--title (user)
   "Return title for the USER."
-  (let ((user-type (plist-get user :type))
-        (title (format "%s %s @%s" (plist-get user :first_name)
-                       (plist-get user :last_name) (plist-get user :username))))
-    (if (string= title "  @")
-        (ecase (intern (plist-get user-type :@type))
-          (userTypeDeleted "Deleted Account"))
-      title)))
+  (if (eq (telega-user--title user) 'deleted)
+      "Deleted Account"
+    (format "%s %s @%s"
+            (plist-get user :first_name)
+            (plist-get user :last_name)
+            (plist-get user :username))))
 
-(provide 'telega-users)
+(provide 'telega-user)
 
-;;; telega-users.el ends here
+;;; telega-user.el ends here

@@ -27,9 +27,70 @@
 
 ;;; Code:
 
-(defcustom telega-root-buffer-name "Telega:Root"
+(defcustom telega-root-buffer-name "*Telega Root*"
   "*Buffer name for telega root buffer."
-  :group 'telega)
+  :type 'string
+  :group 'telega-root)
+
+(defcustom telega-root-recent-chats 10
+  "*Number of recent chats to show."
+  :type 'integer
+  :group 'telega-root)
+
+(defcustom telega-root-mode-line-format "Telega: (%c/%n/%m)"
+  "Format for the modeline in telega-root mode.
+%n The number of new messages.
+%a The number of all messages.
+%c The number of chats with new messages.
+%m The number of mentions.
+%u The number of users seen recently."
+  :type 'string
+  :group 'telega-root)
+
+(defcustom telega-root-chat-brackets
+  '((private "[" "]")
+    (secret "{" "}")
+    (bot "[[" "]]")
+    (basicgroup "(" ")")
+    (supergroup "((" "))")
+    (channel "<" ">"))
+  "Brackets used for different kinds of chats.
+%( and %) from `telega-root-chat-format' will use these brackets."
+  :group 'telega-root)
+
+(defcustom telega-root-chat-format
+  "%40{%A %(%t  %n%r%)%}%p%-20s\n    %M"
+  "Format for the chat widget.
+%a - Chat avatar
+%( - Open bracket for this kind of chat
+%) - Close bracket for this kind of chat
+%t - Chat title
+%n - Short name (username)
+%s - Activity status (last seen if any)
+%l - Link on http://t.me
+%m - Number of members/subscribers
+%u - Number of unread messages
+%r - Number of unread mentions, with @ char included
+%p - Pin character if chat is pinned
+%M - Formatted last message"
+  :type 'string
+  :group 'telega-root)
+
+(defcustom telega-root-chat-formats
+  `((true . ,telega-root-chat-format))
+  "Format for chats based on predicates.
+Predicate is called with one argument - CHAT."
+  :type '(repeat (cons (function :tag "Predicate")
+                       (string :tag "Format string")))
+  :group 'telega-root)
+  
+(defcustom telega-root-last-msg-format "%t%v %m"
+  "Format for the last message in chat.
+%t - Timestamp
+%v - upload/seen status. V or W
+%m - Message body"
+  :type 'string
+  :group 'telega-root)
 
 (defvar telega-root-chat-keymap (make-sparse-keymap)
   "Keymap when point is under chat widget.")
@@ -58,6 +119,7 @@ Terminate telega-server and kill all chat buffers."
 (defvar telega-root--widget-state nil)
 (defvar telega-root--widget-search nil)
 (defvar telega-root--widget-chats nil)
+(defvar telega-root--widget-groups nil)
 (defvar telega-root--widget-users nil)
 (defvar telega-root--widget-bots nil)
 (defvar telega-root--widget-channels nil)
@@ -71,14 +133,36 @@ Terminate telega-server and kill all chat buffers."
   :format "%v"
   :action 'telega-root--chat-open
   :keymap telega-root-chat-keymap
-  :value-create 'telega-root--widget-value-create)
+  :value-create 'telega-root--widget-value-create
+  :value-delete 'telega-root--widget-value-delete)
 
 (defun telega-root--widget-value-create (widget)
-  (let* ((chat (widget-get widget :value))
-         (brackets (telega-chat--brackets chat)))
-    (princ (format "%s%s      %s"
-                   (car brackets) (telega-chat--title chat) (cdr brackets))
-           (current-buffer))))
+  (let ((chat (widget-get widget :value))
+        (b (point)))
+    (insert (telega-root--chat-format chat))
+    (unless (overlayp (widget-get widget :overlay))
+      (let ((wov (make-overlay b (point))))
+        (overlay-put wov 'telega-chat chat)
+        (widget-put widget :overlay wov)))))
+
+(defun telega-root--widget-value-delete (widget)
+  (let ((ov (widget-get widget :overlay)))
+    (when (overlayp ov)
+      (delete-overlay ov))))
+
+(defun telega-root--widget-chat (widget)
+  "Return telega chat associated with WIDGET."
+  (overlay-get (widget-get widget :overlay) 'telega-chat))
+
+(defun telega-root--widget-start (widget)
+  "Return the start of WIDGET."
+  (overlay-start (widget-get widget :overlay)))
+
+(defun telega-root--widget-hide (widget)
+  (overlay-put (widget-get widget :overlay) 'invisible t))
+
+(defun telega-root--widget-show (widget)
+  (overlay-put (widget-get widget :overlay) 'invisible nil))
 
 (defun telega-root--create-section (name marker-name)
   (widget-insert "\n" name "\n" (make-string (length name) ?\-) "\n")
@@ -91,10 +175,13 @@ Terminate telega-server and kill all chat buffers."
     (erase-buffer)
     (setq telega-root--widget-state
           (widget-create 'string :format "State: %v" :value "Unknown"))
-    (setq telega-root--widget-search
-          (widget-create 'string :format "Search: %v"))
+    (telega-root--widget-hide
+     (setq telega-root--widget-search
+           (widget-create 'string :format "Search: %v")))
 
     (telega-root--create-section "Chats" 'chats)
+    (telega-root--create-section "Groups" 'groups)
+    (telega-root--create-section "Secrets" 'secrets)
     (telega-root--create-section "Users" 'users)
     (telega-root--create-section "Bots" 'bots)
     (telega-root--create-section "Channels" 'channels)

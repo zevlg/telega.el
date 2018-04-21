@@ -17,11 +17,11 @@ Widget based buffer
 State:  Connecting..
 Search: [here is something to search]
 
-Chats
------
+Recent Chats
+------------
                            
 [Saved Messages                  4]p
-    14:15 some photo here
+    14:15V some photo here
 [Pig's Thursday               32@2]p
     17:15W @zevlg> last message in chatroom
 |Vasya Pupkin                    1|
@@ -63,19 +63,54 @@ Bots
 
 Same as in chats, but only bots
 
-Contacts
---------
+Users
+-----
 
-PIC Vasya Pupkin @vpupkin         last seen recently
-PIC Evgeny Zajcev @zevlg          last seen long ago
+PIC Vasya Pupkin @vpupkin     2    last seen recently
+   14:15V some photo here
+PIC Evgeny Zajcev @zevlg           last seen long ago
+   FriW message from me        
 
 Channels
 --------
 
 Same as in chats, but only channels
 
-telega chat buffer
-==================
+Design *Telega Root* with tabs
+==============================
+
+Pinned
+------
+
+[Saved Messages                  4]p
+    14:15V some photo here
+...
+
+[Chats 10] [Secrets N] [Groups 10] [Bots 3] [Users 4] [Channels 4]
+---------              -------------------------------------------
+
+[Pig's Thursday               32@2]
+    17:15W @zevlg> last message in chatroom
+....
+
+Жирным выделять активную вкладку
+
+Searching in telega root
+========================
+
+State: Conn Ready
+Search: [text to search               ]
+
+Chats and Users
+---------------
+listing ...
+listing ..
+
+Messages
+--------
+
+Chat buffer
+===========
 
 - use lui based mode
 
