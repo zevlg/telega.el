@@ -6,11 +6,14 @@
 файлы в телеграме.  Но нужно проверить можно ли пересохранять файлы с
 тем же id.
 
-telega root buffer
-==================
+Иконки - all-the-icons package
 
-Можно засетапить header-line чтобы показывать состояние telega-server, 
-и самарайз то что происходит
+=============
+ Root buffer
+=============
+
+Можно засетапить header/mode-line чтобы показывать состояние
+telega-server, и самарайз то что происходит
 
 Widget based buffer
 
@@ -76,8 +79,8 @@ Channels
 
 Same as in chats, but only channels
 
-Design *Telega Root* with tabs
-==============================
+Tabbed design
+=============
 
 Pinned
 ------
@@ -87,7 +90,7 @@ Pinned
 ...
 
 [Chats 10] [Secrets N] [Groups 10] [Bots 3] [Users 4] [Channels 4]
----------              -------------------------------------------
+----------'           `-------------------------------------------
 
 [Pig's Thursday               32@2]
     17:15W @zevlg> last message in chatroom
@@ -95,11 +98,43 @@ Pinned
 
 Жирным выделять активную вкладку
 
+Filter based design ala ibuffer
+===============================
+
+Просто список чатов и накладывать на него всевозможные фильтры
+
+Возможность создавать кастомные фильтры
+
+Фильтр - предикат, который на вход получает чат и возвращает non-nil
+если чат нужно включить в список
+
+State: Conn Ready
+Search: [search String]
+Filter: (custom Groups&Users) (unread)
+Custom: [All 10] [Groups&Users 10] [Secrets N]
+        [Groups 10] [Bots 3] [Users 4] [Channels 4]
+
+Тут список чатов,
+
+Filters:
+  (type CHAT-TYPE) - by telega-chat--type
+  (custom FILTER-NAME) - by custom filter type
+  title      - по title чата
+  unread     - чаты с непрочитаными сообщениями
+  mention    - чаты с упоминанием
+ 
 Searching in telega root
 ========================
 
 State: Conn Ready
 Search: [text to search               ]
+
+Global
+------
+
+User1
+User2
+Channel1
 
 Chats and Users
 ---------------
@@ -109,8 +144,13 @@ listing ..
 Messages
 --------
 
-Chat buffer
-===========
+User1 msg
+User2 msg2
+
+
+=============
+ Chat buffer
+=============
 
 - use lui based mode
 
