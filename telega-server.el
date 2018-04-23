@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri Apr 20 13:52:34 2018
-;; Keywords: 
+;; Keywords:
 
 ;; This file is part of GNU Emacs.
 
@@ -23,19 +23,27 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
-(require 'cl-extra)
+(require 'cl-lib)
+(require 'json)
 
-(require 'telega)
+(require 'telega-core)
+(require 'telega-customize)
+
+(defgroup telega-server nil
+  "Customisation for telega-server."
+  :prefix "telega-server-"
+  :group 'telega)
 
 (defcustom telega-server-command "telega-server"
   "Command to run as telega server."
   :type 'string
   :group 'telega-server)
 
-(defcustom telega-server-logfile (expand-file-name "telega-server.log" telega-directory)
+(defcustom telega-server-logfile
+  (expand-file-name "telega-server.log" telega-directory)
   "*Write server logs to this file."
   :type 'string
   :group 'telega-server)
@@ -50,10 +58,23 @@
   :type 'number
   :group 'telega-server)
 
+(defun telega--on-event (event)
+  (telega-debug "IN event: %s" event)
 
+  (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
+    (if (symbol-function event-sym)
+        (funcall (symbol-function event-sym) event)
+
+      (telega-debug "TODO: define `%S'" event-sym))))
+
+(defun telega--on-error (err)
+  (telega-debug "IN error: %s" err)
+
+  (message "Telega error: %s" err))
+
+;; Server runtime vars
 (defvar telega-server--bin nil)
 (defvar telega-server--buffer nil)
-(defvar telega-server--options nil "Current options values.")
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
 
@@ -139,6 +160,7 @@ Raise error if not found"
   (let* ((json-object-type 'plist)
          (value (json-encode sexp))
          (proc (telega-server--proc)))
+    (assert (process-live-p proc) nil "telega-server is not running")
     (process-send-string
      proc
      (concat "send " (number-to-string (length value)) "\n"))
@@ -147,7 +169,8 @@ Raise error if not found"
 
 (defun telega-server--call (sexp &optional callback)
   "Same as `telega-server--send', but waits for answer from telega-server.
-If CALLBACK is specified, then make async call and call CALLBACK when result is received."
+If CALLBACK is specified, then make async call and call CALLBACK
+when result is received."
   (telega-server--send (plist-put sexp :@extra (incf telega-server--extra)))
 
   (if callback
@@ -158,7 +181,7 @@ If CALLBACK is specified, then make async call and call CALLBACK when result is 
       (telega-server--callback-add
        telega-server--extra
        (lambda (event) (setq telega-server--result event)))
-      
+
       (accept-process-output (telega-server--proc) telega-server-call-timeout)
       telega-server--result)))
 
@@ -167,10 +190,9 @@ If CALLBACK is specified, then make async call and call CALLBACK when result is 
   (when (process-live-p (telega-server--proc))
     (error "Error: telega-server already running"))
 
-  (when telega-debug
-    (with-current-buffer (get-buffer-create "*telega-debug*")
-      (erase-buffer)
-      (insert (format "%s ---[ telega-server started\n" (current-time-string)))))
+  (with-telega-debug-buffer
+   (erase-buffer)
+   (insert (format "%s ---[ telega-server started\n" (current-time-string))))
 
   (unless telega-server--bin
     (setq telega-server--bin (telega-server--find-bin)))
@@ -178,6 +200,9 @@ If CALLBACK is specified, then make async call and call CALLBACK when result is 
         (process-adaptive-read-buffering nil)
         proc)
     (with-current-buffer (generate-new-buffer " *telega-server*")
+      ;; init vars and start proc
+      (setq telega-server--extra 0)
+      (setq telega-server--callbacks nil)
       (setq telega-server--buffer (current-buffer))
       (let ((proc (start-process
                    "telega-server"

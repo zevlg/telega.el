@@ -26,10 +26,19 @@
 ;; 
 
 ;;; Code:
+(require 'telega-core)
+(require 'telega-server)
+
 (defun telega-user--get (user_id)
   "Get user by USER_ID."
-  (telega-server--call
-   `(:@type "getUser" :user_id ,user_id)))
+  (let ((user (gethash user_id telega--users)))
+    (unless user
+      (puthash user_id
+               (setq user
+                     (telega-server--call
+                      `(:@type "getUser" :user_id ,user_id)))
+               telega--users))
+    user))
 
 (defun telega-user--type (user)
   "Return USER type."
@@ -41,7 +50,7 @@
 
 (defun telega-user--title (user)
   "Return title for the USER."
-  (if (eq (telega-user--title user) 'deleted)
+  (if (eq (telega-user--type user) 'deleted)
       "Deleted Account"
     (format "%s %s @%s"
             (plist-get user :first_name)

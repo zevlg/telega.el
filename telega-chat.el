@@ -26,6 +26,14 @@
 ;; 
 
 ;;; Code:
+(require 'telega-core)
+
+(declare-function telega-root--chat-update "telega-root" (chat))
+
+(defconst telega-chat-types
+  '(private secret basicgroup supergroup bot channel)
+  "All types of chats supported by telega.")
+
 (defmacro telega-chat--get (event)
   `(gethash (plist-get ,event :chat_id) telega--chats))
 
@@ -48,14 +56,12 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
 
 (defun telega-chat--title (chat)
   "Return title for the CHAT."
-  (let ((chat-type (plist-get chat :type))
-        (title (plist-get chat :title)))
+  (let ((title (plist-get chat :title)))
     (if (string-empty-p title)
-        (ecase (intern (plist-get chat-type :@type))
-          (chatTypePrivate
+        (ecase (telega-chat--type chat)
+          (private
            (telega-user--title
-            (telega-user--get (plist-get chat-type :user_id)))))
-
+            (telega-user--get (plist-get (plist-get chat :type) :user_id)))))
       title)))
 
 (defun telega-chat--reorder (chat order)
@@ -65,7 +71,7 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
 
 (defun telega-chat--new (chat)
   "Create new CHAT."
-  (puthash (plist-get chat :id) chat telaga--chats)
+  (puthash (plist-get chat :id) chat telega--chats)
   (telega-root--chat-new chat)
 
   (push chat telega--ordered-chats)
@@ -111,9 +117,9 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
 
     (unless (zerop (length (plist-get result :chat_ids)))
       ;; Continue fetching chats
-      (telega-chat--getChatList))))
+      (telega-chat--getChats))))
 
-(defun telega-chat--getChatList ()
+(defun telega-chat--getChats ()
   "Retreive all chats from the server."
   (let* ((last-chat (car telega--ordered-chats))
          (offset-order (or (and last-chat (plist-get last-chat :order))

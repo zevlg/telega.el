@@ -1,10 +1,10 @@
-;;; telega-root.el --- Root buffer for telega.
+;;; telega-root.el --- Root buffer for telega
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sat Apr 14 15:00:27 2018
-;; Keywords: 
+;; Keywords:
 
 ;; This file is part of GNU Emacs.
 
@@ -23,18 +23,22 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
+(require 'wid-edit)
+(require 'telega-core)
+(require 'telega-customize)
+(require 'telega-filter)
+
+(defgroup telega-root nil
+  "Customization for telega-root-mode"
+  :prefix "telega-root-"
+  :group 'telega)
 
 (defcustom telega-root-buffer-name "*Telega Root*"
   "*Buffer name for telega root buffer."
   :type 'string
-  :group 'telega-root)
-
-(defcustom telega-root-recent-chats 10
-  "*Number of recent chats to show."
-  :type 'integer
   :group 'telega-root)
 
 (defcustom telega-root-mode-line-format "Telega: (%c/%n/%m)"
@@ -56,6 +60,7 @@
     (channel "<" ">"))
   "Brackets used for different kinds of chats.
 %( and %) from `telega-root-chat-format' will use these brackets."
+  :type 'list
   :group 'telega-root)
 
 (defcustom telega-root-chat-format
@@ -83,7 +88,7 @@ Predicate is called with one argument - CHAT."
   :type '(repeat (cons (function :tag "Predicate")
                        (string :tag "Format string")))
   :group 'telega-root)
-  
+
 (defcustom telega-root-last-msg-format "%t%v %m"
   "Format for the last message in chat.
 %t - Timestamp
@@ -98,108 +103,129 @@ Predicate is called with one argument - CHAT."
 (defvar telega-root-mode-hook nil
   "Hook run when telega root buffer is created.")
 
-(defvar telega-root-mode-map (make-sparse-keymap)
+(defvar telega-root-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map widget-keymap)
+    (define-key map (kbd "/") telega-filter-map)
+    map)
   "The key map for telega root buffer.")
 
 (define-derived-mode telega-root-mode nil "Telega-Root"
   "The mode for telega root buffer.
 
 \\{telega-root-mode-map}"
-  (telega-root--create)
+  (setq telega-root--widget-state
+        (widget-create 'default
+                       :format "Status: %v\n"
+                       :value-create 'widget-item-value-create
+                       :value "Unknown"))
+  (setq telega-root--widget-search
+        (widget-create 'editable-field
+                       :size 40
+                       :format "Search: %v\n"
+                       :action 'telega-search))
+  (setq telega-root--widget-filters
+        (widget-create 'telega-filter-list
+                       :format "Filters: %v\n"
+                       :value (car telega--filters)))
+  (setq telega-root--widget-customs
+        (apply #'widget-create
+               'group :format "Customs:%v\n"
+               (mapcar (lambda (custom)
+                         `(telega-filter-custom :value ,custom))
+                       telega-filter-custom-alist)))
+
+  (widget-insert "\n")
+  (setq telega-root--chats-marker (point-marker))
+  (widget-setup)
+
+  (telega-filters-reset)
   (add-hook 'kill-buffer-hook 'telega-root-killed nil t))
 
 (defun telega-root-killed ()
   "Run when telega root buffer is killed.
-
 Terminate telega-server and kill all chat buffers."
-  )
+  (telega-server-kill))
 
 ;; widgets used in root buffer
-(defvar telega-root--markers nil)
-(defvar telega-root--widget-state nil)
-(defvar telega-root--widget-search nil)
-(defvar telega-root--widget-chats nil)
-(defvar telega-root--widget-groups nil)
-(defvar telega-root--widget-users nil)
-(defvar telega-root--widget-bots nil)
-(defvar telega-root--widget-channels nil)
+(defvar telega-root--chats-marker nil
+  "Marker where chats list starts.")
+(defvar telega-root--widget-state nil
+  "Widget for connection state.")
+(defvar telega-root--widget-search nil
+  "Widget for search field.")
+(defvar telega-root--widget-filters nil
+  "Widget to display active filters.")
+(defvar telega-root--widget-customs nil
+  "Widget with custom filters to apply.")
 
 (defsubst telega-root--state (state)
   "Change current telega-server state to STATE."
-  (widget-value-set telega-root--widget-state state))
-
-(define-widget 'telega-chat 'default
-  "Widget represeting telega chat."
-  :format "%v"
-  :action 'telega-root--chat-open
-  :keymap telega-root-chat-keymap
-  :value-create 'telega-root--widget-value-create
-  :value-delete 'telega-root--widget-value-delete)
-
-(defun telega-root--widget-value-create (widget)
-  (let ((chat (widget-get widget :value))
-        (b (point)))
-    (insert (telega-root--chat-format chat))
-    (unless (overlayp (widget-get widget :overlay))
-      (let ((wov (make-overlay b (point))))
-        (overlay-put wov 'telega-chat chat)
-        (widget-put widget :overlay wov)))))
-
-(defun telega-root--widget-value-delete (widget)
-  (let ((ov (widget-get widget :overlay)))
-    (when (overlayp ov)
-      (delete-overlay ov))))
-
-(defun telega-root--widget-chat (widget)
-  "Return telega chat associated with WIDGET."
-  (overlay-get (widget-get widget :overlay) 'telega-chat))
-
-(defun telega-root--widget-start (widget)
-  "Return the start of WIDGET."
-  (overlay-start (widget-get widget :overlay)))
+  (with-current-buffer telega-root-buffer-name
+    (widget-value-set telega-root--widget-state state)))
 
 (defun telega-root--widget-hide (widget)
-  (overlay-put (widget-get widget :overlay) 'invisible t))
+  (widget-apply widget :deactivate)
+  (let ((inactive-overlay (widget-get widget :inactive)))
+    (overlay-put inactive-overlay 'invisible t)))
 
 (defun telega-root--widget-show (widget)
-  (overlay-put (widget-get widget :overlay) 'invisible nil))
+  (widget-apply widget :activate))
 
-(defun telega-root--create-section (name marker-name)
-  (widget-insert "\n" name "\n" (make-string (length name) ?\-) "\n")
-  (setq telega-root--markers
-        (plist-put telega-root--markers marker-name (point-marker))))
-  
-(defun telega-root--create ()
-  "Redisplay telega root buffer."
-  (with-current-buffer telega-root-buffer-name
-    (erase-buffer)
-    (setq telega-root--widget-state
-          (widget-create 'string :format "State: %v" :value "Unknown"))
-    (telega-root--widget-hide
-     (setq telega-root--widget-search
-           (widget-create 'string :format "Search: %v")))
+(defun telega-root--widget-customs-find (cus-name)
+  "Find custom button by CUS-NAME."
+  (cl-find cus-name (widget-get telega-root--widget-customs :children)
+           :test (lambda (name child)
+                   (string= name (car (widget-get child :value))))))
 
-    (telega-root--create-section "Chats" 'chats)
-    (telega-root--create-section "Groups" 'groups)
-    (telega-root--create-section "Secrets" 'secrets)
-    (telega-root--create-section "Users" 'users)
-    (telega-root--create-section "Bots" 'bots)
-    (telega-root--create-section "Channels" 'channels)
-    ))
+(defun telega-root--redisplay ()
+  "Redisplay root buffer."
+  (let ((in-chats-p (> (point) telega-root--chats-marker))
+        (button (get-char-property (point) 'button)))
+  (telega-root-saving-point
+  ;; NOTE: If point is on any button, then try to keep point position
+  ;; on that button after updating widgets
+  (let ((butt (get-char-property (point) 'button)))
 
-(defun telega-root--goto-order-point ()
-  (telega-root--goto-start 'chats))
+    (widget-value-set telega-root--widget-filters (car telega--filters))
+    (widget-value-set telega-root--widget-customs telega-filter-custom-alist)
 
+    ;; Try to keep point on same button
+    (when (eq (car butt) 'telega-filter-custom)
+      (let ((new-butt (telega-root--widget-customs-find
+                       (car (widget-get butt :value)))))
+        (when new-butt
+          (goto-char (+ 2 (widget-get new-butt :from)))))))
+  (telega-root--chats-redisplay))
+
+(defmacro telega-root-saving-point
+  ;; NOTE: If point is on any button, then try to keep point position
+  ;; on that button after updating widgets
+  (let ((butt (get-char-property (point) 'button)))
+
+
 (defun telega-root--chat-new (chat)
   (telega-debug "TODO: `telega-root--chat-new'")
   (with-current-buffer telega-root-buffer-name
-    (goto-char (plist-get telega-root--markers 'chats))
-    (widget-create 'telega-chat :value chat)
-    (widget-insert "\n"))
+    (goto-char telega-root--chats-marker)
+    ;; (let ((widget (widget-create 'telega-chat :value chat)))
+    ;;   (unless (telega-filter--test chat (cons 'and telega--filters))
+    ;;     (telega-root--widget-hide widget))
+    ;;   (telega-root--chat-reorder chat widget))
+    ))
+
+(defun telega-root--chat-update (chat)
+  "Something changed in CHAT, button needs to be updated."
+  (telega-debug "TODO: `telega-root--chat-update'")
   )
 
-(defun telega-root--chat-reorder (chat)
+(defun telega-root--chat-reorder (chat &optional widget)
   (telega-debug "TODO: `telega-root--chat-reorder'")
+  )
+
+(defun telega-root--chats-redisplay ()
+  "Redisplay chats according to active filters."
+  (message "TODO: `telega-root--chats-redisplay'")
   )
 
 ;;; Navigation
