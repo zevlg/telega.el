@@ -73,7 +73,6 @@
   (message "Telega error: %s" err))
 
 ;; Server runtime vars
-(defvar telega-server--bin nil)
 (defvar telega-server--buffer nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
@@ -93,10 +92,9 @@
 (defun telega-server--find-bin ()
   "Find telega-server executable.
 Raise error if not found"
-  (or (executable-find "telega-server")
-      (let ((exec-path telega-directory))
-        (executable-find "telega-server"))
-      (error "telega-server not found in exec-path")))
+  (let ((exec-path (cons telega-directory exec-path)))
+    (or (executable-find "telega-server")
+        (error "telega-server not found in exec-path"))))
 
 (defsubst telega-server--proc ()
   "Return telega-server process."
@@ -153,7 +151,13 @@ Raise error if not found"
 
 (defun telega-server--sentinel (proc event)
   "Sentinel for the telega-server process."
-  (message "telega-server: %s" event))
+  (let ((status (substring event 0 -1)) ; strip trailing \n
+        (err (if (buffer-live-p (process-buffer proc))
+                 (with-current-buffer (process-buffer proc) (buffer-string))
+               "")))
+    (telega-status--set
+     (concat "telega-server: " status (unless (string-empty-p err) "\n") err)
+     'raw)))
 
 (defun telega-server--send (sexp)
   "Compose SEXP to json and send to telega-server."
@@ -194,10 +198,9 @@ when result is received."
    (erase-buffer)
    (insert (format "%s ---[ telega-server started\n" (current-time-string))))
 
-  (unless telega-server--bin
-    (setq telega-server--bin (telega-server--find-bin)))
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering nil)
+        (server-bin (telega-server--find-bin))
         proc)
     (with-current-buffer (generate-new-buffer " *telega-server*")
       ;; init vars and start proc
@@ -207,7 +210,7 @@ when result is received."
       (let ((proc (start-process
                    "telega-server"
                    (current-buffer)
-                   telega-server--bin
+                   server-bin
                    "-v" (int-to-string telega-server-verbosity)
                    "-l" telega-server-logfile)))
         (set-process-query-on-exit-flag proc nil)
