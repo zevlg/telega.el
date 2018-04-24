@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sun Apr 22 17:36:38 2018
-;; Keywords: 
+;; Keywords:
 
 ;; This file is part of GNU Emacs.
 
@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 (require 'telega-core)
@@ -36,18 +36,21 @@
 
 (defcustom telega-filter-default 'all
   "*Default chats filter to apply.
-For example: `(or pin (custom \"Groups&Users\"))'"
+For example:
+  `(any pin unread)'  - to show pinned or chats with unread messages.
+"
   :type 'list
   :group 'telega-filter)
 
-(defcustom telega-filter-custom-alist
+(defcustom telega-filters-custom
   '(("All" . (all))
     ("Groups&Users" . (type private secret basicgroup supergroup))
     ("Secrets" . (type secret))
     ("Groups" . (type basicgroup supergroup))
     ("Bots" . (type bot))
     ("Channels" . (type channel)))
-  "*Custom filters for chats."
+  "*Alist of custom filters for chats.
+In form (NAME . FILTER-SPEC)."
   :type 'alist
   :group 'telega-filter)
 
@@ -65,8 +68,21 @@ For example: `(or pin (custom \"Groups&Users\"))'"
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
+    (define-key map (kbd "p") 'telega-filters-pop-last)
     map)
   "Keymap for filtering commands.")
+
+(define-button-type 'telega-filter
+  :format '("["
+            ;; TODO format
+            "---")
+  :format-defs (lambda (custom)
+                 (let ((fspec (cdr custom)))
+                   ;; TODO
+                 '((title . telega-chat--title)
+                 (nchats . telega-chat--n)
+                 )))
+  'face nil)
 
 (define-widget 'telega-filter-list 'editable-field
   "Widget to show active chat filters."
@@ -136,7 +152,6 @@ It composes string in form
 (defun telega--filters-apply ()
   "Apply current filers."
   (setq telega--filtered-chats (telega-filter-chats))
-
   (telega-root--redisplay))
 
 (defun telega--filters-reset ()
@@ -202,13 +217,19 @@ Use `(and chats (telega-filter-chats fspec chats))' to ensure CHATS is non-nil."
   "Edit and reapply filters list."
   (interactive
    (let* ((print-level nil)
-          (flist-as-string (if telega--filters
-                               (prin1-to-string telega--filters)
+          (flist-as-string (if (car telega--filters)
+                               (prin1-to-string (car telega--filters))
                              ""))
           (new-flist (read-from-minibuffer
                       "Filters: " flist-as-string read-expression-map t)))
      (list new-flist)))
   (telega--filters-push flist))
+
+;;;###autoload
+(defun telega-filters-pop-last (n)
+  "Pop last N filters."
+  (interactive "p")
+  (telega--filters-push (butlast (car telega--filters) n)))
 
 
 ;;; Filters definitions
@@ -238,11 +259,13 @@ ARGS specifies arguments to operation, first must always be chat."
 (define-telega-filter any (chat &rest flist)
   "Return non-nil if CHAT matches any of filter in FLIST."
   (cl-find chat flist :test #'telega-filter--test))
+(defalias 'telega--filter-or 'telega--filter-any)
 
 (define-telega-filter all (chat &rest flist)
   "Return non-nil if CHAT matches all filters in FLIST.
 If FLIST is empty then return t."
   (not (cl-find chat flist :test-not #'telega-filter--test)))
+(defalias 'telega--filter-and 'telega--filter-all)
 
 (define-telega-filter not (chat fspec)
   "Negage filter FSPEC."
@@ -252,7 +275,13 @@ If FLIST is empty then return t."
 (defun telega-filters-negate ()
   "Negate active filters."
   (interactive)
-  (telega--filters-push `(not (all ,@(car telega--filters)))))
+  (let* ((active-filters (car telega--filters))
+         (all-p (eq 'all (car active-filters)))
+         (filters (if (eq 'all (car active-filters))
+                      active-filters
+                    (cons 'all active-filters))))
+    (message "NEGATE: %s" (cons 'not filters))
+    (telega--filters-push (cons 'not filters))))
 
 (define-telega-filter type (chat &rest ctypes)
   "Matches CHAT by its type."

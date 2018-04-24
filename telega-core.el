@@ -27,11 +27,15 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'subr-x)
 (eval-when-compile
   (require 'cl)) ;; for defsetf
 
+(require 'telega-fmt)
+
 ;;; Runtime variables
 (defvar telega--options nil "Options updated from telega-server.")
+(defvar telega--status "Not Started" "Status of the connection to telegram.")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
@@ -65,9 +69,45 @@
     `(lambda (,tl-obj-sym)
        (plist-get ,tl-obj-sym ,prop))))
 
+(defun telega--replace-region (from to rep)
+  "Replace region FROM TO by REP."
+  (save-excursion
+    (goto-char to)
+    (insert rep)
+    (delete-region from to)))
+
 
 ;;; Buttons for telega
+(defun telega-button-find (button-type)
+  "Find button by its type BUTTON-TYPE.
+Run under `save-excursion' to preserve point."
+  (let ((button (or (button-at (point)) (next-button (point)))))
+    (while (and button (not (eq (button-type button) button-type)))
+      (setq button (next-button (point))))
+    button))
 
+(defun telega-button-value-set (button value)
+  "For BUTTON set new VALUE."
+  (let* ((props (text-properties-at button))
+         (button-type (get (plist-get props 'category) 'type))
+         (kwprops (cl-loop for (pname pval) on props by 'cddr
+                           when (keywordp pname)
+                           collect pname
+                           when (keywordp pname)
+                           collect pval)))
+    (setq kwprops (plist-put kwprops :value value))
+    (save-excursion
+      (let ((inhibit-read-only t))
+        (goto-char (button-end button))
+        (apply #'telega-button-insert button-type kwprops)
+        (delete-region (button-start button) (button-end button))))))
+
+(defun telega-button-insert (button-type &rest props)
+  "Insert button of BUTTON-TYPE with properties PROPS."
+  (let ((value (plist-get props :value)))
+    (apply #'insert-text-button (telega-fmt-button button-type value)
+           :type button-type props)))
+                   
 (provide 'telega-core)
 
 ;;; telega-core.el ends here

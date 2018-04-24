@@ -58,9 +58,13 @@
   "Start telegramming."
   (interactive)
   (telega--create-hier)
-  (with-current-buffer (get-buffer-create telega-root-buffer-name)
-    (telega-root-mode)
+
+  (unless (buffer-live-p (telega-root--buffer))
+    (with-current-buffer (get-buffer-create telega-root-buffer-name)
+      (telega-root-mode)))
+  (unless (process-live-p (telega-server--proc))
     (telega-server--start))
+
   (pop-to-buffer-same-window telega-root-buffer-name))
 
 ;;;###autoload
@@ -147,14 +151,14 @@
 
 (defun telega--authorization-closed ()
   (telega-server-kill)
-  (telega-root--state "Auth Closed")
+  (telega-status--set "Auth Closed")
   (run-hooks 'telega-closed-hook))
 
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state."
   (let* ((conn-state (plist-get (plist-get event :state) :@type))
-         (root-state (substring conn-state 15)))
-    (telega-root--state (concat "Conn " root-state))))
+         (status (substring conn-state 15)))
+    (telega-status--set (concat "Conn " status))))
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server."
@@ -166,10 +170,10 @@
 (defun telega--on-updateAuthorizationState (event)
   (let* ((state (plist-get event :authorization_state))
          (stype (plist-get state :@type)))
-    (telega-root--state (concat "Auth " (substring stype 18)))
+    (telega-status--set (concat "Auth " (substring stype 18)))
     (ecase (intern stype)
       (authorizationStateWaitTdlibParameters
-       (telega-root--state "Connecting..")
+       (telega-status--set "Connecting")
        (telega--set-tdlib-parameters))
 
       (authorizationStateWaitEncryptionKey
@@ -186,10 +190,10 @@
        (telega--authorization-ready))
 
       (authorizationStateLoggingOut
-       (telega-root--state "Auth Logging Out"))
+       )
 
       (authorizationStateClosing
-       (telega-root--state "Auth Closing"))
+       )
 
       (authorizationStateClosed
        (telega--authorization-closed)))))
