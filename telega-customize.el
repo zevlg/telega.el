@@ -29,7 +29,8 @@
 (defgroup telega nil
   "Telegram client."
   :prefix "telega-"
-  :group 'applications)
+  :group 'applications
+  :link '(url-link :tag "Github" "https://github.com/zevlg/telega.el"))
 
 (defcustom telega-directory (expand-file-name "~/.telega")
   "Directory for telega runtime files."
