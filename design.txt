@@ -8,9 +8,11 @@
 
 Иконки - all-the-icons package
 
-=============
- Root buffer
-=============
+! Аватарки можно разбивать на части, чтобы можно было отображать в
+мультилайне.
+
+- Анимированые гифки через таймер, см. 
+============= Root buffer =============
 
 Можно засетапить header/mode-line чтобы показывать состояние
 telega-server, и самарайз то что происходит
@@ -52,13 +54,14 @@ W - Двойная галка
 
 Символы после title чата
 p - pinned  -- Unicode Character 'PUSHPIN' (U+1F4CC) UTF-8 (hex): 0xF0 0x9F 0x93 0x8C (f09f938c)
+m - muted
 * - online
 o - away
 v - verified (+4277 for example)
 
 Дата:
 - Если сегодня, то формат ЧАС:МИНУТА
-- Eсли не на этой неделе то трёхбуквенный ДЕНЬ НЕДЕЛИ
+- Eсли на этой неделе то трёхбуквенный ДЕНЬ НЕДЕЛИ
 - Если другое то ДЕНЬ:МЕСЯЦ:ГОД (год двухбуквенный)
 
 Bots
@@ -129,9 +132,9 @@ Filters:
 
     Status: Auth Closed
     
-    [All       276 / 1940@1] [Groups&Users 191 / 568@1]
-    [Groups     60 /  568@1] [Bots          27 /      ]
-    [Channels   58 /   1372]
+    [276  All          1940@1] [191  Groups&Users    568@1]
+    [60   Groups        568@1] [27   Bots                 ]
+    [58   Channels       1372]
     
     -------------------------((custom "Groups"))-------------------------
     
@@ -168,7 +171,11 @@ Filters:
 
 Результат исполнения body - список объектов либо строк либо вида
 
-(ELEM :min :max :elide :elide-trail :elide-string :align :align-padding)
+Формат без локальных переменных - :format     (aka simple)
+Формат с локальными переменными - :format-ext (aka extended)
+
+(ELEM :min :max :elide :elide-trail :elide-string :align
+      :align-char :face)
 
 Где ELEM может быть одним из:
   string - Используем как есть
@@ -185,8 +192,9 @@ Filters:
   :elide-trail   - Сколько символов вконце оставлять (default=0), будет
                    выглядеть вот так: "Verylongstri...ail" если
                    :elide-trail = 3
-  :align         - куда алигнить :left, :right, :center
+  :align         - куда алигнить `left', `right', `center'
   :align-char    - каким символом паддить после алигна (SPACE по умолчанию)
+  :face          - face которую использовать для этого ELEM
 
 Сделать компилятор для форматов: компилятор принимает на вход функцию
 для создания локальных переменных, формат и дефиниции для форматных
