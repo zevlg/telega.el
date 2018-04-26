@@ -40,14 +40,17 @@
 
 (ert-deftest telega-filters ()
   "Test `telega-filter' functionality."
+  (should (not (null telega--ordered-chats)))
   (should (null (telega-filter--test 10 '(not all))))
   (should (= (length (telega-filter-chats 'all))
              (length telega--ordered-chats)))
   (should (telega-filter--test 10 '(not any)))
-  (should (telega-filter--test (car telega--chats) '(type channel)))
+  (should (telega-filter--test (car telega--ordered-chats) '(type channel)))
   (should (telega-filter--test
-           (car telega-chats) '(all (type channel) (name "chan"))))
-    ;; TODO: add more filter tests
+           (car telega--ordered-chats) '(all (type channel) (name "chan"))))
+  (should (not (telega-filter--test
+                (car telega--ordered-chats) '(name "notmatching"))))
+  ;; TODO: add more filter tests
   )
 
 ;;; test.el ends here

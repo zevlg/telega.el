@@ -204,9 +204,12 @@ when result is received."
         proc)
     (with-current-buffer (generate-new-buffer " *telega-server*")
       ;; init vars and start proc
+      (telega--init-vars)
       (setq telega-server--extra 0)
       (setq telega-server--callbacks nil)
       (setq telega-server--buffer (current-buffer))
+
+      (telega-status--set "telega-server: starting")
       (let ((proc (start-process
                    "telega-server"
                    (current-buffer)

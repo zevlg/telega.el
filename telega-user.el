@@ -29,16 +29,25 @@
 (require 'telega-core)
 (require 'telega-server)
 
-(defun telega-user--get (user_id)
-  "Get user by USER_ID."
-  (let ((user (gethash user_id telega--users)))
+(defun telega-user--me ()
+  "Return me as telegram user."
+  (telega-server--call `(:@type "getMe")))
+
+(defun telega-user--get (user-id)
+  "Get user by USER-ID."
+  (let ((user (gethash user-id telega--users)))
     (unless user
-      (puthash user_id
-               (setq user
-                     (telega-server--call
-                      `(:@type "getUser" :user_id ,user_id)))
-               telega--users))
+      (setq user (telega-server--call
+                  `(:@type "getUser" :user_id ,user-id)))
+      (assert user nil "getUser timed out user_id=%d" user-id)
+      (puthash user-id user telega--users))
     user))
+
+(defun telega--on-updateUser (event)
+  (let ((user (plist-get event :user)))
+    (puthash (plist-get user :id) user telega--users)
+    ;; TODO: may affect changes in root/chat
+    ))
 
 (defun telega-user--type (user)
   "Return USER type."
@@ -51,11 +60,45 @@
 (defun telega-user--title (user)
   "Return title for the USER."
   (if (eq (telega-user--type user) 'deleted)
-      "Deleted Account"
+      (format "DeletedUser-%d" (plist-get user :id))
     (format "%s %s @%s"
             (plist-get user :first_name)
             (plist-get user :last_name)
             (plist-get user :username))))
+
+(defun telega-user--full-info (user)
+  (telega-server--call
+   `(:@type "getUserFullInfo" :user_id ,(plist-get user :id))))
+
+(defun telega-user--seen-status (user)
+  "Return last seen status for the USER."
+  (substring (plist-get (plist-get user :status) :@type) 10))
+
+(defun telega-user-info--insert (user)
+  "Insert USER info into current buffer."
+  (let ((full-info (telega-user--full-info user)))
+    (insert (telega-user--title user))
+    (insert "\n")
+    (insert (format "Seen status: %s\n"
+                    (telega-user--seen-status user)))
+    (unless (string-empty-p (plist-get user :phone_number))
+      (insert (format "phone: +%s\n\n" (plist-get user :phone_number))))
+    (unless (string-empty-p (plist-get full-info :bio))
+      (insert (format "bio: %s\n\n" (plist-get full-info :bio))))
+
+    (when (> (plist-get full-info :group_in_common_count) 0)
+      (insert (format "%d groups in common:\n"
+                      (plist-get full-info :group_in_common_count)))
+      (dolist (chat (telega-chat--getGroupsInCommon user))
+        (insert "    ") 
+        (telega-button-insert 'telega-chat
+            :value chat
+            :format '("[" (telega-chat--title
+                           :min 25 :max 25
+                           :align left :align-char ?\s
+                           :elide t :elide-trail 0)
+                      "]"))))
+    ))
 
 (provide 'telega-user)
 

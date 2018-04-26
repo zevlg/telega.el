@@ -97,20 +97,20 @@ Predicate is called with one argument - CHAT."
   :type 'string
   :group 'telega-root)
 
-(defvar telega-root-chat-keymap (make-sparse-keymap)
-  "Keymap when point is under chat widget.")
-
 (defvar telega-root-mode-hook nil
   "Hook run when telega root buffer is created.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map widget-keymap)
+    (set-keymap-parent map button-buffer-map)
     (define-key map (kbd "/") telega-filter-map)
 
     (define-key map (kbd "? w") 'telega-desribe-connected-websites)
     (define-key map (kbd "C-/") 'telega-filter-undo)
+    (define-key map (kbd "C-_") 'telega-filter-undo)
     (define-key map (kbd "C-x C-/") 'telega-filter-redo)
+    (define-key map (kbd "C-x C-_") 'telega-filter-redo)
+    (define-key map (kbd "q") 'telega-kill)
     map)
   "The key map for telega root buffer.")
 
@@ -120,9 +120,9 @@ Keymap:
 \\{telega-root-mode-map}"
   :group 'telega-root
 ;  (telega-root--setup-modeline)
-  (telega-filters-reset)
   (telega-root--redisplay)
   (setq buffer-read-only t)
+  (goto-char telega-root--chats-marker) ;default start point
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t))
 
 (defun telega-root--killed ()
@@ -130,6 +130,7 @@ Keymap:
 Terminate telega-server and kill all chat buffers."
   (when telega-status--timer
     (cancel-timer telega-status--timer))
+  (telega-chats--kill-em-all)
   (telega-server-kill))
 
 (defsubst telega-root--buffer ()
@@ -141,8 +142,11 @@ Terminate telega-server and kill all chat buffers."
 Inhibits read-only flag."
   `(when (buffer-live-p (telega-root--buffer))
      (with-current-buffer telega-root-buffer-name
-       (let ((inhibit-read-only t))
-         ,@body))))
+       (save-excursion
+         (let ((inhibit-read-only t))
+           ,@body)))))
+(put 'with-telega-root-buffer 'lisp-indent-function 0)
+
 
 ;;; Connection Status
 (defcustom telega-status-animate-interval 0.5
@@ -187,40 +191,17 @@ If RAW is given then do not modify status for animation."
         (cancel-timer telega-status--timer))))
 
   (with-telega-root-buffer
-    (assert (eq (button-type (point-min)) 'telega-status)
-            nil (concat telega-root-buffer-name
-                        " buffer must start with telega-status"))
-    (telega-button-value-set (point-min) telega--status)))
+    (goto-char (point-min))
+    (let ((button (telega-button-find 'telega-status)))
+      (button-put button :value telega--status)
+      (telega-button--redisplay button))))
 
 
-;;root runtime variables
-;; widgets used in root buffer
+;; root runtime variables
 (defvar telega-root--chats-marker nil
   "Marker where chats list starts.")
-(defvar telega-root--widget-state nil
-  "Widget for connection state.")
-(defvar telega-root--widget-search nil
-  "Widget for search field.")
-(defvar telega-root--widget-filters nil
-  "Widget to display active filters.")
-(defvar telega-root--widget-customs nil
-  "Widget with custom filters to apply.")
 
-(defun telega-root--widget-hide (widget)
-  (widget-apply widget :deactivate)
-  (let ((inactive-overlay (widget-get widget :inactive)))
-    (overlay-put inactive-overlay 'invisible t)))
-
-(defun telega-root--widget-show (widget)
-  (widget-apply widget :activate))
-
-(defun telega-root--widget-customs-find (cus-name)
-  "Find custom button by CUS-NAME."
-  (cl-find cus-name (widget-get telega-root--widget-customs :children)
-           :test (lambda (name child)
-                   (string= name (car (widget-get child :value))))))
-
-(define-button-type 'telega-filters
+(define-button-type 'telega-active-filters
   :format '("---" (prin1-to-string :min 70
                                    :align center :align-char ?-
                                    :max 70
@@ -230,91 +211,95 @@ If RAW is given then do not modify status for animation."
 
 (defun telega-root--redisplay ()
   "Redisplay the root buffer."
-  (let ((inhibit-read-only t))
+  (with-telega-root-buffer
     (erase-buffer)
-    (telega-button-insert 'telega-status :value telega--status)
+    (telega-button-insert
+     'telega-status :value telega--status)
+    (insert "\n\n")
+
+    ;; Custom filters
+    (dolist (custom telega-filters-custom)
+      (let* ((help-echo (format "Filter (custom \"%s\") expands to: %s"
+                                (car custom) (cdr custom)))
+             (button (telega-button-insert 'telega-filter
+                         :value custom 'help-echo help-echo)))
+        (telega-filter-button--set-inactivity-props button)
+        (if (> (current-column) telega-filters-fill-column)
+            (insert "\n")
+          (insert "   "))))
+
+    (unless (= (preceding-char) ?\n) (insert "\n"))
     (insert "\n")
-    (insert "\n")
-    (telega-button-insert 'telega-filters :value (car telega--filters))
+    (telega-button-insert
+     'telega-active-filters :value (car telega--filters))
     (insert "\n")
     (setq telega-root--chats-marker (point-marker))
-    ))
-  ;; (let ((in-chats-p (> (point) telega-root--chats-marker))
-  ;;       (button (get-char-property (point) 'button)))
-  ;; (telega-root-saving-point
-  ;; ;; NOTE: If point is on any button, then try to keep point position
-  ;; ;; on that button after updating widgets
-  ;; (let ((butt (get-char-property (point) 'button)))
 
-  ;;   (widget-value-set telega-root--widget-filters (car telega--filters))
-  ;;   (widget-value-set telega-root--widget-customs telega-filter-custom-alist)
+    (dolist (chat telega--ordered-chats)
+      (telega-root--chat-update chat 'filters-are-ok)))
 
-  ;;   ;; Try to keep point on same button
-  ;;   (when (eq (car butt) 'telega-filter-custom)
-  ;;     (let ((new-butt (telega-root--widget-customs-find
-  ;;                      (car (widget-get butt :value)))))
-  ;;       (when new-butt
-  ;;         (goto-char (+ 2 (widget-get new-butt :from)))))))
-  ;; (telega-root--chats-redisplay))
+  ;; TODO: Maybe save point before redisplay, and try to keep that
+  ;; point after redisplay?
+  (goto-char telega-root--chats-marker))
 
 
-(defun telega-root--chat-new (chat)
-  (telega-debug "TODO: `telega-root--chat-new'")
+(defun telega-root--chat-update (chat &optional inhibit-filters-redisplay)
+  "Something changed in CHAT, button needs to be updated.
+If there is no button for the CHAT, new button is created.
+If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
+  (telega-debug "IN: `telega-root--chat-update'")
   (with-telega-root-buffer
-    (goto-char telega-root--chats-marker)
-    ;; (let ((widget (widget-create 'telega-chat :value chat)))
-    ;;   (unless (telega-filter--test chat (cons 'and telega--filters))
-    ;;     (telega-root--widget-hide widget))
-    ;;   (telega-root--chat-reorder chat widget))
-    ))
+    (goto-char (point-min))
+    (let ((button (telega-button-find 'telega-chat chat)))
+      (if button
+          (progn
+            (button-put button :value chat)
+            (telega-button--redisplay button))
 
-(defun telega-root--chat-update (chat)
-  "Something changed in CHAT, button needs to be updated."
-  (telega-debug "TODO: `telega-root--chat-update'")
-  )
+        ;; New chat
+        (goto-char telega-root--chats-marker)
+        (setq button (telega-button-insert 'telega-chat :value chat)))
 
-(defun telega-root--chat-reorder (chat &optional widget)
+      (button-put button 'invisible (not (telega-chat--visible-p chat)))
+
+      ;; Update `telega--filtered-chats' according to chat update
+      (setq telega--filtered-chats
+            (delq chat telega--filtered-chats))
+      (when (telega-filter--test chat (telega--filters-prepare))
+        (setq telega--filtered-chats
+              (push chat telega--filtered-chats)))
+
+      ;; NOTE: Update might affect custom filters, refresh them too
+      (unless inhibit-filters-redisplay
+        (telega-root--filters-redisplay)))))
+
+(defun telega-root--chat-reorder (chat)
   (telega-debug "TODO: `telega-root--chat-reorder'")
+
+  ;; TODO: find chat before which this CHAT is placed and insert it
+  ;; befor that chat's start point
+  (with-telega-root-buffer
+   (goto-char telega-root--chats-marker)
+   (let* ((button (telega-button-find 'telega-chat chat))
+          (chat-after (cadr (memq chat telega--ordered-chats)))
+          (button-after (or (and chat-after (telega-button-find 'telega-chat chat-after))
+                            (point-max))))
+     (assert button nil "button no found for chat: %s" (telega-chat--title chat))
+     (telega-button-move button button-after)))
   )
+
+(defun telega-root--filters-redisplay ()
+  "Redisplay custom filters buttons."
+  (with-telega-root-buffer
+    (goto-char (point-min))
+    (telega-button-foreach 'telega-filter (button)
+      (telega-button--redisplay button)
+      (telega-filter-button--set-inactivity-props button))))
 
 (defun telega-root--chats-redisplay ()
   "Redisplay chats according to active filters."
   (message "TODO: `telega-root--chats-redisplay'")
   )
-
-;;; Navigation
-(defun telega-root--goto-prop (prop-name prop-change-func error)
-  (let ((pnt (point))
-        (orig-val (get-text-property (point) prop-name))
-        (nval nil))
-    (while (and pnt (or (null nval) (equal orig-val nval)))
-      (setq pnt (funcall prop-change-func pnt prop-name)
-            nval (get-text-property (or pnt (point)) prop-name)))
-    (unless pnt
-      (signal error nil))
-    (goto-char pnt)))
-
-(defun telega-root--goto-chat (direction)
-  (telega-root--goto-prop
-   'telega-chat
-   (if (eq direction :next)
-       #'next-single-property-change
-     #'previous-single-property-change)
-   (if (eq direction :next)
-       'end-of-buffer
-     'beginning-of-buffer)))
-
-(defun telega-root-next-chat (&optional n)
-  "Jump to next N chat."
-  (interactive "p")
-  (dotimes (_ n)
-    (telega-root--goto-chat :next)))
-
-(defun telega-root-prev-chat (&optional n)
-  "Jump to previous N chat."
-  (interactive "p")
-  (dotimes (_ n)
-    (telega-root--goto-chat :prev)))
 
 (provide 'telega-root)
 

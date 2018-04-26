@@ -42,17 +42,6 @@
   (ignore-errors
     (mkdir telega-cache-dir)))
 
-(defun telega--init-vars ()
-  "Initialize runtime variables."
-  (setq telega--options nil)
-  (setq telega--chats (make-hash-table :test 'eq))
-  (setq telega--users (make-hash-table :test 'eq))
-  (setq telega--ordered-chats nil)
-  (setq telega--filtered-chats nil)
-  (setq telega--filters nil)
-  (setq telega--undo-filters nil)
-  )
-
 ;;;###autoload
 (defun telega ()
   "Start telegramming."
@@ -66,6 +55,14 @@
     (telega-server--start))
 
   (pop-to-buffer-same-window telega-root-buffer-name))
+
+;;;###autoload
+(defun telega-kill (force)
+  "Kill currently running telega.
+With prefix arg force quit without confirmation."
+  (interactive "P")
+  (when (or force (y-or-n-p "Kill telega (and all chat buffers)? "))
+    (kill-buffer telega-root-buffer-name)))
 
 ;;;###autoload
 (defun telega-logout ()
@@ -142,7 +139,6 @@
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
-  (telega--init-vars)
   (telega--set-options)
   ;; Request for chats/users/etc
   (telega-chat--getChats)
@@ -151,14 +147,13 @@
 
 (defun telega--authorization-closed ()
   (telega-server-kill)
-  (telega-status--set "Auth Closed")
   (run-hooks 'telega-closed-hook))
 
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state."
   (let* ((conn-state (plist-get (plist-get event :state) :@type))
          (status (substring conn-state 15)))
-    (telega-status--set (concat "Conn " status))))
+    (telega-status--set status)))
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server."
@@ -173,7 +168,6 @@
     (telega-status--set (concat "Auth " (substring stype 18)))
     (ecase (intern stype)
       (authorizationStateWaitTdlibParameters
-       (telega-status--set "Connecting")
        (telega--set-tdlib-parameters))
 
       (authorizationStateWaitEncryptionKey

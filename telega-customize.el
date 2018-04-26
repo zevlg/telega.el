@@ -81,6 +81,13 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'bool
   :group 'telega)
 
+(defcustom telega-eliding-string "..."
+  "*String used for eliding long string in formats.
+Nice looking middle dots can be done by setting
+`telega-eliding-string' to `(make-string 3 #x00b7)'."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-tracking '(type private secret basicgroup supergroup)
   "*Filter for chats being tracked."
   :type 'list
@@ -106,6 +113,10 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'hook
   :group 'telega-hooks)
 
+(defcustom telega-chats-fetched-hook nil
+  "Hook called when all chats list has been received."
+  :type 'hook
+  :group 'telega-hooks)
 
 (provide 'telega-customize)
 

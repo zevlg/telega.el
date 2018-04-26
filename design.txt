@@ -138,7 +138,7 @@ Filters:
     Status: Auth Closed
     
     [276  All          1940@1] [191  Groups&Users    568@1]
-    [60   Groups        568@1] [27   Bots                 ]
+    [80   Groups        568@1] [27   Bots                 ]
     [58   Channels       1372]
     
     -------------------------((custom "Groups"))-------------------------

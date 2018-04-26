@@ -40,7 +40,7 @@
   (let ((scope (plist-get event :scope)))
     (case (intern (plist-get scope :@type))
       (notificationSettingsScopeChat
-       (let ((chat (telega-chat--get scope)))
+       (let ((chat (telega-chat--get (plist-get scope :chat_id))))
          (plist-put chat :notification_settings
                     (plist-get event :notification_settings))))
       (t
