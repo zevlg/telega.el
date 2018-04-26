@@ -97,7 +97,7 @@
                            :min 25 :max 25
                            :align left :align-char ?\s
                            :elide t :elide-trail 0)
-                      "]"))))
+                      "]\n"))))
     ))
 
 (provide 'telega-user)
