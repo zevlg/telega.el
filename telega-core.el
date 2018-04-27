@@ -220,6 +220,23 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
   (button-put button :value value)
   (telega-button--redisplay button))
 
+(defun telega-button-forward (n &optional wrap display-message)
+  "Move forward to N visible/active button."
+  (interactive "p\nd\nd")
+  (let (button)
+    (dotimes (_ (abs n))
+      (while (and (setq button (forward-button (cl-signum n) wrap))
+                  (or (button-get button 'invisible)
+                      (button-get button 'inactive)))))
+    (when (= (following-char) ?\[)
+      (forward-char 1))
+    button))
+
+(defun telega-button-backward (n &optional wrap display-message)
+  "Move backward to N visible/active button."
+  (interactive "p\nd\nd")
+  (telega-button-forward (- n) wrap display-message))
+
 (provide 'telega-core)
 
 ;;; telega-core.el ends here

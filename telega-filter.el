@@ -124,6 +124,7 @@ otherwise add to existing active filters."
   "Set properties based of inactivity of the BUTTON."
   (let ((active-p (telega-filter-chats
                    (cdr (button-get button :value)) telega--filtered-chats)))
+    (button-put button 'inactive (not active-p))
     (button-put button 'face (if active-p
                                  'telega-filter-button-active
                                'telega-filter-button-inactive))

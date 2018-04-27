@@ -35,7 +35,6 @@
     (set-keymap-parent map button-buffer-map)
     (define-key map (kbd "i") 'telega-chat-info)
     (define-key map (kbd "h") 'telega-chat-info)
-    (define-key map (kbd "n") 'telega-chat-notify-toggle)
     (define-key map (kbd "DEL") 'telega-chat-delete)
     map)
   "The key map for telega chat buttons.")
@@ -201,13 +200,15 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
   (unless chat
     (error "No chat at point"))
 
-  (with-help-window (format " *ChatInfo: %s*" (telega-chat--title chat))
+  (with-help-window (format " *Telegram Chat Info*" (telega-chat--title chat))
     (set-buffer standard-output)
     (insert (format "Title: %s\n" (telega-chat--title chat)))
-    (insert (format "Type: %S (%d)\n" (telega-chat--type chat) (plist-get chat :id)))
+    (insert (format "Type: %S (%d) order=%s\n"
+                    (telega-chat--type chat) (plist-get chat :id)
+                    (telega-chat--order chat)))
 ;    (insert "Notifications: %s\n" TODO
     (insert "\n")
-    (ecase (telega-chat--type chat)
+    (case (telega-chat--type chat)
       (private 
        (telega-user-info--insert (telega-chat--private-user chat))))
 

@@ -102,6 +102,12 @@ Predicate is called with one argument - CHAT."
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map "n" 'telega-button-forward)
+    (define-key map "p" 'telega-button-backward)
+    (define-key map [?\t] 'telega-button-forward)
+    (define-key map "\e\t" 'telega-button-backward)
+    (define-key map [backtab] 'telega-button-backward)
+
     (set-keymap-parent map button-buffer-map)
     (define-key map (kbd "/") telega-filter-map)
 
@@ -211,36 +217,42 @@ If RAW is given then do not modify status for animation."
 
 (defun telega-root--redisplay ()
   "Redisplay the root buffer."
-  (with-telega-root-buffer
-    (erase-buffer)
-    (telega-button-insert
-     'telega-status :value telega--status)
-    (insert "\n\n")
+  (let* ((cb (button-at (point)))   ; try to keep point on this button
+         (cb-type (button-type cb))
+         (cb-value (button-get cb :value)))
+    (with-telega-root-buffer
+      (erase-buffer)
+      (telega-button-insert
+        'telega-status :value telega--status
+        'inactive :do-not-select-it-by-forward-backward-commands)
+      (insert "\n\n")
 
-    ;; Custom filters
-    (dolist (custom telega-filters-custom)
-      (let* ((help-echo (format "Filter (custom \"%s\") expands to: %s"
-                                (car custom) (cdr custom)))
-             (button (telega-button-insert 'telega-filter
+      ;; Custom filters
+      (dolist (custom telega-filters-custom)
+        (let* ((help-echo (format "Filter (custom \"%s\") expands to: %s"
+                                  (car custom) (cdr custom)))
+               (button (telega-button-insert 'telega-filter
                          :value custom 'help-echo help-echo)))
-        (telega-filter-button--set-inactivity-props button)
-        (if (> (current-column) telega-filters-fill-column)
-            (insert "\n")
-          (insert "   "))))
+          (telega-filter-button--set-inactivity-props button)
+          (if (> (current-column) telega-filters-fill-column)
+              (insert "\n")
+            (insert "   "))))
 
-    (unless (= (preceding-char) ?\n) (insert "\n"))
-    (insert "\n")
-    (telega-button-insert
-     'telega-active-filters :value (car telega--filters))
-    (insert "\n")
-    (setq telega-root--chats-marker (point-marker))
+      (unless (= (preceding-char) ?\n) (insert "\n"))
+      (insert "\n")
+      (telega-button-insert
+        'telega-active-filters :value (car telega--filters)
+        'inactive :do-not-select-it-by-forward-backward-commands)
+      (insert "\n")
+      (setq telega-root--chats-marker (point-marker))
 
-    (dolist (chat telega--ordered-chats)
-      (telega-root--chat-update chat 'filters-are-ok)))
+      (dolist (chat telega--ordered-chats)
+        (telega-root--chat-update chat 'filters-are-ok)))
 
-  ;; TODO: Maybe save point before redisplay, and try to keep that
-  ;; point after redisplay?
-  (goto-char telega-root--chats-marker))
+    ;; Goto previously saved button
+    (goto-char (1- (or (telega-button-find cb-type cb-value)
+                       telega-root--chats-marker)))
+    (telega-button-forward 1)))
 
 
 (defun telega-root--chat-update (chat &optional inhibit-filters-redisplay)
