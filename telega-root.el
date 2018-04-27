@@ -247,7 +247,8 @@ If RAW is given then do not modify status for animation."
   "Something changed in CHAT, button needs to be updated.
 If there is no button for the CHAT, new button is created.
 If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
-  (telega-debug "IN: `telega-root--chat-update'")
+  (telega-debug "IN: `telega-root--chat-update': %s"
+                (telega-chat--title chat))
   (with-telega-root-buffer
     (goto-char (point-min))
     (let ((button (telega-button-find 'telega-chat chat)))

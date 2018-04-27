@@ -124,6 +124,18 @@ With prefix arg force quit without confirmation."
               :first_name ""
               :last_name ""))))
 
+(defun telega--check-password (event)
+  "Check the password for the 2-factor authentification."
+  (let* ((hint (plist-get event :password_hint))
+         (passwd (password-read
+                  (concat "Telegram password"
+                          (if (string-empty-p hint)
+                              ""
+                            (format "(hint='%s')" hint))
+                          ": "))))
+    (telega-server--send
+     `(:@type "checkAuthenticationPassword" :password ,passwd))))
+
 (defun telega--set-options ()
   "Send `telega-options-plist' to server."
   (cl-loop for (prop-name value) in telega-options-plist
@@ -178,6 +190,9 @@ With prefix arg force quit without confirmation."
 
       (authorizationStateWaitCode
        (telega--check-auth-code (plist-get state :is_registered)))
+
+      (authorizationStateWaitPassword
+       (telega--check-password event))
 
       (authorizationStateReady
        ;; TDLib is now ready to answer queries
