@@ -218,8 +218,8 @@ If RAW is given then do not modify status for animation."
 (defun telega-root--redisplay ()
   "Redisplay the root buffer."
   (let* ((cb (button-at (point)))   ; try to keep point on this button
-         (cb-type (button-type cb))
-         (cb-value (button-get cb :value)))
+         (cb-type (and cb (button-type cb)))
+         (cb-value (and cb (button-get cb :value))))
     (with-telega-root-buffer
       (erase-buffer)
       (telega-button-insert
@@ -229,14 +229,11 @@ If RAW is given then do not modify status for animation."
 
       ;; Custom filters
       (dolist (custom telega-filters-custom)
-        (let* ((help-echo (format "Filter (custom \"%s\") expands to: %s"
-                                  (car custom) (cdr custom)))
-               (button (telega-button-insert 'telega-filter
-                         :value custom 'help-echo help-echo)))
-          (telega-filter-button--set-inactivity-props button)
-          (if (> (current-column) telega-filters-fill-column)
-              (insert "\n")
-            (insert "   "))))
+        (telega-filter-button--set-inactivity-props
+         (telega-button-insert 'telega-filter :value custom))
+        (if (> (current-column) telega-filters-fill-column)
+            (insert "\n")
+          (insert "   ")))
 
       (unless (= (preceding-char) ?\n) (insert "\n"))
       (insert "\n")
@@ -250,9 +247,10 @@ If RAW is given then do not modify status for animation."
         (telega-root--chat-update chat 'filters-are-ok)))
 
     ;; Goto previously saved button
-    (goto-char (1- (or (telega-button-find cb-type cb-value)
+    (goto-char (1- (or (and cb-type (telega-button-find cb-type cb-value))
                        telega-root--chats-marker)))
-    (telega-button-forward 1)))
+    (ignore-errors
+      (telega-button-forward 1))))
 
 
 (defun telega-root--chat-update (chat &optional inhibit-filters-redisplay)
