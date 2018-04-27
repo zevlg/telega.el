@@ -54,6 +54,11 @@ In form (NAME . FILTER-SPEC)."
   :type 'alist
   :group 'telega-filter)
 
+(defcustom telega-filter-custom-expand nil
+  "*Non-nil to expand custom filter when adding to active filters."
+  :type 'boolean
+  :group 'telega-filter)
+
 (defcustom telega-filters-fill-column 55
   "*Column to use for filling buttons for custom filters in multiple lines."
   :type 'integer
@@ -118,10 +123,16 @@ In form (NAME . FILTER-SPEC)."
   "Action to take when custom filter button is pressed.
 If prefix ARG is specified then set custom filter as active,
 otherwise add to existing active filters."
-  (let ((custom (button-get (button-at (point)) :value)))
+  (let* ((custom (button-get (button-at (point)) :value))
+         (ftype (if telega-filter-custom-expand
+                    (cadr custom)
+                  'custom))
+         (fargs (if telega-filter-custom-expand
+                    (cddr custom)
+                  (list (car custom)))))
     (if current-prefix-arg
-        (telega--filters-push (list (list 'custom (car custom))))
-      (telega-filter-add 'custom (car custom)))))
+        (telega--filters-push (list (cons ftype fargs)))
+      (apply #'telega-filter-add ftype fargs))))
 
 (defun telega-filter-button--set-inactivity-props (button)
   "Set properties based of inactivity of the BUTTON."
