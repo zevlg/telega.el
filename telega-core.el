@@ -45,6 +45,7 @@
 (defvar telega--users nil "Hash table (id -> user) for all users.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
+(defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE)")
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -56,6 +57,10 @@ Done when telega server is ready to receive queries."
   (setq telega--filtered-chats nil)
   (setq telega--filters (list (list telega-filter-default)))
   (setq telega--undo-filters nil)
+  (setq telega--full-info
+        (list (cons 'user (make-hash-table :test 'eq))
+              (cons 'basicGroup (make-hash-table :test 'eq))
+              (cons 'supergroup (make-hash-table :test 'eq))))
   )
 
 (defmacro with-telega-debug-buffer (&rest body)
@@ -138,12 +143,12 @@ Done when telega server is ready to receive queries."
     (apply #'telega-fmt-eval-attrs
            (cond ((stringp elem) elem)
                  ((numberp elem) (number-to-string elem))
+                 ((functionp elem)
+                  (with-output-to-string
+                    (princ (apply elem value))))
                  ((symbolp elem)
                   (with-output-to-string
-                    (princ
-                     (if (symbol-function elem)
-                         (apply elem value)
-                       (symbol-value elem)))))
+                    (princ (symbol-value elem))))
                  ((listp elem)
                   (apply #'telega-fmt-eval elem value))
                  (t (error "Can't format ELEM: %s" elem)))
@@ -230,12 +235,52 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
                       (button-get button 'inactive)))))
     (when (= (following-char) ?\[)
       (forward-char 1))
+
+    (when (button-get button :help-format)
+      (message (telega-fmt-eval (button-get button :help-format)
+                                (button-get button :value))))
     button))
 
 (defun telega-button-backward (n &optional wrap display-message)
   "Move backward to N visible/active button."
   (interactive "p\nd\nd")
   (telega-button-forward (- n) wrap display-message))
+
+;; FullInfo
+(defun telega--on-updateUserFullInfo (event)
+  (let ((ufi (cdr (assq 'user telega--full-info))))
+    (puthash (plist-get event :user_id)
+             (plist-get event :user_full_info) ufi)))
+
+(defun telega--on-updateBasicGroupFullInfo (event)
+  (let ((ufi (cdr (assq 'basicGroup telega--full-info))))
+    (puthash (plist-get event :basic_group_id)
+             (plist-get event :basic_group_full_info) ufi)))
+
+(defun telega--on-updateSupergroupFullInfo (event)
+  (let ((ufi (cdr (assq 'supergroup telega--full-info))))
+    (puthash (plist-get event :supergroup_id)
+             (plist-get event :supergroup_full_info) ufi)))
+
+(defun telega--full-info (tlobj)
+  "Get FullInfo for the TLOBJ.
+TLOBJ could be one of: user, basicGroup or supergroup."
+  (let* ((tlobj-type (telega--tl-type tlobj))
+         (tlobj-id (plist-get tlobj :id))
+         (fi-hash (cdr (assq tlobj-type telega--full-info)))
+         (full-info (gethash tlobj-id fi-hash)))
+    (unless full-info
+      (setq full-info
+            (telega-server--call
+             (ecase tlobj-type
+               (user
+                `(:@type "getUserFullInfo" :user_id ,tlobj-id))
+               (basicGroup
+                `(:@type "getBasicGroupFullInfo" :basic_group_id ,tlobj-id))
+               (supergroup
+                `(:@type "getSupergroupFullInfo" :supergroup_id ,tlobj-id)))))
+      (puthash tlobj-id full-info fi-hash))
+    full-info))
 
 (provide 'telega-core)
 

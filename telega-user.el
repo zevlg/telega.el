@@ -66,39 +66,49 @@
             (plist-get user :last_name)
             (plist-get user :username))))
 
-(defun telega-user--full-info (user)
-  (telega-server--call
-   `(:@type "getUserFullInfo" :user_id ,(plist-get user :id))))
-
 (defun telega-user--seen-status (user)
   "Return last seen status for the USER."
   (substring (plist-get (plist-get user :status) :@type) 10))
 
+(defun telega-user--chats-in-common (with-user)
+  "Return CHATS in common WITH-USER."
+  (let ((groups-in-common
+         (telega-server--call
+          `(:@type "getGroupsInCommon"
+                   :user_id ,(plist-get with-user :id)
+                   :offset_chat_id 0
+                   :limit ,(1+ (plist-get (telega--full-info with-user)
+                                          :group_in_common_count))))))
+    (mapcar #'telega-chat--get (plist-get groups-in-common :chat_ids))))
+
 (defun telega-user-info--insert (user)
   "Insert USER info into current buffer."
-  (let ((full-info (telega-user--full-info user)))
+  (let ((full-info (telega--full-info user)))
     (insert (telega-user--title user))
     (insert "\n")
-    (insert (format "Seen status: %s\n"
+    (insert (format "Seen: %s\n"
                     (telega-user--seen-status user)))
-    (unless (string-empty-p (plist-get user :phone_number))
-      (insert (format "phone: +%s\n\n" (plist-get user :phone_number))))
-    (unless (string-empty-p (plist-get full-info :bio))
-      (insert (format "bio: %s\n\n" (plist-get full-info :bio))))
+    (let ((phone_number (plist-get user :phone_number))
+          (bio (plist-get user :bio)))
+      (when (and (stringp phone_number)
+                 (not (string-empty-p phone_number)))
+        (insert (format "phone: +%s\n\n" (plist-get user :phone_number))))
+      (when (and (stringp bio)
+                 (not (string-empty-p bio)))
+      (insert (format "bio: %s\n\n" (plist-get full-info :bio)))))
 
-    (when (> (plist-get full-info :group_in_common_count) 0)
-      (insert (format "%d groups in common:\n"
-                      (plist-get full-info :group_in_common_count)))
-      (dolist (chat (telega-chat--getGroupsInCommon user))
-        (insert "    ") 
-        (telega-button-insert 'telega-chat
+    (let ((chats-in-common (telega-user--chats-in-common user)))
+      (when chats-in-common
+        (insert (format "%d chats in common:\n" (length chats-in-common)))
+        (dolist (chat chats-in-common)
+          (insert "    ") 
+          (telega-button-insert 'telega-chat
             :value chat
             :format '("[" (telega-chat--title
                            :min 25 :max 25
                            :align left :align-char ?\s
                            :elide t :elide-trail 0)
-                      "]\n"))))
-    ))
+                      "]\n")))))))
 
 (provide 'telega-user)
 

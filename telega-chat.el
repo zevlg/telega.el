@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Thu Apr 19 19:59:51 2018
-;; Keywords: 
+;; Keywords:
 
 ;; This file is part of GNU Emacs.
 
@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 (require 'telega-core)
@@ -131,7 +131,22 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
 (defun telega--on-updateChatIsPinned (event)
   (let ((chat (telega-chat--get (plist-get event :chat_id))))
     (plist-put chat :is_pinned (plist-get event :is_pinned))
-    (telega-chat--reorder chat (plist-get event :order))))
+    (telega-chat--reorder chat (plist-get event :order))
+    (telega-root--chat-update chat)))
+
+(defun telega--on-updateChatReadInbox (event)
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (plist-put chat :last_read_inbox_message_id
+               (plist-get event :last_read_inbox_message_id))
+    (plist-put chat :unread_count
+               (plist-get event :unread_count))
+    (telega-root--chat-update chat)))
+
+(defun telega--on-updateChatReadOutbox (event)
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (plist-put chat :last_read_outbox_message_id
+               (plist-get event :last_read_outbox_message_id))
+    (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatUnreadMentionCount (event)
   (let ((chat (telega-chat--get (plist-get event :chat_id))))
@@ -141,6 +156,12 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
 
 (defalias 'telega--on-updateChatUnreadMentionRead
   'telega--on-updateChatUnreadMentionCount)
+
+(defun telega--on-updateChatReplyMarkup (event)
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (plist-put chat :reply_markup_message_id
+               (plist-get event :reply_markup_message_id))
+    (telega-root--chat-update chat)))
 
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
@@ -167,17 +188,6 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
               :limit 1000000)
      #'telega-chat--on-getChats)))
 
-(defun telega-chat--getGroupsInCommon (with-user)
-  "Return groups in common WITH-USER."
-  (let ((groups-in-common
-         (telega-server--call
-          `(:@type "getGroupsInCommon"
-                   :user_id ,(plist-get with-user :id)
-                   :offset_chat_id 0
-                   :limit ,(plist-get (telega-user--full-info with-user)
-                                      :group_in_common_count)))))
-    (mapcar #'telega-chat--get (plist-get groups-in-common :chat_ids))))
-
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
   (message "TODO: `telega-chats--kill-em-all'")
@@ -203,14 +213,29 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
   (with-help-window (format " *Telegram Chat Info*" (telega-chat--title chat))
     (set-buffer standard-output)
     (insert (format "Title: %s\n" (telega-chat--title chat)))
-    (insert (format "Type: %S (%d) order=%s\n"
-                    (telega-chat--type chat) (plist-get chat :id)
-                    (telega-chat--order chat)))
-;    (insert "Notifications: %s\n" TODO
+    (insert (format "Id: %d Type: %S(id=%d)\n"
+                    (plist-get chat :id)
+                    (telega-chat--type chat)
+                    (plist-get (plist-get chat :type)
+                               (ecase (telega-chat--type chat)
+                                 ((private bot) :user_id)
+                                 (basicgroup :basic_group_id)
+                                 ((channel supergroup) :supergroup_id)))))
+    (let ((not-cfg (plist-get chat :notification_settings)))
+      (insert (format "Notifications: %s\n"
+                      (if (zerop (plist-get not-cfg :mute_for))
+                          (concat "enabled"
+                                  (if (telega--tl-bool not-cfg :show_preview)
+                                      " with preview"
+                                    ""))
+                        "disabled"))))
+
     (insert "\n")
     (case (telega-chat--type chat)
-      (private 
-       (telega-user-info--insert (telega-chat--private-user chat))))
+      ((private bot)
+       (telega-user-info--insert (telega-chat--private-user chat)))
+      (basicgroup
+       ))
 
     ;; TODO: view shared media as thumbnails
     ))

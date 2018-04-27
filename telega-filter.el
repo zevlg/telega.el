@@ -90,6 +90,9 @@ In form (NAME . FILTER-SPEC)."
 
 (define-button-type 'telega-filter
   :format #'telega-filter-button--formatter
+  :help-format (lambda (custom)
+                 (list (format "Filter (custom \"%s\") expands to: %s"
+                               (car custom) (cdr custom))))
   'action #'telega-filter-button--action
   'face 'telega-filter-button-active)
 
