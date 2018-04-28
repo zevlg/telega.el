@@ -6,20 +6,18 @@
 ;; Created: Mon Apr 23 18:09:01 2018
 ;; Keywords: 
 
-;; This file is part of GNU Emacs.
-
-;; GNU Emacs is free software: you can redistribute it and/or modify
+;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
+;; telega is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -42,9 +40,10 @@
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.")
-(defvar telega--users nil "Hash table (id -> user) for all users.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
+
+(defvar telega--info nil "Alist of (TYPE . INFO-TABLE)")
 (defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE)")
 
 (defun telega--init-vars ()
@@ -52,11 +51,15 @@
 Done when telega server is ready to receive queries."
   (setq telega--options nil)
   (setq telega--chats (make-hash-table :test 'eq))
-  (setq telega--users (make-hash-table :test 'eq))
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
-  (setq telega--filters (list (list telega-filter-default)))
+  (setq telega--filters nil)
   (setq telega--undo-filters nil)
+  (setq telega--info
+        (list (cons 'user (make-hash-table :test 'eq))
+              (cons 'secretChat (make-hash-table :test 'eq))
+              (cons 'basicGroup (make-hash-table :test 'eq))
+              (cons 'supergroup (make-hash-table :test 'eq))))
   (setq telega--full-info
         (list (cons 'user (make-hash-table :test 'eq))
               (cons 'basicGroup (make-hash-table :test 'eq))
@@ -87,13 +90,6 @@ Done when telega server is ready to receive queries."
   (let ((tl-obj-sym (cl-gensym "tl-obj")))
     `(lambda (,tl-obj-sym)
        (plist-get ,tl-obj-sym ,prop))))
-
-(defun telega--replace-region (from to rep)
-  "Replace region FROM TO by REP."
-  (save-excursion
-    (goto-char to)
-    (insert rep)
-    (delete-region from to)))
 
 
 ;;; Formatting
@@ -161,7 +157,23 @@ Done when telega server is ready to receive queries."
                (apply #'telega-fmt-eval-elem elem value))
              (cl-remove-if #'null fmt-simple) ""))
 
+(defun telega-fmt-timestamp (unixtime)
+  ;; - HH:MM      if today
+  ;; - Mon/Tue/.. if on this week
+  ;; - DD:MM:YY   otherwise
+  (let ((dtime (decode-time unixtime)))
+    (format "%02d:%02d:%02d"
+            (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000)))
+  )
+
 ;;; Buttons for telega
+
+;; Make 'telega-button be separate (from 'button) type
+(put 'telega-button 'keymap button-map)
+(put 'telega-button 'type 'telega)
+(put 'telega-button 'action 'ignore)
+(put 'telega-button 'rear-nonsticky t)
+(put 'telega 'button-category-symbol 'telega-button)
 
 (defmacro telega-button-foreach (butt-type args &rest body)
   "Run point accross all buttons of BUTTON-TYPE.
@@ -177,12 +189,12 @@ Run under `save-excursion' to preserve point."
          (setq ,button (next-button ,button))))))
 (put 'telega-button-foreach 'lisp-indent-function 'defun)
 
-(defun telega-button-find (butt-type &optional value)
+(defun telega-button-find (butt-type &rest value)
   "Find button by BUTT-TYPE and its VALUE.
 If VALUE is not specified, then find fist one button of BUTT-TYPE."
   (cl-block 'button-found
     (telega-button-foreach butt-type (button)
-      (when (or (null value) (eq (button-get button :value) value))
+      (when (or (null value) (eq (button-get button :value) (car value)))
         (cl-return-from 'button-found button)))))
 
 (defun telega-button-insert (button-type &rest props)
@@ -199,34 +211,29 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
   "Delete the BUTTON."
   (delete-region (button-start button) (button-end button)))
 
-(defun telega-button-move (button point)
-  "Move BUTTON to POINT location."
-  (let ((butt-type (button-type button))
-        (props (text-properties-at button)))
-    (save-excursion
-      (let ((inhibit-read-only t))
-        (goto-char point)
-        (telega-button-delete button)
-
-        ;; retain all properties except for those set by
-        ;; `make-text-button'
-        (cl--do-remf props 'category)
-        (cl--do-remf props 'button)
-        (apply #'telega-button-insert butt-type props)))))
+(defun telega-button-move (button point &optional new-label)
+  "Move BUTTON to POINT location.
+Return new location.  Use code like:
+  `(setq button (telega-button-move button point))'
+if button is futher referenced."
+  (let* ((start (button-start button))
+         (end (button-end button))
+         (button-repr (or new-label (buffer-substring start end))))
+    (goto-char point)
+    (prog1
+        (point-marker)
+      (insert button-repr)
+      (if (< button point)
+          (delete-region start end)
+        (telega-button-delete button)))))
 
 (defun telega-button--redisplay (button)
-  "Redisplay the BUTTON contents.
-Changes the button, so use
-`(setq button (telega-button--redisplay button))' if button is
-used after redisplay."
-  (telega-button-move button (button-end button)))
-
-(defun telega-button-value-set (button value)
-  "For BUTTON set new VALUE."
-  (assert value nil "Empty value for telega button is forbidden")
-
-  (button-put button :value value)
-  (telega-button--redisplay button))
+  "Redisplay the BUTTON contents."
+  (telega-button-move button (button-end button)
+                      (apply #'propertize 
+                             (telega-fmt-eval (button-get button :format)
+                                              (button-get button :value))
+                             (text-properties-at button))))
 
 (defun telega-button-forward (n &optional wrap display-message)
   "Move forward to N visible/active button."
@@ -248,42 +255,6 @@ used after redisplay."
   "Move backward to N visible/active button."
   (interactive "p\nd\nd")
   (telega-button-forward (- n) wrap display-message))
-
-;; FullInfo
-(defun telega--on-updateUserFullInfo (event)
-  (let ((ufi (cdr (assq 'user telega--full-info))))
-    (puthash (plist-get event :user_id)
-             (plist-get event :user_full_info) ufi)))
-
-(defun telega--on-updateBasicGroupFullInfo (event)
-  (let ((ufi (cdr (assq 'basicGroup telega--full-info))))
-    (puthash (plist-get event :basic_group_id)
-             (plist-get event :basic_group_full_info) ufi)))
-
-(defun telega--on-updateSupergroupFullInfo (event)
-  (let ((ufi (cdr (assq 'supergroup telega--full-info))))
-    (puthash (plist-get event :supergroup_id)
-             (plist-get event :supergroup_full_info) ufi)))
-
-(defun telega--full-info (tlobj)
-  "Get FullInfo for the TLOBJ.
-TLOBJ could be one of: user, basicGroup or supergroup."
-  (let* ((tlobj-type (telega--tl-type tlobj))
-         (tlobj-id (plist-get tlobj :id))
-         (fi-hash (cdr (assq tlobj-type telega--full-info)))
-         (full-info (gethash tlobj-id fi-hash)))
-    (unless full-info
-      (setq full-info
-            (telega-server--call
-             (ecase tlobj-type
-               (user
-                `(:@type "getUserFullInfo" :user_id ,tlobj-id))
-               (basicGroup
-                `(:@type "getBasicGroupFullInfo" :basic_group_id ,tlobj-id))
-               (supergroup
-                `(:@type "getSupergroupFullInfo" :supergroup_id ,tlobj-id)))))
-      (puthash tlobj-id full-info fi-hash))
-    full-info))
 
 (provide 'telega-core)
 

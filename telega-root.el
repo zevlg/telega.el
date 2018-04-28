@@ -6,20 +6,18 @@
 ;; Created: Sat Apr 14 15:00:27 2018
 ;; Keywords:
 
-;; This file is part of GNU Emacs.
-
-;; GNU Emacs is free software: you can redistribute it and/or modify
+;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
+;; telega is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -126,9 +124,9 @@ Keymap:
 \\{telega-root-mode-map}"
   :group 'telega-root
 ;  (telega-root--setup-modeline)
-  (telega-root--redisplay)
+  ;; Reseting filters will trigger `telega-root--redisplay'
+  (telega-filters-reset)
   (setq buffer-read-only t)
-  (goto-char telega-root--chats-marker) ;default start point
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t))
 
 (defun telega-root--killed ()
@@ -164,8 +162,8 @@ Inhibits read-only flag."
   "Timer used to animate status string.")
 
 (define-button-type 'telega-status
-  :format '("Status: " telega--status)
-  'face nil)
+  :supertype 'telega
+  :format '("Status: " identity))
 
 (defun telega-status--animate ()
   "Animate dots at the end of the current connection status."
@@ -199,21 +197,9 @@ If RAW is given then do not modify status for animation."
   (with-telega-root-buffer
     (goto-char (point-min))
     (let ((button (telega-button-find 'telega-status)))
+      (assert button nil "Telega status button is gone")
       (button-put button :value telega--status)
       (telega-button--redisplay button))))
-
-
-;; root runtime variables
-(defvar telega-root--chats-marker nil
-  "Marker where chats list starts.")
-
-(define-button-type 'telega-active-filters
-  :format '("---" (prin1-to-string :min 70
-                                   :align center :align-char ?-
-                                   :max 70
-                                   :elide t :elide-trail 30)
-            "---")
-  'face nil)
 
 (defun telega-root--redisplay ()
   "Redisplay the root buffer."
@@ -248,64 +234,70 @@ If RAW is given then do not modify status for animation."
 
     ;; Goto previously saved button
     (goto-char (1- (or (and cb-type (telega-button-find cb-type cb-value))
-                       telega-root--chats-marker)))
-    (ignore-errors
-      (telega-button-forward 1))))
+                       (point-max))))
+    (condition-case nil
+        (telega-button-forward 1)
+      (error (forward-char 1)))))
 
 
+(defun telega-root--chat-button (chat)
+  "Return button corresponding to CHAT."
+  (with-telega-root-buffer
+    (goto-char (point-min))
+    (telega-button-find 'telega-chat chat)))
+
 (defun telega-root--chat-update (chat &optional inhibit-filters-redisplay)
   "Something changed in CHAT, button needs to be updated.
 If there is no button for the CHAT, new button is created.
 If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
-  (telega-debug "IN: `telega-root--chat-update': %s"
-                (telega-chat--title chat))
+  (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat--title chat))
   (with-telega-root-buffer
     (goto-char (point-min))
-    (let ((button (telega-button-find 'telega-chat chat)))
-      (if button
-          (progn
-            (button-put button :value chat)
-            (telega-button--redisplay button))
-
-        ;; New chat
-        (goto-char telega-root--chats-marker)
-        (setq button (telega-button-insert 'telega-chat :value chat)))
-
-      (button-put button 'invisible (not (telega-chat--visible-p chat)))
-
-      ;; Update `telega--filtered-chats' according to chat update
+    (let ((button (telega-root--chat-button chat)) visible-p)
+      ;; Update `telega--filtered-chats' according to chat update It
+      ;; might affect visibility, chat button formatting itself and
+      ;; custom filters
       (setq telega--filtered-chats
             (delq chat telega--filtered-chats))
       (when (telega-filter--test chat (telega--filters-prepare))
         (setq telega--filtered-chats
               (push chat telega--filtered-chats)))
+      (setq visible-p (memq chat telega--filtered-chats))
+      
+      (if button
+          (progn
+            (button-put button :value chat)
+            (when visible-p
+              (telega-button--redisplay button)))
+
+        ;; New chat
+        (goto-char (point-max))
+        (setq button (telega-button-insert 'telega-chat :value chat)))
+
+      (button-put button 'invisible (not visible-p))
 
       ;; NOTE: Update might affect custom filters, refresh them too
       (unless inhibit-filters-redisplay
         (telega-root--filters-redisplay)))))
 
 (defun telega-root--chat-reorder (chat)
-  (telega-debug "TODO: `telega-root--chat-reorder'")
-
-  ;; TODO: find chat before which this CHAT is placed and insert it
-  ;; befor that chat's start point
+  "Move CHAT to correct place according to its order."
   (with-telega-root-buffer
-   (goto-char telega-root--chats-marker)
-   (let* ((button (telega-button-find 'telega-chat chat))
-          (chat-after (cadr (memq chat telega--ordered-chats)))
-          (button-after (or (and chat-after (telega-button-find 'telega-chat chat-after))
-                            (point-max))))
-     (assert button nil "button no found for chat: %s" (telega-chat--title chat))
-     (telega-button-move button button-after)))
-  )
+    (goto-char (point-min))
+    (let* ((button (telega-root--chat-button chat))
+           (chat-after (cadr (memq chat telega--ordered-chats)))
+           (button-after (or (telega-root--chat-button chat-after)
+                             (point-max))))
+      (assert button nil "button no found for chat: %s" (telega-chat--title chat))
+      (telega-button-move button button-after))))
 
 (defun telega-root--filters-redisplay ()
   "Redisplay custom filters buttons."
   (with-telega-root-buffer
     (goto-char (point-min))
     (telega-button-foreach 'telega-filter (button)
-      (telega-button--redisplay button)
-      (telega-filter-button--set-inactivity-props button))))
+      (telega-filter-button--set-inactivity-props
+       (telega-button--redisplay button)))))
 
 (defun telega-root--chats-redisplay ()
   "Redisplay chats according to active filters."

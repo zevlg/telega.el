@@ -141,6 +141,7 @@ Raise error if not found"
 
 (defun telega-server--filter (proc output)
   "Filter for the telega-server process."
+  (telega-debug "OUTPUT:  %S" output)
   (let ((buffer (process-buffer proc)))
     (if (buffer-live-p buffer)
         (with-current-buffer buffer

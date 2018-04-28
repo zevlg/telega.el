@@ -29,7 +29,7 @@
 (require 'telega-root)
 (require 'telega-filter)
 (require 'telega-chat)
-(require 'telega-user)
+(require 'telega-info)
 (require 'telega-notifications)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
@@ -48,11 +48,11 @@
   (interactive)
   (telega--create-hier)
 
+  (unless (process-live-p (telega-server--proc))
+    (telega-server--start))
   (unless (buffer-live-p (telega-root--buffer))
     (with-current-buffer (get-buffer-create telega-root-buffer-name)
       (telega-root-mode)))
-  (unless (process-live-p (telega-server--proc))
-    (telega-server--start))
 
   (pop-to-buffer-same-window telega-root-buffer-name))
 

@@ -6,20 +6,18 @@
 ;; Created: Sun Apr 22 17:36:38 2018
 ;; Keywords:
 
-;; This file is part of GNU Emacs.
-
-;; GNU Emacs is free software: you can redistribute it and/or modify
+;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
+;; telega is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -54,7 +52,7 @@ In form (NAME . FILTER-SPEC)."
   :type 'alist
   :group 'telega-filter)
 
-(defcustom telega-filter-custom-expand nil
+(defcustom telega-filter-custom-expand t
   "*Non-nil to expand custom filter when adding to active filters."
   :type 'boolean
   :group 'telega-filter)
@@ -93,7 +91,16 @@ In form (NAME . FILTER-SPEC)."
     map)
   "Keymap for filtering commands.")
 
+(define-button-type 'telega-active-filters
+  :supertype 'telega
+  :format '("---" (prin1-to-string :min 70
+                                   :align center :align-char ?-
+                                   :max 70
+                                   :elide t :elide-trail 30)
+            "---"))
+
 (define-button-type 'telega-filter
+  :supertype 'telega
   :format #'telega-filter-button--formatter
   :help-format (lambda (custom)
                  (list (format "Filter (custom \"%s\") expands to: %s"
@@ -311,7 +318,7 @@ If FLIST is empty then return t."
   "Matches CHAT if its title matches REGEXP."
   (or (string-match regexp (telega-chat--title chat))
       (when (eq (telega-chat--type chat) 'private)
-        (let ((user (telega-chat--private-user chat)))
+        (let ((user (telega-chat--info chat)))
           (or (string-match regexp (plist-get user :first_name))
               (string-match regexp (plist-get user :last_name))
               (string-match regexp (plist-get user :username)))))))

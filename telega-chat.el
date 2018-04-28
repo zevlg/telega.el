@@ -6,20 +6,18 @@
 ;; Created: Thu Apr 19 19:59:51 2018
 ;; Keywords:
 
-;; This file is part of GNU Emacs.
-
-;; GNU Emacs is free software: you can redistribute it and/or modify
+;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
+;; telega is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -40,14 +38,14 @@
   "The key map for telega chat buttons.")
 
 (define-button-type 'telega-chat
+  :supertype 'telega
   :format '("[" (telega-chat--title
                  :min 25 :max 25
                  :align left :align-char ?\s
                  :elide t :elide-trail 0)
             "]\n")
   'keymap telega-chat-button-map
-  'action 'telega-chat-activate
-  'face nil)
+  'action 'telega-chat-activate)
 
 (defsubst telega-chat--ensure (chat)
   "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'."
@@ -62,29 +60,44 @@
     (unless chat
       (setq chat (telega-server--call
                   `(:@type "getChat" :chat_id ,chat-id)))
-      (assert user nil "getChat timed out chat_id=%d" chat-id)
+      (assert chat nil "getChat timed out chat_id=%d" chat-id)
       (telega-chat--ensure chat))
     chat))
 
-(defun telega-chat--private-user (chat)
-  "For private CHAT return corresponding user."
-  (telega-user--get (plist-get (plist-get chat :type) :user_id)))
+(defun telega-chat--info (chat)
+  "Return info structure for the CHAT.
+It could be user, secretChat, basicGroup or supergroup."
+  (let ((chat-type (plist-get chat :type)))
+    (ecase (telega--tl-type chat-type)
+      (chatTypePrivate
+       (telega--info 'user (plist-get chat-type :user_id)))
+      (chatTypeSecret
+       (telega--info 'secretChat (plist-get chat-type :secret_chat_id)))
+      (chatTypeBasicGroup
+       (telega--info 'basicGroup (plist-get chat-type :basic_group_id)))
+      (chatTypeSupergroup
+       (telega--info 'supergroup (plist-get chat-type :supergroup_id))))))
 
 (defun telega-chat--me ()
   "Chat with myself, a.k.a Saved Messages."
-  ;; TODO
-  )
+  ;; NOTE: Saved Messages has same id as me user
+  (telega-chat--get (plist-get (telega-user--me) :id)))
 
-(defun telega-chat--type (chat)
+(defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
-Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
+Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'.
+If NO-INTERPRET is specified, then return only `private',
+`basicgroup' and `supergroup' without interpretation them to bots
+or channels."
   (let* ((chat-type (plist-get chat :type))
          (type-sym (intern (downcase (substring (plist-get chat-type :@type) 8)))))
-    (cond ((and (eq type-sym 'supergroup)
+    (cond ((and (not no-interpret)
+                (eq type-sym 'supergroup)
                 (telega--tl-bool chat-type :is_channel))
            'channel)
-          ((and (eq type-sym 'private)
-                (telega-user--bot-p (telega-chat--private-user chat)))
+          ((and (not no-interpret)
+                (eq type-sym 'private)
+                (telega-user--bot-p (telega-chat--info chat)))
            'bot)
           (t type-sym))))
 
@@ -97,12 +110,13 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
     (if (string-empty-p title)
         (ecase (telega-chat--type chat)
           (private
-           (telega-user--title (telega-chat--private-user chat))))
+           (telega-user--title (telega-chat--info chat))))
       title)))
 
 (defun telega-chat--reorder (chat order)
   (plist-put chat :order order)
-  (cl-sort telega--ordered-chats 'string< :key 'telega-chat--order)
+  (setq telega--ordered-chats
+        (cl-sort telega--ordered-chats 'string> :key 'telega-chat--order))
   (telega-root--chat-reorder chat))
 
 (defun telega-chat--new (chat)
@@ -110,10 +124,6 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
   (telega-chat--ensure chat)
   (telega-root--chat-update chat)
   (telega-chat--reorder chat (telega-chat--order chat)))
-
-(defun telega-chat--visible-p (chat)
-  "Return non-nil if CHAT is visible by means of active filters."
-  (telega-filter--test chat (cons 'all (car telega--filters))))
 
 (defun telega--on-updateNewChat (event)
   "New chat has been loaded or created."
@@ -163,6 +173,19 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
                (plist-get event :reply_markup_message_id))
     (telega-root--chat-update chat)))
 
+(defun telega--on-updateChatLastMessage (event)
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (plist-put chat :last_message 
+               (plist-get event :last_message))
+    (telega-chat--reorder chat (plist-get event :order))
+    (telega-root--chat-update chat)))
+
+(defun telega--on-updateChatDraftMessage (event)
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (telega-debug "TODO: `telega--on-updateChatDraftMessage' handle draft message")
+    (telega-chat--reorder chat (plist-get event :order))
+    (telega-root--chat-update chat)))
+
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (let ((chat_ids (plist-get result :chat_ids)))
@@ -177,15 +200,14 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
 
 (defun telega-chat--getChats ()
   "Retreive all chats from the server in async manner."
-  (let* ((last-chat (car telega--ordered-chats))
-         (offset-order (or (and last-chat (plist-get last-chat :order))
-                           "9223372036854775807"))
-         (offset-chatid (or (and last-chat (plist-get last-chat :id)) 0)))
+  (let* ((last-chat (car (last telega--ordered-chats)))
+         (offset-order (or (plist-get last-chat :order) "9223372036854775807"))
+         (offset-chatid (or (plist-get last-chat :id) 0)))
     (telega-server--call
      `(:@type "getChats"
               :offset_order ,offset-order
               :offset_chat_id ,offset-chatid
-              :limit 1000000)
+              :limit 1000)
      #'telega-chat--on-getChats)))
 
 (defun telega-chats--kill-em-all ()
@@ -213,14 +235,9 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
   (with-help-window (format " *Telegram Chat Info*" (telega-chat--title chat))
     (set-buffer standard-output)
     (insert (format "Title: %s\n" (telega-chat--title chat)))
-    (insert (format "Id: %d Type: %S(id=%d)\n"
-                    (plist-get chat :id)
-                    (telega-chat--type chat)
-                    (plist-get (plist-get chat :type)
-                               (ecase (telega-chat--type chat)
-                                 ((private bot) :user_id)
-                                 (basicgroup :basic_group_id)
-                                 ((channel supergroup) :supergroup_id)))))
+    (insert (format "Id: %d Type: %S Order: %s\n"
+                    (plist-get chat :id) (telega-chat--type chat)
+                    (telega-chat--order chat)))
     (let ((not-cfg (plist-get chat :notification_settings)))
       (insert (format "Notifications: %s\n"
                       (if (zerop (plist-get not-cfg :mute_for))
@@ -231,13 +248,7 @@ Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
                         "disabled"))))
 
     (insert "\n")
-    (case (telega-chat--type chat)
-      ((private bot)
-       (telega-user-info--insert (telega-chat--private-user chat)))
-      (basicgroup
-       ))
-
-    ;; TODO: view shared media as thumbnails
+    (telega-info--insert (plist-get chat :type))
     ))
 
 (provide 'telega-chat)
