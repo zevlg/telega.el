@@ -215,7 +215,10 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
         (apply #'telega-button-insert butt-type props)))))
 
 (defun telega-button--redisplay (button)
-  "Redisplay the BUTTON contents."
+  "Redisplay the BUTTON contents.
+Changes the button, so use
+`(setq button (telega-button--redisplay button))' if button is
+used after redisplay."
   (telega-button-move button (button-end button)))
 
 (defun telega-button-value-set (button value)
