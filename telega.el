@@ -64,7 +64,6 @@ With prefix arg force quit without confirmation."
   (when (or force (y-or-n-p "Kill telega (and all chat buffers)? "))
     (kill-buffer telega-root-buffer-name)))
 
-;;;###autoload
 (defun telega-logout ()
   "Switch to another telegram account."
   (interactive)

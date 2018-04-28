@@ -230,7 +230,6 @@ when result is received."
         (set-process-filter proc #'telega-server--filter))))
   (current-buffer))
 
-;;;###autoload
 (defun telega-server-kill ()
   "Kill the telega-server process."
   (interactive)

@@ -11,7 +11,7 @@
                 (:@type "chatTypeSupergroup"
                         :supergroup_id 11110 :is_channel t)
                 :title "test channel1"
-                :order 11
+                :order 22
                 :unread_count 25
                 :unread_mention_count 0
                 :is_pinned :json-false

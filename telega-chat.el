@@ -223,7 +223,6 @@ or channels."
   "Return total number of unread mentions in CHATS."
   (apply #'+ (mapcar (telega--tl-prop :unread_mention_count) chats)))
 
-;;;###autoload
 (defun telega-chat-info (chat)
   "Show info about CHAT at point."
   (interactive
