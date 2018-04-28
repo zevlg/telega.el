@@ -6,20 +6,18 @@
 ;; Created: Fri Apr 20 13:52:34 2018
 ;; Keywords:
 
-;; This file is part of GNU Emacs.
-
-;; GNU Emacs is free software: you can redistribute it and/or modify
+;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; GNU Emacs is distributed in the hope that it will be useful,
+;; telega is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -120,6 +118,13 @@ Raise error if not found"
            (if call-cb
                (telega-server--callback-rm extra)
              (setq call-cb #'telega--on-event))
+
+           ;; Function call may return errors
+           (when (and (eq 'error (telega--tl-type value))
+                      (not (= (plist-get value :code) 406)))
+             (error (concat "telega-server error: "
+                            (plist-get value :message))))
+
            (funcall call-cb value)))
 
         ((string= cmd "error")
@@ -181,12 +186,15 @@ when result is received."
       (telega-server--callback-add telega-server--extra callback)
 
     ;; synchronous call aka exec
-    (let (telega-server--result)
+    (let ((cb-extra telega-server--extra)
+          telega-server--result)
       (telega-server--callback-add
        telega-server--extra
        (lambda (event) (setq telega-server--result event)))
 
-      (accept-process-output (telega-server--proc) telega-server-call-timeout)
+      (while (and (telega-server--callback-get cb-extra)
+                  (accept-process-output
+                   (telega-server--proc) telega-server-call-timeout)))
       telega-server--result)))
 
 (defun telega-server--start ()
