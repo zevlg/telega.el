@@ -159,6 +159,7 @@ otherwise add to existing active filters."
 
 (defun telega--filters-push (flist)
   "Set active filters list to FLIST."
+  (setq telega--undo-filters nil)
   (setq telega--filters (push flist telega--filters))
   (telega--filters-apply))
 
@@ -345,6 +346,7 @@ If FLIST is empty then return t."
 ;;;###autoload
 (defun telega-filter-by-pin ()
   "Filter only pinned chats."
+  (interactive)
   (telega-filter-add 'pin))
 
 (define-telega-filter unread (chat &optional n)
