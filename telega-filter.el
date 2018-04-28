@@ -46,7 +46,8 @@ For example:
     ("Users" . (type private))
     ("Channels" . (type channel))
     ("Groups" . (type basicgroup supergroup))
-    ("Bots" . (type bot)))
+    ("Bots" . (type bot))
+    ("Notify" . (notify)))
   "*Alist of custom filters for chats.
 In form (NAME . FILTER-SPEC)."
   :type 'alist
@@ -84,6 +85,7 @@ In form (NAME . FILTER-SPEC)."
     (define-key map (kbd "u") 'telega-filter-by-unread)
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "p") 'telega-filter-by-pin)
+    (define-key map (kbd "y") 'telega-filter-by-notify)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd "d") 'telega-filters-pop-last)
@@ -195,14 +197,12 @@ If second argument is omitted, then `telega--ordered-chats' is used."
 
 (defalias 'telega-chats-filter 'telega-filter-chats)
 
-;;;###autoload
 (defun telega-filters-reset ()
   "Reset all active filters to default."
   (interactive)
   (telega--filters-reset)
   (telega--filters-push (list telega-filter-default)))
 
-;;;###autoload
 (defun telega-filter-undo (&optional arg)
   "Undo last ARG filters."
   (interactive "p")
@@ -215,7 +215,6 @@ If second argument is omitted, then `telega--ordered-chats' is used."
   (telega--filters-apply)
   (message "Undo last filter!"))
 
-;;;###autoload
 (defun telega-filter-redo (&optional arg)
   "Redo last ARG filters."
   (interactive "p")
@@ -227,7 +226,6 @@ If second argument is omitted, then `telega--ordered-chats' is used."
   (telega--filters-apply)
   (message "Redo last filter!"))
 
-;;;###autoload
 (defun telega-filters-edit (flist)
   "Edit and reapply filters list."
   (interactive
@@ -240,7 +238,6 @@ If second argument is omitted, then `telega--ordered-chats' is used."
      (list new-flist)))
   (telega--filters-push flist))
 
-;;;###autoload
 (defun telega-filters-pop-last (n)
   "Pop last N filters."
   (interactive "p")
@@ -291,10 +288,12 @@ If FLIST is empty then return t."
   (let ((active-filters (car telega--filters)))
     (cond ((null active-filters) 'all)
           ((= (length active-filters) 1) (car active-filters))
-          ((eq 'all (car active-filters)) active-filters)
+          ((eq 'all (car active-filters))
+           (if (= 1 (length (cdr active-filters)))
+               (cadr active-filters)
+             active-filters))
           (t (cons 'all active-filters)))))
 
-;;;###autoload
 (defun telega-filters-negate ()
   "Negate active filters."
   (interactive)
@@ -304,7 +303,6 @@ If FLIST is empty then return t."
   "Matches CHAT by its type."
   (memq (telega-chat--type chat) ctypes))
 
-;;;###autoload
 (defun telega-filter-by-type (ctype)
   "Filter chats by its type."
   (interactive
@@ -323,7 +321,6 @@ If FLIST is empty then return t."
               (string-match regexp (plist-get user :last_name))
               (string-match regexp (plist-get user :username)))))))
 
-;;;###autoload
 (defun telega-filter-by-name (regexp)
   "Filter by REGEXP matching chat's title."
   (interactive (list (read-regexp "Chat name regexp: ")))
@@ -336,7 +333,6 @@ If FLIST is empty then return t."
       (error "No such custom filter \"%s\"" name))
     (telega-filter--test chat fspec)))
 
-;;;###autoload
 (defun telega-filter-by-custom (name)
   "Filter by custom filter."
   (interactive (list (let ((completion-ignore-case t))
@@ -350,7 +346,6 @@ If FLIST is empty then return t."
   "Matches if CHAT is pinned."
   (telega--tl-bool chat :is_pinned))
 
-;;;###autoload
 (defun telega-filter-by-pin ()
   "Filter only pinned chats."
   (interactive)
@@ -361,7 +356,6 @@ If FLIST is empty then return t."
 By default N is 1."
   (>= (plist-get chat :unread_count) (or n 1)))
 
-;;;###autoload
 (defun telega-filter-by-unread (n)
   "Filter chats with at least N unread messages."
   (interactive "p")
@@ -371,11 +365,19 @@ By default N is 1."
   "Matches CHAT with at least N unread mentions."
   (>= (plist-get chat :unread_mention_count) (or n 1)))
 
-;;;###autoload
 (defun telega-filter-by-mention (n)
   "Filter chats with at least N unread mentions."
   (interactive "p")
   (telega-filter-add 'mention n))
+
+(define-telega-filter notify (chat &optional n)
+  "Matches CHAT with at least N unread mentions."
+  (zerop (plist-get (plist-get chat :notification_settings) :mute_for)))
+
+(defun telega-filter-by-notify ()
+  "Filter chats with enabled notifications."
+  (interactive)
+  (telega-filter-add 'notify))
 
 (provide 'telega-filter)
 
