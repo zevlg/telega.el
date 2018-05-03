@@ -123,7 +123,9 @@ Predicate is called with one argument - CHAT."
 Keymap:
 \\{telega-root-mode-map}"
   :group 'telega-root
-;  (telega-root--setup-modeline)
+  (setq mode-line-buffer-identification
+        (telega-root--modeline-buffer-identification))
+
   ;; Reseting filters will trigger `telega-root--redisplay'
   (telega-filters-reset)
   (setq buffer-read-only t)
@@ -291,6 +293,12 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
       (assert button nil "button no found for chat: %s" (telega-chat--title chat))
       (telega-button-move button button-after))))
 
+(defun telega-root--user-update (user)
+  "Something changed in USER, private chat might need to be updated."
+  (let ((chat (telega-chat--get (plist-get user :id) 'offline)))
+    (when chat
+      (telega-root--chat-update chat))))
+
 (defun telega-root--filters-redisplay ()
   "Redisplay custom filters buttons."
   (with-telega-root-buffer
@@ -303,6 +311,41 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
   "Redisplay chats according to active filters."
   (message "TODO: `telega-root--chats-redisplay'")
   )
+
+(defun telega-root--modeline-buffer-identification ()
+  "Return `mode-line-buffer-identification' for the root buffer."
+  (let ((title "%12b")
+        (unread_unmuted
+         (unless (zerop telega--unread-unmuted-count)
+           (propertize (format " %d" telega--unread-unmuted-count)
+                       'face 'telega-unread-unmuted
+                       'local-map
+                       '(keymap
+                         (mode-line
+                          keymap (mouse-1 . telega-filter-unread-unmuted)))
+                       'mouse-face 'mode-line-highlight
+                       'help-echo
+                       "Click to filter chats with unread/unmuted messages"))))
+    (when (display-graphic-p)
+      (let ((logo-img (or telega--logo-image-cache
+                          (setq telega--logo-image-cache
+                                (find-image
+                                 '((:type xpm :file "etc/telegram-logo.xpm"
+                                          :ascent center)))))))
+        (setq title (concat "  " title))
+        (add-text-properties 0 1 (list 'display logo-img) title)))
+
+    (list title unread_unmuted)))
+
+(defun telega--on-updateUnreadMessageCount (event)
+  "Number of unread messages has changed."
+  (setq telega--unread-count (plist-get event :unread_count)
+        telega--unread-unmuted-count (plist-get event :unread_unmuted_count))
+
+  (with-telega-root-buffer
+    (setq mode-line-buffer-identification
+          (telega-root--modeline-buffer-identification))
+    (force-mode-line-update)))
 
 (provide 'telega-root)
 

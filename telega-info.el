@@ -37,12 +37,12 @@
          (info (gethash tlobj-id info-hash)))
     (unless info
       (setq info (telega-server--call
-                  (ecase tlobj-id
+                  (ecase tlobj-type
                     (user
                      `(:@type "getUser" :user_id ,tlobj-id))
-                    (secretchat
+                    (secretChat
                      `(:@type "getSecretChat" :secret_chat_id ,tlobj-id))
-                    (basicgroup
+                    (basicGroup
                      `(:@type "getBasicGroup" :basic_group_id ,tlobj-id))
                     (supergroup
                      `(:@type "getSupergroup" :supergroup_id ,tlobj-id)))))
@@ -51,7 +51,9 @@
     info))
 
 (defun telega--on-updateUser (event)
-  (telega--info-update (plist-get event :user)))
+  (let ((user (plist-get event :user)))
+    (telega--info-update user)
+    (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega--on-updateBasicGroup (event)
   (telega--info-update (plist-get event :basic_group)))
@@ -129,6 +131,12 @@ TLOBJ could be one of: user, basicgroup or supergroup."
 (defun telega-user--seen (user)
   "Return last seen status for the USER."
   (substring (plist-get (plist-get user :status) :@type) 10))
+
+(defun telega--on-updateUserStatus (event)
+  "User status has been changed."
+  (let ((user (telega-user--get (plist-get event :user_id))))
+    (plist-put user :status (plist-get event :status))
+    (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega-user--chats-in-common (with-user)
   "Return CHATS in common WITH-USER."

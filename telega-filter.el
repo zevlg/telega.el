@@ -41,7 +41,7 @@ For example:
   :group 'telega-filter)
 
 (defcustom telega-filters-custom
-  '(("All" . all)
+  '(("All" . (all))
     ("Secrets" . (type secret))
     ("Users" . (type private))
     ("Channels" . (type channel))
@@ -79,6 +79,7 @@ In form (NAME . FILTER-SPEC)."
 (defvar telega-filter-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd ":") 'telega-filters-edit)
+    (define-key map (kbd "e") 'telega-filters-edit)
     (define-key map (kbd "n") 'telega-filter-by-name)
     (define-key map (kbd "t") 'telega-filter-by-type)
     (define-key map (kbd "c") 'telega-filter-by-custom)
@@ -86,6 +87,7 @@ In form (NAME . FILTER-SPEC)."
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "p") 'telega-filter-by-pin)
     (define-key map (kbd "y") 'telega-filter-by-notify)
+    (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd "d") 'telega-filters-pop-last)
@@ -133,15 +135,12 @@ In form (NAME . FILTER-SPEC)."
 If prefix ARG is specified then set custom filter as active,
 otherwise add to existing active filters."
   (let* ((custom (button-get (button-at (point)) :value))
-         (ftype (if telega-filter-custom-expand
-                    (cadr custom)
-                  'custom))
-         (fargs (if telega-filter-custom-expand
-                    (cddr custom)
-                  (list (car custom)))))
+         (fspec (if telega-filter-custom-expand
+                    (cdr custom)
+                  (list 'custom (car custom)))))
     (if current-prefix-arg
-        (telega--filters-push (list (cons ftype fargs)))
-      (apply #'telega-filter-add ftype fargs))))
+        (telega--filters-push (list fspec))
+      (telega-filter-add fspec))))
 
 (defun telega-filter-button--set-inactivity-props (button)
   "Set properties based of inactivity of the BUTTON."
@@ -168,15 +167,15 @@ otherwise add to existing active filters."
 
 (defun telega--filters-push (flist)
   "Set active filters list to FLIST."
-  (setq telega--undo-filters nil)
-  (setq telega--filters (push flist telega--filters))
+  (unless (equal flist (car telega--filters))
+    (setq telega--undo-filters nil)
+    (setq telega--filters (push flist telega--filters)))
   (telega--filters-apply))
 
-(defun telega-filter-add (fname &rest fargs)
+(defun telega-filter-add (fspec)
   "Add filter specified by FSPEC.
 This filter can be undone with `telega-filter-undo'."
-  (telega--filters-push
-   (append (car telega--filters) (list (cons fname fargs)))))
+  (telega--filters-push (append (car telega--filters) (list fspec))))
 
 (defun telega-filter-chats (&rest filter-args)
   "Filter chats matching filter specification.
@@ -206,10 +205,10 @@ If second argument is omitted, then `telega--ordered-chats' is used."
 (defun telega-filter-undo (&optional arg)
   "Undo last ARG filters."
   (interactive "p")
-  (unless telega--filters
+  (unless (cdr telega--filters)
     (error "Nothing to undo"))
   (dotimes (_ arg)
-    (when telega--filters
+    (when (cdr telega--filters)
       (push (car telega--filters) telega--undo-filters)
       (setq telega--filters (cdr telega--filters))))
   (telega--filters-apply)
@@ -310,13 +309,13 @@ If FLIST is empty then return t."
           "Chat type: "
           (mapcar #'symbol-name telega-chat-types)
           nil t)))
-  (telega-filter-add 'type (intern ctype)))
+  (telega-filter-add `(type ,(intern ctype))))
 
 (define-telega-filter name (chat regexp)
   "Matches CHAT if its title matches REGEXP."
   (or (string-match regexp (telega-chat--title chat))
       (when (eq (telega-chat--type chat) 'private)
-        (let ((user (telega-chat--info chat)))
+        (let ((user (telega-chat--user chat)))
           (or (string-match regexp (plist-get user :first_name))
               (string-match regexp (plist-get user :last_name))
               (string-match regexp (plist-get user :username)))))))
@@ -324,7 +323,7 @@ If FLIST is empty then return t."
 (defun telega-filter-by-name (regexp)
   "Filter by REGEXP matching chat's title."
   (interactive (list (read-regexp "Chat name regexp: ")))
-  (telega-filter-add 'name regexp))
+  (telega-filter-add `(name ,regexp)))
 
 (define-telega-filter custom (chat name)
   "Matches CHAT if custom filte with NAME matches."
@@ -340,7 +339,7 @@ If FLIST is empty then return t."
                         "Custom filter: "
                         (mapcar #'car telega-filters-custom)
                         nil t))))
-  (telega-filter-add 'custom name))
+  (telega-filter-add `(custom ,name)))
 
 (define-telega-filter pin (chat)
   "Matches if CHAT is pinned."
@@ -359,7 +358,7 @@ By default N is 1."
 (defun telega-filter-by-unread (n)
   "Filter chats with at least N unread messages."
   (interactive "p")
-  (telega-filter-add 'unread n))
+  (telega-filter-add `(unread ,n)))
 
 (define-telega-filter mention (chat &optional n)
   "Matches CHAT with at least N unread mentions."
@@ -368,16 +367,35 @@ By default N is 1."
 (defun telega-filter-by-mention (n)
   "Filter chats with at least N unread mentions."
   (interactive "p")
-  (telega-filter-add 'mention n))
+  (telega-filter-add `(mention ,n)))
 
-(define-telega-filter notify (chat &optional n)
-  "Matches CHAT with at least N unread mentions."
+(define-telega-filter notify (chat)
+  "Matches CHAT with enabled notifications."
   (zerop (plist-get (plist-get chat :notification_settings) :mute_for)))
 
 (defun telega-filter-by-notify ()
   "Filter chats with enabled notifications."
   (interactive)
   (telega-filter-add 'notify))
+
+(define-telega-filter user-status (chat &rest valid-statuses)
+  "Matches private CHATs with user status in VALID-STATUSES."
+  (and (eq (telega-chat--type chat) 'private)
+       (member (telega-user--seen (telega-chat--user chat)) valid-statuses)))
+
+(defun telega-filter-by-user-status (status)
+  "Filter private chats by its user STATUS."
+  (interactive (let ((completion-ignore-case t))
+                 (list (completing-read
+                        "Member status: "
+                        '("Recently" "Online" "Offline" "LastWeek" "LastMonth" "Empty")
+                        nil t))))
+  (telega-filter-add `(user-status ,status)))
+
+(defun telega-filter-unread-unmuted ()
+  "Filter unmuted chats with unread messages."
+  (interactive)
+  (telega--filters-push '(notify unread)))
 
 (provide 'telega-filter)
 

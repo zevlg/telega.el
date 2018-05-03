@@ -46,6 +46,10 @@
 (defvar telega--info nil "Alist of (TYPE . INFO-TABLE)")
 (defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE)")
 
+(defvar telega--logo-image-cache nil "Cached loaded logo image.")
+(defvar telega--unread-count 0 "Total number of unread messages.")
+(defvar telega--unread-unmuted-count 0 "Total number of unread/unmuted messages.")
+
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."

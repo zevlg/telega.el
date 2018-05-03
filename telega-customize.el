@@ -96,6 +96,11 @@ Nice looking middle dots can be done by setting
   :type '(repeat face)
   :group 'telega)
 
+(defface telega-unread-unmuted
+  '((t :inherit error))
+  "Face used to display number of unread/unmuted messages in modeline."
+  :group 'telega)
+
 
 (defgroup telega-hooks nil
   "Hooks called by telega."
@@ -113,6 +118,11 @@ Nice looking middle dots can be done by setting
 
 (defcustom telega-chats-fetched-hook nil
   "Hook called when all chats list has been received."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-user-update-hook '(telega-root--user-update)
+  "Hook called with single argument USER, when USER's info is updated."
   :type 'hook
   :group 'telega-hooks)
 

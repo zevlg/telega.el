@@ -54,10 +54,11 @@
       (puthash chat-id chat telega--chats)
       (push chat telega--ordered-chats))))
 
-(defun telega-chat--get (chat-id)
-  "Get chat by its CHAT-ID."
+(defun telega-chat--get (chat-id &optional offline-p)
+  "Get chat by its CHAT-ID.
+If OFFLINE-P is non-nil then do not request the telegram-server."
   (let ((chat (gethash chat-id telega--chats)))
-    (unless chat
+    (when (and (not chat) (not offline-p))
       (setq chat (telega-server--call
                   `(:@type "getChat" :chat_id ,chat-id)))
       (assert chat nil "getChat timed out chat_id=%d" chat-id)
@@ -77,6 +78,10 @@ It could be user, secretChat, basicGroup or supergroup."
        (telega--info 'basicGroup (plist-get chat-type :basic_group_id)))
       (chatTypeSupergroup
        (telega--info 'supergroup (plist-get chat-type :supergroup_id))))))
+(defalias 'telega-chat--user 'telega-chat--info)
+(defalias 'telega-chat--secretchat 'telega-chat--info)
+(defalias 'telega-chat--basicgroup 'telega-chat--info)
+(defalias 'telega-chat--supergroup 'telega-chat--info)
 
 (defun telega-chat--me ()
   "Chat with myself, a.k.a Saved Messages."
@@ -97,7 +102,7 @@ or channels."
            'channel)
           ((and (not no-interpret)
                 (eq type-sym 'private)
-                (telega-user--bot-p (telega-chat--info chat)))
+                (telega-user--bot-p (telega-chat--user chat)))
            'bot)
           (t type-sym))))
 
@@ -110,7 +115,7 @@ or channels."
     (if (string-empty-p title)
         (ecase (telega-chat--type chat)
           (private
-           (telega-user--title (telega-chat--info chat))))
+           (telega-user--title (telega-chat--user chat))))
       title)))
 
 (defun telega-chat--reorder (chat order)
@@ -164,8 +169,10 @@ or channels."
                (plist-get event :unread_mention_count))
     (telega-root--chat-update chat)))
 
-(defalias 'telega--on-updateChatUnreadMentionRead
-  'telega--on-updateChatUnreadMentionCount)
+(defun telega--on-updateMessageMentionRead (event)
+  (telega--on-updateChatUnreadMentionCount event)
+  ;; TODO: might be workout with message of `:message_id' as well
+  )
 
 (defun telega--on-updateChatReplyMarkup (event)
   (let ((chat (telega-chat--get (plist-get event :chat_id))))
