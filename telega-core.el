@@ -87,7 +87,7 @@ Done when telega server is ready to receive queries."
   `(plist-put ,tl-obj :@type (symbol-name ',type-sym)))
 
 (defmacro telega--tl-bool (tl-obj prop)
-  `(not (eq (plist-get ,tl-obj ,prop) ,json-false)))
+  `(eq t (plist-get ,tl-obj ,prop)))
 
 (defmacro telega--tl-prop (prop)
   "Generates function to get property PROP."

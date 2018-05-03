@@ -87,6 +87,7 @@ In form (NAME . FILTER-SPEC)."
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "p") 'telega-filter-by-pin)
     (define-key map (kbd "y") 'telega-filter-by-notify)
+    (define-key map (kbd "v") 'telega-filter-by-verified)
     (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
@@ -391,6 +392,14 @@ By default N is 1."
                         '("Recently" "Online" "Offline" "LastWeek" "LastMonth" "Empty")
                         nil t))))
   (telega-filter-add `(user-status ,status)))
+
+(define-telega-filter verified (chat)
+  "Matches only verified chats."
+  (telega--tl-bool (telega-chat--info chat) :is_verified))
+
+(defun telega-filter-by-verified ()
+  "Filter verified chats."
+  (telega-filter-add 'verified))
 
 (defun telega-filter-unread-unmuted ()
   "Filter unmuted chats with unread messages."
