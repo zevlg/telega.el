@@ -254,7 +254,7 @@ or channels."
 
 (defun telega-chat--getPinnedMessage (chat)
   "Get pinned message for the CHAT, if any."
-  (when (and (eq (telega-chat--type chat) 'supergroup)
+  (when (and (eq (telega-chat--type chat 'raw) 'supergroup)
              (not (zerop (plist-get
                           (telega--full-info (telega-chat--supergroup chat))
                           :pinned_message_id))))
