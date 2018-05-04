@@ -26,11 +26,16 @@
 ;;; Code:
 (require 'telega-core)
 
+(defcustom telega-chat-button-width 28
+  "*Width for the chat buttons."
+  :type 'integer
+  :group 'telega)
+
 (declare-function telega-root--chat-update "telega-root" (chat))
 
 (defvar telega-chat-button-map
   (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map button-buffer-map)
+    (set-keymap-parent map button-map)
     (define-key map (kbd "i") 'telega-chat-info)
     (define-key map (kbd "h") 'telega-chat-info)
     (define-key map (kbd "DEL") 'telega-chat-delete)
@@ -39,13 +44,39 @@
 
 (define-button-type 'telega-chat
   :supertype 'telega
-  :format '("[" (telega-chat--title
-                 :min 25 :max 25
-                 :align left :align-char ?\s
-                 :elide t :elide-trail 0)
-            "]\n")
+  :format #'telega-chat-button--formatter
   'keymap telega-chat-button-map
-  'action 'telega-chat-activate)
+  'action #'telega-chat-button--action)
+
+(defun telega-chat-button--formatter (chat)
+  "Formatter for the CHAT button."
+  (let ((title (telega-chat--title chat))
+        (unread (plist-get chat :unread_count))
+        (mentions (plist-get chat :unread_mention_count))
+        (pinned-p (telega--tl-bool chat :is_pinned))
+        (muted-p (telega-chat--muted-p chat))
+        (umwidth 7))
+    `("[" (,title
+           :min ,(- telega-chat-button-width umwidth)
+           :max ,(- telega-chat-button-width umwidth)
+           :align left :align-char ?\s :elide t)
+      ((,(unless (zerop unread)
+           (propertize (number-to-string unread)
+                       'face (if muted-p
+                                 'telega-muted-count
+                               'telega-unmuted-count)))
+        ,(unless (zerop mentions)
+           (propertize (format "@%d" mentions) 'face 'telega-mention-count)))
+       :min ,umwidth :max ,umwidth :elide t :align right)
+      "]"
+      ,(when pinned-p
+         telega-pin-string)
+      "\n")))
+
+(defun telega-chat-button--action (button)
+  "Action to take when chat BUTTON is pressed."
+  (message "TODO: `telega-chat-button--action'")
+  )
 
 (defsubst telega-chat--ensure (chat)
   "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'."
@@ -106,8 +137,12 @@ or channels."
            'bot)
           (t type-sym))))
 
-(defun telega-chat--order (chat)
+(defsubst telega-chat--order (chat)
   (plist-get chat :order))
+
+(defsubst telega-chat--muted-p (chat)
+  "Return non-nil if CHAT is muted."
+  (> (plist-get (plist-get chat :notification_settings) :mute_for) 0))
 
 (defun telega-chat--title (chat)
   "Return title for the CHAT."
@@ -182,7 +217,7 @@ or channels."
 
 (defun telega--on-updateChatLastMessage (event)
   (let ((chat (telega-chat--get (plist-get event :chat_id))))
-    (plist-put chat :last_message 
+    (plist-put chat :last_message
                (plist-get event :last_message))
     (telega-chat--reorder chat (plist-get event :order))
     (telega-root--chat-update chat)))
@@ -217,6 +252,16 @@ or channels."
               :limit 1000)
      #'telega-chat--on-getChats)))
 
+(defun telega-chat--getPinnedMessage (chat)
+  "Get pinned message for the CHAT, if any."
+  (when (and (eq (telega-chat--type chat) 'supergroup)
+             (not (zerop (plist-get
+                          (telega--full-info (telega-chat--supergroup chat))
+                          :pinned_message_id))))
+    (telega-server--call
+     `(:@type "getChatPinnedMessage" :chat_id ,(plist-get chat :id)))))
+
+
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
   (message "TODO: `telega-chats--kill-em-all'")
@@ -238,7 +283,7 @@ or channels."
   (unless chat
     (error "No chat at point"))
 
-  (with-help-window (format " *Telegram Chat Info*" (telega-chat--title chat))
+  (with-help-window " *Telegram Chat Info*"
     (set-buffer standard-output)
     (insert (format "Title: %s\n" (telega-chat--title chat)))
     (insert (format "Id: %d Type: %S Order: %s\n"
@@ -254,8 +299,24 @@ or channels."
                         "disabled"))))
 
     (insert "\n")
-    (telega-info--insert (plist-get chat :type))
+    (telega-info--insert (plist-get chat :type) chat)
     ))
+
+
+;;; Chat Buffer
+(defgroup telega-chat nil
+  "Customization for telega-chat-mode"
+  :prefix "telega-chat-"
+  :group 'telega)
+
+(define-derived-mode telega-chat-mode nil "Telega-Chat"
+  "The mode for telega chat buffer.
+Keymap:
+\\{telega-chat-mode-map}"
+  :group 'telega-chat
+
+  ;; TODO
+  )
 
 (provide 'telega-chat)
 

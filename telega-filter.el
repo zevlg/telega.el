@@ -41,13 +41,13 @@ For example:
   :group 'telega-filter)
 
 (defcustom telega-filters-custom
-  '(("All" . (all))
+  '(("All" . all)
     ("Secrets" . (type secret))
     ("Users" . (type private))
     ("Channels" . (type channel))
     ("Groups" . (type basicgroup supergroup))
     ("Bots" . (type bot))
-    ("Notify" . (notify)))
+    ("Notify" . notify))
   "*Alist of custom filters for chats.
 In form (NAME . FILTER-SPEC)."
   :type 'alist
@@ -359,7 +359,9 @@ By default N is 1."
 (defun telega-filter-by-unread (n)
   "Filter chats with at least N unread messages."
   (interactive "p")
-  (telega-filter-add `(unread ,n)))
+  (if (= n 1)
+      (telega-filter-add 'unread)
+    (telega-filter-add `(unread ,n))))
 
 (define-telega-filter mention (chat &optional n)
   "Matches CHAT with at least N unread mentions."
@@ -372,7 +374,7 @@ By default N is 1."
 
 (define-telega-filter notify (chat)
   "Matches CHAT with enabled notifications."
-  (zerop (plist-get (plist-get chat :notification_settings) :mute_for)))
+  (not (telega-chat--muted-p chat)))
 
 (defun telega-filter-by-notify ()
   "Filter chats with enabled notifications."
