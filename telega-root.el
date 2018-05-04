@@ -106,14 +106,17 @@ Predicate is called with one argument - CHAT."
     (define-key map "\e\t" 'telega-button-backward)
     (define-key map [backtab] 'telega-button-backward)
 
-    (set-keymap-parent map button-buffer-map)
     (define-key map (kbd "/") telega-filter-map)
 
-    (define-key map (kbd "? w") 'telega-desribe-connected-websites)
+    (define-key map (kbd "? w") 'telega-describe-connected-websites)
+    (define-key map (kbd "? s") 'telega-describe-active-sessions)
+    (define-key map (kbd "? t") 'telega-describe-terms-of-service)
+
     (define-key map (kbd "C-/") 'telega-filter-undo)
     (define-key map (kbd "C-_") 'telega-filter-undo)
     (define-key map (kbd "C-x C-/") 'telega-filter-redo)
     (define-key map (kbd "C-x C-_") 'telega-filter-redo)
+
     (define-key map (kbd "q") 'telega-kill)
     map)
   "The key map for telega root buffer.")
@@ -187,6 +190,8 @@ Inhibits read-only flag."
 (defun telega-status--set (new-status &optional raw)
   "Set new status for the telegram connection.
 If RAW is given then do not modify status for animation."
+  (telega-debug "Status: %s --> %s" telega--status new-status)
+
   (setq telega--status new-status)
   (unless raw
     (if (string-match "ing" telega--status)
@@ -318,7 +323,7 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
         (unread_unmuted
          (unless (zerop telega--unread-unmuted-count)
            (propertize (format " %d" telega--unread-unmuted-count)
-                       'face 'telega-unread-unmuted
+                       'face 'telega-unread-unmuted-modeline
                        'local-map
                        '(keymap
                          (mode-line

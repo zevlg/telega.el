@@ -128,6 +128,15 @@ TLOBJ could be one of: user, basicgroup or supergroup."
             (plist-get user :last_name)
             (plist-get user :username))))
 
+(defun telega-user--short-name (user)
+  "Return short name for the USER."
+  (let ((username (plist-get user :username)))
+    (if (string-empty-p username)
+        (concat (plist-get user :first_name)
+                " "
+                (plist-get user :last_name))
+      (concat "@" username))))
+
 (defun telega-user--seen (user)
   "Return last seen status for the USER."
   (substring (plist-get (plist-get user :status) :@type) 10))
@@ -218,14 +227,29 @@ TLOBJ could be one of: user, basicgroup or supergroup."
           members)
     ))
 
-(defun telega-info--insert-supergroup (supergroup)
-  (let* ((full-info (telega--full-info supergroup)))
+(defun telega-info--insert-supergroup (supergroup &optional chat)
+  (let* ((full-info (telega--full-info supergroup))
+         (descr (plist-get full-info :description))
+         (pin_msg_id (plist-get full-info :pinned_message_id)))
+    (unless (string-empty-p descr)
+      (insert "Desc: " descr)
+      (let ((fill-prefix "      "))
+        (fill-paragraph))
+      (insert "\n"))
+
+    (unless (zerop pin_msg_id)
+      (insert "----(pinned message)----\n")
+      (insert (telega-msg-format
+               (telega-chat--getPinnedMessage chat)))
+      (unless (= (preceding-char) ?\n) (insert "\n"))
+      (insert "------------------------\n"))
+
     (insert "!TODO!\n")
     (insert (format "Info: %S\n\n" supergroup))
     (insert (format "Full: %S" full-info))
     ))
 
-(defun telega-info--insert (tlobj)
+(defun telega-info--insert (tlobj chat)
   "Insert information about TLOBJ into current buffer."
   (ecase (telega--tl-type tlobj)
     (chatTypePrivate
@@ -239,7 +263,51 @@ TLOBJ could be one of: user, basicgroup or supergroup."
       (telega--info 'basicGroup (plist-get tlobj :basic_group_id))))
     (chatTypeSupergroup
      (telega-info--insert-supergroup
-      (telega--info 'supergroup (plist-get tlobj :supergroup_id))))))
+      (telega--info 'supergroup (plist-get tlobj :supergroup_id)) chat))))
+
+(defun telega-describe-active-sessions ()
+  "Describe active sessions."
+  (interactive)
+  (with-help-window "*Telega Active Sessions*"
+    (set-buffer standard-output)
+    (mapc (lambda (session)
+            (let ((app_name (plist-get session :application_name))
+                  (app_ver (plist-get session :application_version))
+                  (api_id (plist-get session :api_id))
+                  (official-p (telega--tl-bool session :is_official_application))
+                  (current-p (telega--tl-bool session :is_current))
+                  (device (plist-get session :device_model))
+                  (platform (plist-get session :platform))
+                  (sys_ver (plist-get session :system_version))
+                  (ip (plist-get session :ip))
+                  (country (plist-get session :country))
+                  (login-ts (plist-get session :log_in_date))
+                  (last-ts (plist-get session :last_active_date)))
+              (insert (format "%s v%s " app_name app_ver)
+                      (if official-p
+                          "(official)"
+                        (format "(ID:%s)" api_id))
+                      (if current-p
+                          " (current)"
+                        "")
+                      "\n")
+              (insert (format "%s, %s %s\n" device platform sys_ver))
+              (insert (format "%s @%s\n" ip country))
+              (insert (format "Login: %s, Last: %s\n"
+                              (telega-fmt-timestamp login-ts)
+                              (telega-fmt-timestamp last-ts)))
+              (insert "\n")
+              ))
+          (plist-get (telega-server--call '(:@type "getActiveSessions"))
+                     :sessions))))
+
+(defun telega-describe-terms-of-service ()
+  "Describe terms of service use."
+  (interactive)
+  (with-help-window "*Telega Terms Of Service*"
+    (set-buffer standard-output)
+    (insert (plist-get (telega-server--call `(:@type "getTermsOfService"))
+                       :text))))
 
 (provide 'telega-info)
 
