@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Mon Apr 23 18:11:45 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 (defgroup telega nil
@@ -79,27 +79,60 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'bool
   :group 'telega)
 
+(defcustom telega-socks5-proxy nil
+  "*Plist specifying socks5 proxy to use.
+`(:server <SERVER> :port <PORT> :username <NAME> :password <PASSWORD>)"
+  :type 'plist
+  :group 'telega)
+
 (defcustom telega-eliding-string "..."
   "*String used for eliding long string in formats.
 Nice looking middle dots can be done by setting
-`telega-eliding-string' to `(make-string 3 #x00b7)'."
+`telega-eliding-string' to `(make-string 3 #x00b7)'
+or set it to \"\\u2026\" or \"\\u22ef\" to use unicode char for
+ellipsis."
   :type 'string
   :group 'telega)
 
-(defcustom telega-tracking '(type private secret basicgroup supergroup)
-  "*Filter for chats being tracked."
+(defcustom telega-pin-string "p"
+  "*String used as pin.
+You could use \"\\U0001F4CC\" if you have utf-8 locale."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-week-start-day 1
+  "*The day of the week on which a week in the calendar begins.
+0 means Sunday, 1 means Monday (default), and so on."
+  :type 'integer
+  :group 'telega)
+
+(defcustom telega-week-day-names
+  '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")
+  "*Week day names to use when printing times."
   :type 'list
   :group 'telega)
 
-(defcustom telega-track-faces-priorities '(lui-highlight-face)
-  "A list of faces which should show up in the tracking."
-  :type '(repeat face)
-  :group 'telega)
-
-(defface telega-unread-unmuted
+
+;;; Faces
+(defface telega-unread-unmuted-modeline
   '((t :inherit error))
   "Face used to display number of unread/unmuted messages in modeline."
   :group 'telega)
+
+(defface telega-muted-count
+  `((t :inherit shadow))
+  "Face to display count of messages in muted chats."
+  :group 'telega)
+
+(defface telega-unmuted-count
+  '((t :inherit default :foreground "blue"))
+  "Face to display count messages in unmuted chats."
+  :group 'telega)
+
+(defface telega-mention-count
+  '((t :weight bold :foreground "blue"))
+  "Face to display count of the mentions."
+  :group 'telega-mention-count)
 
 
 (defgroup telega-hooks nil

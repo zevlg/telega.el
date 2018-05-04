@@ -85,8 +85,8 @@ With prefix arg force quit without confirmation."
                     :api_hash ,(cdr telega-app)
                     :system_language_code ,telega-language
                     :application_version ,telega-version
-                    :device_model "desktop"
-                    :system_version "unknown"
+                    :device_model "Emacs"
+                    :system_version ,emacs-version
                     :ignore_file_names ,json-false
                     :enable_storage_optimizer t
             ))))
@@ -136,7 +136,12 @@ With prefix arg force quit without confirmation."
      `(:@type "checkAuthenticationPassword" :password ,passwd))))
 
 (defun telega--set-options ()
-  "Send `telega-options-plist' to server."
+  "Send proxy settings and `telega-options-plist' to server."
+  ;; Set proxy if any
+  (when telega-socks5-proxy
+    (telega-server--send
+     `(:@type "setProxy" :proxy (:@type "proxySocks5" ,@telega-socks5-proxy))))
+
   (cl-loop for (prop-name value) in telega-options-plist
            do (telega-server--send
                `(:@type "setOption" :name ,prop-name
