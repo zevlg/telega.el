@@ -37,7 +37,7 @@ Recent Chats
 |Vasya Pupkin                    1|
     11:11V hello there
 #FBI leaks                    11@1#
-    10:04:18V just wipe the file and forget
+    10.04.18V just wipe the file and forget
 [Telegram Resistance             1]
     14:14V @vpupkin> Can you see it?
 (Seliger                       4@1)
@@ -67,7 +67,7 @@ v - verified (+4277 for example)
 Дата:
 - Если сегодня, то формат ЧАС:МИНУТА
 - Eсли на этой неделе то трёхбуквенный ДЕНЬ НЕДЕЛИ
-- Если другое то ДЕНЬ:МЕСЯЦ:ГОД (год двухбуквенный)
+- Если другое то ДЕНЬ.МЕСЯЦ.ГОД (год двухбуквенный)
 
 Bots
 ----
