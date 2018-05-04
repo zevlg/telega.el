@@ -102,15 +102,20 @@ Done when telega server is ready to receive queries."
          (elide (plist-get attrs :elide))
          (elide-str (or (plist-get attrs :elide-string) telega-eliding-string))
          (elide-trail (or (plist-get attrs :elide-trail) 0))
-         (trunstr (concat (substring estr 0 (- max (length elide-str) elide-trail))
-                          elide-str)))
-    (when (> elide-trail 0)
-      (setq trunstr (concat trunstr (substring estr (- elide-trail)))))
-    trunstr))
+         (estr-trail (if (> elide-trail 0) (substring estr (- elide-trail)) ""))
+         (estr-lead (substring estr 0 (- max (length elide-str) elide-trail)))
+         result)
+    ;; Correct truncstr in case of multibyte chars
+    (while (and (not (string-empty-p estr-lead))
+                (< max (string-width
+                        (setq result (concat estr-lead elide-str estr-trail)))))
+      (setq estr-lead (substring estr-lead 0 -1)))
+
+    result))
 
 (defun telega-fmt-align (estr &rest attrs)
   (let* ((min (plist-get attrs :min))
-         (width (- min (length estr)))
+         (width (- min (string-width estr)))
          (align (plist-get attrs :align))
          (align-char (or (plist-get attrs :align-char) ?\s))
          (left (make-string (/ width 2) align-char))
@@ -123,9 +128,9 @@ Done when telega server is ready to receive queries."
 (defun telega-fmt-eval-attrs (estr &rest attrs)
   (let* ((max (plist-get attrs :max))
          (min (plist-get attrs :min))
-         (ret-str (cond ((and max (> (length estr) max))
+         (ret-str (cond ((and max (> (string-width estr) max))
                          (apply #'telega-fmt-truncate estr attrs))
-                        ((and min (< (length estr) min))
+                        ((and min (< (string-width estr) min))
                          (apply #'telega-fmt-align estr attrs))
                         (t estr)))
          (face (plist-get attrs :face)))
@@ -161,14 +166,34 @@ Done when telega server is ready to receive queries."
                (apply #'telega-fmt-eval-elem elem value))
              (cl-remove-if #'null fmt-simple) ""))
 
-(defun telega-fmt-timestamp (unixtime)
+(defsubst telega--time-at00 (timestamp &optional decoded-ts)
+  (let ((dt (or decoded-ts (decode-time timestamp))))
+    (1+ (- timestamp (* 3600 (nth 2 dt)) (* 60 (nth 1 dt)) (nth 0 dt)))))
+
+(defun telega-fmt-timestamp (timestamp)
+  "Format unix TIMESTAMP to human readable form."
   ;; - HH:MM      if today
   ;; - Mon/Tue/.. if on this week
-  ;; - DD:MM:YY   otherwise
-  (let ((dtime (decode-time unixtime)))
-    (format "%02d:%02d:%02d"
-            (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000)))
-  )
+  ;; - DD.MM.YY   otherwise
+  (let* ((dtime (decode-time timestamp))
+         (current-ts (time-to-seconds (current-time)))
+         (ctime (decode-time current-ts))
+         (today00 (telega--time-at00 current-ts ctime)))
+    (if (> timestamp today00)
+        (format "%02d:%02d" (nth 2 dtime) (nth 1 dtime))
+
+      (let* ((week-day (nth 6 ctime))
+             (mdays (+ week-day
+                       (- (if (< week-day telega-week-start-day) 7 0)
+                          telega-week-start-day)))
+             (week-start00 (telega--time-at00
+                            (- current-ts (* mdays 24 3600)))))
+        (if (> timestamp week-start00)
+            (nth (nth 6 dtime) telega-week-day-names)
+
+          (format "%02d.%02d.%02d"
+                  (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000))))
+      )))
 
 ;;; Buttons for telega
 
