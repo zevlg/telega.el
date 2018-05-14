@@ -306,7 +306,7 @@ If FLIST is empty then return t."
 (defun telega-filter-by-type (ctype)
   "Filter chats by its type."
   (interactive
-   (list (completing-read
+   (list (funcall telega-completing-read-function
           "Chat type: "
           (mapcar #'symbol-name telega-chat-types)
           nil t)))
@@ -315,11 +315,10 @@ If FLIST is empty then return t."
 (define-telega-filter name (chat regexp)
   "Matches CHAT if its title matches REGEXP."
   (or (string-match regexp (telega-chat--title chat))
-      (when (eq (telega-chat--type chat) 'private)
-        (let ((user (telega-chat--user chat)))
-          (or (string-match regexp (plist-get user :first_name))
-              (string-match regexp (plist-get user :last_name))
-              (string-match regexp (plist-get user :username)))))))
+      (let ((info (telega-chat--info chat)))
+        (or (string-match regexp (or (plist-get info :first_name) ""))
+            (string-match regexp (or (plist-get info :last_name) ""))
+            (string-match regexp (or (plist-get info :username) ""))))))
 
 (defun telega-filter-by-name (regexp)
   "Filter by REGEXP matching chat's title."
@@ -336,7 +335,7 @@ If FLIST is empty then return t."
 (defun telega-filter-by-custom (name)
   "Filter by custom filter."
   (interactive (list (let ((completion-ignore-case t))
-                       (completing-read
+                       (funcall telega-completing-read-function
                         "Custom filter: "
                         (mapcar #'car telega-filters-custom)
                         nil t))))
@@ -389,7 +388,7 @@ By default N is 1."
 (defun telega-filter-by-user-status (status)
   "Filter private chats by its user STATUS."
   (interactive (let ((completion-ignore-case t))
-                 (list (completing-read
+                 (list (funcall telega-completing-read-function
                         "Member status: "
                         '("Recently" "Online" "Offline" "LastWeek" "LastMonth" "Empty")
                         nil t))))
@@ -407,6 +406,19 @@ By default N is 1."
   "Filter unmuted chats with unread messages."
   (interactive)
   (telega--filters-push '(notify unread)))
+
+(define-telega-filter ids (chat &rest ids)
+  "Matches only chats which :id is in IDS."
+  (memq (plist-get chat :id) ids))
+
+(defun telega-filter-by-created-by-me ()
+  "Filter public chats created by me."
+  (interactive)
+  (let ((chat-ids (mapcar #'identity
+                          (plist-get (telega-server--call
+                                      `(:@type "getCreatedPublicChats"))
+                                     :chat_ids))))
+    (telega-filter-add `(ids ,@chat-ids))))
 
 (provide 'telega-filter)
 
