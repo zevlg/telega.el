@@ -26,6 +26,13 @@
 ;;; Code:
 (require 'notifications)
 
+;;
+;; (notifications-notify
+;;   :title "title" :body "here test"
+;;   :app-icon (find-library-name "etc/telegram-logo.svg"))
+;;
+;;
+
 (defcustom telega-notifications-enabled t
   "*Non-nil to enable notifications for telegram messages."
   :type 'boolean
