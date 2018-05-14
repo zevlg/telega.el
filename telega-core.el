@@ -316,7 +316,7 @@ if button is futher referenced."
          (end (set-marker (make-marker) (button-end button)))
          (button-repr (or new-label (buffer-substring start end))))
     (assert (or (<= point start)
-                (>= point end) "Can't move button inside button position"))
+                (>= point end)) nil "Can't move button inside button position")
     (goto-char point)
     (prog1
         (point-marker)
