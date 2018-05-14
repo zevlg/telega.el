@@ -643,7 +643,7 @@ If FROM-MSG is nil then use last message in chat."
 
       ;; NOTE: last-message already inserted before loading history,
       ;; so no need to update `telega-chatbuf--output-marker'
-      (assert oldest-msg
+      (assert oldest-msg nil
               "Last message must be displayed before loading history")
 
       (mapc (lambda (msg)
