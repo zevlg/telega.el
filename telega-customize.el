@@ -112,8 +112,69 @@ You could use \"\\U0001F4CC\" if you have utf-8 locale."
   :type 'list
   :group 'telega)
 
+(defcustom telega-chat-input-prompt ">>>"
+  "*Prompt for the chat buffers."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-chat-reply-prompt "`->"
+  "*Prompt to use when replying to message."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-chat-edit-prompt "`->"
+  "*Prompt to use when replying to message."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-chat-input-ring-size 50
+  "*Size of the chat input history."
+  :type 'integer
+  :group 'telega-chat)
+
+(defcustom telega-chat-fill-column fill-column
+  "*Column to fill messages to."
+  :type 'integer
+  :group 'telega-chat)
+
+(defcustom telega-chat-msg-pending "*"
+  "Mark to use for pending messages."
+  :type 'string
+  :group 'telega-chat)
+
+(defcustom telega-chat-msg-succeeded "v"
+  "Mark messages that are successfully sent to server."
+  :type 'string
+  :group 'telega-chat)
+
+(defcustom telega-chat-msg-failed (propertize "!" 'face 'error)
+  "Mark messages that have sending state failed."
+  :type 'string
+  :group 'telega-chat)
+
+(defcustom telega-chat-initial-history-messages 50
+  "Number of messages to fetch, when entering new chat."
+  :type 'integer
+  :group 'telega-chat)
+
+(defcustom telega-chat-insert-date-breaks t
+  "*Non-nil to insert breaks inbetween messages of different dates.
+TODO"
+  :type 'boolean
+  :group 'telega-chat)
+
+(defcustom telega-completing-read-function 'ido-completing-read
+  "Completing read function to use."
+  :type 'function
+  :group 'telega)
+
 
 ;;; Faces
+(defface telega-chat-prompt
+  '((t (:inherit default :weight bold)))
+  "Face for chat input prompt"
+  :group 'telega)
+
 (defface telega-unread-unmuted-modeline
   '((t :inherit error))
   "Face used to display number of unread/unmuted messages in modeline."
@@ -132,7 +193,57 @@ You could use \"\\U0001F4CC\" if you have utf-8 locale."
 (defface telega-mention-count
   '((t :weight bold :foreground "blue"))
   "Face to display count of the mentions."
-  :group 'telega-mention-count)
+  :group 'telega)
+
+(defface telega-entity-type-mention
+  '((t :inherit default :foreground "blue"))
+  "Face to display @mentions."
+  :group 'telega-chat)
+
+(defface telega-entity-type-hashtag
+  '((t :inherit default :foreground "blue"))
+  "Face to display #hashtags."
+  :group 'telega-chat)
+
+(defface telega-entity-type-cashtag
+  '((t :inherit default :foreground "blue"))
+  "Face to display #hashtags."
+  :group 'telega-chat)
+
+(defface telega-entity-type-botcommand
+  '((t :inherit default :foreground "blue"))
+  "Face to display /command if there is bot in chat."
+  :group 'telega-chat)
+
+(defface telega-entity-type-bold
+  '((t :inherit bold))
+  "Face to display bold text."
+  :group 'telega-chat)
+
+(defface telega-entity-type-italic
+  '((t :inherit italic))
+  "Face to display italic text."
+  :group 'telega-chat)
+
+(defface telega-entity-type-code
+  '((t :family "Monospace Serif"))
+  "Face to display code."
+  :group 'telega-chat)
+
+(defface telega-entity-type-pre
+  '((t :family "Monospace Serif"))
+  "Face to display text ala <pre> HTML tag."
+  :group 'telega-chat)
+
+(defface telega-chat-user-title
+  '((t :inherit 'widget-field))
+  "Face to display user title in chat buffers."
+  :group 'telega-chat)
+
+(defface telega-chat-self-title
+  '((t :inherit 'widget-field :bold t))
+  "Face to display title of myself in chat buffers."
+  :group 'telega-chat)
 
 
 (defgroup telega-hooks nil
