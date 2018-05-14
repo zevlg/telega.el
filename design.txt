@@ -180,6 +180,7 @@ Filters:
 Формат с локальными переменными - :format-ext (aka extended)
 
 (ELEM :min :max :elide :elide-trail :elide-string :align
+      :fill :fill-prefix t :fill-column <NUM>
       :align-char :face)
 
 Где ELEM может быть одним из:
@@ -200,6 +201,8 @@ Filters:
   :align         - куда алигнить `left', `right', `center'
   :align-char    - каким символом паддить после алигна (SPACE по умолчанию)
   :face          - face которую использовать для этого ELEM
+  :fill          - Как делать fill для строки
+  :fill-prefix   - Вставлять префикс из пробелов
 
 Сделать компилятор для форматов: компилятор принимает на вход функцию
 для создания локальных переменных, формат и дефиниции для форматных
@@ -239,12 +242,58 @@ User2 msg2
  Chat buffer
 =============
 
-- use lui based mode
+TODO: подумать чо как тут должно выглядить
+
+- use lui based mode.  Лучше всё таки свой режим сделать, чтобы не
+  ограничиваться и не зависить от lui, будет больше контроля хоть и
+  придётся переимплементить функционал из lui
 
 17:15W @vpupkin> message from v pupkin
 17:19V @zevlg> message from me, highlighted with different background color
 ------------------------[text here for page cut]------------------------
 
-- Поддержка мультилайна по Ctrl-Enter
+- Поддержка мультилайна по Ctrl-Enter, C-j
 
-TODO: подумать чо как тут должно выглядить
+- Вставлять разделитель даты, в случае если новое сообщение в новом
+  дне, например:
+
+    17:15W @vpupkin> message from v pupkin
+    ---------------------(May 4)---------------------
+    00:01W @zevlg> new message here
+
+  см. circe-new-day-notifier.el
+  см. telega-chat-insert-date-breaks
+
+Prompts
+~~~~~~~
+
+Normal:
+
+    >>> [] 
+
+Edit:
+
+    | Edit: message text...
+    `-> []
+
+Reply:
+
+    | Reply: @vpupkin> message lala ...
+    `-> []
+
+Formatting messages:
+
+
+[AH] @user (admin)
+[AL] message here long message
+     continue message message              12:20w
+
+
+with markup
+~~~~~~~~~~~
+   
+[AH] @vpupkin
+[AL] | Reply: @user> msagsac
+     messgasaoenth
+     sntahoe ntoahssssss asonth eosn       11:18
+     [ button1 ]  [ button2 ]
