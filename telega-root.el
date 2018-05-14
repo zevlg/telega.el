@@ -39,62 +39,6 @@
   :type 'string
   :group 'telega-root)
 
-(defcustom telega-root-mode-line-format "Telega: (%c/%n/%m)"
-  "Format for the modeline in telega-root mode.
-%n The number of new messages.
-%a The number of all messages.
-%c The number of chats with new messages.
-%m The number of mentions.
-%u The number of users seen recently."
-  :type 'string
-  :group 'telega-root)
-
-(defcustom telega-root-chat-brackets
-  '((private "[" "]")
-    (secret "{" "}")
-    (bot "[[" "]]")
-    (basicgroup "(" ")")
-    (supergroup "((" "))")
-    (channel "<" ">"))
-  "Brackets used for different kinds of chats.
-%( and %) from `telega-root-chat-format' will use these brackets."
-  :type 'list
-  :group 'telega-root)
-
-(defcustom telega-root-chat-format
-  "%40{%A %(%t  %n%r%)%}%p%-20s\n    %M"
-  "Format for the chat widget.
-%a - Chat avatar
-%( - Open bracket for this kind of chat
-%) - Close bracket for this kind of chat
-%t - Chat title
-%n - Short name (username)
-%s - Activity status (last seen if any)
-%l - Link on http://t.me
-%m - Number of members/subscribers
-%u - Number of unread messages
-%r - Number of unread mentions, with @ char included
-%p - Pin character if chat is pinned
-%M - Formatted last message"
-  :type 'string
-  :group 'telega-root)
-
-(defcustom telega-root-chat-formats
-  `((true . ,telega-root-chat-format))
-  "Format for chats based on predicates.
-Predicate is called with one argument - CHAT."
-  :type '(repeat (cons (function :tag "Predicate")
-                       (string :tag "Format string")))
-  :group 'telega-root)
-
-(defcustom telega-root-last-msg-format "%t%v %m"
-  "Format for the last message in chat.
-%t - Timestamp
-%v - upload/seen status. V or W
-%m - Message body"
-  :type 'string
-  :group 'telega-root)
-
 (defvar telega-root-mode-hook nil
   "Hook run when telega root buffer is created.")
 
@@ -118,6 +62,7 @@ Predicate is called with one argument - CHAT."
     (define-key map (kbd "C-x C-_") 'telega-filter-redo)
 
     (define-key map (kbd "q") 'telega-kill)
+    (define-key map (kbd "c") 'telega-chat-with)
     map)
   "The key map for telega root buffer.")
 
