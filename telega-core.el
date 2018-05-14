@@ -50,6 +50,8 @@
 (defvar telega--unread-count 0 "Total number of unread messages.")
 (defvar telega--unread-unmuted-count 0 "Total number of unread/unmuted messages.")
 
+(defvar telega--chat-buffers nil "List of all chat buffers.")
+
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
@@ -96,8 +98,50 @@ Done when telega server is ready to receive queries."
        (plist-get ,tl-obj-sym ,prop))))
 
 
+(defmacro telega-fill-single (prefix str)
+  `(with-temp-buffer
+     (insert ,prefix ,str)
+     (fill-region (point-min) (point-max) 'left t t)
+     (buffer-substring (point-min) (point-max))))
+
+(defun telega-fill-string (title str)
+  (let ((strings (split-string str "\n"))
+        (spaces-prefix (make-string (length title) ?\s)))
+    (mapconcat #'identity
+               (cons (let ((fill-prefix spaces-prefix))
+                       (telega-fill-single title (car strings)))
+                     (mapcar (lambda (str)
+                               (telega-fill-single spaces-prefix str))
+                             (cdr strings)))
+               "\n")))
+
 ;;; Formatting
-(defun telega-fmt-truncate (estr &rest attrs)
+(defsubst telega-fmt-to-string (elemval)
+  "Convert element value ELEMVAL to string."
+  (if (stringp elemval)
+      elemval
+    (with-output-to-string
+      (princ elemval))))
+
+(defun telega-fmt-eval-fill (estr &rest attrs)
+  "Fill ESTR to :fill-column.
+Keeps newlines in ESTR.
+Return list of strings."
+  (apply #'nconc
+         (mapcar (if (plist-get attrs :fill)
+                     (let* ((fill-column (or (plist-get attrs :fill-column)
+                                             fill-column))
+                            (prfx-len (length (plist-get attrs :fill-prefix)))
+                            (prfx (make-string prfx-len ?A)))
+                       `(lambda (str)
+                          (split-string
+                           (substring
+                            (telega-fill-single ,prfx str) ,prfx-len)
+                           "\n")))
+                   #'list)
+                 (split-string estr "\n"))))
+
+(defun telega-fmt-eval-truncate (estr &rest attrs)
   (let* ((max (plist-get attrs :max))
          (elide (plist-get attrs :elide))
          (elide-str (or (plist-get attrs :elide-string) telega-eliding-string))
@@ -113,7 +157,7 @@ Done when telega server is ready to receive queries."
 
     result))
 
-(defun telega-fmt-align (estr &rest attrs)
+(defun telega-fmt-eval-align (estr &rest attrs)
   (let* ((min (plist-get attrs :min))
          (width (- min (string-width estr)))
          (align (plist-get attrs :align))
@@ -125,48 +169,71 @@ Done when telega server is ready to receive queries."
       (right (concat left right estr))
       ((center centre) (concat left estr right)))))
 
-(defun telega-fmt-eval-attrs (estr &rest attrs)
-  (let* ((max (plist-get attrs :max))
-         (min (plist-get attrs :min))
-         (ret-str (cond ((and max (> (string-width estr) max))
-                         (apply #'telega-fmt-truncate estr attrs))
-                        ((and min (< (string-width estr) min))
-                         (apply #'telega-fmt-align estr attrs))
-                        (t estr)))
-         (face (plist-get attrs :face)))
+(defun telega-fmt-eval-min-max (estr &rest attrs)
+  "Apply `:min' and `:max' properties to ESTR."
+  (let ((max (plist-get attrs :max))
+        (min (plist-get attrs :min))
+        (estr-width (string-width estr)))
+    (cond ((and max (> estr-width max))
+           (apply #'telega-fmt-eval-truncate estr attrs))
+          ((and min (< estr-width min))
+           (apply #'telega-fmt-eval-align estr attrs))
+          (t estr))))
+
+(defun telega-fmt-eval-fill-prefix (estr &rest attrs)
+  (concat (or (plist-get attrs :fill-prefix) "") estr))
+
+(defun telega-fmt-eval-face (estr &rest attrs)
+  "Apply `:face' attribute to ESTR."
+  (let ((face (plist-get attrs :face)))
     (if face
-        (propertize ret-str 'face face)
-      ret-str)))
+        (propertize estr 'face face)
+      estr)))
+
+(defun telega-fmt-eval-attrs (estr &rest attrs)
+  "Apply all attributes to ESTR."
+  (let ((eval-fill-prefix nil))
+    (mapconcat (lambda (estr)
+                 (let ((res (apply #'telega-fmt-eval-min-max estr attrs)))
+                   (if eval-fill-prefix
+                       (setq res (apply #'telega-fmt-eval-fill-prefix res attrs))
+                     (setq eval-fill-prefix t))
+                   (apply #'telega-fmt-eval-face res attrs)))
+               (apply #'telega-fmt-eval-fill estr attrs) "\n")))
 
 (defun telega-fmt-eval-elem (elem &rest value)
   "Format single element ELEM."
   (let (attrs)
-    (when (listp elem)
+    (when (and (not (functionp elem)) (listp elem))
       (setq attrs (cdr elem)
             elem (car elem)))
 
     (apply #'telega-fmt-eval-attrs
-           (cond ((stringp elem) elem)
-                 ((numberp elem) (number-to-string elem))
-                 ((functionp elem)
-                  (with-output-to-string
-                    (princ (apply elem value))))
+           (cond ((functionp elem)
+                  (telega-fmt-to-string (apply elem value)))
                  ((symbolp elem)
-                  (with-output-to-string
-                    (princ (symbol-value elem))))
+                  (telega-fmt-to-string (symbol-value elem)))
                  ((listp elem)
                   (apply #'telega-fmt-eval elem value))
-                 (t (error "Can't format ELEM: %s" elem)))
+                 (t (telega-fmt-to-string elem)))
            attrs)))
 
 (defun telega-fmt-eval (fmt-simple &rest value)
+  "Evaluate simple format FMT-SIMPLE, applying it to VALUE."
   (when (functionp fmt-simple)
     (setq fmt-simple (apply fmt-simple value)))
-  (mapconcat (lambda (elem)
-               (apply #'telega-fmt-eval-elem elem value))
-             (cl-remove-if #'null fmt-simple) ""))
+
+  (let ((fmt-result (if (stringp fmt-simple) fmt-simple "")))
+    (while (consp fmt-simple)
+      (when (car fmt-simple)
+        (setq fmt-result
+              (concat fmt-result
+                      (apply #'telega-fmt-eval-elem (car fmt-simple) value))))
+      (setq fmt-simple (cdr fmt-simple)))
+    fmt-result))
 
 (defsubst telega--time-at00 (timestamp &optional decoded-ts)
+  "Return time at 00:00:001 at TIMESTAMP's day."
   (let ((dt (or decoded-ts (decode-time timestamp))))
     (1+ (- timestamp (* 3600 (nth 2 dt)) (* 60 (nth 1 dt)) (nth 0 dt)))))
 
@@ -245,31 +312,31 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
 Return new location.  Use code like:
   `(setq button (telega-button-move button point))'
 if button is futher referenced."
-  (let* ((start (button-start button))
-         (end (button-end button))
+  (let* ((start (set-marker (make-marker) (button-start button)))
+         (end (set-marker (make-marker) (button-end button)))
          (button-repr (or new-label (buffer-substring start end))))
+    (assert (or (<= point start)
+                (>= point end) "Can't move button inside button position"))
     (goto-char point)
     (prog1
         (point-marker)
       (insert button-repr)
-      (if (< button point)
-          (delete-region start end)
-        (telega-button-delete button)))))
+      (delete-region (if (= point start) (point) start) end))))
 
 (defun telega-button--redisplay (button)
   "Redisplay the BUTTON contents."
-  (telega-button-move button (button-end button)
+  (telega-button-move button (button-start button)
                       (apply #'propertize 
                              (telega-fmt-eval (button-get button :format)
                                               (button-get button :value))
                              (text-properties-at button))))
 
-(defun telega-button-forward (n &optional wrap display-message)
+(defun telega-button-forward (n)
   "Move forward to N visible/active button."
-  (interactive "p\nd\nd")
+  (interactive "p")
   (let (button)
     (dotimes (_ (abs n))
-      (while (and (setq button (forward-button (cl-signum n) wrap))
+      (while (and (setq button (forward-button (cl-signum n)))
                   (or (button-get button 'invisible)
                       (button-get button 'inactive)))))
     (when (= (following-char) ?\[)
@@ -280,11 +347,22 @@ if button is futher referenced."
                                 (button-get button :value))))
     button))
 
-(defun telega-button-backward (n &optional wrap display-message)
+(defun telega-button-backward (n)
   "Move backward to N visible/active button."
-  (interactive "p\nd\nd")
-  (telega-button-forward (- n) wrap display-message))
+  (interactive "p")
+  (telega-button-forward (- n)))
 
+(defun telega-completing-titles ()
+  "Return list of titles ready for completing."
+  (let ((result))
+    (dolist (chat telega--ordered-chats)
+      (setq result (pushnew (telega-chat--title chat 'withusername) result
+                            :test #'string=)))
+    (dolist (user (hash-table-values (cdr (assq 'user telega--full-info))))
+      (setq result (pushnew (telega-user--title user 'withusername) result
+                            :test #'string=)))
+    (nreverse result)))
+    
 (provide 'telega-core)
 
 ;;; telega-core.el ends here
