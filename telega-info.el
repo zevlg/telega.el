@@ -119,14 +119,23 @@ TLOBJ could be one of: user, basicgroup or supergroup."
   "Return non-nil if USER is bot."
   (eq (telega-user--type user) 'bot))
 
-(defun telega-user--title (user)
+(defun telega-user--title (user &optional with-username)
   "Return title for the USER."
   (if (eq (telega-user--type user) 'deleted)
       (format "DeletedUser-%d" (plist-get user :id))
-    (format "%s %s @%s"
-            (plist-get user :first_name)
-            (plist-get user :last_name)
-            (plist-get user :username))))
+
+    (let ((fn (plist-get user :first_name))
+          (ln (plist-get user :last_name))
+          (title ""))
+      (when with-username
+        (let ((un (plist-get user :username)))
+          (unless (string-empty-p un)
+            (setq title (concat "@" un)))))
+      (unless (string-empty-p ln)
+        (setq title (concat ln (if (string-empty-p title) "" " ") title)))
+      (unless (string-empty-p fn)
+        (setq title (concat fn (if (string-empty-p title) "" " ") title)))
+      title)))
 
 (defun telega-user--short-name (user)
   "Return short name for the USER."
@@ -170,9 +179,9 @@ TLOBJ could be one of: user, basicgroup or supergroup."
       (insert (format "phone: +%s\n" phone_number)))
     (insert (format "Seen: %s\n" (telega-user--seen user)))
     (unless (string-empty-p bio)
-      (insert (format "bio: %s\n" bio)))
+      (insert (telega-fill-string "bio: " bio) "\n"))
     (unless (string-empty-p share-text)
-      (insert (format "Share text: %s\n" share-text))))
+      (insert (telega-fill-string "Share text: " share-text) "\n")))
 
   (let ((chats-in-common (telega-user--chats-in-common user)))
     (when chats-in-common
@@ -208,7 +217,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
                            (= crt_id (plist-get m :user_id)))))
          )
     (insert (format "Created: %s  %s\n"
-                    (telega-user--title creator)
+                    (telega-user--title creator 'with-username)
                     (if creator-member
                         (telega-fmt-timestamp
                          (plist-get creator-member :joined_chat_date))
@@ -223,19 +232,25 @@ TLOBJ could be one of: user, basicgroup or supergroup."
     (mapc (lambda (mbr)
             (insert (format "  %s\n"
                             (telega-user--title
-                             (telega-user--get (plist-get mbr :user_id))))))
+                             (telega-user--get (plist-get mbr :user_id))
+                             'with-username))))
           members)
     ))
 
 (defun telega-info--insert-supergroup (supergroup &optional chat)
   (let* ((full-info (telega--full-info supergroup))
+         (invite_link (plist-get full-info :invite_link))
          (descr (plist-get full-info :description))
+         (restr_reason (plist-get supergroup :restriction_reason))
          (pin_msg_id (plist-get full-info :pinned_message_id)))
-    (unless (string-empty-p descr)
-      (insert "Desc: " descr)
-      (let ((fill-prefix "      "))
-        (fill-paragraph))
+    (unless (string-empty-p invite_link)
+      (insert "Invite link: ")
+      (insert-text-button invite_link 'follow-link t)
       (insert "\n"))
+    (unless (string-empty-p descr)
+      (insert (telega-fill-string "Desc: " descr) "\n"))
+    (unless (string-empty-p restr_reason)
+      (insert (telega-fill-string "Restriction: " restr_reason) "\n"))
 
     (unless (zerop pin_msg_id)
       (insert "----(pinned message)----\n")
