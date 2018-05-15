@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri Apr 20 00:24:21 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 (require 'telega-core)
@@ -187,7 +187,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
     (when chats-in-common
       (insert (format "%d chats in common:\n" (length chats-in-common)))
       (dolist (chat chats-in-common)
-        (insert "    ") 
+        (insert "    ")
         (telega-button-insert 'telega-chat
           :value chat
           :format '("[" (telega-chat--title
@@ -254,9 +254,13 @@ TLOBJ could be one of: user, basicgroup or supergroup."
 
     (unless (zerop pin_msg_id)
       (insert "----(pinned message)----\n")
-      (insert (telega-msg-format
-               (telega-chat--getPinnedMessage chat)))
-      (unless (= (preceding-char) ?\n) (insert "\n"))
+      (telega-button-insert 'telega-msg
+        :format (lambda (msg)
+                  (if (zerop (plist-get msg :sender_user_id))
+                      (telega-msg-button--format-msg msg "")
+                    (telega-msg-button--format-full msg)))
+        :value (telega-chat--getPinnedMessage chat)
+        :action 'ignore)
       (insert "------------------------\n"))
 
     (insert "!TODO!\n")
