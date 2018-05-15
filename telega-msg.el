@@ -112,10 +112,10 @@
         (concat " via @" (plist-get (telega-user--get via_bot_id) :username))
       "")))
 
-(defconst telega-msg-button--format-msg
+(defun telega-msg-button--format-msg (msg &optional fill-prefix)
   `((telega-msg-text-with-props
      :fill left
-     :fill-prefix "     " ;(make-string 5 ?\s)
+     :fill-prefix ,(or fill-prefix "     ")
      :fill-column ,telega-chat-fill-column
      :min ,telega-chat-fill-column
 ;    :face c-nonbreakable-space-face
@@ -131,7 +131,7 @@
     telega-msg-via-bot
     "\n"
     telega-msg-sender-ava-l " "
-    ,@telega-msg-button--format-msg))
+    ,@(telega-msg-button--format-msg msg)))
 
 (defun telega-msg-button--format-same (msg)
   "Fromat message when previous msg is from the same sender."
