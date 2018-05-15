@@ -136,7 +136,7 @@
 (defun telega-msg-button--format-same (msg)
   "Fromat message when previous msg is from the same sender."
   `("     "
-    ,@telega-msg-button--format-msg))
+    ,@(telega-msg-button--format-msg msg)))
 
 (defun telega-msg--entity-to-properties (entity)
   )

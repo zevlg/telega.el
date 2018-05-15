@@ -538,11 +538,12 @@ If TITLE is specified, use it instead of chat's title."
           (setq telega-chatbuf--chat chat)
           (telega-server--send
            `(:@type "openChat" :chat_id ,(plist-get chat :id)))
-          ;; Insert last message and some history
+
+          ;; Insert last message, history will be loaded on call to
+          ;; `telega-chat-scroll' from window scroll functions
           (let ((last-msg (plist-get chat :last_message)))
             (when last-msg
               (telega-chat--new-message last-msg t)))
-          (telega-chat--load-history chat)
 
           (current-buffer)))))
 
