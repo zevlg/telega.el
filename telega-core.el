@@ -277,7 +277,7 @@ Run BODY for each found point.
 Use `cl-block' and `cl-return' to prematurely stop the iteration.
 Run under `save-excursion' to preserve point."
   (let ((button (car args)))
-    `(let ((,button (point)))
+    `(let ((,button (button-at (point))))
        (while ,button
          (goto-char ,button)
          (when (eq (button-type ,button) ,butt-type)
@@ -294,13 +294,15 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
         (cl-return-from 'button-found button)))))
 
 (defun telega-button-insert (button-type &rest props)
-  "Insert button of BUTTON-TYPE with properties PROPS."
+  "Insert button of BUTTON-TYPE with properties PROPS.
+Return newly created button."
   (let ((value (plist-get props :value))
         (button-fmt (or (plist-get props :format)
                         (button-type-get button-type :format))))
-    (apply #'insert-text-button
-           (telega-fmt-eval button-fmt value)
-           :type button-type props)))
+    (button-at
+     (apply #'insert-text-button
+            (telega-fmt-eval button-fmt value)
+            :type button-type props))))
 (put 'telega-button-insert 'lisp-indent-function 'defun)
 
 (defun telega-button-delete (button)
@@ -308,20 +310,15 @@ If VALUE is not specified, then find fist one button of BUTT-TYPE."
   (delete-region (button-start button) (button-end button)))
 
 (defun telega-button-move (button point &optional new-label)
-  "Move BUTTON to POINT location.
-Return new location.  Use code like:
-  `(setq button (telega-button-move button point))'
-if button is futher referenced."
-  (let* ((start (set-marker (make-marker) (button-start button)))
-         (end (set-marker (make-marker) (button-end button)))
-         (button-repr (or new-label (buffer-substring start end))))
-    (assert (or (<= point start)
-                (>= point end)) nil "Can't move button inside button position")
-    (goto-char point)
-    (prog1
-        (point-marker)
-      (insert button-repr)
-      (delete-region (if (= point start) (point) start) end))))
+  "Move BUTTON to POINT location."
+  (unless new-label
+    (setq new-label
+          (buffer-substring (button-start button) (button-end button))))
+  (goto-char point)
+  (telega-button-delete button)
+  (save-excursion
+    (insert new-label))
+  (set-marker button (point)))
 
 (defun telega-button--redisplay (button)
   "Redisplay the BUTTON contents."
