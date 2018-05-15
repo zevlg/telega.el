@@ -255,7 +255,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
                         ""))))
     (insert (format "Id: %d\n" (plist-get chat :id)))
     (when telega-debug
-      (insert (format "Order: %S\n" (telega-chat--order chat))))
+      (insert (format "Order: %s\n" (telega-chat--order chat))))
 
     (let ((not-cfg (plist-get chat :notification_settings)))
       (insert (format "Notifications: %s\n"
@@ -636,7 +636,7 @@ If FROM-MSG is nil then use last message in chat."
   "Load and insert CHAT's history."
   ;; Get oldest message in chat and request history
   (with-telega-chat-buffer chat
-    (let* ((msg-button (point-min))
+    (let* ((msg-button (button-at (point-min)))
            (oldest-msg (and (eq (button-type msg-button) 'telega-msg)
                             (button-get msg-button :value)))
            (history (telega-chat--getHistory chat oldest-msg)))
@@ -709,9 +709,9 @@ With prefix arg, apply markdown formatter to message."
                         " Reply: "
                         (telega-msg-button--format-one-line
                          :min 30 :max 30 :elide t :align left)))
-  (button-put telega-msg--format-one-line
+  (button-put telaga-chatbuf--auxmsg-button
               'invisible nil)
-  (telega-button--redisplay telega-msg--format-one-line)
+  (telega-button--redisplay telaga-chatbuf--auxmsg-button)
 
   (button-put telega-chatbuf--prompt-button
               telega-chat-reply-prompt)
