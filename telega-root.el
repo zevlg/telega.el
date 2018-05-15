@@ -203,19 +203,19 @@ If RAW is given then do not modify status for animation."
 If there is no button for the CHAT, new button is created.
 If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
   (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat--title chat))
+
+  ;; Update `telega--filtered-chats' according to chat update It
+  ;; might affect visibility, chat button formatting itself and
+  ;; custom filters
+  (setq telega--filtered-chats
+        (delq chat telega--filtered-chats))
+  (when (telega-filter--test chat (telega--filters-prepare))
+    (setq telega--filtered-chats
+          (push chat telega--filtered-chats)))
+
   (with-telega-root-buffer
-    (goto-char (point-min))
-    (let ((button (telega-root--chat-button chat)) visible-p)
-      ;; Update `telega--filtered-chats' according to chat update It
-      ;; might affect visibility, chat button formatting itself and
-      ;; custom filters
-      (setq telega--filtered-chats
-            (delq chat telega--filtered-chats))
-      (when (telega-filter--test chat (telega--filters-prepare))
-        (setq telega--filtered-chats
-              (push chat telega--filtered-chats)))
-      (setq visible-p (memq chat telega--filtered-chats))
-      
+    (let ((button (telega-root--chat-button chat))
+          (visible-p (memq chat telega--filtered-chats)))
       (if button
           (progn
             (button-put button :value chat)
