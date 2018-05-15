@@ -98,7 +98,12 @@ With prefix arg force quit without confirmation."
   ;;   consider encryption as todo in future
   (telega-server--send
    `(:@type "checkDatabaseEncryptionKey"
-            :encryption_key "")))
+            :encryption_key ""))
+
+  ;; Set proxy here, so registering phone will use it
+  (when telega-socks5-proxy
+    (telega-server--send
+     `(:@type "setProxy" :proxy (:@type "proxySocks5" ,@telega-socks5-proxy)))))
 
 (defun telega--set-auth-phone-number ()
   "Sets the phone number of the user."
@@ -124,9 +129,9 @@ With prefix arg force quit without confirmation."
               :first_name ""
               :last_name ""))))
 
-(defun telega--check-password (event)
+(defun telega--check-password (auth-state)
   "Check the password for the 2-factor authentification."
-  (let* ((hint (plist-get event :password_hint))
+  (let* ((hint (plist-get auth-state :password_hint))
          (passwd (password-read
                   (concat "Telegram password"
                           (if (string-empty-p hint)
@@ -138,11 +143,6 @@ With prefix arg force quit without confirmation."
 
 (defun telega--set-options ()
   "Send proxy settings and `telega-options-plist' to server."
-  ;; Set proxy if any
-  (when telega-socks5-proxy
-    (telega-server--send
-     `(:@type "setProxy" :proxy (:@type "proxySocks5" ,@telega-socks5-proxy))))
-
   (cl-loop for (prop-name value) in telega-options-plist
            do (telega-server--send
                `(:@type "setOption" :name ,prop-name
@@ -197,7 +197,7 @@ With prefix arg force quit without confirmation."
        (telega--check-auth-code (plist-get state :is_registered)))
 
       (authorizationStateWaitPassword
-       (telega--check-password event))
+       (telega--check-password state))
 
       (authorizationStateReady
        ;; TDLib is now ready to answer queries
