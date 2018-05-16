@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri May  4 03:49:22 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 
@@ -46,6 +46,10 @@
 (defsubst telega-msg--chat (msg)
   "Return chat for the MSG."
   (telega-chat--get (plist-get msg :chat_id)))
+
+(defun telega-msg-chat-title (msg)
+  "Title of the message's chat."
+  (telega-chat--title (telega-msg--chat msg) 'with-username))
 
 (defun telega-msg-sender-name (msg)
   "Short name of the MSG sender."
@@ -122,6 +126,16 @@
      :align left)
     (telega-msg-timestamp :align right :min 10)
     "\n"))
+
+(defun telega-msg-button--format-channel (msg)
+  `((telega-msg-chat-title :face telega-chat-user-title)
+    telega-msg-via-bot
+    " " telega-msg-views-sign " " ,(plist-get msg :views)
+    ,(unless (zerop (plist-get msg :edit_date))
+       (concat " edited at "
+               (telega-fmt-timestamp (plist-get msg :edit_date))))
+    "\n"
+    ,@(telega-msg-button--format-msg msg "")))
 
 (defun telega-msg-button--format-full (msg)
   `(telega-msg-sender-ava-h
