@@ -152,8 +152,8 @@ You could use \"\\U0001F4CC\" if you have utf-8 locale."
   :type 'string
   :group 'telega-chat)
 
-(defcustom telega-chat-initial-history-messages 50
-  "Number of messages to fetch, when entering new chat."
+(defcustom telega-chat-history-limit 50
+  "Number of messages to fetch on history requests."
   :type 'integer
   :group 'telega-chat)
 
@@ -167,6 +167,11 @@ TODO"
   "Completing read function to use."
   :type 'function
   :group 'telega)
+
+(defcustom telega-msg-views-sign "\U0001F441"
+  "String used to display message views."
+  :type 'string
+  :group 'telega-msg)
 
 
 ;;; Faces
