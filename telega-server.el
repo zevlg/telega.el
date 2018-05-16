@@ -172,7 +172,7 @@ Raise error if not found"
     (assert (process-live-p proc) nil "telega-server is not running")
     (process-send-string
      proc
-     (concat "send " (number-to-string (length value)) "\n"))
+     (concat "send " (number-to-string (string-bytes value)) "\n"))
     (process-send-string proc value)
     (process-send-string proc "\n")))
 
