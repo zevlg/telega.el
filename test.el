@@ -1,6 +1,10 @@
 ;;; test.el --- Testing routines for telega.
 (require 'telega)
 
+(telega--init-vars)
+(telega--info-update
+ `(:@type "supergroup" :id 11110 :username "noname"))
+
 (setq telega--users
       `())
 
@@ -37,6 +41,11 @@
         ;; TODO: add more chats
         ))
 
+(ert-deftest telega-emacs-setup ()
+  "Test emacs is suitable to run telega."
+  (should (= most-positive-fixnum 2305843009213693951))
+  (should (= (string-to-number "542353335") 542353335))
+  )
 
 (ert-deftest telega-filters ()
   "Test `telega-filter' functionality."
@@ -48,8 +57,9 @@
   (should (telega-filter--test (car telega--ordered-chats) '(type channel)))
   (should (telega-filter--test
            (car telega--ordered-chats) '(all (type channel) (name "chan"))))
-  (should (not (telega-filter--test
-                (car telega--ordered-chats) '(name "notmatching"))))
+  (should-not
+   (telega-filter--test
+    (car telega--ordered-chats) '(name "notmatching")))
   ;; TODO: add more filter tests
   )
 
