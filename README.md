@@ -16,7 +16,7 @@ Uses nice https://core.telegram.org/tdlib
 * cd td
 * mkdir build && cd build && cmake ../ && make && make install
 
-Probably isntall requires root permission
+Probably install requires root permission
 
 # Building telega-server
 
