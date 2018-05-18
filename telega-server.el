@@ -120,12 +120,11 @@ Raise error if not found"
              (setq call-cb #'telega--on-event))
 
            ;; Function call may return errors
-           (when (and (eq 'error (telega--tl-type value))
+           (if (and (eq 'error (telega--tl-type value))
                       (not (= (plist-get value :code) 406)))
-             (error (concat "telega-server error: "
-                            (plist-get value :message))))
+               (message "telega-server error: %s" (plist-get value :message))
 
-           (funcall call-cb value)))
+           (funcall call-cb value))))
 
         ((string= cmd "error")
          (telega--on-error value))
