@@ -166,6 +166,16 @@ TLOBJ could be one of: user, basicgroup or supergroup."
                           :offset_chat_id 0 :limit ,gic-cnt)))))
     (mapcar #'telega-chat--get (plist-get gic :chat_ids))))
 
+(defun telega-supergroup--getMembers (supergroup &optional filter)
+  "Get SUPERGRUOP members.
+Default FILTER is \"supergroupMembersFilterRecent\"."
+  (telega-server--call
+   (list :@type "getSupergroupMembers"
+         :supergroup_id (plist-get supergroup :id)
+         :filter (list :@type (or filter "supergroupMembersFilterRecent"))
+         :offset 0
+         :limit 200)))
+
 (defun telega-info--insert-user (user)
   "Insert USER info into current buffer."
   (let* ((full-info (telega--full-info user))
@@ -179,9 +189,9 @@ TLOBJ could be one of: user, basicgroup or supergroup."
       (insert (format "phone: +%s\n" phone_number)))
     (insert (format "Seen: %s\n" (telega-user--seen user)))
     (unless (string-empty-p bio)
-      (insert (telega-fill-string "bio: " bio) "\n"))
+      (insert (telega-fmt-labeled-text "bio: " bio) "\n"))
     (unless (string-empty-p share-text)
-      (insert (telega-fill-string "Share text: " share-text) "\n")))
+      (insert (telega-fmt-labeled-text "Share text: " share-text) "\n")))
 
   (let ((chats-in-common (telega-user--chats-in-common user)))
     (when chats-in-common
@@ -207,14 +217,14 @@ TLOBJ could be one of: user, basicgroup or supergroup."
 
 (defun telega-info--insert-basicgroup (basicgroup)
   (let* ((full-info (telega--full-info basicgroup))
-         (invite_link (plist-get full-info :invite_link))
+         (invite-link (plist-get full-info :invite_link))
          (members (plist-get full-info :members))
-         (creator_id (plist-get full-info :creator_user_id))
-         (creator (telega-user--get creator_id))
+         (creator-id (plist-get full-info :creator_user_id))
+         (creator (telega-user--get creator-id))
          (creator-member
-          (cl-find creator_id members
-                   :test (lambda (crt_id m)
-                           (= crt_id (plist-get m :user_id)))))
+          (cl-find creator-id members
+                   :test (lambda (crt-id m)
+                           (= crt-id (plist-get m :user_id)))))
          )
     (insert (format "Created: %s  %s\n"
                     (telega-user--title creator 'with-username)
@@ -222,35 +232,49 @@ TLOBJ could be one of: user, basicgroup or supergroup."
                         (telega-fmt-timestamp
                          (plist-get creator-member :joined_chat_date))
                       "")))
-    (unless (string-empty-p invite_link)
+    (unless (string-empty-p invite-link)
       (insert "Invite link: ")
-      (insert-text-button invite_link 'follow-link t)
+      (insert-text-button invite-link 'follow-link t)
       (insert "\n"))
 
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
     (mapc (lambda (mbr)
-            (insert (format "  %s\n"
+            (insert (format "  %s (%S)\n"
                             (telega-user--title
                              (telega-user--get (plist-get mbr :user_id))
-                             'with-username))))
+                             'with-username)
+                            (plist-get mbr :user_id))))
           members)
     ))
 
 (defun telega-info--insert-supergroup (supergroup &optional chat)
   (let* ((full-info (telega--full-info supergroup))
-         (invite_link (plist-get full-info :invite_link))
+         (invite-link (plist-get full-info :invite_link))
          (descr (plist-get full-info :description))
          (restr_reason (plist-get supergroup :restriction_reason))
-         (pin_msg_id (plist-get full-info :pinned_message_id)))
-    (unless (string-empty-p invite_link)
+         (pin_msg_id (plist-get full-info :pinned_message_id))
+         (member-status (plist-get supergroup :status)))
+    (insert "Status: " (substring (plist-get member-status :@type) 16) "\n")
+    (insert (if (or (eq (telega--tl-type member-status)
+                        'chatMemberStatusMember)
+                    (and (memq (telega--tl-type member-status)
+                               '(chatMemberStatusRestricted
+                                 chatMemberStatusCreator))
+                         (telega--tl-bool member-status :is_member)))
+                "Joined at: "
+              "Created at: ")
+            (telega-fmt-timestamp (plist-get supergroup :date))
+            "\n")
+
+    (unless (string-empty-p invite-link)
       (insert "Invite link: ")
-      (insert-text-button invite_link 'follow-link t)
+      (insert-text-button invite-link 'follow-link t)
       (insert "\n"))
     (unless (string-empty-p descr)
-      (insert (telega-fill-string "Desc: " descr) "\n"))
+      (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
     (unless (string-empty-p restr_reason)
-      (insert (telega-fill-string "Restriction: " restr_reason) "\n"))
+      (insert (telega-fmt-labeled-text "Restriction: " restr_reason) "\n"))
 
     (unless (zerop pin_msg_id)
       (insert "----(pinned message)----\n")
@@ -263,10 +287,11 @@ TLOBJ could be one of: user, basicgroup or supergroup."
         :action 'ignore)
       (insert "------------------------\n"))
 
-    (insert "!TODO!\n")
-    (insert (format "Info: %S\n\n" supergroup))
-    (insert (format "Full: %S" full-info))
-    ))
+    (insert (format "Members: %d" (plist-get full-info :member_count)) "\n")
+    (when (telega--tl-bool full-info :can_get_members)
+      (mapc (lambda (member)
+              (insert "  " (telega-fmt-eval 'telega-fmt-chat-member member) "\n"))
+            (plist-get (telega-supergroup--getMembers supergroup) :members)))))
 
 (defun telega-info--insert (tlobj chat)
   "Insert information about TLOBJ into current buffer."
@@ -311,7 +336,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
                         "")
                       "\n")
               (insert (format "%s, %s %s\n" device platform sys_ver))
-              (insert (format "%s @%s\n" ip country))
+              (insert (format "%s %s\n" ip country))
               (insert (format "Login: %s, Last: %s\n"
                               (telega-fmt-timestamp login-ts)
                               (telega-fmt-timestamp last-ts)))
