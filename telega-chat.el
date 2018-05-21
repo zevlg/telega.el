@@ -479,7 +479,7 @@ Keymap:
           :value telega-chat-input-prompt))
 
   ;; Separator for `telega-chatbuf--input-marker'
-  (telega-button-insert 'telega-prompt :value " ")
+  (telega-button-insert 'telega-prompt :value " " :format 'identity)
 
   (setq telega-chatbuf--input-marker (point-marker))
   ;; NOTE: `telega-chatbuf--output-marker' automagically moves when
