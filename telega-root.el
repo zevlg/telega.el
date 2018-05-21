@@ -96,9 +96,8 @@ Terminate telega-server and kill all chat buffers."
 Inhibits read-only flag."
   `(when (buffer-live-p (telega-root--buffer))
      (with-current-buffer telega-root-buffer-name
-       (save-excursion
-         (let ((inhibit-read-only t))
-           ,@body)))))
+       (let ((inhibit-read-only t))
+         ,@body))))
 (put 'with-telega-root-buffer 'lisp-indent-function 0)
 
 
@@ -147,11 +146,12 @@ If RAW is given then do not modify status for animation."
         (cancel-timer telega-status--timer))))
 
   (with-telega-root-buffer
-    (goto-char (point-min))
-    (let ((button (telega-button-find 'telega-status)))
-      (assert button nil "Telega status button is gone")
-      (button-put button :value telega--status)
-      (telega-button--redisplay button))))
+    (save-excursion
+      (goto-char (point-min))
+      (let ((button (telega-button-find 'telega-status)))
+        (assert button nil "Telega status button is gone")
+        (button-put button :value telega--status)
+        (telega-button--redisplay button)))))
 
 (defun telega-root--redisplay ()
   "Redisplay the root buffer."
@@ -214,34 +214,36 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
           (push chat telega--filtered-chats)))
 
   (with-telega-root-buffer
-    (let ((button (telega-root--chat-button chat))
-          (visible-p (memq chat telega--filtered-chats)))
-      (if button
-          (progn
-            (button-put button :value chat)
-            (when visible-p
-              (telega-button--redisplay button)))
+    (save-excursion
+      (let ((button (telega-root--chat-button chat))
+            (visible-p (memq chat telega--filtered-chats)))
+        (if button
+            (progn
+              (button-put button :value chat)
+              (when visible-p
+                (telega-button--redisplay button)))
 
-        ;; New chat
-        (goto-char (point-max))
-        (setq button (telega-button-insert 'telega-chat :value chat)))
+          ;; New chat
+          (goto-char (point-max))
+          (setq button (telega-button-insert 'telega-chat :value chat)))
 
-      (button-put button 'invisible (not visible-p))
+        (button-put button 'invisible (not visible-p))
 
-      ;; NOTE: Update might affect custom filters, refresh them too
-      (unless inhibit-filters-redisplay
-        (telega-root--filters-redisplay)))))
+        ;; NOTE: Update might affect custom filters, refresh them too
+        (unless inhibit-filters-redisplay
+          (telega-root--filters-redisplay))))))
 
 (defun telega-root--chat-reorder (chat)
   "Move CHAT to correct place according to its order."
   (with-telega-root-buffer
-    (goto-char (point-min))
-    (let* ((button (telega-root--chat-button chat))
-           (chat-after (cadr (memq chat telega--ordered-chats)))
-           (button-after (or (telega-root--chat-button chat-after)
-                             (point-max))))
-      (assert button nil "button no found for chat: %s" (telega-chat--title chat))
-      (telega-button-move button button-after))))
+    (save-excursion
+      (goto-char (point-min))
+      (let* ((button (telega-root--chat-button chat))
+             (chat-after (cadr (memq chat telega--ordered-chats)))
+             (button-after (or (telega-root--chat-button chat-after)
+                               (point-max))))
+        (assert button nil "button no found for chat: %s" (telega-chat--title chat))
+        (telega-button-move button button-after)))))
 
 (defun telega-root--user-update (user)
   "Something changed in USER, private chat might need to be updated."
@@ -252,10 +254,11 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
 (defun telega-root--filters-redisplay ()
   "Redisplay custom filters buttons."
   (with-telega-root-buffer
-    (goto-char (point-min))
-    (telega-button-foreach 'telega-filter (button)
-      (telega-filter-button--set-inactivity-props
-       (telega-button--redisplay button)))))
+    (save-excursion
+      (goto-char (point-min))
+      (telega-button-foreach 'telega-filter (button)
+        (telega-filter-button--set-inactivity-props
+         (telega-button--redisplay button))))))
 
 (defun telega-root--chats-redisplay ()
   "Redisplay chats according to active filters."
