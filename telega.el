@@ -33,7 +33,7 @@
 (require 'telega-notifications)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.1.5")
+(defconst telega-version "0.1.6")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
