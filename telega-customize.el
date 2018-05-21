@@ -168,10 +168,20 @@ TODO"
   :type 'function
   :group 'telega)
 
-(defcustom telega-msg-views-sign "\U0001F441"
-  "String used to display message views."
+(defcustom telega-symbol-eye "\U0001F441"
+  "String to use as eye symbol."
   :type 'string
-  :group 'telega-msg)
+  :group 'telega)
+
+(defcustom telega-symbol-pin "\U0001F4CC"
+  "*String to use as pin symbol."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-lock "\U0001F512"
+  "*String to use as lock symbol."
+  :type 'string
+  :group 'telega)
 
 
 ;;; Faces
@@ -245,6 +255,11 @@ TODO"
   "Face to display user title in chat buffers."
   :group 'telega-chat)
 
+(defface telega-chat-inline-reply
+  '((t :inherit 'widget-field))
+  "Face to highlight replies to messages."
+  :group 'telega-chat)
+
 (defface telega-chat-self-title
   '((t :inherit 'widget-field :bold t))
   "Face to display title of myself in chat buffers."
@@ -272,6 +287,29 @@ TODO"
 
 (defcustom telega-user-update-hook '(telega-root--user-update)
   "Hook called with single argument USER, when USER's info is updated."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chat-before-oldest-msg-hook nil
+  "Hook called before oldest chat message is inserted.
+Called with single argument - MSG.
+Called only if corresponding chat is opened.
+Could be used for example to insert date breaks."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chat-before-youngest-msg-hook nil
+  "Hook called before youngest chat message is inserted.
+Called with single argument - MSG.
+Called only if corresponding chat is opened.
+Could be used for example to insert date breaks."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chat-message-hook nil
+  "Hook called when new message has been inserted into chatbuffer.
+Called with two arguments - message and disable-notification.
+Always called, even if corresponding chat is closed at the moment."
   :type 'hook
   :group 'telega-hooks)
 
