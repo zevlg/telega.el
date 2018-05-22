@@ -185,6 +185,7 @@ If RAW is given then do not modify status for animation."
         (telega-root--chat-update chat 'filters-are-ok)))
 
     ;; Goto previously saved button
+    (goto-char (point-min))
     (goto-char (1- (or (and cb-type (telega-button-find cb-type cb-value))
                        (point-max))))
     (condition-case nil
