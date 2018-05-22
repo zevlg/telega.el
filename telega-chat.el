@@ -155,9 +155,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatReadOutbox (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let* ((chat (telega-chat--get (plist-get event :chat_id)))
+         (old-read-outbox-msgid (plist-get chat :last_read_outbox_message_id)))
     (plist-put chat :last_read_outbox_message_id
                (plist-get event :last_read_outbox_message_id))
+    (with-telega-chat-buffer chat
+      (telega-chat-buffer--read-outbox old-read-outbox-msgid))
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatUnreadMentionCount (event)
@@ -707,6 +710,18 @@ notification for this message."
                   :value telega-chat-input-prompt)
       (telega-button--redisplay telega-chatbuf--prompt-button))))
 
+(defun telega-chat-buffer--read-outbox (old-last-read-outbox-msgid)
+  "Redisplay chat messages affected by read-outbox change.
+OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id'."
+  (save-excursion
+    (goto-char telega-chatbuf--output-marker)
+    (cl-block 'buttons-traverse-done
+      (telega-button-foreach0 previous-button 'telega-msg (button)
+        (when (>= old-last-read-outbox-msgid
+                  (plist-get (button-get button :value) :id))
+          (cl-return-from 'buttons-traverse-done))
+        (telega-button--redisplay button)))))
+
 (defun telega--on-updateNewMessage (event)
   "A new message was received; can also be an outgoing message."
   (telega-chat-buffer--insert-youngest-msg
@@ -750,6 +765,7 @@ Message id could be updated on this update."
                        :edit_date (plist-get event :edit_date))
             (plist-put (button-get msg-button :value)
                        :reply_markup (plist-get event :reply_markup))
+            (button-put msg-button :format 'telega-msg-button--format-full)
             (telega-button--redisplay msg-button)))))))
 
 (defun telega--on-updateMessageViews (event)
