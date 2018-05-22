@@ -183,11 +183,12 @@ Return list of strings."
                      (cdr formatted-estrs)) "\n")))
 
 (defsubst telega-fmt-atom (atom)
-  "Convert ATOM to string."
-  (if (stringp atom)
-      atom
-    (with-output-to-string
-      (princ atom))))
+  "Convert ATOM to string.
+NIL yields empty string for the convenience."
+  (cond ((stringp atom) atom)
+        ((null atom) "")
+        (t (with-output-to-string
+             (princ atom)))))
 
 (defun telega-fmt-eval-elem (elem value)
   "Format single element ELEM."

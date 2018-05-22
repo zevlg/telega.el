@@ -96,6 +96,22 @@ For edited messages always return nil."
   "Format MSG date."
   (telega-fmt-timestamp (plist-get msg :date)))
 
+(defun telega-msg-outgoing-status (msg)
+  "Outgoing status of the message."
+  (when (telega--tl-bool msg :is_outgoing)
+    (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
+          (chat (telega-chat--get (plist-get msg :chat_id))))
+    (cond ((and (stringp sending-state)
+                (string= sending-state "messageSendingStatePending"))
+           telega-symbol-msg-pending)
+          ((and (stringp sending-state)
+                (strintg= sending-state "messageSendingStateFailed"))
+           telega-symbol-msg-failed)
+          ((>= (plist-get chat :last_read_outbox_message_id)
+               (plist-get msg :id))
+           telega-symbol-msg-viewed)
+          (t telega-symbol-msg-succeed)))))
+
 (defun telega-msg-text-with-props (msg)
   "Return formatted text for the MSG."
   (let ((content (plist-get msg :content)))
@@ -173,6 +189,7 @@ Makes heave online requests without caching, be carefull."
      :min ,telega-chat-fill-column
      :align left)
     (telega-msg-timestamp :align right :min 10)
+    telega-msg-outgoing-status
     "\n"))
 
 (defun telega-msg-button--format-channel (msg)

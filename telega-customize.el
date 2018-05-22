@@ -137,21 +137,6 @@ You could use \"\\U0001F4CC\" if you have utf-8 locale."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-msg-pending "*"
-  "Mark to use for pending messages."
-  :type 'string
-  :group 'telega-chat)
-
-(defcustom telega-chat-msg-succeeded "v"
-  "Mark messages that are successfully sent to server."
-  :type 'string
-  :group 'telega-chat)
-
-(defcustom telega-chat-msg-failed (propertize "!" 'face 'error)
-  "Mark messages that have sending state failed."
-  :type 'string
-  :group 'telega-chat)
-
 (defcustom telega-chat-history-limit 50
   "Number of messages to fetch on history requests."
   :type 'integer
@@ -180,6 +165,26 @@ TODO"
 
 (defcustom telega-symbol-lock "\U0001F512"
   "*String to use as lock symbol."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-msg-pending "\U0001F550"
+  "Symbol to use for pending outgoing messages."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-msg-succeed "\U00002713"
+  "Symbol to use for successfully sent messages."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-msg-viewed "\U00002714"
+  "Symbol to use for seen outgoing messages."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-msg-failed (propertize "!" 'face 'error)
+  "Mark messages that have sending state failed."
   :type 'string
   :group 'telega)
 
