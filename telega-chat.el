@@ -713,6 +713,19 @@ notification for this message."
    (plist-get event :message)
    (telega--tl-bool event :disable_notification)))
 
+(defun telega--on-updateMessageSendSucceeded (event)
+  "Message has been successfully sent to server.
+Message id could be updated on this update."
+  (let* ((new-msg (plist-get event :message))
+         (chat (telega-chat--get (plist-get new-msg :chat_id))))
+    (with-telega-chat-buffer chat
+      (save-excursion
+        (let ((msg-button (telega-chat-buffer--button-get
+                           (plist-get event :old_message_id))))
+          (when msg-button
+            (button-put msg-button :value new-msg)
+            (telega-button--redisplay msg-button)))))))
+
 (defun telega--on-updateMessageContent (event)
   "Content of the message has been changed."
   (let ((chat (telega-chat--get (plist-get event :chat_id))))
