@@ -94,12 +94,6 @@ ellipsis."
   :type 'string
   :group 'telega)
 
-(defcustom telega-pin-string "p"
-  "*String used as pin.
-You could use \"\\U0001F4CC\" if you have utf-8 locale."
-  :type 'string
-  :group 'telega)
-
 (defcustom telega-week-start-day 1
   "*The day of the week on which a week in the calendar begins.
 0 means Sunday, 1 means Monday (default), and so on."
@@ -143,8 +137,15 @@ You could use \"\\U0001F4CC\" if you have utf-8 locale."
   :group 'telega-chat)
 
 (defcustom telega-chat-insert-date-breaks t
-  "*Non-nil to insert breaks inbetween messages of different dates.
+  "*Non-nil to insert breaks inbetween messages of different days.
 TODO"
+  :type 'boolean
+  :group 'telega-chat)
+
+(defcustom telega-msg-show-sender-status nil
+  "*Non-nil to show message sender status.
+Such as admin, creator, etc
+DO NOT USE.  TODO: sender statuses need to be cached."
   :type 'boolean
   :group 'telega-chat)
 
@@ -153,6 +154,7 @@ TODO"
   :type 'function
   :group 'telega)
 
+;; special symbols
 (defcustom telega-symbol-eye "\U0001F441"
   "String to use as eye symbol."
   :type 'string
@@ -168,7 +170,7 @@ TODO"
   :type 'string
   :group 'telega)
 
-(defcustom telega-symbol-msg-pending "\U0001F550"
+(defcustom telega-symbol-msg-pending "\U0000231B"
   "Symbol to use for pending outgoing messages."
   :type 'string
   :group 'telega)
@@ -221,13 +223,13 @@ TODO"
   :group 'telega-chat)
 
 (defface telega-entity-type-hashtag
-  '((t :inherit default :foreground "blue"))
+  '((t :inherit link))
   "Face to display #hashtags."
   :group 'telega-chat)
 
 (defface telega-entity-type-cashtag
   '((t :inherit default :foreground "blue"))
-  "Face to display #hashtags."
+  "Face to display $USD cashtags"
   :group 'telega-chat)
 
 (defface telega-entity-type-botcommand
@@ -247,12 +249,20 @@ TODO"
 
 (defface telega-entity-type-code
   '((t :family "Monospace Serif"))
-  "Face to display code."
+  "Face to display code.
+You can customize its `:height' to fit width of the default face.
+Use `(set-face-attribute 'telega-entity-type-code nil :height 0.83333333)'"
   :group 'telega-chat)
 
 (defface telega-entity-type-pre
   '((t :family "Monospace Serif"))
-  "Face to display text ala <pre> HTML tag."
+  "Face to display text ala <pre> HTML tag.
+You can customize its `:height' to fit width of the default face."
+  :group 'telega-chat)
+
+(defface telega-entity-type-texturl
+  '((t :inherit button))
+  "Face to display urls."
   :group 'telega-chat)
 
 (defface telega-chat-user-title
@@ -266,8 +276,13 @@ TODO"
   :group 'telega-chat)
 
 (defface telega-chat-self-title
-  '((t :inherit 'widget-field :bold t))
+  '((t :inherit 'telega-chat-user-title :bold t))
   "Face to display title of myself in chat buffers."
+  :group 'telega-chat)
+
+(defface telega-msg-status
+  '((t :height 0.8))
+  "Face used to display `telega-symbol-msg-XXX' symbols in message."
   :group 'telega-chat)
 
 

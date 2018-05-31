@@ -5,7 +5,7 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.1.5
+;; Version: 0.1.8
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -30,10 +30,9 @@
 (require 'telega-filter)
 (require 'telega-chat)
 (require 'telega-info)
-(require 'telega-notifications)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.1.7")
+(defconst telega-version "0.1.8")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
@@ -142,20 +141,23 @@ With prefix arg force quit without confirmation."
      `(:@type "checkAuthenticationPassword" :password ,passwd))))
 
 (defun telega--set-options ()
-  "Send proxy settings and `telega-options-plist' to server."
+  "Send custom options from `telega-options-plist' to server."
   (cl-loop for (prop-name value) in telega-options-plist
            do (telega-server--send
-               `(:@type "setOption" :name ,prop-name
-                        :value (:@type ,(cond ((memq value '(t nil))
-                                               "optionValueBoolean")
-                                              ((integerp value)
-                                               "optionValueInteger")
-                                              ((stringp value)
-                                               "optionValueString"))
-                                       :value (or value ,json-false))))))
+               (list :@type "setOption"
+                     :name prop-name
+                     :value (list :@type (cond ((memq value '(t nil))
+                                                "optionValueBoolean")
+                                               ((integerp value)
+                                                "optionValueInteger")
+                                               ((stringp value)
+                                                "optionValueString"))
+                                  :value (or value :json-false))))))
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
+  (setq telega--me-id
+        (plist-get (telega-server--call (list :@type "getMe")) :id))
   (telega--set-options)
   ;; Request for chats/users/etc
   (telega-chat--getChats)

@@ -21,21 +21,24 @@
 
 ;;; Commentary:
 
+;; To enable notifications use next code in your init.el:
+;; 
+;; (add-hook 'telega-root-mode-hook (lambda () (telega-notifications-mode 1)))
 ;; 
 
 ;;; Code:
 (require 'notifications)
 
-;;
-;; (notifications-notify
-;;   :title "title" :body "here test"
-;;   :app-icon (find-library-name "etc/telegram-logo.svg"))
-;;
-;;
 
-(defcustom telega-notifications-enabled t
-  "*Non-nil to enable notifications for telegram messages."
-  :type 'boolean
+(defcustom telega-notifications-timeout 2.0
+  "*How long to show notification in seconds."
+  :type 'float
+  :group 'telega)
+
+(defcustom telega-notifications-notify-args nil
+  "*Additional arguments to `notifications-notify'.
+It could be `:sound-file' for example."
+  :type 'list
   :group 'telega)
 
 (defvar telega--notifications nil
@@ -53,9 +56,46 @@
         "TODO scope: `telega--on-updateNotificationSettings' event=%s" event))
       )))
 
-(defun telega--on-xxx-todo-notification (event)
-  ;; TODO: use `notifications-notify' to notify
-  )
+(defun telega-notifications--format-msg (msg)
+  "Format function for the notification."
+  `(telega-msg-sender-name
+    telega-msg-via-bot
+    telega-msg-edit-date
+    "\n"
+    ,@(telega-msg-inline-reply msg "")
+    telega-msg-text-with-props))
+
+;;;###autoload
+(defun telega-notifications-mode (&optional arg)
+  "Toggle telega notifications on or off.
+With positive ARG - enables notifications, otherwise disables."
+  (interactive "p")
+  (if (> arg 0)
+      (add-hook 'telega-chat-message-hook 'telega-notfications-chat-message)
+    (remove-hook 'telega-chat-message-hook 'telega-notfications-chat-message)))
+
+(defun telega-notfications-chat-message (msg disable-notification)
+  "Function intended to be added to `telega-chat-message-hook'."
+  (unless disable-notification
+    (let* ((chat (telega-chat--get (plist-get msg :chat_id)))
+           (not-cfg (plist-get chat :notification_settings)))
+      (when (zerop (plist-get not-cfg :mute_for))
+        (let ((notargs (list :app-name "emacs.telega"
+                             :app-icon (find-library-name "etc/telegram-logo.svg")
+                             :timeout (round (* 1000 telega-notifications-timeout))
+                             :urgency "normal"
+                             :title (telega-chat--title chat 'with-username))))
+          (setq notargs (plist-put notargs :body
+                                   (if (telega--tl-bool not-cfg :show_preview)
+                                       (substring-no-properties
+                                        (telega-fmt-eval
+                                         'telega-notifications--format-msg msg))
+                                     "Has new unread messages")))
+          (telega-debug "NOTIFY with args: %S"
+                        (nconc notargs telega-notifications-notify-args))
+          (apply 'notifications-notify
+                 (nconc notargs telega-notifications-notify-args)))
+        ))))
 
 (provide 'telega-notifications)
 

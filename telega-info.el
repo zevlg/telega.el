@@ -119,32 +119,33 @@ TLOBJ could be one of: user, basicgroup or supergroup."
   "Return non-nil if USER is bot."
   (eq (telega-user--type user) 'bot))
 
-(defun telega-user--title (user &optional with-username)
-  "Return title for the USER."
+(defun telega-user--name (user &optional fmt-type)
+  "Return name for the USER.
+Format name using FMT-TYPE, one of:
+  `name' - Uses only first and last names
+  `short' - Uses username if set, name otherwise
+  `full' - Uses all available namings
+Default is: `full'"
   (if (eq (telega-user--type user) 'deleted)
       (format "DeletedUser-%d" (plist-get user :id))
 
-    (let ((fn (plist-get user :first_name))
-          (ln (plist-get user :last_name))
-          (title ""))
-      (when with-username
+    (let ((fmt-type (or fmt-type 'full))
+          (name ""))
+      (when (memq fmt-type '(full short))
         (let ((un (plist-get user :username)))
-          (unless (string-empty-p un)
-            (setq title (concat "@" un)))))
-      (unless (string-empty-p ln)
-        (setq title (concat ln (if (string-empty-p title) "" " ") title)))
-      (unless (string-empty-p fn)
-        (setq title (concat fn (if (string-empty-p title) "" " ") title)))
-      title)))
-
-(defun telega-user--short-name (user)
-  "Return short name for the USER."
-  (let ((username (plist-get user :username)))
-    (if (string-empty-p username)
-        (concat (plist-get user :first_name)
-                " "
-                (plist-get user :last_name))
-      (concat "@" username))))
+          (if (string-empty-p un)
+              (when (eq fmt-type 'short)
+                (setq fmt-type 'name))
+            (setq name (concat "@" un)))))
+      (when (or (memq fmt-type '(full name)) (string-empty-p name))
+        (let ((ln (plist-get user :last_name)))
+          (unless (string-empty-p ln)
+            (setq name (concat ln (if (string-empty-p name) "" " ") name)))))
+      (when (or (memq fmt-type '(full name)) (string-empty-p name))
+        (let ((fn (plist-get user :first_name)))
+          (unless (string-empty-p fn)
+            (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
+      name)))
 
 (defun telega-user--seen (user)
   "Return last seen status for the USER."
@@ -227,23 +228,22 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                            (= crt-id (plist-get m :user_id)))))
          )
     (insert (format "Created: %s  %s\n"
-                    (telega-user--title creator 'with-username)
+                    (telega-user--name creator)
                     (if creator-member
                         (telega-fmt-timestamp
                          (plist-get creator-member :joined_chat_date))
                       "")))
     (unless (string-empty-p invite-link)
       (insert "Invite link: ")
-      (insert-text-button invite-link 'follow-link t)
+      (insert-text-button invite-link :telega-link (cons 'url invite-link)
+                          'action 'telega-open-link-action)
       (insert "\n"))
 
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
     (mapc (lambda (mbr)
             (insert (format "  %s (%S)\n"
-                            (telega-user--title
-                             (telega-user--get (plist-get mbr :user_id))
-                             'with-username)
+                            (telega-user--name (telega-user--get (plist-get mbr :user_id)))
                             (plist-get mbr :user_id))))
           members)
     ))
@@ -269,7 +269,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
 
     (unless (string-empty-p invite-link)
       (insert "Invite link: ")
-      (insert-text-button invite-link 'follow-link t)
+      (insert-text-button invite-link :telega-link (cons 'url invite-link)
+                          'action 'telega-open-link-action)
       (insert "\n"))
     (unless (string-empty-p descr)
       (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
@@ -279,10 +280,6 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
     (unless (zerop pin_msg_id)
       (insert "----(pinned message)----\n")
       (telega-button-insert 'telega-msg
-        :format (lambda (msg)
-                  (if (zerop (plist-get msg :sender_user_id))
-                      (telega-msg-button--format-msg msg "")
-                    (telega-msg-button--format-full msg)))
         :value (telega-chat--getPinnedMessage chat)
         :action 'ignore)
       (insert "------------------------\n"))
