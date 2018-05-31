@@ -34,6 +34,7 @@
   "All types of chats supported by telega.")
 
 ;;; Runtime variables
+(defvar telega--me-id nil "User id of myself.")
 (defvar telega--options nil "Options updated from telega-server.")
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
@@ -55,6 +56,7 @@
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
+  (setq telega--me-id -1)
   (setq telega--options nil)
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--ordered-chats nil)
@@ -96,6 +98,14 @@ Done when telega server is ready to receive queries."
   (let ((tl-obj-sym (cl-gensym "tl-obj")))
     `(lambda (,tl-obj-sym)
        (plist-get ,tl-obj-sym ,prop))))
+
+(defmacro telega-save-excursion (&rest body)
+  "Save current point as moving marker."
+  (let ((pnt-sym (gensym)))
+    `(let ((,pnt-sym (copy-marker (point) t)))
+       (unwind-protect
+           (progn ,@body)
+         (goto-char ,pnt-sym)))))
 
 
 ;;; Formatting
@@ -251,6 +261,9 @@ NIL yields empty string for the convenience."
                   (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000))))
       )))
 
+(defun telega-fmt-timestamp-iso8601 (timestamp)
+  (format-time-string "%FT%T%z" timestamp))
+
 (defun telega-fmt-labeled-text (label text &optional fill-col)
   "Format TEXT filling it, prefix with LABEL."
   (telega-fmt-eval
@@ -274,7 +287,7 @@ NIL yields empty string for the convenience."
   (let ((user (telega-user--get (plist-get member :user_id)))
         (joined (plist-get member :joined_chat_date)))
     (list
-     (telega-user--title user 'withusername)
+     (telega-user--name user)
      (telega-fmt-chat-member-status (plist-get member :status))
      (unless (zerop joined)
        (concat " joined at " (telega-fmt-timestamp joined))))))
@@ -398,9 +411,18 @@ Return newly created button."
       (setq result (pushnew (telega-chat--title chat 'withusername) result
                             :test #'string=)))
     (dolist (user (hash-table-values (cdr (assq 'user telega--full-info))))
-      (setq result (pushnew (telega-user--title user 'withusername) result
-                            :test #'string=)))
+      (setq result (pushnew (telega-user--name user) result :test #'string=)))
     (nreverse result)))
+
+(defun telega-open-link-action (button)
+  "Browse url at point."
+  (let ((link (button-get button :telega-link)))
+    (ecase (car link)
+      (user (with-help-window " *Telegram User Info*"
+              (set-buffer standard-output)
+              (telega-info--insert-user
+               (telega-user--get (cdr link)))))
+      (url (browse-url (cdr link))))))
 
 (provide 'telega-core)
 
