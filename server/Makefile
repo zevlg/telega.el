@@ -6,7 +6,7 @@ PROG=telega-server
 $(PROG): telega-server.c
 	$(CC) $(CFLAGS) -o $(PROG) telega-server.c -ltdjson
 
-install:
+install: $(PROG)
 	@install -v -d $(HOME)/.telega
 	@install -v $(PROG) $(HOME)/.telega
 
