@@ -800,7 +800,7 @@ Message id could be updated on this update."
       (save-excursion
         (let ((msg-button (telega-chat-buffer--button-get
                            (plist-get event :old_message_id))))
-          (assert msg-button t
+          (assert msg-button nil
                   (format "Can't find message id=%d"
                           (plist-get event :old_message_id)))
 
