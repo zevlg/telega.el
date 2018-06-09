@@ -16,6 +16,8 @@ to use `telega.el` for basic chat.
     order
   * Getting info about users, groups and supergroups
   * Fetching chat history, sending messages, replies
+  * D-Bus notifications on incoming messages in chats with enabled
+    notifications
   * Expressive `ibuffer`-like chats filtering, includes filtering by:
   * Downloading files from the cloud
   * Emoji supported (only in GNU Emacs with surrogate pairs support,
