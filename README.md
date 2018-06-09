@@ -19,7 +19,7 @@ to use `telega.el` for basic chat.
   * Expressive `ibuffer`-like chats filtering, includes filtering by:
   * Downloading files from the cloud
   * Emoji supported (only in GNU Emacs with surrogate pairs support,
-    see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784 "Bug#24784")
+    see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784 "Bug#24784"))
 
 # TODO
 
@@ -33,12 +33,13 @@ to use `telega.el` for basic chat.
 Chat buffer and combination of root buffer/chat buffer running under
 iOS terminal [blink](https://github.com/blinksh/blink "blink"):
 
-* ![screen0](https://zevlg.github.io/telega/screen0.png)
-* ![screen1](https://zevlg.github.io/telega/screen1.png)
+![screen0](https://zevlg.github.io/telega/screen0.png)
+
+![screen1](https://zevlg.github.io/telega/screen1.png)
 
 `telega.el` running under GUI version of Emacs:
 
-* ![screen2](https://zevlg.github.io/telega/screen2.png)
+![screen2](https://zevlg.github.io/telega/screen2.png)
 
 # Installation
 
@@ -75,7 +76,7 @@ To get the source:
 $ git clone https://github.com/tdlib/td.git
 ```
 
-Move into the folder with `cd td`.
+Move into the folder with `cd td`
 
 Prepare a folder for building the library:
 ```console
@@ -117,7 +118,7 @@ $ git clone https://github.com/zevlg/telega.el
 ```
 
 Moving into the folder with `cd telega.el`, it is possible to build
-the `telega-server` executable and move into the `$HOME/.telega` with
+the `telega-server` executable and move into the `$HOME/.telega` with:
 
 ```console
 $ make && make install
