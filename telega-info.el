@@ -235,8 +235,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                       "")))
     (unless (string-empty-p invite-link)
       (insert "Invite link: ")
-      (insert-text-button invite-link :telega-link (cons 'url invite-link)
-                          'action 'telega-open-link-action)
+      (apply 'insert-text-button invite-link
+             (telega-link-props 'url invite-link))
       (insert "\n"))
 
     (insert (format "Members: %d users\n"
@@ -269,8 +269,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
 
     (unless (string-empty-p invite-link)
       (insert "Invite link: ")
-      (insert-text-button invite-link :telega-link (cons 'url invite-link)
-                          'action 'telega-open-link-action)
+      (apply 'insert-text-button invite-link
+             (telega-link-props 'url invite-link))
       (insert "\n"))
     (unless (string-empty-p descr)
       (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
