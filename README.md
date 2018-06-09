@@ -20,14 +20,17 @@ to use `telega.el` for basic chat.
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
 - [x] Downloading files from the cloud
-- [x] Emoji supported (only in GNU Emacs with surrogate pairs support,
+- [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
 - [ ] Secret chats
 - [ ] Online searching chats/messages
 - [ ] Avatars, photos
 - [ ] Stickers
+- [ ] Animated GIF
 - [ ] Special messages such as location/live location, voice/video
       messages, etc
+- [ ] ReplyMarkup (inline keyboard buttons) in the messages
+- [ ] InstantView for web pages 
 
 # Screenshots
 
