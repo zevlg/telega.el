@@ -12,23 +12,22 @@ to use `telega.el` for basic chat.
 
 # Features
 
-  * Listing chats, reordering chats according to internal Telegram
-    order
-  * Getting info about users, groups and supergroups
-  * Fetching chat history, sending messages, replies
-  * D-Bus notifications on incoming messages in chats with enabled
-    notifications
-  * Expressive `ibuffer`-like chats filtering, includes filtering by:
-  * Downloading files from the cloud
-  * Emoji supported (only in GNU Emacs with surrogate pairs support,
-    see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784 "Bug#24784"))
-
-# TODO
-
-  * Secret chats
-  * Online searching chats/messages
-  * Special messages such as location/live location
-  * Images/Stickers/Voice/Video messages
+- [x] Listing chats, reordering chats according to internal Telegram
+      order
+- [x] Expressive `ibuffer`-like chats filtering, includes filtering by:
+- [x] Getting info about users, groups and supergroups
+- [x] Fetching chat history, sending messages, replies
+- [x] D-Bus notifications on incoming messages in chats with enabled
+      notifications
+- [x] Downloading files from the cloud
+- [x] Emoji supported (only in GNU Emacs with surrogate pairs support,
+      see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
+- [ ] Secret chats
+- [ ] Online searching chats/messages
+- [ ] Avatars, photos
+- [ ] Stickers
+- [ ] Special messages such as location/live location, voice/video
+      messages, etc
 
 # Screenshots
 
