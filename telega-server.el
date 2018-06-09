@@ -72,6 +72,7 @@
 
 ;; Server runtime vars
 (defvar telega-server--buffer nil)
+(defvar telega-server--last-error nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
 
@@ -120,11 +121,13 @@ Raise error if not found"
              (setq call-cb #'telega--on-event))
 
            ;; Function call may return errors
-           (if (and (eq 'error (telega--tl-type value))
-                      (not (= (plist-get value :code) 406)))
-               (message "telega-server error: %s" (plist-get value :message))
+           (if (or (not (eq 'error (telega--tl-type value)))
+                   (= (plist-get value :code) 406))
+               (funcall call-cb value)
 
-           (funcall call-cb value))))
+             ;; Error returned
+             (setq telega-server--last-error value)
+             (message "telega-server error: %s" (plist-get value :message)))))
 
         ((string= cmd "error")
          (telega--on-error value))
