@@ -100,15 +100,6 @@ Finally, to install the library system-wide:
 $ sudo make install
 ```
 
-This will install the library under `/usr/local/lib`. This path should
-be added to the variable `$LD_LIBRARY_PATH` in case it was not already
-there, otherwise `telega` will not be able to use the library. To do
-so:
-
-```console
-$ LD_LIBRARY_PATH="/usr/local/lib":$LD_LIBRARY_PATH$
-```
-
 Now that the library is set-up, it is time to install `telega.el`. The
 first step consists in building `telega-server`, which is a C
 interface to the `tdlib`.

@@ -1,10 +1,11 @@
 CC=cc
 CFLAGS=-Wall -g -pthread
+LDFLAGS=-L/usr/local/lib -ltdjson
 
 PROG=telega-server
 
 $(PROG): telega-server.c
-	$(CC) $(CFLAGS) -o $(PROG) telega-server.c -ltdjson
+	$(CC) $(CFLAGS) -o $(PROG) telega-server.c $(LDFLAGS)
 
 install: $(PROG)
 	@install -v -d $(HOME)/.telega
