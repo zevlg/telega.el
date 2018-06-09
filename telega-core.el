@@ -52,6 +52,10 @@
 (defvar telega--unread-unmuted-count 0 "Total number of unread/unmuted messages.")
 
 (defvar telega--chat-buffers nil "List of all chat buffers.")
+(defvar telega--files-downloading nil
+  "List of elements in form (FILE-ID CHAT-ID MSG-ID).
+Where CHAT-ID and MSG-ID denotes place where FILE-ID is used in.
+Used to update messages when file updates.")
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -72,13 +76,15 @@ Done when telega server is ready to receive queries."
         (list (cons 'user (make-hash-table :test 'eq))
               (cons 'basicGroup (make-hash-table :test 'eq))
               (cons 'supergroup (make-hash-table :test 'eq))))
-  )
+
+  (setq telega--files-downloading nil))
 
 (defmacro with-telega-debug-buffer (&rest body)
   "Execute BODY only if telega-debug is enabled making debug buffer current."
   `(when telega-debug
      (with-current-buffer (get-buffer-create "*telega-debug*")
-       ,@body)))
+       (telega-save-excursion
+         ,@body))))
 
 (defsubst telega-debug (fmt &rest args)
   (with-telega-debug-buffer
@@ -106,6 +112,52 @@ Done when telega server is ready to receive queries."
        (unwind-protect
            (progn ,@body)
          (goto-char ,pnt-sym)))))
+
+
+;; Files
+(defun telega-file--get (file-id)
+  (telega-server--call
+   (list :@type "getFile" :file_id file-id)))
+
+(defun telega-file--download (file-id &optional priority)
+  "Asynchronously downloads a file from the cloud.
+`telega--on-updateFile' will be called to notify about the
+download progress and successful completion of the download."
+  (telega-server--call
+   (list :@type "downloadFile"
+         :file_id file-id
+         :priority (or priority 32))))
+
+(defun telega-file--cancel-download (file-id &optional only-if-pending)
+  "Stops the downloading of a file with FILE-ID.
+If ONLY-IF-PENDING is non-nil then stop downloading only if it
+hasn't been started, i.e. request hasn't been sent to server."
+  (telega-server--send
+   (list :@type "cancelDownloadFile"
+         :file_id file-id
+         :only_if_pending (or only-if-pending :json-false))))
+
+(defun telega-file--delete (file-id)
+  "Delete file from cache."
+  (telega-server--send
+   (list :@type "deleteFile"
+         :file_id file-id)))
+
+(defsubst telega-file--update-message (file)
+  "Update message associated with FILE."
+  (let ((link (assq (plist-get file :id) telega--files-downloading)))
+    (when link
+      (telega-msg--update-file (nth 1 link) (nth 2 link) file)
+
+      (let ((local (plist-get file :local)))
+        (when (telega--tl-bool local :is_downloading_completed)
+          (setq telega--files-downloading
+                (delete link telega--files-downloading))
+          (message "Downloading completed: %s" (plist-get local :path)))))))
+
+(defun telega--on-updateFile (event)
+  "File has been updated, call all the associated hooks."
+  (telega-file--update-message (plist-get event :file)))
 
 
 ;;; Formatting
@@ -414,6 +466,13 @@ Return newly created button."
       (setq result (pushnew (telega-user--name user) result :test #'string=)))
     (nreverse result)))
 
+(defun telega-link-props (link-type link-to &optional face)
+  "Generate props for link button openable with `telega-open-link-action'."
+  (assert (memq link-type '(url file user hashtag download cancel-download)))
+  (list 'action 'telega-open-link-action
+        'face (or face 'telega-link)
+        :telega-link (cons link-type link-to)))
+
 (defun telega-open-link-action (button)
   "Browse url at point."
   (let ((link (button-get button :telega-link)))
@@ -422,7 +481,20 @@ Return newly created button."
               (set-buffer standard-output)
               (telega-info--insert-user
                (telega-user--get (cdr link)))))
-      (url (browse-url (cdr link))))))
+      (url (browse-url (cdr link)))
+      (file (find-file (cdr link)))
+
+      ;; `link' for download/cancel-download is (FILE-ID CHAT-ID MSG-ID)
+      (download
+       (pushnew (cdr link) telega--files-downloading)
+       (telega-file--download (car (cdr link))))
+
+      (cancel-download
+       (telega-file--cancel-download (car (cdr link)))
+       (telega-file--update-message
+        (telega-file--get (car (cdr link))))
+       (setq telega--file-messages
+             (delete (cdr link) telega--files-downloading))))))
 
 (provide 'telega-core)
 
