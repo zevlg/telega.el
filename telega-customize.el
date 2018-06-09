@@ -111,12 +111,12 @@ ellipsis."
   :type 'string
   :group 'telega)
 
-(defcustom telega-chat-reply-prompt "`->"
+(defcustom telega-chat-reply-prompt telega-chat-input-prompt
   "*Prompt to use when replying to message."
   :type 'string
   :group 'telega)
 
-(defcustom telega-chat-edit-prompt "`->"
+(defcustom telega-chat-edit-prompt telega-chat-input-prompt
   "*Prompt to use when replying to message."
   :type 'string
   :group 'telega)
@@ -138,7 +138,7 @@ ellipsis."
 
 (defcustom telega-chat-insert-date-breaks t
   "*Non-nil to insert breaks inbetween messages of different days.
-TODO"
+NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
@@ -167,6 +167,11 @@ DO NOT USE.  TODO: sender statuses need to be cached."
 
 (defcustom telega-symbol-lock "\U0001F512"
   "*String to use as lock symbol."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-document "\U0001F5CE"
+  "*String to use as document symbol."
   :type 'string
   :group 'telega)
 
@@ -222,8 +227,13 @@ DO NOT USE.  TODO: sender statuses need to be cached."
   "Face to display @mentions."
   :group 'telega-chat)
 
-(defface telega-entity-type-hashtag
+(defface telega-link
   '((t :inherit link))
+  "Face to display various links."
+  :group 'telega-chat)
+
+(defface telega-entity-type-hashtag
+  '((t :inherit telega-link))
   "Face to display #hashtags."
   :group 'telega-chat)
 
