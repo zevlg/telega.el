@@ -14,7 +14,7 @@ to use `telega.el` for basic chat.
 
 - [x] Listing chats, reordering chats according to internal Telegram
       order
-- [x] Expressive `ibuffer`-like chats filtering, includes filtering by:
+- [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
 - [x] Fetching chat history, sending messages, replies
 - [x] D-Bus notifications on incoming messages in chats with enabled
