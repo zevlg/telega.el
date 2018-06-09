@@ -2,7 +2,7 @@
 
 `telega.el` is an unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
-Emacs](https://gnu.org/emacs "GNU Emacs") on GNU/Linux machines.
+Emacs](https://gnu.org/emacs "GNU Emacs").
 
 `telega.el` is in its very alpha stages and it is actively
 developed. For this reason, many features are not implemented, or they
