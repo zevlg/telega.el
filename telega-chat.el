@@ -750,7 +750,7 @@ Return newly inserted message button."
 (defun telega-chat-buffer--prompt-reset ()
   "Reset prompt to initial state in chat buffer."
   (let ((inhibit-read-only t))
-    (save-excursion
+    (telega-save-excursion
       (setq telega-chatbuf--send-func 'telega-chat-send-msg
             telega-chatbuf--send-args nil)
 
@@ -766,7 +766,7 @@ Return newly inserted message button."
 (defun telega-chat-buffer--read-outbox (old-last-read-outbox-msgid)
   "Redisplay chat messages affected by read-outbox change.
 OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id'."
-  (save-excursion
+  (telega-save-excursion
     (goto-char telega-chatbuf--output-marker)
     (cl-block 'buttons-traverse-done
       (telega-button-foreach0 previous-button 'telega-msg (button)
