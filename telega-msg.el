@@ -71,6 +71,18 @@
          :message_id msg-id
          :for_album (or for-album :json-false))))
 
+(defun telega-msg--update-file (chat-id msg-id file)
+  "File used in CHAT-ID/MSG-ID has been updated to FILE."
+  (with-telega-chat-buffer (telega-chat--get chat-id)
+    (telega-save-excursion
+      (let ((msg-button (telega-chat-buffer--button-get msg-id)))
+        (when msg-button
+          (plist-put
+           (plist-get (plist-get (button-get msg-button :value)
+                                 :content) :document)
+           :document file)
+          (telega-button--redisplay msg-button))))))
+
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."
   (telega-chat--title (telega-msg--chat msg) 'with-username))
@@ -132,6 +144,52 @@
            telega-symbol-msg-viewed)
           (t telega-symbol-msg-succeed)))))
 
+(defun telega-msg-document (msg)
+  "Format document of the message."
+  (assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
+
+  (let* ((content (plist-get msg :content))
+         (document (plist-get content :document))
+         (cap (plist-get content :caption))
+         (cap-with-props
+          (telega-msg--ents-to-props
+           (plist-get cap :text) (plist-get cap :entities)))
+         (fname (plist-get document :file_name))
+         (file (plist-get document :document))
+         (filesize (plist-get file :size))
+         (local (plist-get file :local)))
+    (concat telega-symbol-document " " fname
+            " (" (file-size-human-readable filesize) ") "
+
+            ;; Downloading status:
+            ;;   /link/to-file         if file has been downloaded
+            ;;   [Download]            if no local copy
+            ;;   [...   20%] [Cancel]  if download in progress
+            (cond ((telega--tl-bool local :is_downloading_completed)
+                   (apply 'propertize (plist-get local :path)
+                          (telega-link-props 'file (plist-get local :path))))
+                  ((telega--tl-bool local :is_downloading_active)
+                   (let* ((dsize (plist-get local :downloaded_size))
+                          (dpart (/ (float dsize) filesize))
+                          (percents (round (* (/ (float dsize) filesize) 100))))
+                     (concat
+                      (format "[%-10s%d%%]"
+                              (make-string (round (* dpart 10)) ?\.)
+                              (round (* dpart 100)))
+                      " "
+                      (apply 'propertize "[Cancel]"
+                             (telega-link-props
+                              'cancel-download
+                              (list (plist-get file :id)
+                                    (plist-get msg :chat_id)
+                                    (plist-get msg :id)))))))
+                  (t (apply 'propertize "[Download]"
+                            (telega-link-props
+                             'download
+                             (list (plist-get file :id)
+                                   (plist-get msg :chat_id)
+                                   (plist-get msg :id)))))))))
+
 (defun telega-msg-text-with-props (msg)
   "Return formatted text for the MSG."
   (let ((content (plist-get msg :content)))
@@ -141,19 +199,13 @@
          (telega-msg--ents-to-props
           (plist-get text :text)
           (plist-get text :entities))))
+      (messageDocument
+       (telega-msg-document msg))
       (t (format "<unsupported message %S>" (telega--tl-type content))))))
 
 (defun telega-msg-text-with-props-one-line (msg)
   "Format MSG's text as one line."
   (replace-regexp-in-string "\n" " " (telega-msg-text-with-props msg)))
-
-(defun telega-msg-button--format-error (msg)
-  (error "Must set :format explicitly for message buttons."))
-
-(defun telega-msg-button--format-one-line (msg)
-  "Format message MSG to be displayed in one line."
-  (list (telega-msg-sender-shortname msg "> ")
-        'telega-msg-text-with-props-one-line))
 
 (defun telega-msg-sender-admin-status (msg)
   (let ((admins-tl (telega-server--call
@@ -189,9 +241,9 @@ Makes heave online requests without caching, be carefull."
                       (telega-msg--get (plist-get msg :chat_id)
                                        reply-to-msg-id))))
     (when reply-msg
-      `((("| Reply: " ,(telega-fmt-eval
-                        (telega-msg-button--format-one-line reply-msg)
-                        reply-msg))
+      `((("| Reply: "
+          ,(telega-msg-sender-shortname reply-msg "> ")
+          ,(telega-msg-text-with-props-one-line reply-msg))
          :max ,(- telega-chat-fill-column (length fill-prefix))
          :face telega-chat-inline-reply)
         "\n" ,fill-prefix))))
@@ -206,6 +258,9 @@ Makes heave online requests without caching, be carefull."
     (telega-msg-timestamp :align right :min 10)
     (telega-msg-outgoing-status :face telega-msg-status)
     "\n"))
+
+(defun telega-msg-button--format-error (msg)
+  (error "Must set :format explicitly for message buttons."))
 
 (defun telega-msg-button--format-channel (msg)
   `((telega-msg-chat-title :face telega-chat-user-title)
@@ -246,11 +301,17 @@ Makes heave online requests without caching, be carefull."
     `((("--(" ,(case (telega--tl-type content)
                  (messageChatAddMembers
                   (concat
+                   (telega-user--name
+                    (telega-user--get (plist-get msg :sender_user_id)) 'name)
+                   " invited "
                    (mapconcat 'telega-user--name
                               (mapcar 'telega-user--get
                                       (plist-get content :member_user_ids))
-                              ", ")
-                   " joined the group"))
+                              ", ")))
+                 (messageChatJoinByLink
+                  (concat (telega-user--name
+                           (telega-user--get (plist-get msg :sender_user_id)))
+                          " joined the group via invite link"))
                  (messageChatDeleteMember
                   (concat (telega-user--name
                            (telega-user--get (plist-get content :user_id)))
@@ -274,7 +335,8 @@ PREV-MSG is non-nil if there any previous message exists."
          (telega-msg-button--format-channel msg))
 
         ((memq (telega--tl-type (plist-get msg :content))
-               '(messageChatAddMembers messageChatDeleteMember messageChatChangeTitle))
+               (list 'messageChatAddMembers 'messageChatJoinByLink
+                     'messageChatDeleteMember 'messageChatChangeTitle))
          (telega-msg-button--format-action msg))
 
         (t (if (and prev-msg
@@ -287,7 +349,9 @@ PREV-MSG is non-nil if there any previous message exists."
              (telega-msg-button--format-full msg)))))
 
 (defsubst telega-msg-button--format-aux (title &optional msg)
-  `((("| " ,title ": " telega-msg-button--format-one-line)
+  `((("| " ,title ": "
+      ,(telega-msg-sender-shortname msg "> ")
+      ,(telega-msg-text-with-props-one-line msg))
      :max ,telega-chat-fill-column
      :elide t
      :face telega-chat-prompt)
@@ -305,13 +369,10 @@ PREV-MSG is non-nil if there any previous message exists."
       (textEntityTypeMention
        (list 'face 'telega-entity-type-mention))
       (textEntityTypeMentionName
-       (list 'action 'telega-open-link-action
-             'face 'telega-entity-type-mention
-             :telega-link (cons 'user (plist-get ent-type :user_id))))
+       (telega-link-props 'user (plist-get ent-type :user_id)
+                          'telega-entity-type-mention))
       (textEntityTypeHashtag
-       (list 'action 'telega-open-link-action
-             'face 'telega-entity-type-hashtag
-             :telega-link (cons 'hashtag text)))
+       (telega-link-props 'hashtag text))
       (textEntityTypeBold
        (list 'face 'telega-entity-type-bold))
       (textEntityTypeItalic
@@ -324,16 +385,10 @@ PREV-MSG is non-nil if there any previous message exists."
        (list 'face 'telega-entity-type-pre))
 
       (textEntityTypeUrl
-       (list 'follow-link t
-             'action 'telega-open-link-action
-             'face 'telega-entity-type-texturl
-             :telega-link (cons 'url text)))
-
+       (telega-link-props 'url text 'telega-entity-type-texturl))
       (textEntityTypeTextUrl
-       (list 'follow-link t
-             'action 'telega-open-link-action
-             'face 'telega-entity-type-texturl
-             :telega-link (cons 'url (plist-get ent-type :url))))
+       (telega-link-props 'url (plist-get ent-type :url)
+                          'telega-entity-type-texturl))
       )))
 
 (defun telega-msg--ents-to-props (text entities)
