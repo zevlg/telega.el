@@ -20,8 +20,11 @@ to use `telega.el` for basic chat.
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
 - [x] Downloading files from the cloud
+- [ ] Uploading files/media to the cloud
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
+- [ ] Emoji input via `:<emoji>:` syntax with completions
+- [ ] Username completions for fast mentions
 - [ ] Secret chats
 - [ ] Online searching chats/messages
 - [ ] Avatars, photos
