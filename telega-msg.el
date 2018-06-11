@@ -297,30 +297,35 @@ Makes heave online requests without caching, be carefull."
 
 (defun telega-msg-button--format-action (msg)
   "Format chat's action message, such as messageChatAddMembers."
-  (let ((content (plist-get msg :content)))
-    `((("--(" ,(case (telega--tl-type content)
-                 (messageChatAddMembers
+  (let ((content (plist-get msg :content))
+        (sender (telega-user--get (plist-get msg :sender_user_id))))
+    `((("--("
+        ,(case (telega--tl-type content)
+           (messageChatAddMembers
+            ;; If sender matches
+            (let ((user-ids (plist-get content :member_user_ids)))
+              (if (and (= 1 (length user-ids))
+                       (= (plist-get sender :id) (aref user-ids 0)))
                   (concat
-                   (telega-user--name
-                    (telega-user--get (plist-get msg :sender_user_id)) 'name)
-                   " invited "
-                   (mapconcat 'telega-user--name
-                              (mapcar 'telega-user--get
-                                      (plist-get content :member_user_ids))
-                              ", ")))
-                 (messageChatJoinByLink
-                  (concat (telega-user--name
-                           (telega-user--get (plist-get msg :sender_user_id)))
-                          " joined the group via invite link"))
-                 (messageChatDeleteMember
-                  (concat (telega-user--name
-                           (telega-user--get (plist-get content :user_id)))
-                          " left the group"))
-                 (messageChatChangeTitle
-                  (concat (telega-user--name
-                           (telega-user--get (plist-get msg :sender_user_id)))
-                          " renamed group to \"" (plist-get content :title) "\""))
-                 (t "<unsupported chat action: %S>" (telega--tl-type content)))
+                   (telega-user--name sender 'name)
+                   " joined the group")
+                (concat
+                 (telega-user--name sender 'name)
+                 " invited "
+                 (mapconcat 'telega-user--name
+                            (mapcar 'telega-user--get user-ids)
+                            ", ")))))
+           (messageChatJoinByLink
+            (concat (telega-user--name sender)
+                    " joined the group via invite link"))
+           (messageChatDeleteMember
+            (concat (telega-user--name
+                     (telega-user--get (plist-get content :user_id)))
+                    " left the group"))
+           (messageChatChangeTitle
+            (concat (telega-user--name sender)
+                    " renamed group to \"" (plist-get content :title) "\""))
+           (t "<unsupported chat action: %S>" (telega--tl-type content)))
         ")--")
        :min ,telega-chat-fill-column
        :align center
