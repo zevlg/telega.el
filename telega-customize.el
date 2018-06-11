@@ -170,7 +170,7 @@ DO NOT USE.  TODO: sender statuses need to be cached."
   :type 'string
   :group 'telega)
 
-(defcustom telega-symbol-document "\U0001F5CE"
+(defcustom telega-symbol-document "\U0001F4C4"
   "*String to use as document symbol."
   :type 'string
   :group 'telega)
