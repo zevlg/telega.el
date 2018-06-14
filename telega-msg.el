@@ -301,6 +301,9 @@ Makes heave online requests without caching, be carefull."
         (sender (telega-user--get (plist-get msg :sender_user_id))))
     `((("--("
         ,(case (telega--tl-type content)
+           (messageContactRegistered
+            (concat (telega-user--name sender)
+                    " joined the Telegram"))
            (messageChatAddMembers
             ;; If sender matches
             (let ((user-ids (plist-get content :member_user_ids)))
@@ -341,7 +344,8 @@ PREV-MSG is non-nil if there any previous message exists."
 
         ((memq (telega--tl-type (plist-get msg :content))
                (list 'messageChatAddMembers 'messageChatJoinByLink
-                     'messageChatDeleteMember 'messageChatChangeTitle))
+                     'messageChatDeleteMember 'messageChatChangeTitle
+                     'messageContactRegistered))
          (telega-msg-button--format-action msg))
 
         (t (if (and prev-msg
