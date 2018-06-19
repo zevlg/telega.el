@@ -226,7 +226,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
           (cl-find creator-id members
                    :test (lambda (crt-id m)
                            (= crt-id (plist-get m :user_id)))))
-         )
+         (member-status (plist-get basicgroup :status)))
+    (insert "Status: " (substring (plist-get member-status :@type) 16) "\n")
     (insert (format "Created: %s  %s\n"
                     (telega-user--name creator)
                     (if creator-member
@@ -252,8 +253,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
   (let* ((full-info (telega--full-info supergroup))
          (invite-link (plist-get full-info :invite_link))
          (descr (plist-get full-info :description))
-         (restr_reason (plist-get supergroup :restriction_reason))
-         (pin_msg_id (plist-get full-info :pinned_message_id))
+         (restr-reason (plist-get supergroup :restriction_reason))
+         (pin-msg-id (plist-get full-info :pinned_message_id))
          (member-status (plist-get supergroup :status)))
     (insert "Status: " (substring (plist-get member-status :@type) 16) "\n")
     (insert (if (or (eq (telega--tl-type member-status)
@@ -274,14 +275,17 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (insert "\n"))
     (unless (string-empty-p descr)
       (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
-    (unless (string-empty-p restr_reason)
-      (insert (telega-fmt-labeled-text "Restriction: " restr_reason) "\n"))
+    (unless (string-empty-p restr-reason)
+      (insert (telega-fmt-labeled-text "Restriction: " restr-reason) "\n"))
 
-    (unless (zerop pin_msg_id)
-      (insert "----(pinned message)----\n")
-      (telega-button-insert 'telega-msg
-        :value (telega-chat--getPinnedMessage chat)
-        :action 'ignore)
+    (unless (zerop pin-msg-id)
+      (let ((pinned-msg (telega-chat--getPinnedMessage chat)))
+        (assert pinned-msg)
+        (insert "----(pinned message)----\n")
+        (telega-button-insert 'telega-msg
+          :value pinned-msg
+          :format (telega-msg-button--format pinned-msg)
+          :action 'ignore))
       (insert "------------------------\n"))
 
     (insert (format "Members: %d" (plist-get full-info :member_count)) "\n")
