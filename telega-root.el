@@ -210,7 +210,7 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
   ;; custom filters
   (setq telega--filtered-chats
         (delq chat telega--filtered-chats))
-  (when (telega-filter--test chat (telega--filters-prepare))
+  (when (telega-filter-chats nil (list chat))
     (setq telega--filtered-chats
           (push chat telega--filtered-chats)))
 
