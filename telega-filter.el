@@ -178,24 +178,22 @@ otherwise add to existing active filters."
 This filter can be undone with `telega-filter-undo'."
   (telega--filters-push (append (car telega--filters) (list fspec))))
 
-(defun telega-filter-chats (&rest filter-args)
+(defmacro telega-filter-chats (&optional filter-spec chats-list)
   "Filter chats matching filter specification.
-First argument specifies spec for the filter to use.
-If first argument is omitted, then currently active filters are used.
-Second argument - chats list to filter on.
-If second argument is omitted, then `telega--ordered-chats' is used."
-  (assert (< (length filter-args) 3) nil
-          "Maximum 2 arguments to `telega-filter-chats'")
-
-  (cl-remove-if-not
-   (let ((fspec (or (car filter-args) (telega--filters-prepare))))
-     `(lambda (chat)
-        (telega-filter--test chat ',fspec)))
-   (if (= (length filter-args) 2)
-       (cadr filter-args)
-     telega--ordered-chats)))
-
-(defalias 'telega-chats-filter 'telega-filter-chats)
+If FILTER-SPEC is nil, then currently active filters are used.
+If CHATS-LIST is nil, then `telega--ordered-chats' is used."
+  (let ((fspec (or filter-spec '(telega--filters-prepare)))
+        (chatsym (gensym "chat")))
+    (list 'cl-remove-if-not
+          `(lambda (,chatsym)
+             ;; Filter out chats we are not member of
+             ;; See https://github.com/zevlg/telega.el/issues/10
+             (and (telega-filter--test
+                   ,chatsym ,(if filter-spec
+                                 filter-spec
+                               '(telega--filters-prepare)))
+                  (telega-filter--test ,chatsym 'me-is-member)))
+          (or chats-list 'telega--ordered-chats))))
 
 (defun telega-filters-reset ()
   "Reset all active filters to default."
@@ -419,6 +417,12 @@ By default N is 1."
                                       `(:@type "getCreatedPublicChats"))
                                      :chat_ids))))
     (telega-filter-add `(ids ,@chat-ids))))
+
+(define-telega-filter me-is-member (chat)
+  "Filter chats where me is valid member."
+  (not (and (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
+            (memq (telega--tl-type (plist-get (telega-chat--info chat) :status))
+                  '(chatMemberStatusLeft chatMemberStatusBanned)))))
 
 (provide 'telega-filter)
 
