@@ -192,7 +192,8 @@ If CHATS-LIST is nil, then `telega--ordered-chats' is used."
                    ,chatsym ,(if filter-spec
                                  filter-spec
                                '(telega--filters-prepare)))
-                  (telega-filter--test ,chatsym 'me-is-member)))
+                  (telega-filter--test ,chatsym 'me-is-member)
+                  (telega-filter--test ,chatsym 'has-last-message)))
           (or chats-list 'telega--ordered-chats))))
 
 (defun telega-filters-reset ()
@@ -423,6 +424,10 @@ By default N is 1."
   (not (and (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
             (memq (telega--tl-type (plist-get (telega-chat--info chat) :status))
                   '(chatMemberStatusLeft chatMemberStatusBanned)))))
+
+(define-telega-filter has-last-message (chat)
+  "Filter chats which has last message."
+  (plist-get chat :last_message))
 
 (provide 'telega-filter)
 
