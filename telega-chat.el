@@ -32,11 +32,14 @@
 (declare-function telega-root--chat-reorder "telega-root" (chat))
 
 (defsubst telega-chat--ensure (chat)
-  "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'."
+  "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'.
+Return chat from `telega--chats'."
   (let ((chat-id (plist-get chat :id)))
-    (unless (gethash chat-id telega--chats)
-      (puthash chat-id chat telega--chats)
-      (push chat telega--ordered-chats))))
+    (or (gethash chat-id telega--chats)
+        (prog1
+            chat
+          (puthash chat-id chat telega--chats)
+          (push chat telega--ordered-chats)))))
 
 (defun telega-chat--get (chat-id &optional offline-p)
   "Get chat by its CHAT-ID.
@@ -44,7 +47,8 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
   (let ((chat (gethash chat-id telega--chats)))
     (when (and (not chat) (not offline-p))
       (setq chat (telega-server--call
-                  `(:@type "getChat" :chat_id ,chat-id)))
+                  (list :@type "getChat"
+                        :chat_id chat-id)))
       (assert chat nil "getChat timed out chat_id=%d" chat-id)
       (telega-chat--ensure chat))
     chat))
@@ -70,7 +74,7 @@ It could be user, secretChat, basicGroup or supergroup."
 (defun telega-chat--me ()
   "Chat with myself, a.k.a Saved Messages."
   ;; NOTE: Saved Messages has same id as me user
-  (telega-chat--get (plist-get (telega-user--me) :id)))
+  (telega-chat--get (plist-get (telega-user--me) :id) 'offline))
 
 (defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
@@ -134,8 +138,9 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   (telega-chat--new (plist-get event :chat)))
 
 (defun telega--on-updateChatTitle (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id)))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline))
         (new-title (plist-get event :title)))
+    (assert chat)
     (with-telega-chat-buffer chat
       (rename-buffer (telega-chat-buffer--name chat new-title)))
 
@@ -143,17 +148,20 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatOrder (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (telega-chat--reorder chat (plist-get event :order))))
 
 (defun telega--on-updateChatIsPinned (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (plist-put chat :is_pinned (plist-get event :is_pinned))
     (telega-chat--reorder chat (plist-get event :order))
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatReadInbox (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (plist-put chat :last_read_inbox_message_id
                (plist-get event :last_read_inbox_message_id))
     (plist-put chat :unread_count
@@ -161,8 +169,9 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatReadOutbox (event)
-  (let* ((chat (telega-chat--get (plist-get event :chat_id)))
+  (let* ((chat (telega-chat--get (plist-get event :chat_id) 'offline))
          (old-read-outbox-msgid (plist-get chat :last_read_outbox_message_id)))
+    (assert chat)
     (plist-put chat :last_read_outbox_message_id
                (plist-get event :last_read_outbox_message_id))
     (with-telega-chat-buffer chat
@@ -170,7 +179,8 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatUnreadMentionCount (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (plist-put chat :unread_mention_count
                (plist-get event :unread_mention_count))
     (telega-root--chat-update chat)))
@@ -181,34 +191,39 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   )
 
 (defun telega--on-updateChatReplyMarkup (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (plist-put chat :reply_markup_message_id
                (plist-get event :reply_markup_message_id))
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatLastMessage (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (plist-put chat :last_message
                (plist-get event :last_message))
     (telega-chat--reorder chat (plist-get event :order))
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatDraftMessage (event)
-  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (assert chat)
     (telega-debug "TODO: `telega--on-updateChatDraftMessage' handle draft message")
     (telega-chat--reorder chat (plist-get event :order))
     (telega-root--chat-update chat)))
 
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
-  (let ((chat_ids (plist-get result :chat_ids)))
-    (telega-debug "on-getChats: %s" chat_ids)
-    (mapc #'telega-chat--get chat_ids)
+  (let ((chat-ids (plist-get result :chat_ids)))
+    (telega-debug "on-getChats: %s" chat-ids)
+    (mapc #'telega-chat--ensure (mapcar #'telega-chat--get chat-ids))
 
-    (if (> (length chat_ids) 0)
+    (if (> (length chat-ids) 0)
         ;; Continue fetching chats
         (telega-chat--getChats)
+
       ;; All chats has been fetched
+      (message "telega: all chats are fetched")
       (run-hooks 'telega-chats-fetched-hook))))
 
 (defun telega-chat--getChats ()
@@ -545,9 +560,11 @@ Keymap:
    
 (defun telega-chat-buffer--killed ()
   "Called when chat buffer is killed."
-  (telega-server--send
-   (list :@type "closeChat"
-         :chat_id (plist-get telega-chatbuf--chat :id)))
+  (ignore-errors
+    ;; See https://github.com/zevlg/telega.el/issues/12
+    (telega-server--send
+     (list :@type "closeChat"
+           :chat_id (plist-get telega-chatbuf--chat :id))))
 
   (setq telega--chat-buffers
         (delq (current-buffer) telega--chat-buffers)))
@@ -872,12 +889,10 @@ Message id could be updated on this update."
 
            `(lambda (history)
               (with-telega-chat-buffer (telega-chat--get ,(plist-get chat :id))
-                (let ((saved-point (copy-marker (point) t)))
-                  (unwind-protect
-                      (mapc #'telega-chat-buffer--insert-oldest-msg
-                            (plist-get history :messages))
-                    (setq telega-chatbuf--history-loading nil)
-                    (goto-char saved-point)))))))))))
+                (telega-save-excursion
+                 (mapc #'telega-chat-buffer--insert-oldest-msg
+                       (plist-get history :messages)))
+                (setq telega-chatbuf--history-loading nil)))))))))
 
 (defun telega-chat-send-msg (chat text &optional markdown reply-to-msg
                                   reply-markup notify from-background)
