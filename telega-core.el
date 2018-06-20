@@ -459,7 +459,7 @@ Return newly created button."
 (defun telega-completing-titles ()
   "Return list of titles ready for completing."
   (let ((result))
-    (dolist (chat telega--ordered-chats)
+    (dolist (chat (telega-filter-chats 'all))
       (setq result (pushnew (telega-chat--title chat 'withusername) result
                             :test #'string=)))
     (dolist (user (hash-table-values (cdr (assq 'user telega--full-info))))
