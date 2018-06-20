@@ -115,6 +115,9 @@
           (setq res (concat res (capitalize (substring uln 0 1)))))
         (when (= 1 (length res))
           (setq res (concat res res)))
+        (when (and (string-empty-p res)
+                   (eq (telega-user--type user) 'deleted))
+          (setq res "DU"))
         (concat "(" res ")")))))
 
 (defun telega-msg-sender-ava-l (msg)
