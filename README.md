@@ -153,6 +153,14 @@ usually is `init.el`, or `emacs.el`.
 `telega.el` can now be started with `M-x telega RET`. The first time
 it ask for the phone number to login to the Telegram network.
 
+# Enabling D-Bus notifications
+
+`telega.el` ships with support for D-Bus notifications, but they are disabled by default.  To enable notifications add next code to your `init.el`:
+
+```elisp
+(add-hook 'telega-root-mode-hook (lambda () (telega-notifications-mode 1)))
+```
+
 # How to contribute
 
 Join our [Telegram group](https://t.me/emacs_telega "Telegram group")
