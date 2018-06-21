@@ -147,6 +147,27 @@
            telega-symbol-msg-viewed)
           (t telega-symbol-msg-succeed)))))
 
+(defun telega-msg-photo (msg)
+  "Format photo message"
+  (assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
+
+  (let* ((content (plist-get msg :content))
+         (photo (plist-get content :photo))
+         (photoFile (plist-get photo :sizes))
+         (photoFile (plist-get
+                     (plist-get
+                      (elt (plist-get photo :sizes) 0)
+                      :photo)
+                    :local)) ;; TODO: get all sizes
+         (cap (plist-get content :caption))
+         (cap-with-props
+          (telega-msg--ents-to-props
+           (plist-get cap :text) (plist-get cap :entities)))
+         (fpath (plist-get photoFile :path)))
+
+    (concat telega-symbol-photo " " cap-with-props
+            "\n" (apply 'propertize fpath (telega-link-props 'file fpath)))))
+
 (defun telega-msg-document (msg)
   "Format document of the message."
   (assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
@@ -204,6 +225,8 @@
           (plist-get text :entities))))
       (messageDocument
        (telega-msg-document msg))
+      (messagePhoto
+       (telega-msg-photo msg))
       (t (format "<unsupported message %S>" (telega--tl-type content))))))
 
 (defun telega-msg-text-with-props-one-line (msg)
