@@ -23,6 +23,7 @@ to use `telega.el` for basic chat.
 - [ ] Uploading files/media to the cloud
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
+- [ ] Display chat actions, such as "@user is typing..."
 - [ ] Emoji input via `:<emoji>:` syntax with completions
 - [ ] Username completions for fast mentions
 - [ ] Secret chats
