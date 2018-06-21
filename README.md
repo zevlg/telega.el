@@ -17,6 +17,7 @@ to use `telega.el` for basic chat.
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
 - [x] Fetching chat history, sending messages, replies
+- [ ] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
 - [x] Downloading files from the cloud
