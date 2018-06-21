@@ -175,6 +175,11 @@ DO NOT USE.  TODO: sender statuses need to be cached."
   :type 'string
   :group 'telega)
 
+(defcustom telega-symbol-photo "\U0001F4F7"
+  "*String to use as photo symbol."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-symbol-msg-pending "\U0000231B"
   "Symbol to use for pending outgoing messages."
   :type 'string
