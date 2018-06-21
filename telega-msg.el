@@ -153,7 +153,6 @@
 
   (let* ((content (plist-get msg :content))
          (photo (plist-get content :photo))
-         (photoFile (plist-get photo :sizes))
          (photoFile (plist-get
                      (plist-get
                       (elt (plist-get photo :sizes) 0)
