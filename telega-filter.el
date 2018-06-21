@@ -188,10 +188,7 @@ If CHATS-LIST is nil, then `telega--ordered-chats' is used."
           `(lambda (,chatsym)
              ;; Filter out chats we are not member of
              ;; See https://github.com/zevlg/telega.el/issues/10
-             (and (telega-filter--test
-                   ,chatsym ,(if filter-spec
-                                 filter-spec
-                               '(telega--filters-prepare)))
+             (and (telega-filter--test ,chatsym ,fspec)
                   (telega-filter--test ,chatsym 'me-is-member)
                   (telega-filter--test ,chatsym 'has-last-message)))
           (or chats-list 'telega--ordered-chats))))
