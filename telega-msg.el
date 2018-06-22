@@ -75,13 +75,14 @@
   "File used in CHAT-ID/MSG-ID has been updated to FILE."
   (with-telega-chat-buffer (telega-chat--get chat-id)
     (telega-save-excursion
-      (let ((msg-button (telega-chat-buffer--button-get msg-id)))
-        (when msg-button
-          (plist-put
-           (plist-get (plist-get (button-get msg-button :value)
-                                 :content) :document)
-           :document file)
-          (telega-button--redisplay msg-button))))))
+     (let ((msg-button (telega-chat-buffer--button-get msg-id)))
+       (when msg-button
+         (let ((msg (plist-get (button-get msg-button :value) :content)))
+           (when msg
+             (case (telega--tl-type msg)
+               (messagePhoto (plist-put msg :preview (plist-get (plist-get file :local) :path)))
+               (t (plist-put (plist-get msg :document) :document file)))
+             (telega-button--redisplay msg-button))))))))
 
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."
@@ -147,6 +148,9 @@
            telega-symbol-msg-viewed)
           (t telega-symbol-msg-succeed)))))
 
+(defun telega-msg-photo-get-size (photoSizes size)
+  (car (seq-filter (lambda (x) (string= size (plist-get x :type))) photoSizes)))
+
 (defun telega-msg-photo (msg)
   "Format photo message."
   (assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
@@ -154,15 +158,23 @@
   (let* ((content (plist-get msg :content))
          (photo (plist-get content :photo))
          (photoSizes (plist-get photo :sizes))
-         (photoPreview (car (seq-filter (lambda (x) (string= "s" (plist-get x :type))) photoSizes)))
-         (previewPath (plist-get (plist-get (plist-get photoPreview :photo) :local) :path))
+         (photoPreview (or (telega-msg-photo-get-size photoSizes "m")
+                           (telega-msg-photo-get-size photoSizes "s")))
+         (previewPath (or (plist-get content :preview)
+                          (telega-file--get-path-or-start-download
+                           (plist-get photoPreview :photo)
+                           (plist-get msg :chat_id)
+                           (plist-get msg :id))))
          (cap (plist-get content :caption))
          (cap-with-props
           (telega-msg--ents-to-props
            (plist-get cap :text) (plist-get cap :entities)))
-         (image (create-image previewPath)))
+         (image (when previewPath (create-image previewPath))))
 
-    (concat telega-symbol-photo " " cap-with-props "\n" (propertize "Image" 'display image))))
+    (concat telega-symbol-photo " " cap-with-props "\n"
+            (if image
+                (propertize "Image" 'display image)
+              "Loading image..."))))
 
 (defun telega-msg-document (msg)
   "Format document of the message."
