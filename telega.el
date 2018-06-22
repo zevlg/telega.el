@@ -60,13 +60,13 @@
   "Kill currently running telega.
 With prefix arg force quit without confirmation."
   (interactive "P")
-  (let ((chat-count (length telega--chat-buffers)))
-    (when (or force (y-or-n-p (concat "Kill telega"
+  (when (or force (y-or-n-p (concat "Kill telega"
+                                    (let ((chat-count (length telega--chat-buffers)))
                                       (cond ((eq chat-count 0) "")
                                             ((eq chat-count 1) (format " (and 1 chat buffer)"))
-                                            ('t (format " (and all %d chat buffers)" chat-count)))
-                                      "? ")))
-              (kill-buffer telega-root-buffer-name))))
+                                            (t (format " (and all %d chat buffers)" chat-count))))
+                                    "? ")))
+    (kill-buffer telega-root-buffer-name)))
 
 (defun telega-logout ()
   "Switch to another telegram account."
