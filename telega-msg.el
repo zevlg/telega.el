@@ -80,6 +80,7 @@
          (let ((msg (plist-get (button-get msg-button :value) :content)))
            (when msg
              (case (telega--tl-type msg)
+               (messageSticker (plist-put msg :preview (plist-get (plist-get file :local) :path)))
                (messagePhoto (plist-put msg :preview (plist-get (plist-get file :local) :path)))
                (t (plist-put (plist-get msg :document) :document file)))
              (telega-button--redisplay msg-button))))))))
@@ -150,6 +151,31 @@
 
 (defun telega-msg-photo-get-size (photoSizes size)
   (car (seq-filter (lambda (x) (string= size (plist-get x :type))) photoSizes)))
+
+(defun telega-sticker-maybe-convert (path)
+  "Convert sticker at PATH to png format."
+
+  (let ((conv (concat (file-name-directory path) (file-name-base path) ".png")))
+    (unless (file-exists-p conv)
+      (call-process "convert" nil 0 nil "-resize" "128x128" path conv))
+    conv))
+
+(defun telega-msg-sticker (msg)
+  "Format sticker message."
+  (assert (eq (telega--tl-type (plist-get msg :content)) 'messageSticker))
+
+  (let* ((content (plist-get msg :content))
+         (sticker (plist-get content :sticker))
+         (stickerFile (plist-get sticker :sticker))
+         (previewPath (or (plist-get content :preview)
+                          (telega-file--get-path-or-start-download
+                           stickerFile
+                           (plist-get msg :chat_id)
+                           (plist-get msg :id))))
+         (image (when previewPath (create-image (telega-sticker-maybe-convert previewPath))))
+         (cap (plist-get sticker :emoji)))
+
+    (concat (if image (propertize cap 'display image) cap) "\n")))
 
 (defun telega-msg-photo (msg)
   "Format photo message."
@@ -235,6 +261,8 @@
        (telega-msg-document msg))
       (messagePhoto
        (telega-msg-photo msg))
+      (messageSticker
+       (telega-msg-sticker msg))
       (t (format "<unsupported message %S>" (telega--tl-type content))))))
 
 (defun telega-msg-text-with-props-one-line (msg)
