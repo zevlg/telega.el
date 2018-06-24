@@ -1078,6 +1078,18 @@ With prefix arg delete only for yourself."
    (list :@type "generateChatInviteLink"
          :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
 
+(defun telega-chat-insert-clipboard-photo ()
+  "Save image in clipboard to file and paste link to it."
+  (interactive)
+  (if (not (fboundp 'x-get-selection))
+      (message "Not implemented")
+
+    (let* ((sel (x-get-selection 'CLIPBOARD 'image/png))
+           (tmp (when sel (make-temp-file "telega-photo" nil ".png"))))
+      (if tmp (progn (with-temp-file tmp (insert sel))
+                     (insert (message "photo:%s" tmp)))
+        (message "Clipboard doesn't contain image")))))
+
 (provide 'telega-chat)
 
 ;;; telega-chat.el ends here
