@@ -1078,6 +1078,22 @@ With prefix arg delete only for yourself."
    (list :@type "generateChatInviteLink"
          :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
 
+(defun telega-chat-send-media ()
+  "Select file and send is as media."
+  (interactive)
+  (let* ((sel (read-file-name "Select file: " nil nil t))
+         (fn (when sel (expand-file-name sel))))
+
+    (when fn (telega-chat-send-msg telega-chatbuf--chat (concat "photo:" fn)))))
+
+(defun telega-chat-send-file ()
+  "Select file and send is as file."
+  (interactive)
+  (let* ((sel (read-file-name "Select file: " nil nil t))
+         (fn (when sel (expand-file-name sel))))
+
+    (when fn (telega-chat-send-msg telega-chatbuf--chat (concat "file:" fn)))))
+
 (defun telega-chat-insert-clipboard-photo ()
   "Save image in clipboard to file and paste link to it."
   (interactive)

@@ -486,12 +486,17 @@ If MARKDOWN is non-nil then format TEXT as markdown."
                     (list :@type "formattedText"
                           :text text :entities []))))
 
-    (if (string-match "^photo:\\(.+\\)$" text)
-        (list :@type "inputMessagePhoto"
-              :photo (list :@type "inputFileLocal" :path (match-string 1 text)))
-      (list :@type "inputMessageText"
-            :text fmt-text
-            :clear_draft t))))
+    (cond ((string-match "^photo:\\(.+\\)$" text)
+           (list :@type "inputMessagePhoto"
+                 :photo (list :@type "inputFileLocal" :path (match-string 1 text))))
+
+          ((string-match "^file:\\(.+\\)$" text)
+           (list :@type "inputMessageDocument"
+                 :document (list :@type "inputFileLocal" :path (match-string 1 text))))
+
+          (t (list :@type "inputMessageText"
+                   :text fmt-text
+                   :clear_draft t)))))
 
 
 (defun telega-msg-info (msg)
