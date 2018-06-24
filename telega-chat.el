@@ -441,6 +441,7 @@ Return newly created chat."
     (define-key map (kbd "C-M-c") 'telega-chat-cancel-edit-reply)
 
     (define-key map (kbd "C-c C-a") 'telega-chat-send-media)
+    (define-key map (kbd "C-c C-v") 'telega-chat-send-media-clipboard)
     (define-key map (kbd "C-c C-f") 'telega-chat-send-file)
     (define-key map (kbd "C-c ?") 'telega-chat-buffer-info)
 
@@ -1084,7 +1085,9 @@ With prefix arg delete only for yourself."
   (let* ((sel (read-file-name "Select file: " nil nil t))
          (fn (when sel (expand-file-name sel))))
 
-    (when fn (telega-chat-send-msg telega-chatbuf--chat (concat "photo:" fn)))))
+    (when fn
+      (insert (concat "\nphoto:" fn))
+      (telega-chat-send nil))))
 
 (defun telega-chat-send-file ()
   "Select file and send is as file."
@@ -1092,9 +1095,11 @@ With prefix arg delete only for yourself."
   (let* ((sel (read-file-name "Select file: " nil nil t))
          (fn (when sel (expand-file-name sel))))
 
-    (when fn (telega-chat-send-msg telega-chatbuf--chat (concat "file:" fn)))))
+    (when fn
+      (insert (concat "\nfile:" fn))
+      (telega-chat-send nil))))
 
-(defun telega-chat-insert-clipboard-photo ()
+(defun telega-chat-send-media-clipboard ()
   "Save image in clipboard to file and paste link to it."
   (interactive)
   (if (not (fboundp 'x-get-selection))
@@ -1103,7 +1108,8 @@ With prefix arg delete only for yourself."
     (let* ((sel (x-get-selection 'CLIPBOARD 'image/png))
            (tmp (when sel (make-temp-file "telega-photo" nil ".png"))))
       (if tmp (progn (with-temp-file tmp (insert sel))
-                     (insert (message "photo:%s" tmp)))
+                     (insert (concat "\nphoto:" tmp))
+                     (telega-chat-send nil))
         (message "Clipboard doesn't contain image")))))
 
 (provide 'telega-chat)

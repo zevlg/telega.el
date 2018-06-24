@@ -472,31 +472,40 @@ PREV-MSG is non-nil if there any previous message exists."
     (cons text entities)))
 
 (defun telega-msg-format (msg)
-  (plist-get (plist-get (plist-get msg :content) :text) :text)
-  )
+  (plist-get (plist-get (plist-get msg :content) :text) :text))
 
 (defun telega-msg--input-content (text &optional markdown)
   "Convert TEXT to tl InputMessageContent.
-If MARKDOWN is non-nil then format TEXT as markdown."
-  (let ((fmt-text (if markdown
-                      (telega-server--call
-                       (list :@type "parseTextEntities"
-                             :text text
-                             :parse_mode (list :@type "textParseModeMarkdown")))
-                    (list :@type "formattedText"
-                          :text text :entities []))))
+If MARKDOWN is non-nil then format TEXT as markdown.
 
-    (cond ((string-match "^photo:\\(.+\\)$" text)
-           (list :@type "inputMessagePhoto"
-                 :photo (list :@type "inputFileLocal" :path (match-string 1 text))))
+TEXT may contain special marker matching /^photo|file:.+$/. In
+that case messagePhoto or messageDocument is sent. Text before
+the marker becomes message caption."
+  (let* ((with-file (string-match "^\\(photo\\|file\\):\\(.+\\)$" text))
+         (file-type (when with-file (match-string 1 text)))
+         (file-path (when with-file (match-string 2 text)))
+         ;; NOTE: if there is \n before marker - remove it
+         (clear-text (if with-file (substring text 0 (max 0 (- (match-beginning 0) 1))) text))
+         (fmt-text (if markdown
+                       (telega-server--call
+                        (list :@type "parseTextEntities"
+                              :text clear-text
+                              :parse_mode (list :@type "textParseModeMarkdown")))
+                     (list :@type "formattedText"
+                           :text clear-text :entities []))))
 
-          ((string-match "^file:\\(.+\\)$" text)
-           (list :@type "inputMessageDocument"
-                 :document (list :@type "inputFileLocal" :path (match-string 1 text))))
+    (pcase file-type
+      ("photo" (list :@type "inputMessagePhoto"
+                     :photo (list :@type "inputFileLocal" :path file-path)
+                     :caption fmt-text))
 
-          (t (list :@type "inputMessageText"
-                   :text fmt-text
-                   :clear_draft t)))))
+      ("file" (list :@type "inputMessageDocument"
+                    :document (list :@type "inputFileLocal" :path file-path)
+                    :caption fmt-text))
+
+      (t (list :@type "inputMessageText"
+               :text fmt-text
+               :clear_draft t)))))
 
 
 (defun telega-msg-info (msg)
