@@ -16,7 +16,7 @@ to use `telega.el` for basic chat.
       order
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
-- [x] Fetching chat history, sending messages, replies
+- [x] Fetching chat history, sending messages, replies, edits, deleting
 - [ ] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
@@ -171,3 +171,30 @@ to discuss the development of `telega.el`.
 # License
 
 `telega.el` is licensed under GNU GPL version 3.
+
+# FAQ
+
+**Q**: I got the error after `M-x telega RET`
+
+```console
+
+Status: telega-server: exited abnormally with code 127
+/home/user/.telega/telega-server: error while loading shared libraries:
+libtdjson.so: cannot open shared object file: No such file or directory
+```
+
+**A**: Add `/usr/local/lib` into library loading path using next:
+
+```console
+# echo "/usr/local/lib" > /etc/ld.so.conf.d/usr_local_lib.conf
+# ldconfig
+```
+
+**Q**: I'm from Russia, does `telega.el` has proxy support?
+
+**A**: Yes, use `telega-socks5-proxy` custom variable, for example:
+
+```elisp
+(setq telega-socks5-proxy
+      '(:server "1.2.3.4" :port 88 :username "rkn" :password "jopa"))
+```

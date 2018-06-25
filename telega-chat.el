@@ -866,6 +866,18 @@ Message id could be updated on this update."
                        :views (plist-get event :views))
             (telega-button--redisplay msg-button)))))))
 
+(defun telega--on-updateDeleteMessages (event)
+  "Some messages has been deleted from chat."
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (with-telega-chat-buffer chat
+      (save-excursion
+        (when (telega--tl-bool event :is_permanent)
+          (mapc (lambda (msg-id)
+                  (let ((button (telega-chat-buffer--button-get msg-id)))
+                    (when button
+                      (telega-button-delete button))))
+                (plist-get event :message_ids)))))))
+
 (defun telega-chat--load-history (chat)
   "Load and insert CHAT's history."
   (with-telega-chat-buffer chat
@@ -952,7 +964,8 @@ With prefix arg, apply markdown formatter to message."
 
     (apply sfunc telega-chatbuf--chat input markdown sargs)))
 
-(defun telega-chat-msg-reply (msg)
+;; Message commands
+(defun telega-msg-reply (msg)
   "Start replying to MSG."
   (interactive (list (button-get (button-at (point)) :value)))
 
@@ -974,7 +987,7 @@ With prefix arg, apply markdown formatter to message."
           telega-chatbuf--send-args (list msg))
     ))
 
-(defun telega-chat-msg-edit (msg)
+(defun telega-msg-edit (msg)
   "Start editing the MSG."
   (interactive (list (button-get (button-at (point)) :value)))
 
@@ -999,6 +1012,14 @@ With prefix arg, apply markdown formatter to message."
     (setq telega-chatbuf--send-func 'telega-chat-edit-msg
           telega-chatbuf--send-args (list (plist-get msg :id)))
     ))
+
+(defun telega-msg-delete (msg)
+  "Delete message MSG."
+  (interactive (list (button-get (button-at (point)) :value)))
+
+  (when (y-or-n-p "Kill the message? ")
+    (telega-msg--deleteMessages
+     (plist-get msg :chat_id) (list (plist-get msg :id)) t)))
 
 (defun telega-chat-complete-username ()
   "Complete username at point."

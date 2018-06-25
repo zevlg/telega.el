@@ -27,24 +27,26 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(defvar telega-msg-button-keymap
+(defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
     (define-key map [remap self-insert-command] 'ignore)
-    (define-key map (kbd "i") 'telega-msg-info)
     (define-key map (kbd "n") 'telega-button-forward)
     (define-key map (kbd "p") 'telega-button-backward)
+
+    (define-key map (kbd "i") 'telega-msg-info)
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "e") 'telega-msg-edit)
     (define-key map (kbd "f") 'telega-msg-forward)
+    (define-key map (kbd "d") 'telega-msg-delete)
+    (define-key map (kbd "k") 'telega-msg-delete)
     (define-key map (kbd "DEL") 'telega-msg-delete)
     map))
 
 (define-button-type 'telega-msg
   :supertype 'telega
   :prev-msg nil                         ; previous message
-  'keymap telega-msg-button-keymap
-  'action #'telega-msg-reply)
+  'keymap telega-msg-button-map)
 
 (defsubst telega-msg--chat (msg)
   "Return chat for the MSG."
@@ -82,6 +84,22 @@
                                  :content) :document)
            :document file)
           (telega-button--redisplay msg-button))))))
+
+(defun telega-msg--deleteMessages (chat-id message-ids &optional revoke)
+  "Delete message by its id"
+  (telega-server--send
+   (list :@type "deleteMessages"
+         :chat_id chat-id
+         :message_ids message-ids
+         :revoke (or revoke :json-false))))
+
+(defun telega-msg--forwardMessages (chat-id from-chat-id message-ids
+                                            &optional disable-notification
+                                            from-background as-album)
+  "Forwards previously sent messages.
+Returns the forwarded messages.
+Return nil if message can't be forwarded."
+  (error "`telega-msg--forwardMessages' Not yet implemented"))
 
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."
@@ -472,16 +490,6 @@ If MARKDOWN is non-nil then format TEXT as markdown."
 
       (insert (format "\nTODO: %S\n" msg)))
     ))
-
-(defun telega-msg-reply (button)
-  "Reply to the message at point."
-  (interactive (list (button-at (point))))
-  (telega-chat-msg-reply (button-get button :value)))
-
-(defun telega-msg-edit (button)
-  "Edit message at point."
-  (interactive (list (button-at (point))))
-  (telega-chat-msg-edit (button-get button :value)))
 
 (provide 'telega-msg)
 
