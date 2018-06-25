@@ -77,13 +77,14 @@
   "File used in CHAT-ID/MSG-ID has been updated to FILE."
   (with-telega-chat-buffer (telega-chat--get chat-id)
     (telega-save-excursion
-      (let ((msg-button (telega-chat-buffer--button-get msg-id)))
-        (when msg-button
-          (plist-put
-           (plist-get (plist-get (button-get msg-button :value)
-                                 :content) :document)
-           :document file)
-          (telega-button--redisplay msg-button))))))
+     (let ((msg-button (telega-chat-buffer--button-get msg-id)))
+       (when msg-button
+         (let ((msg (plist-get (button-get msg-button :value) :content)))
+           (when msg
+             (case (telega--tl-type msg)
+               (messagePhoto (plist-put msg :preview (plist-get (plist-get file :local) :path)))
+               (t (plist-put (plist-get msg :document) :document file)))
+             (telega-button--redisplay msg-button))))))))
 
 (defun telega-msg--deleteMessages (chat-id message-ids &optional revoke)
   "Delete message by its id"
@@ -165,6 +166,35 @@ Return nil if message can't be forwarded."
            telega-symbol-msg-viewed)
           (t telega-symbol-msg-succeed)))))
 
+(defmacro telega-msg--photo-get-size (photo-sizes size)
+  "Get photo of SIZE from PHOTO-SIZES sequence."
+  `(car (seq-filter (lambda (x) (string= ,size (plist-get x :type))) ,photo-sizes)))
+
+(defun telega-msg-photo (msg)
+  "Format photo message."
+  (assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
+
+  (let* ((content (plist-get msg :content))
+         (photo (plist-get content :photo))
+         (photo-sizes (plist-get photo :sizes))
+         (photo-preview (or (telega-msg--photo-get-size photo-sizes "m")
+                           (telega-msg--photo-get-size photo-sizes "s")))
+         (preview-path (or (plist-get content :preview)
+                          (telega-file--get-path-or-start-download
+                           (plist-get photo-preview :photo)
+                           (plist-get msg :chat_id)
+                           (plist-get msg :id))))
+         (cap (plist-get content :caption))
+         (cap-with-props
+          (telega-msg--ents-to-props
+           (plist-get cap :text) (plist-get cap :entities)))
+         (image (when preview-path (create-image preview-path))))
+
+    (concat telega-symbol-photo " " cap-with-props "\n"
+            (if image
+                (propertize "Image" 'display image)
+              "Loading image..."))))
+
 (defun telega-msg-document (msg)
   "Format document of the message."
   (assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
@@ -222,6 +252,8 @@ Return nil if message can't be forwarded."
           (plist-get text :entities))))
       (messageDocument
        (telega-msg-document msg))
+      (messagePhoto
+       (telega-msg-photo msg))
       (t (format "<unsupported message %S>" (telega--tl-type content))))))
 
 (defun telega-msg-text-with-props-one-line (msg)

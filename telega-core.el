@@ -143,6 +143,22 @@ hasn't been started, i.e. request hasn't been sent to server."
    (list :@type "deleteFile"
          :file_id file-id)))
 
+(defun telega-file--get-path-or-start-download (file chat-id msg-id)
+  "Download file or return it."
+
+  (let* ((local (plist-get file :local))
+         (is-downloading-completed-p (telega--tl-bool local :is_downloading_completed))
+         (is-downloading-active-p (telega--tl-bool local :is_downloading_active)))
+
+    (if is-downloading-completed-p
+        (plist-get local :path)
+
+      (when (not is-downloading-active-p)
+        (let ((file-id (plist-get file :id)))
+          (pushnew (list file-id chat-id msg-id) telega--files-downloading)
+          (telega-file--download file-id)
+          nil)))))
+
 (defsubst telega-file--update-message (file)
   "Update message associated with FILE."
   (let ((link (assq (plist-get file :id) telega--files-downloading)))
