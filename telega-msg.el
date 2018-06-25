@@ -148,8 +148,9 @@
            telega-symbol-msg-viewed)
           (t telega-symbol-msg-succeed)))))
 
-(defun telega-msg-photo-get-size (photoSizes size)
-  (car (seq-filter (lambda (x) (string= size (plist-get x :type))) photoSizes)))
+(defmacro telega-msg--photo-get-size (photo-sizes size)
+  "Get photo of SIZE from PHOTO-SIZES sequence."
+  `(car (seq-filter (lambda (x) (string= ,size (plist-get x :type))) ,photo-sizes)))
 
 (defun telega-msg-photo (msg)
   "Format photo message."
@@ -157,19 +158,19 @@
 
   (let* ((content (plist-get msg :content))
          (photo (plist-get content :photo))
-         (photoSizes (plist-get photo :sizes))
-         (photoPreview (or (telega-msg-photo-get-size photoSizes "m")
-                           (telega-msg-photo-get-size photoSizes "s")))
-         (previewPath (or (plist-get content :preview)
+         (photo-sizes (plist-get photo :sizes))
+         (photo-preview (or (telega-msg--photo-get-size photo-sizes "m")
+                           (telega-msg--photo-get-size photo-sizes "s")))
+         (preview-path (or (plist-get content :preview)
                           (telega-file--get-path-or-start-download
-                           (plist-get photoPreview :photo)
+                           (plist-get photo-preview :photo)
                            (plist-get msg :chat_id)
                            (plist-get msg :id))))
          (cap (plist-get content :caption))
          (cap-with-props
           (telega-msg--ents-to-props
            (plist-get cap :text) (plist-get cap :entities)))
-         (image (when previewPath (create-image previewPath))))
+         (image (when preview-path (create-image preview-path))))
 
     (concat telega-symbol-photo " " cap-with-props "\n"
             (if image

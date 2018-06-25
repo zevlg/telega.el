@@ -147,13 +147,13 @@ hasn't been started, i.e. request hasn't been sent to server."
   "Download file or return it."
 
   (let* ((local (plist-get file :local))
-         (isDownloadingCompleted (telega--tl-bool local :is_downloading_completed))
-         (isDownloadingActive (telega--tl-bool local :is_downloading_active)))
+         (is-downloading-completed-p (telega--tl-bool local :is_downloading_completed))
+         (is-downloading-active-p (telega--tl-bool local :is_downloading_active)))
 
-    (if isDownloadingCompleted
+    (if is-downloading-completed-p
         (plist-get local :path)
 
-      (when (not isDownloadingActive)
+      (when (not is-downloading-active-p)
         (let ((file-id (plist-get file :id)))
           (pushnew (list file-id chat-id msg-id) telega--files-downloading)
           (telega-file--download file-id)
