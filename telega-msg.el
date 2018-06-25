@@ -152,13 +152,16 @@
 (defun telega-msg-photo-get-size (photoSizes size)
   (car (seq-filter (lambda (x) (string= size (plist-get x :type))) photoSizes)))
 
-(defun telega-sticker-maybe-convert (path)
-  "Convert sticker at PATH to png format."
-
-  (let ((conv (concat (file-name-directory path) (file-name-base path) ".png")))
-    (unless (file-exists-p conv)
-      (call-process "convert" nil 0 nil "-resize" "128x128" path conv))
-    conv))
+(defvar telega--convert-path (executable-find "convert"))
+(defun telega-msg--maybe-convert-webp-sticker (sticker)
+  "Convert WEBP-STICKER to png format."
+  (when (s-suffix? ".webp" sticker)
+    (let ((png-sticker (concat (file-name-directory sticker) (file-name-base sticker) ".png")))
+      (if (file-exists-p png-sticker)
+          png-sticker
+        (when telega--convert-path
+          (call-process telega--convert-path nil nil nil "-resize" "128x128" sticker png-sticker)
+          png-sticker)))))
 
 (defun telega-msg-sticker (msg)
   "Format sticker message."
@@ -166,13 +169,14 @@
 
   (let* ((content (plist-get msg :content))
          (sticker (plist-get content :sticker))
-         (stickerFile (plist-get sticker :sticker))
-         (previewPath (or (plist-get content :preview)
-                          (telega-file--get-path-or-start-download
-                           stickerFile
-                           (plist-get msg :chat_id)
-                           (plist-get msg :id))))
-         (image (when previewPath (create-image (telega-sticker-maybe-convert previewPath))))
+         (sticker-file (plist-get sticker :sticker))
+         (preview-path (or (plist-get content :preview)
+                           (telega-file--get-path-or-start-download
+                            sticker-file
+                            (plist-get msg :chat_id)
+                            (plist-get msg :id))))
+         (png-preview-path (telega-msg--maybe-convert-webp-sticker preview-path))
+         (image (when png-preview-path (create-image png-preview-path)))
          (cap (plist-get sticker :emoji)))
 
     (concat (if image (propertize cap 'display image) cap) "\n")))

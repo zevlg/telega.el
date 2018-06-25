@@ -29,7 +29,7 @@ to use `telega.el` for basic chat.
 - [ ] Secret chats
 - [ ] Online searching chats/messages
 - [ ] Avatars, photos
-- [ ] Stickers
+- [x] Stickers (requires convert and dwebp)
 - [ ] Animated GIF
 - [ ] Special messages such as location/live location, voice/video
       messages, etc
@@ -67,6 +67,7 @@ source.
    * `GNU make`
    * `GNU gperf`
    * `CMake`
+   * `convert` and `dwebp` (optional, for displaying stickers)
 
 `make` is found in most of the modern machines. The other packages can
 be download with the system package manager (such as `apt` for
