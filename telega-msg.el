@@ -170,29 +170,30 @@ Return nil if message can't be forwarded."
   "Get photo of SIZE from PHOTO-SIZES sequence."
   `(car (seq-filter (lambda (x) (string= ,size (plist-get x :type))) ,photo-sizes)))
 
+(defun telega-msg--extract-caption (content)
+  "Get caption for CONTENT."
+  (let ((cap (plist-get content :caption)))
+    (if cap (telega-msg--ents-to-props (plist-get cap :text) (plist-get cap :entities))
+      "")))
+
 (defun telega-msg-photo (msg)
-  "Format photo message."
+  "Format photo message MSG."
   (assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
 
   (let* ((content (plist-get msg :content))
          (photo (plist-get content :photo))
          (photo-sizes (plist-get photo :sizes))
          (photo-preview (or (telega-msg--photo-get-size photo-sizes "m")
-                           (telega-msg--photo-get-size photo-sizes "s")))
+                            (telega-msg--photo-get-size photo-sizes "s")))
          (preview-path (or (plist-get content :preview)
-                          (telega-file--get-path-or-start-download
-                           (plist-get photo-preview :photo)
-                           (plist-get msg :chat_id)
-                           (plist-get msg :id))))
-         (cap (plist-get content :caption))
-         (cap-with-props
-          (telega-msg--ents-to-props
-           (plist-get cap :text) (plist-get cap :entities)))
+                           (telega-file--get-path-or-start-download
+                            (plist-get photo-preview :photo)
+                            (plist-get msg :chat_id)
+                            (plist-get msg :id))))
          (image (when preview-path (create-image preview-path))))
 
-    (concat telega-symbol-photo " " cap-with-props "\n"
-            (if image
-                (propertize "Image" 'display image)
+    (concat telega-symbol-photo " " (telega-msg--extract-caption content) "\n"
+            (if image (propertize "Image" 'display image)
               "Loading image..."))))
 
 (defun telega-msg-document (msg)
@@ -201,10 +202,6 @@ Return nil if message can't be forwarded."
 
   (let* ((content (plist-get msg :content))
          (document (plist-get content :document))
-         (cap (plist-get content :caption))
-         (cap-with-props
-          (telega-msg--ents-to-props
-           (plist-get cap :text) (plist-get cap :entities)))
          (fname (plist-get document :file_name))
          (file (plist-get document :document))
          (filesize (plist-get file :size))
@@ -254,7 +251,7 @@ Return nil if message can't be forwarded."
        (telega-msg-document msg))
       (messagePhoto
        (telega-msg-photo msg))
-      (t (format "<unsupported message %S>" (telega--tl-type content))))))
+      (t (format "<unsupported message %S> %s" (telega--tl-type content) (telega-msg--extract-caption content))))))
 
 (defun telega-msg-text-with-props-one-line (msg)
   "Format MSG's text as one line."
