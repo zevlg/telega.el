@@ -557,7 +557,7 @@ Keymap:
   "Show info about chat."
   (interactive)
   (telega-chat-show-info telega-chatbuf--chat))
-   
+
 (defun telega-chat-buffer--killed ()
   "Called when chat buffer is killed."
   (ignore-errors
@@ -1013,13 +1013,14 @@ With prefix arg, apply markdown formatter to message."
           telega-chatbuf--send-args (list (plist-get msg :id)))
     ))
 
-(defun telega-msg-delete (msg)
-  "Delete message MSG."
-  (interactive (list (button-get (button-at (point)) :value)))
+(defun telega-msg-delete (msg &optional revoke)
+  "Delete message MSG.
+With prefix arg delete only for yourself."
+  (interactive (list (button-get (button-at (point)) :value) (not current-prefix-arg)))
 
-  (when (y-or-n-p "Kill the message? ")
+  (when (y-or-n-p (concat (if revoke "Revoke" "Kill") " the message? "))
     (telega-msg--deleteMessages
-     (plist-get msg :chat_id) (list (plist-get msg :id)) t)))
+     (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)))
 
 (defun telega-chat-complete-username ()
   "Complete username at point."
