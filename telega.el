@@ -60,12 +60,13 @@
   "Kill currently running telega.
 With prefix arg force quit without confirmation."
   (interactive "P")
-  (when (or force (y-or-n-p (concat "Kill telega"
-                                    (let ((chat-count (length telega--chat-buffers)))
-                                      (cond ((eq chat-count 0) "")
-                                            ((eq chat-count 1) (format " (and 1 chat buffer)"))
-                                            (t (format " (and all %d chat buffers)" chat-count))))
-                                    "? ")))
+  (when (and (buffer-live-p (get-buffer telega-root-buffer-name))
+             (or force (y-or-n-p (concat "Kill telega"
+                                         (let ((chat-count (length telega--chat-buffers)))
+                                           (cond ((eq chat-count 0) "")
+                                                 ((eq chat-count 1) (format " (and 1 chat buffer)"))
+                                                 (t (format " (and all %d chat buffers)" chat-count))))
+                                         "? "))))
     (kill-buffer telega-root-buffer-name)))
 
 (defun telega-logout ()
