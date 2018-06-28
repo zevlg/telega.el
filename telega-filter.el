@@ -89,6 +89,7 @@ In form (NAME . FILTER-SPEC)."
     (define-key map (kbd "y") 'telega-filter-by-notify)
     (define-key map (kbd "v") 'telega-filter-by-verified)
     (define-key map (kbd "s") 'telega-filter-by-user-status)
+    (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd "d") 'telega-filters-pop-last)
@@ -425,6 +426,16 @@ By default N is 1."
 (define-telega-filter has-last-message (chat)
   "Filter chats which has last message."
   (plist-get chat :last_message))
+
+(define-telega-filter opened (chat)
+  "Filter chats that are opened, i.e. has corresponding chat buffer."
+  (with-telega-chat-buffer chat
+    t))
+
+(defun telega-filter-by-opened ()
+  "Filter chats that are opened."
+  (interactive)
+  (telega-filter-add 'opened))
 
 (provide 'telega-filter)
 
