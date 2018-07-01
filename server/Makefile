@@ -1,6 +1,6 @@
 CC=cc
 CFLAGS=-Wall -g -pthread
-LDFLAGS=-L/usr/local/lib -ltdjson
+LDFLAGS=-Wl,-rpath=/usr/local/lib -L/usr/local/lib -ltdjson
 
 PROG=telega-server
 
