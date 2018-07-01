@@ -216,9 +216,33 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
   (insert (format "Info: %S\n\n" secretchat))
   )
 
-(defun telega-info--insert-basicgroup (basicgroup)
+(defun telega-info--insert-invite-link (group full-info chat-id)
+  (let* ((invite-link (plist-get full-info :invite_link))
+        (member-status (plist-get (plist-get group :status) :@type))
+        (can-generate-invite-link-p (or (string= "chatMemberStatusCreator" member-status)
+                                        (string= "chatMemberStatusAdministrator" member-status)))
+        (has-invite-link-p (not (string-empty-p invite-link))))
+    (when (or can-generate-invite-link-p has-invite-link-p)
+      (insert "Invite link: ")
+
+      (when can-generate-invite-link-p
+        (insert-text-button (if has-invite-link-p "[Regenerate]" "[Generate]")
+                            :id chat-id
+                            'action (lambda (button)
+                                      (let ((chat-id (button-get button :id)))
+                                        (telega-chat-generate-invite-link chat-id)
+                                        (telega-chat-button-info
+                                         (telega-root--chat-button (telega-chat--get chat-id))))))
+
+        (if has-invite-link-p (insert " ")))
+
+      (if has-invite-link-p
+          (apply 'insert-text-button invite-link (telega-link-props 'url invite-link)))
+
+      (insert "\n"))))
+
+(defun telega-info--insert-basicgroup (basicgroup chat)
   (let* ((full-info (telega--full-info basicgroup))
-         (invite-link (plist-get full-info :invite_link))
          (members (plist-get full-info :members))
          (creator-id (plist-get full-info :creator_user_id))
          (creator (telega-user--get creator-id))
@@ -226,19 +250,16 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
           (cl-find creator-id members
                    :test (lambda (crt-id m)
                            (= crt-id (plist-get m :user_id)))))
-         (member-status (plist-get basicgroup :status)))
-    (insert "Status: " (substring (plist-get member-status :@type) 16) "\n")
+         (member-status (plist-get (plist-get basicgroup :status) :@type)))
+    (insert "Status: " (substring member-status 16) "\n")
     (insert (format "Created: %s  %s\n"
                     (telega-user--name creator)
                     (if creator-member
                         (telega-fmt-timestamp
                          (plist-get creator-member :joined_chat_date))
                       "")))
-    (unless (string-empty-p invite-link)
-      (insert "Invite link: ")
-      (apply 'insert-text-button invite-link
-             (telega-link-props 'url invite-link))
-      (insert "\n"))
+
+    (telega-info--insert-invite-link basicgroup full-info (plist-get chat :id))
 
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
@@ -246,12 +267,10 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
             (insert (format "  %s (%S)\n"
                             (telega-user--name (telega-user--get (plist-get mbr :user_id)))
                             (plist-get mbr :user_id))))
-          members)
-    ))
+          members)))
 
 (defun telega-info--insert-supergroup (supergroup &optional chat)
   (let* ((full-info (telega--full-info supergroup))
-         (invite-link (plist-get full-info :invite_link))
          (descr (plist-get full-info :description))
          (restr-reason (plist-get supergroup :restriction_reason))
          (pin-msg-id (plist-get full-info :pinned_message_id))
@@ -268,11 +287,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
             (telega-fmt-timestamp (plist-get supergroup :date))
             "\n")
 
-    (unless (string-empty-p invite-link)
-      (insert "Invite link: ")
-      (apply 'insert-text-button invite-link
-             (telega-link-props 'url invite-link))
-      (insert "\n"))
+    (telega-info--insert-invite-link supergroup full-info (plist-get chat :id))
+
     (unless (string-empty-p descr)
       (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
     (unless (string-empty-p restr-reason)
@@ -305,7 +321,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega--info 'secretChat (plist-get tlobj :secret_chat_id))))
     (chatTypeBasicGroup
      (telega-info--insert-basicgroup
-      (telega--info 'basicGroup (plist-get tlobj :basic_group_id))))
+      (telega--info 'basicGroup (plist-get tlobj :basic_group_id)) chat))
     (chatTypeSupergroup
      (telega-info--insert-supergroup
       (telega--info 'supergroup (plist-get tlobj :supergroup_id)) chat))))

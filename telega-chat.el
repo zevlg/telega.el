@@ -1041,6 +1041,13 @@ With prefix arg delete only for yourself."
       (call-interactively 'telega-chat-complete-username)
     (call-interactively 'telega-chat-next-link)))
 
+(defun telega-chat-generate-invite-link (&optional chat-id)
+  "Generate invite link for chat with CHAT-ID."
+  (interactive)
+
+  (telega-server--call (list :@type "generateChatInviteLink"
+     :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
+
 (provide 'telega-chat)
 
 ;;; telega-chat.el ends here
