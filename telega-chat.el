@@ -1045,7 +1045,7 @@ With prefix arg delete only for yourself."
   "Generate invite link for chat with CHAT-ID."
   (interactive)
 
-  (telega-server--send (list :@type "generateChatInviteLink"
+  (telega-server--call (list :@type "generateChatInviteLink"
      :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
 
 (provide 'telega-chat)

@@ -229,7 +229,11 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
         (insert-text-button (if has-invite-link-p "[Regenerate]" "[Generate]")
                             :id chat-id
                             'action (lambda (button)
-                                      (telega-chat-generate-invite-link (button-get button :id))))
+                                      (let ((chat-id (button-get button :id)))
+                                        (telega-chat-generate-invite-link chat-id)
+                                        (telega-chat-button-info
+                                         (telega-root--chat-button (telega-chat--get chat-id))))))
+
         (if has-invite-link-p (insert " ")))
 
       (if has-invite-link-p
@@ -237,7 +241,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
 
       (insert "\n"))))
 
-(defun telega-info--insert-basicgroup (basicgroup)
+(defun telega-info--insert-basicgroup (basicgroup chat)
   (let* ((full-info (telega--full-info basicgroup))
          (members (plist-get full-info :members))
          (creator-id (plist-get full-info :creator_user_id))
@@ -255,7 +259,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                          (plist-get creator-member :joined_chat_date))
                       "")))
 
-    (telega-info--insert-invite-link basicgroup full-info (- (plist-get basicgroup :id)))
+    (telega-info--insert-invite-link basicgroup full-info (plist-get chat :id))
 
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
@@ -317,7 +321,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega--info 'secretChat (plist-get tlobj :secret_chat_id))))
     (chatTypeBasicGroup
      (telega-info--insert-basicgroup
-      (telega--info 'basicGroup (plist-get tlobj :basic_group_id))))
+      (telega--info 'basicGroup (plist-get tlobj :basic_group_id)) chat))
     (chatTypeSupergroup
      (telega-info--insert-supergroup
       (telega--info 'supergroup (plist-get tlobj :supergroup_id)) chat))))
