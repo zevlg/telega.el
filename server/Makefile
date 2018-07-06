@@ -1,11 +1,11 @@
 CC=cc
 CFLAGS=-Wall -g -pthread
-LDFLAGS=-Wl,-rpath=/usr/local/lib -L/usr/local/lib -ltdjson
+LDFLAGS=-L/usr/local/lib -ltdjson
 
 PROG=telega-server
 
-$(PROG): telega-server.c
-	$(CC) $(CFLAGS) -o $(PROG) telega-server.c $(LDFLAGS)
+$(PROG): telega-server.c telega-dat.c
+	$(CC) $(CFLAGS) -o $(PROG) telega-server.c telega-dat.c $(LDFLAGS)
 
 install: $(PROG)
 	@install -v -d $(HOME)/.telega
