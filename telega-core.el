@@ -96,15 +96,6 @@ Done when telega server is ready to receive queries."
 (defsetf telega--tl-type (tl-obj) (type-sym)
   `(plist-put ,tl-obj :@type (symbol-name ',type-sym)))
 
-(defmacro telega--tl-bool (tl-obj prop)
-  `(eq t (plist-get ,tl-obj ,prop)))
-
-(defmacro telega--tl-prop (prop)
-  "Generates function to get property PROP."
-  (let ((tl-obj-sym (cl-gensym "tl-obj")))
-    `(lambda (,tl-obj-sym)
-       (plist-get ,tl-obj-sym ,prop))))
-
 (defmacro telega-save-excursion (&rest body)
   "Save current point as moving marker."
   (let ((pnt-sym (gensym)))
@@ -112,6 +103,37 @@ Done when telega server is ready to receive queries."
        (unwind-protect
            (progn ,@body)
          (goto-char ,pnt-sym)))))
+
+(defmacro telega--tl-prop (prop)
+  "Generates function to get property PROP."
+  (let ((tl-obj-sym (cl-gensym "tl-obj")))
+    `(lambda (,tl-obj-sym)
+       (plist-get ,tl-obj-sym ,prop))))
+
+(defun telega--tl-desurrogate (str)
+  "Decode surrogate pairs in STR string.
+Attach `display' text property to surrogated regions."
+  (dotimes (idx (1- (length str)))
+    (let ((high (aref str idx))
+          (low (aref str (1+ idx))))
+      (when (and (>= high #xD800) (<= high #xDBFF)
+                 (>= low #xDC00) (<= low #xDFFF))
+        (add-text-properties
+         idx (+ idx 2) (list 'display (char-to-string
+                                       (+ (lsh (- high #xD800) 10) (- low #xDC00) #x10000)))
+         str))))
+  str)
+
+(defsubst telega--tl-unpack (obj)
+  "Unpack (i.e. desurrogate strings) object OBJ."
+  (cond ((stringp obj) (telega--tl-desurrogate obj))
+        ((vectorp obj) (cl-map 'vector 'telega--tl-unpack obj))
+        ((listp obj) (mapcar 'telega--tl-unpack obj))
+        (t obj)))
+
+(defsubst telega--tl-pack (obj)
+  "Pack object OBJ."
+  obj)
 
 
 ;; Files
@@ -135,7 +157,7 @@ hasn't been started, i.e. request hasn't been sent to server."
   (telega-server--send
    (list :@type "cancelDownloadFile"
          :file_id file-id
-         :only_if_pending (or only-if-pending :json-false))))
+         :only_if_pending (or only-if-pending :false))))
 
 (defun telega-file--delete (file-id)
   "Delete file from cache."
@@ -147,8 +169,8 @@ hasn't been started, i.e. request hasn't been sent to server."
   "Download file or return it."
 
   (let* ((local (plist-get file :local))
-         (is-downloading-completed-p (telega--tl-bool local :is_downloading_completed))
-         (is-downloading-active-p (telega--tl-bool local :is_downloading_active)))
+         (is-downloading-completed-p (plist-get local :is_downloading_completed))
+         (is-downloading-active-p (plist-get local :is_downloading_active)))
 
     (if is-downloading-completed-p
         (plist-get local :path)
@@ -166,7 +188,7 @@ hasn't been started, i.e. request hasn't been sent to server."
       (telega-msg--update-file (nth 1 link) (nth 2 link) file)
 
       (let ((local (plist-get file :local)))
-        (when (telega--tl-bool local :is_downloading_completed)
+        (when (plist-get local :is_downloading_completed)
           (setq telega--files-downloading
                 (delete link telega--files-downloading))
           (message "Downloading completed: %s" (plist-get local :path)))))))

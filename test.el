@@ -9,7 +9,7 @@
           :phone_number "71112233" :status (:@type "userStatusOnline" :expires 1527776835)
           :outgoing_link (:@type "linkStateIsContact")
           :incoming_link (:@type "linkStateIsContact")
-          :is_verified :json-false
+          :is_verified nil
           :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
 
@@ -18,7 +18,7 @@
           :phone_number "71112234" :status (:@type "userStatusOnline" :expires 1527776836)
           :outgoing_link (:@type "linkStateIsContact")
           :incoming_link (:@type "linkStateIsContact")
-          :is_verified :json-false
+          :is_verified nil
           :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
 
@@ -32,11 +32,11 @@
                 :order 22
                 :unread_count 25
                 :unread_mention_count 0
-                :is_pinned :json-false
+                :is_pinned nil
                 :notification_settings
                 (:@type "notificationSettings"
                         :mute_for 623207729
-                        :sound "" :show_preview :json-false))
+                        :sound "" :show_preview nil))
         (:@type "chat"
                 :id 22222
                 :type
@@ -46,11 +46,11 @@
                 :order 11
                 :unread_count 25
                 :unread_mention_count 0
-                :is_pinned :json-false
+                :is_pinned nil
                 :notification_settings
                 (:@type "notificationSettings"
                         :mute_for 623207729
-                        :sound "" :show_preview :json-false))
+                        :sound "" :show_preview nil))
 
         ;; TODO: add more chats
         ))

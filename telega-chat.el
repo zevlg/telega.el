@@ -86,7 +86,7 @@ them to bots or channels."
          (type-sym (intern (downcase (substring (plist-get chat-type :@type) 8)))))
     (cond ((and (not no-interpret)
                 (eq type-sym 'supergroup)
-                (telega--tl-bool chat-type :is_channel))
+                (plist-get chat-type :is_channel))
            'channel)
           ((and (not no-interpret)
                 (eq type-sym 'private)
@@ -282,7 +282,7 @@ Return newly created chat."
    (list :@type "viewMessages"
          :chat_id (plist-get chat :id)
          :message_ids
-         (mapcar (lambda (msg) (plist-get msg :id)) messages))))
+         (cl-map 'vector (lambda (msg) (plist-get msg :id)) messages))))
 
 (defun telega-chat-show-info (chat)
   "Show help buffer with info about CHAT."
@@ -303,7 +303,7 @@ Return newly created chat."
       (insert (format "Notifications: %s\n"
                       (if (zerop (plist-get not-cfg :mute_for))
                           (concat "enabled"
-                                  (if (telega--tl-bool not-cfg :show_preview)
+                                  (if (plist-get not-cfg :show_preview)
                                       " with preview"
                                     ""))
                         "disabled"))))
@@ -317,7 +317,7 @@ Return newly created chat."
   (telega-server--send
    (list :@type "toggleChatIsPinned"
          :chat_id (plist-get chat :id)
-         :is_pinned (if (telega--tl-bool chat :is_pinned) :json-false t))))
+         :is_pinned (if (plist-get chat :is_pinned) :false t))))
 
 
 ;;; Chat buttons in root buffer
@@ -347,7 +347,7 @@ Return newly created chat."
   (let ((title (telega-chat--title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
-        (pinned-p (telega--tl-bool chat :is_pinned))
+        (pinned-p (plist-get chat :is_pinned))
         (muted-p (telega-chat--muted-p chat))
         (umwidth 7))
     `("[" (,title
@@ -796,7 +796,7 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
   "A new message was received; can also be an outgoing message."
   (let* ((new-msg (plist-get event :message))
          (button (telega-chat-buffer--insert-youngest-msg
-                  new-msg (telega--tl-bool event :disable_notification))))
+                  new-msg (plist-get event :disable_notification))))
 
     ;; If message is visibible in some window, then mark it as read
     ;; see https://github.com/zevlg/telega.el/issues/4
@@ -871,7 +871,7 @@ Message id could be updated on this update."
   (let ((chat (telega-chat--get (plist-get event :chat_id))))
     (with-telega-chat-buffer chat
       (save-excursion
-        (when (telega--tl-bool event :is_permanent)
+        (when (plist-get event :is_permanent)
           (mapc (lambda (msg-id)
                   (let ((button (telega-chat-buffer--button-get msg-id)))
                     (when button
@@ -914,7 +914,7 @@ Pass non-nil NOTIFY to generate notification for this message.
 Pass non-nil FROM-BACKGROUND if message sent from background."
   (let ((tl-msg (list :@type "sendMessage"
                       :chat_id (plist-get chat :id)
-                      :disable_notification (or (not notify) :json-false)
+                      :disable_notification (or (not notify) :false)
                       :input_message_content
                       (telega-msg--input-content text markdown))))
     (when reply-to-msg
@@ -1020,7 +1020,7 @@ With prefix arg delete only for yourself."
 
   (when (y-or-n-p (concat (if revoke "Revoke" "Kill") " the message? "))
     (telega-msg--deleteMessages
-     (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)))
+     (plist-get msg :chat_id) (vector (plist-get msg :id)) revoke)))
 
 (defun telega-chat-complete-username ()
   "Complete username at point."

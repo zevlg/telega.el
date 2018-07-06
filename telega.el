@@ -5,7 +5,7 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.1.12
+;; Version: 0.2.0
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 (require 'telega-info)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.1.12")
+(defconst telega-version "0.2.0")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
@@ -76,24 +76,23 @@ With prefix arg force quit without confirmation."
 (defun telega--set-tdlib-parameters ()
   "Sets the parameters for TDLib initialization."
   (telega-server--send
-   `(:@type "setTdlibParameters"
-            :parameters
-            (:@type "tdlibParameters"
-                    :use_test_dc ,(or telega-use-test-dc json-false)
-                    :database_directory ,telega-directory
-                    :files_directory ,telega-cache-dir
-                    :use_file_database ,telega-use-file-database
-                    :use_chat_info_database ,telega-use-chat-info-database
-                    :use_message_database ,telega-use-message-database
-                    :api_id ,(car telega-app)
-                    :api_hash ,(cdr telega-app)
-                    :system_language_code ,telega-language
-                    :application_version ,telega-version
-                    :device_model "Emacs"
-                    :system_version ,emacs-version
-                    :ignore_file_names ,json-false
-                    :enable_storage_optimizer t
-            ))))
+   (list :@type "setTdlibParameters"
+         :parameters (list :@type "tdlibParameters"
+                           :use_test_dc (or telega-use-test-dc :false)
+                           :database_directory telega-directory
+                           :files_directory telega-cache-dir
+                           :use_file_database telega-use-file-database
+                           :use_chat_info_database telega-use-chat-info-database
+                           :use_message_database telega-use-message-database
+                           :api_id (car telega-app)
+                           :api_hash (cdr telega-app)
+                           :system_language_code telega-language
+                           :application_version telega-version
+                           :device_model "Emacs"
+                           :system_version emacs-version
+                           :ignore_file_names :false
+                           :enable_storage_optimizer t
+                           ))))
 
 (defun telega--check-database-encryption-key ()
   "Set database encryption key, if any."
@@ -112,10 +111,10 @@ With prefix arg force quit without confirmation."
   "Sets the phone number of the user."
   (let ((phone (read-string "Telega phone number: " "+")))
     (telega-server--send
-     `(:@type "setAuthenticationPhoneNumber"
-              :phone_number ,phone
-              :allow_flash_call ,json-false
-              :is_current_phone_number ,json-false))))
+     (list :@type "setAuthenticationPhoneNumber"
+           :phone_number phone
+           :allow_flash_call :false
+           :is_current_phone_number :false))))
 
 (defun telega--resend-auth-code ()
   "Resends auth code, works only if current state is authorizationStateWaitCode."
@@ -156,7 +155,7 @@ With prefix arg force quit without confirmation."
                                                 "optionValueInteger")
                                                ((stringp value)
                                                 "optionValueString"))
-                                  :value (or value :json-false))))))
+                                  :value (or value :false))))))
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."

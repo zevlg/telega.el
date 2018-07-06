@@ -71,7 +71,7 @@
    (list :@type "getPublicMessageLink"
          :chat_id chat-id
          :message_id msg-id
-         :for_album (or for-album :json-false))))
+         :for_album (or for-album :false))))
 
 (defun telega-msg--update-file (chat-id msg-id file)
   "File used in CHAT-ID/MSG-ID has been updated to FILE."
@@ -92,7 +92,7 @@
    (list :@type "deleteMessages"
          :chat_id chat-id
          :message_ids message-ids
-         :revoke (or revoke :json-false))))
+         :revoke (or revoke :false))))
 
 (defun telega-msg--forwardMessages (chat-id from-chat-id message-ids
                                             &optional disable-notification
@@ -152,14 +152,14 @@ Return nil if message can't be forwarded."
 
 (defun telega-msg-outgoing-status (msg)
   "Outgoing status of the message."
-  (when (telega--tl-bool msg :is_outgoing)
+  (when (plist-get msg :is_outgoing)
     (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
           (chat (telega-chat--get (plist-get msg :chat_id))))
     (cond ((and (stringp sending-state)
                 (string= sending-state "messageSendingStatePending"))
            telega-symbol-msg-pending)
           ((and (stringp sending-state)
-                (strintg= sending-state "messageSendingStateFailed"))
+                (string= sending-state "messageSendingStateFailed"))
            telega-symbol-msg-failed)
           ((>= (plist-get chat :last_read_outbox_message_id)
                (plist-get msg :id))
@@ -216,10 +216,10 @@ Return nil if message can't be forwarded."
             ;;   /link/to-file         if file has been downloaded
             ;;   [Download]            if no local copy
             ;;   [...   20%] [Cancel]  if download in progress
-            (cond ((telega--tl-bool local :is_downloading_completed)
+            (cond ((plist-get local :is_downloading_completed)
                    (apply 'propertize (plist-get local :path)
                           (telega-link-props 'file (plist-get local :path))))
-                  ((telega--tl-bool local :is_downloading_active)
+                  ((plist-get local :is_downloading_active)
                    (let* ((dsize (plist-get local :downloaded_size))
                           (dpart (/ (float dsize) filesize))
                           (percents (round (* (/ (float dsize) filesize) 100))))
@@ -392,7 +392,7 @@ Makes heave online requests without caching, be carefull."
 (defun telega-msg-button--format (msg &optional prev-msg)
   "Produce fmt spec for the message MSG.
 PREV-MSG is non-nil if there any previous message exists."
-  (cond ((telega--tl-bool msg :is_channel_post)
+  (cond ((plist-get msg :is_channel_post)
          (telega-msg-button--format-channel msg))
 
         ((memq (telega--tl-type (plist-get msg :content))

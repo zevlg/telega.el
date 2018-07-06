@@ -25,7 +25,6 @@
 
 ;;; Code:
 (require 'cl-lib)
-(require 'json)
 
 (require 'telega-core)
 (require 'telega-customize)
@@ -103,12 +102,11 @@ Raise error if not found"
   "Parse single reply from telega-server."
   (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
     (let ((cmd (match-string 1))
-          (jsonsz (string-to-number (match-string 2))))
-      (when (> (- (point-max) (point)) jsonsz)
-        (let* ((json-object-type 'plist)
-               (value (json-read)))
+          (sexpsz (string-to-number (match-string 2))))
+      (when (> (- (point-max) (point)) sexpsz)
+        (let ((value (read (current-buffer))))
           (prog1
-              (list cmd value)
+              (list cmd (telega--tl-unpack value))
             (delete-region (point-min) (point))))))))
 
 (defsubst telega-server--dispatch-cmd (cmd value)
@@ -167,11 +165,12 @@ Raise error if not found"
      'raw)))
 
 (defun telega-server--send (sexp)
-  "Compose SEXP to json and send to telega-server."
-  (let* ((json-object-type 'plist)
-         (value (json-encode sexp))
-         (proc (telega-server--proc)))
+  "Send SEXP to telega-server."
+  (let ((value (prin1-to-string (telega--tl-pack sexp)))
+        (proc (telega-server--proc)))
     (assert (process-live-p proc) nil "telega-server is not running")
+    (telega-debug "OUTPUT: %d %s" (string-bytes value) value)
+
     (process-send-string
      proc
      (concat "send " (number-to-string (string-bytes value)) "\n"))

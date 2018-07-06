@@ -86,7 +86,7 @@ With positive ARG - enables notifications, otherwise disables."
                              :urgency "normal"
                              :title (telega-chat--title chat 'with-username))))
           (setq notargs (plist-put notargs :body
-                                   (if (telega--tl-bool not-cfg :show_preview)
+                                   (if (plist-get not-cfg :show_preview)
                                        (substring-no-properties
                                         (telega-fmt-eval
                                          'telega-notifications--format-msg msg))

@@ -339,7 +339,7 @@ If FLIST is empty then return t."
 
 (define-telega-filter pin (chat)
   "Matches if CHAT is pinned."
-  (telega--tl-bool chat :is_pinned))
+  (plist-get chat :is_pinned))
 
 (defun telega-filter-by-pin ()
   "Filter only pinned chats."
@@ -392,7 +392,7 @@ By default N is 1."
 
 (define-telega-filter verified (chat)
   "Matches only verified chats."
-  (telega--tl-bool (telega-chat--info chat) :is_verified))
+  (plist-get (telega-chat--info chat) :is_verified))
 
 (defun telega-filter-by-verified ()
   "Filter verified chats."

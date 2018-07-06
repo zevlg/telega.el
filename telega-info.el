@@ -281,7 +281,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                     (and (memq (telega--tl-type member-status)
                                '(chatMemberStatusRestricted
                                  chatMemberStatusCreator))
-                         (telega--tl-bool member-status :is_member)))
+                         (plist-get member-status :is_member)))
                 "Joined at: "
               "Created at: ")
             (telega-fmt-timestamp (plist-get supergroup :date))
@@ -305,7 +305,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (insert "------------------------\n"))
 
     (insert (format "Members: %d" (plist-get full-info :member_count)) "\n")
-    (when (telega--tl-bool full-info :can_get_members)
+    (when (plist-get full-info :can_get_members)
       (mapc (lambda (member)
               (insert "  " (telega-fmt-eval 'telega-fmt-chat-member member) "\n"))
             (plist-get (telega-supergroup--getMembers supergroup) :members)))))
@@ -335,8 +335,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
             (let ((app_name (plist-get session :application_name))
                   (app_ver (plist-get session :application_version))
                   (api_id (plist-get session :api_id))
-                  (official-p (telega--tl-bool session :is_official_application))
-                  (current-p (telega--tl-bool session :is_current))
+                  (official-p (plist-get session :is_official_application))
+                  (current-p (plist-get session :is_current))
                   (device (plist-get session :device_model))
                   (platform (plist-get session :platform))
                   (sys_ver (plist-get session :system_version))
