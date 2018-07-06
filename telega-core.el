@@ -133,7 +133,11 @@ Attach `display' text property to surrogated regions."
 
 (defsubst telega--tl-pack (obj)
   "Pack object OBJ."
-  obj)
+  ;; Remove text props from strings, etc
+  (cond ((stringp obj) (substring-no-properties obj))
+        ((vectorp obj) (cl-map 'vector 'telega--tl-pack obj))
+        ((listp obj) (mapcar 'telega--tl-pack obj))
+        (t obj)))
 
 
 ;; Files
