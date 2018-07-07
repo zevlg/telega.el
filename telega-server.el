@@ -200,6 +200,7 @@ when result is received."
 
 (defun telega-server--start ()
   "Start telega-server process."
+  (telega-server-ensure-installed)
   (when (process-live-p (telega-server--proc))
     (error "Error: telega-server already running"))
 
@@ -236,6 +237,28 @@ when result is received."
   (when (buffer-live-p telega-server--buffer)
     (kill-buffer telega-server--buffer)
     (setq telega-server--buffer nil)))
+
+(defconst telega--lib-directory
+  (or (and load-file-name
+           (file-name-directory load-file-name))
+      default-directory)
+  "The directory from where this library was first loaded.")
+
+(defun telega-server-compile ()
+  "Compile telega-server binary."
+
+  (interactive)
+  (let ((default-directory (concat telega--lib-directory "server")))
+    (compilation-start "make install")))
+
+(defun telega-server-ensure-installed ()
+  "Make sure that telega-server binary is installed."
+
+  (interactive)
+  (let ((exec-path (cons telega-directory exec-path)))
+    (unless (executable-find "telega-server")
+        (and (y-or-n-p "Need to (re)build the telega-server program, do it now? ")
+             (telega-server-compile)))))
 
 (provide 'telega-server)
 
