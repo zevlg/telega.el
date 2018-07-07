@@ -53,9 +53,12 @@ iOS terminal [blink](https://github.com/blinksh/blink "blink"):
 # Installation
 
 Being in active development, `telega.el` is not ready to be
-distributed on archives such as MELPA. At the moment, the only way to
-use is from this git repositary. This involves few simple steps
-described below.
+distributed on archives such as MELPA. At the moment, you could use
+this git repositary or this melpa-style recipe:
+```lisp
+(:fetcher github :repo "zevlg/telega.el"
+ :files (:defaults "README.md" "etc" "server"))
+```
 
 `telega.el` is built on top of the official library provided by
 Telegram [tdlib](https://core.telegram.org/tdlib "tdlib"). Most of the
@@ -110,6 +113,9 @@ first step consists in building `telega-server`, which is a C
 interface to the `tdlib`.
 
 ## Building telega-server
+
+Telega uses auxillary program to interact with tdlib. You can build it yourself
+or just let `telega` ask you at the first start and do the job.
 
 To get the source:
 
