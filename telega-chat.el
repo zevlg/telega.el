@@ -947,7 +947,7 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
 
 (defun telega-chat-send (prefix-arg)
   "Send current input to the chat.
-With PREFIX-ARG, apply markdown formatter to message."
+With PREFIX-ARG, inverses your current preference for markdown formatting."
   (interactive "P")
   (let ((input (buffer-substring telega-chatbuf--input-marker (point-max)))
         (sfunc telega-chatbuf--send-func)
