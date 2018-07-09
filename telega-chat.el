@@ -53,6 +53,13 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
       (telega-chat--ensure chat))
     chat))
 
+(defun telega-chat--by-invite-link (invite-link)
+  "Return new chat by its INVITE-LINK.
+Return nil if can't join the chat."
+  (telega-server--call
+   (list :@type "joinChatByInviteLink"
+         :invite_link invite-link)))
+
 (defun telega-chat--info (chat)
   "Return info structure for the CHAT.
 It could be user, secretChat, basicGroup or supergroup."
@@ -408,6 +415,14 @@ Return newly created chat."
         (setq chat (telega-chat--create-private user))))
 
     (telega-chat--pop-to-buffer chat)))
+
+(defun telega-chat-join-by-link (link)
+  "Join chat by invitation LINK."
+  (interactive "sInvite link: ")
+  (telega-chat--pop-to-buffer
+   (or (telega-chat--by-invite-link link)
+       (error "Can't join chat: %s"
+              (plist-get telega-server--last-error :message)))))
 
 
 ;;; Chat Buffer, resembles lui.el

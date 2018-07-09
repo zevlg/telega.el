@@ -16,6 +16,7 @@ to use `telega.el` for basic chat.
       order
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
+- [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
 - [x] Fetching chat history, sending messages, replies, edits, deleting
 - [ ] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
