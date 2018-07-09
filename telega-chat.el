@@ -296,6 +296,9 @@ Return newly created chat."
                           (concat "@" username)
                         ""))))
     (insert (format "Id: %d\n" (plist-get chat :id)))
+    (when (telega-chat--public-p chat)
+      (insert "Link: https://t.me/"
+              (plist-get (telega-chat--supergroup chat) :username) "\n"))
     (when telega-debug
       (insert (format "Order: %s\n" (telega-chat--order chat))))
 
@@ -626,9 +629,11 @@ Inhibits read-only flag."
   "Return name for the CHAT buffer.
 If TITLE is specified, use it instead of chat's title."
   (format "Telega-%S%s: %s" (telega-chat--type chat)
-          (let ((un (plist-get (telega-chat--info chat) :username)))
-            (concat (if (string-empty-p un) "" "@") un))
-          (or title (telega-chat--title chat))))
+          (telega--desurrogate-apply
+           (let ((un (plist-get (telega-chat--info chat) :username)))
+            (concat (if (string-empty-p un) "" "@") un)))
+          (telega--desurrogate-apply
+           (or title (telega-chat--title chat)))))
 
 (defun telega-chat-buffer--get-create (chat)
   "Get or create chat buffer for the CHAT."
@@ -1045,8 +1050,9 @@ With prefix arg delete only for yourself."
   "Generate invite link for chat with CHAT-ID."
   (interactive)
 
-  (telega-server--call (list :@type "generateChatInviteLink"
-     :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
+  (telega-server--call
+   (list :@type "generateChatInviteLink"
+         :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
 
 (provide 'telega-chat)
 

@@ -120,9 +120,20 @@ Attach `display' text property to surrogated regions."
                  (>= low #xDC00) (<= low #xDFFF))
         (add-text-properties
          idx (+ idx 2) (list 'display (char-to-string
-                                       (+ (lsh (- high #xD800) 10) (- low #xDC00) #x10000)))
+                                       (+ (lsh (- high #xD800) 10) (- low #xDC00) #x10000))
+                             'telega-desurrogate t)
          str))))
   str)
+
+(defun telega--desurrogate-apply (str)
+  "Apply `telega-desurrogate' properties to STR.
+Resulting in new string with no surrogate pairs."
+  (let ((ret "") (beg 0) end)
+    (while (setq end (next-single-property-change beg 'telega-desurrogate str))
+      (setq ret (concat ret (substring-no-properties str beg end)
+                        (get-text-property end 'display str))
+            beg (+ end 2)))
+    (concat ret (substring-no-properties str beg end))))
 
 (defsubst telega--tl-unpack (obj)
   "Unpack (i.e. desurrogate strings) object OBJ."
@@ -535,7 +546,7 @@ Return newly created button."
        (telega-file--cancel-download (car (cdr link)))
        (telega-file--update-message
         (telega-file--get (car (cdr link))))
-       (setq telega--file-messages
+       (setq telega--files-downloading
              (delete (cdr link) telega--files-downloading))))))
 
 (provide 'telega-core)

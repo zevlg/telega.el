@@ -28,6 +28,7 @@
 
 ;;; Code:
 (require 'notifications)
+(require 'telega-core)
 
 
 (defcustom telega-notifications-timeout 2.0
@@ -87,7 +88,7 @@ With positive ARG - enables notifications, otherwise disables."
                              :title (telega-chat--title chat 'with-username))))
           (setq notargs (plist-put notargs :body
                                    (if (plist-get not-cfg :show_preview)
-                                       (substring-no-properties
+                                       (telega--desurrogate-apply
                                         (telega-fmt-eval
                                          'telega-notifications--format-msg msg))
                                      "Has new unread messages")))

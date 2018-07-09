@@ -216,29 +216,25 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
   (insert (format "Info: %S\n\n" secretchat))
   )
 
-(defun telega-info--insert-invite-link (group full-info chat-id)
-  (let* ((invite-link (plist-get full-info :invite_link))
-        (member-status (plist-get (plist-get group :status) :@type))
-        (can-generate-invite-link-p (or (string= "chatMemberStatusCreator" member-status)
-                                        (string= "chatMemberStatusAdministrator" member-status)))
-        (has-invite-link-p (not (string-empty-p invite-link))))
-    (when (or can-generate-invite-link-p has-invite-link-p)
-      (insert "Invite link: ")
-
-      (when can-generate-invite-link-p
-        (insert-text-button (if has-invite-link-p "[Regenerate]" "[Generate]")
-                            :id chat-id
-                            'action (lambda (button)
-                                      (let ((chat-id (button-get button :id)))
-                                        (telega-chat-generate-invite-link chat-id)
-                                        (telega-chat-button-info
-                                         (telega-root--chat-button (telega-chat--get chat-id))))))
-
-        (if has-invite-link-p (insert " ")))
-
-      (if has-invite-link-p
-          (apply 'insert-text-button invite-link (telega-link-props 'url invite-link)))
-
+(defun telega-info--insert-invite-link (chat invite-link can-generate-p)
+  "Insert CHAT's INVITE-LINK into current info buffer.
+CAN-GENERATE-P is non-nil if invite link can be [re]generated."
+  ;; NOTE: maybe use `checkChatInviteLink' to check the invitation
+  ;; link for validity?
+  (let ((valid-link-p (not (string-empty-p invite-link))))
+    (when (or can-generate-p valid-link-p)
+      (insert "Invite link:")
+      (when valid-link-p
+        (insert " ")
+        (apply 'insert-text-button invite-link (telega-link-props 'url invite-link)))
+      (when can-generate-p
+        (insert " ")
+        (insert-text-button (if valid-link-p "[Regenerate]" "[Generate]")
+                            :value chat
+                            'action `(lambda (button)
+                                       (telega-chat-generate-invite-link
+                                        ,(plist-get chat :id))
+                                       (telega-chat-button-info button))))
       (insert "\n"))))
 
 (defun telega-info--insert-basicgroup (basicgroup chat)
@@ -247,11 +243,10 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (creator-id (plist-get full-info :creator_user_id))
          (creator (telega-user--get creator-id))
          (creator-member
-          (cl-find creator-id members
-                   :test (lambda (crt-id m)
-                           (= crt-id (plist-get m :user_id)))))
-         (member-status (plist-get (plist-get basicgroup :status) :@type)))
-    (insert "Status: " (substring member-status 16) "\n")
+          (cl-find creator-id members :test '= :key (telega--tl-prop :user_id)))
+         (member-status-name (plist-get (plist-get basicgroup :status) :@type))
+         (invite-link (plist-get full-info :invite_link)))
+    (insert "Status: " (substring member-status-name 16) "\n")
     (insert (format "Created: %s  %s\n"
                     (telega-user--name creator)
                     (if creator-member
@@ -259,7 +254,9 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                          (plist-get creator-member :joined_chat_date))
                       "")))
 
-    (telega-info--insert-invite-link basicgroup full-info (plist-get chat :id))
+    ;; For basic groups only creator can generate invite link
+    (telega-info--insert-invite-link
+     chat invite-link (string= member-status-name "chatMemberStatusCreator"))
 
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
@@ -269,25 +266,30 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                             (plist-get mbr :user_id))))
           members)))
 
-(defun telega-info--insert-supergroup (supergroup &optional chat)
+(defun telega-info--insert-supergroup (supergroup chat)
   (let* ((full-info (telega--full-info supergroup))
          (descr (plist-get full-info :description))
          (restr-reason (plist-get supergroup :restriction_reason))
          (pin-msg-id (plist-get full-info :pinned_message_id))
-         (member-status (plist-get supergroup :status)))
-    (insert "Status: " (substring (plist-get member-status :@type) 16) "\n")
-    (insert (if (or (eq (telega--tl-type member-status)
-                        'chatMemberStatusMember)
-                    (and (memq (telega--tl-type member-status)
-                               '(chatMemberStatusRestricted
-                                 chatMemberStatusCreator))
+         (member-status (plist-get supergroup :status))
+         (member-status-name (plist-get member-status :@type))
+         (invite-link (plist-get full-info :invite_link)))
+    (insert "Status: " (substring member-status-name 16) "\n")
+    (insert (if (or (string= member-status-name "chatMemberStatusMember")
+                    (and (member member-status-name
+                                 '("chatMemberStatusCreator"
+                                   "chatMemberStatusRestricted"))
                          (plist-get member-status :is_member)))
                 "Joined at: "
               "Created at: ")
             (telega-fmt-timestamp (plist-get supergroup :date))
             "\n")
 
-    (telega-info--insert-invite-link supergroup full-info (plist-get chat :id))
+    ;; Creator and admins can [re]generate invite link
+    (telega-info--insert-invite-link
+     chat invite-link (member member-status-name
+                              '("chatMemberStatusCreator"
+                                "chatMemberStatusAdministrator")))
 
     (unless (string-empty-p descr)
       (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
@@ -308,7 +310,12 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
     (when (plist-get full-info :can_get_members)
       (mapc (lambda (member)
               (insert "  " (telega-fmt-eval 'telega-fmt-chat-member member) "\n"))
-            (plist-get (telega-supergroup--getMembers supergroup) :members)))))
+            (plist-get (telega-supergroup--getMembers supergroup) :members)))
+
+    (when telega-debug
+      (insert "\n---DEBUG---\n")
+      (insert (format "Info: %S\n" supergroup))
+      (insert (format "\nFull-Info: %S\n" full-info)))))
 
 (defun telega-info--insert (tlobj chat)
   "Insert information about TLOBJ into current buffer."
