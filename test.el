@@ -3,7 +3,8 @@
 
 (telega--init-vars)
 (telega--info-update
- `(:@type "supergroup" :id 11110 :username "noname"))
+ `(:@type "supergroup" :id 11110 :username "noname"
+          :status (:@type "chatMemberStatusAdministrator")))
 (telega--info-update
  `(:@type "user" :id 22220 :first_name "Vasya" :last_name "Pupkin" :username "vpupkin"
           :phone_number "71112233" :status (:@type "userStatusOnline" :expires 1527776835)
@@ -36,7 +37,9 @@
                 :notification_settings
                 (:@type "notificationSettings"
                         :mute_for 623207729
-                        :sound "" :show_preview nil))
+                        :sound "" :show_preview nil)
+                :last_message (:@type "message" :id 44444 :sender_user_id 2220 :chat_id 1111 :is_outgoing nil :can_be_edited nil :can_be_forwarded t :can_be_deleted_only_for_self nil :can_be_deleted_for_all_users t :is_channel_post nil :contains_unread_mention nil :date 1531136430 :edit_date 0 :reply_to_message_id 0 :ttl 0 :ttl_expires_in 0.0 :via_bot_user_id 0 :author_signature "" :views 0 :media_album_id "0" :content (:@type "messageText" :text (:@type "formattedText" :text "Синтезатор как максимум" :entities [])))
+                )
         (:@type "chat"
                 :id 22222
                 :type
@@ -50,8 +53,10 @@
                 :notification_settings
                 (:@type "notificationSettings"
                         :mute_for 623207729
-                        :sound "" :show_preview nil))
-
+                        :sound "" :show_preview nil)
+                :last_message (:@type "message" :id 44442 :sender_user_id 3330 :chat_id 22222 :is_outgoing nil :can_be_edited nil :can_be_forwarded t :can_be_deleted_only_for_self nil :can_be_deleted_for_all_users t :is_channel_post nil :contains_unread_mention nil :date 1531136430 :edit_date 0 :reply_to_message_id 0 :ttl 0 :ttl_expires_in 0.0 :via_bot_user_id 0 :author_signature "" :views 0 :media_album_id "0" :content (:@type "messageText" :text (:@type "formattedText" :text "Синтезатор как максимум" :entities [])))
+                )
+        
         ;; TODO: add more chats
         ))
 
@@ -90,5 +95,19 @@
   ;; TODO: add more filter tests
   )
 
+(ert-deftest telega-desurrogate ()
+  "Tests for `telega--desurrogate-apply'"
+  (let ((tests '((#("\uD83D\uDC7B test"
+                    0 2 (display "👻" telega-desurrogate t)) . "👻 test")
+                (#("test \uD83D\uDC41\uD83D\uDDE8"
+                   5 7 (display "👁" telega-desurrogate t)
+                   7 9 (display "🗨" telega-desurrogate t)) . "test 👁🗨")
+                (#("test \uD83D\uDC41mid\uD83D\uDDE8ending"
+                   5 7 (display "👁" telega-desurrogate t)
+                   10 12 (display "🗨" telega-desurrogate t)) . "test 👁mid🗨ending")
+                )))
+    (dolist (ts tests)
+      (should (string= (telega--desurrogate-apply (car ts)) (cdr ts))))
+    ))
 
 ;;; test.el ends here

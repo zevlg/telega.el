@@ -128,8 +128,8 @@ Attach `display' text property to surrogated regions."
 (defun telega--desurrogate-apply (str)
   "Apply `telega-desurrogate' properties to STR.
 Resulting in new string with no surrogate pairs."
-  (let ((ret "") (beg 0) end)
-    (while (setq end (next-single-property-change beg 'telega-desurrogate str))
+  (let ((ret "") (beg 0) (fin (length str)) end)
+    (while (setq end (text-property-any beg fin 'telega-desurrogate t str))
       (setq ret (concat ret (substring-no-properties str beg end)
                         (get-text-property end 'display str))
             beg (+ end 2)))
