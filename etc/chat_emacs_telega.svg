@@ -7,7 +7,7 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   viewBox="0 0 240 240"
+   viewBox="0 0 118 20"
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
@@ -36,7 +36,7 @@
      inkscape:window-height="1357"
      id="namedview24"
      showgrid="false"
-     inkscape:zoom="2.7812867"
+     inkscape:zoom="3.9333334"
      inkscape:cx="-0.55423729"
      inkscape:cy="120"
      inkscape:window-x="0"
@@ -81,7 +81,7 @@
   </defs>
   <g
      id="g3446"
-     transform="matrix(0.06629213,0,0,0.06666667,46.404494,224)">
+     transform="matrix(0.06629213,0,0,0.06666667,46.404494,3.9999992)">
     <path
        sodipodi:nodetypes="ssssccs"
        inkscape:connector-curvature="0"
