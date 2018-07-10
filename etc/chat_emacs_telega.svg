@@ -7,48 +7,30 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   viewBox="0 0 118 20"
-   id="svg2"
+   width="118"
+   height="20"
+   id="svg3482"
    version="1.1"
    inkscape:version="0.91 r13725"
    sodipodi:docname="chat_emacs_telega.svg">
   <metadata
-     id="metadata26">
+     id="metadata3514">
     <rdf:RDF>
       <cc:Work
          rdf:about="">
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
-  <sodipodi:namedview
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1"
-     objecttolerance="10"
-     gridtolerance="10"
-     guidetolerance="10"
-     inkscape:pageopacity="0"
-     inkscape:pageshadow="2"
-     inkscape:window-width="2560"
-     inkscape:window-height="1357"
-     id="namedview24"
-     showgrid="false"
-     inkscape:zoom="3.9333334"
-     inkscape:cx="-0.55423729"
-     inkscape:cy="120"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="svg2" />
   <defs
-     id="defs4">
+     id="defs3512">
     <linearGradient
-       id="b"
+       id="b-3"
        x1="160.008"
-       y1="40.008001"
+       y1="40.007999"
        x2="100.008"
        y2="180"
        gradientUnits="userSpaceOnUse">
@@ -64,9 +46,9 @@
     <linearGradient
        id="w"
        x1="123.64119"
-       y1="131.02764"
+       y1="131.02763"
        x2="146.52715"
-       y2="174.70814"
+       y2="174.70815"
        gradientTransform="scale(1.0919081,0.91582798)"
        gradientUnits="userSpaceOnUse">
       <stop
@@ -79,6 +61,49 @@
          id="stop14" />
     </linearGradient>
   </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="2560"
+     inkscape:window-height="1357"
+     id="namedview3510"
+     showgrid="false"
+     inkscape:zoom="3.6630435"
+     inkscape:cx="46"
+     inkscape:cy="10"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3482" />
+  <linearGradient
+     id="b"
+     x2="0"
+     y2="100%">
+    <stop
+       offset="0"
+       stop-color="#bbb"
+       stop-opacity=".1"
+       id="stop3485" />
+    <stop
+       offset="1"
+       stop-opacity=".1"
+       id="stop3487" />
+  </linearGradient>
+  <mask
+     id="a">
+    <rect
+       width="92"
+       height="20"
+       rx="3"
+       fill="#fff"
+       id="rect3490" />
+  </mask>
   <g
      id="g3446"
      transform="matrix(0.06629213,0,0,0.06666667,46.404494,3.9999992)">
@@ -98,7 +123,7 @@
        transform="translate(-654,-30.499999)"
        id="g3360">
       <circle
-         style="fill:url(#b)"
+         style="fill:url(#b-3)"
          cx="120"
          cy="120"
          id="circle16"
