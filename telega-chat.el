@@ -941,13 +941,13 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
   (telega-chat-buffer--prompt-reset))
 
 (defcustom telega-chat-use-markdown-formatting nil
-  "*Use markdown formatting for outgoing messages."
+  "*Non-nil to use markdown formatting for outgoing messages."
   :type 'boolean
   :group 'telega)
 
 (defun telega-chat-send (prefix-arg)
   "Send current input to the chat.
-With PREFIX-ARG, inverses your current preference for markdown formatting."
+With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
   (interactive "P")
   (let ((input (buffer-substring telega-chatbuf--input-marker (point-max)))
         (sfunc telega-chatbuf--send-func)
@@ -968,8 +968,9 @@ With PREFIX-ARG, inverses your current preference for markdown formatting."
           telega-chatbuf--input-pending-p nil)
 
     (apply sfunc telega-chatbuf--chat input
-           (or (and (not prefix-arg) telega-chat-use-markdown-formatting)
-               (and prefix-arg (not telega-chat-use-markdown-formatting)))
+           (if telega-chat-use-markdown-formatting
+               (not prefix-arg)
+             prefix-arg)
            sargs)))
 
 ;; Message commands
