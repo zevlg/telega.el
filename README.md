@@ -1,4 +1,4 @@
-# telega.el
+# telega.el [![Join the chat at https://t.me/emacs_telega](https://raw.githubusercontent.com/zevlg/telega.el/master/etc/chat_emacs_telega.svg)](https://t.me/emacs_telega)
 
 `telega.el` is an unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
@@ -199,3 +199,13 @@ libtdjson.so: cannot open shared object file: No such file or directory
 (setq telega-socks5-proxy
       '(:server "1.2.3.4" :port 88 :username "rkn" :password "jopa"))
 ```
+
+**Q**: How to make telega automatically download media content inside messages?
+
+**A**: Automatic media download is enabled by default.  To disable use:
+
+```elisp
+(telega-auto-download-media-mode -1)
+```
+
+Customization is done via `telega-auto-download` variable.
