@@ -1102,15 +1102,14 @@ With prefix arg delete only for yourself."
 (defun telega-chat-send-media-clipboard ()
   "Save image in clipboard to file and paste link to it."
   (interactive)
-  (if (not (fboundp 'x-get-selection))
-      (message "Not implemented")
+  (assert (fboundp 'x-get-selection))
 
-    (let* ((sel (x-get-selection 'CLIPBOARD 'image/png))
-           (tmp (when sel (make-temp-file "telega-photo" nil ".png"))))
-      (if tmp (progn (with-temp-file tmp (insert sel))
-                     (insert (concat "\nphoto:" tmp))
-                     (telega-chat-send nil))
-        (message "Clipboard doesn't contain image")))))
+  (let* ((sel (x-get-selection 'CLIPBOARD 'image/png))
+         (tmp (when sel (make-temp-file "telega-photo" nil ".png"))))
+    (if tmp (progn (with-temp-file tmp (insert sel))
+                   (insert (concat "\nphoto:" tmp))
+                   (telega-chat-send nil))
+      (message "Clipboard doesn't contain image"))))
 
 (provide 'telega-chat)
 
