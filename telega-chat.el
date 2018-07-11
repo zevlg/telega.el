@@ -1079,6 +1079,11 @@ With prefix arg delete only for yourself."
    (list :@type "generateChatInviteLink"
          :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
 
+(defcustom telega-chat-image-preview-max-width 256
+  "*Width for the chat buttons."
+  :type 'integer
+  :group 'telega)
+
 (defun telega-chat-send-media ()
   "Select file and send is as media."
   (interactive)
@@ -1086,8 +1091,11 @@ With prefix arg delete only for yourself."
          (fn (when sel (expand-file-name sel))))
 
     (when fn
-      (insert (concat "\nphoto:" fn))
-      (telega-chat-send nil))))
+      (insert (concat "\n"
+                      (propertize (concat "photo:" fn)
+                                  'with-file t
+                                  'display (create-image fn 'imagemagick nil :max-width telega-chat-image-preview-max-width))
+                      "\n")))))
 
 (defun telega-chat-send-file ()
   "Select file and send is as file."
@@ -1095,9 +1103,7 @@ With prefix arg delete only for yourself."
   (let* ((sel (read-file-name "Select file: " nil nil t))
          (fn (when sel (expand-file-name sel))))
 
-    (when fn
-      (insert (concat "\nfile:" fn))
-      (telega-chat-send nil))))
+    (when fn (insert (propertize (concat "file:" fn) 'with-file t 'file fn)))))
 
 (defun telega-chat-send-media-clipboard ()
   "Save image in clipboard to file and paste link to it."
@@ -1107,8 +1113,11 @@ With prefix arg delete only for yourself."
   (let* ((sel (x-get-selection 'CLIPBOARD 'image/png))
          (tmp (when sel (make-temp-file "telega-photo" nil ".png"))))
     (if tmp (progn (with-temp-file tmp (insert sel))
-                   (insert (concat "\nphoto:" tmp))
-                   (telega-chat-send nil))
+                   (insert (concat "\n"
+                                   (propertize (concat "photo:" tmp)
+                                               'with-file t
+                                               'display (create-image tmp 'imagemagick nil :max-width telega-chat-image-preview-max-width))
+                                   "\n")))
       (message "Clipboard doesn't contain image"))))
 
 (provide 'telega-chat)

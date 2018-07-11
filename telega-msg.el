@@ -478,14 +478,15 @@ PREV-MSG is non-nil if there any previous message exists."
   "Convert TEXT to tl InputMessageContent.
 If MARKDOWN is non-nil then format TEXT as markdown.
 
-TEXT may contain special marker matching /^photo|file:.+$/. In
-that case messagePhoto or messageDocument is sent. Text before
-the marker becomes message caption."
-  (let* ((with-file (string-match "^\\(photo\\|file\\):\\(.+\\)$" text))
-         (file-type (when with-file (match-string 1 text)))
-         (file-path (when with-file (match-string 2 text)))
-         ;; NOTE: if there is \n before marker - remove it
-         (clear-text (if with-file (substring text 0 (max 0 (- (match-beginning 0) 1))) text))
+TEXT may have embedded image or file. In that case messagePhoto
+or messageDocument is sent. Propertized text is removed and the
+rest is used as message caption."
+  (let* ((file-pos (text-property-any 0 (length text) 'with-file t text))
+         (file-end (when file-pos (or (text-property-not-all file-pos (length text) 'with-file t text)
+                                       (length text))))
+         (file-type (when file-pos (cond ((get-pos-property file-pos 'display text) 'photo)
+                                         ((get-pos-property file-pos 'file text) 'file))))
+         (clear-text (if file-type (concat (substring text 0 file-pos) (substring text file-end)) text))
          (fmt-text (if markdown
                        (telega-server--call
                         (list :@type "parseTextEntities"
@@ -493,15 +494,16 @@ the marker becomes message caption."
                               :parse_mode (list :@type "textParseModeMarkdown")))
                      (list :@type "formattedText"
                            :text clear-text :entities []))))
-
-    (pcase file-type
-      ("photo" (list :@type "inputMessagePhoto"
-                     :photo (list :@type "inputFileLocal" :path file-path)
-                     :caption fmt-text))
-
-      ("file" (list :@type "inputMessageDocument"
-                    :document (list :@type "inputFileLocal" :path file-path)
+    (case file-type
+      ('photo (list :@type "inputMessagePhoto"
+                    :photo (list :@type "inputFileLocal"
+                                 :path (image-property (get-text-property file-pos 'display text) :file))
                     :caption fmt-text))
+
+      ('file (list :@type "inputMessageDocument"
+                   :document (list :@type "inputFileLocal"
+                                   :path (get-text-property file-pos 'file text))
+                   :caption fmt-text))
 
       (t (list :@type "inputMessageText"
                :text fmt-text

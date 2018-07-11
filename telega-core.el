@@ -192,8 +192,9 @@ hasn't been started, i.e. request hasn't been sent to server."
 
       (when (not is-downloading-active-p)
         (let ((file-id (plist-get file :id)))
-          (pushnew (list file-id chat-id msg-id) telega--files-downloading)
-          (telega-file--download file-id)
+          (when (and file-id (not (= file-id 0)))
+            (pushnew (list file-id chat-id msg-id) telega--files-downloading)
+            (telega-file--download file-id))
           nil)))))
 
 (defsubst telega-file--update-message (file)
