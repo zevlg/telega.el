@@ -440,9 +440,9 @@ Return newly created chat."
     (define-key map (kbd "\e\e") 'telega-chat-cancel-edit-reply)
     (define-key map (kbd "C-M-c") 'telega-chat-cancel-edit-reply)
 
-    (define-key map (kbd "C-c C-a") 'telega-chat-send-media)
-    (define-key map (kbd "C-c C-v") 'telega-chat-send-media-clipboard)
-    (define-key map (kbd "C-c C-f") 'telega-chat-send-file)
+    (define-key map (kbd "C-c C-a") 'telega-chat-insert-media)
+    (define-key map (kbd "C-c C-v") 'telega-chat-insert-media-clipboard)
+    (define-key map (kbd "C-c C-f") 'telega-chat-insert-file)
     (define-key map (kbd "C-c ?") 'telega-chat-buffer-info)
 
     (define-key map (kbd "RET") 'telega-chat-send)
@@ -1084,7 +1084,7 @@ With prefix arg delete only for yourself."
   :type 'integer
   :group 'telega)
 
-(defun telega-chat-send-media ()
+(defun telega-chat-insert-media ()
   "Select file and send is as media."
   (interactive)
   (let* ((sel (read-file-name "Select file: " nil nil t))
@@ -1097,7 +1097,7 @@ With prefix arg delete only for yourself."
                                   'display (create-image fn 'imagemagick nil :max-width telega-chat-image-preview-max-width))
                       "\n")))))
 
-(defun telega-chat-send-file ()
+(defun telega-chat-insert-file ()
   "Select file and send is as file."
   (interactive)
   (let* ((sel (read-file-name "Select file: " nil nil t))
@@ -1105,20 +1105,26 @@ With prefix arg delete only for yourself."
 
     (when fn (insert (propertize (concat "file:" fn) 'with-file t 'file fn)))))
 
-(defun telega-chat-send-media-clipboard ()
+(defun telega-chat-insert-media-clipboard ()
   "Save image in clipboard to file and paste link to it."
   (interactive)
   (assert (fboundp 'x-get-selection))
 
-  (let* ((sel (x-get-selection 'CLIPBOARD 'image/png))
-         (tmp (when sel (make-temp-file "telega-photo" nil ".png"))))
-    (if tmp (progn (with-temp-file tmp (insert sel))
-                   (insert (concat "\n"
-                                   (propertize (concat "photo:" tmp)
-                                               'with-file t
-                                               'display (create-image tmp 'imagemagick nil :max-width telega-chat-image-preview-max-width))
-                                   "\n")))
-      (message "Clipboard doesn't contain image"))))
+  (let ((sel (x-get-selection 'CLIPBOARD 'image/png))
+        tmp)
+
+    (if (not sel)
+        (message "Clipboard doesn't contain image")
+
+      (setq tmp (make-temp-file "telega-photo" nil ".png"))
+      (with-temp-file tmp (insert sel))
+      (insert "\n")
+      (insert (propertize (concat "photo:" tmp)
+                          'with-file t
+                          'display (create-image
+                                    tmp 'imagemagick nil
+                                    :max-width telega-chat-image-preview-max-width)))
+      (insert "\n"))))
 
 (provide 'telega-chat)
 
