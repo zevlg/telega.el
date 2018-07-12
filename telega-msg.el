@@ -477,14 +477,15 @@ PREV-MSG is non-nil if there any previous message exists."
 
 (defun telega-msg--input-content (text &optional markdown)
   "Convert TEXT to tl InputMessageContent.
-If MARKDOWN is non-nil then format TEXT as markdown."
-  (let ((fmt-text (if markdown
-                      (telega-server--call
-                       (list :@type "parseTextEntities"
-                             :text text
-                             :parse_mode (list :@type "textParseModeMarkdown")))
-                    (list :@type "formattedText"
-                          :text text :entities []))))
+If MARKDOWN is non-nil then format TEXT as markdown.
+If MARKDOWN is non-nil and TEXT has markup errors then do not apply formatting."
+  (let ((fmt-text (or (and markdown
+                           (telega-server--call
+                            (list :@type "parseTextEntities"
+                                  :text text
+                                  :parse_mode (list :@type "textParseModeMarkdown"))))
+                      (list :@type "formattedText"
+                            :text text :entities []))))
     (list :@type "inputMessageText"
           :text fmt-text
           :clear_draft t)))
