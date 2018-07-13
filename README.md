@@ -55,7 +55,7 @@ iOS terminal [blink](https://github.com/blinksh/blink "blink"):
 
 Being in active development, `telega.el` is not ready to be
 distributed on archives such as MELPA. At the moment, the only way to
-use is from this git repositary. This involves few simple steps
+use is from this git repository. This involves few simple steps
 described below.
 
 `telega.el` is built on top of the official library provided by
