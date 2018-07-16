@@ -1070,13 +1070,26 @@ With prefix arg delete only for yourself."
       (call-interactively 'telega-chat-complete-username)
     (call-interactively 'telega-chat-next-link)))
 
-(defun telega-chat-generate-invite-link (&optional chat-id)
-  "Generate invite link for chat with CHAT-ID."
-  (interactive)
+(defun telega-chat-generate-invite-link (chat-id)
+  "Generate invite link for chat with CHAT-ID.
+If called interactively then copy generated link into the kill ring."
+  (interactive (list (plist-get telega-chatbuf--chat :id)))
 
+  (let ((link (telega-server--call
+               (list :@type "generateChatInviteLink"
+                     :chat_id chat-id))))
+    (when (called-interactively-p 'interactive)
+      (kill-new (plist-get link :invite_link))
+      (message "Invite link: %s (copied into kill ring)"
+               (plist-get link :invite_link)))
+    link))
+
+(defun telega-chat-read-all-mentions (chat-id)
+  "Mark all messages with mentions as read for chat with CHAT-ID."
+  (interactive (list (plist-get telega-chatbuf--chat :id)))
   (telega-server--call
-   (list :@type "generateChatInviteLink"
-         :chat_id (or chat-id (plist-get telega-chatbuf--chat :id)))))
+   (list :@type "readAllChatMentions"
+         :chat_id chat-id)))
 
 (provide 'telega-chat)
 
