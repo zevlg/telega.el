@@ -18,7 +18,7 @@ to use `telega.el` for basic chat.
 - [x] Getting info about users, groups and supergroups
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
 - [x] Fetching chat history, sending messages, replies, edits, deleting
-- [ ] Forwarding messages
+- [ ] Forwarding messages (see https://github.com/zevlg/telega.el/issues/36)
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
 - [x] Downloading files from the cloud
@@ -199,13 +199,3 @@ libtdjson.so: cannot open shared object file: No such file or directory
 (setq telega-socks5-proxy
       '(:server "1.2.3.4" :port 88 :username "rkn" :password "jopa"))
 ```
-
-**Q**: How to make telega automatically download media content inside messages?
-
-**A**: Automatic media download is enabled by default.  To disable use:
-
-```elisp
-(telega-auto-download-media-mode -1)
-```
-
-Customization is done via `telega-auto-download` variable.
