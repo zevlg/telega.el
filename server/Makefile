@@ -1,5 +1,5 @@
 CC=cc
-CFLAGS=-Wall -g -pthread
+CFLAGS=-I/usr/local/include -Wall -g -pthread
 LDFLAGS=-L/usr/local/lib -ltdjson
 
 PROG=telega-server
