@@ -79,6 +79,20 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'bool
   :group 'telega)
 
+(defcustom telega-proxies nil
+  "*List of proxies.
+Use instead of `telega-socks5-proxy' since tdlib >= 1.3.0
+Format is:
+(:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
+
+where PROXY-TYPE is one of:
+  (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
+  (:@type \"proxyTypeHttp\" :username <USER> :password <PASSWORD>
+         :http_only <BOOL>)
+  (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)"
+  :type 'list
+  :group 'telega)
+
 (defcustom telega-socks5-proxy nil
   "*Plist specifying socks5 proxy to use.
 `(:server <SERVER> :port <PORT> :username <NAME> :password <PASSWORD>)"

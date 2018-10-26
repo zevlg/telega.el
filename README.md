@@ -199,3 +199,19 @@ libtdjson.so: cannot open shared object file: No such file or directory
 (setq telega-socks5-proxy
       '(:server "1.2.3.4" :port 88 :username "rkn" :password "jopa"))
 ```
+
+Since tdlib 1.3.0 and telega 0.2.4 please use:
+
+```elisp
+(setq telega-proxies
+      (list
+       '(:server "1.2.3.4" :port 88 :enable t
+                 :type (:@type "proxyTypeSocks5"
+                               :username "rkn" :password "jopa"))))
+```
+
+See `C-h v telega-proxies RET` for full range of proxy types.
+
+**Q**: No glyphs for some unicode characters.
+
+**A**: Please install `fonts-symbola` package

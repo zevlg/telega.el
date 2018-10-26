@@ -5,7 +5,7 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.2.3
+;; Version: 0.2.4
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -92,7 +92,12 @@ With prefix arg force quit without confirmation."
                            :system_version emacs-version
                            :ignore_file_names :false
                            :enable_storage_optimizer t
-                           ))))
+                           )))
+
+  ;; List of proxies, since tdlib 1.3.0
+  (dolist (proxy telega-proxies)
+    (telega-server--send
+     `(:@type "addProxy" ,@proxy))))
 
 (defun telega--check-database-encryption-key ()
   "Set database encryption key, if any."
