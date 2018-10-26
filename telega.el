@@ -32,7 +32,7 @@
 (require 'telega-info)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.2.3")
+(defconst telega-version "0.2.4")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
