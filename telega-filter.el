@@ -100,9 +100,11 @@ In form (NAME . FILTER-SPEC)."
 (define-button-type 'telega-active-filters
   :supertype 'telega
   :format '("---" (prin1-to-string :min 70
-                                   :align center :align-char ?-
+                                   :align center
+                                   :align-symbol "-"
                                    :max 70
-                                   :elide t :elide-trail 30)
+                                   :elide t
+                                   :elide-trail 30)
             "---"))
 
 (define-button-type 'telega-filter
@@ -119,8 +121,8 @@ In form (NAME . FILTER-SPEC)."
   (let* ((name (car custom))
          (chats (telega-filter-chats (cdr custom) telega--filtered-chats))
          (nchats (length chats))
-         (unread (telega-chats--unread chats))
-         (mentions (telega-chats--unread-mentions chats))
+         (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
+         (mentions (apply #'+ (mapcar (telega--tl-prop :unread_mention_count) chats)))
          (umwidth 7))
     `("[" ((,nchats ":" ,name)
            :min ,(- telega-filter-button-width umwidth)
@@ -162,9 +164,13 @@ otherwise add to existing active filters."
   (setq telega--filtered-chats (telega-filter-chats))
   (telega-root--redisplay))
 
-(defun telega--filters-reset ()
-  "Reset all filters."
-  (setq telega--filters nil
+(defun telega--filters-reset (&optional default)
+  "Reset all filters.
+Set active filter to DEFAULT."
+  (setq telega--filters (when default
+                          (if (listp default)
+                              (list default)
+                            (list (list default))))
         telega--undo-filters nil))
 
 (defun telega--filters-push (flist)
@@ -429,7 +435,7 @@ By default N is 1."
 
 (define-telega-filter opened (chat)
   "Filter chats that are opened, i.e. has corresponding chat buffer."
-  (with-telega-chat-buffer chat
+  (with-telega-chatbuf chat
     t))
 
 (defun telega-filter-by-opened ()

@@ -11,6 +11,9 @@ install: $(PROG)
 	@install -v -d $(HOME)/.telega
 	@install -v $(PROG) $(HOME)/.telega
 
+test:
+	@python3 run_tests.py
+
 clean:
 	@rm -vf $(PROG)
 

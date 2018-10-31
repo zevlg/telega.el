@@ -77,6 +77,7 @@ tdlib_loop(void* cln)
                 const char *res = td_json_client_receive(cln, 1);
                 if (res) {
                         tdat_append(&json_src, res, strlen(res));
+                        fprintf(stderr, "IN JSON: %s\n", res);
                         tdat_json_value(&json_src, &plist_dst);
                         tdat_append1(&plist_dst, "\0");
 
@@ -170,7 +171,7 @@ parse_stdin(void)
                 tdat_plist_value(&src, &dst);
         tdat_append1(&dst, "\0");
 
-        fprintf(stderr, "%s\n", dst.data);
+        printf("%s\n", dst.data);
 
         tdat_drop(&src);
         tdat_drop(&dst);

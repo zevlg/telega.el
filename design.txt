@@ -1,11 +1,49 @@
+Codestyle
+=========
+
+Version: 0.3.X
+
+* Something that acts on chat buffer or any function that uses any
+  chat buffer local variable should be named with `telega-chatbuf-`
+  prefix
+  - TODO: what about chat buffer commands?
+
+* Functions that implements any (semi)direct call to tdlib function
+  should be named as `telega--<tdlibName>`, for example if you see
+  "sendMessageAlbum" definition in `td_api.tl' file, then
+  `telega--sendMessageAlbum` is the perfect name for the function
+
+* General callback functions should be named as
+  `telega--on-<tdlibName>`, unless you use this callback as argument
+  to `telega-server--call`
+
 Идеи
 ====
+
+* Для location сообщений загружать асинхронно (с помощью
+  `url-retrieve') картинки с яндекс maps static api -
+  https://tech.yandex.ru/maps/doc/staticapi/1.x/dg/concepts/input_params-docpage/
+
+  Для лайвух во времени (edited) писать сколько назад по времени. Типа
+  - right now
+  - 2 minutes ago
+  - 3 hours ago
+
+  Или использовать гугловые карты - https://developers.google.com/maps/documentation/maps-static/dev-guide
+  в них можно использовать кастомные метки, например с аватарками
+
+* [DONE partly] Зарефакторить button based вариант рендеринга буферов
+  с использованием библиотеки ewoc.  В ewoc есть куча нужного Также,
+  можно вместо форматеров использовать инсёртеры, тогда можно будет
+  писать инсёртеры, которые знают о контексте предыдущих инсёртеров.
+  Например, чтобы вставить дату, нужно лишь посмотреть на текущую
+  колонку и вставить нужное число паддинга
 
 * Режим, в котором подсвечивается сообщение в котором курсор, аля
   show-paren-style=='expression
 
-* При редактировании/ответе на сообщение показывать help строку в echo
-  area, в которой подсказать какой кнопкой отменить
+* [DONE] При редактировании/ответе на сообщение показывать help строку
+  в echo area, в которой подсказать какой кнопкой отменить
   редактирование/ответ
 
 * Посмотреть как можно включить flyspell в chat буферах
@@ -24,9 +62,15 @@
 
 * Анимированые гифки через таймер, см. 
 
-* Показывать как изменялся Status, типа:
+* [WON'T DO] Показывать как изменялся Status, типа:
     Status:  Conn Ready <-- Connecting <-- Auth Checking...
   Использовать elide для обрезки
+
+File downloading/uploading
+--------------------------
+
+* Для загрузки/аплоада данных в cloud оформить подсистему со своими
+  колбеками и тд
 
 Async loading
 ~~~~~~~~~~~~~
@@ -202,7 +246,7 @@ Filters:
 
 (ELEM :min :max :elide :elide-trail :elide-string :align
       :fill :fill-prefix t :fill-column <NUM>
-      :align-char :face)
+      :align-symbol :face)
 
 Где ELEM может быть одним из:
   string - Используем как есть
@@ -220,7 +264,7 @@ Filters:
                    выглядеть вот так: "Verylongstri...ail" если
                    :elide-trail = 3
   :align         - куда алигнить `left', `right', `center'
-  :align-char    - каким символом паддить после алигна (SPACE по умолчанию)
+  :align-symbol  - каким символом паддить после алигна (SPACE по умолчанию)
   :face          - face которую использовать для этого ELEM
   :fill          - Как делать fill для строки
   :fill-prefix   - Вставлять префикс из пробелов
@@ -289,16 +333,16 @@ Prompts
 ~~~~~~~
 
 Normal:
-
+    __________________________
     >>> [] 
 
 Edit:
-
+    __________________________
     | Edit: message text...
     `-> []
 
 Reply:
-
+    __________________________
     | Reply: @vpupkin> message lala ...
     `-> []
 
@@ -310,11 +354,19 @@ Formatting messages:
      continue message message              12:20w
 
 
-with markup
-~~~~~~~~~~~
+with reply markup
+~~~~~~~~~~~~~~~~~
    
 [AH] @vpupkin
 [AL] | Reply: @user> msagsac
      messgasaoenth
      sntahoe ntoahssssss asonth eosn       11:18
      [ button1 ]  [ button2 ]
+
+Prompt with chat action
+~~~~~~~~~~~~~~~~~~~~~~~
+
+(ББ) Билеты Москва
+     Билеты на Усик -Гасиев                19:01
+____(@zevlg is typing...)_______________________
+>>> []

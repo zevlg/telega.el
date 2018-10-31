@@ -27,6 +27,11 @@
 (require 'telega-core)
 (require 'telega-customize)
 
+(defgroup telega-msg nil
+  "Customization for telega messages formatting."
+  :prefix "telega-msg-"
+  :group 'telega)
+
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
@@ -55,17 +60,15 @@
 (defun telega-msg--get (chat-id msg-id)
   "Get message by CHAT-ID and MSG-ID pair."
   ;; Optimisation for formatting messages with reply
-  (or (with-telega-chat-buffer (telega-chat--get chat-id)
-        (cl-find msg-id telega-chatbuf--replies
-                 :test (lambda (msg-id reply-msg)
-                         (= msg-id (plist-get reply-msg :id)))))
+  (or (with-telega-chatbuf (telega-chat--get chat-id)
+        (gethash msg-id telega-chatbuf--messages))
 
       (telega-server--call
        (list :@type "getMessage"
              :chat_id chat-id
              :message_id msg-id))))
 
-(defun telega-msg--get-link (chat-id msg-id &optional for-album)
+(defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
   "Get https link to public message."
   (telega-server--call
    (list :@type "getPublicMessageLink"
@@ -73,20 +76,7 @@
          :message_id msg-id
          :for_album (or for-album :false))))
 
-(defun telega-msg--update-file (chat-id msg-id file)
-  "File used in CHAT-ID/MSG-ID has been updated to FILE."
-  (with-telega-chat-buffer (telega-chat--get chat-id)
-    (telega-save-excursion
-     (let ((msg-button (telega-chat-buffer--button-get msg-id)))
-       (when msg-button
-         (let ((msg (plist-get (button-get msg-button :value) :content)))
-           (when msg
-             (case (telega--tl-type msg)
-               (messagePhoto (plist-put msg :preview (plist-get (plist-get file :local) :path)))
-               (t (plist-put (plist-get msg :document) :document file)))
-             (telega-button--redisplay msg-button))))))))
-
-(defun telega-msg--deleteMessages (chat-id message-ids &optional revoke)
+(defun telega--deleteMessages (chat-id message-ids &optional revoke)
   "Delete message by its id"
   (telega-server--send
    (list :@type "deleteMessages"
@@ -101,6 +91,16 @@
 Returns the forwarded messages.
 Return nil if message can't be forwarded."
   (error "`telega-msg--forwardMessages' Not yet implemented"))
+
+(defun telega-file--update-msg (file msg)
+  "Callback for downloading/uploading the FILE'.
+Update message as file downloading/uploading progresses."
+  ;; NOTE: MSG's place of FILE already has been uploaded, so we need
+  ;; just to redisplay the MSG
+  (with-telega-chat-buffer (telega-chat--get (plist-get msg :chat_id))
+    (let ((node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
+      (when node
+        (ewoc-invalidate telega-chatbuf--ewoc node)))))
 
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."
@@ -166,99 +166,204 @@ Return nil if message can't be forwarded."
            telega-symbol-msg-viewed)
           (t telega-symbol-msg-succeed)))))
 
-(defmacro telega-msg--photo-get-size (photo-sizes size)
-  "Get photo of SIZE from PHOTO-SIZES sequence."
-  `(car (seq-filter (lambda (x) (string= ,size (plist-get x :type))) ,photo-sizes)))
+(defun telega-msg-caption (msg)
+  "Display MSG's caption if any.
+PREFIX and SUFFIX specifies addons in case caption is used."
+  (let ((cap (telega--tl-get msg :content :caption)))
+    (telega-msg--ents-to-props
+     (plist-get cap :text) (plist-get cap :entities))))
+
+(defun telega-msg-web-page (msg)
+  "Format webPage embedded into MSG."
+  (let* ((web-page (telega--tl-get msg :content :web_page))
+         (title (plist-get web-page :title))
+         (desc (plist-get web-page :description))
+         (photo (plist-get web-page :photo)))
+    (when web-page
+      (concat
+       (unless (string-empty-p title)
+         (concat "\n" telega-symbol-vertical-bar
+                 (propertize title 'face 'bold)))
+       (unless (string-empty-p desc)
+         (telega-fmt-eval
+          `("\n"
+            ,telega-symbol-vertical-bar
+            (identity :fill left
+                      :fill-prefix ,telega-symbol-vertical-bar
+                      :fill-column ,(- fill-column 10)))
+          desc))
+       (when photo
+         (concat "\n" telega-symbol-vertical-bar
+                 (telega-photo-format (plist-get web-page :photo))))
+       (case (intern (plist-get web-page :type))
+         (photo
+          ;; no-op, already displayed above
+          )
+         (article
+          ;; nothing to display
+          )
+         (t (concat "\n" telega-symbol-vertical-bar
+                    "<unsupported webPage:"
+                    (plist-get web-page :type) ">")))
+       ))))
+
+(defun telega-msg-reply-markup (msg)
+  "Format :reply_markup for the message MSG."
+  (let ((reply-markup (plist-get msg :reply_markup)))
+    (when reply-markup
+      (concat "\n" "<unsupported replyMarkup:"
+              (substring (plist-get reply-markup :@type) 11) ">"))
+    ))
+
+(defun telega-msg-photo-one-line (msg)
+  "Format photo in MSG as one-line."
+  (let* ((thumb (telega-photo--lowres
+                 (telega--tl-get msg :content :photo)))
+         (thumb-file (plist-get thumb :photo))
+         (thumb-img (and thumb-file
+                         (apply #'telega-photo-file-format
+                                thumb-file
+                                'one-line
+                                telega-msg-photo-props))))
+    (concat telega-symbol-photo " " thumb-img " " (telega-msg-caption msg))))
 
 (defun telega-msg-photo (msg)
   "Format photo message."
   (assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
 
-  (let* ((content (plist-get msg :content))
-         (photo (plist-get content :photo))
-         (photo-sizes (plist-get photo :sizes))
-         (photo-preview (or (telega-msg--photo-get-size photo-sizes "m")
-                           (telega-msg--photo-get-size photo-sizes "s")))
-         (preview-path (or (plist-get content :preview)
-                          (telega-file--get-path-or-start-download
-                           (plist-get photo-preview :photo)
-                           (plist-get msg :chat_id)
-                           (plist-get msg :id))))
-         (cap (plist-get content :caption))
-         (cap-with-props
-          (telega-msg--ents-to-props
-           (plist-get cap :text) (plist-get cap :entities)))
-         (image (when preview-path (create-image preview-path))))
+  (let* ((thumb (telega-photo--best (telega--tl-get msg :content :photo)))
+         (thumb-file (plist-get thumb :photo))
+         (thumb-path (telega--tl-get thumb-file :local :path)))
+    (concat telega-symbol-photo " "
+            ;; Photo itself or downloading progress
+            (if (telega-file--downloaded-p thumb-file)
+                (concat (apply 'propertize (telega-short-filename thumb-path)
+                               (telega-link-props 'file thumb-path))
+                        (format " (%dx%d)\n"
+                                (plist-get thumb :width)
+                                (plist-get thumb :height))
+                        (apply #'telega-photo-file-format
+                               thumb-file
+                               nil
+                               telega-msg-photo-props))
 
-    (concat telega-symbol-photo " " cap-with-props "\n"
-            (if image
-                (propertize "Image" 'display image)
-              "Loading image..."))))
+              (unless (telega-file--downloading-p thumb-file)
+                (telega-file--download
+                 (plist-get thumb-file :id) nil #'telega-file--update-msg msg))
+
+              (telega-msg-downloading-progress msg thumb-file))
+
+            ;; Photo caption
+            (telega-prefix "\n" (telega-msg-caption msg)))))
+
+(defun telega-msg-downloading-progress (msg file)
+  "For message MSG format local FILE downloading progress."
+  (let ((filesize (plist-get file :size))
+        (local (plist-get file :local)))
+    (let* ((dsize (plist-get local :downloaded_size))
+           (dpart (/ (float dsize) filesize))
+           (percents (round (* (/ (float dsize) filesize) 100))))
+      (concat
+       (format "[%-10s%d%%]"
+               (make-string (round (* dpart 10)) ?\.)
+               (round (* dpart 100)))
+       " "
+       (apply 'propertize "[Cancel]"
+              (telega-link-props
+               'cancel-download
+               (list (plist-get file :id)
+                     #'telega-file--update-msg
+                     msg)))))))
+
+(defun telega-msg-uploading-progress (msg file)
+  "For message MSG format remote FILE uploading progress."
+  (let ((filesize (plist-get file :size))
+        (remote (plist-get file :local)))
+    (let* ((usize (plist-get remote :uploaded_size))
+           (upart (/ (float dsize) filesize))
+           (percents (round (* (/ (float dsize) filesize) 100))))
+      (concat
+       (format "[%-10s%d%%]"
+               (make-string (round (* upart 10)) ?\.)
+               (round (* upart 100)))
+       " "
+       (apply 'propertize "[Cancel]"
+              (telega-link-props
+               'cancel-upload
+               (list (plist-get file :id)
+                     #'telega-file--update-msg
+                     msg)))))))
 
 (defun telega-msg-document (msg)
   "Format document of the message."
   (assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
 
-  (let* ((content (plist-get msg :content))
-         (document (plist-get content :document))
-         (cap (plist-get content :caption))
-         (cap-with-props
-          (telega-msg--ents-to-props
-           (plist-get cap :text) (plist-get cap :entities)))
-         (fname (plist-get document :file_name))
-         (file (plist-get document :document))
-         (filesize (plist-get file :size))
-         (local (plist-get file :local)))
-    (concat telega-symbol-document " " fname
-            " (" (file-size-human-readable filesize) ") "
+  (let* ((document (telega--tl-get msg :content :document))
+         (file (plist-get document :document)))
+    (concat telega-symbol-document " " (plist-get document :file_name)
+            " (" (file-size-human-readable (plist-get file :size)) ") "
 
-            ;; Downloading status:
-            ;;   /link/to-file         if file has been downloaded
+            ;; File status:
+            ;;   /link/to-file         if file has been uploaded/downloaded
+            ;;   [...   20%] [Cancel]  if upload/download in progress
             ;;   [Download]            if no local copy
-            ;;   [...   20%] [Cancel]  if download in progress
-            (cond ((plist-get local :is_downloading_completed)
-                   (apply 'propertize (plist-get local :path)
-                          (telega-link-props 'file (plist-get local :path))))
-                  ((plist-get local :is_downloading_active)
-                   (let* ((dsize (plist-get local :downloaded_size))
-                          (dpart (/ (float dsize) filesize))
-                          (percents (round (* (/ (float dsize) filesize) 100))))
-                     (concat
-                      (format "[%-10s%d%%]"
-                              (make-string (round (* dpart 10)) ?\.)
-                              (round (* dpart 100)))
-                      " "
-                      (apply 'propertize "[Cancel]"
-                             (telega-link-props
-                              'cancel-download
-                              (list (plist-get file :id)
-                                    (plist-get msg :chat_id)
-                                    (plist-get msg :id)))))))
+            (cond ((telega-file--uploading-p file)
+                   (telega-fmt--file-progress file 'upload))
+                  ((telega-file--downloading-p file)
+                   (telega-fmt--file-progress file 'download))
+                  ((telega-file--downloaded-p file)
+                   (let ((file-path (telega--tl-get file :local :path)))
+                     (apply 'propertize (telega-short-filename file-path)
+                            (telega-link-props 'file file-path))))
                   (t (apply 'propertize "[Download]"
                             (telega-link-props
                              'download
-                             (list (plist-get file :id)
-                                   (plist-get msg :chat_id)
-                                   (plist-get msg :id)))))))))
+                             document :document msg))))
 
-(defun telega-msg-text-with-props (msg)
+            ;; Caption
+            (telega-prefix "\n" (telega-msg-caption msg)))))
+
+(defun telega-msg-text-one-line (msg)
+  "Format message text for one line formatting.
+Format without rendering web-page."
+  (assert (eq (telega--tl-type (plist-get msg :content)) 'messageText))
+
+  (let ((text (telega--tl-get msg :content :text)))
+    (telega-msg--ents-to-props
+     (plist-get text :text)
+     (plist-get text :entities))))
+
+(defun telega-msg-text (msg)
+  "Format text of the message MSG."
+  (concat
+   (telega-msg-text-one-line msg)
+   (telega-msg-web-page msg)))
+
+(defun telega-msg-format (msg)
   "Return formatted text for the MSG."
-  (let ((content (plist-get msg :content)))
-    (case (telega--tl-type content)
-      (messageText
-       (let ((text (plist-get content :text)))
-         (telega-msg--ents-to-props
-          (plist-get text :text)
-          (plist-get text :entities))))
-      (messageDocument
-       (telega-msg-document msg))
-      (messagePhoto
-       (telega-msg-photo msg))
-      (t (format "<unsupported message %S>" (telega--tl-type content))))))
+  (concat
+   (let ((content (plist-get msg :content)))
+     (case (telega--tl-type content)
+       (messageText
+        (telega-msg-text msg))
+       (messageDocument
+        (telega-msg-document msg))
+       (messagePhoto
+        (telega-msg-photo msg))
+       (t (concat (format "<unsupported message %S>" (telega--tl-type content))
+                  (telega-prefix "\n" (telega-msg-caption msg))))))
 
-(defun telega-msg-text-with-props-one-line (msg)
+   (telega-msg-reply-markup msg)))
+
+(defun telega-msg-format-one-line (msg)
   "Format MSG's text as one line."
-  (replace-regexp-in-string "\n" " " (telega-msg-text-with-props msg)))
+  (replace-regexp-in-string
+   "\n" " " (case (telega--tl-type (plist-get msg :content))
+              (messageText
+               (telega-msg-text-one-line msg))
+              (messagePhoto
+               (telega-msg-photo-one-line msg))
+              (t (telega-msg-format msg)))))
 
 (defun telega-msg-sender-admin-status (msg)
   (let ((admins-tl (telega-server--call
@@ -296,13 +401,13 @@ Makes heave online requests without caching, be carefull."
     (when reply-msg
       `((("| Reply: "
           ,(telega-msg-sender-shortname reply-msg "> ")
-          ,(telega-msg-text-with-props-one-line reply-msg))
+          ,(telega-msg-format-one-line reply-msg))
          :max ,(- telega-chat-fill-column (length fill-prefix))
          :face telega-chat-inline-reply)
         "\n" ,fill-prefix))))
 
 (defun telega-msg-text-with-timestamp (msg fill-prefix)
-  `((telega-msg-text-with-props
+  `((telega-msg-format
      :fill left
      :fill-prefix ,fill-prefix
      :fill-column ,telega-chat-fill-column
@@ -385,7 +490,7 @@ Makes heave online requests without caching, be carefull."
         ")--")
        :min ,telega-chat-fill-column
        :align center
-       :align-char ?\-)
+       :align-symbol "-")
       (telega-msg-timestamp :align right :min 10)
       "\n")))
 
@@ -413,7 +518,7 @@ PREV-MSG is non-nil if there any previous message exists."
 (defsubst telega-msg-button--format-aux (title &optional msg)
   `((("| " ,title ": "
       ,(telega-msg-sender-shortname msg "> ")
-      ,(telega-msg-text-with-props-one-line msg))
+      ,(telega-msg-format-one-line msg))
      :max ,telega-chat-fill-column
      :elide t
      :face telega-chat-prompt)
@@ -465,16 +570,6 @@ PREV-MSG is non-nil if there any previous message exists."
         entities)
   text)
 
-(defun telega-msg--props-to-ents (text)
-  "Convert propertiezed TEXT to message with text entities."
-  ;; TODO: convert text properties to tl text entities
-  (let ((entities))
-    (cons text entities)))
-
-(defun telega-msg-format (msg)
-  (plist-get (plist-get (plist-get msg :content) :text) :text)
-  )
-
 (defun telega-msg--input-content (text &optional markdown)
   "Convert TEXT to tl InputMessageContent.
 If MARKDOWN is non-nil then format TEXT as markdown."
@@ -496,7 +591,7 @@ If MARKDOWN is non-nil then format TEXT as markdown."
   (unless msg
     (error "No message at point"))
 
-  (with-help-window " *Telegram Message Info*"
+  (with-help-window "*Telegram Message Info*"
     (set-buffer standard-output)
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
@@ -511,7 +606,7 @@ If MARKDOWN is non-nil then format TEXT as markdown."
                               :telega-link (cons 'user sender-uid))
           (insert "\n")))
       (when (telega-chat--public-p (telega-chat--get chat-id))
-        (let ((link (plist-get (telega-msg--get-link chat-id msg-id) :link)))
+        (let ((link (plist-get (telega--getPublicMessageLink chat-id msg-id) :link)))
           (insert "Link: ")
           (insert-text-button link :telega-link (cons 'url link)
                               'action 'telega-open-link-action)
@@ -520,8 +615,11 @@ If MARKDOWN is non-nil then format TEXT as markdown."
       (when telega-debug
         (insert (format "MsgSexp: (telega-msg--get %d %d)\n" chat-id msg-id)))
 
-      (insert (format "\nTODO: %S\n" msg)))
-    ))
+      (when telega-debug
+        (insert (format "\nMessage: %S\n" msg)))
+      )))
+
+
 
 (provide 'telega-msg)
 

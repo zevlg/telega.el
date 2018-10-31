@@ -25,11 +25,17 @@
 ;;
 
 ;;; Code:
+(require 'password-cache)               ; `password-read'
+(require 'cl-lib)
+
 (require 'telega-server)
 (require 'telega-root)
+(require 'telega-ins)
 (require 'telega-filter)
 (require 'telega-chat)
 (require 'telega-info)
+(require 'telega-media)
+(require 'telega-util)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 (defconst telega-version "0.2.3")
@@ -68,12 +74,12 @@ With prefix arg force quit without confirmation."
                                     "? ")))
     (kill-buffer telega-root-buffer-name)))
 
-(defun telega-logout ()
+(defun telega--logOut ()
   "Switch to another telegram account."
   (interactive)
   (telega-server--send `(:@type "logOut")))
 
-(defun telega--set-tdlib-parameters ()
+(defun telega--setTdlibParameters ()
   "Sets the parameters for TDLib initialization."
   (telega-server--send
    (list :@type "setTdlibParameters"
@@ -94,22 +100,24 @@ With prefix arg force quit without confirmation."
                            :enable_storage_optimizer t
                            ))))
 
-(defun telega--check-database-encryption-key ()
+(defun telega--checkDatabaseEncryptionKey ()
   "Set database encryption key, if any."
   ;; NOTE: database encryption is disabled
   ;;   consider encryption as todo in future
   (telega-server--send
-   `(:@type "checkDatabaseEncryptionKey"
-            :encryption_key ""))
+   (list :@type "checkDatabaseEncryptionKey"
+         :encryption_key ""))
 
   ;; Set proxy here, so registering phone will use it
   (when telega-socks5-proxy
     (telega-server--send
-     `(:@type "setProxy" :proxy (:@type "proxySocks5" ,@telega-socks5-proxy)))))
+     (list :@type "setProxy"
+           :proxy `(:@type "proxySocks5"
+                           ,@telega-socks5-proxy)))))
 
-(defun telega--set-auth-phone-number ()
+(defun telega--setAuthenticationPhoneNumber (&optional phone-number)
   "Sets the phone number of the user."
-  (let ((phone (read-string "Telega phone number: " "+")))
+  (let ((phone (or phone-number (read-string "Telega phone number: " "+"))))
     (telega-server--send
      (list :@type "setAuthenticationPhoneNumber"
            :phone_number phone
@@ -121,31 +129,33 @@ With prefix arg force quit without confirmation."
   (message "TODO: `telega--resend-auth-code'")
   )
 
-(defun telega--check-auth-code (registered-p)
+(defun telega--checkAuthenticationCode (registered-p &optional auth-code)
   "Send login auth code."
-  (let ((code (read-string "Telega login code: ")))
-    (assert registered-p)
+  (let ((code (or auth-code (read-string "Telega login code: "))))
+    (cl-assert registered-p)
     (telega-server--send
-     `(:@type "checkAuthenticationCode"
-              :code ,code
-              :first_name ""
-              :last_name ""))))
+     (list :@type "checkAuthenticationCode"
+           :code code
+           :first_name ""
+           :last_name ""))))
 
-(defun telega--check-password (auth-state)
+(defun telega--checkAuthenticationPassword (auth-state &optional password)
   "Check the password for the 2-factor authentification."
   (let* ((hint (plist-get auth-state :password_hint))
-         (passwd (password-read
-                  (concat "Telegram password"
-                          (if (string-empty-p hint)
-                              ""
-                            (format "(hint='%s')" hint))
-                          ": "))))
+         (pswd (or password
+                   (password-read
+                    (concat "Telegram password"
+                            (if (string-empty-p hint)
+                                ""
+                              (format "(hint='%s')" hint))
+                            ": ")))))
     (telega-server--send
-     `(:@type "checkAuthenticationPassword" :password ,passwd))))
+     (list :@type "checkAuthenticationPassword"
+           :password pswd))))
 
-(defun telega--set-options ()
+(defun telega--setOptions (&optional options-plist)
   "Send custom options from `telega-options-plist' to server."
-  (cl-loop for (prop-name value) in telega-options-plist
+  (cl-loop for (prop-name value) in (or options-plist telega-options-plist)
            do (telega-server--send
                (list :@type "setOption"
                      :name prop-name
@@ -161,9 +171,9 @@ With prefix arg force quit without confirmation."
   "Called when tdlib is ready to receive queries."
   (setq telega--me-id
         (plist-get (telega-server--call (list :@type "getMe")) :id))
-  (telega--set-options)
+  (telega--setOptions)
   ;; Request for chats/users/etc
-  (telega-chat--getChats)
+  (telega--getChats)
 
   (run-hooks 'telega-ready-hook))
 
@@ -188,21 +198,21 @@ With prefix arg force quit without confirmation."
   (let* ((state (plist-get event :authorization_state))
          (stype (plist-get state :@type)))
     (telega-status--set (concat "Auth " (substring stype 18)))
-    (ecase (intern stype)
+    (cl-ecase (intern stype)
       (authorizationStateWaitTdlibParameters
-       (telega--set-tdlib-parameters))
+       (telega--setTdlibParameters))
 
       (authorizationStateWaitEncryptionKey
-       (telega--check-database-encryption-key))
+       (telega--checkDatabaseEncryptionKey))
 
       (authorizationStateWaitPhoneNumber
-       (telega--set-auth-phone-number))
+       (telega--setAuthenticationPhoneNumber))
 
       (authorizationStateWaitCode
-       (telega--check-auth-code (plist-get state :is_registered)))
+       (telega--checkAuthenticationCode (plist-get state :is_registered)))
 
       (authorizationStateWaitPassword
-       (telega--check-password state))
+       (telega--checkAuthenticationPassword state))
 
       (authorizationStateReady
        ;; TDLib is now ready to answer queries

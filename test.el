@@ -62,8 +62,17 @@
 
 (ert-deftest telega-emacs-setup ()
   "Test emacs is suitable to run telega."
+  ;; 62bits for numbers is required
+  ;; i.e. ./configure --with-wide-int
   (should (= most-positive-fixnum 2305843009213693951))
   (should (= (string-to-number "542353335") 542353335))
+
+  ;; at least 25.1 emacs is required
+  ;; see https://t.me/emacs_telega/1592
+  (should (fboundp 'cursor-intangible-mode))
+
+  ;; imagemagick for images
+  (should (memq 'imagemagick image-types))
   )
 
 (ert-deftest telega-info ()
@@ -109,5 +118,10 @@
     (dolist (ts tests)
       (should (string= (telega--desurrogate-apply (car ts)) (cdr ts))))
     ))
+
+(ert-deftest telega-server-json-parsing ()
+  "Test json->plist converter."
+  )
+
 
 ;;; test.el ends here

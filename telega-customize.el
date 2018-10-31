@@ -85,15 +85,6 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'plist
   :group 'telega)
 
-(defcustom telega-eliding-string "..."
-  "*String used for eliding long string in formats.
-Nice looking middle dots can be done by setting
-`telega-eliding-string' to `(make-string 3 #x00b7)'
-or set it to \"\\u2026\" or \"\\u22ef\" to use unicode char for
-ellipsis."
-  :type 'string
-  :group 'telega)
-
 (defcustom telega-week-start-day 1
   "*The day of the week on which a week in the calendar begins.
 0 means Sunday, 1 means Monday (default), and so on."
@@ -106,7 +97,40 @@ ellipsis."
   :type 'list
   :group 'telega)
 
-(defcustom telega-chat-input-prompt ">>>"
+(defcustom telega-use-short-filenames t
+  "*Non-nil to cut /home/user/.telega/cache from filenames."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-chat--display-buffer-action display-buffer--same-window-action
+  "Action value when poping to chatbuffer.
+See docstring for `display-buffer' for the values."
+  :type 'cons
+  :group 'telega)
+
+
+(defgroup telega-inserters nil
+  "Inserters customization for telega."
+  :group 'telega)
+
+(defcustom telega-inserter-chat-button 'telega-ins--chat-button
+  "Inserter for the chat button in root buffer."
+  :type 'function
+  :group 'telega-inserters)
+
+
+(defcustom telega-chat-button-width 28
+  "*Width for the chat buttons."
+  :type 'integer
+  :group 'telega-root)
+
+(defcustom telega-chat-button-brackets
+  '((all "[" "]"))
+  "Brackets to use for chat button."
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-chat-input-prompt ">>> "
   "*Prompt for the chat buffers."
   :type 'string
   :group 'telega)
@@ -147,7 +171,49 @@ NOT YET IMPLEMENTED"
 Such as admin, creator, etc
 DO NOT USE.  TODO: sender statuses need to be cached."
   :type 'boolean
-  :group 'telega-chat)
+  :group 'telega-msg)
+
+(defcustom telega-msg-photo-types '("w" "d" "y" "c" "x" "b" "m" "s" "a")
+  "*Size types to use for full size photos."
+  :type 'list
+  :group 'telega-msg)
+
+(defcustom telega-msg-photo-slices 'auto
+  "*Split photo into horisontal slices for better scrolling experience.
+Integer or `auto'."
+  :type 'integer
+  :group 'telega-msg)
+
+(defcustom telega-photo-maxsize '(432 . 960)
+  "*Limit displayed image size to this (WIDTH . HEIGHT) value."
+  :type '(cons integer integer)
+  :group 'telega)
+
+(defcustom telega-photo-fill-char ?o
+  "Char to use for filling image placement."
+  :type 'char
+  :group 'telega)
+  
+;; (defcustom telega-msg-photo-props
+;;   '(:scale 1.0 :max-height 432 :max-width 960 :ascent 100)
+;;   "*Properties to apply when image is created for the photos."
+;;   :type 'plist
+;;   :group 'telega-msg)
+
+(defcustom telega-auto-download
+  '((photos all)
+    (videos opened)
+    (files opened)
+    (voice-messages opened)
+    (video-messages opened)
+    (web-page all))
+  "*Alist in form (KIND . FILTER-SPEC).
+To denote for which chats to automatically download media content.
+KIND is one of `photos', `videos', `files', `voice-messages',
+`video-messages' and `web-page'.
+Used by `telega-msg-autodownload-media'."
+  :type 'boolean
+  :group 'telega)
 
 (defcustom telega-completing-read-function 'ido-completing-read
   "Completing read function to use."
@@ -155,6 +221,15 @@ DO NOT USE.  TODO: sender statuses need to be cached."
   :group 'telega)
 
 ;; special symbols
+(defcustom telega-symbol-eliding "..."
+  "*String used for eliding long string in formats.
+Nice looking middle dots can be done by setting
+`telega-symbol-eliding' to `(make-string 3 #x00b7)'
+or set it to \"\\u2026\" or \"\\u22ef\" to use unicode char for
+ellipsis."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-symbol-eye "\U0001F441"
   "String to use as eye symbol."
   :type 'string
@@ -180,125 +255,160 @@ DO NOT USE.  TODO: sender statuses need to be cached."
   :type 'string
   :group 'telega)
 
-(defcustom telega-symbol-msg-pending "\U0000231B"
+(defcustom telega-symbol-msg-pending "\u231B"
   "Symbol to use for pending outgoing messages."
   :type 'string
   :group 'telega)
 
-(defcustom telega-symbol-msg-succeed "\U00002713"
+(defcustom telega-symbol-msg-succeed "\u2713"
   "Symbol to use for successfully sent messages."
   :type 'string
   :group 'telega)
 
-(defcustom telega-symbol-msg-viewed "\U00002714"
+(defcustom telega-symbol-msg-viewed "\u2714"
   "Symbol to use for seen outgoing messages."
   :type 'string
   :group 'telega)
 
-(defcustom telega-symbol-msg-failed (propertize "!" 'face 'error)
+(defcustom telega-symbol-msg-failed "\u26D4"
   "Mark messages that have sending state failed."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-vertical-bar "| "
+  "Symbol used to form vertical lines."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-underline-bar "_"
+  "Symbol used to draw underline bar.
+\"\uFF3F\" is also good candidate for underline bar."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-symbol-draft (propertize "Draft" 'face 'error)
+  "Symbol used for draft formatting."
   :type 'string
   :group 'telega)
 
 
 ;;; Faces
+(defgroup telega-faces nil
+  "Faces used by telega."
+  :group 'telega)
+
 (defface telega-chat-prompt
   '((t (:inherit default :weight bold)))
   "Face for chat input prompt"
-  :group 'telega)
+  :group 'telega-faces)
 
 (defface telega-unread-unmuted-modeline
   '((t :inherit error))
   "Face used to display number of unread/unmuted messages in modeline."
-  :group 'telega)
+  :group 'telega-faces)
 
 (defface telega-muted-count
   `((t :inherit shadow))
   "Face to display count of messages in muted chats."
-  :group 'telega)
+  :group 'telega-faces)
 
 (defface telega-unmuted-count
   '((t :inherit default :foreground "blue"))
   "Face to display count messages in unmuted chats."
-  :group 'telega)
+  :group 'telega-faces)
 
 (defface telega-mention-count
   '((t :weight bold :foreground "blue"))
   "Face to display count of the mentions."
-  :group 'telega)
+  :group 'telega-faces)
 
 (defface telega-entity-type-mention
   '((t :inherit default :foreground "blue"))
   "Face to display @mentions."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-link
   '((t :inherit link))
   "Face to display various links."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-hashtag
   '((t :inherit telega-link))
   "Face to display #hashtags."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-cashtag
   '((t :inherit default :foreground "blue"))
   "Face to display $USD cashtags"
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-botcommand
   '((t :inherit default :foreground "blue"))
   "Face to display /command if there is bot in chat."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-bold
   '((t :inherit bold))
   "Face to display bold text."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-italic
   '((t :inherit italic))
   "Face to display italic text."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-code
   '((t :family "Monospace Serif"))
   "Face to display code.
 You can customize its `:height' to fit width of the default face.
 Use `(set-face-attribute 'telega-entity-type-code nil :height 0.83333333)'"
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-pre
   '((t :family "Monospace Serif"))
   "Face to display text ala <pre> HTML tag.
 You can customize its `:height' to fit width of the default face."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-entity-type-texturl
   '((t :inherit button))
   "Face to display urls."
-  :group 'telega-chat)
+  :group 'telega-faces)
+
+(defface telega-root-advanced-second-line
+  '((t :height 0.5))
+  "Face used to display second line of chat button with advanced inserter."
+  :group 'telega-faces)
 
 (defface telega-chat-user-title
   '((t :inherit 'widget-field))
   "Face to display user title in chat buffers."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-chat-inline-reply
   '((t :inherit 'widget-field))
   "Face to highlight replies to messages."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-chat-self-title
   '((t :inherit 'telega-chat-user-title :bold t))
   "Face to display title of myself in chat buffers."
-  :group 'telega-chat)
+  :group 'telega-faces)
 
 (defface telega-msg-status
   '((t :height 0.8))
   "Face used to display `telega-symbol-msg-XXX' symbols in message."
-  :group 'telega-chat)
+  :group 'telega-faces)
+
+(defface telega-webpage-sitename
+  '((t :inherit shadow))
+  "Face to display webpage's site_name."
+  :group 'telega-faces)
+
+(defface telega-webpage-title
+  '((t :inherit bold))
+  "Face to display webpage's title."
+  :group 'telega-faces)
 
 
 (defgroup telega-hooks nil
@@ -320,7 +430,8 @@ You can customize its `:height' to fit width of the default face."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-user-update-hook '(telega-root--user-update)
+(defcustom telega-user-update-hook
+  '(telega-media--autodownload-on-user telega-root--user-update)
   "Hook called with single argument USER, when USER's info is updated."
   :type 'hook
   :group 'telega-hooks)
@@ -338,6 +449,13 @@ Could be used for example to insert date breaks."
 Called with single argument - MSG.
 Called only if corresponding chat is opened.
 Could be used for example to insert date breaks."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chat-pre-message-hook '(telega-media--autodownload-on-msg)
+  "Hook called uppon new message arrival, before inserting into chatbuffer.
+Called with two arguments - message and disable-notification.
+Always called, even if corresponding chat is closed at the moment."
   :type 'hook
   :group 'telega-hooks)
 

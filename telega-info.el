@@ -25,6 +25,7 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-util)
 (require 'telega-server)
 
 ;; Info
@@ -78,7 +79,10 @@
 (defun telega--on-updateSupergroupFullInfo (event)
   (let ((ufi (cdr (assq 'supergroup telega--full-info))))
     (puthash (plist-get event :supergroup_id)
-             (plist-get event :supergroup_full_info) ufi)))
+             (plist-get event :supergroup_full_info) ufi)
+    ;; TODO: chatbuf might need to be updated, since for example
+    ;; pinned message might change
+    ))
 
 (defun telega--full-info (tlobj)
   "Get FullInfo for the TLOBJ.
@@ -107,7 +111,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
   "Get user by USER-ID."
   (telega--info 'user user-id))
 
-(defun telega-user--me ()
+(defun telega--getMe ()
   "Return me as telegram user."
   (telega-server--call `(:@type "getMe")))
 
@@ -162,12 +166,13 @@ Default is: `full'"
   (let* ((gic-cnt (plist-get (telega--full-info with-user) :group_in_common_count))
          (gic (when (> gic-cnt 0)
                 (telega-server--call
-                 `(:@type "getGroupsInCommon"
-                          :user_id ,(plist-get with-user :id)
-                          :offset_chat_id 0 :limit ,gic-cnt)))))
+                 (list :@type "getGroupsInCommon"
+                       :user_id (plist-get with-user :id)
+                       :offset_chat_id 0
+                       :limit gic-cnt)))))
     (mapcar #'telega-chat--get (plist-get gic :chat_ids))))
 
-(defun telega-supergroup--getMembers (supergroup &optional filter)
+(defun telega--getSupergroupMembers (supergroup &optional filter)
   "Get SUPERGRUOP members.
 Default FILTER is \"supergroupMembersFilterRecent\"."
   (telega-server--call
@@ -183,7 +188,12 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (username (plist-get user :username))
          (phone_number (plist-get user :phone_number))
          (bio (plist-get full-info :bio))
-         (share-text (plist-get full-info :share_text)))
+         (share-text (plist-get full-info :share_text))
+         (out-link (plist-get user :outgoing_link))
+         (in-link (plist-get user :incoming_link)))
+    (insert (format "Relationship: %s <-in---out-> %s\n"
+                    (substring (plist-get in-link :@type) 9)
+                    (substring (plist-get out-link :@type) 9)))
     (unless (string-empty-p username)
       (insert (format "Username: @%s\n" username)))
     (unless (string-empty-p phone_number)
@@ -203,8 +213,10 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
           :value chat
           :format '("[" (telega-chat--title
                          :min 25 :max 25
-                         :align left :align-char ?\s
-                         :elide t :elide-trail 0)
+                         :align left
+                         :align-symbol " "
+                         :elide t
+                         :elide-trail 0)
                     "]"))
         (insert "\n"))))
 
@@ -261,9 +273,12 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
     (mapc (lambda (mbr)
-            (insert (format "  %s (%S)\n"
-                            (telega-user--name (telega-user--get (plist-get mbr :user_id)))
-                            (plist-get mbr :user_id))))
+            (let ((mbr-id (plist-get mbr :user_id)))
+              (insert "    ")
+              (apply 'insert-text-button
+                     (telega-user--name (telega-user--get mbr-id))
+                     (telega-link-props 'user mbr-id))
+              (insert "\n")))
           members)))
 
 (defun telega-info--insert-supergroup (supergroup chat)
@@ -297,7 +312,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (insert (telega-fmt-labeled-text "Restriction: " restr-reason) "\n"))
 
     (unless (zerop pin-msg-id)
-      (let ((pinned-msg (telega-chat--getPinnedMessage chat)))
+      (let ((pinned-msg (telega--getChatPinnedMessage chat)))
         (assert pinned-msg)
         (insert "----(pinned message)----\n")
         (telega-button-insert 'telega-msg
@@ -310,7 +325,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     (when (plist-get full-info :can_get_members)
       (mapc (lambda (member)
               (insert "  " (telega-fmt-eval 'telega-fmt-chat-member member) "\n"))
-            (plist-get (telega-supergroup--getMembers supergroup) :members)))
+            (plist-get (telega--getSupergroupMembers supergroup) :members)))
 
     (when telega-debug
       (insert "\n---DEBUG---\n")

@@ -56,7 +56,7 @@
   :group 'telega-server)
 
 (defun telega--on-event (event)
-  (telega-debug "IN event: %s" event)
+  (telega-debug "IN event: %S" event)
 
   (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
     (if (symbol-function event-sym)
@@ -74,18 +74,16 @@
 (defvar telega-server--last-error nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
+(defvar telega-server--results nil)
 
-(defsubst telega-server--callback-add (extra cb)
-  (setq telega-server--callbacks
-        (plist-put telega-server--callbacks extra cb)))
+(defmacro telega-server--callback-add (extra cb)
+  `(puthash ,extra ,cb telega-server--callbacks))
 
-(defsubst telega-server--callback-rm (extra)
-  (if (eq extra (car telega-server--callbacks))
-       (setq telega-server--callbacks (cddr telega-server--callbacks))
-     (cl--do-remf telega-server--callbacks extra)))
+(defmacro telega-server--callback-rm (extra)
+  `(remhash ,extra telega-server--callbacks))
 
-(defsubst telega-server--callback-get (extra)
-  (plist-get telega-server--callbacks extra))
+(defmacro telega-server--callback-get (extra)
+  `(gethash ,extra telega-server--callbacks))
 
 (defun telega-server--find-bin ()
   "Find telega-server executable.
@@ -168,7 +166,7 @@ Raise error if not found"
   "Send SEXP to telega-server."
   (let ((value (prin1-to-string (telega--tl-pack sexp)))
         (proc (telega-server--proc)))
-    (assert (process-live-p proc) nil "telega-server is not running")
+    (cl-assert (process-live-p proc) nil "telega-server is not running")
     (telega-debug "OUTPUT: %d %s" (string-bytes value) value)
 
     (process-send-string
@@ -181,22 +179,27 @@ Raise error if not found"
   "Same as `telega-server--send', but waits for answer from telega-server.
 If CALLBACK is specified, then make async call and call CALLBACK
 when result is received."
-  (telega-server--send (plist-put sexp :@extra (incf telega-server--extra)))
+  (telega-server--send (plist-put sexp :@extra (cl-incf telega-server--extra)))
 
   (if callback
       (telega-server--callback-add telega-server--extra callback)
 
     ;; synchronous call aka exec
-    (let ((cb-extra telega-server--extra)
-          telega-server--result)
+    (let ((cb-extra telega-server--extra))
       (telega-server--callback-add
        telega-server--extra
-       (lambda (event) (setq telega-server--result event)))
+       `(lambda (event)
+          (puthash ,cb-extra event telega-server--results)))
 
+      ;; Loop waiting for call completion
       (while (and (telega-server--callback-get cb-extra)
                   (accept-process-output
                    (telega-server--proc) telega-server-call-timeout)))
-      telega-server--result)))
+
+      ;; Return the result
+      (prog1
+          (gethash cb-extra telega-server--results)
+        (remhash cb-extra telega-server--results)))))
 
 (defun telega-server--start ()
   "Start telega-server process."
@@ -215,7 +218,8 @@ when result is received."
       ;; init vars and start proc
       (telega--init-vars)
       (setq telega-server--extra 0)
-      (setq telega-server--callbacks nil)
+      (setq telega-server--callbacks (make-hash-table :test 'eq))
+      (setq telega-server--results (make-hash-table :test 'eq))
       (setq telega-server--buffer (current-buffer))
 
       (telega-status--set "telega-server: starting")

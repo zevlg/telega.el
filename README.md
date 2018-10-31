@@ -65,7 +65,7 @@ source.
 
 ## Dependences
 
-   * `GNU Emacs` 
+   * `GNU Emacs` (at least 25.1 is required)
    * `GNU make`
    * `GNU gperf`
    * `CMake`
@@ -205,7 +205,7 @@ libtdjson.so: cannot open shared object file: No such file or directory
 **A**: Automatic media download is enabled by default.  To disable use:
 
 ```elisp
-(telega-auto-download-media-mode -1)
+(telega-media-auto-download-mode -1)
 ```
 
 Customization is done via `telega-auto-download` variable.

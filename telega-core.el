@@ -26,8 +26,8 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'subr-x)
-(eval-when-compile
-  (require 'cl)) ;; for defsetf
+
+(require 'telega-customize)
 
 (defconst telega-chat-types
   '(private secret basicgroup supergroup bot channel)
@@ -38,6 +38,7 @@
 (defvar telega--options nil "Options updated from telega-server.")
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
+(defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions)")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.")
@@ -52,10 +53,12 @@
 (defvar telega--unread-unmuted-count 0 "Total number of unread/unmuted messages.")
 
 (defvar telega--chat-buffers nil "List of all chat buffers.")
-(defvar telega--files-downloading nil
-  "List of elements in form (FILE-ID CHAT-ID MSG-ID).
-Where CHAT-ID and MSG-ID denotes place where FILE-ID is used in.
-Used to update messages when file updates.")
+(defvar telega--downloadings nil
+  "Hash of active downloadings FILE-ID -> (list-of (UPDATE-CB CB-ARGS)).
+Where UPDATE-CB is callback to call with FILE and CB-ARGS when file updates.
+Used to update messages on file updates.")
+(defvar telega--uploadings nil
+  "Hash of active uploadings FILE-ID -> (list of (UPDATE-CB CB-ARGS)).")
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -65,6 +68,7 @@ Done when telega server is ready to receive queries."
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
+  (setq telega--actions (make-hash-table :test 'eq))
   (setq telega--filters nil)
   (setq telega--undo-filters nil)
   (setq telega--info
@@ -77,10 +81,20 @@ Done when telega server is ready to receive queries."
               (cons 'basicGroup (make-hash-table :test 'eq))
               (cons 'supergroup (make-hash-table :test 'eq))))
 
-  (setq telega--files-downloading nil))
+  (setq telega--downloadings (make-hash-table :test 'eq))
+  (setq telega--uploadings (make-hash-table :test 'eq)))
+
+(defmacro telega-save-excursion (&rest body)
+  "Save current point as moving marker."
+  (let ((pnt-sym (gensym)))
+    `(let ((,pnt-sym (copy-marker (point) t)))
+       (unwind-protect
+           (progn ,@body)
+         (goto-char ,pnt-sym)))))
+(put 'telega-save-excursion 'lisp-indent-function 0)
 
 (defmacro with-telega-debug-buffer (&rest body)
-  "Execute BODY only if telega-debug is enabled making debug buffer current."
+  "Execute BODY only if `telega-debug' is non-nil, making debug buffer current."
   `(when telega-debug
      (with-current-buffer (get-buffer-create "*telega-debug*")
        (telega-save-excursion
@@ -93,22 +107,23 @@ Done when telega server is ready to receive queries."
 
 (defmacro telega--tl-type (tl-obj)
   `(intern (plist-get ,tl-obj :@type)))
-(defsetf telega--tl-type (tl-obj) (type-sym)
-  `(plist-put ,tl-obj :@type (symbol-name ',type-sym)))
 
-(defmacro telega-save-excursion (&rest body)
-  "Save current point as moving marker."
-  (let ((pnt-sym (gensym)))
-    `(let ((,pnt-sym (copy-marker (point) t)))
-       (unwind-protect
-           (progn ,@body)
-         (goto-char ,pnt-sym)))))
+(defmacro telega--tl-get (obj prop1 &rest props)
+  "`plist-get' which works with multiple arguments.
+For example:
+`(telega--tl-get obj :prop1 :prop2)' is equivalent to
+`(plist-get (plist-get obj :prop1) :prop2)`"
+  (let ((ret `(plist-get ,obj ,prop1)))
+    (dolist (prop props)
+      (setq ret (list 'plist-get ret prop)))
+    ret))
 
-(defmacro telega--tl-prop (prop)
-  "Generates function to get property PROP."
+(defmacro telega--tl-prop (prop1 &rest props)
+  "Generates function to get property by PROP1 and PROPS.
+Uses `telega--tl-get' to obtain the property."
   (let ((tl-obj-sym (cl-gensym "tl-obj")))
     `(lambda (,tl-obj-sym)
-       (plist-get ,tl-obj-sym ,prop))))
+       (telega--tl-get ,tl-obj-sym ,prop1 ,@props))))
 
 (defun telega--tl-desurrogate (str)
   "Decode surrogate pairs in STR string.
@@ -120,7 +135,8 @@ Attach `display' text property to surrogated regions."
                  (>= low #xDC00) (<= low #xDFFF))
         (add-text-properties
          idx (+ idx 2) (list 'display (char-to-string
-                                       (+ (lsh (- high #xD800) 10) (- low #xDC00) #x10000))
+                                       (+ (lsh (- high #xD800) 10)
+                                          (- low #xDC00) #x10000))
                              'telega-desurrogate t)
          str))))
   str)
@@ -150,68 +166,27 @@ Resulting in new string with no surrogate pairs."
         ((listp obj) (mapcar 'telega--tl-pack obj))
         (t obj)))
 
-
-;; Files
-(defun telega-file--get (file-id)
-  (telega-server--call
-   (list :@type "getFile" :file_id file-id)))
+(defmacro telega-x-frame ()
+  "Return any window system frame, if any."
+  (let ((fsym (gensym "f")))
+    `(cl-find-if (lambda (,fsym)
+                   (frame-parameter ,fsym 'window-system))
+                 (cons (selected-frame) (frame-list)))))
 
-(defun telega-file--download (file-id &optional priority)
-  "Asynchronously downloads a file from the cloud.
-`telega--on-updateFile' will be called to notify about the
-download progress and successful completion of the download."
-  (telega-server--call
-   (list :@type "downloadFile"
-         :file_id file-id
-         :priority (or priority 32))))
+(defmacro telega-prefix (prefix str)
+  "Concatenate PREFIX and STR in case STR is non empty."
+  (let ((strsym (gensym "str")))
+    `(let ((,strsym ,str))
+       (when (and ,strsym (not (string-empty-p ,strsym)))
+         (concat ,prefix ,strsym)))))
 
-(defun telega-file--cancel-download (file-id &optional only-if-pending)
-  "Stops the downloading of a file with FILE-ID.
-If ONLY-IF-PENDING is non-nil then stop downloading only if it
-hasn't been started, i.e. request hasn't been sent to server."
-  (telega-server--send
-   (list :@type "cancelDownloadFile"
-         :file_id file-id
-         :only_if_pending (or only-if-pending :false))))
-
-(defun telega-file--delete (file-id)
-  "Delete file from cache."
-  (telega-server--send
-   (list :@type "deleteFile"
-         :file_id file-id)))
-
-(defun telega-file--get-path-or-start-download (file chat-id msg-id)
-  "Download file or return it."
-
-  (let* ((local (plist-get file :local))
-         (is-downloading-completed-p (plist-get local :is_downloading_completed))
-         (is-downloading-active-p (plist-get local :is_downloading_active)))
-
-    (if is-downloading-completed-p
-        (plist-get local :path)
-
-      (when (not is-downloading-active-p)
-        (let ((file-id (plist-get file :id)))
-          (pushnew (list file-id chat-id msg-id) telega--files-downloading)
-          (telega-file--download file-id)
-          nil)))))
-
-(defsubst telega-file--update-message (file)
-  "Update message associated with FILE."
-  (let ((link (assq (plist-get file :id) telega--files-downloading)))
-    (when link
-      (telega-msg--update-file (nth 1 link) (nth 2 link) file)
-
-      (let ((local (plist-get file :local)))
-        (when (plist-get local :is_downloading_completed)
-          (setq telega--files-downloading
-                (delete link telega--files-downloading))
-          (message "Downloading completed: %s" (plist-get local :path)))))))
-
-(defun telega--on-updateFile (event)
-  "File has been updated, call all the associated hooks."
-  (telega-file--update-message (plist-get event :file)))
-
+(defun telega-short-filename (filename)
+  "Shortens FILENAME by removing `telega-cache-dir' prefix."
+  (if (and telega-use-short-filenames
+           (string-prefix-p telega-cache-dir filename))
+      (substring filename (length telega-cache-dir))
+    filename))
+  
 
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)
@@ -236,27 +211,35 @@ Return list of strings."
 (defun telega-fmt-eval-truncate (estr attrs)
   (let* ((max (plist-get attrs :max))
          (elide (plist-get attrs :elide))
-         (elide-str (or (plist-get attrs :elide-string) telega-eliding-string))
+         (elide-str (or (plist-get attrs :elide-string) telega-symbol-eliding))
          (elide-trail (or (plist-get attrs :elide-trail) 0))
          (estr-trail (if (> elide-trail 0) (substring estr (- elide-trail)) ""))
-         (estr-lead (substring estr 0 (- max (length elide-str) elide-trail)))
-         result)
-    ;; Correct truncstr in case of multibyte chars
-    (while (and (not (string-empty-p estr-lead))
-                (< max (string-width
-                        (setq result (concat estr-lead elide-str estr-trail)))))
-      (setq estr-lead (substring estr-lead 0 -1)))
+         (estr-lead (truncate-string-to-width
+                     estr (- max (string-width elide-str) elide-trail))))
+    (concat estr-lead elide-str estr-trail)))
+    ;;      result)
+    ;; ;; Correct truncstr in case of multibyte chars
+    ;; (while (and (not (string-empty-p estr-lead))
+    ;;             (< max (string-width
+    ;;                     (setq result (concat estr-lead elide-str estr-trail)))))
+    ;;   (setq estr-lead (substring estr-lead 0 -1)))
 
-    result))
+    ;; result))
 
 (defun telega-fmt-eval-align (estr attrs)
   (let* ((min (plist-get attrs :min))
          (width (- min (string-width estr)))
          (align (plist-get attrs :align))
-         (align-char (or (plist-get attrs :align-char) ?\s))
-         (left (make-string (/ width 2) align-char))
-         (right (make-string (- width (/ width 2)) align-char)))
-    (ecase align
+         (align-symbol (or (plist-get attrs :align-symbol) " "))
+         (left "")
+         (right ""))
+    ;; Grow `left' and `right' until they have required width
+    (while (< (string-width left) (/ width 2))
+      (setq left (concat left align-symbol)))
+    (while (< (string-width right) (- width (/ width 2)))
+      (setq right (concat right align-symbol)))
+
+    (cl-ecase align
       (left (concat estr left right))
       (right (concat left right estr))
       ((center centre) (concat left estr right)))))
@@ -278,24 +261,25 @@ Return list of strings."
 (defun telega-fmt-eval-face (estr attrs)
   "Apply `:face' attribute to ESTR."
   (let ((face (plist-get attrs :face)))
-    (if face
-        (propertize estr 'face face)
-      estr)))
+    (when face
+      (telega--merge-face 0 (length estr) face estr))
+    estr))
 
 (defun telega-fmt-eval-attrs (estr attrs)
   "Apply all attributes to ESTR."
   (let ((formatted-estrs
          (mapcar (lambda (estrline)
-                   (telega-fmt-eval-face
-                    (telega-fmt-eval-min-max
-                     (telega-fmt-eval-fill-prefix estrline attrs) attrs)
+                   (telega-fmt-eval-min-max
+                    (telega-fmt-eval-fill-prefix estrline attrs)
                     attrs))
                  (telega-fmt-eval-fill estr attrs))))
     ;; NOTE: strip prefix on the first line
-    (mapconcat #'identity
-               (cons (substring (car formatted-estrs)
-                                (length (plist-get attrs :fill-prefix)))
-                     (cdr formatted-estrs)) "\n")))
+    (telega-fmt-eval-face
+     (mapconcat #'identity
+                (cons (substring (car formatted-estrs)
+                                 (length (plist-get attrs :fill-prefix)))
+                      (cdr formatted-estrs)) "\n")
+     attrs)))
 
 (defsubst telega-fmt-atom (atom)
   "Convert ATOM to string.
@@ -314,13 +298,13 @@ NIL yields empty string for the convenience."
 
     (telega-fmt-eval-attrs
      (cond ((functionp elem)
-                  (telega-fmt-atom (funcall elem value)))
-                 ((symbolp elem)
-                  (telega-fmt-atom (symbol-value elem)))
-                 ((listp elem)
-                  (telega-fmt-eval elem value))
-                 (t (telega-fmt-atom elem)))
-           attrs)))
+            (telega-fmt-atom (funcall elem value)))
+           ((symbolp elem)
+            (telega-fmt-atom (symbol-value elem)))
+           ((listp elem)
+            (telega-fmt-eval elem value))
+           (t (telega-fmt-atom elem)))
+     attrs)))
 
 (defun telega-fmt-eval (fmt-spec value)
   "Evaluate simple format FMT-SPEC, applying it to VALUE."
@@ -379,7 +363,7 @@ NIL yields empty string for the convenience."
 
 (defun telega-fmt-chat-member-status (status)
   "Format chat member STATUS."
-  (case (telega--tl-type status)
+  (cl-case (telega--tl-type status)
     (chatMemberStatusCreator " (creator)")
     (chatMemberStatusAdministrator " (admin)")
     (chatMemberStatusBanned " (banned)")
@@ -488,6 +472,14 @@ Return newly created button."
                                               (button-get button :value))
                              (telega-button-properties button))))
 
+(defun telega-button--observable-p (button)
+  "Return non-nil if BUTTON is observable in some window.
+I.e. shown in some window, see `pos-visible-in-window-p'."
+  (and (markerp button)
+       (get-buffer-window (marker-buffer button))
+       (pos-visible-in-window-p
+        button (get-buffer-window (marker-buffer button)))))
+
 (defun telega-button-forward (n)
   "Move forward to N visible/active button."
   (interactive "p")
@@ -508,46 +500,6 @@ Return newly created button."
   "Move backward to N visible/active button."
   (interactive "p")
   (telega-button-forward (- n)))
-
-(defun telega-completing-titles ()
-  "Return list of titles ready for completing."
-  (let ((result))
-    (dolist (chat (telega-filter-chats 'all))
-      (setq result (pushnew (telega-chat--title chat 'withusername) result
-                            :test #'string=)))
-    (dolist (user (hash-table-values (cdr (assq 'user telega--full-info))))
-      (setq result (pushnew (telega-user--name user) result :test #'string=)))
-    (nreverse result)))
-
-(defun telega-link-props (link-type link-to &optional face)
-  "Generate props for link button openable with `telega-open-link-action'."
-  (assert (memq link-type '(url file user hashtag download cancel-download)))
-  (list 'action 'telega-open-link-action
-        'face (or face 'telega-link)
-        :telega-link (cons link-type link-to)))
-
-(defun telega-open-link-action (button)
-  "Browse url at point."
-  (let ((link (button-get button :telega-link)))
-    (ecase (car link)
-      (user (with-help-window " *Telegram User Info*"
-              (set-buffer standard-output)
-              (telega-info--insert-user
-               (telega-user--get (cdr link)))))
-      (url (browse-url (cdr link)))
-      (file (find-file (cdr link)))
-
-      ;; `link' for download/cancel-download is (FILE-ID CHAT-ID MSG-ID)
-      (download
-       (pushnew (cdr link) telega--files-downloading)
-       (telega-file--download (car (cdr link))))
-
-      (cancel-download
-       (telega-file--cancel-download (car (cdr link)))
-       (telega-file--update-message
-        (telega-file--get (car (cdr link))))
-       (setq telega--files-downloading
-             (delete (cdr link) telega--files-downloading))))))
 
 (provide 'telega-core)
 

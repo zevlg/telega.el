@@ -24,10 +24,13 @@
 ;;
 
 ;;; Code:
-(require 'wid-edit)
+(require 'ewoc)
 (require 'telega-core)
-(require 'telega-customize)
+(require 'telega-server)
 (require 'telega-filter)
+(require 'telega-ins)
+(require 'telega-util)
+(require 'telega-customize)
 
 (defgroup telega-root nil
   "Customization for telega-root-mode"
@@ -41,6 +44,15 @@
 
 (defvar telega-root-mode-hook nil
   "Hook run when telega root buffer is created.")
+
+(defvar telega-root--ewoc nil)
+
+(defvar telega-root--inhibit-filters-redisplay nil
+  "Non-nil to do nothing on `telega-root--filters-redisplay'.
+Used for optimization, when initially fetching chats, to speed things up.")
+
+(defvar telega-status--timer nil
+  "Timer used to animate status string.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
@@ -66,6 +78,20 @@
     map)
   "The key map for telega root buffer.")
 
+(defun telega-root--header ()
+  "Generate string used as root header."
+  (concat
+   (telega-fmt-eval
+    `("----" (prin1-to-string :min ,telega-filters-fill-column
+                              :align center
+                              :align-symbol "-"
+                              :max ,telega-filters-fill-column
+                              :elide t
+                              :elide-trail ,(/ telega-filters-fill-column 2))
+      "----")
+    (car telega--filters))
+   "\n"))
+
 (define-derived-mode telega-root-mode nil "Telega-Root"
   "The mode for telega root buffer.
 Keymap:
@@ -74,8 +100,38 @@ Keymap:
   (setq mode-line-buffer-identification
         (telega-root--modeline-buffer-identification))
 
-  ;; Reseting filters will trigger `telega-root--redisplay'
-  (telega-filters-reset)
+  (telega--filters-reset telega-filter-default)
+
+  (setq buffer-read-only nil)
+  (erase-buffer)
+
+  ;; Status goes first
+  (telega-button-insert
+    'telega-status 'inactive t
+    :value telega--status)
+
+  (insert "\n")
+  (insert "\n")
+
+  ;; Custom filters
+  (setq telega-root--inhibit-filters-redisplay nil)
+  (dolist (custom telega-filters-custom)
+    (telega-filter-button--set-inactivity-props
+     (telega-button-insert 'telega-filter :value custom))
+    (if (> (current-column) telega-filters-fill-column)
+        (insert "\n")
+      (insert "   ")))
+
+  (unless (= (preceding-char) ?\n) (insert "\n"))
+  (insert "\n")
+
+  ;; Chats list with active filter as header
+  (setq telega-root--ewoc
+        (ewoc-create telega-inserter-chat-button
+                     (telega-root--header) nil t))
+  (dolist (chat telega--ordered-chats)
+    (ewoc-enter-last telega-root--ewoc chat))
+
   (setq buffer-read-only t)
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t))
 
@@ -106,9 +162,6 @@ Inhibits read-only flag."
   "Status animation interval."
   :type 'number
   :group 'telega-root)
-
-(defvar telega-status--timer nil
-  "Timer used to animate status string.")
 
 (define-button-type 'telega-status
   :supertype 'telega
@@ -149,60 +202,31 @@ If RAW is given then do not modify status for animation."
     (save-excursion
       (goto-char (point-min))
       (let ((button (telega-button-find 'telega-status)))
-        (assert button nil "Telega status button is gone")
+        (cl-assert button nil "Telega status button is gone")
         (button-put button :value telega--status)
         (telega-button--redisplay button)))))
 
-(defun telega-root--redisplay ()
-  "Redisplay the root buffer."
-  (let* ((cb (button-at (point)))   ; try to keep point on this button
-         (cb-type (and cb (button-type cb)))
-         (cb-value (and cb (button-get cb :value))))
-    (with-telega-root-buffer
-      (erase-buffer)
-      (telega-button-insert
-        'telega-status :value telega--status
-        'inactive :do-not-select-it-by-forward-backward-commands)
-      (insert "\n\n")
-
-      ;; Custom filters
-      (dolist (custom telega-filters-custom)
-        (telega-filter-button--set-inactivity-props
-         (telega-button-insert 'telega-filter :value custom))
-        (if (> (current-column) telega-filters-fill-column)
-            (insert "\n")
-          (insert "   ")))
-
-      (unless (= (preceding-char) ?\n) (insert "\n"))
-      (insert "\n")
-      (telega-button-insert
-        'telega-active-filters :value (car telega--filters)
-        'inactive :do-not-select-it-by-forward-backward-commands)
-      (insert "\n")
-      (setq telega-root--chats-marker (point-marker))
-
-      (dolist (chat telega--ordered-chats)
-        (telega-root--chat-update chat 'filters-are-ok)))
-
-    ;; Goto previously saved button
-    (goto-char (point-min))
-    (goto-char (1- (or (and cb-type (telega-button-find cb-type cb-value))
-                       (point-max))))
-    (condition-case nil
-        (telega-button-forward 1)
-      (error (forward-char 1)))))
-
 
-(defun telega-root--chat-button (chat)
-  "Return button corresponding to CHAT."
-  (with-telega-root-buffer
-    (goto-char (point-min))
-    (telega-button-find 'telega-chat chat)))
+(defun telega-root--filters-redisplay ()
+  "Redisplay custom filters buttons."
+  (unless telega-root--inhibit-filters-redisplay
+    (with-telega-root-buffer
+      (save-excursion
+        (goto-char (point-min))
+        (telega-button-foreach 'telega-filter (button)
+          (telega-filter-button--set-inactivity-props
+           (telega-button--redisplay button)))))))
 
-(defun telega-root--chat-update (chat &optional inhibit-filters-redisplay)
-  "Something changed in CHAT, button needs to be updated.
-If there is no button for the CHAT, new button is created.
-If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
+(defun telega-root--redisplay ()
+  "Redisplay root's buffer contents."
+  (telega-root--filters-redisplay)
+  (with-telega-root-buffer
+    (save-excursion
+      (telega-ewoc--set-header telega-root--ewoc (telega-root--header))
+      (ewoc-refresh telega-root--ewoc))))
+
+(defun telega-root--chat-update (chat)
+  "Something changed in CHAT, button needs to be updated."
   (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat--title chat))
 
   ;; Update `telega--filtered-chats' according to chat update It
@@ -215,56 +239,40 @@ If INHIBIT-FILTERS-REDISPLAY specified then do not redisplay filters buttons."
           (push chat telega--filtered-chats)))
 
   (with-telega-root-buffer
-    (save-excursion
-      (let ((button (telega-root--chat-button chat))
-            (visible-p (memq chat telega--filtered-chats)))
-        (if button
-            (progn
-              (button-put button :value chat)
-              (when visible-p
-                (telega-button--redisplay button)))
+    (let ((enode (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
+      (cl-assert enode nil "Ewoc node not found for chat:%s"
+                 (telega-chat--title chat))
 
-          ;; New chat
-          (goto-char (point-max))
-          (setq button (telega-button-insert 'telega-chat :value chat)))
+      (setf (ewoc--node-data enode) chat)
+      (ewoc-invalidate telega-root--ewoc enode)))
 
-        (button-put button 'invisible (not visible-p))
+  ;; NOTE: Update might affect custom filters, refresh them too
+  (telega-root--filters-redisplay))
 
-        ;; NOTE: Update might affect custom filters, refresh them too
-        (unless inhibit-filters-redisplay
-          (telega-root--filters-redisplay))))))
-
-(defun telega-root--chat-reorder (chat)
-  "Move CHAT to correct place according to its order."
+(defun telega-root--chat-reorder (chat &optional new-chat-p)
+  "Move CHAT to correct place according to its order.
+If NEW-CHAT-P is non-nil, then new CHAT is inserted in its order."
   (with-telega-root-buffer
-    (save-excursion
-      (goto-char (point-min))
-      (let* ((button (telega-root--chat-button chat))
-             (chat-after (cadr (memq chat telega--ordered-chats)))
-             (button-after (or (telega-root--chat-button chat-after)
-                               (point-max))))
-        (assert button nil "button no found for chat: %s" (telega-chat--title chat))
-        (telega-button-move button button-after)))))
+    (let* ((node (unless new-chat-p
+                   (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
+           (chat-after (cadr (memq chat telega--ordered-chats)))
+           (node-after (telega-ewoc--find-node-by-data
+                        telega-root--ewoc chat-after)))
+      (when node
+        (ewoc-delete telega-root--ewoc node))
+      (if node-after
+          (ewoc-enter-before telega-root--ewoc node-after chat)
+        (ewoc-enter-last telega-root--ewoc chat)))))
+
+(defun telega-root--chat-new (chat)
+  "New CHAT has been created."
+  (telega-root--chat-reorder chat 'new-chat))
 
 (defun telega-root--user-update (user)
   "Something changed in USER, private chat might need to be updated."
   (let ((chat (telega-chat--get (plist-get user :id) 'offline)))
     (when chat
       (telega-root--chat-update chat))))
-
-(defun telega-root--filters-redisplay ()
-  "Redisplay custom filters buttons."
-  (with-telega-root-buffer
-    (save-excursion
-      (goto-char (point-min))
-      (telega-button-foreach 'telega-filter (button)
-        (telega-filter-button--set-inactivity-props
-         (telega-button--redisplay button))))))
-
-(defun telega-root--chats-redisplay ()
-  "Redisplay chats according to active filters."
-  (message "TODO: `telega-root--chats-redisplay'")
-  )
 
 (defun telega-root--modeline-buffer-identification ()
   "Return `mode-line-buffer-identification' for the root buffer."

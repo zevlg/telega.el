@@ -27,27 +27,40 @@
 ;; 
 
 ;;; Code:
+(require 'cl-lib)
 (require 'notifications)
 (require 'telega-core)
 
+(defgroup telega-notifications nil
+  "Setup for D-Bus notifications."
+  :group 'telega)
+
+(defcustom telega-notifications-delay 1.0
+  "*Delay in seconds before making decision show or not the message in notification.
+Taking pause before showing notification is wise, because another
+telegram may be active with the chat opened, you don't want the
+notification to be shown for already read message.
+TODO: Not yet implemented"
+  :type 'float
+  :group 'telega-notifications)
 
 (defcustom telega-notifications-timeout 2.0
   "*How long to show notification in seconds."
   :type 'float
-  :group 'telega)
+  :group 'telega-notifications)
 
 (defcustom telega-notifications-notify-args nil
   "*Additional arguments to `notifications-notify'.
 It could be `:sound-file' for example."
   :type 'list
-  :group 'telega)
+  :group 'telega-notifications)
 
 (defvar telega--notifications nil
   "Notifications settings")
 
 (defun telega--on-updateNotificationSettings (event)
   (let ((scope (plist-get event :scope)))
-    (case (intern (plist-get scope :@type))
+    (cl-case (intern (plist-get scope :@type))
       (notificationSettingsScopeChat
        (let ((chat (telega-chat--get (plist-get scope :chat_id))))
          (plist-put chat :notification_settings
@@ -64,7 +77,7 @@ It could be `:sound-file' for example."
     telega-msg-edit-date
     "\n"
     ,@(telega-msg-inline-reply msg "")
-    telega-msg-text-with-props))
+    telega-msg-format))
 
 ;;;###autoload
 (defun telega-notifications-mode (&optional arg)
@@ -80,18 +93,23 @@ With positive ARG - enables notifications, otherwise disables."
   (unless disable-notification
     (let* ((chat (telega-chat--get (plist-get msg :chat_id)))
            (not-cfg (plist-get chat :notification_settings)))
-      (when (zerop (plist-get not-cfg :mute_for))
+      (unless (or (not (zerop (plist-get not-cfg :mute_for)))
+                  ;; Do not show notification if corresponding button
+                  ;; is observable
+                  (with-telega-chatbuf chat
+                    (save-excursion
+                      (telega-button--observable-p
+                       (telega-chat-buffer--button-get (plist-get msg :id))))))
         (let ((notargs (list :app-name "emacs.telega"
                              :app-icon (find-library-name "etc/telegram-logo.svg")
                              :timeout (round (* 1000 telega-notifications-timeout))
                              :urgency "normal"
-                             :title (telega-chat--title chat 'with-username))))
-          (setq notargs (plist-put notargs :body
-                                   (if (plist-get not-cfg :show_preview)
+                             :title (telega-chat--title chat 'with-username)
+                             :body (if (plist-get not-cfg :show_preview)
                                        (telega--desurrogate-apply
                                         (telega-fmt-eval
                                          'telega-notifications--format-msg msg))
-                                     "Has new unread messages")))
+                                     "Has new unread messages"))))
           (telega-debug "NOTIFY with args: %S"
                         (nconc notargs telega-notifications-notify-args))
           (apply 'notifications-notify
