@@ -163,6 +163,12 @@ DO NOT USE.  TODO: sender statuses need to be cached."
   :type 'boolean
   :group 'telega-chat)
 
+(defcustom telega-ignored-messages-ring-size 100
+  "*Maximum number of ignored messages in `telega--ignored-messages'.
+Message is ignored if its `:ignore' option is set to non-nil."
+  :type 'number
+  :group 'telega-chat)
+
 (defcustom telega-completing-read-function 'ido-completing-read
   "Completing read function to use."
   :type 'function
@@ -352,6 +358,13 @@ Could be used for example to insert date breaks."
 Called with single argument - MSG.
 Called only if corresponding chat is opened.
 Could be used for example to insert date breaks."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chat-pre-message-hook nil
+  "Hook called uppon new message arrival, before inserting into chatbuffer.
+Called with two arguments - message and disable-notification.
+Always called, even if corresponding chat is closed at the moment."
   :type 'hook
   :group 'telega-hooks)
 

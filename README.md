@@ -37,6 +37,7 @@ to use `telega.el` for basic chat.
       messages, etc
 - [ ] ReplyMarkup (inline keyboard buttons) in the messages
 - [ ] InstantView for web pages 
+- [x] [Client side messages filtering](#configuring-client-side-messages-filtering)
 
 # Screenshots
 
@@ -163,6 +164,33 @@ it ask for the phone number to login to the Telegram network.
 ```elisp
 (add-hook 'telega-root-mode-hook (lambda () (telega-notifications-mode 1)))
 ```
+
+# Configuring client side messages filtering
+
+In official telegram clients all messages in group chats are displayed
+even if message has been sent by blocked user.  `telega.el` has client
+side message filtering feature implemented.  Ignoring messages can be
+done via installing special functions into
+`telega-chat-pre-message-hook` which could mark message as ignored,
+for example, to ignore messages from particular user with id=12345 you
+could add next code:
+
+```elisp
+(defun my-telega-ignore-12345-user (msg &rest notused)
+  (when (= (plist-get msg :sender_user_id) 12345)
+    (telega-msg-ignore msg)))
+
+(add-hook 'telega-chat-pre-message-hook 'my-telega-ignore-12345-user)
+```
+
+Or to ignore messages from blocked users, just add:
+
+```elisp
+(add-hook 'telega-chat-pre-message-hook 'telega-msg-ignore-blocked-sender)
+```
+
+To view recent messages that has been ignored use
+`M-x telega-ignored-messages RET` command.
 
 # How to contribute
 

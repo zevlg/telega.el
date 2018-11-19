@@ -28,6 +28,7 @@
 (require 'subr-x)
 (eval-when-compile
   (require 'cl)) ;; for defsetf
+(require 'ring)
 
 (defconst telega-chat-types
   '(private secret basicgroup supergroup bot channel)
@@ -57,6 +58,10 @@
 Where CHAT-ID and MSG-ID denotes place where FILE-ID is used in.
 Used to update messages when file updates.")
 
+(defvar telega--ignored-messages-ring (make-ring 0)
+  "Ring of ignored messages.
+Use M-x telega-ignored-messages RET to display the list.")
+
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
@@ -77,7 +82,9 @@ Done when telega server is ready to receive queries."
               (cons 'basicGroup (make-hash-table :test 'eq))
               (cons 'supergroup (make-hash-table :test 'eq))))
 
-  (setq telega--files-downloading nil))
+  (setq telega--files-downloading nil)
+  (setq telega--ignored-messages-ring
+        (make-ring telega-ignored-messages-ring-size)))
 
 (defmacro with-telega-debug-buffer (&rest body)
   "Execute BODY only if telega-debug is enabled making debug buffer current."
