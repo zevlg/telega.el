@@ -5,7 +5,7 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.2.3 
+;; Version: 0.3.0 
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 (require 'telega-util)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.2.3")
+(defconst telega-version "0.3.0")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
