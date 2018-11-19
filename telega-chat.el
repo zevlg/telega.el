@@ -727,44 +727,50 @@ If TITLE is specified, use it instead of chat's title."
 
 (defun telega-chat-buffer--insert-oldest-msg (msg)
   "Insert message MSG as oldest message in chatbuffer."
-  (with-telega-chat-buffer (telega-msg--chat msg)
-    (save-excursion
-      (run-hook-with-args 'telega-chat-before-oldest-msg-hook msg)
+  (run-hook-with-args 'telega-chat-pre-message-hook msg t)
 
-      (let ((oldest-msg (telega-chat-buffer--oldest-msg telega-chatbuf--chat)))
-        ;; NOTE: if OLDEST-MSG is non-nil then corresponding button is
-        ;; at `(point-min)'
-        (when oldest-msg
-          (let ((oldest-button (button-at (point-min))))
-            (assert (eq (button-get oldest-button :value) oldest-msg))
-            (button-put oldest-button :prev-msg msg)
-            (button-put oldest-button
-                        :format (telega-msg-button--format oldest-msg msg))
-            (telega-button--redisplay oldest-button)))
+  (unless (telega-msg-ignored-p msg)
+    (with-telega-chat-buffer (telega-msg--chat msg)
+      (save-excursion
+        (run-hook-with-args 'telega-chat-before-oldest-msg-hook msg)
 
-        (goto-char (point-min))
-        (telega-button-insert 'telega-msg
-          :value msg
-          :format (telega-msg-button--format msg))))))
+        (let ((oldest-msg (telega-chat-buffer--oldest-msg telega-chatbuf--chat)))
+          ;; NOTE: if OLDEST-MSG is non-nil then corresponding button is
+          ;; at `(point-min)'
+          (when oldest-msg
+            (let ((oldest-button (button-at (point-min))))
+              (assert (eq (button-get oldest-button :value) oldest-msg))
+              (button-put oldest-button :prev-msg msg)
+              (button-put oldest-button
+                          :format (telega-msg-button--format oldest-msg msg))
+              (telega-button--redisplay oldest-button)))
+
+          (goto-char (point-min))
+          (telega-button-insert 'telega-msg
+            :value msg
+            :format (telega-msg-button--format msg)))))))
 
 (defun telega-chat-buffer--insert-youngest-msg (msg &optional disable-notification)
   "Insert newly arrived message MSG as youngest into chatbuffer.
 If DISABLE-NOTIFICATION is non-nil, then do not trigger
 notification for this message.
 Return newly inserted message button."
-  (unwind-protect
-      (with-telega-chat-buffer (telega-msg--chat msg)
-        (telega-save-excursion
-          (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
+  (run-hook-with-args 'telega-chat-pre-message-hook msg disable-notification)
 
-          (goto-char telega-chatbuf--output-marker)
-          (let ((prev-msg (telega-chat-buffer--youngest-msg telega-chatbuf--chat)))
-            (telega-button-insert 'telega-msg
-              :value msg
-              :prev-msg prev-msg
-              :format (telega-msg-button--format msg prev-msg)))))
+  (unless (telega-msg-ignored-p msg)
+    (unwind-protect
+        (with-telega-chat-buffer (telega-msg--chat msg)
+          (telega-save-excursion
+           (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
 
-    (run-hook-with-args 'telega-chat-message-hook msg disable-notification)))
+           (goto-char telega-chatbuf--output-marker)
+           (let ((prev-msg (telega-chat-buffer--youngest-msg telega-chatbuf--chat)))
+             (telega-button-insert 'telega-msg
+               :value msg
+               :prev-msg prev-msg
+               :format (telega-msg-button--format msg prev-msg)))))
+
+      (run-hook-with-args 'telega-chat-message-hook msg disable-notification))))
 
 (defun telega-chat-buffer--button-get (msg-id)
   "In current chatbuffer find message button with MSG-ID."

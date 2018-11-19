@@ -326,18 +326,19 @@ Makes heave online requests without caching, be carefull."
 
 (defconst telega-msg-full-prefix "     ")
 
-(defun telega-msg-button--format-full (msg &optional reply-msg)
-  `(telega-msg-sender-ava-h
-    " "
-    (telega-msg-sender-name
+(defun telega-msg-button--format-sender (msg)
+  `((telega-msg-sender-name
      :face ,(if (= (plist-get msg :sender_user_id) telega--me-id)
                 'telega-chat-self-title
               'telega-chat-user-title))
     ,(when telega-msg-show-sender-status
        '(telega-msg-sender-status :face shadow))
     telega-msg-via-bot
-    telega-msg-edit-date
-    "\n"
+    telega-msg-edit-date))
+  
+(defun telega-msg-button--format-full (msg &optional reply-msg)
+  `(telega-msg-sender-ava-h " "
+    ,@(telega-msg-button--format-sender msg) "\n"
     telega-msg-sender-ava-l " "
     ,@(telega-msg-inline-reply msg telega-msg-full-prefix)
     ,@(telega-msg-text-with-timestamp msg telega-msg-full-prefix)))
@@ -490,6 +491,30 @@ If MARKDOWN is non-nil and TEXT has markup errors then do not apply formatting."
           :text fmt-text
           :clear_draft t)))
 
+;;; Ignoring messages
+(defmacro telega-msg-ignored-p (msg)
+  `(plist-get ,msg :ignored-p))
+(defsetf telega-msg-ignored-p (msg) (val)
+  `(plist-put ,msg :ignored-p ,val))
+(defun telega-msg-ignore (msg)
+  "Mark message MSG to be ignored (not viewed, notified about) in chats.
+By side effect adds MSG into `telega--ignored-messages-ring' to be viewed
+with `M-x telega-ignored-messages RET'."
+  (setf (telega-msg-ignored-p msg) t)
+  (ring-insert telega--ignored-messages-ring msg)
+  (telega-debug "IGNORED msg: %S" msg))
+
+(defun telega-msg-ignore-blocked-sender (msg &rest not-used)
+  "Function to be used as `telega-chat-pre-message-hook'.
+Add it to `telega-chat-pre-message-hook' to ignore messages from
+blocked users."
+  (let ((sender-uid (plist-get msg :sender_user_id)))
+    (when (and (not (zerop sender-uid))
+               (plist-get
+                (telega--full-info (telega-user--get sender-uid))
+                :is_blocked))
+      (telega-msg-ignore msg))))
+
 
 (defun telega-msg-info (msg)
   "Show info about message at point."
@@ -510,6 +535,7 @@ If MARKDOWN is non-nil and TEXT has markup errors then do not apply formatting."
           (insert "Sender: ")
           (insert-text-button (telega-user--name (telega-user--get sender-uid))
                               :telega-link (cons 'user sender-uid))
+          (insert (format " (%d)" sender-uid))
           (insert "\n")))
       (when (telega-chat--public-p (telega-chat--get chat-id))
         (let ((link (plist-get (telega-msg--get-link chat-id msg-id) :link)))
@@ -522,6 +548,26 @@ If MARKDOWN is non-nil and TEXT has markup errors then do not apply formatting."
         (insert (format "MsgSexp: (telega-msg--get %d %d)\n" chat-id msg-id)))
 
       (insert (format "\nTODO: %S\n" msg)))
+    ))
+
+(defun telega-msg-button--format-ignored (msg)
+  `(telega-msg-sender-ava-h " "
+    ,@(telega-msg-button--format-sender msg)
+    " --> [" telega-msg-chat-title "]\n"
+    telega-msg-sender-ava-l " "
+    ,@(telega-msg-inline-reply msg telega-msg-full-prefix)
+    ,@(telega-msg-text-with-timestamp msg telega-msg-full-prefix)))
+
+(defun telega-ignored-messages ()
+  "Display all messages that has been ignored."
+  (interactive)
+  (with-help-window " *Telegram Ignored Messages*"
+    (set-buffer standard-output)
+    (dolist (msg (ring-elements telega--ignored-messages-ring))
+      (telega-button-insert 'telega-msg
+        :value msg
+        :prev-msg nil
+        :format (telega-msg-button--format-ignored msg)))
     ))
 
 (provide 'telega-msg)
