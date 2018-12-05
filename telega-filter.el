@@ -27,55 +27,6 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(defgroup telega-filter nil
-  "Customize chats filtration."
-  :prefix "telega-filter-"
-  :group 'telega)
-
-(defcustom telega-filter-default 'all
-  "*Default chats filter to apply.
-For example:
-  `(any pin unread)'  - to show pinned or chats with unread messages.
-"
-  :type 'list
-  :group 'telega-filter)
-
-(defcustom telega-filters-custom
-  '(("All" . all)
-    ("Secrets" . (type secret))
-    ("Users" . (type private))
-    ("Channels" . (type channel))
-    ("Groups" . (type basicgroup supergroup))
-    ("Bots" . (type bot))
-    ("Notify" . notify))
-  "*Alist of custom filters for chats.
-In form (NAME . FILTER-SPEC)."
-  :type 'alist
-  :group 'telega-filter)
-
-(defcustom telega-filter-custom-expand t
-  "*Non-nil to expand custom filter when adding to active filters."
-  :type 'boolean
-  :group 'telega-filter)
-
-(defcustom telega-filters-fill-column 55
-  "*Column to use for filling buttons for custom filters in multiple lines."
-  :type 'integer
-  :group 'telega-filter)
-
-(defcustom telega-filter-button-width 28
-  "*Width of the custom filter buttons."
-  :type 'integer
-  :group 'telega-filter)
-
-(defface telega-filter-button-active '((t :inherit default))
-  "*Face to use for active custom filters."
-  :group 'telega-filter)
-
-(defface telega-filter-button-inactive '((t :inherit shadow))
-  "*Face to use for inactive custom filters."
-  :group 'telega-filter)
-
 (defvar telega-filter-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd ":") 'telega-filters-edit)
@@ -99,10 +50,10 @@ In form (NAME . FILTER-SPEC)."
 
 (define-button-type 'telega-active-filters
   :supertype 'telega
-  :format '("---" (prin1-to-string :min 70
+  :format `("---" (prin1-to-string :min ,telega-root-width
                                    :align center
                                    :align-symbol "-"
-                                   :max 70
+                                   :max ,telega-root-width
                                    :elide t
                                    :elide-trail 30)
             "---"))

@@ -21,39 +21,13 @@
 
 ;;; Commentary:
 
-;;
+;; Interface to `telega-server' process
 
 ;;; Code:
 (require 'cl-lib)
 
 (require 'telega-core)
 (require 'telega-customize)
-
-(defgroup telega-server nil
-  "Customisation for telega-server."
-  :prefix "telega-server-"
-  :group 'telega)
-
-(defcustom telega-server-command "telega-server"
-  "Command to run as telega server."
-  :type 'string
-  :group 'telega-server)
-
-(defcustom telega-server-logfile
-  (expand-file-name "telega-server.log" telega-directory)
-  "*Write server logs to this file."
-  :type 'string
-  :group 'telega-server)
-
-(defcustom telega-server-verbosity 5
-  "*Verbosity level for server process."
-  :type 'number
-  :group 'telega-server)
-
-(defcustom telega-server-call-timeout 0.5
-  "*Timeout for `telega-server--call'."
-  :type 'number
-  :group 'telega-server)
 
 (defun telega--on-event (event)
   (telega-debug "IN event: %S" event)

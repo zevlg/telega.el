@@ -109,6 +109,102 @@ See docstring for `display-buffer' for the values."
   :group 'telega)
 
 
+(defgroup telega-server nil
+  "Customisation for telega-server."
+  :prefix "telega-server-"
+  :group 'telega)
+
+(defcustom telega-server-command "telega-server"
+  "Command to run as telega server."
+  :type 'string
+  :group 'telega-server)
+
+(defcustom telega-server-logfile
+  (expand-file-name "telega-server.log" telega-directory)
+  "*Write server logs to this file."
+  :type 'string
+  :group 'telega-server)
+
+(defcustom telega-server-verbosity 5
+  "*Verbosity level for server process."
+  :type 'number
+  :group 'telega-server)
+
+(defcustom telega-server-call-timeout 0.5
+  "*Timeout for `telega-server--call'."
+  :type 'number
+  :group 'telega-server)
+
+
+(defgroup telega-root nil
+  "Customization for telega-root-mode"
+  :prefix "telega-root-"
+  :group 'telega)
+
+(defcustom telega-root-buffer-name "*Telega Root*"
+  "*Buffer name for telega root buffer."
+  :type 'string
+  :group 'telega-root)
+
+(defcustom telega-root-width 63
+  "*Maximum width to use in root buffer to display active filters and chats."
+  :type 'integer
+  :group 'telega-root)
+
+(defcustom telega-chat-button-width 28
+  "*Width for the chat buttons in root buffer.."
+  :type 'integer
+  :group 'telega-root)
+
+(defcustom telega-chat-button-brackets
+  '((all "[" "]"))
+  "Brackets to use for chat button."
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-status-animate-interval 0.5
+  "Dots animation interval for telega status shown in root buffer."
+  :type 'number
+  :group 'telega-root)
+
+
+(defgroup telega-filter nil
+  "Customize chats filtration."
+  :prefix "telega-filter-"
+  :group 'telega)
+
+(defcustom telega-filter-default 'all
+  "*Default chats filter to apply.
+For example:
+  `(any pin unread)'  - to show pinned or chats with unread messages.
+"
+  :type 'list
+  :group 'telega-filter)
+
+(defcustom telega-filters-custom
+  '(("All" . all)
+    ("Secrets" . (type secret))
+    ("Users" . (type private))
+    ("Channels" . (type channel))
+    ("Groups" . (type basicgroup supergroup))
+    ("Bots" . (type bot))
+    ("Notify" . notify))
+  "*Alist of custom filters for chats.
+In form (NAME . FILTER-SPEC)."
+  :type 'alist
+  :group 'telega-filter)
+
+(defcustom telega-filter-custom-expand t
+  "*Non-nil to expand custom filter when adding to active filters."
+  :type 'boolean
+  :group 'telega-filter)
+
+(defcustom telega-filter-button-width 28
+  "*Width of the custom filter buttons."
+  :type 'integer
+  :group 'telega-filter)
+
+
 (defgroup telega-inserters nil
   "Inserters customization for telega."
   :group 'telega)
@@ -119,17 +215,6 @@ See docstring for `display-buffer' for the values."
   :group 'telega-inserters)
 
 
-(defcustom telega-chat-button-width 28
-  "*Width for the chat buttons."
-  :type 'integer
-  :group 'telega-root)
-
-(defcustom telega-chat-button-brackets
-  '((all "[" "]"))
-  "Brackets to use for chat button."
-  :type 'list
-  :group 'telega-root)
-
 (defcustom telega-chat-input-prompt ">>> "
   "*Prompt for the chat buffers."
   :type 'string
@@ -151,7 +236,7 @@ See docstring for `display-buffer' for the values."
   :group 'telega-chat)
 
 (defcustom telega-chat-fill-column fill-column
-  "*Column to fill messages to."
+  "*Column to fill chat messages to."
   :type 'integer
   :group 'telega-chat)
 
@@ -297,6 +382,14 @@ ellipsis."
   "Faces used by telega."
   :group 'telega)
 
+(defface telega-filter-button-active '((t :inherit default))
+  "*Face to use for active custom filters."
+  :group 'telega-faces)
+
+(defface telega-filter-button-inactive '((t :inherit shadow))
+  "*Face to use for inactive custom filters."
+  :group 'telega-faces)
+
 (defface telega-chat-prompt
   '((t (:inherit default :weight bold)))
   "Face for chat input prompt"
@@ -414,6 +507,11 @@ You can customize its `:height' to fit width of the default face."
 (defgroup telega-hooks nil
   "Hooks called by telega."
   :group 'telega)
+
+(defcustom telega-root-mode-hook nil
+  "Hook run when telega root buffer is created."
+  :type 'hook
+  :group 'telega-hooks)
 
 (defcustom telega-ready-hook nil
   "Hook called when telega is ready to process queries."

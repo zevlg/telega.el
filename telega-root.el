@@ -32,19 +32,6 @@
 (require 'telega-util)
 (require 'telega-customize)
 
-(defgroup telega-root nil
-  "Customization for telega-root-mode"
-  :prefix "telega-root-"
-  :group 'telega)
-
-(defcustom telega-root-buffer-name "*Telega Root*"
-  "*Buffer name for telega root buffer."
-  :type 'string
-  :group 'telega-root)
-
-(defvar telega-root-mode-hook nil
-  "Hook run when telega root buffer is created.")
-
 (defvar telega-root--ewoc nil)
 
 (defvar telega-root--inhibit-filters-redisplay nil
@@ -80,17 +67,18 @@ Used for optimization, when initially fetching chats, to speed things up.")
 
 (defun telega-root--header ()
   "Generate string used as root header."
-  (concat
-   (telega-fmt-eval
-    `("----" (prin1-to-string :min ,telega-filters-fill-column
-                              :align center
-                              :align-symbol "-"
-                              :max ,telega-filters-fill-column
-                              :elide t
-                              :elide-trail ,(/ telega-filters-fill-column 2))
-      "----")
-    (car telega--filters))
-   "\n"))
+  (let ((filters-width (- telega-root-width 8)))
+    (concat
+     (telega-fmt-eval
+      `("----" (prin1-to-string :min ,filters-width
+                                :align center
+                                :align-symbol "-"
+                                :max ,filters-width
+                                :elide t
+                                :elide-trail ,(/ filters-width 2))
+        "----")
+      (car telega--filters))
+     "\n")))
 
 (define-derived-mode telega-root-mode nil "Telega-Root"
   "The mode for telega root buffer.
@@ -118,7 +106,7 @@ Keymap:
   (dolist (custom telega-filters-custom)
     (telega-filter-button--set-inactivity-props
      (telega-button-insert 'telega-filter :value custom))
-    (if (> (current-column) telega-filters-fill-column)
+    (if (> (+ 2 (current-column) telega-filter-button-width) telega-root-width)
         (insert "\n")
       (insert "   ")))
 
@@ -158,11 +146,6 @@ Inhibits read-only flag."
 
 
 ;;; Connection Status
-(defcustom telega-status-animate-interval 0.5
-  "Status animation interval."
-  :type 'number
-  :group 'telega-root)
-
 (define-button-type 'telega-status
   :supertype 'telega
   :format '("Status: " identity))

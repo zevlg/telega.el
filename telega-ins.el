@@ -356,33 +356,23 @@ Special message is one of: `messageContactRegistered',
     (when pinned-p
       (telega-ins telega-symbol-pin))
     (when (eq (telega-chat--type chat 'raw) 'secret)
-      (telega-ins telega-symbol-lock)))
+      (telega-ins telega-symbol-lock))))
 
-  (telega-ins "\n"))
+(defun telega-ins--chat-full (chat)
+  "Insert CHAT with its status into root buffer."
+  (telega-ins--chat chat)
+  (telega-ins "  ")
 
-(defun telega-ins--chat-button (chat &optional inserter)
-  "Inserter for CHAT as button."
-  ;; Insert only visible chat buttons
-  ;; See https://github.com/zevlg/telega.el/issues/3
-  (let ((visible-p (telega-filter-chats nil (list chat))))
-    (when visible-p
-      (make-text-button
-       (prog1 (point)
-         (funcall (or inserter 'telega-ins--chat) chat))
-       (point)
-       :type 'telega-chat
-       :value chat))))
-
-(defun telega-ins--advanced-chat-2nd-line (chat)
-  "Second line for chat button advanced inserter."
-  (let ((chat-actions (gethash (plist-get chat :id) telega--actions))
+  ;; And the status
+  (let ((max-width (- telega-root-width (current-column)))
+        (chat-actions (gethash (plist-get chat :id) telega--actions))
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message)))
     (cond (chat-actions
            (telega-debug "CHAT-ACTIONS: %s --> %S" (telega-chat--title chat)
                          chat-actions)
            (telega-ins--with-attrs (list :align 'left
-                                         :max telega-filters-fill-column
+                                         :max max-width
                                          :elide t)
              (telega-ins--actions chat-actions)))
 
@@ -391,16 +381,17 @@ Special message is one of: `messageContactRegistered',
              (assert (eq (telega--tl-type inmsg) 'inputMessageText)
                      nil "tdlib states that draft must be `inputMessageText'")
              (telega-ins--with-attrs (list :align 'left
-                                           :max telega-filters-fill-column
+                                           :max max-width
                                            :elide t)
                (telega-ins telega-symbol-draft ": ")
                (telega-ins--one-lined
                 (telega-ins--text (plist-get inmsg :text))))))
 
           (last-msg
+           ;; NOTE: date - 10 chars, outgoing-status - 1 char
            (telega-ins--with-attrs (list :align 'left
-                                         :min telega-filters-fill-column
-                                         :max telega-filters-fill-column
+                                         :min (- max-width 10 1)
+                                         :max (- max-width 10 1)
                                          :elide t)
              (when (telega-ins--username (plist-get last-msg :sender_user_id))
                (telega-ins ": "))
@@ -413,19 +404,24 @@ Special message is one of: `messageContactRegistered',
            ))
     ))
 
-(defun telega-ins--advanced-chat (chat)
-  "Insert CHAT into root buffer using advanced formatting."
-  ;; 2 lines formatting
-  (telega-ins--chat chat)
-  (telega-ins--with-attrs (list :face 'telega-root-advanced-second-line)
-    (telega-ins "  ")
-    (telega-ins--advanced-chat-2nd-line chat)
-    (telega-ins "\n")))
+(defun telega-ins--chat-button (chat &optional inserter)
+  "Inserter for CHAT as button."
+  ;; Insert only visible chat buttons
+  ;; See https://github.com/zevlg/telega.el/issues/3
+  (let ((visible-p (telega-filter-chats nil (list chat))))
+    (when visible-p
+      (make-text-button
+       (prog1 (point)
+         (funcall (or inserter 'telega-ins--chat) chat)
+         (telega-ins "\n"))
+       (point)
+       :type 'telega-chat
+       :value chat))))
 
-(defun telega-ins--advanced-chat-button (chat)
+(defun telega-ins--chat-full-button (chat)
   "Advanced button inserter for the CHAT.
 Could be used as value for `telega-inserter-chat-button'."
-  (telega-ins--chat-button chat 'telega-ins--advanced-chat))
+  (telega-ins--chat-button chat 'telega-ins--chat-full))
 
 (provide 'telega-ins)
 
