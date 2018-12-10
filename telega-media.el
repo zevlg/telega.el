@@ -86,7 +86,13 @@ hasn't been started, i.e. request hasn't been sent to server."
       (when (telega-file--downloaded-p file)
         (remhash file-id telega--downloadings)
         (when telega-debug
-          (message "Downloading completed: %s" (telega--tl-get file :local :path))))
+          (let ((msg (format "Downloading completed: %s (size=%s)"
+                             (telega--tl-get file :local :path)
+                             (file-size-human-readable
+                              (telega--tl-get file :local :downloaded_size)))))
+            (telega-debug msg)
+            (message msg))))
+
       (when (telega-file--uploaded-p file)
         (remhash file-id telega--uploadings))
       )))

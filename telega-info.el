@@ -371,7 +371,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
                           "(official)"
                         (format "(ID:%s)" api_id))
                       (if current-p
-                          " (current)"
+                          (propertize " (current)" 'face 'bold)
                         "")
                       "\n")
               (insert (format "%s, %s %s\n" device platform sys_ver))

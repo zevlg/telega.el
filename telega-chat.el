@@ -103,7 +103,7 @@ It could be user, secretChat, basicGroup or supergroup."
 (defun telega-chat--me ()
   "Chat with myself, a.k.a Saved Messages."
   ;; NOTE: Saved Messages has same id as me user
-  (telega-chat--get (plist-get (telega--getMe) :id) 'offline))
+  (telega-chat--get telega--me-id 'offline))
 
 (defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
@@ -141,6 +141,8 @@ If WITH-USERNAME is specified, append trailing username for this chat."
       (setq title (cl-ecase (telega-chat--type chat)
                     (private
                      (telega-user--name (telega-chat--user chat) 'name)))))
+    (when (and (eq chat (telega-chat--me)) telega-chat-me-custom-title)
+      (setq title telega-chat-me-custom-title))
     (when with-username
       (let ((un (plist-get (telega-chat--info chat) :username)))
         (when (and un (not (string-empty-p un)))
@@ -545,12 +547,12 @@ Used to reply to messages and edit message.")
   "Generate string to be used as ewoc's footer."
   (telega-ins--as-string
    (telega-ins telega-symbol-underline-bar)
-   (telega-ins--with-attrs (list :min telega-filters-fill-column
-                                 :max telega-filters-fill-column
+   (telega-ins--with-attrs (list :min telega-chat-fill-column
+                                 :max telega-chat-fill-column
                                  :align 'left
                                  :align-symbol telega-symbol-underline-bar
                                  :elide t
-                                 :elide-trail (/ telega-filters-fill-column 2))
+                                 :elide-trail (/ telega-chat-fill-column 2))
      (telega-ins--actions
       (gethash (plist-get telega-chatbuf--chat :id) telega--actions)))
    (telega-ins telega-symbol-underline-bar)

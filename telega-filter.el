@@ -50,10 +50,10 @@
 
 (define-button-type 'telega-active-filters
   :supertype 'telega
-  :format `("---" (prin1-to-string :min ,telega-root-width
+  :format `("---" (prin1-to-string :min ,telega-root-fill-column
                                    :align center
                                    :align-symbol "-"
-                                   :max ,telega-root-width
+                                   :max ,telega-root-fill-column
                                    :elide t
                                    :elide-trail 30)
             "---"))

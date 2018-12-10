@@ -146,7 +146,7 @@ See docstring for `display-buffer' for the values."
   :type 'string
   :group 'telega-root)
 
-(defcustom telega-root-width 63
+(defcustom telega-root-fill-column fill-column
   "*Maximum width to use in root buffer to display active filters and chats."
   :type 'integer
   :group 'telega-root)
@@ -160,6 +160,12 @@ See docstring for `display-buffer' for the values."
   '((all "[" "]"))
   "Brackets to use for chat button."
   :type 'list
+  :group 'telega-root)
+
+(defcustom telega-chat-me-custom-title (propertize "Saved Messages" 'face 'bold)
+  "*Custom title for the chat with myself.
+Set it to `nil' to use your user name instead of default \"Saved Messages\"."
+  :type 'string
   :group 'telega-root)
 
 (defcustom telega-status-animate-interval 0.5
@@ -184,7 +190,7 @@ For example:
 (defcustom telega-filters-custom
   '(("All" . all)
     ("Secrets" . (type secret))
-    ("Users" . (type private))
+    ("Private" . (type private))
     ("Channels" . (type channel))
     ("Groups" . (type basicgroup supergroup))
     ("Bots" . (type bot))
@@ -209,21 +215,25 @@ In form (NAME . FILTER-SPEC)."
   "Inserters customization for telega."
   :group 'telega)
 
-(defcustom telega-inserter-chat-button 'telega-ins--chat-button
+(defcustom telega-inserter-chat-button 'telega-ins--chat-full-button
   "Inserter for the chat button in root buffer."
   :type 'function
   :group 'telega-inserters)
 
 
+(defgroup telega-chat nil
+  "Customization for chat buffer."
+  :group 'telega)
+
 (defcustom telega-chat-input-prompt ">>> "
   "*Prompt for the chat buffers."
   :type 'string
-  :group 'telega)
+  :group 'telega-chat)
 
 (defcustom telega-chat-reply-prompt telega-chat-input-prompt
   "*Prompt to use when replying to message."
   :type 'string
-  :group 'telega)
+  :group 'telega-chat)
 
 (defcustom telega-chat-edit-prompt telega-chat-input-prompt
   "*Prompt to use when replying to message."
@@ -306,6 +316,10 @@ Used by `telega-msg-autodownload-media'."
   :group 'telega)
 
 ;; special symbols
+(defgroup telega-symbol nil
+  "Group to customize special symbols used by telega."
+  :group 'telega)
+
 (defcustom telega-symbol-eliding "..."
   "*String used for eliding long string in formats.
 Nice looking middle dots can be done by setting
@@ -313,73 +327,73 @@ Nice looking middle dots can be done by setting
 or set it to \"\\u2026\" or \"\\u22ef\" to use unicode char for
 ellipsis."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-eye "\U0001F441"
   "String to use as eye symbol."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-pin "\U0001F4CC"
   "*String to use as pin symbol."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-lock "\U0001F512"
   "*String to use as lock symbol."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-document "\U0001F4C4"
   "*String to use as document symbol."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-photo "\U0001F4F7"
   "*String to use as photo symbol."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-msg-pending "\u231B"
   "Symbol to use for pending outgoing messages."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-msg-succeed "\u2713"
   "Symbol to use for successfully sent messages."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-msg-viewed "\u2714"
   "Symbol to use for seen outgoing messages."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-msg-failed "\u26D4"
   "Mark messages that have sending state failed."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-vertical-bar "| "
   "Symbol used to form vertical lines."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-underline-bar "_"
   "Symbol used to draw underline bar.
 \"\uFF3F\" is also good candidate for underline bar."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 (defcustom telega-symbol-draft (propertize "Draft" 'face 'error)
   "Symbol used for draft formatting."
   :type 'string
-  :group 'telega)
+  :group 'telega-symbol)
 
 
 ;;; Faces
 (defgroup telega-faces nil
-  "Faces used by telega."
+  "Group to customize faces used by telega."
   :group 'telega)
 
 (defface telega-filter-button-active '((t :inherit default))
@@ -468,11 +482,6 @@ You can customize its `:height' to fit width of the default face."
   "Face to display urls."
   :group 'telega-faces)
 
-(defface telega-root-advanced-second-line
-  '((t :height 0.5))
-  "Face used to display second line of chat button with advanced inserter."
-  :group 'telega-faces)
-
 (defface telega-chat-user-title
   '((t :inherit 'widget-field))
   "Face to display user title in chat buffers."
@@ -505,7 +514,7 @@ You can customize its `:height' to fit width of the default face."
 
 
 (defgroup telega-hooks nil
-  "Hooks called by telega."
+  "Group to customize hooks used by telega."
   :group 'telega)
 
 (defcustom telega-root-mode-hook nil

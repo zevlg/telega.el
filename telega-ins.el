@@ -364,7 +364,7 @@ Special message is one of: `messageContactRegistered',
   (telega-ins "  ")
 
   ;; And the status
-  (let ((max-width (- telega-root-width (current-column)))
+  (let ((max-width (- telega-root-fill-column (current-column)))
         (chat-actions (gethash (plist-get chat :id) telega--actions))
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message)))

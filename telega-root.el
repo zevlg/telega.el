@@ -67,7 +67,7 @@ Used for optimization, when initially fetching chats, to speed things up.")
 
 (defun telega-root--header ()
   "Generate string used as root header."
-  (let ((filters-width (- telega-root-width 8)))
+  (let ((filters-width (- telega-root-fill-column 8)))
     (concat
      (telega-fmt-eval
       `("----" (prin1-to-string :min ,filters-width
@@ -106,7 +106,8 @@ Keymap:
   (dolist (custom telega-filters-custom)
     (telega-filter-button--set-inactivity-props
      (telega-button-insert 'telega-filter :value custom))
-    (if (> (+ 2 (current-column) telega-filter-button-width) telega-root-width)
+    (if (> (+ 2 (current-column) telega-filter-button-width)
+           telega-root-fill-column)
         (insert "\n")
       (insert "   ")))
 

@@ -32,7 +32,7 @@
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.2.0";
+const char* version = "0.3.0";
 
 int parse_mode = 0;
 #define PARSE_MODE_JSON 1
@@ -77,7 +77,8 @@ tdlib_loop(void* cln)
                 const char *res = td_json_client_receive(cln, 1);
                 if (res) {
                         tdat_append(&json_src, res, strlen(res));
-                        fprintf(stderr, "IN JSON: %s\n", res);
+                        if (verbosity > 4)
+                                fprintf(stderr, "OUTPUT JSON: %s\n", res);
                         tdat_json_value(&json_src, &plist_dst);
                         tdat_append1(&plist_dst, "\0");
 
@@ -134,6 +135,8 @@ stdin_loop(void* cln)
 
                 tdat_plist_value(&plist_src, &json_dst);
                 tdat_append1(&json_dst, "\0");
+                if (verbosity > 4)
+                        fprintf(stderr, "INPUT: %s\n", json_dst.data);
 
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, json_dst.data);

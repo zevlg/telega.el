@@ -232,6 +232,22 @@ With prefix arg force quit without confirmation."
   ;; no-op
   )
 
+(defun telega-version (&optional interactive-p)
+  "Return telega (and tdlib) version.
+If called interactively, then print version into echo area."
+  (interactive "p")
+  (let* ((tdlib-version (plist-get telega--options :version))
+         (version (concat "telega v"
+                          telega-version
+                          " ("
+                          (if tdlib-version
+                              (concat "TDLib version " tdlib-version)
+                            "TDLib version unknown, server not running")
+                          ")")))
+    (if interactive-p
+        (message version)
+      version)))
+    
 (provide 'telega)
 
 ;;; telega.el ends here
