@@ -392,6 +392,55 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     (insert (plist-get (telega-server--call `(:@type "getTermsOfService"))
                        :text))))
 
+(defun telega-describe-network-stats (only-current)
+  "Show network statistics."
+  (interactive "P")
+  (with-help-window "*Telega Network Statistics*"
+    (set-buffer standard-output)
+    (let* ((net-stats (telega-server--call
+                       (list :@type "getNetworkStatistics"
+                             :only_current (or only-current :false))))
+           (total-sent 0)
+           (total-recv 0))
+      (insert "Since: ")
+      (telega-ins--date (plist-get net-stats :since_date))
+      (insert "\n\n")
+      (mapc (lambda (entry)
+              (incf total-sent (plist-get entry :sent_bytes))
+              (incf total-recv (plist-get entry :received_bytes))
+
+              (cl-ecase (telega--tl-type entry)
+                (networkStatisticsEntryFile
+                 (telega-ins-fmt
+                  "File: %s"
+                  (substring
+                   (plist-get (plist-get entry :file_type) :@type) 8)))
+                (networkStatisticsEntryCall
+                 (telega-ins-fmt
+                  "Call: %s" (telega-duration-human-readable
+                              (plist-get entry :duration)))))
+              (insert " via ")
+              (cl-ecase (telega--tl-type (plist-get entry :network_type))
+                (networkTypeNone (insert "Unknown"))
+                (networkTypeMobile (insert "Mobile"))
+                (networkTypeMobileRoaming (insert "Roaming"))
+                (networkTypeWiFi (insert "Wi-Fi"))
+                (networkTypeOther (insert "Ethernet")))
+              (insert " ")
+              (telega-ins-fmt "sent: %s received %s"
+                              (file-size-human-readable
+                               (plist-get entry :sent_bytes))
+                              (file-size-human-readable
+                               (plist-get entry :received_bytes)))
+              (insert "\n"))
+            (plist-get net-stats :entries))
+      (insert "\n")
+      (telega-ins-fmt "Total sent: %s\n"
+                      (file-size-human-readable total-sent))
+      (telega-ins-fmt "Total recv: %s\n"
+                      (file-size-human-readable total-recv))
+      )))
+
 (provide 'telega-info)
 
 ;;; telega-info.el ends here
