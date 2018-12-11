@@ -79,7 +79,7 @@ Return `t'."
        (when (progn ,@body)
          (save-excursion
            (goto-char ,spnt-sym)
-           (insert ,prefix))))))
+           (telega-ins ,prefix))))))
 (put 'telega-ins-prefix 'lisp-indent-function 'defun)
 
 (defun telega-ins--button-format (button)
@@ -195,7 +195,7 @@ Special message is one of: `messageContactRegistered',
          (telega-ins (telega-user--name sender)
                      " renamed group to \"" (plist-get content :title) "\""))
         (telega-ins-fmt
-         "<unsupported chat action: %S>" (telega--tl-type content))))
+         "<unsupported special message: %S>" (telega--tl-type content))))
       (telega-ins ")--")
 
     (telega-ins--with-attrs (list :align 'right :min 10)

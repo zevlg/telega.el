@@ -24,9 +24,24 @@
 ;; Utility functions to be used by telega
 
 ;;; Code:
+
 (require 'ewoc)
 (require 'cl-lib)
+(require 'files)                        ; `locate-file'
 
+(defun telega-duration-human-readable (seconds)
+  "Convert SECONDS to human readable string."
+  (concat (when (>= seconds 3600)
+            (prog1 (format "%dh:" (/ seconds 3600))
+              (setq seconds (% seconds 3600))))
+          (when (>= seconds 60)
+            (prog1 (format "%dm:" (/ seconds 60))
+              (setq seconds (% seconds 60))))
+          (format "%ds" seconds)))
+
+(defun telega-etc-file (filename)
+  "Return absolute path to FILENAME from etc/ directory in telega."
+  (locate-file (concat "etc/" filename) load-path))
 
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."
@@ -152,8 +167,7 @@
 
 (defun telega-ewoc--find-node-by-data (ewoc data)
   "Find EWOC's node by its DATA."
-  (telega-ewoc--find-node ewoc (lambda (node-data)
-                                 (eq node-data data))))
+  (telega-ewoc--find-node ewoc (lambda (node-data) (eq node-data data))))
 
 (defun telega-ewoc--set-header (ewoc header)
   "Set EWOC's new HEADER."
@@ -174,7 +188,6 @@
        (hf-pp (ewoc--hf-pp ewoc)))
     (setf (ewoc--node-data foot) footer)
     (ewoc--refresh-node hf-pp foot dll)))
-
 
 (provide 'telega-util)
 

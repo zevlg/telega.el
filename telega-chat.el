@@ -338,8 +338,12 @@ Return newly created chat."
                         ""))))
     (insert (format "Id: %d\n" (plist-get chat :id)))
     (when (telega-chat--public-p chat)
-      (insert "Link: https://t.me/"
-              (plist-get (telega-chat--supergroup chat) :username) "\n"))
+      (let ((link (concat (or (plist-get telega--options :t_me_url)
+                              "https://t.me/")
+                          (plist-get (telega-chat--supergroup chat) :username))))
+        (insert "Link: ")
+        (apply 'insert-text-button link (telega-link-props 'url link 'link))
+        (insert "\n")))
     (when telega-debug
       (insert (format "Order: %s\n" (telega-chat--order chat))))
 
