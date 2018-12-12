@@ -195,17 +195,21 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                     (substring (plist-get in-link :@type) 9)
                     (substring (plist-get out-link :@type) 9)))
     (unless (string-empty-p username)
+      ;; I18N: lng_info_username_label
       (insert (format "Username: @%s\n" username)))
     (unless (string-empty-p phone_number)
+      ;; I18N: lng_settings_phone_label
       (insert (format "phone: +%s\n" phone_number)))
     (insert (format "Seen: %s\n" (telega-user--seen user)))
     (unless (string-empty-p bio)
+      ;; I18N: lng_bio_placeholder
       (insert (telega-fmt-labeled-text "bio: " bio) "\n"))
     (unless (string-empty-p share-text)
       (insert (telega-fmt-labeled-text "Share text: " share-text) "\n")))
 
   (let ((chats-in-common (telega-user--chats-in-common user)))
     (when chats-in-common
+      ;; I18N: lng_profile_common_groups_section
       (insert (format "%d chats in common:\n" (length chats-in-common)))
       (dolist (chat chats-in-common)
         (insert "    ")
