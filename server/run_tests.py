@@ -32,6 +32,7 @@ def run_telega(input, flag):
 def run_single_test(test, flag):
     """Return True if TEST passed.
     FLAG is passed to telega-server."""
+    should_pass, input, expected = test
     try:
         status, output = run_telega(test[1], flag)
     except subprocess.TimeoutExpired:
@@ -39,16 +40,26 @@ def run_single_test(test, flag):
     except OSError as e:
         raise e
 
-    if test[0] and status != 0:
-        print('FAILED  %s -> %s' % (test[1], test[2]))
-        return False
-    elif test[0] and test[2] != output:
-        print('FAILED  %s -> %s   UNEXPECTED result: %s' % (
-            test[1], test[2], output))
-        return False
+    if should_pass:
+        if status != 0:
+            print('FAILED  %s   with status=%d, but was expecting success' % (
+                input, status))
+            return False
+        elif expected != output:
+            print('FAILED  %s -> %s   but was expecting: %s' % (
+                input, output, expected))
+        else:
+            print('PASSED  %s -> %s' % (input, output))
+            return True
     else:
-        print('PASSED  %s -> %s' % (test[1], test[2]))
-        return True
+        # should fail
+        if status == 0:
+            print('FAILED  %s -> %s   parsed, while expecting it to fail' % (
+                input, output, status))
+            return False
+        else:
+            print('PASSED  %s  failed to parse, as expected' % (input, ))
+            return True
 
 
 def run_tests(args):
