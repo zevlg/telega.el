@@ -32,7 +32,10 @@
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.3.0";
+const char* version = "0.3.1";
+
+/* true when tdlib_loop is running */
+volatile bool tdlib_running;
 
 int parse_mode = 0;
 #define PARSE_MODE_JSON 1
@@ -73,8 +76,8 @@ tdlib_loop(void* cln)
         struct telega_dat json_src = TDAT_INIT;
         struct telega_dat plist_dst = TDAT_INIT;
 
-        while (true) {
-                const char *res = td_json_client_receive(cln, 1);
+        while (tdlib_running) {
+                const char *res = td_json_client_receive(cln, 0.5);
                 if (res) {
                         tdat_append(&json_src, res, strlen(res));
                         if (verbosity > 4)
@@ -217,10 +220,16 @@ main(int ac, char** av)
         void *client = td_json_client_create();
 
         pthread_t td_thread;
+        tdlib_running = true;
         int rc = pthread_create(&td_thread, NULL, tdlib_loop, client);
         assert(rc == 0);
 
         stdin_loop(client);
+
+        /* Gracefully stop the tdlib_loop */
+        tdlib_running = false;
+        rc = pthread_join(td_thread, NULL);
+        assert(rc == 0);
 
         td_json_client_destroy(client);
 

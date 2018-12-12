@@ -73,13 +73,21 @@ Raise error if not found"
 (defsubst telega-server--parse-cmd ()
   "Parse single reply from telega-server."
   (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
+    ;; New command always start at the beginning, no garbage inbetween
+    ;; commands
+    (assert (= (match-beginning 0) 1))
+
     (let ((cmd (match-string 1))
           (sexpsz (string-to-number (match-string 2))))
       (when (> (- (point-max) (point)) sexpsz)
         (let ((value (read (current-buffer))))
           (prog1
               (list cmd (telega--tl-unpack value))
-            (delete-region (point-min) (point))))))))
+            (delete-region (point-min) (point))
+
+            ;; remove trailing newline
+            (assert (= (following-char) ?\n))
+            (delete-char 1)))))))
 
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
@@ -122,9 +130,14 @@ Raise error if not found"
 
       ;; telega-server buffer is killed, but telega-server process
       ;; still sends us some events
-      (with-temp-buffer
-        (insert output)
-        (telega-server--parse-commands)))))
+      ;;
+      ;; NOTE: it causes problems when you quit telega in the middle
+      ;; of chats updates, so commented out
+      ;; 
+      ;; (with-temp-buffer
+      ;;   (insert output)
+      ;;   (telega-server--parse-commands))
+      )))
 
 (defun telega-server--sentinel (proc event)
   "Sentinel for the telega-server process."
@@ -134,7 +147,12 @@ Raise error if not found"
                "")))
     (telega-status--set
      (concat "telega-server: " status (unless (string-empty-p err) "\n") err)
-     'raw)))
+     'raw)
+
+    ;; Notify in echo area if telega-server exited abnormally
+    (unless (zerop (process-exit-status proc))
+      (message "[%d]telega-server: %s" (process-exit-status proc) status))
+    ))
 
 (defun telega-server--send (sexp)
   "Send SEXP to telega-server."
