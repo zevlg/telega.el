@@ -454,10 +454,7 @@ Renews the BUTTON."
     (telega-button-delete button)
     (let ((cpnt (point)))
       (insert new-label)
-      (set-marker button cpnt))))
-
-  (button-put button :value telega--status)
-  (telega-button--redisplay button)
+      (set-marker button cpnt)))
 
 (defun telega-button-properties (button)
   "Return all BUTTON properties specific for this type of buttons."
