@@ -57,6 +57,10 @@
     (define-key map (kbd "C-x C-/") 'telega-filter-redo)
     (define-key map (kbd "C-x C-_") 'telega-filter-redo)
 
+    (define-key map (kbd "r") 'telega-chat-mark-as-read)
+    (define-key map (kbd "d") 'telega-chat-delete)
+    (define-key map (kbd "j") 'telega-chat-join-by-link)
+
     (define-key map (kbd "q") 'telega-kill)
     (define-key map (kbd "c") 'telega-chat-with)
     map)
@@ -111,7 +115,10 @@ Keymap:
     (ewoc-enter-last telega-root--ewoc chat))
 
   (setq buffer-read-only t)
-  (add-hook 'kill-buffer-hook 'telega-root--killed nil t))
+  (add-hook 'kill-buffer-hook 'telega-root--killed nil t)
+
+  (when telega-use-tracking
+    (tracking-mode 1)))
 
 (defun telega-root--killed ()
   "Run when telega root buffer is killed.
@@ -180,7 +187,12 @@ If RAW is given then do not modify status for animation."
     (let ((button (button-at (point-min))))
       (cl-assert (eq (button-type button) 'telega-status)
                  nil "Telega status button is gone")
-      (telega-button--update-value button telega--status))))
+      (telega-button--update-value button telega--status))
+
+    ;; ;; Update modeline
+    ;; (setq mode-line-process (concat ":" telega--status))
+    ;; (force-mode-line-update)
+    ))
 
 
 (defun telega-root--redisplay ()
@@ -269,6 +281,15 @@ If NEW-CHAT-P is non-nil, then new CHAT is inserted in its order."
   "Number of unread messages has changed."
   (setq telega--unread-count (plist-get event :unread_count)
         telega--unread-unmuted-count (plist-get event :unread_unmuted_count))
+
+  (with-telega-root-buffer
+    (setq mode-line-buffer-identification
+          (telega-root--modeline-buffer-identification))
+    (force-mode-line-update)))
+
+(defun telega--on-updateUnreadChatCount (event)
+  "Number of unread chats, i.e. with unread messages or marked as unread, has changed."
+  (setq telega--unread-chat-count (cddr event))
 
   (with-telega-root-buffer
     (setq mode-line-buffer-identification

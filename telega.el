@@ -38,7 +38,7 @@
 (require 'telega-util)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.3.0")
+(defconst telega-version "0.3.0")       ;tdlib API = 1.3.0
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
@@ -155,10 +155,11 @@ With prefix arg force quit without confirmation."
 
 (defun telega--setOptions (&optional options-plist)
   "Send custom options from `telega-options-plist' to server."
-  (cl-loop for (prop-name value) in (or options-plist telega-options-plist)
+  (cl-loop for (prop-name value) on (or options-plist telega-options-plist)
+           by 'cddr
            do (telega-server--send
                (list :@type "setOption"
-                     :name prop-name
+                     :name (substring (symbol-name prop-name) 1) ; strip `:'
                      :value (list :@type (cond ((memq value '(t nil))
                                                 "optionValueBoolean")
                                                ((integerp value)
@@ -169,8 +170,9 @@ With prefix arg force quit without confirmation."
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
-  (setq telega--me-id
-        (plist-get (telega-server--call (list :@type "getMe")) :id))
+  (setq telega--me-id (plist-get telega--options :my_id))
+  (assert telega--me-id)
+
   (telega--setOptions)
   ;; Request for chats/users/etc
   (telega--getChats)

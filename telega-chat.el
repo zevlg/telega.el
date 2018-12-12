@@ -244,6 +244,13 @@ If WITH-USERNAME is specified, append trailing username for this chat."
 
     (telega-debug "TODO: `telega--on-updateChatDraftMessage' handle draft message")))
 
+(defun telega--on-updateChatIsMarkedAsUnread (event)
+  (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :is_marked_as_unread
+               (plist-get event :is_marked_as_unread))
+    (telega-root--chat-update chat)))
+  
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (let ((chat-ids (plist-get result :chat_ids)))
@@ -318,12 +325,15 @@ Return newly created chat."
    (list :@type "createPrivateChat"
          :user_id (plist-get user :id))))
 
-(defun telega--viewMessages (chat messages)
-  "Mark CHAT's MESSAGES as read."
+(defun telega--viewMessages (chat messages &optional force)
+  "Mark CHAT's MESSAGES as read.
+Use non-nil value for FORCE, if messages in closed chats should
+be marked as read."
   (telega-server--send
    (list :@type "viewMessages"
          :chat_id (plist-get chat :id)
-         :message_ids (cl-map 'vector (telega--tl-prop :id) messages))))
+         :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
+         :force_read (or force :false))))
 
 (defun telega--toggleChatIsPinned (chat)
   "Toggle pin state of the CHAT."
@@ -455,6 +465,37 @@ Return newly created chat."
    (or (telega-joinChatByInviteLink link)
        (error "Can't join chat: %s"
               (plist-get telega-server--last-error :message)))))
+
+(defun telega-chat-mark-as-read (&rest chats)
+  "Mark CHATS as read.
+If `universal-argument' is used, then mark as read all chats
+matching currently active filters."
+  (interactive (if current-prefix-arg
+                   telega--filtered-chats
+                 (let ((chat-button (button-at (point))))
+                   (unless chat-button
+                     (error "No chat button at point"))
+                   (list (button-get chat-button :value)))))
+  (dolist (chat chats)
+    (telega-server--send
+     (list :@type "readAllChatMentions" :chat_id (plist-get chat :id)))
+    (telega--viewMessages chat (list (plist-get chat :last_message)) t)
+    ))
+
+(defun telega-chat-delete (&rest chats)
+  "Delete CHATS.
+If `universal-argument' is used, then mark as read all chats
+matching currently active filters."
+  (interactive (if current-prefix-arg
+                   telega--filtered-chats
+                 (let ((chat-button (button-at (point))))
+                   (unless chat-button
+                     (error "No chat button at point"))
+                   (list (button-get chat-button :value)))))
+  (when (y-or-n-p "Delete %d chats? " (length chats))
+    (dolist (chat chats)
+      ;; TODO: delete CHAT
+      )))
 
 
 ;;; Chat Buffer
@@ -797,7 +838,11 @@ Return newly inserted message button."
       (with-telega-chatbuf (telega-msg--chat msg)
         (telega-save-excursion
           (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
-          (ewoc-enter-last telega-chatbuf--ewoc msg)))
+          (ewoc-enter-last telega-chatbuf--ewoc msg)
+
+          (when telega-use-tracking
+            (tracking-add-buffer (current-buffer)))
+          ))
 
     (run-hook-with-args 'telega-chat-message-hook msg disable-notification)))
 

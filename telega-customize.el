@@ -45,10 +45,9 @@
   :type 'string
   :group 'telega)
 
-(defcustom telega-options-plist nil
+(defcustom telega-options-plist '(:localization_target "tdesktop")
   "*Plist of options to set.
-Only writable options can be set.  See: https://core.telegram.org/tdlib/options
-NOT IMPLEMENTED"
+Only writable options can be set.  See: https://core.telegram.org/tdlib/options"
   :type 'plist
   :group 'telega)
 
@@ -99,6 +98,12 @@ Implies `telega-use-chat-info-database' set to non-nil."
 
 (defcustom telega-use-short-filenames t
   "*Non-nil to cut /home/user/.telega/cache from filenames."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-use-tracking nil
+  "*Non-nil to enable builtin tracking.el support.
+Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega)
 
@@ -398,6 +403,11 @@ ellipsis."
 
 (defcustom telega-symbol-draft (propertize "Draft" 'face 'error)
   "Symbol used for draft formatting."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-unread "●"
+  "Symbol used for chats marked as unread."
   :type 'string
   :group 'telega-symbol)
 

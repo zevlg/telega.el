@@ -51,6 +51,8 @@
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
 (defvar telega--unread-count 0 "Total number of unread messages.")
 (defvar telega--unread-unmuted-count 0 "Total number of unread/unmuted messages.")
+(defvar telega--unread-message-count nil "Plist with counts for unread/unmuted messages.")
+(defvar telega--unread-chat-count nil "Plist with counts for unread/unmuted chats.")
 
 (defvar telega--chat-buffers nil "List of all chat buffers.")
 (defvar telega--downloadings nil
