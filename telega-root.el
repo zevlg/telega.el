@@ -95,7 +95,8 @@ Keymap:
   (erase-buffer)
 
   ;; Status goes first
-  (telega-button--insert 'telega-status telega--status)
+  (telega-button--insert
+   'telega-status (cons telega--status telega--status-aux))
 
   (insert "\n\n")
 
@@ -149,16 +150,31 @@ Inhibits read-only flag."
   'inactive t)
 
 (defun telega-status--inserter (status)
-  "Default inserter for the `telega-status' button."
-  (telega-ins "Status: " status))
+  "Default inserter for the `telega-status' button.
+STATUS is cons with connection status as car and aux status as cdr."
+  (let ((conn-status (car status))
+        (aux-status (cdr status)))
+    (telega-ins "Status: " conn-status)
+    (unless (string-empty-p aux-status)
+      (if (< (current-column) 28)
+          (move-to-column 30 t)
+        (insert "  "))
+      (telega-ins aux-status))))
+
+(defmacro telega-status--animate-dots (status)
+  "Animate status dots at the end of the STATUS string.
+Return `nil' if there is nothing to animate and new string otherwise."
+  `(when (string-match "\\.+$" ,status)
+     (concat (substring ,status nil (match-beginning 0))
+             (make-string
+              (1+ (% (- (match-end 0) (match-beginning 0)) 3)) ?.))))
 
 (defun telega-status--animate ()
-  "Animate dots at the end of the current connection status."
-  (when (string-match "\\.+$" telega--status)
-    (telega-status--set
-     (concat (substring telega--status nil (match-beginning 0))
-             (make-string (1+ (% (- (match-end 0) (match-beginning 0)) 3)) ?.))
-     'raw)))
+  "Animate dots at the end of the current connection or/and aux status."
+  (let ((conn-status (telega-status--animate-dots telega--status))
+        (aux-status (telega-status--animate-dots telega--status-aux)))
+    (when (or conn-status aux-status)
+      (telega-status--set conn-status aux-status 'raw))))
 
 (defun telega-status--start-timer ()
   "Start telega status animation timer."
@@ -169,30 +185,36 @@ Inhibits read-only flag."
                         telega-status-animate-interval
                         #'telega-status--animate)))
 
-(defun telega-status--set (new-status &optional raw)
-  "Set new status for the telegram connection.
-If RAW is given then do not modify status for animation."
-  (telega-debug "Status: %s --> %s" telega--status new-status)
+(defun telega-status--set (conn-status &optional aux-status raw)
+  "Set new status for the telegram connection to CONN-STATUS.
+aux status is set to AUX-STATUS.  Both statuses can be `nil' to
+unchange their current value.
+If RAW is given then do not modify statuses for animation."
+  (let ((old-status (cons telega--status telega--status-aux)))
+    (when conn-status
+      (setq telega--status conn-status))
+    (when aux-status
+      (setq telega--status-aux aux-status))
 
-  (setq telega--status new-status)
-  (unless raw
-    (if (string-match "ing" telega--status)
-        (progn
-          (setq telega--status (concat telega--status "."))
-          (telega-status--start-timer))
-      (when telega-status--timer
-        (cancel-timer telega-status--timer))))
+    (unless raw
+      (telega-debug "Status: %s --> %s"
+                    old-status (cons telega--status telega--status-aux))
+
+      (cond ((string-match "ing" telega--status)
+             (setq telega--status (concat telega--status "."))
+             (telega-status--start-timer))
+            ((string-match "\\.+$" telega--status-aux)
+             (telega-status--start-timer))
+            (telega-status--timer
+             (cancel-timer telega-status--timer))))
 
   (with-telega-root-buffer
     (let ((button (button-at (point-min))))
       (cl-assert (eq (button-type button) 'telega-status)
                  nil "Telega status button is gone")
-      (telega-button--update-value button telega--status))
-
-    ;; ;; Update modeline
-    ;; (setq mode-line-process (concat ":" telega--status))
-    ;; (force-mode-line-update)
-    ))
+      (telega-button--update-value
+       button (cons telega--status telega--status-aux))))
+  ))
 
 
 (defun telega-root--redisplay ()

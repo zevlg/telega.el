@@ -61,7 +61,15 @@ Return chat from `telega--chats'."
             chat
           (puthash chat-id chat telega--chats)
           ;; Place chat in correct place inside `telega--ordered-chats'
-          (telega--ordered-chats-insert chat)))))
+          (telega--ordered-chats-insert chat)
+
+          ;; In case of initial chats load, redisplay custom filters
+          ;; on every 50 chats loaded
+          (when (and telega-filters--inhibit-redisplay
+                     (zerop (% (length telega--ordered-chats) 50)))
+            (let ((telega-filters--inhibit-redisplay nil))
+              (telega-filters--redisplay)))
+          ))))
 
 (defun telega-chat--get (chat-id &optional offline-p)
   "Get chat by its CHAT-ID.
@@ -265,10 +273,9 @@ If WITH-USERNAME is specified, append trailing username for this chat."
           (telega--getChats))
 
       ;; All chats has been fetched
-      (message "telega: all chats are fetched")
-
       (setq telega-filters--inhibit-redisplay nil)
       (telega-filters--redisplay)
+      (telega-status--set nil "")       ;reset aux status
 
       (run-hooks 'telega-chats-fetched-hook))))
 

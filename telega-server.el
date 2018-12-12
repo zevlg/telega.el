@@ -147,6 +147,7 @@ Raise error if not found"
                "")))
     (telega-status--set
      (concat "telega-server: " status (unless (string-empty-p err) "\n") err)
+     ""
      'raw)
 
     ;; Notify in echo area if telega-server exited abnormally
@@ -214,7 +215,7 @@ when result is received."
       (setq telega-server--results (make-hash-table :test 'eq))
       (setq telega-server--buffer (current-buffer))
 
-      (telega-status--set "telega-server: starting")
+      (telega-status--set "telega-server: starting.")
       (let ((proc (start-process
                    "telega-server"
                    (current-buffer)

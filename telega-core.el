@@ -37,6 +37,8 @@
 (defvar telega--me-id nil "User id of myself.")
 (defvar telega--options nil "Options updated from telega-server.")
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
+(defvar telega--status-aux
+  "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
 (defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions)")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
@@ -65,6 +67,8 @@ Used to update messages on file updates.")
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
+  (setq telega--status "Disconnected")
+  (setq telega--status-aux "")
   (setq telega--me-id -1)
   (setq telega--options nil)
   (setq telega--chats (make-hash-table :test 'eq))
@@ -103,7 +107,9 @@ Done when telega server is ready to receive queries."
            (,col-sym (current-column)))
        (unwind-protect
            (progn ,@body)
-         (goto-line ,line-sym)
+         (goto-char (point-min))
+         (assert (> ,line-sym 0))
+         (forward-line (1- ,line-sym))
          (move-to-column ,col-sym)))))
 (put 'telega-save-cursor 'lisp-indent-function 0)
 

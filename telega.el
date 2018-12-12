@@ -175,6 +175,7 @@ With prefix arg force quit without confirmation."
 
   (telega--setOptions)
   ;; Request for chats/users/etc
+  (telega-status--set nil "Fetching chats...")
   (telega--getChats)
 
   (run-hooks 'telega-ready-hook))
