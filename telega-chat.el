@@ -253,22 +253,22 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (if (> (length chat-ids) 0)
         ;; Redisplay the root's custom filters and then
         ;; Continue fetching chats
-        (let ((telega-root--inhibit-filters-redisplay nil))
-          (telega-root--filters-redisplay)
+        (let ((telega-filters--inhibit-redisplay nil))
+          (telega-filters--redisplay)
           (telega--getChats))
 
       ;; All chats has been fetched
       (message "telega: all chats are fetched")
 
-      (setq telega-root--inhibit-filters-redisplay nil)
-      (telega-root--filters-redisplay)
+      (setq telega-filters--inhibit-redisplay nil)
+      (telega-filters--redisplay)
 
       (run-hooks 'telega-chats-fetched-hook))))
 
 (defun telega--getChats ()
   "Retreive all chats from the server in async manner."
-  ;; Do not update filters on every chats fetched, update them at the end
-  (setq telega-root--inhibit-filters-redisplay t)
+  ;; Do not update filters on every chat fetched, update them at the end
+  (setq telega-filters--inhibit-redisplay t)
 
   (let* ((last-chat (car (last telega--ordered-chats)))
          (offset-order (or (plist-get last-chat :order) "9223372036854775807"))
@@ -325,8 +325,74 @@ Return newly created chat."
          :chat_id (plist-get chat :id)
          :message_ids (cl-map 'vector (telega--tl-prop :id) messages))))
 
-(defun telega-chat-show-info (chat)
-  "Show help buffer with info about CHAT."
+(defun telega--toggleChatIsPinned (chat)
+  "Toggle pin state of the CHAT."
+  (telega-server--send
+   (list :@type "toggleChatIsPinned"
+         :chat_id (plist-get chat :id)
+         :is_pinned (if (plist-get chat :is_pinned) :false t))))
+
+(defun telega--openChat (chat)
+  "Mark CHAT as opened."
+  (telega-server--send
+   (list :@type "openChat"
+         :chat_id (plist-get chat :id))))
+
+(defun telega--closeChat (chat)
+  "Mark CHAT as closed."
+  (telega-server--send
+   (list :@type "closeChat"
+         :chat_id (plist-get chat :id))))
+
+;;; Chat buttons in root buffer
+(defvar telega-chat-button-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map button-map)
+    (define-key map (kbd "i") 'telega-chat-info)
+    (define-key map (kbd "h") 'telega-chat-info)
+    (define-key map (kbd "C-c p") 'telega-chat-pin)
+    (define-key map (kbd "DEL") 'telega-chat-delete)
+    map)
+  "The key map for telega chat buttons.")
+
+(define-button-type 'telega-chat
+  :supertype 'telega
+  :inserter telega-inserter-for-chat-button
+  'keymap telega-chat-button-map
+  'action #'telega-chat-button--action)
+
+(defun telega-chat-button--action (button)
+  "Action to take when chat BUTTON is pressed."
+  (telega-chat--pop-to-buffer (button-get button :value)))
+
+(defun telega-chat--pp (chat)
+  "Pretty printer for CHAT button."
+  ;; Insert only visible chat buttons
+  ;; See https://github.com/zevlg/telega.el/issues/3
+  (let ((visible-p (telega-filter-chats nil (list chat))))
+    (when visible-p
+      (telega-button--insert 'telega-chat chat)
+      (insert "\n"))))
+
+(defun telega-chat--pop-to-buffer (chat)
+  "Pop to CHAT's buffer."
+  (pop-to-buffer (telega-chatbuf--get-create chat)
+                 telega-chat--display-buffer-action))
+
+(defun telega-chat-at-point ()
+  "Return current chat at point."
+  (let ((button (button-at (point))))
+    (when (and button (eq (button-type button) 'telega-chat))
+      (button-get button :value))))
+
+(defun telega-chat-pin (chat)
+  "Toggle chat's pin state at point."
+  (interactive (list (telega-chat-at-point)))
+  (telega-toggleChatIsPinned chat))
+
+(defun telega-chat-info (chat)
+  "Show info about chat at point."
+  (interactive (list (telega-chat-at-point)))
   (with-help-window "*Telegram Chat Info*"
     (set-buffer standard-output)
     (insert (format "%s: %s %s\n"
@@ -362,61 +428,6 @@ Return newly created chat."
     (when telega-debug
       (insert (format "\nChat: %S" chat)))
     ))
-
-(defun telega--toggleChatIsPinned (chat)
-  "Toggle pin state of the CHAT."
-  (telega-server--send
-   (list :@type "toggleChatIsPinned"
-         :chat_id (plist-get chat :id)
-         :is_pinned (if (plist-get chat :is_pinned) :false t))))
-
-(defun telega--openChat (chat)
-  "Mark CHAT as opened."
-  (telega-server--send
-   (list :@type "openChat"
-         :chat_id (plist-get chat :id))))
-
-(defun telega--closeChat (chat)
-  "Mark CHAT as closed."
-  (telega-server--send
-   (list :@type "closeChat"
-         :chat_id (plist-get chat :id))))
-
-;;; Chat buttons in root buffer
-(defvar telega-chat-button-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map button-map)
-    (define-key map (kbd "i") 'telega-chat-button-info)
-    (define-key map (kbd "h") 'telega-chat-button-info)
-    (define-key map (kbd "C-c p") 'telega-chat-button-pin)
-    (define-key map (kbd "DEL") 'telega-chat-button-delete)
-    map)
-  "The key map for telega chat buttons.")
-
-(define-button-type 'telega-chat
-  :supertype 'telega
-  :format #'telega-chat-button--format
-  'keymap telega-chat-button-map
-  'action #'telega-chat-button--action)
-
-(defun telega-chat-button--action (button)
-  "Action to take when chat BUTTON is pressed."
-  (telega-chat--pop-to-buffer (button-get button :value)))
-
-(defun telega-chat--pop-to-buffer (chat)
-  "Pop to CHAT's buffer."
-  (pop-to-buffer (telega-chatbuf--get-create chat)
-                 telega-chat--display-buffer-action))
-
-(defun telega-chat-button-pin (button)
-  "Toggle chat's pin state at point."
-  (interactive (list (button-at (point))))
-  (telega-toggleChatIsPinned (button-get button :value)))
-
-(defun telega-chat-button-info (button)
-  "Show info about chat at point."
-  (interactive (list (button-at (point))))
-  (telega-chat-show-info (button-get button :value)))
 
 (defun telega-chat-with (name)
   "Start chatting with peer matching NAME."
@@ -604,7 +615,7 @@ Keymap:
 (defun telega-chatbuf-info ()
   "Show info about chat."
   (interactive)
-  (telega-chat-show-info telega-chatbuf--chat))
+  (telega-chat-info telega-chatbuf--chat))
 
 (defun telega-chatbuf--killed ()
   "Called when chat buffer is killed."

@@ -93,6 +93,18 @@ Done when telega server is ready to receive queries."
          (goto-char ,pnt-sym)))))
 (put 'telega-save-excursion 'lisp-indent-function 0)
 
+(defmacro telega-save-cursor (&rest body)
+  "Execute BODY saving cursor's line and column position."
+  (let ((line-sym (gensym "line"))
+        (col-sym (gensym "col")))
+    `(let ((,line-sym (+ (if (bolp) 1 0) (count-lines 1 (point))))
+           (,col-sym (current-column)))
+       (unwind-protect
+           (progn ,@body)
+         (goto-line ,line-sym)
+         (move-to-column ,col-sym)))))
+(put 'telega-save-cursor 'lisp-indent-function 0)
+
 (defmacro with-telega-debug-buffer (&rest body)
   "Execute BODY only if `telega-debug' is non-nil, making debug buffer current."
   `(when telega-debug
@@ -386,14 +398,64 @@ NIL yields empty string for the convenience."
 (defun telega-button--format-error (msg)
   (error "Button `:format' is unset."))
 
+(defun telega-button--ins-error (val)
+  (error "Button `:inserter' is unset."))
+
 ;; Make 'telega-button be separate (from 'button) type
 (put 'telega-button 'type 'telega)
 (put 'telega-button 'keymap button-map)
 (put 'telega-button 'action 'ignore)
 (put 'telega-button 'rear-nonsticky t)
 (put 'telega-button :format 'telega-button--format-error)
+(put 'telega-button :inserter 'telega-button--ins-error)
+;; Function that returns additional properties for the button
+(put 'telega-button :button-props-func 'ignore)
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
+
+(defun telega-button--apply-props-func (button)
+  "Apply runtime BUTTON properties."
+  (let ((props (funcall (button-get button :button-props-func)
+                        (button-get button :value))))
+    (cl-loop for (prop val) on props by 'cddr
+             do (button-put button prop val))))
+
+(defun telega-button--insert (button-type value)
+  "Insert telega button of BUTTON-TYPE with VALUE."
+  (let ((button (make-text-button
+                 (prog1 (point)
+                   (funcall (button-type-get button-type :inserter) value))
+                 (point)
+                 :type button-type
+                 :value value)))
+    (telega-button--apply-props-func button)
+    button))
+
+(defun telega-button--update-value (button new-value)
+  "Update BUTTON's value to VALUE.
+Renews the BUTTON."
+  (let ((inhibit-read-only t)
+        (button-type (button-type button)))
+    (save-excursion
+      (goto-char (button-start button))
+      (delete-region (button-start button) (button-end button))
+      (let ((cpnt (point)))
+        (telega-button--insert button-type new-value)
+        (set-marker button cpnt)))))
+
+(defun telega-button-move (button point &optional new-label)
+  "Move BUTTON to POINT location."
+    (unless new-label
+      (setq new-label
+            (buffer-substring (button-start button) (button-end button))))
+    (goto-char point)
+    (telega-button-delete button)
+    (let ((cpnt (point)))
+      (insert new-label)
+      (set-marker button cpnt))))
+
+  (button-put button :value telega--status)
+  (telega-button--redisplay button)
 
 (defun telega-button-properties (button)
   "Return all BUTTON properties specific for this type of buttons."

@@ -27,6 +27,12 @@
 (require 'telega-core)
 (require 'telega-customize)
 
+(defvar telega-filters--ewoc nil "ewoc for custom filters.")
+
+(defvar telega-filters--inhibit-redisplay nil
+  "Non-nil to do nothing on `telega-filters--redisplay'.
+Used for optimization, when initially fetching chats, to speed things up.")
+
 (defvar telega-filter-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd ":") 'telega-filters-edit)
@@ -48,42 +54,28 @@
     map)
   "Keymap for filtering commands.")
 
-(define-button-type 'telega-active-filters
-  :supertype 'telega
-  :format `("---" (prin1-to-string :min ,telega-root-fill-column
-                                   :align center
-                                   :align-symbol "-"
-                                   :max ,telega-root-fill-column
-                                   :elide t
-                                   :elide-trail 30)
-            "---"))
-
 (define-button-type 'telega-filter
   :supertype 'telega
-  :format #'telega-filter-button--formatter
+  :inserter telega-inserter-for-filter-button
+  :button-props-func 'telega-filter-button--props
   :help-format (lambda (custom)
                  (list (format "Filter (custom \"%s\") expands to: %s"
                                (car custom) (cdr custom))))
   'action #'telega-filter-button--action
   'face 'telega-filter-button-active)
 
-(defun telega-filter-button--formatter (custom)
-  "Formatter for the CUSTOM filter button."
-  (let* ((name (car custom))
-         (chats (telega-filter-chats (cdr custom) telega--filtered-chats))
-         (nchats (length chats))
-         (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
-         (mentions (apply #'+ (mapcar (telega--tl-prop :unread_mention_count) chats)))
-         (umwidth 7))
-    `("[" ((,nchats ":" ,name)
-           :min ,(- telega-filter-button-width umwidth)
-           :max ,(- telega-filter-button-width umwidth)
-           :elide t :align left)
-      ((,(unless (zerop unread) unread)
-        ,(unless (zerop mentions) "@")
-        ,(unless (zerop mentions) mentions))
-       :min ,umwidth :max ,umwidth :elide t :align right)
-      "]")))
+(defun telega-filter-button--props (custom)
+  "Return additional button properties for CUSTOM filter.
+Used to activate/inactivate the button."
+  (let ((active-p (telega-filter-chats
+                   (cdr custom) telega--filtered-chats)))
+    (list 'inactive (not active-p)
+          'face (if active-p
+                    'telega-filter-button-active
+                  'telega-filter-button-inactive)
+          'action (if active-p
+                      'telega-filter-button--action
+                    'ignore))))
 
 (defun telega-filter-button--action (button)
   "Action to take when custom filter button is pressed.
@@ -97,18 +89,32 @@ otherwise add to existing active filters."
         (telega--filters-push (list fspec))
       (telega-filter-add fspec))))
 
-(defun telega-filter-button--set-inactivity-props (button)
-  "Set properties based of inactivity of the BUTTON."
-  (let ((active-p (telega-filter-chats
-                   (cdr (button-get button :value)) telega--filtered-chats)))
-    (button-put button 'inactive (not active-p))
-    (button-put button 'face (if active-p
-                                 'telega-filter-button-active
-                               'telega-filter-button-inactive))
-    (button-put button 'action (if active-p
-                                   'telega-filter-button--action
-                                 'ignore))))
+
+;; ewoc stuff
+(defun telega-filter--pp (custom)
+  "Pretty printer for CUSTOM filter button."
+  (when (> (+ (current-column) telega-filter-button-width)
+           telega-root-fill-column)
+    (insert "\n"))
+  (telega-button--insert 'telega-filter custom)
+  (insert "  "))
 
+(defun telega-filters--create ()
+  "Create ewoc for custom filters."
+  (setq telega-filters--inhibit-redisplay nil)
+  (setq telega-filters--ewoc
+        (ewoc-create #'telega-filter--pp nil nil t))
+  (dolist (custom telega-filters-custom)
+    (ewoc-enter-last telega-filters--ewoc custom)))
+
+(defun telega-filters--redisplay ()
+  "Redisplay custom filters buttons."
+  (unless telega-filters--inhibit-redisplay
+    (with-telega-root-buffer
+      (telega-save-cursor
+        (ewoc-refresh telega-filters--ewoc)))))
+
+
 ;;; Filtering routines
 (defun telega--filters-apply ()
   "Apply current filers."

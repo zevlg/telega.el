@@ -138,8 +138,7 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
      "via "
      (apply 'propertize
             (telega-user--name (telega-user--get via-bot-user-id) 'short)
-            (telega-link-props
-             'user via-bot-user-id)))))
+            (telega-link-props 'user via-bot-user-id)))))
 
 (defun telega-ins--file-progress (file ptype)
   "Format FILE's progress of PTYPE.
@@ -327,8 +326,36 @@ Special message is one of: `messageContactRegistered',
      (t (telega-ins--message msg)))))
 
 
+;; Inserter for custom filter button
+(defun telega-ins--filter (custom)
+  "Inserter for the CUSTOM filter button in root buffer."
+  (let* ((name (car custom))
+         (chats (telega-filter-chats (cdr custom) telega--filtered-chats))
+         (nchats (length chats))
+         (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
+         (mentions (apply #'+ (mapcar
+                               (telega--tl-prop :unread_mention_count) chats)))
+         (umwidth 7)
+         (title-width (- telega-filter-button-width umwidth)))
+    (telega-ins "[")
+    (telega-ins--with-attrs (list :min title-width
+                                  :max title-width
+                                  :elide t
+                                  :align 'left)
+      (telega-ins-fmt "%d:%s" nchats name))
+    (telega-ins--with-attrs (list :min umwidth
+                                  :max umwidth
+                                  :elide t
+                                  :align 'right)
+      (unless (zerop unread)
+        (telega-ins-fmt "%d" unread))
+      (unless (zerop mentions)
+        (telega-ins-fmt "@%d" mentions)))
+    (telega-ins "]")))
+
+
 (defun telega-ins--chat (chat &optional brackets)
-  "Insert CHAT into root buffer."
+  "Inserter for CHAT button in root buffer."
   (let ((title (telega-chat--title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
@@ -359,7 +386,7 @@ Special message is one of: `messageContactRegistered',
       (telega-ins telega-symbol-lock))))
 
 (defun telega-ins--chat-full (chat)
-  "Insert CHAT with its status into root buffer."
+  "Full status inserter for CHAT button in root buffer."
   (telega-ins--chat chat)
   (telega-ins "  ")
 
@@ -403,25 +430,6 @@ Special message is one of: `messageContactRegistered',
              (telega-ins--outgoing-status last-msg))
            ))
     ))
-
-(defun telega-ins--chat-button (chat &optional inserter)
-  "Inserter for CHAT as button."
-  ;; Insert only visible chat buttons
-  ;; See https://github.com/zevlg/telega.el/issues/3
-  (let ((visible-p (telega-filter-chats nil (list chat))))
-    (when visible-p
-      (make-text-button
-       (prog1 (point)
-         (funcall (or inserter 'telega-ins--chat) chat)
-         (telega-ins "\n"))
-       (point)
-       :type 'telega-chat
-       :value chat))))
-
-(defun telega-ins--chat-full-button (chat)
-  "Advanced button inserter for the CHAT.
-Could be used as value for `telega-inserter-chat-button'."
-  (telega-ins--chat-button chat 'telega-ins--chat-full))
 
 (provide 'telega-ins)
 

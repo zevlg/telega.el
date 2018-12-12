@@ -211,14 +211,25 @@ In form (NAME . FILTER-SPEC)."
   :group 'telega-filter)
 
 
-(defgroup telega-inserters nil
-  "Inserters customization for telega."
-  :group 'telega)
+(defgroup telega-inserter nil
+  "Group to customize inserters used by telega for formatting."
+  :group 'telega
+  :prefix "telega-inserter-")
 
-(defcustom telega-inserter-chat-button 'telega-ins--chat-full-button
+(defcustom telega-inserter-for-filter-button 'telega-ins--filter
+  "Inserter for the custom filter buttons."
+  :type 'function
+  :group 'telega-inserters)
+
+(defcustom telega-inserter-for-chat-button 'telega-ins--chat-full
   "Inserter for the chat button in root buffer."
   :type 'function
   :group 'telega-inserters)
+
+(defcustom telega-inserter-for-msg-button 'telega-ins--msg
+  "Inserter for message button in chat buffer."
+  :type 'function
+  :group 'telega-inserter)
 
 
 (defgroup telega-chat nil
@@ -329,47 +340,47 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-eye "\U0001F441"
+(defcustom telega-symbol-eye "👁"        ;\U0001F441
   "String to use as eye symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-pin "\U0001F4CC"
+(defcustom telega-symbol-pin "📌"       ;\U0001F4CC
   "*String to use as pin symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-lock "\U0001F512"
+(defcustom telega-symbol-lock "🔒"      ;\U0001F512
   "*String to use as lock symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-document "\U0001F4C4"
+(defcustom telega-symbol-document "📄"  ;\U0001F4C4
   "*String to use as document symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-photo "\U0001F4F7"
+(defcustom telega-symbol-photo "📷"     ;\U0001F4F7
   "*String to use as photo symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-pending "\u231B"
+(defcustom telega-symbol-msg-pending "⌛" ;\u231B
   "Symbol to use for pending outgoing messages."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-succeed "\u2713"
+(defcustom telega-symbol-msg-succeed "✓" ;\u2713
   "Symbol to use for successfully sent messages."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-viewed "\u2714"
+(defcustom telega-symbol-msg-viewed "✔" ;\u2714
   "Symbol to use for seen outgoing messages."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-failed "\u26D4"
+(defcustom telega-symbol-msg-failed "⛔" ;\u26D4
   "Mark messages that have sending state failed."
   :type 'string
   :group 'telega-symbol)
