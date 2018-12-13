@@ -47,6 +47,7 @@ Used for optimization, when initially fetching chats, to speed things up.")
     (define-key map (kbd "v") 'telega-filter-by-verified)
     (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "o") 'telega-filter-by-opened)
+    (define-key map (kbd "s") 'telega-filter-by-restriction)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd "d") 'telega-filters-pop-last)
@@ -362,6 +363,7 @@ Also matches chats marked as unread."
 
 (defun telega-filter-by-verified ()
   "Filter verified chats."
+  (interactive)
   (telega-filter-add 'verified))
 
 (defun telega-filter-unread-unmuted ()
@@ -401,6 +403,29 @@ Also matches chats marked as unread."
   "Filter chats that are opened."
   (interactive)
   (telega-filter-add 'opened))
+
+(define-telega-filter restriction (chat &rest suffixes)
+  "Filter restricted chats.
+Suffixes is a list of suffixes to filter on.
+Suffix can be one of:
+  -all      - All platforms
+  -ios      - For iOS devices
+  -android  - For Android devices
+  -wp       - Windows?
+
+If suffixes not specified, then match any restriction reason."
+  (let ((reason (or (plist-get (telega-chat--info chat) :restriction_reason) "")))
+    (unless (string-empty-p reason)
+      (or (not suffixes)
+          (cl-find reason suffixes
+                   :test (lambda (string regexp)
+                           (string-match-p regexp string)))))))
+
+(defun telega-filter-by-restriction ()
+  "Filter chats by restriction reason.
+To specify suffixes use `/ e' command and edit filter string directly."
+  (interactive)
+  (telega-filter-add 'restriction))
 
 (provide 'telega-filter)
 
