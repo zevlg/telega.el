@@ -413,11 +413,21 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-verified (propertize "🅥" 'face 'telega-blue)
+  "Symbol used to emphasize verified users/groups."
+  :type 'string
+  :group 'telega-symbol)
+
 
 ;;; Faces
 (defgroup telega-faces nil
   "Group to customize faces used by telega."
   :group 'telega)
+
+(defface telega-blue
+  '((t :inherit default :foreground "#2ca5e0"))
+  "*Official blue color of telegram."
+  :group 'telega-faces)
 
 (defface telega-filter-button-active '((t :inherit default))
   "*Face to use for active custom filters."

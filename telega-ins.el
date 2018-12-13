@@ -361,7 +361,11 @@ Special message is one of: `messageContactRegistered',
         (mentions (plist-get chat :unread_mention_count))
         (pinned-p (plist-get chat :is_pinned))
         (muted-p (telega-chat--muted-p chat))
+        (chat-info (telega-chat--info chat))
         (umwidth 7))
+    (when (plist-get chat-info :is_verified)
+      (setq title (concat title telega-symbol-verified)))
+
     (telega-ins (or (car brackets) "["))
     (telega-ins
      (truncate-string-to-width
