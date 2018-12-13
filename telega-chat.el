@@ -349,6 +349,19 @@ be marked as read."
          :chat_id (plist-get chat :id)
          :is_pinned (if (plist-get chat :is_pinned) :false t))))
 
+(defun telega--toggleChatIsMarkedAsUnread (chat)
+  "Toggle marked as read state of the CHAT."
+  (telega-server--send
+   (list :@type "toggleChatIsMarkedAsUnread"
+         :chat_id (plist-get chat :id)
+         :is_marked_as_unread
+         (if (plist-get chat :is_marked_as_unread) :false t))))
+
+(defun telega--readAllChatMentions (chat)
+  "Read all mentions in CHAT."
+  (telega-server--send
+   (list :@type "readAllChatMentions" :chat_id (plist-get chat :id))))
+
 (defun telega--openChat (chat)
   "Mark CHAT as opened."
   (telega-server--send
@@ -473,9 +486,9 @@ be marked as read."
        (error "Can't join chat: %s"
               (plist-get telega-server--last-error :message)))))
 
-(defun telega-chat-mark-as-read (&rest chats)
-  "Mark CHATS as read.
-If `universal-argument' is used, then mark as read all chats
+(defun telega-chat-toggle-read (&rest chats)
+  "Toggle chat as read/unread.
+If `universal-argument' is used, then toggle all chats
 matching currently active filters."
   (interactive (if current-prefix-arg
                    telega--filtered-chats
@@ -483,11 +496,25 @@ matching currently active filters."
                    (unless chat-button
                      (error "No chat button at point"))
                    (list (button-get chat-button :value)))))
-  (dolist (chat chats)
-    (telega-server--send
-     (list :@type "readAllChatMentions" :chat_id (plist-get chat :id)))
-    (telega--viewMessages chat (list (plist-get chat :last_message)) t)
-    ))
+  
+    (dolist (chat chats)
+      (let ((unread-count (plist-get chat :unread_count))
+            (marked-unread-p (plist-get chat :is_marked_as_unread)))
+        (if (or (> unread-count 0) marked-unread-p)
+            (progn
+              ;; Toggle chat as readed
+              (when marked-unread-p
+                (telega--toggleChatIsMarkedAsUnread chat))
+              (when (> unread-count 0)
+                (telega--viewMessages
+                 chat (list (plist-get chat :last_message)) t))
+              (when (> (plist-get chat :unread_mention_count) 0)
+                (telega--readAllChatMentions chat)))
+
+          ;; Toggle chat is unread
+          (unless marked-unread-p
+            (telega--toggleChatIsMarkedAsUnread chat))
+          ))))
 
 (defun telega-chat-delete (&rest chats)
   "Delete CHATS.

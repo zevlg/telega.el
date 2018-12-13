@@ -57,9 +57,9 @@
     (define-key map (kbd "C-x C-/") 'telega-filter-redo)
     (define-key map (kbd "C-x C-_") 'telega-filter-redo)
 
-    (define-key map (kbd "r") 'telega-chat-mark-as-read)
     (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "j") 'telega-chat-join-by-link)
+    (define-key map (kbd "r") 'telega-chat-toggle-read)
 
     (define-key map (kbd "q") 'telega-kill)
     (define-key map (kbd "c") 'telega-chat-with)
@@ -239,12 +239,13 @@ If RAW is given then do not modify statuses for animation."
           (push chat telega--filtered-chats)))
 
   (with-telega-root-buffer
-    (let ((enode (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
-      (cl-assert enode nil "Ewoc node not found for chat:%s"
-                 (telega-chat--title chat))
+    (telega-save-cursor
+      (let ((enode (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
+        (cl-assert enode nil "Ewoc node not found for chat:%s"
+                   (telega-chat--title chat))
 
-      (setf (ewoc--node-data enode) chat)
-      (ewoc-invalidate telega-root--ewoc enode)))
+        (setf (ewoc--node-data enode) chat)
+        (ewoc-invalidate telega-root--ewoc enode))))
 
   ;; NOTE: Update might affect custom filters, refresh them too
   (telega-filters--redisplay))
