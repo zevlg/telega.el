@@ -312,8 +312,10 @@ If FLIST is empty then return t."
 
 (define-telega-filter unread (chat &optional n)
   "Matches CHAT with at least N unread messages.
-By default N is 1."
-  (>= (plist-get chat :unread_count) (or n 1)))
+By default N is 1.
+Also matches chats marked as unread."
+  (or (>= (plist-get chat :unread_count) (or n 1))
+      (plist-get chat :is_marked_as_unread)))
 
 (defun telega-filter-by-unread (n)
   "Filter chats with at least N unread messages."

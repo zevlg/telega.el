@@ -29,6 +29,23 @@
 (require 'cl-lib)
 (require 'files)                        ; `locate-file'
 
+;; code taken from
+;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
+(defun telega-symbol-set-widths (symbol-widths-alist)
+  "Add symbol widths from SYMBOL-WIDTHS-ALIST to `char-width-table'.
+Use it if you have formatting issues."
+  (while (char-table-parent char-width-table)
+    (setq char-width-table (char-table-parent char-width-table)))
+  (dolist (pair symbol-widths-alist)
+    (let ((width (car pair))
+          (symbols (cdr pair))
+          (table (make-char-table nil)))
+      (dolist (symbol-str symbols)
+        (set-char-table-range table (string-to-char symbol-str) width))
+      (optimize-char-table table)
+      (set-char-table-parent table char-width-table)
+      (setq char-width-table table))))
+
 (defun telega-duration-human-readable (seconds)
   "Convert SECONDS to human readable string."
   (concat (when (>= seconds 3600)

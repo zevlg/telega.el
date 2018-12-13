@@ -195,11 +195,12 @@ For example:
 (defcustom telega-filters-custom
   '(("All" . all)
     ("Secrets" . (type secret))
+    ("Bots" . (type bot))
+    ("Groups" . (type basicgroup supergroup))
     ("Private" . (type private))
     ("Channels" . (type channel))
-    ("Groups" . (type basicgroup supergroup))
-    ("Bots" . (type bot))
-    ("Notify" . notify))
+    ("Notify" . notify)
+    ("Unread" . unread))
   "*Alist of custom filters for chats.
 In form (NAME . FILTER-SPEC)."
   :type 'alist
@@ -210,7 +211,7 @@ In form (NAME . FILTER-SPEC)."
   :type 'boolean
   :group 'telega-filter)
 
-(defcustom telega-filter-button-width 28
+(defcustom telega-filter-button-width 20
   "*Width of the custom filter buttons."
   :type 'integer
   :group 'telega-filter)
@@ -407,7 +408,8 @@ ellipsis."
   :group 'telega-symbol)
 
 (defcustom telega-symbol-unread "●"
-  "Symbol used for chats marked as unread."
+  "Symbol used for chats marked as unread.
+Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
@@ -537,6 +539,11 @@ You can customize its `:height' to fit width of the default face."
 (defgroup telega-hooks nil
   "Group to customize hooks used by telega."
   :group 'telega)
+
+(defcustom telega-load-hook nil
+  "Hooks run when telega is loaded."
+  :type 'hook
+  :group 'telega-hooks)
 
 (defcustom telega-root-mode-hook nil
   "Hook run when telega root buffer is created."

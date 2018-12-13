@@ -209,3 +209,20 @@ libtdjson.so: cannot open shared object file: No such file or directory
 ```
 
 Customization is done via `telega-auto-download` variable.
+
+**Q**: There is some formatting issues when some unicode characters are used.  Is there way to fix it up?
+
+**A**: Yes, partly.  If character has full width of multiple ordinary chars you can tweak `char-width-table`.  Add code like this to your init.el:
+
+```elisp
+(setq telega-symbol-unread "🄌")
+
+(defun my-telega-load ()
+  ;; 🄌 occupies two full chars, but (string-width "🄌") returns 1
+  ;; so we install custom widths to `char-width-table'
+  (telega-symbol-set-widths
+   `((2 ,telega-symbol-unread)))
+  )
+
+(add-hook 'telega-load-hook 'my-telega-load)
+```

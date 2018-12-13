@@ -378,7 +378,15 @@ Special message is one of: `messageContactRegistered',
                   'telega-unmuted-count)))
       (unless (zerop mentions)
         (telega-ins-propertize (format "@%d" mentions)
-          'face ' 'telega-mention-count)))
+          'face ' 'telega-mention-count))
+      ;; Mark for chats marked as unread
+      (when (and (zerop unread) (zerop mentions)
+                 (plist-get chat :is_marked_as_unread))
+        (telega-ins-propertize telega-symbol-unread
+          'face (if muted-p
+                    'telega-muted-count
+                  'telega-unmuted-count)))
+      )
     (telega-ins (or (cdr brackets) "]"))
     (when pinned-p
       (telega-ins telega-symbol-pin))
