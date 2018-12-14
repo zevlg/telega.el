@@ -242,15 +242,18 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (insert "Invite link:")
       (when valid-link-p
         (insert " ")
-        (apply 'insert-text-button invite-link (telega-link-props 'url invite-link)))
+        (apply 'insert-text-button
+               invite-link (telega-link-props 'url invite-link)))
       (when can-generate-p
         (insert " ")
-        (insert-text-button (if valid-link-p "[Regenerate]" "[Generate]")
-                            :value chat
-                            'action `(lambda (button)
-                                       (telega-chat-generate-invite-link
-                                        ,(plist-get chat :id))
-                                       (telega-chat-button-info button))))
+        (insert-text-button
+         (if valid-link-p "[Regenerate]" "[Generate]")
+         :value chat
+         'action `(lambda (button)
+                    (telega-chat-generate-invite-link
+                     ,(plist-get chat :id))
+                    (telega-save-cursor
+                      (telega-chat-info (button-get button :value))))))
       (insert "\n"))))
 
 (defun telega-info--insert-basicgroup (basicgroup chat)
@@ -444,6 +447,53 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (telega-ins-fmt "Total recv: %s\n"
                       (file-size-human-readable total-recv))
       )))
+
+(defun telega--getUserPrivacySettingRules (setting)
+  "Get privacy SETTING.
+SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
+  (let ((privacy-setting
+         (cl-ecase setting
+           (show-status "userPrivacySettingShowStatus")
+           (allow-chat-invites "userPrivacySettingAllowChatInvites")
+           (allow-calls "userPrivacySettingAllowCalls"))))
+    (telega-server--call
+     (list :@type "getUserPrivacySettingRules"
+           :setting (list :@type privacy-setting)))))
+
+(defun telega--getBlockedUsers (&optional offset)
+  "Get list of blocked users."
+  (let ((reply (telega-server--call
+                (list :@type "getBlockedUsers"
+                      :offset (or offset 0)
+                      :limit 100))))
+    (mapcar 'telega-user--get (plist-get reply :user_ids))))
+
+(defun telega-describe-privacy-settings ()
+  "Show user privacy settings."
+  (interactive)
+  (with-help-window "*Telega Network Statistics*"
+    (set-buffer standard-output)
+    ;; I18N: lng_settings_privacy_title
+    (insert "Privacy\n")
+    (insert "-------\n")
+    (let ((blocked-users (telega--getBlockedUsers)))
+      ;; I18N: lng_blocked_list_title
+      (insert "Blocked Users: "
+              (if blocked-users
+                  (mapconcat 'telega-user--name blocked-users ", ")
+                "None"))
+      (insert "\n"))
+    (cl-dolist (setting '(show-status allow-chat-invites allow-calls))
+      (telega-ins-fmt "%S: " setting)
+      (telega-ins-fmt "%S" (telega--getUserPrivacySettingRules setting))
+      (insert "\n")
+      )
+
+    (insert "\n")
+    (insert "Security\n")
+    (insert "--------\n")
+    (insert "TODO")
+    ))
 
 (provide 'telega-info)
 

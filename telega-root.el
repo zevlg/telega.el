@@ -46,16 +46,16 @@
     (define-key map [backtab] 'telega-button-backward)
 
     (define-key map (kbd "/") telega-filter-map)
+    (define-key map (kbd "C-/") 'telega-filter-undo)
+    (define-key map (kbd "C-_") 'telega-filter-undo)
+    (define-key map (kbd "C-x C-/") 'telega-filter-redo)
+    (define-key map (kbd "C-x C-_") 'telega-filter-redo)
 
     (define-key map (kbd "? w") 'telega-describe-connected-websites)
     (define-key map (kbd "? s") 'telega-describe-active-sessions)
     (define-key map (kbd "? t") 'telega-describe-terms-of-service)
     (define-key map (kbd "? n") 'telega-describe-network-stats)
-
-    (define-key map (kbd "C-/") 'telega-filter-undo)
-    (define-key map (kbd "C-_") 'telega-filter-undo)
-    (define-key map (kbd "C-x C-/") 'telega-filter-redo)
-    (define-key map (kbd "C-x C-_") 'telega-filter-redo)
+    (define-key map (kbd "? p") 'telega-describe-privacy-settings)
 
     (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "j") 'telega-chat-join-by-link)
