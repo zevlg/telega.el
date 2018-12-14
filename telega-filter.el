@@ -39,7 +39,8 @@ Used for optimization, when initially fetching chats, to speed things up.")
     (define-key map (kbd "e") 'telega-filters-edit)
     (define-key map (kbd "n") 'telega-filter-by-name)
     (define-key map (kbd "t") 'telega-filter-by-type)
-    (define-key map (kbd "c") 'telega-filter-by-custom)
+    (define-key map (kbd "c") 'telega-filter-by-contact)
+    (define-key map (kbd "f") 'telega-filter-by-custom)
     (define-key map (kbd "u") 'telega-filter-by-unread)
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "p") 'telega-filter-by-pin)
@@ -426,6 +427,24 @@ If suffixes not specified, then match any restriction reason."
 To specify suffixes use `/ e' command and edit filter string directly."
   (interactive)
   (telega-filter-add 'restriction))
+
+(define-telega-filter contact (chat relationship)
+  "Filter private chats that has RELATIONSHIP contact.
+RELATIONSHIP is one of `in' or `out'."
+  (and (eq (telega-chat--type chat) 'private)
+       (eq 'linkStateIsContact
+           (telega--tl-type
+            (plist-get (telega-chat--user chat)
+                       (cl-ecase relationship
+                         (in :incoming_link)
+                         (out :outgoing_link)))))))
+
+(defun telega-filter-by-contact (&optional incoming-p)
+  "Filter chats with users that are in contacts.
+By default filter contacts by outgoing link relationship.
+Specify INCOMING-P to filter by incoming link relationship."
+  (interactive "P")
+  (telega-filter-add (list 'contact (if incoming-p 'in 'out))))
 
 (provide 'telega-filter)
 
