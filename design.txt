@@ -20,6 +20,11 @@ Version: 0.3.X
 Идеи
 ====
 
+Вынуть заимплемченые методы:
+
+   $ grep -h -r "on-update" *.el |grep defun | cut -c 19- | cut -d' ' -f 1 | sort -n
+   $ egrep "^update" ~/dev/td/td/generate/scheme/td_api.tl | cut -d' ' -f 1 | sort -n
+
 * Для location сообщений загружать асинхронно (с помощью
   `url-retrieve') картинки с яндекс maps static api -
   https://tech.yandex.ru/maps/doc/staticapi/1.x/dg/concepts/input_params-docpage/
