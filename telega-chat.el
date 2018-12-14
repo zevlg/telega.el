@@ -59,17 +59,39 @@ Return chat from `telega--chats'."
     (or (gethash chat-id telega--chats)
         (prog1
             chat
+
           (puthash chat-id chat telega--chats)
           ;; Place chat in correct place inside `telega--ordered-chats'
           (telega--ordered-chats-insert chat)
 
-          ;; In case of initial chats load, redisplay custom filters
-          ;; on every 50 chats loaded
-          (when (and telega-filters--inhibit-redisplay
-                     (zerop (% (length telega--ordered-chats) 50)))
-            (let ((telega-filters--inhibit-redisplay nil))
-              (telega-filters--redisplay)))
+          ;; parse :client_data as plist, we use it to store
+          ;; additional chat properties (user application properties)
+          (let ((client-data (plist-get chat :client_data)))
+            (unless (string-empty-p client-data)
+              (ignore-errors
+                (plist-put chat :uaprops (read-from-string client-data)))))
           ))))
+
+(defun telega-chat--set-uaprops (chat uaprops)
+  "Set CHAT's user application properties to UAPROPS."
+  (plist-put chat :uaprops uaprops)
+  (telega-server--call
+   (list :@type "setChatClientData"
+         :chat_id (plist-get chat :id)
+         :client_data (prin1-to-string uaprops))))
+
+(defmacro telega-chat--uaprop-del (chat uaprop-name)
+  "Deleta user application CHAT property with UAPROP-NAME."
+  ;; TODO
+  )
+  
+(defmacro telega-chat--uaprop (chat uaprop-name)
+  "Return value for CHAT's custom property with name CUSTOM-PROP-NAME."
+  `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
+
+(defsetf telega-chat--uaprop (chat uaprop-name) (value)
+  `(telega-chat--set-uaprops
+    ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,value)))
 
 (defun telega-chat--get (chat-id &optional offline-p)
   "Get chat by its CHAT-ID.
@@ -164,14 +186,11 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   (telega--ordered-chats-insert chat)
   (telega-root--chat-reorder chat))
 
-(defun telega-chat--new (chat)
-  "Create new CHAT."
-  (telega-chat--ensure chat)
-  (telega-root--chat-new chat))
-
 (defun telega--on-updateNewChat (event)
   "New chat has been loaded or created."
-  (telega-chat--new (plist-get event :chat)))
+  (let ((chat (plist-get event :chat)))
+    (telega-chat--ensure chat)
+    (telega-root--chat-new chat)))
 
 (defun telega--on-updateChatTitle (event)
   (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline))
@@ -258,7 +277,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (plist-put chat :is_marked_as_unread
                (plist-get event :is_marked_as_unread))
     (telega-root--chat-update chat)))
-  
+
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (let ((chat-ids (plist-get result :chat_ids)))
@@ -496,7 +515,7 @@ matching currently active filters."
                    (unless chat-button
                      (error "No chat button at point"))
                    (list (button-get chat-button :value)))))
-  
+
     (dolist (chat chats)
       (let ((unread-count (plist-get chat :unread_count))
             (marked-unread-p (plist-get chat :is_marked_as_unread)))

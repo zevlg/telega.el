@@ -252,7 +252,7 @@ If RAW is given then do not modify statuses for animation."
 
 (defun telega-root--chat-reorder (chat &optional new-chat-p)
   "Move CHAT to correct place according to its order.
-If NEW-CHAT-P is non-nil, then new CHAT is inserted in its order."
+NEW-CHAT-P is used for optimization, to omit ewoc's node search."
   (with-telega-root-buffer
     (let* ((node (unless new-chat-p
                    (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
@@ -266,8 +266,15 @@ If NEW-CHAT-P is non-nil, then new CHAT is inserted in its order."
         (ewoc-enter-last telega-root--ewoc chat)))))
 
 (defun telega-root--chat-new (chat)
-  "New CHAT has been created."
-  (telega-root--chat-reorder chat 'new-chat))
+  "New CHAT has been created. Display it in root's ewoc."
+  (telega-root--chat-reorder chat 'new-chat)
+
+  ;; In case of initial chats load, redisplay custom filters
+  ;; on every 50 chats loaded
+  (when (and telega-filters--inhibit-redisplay
+             (zerop (% (length telega--ordered-chats) 50)))
+    (let ((telega-filters--inhibit-redisplay nil))
+      (telega-filters--redisplay))))
 
 (defun telega-root--user-update (user)
   "Something changed in USER, private chat might need to be updated."
