@@ -24,6 +24,7 @@
 ;;
 
 ;;; Code:
+(require 'cl)                           ;defsetf
 (require 'ring)
 (require 'telega-core)
 (require 'telega-msg)
