@@ -146,6 +146,11 @@ See docstring for `display-buffer' for the values."
   :prefix "telega-root-"
   :group 'telega)
 
+(defcustom telega-root-compact-view t
+  "*Non-nil for compact view (no newline delims) in root buffer."
+  :type 'boolean
+  :group 'telega-root)
+
 (defcustom telega-root-buffer-name "*Telega Root*"
   "*Buffer name for telega root buffer."
   :type 'string
@@ -199,6 +204,7 @@ For example:
     ("Groups" . (type basicgroup supergroup))
     ("Private" . (type private))
     ("Channels" . (type channel))
+    ("Contacts" . (contact out))
     ("Notify" . notify)
     ("Unread" . unread))
   "*Alist of custom filters for chats.

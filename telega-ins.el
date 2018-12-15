@@ -82,11 +82,6 @@ Return `t'."
            (telega-ins ,prefix))))))
 (put 'telega-ins-prefix 'lisp-indent-function 'defun)
 
-(defun telega-ins--button-format (button)
-  "Insert BUTTON using oldstyle `:format' to format the contents."
-  (telega-ins
-   (telega-fmt-eval (button-get button :format) (button-get button :value))))
-
 (defun telega-ins--actions (actions)
   "Insert chat ACTIONS alist."
   (when actions

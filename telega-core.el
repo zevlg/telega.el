@@ -50,11 +50,19 @@
 (defvar telega--info nil "Alist of (TYPE . INFO-TABLE)")
 (defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE)")
 
+(defvar telega--top-chats nil
+  "Alist of (CATEGORY LAST-UPDATE-TIME ..)
+CATEGORY is one of `Users', `Bots', `Groups', `Channels',
+`InlineBots', `Calls'")
+
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
-(defvar telega--unread-count 0 "Total number of unread messages.")
-(defvar telega--unread-unmuted-count 0 "Total number of unread/unmuted messages.")
-(defvar telega--unread-message-count nil "Plist with counts for unread/unmuted messages.")
-(defvar telega--unread-chat-count nil "Plist with counts for unread/unmuted chats.")
+(defvar telega--unread-message-count nil
+  "Plist with counts for unread/unmuted messages.
+Props are `:unread_count' and `:unread_unmuted_count'")
+(defvar telega--unread-chat-count nil
+  "Plist with counts for unread/unmuted chats.
+Props are `:unread_count', `:unread_unmuted_count', `:marked_as_unread_count'
+and `:marked_as_unread_unmuted_count'")
 
 (defvar telega--chat-buffers nil "List of all chat buffers.")
 (defvar telega--downloadings nil
@@ -72,6 +80,7 @@ Done when telega server is ready to receive queries."
   (setq telega--me-id -1)
   (setq telega--options nil)
   (setq telega--chats (make-hash-table :test 'eq))
+  (setq telega--top-chats nil)
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--actions (make-hash-table :test 'eq))
@@ -86,6 +95,9 @@ Done when telega server is ready to receive queries."
         (list (cons 'user (make-hash-table :test 'eq))
               (cons 'basicGroup (make-hash-table :test 'eq))
               (cons 'supergroup (make-hash-table :test 'eq))))
+
+  (setq telega--unread-message-count nil)
+  (setq telega--unread-chat-count nil)
 
   (setq telega--downloadings (make-hash-table :test 'eq))
   (setq telega--uploadings (make-hash-table :test 'eq)))
@@ -403,6 +415,7 @@ NIL yields empty string for the convenience."
 
 ;;; Buttons for telega
 
+;; DEPRECATED
 (defun telega-button--format-error (msg)
   (error "Button `:format' is unset."))
 
@@ -414,6 +427,7 @@ NIL yields empty string for the convenience."
 (put 'telega-button 'keymap button-map)
 (put 'telega-button 'action 'ignore)
 (put 'telega-button 'rear-nonsticky t)
+;; DEPRECATED
 (put 'telega-button :format 'telega-button--format-error)
 (put 'telega-button :inserter 'telega-button--ins-error)
 ;; Function that returns additional properties for the button
@@ -519,6 +533,7 @@ Return newly created button."
   (let ((inhibit-read-only t))
     (delete-region (button-start button) (button-end button))))
 
+;; DEPRECATED
 (defun telega-button-move (button point &optional new-label)
   "Move BUTTON to POINT location."
   (let ((inhibit-read-only t))
@@ -531,6 +546,7 @@ Return newly created button."
       (insert new-label)
       (set-marker button cpnt))))
 
+;; DEPRECATED, rewrite to use `telega-button--update-value'
 (defun telega-button--redisplay (button)
   "Redisplay the BUTTON contents."
   (telega-button-move button (button-start button)
@@ -555,12 +571,13 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
       (while (and (setq button (forward-button (cl-signum n)))
                   (or (button-get button 'invisible)
                       (button-get button 'inactive)))))
+    ;; XXX in case of chat button, move 
     (when (= (following-char) ?\[)
       (forward-char 1))
 
     (when (button-get button :help-format)
-      (message (telega-fmt-eval (button-get button :help-format)
-                                (button-get button :value))))
+      (message (funcall (button-get button :help-format)
+                        (button-get button :value))))
     button))
 
 (defun telega-button-backward (n)

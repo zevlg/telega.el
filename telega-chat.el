@@ -336,6 +336,26 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   "Return total number of unread mentions in CHATS."
   (apply #'+ (mapcar (telega--tl-prop :unread_mention_count) chats)))
 
+(defun telega-chats-top (category)
+  "Return list of top chats used by CATEGORY.
+CATEGORY is one of `Users', `Bots', `Groups', `Channels',
+`InlineBots', `Calls'"
+  (let ((top (assq category telega--top-chats))
+        (currts (time-to-seconds (current-time))))
+    (when (> currts (+ (or (cadr top) 0) 10))
+      ;; XXX update only if last fetch is older then 10 seconds
+      (let* ((cattype (list :@type (concat "topChatCategory"
+                                           (symbol-name category))))
+             (cl (telega-server--call
+                  (list :@type "getTopChats"
+                        :category cattype
+                        :limit 30))))
+        (setq top (list category (time-to-seconds (current-time))
+                        (mapcar #'telega-chat--get (plist-get cl :chat_ids))))
+        (setq telega--top-chats
+              (put-alist category (cdr top) telega--top-chats))))
+    (caddr top)))
+
 (defun telega--sendChatAction (chat action)
   "Send ACTION on CHAT."
   (telega-server--send
@@ -399,7 +419,10 @@ be marked as read."
     (set-keymap-parent map button-map)
     (define-key map (kbd "i") 'telega-chat-info)
     (define-key map (kbd "h") 'telega-chat-info)
+    (define-key map (kbd "r") 'telega-chat-toggle-read)
+    (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "C-c p") 'telega-chat-pin)
+    (define-key map (kbd "P") 'telega-chat-pin)
     (define-key map (kbd "DEL") 'telega-chat-delete)
     map)
   "The key map for telega chat buttons.")
@@ -505,50 +528,51 @@ be marked as read."
        (error "Can't join chat: %s"
               (plist-get telega-server--last-error :message)))))
 
-(defun telega-chat-toggle-read (&rest chats)
-  "Toggle chat as read/unread.
-If `universal-argument' is used, then toggle all chats
-matching currently active filters."
-  (interactive (if current-prefix-arg
-                   telega--filtered-chats
-                 (let ((chat-button (button-at (point))))
-                   (unless chat-button
-                     (error "No chat button at point"))
-                   (list (button-get chat-button :value)))))
-
-    (dolist (chat chats)
-      (let ((unread-count (plist-get chat :unread_count))
-            (marked-unread-p (plist-get chat :is_marked_as_unread)))
-        (if (or (> unread-count 0) marked-unread-p)
-            (progn
-              ;; Toggle chat as readed
-              (when marked-unread-p
-                (telega--toggleChatIsMarkedAsUnread chat))
-              (when (> unread-count 0)
-                (telega--viewMessages
-                 chat (list (plist-get chat :last_message)) t))
-              (when (> (plist-get chat :unread_mention_count) 0)
-                (telega--readAllChatMentions chat)))
-
-          ;; Toggle chat is unread
-          (unless marked-unread-p
+(defun telega-chat-toggle-read (chat)
+  "Toggle chat as read/unread."
+  (interactive (list (telega-chat-at-point)))
+  (let ((unread-count (plist-get chat :unread_count))
+        (marked-unread-p (plist-get chat :is_marked_as_unread)))
+    (if (or (> unread-count 0) marked-unread-p)
+        (progn
+          ;; Toggle chat as readed
+          (when marked-unread-p
             (telega--toggleChatIsMarkedAsUnread chat))
-          ))))
+          (when (> unread-count 0)
+            (telega--viewMessages
+             chat (list (plist-get chat :last_message)) t))
+          ;; NOTE: reading messages can change mentions count, so
+          ;; force all mentions are read
+          (telega--readAllChatMentions chat))
 
-(defun telega-chat-delete (&rest chats)
-  "Delete CHATS.
-If `universal-argument' is used, then mark as read all chats
-matching currently active filters."
-  (interactive (if current-prefix-arg
-                   telega--filtered-chats
-                 (let ((chat-button (button-at (point))))
-                   (unless chat-button
-                     (error "No chat button at point"))
-                   (list (button-get chat-button :value)))))
-  (when (y-or-n-p "Delete %d chats? " (length chats))
-    (dolist (chat chats)
-      ;; TODO: delete CHAT
+      ;; Toggle chat is unread
+      (unless marked-unread-p
+        (telega--toggleChatIsMarkedAsUnread chat))
       )))
+
+(defun telega-chats-filtered-toggle-read ()
+  "Apply `telega-chat-toggle-read' to all currently filtered chats."
+  (interactive)
+  (mapc 'telega-chat-toggle-read telega--filtered-chats))
+
+(defun telega-chat-delete (chat)
+  "Delete CHAT."
+  (interactive (let ((chat (telega-chat-at-point)))
+                 (and (y-or-n-p "This action cannot be undone. Delete chat? ")
+                      (list chat))))
+  (telega-server--send
+   (list :@type "deleteChatHistory"
+         :chat_id (plist-get chat :id)
+         :remove_from_chat_list t)))
+
+(defun telega-chats-filtered-toggle-read (&optional force)
+  "Apply `telega-chat-delete' to all currently filtered chats.
+Do it only if FORCE is non-nil."
+  (interactive
+   (list (y-or-n-p (format "This action cannot be undone. Delete %d chats? "
+                           (length telega--filtered-chats)))))
+  (when force
+    (mapc 'telega-chat-delete telega--filtered-chats)))
 
 
 ;;; Chat Buffer

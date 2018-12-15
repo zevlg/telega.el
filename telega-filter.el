@@ -446,6 +446,20 @@ Specify INCOMING-P to filter by incoming link relationship."
   (interactive "P")
   (telega-filter-add (list 'contact (if incoming-p 'in 'out))))
 
+(define-telega-filter top (chat)
+  "Filter if CHAT is in top usage."
+  (let ((category (case (telega-chat--type chat)
+                    (private 'Users)
+                    (bot 'Bots)
+                    ((basicgroup supergroup) 'Groups)
+                    (channel 'Channel))))
+    (memq chat (telega-chats-top category))))
+
+(defun telega-filter-by-top ()
+  "Filter top used chats by CATEGORY."
+  (interactive)
+  (telega-filter-add 'top))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here

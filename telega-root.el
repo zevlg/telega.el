@@ -57,9 +57,10 @@
     (define-key map (kbd "? n") 'telega-describe-network-stats)
     (define-key map (kbd "? p") 'telega-describe-privacy-settings)
 
-    (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "j") 'telega-chat-join-by-link)
-    (define-key map (kbd "r") 'telega-chat-toggle-read)
+    ;; commands to all currently filtered chats
+    (define-key map (kbd "D") 'telega-chats-filtered-delete)
+    (define-key map (kbd "R") 'telega-chats-filtered-toggle-read)
 
     (define-key map (kbd "q") 'telega-kill)
     (define-key map (kbd "c") 'telega-chat-with)
@@ -98,13 +99,19 @@ Keymap:
   (telega-button--insert
    'telega-status (cons telega--status telega--status-aux))
 
-  (insert "\n\n")
+  ;; delim
+  (insert "\n")
+  (unless telega-root-compact-view
+    (insert "\n"))
 
   ;; Custom filters
   (telega-filters--create)
 
+  ;; delim
   (goto-char (point-max))
-  (insert "\n\n")
+  (insert "\n")
+  (unless telega-root-compact-view
+    (insert "\n"))
 
   ;; Chats list with active filter as header
   ;; NOTE: we are using ewoc with `nosep' so newline is not inserted
@@ -284,18 +291,20 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
 
 (defun telega-root--modeline-buffer-identification ()
   "Return `mode-line-buffer-identification' for the root buffer."
-  (let ((title "%12b")
-        (unread_unmuted
-         (unless (zerop telega--unread-unmuted-count)
-           (propertize (format " %d" telega--unread-unmuted-count)
-                       'face 'telega-unread-unmuted-modeline
-                       'local-map
-                       '(keymap
-                         (mode-line
-                          keymap (mouse-1 . telega-filter-unread-unmuted)))
-                       'mouse-face 'mode-line-highlight
-                       'help-echo
-                       "Click to filter chats with unread/unmuted messages"))))
+  (let* ((title "%12b")
+         (uu-chats-count
+          (or (plist-get telega--unread-chat-count :unread_unmuted_count) 0))
+         (unread-unmuted
+          (unless (zerop uu-chats-count)
+            (propertize (format " %d" uu-chats-count)
+                        'face 'telega-unread-unmuted-modeline
+                        'local-map
+                        '(keymap
+                          (mode-line
+                           keymap (mouse-1 . telega-filter-unread-unmuted)))
+                        'mouse-face 'mode-line-highlight
+                        'help-echo
+                        "Click to filter chats with unread/unmuted messages"))))
     (when (display-graphic-p)
       (let ((logo-img (or telega--logo-image-cache
                           (setq telega--logo-image-cache
@@ -305,12 +314,11 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
         (setq title (concat "  " title))
         (add-text-properties 0 1 (list 'display logo-img) title)))
 
-    (list title unread_unmuted)))
+    (list title unread-unmuted)))
 
 (defun telega--on-updateUnreadMessageCount (event)
   "Number of unread messages has changed."
-  (setq telega--unread-count (plist-get event :unread_count)
-        telega--unread-unmuted-count (plist-get event :unread_unmuted_count))
+  (setq telega--unread-message-count (cddr event))
 
   (with-telega-root-buffer
     (setq mode-line-buffer-identification
@@ -318,7 +326,7 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
     (force-mode-line-update)))
 
 (defun telega--on-updateUnreadChatCount (event)
-  "Number of unread chats, i.e. with unread messages or marked as unread, has changed."
+  "Number of unread/unmuted chats has been changed."
   (setq telega--unread-chat-count (cddr event))
 
   (with-telega-root-buffer
