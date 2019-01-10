@@ -65,7 +65,7 @@ tdat_ensure(struct telega_dat* tdat, size_t add_cap)
 {
         while (tdat->end + add_cap > tdat->cap) {
                 tdat->cap += 1 + tdat->cap;
-                tdat->data = realloc(tdat->data, tdat->cap);
+                tdat->data = (char*)realloc(tdat->data, tdat->cap);
                 assert(tdat->data != NULL);
         }
 }

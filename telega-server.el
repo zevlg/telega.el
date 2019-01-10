@@ -155,7 +155,7 @@ Raise error if not found"
       (message "[%d]telega-server: %s" (process-exit-status proc) status))
     ))
 
-(defun telega-server--send (sexp)
+(defun telega-server--send (sexp &optional command)
   "Send SEXP to telega-server."
   (let ((value (prin1-to-string (telega--tl-pack sexp)))
         (proc (telega-server--proc)))
@@ -164,7 +164,8 @@ Raise error if not found"
 
     (process-send-string
      proc
-     (concat "send " (number-to-string (string-bytes value)) "\n"))
+     (concat (or command "send" " ")
+             (number-to-string (string-bytes value)) "\n"))
     (process-send-string proc value)
     (process-send-string proc "\n")))
 

@@ -11,6 +11,9 @@
 #include <td/telegram/td_log.h>
 
 #include "telega-dat.h"
+#ifdef WITH_VOIP
+#include "telega-voip.h"
+#endif /* WITH_VOIP */
 
 /*
  * Input/Output Protocol:
@@ -20,6 +23,10 @@
  *
  * COMMAND is one of `send', `event' or `error'
  * `event' and `error' is used for output
+ *
+ * If VOIP support is compiled (make WITH_VOIP=true) in then also next
+ * commands are available: `voip-server-config', `voip-start' and
+ * `voip-stop'
  *
  * For example:
  *   event 105
@@ -44,12 +51,16 @@ int parse_mode = 0;
 void
 usage(char* prog)
 {
-        printf("Version %s\n", version);
+        printf("Version %s", version);
+#ifdef WITH_VOIP
+        printf(", with VOIP tgvoip v%s", telega_voip_version());
+#endif /* WITH_VOIP */
+        printf("\n");
         printf("usage: %s [-jp] [-l FILE] [-v LVL] [-h]\n", prog);
         printf("\t-l FILE    Log to FILE (default=stderr)\n");
         printf("\t-v LVL     Verbosity level (default=5)\n");
-        printf("\n-j         Parse json from stdin and exit\n");
-        printf("\n-p         Parse plist from stdin and exit\n");
+        printf("\t-j         Parse json from stdin and exit\n");
+        printf("\t-p         Parse plist from stdin and exit\n");
         exit(0);
 }
 
@@ -143,6 +154,14 @@ stdin_loop(void* cln)
 
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, json_dst.data);
+#ifdef WITH_VOIP
+                else if (!strcmp(cmd, "voip-server-config"))
+                        telega_voip_update_config(json_dst.data);
+                else if (!strcmp(cmd, "voip-start"))
+                        telega_voip_start(json_dst.data);
+                else if (!strcmp(cmd, "voip-stop"))
+                        telega_voip_stop();
+#endif /* WITH_VOIP */
                 else
                         fprintf(stderr, "Unknown command: %s", cmd);
 
