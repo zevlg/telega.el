@@ -31,19 +31,16 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(defmacro telega-ins (&rest args)
-  "Insert string in ARGS.
-Return `t'."
-  `(progn (insert ,@args) t))
+(defsubst telega-ins (&rest args)
+  "Insert all strings in ARGS.
+Return non-nil if something has been inserted."
+  (< (prog1 (point) (apply 'insert args)) (point)))
 
 (defmacro telega-ins-fmt (fmt &rest args)
   "Insert string formatted by FMT and ARGS.
 Return `t'."
+  (declare (indent 1))
   `(telega-ins (format ,fmt ,@args)))
-
-(defmacro telega-ins-propertize (str &rest props)
-  `(telega-ins (propertize ,str ,@props)))
-(put 'telega-ins-propertize 'lisp-indent-function 1)
 
 (defmacro telega-ins--as-string (&rest body)
   "Execute BODY inserters and return result as a string."
@@ -61,50 +58,92 @@ It makes one line by replacing all newlines by spaces."
 (defmacro telega-ins--with-attrs (attrs &rest body)
   "Execute inserters applying ATTRS after insertation.
 Return `t'."
-  (let ((spnt-sym (gensym "pnt"))
-        (epnt-sym (gensym "pnt")))
+  (declare (indent 1))
+  `(telega-ins
+    (telega-fmt-eval-attrs (telega-ins--as-string ,@body) ,attrs)))
+
+(defmacro telega-ins--labeled (label fill-col &rest body)
+  "Execute BODY filling it to FILL-COLL, prefixing first line with LABEL."
+  (declare (indent 2))
+  (let ((prfx-sym (gensym "prefix")))
+    `(progn
+       (telega-ins ,label)
+       (telega-ins--with-attrs
+         (list :fill 'left
+               :fill-prefix (make-string (- (point) (point-at-bol)) ?\s)
+               :fill-column ,fill-col)
+         ,@body))))
+
+(defmacro telega-ins--text-buton (props &rest body)
+  "Execute BODY creating text button with PROPS."
+  (declare (indent 1))
+  `(apply 'make-text-button (prog1 (point) ,@body) (point)
+          ,props))
+  
+(defmacro telega-ins--with-props (props &rest body)
+  "Execute inserters applying PROPS after insertation.
+Return what BODY returns."
+  (let ((spnt-sym (gensym "pnt")))
     `(let ((,spnt-sym (point)))
-       ,@body
-       (let ((,epnt-sym (point)))
-         (prog1
-             (telega-ins (telega-fmt-eval-attrs
-                          (buffer-substring ,spnt-sym ,epnt-sym) ,attrs))
-           (delete-region ,spnt-sym ,epnt-sym))))))
-(put 'telega-ins--with-attrs 'lisp-indent-function 'defun)
+       (prog1
+           (progn ,@body)
+         (add-text-properties ,spnt-sym (point) ,props)))))
+(put 'telega-ins--with-props 'lisp-indent-function 'defun)
 
 (defmacro telega-ins-prefix (prefix &rest body)
   "In case BODY inserted anything then PREFIX is also inserted before BODY."
+  (declare (indent 1))
   (let ((spnt-sym (gensym "pnt")))
     `(let ((,spnt-sym (point)))
        (when (progn ,@body)
          (save-excursion
            (goto-char ,spnt-sym)
            (telega-ins ,prefix))))))
-(put 'telega-ins-prefix 'lisp-indent-function 'defun)
 
+
+;; Various inserters
 (defun telega-ins--actions (actions)
   "Insert chat ACTIONS alist."
   (when actions
     (telega-ins-fmt "TODO: `telega-ins--actions' %S" actions)))
 
-
-;; Various inserters
 (defun telega-ins--filesize (filesize)
   "Insert FILESIZE in human readable format."
   (telega-ins (file-size-human-readable filesize)))
 
-(defun telega-ins--date (date)
-  "Insert DATE."
-  (unless (zerop date)
-    (telega-ins (telega-fmt-timestamp date))))
+(defun telega-ins--date (timestamp)
+  "Insert DATE.
+Format is:
+- HH:MM      if today
+- Mon/Tue/.. if on this week
+- DD.MM.YY   otherwise"
+  (let* ((dtime (decode-time timestamp))
+         (current-ts (time-to-seconds (current-time)))
+         (ctime (decode-time current-ts))
+         (today00 (telega--time-at00 current-ts ctime)))
+    (if (> timestamp today00)
+        (telega-ins-fmt "%02d:%02d" (nth 2 dtime) (nth 1 dtime))
 
-(defun telega-ins--timestamp-iso8601 (timestamp)
+      (let* ((week-day (nth 6 ctime))
+             (mdays (+ week-day
+                       (- (if (< week-day telega-week-start-day) 7 0)
+                          telega-week-start-day)))
+             (week-start00 (telega--time-at00
+                            (- current-ts (* mdays 24 3600)))))
+        (if (> timestamp week-start00)
+            (telega-ins (nth (nth 6 dtime) telega-week-day-names))
+
+          (telega-ins-fmt "%02d.%02d.%02d"
+            (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000))))
+      )))
+
+(defun telega-ins--date-iso8601 (timestamp &rest args)
   "Insert TIMESTAMP in ISO8601 format."
-  (telega-ins (format-time-string "%FT%T%z" timestamp)))
+  (apply 'telega-ins (format-time-string "%FT%T%z" timestamp) args))
 
-(defun telega-ins--labeled-text (label text &optional fill-col)
-  "Insert TEXT filling it, prefixing first line with LABEL."
-  (telega-ins (telega-fmt-labeled-text label text fill-col)))
+(defun telega-ins--date-full (timestamp &rest args)
+  "Insert TIMESTAMP in full format - DAY MONTH YEAR."
+  (apply 'telega-ins (format-time-string "%d %B %Y" timestamp) args))
 
 (defun telega-ins--username (user-id &optional fmt-type)
   "Insert username for user denoted by USER-ID
@@ -154,47 +193,6 @@ PTYPE is `download' or `upload'."
              (intern (format "cancel-%S" ptype))
              (plist-get file :id))))))
 
-(defun telega-ins--msg-special (msg)
-  "Format special message MSG.
-Special message is one of: `messageContactRegistered',
-`messageChatAddMembers', `messageChatJoinByLink',
-`messageChatDeleteMember' or `messageChatChangeTitle'."
-  (let ((content (plist-get msg :content))
-        (sender (telega-user--get (plist-get msg :sender_user_id))))
-    (telega-ins--with-attrs (list :min telega-chat-fill-column
-                                  :align 'center
-                                  :align-symbol "-")
-      (telega-ins "--(")
-      (cl-case (telega--tl-type content)
-        (messageContactRegistered
-         (telega-ins (telega-user--name sender) " joined the Telegram"))
-        (messageChatAddMembers
-         ;; If sender matches
-         (let ((user-ids (plist-get content :member_user_ids)))
-           (if (and (= 1 (length user-ids))
-                    (= (plist-get sender :id) (aref user-ids 0)))
-               (telega-ins (telega-user--name sender 'name) " joined the group")
-             (telega-ins (telega-user--name sender 'name) " invited "
-                         (mapconcat 'telega-user--name
-                                    (mapcar 'telega-user--get user-ids)
-                                    ", ")))))
-        (messageChatJoinByLink
-         (telega-ins (telega-user--name sender)
-                     " joined the group via invite link"))
-        (messageChatDeleteMember
-         (telega-ins (telega-user--name
-                      (telega-user--get (plist-get content :user_id)))
-                     " left the group"))
-        (messageChatChangeTitle
-         (telega-ins (telega-user--name sender)
-                     " renamed group to \"" (plist-get content :title) "\""))
-        (telega-ins-fmt
-         "<unsupported special message: %S>" (telega--tl-type content))))
-      (telega-ins ")--")
-
-    (telega-ins--with-attrs (list :align 'right :min 10)
-      (telega-ins--date (plist-get msg :date)))))
-
 (defun telega-ins--outgoing-status (msg)
   "Insert outgoing status of the message MSG."
   (when (plist-get msg :is_outgoing)
@@ -216,16 +214,70 @@ Special message is one of: `messageContactRegistered',
   "Insert TEXT applying telegram entities."
   (when text
     (telega-ins
-     (telega--entities-apply (plist-get text :entities) (plist-get text :text)))))
+     (telega--entities-apply
+      (plist-get text :entities) (plist-get text :text)))))
 (defalias 'telega-ins--caption 'telega-ins--text)
+
+(defun telega-ins--document (doc)
+  "Insert document DOC."
+  )
 
 (defun telega-ins--web-page (web-page)
   )
 
+(defun telega-msg-special-p (msg)
+  "Return non-nil if MSG is special."
+  (memq (telega--tl-type (plist-get msg :content))
+        (list 'messageContactRegistered 'messageChatAddMembers
+              'messageChatJoinByLink 'messageChatDeleteMember
+              'messageChatChangeTitle 'messageSupergroupChatCreate
+              'messageBasicGroupChatCreate 'messageCustomServiceAction)))
+
+(defun telega-ins--special (msg)
+  "Insert special message MSG.
+Special messages are determined with `telega-msg-special-p'."
+  (let* ((content (plist-get msg :content))
+         (sender-id (plist-get msg :sender_user_id))
+         (sender (unless (zerop sender-id) (telega-user--get sender-id))))
+    (telega-ins "--(")
+    (cl-case (telega--tl-type content)
+      (messageContactRegistered
+       (telega-ins (telega-user--name sender) " joined the Telegram"))
+      (messageChatAddMembers
+       ;; If sender matches
+       (let ((user-ids (plist-get content :member_user_ids)))
+         (if (and (= 1 (length user-ids))
+                  (= (plist-get sender :id) (aref user-ids 0)))
+             (telega-ins (telega-user--name sender 'name) " joined the group")
+           (telega-ins (telega-user--name sender 'name) " invited "
+                       (mapconcat 'telega-user--name
+                                  (mapcar 'telega-user--get user-ids)
+                                  ", ")))))
+      (messageChatJoinByLink
+       (telega-ins (telega-user--name sender)
+                   " joined the group via invite link"))
+      (messageChatDeleteMember
+       (telega-ins (telega-user--name
+                    (telega-user--get (plist-get content :user_id)))
+                   " left the group"))
+      (messageChatChangeTitle
+       (telega-ins (telega-user--name sender)
+                   " renamed group to \"" (plist-get content :title) "\""))
+      (messageSupergroupChatCreate
+       (telega-ins (if (plist-get msg :is_channel_post)
+                       "Channel" "Supergroup"))
+       (telega-ins " \"" (plist-get content :title) "\" created"))
+      (messageBasicGroupChatCreate
+       (telega-ins "Group \"" (plist-get content :title) "\" created"))
+      (messageCustomServiceAction
+       (telega-ins (plist-get content :text)))
+      (telega-ins-fmt
+          "<unsupported special message: %S>" (telega--tl-type content))))
+  (telega-ins ")--"))
+
 (defun telega-ins--content (msg)
   "Insert message's MSG content."
-  (let ((content (plist-get msg :content))
-        (spoint (point)))
+  (let ((content (plist-get msg :content)))
     (cl-case (telega--tl-type content)
       (messageText
        (telega-ins--text (plist-get content :text))
@@ -234,28 +286,18 @@ Special message is one of: `messageContactRegistered',
        (telega-ins--document (plist-get content :document)))
       (messagePhoto
        (telega-ins--photo (plist-get content :photo) msg))
-      (t (telega-ins-fmt "<unsupported message %S>" (telega--tl-type content))
-         (telega-ins-prefix "\n"
-           (telega-ins--text (plist-get content :caption))))))
+      ;; special message
+      ((messageContactRegistered messageChatAddMembers
+        messageChatJoinByLink messageChatDeleteMember
+        messageChatChangeTitle messageSupergroupChatCreate
+        messageBasicGroupChatCreate messageCustomServiceAction)
+       (telega-ins--special msg))
+      (t (telega-ins-fmt "<TODO: %S>"
+                         (telega--tl-type content))))
 
-  ;; TODO: examine props from SPOINT to POINT finding out files we need to monitor
-  (telega-ins--reply-markup (plist-get msg :reply_markup)))
-
-(defun telega-msg-format (msg)
-  "Return formatted text for the MSG."
-  (concat 
-   (let ((content (plist-get msg :content)))
-     (cl-case (telega--tl-type content)
-       (messageText
-        (telega-msg-text msg))
-       (messageDocument
-        (telega-msg-document msg))
-       (messagePhoto
-        (telega-msg-photo msg))
-       (t (concat (format "<unsupported message %S>" (telega--tl-type content))
-                  (telega-prefix "\n" (telega-msg-caption msg))))))
-
-   (telega-msg-reply-markup msg)))
+    (telega-ins-prefix "\n"
+      (telega-ins--text (plist-get content :caption))))
+  )
 
 (defun telega-ins--timestamped-msg (msg)
   "Insert message MSG with timestamp and outgoing status."
@@ -264,7 +306,18 @@ Special message is one of: `messageContactRegistered',
                                   :fill-prefix fill-prefix
                                   :fill-column telega-chat-fill-column
                                   :align 'left)
-      (telega-ins--content msg)
+      (let ((spoint (point)))
+        (if (telega-msg-special-p msg)
+            (telega-ins--with-attrs (list :min telega-chat-fill-column
+                                          :align 'center
+                                          :align-symbol "-")
+              (telega-ins--content msg))
+          (telega-ins--content msg))
+        ;; TODO: examine props from SPOINT to POINT finding out files we
+        ;; need to monitor
+        )
+      (telega-ins--reply-markup (plist-get msg :reply_markup))
+
       (move-to-column telega-chat-fill-column t)
       (unless (eolp)
         (goto-char (point-at-eol)))
@@ -298,7 +351,8 @@ Special message is one of: `messageContactRegistered',
     (telega-ins--via-bot (plist-get msg :via_bot_user_id)))
   (telega-ins " " telega-symbol-eye " " (plist-get msg :views))
   (telega-ins-prefix " edited at "
-    (telega-ins--date (plist-get msg :edit_date)))
+    (unless (zerop (plist-get msg :edit_date))
+      (telega-ins--date (plist-get msg :edit_date))))
   (telega-ins "\n")
   (telega-ins--inline-reply msg)
   (telega-ins--timestamped-msg msg))
@@ -307,18 +361,90 @@ Special message is one of: `messageContactRegistered',
   "Insert message MSG."
   )
 
-(defun telega-ins--message-photo-one-line (msg)
-  )
-
-(defun telega-ins--message-one-line (msg)
-  "Insert message MSG for one line usage."
+(defun telega-ins--content-one-line (msg)
+  "Insert message's MSG content for one line usage."
   (telega-ins--one-lined
-   (case (telega--tl-type (plist-get msg :content))
-     (messageText
-      (telega-ins--text (telega--tl-get msg :content :text)))
-     (messagePhoto
-      (telega-ins--message-photo-one-line msg))
-     (t (telega-ins--message msg)))))
+   (let ((content (plist-get msg :content)))
+     (case (telega--tl-type content)
+       (messageText
+        (telega-ins--text (plist-get content :text)))
+       (messagePhoto
+        (telega-ins telega-symbol-photo " ")
+        (or (telega-ins--text (plist-get content :caption))
+            ;; I18N: lng_in_dlg_photo or lng_attach_photo
+            (telega-ins (propertize "Photo" 'face 'shadow))))
+       (messageDocument
+        (telega-ins telega-symbol-document " ")
+        (or (telega-ins (telega--tl-get content :document :file_name))
+            (telega-ins--text (plist-get content :caption))
+            (telega-ins (propertize "Document" 'face 'shadow))))
+       (messageLocation
+        (telega-ins telega-symbol-location " ")
+        (let ((loc (plist-get content :location)))
+          (telega-ins-fmt "%fN, %fE"
+            (plist-get loc :latitude) (plist-get loc :longitude)))
+
+        ;; NOTE: in case of unexpired live location show last update
+        ;; time and expiration period
+        (let ((live-period (plist-get content :live_period)))
+          (unless (zerop live-period)
+            (telega-ins " " (propertize "Live" 'face 'shadow))
+            (unless (zerop (plist-get content :expires_in))
+              (let* ((current-ts (truncate (float-time)))
+                     (since (if (zerop (plist-get msg :edit_date))
+                                (plist-get msg :date)
+                              (plist-get msg :edit_date)))
+                     (live-for (- (+ since live-period) current-ts)))
+                (when (> live-for 0)
+                  (telega-ins-fmt " for %s"
+                    (telega-duration-human-readable live-for))
+                  (telega-ins-fmt " (updated %s ago)"
+                    (telega-duration-human-readable
+                     (- current-ts since)))))))))
+       (messageAnimation
+        (or (telega-ins--text (plist-get content :caption))
+            (telega-ins (propertize "GIF" 'face 'shadow))))
+       (messageVideo
+        (telega-ins telega-symbol-video " ")
+        (or (telega-ins--text (plist-get content :caption))
+            (telega-ins (propertize "Video" 'face 'shadow)))
+        (telega-ins-fmt " (%s)"
+          (telega-duration-human-readable
+           (telega--tl-get content :video :duration))))
+       (messageSticker
+        (telega-ins (telega--tl-get content :sticker :emoji))
+        (telega-ins " " (propertize "Sticker" 'face 'shadow)))
+       (messageCall
+        (telega-ins telega-symbol-phone " ")
+        ;; I18N: lng_call_incoming
+        (telega-ins (propertize "Incoming call" 'face 'shadow))
+        (telega-ins-fmt " (%s)"
+          (telega-duration-human-readable
+           (plist-get content :duration))))
+       (messageVoiceNote
+        ;; I18N: lng_in_dlg_audio
+        (telega-ins (propertize "Voice message" 'face 'shadow))
+        (telega-ins-fmt " (%s)"
+          (telega-duration-human-readable
+           (telega--tl-get content :voice_note :duration))))
+       (messageVideoNote
+        ;; I18N: lng_in_dlg_video_message
+        (telega-ins (propertize "Video message" 'face 'shadow))
+        (telega-ins-fmt " (%s)"
+          (telega-duration-human-readable
+           (telega--tl-get content :video_note :duration))))
+       (messageContact
+        ;; I18N: lng_in_dlg_contact
+        (telega-ins (propertize "Contact" 'face 'shadow))
+        (telega-ins-fmt " %s (%s %s)"
+          (telega--tl-get content :contact :phone_number)
+          (telega--tl-get content :contact :first_name)
+          (telega--tl-get content :contact :last_name)))
+       (messageInvoice
+        (telega-ins (propertize "Invoice" 'face 'shadow))
+        (telega-ins-prefix " "
+          (telega-ins (plist-get content :title))))
+       (t (telega-ins--content msg))))))
 
 
 ;; Inserter for custom filter button
@@ -350,7 +476,8 @@ Special message is one of: `messageContactRegistered',
 
 
 (defun telega-ins--chat (chat &optional brackets)
-  "Inserter for CHAT button in root buffer."
+  "Inserter for CHAT button in root buffer.
+Return t."
   (let ((title (telega-chat--title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
@@ -371,26 +498,27 @@ Special message is one of: `messageContactRegistered',
                                   :elide t
                                   :align 'right)
       (unless (zerop unread)
-        (telega-ins-propertize (number-to-string unread)
-          'face (if muted-p
-                    'telega-muted-count
-                  'telega-unmuted-count)))
+        (telega-ins--with-attrs (list :face (if muted-p
+                                                'telega-muted-count
+                                              'telega-unmuted-count))
+          (telega-ins (number-to-string unread))))
       (unless (zerop mentions)
-        (telega-ins-propertize (format "@%d" mentions)
-          'face ' 'telega-mention-count))
+        (telega-ins--with-attrs (list :face 'telega-mention-count)
+          (telega-ins-fmt "@%d" mentions)))
       ;; Mark for chats marked as unread
       (when (and (zerop unread) (zerop mentions)
                  (plist-get chat :is_marked_as_unread))
-        (telega-ins-propertize telega-symbol-unread
-          'face (if muted-p
-                    'telega-muted-count
-                  'telega-unmuted-count)))
+        (telega-ins--with-attrs (list :face (if muted-p
+                                                'telega-muted-count
+                                              'telega-unmuted-count))
+          (telega-ins telega-symbol-unread)))
       )
     (telega-ins (or (cdr brackets) "]"))
     (when pinned-p
       (telega-ins telega-symbol-pin))
     (when (eq (telega-chat--type chat 'raw) 'secret)
-      (telega-ins telega-symbol-lock))))
+      (telega-ins telega-symbol-lock))
+    t))
 
 (defun telega-ins--chat-full (chat)
   "Full status inserter for CHAT button in root buffer."
@@ -427,16 +555,25 @@ Special message is one of: `messageContactRegistered',
                                          :min (- max-width 10 1)
                                          :max (- max-width 10 1)
                                          :elide t)
-             (when (telega-ins--username (plist-get last-msg :sender_user_id))
-               (telega-ins ": "))
-             (telega-ins--message-one-line last-msg))
+             ;; NOTE: Do not show username for:
+             ;;  - Saved Messages
+             ;;  - If sent by user in private chat
+             ;;  - Special messages
+             (unless (or (eq (plist-get last-msg :sender_user_id)
+                             (plist-get chat :id))
+                         (telega-msg-special-p last-msg))
+               (when (telega-ins--username (plist-get last-msg :sender_user_id))
+                 (telega-ins ": ")))
+
+             (telega-ins--content-one-line last-msg))
 
            (telega-ins--with-attrs (list :align 'right :min 10)
              (telega-ins--date (plist-get last-msg :date)))
            (telega-ins--with-attrs (list :face 'telega-msg-status)
              (telega-ins--outgoing-status last-msg))
            ))
-    ))
+    )
+  t)
 
 (provide 'telega-ins)
 

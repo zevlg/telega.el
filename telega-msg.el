@@ -176,14 +176,19 @@ PREFIX and SUFFIX specifies addons in case caption is used."
 (defun telega-msg-web-page (msg)
   "Format webPage embedded into MSG."
   (let* ((web-page (telega--tl-get msg :content :web_page))
+         (sitename (plist-get web-page :site_name))
          (title (plist-get web-page :title))
          (desc (plist-get web-page :description))
+         (instant-view-p (plist-get web-page :has_instant_view))
          (photo (plist-get web-page :photo)))
     (when web-page
       (concat
+       (unless (string-empty-p sitename)
+         (concat "\n" telega-symbol-vertical-bar
+                 (propertize sitename 'face 'telega-webpage-sitename)))
        (unless (string-empty-p title)
          (concat "\n" telega-symbol-vertical-bar
-                 (propertize title 'face 'bold)))
+                 (propertize title 'face 'telega-webpage-title)))
        (unless (string-empty-p desc)
          (telega-fmt-eval
           `("\n"
@@ -205,6 +210,10 @@ PREFIX and SUFFIX specifies addons in case caption is used."
          (t (concat "\n" telega-symbol-vertical-bar
                     "<unsupported webPage:"
                     (plist-get web-page :type) ">")))
+       (when instant-view-p
+         (concat "\n" "[  " telega-symbol-thunder
+                 "INSTANT VIEW"
+                 "  ]"))
        ))))
 
 (defun telega-msg-reply-markup (msg)
@@ -595,10 +604,10 @@ If MARKDOWN is non-nil then format TEXT as markdown."
     (set-buffer standard-output)
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
-      (insert (format "Date(ISO8601): %s\n"
-                      (format-time-string "%FT%T%z" (plist-get msg :date))))
-      (insert (format "Chat-id: %d\n" chat-id))
-      (insert (format "Message-id: %d\n" msg-id))
+      (telega-ins "Date(ISO8601): ")
+      (telega-ins--date-iso8601 (plist-get msg :date) "\n")
+      (telega-ins-fmt "Chat-id: %d\n" chat-id)
+      (telega-ins-fmt "Message-id: %d\n" msg-id)
       (let ((sender-uid (plist-get msg :sender_user_id)))
         (unless (zerop sender-uid)
           (insert "Sender: ")

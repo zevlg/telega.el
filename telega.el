@@ -67,13 +67,12 @@
   "Kill currently running telega.
 With prefix arg force quit without confirmation."
   (interactive "P")
-  (when (or force (y-or-n-p (concat "Kill telega"
-                                    (let ((chat-count (length telega--chat-buffers)))
-                                      (cond ((eq chat-count 0) "")
-                                            ((eq chat-count 1) (format " (and 1 chat buffer)"))
-                                            (t (format " (and all %d chat buffers)" chat-count))))
-                                    "? ")))
-    (kill-buffer telega-root-buffer-name)))
+  (let* ((chat-count (length telega--chat-buffers))
+         (suffix (cond ((eq chat-count 0) "")
+                       ((eq chat-count 1) (format " (and 1 chat buffer)"))
+                       (t (format " (and all %d chat buffers)" chat-count)))))
+    (when (or force (y-or-n-p (concat "Kill telega" suffix "? ")))
+      (kill-buffer telega-root-buffer-name))))
 
 (defun telega--logOut ()
   "Switch to another telegram account."
@@ -99,7 +98,12 @@ With prefix arg force quit without confirmation."
                            :system_version emacs-version
                            :ignore_file_names :false
                            :enable_storage_optimizer t
-                           ))))
+                           )))
+
+  ;; List of proxies, since tdlib 1.3.0
+  (dolist (proxy telega-proxies)
+    (telega-server--send
+     `(:@type "addProxy" ,@proxy))))
 
 (defun telega--checkDatabaseEncryptionKey ()
   "Set database encryption key, if any."
@@ -126,18 +130,21 @@ With prefix arg force quit without confirmation."
            :is_current_phone_number :false))))
 
 (defun telega--resend-auth-code ()
-  "Resends auth code, works only if current state is authorizationStateWaitCode."
+  "Resend auth code.
+Works only if current state is `authorizationStateWaitCode'."
   (message "TODO: `telega--resend-auth-code'")
   )
 
 (defun telega--checkAuthenticationCode (registered-p &optional auth-code)
   "Send login auth code."
-  (let ((code (or auth-code (read-string "Telega login code: "))))
-    (cl-assert registered-p)
+  (let ((code (or auth-code (read-string "Telega login code: ")))
+        ;; NOTE: first_name is required for newly registered accounts
+        (first-name (or (and registered-p "")
+                        (read-from-minibuffer "First Name: "))))
     (telega-server--send
      (list :@type "checkAuthenticationCode"
            :code code
-           :first_name ""
+           :first_name first-name
            :last_name ""))))
 
 (defun telega--checkAuthenticationPassword (auth-state &optional password)

@@ -244,6 +244,16 @@ In form (NAME . FILTER-SPEC)."
   :group 'telega-inserter)
 
 
+(defgroup telega-webpage nil
+  "Customization for instant view webpage rendering."
+  :group 'telega)
+
+(defcustom telega-webpage-fill-column fill-column
+  "*Fill column to use for webpage rendering."
+  :type 'integer
+  :group 'telega-webpage)
+
+
 (defgroup telega-chat nil
   "Customization for chat buffer."
   :group 'telega)
@@ -377,6 +387,11 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-video "📹"     ;\U0001F4F9
+  "*String to use as video symbol."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-msg-pending "⌛" ;\u231B
   "Symbol to use for pending outgoing messages."
   :type 'string
@@ -424,6 +439,21 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-thunder "🗲"
+  "Symbol used inside INSTANT VIEW buttons."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-location "🌐"
+  "Symbol used for location."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-phone "📞"
+  "Symbol used as phone."
+  :type 'string
+  :group 'telega-symbol)
+  
 
 ;;; Faces
 (defgroup telega-faces nil
@@ -542,13 +572,28 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-webpage-sitename
-  '((t :inherit shadow))
+  '((t :inherit link :bold t))
   "Face to display webpage's site_name."
   :group 'telega-faces)
 
 (defface telega-webpage-title
   '((t :inherit bold))
   "Face to display webpage's title."
+  :group 'telega-faces)
+
+(defface telega-webpage-strike-through
+  '((t :strike-through t))
+  "Face to display strike through RichText."
+  :group 'telega-faces)
+
+(defface telega-webpage-header
+  '((t :height 1.4))
+  "Face to display header in webpage instant view."
+  :group 'telega-faces)
+
+(defface telega-webpage-subheader
+  '((t :height 1.2))
+  "Face to display subheader in webpage instant view."
   :group 'telega-faces)
 
 

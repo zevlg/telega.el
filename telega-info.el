@@ -213,15 +213,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (insert (format "%d chats in common:\n" (length chats-in-common)))
       (dolist (chat chats-in-common)
         (insert "    ")
-        (telega-button-insert 'telega-chat
-          :value chat
-          :format '("[" (telega-chat--title
-                         :min 25 :max 25
-                         :align left
-                         :align-symbol " "
-                         :elide t
-                         :elide-trail 0)
-                    "]"))
+        (telega-button--insert 'telega-chat chat)
         (insert "\n"))))
 
     ;; TODO: view shared media as thumbnails
@@ -391,6 +383,8 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
           (plist-get (telega-server--call '(:@type "getActiveSessions"))
                      :sessions))))
 
+;; NOTE: getTermsOfService removed in 1.3.0
+;; see https://github.com/tdlib/td/blob/master/CHANGELOG.md
 (defun telega-describe-terms-of-service ()
   "Describe terms of service use."
   (interactive)

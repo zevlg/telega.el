@@ -49,7 +49,7 @@ Used for optimization, when initially fetching chats, to speed things up.")
     (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "r") 'telega-filter-by-restriction)
-    (define-key map (kbd "t") 'telega-filter-by-top)
+    (define-key map (kbd "T") 'telega-filter-by-top)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd "d") 'telega-filters-pop-last)
@@ -61,9 +61,9 @@ Used for optimization, when initially fetching chats, to speed things up.")
   :supertype 'telega
   :inserter telega-inserter-for-filter-button
   :button-props-func 'telega-filter-button--props
-  :help-format (lambda (custom)
-                 (list (format "Filter (custom \"%s\") expands to: %s"
-                               (car custom) (cdr custom))))
+  :help-echo (lambda (custom)
+               (format "Filter (custom \"%s\") expands to: %s"
+                       (car custom) (cdr custom)))
   'action #'telega-filter-button--action
   'face 'telega-filter-button-active)
 

@@ -343,8 +343,8 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'"
   (let ((top (assq category telega--top-chats))
         (currts (time-to-seconds (current-time))))
-    (when (> currts (+ (or (cadr top) 0) 10))
-      ;; XXX update only if last fetch is older then 10 seconds
+    (when (> currts (+ (or (cadr top) 0) 60))
+      ;; XXX update only if last fetch is older then 60 seconds
       (let* ((cattype (list :@type (concat "topChatCategory"
                                            (symbol-name category))))
              (cl (telega-server--call

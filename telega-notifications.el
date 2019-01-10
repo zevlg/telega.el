@@ -30,6 +30,7 @@
 (require 'cl-lib)
 (require 'notifications)
 (require 'telega-core)
+(require 'telega-utils)
 
 (defgroup telega-notifications nil
   "Setup for D-Bus notifications."
@@ -49,10 +50,22 @@ TODO: Not yet implemented"
   :type 'float
   :group 'telega-notifications)
 
-(defcustom telega-notifications-notify-args nil
+(defcustom telega-notifications-notify-args
+  (list :sound-file (telega-etc-file "telegram-msgin.wav"))
   "*Additional arguments to `notifications-notify'.
-It could be `:sound-file' for example."
+Remove `:sound-file' to mute sounds on incoming messages."
   :type 'list
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-inserter 'telega-notifications-ins-msg
+  "*Inserter for the notification message."
+  :type 'function
+  :group 'telega-notifications)
+
+;; See https://github.com/zevlg/telega.el/issues/32
+(defcustom telega-notifications-msg-body-limit 100
+  "*Limit for the message body length."
+  :type 'integer
   :group 'telega-notifications)
 
 (defvar telega--notifications nil
@@ -69,6 +82,10 @@ It could be `:sound-file' for example."
        (telega-debug
         "TODO scope: `telega--on-updateNotificationSettings' event=%s" event))
       )))
+
+(defun telega-notifications-ins-msg (msg)
+  "Inserter to format MSG to notify about."
+  )
 
 (defun telega-notifications--format-msg (msg)
   "Format function for the notification."
@@ -101,7 +118,7 @@ With positive ARG - enables notifications, otherwise disables."
                       (telega-button--observable-p
                        (telega-chat-buffer--button-get (plist-get msg :id))))))
         (let ((notargs (list :app-name "emacs.telega"
-                             :app-icon (find-library-name "etc/telegram-logo.svg")
+                             :app-icon (telega-etc-file "telegram-logo.svg")
                              :timeout (round (* 1000 telega-notifications-timeout))
                              :urgency "normal"
                              :title (telega-chat--title chat 'with-username)

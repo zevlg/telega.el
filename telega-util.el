@@ -28,6 +28,22 @@
 (require 'ewoc)
 (require 'cl-lib)
 (require 'files)                        ; `locate-file'
+(require 'rx)                           ; `rx'
+
+(defmacro telega-x-frame ()
+  "Return window system frame, if any."
+  (let ((fsym (gensym "f")))
+    `(cl-find-if (lambda (,fsym)
+                   (frame-parameter ,fsym 'window-system))
+                 (cons (selected-frame) (frame-list)))))
+
+(defun telega-strip-newlines (string)
+  "Strip STRING newlines from end and beginning."
+  (replace-regexp-in-string
+   (rx (or (: string-start (* (any ?\r ?\n)))
+           (: (* (any ?\r ?\n)) string-end)))
+   ""
+   string))
 
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
@@ -78,7 +94,10 @@ Use it if you have formatting issues."
               (set-buffer standard-output)
               (telega-info--insert-user
                (telega-user--get (cdr link)))))
-      (url (browse-url (cdr link)))
+      (url
+       ;; TODO: check for https://t.me/ (:t_me_url in telega--options)
+       ;; prefix, to open directly in telega
+       (browse-url (cdr link)))
       (file (find-file (cdr link)))
 
       ;; `link' for download is (PLACE PROP MSG)
