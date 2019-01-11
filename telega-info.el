@@ -383,16 +383,6 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
           (plist-get (telega-server--call '(:@type "getActiveSessions"))
                      :sessions))))
 
-;; NOTE: getTermsOfService removed in 1.3.0
-;; see https://github.com/tdlib/td/blob/master/CHANGELOG.md
-(defun telega-describe-terms-of-service ()
-  "Describe terms of service use."
-  (interactive)
-  (with-help-window "*Telega Terms Of Service*"
-    (set-buffer standard-output)
-    (insert (plist-get (telega-server--call `(:@type "getTermsOfService"))
-                       :text))))
-
 (defun telega-describe-network-stats (only-current)
   "Show network statistics."
   (interactive "P")

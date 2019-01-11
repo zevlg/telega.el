@@ -1,12 +1,13 @@
 ;;; telega.el --- Telegram client (unofficial)
 
-;; Copyright (C) 2016-2018 by Zajcev Evgeny
+;; Copyright (C) 2016-2019 by Zajcev Evgeny
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.3.0 
-(defconst telega-version "0.3.0")       ;tdlib API = 1.3.0
+;; Version: 0.3.0
+(defconst telega-version "0.3.0")
+(defconst telega-tdlib-min-version "1.3.0")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -55,7 +56,14 @@
   (telega--create-hier)
 
   (unless (process-live-p (telega-server--proc))
+    ;; NOTE: for telega-server restarts also recreate root buffer,
+    ;; killing root buffer also cleanup all chat buffers and stops any
+    ;; timers used for animation
+    (when (buffer-live-p (telega-root--buffer))
+      (kill-buffer (telega-root--buffer)))
+
     (telega-server--start))
+
   (unless (buffer-live-p (telega-root--buffer))
     (with-current-buffer (get-buffer-create telega-root-buffer-name)
       (telega-root-mode)))
@@ -74,7 +82,7 @@ With prefix arg force quit without confirmation."
     (when (or force (y-or-n-p (concat "Kill telega" suffix "? ")))
       (kill-buffer telega-root-buffer-name))))
 
-(defun telega--logOut ()
+(defun telega-logout ()
   "Switch to another telegram account."
   (interactive)
   (telega-server--send `(:@type "logOut")))
@@ -101,9 +109,10 @@ With prefix arg force quit without confirmation."
                            )))
 
   ;; List of proxies, since tdlib 1.3.0
-  (dolist (proxy telega-proxies)
-    (telega-server--send
-     `(:@type "addProxy" ,@proxy))))
+  ;; (dolist (proxy telega-proxies)
+  ;;   (telega-server--send
+  ;;    `(:@type "addProxy" ,@proxy)))
+  )
 
 (defun telega--checkDatabaseEncryptionKey ()
   "Set database encryption key, if any."
@@ -114,6 +123,7 @@ With prefix arg force quit without confirmation."
          :encryption_key ""))
 
   ;; Set proxy here, so registering phone will use it
+  ;; DEPRECATED, use `telega-proxies'
   (when telega-socks5-proxy
     (telega-server--send
      (list :@type "setProxy"
@@ -129,11 +139,12 @@ With prefix arg force quit without confirmation."
            :allow_flash_call :false
            :is_current_phone_number :false))))
 
-(defun telega--resend-auth-code ()
+(defun telega-resend-auth-code ()
   "Resend auth code.
 Works only if current state is `authorizationStateWaitCode'."
-  (message "TODO: `telega--resend-auth-code'")
-  )
+  (interactive)
+  (telega-server--send
+   (list :@type "resendAuthenticationCode")))
 
 (defun telega--checkAuthenticationCode (registered-p &optional auth-code)
   "Send login auth code."
@@ -182,7 +193,16 @@ Works only if current state is `authorizationStateWaitCode'."
   (assert telega--me-id)
 
   (telega--setOptions)
-  ;; Request for chats/users/etc
+
+  ;; Validate tdlib version
+  (when (string< (plist-get telega--options :version)
+                 telega-tdlib-min-version)
+    (error (concat "TDLib version=%s < %s (min required), "
+                   "please upgrade TDLib and recompile `telega-server'")
+           (plist-get telega--options :version)
+           telega-tdlib-min-version))
+
+  ;; All OK, request for chats/users/etc
   (telega-status--set nil "Fetching chats...")
   (telega--getChats)
 
@@ -258,7 +278,7 @@ If called interactively, then print version into echo area."
     (if interactive-p
         (message version)
       version)))
-    
+
 (provide 'telega)
 
 ;; run load-time hooks

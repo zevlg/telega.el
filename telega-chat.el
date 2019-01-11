@@ -193,6 +193,13 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-chat--ensure chat)
     (telega-root--chat-new chat)))
 
+(defun telega--on-updateChatNotificationSettings (event)
+  "Notification settings has been changed in chat."
+  (let ((chat (telega-chat--get (plist-get event :chat_id))))
+    (plist-put chat :notification_settings
+               (plist-get event :notification_settings))
+    (telega-root--chat-update chat)))
+
 (defun telega--on-updateChatTitle (event)
   (let ((chat (telega-chat--get (plist-get event :chat_id) 'offline))
         (new-title (plist-get event :title)))
@@ -551,9 +558,11 @@ be marked as read."
         (telega--toggleChatIsMarkedAsUnread chat))
       )))
 
-(defun telega-chats-filtered-toggle-read ()
+(defun telega-chats-filtered-toggle-read (&optional force)
   "Apply `telega-chat-toggle-read' to all currently filtered chats."
-  (interactive)
+  (interactive
+   (list (y-or-n-p (format "Toggle read for %d chats? "
+                           (length telega--filtered-chats)))))
   (mapc 'telega-chat-toggle-read telega--filtered-chats))
 
 (defun telega-chat-delete (chat)
@@ -566,7 +575,7 @@ be marked as read."
          :chat_id (plist-get chat :id)
          :remove_from_chat_list t)))
 
-(defun telega-chats-filtered-toggle-read (&optional force)
+(defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
   (interactive

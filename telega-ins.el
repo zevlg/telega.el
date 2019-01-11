@@ -416,8 +416,18 @@ Special messages are determined with `telega-msg-special-p'."
         (telega-ins " " (propertize "Sticker" 'face 'shadow)))
        (messageCall
         (telega-ins telega-symbol-phone " ")
-        ;; I18N: lng_call_incoming
-        (telega-ins (propertize "Incoming call" 'face 'shadow))
+        (let* ((reason (telega--tl-type (plist-get content :discard_reason)))
+               (label (cond ((plist-get msg :is_outgoing)
+                             (if (eq reason 'callDiscardReasonMissed)
+                                 "Cancelled call" ;; I18N: lng_call_cancelled
+                               "Outgoing call")) ;; I18N: lng_call_outgoing
+                            ((eq reason 'callDiscardReasonMissed)
+                             "Missed call") ;; I18N: lng_call_missed
+                            ((eq reason 'callDiscardReasonDeclined)
+                             "Declined call") ;; I18N: lng_call_declined
+                            (t
+                             "Incoming call")))) ;; I18N: lng_call_incoming
+          (telega-ins (propertize label 'face 'shadow)))
         (telega-ins-fmt " (%s)"
           (telega-duration-human-readable
            (plist-get content :duration))))

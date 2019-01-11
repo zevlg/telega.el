@@ -78,6 +78,7 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'bool
   :group 'telega)
 
+;; DEPRECATED, use `telega-proxies'
 (defcustom telega-socks5-proxy nil
   "*Plist specifying socks5 proxy to use.
 `(:server <SERVER> :port <PORT> :username <NAME> :password <PASSWORD>)"
