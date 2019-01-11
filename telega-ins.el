@@ -411,6 +411,11 @@ Special messages are determined with `telega-msg-special-p'."
         (telega-ins-fmt " (%s)"
           (telega-duration-human-readable
            (telega--tl-get content :video :duration))))
+       (messageGame
+        (telega-ins telega-symbol-game " ")
+        (or (telega-ins (telega--tl-get content :game :title))
+            (telega-ins (telega--tl-get content :game :short_name))
+            (telega-ins (propertize "Game" 'face 'shadow))))
        (messageSticker
         (telega-ins (telega--tl-get content :sticker :emoji))
         (telega-ins " " (propertize "Sticker" 'face 'shadow)))

@@ -393,6 +393,11 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-game "🎮"      ;\U0001F3AE
+  "*String to use as video game symbol."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-msg-pending "⌛" ;\u231B
   "Symbol to use for pending outgoing messages."
   :type 'string

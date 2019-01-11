@@ -388,6 +388,9 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
   (interactive "P")
   (with-help-window "*Telega Network Statistics*"
     (set-buffer standard-output)
+    ;; TODO: proxies
+    ;;  - [Enable/Disable Proxy] button
+    ;;  - List of proxies with ping status (using callbacks)
     (let* ((net-stats (telega-server--call
                        (list :@type "getNetworkStatistics"
                              :only_current (or only-current :false))))
