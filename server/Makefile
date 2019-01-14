@@ -9,7 +9,7 @@ ifdef WITH_VOIP
 CC=c++
 CFLAGS+=-std=c++11 -DWITH_VOIP
 LDFLAGS+=-ltgvoip
-SOURCES+=telega-voip.cpp
+SOURCES+=telega-voip.cpp telega-b64.c
 endif
 
 $(PROG): $(SOURCES)

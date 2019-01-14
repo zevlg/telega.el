@@ -228,6 +228,7 @@ main(int ac, char** av)
                         usage(av[0]);
                 }
         }
+
         if (parse_mode) {
                 parse_stdin();
                 return 0;

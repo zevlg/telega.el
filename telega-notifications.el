@@ -133,6 +133,10 @@ With positive ARG - enables notifications, otherwise disables."
                  (nconc notargs telega-notifications-notify-args)))
         ))))
 
+(defun telega-notfications-incoming-call (call)
+  "Function intended to be added to `telega-call-hook'."
+  )
+
 (provide 'telega-notifications)
 
 ;;; telega-notifications.el ends here
