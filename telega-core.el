@@ -72,6 +72,13 @@ Used to update messages on file updates.")
 (defvar telega--uploadings nil
   "Hash of active uploadings FILE-ID -> (list of (UPDATE-CB CB-ARGS)).")
 
+(defvar telega-voip--alist nil
+  "Alist of all calls currently in processing.
+In form (ID . CALL)")
+(defvar telega-voip--active-id nil
+  "ID of currently active call.
+Only one call can be currently active.")
+
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
@@ -100,7 +107,11 @@ Done when telega server is ready to receive queries."
   (setq telega--unread-chat-count nil)
 
   (setq telega--downloadings (make-hash-table :test 'eq))
-  (setq telega--uploadings (make-hash-table :test 'eq)))
+  (setq telega--uploadings (make-hash-table :test 'eq))
+
+  (setq telega-voip--alist nil)
+  (setq telega-voip--active-id nil)
+  )
 
 (defmacro telega-save-excursion (&rest body)
   "Save current point as moving marker."

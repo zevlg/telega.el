@@ -24,6 +24,12 @@
 ;; 
 
 ;;; Code:
+(require 'cl)
+(require 'telega-core)
+(require 'telega-customize)
+
+(declare-function telega-root--chat-update "telega-root" (chat))
+
 (defgroup telega-voip nil
   "VOIP settings."
   :group 'telega)
@@ -38,21 +44,34 @@
   :type 'boolean
   :group 'telega-voip)
 
-(defvar telega-voip-buffer nil
+(defvar telega-voip--buffer nil
   "Buffer currently used for the active call.")
-(defvar telega-voip-call nil
-  "Currently active call.")
 
 (defvar telega-voip-protocol
   (list :@type "callProtocol"
         :udp_p2p t :udp_reflector t
         :min_layer 65 :max_layer 65))
 
+(defsubst telega-voip--by-id (call-id)
+  "Return call by CALL-ID."
+  (cl-find call-id telega-voip--list
+           :test '= :key (telega--tl-prop :id)))
+
+(defsubst telega-voip--by-user-id (user-id)
+  "Return call to user defined by USER-ID."
+  (cl-find user-id telega-voip--list
+           :test '= :key (telega--tl-prop :user_id)))
+
 (defun telega--on-updateCall (event)
   "Called when some call data has been updated."
   (let* ((call (plist-get event :call))
          (state (plist-get call :state)))
     (cl-case (telega--tl-type state)
+      (callStatePending
+       (let ((existing-call (telega-voip--by-id (plist-get call :id))))
+         (unless existing-call
+       )
+
       (callStateReady
        (telega-server--send (plist-get state :config) "voip-server-config")
        (let ((call-setup
@@ -62,10 +81,21 @@
                     :max_layer (telega--tl-get state :protocol :max_layer)
                     :endpoints (plist-get state :connections))))
          (telega-server--send call-setup "voip-start")))
-      ((callStateDiscarded callStateError)
+      (callStateError
+       (telega-server--send nil "voip-stop")
+       (let ((err (plist-get state :error))
+             (user (telega-user--get (plist-get call :user_id))))
+         (messages "Error[%d] calling %s: " (plist-get err :code)
+                   (telega-user--name user)(plist-get err :message))))
+      (callStateDiscarded
        (telega-server--send nil "voip-stop"))
-      ))
-  )
+      )
+
+    ;; Update corresponding chat button
+    (let ((chat (telega-chat--get (plist-get call :user_id) 'offline)))
+      (when chat
+        (telega-root--chat-update chat)))
+    ))
 
 (defun telega--createCall (user)
   "Create outgoing call to the USER."

@@ -28,6 +28,7 @@
 (require 'ring)
 (require 'telega-core)
 (require 'telega-msg)
+(require 'telega-voip)                  ;telega--createCall
 
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
@@ -431,6 +432,7 @@ be marked as read."
     (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "C-c p") 'telega-chat-pin)
     (define-key map (kbd "P") 'telega-chat-pin)
+    (define-key map (kbd "C") 'telega-chat-call)
     (define-key map (kbd "DEL") 'telega-chat-delete)
     map)
   "The key map for telega chat buttons.")
@@ -470,19 +472,34 @@ be marked as read."
   (interactive (list (telega-chat-at-point)))
   (telega-toggleChatIsPinned chat))
 
+(defun telega-chat-call (chat)
+  "Call to the user associated with the given private CHAT."
+  (interactive (list (telega-chat-at-point)))
+  (unless (eq (telega-chat--type chat 'no-interpret) 'private)
+    (error "Can call only to users"))
+  (let* ((user (telega-chat--user chat))
+         (full-info (telega--full-info user)))
+    (when (plist-get full-info :has_private_calls)
+      (error "%s can't be called due to their privacy settings"
+             (telega-user--name user)))
+    (unless (plist-get full-info :can_be_called)
+      (error "%s can't be called" (telega-user--name user)))
+
+    (telega--createCall user)))
+
 (defun telega-chat-info (chat)
   "Show info about chat at point."
   (interactive (list (telega-chat-at-point)))
   (with-help-window "*Telegram Chat Info*"
     (set-buffer standard-output)
-    (insert (format "%s: %s %s\n"
-                    (capitalize (symbol-name (telega-chat--type chat)))
-                    (telega-chat--title chat)
-                    (let ((username (plist-get (telega-chat--info chat) :username)))
-                      (if (and username (not (string-empty-p username)))
-                          (concat "@" username)
-                        ""))))
-    (insert (format "Id: %d\n" (plist-get chat :id)))
+    (telega-ins-fmt "%s: %s %s\n"
+      (capitalize (symbol-name (telega-chat--type chat)))
+      (telega-chat--title chat)
+      (let ((username (plist-get (telega-chat--info chat) :username)))
+        (if (and username (not (string-empty-p username)))
+            (concat "@" username)
+          "")))
+    (telega-ins-fmt "Id: %d\n" (plist-get chat :id))
     (when (telega-chat--public-p chat)
       (let ((link (concat (or (plist-get telega--options :t_me_url)
                               "https://t.me/")
@@ -491,22 +508,24 @@ be marked as read."
         (apply 'insert-text-button link (telega-link-props 'url link 'link))
         (insert "\n")))
     (when telega-debug
-      (insert (format "Order: %s\n" (telega-chat--order chat))))
+      (telega-ins-fmt "Order: %s\n" (telega-chat--order chat)))
 
     (let ((not-cfg (plist-get chat :notification_settings)))
-      (insert (format "Notifications: %s\n"
-                      (if (zerop (plist-get not-cfg :mute_for))
-                          (concat "enabled"
-                                  (if (plist-get not-cfg :show_preview)
-                                      " with preview"
-                                    ""))
-                        "disabled"))))
+      (telega-ins-fmt "Notifications: %s\n"
+        (if (zerop (plist-get not-cfg :mute_for))
+            (concat "enabled"
+                    (if (plist-get not-cfg :show_preview)
+                        " with preview"
+                      ""))
+          "disabled")))
 
     (insert "\n")
     (telega-info--insert (plist-get chat :type) chat)
 
     (when telega-debug
-      (insert (format "\nChat: %S" chat)))
+      (telega-ins "\n---DEBUG---\n")
+      (telega-ins-fmt "Chat: %S\n" chat)
+      (telega-ins-fmt "Info: %S" (telega-chat--info chat)))
     ))
 
 (defun telega-chat-with (name)
