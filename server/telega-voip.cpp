@@ -106,7 +106,7 @@ telega_voip_stop(void)
         }
 
         voip->Stop();
-        // delete voip;
-        // voip = NULL;
+        delete voip;
+        voip = NULL;
         return 0;
 }
