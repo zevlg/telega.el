@@ -89,7 +89,7 @@
             ;;        (telega-ins telega-symbol-msg-succeed)))
             ))))
 
-  (telega-status--set nil call-status))))
+  (telega-status--set nil call-status)))
 
 (defun telega--on-updateCall (event)
   "Called when some call data has been updated."
