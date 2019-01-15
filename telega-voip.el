@@ -112,27 +112,36 @@
        )
 
       (callStateReady
-       (telega-server--send (plist-get state :config) "voip-server-config")
-       (let ((call-setup
-              (list :is_outgoing (or (plist-get call :is_outgoing) :false)
+       (unless (eq call telega-voip--active-call)
+         (error "Another call became Ready, while having active call"))
+
+       (let ((start
+              (list :@command "start"
+                    :server_config (plist-get state :config)
+                    :is_outgoing (or (plist-get call :is_outgoing) :false)
                     :encryption_key (plist-get state :encryption_key)
                     :allow_p2p (or telega-voip-allow-p2p :false)
                     :max_layer (telega--tl-get state :protocol :max_layer)
                     :endpoints (plist-get state :connections))))
-         (telega-server--send call-setup "voip-start")))
+         (telega-server--send start "voip")))
+
       (callStateError
-       (telega-server--send nil "voip-stop")
        (let ((err (plist-get state :error))
              (user (telega-user--get (plist-get call :user_id))))
-         (messages "Error[%d] calling %s: " (plist-get err :code)
-                   (telega-user--name user)(plist-get err :message))))
+         (message "Error[%d] calling %s: %s" (plist-get err :code)
+                  (telega-user--name user) (plist-get err :message))))
+
       (callStateDiscarded
-       (telega-server--send nil "voip-stop"))
+       (let ((discad (plist-get state :reason))
+             (user (telega-user--get (plist-get call :user_id))))
+         (message "Call %s discaded: %s" (telega-user--name user)
+                  (substring (plist-get discad :@type) 17))))
       )
 
     ;; Delete call from the list if call is ended
     (when (memq (telega--tl-type state) '(callStateError callStateDiscarded))
       (when (eq telega-voip--active-call call)
+        (telega-server--send (list :@command "stop") "voip")
         (setq telega-voip--active-call nil))
       (setq telega-voip--alist (del-alist call-id telega-voip--alist)))
 

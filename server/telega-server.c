@@ -12,7 +12,8 @@
 
 #include "telega-dat.h"
 #ifdef WITH_VOIP
-#include "telega-voip.h"
+extern const char* telega_voip_version(void);
+extern int telega_voip_cmd(const char* json);
 #endif /* WITH_VOIP */
 
 /*
@@ -24,9 +25,8 @@
  * COMMAND is one of `send', `event' or `error'
  * `event' and `error' is used for output
  *
- * If VOIP support is compiled (make WITH_VOIP=true) in then also next
- * commands are available: `voip-server-config', `voip-start' and
- * `voip-stop'
+ * If VOIP support is compiled in (make WITH_VOIP=true) then also
+ * `voip' command available
  *
  * For example:
  *   event 105
@@ -64,6 +64,18 @@ usage(char* prog)
         exit(0);
 }
 
+void
+telega_output(const char* otype, const char* json)
+{
+        if (verbosity > 4) {
+                fprintf(stderr, "[telega-server] "
+                        "OUTPUT %s: %s\n", otype, json);
+        }
+
+        printf("%s %zu\n%s\n", otype, strlen(json), json);
+        fflush(stdout);
+}
+
 static void
 on_error_cb(const char* errmsg)
 {
@@ -74,8 +86,7 @@ on_error_cb(const char* errmsg)
         tdat_json_value(&json_src, &plist_dst);
         tdat_append1(&plist_dst, "\0");
 
-        printf("error %zu\n%s\n", strlen(plist_dst.data), plist_dst.data);
-        fflush(stdout);
+        telega_output("error", plist_dst.data);
 
         tdat_drop(&json_src);
         tdat_drop(&plist_dst);
@@ -91,15 +102,10 @@ tdlib_loop(void* cln)
                 const char *res = td_json_client_receive(cln, 0.5);
                 if (res) {
                         tdat_append(&json_src, res, strlen(res));
-                        if (verbosity > 4)
-                                fprintf(stderr, "[telega-server] "
-                                        "OUTPUT JSON: %s\n", res);
                         tdat_json_value(&json_src, &plist_dst);
                         tdat_append1(&plist_dst, "\0");
 
-                        printf("event %zu\n%s\n", strlen(plist_dst.data),
-                               plist_dst.data);
-                        fflush(stdout);
+                        telega_output("event", plist_dst.data);
 
                         tdat_reset(&json_src);
                         tdat_reset(&plist_dst);
@@ -160,16 +166,17 @@ stdin_loop(void* cln)
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, json_dst.data);
 #ifdef WITH_VOIP
-                else if (!strcmp(cmd, "voip-server-config"))
-                        telega_voip_update_config(json_dst.data);
-                else if (!strcmp(cmd, "voip-start"))
-                        telega_voip_start(json_dst.data);
-                else if (!strcmp(cmd, "voip-stop"))
-                        telega_voip_stop();
+                else if (!strcmp(cmd, "voip"))
+                        telega_voip_cmd(json_dst.data);
 #endif /* WITH_VOIP */
-                else
+                else {
+                        char error[128];
+                        snprintf(error, 128, "\"Unknown cmd `%s'\"", cmd);
+                        telega_output("error", error);
+
                         fprintf(stderr, "[telega-server] "
                                 "Unknown command: %s\n", cmd);
+                }
 
                 tdat_reset(&plist_src);
                 tdat_reset(&json_dst);
