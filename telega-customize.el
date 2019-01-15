@@ -45,7 +45,7 @@
   :type 'string
   :group 'telega)
 
-(defcustom telega-options-plist '(:localization_target "tdesktop")
+(defcustom telega-options-plist '(:online t :localization_target "tdesktop")
   "*Plist of options to set.
 Only writable options can be set.  See: https://core.telegram.org/tdlib/options"
   :type 'plist
@@ -76,6 +76,20 @@ Implies `telega-use-file-database' set to non-nil."
   "Cache chats and messages among restarts.
 Implies `telega-use-chat-info-database' set to non-nil."
   :type 'bool
+  :group 'telega)
+
+(defcustom telega-proxies nil
+  "*List of proxies.
+Use instead of `telega-socks5-proxy' since tdlib >= 1.3.0
+Format is:
+(:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
+
+where PROXY-TYPE is one of:
+  (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
+  (:@type \"proxyTypeHttp\" :username <USER> :password <PASSWORD>
+         :http_only <BOOL>)
+  (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)"
+  :type 'list
   :group 'telega)
 
 ;; DEPRECATED, use `telega-proxies'
@@ -665,6 +679,13 @@ Always called, even if corresponding chat is closed at the moment."
   "Hook called when new message has been inserted into chatbuffer.
 Called with two arguments - message and disable-notification.
 Always called, even if corresponding chat is closed at the moment."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-incoming-call-hook nil
+  "Hook called when incoming call pending.
+Called with single argument - incoming call.
+Use `telega-voip-call-active-p' to understand if call is currently active."
   :type 'hook
   :group 'telega-hooks)
 

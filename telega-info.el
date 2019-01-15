@@ -191,30 +191,33 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (share-text (plist-get full-info :share_text))
          (out-link (plist-get user :outgoing_link))
          (in-link (plist-get user :incoming_link)))
-    (insert (format "Relationship: %s <-in---out-> %s\n"
-                    (substring (plist-get in-link :@type) 9)
-                    (substring (plist-get out-link :@type) 9)))
+    (telega-ins-fmt "Relationship: %s <-in---out-> %s\n"
+      (substring (plist-get in-link :@type) 9)
+      (substring (plist-get out-link :@type) 9))
     (unless (string-empty-p username)
       ;; I18N: lng_info_username_label
-      (insert (format "Username: @%s\n" username)))
+      (telega-ins-fmt "Username: @%s\n" username))
     (unless (string-empty-p phone_number)
       ;; I18N: lng_settings_phone_label
-      (insert (format "phone: +%s\n" phone_number)))
-    (insert (format "Seen: %s\n" (telega-user--seen user)))
+      (telega-ins-fmt "phone: +%s\n" phone_number))
+    (telega-ins-fmt "Seen: %s\n" (telega-user--seen user))
     (unless (string-empty-p bio)
       ;; I18N: lng_bio_placeholder
-      (insert (telega-fmt-labeled-text "bio: " bio) "\n"))
+      (telega-ins--labeled "bio: " nil (telega-ins bio))
+      (telega-ins "\n"))
     (unless (string-empty-p share-text)
-      (insert (telega-fmt-labeled-text "Share text: " share-text) "\n")))
+      (telega-ins--labeled "Share text: " nil
+        (telega-ins share-text))
+      (telega-ins "\n")))
 
   (let ((chats-in-common (telega-user--chats-in-common user)))
     (when chats-in-common
       ;; I18N: lng_profile_common_groups_section
-      (insert (format "%d chats in common:\n" (length chats-in-common)))
+      (telega-ins-fmt "%d chats in common:\n" (length chats-in-common))
       (dolist (chat chats-in-common)
-        (insert "    ")
+        (telega-ins "    ")
         (telega-button--insert 'telega-chat chat)
-        (insert "\n"))))
+        (telega-ins "\n"))))
 
     ;; TODO: view shared media as thumbnails
   )
@@ -481,6 +484,63 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
     (insert "--------\n")
     (insert "TODO")
     ))
+
+
+;; Contacts
+(defun telega--removeContacts (&rest user-ids)
+  "Remove users determined by USER-IDS from contacts."
+  (telega-server--call
+   (list :@type "removeContacts"
+         :user_ids (cl-map 'vector 'identity user-ids))))
+
+(defun telega--importContacts (&rest contacts)
+  "Import CONTACTS into contacts list."
+  (telega-server--call
+   (list :@type "importContacts"
+         :contacts (cl-map 'vector 'identity contacts))))
+
+(defun telega-describe-contact (contact)
+  "Show CONTACT information."
+  (with-help-window "*Telega Contact*"
+    (set-buffer standard-output)
+    (telega-ins-fmt "%s %s\n"
+      (plist-get contact :first_name) (plist-get contact :last_name))
+    (telega-ins (make-string (- (point-max) 2) ?-) "\n")
+    (telega-ins-fmt "Phone: %s\n" (plist-get contact :phone_number))
+    (let* ((user-id (plist-get contact :user_id))
+           (user (telega-user--get user-id)))
+      (if (eq (telega--tl-type (plist-get user :outgoing_link))
+              'linkStateIsContact)
+          (insert-text-button
+           "[RemoveContact]"
+           :value contact
+           'action (lambda (button)
+                     (let ((contact (button-get button :value)))
+                       (telega--removeContacts (plist-get contact :user_id))
+                       (telega-save-cursor
+                         (telega-describe-contact contact)))))
+
+        (insert-text-button
+         "[ImportContact]"
+         :value contact
+         'action (lambda (button)
+                   (let ((contact (button-get button :value)))
+                     (telega--importContacts contact)
+                     (telega-save-cursor
+                       (telega-describe-contact contact))))))
+
+      (telega-ins "  ")
+      (insert-text-button
+       "[ChatWith]"
+       :value user
+       'action (lambda (button)
+                 (telega-chat--pop-to-buffer
+                  (telega--createPrivateChat (button-get button :value)))))
+      (telega-ins "\n")
+
+      (telega-ins "\n--- Telegram User Info ---\n")
+      (telega-ins "Name: " (telega-user--name user 'name) "\n")
+      (telega-info--insert-user user))))
 
 (provide 'telega-info)
 

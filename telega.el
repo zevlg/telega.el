@@ -109,9 +109,9 @@ With prefix arg force quit without confirmation."
                            )))
 
   ;; List of proxies, since tdlib 1.3.0
-  ;; (dolist (proxy telega-proxies)
-  ;;   (telega-server--send
-  ;;    `(:@type "addProxy" ,@proxy)))
+  (dolist (proxy telega-proxies)
+    (telega-server--send
+     `(:@type "addProxy" ,@proxy)))
   )
 
 (defun telega--checkDatabaseEncryptionKey ()

@@ -29,6 +29,8 @@
 (require 'telega-customize)
 
 (declare-function telega-root--chat-update "telega-root" (chat))
+(declare-function telega-status--set "telega-root"
+                  (conn-status &optional aux-status raw))
 
 (defgroup telega-voip nil
   "VOIP settings."
@@ -54,22 +56,59 @@
 
 (defsubst telega-voip--by-id (call-id)
   "Return call by CALL-ID."
-  (cl-find call-id telega-voip--list
-           :test '= :key (telega--tl-prop :id)))
+  (cdr (assq call-id telega-voip--alist)))
 
 (defsubst telega-voip--by-user-id (user-id)
   "Return call to user defined by USER-ID."
-  (cl-find user-id telega-voip--list
-           :test '= :key (telega--tl-prop :user_id)))
+  (cdr (cl-find user-id telega-voip--alist
+                :test '= :key (lambda (el)
+                                (plist-get (cdr el) :user_id)))))
+
+(defun telega-voip--aux-status (call)
+  "Update `telega--status-aux' according to active CALL."
+  (let ((call-status
+         (telega-ins--as-string
+          (when call
+            (telega-ins telega-symbol-phone)
+            (if (plist-get call :is_outgoing)
+                (telega-ins "→")
+              (telega-ins "←"))
+            (let ((user-id (plist-get call :user_id))
+                  (state (plist-get call :state)))
+              (apply 'insert-text-button
+                     (telega-user--name (telega-user--get user-id))
+                     (telega-link-props 'user user-id))
+              (telega-ins-fmt " %s"
+                (substring (plist-get state :@type) 9))
+              (when (eq (telega--tl-type state) 'callStatePending)
+                ;; dot for animation
+                (telega-ins ".")))
+            ;; (cond ((plist-get state :is_received)
+            ;;        (telega-ins telega-symbol-msg-viewed))
+            ;;       ((plist-get state :is_created)
+            ;;        (telega-ins telega-symbol-msg-succeed)))
+            ))))
+
+  (telega-status--set nil call-status))))
 
 (defun telega--on-updateCall (event)
   "Called when some call data has been updated."
   (let* ((call (plist-get event :call))
-         (state (plist-get call :state)))
+         (state (plist-get call :state))
+         (call-id (plist-get call :id))
+         (old-call (telega-voip--by-id call-id)))
+    (setq telega-voip--alist
+          (put-alist call-id call telega-voip--alist))
+    ;; Activate the call if active call is created/updated
+    (when (or (not telega-voip--active-call)
+              (= call-id (plist-get telega-voip--active-call :id)))
+      (setq telega-voip--active-call call))
+
     (cl-case (telega--tl-type state)
       (callStatePending
-       (let ((existing-call (telega-voip--by-id (plist-get call :id))))
-         (unless existing-call
+       (unless old-call
+         (run-hook-with-args 'telega-incoming-call-hook call))
+       ;; TODO: accept/decline
        )
 
       (callStateReady
@@ -90,6 +129,15 @@
       (callStateDiscarded
        (telega-server--send nil "voip-stop"))
       )
+
+    ;; Delete call from the list if call is ended
+    (when (memq (telega--tl-type state) '(callStateError callStateDiscarded))
+      (when (eq telega-voip--active-call call)
+        (setq telega-voip--active-call nil))
+      (setq telega-voip--alist (del-alist call-id telega-voip--alist)))
+
+    ;; Update aux status
+    (telega-voip--aux-status telega-voip--active-call)
 
     ;; Update corresponding chat button
     (let ((chat (telega-chat--get (plist-get call :user_id) 'offline)))

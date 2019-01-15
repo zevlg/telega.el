@@ -105,7 +105,13 @@ Return what BODY returns."
 (defun telega-ins--actions (actions)
   "Insert chat ACTIONS alist."
   (when actions
-    (telega-ins-fmt "TODO: `telega-ins--actions' %S" actions)))
+    ;; NOTE: Display only last action
+    (let* ((user (telega-user--get (caar actions)))
+           (action (cdar actions)))
+      (telega-ins (telega-user--name user 'short) " ")
+      (telega-ins
+       (propertize (concat "is " (substring (plist-get action :@type) 10))
+                   'face 'shadow)))))
 
 (defun telega-ins--filesize (filesize)
   "Insert FILESIZE in human readable format."
@@ -542,16 +548,23 @@ Return t."
 
   ;; And the status
   (let ((max-width (- telega-root-fill-column (current-column)))
-        (chat-actions (gethash (plist-get chat :id) telega--actions))
+        (actions (gethash (plist-get chat :id) telega--actions))
+        (call (telega-voip--by-user-id (plist-get chat :id)))
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message)))
-    (cond (chat-actions
-           (telega-debug "CHAT-ACTIONS: %s --> %S" (telega-chat--title chat)
-                         chat-actions)
+    (cond (call
+           (telega-ins telega-symbol-phone " ")
+           (telega-ins-fmt "%s Call (%s)"
+             (if (plist-get call :is_outgoing) "Outgoing" "Incoming")
+             (substring (telega--tl-get call :state :@type) 9)))
+
+           (actions
+           (telega-debug "CHAT-ACTIONS: %s --> %S"
+                         (telega-chat--title chat) actions)
            (telega-ins--with-attrs (list :align 'left
                                          :max max-width
                                          :elide t)
-             (telega-ins--actions chat-actions)))
+             (telega-ins--actions actions)))
 
           (draft-msg
            (let ((inmsg (plist-get draft-msg :input_message_text)))

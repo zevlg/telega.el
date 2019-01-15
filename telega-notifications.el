@@ -134,7 +134,8 @@ With positive ARG - enables notifications, otherwise disables."
         ))))
 
 (defun telega-notfications-incoming-call (call)
-  "Function intended to be added to `telega-call-hook'."
+  "Function intended to be added to `telega-incoming-call-hook'."
+  (message "TODO: `telega-notfications-incoming-call'")
   )
 
 (provide 'telega-notifications)

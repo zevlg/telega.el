@@ -75,8 +75,8 @@ Used to update messages on file updates.")
 (defvar telega-voip--alist nil
   "Alist of all calls currently in processing.
 In form (ID . CALL)")
-(defvar telega-voip--active-id nil
-  "ID of currently active call.
+(defvar telega-voip--active-call nil
+  "Currently active call.
 Only one call can be currently active.")
 
 (defun telega--init-vars ()
@@ -110,7 +110,7 @@ Done when telega server is ready to receive queries."
   (setq telega--uploadings (make-hash-table :test 'eq))
 
   (setq telega-voip--alist nil)
-  (setq telega-voip--active-id nil)
+  (setq telega-voip--active-call nil)
   )
 
 (defmacro telega-save-excursion (&rest body)
@@ -451,7 +451,7 @@ NIL yields empty string for the convenience."
                        :value value
                        props)))
     (telega-button--apply-props-func button)
-    button))
+    (button-at button)))
 
 (defun telega-button--update-value (button new-value)
   "Update BUTTON's value to VALUE.

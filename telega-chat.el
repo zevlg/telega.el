@@ -376,9 +376,20 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 (defun telega--createPrivateChat (user)
   "Create private chat with USER.
 Return newly created chat."
-  (telega-server--call
-   (list :@type "createPrivateChat"
-         :user_id (plist-get user :id))))
+  (telega-chat--get
+   (plist-get
+    (telega-server--call
+     (list :@type "createPrivateChat"
+           :user_id (plist-get user :id))) :id)))
+
+(defun telega--createNewSecretChat (user)
+  "Create secret chat with USER.
+Return newly created chat."
+  (telega-chat--get
+   (plist-get
+    (telega-server--call
+     (list :@type "createNewSecretChat"
+           :user_id (plist-get user :id))) :id)))
 
 (defun telega--viewMessages (chat messages &optional force)
   "Mark CHAT's MESSAGES as read.

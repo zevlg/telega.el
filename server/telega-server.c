@@ -92,11 +92,13 @@ tdlib_loop(void* cln)
                 if (res) {
                         tdat_append(&json_src, res, strlen(res));
                         if (verbosity > 4)
-                                fprintf(stderr, "OUTPUT JSON: %s\n", res);
+                                fprintf(stderr, "[telega-server] "
+                                        "OUTPUT JSON: %s\n", res);
                         tdat_json_value(&json_src, &plist_dst);
                         tdat_append1(&plist_dst, "\0");
 
-                        printf("event %zu\n%s\n", strlen(plist_dst.data), plist_dst.data);
+                        printf("event %zu\n%s\n", strlen(plist_dst.data),
+                               plist_dst.data);
                         fflush(stdout);
 
                         tdat_reset(&json_src);
@@ -132,7 +134,8 @@ stdin_loop(void* cln)
                 char cmd[33];
                 size_t cmdsz;
                 if (2 != sscanf(cmdline, "%s %zu\n", cmd, &cmdsz)) {
-                        fprintf(stderr, "Unexpected cmdline format: %s", cmdline);
+                        fprintf(stderr, "[telega-server] "
+                                "Unexpected cmdline format: %s\n", cmdline);
                         continue;
                 }
 
@@ -142,7 +145,8 @@ stdin_loop(void* cln)
                 size_t rc = fread(plist_src.data, 1, cmdsz + 1, stdin);
                 if (rc != cmdsz + 1) {
                         /* EOF or error */
-                        fprintf(stderr, "fread() error: %d\n", ferror(stdin));
+                        fprintf(stderr, "[telega-server] "
+                                "fread() error: %d\n", ferror(stdin));
                         break;
                 }
                 plist_src.end = cmdsz + 1;
@@ -150,7 +154,8 @@ stdin_loop(void* cln)
                 tdat_plist_value(&plist_src, &json_dst);
                 tdat_append1(&json_dst, "\0");
                 if (verbosity > 4)
-                        fprintf(stderr, "INPUT: %s\n", json_dst.data);
+                        fprintf(stderr, "[telega-server] "
+                                "INPUT: %s\n", json_dst.data);
 
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, json_dst.data);
@@ -163,7 +168,8 @@ stdin_loop(void* cln)
                         telega_voip_stop();
 #endif /* WITH_VOIP */
                 else
-                        fprintf(stderr, "Unknown command: %s", cmd);
+                        fprintf(stderr, "[telega-server] "
+                                "Unknown command: %s\n", cmd);
 
                 tdat_reset(&plist_src);
                 tdat_reset(&json_dst);
