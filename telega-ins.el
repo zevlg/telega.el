@@ -237,7 +237,8 @@ PTYPE is `download' or `upload'."
         (list 'messageContactRegistered 'messageChatAddMembers
               'messageChatJoinByLink 'messageChatDeleteMember
               'messageChatChangeTitle 'messageSupergroupChatCreate
-              'messageBasicGroupChatCreate 'messageCustomServiceAction)))
+              'messageBasicGroupChatCreate 'messageCustomServiceAction
+              'messageChatSetTtl)))
 
 (defun telega-ins--special (msg)
   "Insert special message MSG.
@@ -267,8 +268,10 @@ Special messages are determined with `telega-msg-special-p'."
                     (telega-user--get (plist-get content :user_id)))
                    " left the group"))
       (messageChatChangeTitle
-       (telega-ins (telega-user--name sender)
-                   " renamed group to \"" (plist-get content :title) "\""))
+       (telega-ins "Renamed to \"" (plist-get content :title) "\"")
+       (when sender
+         (telega-ins " by " (telega-user--name sender 'short))))
+
       (messageSupergroupChatCreate
        (telega-ins (if (plist-get msg :is_channel_post)
                        "Channel" "Supergroup"))
@@ -277,6 +280,9 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins "Group \"" (plist-get content :title) "\" created"))
       (messageCustomServiceAction
        (telega-ins (plist-get content :text)))
+      (messageChatSetTtl
+       (telega-ins-fmt "messages TTL set to %s"
+         (telega-duration-human-readable (plist-get content :ttl))))
       (telega-ins-fmt
           "<unsupported special message: %S>" (telega--tl-type content))))
   (telega-ins ")--"))
@@ -296,7 +302,8 @@ Special messages are determined with `telega-msg-special-p'."
       ((messageContactRegistered messageChatAddMembers
         messageChatJoinByLink messageChatDeleteMember
         messageChatChangeTitle messageSupergroupChatCreate
-        messageBasicGroupChatCreate messageCustomServiceAction)
+        messageBasicGroupChatCreate messageCustomServiceAction
+        messageChatSetTtl)
        (telega-ins--special msg))
       (t (telega-ins-fmt "<TODO: %S>"
                          (telega--tl-type content))))
@@ -508,6 +515,8 @@ Return t."
         (umwidth 7))
     (when (plist-get chat-info :is_verified)
       (setq title (concat title telega-symbol-verified)))
+    (when (eq (telega-chat--type chat 'raw) 'secret)
+      (setq title (propertize title 'face 'telega-secret-title)))
 
     (telega-ins (or (car brackets) "["))
     (telega-ins
@@ -551,8 +560,18 @@ Return t."
         (actions (gethash (plist-get chat :id) telega--actions))
         (call (telega-voip--by-user-id (plist-get chat :id)))
         (draft-msg (plist-get chat :draft_message))
-        (last-msg (plist-get chat :last_message)))
-    (cond (call
+        (last-msg (plist-get chat :last_message))
+        (chat-info (telega-chat--info chat)))
+
+    (cond ((and (eq (telega-chat--type chat 'raw) 'secret)
+                (memq (telega--tl-type (plist-get chat-info :state))
+                      '(secretChatStatePending secretChatStateClosed)))
+           ;; Status of the secret chat
+           (telega-ins (propertize
+                        (substring (telega--tl-get chat-info :state :@type) 15)
+                        'face 'shadow)))
+
+          (call
            (let ((state (plist-get call :state)))
              (telega-ins telega-symbol-phone " ")
              (telega-ins-fmt "%s Call (%s)"
@@ -604,8 +623,16 @@ Return t."
              (telega-ins--date (plist-get last-msg :date)))
            (telega-ins--with-attrs (list :face 'telega-msg-status)
              (telega-ins--outgoing-status last-msg))
-           ))
-    )
+           )
+
+          ((and (eq (telega-chat--type chat 'raw) 'secret)
+                (eq (telega--tl-type (plist-get chat-info :state))
+                    'secretChatStateReady))
+           ;; Status of the secret chat
+           (telega-ins (propertize
+                        (substring (telega--tl-get chat-info :state :@type) 15)
+                        'face 'shadow)))
+          ))
   t)
 
 (provide 'telega-ins)

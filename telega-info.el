@@ -64,7 +64,14 @@
   (telega--info-update (plist-get event :supergroup)))
 
 (defun telega--on-updateSecretChat (event)
-  (telega--info-update (plist-get event :secret_chat)))
+  (let ((secretchat (plist-get event :secret_chat)))
+    (telega--info-update secretchat)
+
+    ;; update corresponding chat button
+    (let ((chat (cl-find secretchat (telega-filter-chats '(type secret))
+                         :test 'eq :key #'telega-chat--info)))
+      (when chat
+        (telega-root--chat-update chat)))))
 
 ;; FullInfo
 (defun telega--on-updateUserFullInfo (event)
@@ -183,7 +190,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          :offset 0
          :limit 200)))
 
-(defun telega-info--insert-user (user)
+(defun telega-info--insert-user (user chat)
   "Insert USER info into current buffer."
   (let* ((full-info (telega--full-info user))
          (username (plist-get user :username))
@@ -192,6 +199,25 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (share-text (plist-get full-info :share_text))
          (out-link (plist-get user :outgoing_link))
          (in-link (plist-get user :incoming_link)))
+
+    (unless (eq (telega--tl-type in-link) 'linkStateIsContact)
+      (insert-text-button
+       "[Share My Contact Info]"
+       :value chat
+       'face 'telega-link
+       'action (lambda (button)
+                 (telega-chat-share-my-contact (button-get button :value))))
+      (telega-ins "  "))
+    (insert-text-button
+     "[Start Secret Chat]"
+     :value user
+     'face 'telega-link
+     'action (lambda (button)
+               (let* ((user (button-get button :value))
+                      (chat (telega--createNewSecretChat user)))
+                 (telega-chat--pop-to-buffer chat))))
+    (telega-ins "\n")
+    
     (telega-ins-fmt "Relationship: %s <-in---out-> %s\n"
       (substring (plist-get in-link :@type) 9)
       (substring (plist-get out-link :@type) 9))
@@ -228,10 +254,67 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega-ins-fmt "Call: %S\n" call)))
   )
 
-(defun telega-info--insert-secretchat (secretchat)
-  (insert "!TODO!\n")
-  (insert (format "Info: %S\n\n" secretchat))
-  )
+(defun telega-info--insert-secretchat (secretchat chat)
+  "Insert info about SECRETCHAT into current buffer."
+  (telega-ins "State: "
+              (substring (telega--tl-get secretchat :state :@type) 15))
+  (cl-case (telega--tl-type (plist-get secretchat :state))
+    (secretChatStateClosed
+     (telega-ins " ")
+     (insert-text-button
+      "[Delete and Exit]"
+      :value chat
+      'face 'telega-link
+      'action (lambda (button)
+                (telega-chat-delete (button-get button :value))
+                (quit-window))))
+
+    ((secretChatStatePending secretChatStateReady)
+     (telega-ins "  ")
+     (insert-text-button
+      "[Close Secret Chat]"
+      :value chat
+      'face 'telega-link
+      'action (lambda (button)
+                (let* ((chat (button-get button :value))
+                       (secret (telega-chat--info chat)))
+                  (telega--closeSecretChat secret)
+                  (telega-save-cursor
+                    (telega-describe-chat chat)))))))
+  (telega-ins "\n")
+  (telega-ins "Created: " (if (plist-get secretchat :is_outbound)
+                              "me" "him") "\n")
+  (telega-ins-fmt "Layer: %d" (plist-get secretchat :layer))
+  (when (>= (plist-get secretchat :layer) 66)
+    (telega-ins " (Video notes are supported)"))
+  (telega-ins "\n")
+
+  ;; Encryption key
+  (let ((enc-key (plist-get secretchat :key_hash)))
+    (when (and enc-key (not (string-empty-p enc-key)))
+      (telega-ins--labeled "Key: " nil
+        (let ((ekey (base64-decode-string enc-key))
+              (efaces (list 'telega-enckey-00 'telega-enckey-01
+                            'telega-enckey-10 'telega-enckey-11)))
+          (dotimes (ki (length ekey))
+            (when (and (> ki 0) (= (% ki 3) 0))
+              (telega-ins "\n"))
+            (let* ((kv (aref ekey ki))
+                   (k1 (logand kv 3))
+                   (k2 (lsh (logand kv 12) -2))
+                   (k3 (lsh (logand kv 48) -4))
+                   (k4 (lsh (logand kv 192) -6)))
+              (cl-dolist (kk (list k1 k2 k3 k4))
+                (telega-ins (propertize telega-symbol-square
+                                        'face (nth kk efaces))))))
+          (telega-ins "\n")
+          (dotimes (ki (length ekey))
+            (cond ((and (> ki 0) (= (% ki 8) 0))
+                   (telega-ins "\n"))
+                  ((= (% ki 8) 4)
+                   (telega-ins "  ")))
+            (telega-ins-fmt "%02x " (aref ekey ki)))))
+      (telega-ins "\n"))))
 
 (defun telega-info--insert-invite-link (chat invite-link can-generate-p)
   "Insert CHAT's INVITE-LINK into current info buffer.
@@ -250,6 +333,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (insert-text-button
          (if valid-link-p "[Regenerate]" "[Generate]")
          :value chat
+         'face 'telega-link
          'action (lambda (button)
                    (let ((chat (button-get button :value)))
                      (telega-chat-generate-invite-link
@@ -346,10 +430,10 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
   (cl-ecase (telega--tl-type tlobj)
     (chatTypePrivate
      (telega-info--insert-user
-      (telega--info 'user (plist-get tlobj :user_id))))
+      (telega--info 'user (plist-get tlobj :user_id)) chat))
     (chatTypeSecret
      (telega-info--insert-secretchat
-      (telega--info 'secretChat (plist-get tlobj :secret_chat_id))))
+      (telega--info 'secretChat (plist-get tlobj :secret_chat_id)) chat))
     (chatTypeBasicGroup
      (telega-info--insert-basicgroup
       (telega--info 'basicGroup (plist-get tlobj :basic_group_id)) chat))
@@ -394,7 +478,8 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
                      :sessions))))
 
 (defun telega-describe-network-stats (only-current)
-  "Show network statistics."
+  "Show network statistics.
+If prefix argument is given, then show statistics only for current launch."
   (interactive "P")
   (with-help-window "*Telega Network Statistics*"
     (set-buffer standard-output)
@@ -468,7 +553,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
 (defun telega-describe-privacy-settings ()
   "Show user privacy settings."
   (interactive)
-  (with-help-window "*Telega Network Statistics*"
+  (with-help-window "*Telega Privacy Settings*"
     (set-buffer standard-output)
     ;; I18N: lng_settings_privacy_title
     (insert "Privacy\n")
@@ -521,6 +606,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
           (insert-text-button
            "[RemoveContact]"
            :value contact
+           'face 'telega-link
            'action (lambda (button)
                      (let ((contact (button-get button :value)))
                        (telega--removeContacts (plist-get contact :user_id))
@@ -530,6 +616,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
         (insert-text-button
          "[ImportContact]"
          :value contact
+         'face 'telega-link
          'action (lambda (button)
                    (let ((contact (button-get button :value)))
                      (telega--importContacts contact)
@@ -540,6 +627,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
       (insert-text-button
        "[ChatWith]"
        :value user
+       'face 'telega-link
        'action (lambda (button)
                  (telega-chat--pop-to-buffer
                   (telega--createPrivateChat (button-get button :value)))))

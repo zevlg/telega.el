@@ -391,6 +391,12 @@ Return newly created chat."
      (list :@type "createNewSecretChat"
            :user_id (plist-get user :id))) :id)))
 
+(defun telega--closeSecretChat (secretchat)
+  "Close SECRETCHAT."
+  (telega-server--call
+   (list :@type "closeSecretChat"
+         :secret_chat_id (plist-get secretchat :id))))
+
 (defun telega--viewMessages (chat messages &optional force)
   "Mark CHAT's MESSAGES as read.
 Use non-nil value for FORCE, if messages in closed chats should
@@ -487,6 +493,12 @@ be marked as read."
   "Call to the user associated with the given private CHAT."
   (interactive (list (telega-chat-at-point)))
 
+  ;; NOTE: If calling to secret chat, then use ordinary private chat
+  ;; for calling
+  (when (eq (telega-chat--type chat 'no-interpret) 'secret)
+    (setq chat (telega-chat--get
+                (plist-get (telega-chat--info chat) :user_id))))
+
   (unless (eq (telega-chat--type chat 'no-interpret) 'private)
     (error "Can call only to users"))
   (let* ((user (telega-chat--user chat))
@@ -498,6 +510,10 @@ be marked as read."
       (error "%s can't be called" (telega-user--name user)))
 
     (telega-voip-call user)))
+
+(defun telega-chat-share-my-contact (chat)
+  "Share my contact info with CHAT."
+  (message "TODO: `telega-chat-share-contact'."))
 
 (defun telega-describe-chat (chat)
   "Show info about chat at point."
@@ -601,6 +617,9 @@ be marked as read."
   (interactive (let ((chat (telega-chat-at-point)))
                  (and (y-or-n-p "This action cannot be undone. Delete chat? ")
                       (list chat))))
+
+  ;; TODO: for secret chats execute closeSecretChat before deleting
+
   (telega-server--send
    (list :@type "deleteChatHistory"
          :chat_id (plist-get chat :id)

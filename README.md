@@ -21,6 +21,7 @@ to use `telega.el` for basic chat.
 - [ ] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
+- [x] VoIP calls
 - [x] Downloading files from the cloud
 - [ ] Uploading files/media to the cloud
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
@@ -28,7 +29,7 @@ to use `telega.el` for basic chat.
 - [ ] Display chat actions, such as "@user is typing..."
 - [ ] Emoji input via `:<emoji>:` syntax with completions
 - [ ] Username completions for fast mentions
-- [ ] Secret chats
+- [x] Secret chats
 - [ ] Online searching chats/messages
 - [ ] Avatars, photos
 - [ ] Stickers
@@ -77,9 +78,9 @@ Arch-based).
 
 ### Building tdlib
 
-[tdlib](https://core.telegram.org/tdlib "tdlib") is the backed used to
-communicate with the servers. It requires a large amount of memory to
-be built.
+[tdlib](https://core.telegram.org/tdlib "tdlib") is the backend used
+to communicate with the servers. It requires a large amount of memory
+to be built.
 
 To get the source:
 ```console
@@ -106,11 +107,36 @@ Finally, to install the library system-wide:
 $ sudo make install
 ```
 
-Now that the library is set-up, it is time to install `telega.el`. The
-first step consists in building `telega-server`, which is a C
-interface to the `tdlib`.
+### Building libtgvoip
+
+VoIP support in `telega.el` is optional, if you don't need VoIP, just
+igrone this section.
+
+[libtgvoip](https://github.com/grishka/libtgvoip "libtgvoip") is the
+VoIP library for telegram clients.
+
+To get the source:
+```console
+$ git clone https://github.com/grishka/libtgvoip.git
+```
+
+Move into the folder with `cd libtgvoip`
+
+Prepare a folder for building the library:
+```console
+$ autogen && ./configure && make
+```
+
+Install the library system-wide:
+```console
+$ sudo make install
+```
 
 ## Building telega-server
+
+Now that the `tdlib` library is set-up, it is time to install
+`telega.el`. The first step consists in building `telega-server`,
+which is a C interface to the `tdlib`.
 
 To get the source:
 
@@ -120,9 +146,14 @@ $ git clone https://github.com/zevlg/telega.el
 
 Moving into the folder with `cd telega.el`, it is possible to build
 the `telega-server` executable and move into the `$HOME/.telega` with:
-
 ```console
 $ make && make install
+```
+
+If you want VoIP support in `telega.el` and `libtgvoip` is installed,
+then use this instead:
+```console
+$ make WITH_VOIP=t && make WITH_VOIP=t install
 ```
 
 This command does not require superuser privileges.

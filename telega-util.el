@@ -64,13 +64,16 @@ Use it if you have formatting issues."
 
 (defun telega-duration-human-readable (seconds)
   "Convert SECONDS to human readable string."
-  (concat (when (>= seconds 3600)
-            (prog1 (format "%dh:" (/ seconds 3600))
-              (setq seconds (% seconds 3600))))
-          (when (>= seconds 60)
-            (prog1 (format "%dm:" (/ seconds 60))
-              (setq seconds (% seconds 60))))
-          (format "%ds" seconds)))
+  (let (comps)
+    (when (>= seconds 3600)
+      (setq comps (list (format "%dh" (/ seconds 3600)))
+            seconds (% seconds 3600)))
+    (when (>= seconds 60)
+      (setq comps (nconc comps (list (format "%dm" (/ seconds 60))))
+            seconds (% seconds 60)))
+    (when (or (null comps) (> seconds 0))
+      (setq comps (nconc comps (list (format "%ds" seconds)))))
+    (mapconcat #'identity comps ":")))
 
 (defun telega-etc-file (filename)
   "Return absolute path to FILENAME from etc/ directory in telega."

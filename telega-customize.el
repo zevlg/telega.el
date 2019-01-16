@@ -473,6 +473,11 @@ Good candidates also are 🄌 or ⬤."
   "Symbol used as phone."
   :type 'string
   :group 'telega-symbol)
+
+(defcustom telega-symbol-square "⬛"
+  "Symbol used for large squares."
+  :type 'string
+  :group 'telega-symbol)
   
 
 ;;; Faces
@@ -483,6 +488,26 @@ Good candidates also are 🄌 or ⬤."
 (defface telega-blue
   '((t :inherit default :foreground "#2ca5e0"))
   "*Official blue color of telegram."
+  :group 'telega-faces)
+
+(defface telega-enckey-00
+  '((t :inherit default :foreground "#ffffff" :background "#ffffff"))
+  "Face used for encryption key"
+  :group 'telega-faces)
+
+(defface telega-enckey-01
+  '((t :inherit default :foreground "#d5e6f3" :background "#d5e6f3"))
+  "Face used for encryption key"
+  :group 'telega-faces)
+
+(defface telega-enckey-10
+  '((t :inherit default :foreground "#2d5775" :background "#2d5775"))
+  "Face used for encryption key"
+  :group 'telega-faces)
+
+(defface telega-enckey-11
+  '((t :inherit default :foreground "#2f99c9" :background "#2f99c9"))
+  "Face used for encryption key"
   :group 'telega-faces)
 
 (defface telega-filter-button-active '((t :inherit default))
@@ -524,7 +549,7 @@ Good candidates also are 🄌 or ⬤."
   :group 'telega-faces)
 
 (defface telega-link
-  '((t :inherit link))
+  '((t :inherit link :underline nil))
   "Face to display various links."
   :group 'telega-faces)
 
@@ -571,8 +596,13 @@ You can customize its `:height' to fit width of the default face."
   "Face to display urls."
   :group 'telega-faces)
 
+(defface telega-secret-title
+  '((t :foreground "#00b12c"))
+  "Face to display title of secret chat in root buffer."
+  :group 'telega-faces)
+
 (defface telega-chat-user-title
-  '((t :inherit 'widget-field))
+  '((t :inherit widget-field))
   "Face to display user title in chat buffers."
   :group 'telega-faces)
 

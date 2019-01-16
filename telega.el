@@ -98,14 +98,15 @@ With prefix arg force quit without confirmation."
                            :use_file_database telega-use-file-database
                            :use_chat_info_database telega-use-chat-info-database
                            :use_message_database telega-use-message-database
+                           :use_secret_chats t
                            :api_id (car telega-app)
                            :api_hash (cdr telega-app)
                            :system_language_code telega-language
-                           :application_version telega-version
                            :device_model "Emacs"
                            :system_version emacs-version
-                           :ignore_file_names :false
+                           :application_version telega-version
                            :enable_storage_optimizer t
+                           :ignore_file_names :false
                            )))
 
   ;; List of proxies, since tdlib 1.3.0
