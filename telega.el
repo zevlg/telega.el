@@ -190,7 +190,7 @@ Works only if current state is `authorizationStateWaitCode'."
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   (setq telega--me-id (plist-get telega--options :my_id))
-  (assert telega--me-id)
+  (cl-assert telega--me-id)
 
   (telega--setOptions)
 

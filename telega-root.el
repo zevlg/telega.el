@@ -28,6 +28,7 @@
 (require 'telega-core)
 (require 'telega-server)
 (require 'telega-filter)
+(require 'telega-voip)
 (require 'telega-ins)
 (require 'telega-util)
 (require 'telega-customize)
@@ -61,8 +62,14 @@
     (define-key map (kbd "D") 'telega-chats-filtered-delete)
     (define-key map (kbd "R") 'telega-chats-filtered-toggle-read)
 
+    ;; Calls bindings
+    (define-key map (kbd "c a") 'telega-voip-accept)
+    (define-key map (kbd "c d") 'telega-voip-discard)
+    (define-key map (kbd "c b") 'telega-voip-buffer-show)
+    (define-key map (kbd "c l") 'telega-voip-list-calls)
+
     (define-key map (kbd "q") 'telega-kill)
-    (define-key map (kbd "c") 'telega-chat-with)
+    (define-key map (kbd "m") 'telega-chat-with)
     map)
   "The key map for telega root buffer.")
 

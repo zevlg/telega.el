@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Thu Jan 10 17:33:13 2019
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,10 +21,10 @@
 
 ;;; Commentary:
 
-;; 
+;; VOIP calls support for the telega
 
 ;;; Code:
-(require 'cl)
+(require 'cl-lib)
 (require 'telega-core)
 (require 'telega-customize)
 
@@ -46,6 +46,16 @@
   :type 'boolean
   :group 'telega-voip)
 
+(defcustom telega-voip-busy-if-active t
+  "*Reply with busy status to any incoming calls if have active call."
+  :type 'boolean
+  :group 'telega-voip)
+
+(defcustom telega-voip-help-echo t
+  "*Non-nil to show help messages in echo area on call activation."
+  :type 'boolean
+  :group 'telega-voip)
+
 (defvar telega-voip--buffer nil
   "Buffer currently used for the active call.")
 
@@ -64,32 +74,47 @@
                 :test '= :key (lambda (el)
                                 (plist-get (cdr el) :user_id)))))
 
+(defun telega-voip--call-emojis (call)
+  "Return emojis string for the CALL."
+  (mapconcat 'identity (telega--tl-get call :state :emojis) ""))
+
+(defun telega-voip--incoming-call ()
+  "Return first incoming call that can be accepted."
+  (cl-find-if (lambda (call)
+                (and (not (plist-get call :is_outgoing))
+                     (eq (telega--tl-type (plist-get call :state))
+                         'callStatePending)))
+              (mapcar 'cdr telega-voip--alist)))
+
 (defun telega-voip--aux-status (call)
   "Update `telega--status-aux' according to active CALL."
-  (let ((call-status
-         (telega-ins--as-string
-          (when call
+  (telega-status--set
+   nil (telega-ins--as-string
+        (when call
+          (let ((user-id (plist-get call :user_id))
+                (state (plist-get call :state)))
+            ;; server/user receive status
+            (cond ((plist-get state :is_received)
+                   (telega-ins telega-symbol-msg-viewed))
+                  ((plist-get state :is_created)
+                   (telega-ins telega-symbol-msg-succeed)))
             (telega-ins telega-symbol-phone)
             (if (plist-get call :is_outgoing)
                 (telega-ins "→")
               (telega-ins "←"))
-            (let ((user-id (plist-get call :user_id))
-                  (state (plist-get call :state)))
-              (apply 'insert-text-button
-                     (telega-user--name (telega-user--get user-id))
-                     (telega-link-props 'user user-id))
-              (telega-ins-fmt " %s"
-                (substring (plist-get state :@type) 9))
-              (when (eq (telega--tl-type state) 'callStatePending)
-                ;; dot for animation
-                (telega-ins ".")))
-            ;; (cond ((plist-get state :is_received)
-            ;;        (telega-ins telega-symbol-msg-viewed))
-            ;;       ((plist-get state :is_created)
-            ;;        (telega-ins telega-symbol-msg-succeed)))
-            ))))
 
-  (telega-status--set nil call-status)))
+            (apply 'insert-text-button
+                   (telega-user--name (telega-user--get user-id) 'name)
+                   (telega-link-props 'user user-id))
+            (telega-ins-fmt " %s"
+              (substring (plist-get state :@type) 9))
+            (cl-case (telega--tl-type state)
+              (callStatePending
+               ;; dot for animation
+               (telega-ins "."))
+              (callStateReady
+               ;; key emojis
+               (telega-ins " " (telega-voip--call-emojis call)))))))))
 
 (defun telega--on-updateCall (event)
   "Called when some call data has been updated."
@@ -99,17 +124,36 @@
          (old-call (telega-voip--by-id call-id)))
     (setq telega-voip--alist
           (put-alist call-id call telega-voip--alist))
-    ;; Activate the call if active call is created/updated
-    (when (or (not telega-voip--active-call)
-              (= call-id (plist-get telega-voip--active-call :id)))
+
+    ;; Update active call value
+    (when (eq call-id (plist-get telega-voip--active-call :id))
       (setq telega-voip--active-call call))
 
     (cl-case (telega--tl-type state)
       (callStatePending
        (unless old-call
          (run-hook-with-args 'telega-incoming-call-hook call))
-       ;; TODO: accept/decline
-       )
+
+       ;; * If no active calls and CALL is outgoing, then make it
+       ;;   active
+       ;; * If there is active call and `telega-voip-busy-if-active' is
+       ;;   non-nil then discard all other incoming calls
+       (if (plist-get call :is_outgoing)
+           (unless telega-voip--active-call
+             (setq telega-voip--active-call call))
+
+         (when (and telega-voip--active-call
+                    (not (eq call telega-voip--active-call)))
+           (telega--discardCall call-id)))
+
+       (when (and telega-voip-help-echo
+                  (not telega-voip--active-call)
+                  (eq call (telega-voip--incoming-call)))
+         (message "telega: Press `%s' to answer, `%s' to decline"
+                  (substitute-command-keys
+                   "\\<telega-root-mode-map>\\[telega-voip-accept]")
+                  (substitute-command-keys
+                   "\\<telega-root-mode-map>\\[telega-voip-discard]"))))
 
       (callStateReady
        (unless (eq call telega-voip--active-call)
@@ -123,7 +167,12 @@
                     :allow_p2p (or telega-voip-allow-p2p :false)
                     :max_layer (telega--tl-get state :protocol :max_layer)
                     :endpoints (plist-get state :connections))))
-         (telega-server--send start "voip")))
+         (telega-server--send start "voip"))
+
+       (when telega-voip-help-echo
+         (message "telega: Press `%s' to hang up"
+                  (substitute-command-keys
+                   "\\<telega-root-mode-map>\\[telega-voip-discard]"))))
 
       (callStateError
        (let ((err (plist-get state :error))
@@ -138,20 +187,21 @@
                   (substring (plist-get discad :@type) 17))))
       )
 
-    ;; Delete call from the list if call is ended
+    ;; Delete call from the list, if call is ended
     (when (memq (telega--tl-type state) '(callStateError callStateDiscarded))
       (when (eq telega-voip--active-call call)
         (telega-server--send (list :@command "stop") "voip")
         (setq telega-voip--active-call nil))
       (setq telega-voip--alist (del-alist call-id telega-voip--alist)))
 
-    ;; Update aux status
-    (telega-voip--aux-status telega-voip--active-call)
-
     ;; Update corresponding chat button
     (let ((chat (telega-chat--get (plist-get call :user_id) 'offline)))
       (when chat
         (telega-root--chat-update chat)))
+
+    ;; Update aux status
+    (telega-voip--aux-status
+     (or telega-voip--active-call (telega-voip--incoming-call)))
     ))
 
 (defun telega--createCall (user)
@@ -168,14 +218,99 @@
          :call_id call-id
          :protocol telega-voip-protocol)))
 
-(defun telega--discardCall (call-id disconnected-p duration connection-id)
+(defun telega--discardCall (call-id &optional disconnected-p duration connection-id)
   "Discard call defined by CALL-ID."
   (telega-server--send
    (list :@type "discardCall"
-         :call_id call-id
-         :is_disconnected (or disconnected-p :false)
-         :duration duration
-         :connection_id connection-id)))
+         :call_id call-id)))
+         ;; :is_disconnected (or disconnected-p :false)
+         ;; :duration duration
+         ;; :connection_id connection-id)))
+
+
+(defun telega-voip-discard (call)
+  "Discard the CALL.
+If called interactively then discard active call."
+  (interactive (list (or telega-voip--active-call
+                         (telega-voip--incoming-call)
+                         (error "No active or incoming call to discard"))))
+  (when (eq (plist-get call :id)
+            (plist-get telega-voip--active-call :id))
+    (telega-server--send (list :@command "stop") "voip"))
+
+  (telega--discardCall (plist-get call :id)))
+
+(defun telega-voip-activate-call (call)
+  "Activate the CALL, i.e. make CALL currently active.
+Discard currently active call, if any."
+  (when telega-voip--active-call
+    (telega-voip-discard telega-voip--active-call))
+
+  (setq telega-voip--active-call call)
+  (telega-voip--aux-status telega-voip--active-call))
+
+(defun telega-voip-call (user &optional force)
+  "Call the USER.
+Discard active call if any."
+  (when (or force
+            (not telega-voip--active-call)
+            (y-or-n-p (format "Active call will be discarded, call %s? "
+                              (telega-user--name user 'name))))
+    (when telega-voip--active-call
+      (telega-voip-discard telega-voip--active-call)
+      (setq telega-voip--active-call nil))
+
+    (telega--createCall user)))
+
+(defun telega-voip-accept (call)
+  "Accept last incoming CALL.
+Discard active call if any."
+  (interactive (list (telega-voip--incoming-call)))
+
+  (unless call
+    (error "No incoming call to accept"))
+
+  ;; TODO: might be situation when we twice accept the call, it will
+  ;; lead to call discard.  Check that CALL is not already active
+  (telega--acceptCall (plist-get call :id))
+  (telega-voip-activate-call call)
+
+  ;; TODO: show call buffer for the CALL
+  )
+
+(defun telega-voip-buffer-show (call)
+  "Show callbuf for the CALL."
+  (interactive (list telega-voip--active-call))
+  (message "TODO: `telega-voip-buffer-show'"))
+
+(defun telega-voip-list-calls (only-missed)
+  "List recent calls.
+If prefix arg is given then list only missed calls."
+  (interactive "P")
+  (let* ((ret (telega-server--call
+               (list :@type "searchCallMessages"
+                     :from_message_id 0
+                     :limit 100
+                     ;; NOTE: `:only_missed t' gives some problems :(
+                     :only_missed (if (null only-missed) :false t))))
+         (messages (mapcar #'identity (plist-get ret :messages))))
+    (with-help-window "*Telega Recent Calls*"
+      (set-buffer standard-output)
+      (telega-ins (if only-missed "Missed" "All") " Calls\n")
+      (telega-ins (make-string (- (point-max) 2) ?-) "\n")
+
+      (cl-dolist (call-msg messages)
+        (telega-ins--with-attrs (list :align 'left
+                                      :min 60
+                                      :max 60
+                                      :elide t)
+          (telega-ins--username (plist-get call-msg :sender_user_id) 'name)
+          (telega-ins ": ")
+          (telega-ins--content-one-line call-msg))
+        (telega-ins--with-attrs (list :align 'right :min 10)
+          (telega-ins--date (plist-get call-msg :date)))
+        (telega-ins "\n")))
+    ))
 
 (provide 'telega-voip)
 

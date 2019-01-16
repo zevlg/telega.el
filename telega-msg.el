@@ -200,7 +200,7 @@ PREFIX and SUFFIX specifies addons in case caption is used."
        (when photo
          (concat "\n" telega-symbol-vertical-bar
                  (telega-photo-format (plist-get web-page :photo))))
-       (case (intern (plist-get web-page :type))
+       (cl-case (intern (plist-get web-page :type))
          (photo
           ;; no-op, already displayed above
           )
@@ -238,7 +238,7 @@ PREFIX and SUFFIX specifies addons in case caption is used."
 
 (defun telega-msg-photo (msg)
   "Format photo message."
-  (assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
+  (cl-assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
 
   (let* ((thumb (telega-photo--best (telega--tl-get msg :content :photo)))
          (thumb-file (plist-get thumb :photo))
@@ -305,7 +305,7 @@ PREFIX and SUFFIX specifies addons in case caption is used."
 
 (defun telega-msg-document (msg)
   "Format document of the message."
-  (assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
+  (cl-assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
 
   (let* ((document (telega--tl-get msg :content :document))
          (file (plist-get document :document)))
@@ -335,7 +335,7 @@ PREFIX and SUFFIX specifies addons in case caption is used."
 (defun telega-msg-text-one-line (msg)
   "Format message text for one line formatting.
 Format without rendering web-page."
-  (assert (eq (telega--tl-type (plist-get msg :content)) 'messageText))
+  (cl-assert (eq (telega--tl-type (plist-get msg :content)) 'messageText))
 
   (let ((text (telega--tl-get msg :content :text)))
     (telega-msg--ents-to-props
@@ -352,7 +352,7 @@ Format without rendering web-page."
   "Return formatted text for the MSG."
   (concat
    (let ((content (plist-get msg :content)))
-     (case (telega--tl-type content)
+     (cl-case (telega--tl-type content)
        (messageText
         (telega-msg-text msg))
        (messageDocument
@@ -367,7 +367,7 @@ Format without rendering web-page."
 (defun telega-msg-format-one-line (msg)
   "Format MSG's text as one line."
   (replace-regexp-in-string
-   "\n" " " (case (telega--tl-type (plist-get msg :content))
+   "\n" " " (cl-case (telega--tl-type (plist-get msg :content))
               (messageText
                (telega-msg-text-one-line msg))
               (messagePhoto
@@ -467,7 +467,7 @@ Makes heave online requests without caching, be carefull."
   (let ((content (plist-get msg :content))
         (sender (telega-user--get (plist-get msg :sender_user_id))))
     `((("--("
-        ,(case (telega--tl-type content)
+        ,(cl-case (telega--tl-type content)
            (messageContactRegistered
             (concat (telega-user--name sender)
                     " joined the Telegram"))
@@ -541,7 +541,7 @@ PREV-MSG is non-nil if there any previous message exists."
 
 (defun telega-msg--entity-to-properties (entity text)
   (let ((ent-type (plist-get entity :type)))
-    (case (telega--tl-type ent-type)
+    (cl-case (telega--tl-type ent-type)
       (textEntityTypeMention
        (list 'face 'telega-entity-type-mention))
       (textEntityTypeMentionName

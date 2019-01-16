@@ -397,6 +397,10 @@ Also matches chats marked as unread."
   "Filter chats which has last message."
   (plist-get chat :last_message))
 
+(define-telega-filter has-order (chat)
+  "Filter chats which non-0 order."
+  (not (string= "0" (plist-get chat :order))))
+
 (define-telega-filter opened (chat)
   "Filter chats that are opened, i.e. has corresponding chat buffer."
   (with-telega-chatbuf chat
@@ -450,7 +454,7 @@ Specify INCOMING-P to filter by incoming link relationship."
 
 (define-telega-filter top (chat)
   "Filter if CHAT is in top usage."
-  (let ((category (case (telega-chat--type chat)
+  (let ((category (cl-case (telega-chat--type chat)
                     (private 'Users)
                     (bot 'Bots)
                     ((basicgroup supergroup) 'Groups)

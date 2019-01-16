@@ -273,7 +273,7 @@ IMAGE-PROPS are passed directly to `create-image'."
 (defun telega-web-page-format (web-page &optional prefix)
   "Format WEB-PAGE.
 Prefix every line with PREFIX."
-  (assert web-page)
+  (cl-assert web-page)
 
   (unless prefix (setq prefix ""))
   (concat
@@ -299,7 +299,7 @@ Prefix every line with PREFIX."
        (concat prefix
                (telega-thumbnail-format (plist-get web-page :photo))
                "\n")))
-   (case (intern (plist-get web-page :type))
+   (cl-case (intern (plist-get web-page :type))
      (photo
       ;; no-op, already displayed above
       )
@@ -331,7 +331,7 @@ Always download \"s\" type (for one-line reply/edit formatting).
 Downloads highres photos according to `telega-auto-download'."
   (let ((chat (telega-chat--get (plist-get msg :chat_id)))
         (content (plist-get msg :content)))
-    (case (telega--tl-type content)
+    (cl-case (telega--tl-type content)
       (messagePhoto
        (let* ((photo (plist-get content :photo))
               (lowres (telega-photo--lowres photo))
@@ -340,12 +340,12 @@ Downloads highres photos according to `telega-auto-download'."
               (highres-file (plist-get highres :photo)))
 
          ;; Always download lowres files
-         (assert lowres-file)
+         (cl-assert lowres-file)
          (when (telega-media--need-download-p lowres-file)
            (telega-debug "Autodownload LOWRES: %S" lowres-file)
            (telega-file--download-monitoring lowres :photo 32))
 
-         (assert highres-file)
+         (cl-assert highres-file)
          (when (and (telega-media--need-download-p highres-file)
                     (telega-filter-chats
                      (cdr (assq 'photos telega-auto-download)) (list chat)))

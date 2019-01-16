@@ -77,6 +77,7 @@ Used to update messages on file updates.")
 In form (ID . CALL)")
 (defvar telega-voip--active-call nil
   "Currently active call.
+Active call is either outgoing call or accepted incoming call.
 Only one call can be currently active.")
 
 (defun telega--init-vars ()
@@ -131,7 +132,7 @@ Done when telega server is ready to receive queries."
        (unwind-protect
            (progn ,@body)
          (goto-char (point-min))
-         (assert (> ,line-sym 0))
+         (cl-assert (> ,line-sym 0))
          (forward-line (1- ,line-sym))
          (move-to-column ,col-sym)))))
 (put 'telega-save-cursor 'lisp-indent-function 0)

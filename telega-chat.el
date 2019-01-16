@@ -24,11 +24,11 @@
 ;;
 
 ;;; Code:
-(require 'cl)                           ;defsetf
+(require 'cl-lib)                       ;defsetf
 (require 'ring)
 (require 'telega-core)
 (require 'telega-msg)
-(require 'telega-voip)                  ;telega--createCall
+(require 'telega-voip)                  ;telega-voip-call
 
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
@@ -437,8 +437,8 @@ be marked as read."
 (defvar telega-chat-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
-    (define-key map (kbd "i") 'telega-chat-info)
-    (define-key map (kbd "h") 'telega-chat-info)
+    (define-key map (kbd "i") 'telega-describe-chat)
+    (define-key map (kbd "h") 'telega-describe-chat)
     (define-key map (kbd "r") 'telega-chat-toggle-read)
     (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "C-c p") 'telega-chat-pin)
@@ -481,11 +481,12 @@ be marked as read."
 (defun telega-chat-pin (chat)
   "Toggle chat's pin state at point."
   (interactive (list (telega-chat-at-point)))
-  (telega-toggleChatIsPinned chat))
+  (telega--toggleChatIsPinned chat))
 
 (defun telega-chat-call (chat)
   "Call to the user associated with the given private CHAT."
   (interactive (list (telega-chat-at-point)))
+
   (unless (eq (telega-chat--type chat 'no-interpret) 'private)
     (error "Can call only to users"))
   (let* ((user (telega-chat--user chat))
@@ -496,9 +497,9 @@ be marked as read."
     (unless (plist-get full-info :can_be_called)
       (error "%s can't be called" (telega-user--name user)))
 
-    (telega--createCall user)))
+    (telega-voip-call user)))
 
-(defun telega-chat-info (chat)
+(defun telega-describe-chat (chat)
   "Show info about chat at point."
   (interactive (list (telega-chat-at-point)))
   (with-help-window "*Telegram Chat Info*"
@@ -632,7 +633,7 @@ Do it only if FORCE is non-nil."
 
     (define-key map (kbd "C-c C-a") 'telega-chatbuf-attach-media)
     (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
-    (define-key map (kbd "C-c ?") 'telega-chatbuf-info)
+    (define-key map (kbd "C-c ?") 'telega-describe-chatbuf)
 
     (define-key map (kbd "RET") 'telega-chatbuf-send)
     (define-key map (kbd "M-p") 'telega-chatbuf-input-prev)
@@ -770,10 +771,10 @@ Keymap:
   (setq telega--chat-buffers
         (pushnew (current-buffer) telega--chat-buffers)))
 
-(defun telega-chatbuf-info ()
+(defun telega-describe-chatbuf ()
   "Show info about chat."
   (interactive)
-  (telega-chat-info telega-chatbuf--chat))
+  (telega-describe-chat telega-chatbuf--chat))
 
 (defun telega-chatbuf--killed ()
   "Called when chat buffer is killed."
@@ -939,7 +940,7 @@ If TITLE is specified, use it instead of chat's title."
       (let ((onode (ewoc-enter-first telega-chatbuf--ewoc msg)))
         ;; NOTE: Inserting oldest node might affect how message next
         ;; to it is formatted, so redisplay it
-        (assert onode)
+        (cl-assert onode)
         (let ((nnode (ewoc-next telega-chatbuf--ewoc onode)))
           (when nnode
             (ewoc-invalidate telega-chatbuf--ewoc nnode)))))))
@@ -1094,7 +1095,7 @@ Message id could be updated on this update."
          (user-id (plist-get event :user_id))
          (current-action (assq user-id acts-alist))
          (action (plist-get event :action)))
-    (case (telega--tl-type action)
+    (cl-case (telega--tl-type action)
       (chatActionCancel
        (puthash chat-id (del-alist user-id acts-alist) telega--actions))
       (t (if current-action

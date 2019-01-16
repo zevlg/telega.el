@@ -75,7 +75,7 @@ Raise error if not found"
   (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
     ;; New command always start at the beginning, no garbage inbetween
     ;; commands
-    (assert (= (match-beginning 0) 1))
+    (cl-assert (= (match-beginning 0) 1))
 
     (let ((cmd (match-string 1))
           (sexpsz (string-to-number (match-string 2))))
@@ -86,7 +86,7 @@ Raise error if not found"
             (delete-region (point-min) (point))
 
             ;; remove trailing newline
-            (assert (= (following-char) ?\n))
+            (cl-assert (= (following-char) ?\n))
             (delete-char 1)))))))
 
 (defsubst telega-server--dispatch-cmd (cmd value)

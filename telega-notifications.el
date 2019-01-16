@@ -30,7 +30,7 @@
 (require 'cl-lib)
 (require 'notifications)
 (require 'telega-core)
-(require 'telega-utils)
+(require 'telega-util)
 
 (defgroup telega-notifications nil
   "Setup for D-Bus notifications."

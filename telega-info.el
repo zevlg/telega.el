@@ -38,7 +38,7 @@
          (info (gethash tlobj-id info-hash)))
     (unless info
       (setq info (telega-server--call
-                  (ecase tlobj-type
+                  (cl-ecase tlobj-type
                     (user
                      `(:@type "getUser" :user_id ,tlobj-id))
                     (secretChat
@@ -47,7 +47,8 @@
                      `(:@type "getBasicGroup" :basic_group_id ,tlobj-id))
                     (supergroup
                      `(:@type "getSupergroup" :supergroup_id ,tlobj-id)))))
-      (assert info nil "getting info for %S(id=%S) timeout" tlobj-type tlobj-id)
+      (cl-assert info nil "getting info for %S(id=%S) timeout"
+                 tlobj-type tlobj-id)
       (puthash tlobj-id info info-hash))
     info))
 
@@ -94,15 +95,15 @@ TLOBJ could be one of: user, basicgroup or supergroup."
     (unless full-info
       (setq full-info
             (telega-server--call
-             (ecase tlobj-type
+             (cl-ecase tlobj-type
                (user
                 `(:@type "getUserFullInfo" :user_id ,tlobj-id))
                (basicGroup
                 `(:@type "getBasicGroupFullInfo" :basic_group_id ,tlobj-id))
                (supergroup
                 `(:@type "getSupergroupFullInfo" :supergroup_id ,tlobj-id)))))
-      (assert full-info nil
-              "getting full-info for type=%S timeout" tlobj-type)
+      (cl-assert full-info nil
+                 "getting full-info for type=%S timeout" tlobj-type)
       (puthash tlobj-id full-info fi-hash))
     full-info))
 
@@ -219,7 +220,12 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
         (telega-button--insert 'telega-chat chat)
         (telega-ins "\n"))))
 
-    ;; TODO: view shared media as thumbnails
+  ;; TODO: view shared media as thumbnails
+
+  (let ((call (telega-voip--by-user-id (plist-get user :id))))
+    (when (and call telega-debug)
+      (telega-ins "\n---DEBUG---\n")
+      (telega-ins-fmt "Call: %S\n" call)))
   )
 
 (defun telega-info--insert-secretchat (secretchat)
@@ -244,11 +250,12 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (insert-text-button
          (if valid-link-p "[Regenerate]" "[Generate]")
          :value chat
-         'action `(lambda (button)
-                    (telega-chat-generate-invite-link
-                     ,(plist-get chat :id))
-                    (telega-save-cursor
-                      (telega-chat-info (button-get button :value))))))
+         'action (lambda (button)
+                   (let ((chat (button-get button :value)))
+                     (telega-chat-generate-invite-link
+                      (plist-get chat :id))
+                     (telega-save-cursor
+                       (telega-describe-chat chat))))))
       (insert "\n"))))
 
 (defun telega-info--insert-basicgroup (basicgroup chat)
@@ -315,7 +322,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
     (unless (zerop pin-msg-id)
       (let ((pinned-msg (telega--getChatPinnedMessage chat)))
-        (assert pinned-msg)
+        (cl-assert pinned-msg)
         (insert "----(pinned message)----\n")
         (telega-button-insert 'telega-msg
           :value pinned-msg
@@ -336,7 +343,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
 (defun telega-info--insert (tlobj chat)
   "Insert information about TLOBJ into current buffer."
-  (ecase (telega--tl-type tlobj)
+  (cl-ecase (telega--tl-type tlobj)
     (chatTypePrivate
      (telega-info--insert-user
       (telega--info 'user (plist-get tlobj :user_id))))

@@ -371,7 +371,7 @@ Special messages are determined with `telega-msg-special-p'."
   "Insert message's MSG content for one line usage."
   (telega-ins--one-lined
    (let ((content (plist-get msg :content)))
-     (case (telega--tl-type content)
+     (cl-case (telega--tl-type content)
        (messageText
         (telega-ins--text (plist-get content :text)))
        (messagePhoto
@@ -553,10 +553,15 @@ Return t."
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message)))
     (cond (call
-           (telega-ins telega-symbol-phone " ")
-           (telega-ins-fmt "%s Call (%s)"
-             (if (plist-get call :is_outgoing) "Outgoing" "Incoming")
-             (substring (telega--tl-get call :state :@type) 9)))
+           (let ((state (plist-get call :state)))
+             (telega-ins telega-symbol-phone " ")
+             (telega-ins-fmt "%s Call (%s)"
+               (if (plist-get call :is_outgoing) "Outgoing" "Incoming")
+               (substring (plist-get state :@type) 9))
+
+             (when (eq (telega--tl-type state) 'callStateReady)
+               (telega-ins " " (telega-voip--call-emojis call)))
+             ))
 
            (actions
            (telega-debug "CHAT-ACTIONS: %s --> %S"
@@ -568,8 +573,8 @@ Return t."
 
           (draft-msg
            (let ((inmsg (plist-get draft-msg :input_message_text)))
-             (assert (eq (telega--tl-type inmsg) 'inputMessageText)
-                     nil "tdlib states that draft must be `inputMessageText'")
+             (cl-assert (eq (telega--tl-type inmsg) 'inputMessageText) nil
+                        "tdlib states that draft must be `inputMessageText'")
              (telega-ins--with-attrs (list :align 'left
                                            :max max-width
                                            :elide t)
