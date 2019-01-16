@@ -1,19 +1,73 @@
-#include <sys/types.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-extern void telega_output(const char* otype, const char* json);
-extern int telega_b64_pton(char const *src, u_char *target, size_t targsize);
-
 #include <tgvoip/VoIPController.h>
 #include <tgvoip/VoIPServerConfig.h>
 
-using namespace std;
+extern void telega_output(const char* otype, const char* json);
+
+static const unsigned char base64_table[65] =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static int
+voip_b64_decode(std::string src, u_char *target, int targsize)
+{
+	unsigned char dtable[256], *pos, block[4];
+	int pad = 0;
+
+	memset(dtable, 0x80, 256);
+	for (size_t i = 0; i < sizeof(base64_table) - 1; i++)
+		dtable[base64_table[i]] = (unsigned char)i;
+	dtable['='] = 0;
+
+	int count = 0;
+        for(char& c: src) {
+		if (dtable[(unsigned int)c] != 0x80)
+			count++;
+	}
+	if (count == 0 || count % 4)
+		return -1;
+
+	pos = target;
+	count = 0;
+        for(char& c: src) {
+		unsigned char tmp = dtable[(unsigned int)c];
+		if (tmp == 0x80)
+			continue;
+
+		if (c == '=')
+			pad++;
+		block[count] = tmp;
+		count++;
+		if (count == 4) {
+			*pos++ = (block[0] << 2) | (block[1] >> 4);
+			*pos++ = (block[1] << 4) | (block[2] >> 2);
+			*pos++ = (block[2] << 6) | block[3];
+			count = 0;
+			if (pad) {
+				if (pad == 1)
+					pos--;
+				else if (pad == 2)
+					pos -= 2;
+				else {
+					/* Invalid padding */
+                                        return -3;
+				}
+				break;
+			}
+		}
+
+                if ((pos - target) > targsize)
+                        return -2;
+	}
+
+	return 0;
+}
+
+
+static int telega_voip_start(json11::Json start);
+static int telega_voip_stop(json11::Json stop);
+
 using namespace tgvoip;
 
 static VoIPController* voip = NULL;
-static int telega_voip_start(json11::Json start);
-static int telega_voip_stop(json11::Json stop);
 
 static VoIPController::Config voip_config {
         30.0,                   /* init_timeout */
@@ -24,12 +78,6 @@ static VoIPController::Config voip_config {
         true,                   /* enableAGC */
         false,                  /* enableCallUpgrade */
 };
-
-void
-telega_voip_update_config(const char* data)
-{
-        ServerConfig::GetSharedInstance()->Update(std::string(data));
-}
 
 const char*
 telega_voip_version(void)
@@ -92,9 +140,8 @@ telega_voip_start(json11::Json start)
         assert(start["is_outgoing"].is_bool());
         bool is_outgoing = start["is_outgoing"].bool_value();
         assert(start["encryption_key"].is_string());
-        const char* enc_key = start["encryption_key"].string_value().c_str();
         unsigned char ekey[256];
-        telega_b64_pton (enc_key, ekey, 256);
+        voip_b64_decode(start["encryption_key"].string_value(), ekey, 256);
         voip->SetEncryptionKey((char*)ekey, is_outgoing);
 
         vector<Endpoint> endpoints;
@@ -108,10 +155,9 @@ telega_voip_start(json11::Json start)
                 assert(pnt["ipv6"].is_string());
                 IPv6Address ipv6 = IPv6Address(pnt["ipv6"].string_value());
                 assert(pnt["peer_tag"].is_string());
-                const char* peer_tag = pnt["peer_tag"].string_value().c_str();
-
                 unsigned char ptag[16];
-                telega_b64_pton (peer_tag, ptag, 16);
+                voip_b64_decode(pnt["peer_tag"].string_value(), ptag, 16);
+
                 endpoints.push_back(
                         Endpoint(id, port, ip, ipv6,
                                  Endpoint::Type::UDP_RELAY, ptag));
