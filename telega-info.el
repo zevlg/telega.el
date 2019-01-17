@@ -260,16 +260,16 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
        :value chat
        :action (lambda (chat)
                  (telega-chat-delete chat)
-                 (quit-window)))
+                 (quit-window))))
 
     ((secretChatStatePending secretChatStateReady)
      (telega-ins "  ")
      (telega-ins--button "[Close Secret Chat]"
-      :value chat
-      :action (lambda (chat)
-                (telega--closeSecretChat (telega-chat--info chat))
-                (telega-save-cursor
-                  (telega-describe-chat chat)))))))
+       :value chat
+       :action (lambda (chat)
+                 (telega--closeSecretChat (telega-chat--info chat))
+                 (telega-save-cursor
+                   (telega-describe-chat chat))))))
   (telega-ins "\n")
   (telega-ins "Created: " (if (plist-get secretchat :is_outbound)
                               "me" "him") "\n")
