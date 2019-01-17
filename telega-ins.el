@@ -221,11 +221,11 @@ PTYPE is `download' or `upload'."
               telega-symbol-msg-pending)
              ((and (stringp sending-state)
                    (string= sending-state "messageSendingStateFailed"))
-              telega-symbol-msg-failed)
+              telega-symbol-failed)
              ((>= (plist-get chat :last_read_outbox_message_id)
                   (plist-get msg :id))
-              telega-symbol-msg-viewed)
-             (t telega-symbol-msg-succeed))))))
+              telega-symbol-heavy-checkmark)
+             (t telega-symbol-checkmark))))))
 
 (defun telega-ins--text (text)
   "Insert TEXT applying telegram entities."
@@ -399,7 +399,7 @@ Special messages are determined with `telega-msg-special-p'."
             ;; I18N: lng_in_dlg_photo or lng_attach_photo
             (telega-ins (propertize "Photo" 'face 'shadow))))
        (messageDocument
-        (telega-ins telega-symbol-document " ")
+        (telega-ins telega-symbol-attachment " ")
         (or (telega-ins (telega--tl-get content :document :file_name))
             (telega-ins--text (plist-get content :caption))
             (telega-ins (propertize "Document" 'face 'shadow))))

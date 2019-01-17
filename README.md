@@ -38,6 +38,7 @@ to use `telega.el` for basic chat.
       messages, etc
 - [ ] ReplyMarkup (inline keyboard buttons) in the messages
 - [ ] InstantView for web pages 
+- [ ] [TranslationsPlatform](https://translations.telegram.org) support
 
 # Screenshots
 

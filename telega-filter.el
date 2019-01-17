@@ -286,7 +286,8 @@ If FLIST is empty then return t."
             (string-match regexp (or (plist-get info :username) ""))))))
 
 (defun telega-filter-by-name (regexp)
-  "Filter by REGEXP matching chat's title."
+  "Filter by REGEXP matching chat's title.
+Use `telega-filter-by-name' for fuzzy searching."
   (interactive (list (read-regexp "Chat name regexp: ")))
   (telega-filter-add `(name ,regexp)))
 

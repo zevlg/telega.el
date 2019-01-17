@@ -160,11 +160,11 @@ Update message as file downloading/uploading progresses."
            telega-symbol-msg-pending)
           ((and (stringp sending-state)
                 (string= sending-state "messageSendingStateFailed"))
-           telega-symbol-msg-failed)
+           telega-symbol-failed)
           ((>= (plist-get chat :last_read_outbox_message_id)
                (plist-get msg :id))
-           telega-symbol-msg-viewed)
-          (t telega-symbol-msg-succeed)))))
+           telega-symbol-heavy-checkmark)
+          (t telega-symbol-checkmark)))))
 
 (defun telega-msg-caption (msg)
   "Display MSG's caption if any.
@@ -309,7 +309,8 @@ PREFIX and SUFFIX specifies addons in case caption is used."
 
   (let* ((document (telega--tl-get msg :content :document))
          (file (plist-get document :document)))
-    (concat telega-symbol-document " " (plist-get document :file_name)
+    (concat telega-symbol-attachment " "
+            (plist-get document :file_name)
             " (" (file-size-human-readable (plist-get file :size)) ") "
 
             ;; File status:

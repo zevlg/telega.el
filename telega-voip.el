@@ -95,9 +95,9 @@
                 (state (plist-get call :state)))
             ;; server/user receive status
             (cond ((plist-get state :is_received)
-                   (telega-ins telega-symbol-msg-viewed))
+                   (telega-ins telega-symbol-heavy-checkmark))
                   ((plist-get state :is_created)
-                   (telega-ins telega-symbol-msg-succeed)))
+                   (telega-ins telega-symbol-checkmark)))
             (telega-ins telega-symbol-phone)
             (if (plist-get call :is_outgoing)
                 (telega-ins "→")

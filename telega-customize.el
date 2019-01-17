@@ -337,7 +337,7 @@ Integer or `auto'."
   "Char to use for filling image placement."
   :type 'char
   :group 'telega)
-  
+
 ;; (defcustom telega-msg-photo-props
 ;;   '(:scale 1.0 :max-height 432 :max-width 960 :ascent 100)
 ;;   "*Properties to apply when image is created for the photos."
@@ -393,9 +393,9 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-document "📄"  ;\U0001F4C4
-  "*String to use as document symbol.
-\"📎\" is also good candidate."
+(defcustom telega-symbol-attachment "📎"  ;\U0001F4CE
+  "*String to use as attachement symbol.
+\"📄\" is also good candidate."
   :type 'string
   :group 'telega-symbol)
 
@@ -419,17 +419,17 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-succeed "✓" ;\u2713
-  "Symbol to use for successfully sent messages."
+(defcustom telega-symbol-checkmark "✓" ;\u2713
+  "Symbol for simple check mark."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-viewed "✔" ;\u2714
-  "Symbol to use for seen outgoing messages."
+(defcustom telega-symbol-heavy-checkmark "✔" ;\u2714
+  "Symbol for heavy check mark."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-failed "⛔" ;\u26D4
+(defcustom telega-symbol-failed "⛔"    ;\u26D4
   "Mark messages that have sending state failed."
   :type 'string
   :group 'telega-symbol)
@@ -480,7 +480,21 @@ Good candidates also are 🄌 or ⬤."
   "Symbol used for large squares."
   :type 'string
   :group 'telega-symbol)
-  
+
+(defcustom telega-symbol-widths
+  (list
+   (list 2
+         telega-symbol-unread
+         telega-symbol-verified
+         telega-symbol-thunder
+
+         telega-symbol-checkmark
+         telega-symbol-heavy-checkmark
+         "∏"))
+  "*Custom widths for some symbols, used for correct formatting."
+  :type 'list
+  :group 'telega-symbol)
+
 
 ;;; Faces
 (defgroup telega-faces nil
@@ -653,7 +667,7 @@ You can customize its `:height' to fit width of the default face."
   "Group to customize hooks used by telega."
   :group 'telega)
 
-(defcustom telega-load-hook nil
+(defcustom telega-load-hook '(telega-load-symbol-widths)
   "Hooks run when telega is loaded."
   :type 'hook
   :group 'telega-hooks)

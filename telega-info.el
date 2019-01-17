@@ -213,6 +213,12 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                    (telega--createNewSecretChat user))))
       (telega-ins "\n"))
 
+    (when (= (plist-get user :id) telega--me-id)
+      ;; Saved Messages
+      (telega-ins-fmt "Account TTL: %d days\n"
+        (plist-get (telega-server--call
+                    (list :@type "getAccountTtl")) :days)))
+
     (telega-ins-fmt "Relationship: %s <-in---out-> %s\n"
       (substring (plist-get in-link :@type) 9)
       (substring (plist-get out-link :@type) 9))
@@ -498,9 +504,9 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (let ((ping (cdr (assq (plist-get proxy :id) telega--proxy-pings))))
           (telega-ins--labeled
               (concat (cond ((plist-get proxy :is_enabled)
-                             telega-symbol-msg-viewed)
+                             telega-symbol-heavy-checkmark)
                             ((eq recent proxy)
-                             telega-symbol-msg-succeed)
+                             telega-symbol-checkmark)
                             (t "• ")) " ") nil
             (telega-ins-fmt "%s:%d"
               (plist-get proxy :server) (plist-get proxy :port))

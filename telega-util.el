@@ -66,6 +66,11 @@ Use it if you have formatting issues."
       (set-char-table-parent table char-width-table)
       (setq char-width-table table))))
 
+(defun telega-load-symbol-widths ()
+  "Add `telega-symbol-widths' to char table.
+Intented to be added to `telega-load-hook'."
+  (telega-symbol-set-widths telega-symbol-widths))
+
 (defun telega-duration-human-readable (seconds)
   "Convert SECONDS to human readable string."
   (let (comps)
