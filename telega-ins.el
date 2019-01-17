@@ -70,16 +70,27 @@ Return `t'."
        (telega-ins ,label)
        (telega-ins--with-attrs
          (list :fill 'left
-               :fill-prefix (make-string (- (point) (point-at-bol)) ?\s)
+               :fill-prefix (make-string (telega-current-column) ?\s)
                :fill-column ,fill-col)
          ,@body))))
 
-(defmacro telega-ins--text-buton (props &rest body)
+(defmacro telega-ins--button (label &rest props)
+  "Insert pressable button labeled with LABEL."
+  (declare (indent 1))
+  `(insert-text-button
+    ,label
+    'face 'telega-link
+    'action (lambda (button)
+              (funcall (button-get button :action)
+                       (button-get button :value)))
+    ,@props))
+
+(defmacro telega-ins--raw-button (props &rest body)
   "Execute BODY creating text button with PROPS."
   (declare (indent 1))
   `(apply 'make-text-button (prog1 (point) ,@body) (point)
           ,props))
-  
+
 (defmacro telega-ins--with-props (props &rest body)
   "Execute inserters applying PROPS after insertation.
 Return what BODY returns."
@@ -314,7 +325,7 @@ Special messages are determined with `telega-msg-special-p'."
 
 (defun telega-ins--timestamped-msg (msg)
   "Insert message MSG with timestamp and outgoing status."
-  (let ((fill-prefix (make-string (- (point) (point-at-bol)) ?\s)))
+  (let ((fill-prefix (make-string (telega-current-column) ?\s)))
     (telega-ins--with-attrs (list :fill 'left
                                   :fill-prefix fill-prefix
                                   :fill-column telega-chat-fill-column
@@ -347,8 +358,9 @@ Special messages are determined with `telega-msg-special-p'."
                       (telega-msg--get (plist-get msg :chat_id)
                                        reply-to-msg-id))))
     (when reply-msg
-      (let ((fill-prefix (make-string (- (point) (point-at-bol)) ?\s)))
-        (telega-ins--with-attrs (list :max (- telega-chat-fill-column (length fill-prefix))
+      (let ((fill-prefix (make-string (telega-current-column) ?\s)))
+        (telega-ins--with-attrs (list :max (- telega-chat-fill-column
+                                              (length fill-prefix))
                                       :elide t
                                       :face 'telega-chat-inline-reply)
           (when (telega-ins--username (plist-get msg :sender_user_id))

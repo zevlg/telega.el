@@ -54,6 +54,8 @@
   "Alist of (CATEGORY LAST-UPDATE-TIME ..)
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'")
+(defvar telega--search-chats nil
+  "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
 
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
 (defvar telega--unread-message-count nil
@@ -72,6 +74,10 @@ Used to update messages on file updates.")
 (defvar telega--uploadings nil
   "Hash of active uploadings FILE-ID -> (list of (UPDATE-CB CB-ARGS)).")
 
+(defvar telega--proxy-pings nil
+  "Alist for the proxy pings.
+(PROXY-ID . TIMESTAMP SECONDS)")
+
 (defvar telega-voip--alist nil
   "Alist of all calls currently in processing.
 In form (ID . CALL)")
@@ -89,6 +95,7 @@ Done when telega server is ready to receive queries."
   (setq telega--options nil)
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--top-chats nil)
+  (setq telega--search-chats nil)
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--actions (make-hash-table :test 'eq))
@@ -112,6 +119,8 @@ Done when telega server is ready to receive queries."
 
   (setq telega-voip--alist nil)
   (setq telega-voip--active-call nil)
+
+  (setq telega--proxy-pings nil)
   )
 
 (defmacro telega-save-excursion (&rest body)
@@ -223,7 +232,7 @@ Resulting in new string with no surrogate pairs."
            (string-prefix-p telega-cache-dir filename))
       (substring filename (length telega-cache-dir))
     filename))
-  
+
 
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)

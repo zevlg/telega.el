@@ -54,7 +54,7 @@
 
     (define-key map (kbd "? w") 'telega-describe-connected-websites)
     (define-key map (kbd "? s") 'telega-describe-active-sessions)
-    (define-key map (kbd "? n") 'telega-describe-network-stats)
+    (define-key map (kbd "? n") 'telega-describe-network)
     (define-key map (kbd "? p") 'telega-describe-privacy-settings)
 
     (define-key map (kbd "j") 'telega-chat-join-by-link)
@@ -277,7 +277,11 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
         (ewoc-delete telega-root--ewoc node))
       (if node-after
           (ewoc-enter-before telega-root--ewoc node-after chat)
-        (ewoc-enter-last telega-root--ewoc chat)))))
+        (ewoc-enter-last telega-root--ewoc chat)))
+
+    ;; NOTE: reorder might affect `telega--filtered-chats' and custom
+    ;; filters, so update the chat
+    (telega-root--chat-update chat)))
 
 (defun telega-root--chat-new (chat)
   "New CHAT has been created. Display it in root's ewoc."

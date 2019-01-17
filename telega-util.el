@@ -45,6 +45,10 @@
    ""
    string))
 
+(defun telega-current-column ()
+  "Same as `current-column', but take into account width of the characters."
+  (string-width (buffer-substring (point-at-bol) (point))))
+
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
 (defun telega-symbol-set-widths (symbol-widths-alist)
@@ -82,7 +86,7 @@ Use it if you have formatting issues."
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."
   (cl-assert (memq link-type '(url file user hashtag download cancel-download
-                                   upload cancel-upload)))
+                                   upload cancel-upload hashtag)))
 
   (list 'action 'telega-link--button-action
         'face (or face 'telega-link)
@@ -97,6 +101,8 @@ Use it if you have formatting issues."
               (set-buffer standard-output)
               (telega-info--insert-user
                (telega-user--get (cdr link)))))
+      (hashtag
+       (message "TODO: `hashtag' button action: tag=%s" (cdr link)))
       (url
        ;; TODO: check for https://t.me/ (:t_me_url in telega--options)
        ;; prefix, to open directly in telega

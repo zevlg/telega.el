@@ -80,7 +80,6 @@ Implies `telega-use-chat-info-database' set to non-nil."
 
 (defcustom telega-proxies nil
   "*List of proxies.
-Use instead of `telega-socks5-proxy' since tdlib >= 1.3.0
 Format is:
 (:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
 
@@ -88,7 +87,9 @@ where PROXY-TYPE is one of:
   (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
   (:@type \"proxyTypeHttp\" :username <USER> :password <PASSWORD>
          :http_only <BOOL>)
-  (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)"
+  (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)
+
+<BOOL> is either `t' or `:false', `nil' is not valid value."
   :type 'list
   :group 'telega)
 
@@ -474,7 +475,7 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-square "⬛"
+(defcustom telega-symbol-square "■"
   "Symbol used for large squares."
   :type 'string
   :group 'telega-symbol)

@@ -438,6 +438,37 @@ be marked as read."
   (telega-server--send
    (list :@type "closeChat"
          :chat_id (plist-get chat :id))))
+
+(defun telega--searchPublicChat (username)
+  "Search public chat with USERNAME."
+  (telega-server--call
+   (list :@type "searchPublicChat"
+         :username username)))
+
+(defun telega--searchPublicChats (query)
+  "Search public chats by looking for specified QUERY.
+Return nil if QUERY is less then 5 chars."
+  (unless (< (length query) 5)
+    (telega-server--call
+     (list :@type "searchPublicChats"
+           :query query))))
+
+(defun telega--searchChats (query &optional limit)
+  "Search already known chats by QUERY."
+  (mapcar #'telega-chat--get
+          (plist-get (telega-server--call
+                      (list :@type "searchChats"
+                            :query query
+                            :limit (or limit 200)))
+                     :chat_ids)))
+
+(defun telega--searchChatsOnServer (query &optional limit)
+  "Search already known chats on server by QUERY."
+  (telega-server--call
+   (list :@type "searchChatsOnServer"
+         :query query
+         :limit (or limit 200))))
+
 
 ;;; Chat buttons in root buffer
 (defvar telega-chat-button-map
@@ -520,13 +551,18 @@ be marked as read."
   (interactive (list (telega-chat-at-point)))
   (with-help-window "*Telegram Chat Info*"
     (set-buffer standard-output)
-    (telega-ins-fmt "%s: %s %s\n"
+    (telega-ins-fmt "%s: %s %s"
       (capitalize (symbol-name (telega-chat--type chat)))
       (telega-chat--title chat)
       (let ((username (plist-get (telega-chat--info chat) :username)))
         (if (and username (not (string-empty-p username)))
             (concat "@" username)
           "")))
+    (telega-ins " ")
+    (telega-ins--button "[Open]"
+      :value chat
+      :action 'telega-chat--pop-to-buffer)
+    (telega-ins "\n")
     (telega-ins-fmt "Id: %d\n" (plist-get chat :id))
     (when (telega-chat--public-p chat)
       (let ((link (concat (or (plist-get telega--options :t_me_url)

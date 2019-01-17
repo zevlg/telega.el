@@ -264,6 +264,57 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; no-op
   )
 
+(defun telega--getProxies ()
+  "Return list of currently registered proxies."
+  (let ((reply (telega-server--call (list :@type "getProxies"))))
+    (mapcar #'identity (plist-get reply :proxies))))
+
+(defun telega--pingProxies (proxies &optional callback)
+  "Update ping stats for the PROXIES.
+Call CALLBACK on updates."
+  (let ((track-timeout nil))
+    (cl-dolist (proxy proxies)
+      (let* ((proxy-id (plist-get proxy :id))
+             (ping (assq proxy-id telega--proxy-pings))
+             (currts (time-to-seconds)))
+        (when (> currts (+ (or (cadr ping) 0) 60))
+          (setq track-timeout t)
+          (setq telega--proxy-pings
+                (put-alist proxy-id (cons currts nil)
+                           telega--proxy-pings))
+          (telega-server--call
+           (list :@type "pingProxy" :proxy_id proxy-id)
+           `(lambda (seconds)
+              (setq telega--proxy-pings
+                    (put-alist ,proxy-id (cons (time-to-seconds)
+                                               (plist-get seconds :seconds))
+                               telega--proxy-pings))
+              (when ,callback
+                (funcall ,callback)))))))
+
+    (when (and track-timeout callback)
+      ;; to track ping timeouts
+      (run-with-timer 10 nil callback))))
+
+(defun telega--enableProxy (proxy)
+  (telega-server--call
+   (list :@type "enableProxy"
+         :proxy_id (plist-get proxy :id))))
+
+(defun telega--disableProxy ()
+  (telega-server--call
+   (list :@type "disableProxy")))
+
+(defun telega-proxy-last-used (&optional proxies)
+  "Return last time used proxy."
+  (car (cl-sort (or (copy-list proxies) (telega--getProxies))
+                '> :key (telega--tl-prop :last_used_date))))
+
+(defun telega-proxy-enabled (&optional proxies)
+  "Return enable proxy from PROXIES list."
+  (cl-find t (or proxies (telega--getProxies))
+           :test 'eq :key (telega--tl-prop :is_enabled)))
+
 (defun telega-version (&optional interactive-p)
   "Return telega (and tdlib) version.
 If called interactively, then print version into echo area."

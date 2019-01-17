@@ -35,10 +35,10 @@
 
 (defun telega-ins--instant-view (iview)
   "IVIEW is cons of URL and SITENAME."
-  (telega-ins "[  " telega-symbol-thunder
+  (telega-ins "[ " telega-symbol-thunder
               ;; I18N: ???
               " INSTANT VIEW "
-              "  ]")
+              " ]")
   )
 
 (defun telega--getWebPageInstantView (url &optional partial)
@@ -113,7 +113,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
     (richTextUrl
      (let ((url (plist-get rt :url)))
-       (telega-ins--text-buton (nconc (list :help-echo (concat "URL: " url))
+       (telega-ins--raw-button (nconc (list :help-echo (concat "URL: " url))
                                       (telega-link-props 'url url 'link))
          (telega-webpage--ins-rt (plist-get rt :text) strip-nl))))
     (richTextEmailAddress

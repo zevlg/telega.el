@@ -46,9 +46,10 @@ Used for optimization, when initially fetching chats, to speed things up.")
     (define-key map (kbd "p") 'telega-filter-by-pin)
     (define-key map (kbd "y") 'telega-filter-by-notify)
     (define-key map (kbd "v") 'telega-filter-by-verified)
-    (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "r") 'telega-filter-by-restriction)
+    (define-key map (kbd "s") 'telega-filter-by-search)
+    (define-key map (kbd "S") 'telega-filter-by-user-status)
     (define-key map (kbd "T") 'telega-filter-by-top)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
@@ -121,6 +122,9 @@ otherwise add to existing active filters."
 ;;; Filtering routines
 (defun telega--filters-apply ()
   "Apply current filers."
+  ;; Make search once more in case 'search' filter is used
+  (setq telega--search-chats nil)
+
   (setq telega--filtered-chats (telega-filter-chats))
   (telega-root--redisplay))
 
@@ -145,21 +149,18 @@ Set active filter to DEFAULT."
 This filter can be undone with `telega-filter-undo'."
   (telega--filters-push (append (car telega--filters) (list fspec))))
 
-(defmacro telega-filter-chats (&optional filter-spec chats-list)
+(defun telega-filter-chats (&optional filter-spec chats-list)
   "Filter chats matching filter specification.
 If FILTER-SPEC is nil, then currently active filters are used.
 If CHATS-LIST is nil, then `telega--ordered-chats' is used."
-  (let ((fspec (or filter-spec '(telega--filters-prepare)))
-        (chatsym (gensym "chat")))
-    (list 'cl-remove-if-not
-          `(lambda (,chatsym)
-             ;; Filter out chats we are not member of
-             ;; See https://github.com/zevlg/telega.el/issues/10
-             (and (telega-filter--test ,chatsym ,fspec)
-                  (telega-filter--test ,chatsym 'me-is-member)
-;                  (telega-filter--test ,chatsym 'has-last-message)
-                  ))
-          (or chats-list 'telega--ordered-chats))))
+  (let ((fspec (or filter-spec (telega--filters-prepare))))
+    (cl-remove-if-not
+     (lambda (chat)
+       ;; Filter out chats we are not member of
+       ;; See https://github.com/zevlg/telega.el/issues/10
+       (and (telega-filter--test chat fspec)
+            (telega-filter--test chat 'has-order)))
+     (or chats-list telega--ordered-chats))))
 
 (defun telega-filters-reset ()
   "Reset all active filters to default."
@@ -356,7 +357,8 @@ Also matches chats marked as unread."
   (interactive (let ((completion-ignore-case t))
                  (list (funcall telega-completing-read-function
                         "Member status: "
-                        '("Recently" "Online" "Offline" "LastWeek" "LastMonth" "Empty")
+                        '("Recently" "Online" "Offline"
+                          "LastWeek" "LastMonth" "Empty")
                         nil t))))
   (telega-filter-add `(user-status ,status)))
 
@@ -465,6 +467,19 @@ Specify INCOMING-P to filter by incoming link relationship."
   "Filter top used chats by CATEGORY."
   (interactive)
   (telega-filter-add 'top))
+
+(define-telega-filter search (chat query)
+  "Filter chats by last search.
+Search filter can be added only via `telega-filter-by-search'."
+  (unless telega--search-chats
+    (setq telega--search-chats
+          (or (telega--searchChats query) '(empty))))
+  (memq chat telega--search-chats))
+
+(defun telega-filter-by-search (query)
+  "Filter chats by QUERY."
+  (interactive "sSearch by query: ")
+  (telega-filter-add (list 'search query)))
 
 (provide 'telega-filter)
 
