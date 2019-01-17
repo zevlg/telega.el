@@ -490,7 +490,7 @@ Good candidates also are 🄌 or ⬤."
 
          telega-symbol-checkmark
          telega-symbol-heavy-checkmark
-         "∏"))
+         ))
   "*Custom widths for some symbols, used for correct formatting."
   :type 'list
   :group 'telega-symbol)
