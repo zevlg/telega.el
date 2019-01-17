@@ -527,7 +527,7 @@ Return t."
         (umwidth 7))
     (when (plist-get chat-info :is_verified)
       (setq title (concat title telega-symbol-verified)))
-    (when (eq (telega-chat--type chat 'raw) 'secret)
+    (when (telega-chat--secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
 
     (telega-ins (or (car brackets) "["))
@@ -558,7 +558,7 @@ Return t."
     (telega-ins (or (cdr brackets) "]"))
     (when pinned-p
       (telega-ins telega-symbol-pin))
-    (when (eq (telega-chat--type chat 'raw) 'secret)
+    (when (telega-chat--secret-p chat)
       (telega-ins telega-symbol-lock))
     t))
 
@@ -574,8 +574,7 @@ Return t."
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message))
         (chat-info (telega-chat--info chat)))
-
-    (cond ((and (eq (telega-chat--type chat 'raw) 'secret)
+    (cond ((and (telega-chat--secret-p chat)
                 (memq (telega--tl-type (plist-get chat-info :state))
                       '(secretChatStatePending secretChatStateClosed)))
            ;; Status of the secret chat
@@ -621,10 +620,11 @@ Return t."
                                          :elide t)
              ;; NOTE: Do not show username for:
              ;;  - Saved Messages
-             ;;  - If sent by user in private chat
+             ;;  - If sent by user in private/secret chat
              ;;  - Special messages
              (unless (or (eq (plist-get last-msg :sender_user_id)
                              (plist-get chat :id))
+                         (telega-chat--secret-p chat)
                          (telega-msg-special-p last-msg))
                (when (telega-ins--username (plist-get last-msg :sender_user_id))
                  (telega-ins ": ")))
@@ -637,7 +637,7 @@ Return t."
              (telega-ins--outgoing-status last-msg))
            )
 
-          ((and (eq (telega-chat--type chat 'raw) 'secret)
+          ((and (telega-chat--secret-p chat)
                 (eq (telega--tl-type (plist-get chat-info :state))
                     'secretChatStateReady))
            ;; Status of the secret chat

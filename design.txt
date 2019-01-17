@@ -351,13 +351,22 @@ Reply:
     | Reply: @vpupkin> message lala ...
     `-> []
 
-Formatting messages:
+If not a member of chat:
+    __________________________
+    [ JOIN ]
 
+Formatting messages:
 
 [AH] @user (admin)
 [AL] message here long message
      continue message message              12:20w
 
+
+Channel message with signature:
+
+👁10 --Mike Hoorn
+message here long message
+continue message message                   12:20w
 
 with reply markup
 ~~~~~~~~~~~~~~~~~

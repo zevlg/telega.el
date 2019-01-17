@@ -394,7 +394,8 @@ ellipsis."
   :group 'telega-symbol)
 
 (defcustom telega-symbol-document "📄"  ;\U0001F4C4
-  "*String to use as document symbol."
+  "*String to use as document symbol.
+\"📎\" is also good candidate."
   :type 'string
   :group 'telega-symbol)
 

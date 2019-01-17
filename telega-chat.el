@@ -107,12 +107,30 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
       (telega-chat--ensure chat))
     chat))
 
-(defun telega-joinChatByInviteLink (invite-link)
+(defun telega--joinChatByInviteLink (invite-link)
   "Return new chat by its INVITE-LINK.
 Return nil if can't join the chat."
   (telega-server--call
    (list :@type "joinChatByInviteLink"
          :invite_link invite-link)))
+
+(defun telega--joinChat (chat)
+  "Adds a new member to a CHAT."
+  (telega-server--send
+   (list :@type "joinChat" :chat_id (plist-get chat :id))))
+
+(defun telega--leaveChat (chat)
+  "Removes current user from CHAT members."
+  (telega-server--send
+   (list :@type "leaveChat" :chat_id (plist-get chat :id))))
+
+(defun telega--deleteChatHistory (chat &optional remove-from-list)
+  "Deletes all messages in the CHAT only for the user.
+Cannot be used in channels and public supergroups."
+  (telega-server--send
+   (list :@type "deleteChatHistory"
+         :chat_id (plist-get chat :id)
+         :remove_from_chat_list (or remove-from-list :false))))
 
 (defun telega-chat--info (chat)
   "Return info structure for the CHAT.
@@ -154,6 +172,10 @@ them to bots or channels."
                 (telega-user--bot-p (telega-chat--user chat)))
            'bot)
           (t type-sym))))
+
+(defun telega-chat--secret-p (chat)
+  "Return non-nil if CHAT is secret."
+  (eq (telega--tl-type (plist-get chat :type)) 'chatTypeSecret))
 
 (defun telega-chat--public-p (chat)
   "Return non-nil if CHAT is public.
@@ -526,7 +548,7 @@ Return nil if QUERY is less then 5 chars."
 
   ;; NOTE: If calling to secret chat, then use ordinary private chat
   ;; for calling
-  (when (eq (telega-chat--type chat 'no-interpret) 'secret)
+  (when (telega-chat--secret-p chat)
     (setq chat (telega-chat--get
                 (plist-get (telega-chat--info chat) :user_id))))
 
@@ -615,7 +637,7 @@ Return nil if QUERY is less then 5 chars."
   "Join chat by invitation LINK."
   (interactive "sInvite link: ")
   (telega-chat--pop-to-buffer
-   (or (telega-joinChatByInviteLink link)
+   (or (telega--joinChatByInviteLink link)
        (error "Can't join chat: %s"
               (plist-get telega-server--last-error :message)))))
 
@@ -654,12 +676,17 @@ Return nil if QUERY is less then 5 chars."
                  (and (y-or-n-p "This action cannot be undone. Delete chat? ")
                       (list chat))))
 
-  ;; TODO: for secret chats execute closeSecretChat before deleting
+  (let ((chat-type (telega-chat--type chat)))
+    (cond ((eq chat-type 'secret)
+           (telega--closeSecretChat (telega-chat--info chat)))
+          ((not (eq chat-type 'private))
+           (telega--leaveChat chat)))
 
-  (telega-server--send
-   (list :@type "deleteChatHistory"
-         :chat_id (plist-get chat :id)
-         :remove_from_chat_list t)))
+    ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
+    ;; and public supergroups
+    (unless (or (eq (telega-chat--type chat) 'channel)
+                (telega-chat--public-p chat))
+      (telega--deleteChatHistory chat t))))
 
 (defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
