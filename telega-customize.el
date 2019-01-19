@@ -259,6 +259,11 @@ In form (NAME . FILTER-SPEC)."
   :type 'function
   :group 'telega-inserter)
 
+(defcustom telega-inserter-for-msg-notification 'telega-ins--msg-notification
+  "*Inserter used to form body for notification bubble"
+  :type 'function
+  :group 'telega-inserter)
+
 
 (defgroup telega-webpage nil
   "Customization for instant view webpage rendering."
@@ -310,6 +315,58 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
+
+;; Notifications
+(defgroup telega-notifications nil
+  "Setup for D-Bus notifications."
+  :group 'telega)
+
+(defcustom telega-notifications-delay 1.0
+  "*Delay in seconds before making decision show or not the message in notification.
+Taking pause before showing notification is wise, because another
+telegram may be active with the chat opened, you don't want the
+notification to be shown for already read message.
+TODO: Not yet implemented"
+  :type 'float
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-timeout 2.0
+  "*How long to show notification in seconds."
+  :type 'float
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-msg-args
+  (list :sound-name "message-new-instant")
+  "*Additional arguments to `notifications-notify' on chat messages."
+  :type 'list
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-call-args
+  (list :sound-name "phone-incoming-call")
+  "*Additional arguments to `notifications-notify' on incoming calls."
+  :type 'list
+  :group 'telega-notifications)
+
+;; See https://github.com/zevlg/telega.el/issues/32
+(defcustom telega-notifications-msg-body-limit 100
+  "*Limit for the message body length.
+Used by `telega-ins--msg-notification'."
+  :type 'integer
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-defaults nil
+  "Cons cell with notifications settings.
+car for private/secret chats
+cdr for any groups including channels
+For example:
+  (cons
+    (list :mute_for 0 :show_preview t)
+    (list :mute_for 599695961 :show_preview t))
+"
+  :type 'cons
+  :group 'telega-notifications)
+
+
 (defcustom telega-msg-show-sender-status nil
   "*Non-nil to show message sender status.
 Such as admin, creator, etc
@@ -345,16 +402,17 @@ Integer or `auto'."
 ;;   :group 'telega-msg)
 
 (defcustom telega-auto-download
-  '((photos all)
-    (videos opened)
-    (files opened)
-    (voice-messages opened)
-    (video-messages opened)
-    (web-page all))
+  '((photo all)
+    (video opened)
+    (file opened)
+    (voice-message opened)
+    (video-message opened)
+    (web-page all)
+    (instant-view all))
   "*Alist in form (KIND . FILTER-SPEC).
 To denote for which chats to automatically download media content.
-KIND is one of `photos', `videos', `files', `voice-messages',
-`video-messages' and `web-page'.
+KIND is one of `photo', `video', `file', `voice-message',
+`video-message', `web-page', `instant-view'.
 Used by `telega-msg-autodownload-media'."
   :type 'boolean
   :group 'telega)
@@ -414,7 +472,7 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-msg-pending "⌛" ;\u231B
+(defcustom telega-symbol-pending "⌛"   ;\u231B
   "Symbol to use for pending outgoing messages."
   :type 'string
   :group 'telega-symbol)
@@ -481,6 +539,16 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-ballout-empty "☐"
+  "Symbol used for empty ballout."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-ballout-check "☑"
+  "Symbol used for checked ballout."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 2
@@ -490,6 +558,8 @@ Good candidates also are 🄌 or ⬤."
 
          telega-symbol-checkmark
          telega-symbol-heavy-checkmark
+         telega-symbol-ballout-empty
+         telega-symbol-ballout-check
          ))
   "*Custom widths for some symbols, used for correct formatting."
   :type 'list
@@ -632,9 +702,14 @@ You can customize its `:height' to fit width of the default face."
   "Face to display title of myself in chat buffers."
   :group 'telega-faces)
 
-(defface telega-msg-status
+(defface telega-msg-outgoing-status
   '((t :height 0.8))
-  "Face used to display `telega-symbol-msg-XXX' symbols in message."
+  "Face used to display message outgoing status symbol."
+  :group 'telega-faces)
+
+(defface telega-webpage-chat-link
+  '((t :background "gray85"))
+  "Face to display `pageBlockChatLink' web page blocks"
   :group 'telega-faces)
 
 (defface telega-webpage-sitename
@@ -662,12 +737,22 @@ You can customize its `:height' to fit width of the default face."
   "Face to display subheader in webpage instant view."
   :group 'telega-faces)
 
+(defface telega-webpage-fixed
+  '((t :family "Monospace Serif" :height 0.85))
+  "Face to display fixed text in webpage instant view."
+  :group 'telega-faces)
+
+(defface telega-webpage-preformatted
+  '((t :inherit telega-webpage-fixed :background "gray85"))
+  "Face to display preformatted text in webpage instant view."
+  :group 'telega-faces)
+
 
 (defgroup telega-hooks nil
   "Group to customize hooks used by telega."
   :group 'telega)
 
-(defcustom telega-load-hook '(telega-load-symbol-widths)
+(defcustom telega-load-hook nil
   "Hooks run when telega is loaded."
   :type 'hook
   :group 'telega-hooks)
@@ -687,15 +772,20 @@ You can customize its `:height' to fit width of the default face."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-chats-fetched-hook nil
-  "Hook called when all chats list has been received."
+(defcustom telega-connection-state-hook nil
+  "Hook called when connection state changes."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-user-update-hook
-  '(telega-media--autodownload-on-user telega-root--user-update)
+(defcustom telega-chats-fetched-hook nil
+  "Hook called when all chats list has been fetched."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-user-update-hook nil
   "Hook called with single argument USER, when USER's info is updated."
   :type 'hook
+  :options '(telega-media--autodownload-on-user)
   :group 'telega-hooks)
 
 (defcustom telega-chat-before-oldest-msg-hook nil
@@ -714,11 +804,12 @@ Could be used for example to insert date breaks."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-chat-pre-message-hook '(telega-media--autodownload-on-msg)
+(defcustom telega-chat-pre-message-hook nil
   "Hook called uppon new message arrival, before inserting into chatbuffer.
 Called with two arguments - message and disable-notification.
 Always called, even if corresponding chat is closed at the moment."
   :type 'hook
+  :options '(telega-media--autodownload-on-msg)
   :group 'telega-hooks)
 
 (defcustom telega-chat-message-hook nil

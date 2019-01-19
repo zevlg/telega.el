@@ -50,7 +50,7 @@
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
 (defvar telega-server--results nil)
 
-(defmacro telega-server--callback-add (extra cb)
+(defmacro telega-server--callback-put (extra cb)
   `(puthash ,extra ,cb telega-server--callbacks))
 
 (defmacro telega-server--callback-rm (extra)
@@ -100,7 +100,9 @@ Raise error if not found"
 
            ;; Function call may return errors
            (if (or (not (eq 'error (telega--tl-type value)))
-                   (= (plist-get value :code) 406))
+                   (= (plist-get value :code) 406)
+                   (= (plist-get value :code) 404) ;web page not found
+                   )
                (funcall call-cb value)
 
              ;; Error returned
@@ -175,14 +177,16 @@ Raise error if not found"
   "Same as `telega-server--send', but waits for answer from telega-server.
 If CALLBACK is specified, then make async call and call CALLBACK
 when result is received."
-  (telega-server--send (plist-put sexp :@extra (cl-incf telega-server--extra)))
+  (unless (plist-get sexp :@extra)
+    (setq sexp (plist-put sexp :@extra (cl-incf telega-server--extra))))
+  (telega-server--send sexp)
 
   (if callback
-      (telega-server--callback-add telega-server--extra callback)
+      (telega-server--callback-put telega-server--extra callback)
 
     ;; synchronous call aka exec
     (let ((cb-extra telega-server--extra))
-      (telega-server--callback-add
+      (telega-server--callback-put
        telega-server--extra
        `(lambda (event)
           (puthash ,cb-extra event telega-server--results)))

@@ -296,12 +296,6 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
     (let ((telega-filters--inhibit-redisplay nil))
       (telega-filters--redisplay))))
 
-(defun telega-root--user-update (user)
-  "Something changed in USER, private chat might need to be updated."
-  (let ((chat (telega-chat--get (plist-get user :id) 'offline)))
-    (when chat
-      (telega-root--chat-update chat))))
-
 (defun telega-root--modeline-buffer-identification ()
   "Return `mode-line-buffer-identification' for the root buffer."
   (let* ((title "%12b")

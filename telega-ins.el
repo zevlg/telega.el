@@ -62,28 +62,43 @@ Return `t'."
   `(telega-ins
     (telega-fmt-eval-attrs (telega-ins--as-string ,@body) ,attrs)))
 
+(defmacro telega-ins--column (column fill-col &rest body)
+  "Execute BODY at COLUMN filling to FILL-COLL.
+If COLUMN is nil or less then current column, then current column is used."
+  (declare (indent 2))
+  (let ((colsym (gensym "col"))
+        (curcol (gensym "curcol")))
+    `(let ((,colsym ,column)
+           (,curcol (telega-current-column)))
+       (when (or (null ,colsym) (< ,colsym ,curcol))
+         (setq ,colsym ,curcol))
+
+       (move-to-column ,colsym t)
+       (telega-ins--with-attrs
+           (list :fill 'left
+                 :fill-prefix (make-string ,colsym ?\s)
+                 :fill-column ,fill-col)
+         ,@body))))
+
 (defmacro telega-ins--labeled (label fill-col &rest body)
   "Execute BODY filling it to FILL-COLL, prefixing first line with LABEL."
   (declare (indent 2))
-  (let ((prfx-sym (gensym "prefix")))
-    `(progn
-       (telega-ins ,label)
-       (telega-ins--with-attrs
-         (list :fill 'left
-               :fill-prefix (make-string (telega-current-column) ?\s)
-               :fill-column ,fill-col)
-         ,@body))))
+  `(progn
+     (telega-ins ,label)
+     (telega-ins--column nil ,fill-col
+       ,@body)))
 
-(defmacro telega-ins--button (label &rest props)
+(defun telega-ins--button (label &rest props)
   "Insert pressable button labeled with LABEL."
   (declare (indent 1))
-  `(insert-text-button
-    ,label
-    'face 'telega-link
-    'action (lambda (button)
-              (funcall (button-get button :action)
-                       (button-get button :value)))
-    ,@props))
+  (unless (plist-get props 'face)
+    (setq props (plist-put props 'face 'telega-link)))
+  (unless (plist-get props 'action)
+    (setq props (plist-put props 'action
+                           (lambda (button)
+                             (funcall (button-get button :action)
+                                      (button-get button :value))))))
+  (apply 'insert-text-button label props))
 
 (defmacro telega-ins--raw-button (props &rest body)
   "Execute BODY creating text button with PROPS."
@@ -215,17 +230,18 @@ PTYPE is `download' or `upload'."
   (when (plist-get msg :is_outgoing)
     (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
           (chat (telega-chat--get (plist-get msg :chat_id))))
-      (telega-ins
-       (cond ((and (stringp sending-state)
-                   (string= sending-state "messageSendingStatePending"))
-              telega-symbol-msg-pending)
-             ((and (stringp sending-state)
-                   (string= sending-state "messageSendingStateFailed"))
-              telega-symbol-failed)
-             ((>= (plist-get chat :last_read_outbox_message_id)
-                  (plist-get msg :id))
-              telega-symbol-heavy-checkmark)
-             (t telega-symbol-checkmark))))))
+      (telega-ins--with-attrs (list :face 'telega-msg-outgoing-status)
+        (telega-ins
+         (cond ((and (stringp sending-state)
+                     (string= sending-state "messageSendingStatePending"))
+                telega-symbol-pending)
+               ((and (stringp sending-state)
+                     (string= sending-state "messageSendingStateFailed"))
+                telega-symbol-failed)
+               ((>= (plist-get chat :last_read_outbox_message_id)
+                    (plist-get msg :id))
+                telega-symbol-heavy-checkmark)
+               (t telega-symbol-checkmark)))))))
 
 (defun telega-ins--text (text)
   "Insert TEXT applying telegram entities."
@@ -234,6 +250,10 @@ PTYPE is `download' or `upload'."
      (telega--entities-apply
       (plist-get text :entities) (plist-get text :text)))))
 (defalias 'telega-ins--caption 'telega-ins--text)
+
+(defun telega-ins--photo (photo)
+  (telega-ins-fmt "TODO: PHOTO %S" photo)
+  )
 
 (defun telega-ins--document (doc)
   "Insert document DOC."
@@ -347,8 +367,7 @@ Special messages are determined with `telega-msg-special-p'."
         (goto-char (point-at-eol)))
       (telega-ins--with-attrs (list :align 'right :min 10)
         (telega-ins--date (plist-get msg :date)))
-      (telega-ins--with-attrs (list :face 'telega-msg-status)
-        (telega-ins--outgoing-status msg))
+      (telega-ins--outgoing-status msg)
       t)))
 
 (defun telega-ins--inline-reply (msg)
@@ -633,8 +652,7 @@ Return t."
 
            (telega-ins--with-attrs (list :align 'right :min 10)
              (telega-ins--date (plist-get last-msg :date)))
-           (telega-ins--with-attrs (list :face 'telega-msg-status)
-             (telega-ins--outgoing-status last-msg))
+           (telega-ins--outgoing-status last-msg)
            )
 
           ((and (telega-chat--secret-p chat)

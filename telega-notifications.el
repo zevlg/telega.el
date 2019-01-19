@@ -1,6 +1,6 @@
 ;;; telega-notifications.el --- Notifications support for telega.
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Apr 18 18:18:22 2018
@@ -21,122 +21,138 @@
 
 ;;; Commentary:
 
+;; Notification pop-ups using `notifications.el' for incoming messages
+;; and calls.
+;; 
 ;; To enable notifications use next code in your init.el:
 ;; 
-;; (add-hook 'telega-root-mode-hook (lambda () (telega-notifications-mode 1)))
+;;   (add-hook 'telega-load-hook 'telega-notifications-mode)
 ;; 
 
 ;;; Code:
 (require 'cl-lib)
 (require 'notifications)
+
 (require 'telega-core)
 (require 'telega-util)
 
-(defgroup telega-notifications nil
-  "Setup for D-Bus notifications."
-  :group 'telega)
+(defun telega-chat-notification-setting (chat setting &optional default-p)
+  "For the CHAT return NOTIFICATION-SETTING value.
+If DEFAULT-P is non-nil then return default setting for the CHAT."
+  (let ((use-default-name
+         (intern (concat ":use_default_" (substring (symbol-name setting) 1))))
+        (not-cfg (plist-get chat :notification_settings)))
+    (when (or default-p (plist-get not-cfg use-default-name))
+      (if (memq (telega-chat--type chat 'raw) '(private secret))
+          (setq not-cfg (car telega--scope-notification-settings))
+        (setq not-cfg (cdr telega--scope-notification-settings))))
 
-(defcustom telega-notifications-delay 1.0
-  "*Delay in seconds before making decision show or not the message in notification.
-Taking pause before showing notification is wise, because another
-telegram may be active with the chat opened, you don't want the
-notification to be shown for already read message.
-TODO: Not yet implemented"
-  :type 'float
-  :group 'telega-notifications)
+    (plist-get not-cfg setting)))
+  
+(defun telega--on-updateScopeNotificationSettings (event)
+  "Handle `updateScopeNotificationSettings' EVENT."
+  (let ((scope (plist-get event :scope))
+        (settings (plist-get event :notification_settings)))
+    (cl-ecase (telega--tl-type (plist-get event :scope))
+      (notificationSettingsScopePrivateChats
+       (setcar telega--scope-notification-settings settings))
+      (notificationSettingsScopeGroupChats
+       (setcdr telega--scope-notification-settings settings)))))
 
-(defcustom telega-notifications-timeout 2.0
-  "*How long to show notification in seconds."
-  :type 'float
-  :group 'telega-notifications)
-
-(defcustom telega-notifications-notify-args
-  (list :sound-file (telega-etc-file "telegram-msgin.wav"))
-  "*Additional arguments to `notifications-notify'.
-Remove `:sound-file' to mute sounds on incoming messages."
-  :type 'list
-  :group 'telega-notifications)
-
-(defcustom telega-notifications-inserter 'telega-notifications-ins-msg
-  "*Inserter for the notification message."
-  :type 'function
-  :group 'telega-notifications)
-
-;; See https://github.com/zevlg/telega.el/issues/32
-(defcustom telega-notifications-msg-body-limit 100
-  "*Limit for the message body length."
-  :type 'integer
-  :group 'telega-notifications)
-
-(defvar telega--notifications nil
-  "Notifications settings")
-
-(defun telega--on-updateNotificationSettings (event)
-  (let ((scope (plist-get event :scope)))
-    (cl-case (intern (plist-get scope :@type))
-      (notificationSettingsScopeChat
-       (let ((chat (telega-chat--get (plist-get scope :chat_id))))
-         (plist-put chat :notification_settings
-                    (plist-get event :notification_settings))))
-      (t
-       (telega-debug
-        "TODO scope: `telega--on-updateNotificationSettings' event=%s" event))
-      )))
-
-(defun telega-notifications-ins-msg (msg)
+(defun telega-ins--msg-notification (msg)
   "Inserter to format MSG to notify about."
-  )
+  ;; Limit length of the message
+  (telega-ins--with-attrs (list :max telega-notifications-msg-body-limit
+                                :elide t)
+    (let ((chat (telega-chat--get (plist-get msg :chat_id))))
+      (unless (memq (telega-chat--type chat 'raw) '(private secret))
+        (when (telega-ins--username (plist-get msg :sender_user_id) 'name)
+          (telega-ins ": "))
+        (when (telega-ins--via-bot (plist-get msg :via_bot_user_id))
+          (telega-ins "\n"))))
 
-(defun telega-notifications--format-msg (msg)
-  "Format function for the notification."
-  `(telega-msg-sender-name
-    telega-msg-via-bot
-    telega-msg-edit-date
-    "\n"
-    ,@(telega-msg-inline-reply msg "")
-    telega-msg-format))
+    (telega-ins--content msg)))
 
 ;;;###autoload
 (defun telega-notifications-mode (&optional arg)
   "Toggle telega notifications on or off.
-With positive ARG - enables notifications, otherwise disables."
+With positive ARG - enables notifications, otherwise disables.
+If ARG is not given then treat it as 1."
   (interactive "p")
-  (if (> arg 0)
-      (add-hook 'telega-chat-message-hook 'telega-notfications-chat-message)
-    (remove-hook 'telega-chat-message-hook 'telega-notfications-chat-message)))
+  (if (or (null arg) (> arg 0))
+      (progn
+        (add-hook 'telega-chat-message-hook 'telega-notifications-chat-message)
+        (add-hook 'telega-incoming-call-hook 'telega-notifications-incoming-call))
+    (remove-hook 'telega-chat-message-hook 'telega-notifications-chat-message)
+    (remove-hook 'telega-incoming-call-hook 'telega-notifications-incoming-call)))
 
-(defun telega-notfications-chat-message (msg disable-notification)
+(defun telega-notifications--notify (notify-spec)
+  (let* ((base-spec (list :app-name "emacs.telega"
+                          :app-icon (telega-etc-file "telegram-logo.svg")
+                          :timeout (round (* 1000 telega-notifications-timeout))
+                          :urgency "normal"))
+         ;; DO NOT modify NOTIFY-SPEC
+         (notify-args (append notify-spec base-spec)))
+    (telega-debug "NOTIFY with args: %S" notify-args)
+    (apply 'notifications-notify notify-args)))
+
+;; NOTE: standard values for :sound-name
+;; http://0pointer.de/public/sound-naming-spec.html
+(defun telega-notifications-chat-message (msg disable-notification)
   "Function intended to be added to `telega-chat-message-hook'."
-  (unless disable-notification
-    (let* ((chat (telega-chat--get (plist-get msg :chat_id)))
-           (not-cfg (plist-get chat :notification_settings)))
-      (unless (or (not (zerop (plist-get not-cfg :mute_for)))
-                  ;; Do not show notification if corresponding button
-                  ;; is observable
-                  (with-telega-chatbuf chat
-                    (save-excursion
-                      (telega-button--observable-p
-                       (telega-chat-buffer--button-get (plist-get msg :id))))))
-        (let ((notargs (list :app-name "emacs.telega"
-                             :app-icon (telega-etc-file "telegram-logo.svg")
-                             :timeout (round (* 1000 telega-notifications-timeout))
-                             :urgency "normal"
-                             :title (telega-chat--title chat 'with-username)
-                             :body (if (plist-get not-cfg :show_preview)
-                                       (telega--desurrogate-apply
-                                        (telega-fmt-eval
-                                         'telega-notifications--format-msg msg))
-                                     "Has new unread messages"))))
-          (telega-debug "NOTIFY with args: %S"
-                        (nconc notargs telega-notifications-notify-args))
-          (apply 'notifications-notify
-                 (nconc notargs telega-notifications-notify-args)))
-        ))))
+  ;; Do NOT notify message if:
+  ;;  - disable-notification is non-nil
+  ;;  - Chat is muted
+  ;;  - Message already has been read (see last_read_inbox_message_id)
+  ;;  - Message is older then 1 min (to avoid poping up messages on
+  ;;    laptop wakeup)
+  ;;  - Message is currently observable in chatbuf
+  ;;  - [TODO] If Emacs frame has focus and root buffer is current
+  (unless (or disable-notification
+              (> (- (time-to-seconds) (plist-get msg :date)) 60))
+    (let* ((msg-id (plist-get msg :id))
+           (chat-id (plist-get msg :chat_id))
+           (chat (telega-chat--get chat-id))
+           (last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
+      (unless (or (< msg-id last-read-msg-id)
+                  (not (zerop (telega-chat-notification-setting chat :mute_for)))
+                  (telega-chat-msg-observable-p chat msg-id))
+        (let ((notify-args
+               (nconc
+                (list :actions (list "default" "show message")
+                      :on-action `(lambda (&rest args)
+                                    (x-focus-frame (telega-x-frame))
+                                    (telega-chat--goto-msg
+                                     (telega-chat--get ,chat-id)
+                                     ,msg-id 'highlight))
+                      :title (telega-chat--title chat 'with-username)
+                      :body (if (telega-chat-notification-setting chat :show_preview)
+                                (telega-ins--as-string
+                                 (funcall telega-inserter-for-msg-notification msg))
+                              "Has new unread messages"))
+                telega-notifications-msg-args)))
+          ;; Play sound only if CHAT setting has some sound
+          (when (string-empty-p
+                 (or (telega-chat-notification-setting chat :sound) ""))
+            (setq notify-args (cl--plist-remove notify-args :sound-name)))
 
-(defun telega-notfications-incoming-call (call)
+          (telega-notifications--notify notify-args))))))
+
+(defun telega-notifications-incoming-call (call)
   "Function intended to be added to `telega-incoming-call-hook'."
-  (message "TODO: `telega-notfications-incoming-call'")
-  )
+  (let* ((call-id (plist-get call :id))
+         (user (telega-user--get (plist-get call :user_id)))
+         (notargs (list :actions (list "default" "accept")
+                        :on-action `(lambda (&rest args)
+                                      (x-focus-frame (telega-x-frame))
+                                      (telega-voip-accept
+                                       (telega-voip--by-id ,call-id)))
+                        :timeout 0
+                        ;; I18N: lng_call_incoming
+                        :title "Incoming call"
+                        :body (format "from %s" (telega-user--name user)))))
+    (telega-notifications--notify
+     (nconc notargs telega-notifications-call-args))))
 
 (provide 'telega-notifications)
 

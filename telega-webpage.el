@@ -42,18 +42,22 @@
   )
 
 (defun telega--getWebPageInstantView (url &optional partial)
-  (telega-server--call
-   (list :@type "getWebPageInstantView"
-         :url url
-         :force_full (or (not partial) :false))))
+  "Return instant view for the URL.
+Return nil if URL is not available for instant view."
+  (let ((reply (telega-server--call
+                (list :@type "getWebPageInstantView"
+                      :url url
+                      :force_full (or (not partial) :false)))))
+    ;; NOTE: May result in 404 error, return nil in this case
+    (and reply
+         (eq (telega--tl-type reply) 'webPageInstantView)
+         reply)))
 
 (defvar telega-webpage--url nil
   "URL for the instant view webpage currently viewing.")
-(make-variable-buffer-local 'telega-webpage--url)
-
 (defvar telega-webpage--sitename nil
   "Sitename for the webpage currently viewing.")
-(make-variable-buffer-local 'telega-webpage--sitename)
+(defvar telega-webpage--anchors nil)
 
 (defcustom telega-webpage-header-line-format
   '(" " (:eval (concat telega-webpage--sitename
@@ -67,6 +71,7 @@
   (let ((map (make-sparse-keymap)))
     (define-key map "g" 'telega-webpage-browse-url)
     (define-key map "w" 'telega-webpage-browse-url)
+    (define-key map "c" 'telega-webpage-copy-url)
     (define-key map [?\t] 'telega-button-forward)
     (define-key map "\e\t" 'telega-button-backward)
     (define-key map [backtab] 'telega-button-backward)
@@ -80,10 +85,30 @@ Keymap:
   (setq header-line-format telega-webpage-header-line-format)
   (set-buffer-modified-p nil))
 
+(defun telega-webpage-copy-url (url)
+  "Copy current webpage URL into clipboard."
+  (interactive (list telega-webpage--url))
+  (kill-new url)
+  (message "Copied \"%s\" into clipboard" url))
+
 (defun telega-webpage-browse-url (url)
   "Browse URL with web browser."
   (interactive (list telega-webpage--url))
-  (browse-url url))
+  (telega-browse-url url))
+
+(defun telega-webpage-maybe-instant-view-url (url)
+  "Browse URL with web browser."
+  (interactive (list telega-webpage--url))
+  (let ((instant-view (telega--getWebPageInstantView url)))
+    (if instant-view
+        (telega-webpage--instant-view url nil instant-view)
+      (telega-webpage-browse-url url))))
+
+(defun telega-webpage-goto-anchor (name)
+  "Goto at anchor NAME position."
+  (let ((anchor (cdr (assoc name telega-webpage--anchors))))
+    (when anchor
+      (goto-char anchor))))
 
 (defun telega-webpage--ins-rt (rt &optional strip-nl)
   "Insert RichText RT.
@@ -109,13 +134,29 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins--with-attrs (list :face 'telega-webpage-strike-through)
        (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
     (richTextFixed
-     (telega-ins--with-attrs (list :face 'fixed-pitch)
+     (telega-ins--with-attrs (list :face 'telega-webpage-fixed)
        (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
     (richTextUrl
-     (let ((url (plist-get rt :url)))
-       (telega-ins--raw-button (nconc (list :help-echo (concat "URL: " url))
-                                      (telega-link-props 'url url 'link))
-         (telega-webpage--ins-rt (plist-get rt :text) strip-nl))))
+     (let* ((url (plist-get rt :url))
+            (anchor-prefix (concat telega-webpage--url "#"))
+            (anchor (when (string-prefix-p anchor-prefix url)
+                      (substring url (length anchor-prefix))))
+            (link (telega-ins--as-string
+                   (telega-webpage--ins-rt (plist-get rt :text) strip-nl))))
+       (telega-debug
+        "web page url: url=%s, anchor-prefix=%s, anchor=%s"
+        url anchor-prefix anchor)
+       ;; NOTE: links to same page jumps to anchor location
+       (if anchor
+           (telega-ins--button link
+             'face 'telega-link
+             :value anchor
+             :action 'telega-webpage-goto-anchor)
+         (telega-ins--button link
+           'face 'link
+           :help-echo (concat "URL: " url)
+           :value url
+           :action 'telega-webpage-maybe-instant-view-url))))
     (richTextEmailAddress
      (telega-ins--with-attrs (list :face 'link)
        (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))))
@@ -134,17 +175,26 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins "By ")
      (telega-webpage--ins-rt (plist-get pb :author))
      (telega-ins " • ")
-     (telega-ins--date-full (plist-get pb :publish_date))
+     (let ((publish-date (plist-get pb :publish_date)))
+       (when (zerop publish-date)
+         (setq publish-date (time-to-seconds)))
+       (telega-ins--date-full publish-date))
      (telega-ins "\n"))
     (pageBlockHeader
-     (telega-ins--with-attrs (list :face 'telega-webpage-header
-                                   :fill 'left
-                                   :fill-column telega-webpage-fill-column)
+     (telega-ins--with-attrs
+         (list :face 'telega-webpage-header
+               :fill 'left
+               :fill-column
+               (round (/ telega-webpage-fill-column
+                         (telega-face-height 'telega-webpage-header))))
        (telega-webpage--ins-rt (plist-get pb :header))))
     (pageBlockSubheader
-     (telega-ins--with-attrs (list :face 'telega-webpage-subheader
-                                   :fill 'left
-                                   :fill-column telega-webpage-fill-column)
+     (telega-ins--with-attrs
+         (list :face 'telega-webpage-subheader
+               :fill 'left
+               :fill-column
+               (round (/ telega-webpage-fill-column
+                         (telega-face-height 'telega-webpage-subheader))))
        (telega-webpage--ins-rt (plist-get pb :subheader))))
     (pageBlockParagraph
      (telega-ins--with-attrs (list :fill 'left
@@ -152,13 +202,19 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))
     (pageBlockPreformatted
-     (telega-ins "<TODO: pageBlockPreformatted>"))
+     (telega-ins--with-attrs (list :face 'telega-webpage-preformatted)
+       (telega-webpage--ins-rt (plist-get pb :text)))
+     (telega-ins "\n"))
     (pageBlockFooter
      (telega-ins "<TODO: pageBlockFooter>"))
     (pageBlockDivider
-     (telega-ins "---------"))
+     (telega-ins--with-attrs (list :align 'center
+                                   :fill-column telega-webpage-fill-column)
+       (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-))))
     (pageBlockAnchor
-     )
+     (setq telega-webpage--anchors
+           (put-alist (plist-get pb :name) (point)
+                      telega-webpage--anchors)))
     (pageBlockList
      (let ((orderedp (plist-get pb :is_ordered))
            (items (plist-get pb :items)))
@@ -197,22 +253,30 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockSlideshow
      (telega-ins "<TODO: pageBlockSlideshow>"))
     (pageBlockChatLink
-     (telega-ins "<TODO: pageBlockChatLink>"))
+     (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
+       (telega-ins (plist-get pb :title) " "
+                   "@" (plist-get pb :username) " ")
+       (telega-ins--button "[Open]"
+         :value (telega-chat-by-username (plist-get pb :username))
+         :action 'telega-chat--pop-to-buffer)))
     )
   (unless (memq (telega--tl-type pb) '(pageBlockAnchor pageBlockCover))
-    (telega-ins "\n"))
-  )
+    (telega-ins "\n")))
 
-(defun telega-webpage--instant-view (url &optional sitename)
-  "Instantly view webpage by URL."
+(defun telega-webpage--instant-view (url &optional sitename instant-view)
+  "Instantly view webpage by URL.
+If INSTANT-VIEW is non-nil, then its value is already fetched
+instant view for the URL."
   (pop-to-buffer-same-window
    (get-buffer-create "*Telega Instant View*"))
 
-  (let ((buffer-read-only nil)
-        (instant-view (telega--getWebPageInstantView url)))
+  (setq telega-webpage--url url
+        telega-webpage--sitename sitename
+        telega-webpage--anchors nil)
+  (unless instant-view
+    (setq instant-view (telega--getWebPageInstantView url)))
+  (let ((buffer-read-only nil))
     (erase-buffer)
-    (setq telega-webpage--url url
-          telega-webpage--sitename sitename)
     (mapc 'telega-webpage--ins-PageBlock
           (plist-get (telega--getWebPageInstantView url) :page_blocks))
 

@@ -55,6 +55,12 @@
 (defun telega--on-updateUser (event)
   (let ((user (plist-get event :user)))
     (telega--info-update user)
+
+    ;; Update corresponding private chat button
+    (let ((chat (telega-chat--get (plist-get user :user_id) 'offline)))
+      (when chat
+        (telega-root--chat-update chat)))
+
     (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega--on-updateBasicGroup (event)
@@ -67,7 +73,7 @@
   (let ((secretchat (plist-get event :secret_chat)))
     (telega--info-update secretchat)
 
-    ;; update corresponding chat button
+    ;; update corresponding secret chat button
     (let ((chat (cl-find secretchat (telega-filter-chats '(type secret))
                          :test 'eq :key #'telega-chat--info)))
       (when chat
@@ -198,19 +204,31 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (bio (plist-get full-info :bio))
          (share-text (plist-get full-info :share_text))
          (out-link (plist-get user :outgoing_link))
-         (in-link (plist-get user :incoming_link)))
+         (in-link (plist-get user :incoming_link))
+         (has-button-line nil))
 
     (unless (eq (telega--tl-type in-link) 'linkStateIsContact)
       (telega-ins--button "[Share My Contact Info]"
         :value chat :action 'telega-chat-share-my-contact)
-      (telega-ins "  "))
+      (telega-ins "  ")
+      (setq has-button-line t))
     ;; NOTE: Secret chat with myself is not possible
     (unless (eq (plist-get user :id) telega--me-id)
-      (telega-ins--button "[Start Secret Chat]"
+      ;; TODO: search for existing secret chat with Ready state and
+      ;; create [Open Secret Chat] button instead
+      (telega-ins--button (concat "[" telega-symbol-lock "Start Secret Chat]")
         :value user
         :action (lambda (user)
                   (telega-chat--pop-to-buffer
                    (telega--createNewSecretChat user))))
+      (telega-ins "  ")
+      (setq has-button-line t))
+    (when (plist-get full-info :can_be_called)
+      (telega-ins--button (concat "[" telega-symbol-phone "Call]")
+        :value user
+        :action 'telega-voip-call)
+      (setq has-button-line t))
+    (when has-button-line
       (telega-ins "\n"))
 
     (when (= (plist-get user :id) telega--me-id)
@@ -464,63 +482,66 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
               (insert (format "Login: %s, Last: %s\n"
                               (telega-fmt-timestamp login-ts)
                               (telega-fmt-timestamp last-ts)))
-              (insert "\n")
-              ))
+              (insert "\n")))
           (plist-get (telega-server--call '(:@type "getActiveSessions"))
                      :sessions))))
 
-(defun telega-describe-network0 (only-current)
-  "Insert network settings/stats into current buffer."
+(defun telega-ins--network (only-current)
+  "Insert network settings/stats."
   (let* ((proxies (telega--getProxies))
          (recent (telega-proxy-last-used proxies))
          (enabled (telega-proxy-enabled proxies)))
-    (telega--pingProxies
-     proxies `(lambda ()
-                (let ((buffer (get-buffer "*Telega Network*")))
-                  (when (buffer-live-p buffer)
-                    (with-current-buffer buffer
-                      (let ((inhibit-read-only t))
-                        (telega-save-cursor
-                          (erase-buffer)
-                          (telega-describe-network0 ,only-current))))))))
-
+    (telega--pingProxies proxies 'telega-describe-network)
     (when proxies
       (assert recent nil "No recent proxy")
       (telega-ins "Proxy Settings\n")
       (telega-ins "--------------\n")
 
-      (telega-ins "Use Proxy: " (if enabled "Yes" "No"))
-      (telega-ins " ")
-      (telega-ins--button (if enabled "[Disable]" "[Enable]")
+      (telega-ins "Use Proxy: ")
+      (telega-ins--button (if enabled
+                              telega-symbol-ballout-check
+                            telega-symbol-ballout-empty)
         :value (and (not enabled) recent)
         :action `(lambda (proxy)
                    (if proxy
-                       (telega--enableProxy proxy)
+                       (and (telega--enableProxy proxy)
+                            (setq telega--conn-state 'ConnectingToProxy))
                      (telega--disableProxy))
-                   (telega-save-cursor
-                     (telega-describe-network ,only-current))))
+                   (telega-describe-network)))
       (telega-ins "\n")
       (cl-dolist (proxy proxies)
-        (let ((ping (cdr (assq (plist-get proxy :id) telega--proxy-pings))))
-          (telega-ins--labeled
-              (concat (cond ((plist-get proxy :is_enabled)
-                             telega-symbol-heavy-checkmark)
-                            ((eq recent proxy)
-                             telega-symbol-checkmark)
-                            (t "• ")) " ") nil
-            (telega-ins-fmt "%s:%d"
-              (plist-get proxy :server) (plist-get proxy :port))
-            (unless (eq proxy enabled)
-              (telega-ins " ")
-              (telega-ins--action-button "[Enable]"
-                :value proxy
-                :value-action `(lambda (proxy)
-                                 (telega--enableProxy proxy)
-                                 (telega-save-cursor
-                                   (telega-describe-network ,only-current)))))
-            (telega-ins "\n")
+        (if (eq proxy enabled)
+            (telega-ins telega-symbol-ballout-check)
+
+          (telega-ins--button
+              (if (and (eq proxy recent) (eq proxy enabled))
+                  telega-symbol-ballout-check
+                telega-symbol-ballout-empty)
+            :value proxy
+            :action `(lambda (proxy)
+                       (and (telega--enableProxy proxy)
+                            (setq telega--conn-state 'ConnectingToProxy))
+                       (telega-describe-network))))
+        (telega-ins " ")
+        (telega-ins--column nil nil
+          (telega-ins-fmt "%s:%d\n"
+            (plist-get proxy :server) (plist-get proxy :port))
+
+          (let ((ping (cdr (assq (plist-get proxy :id) telega--proxy-pings))))
             (telega-ins-fmt "%s, "
               (upcase (substring (telega--tl-get proxy :type :@type) 9)))
+            (when (eq proxy enabled)
+              (telega-debug "CONNECTION state: %S" telega--conn-state)
+              (cl-case telega--conn-state
+                ((WaitingForNetwork ConnectingToProxy)
+                 (telega-ins "connecting.., ")
+                 (add-hook 'telega-connection-state-hook
+                           'telega-describe-network))
+                (t
+                 (telega-ins "connected, ")
+                 (remove-hook 'telega-connection-state-hook
+                              'telega-describe-network))))
+
             (cond ((cdr ping)
                    (telega-ins-fmt "%dms ping"
                      (round (* (cdr ping) 1000))))
@@ -528,8 +549,8 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
                    ;; 10 seconds ping timeout
                    (telega-ins "unavailable"))
                   (t
-                   (telega-ins "pinging.."))))
-          (telega-ins "\n")))
+                   (telega-ins "pinging..")))))
+        (telega-ins "\n"))
       (telega-ins "\n")))
 
   (telega-ins "Network Statistics\n")
@@ -578,13 +599,26 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (file-size-human-readable total-recv))
     ))
 
-(defun telega-describe-network (only-current)
+(defvar telega-describe-network--only-current nil)
+
+(defun telega-describe-network (&optional only-current)
   "Show network settings/statistics.
 If prefix argument is given, then show statistics only for current launch."
   (interactive "P")
-  (with-help-window "*Telega Network*"
-    (set-buffer standard-output)
-    (telega-describe-network0 only-current)))
+  (if (called-interactively-p 'interactive)
+      (with-help-window "*Telega Network*"
+        (set-buffer standard-output)
+        (setq telega-describe-network--only-current only-current)
+        (telega-ins--network telega-describe-network--only-current))
+
+    (let ((buffer (get-buffer "*Telega Network*")))
+      (when (buffer-live-p buffer)
+        (with-current-buffer buffer
+          (let ((inhibit-read-only t))
+            (telega-save-cursor
+              (erase-buffer)
+              (telega-ins--network
+               telega-describe-network--only-current))))))))
 
 (defun telega--getUserPrivacySettingRules (setting)
   "Get privacy SETTING.
@@ -690,6 +724,10 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
           :action 'telega-voip-call))
       (telega-ins "\n")
       (telega-info--insert-user user))))
+
+(defun telega-describe ()
+  "Describe current telega state and configuration."
+  )
 
 (provide 'telega-info)
 

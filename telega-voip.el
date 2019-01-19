@@ -26,7 +26,7 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'telega-core)
-(require 'telega-customize)
+(require 'telega-notifications)
 
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-status--set "telega-root"
@@ -131,7 +131,7 @@
 
     (cl-case (telega--tl-type state)
       (callStatePending
-       (unless old-call
+       (unless (or old-call (plist-get call :is_outgoing))
          (run-hook-with-args 'telega-incoming-call-hook call))
 
        ;; * If no active calls and CALL is outgoing, then make it

@@ -107,13 +107,7 @@ With prefix arg force quit without confirmation."
                            :application_version telega-version
                            :enable_storage_optimizer t
                            :ignore_file_names :false
-                           )))
-
-  ;; List of proxies, since tdlib 1.3.0
-  (dolist (proxy telega-proxies)
-    (telega-server--send
-     `(:@type "addProxy" ,@proxy)))
-  )
+                           ))))
 
 (defun telega--checkDatabaseEncryptionKey ()
   "Set database encryption key, if any."
@@ -123,13 +117,12 @@ With prefix arg force quit without confirmation."
    (list :@type "checkDatabaseEncryptionKey"
          :encryption_key ""))
 
-  ;; Set proxy here, so registering phone will use it
-  ;; DEPRECATED, use `telega-proxies'
-  (when telega-socks5-proxy
+  ;; List of proxies, since tdlib 1.3.0
+  ;; Do it after checkDatabaseEncryptionKey,
+  ;; See https://github.com/tdlib/td/issues/456
+  (dolist (proxy telega-proxies)
     (telega-server--send
-     (list :@type "setProxy"
-           :proxy `(:@type "proxySocks5"
-                           ,@telega-socks5-proxy)))))
+     `(:@type "addProxy" ,@proxy))))
 
 (defun telega--setAuthenticationPhoneNumber (&optional phone-number)
   "Sets the phone number of the user."
@@ -188,13 +181,19 @@ Works only if current state is `authorizationStateWaitCode'."
                                                 "optionValueString"))
                                   :value (or value :false))))))
 
+(defun telega--setScopeNotificationSettings (scope-type setting)
+  (telega-server--send
+   (list :@type "setScopeNotificationSettings"
+         :scope (list :@type scope-type)
+         :setting (nconc '(:@type "scopeNotificationSettings") setting))))
+
+(defun telega--getScopeNotificationSettings (scope-type)
+  (telega-server--call
+   (list :@type "getScopeNotificationSettings"
+         :scope (list :@type scope-type))))
+  
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
-  (setq telega--me-id (plist-get telega--options :my_id))
-  (cl-assert telega--me-id)
-
-  (telega--setOptions)
-
   ;; Validate tdlib version
   (when (string< (plist-get telega--options :version)
                  telega-tdlib-min-version)
@@ -202,6 +201,25 @@ Works only if current state is `authorizationStateWaitCode'."
                    "please upgrade TDLib and recompile `telega-server'")
            (plist-get telega--options :version)
            telega-tdlib-min-version))
+
+  (setq telega--me-id (plist-get telega--options :my_id))
+  (cl-assert telega--me-id)
+  (telega--setOptions)
+
+  ;; Apply&update notifications settings
+  (when (car telega-notifications-defaults)
+    (telega--setScopeNotificationSettings
+     "notificationSettingsScopePrivateChats"
+     (car telega-notifications-defaults)))
+  (when (cdr telega-notifications-defaults)
+    (telega--setScopeNotificationSettings
+     "notificationSettingsScopeGroupChats"
+     (cdr telega-notifications-defaults)))
+  (setq telega--scope-notification-settings
+        (cons (telega--getScopeNotificationSettings
+               "notificationSettingsScopePrivateChats")
+              (telega--getScopeNotificationSettings
+               "notificationSettingsScopeGroupChats")))
 
   ;; All OK, request for chats/users/etc
   (telega-status--set nil "Fetching chats...")
@@ -215,9 +233,12 @@ Works only if current state is `authorizationStateWaitCode'."
 
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state."
-  (let* ((conn-state (plist-get (plist-get event :state) :@type))
+  (let* ((conn-state (telega--tl-get event :state :@type))
          (status (substring conn-state 15)))
-    (telega-status--set status)))
+    (setq telega--conn-state (intern status))
+    (telega-status--set status)
+
+    (run-hooks 'telega-connection-state-hook)))
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server."
@@ -229,6 +250,8 @@ Works only if current state is `authorizationStateWaitCode'."
 (defun telega--on-updateAuthorizationState (event)
   (let* ((state (plist-get event :authorization_state))
          (stype (plist-get state :@type)))
+    (setq telega--auth-state
+          (telega--tl-type (plist-get event :authorization_state)))
     (telega-status--set (concat "Auth " (substring stype 18)))
     (cl-ecase (intern stype)
       (authorizationStateWaitTdlibParameters
@@ -289,8 +312,8 @@ Call CALLBACK on updates."
                     (put-alist ,proxy-id (cons (time-to-seconds)
                                                (plist-get seconds :seconds))
                                telega--proxy-pings))
-              (when ,callback
-                (funcall ,callback)))))))
+              (when ',callback
+                (funcall ',callback)))))))
 
     (when (and track-timeout callback)
       ;; to track ping timeouts
@@ -334,6 +357,7 @@ If called interactively, then print version into echo area."
 (provide 'telega)
 
 ;; run load-time hooks
+(telega-load-symbol-widths)
 (run-hooks 'telega-load-hook)
 
 ;;; telega.el ends here

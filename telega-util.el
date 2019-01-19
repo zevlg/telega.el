@@ -30,12 +30,32 @@
 (require 'files)                        ; `locate-file'
 (require 'rx)                           ; `rx'
 
-(defmacro telega-x-frame ()
+(require 'telega-customize)
+
+(defun telega-browse-url (url)
+  ;; TODO: maybe use webkit x-widget to browse the URL
+  (browse-url url))
+
+(defun telega-face-height (face)
+  "Return float version of FACE height."
+  (let ((height (face-attribute face :height)))
+    (if (floatp height)
+        height
+      (/ (float height) (face-attribute 'default :height)))))
+
+(defun telega-short-filename (filename)
+  "Shortens FILENAME by removing `telega-directory' prefix."
+  (if (and telega-use-short-filenames
+           (string-prefix-p (concat telega-directory "/") filename))
+      (substring filename (1+ (length telega-directory)))
+    filename))
+
+(defun telega-x-frame ()
   "Return window system frame, if any."
-  (let ((fsym (gensym "f")))
-    `(cl-find-if (lambda (,fsym)
-                   (frame-parameter ,fsym 'window-system))
-                 (cons (selected-frame) (frame-list)))))
+  (cl-find-if (lambda (frame)
+                (frame-parameter frame 'window-system))
+              (cons (window-frame (get-buffer-window (telega-root--buffer)))
+                    (frame-list))))
 
 (defun telega-strip-newlines (string)
   "Strip STRING newlines from end and beginning."
@@ -238,6 +258,11 @@ Intented to be added to `telega-load-hook'."
        (hf-pp (ewoc--hf-pp ewoc)))
     (setf (ewoc--node-data foot) footer)
     (ewoc--refresh-node hf-pp foot dll)))
+
+(defun telega-ewoc--clean (ewoc)
+  "Delete all nodes from EWOC.
+Header and Footer are not deleted."
+  (ewoc-filter ewoc 'ignore))
 
 (provide 'telega-util)
 

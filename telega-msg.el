@@ -424,7 +424,7 @@ Makes heave online requests without caching, be carefull."
      :min ,telega-chat-fill-column
      :align left)
     (telega-msg-timestamp :align right :min 10)
-    (telega-msg-outgoing-status :face telega-msg-status)
+    (telega-msg-outgoing-status :face telega-msg-outgoing-status)
     "\n"))
 
 (defun telega-msg-button--format-error (msg)

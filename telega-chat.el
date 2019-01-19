@@ -29,6 +29,7 @@
 (require 'telega-core)
 (require 'telega-msg)
 (require 'telega-voip)                  ;telega-voip-call
+(require 'telega-notifications)
 
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
@@ -86,7 +87,7 @@ Return chat from `telega--chats'."
   "Deleta user application CHAT property with UAPROP-NAME."
   ;; TODO
   )
-  
+
 (defmacro telega-chat--uaprop (chat uaprop-name)
   "Return value for CHAT's custom property with name CUSTOM-PROP-NAME."
   `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
@@ -106,6 +107,13 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
       (cl-assert chat nil "getChat timed out chat_id=%d" chat-id)
       (telega-chat--ensure chat))
     chat))
+
+(defun telega-chat-by-username (username)
+  "Find chat by its USERNAME."
+  (cl-find username telega--ordered-chats
+           :test 'string=
+           :key (lambda (chat)
+                  (plist-get (telega-chat--info chat) :username))))
 
 (defun telega--joinChatByInviteLink (invite-link)
   "Return new chat by its INVITE-LINK.
@@ -185,7 +193,7 @@ Public chats are only supergroups with non-empty username."
 
 (defsubst telega-chat--muted-p (chat)
   "Return non-nil if CHAT is muted."
-  (> (plist-get (plist-get chat :notification_settings) :mute_for) 0))
+  (> (telega-chat-notification-setting chat :mute_for) 0))
 
 (defun telega-chat--title (chat &optional with-username)
   "Return title for the CHAT.
@@ -215,6 +223,19 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   (let ((chat (plist-get event :chat)))
     (telega-chat--ensure chat)
     (telega-root--chat-new chat)))
+
+(defun telega--setChatNotificationSettings (chat &rest settings)
+  "Set CHAT's notification settings to NOT-CFG."
+  (declare (indent 1))
+  (let ((not-cfg (plist-get chat :notification_settings))
+        (request (list :@type "chatNotificationSettings")))
+    (cl-loop for (prop-name value) on (append not-cfg settings)
+             by 'cddr
+             do (setq request (plist-put request prop-name (or value :false))))
+    (telega-server--call
+     (list :@type "setChatNotificationSettings"
+           :chat_id (plist-get chat :id)
+           :notification_settings request))))
 
 (defun telega--on-updateChatNotificationSettings (event)
   "Notification settings has been changed in chat."
@@ -596,14 +617,33 @@ Return nil if QUERY is less then 5 chars."
     (when telega-debug
       (telega-ins-fmt "Order: %s\n" (telega-chat--order chat)))
 
-    (let ((not-cfg (plist-get chat :notification_settings)))
-      (telega-ins-fmt "Notifications: %s\n"
-        (if (zerop (plist-get not-cfg :mute_for))
-            (concat "enabled"
-                    (if (plist-get not-cfg :show_preview)
-                        " with preview"
-                      ""))
-          "disabled")))
+    (let ((default-mute-for
+            (telega-chat-notification-setting chat :mute_for 'default))
+          (default-show-preview
+            (telega-chat-notification-setting chat :show_preview 'default))
+          (mute-for (telega-chat-notification-setting chat :mute_for))
+          (show-preview (telega-chat-notification-setting chat :show_preview)))
+      (telega-ins-fmt "Notifications: ")
+      (let* ((unmuted-p (zerop mute-for))
+             (change-args (if unmuted-p
+                              (cons :false 599634793)
+                            (cons t 0))))
+        (telega-ins--button (if unmuted-p
+                                telega-symbol-ballout-check
+                              telega-symbol-ballout-empty)
+          :value chat
+          :action `(lambda (chat)
+                     (telega--setChatNotificationSettings chat
+                       :use_default_mute_for ,(car change-args)
+                       :mute_for ,(cdr change-args))
+                     (telega-save-cursor
+                       (telega-describe-chat chat))))
+        (when unmuted-p
+          (telega-ins ", Preview: ")
+          (telega-ins (if show-preview
+                          telega-symbol-ballout-check
+                        telega-symbol-ballout-empty)))
+        (telega-ins "\n")))
 
     (insert "\n")
     (telega-info--insert (plist-get chat :type) chat)
@@ -771,7 +811,9 @@ Do it only if FORCE is non-nil."
 (defvar telega-chatbuf--prompt-button nil "Input prompt button.")
 (make-variable-buffer-local 'telega-chatbuf--prompt-button)
 
-(defvar telega-chatbuf--history-loading nil "Non-nil if history has been requested.")
+(defvar telega-chatbuf--history-loading nil
+  "Non-nil if history has been requested.
+Actual value is `:@extra` value of the call to load history.")
 (make-variable-buffer-local 'telega-chatbuf--history-loading)
 
 (defvar telega-chatbuf--send-func nil
@@ -1190,32 +1232,47 @@ Message id could be updated on this update."
         (telega-ewoc--set-footer telega-chatbuf--ewoc (telega-chatbuf--footer))))
     ))
 
-(defun telega-chat--load-history (chat)
-  "Load and insert CHAT's history."
+(defun telega-chat--load-history (chat &optional from-msg-id offset limit
+                                       callback)
+  "Load and insert CHAT's history.
+
+If FROM-MSG-ID is specified, then cancel last history load and
+start loading messages from FROM-MSG-ID.
+OFFSET and LIMIT are passed directly to `getChatHistory'.
+CALLBACK is called after history has been loaded."
+  (declare (indent 4))
   (with-telega-chatbuf chat
+    (when (and from-msg-id telega-chatbuf--history-loading)
+      ;; Cancel currently active history load
+      (telega-server--callback-put telega-chatbuf--history-loading 'ignore))
+
     (unless telega-chatbuf--history-loading
-      (let ((oldest-msg (telega-chatbuf--oldest-msg))
-            (offset 0))
-        (unless oldest-msg
-          (setq oldest-msg (plist-get chat :last_message)
-                offset -1))
+      (unless from-msg-id
+        (setq from-msg-id (plist-get (telega-chatbuf--oldest-msg) :id)
+              offset 0))
+      (unless from-msg-id
+        (setq from-msg-id (plist-get (plist-get chat :last_message) :id)
+              offset -1))
 
-        (when oldest-msg
-          ;; Asynchronously load chat history
-          (setq telega-chatbuf--history-loading t)
+      (when from-msg-id
+        ;; Asynchronously load chat history
+        (setq telega-chatbuf--history-loading (cl-incf telega-server--extra))
 
-          (telega-server--call
-           (list :@type "getChatHistory"
-                 :chat_id (plist-get chat :id)
-                 :from_message_id (plist-get oldest-msg :id)
-                 :offset offset
-                 :limit telega-chat-history-limit)
+        (telega-server--call
+         (list :@type "getChatHistory"
+               :chat_id (plist-get chat :id)
+               :from_message_id from-msg-id
+               :offset offset
+               :limit (or limit telega-chat-history-limit)
+               :@extra telega-chatbuf--history-loading)
 
-           `(lambda (history)
-              (with-telega-chatbuf (telega-chat--get ,(plist-get chat :id))
-                (mapc #'telega-chatbuf--enter-oldest-msg
-                      (plist-get history :messages))
-                (setq telega-chatbuf--history-loading nil)))))))))
+         `(lambda (history)
+            (with-telega-chatbuf (telega-chat--get ,(plist-get chat :id))
+              (mapc #'telega-chatbuf--enter-oldest-msg
+                    (plist-get history :messages))
+              (setq telega-chatbuf--history-loading nil)
+              (when ,callback
+                (funcall ,callback)))))))))
 
 (defun telega-chat-send-msg (chat text &optional markdown reply-to-msg
                                   reply-markup notify from-background)
@@ -1377,6 +1434,36 @@ If called interactively then copy generated link into the kill ring."
       (message "Invite link: %s (copied into kill ring)"
                (plist-get link :invite_link)))
     link))
+
+(defun telega-chat-msg-observable-p (chat msg-id)
+  "Return non-nil if MSG is observable in CHAT."
+  (with-telega-chatbuf chat
+    (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
+      (when node
+        (telega-button--observable-p (ewoc-location node))))))
+
+(defun telega-chat--goto-msg0 (chat-id msg-id &optional highlight)
+  "In chat denoted by CHAT-ID goto message denoted by MSG-ID.
+Return non-nil on success."
+  (with-telega-chatbuf (telega-chat--get chat-id)
+    (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
+      (when node
+        (ewoc-goto-node node)
+        (when highlight
+          (message "TODO: animate message highlighting"))
+        t))))
+
+(defun telega-chat--goto-msg (chat msg-id &optional highlight)
+  "In CHAT goto message denoted by MSG-ID.
+If HIGHLIGHT is non-nil then highlight with fading background color."
+  (with-current-buffer (telega-chat--pop-to-buffer chat)
+    (let ((chat-id (plist-get chat :id)))
+      (unless (telega-chat--goto-msg0 chat-id msg-id highlight)
+        ;; Not found, need to fetch history
+        (telega-ewoc--clean telega-chatbuf--ewoc)
+        (telega-chat--load-history chat msg-id -10 20
+          `(lambda ()
+             (telega-chat--goto-msg0 ,chat-id ,msg-id ,highlight)))))))
 
 (provide 'telega-chat)
 

@@ -17,6 +17,10 @@ Version: 0.3.X
   `telega--on-<tdlibName>`, unless you use this callback as argument
   to `telega-server--call`
 
+* Do NOT create hook with default value, because its value will be
+  shadowed if telega is not yet loaded and user added some hook.
+  Add hooks you want in load time, i.e. after (provide 'telega-FEATURE)
+
 Идеи
 ====
 

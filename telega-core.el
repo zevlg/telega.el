@@ -36,6 +36,7 @@
 ;;; Runtime variables
 (defvar telega--me-id nil "User id of myself.")
 (defvar telega--options nil "Options updated from telega-server.")
+(defvar telega--conn-state nil)
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
@@ -73,11 +74,9 @@ Where UPDATE-CB is callback to call with FILE and CB-ARGS when file updates.
 Used to update messages on file updates.")
 (defvar telega--uploadings nil
   "Hash of active uploadings FILE-ID -> (list of (UPDATE-CB CB-ARGS)).")
-
 (defvar telega--proxy-pings nil
   "Alist for the proxy pings.
 (PROXY-ID . TIMESTAMP SECONDS)")
-
 (defvar telega-voip--alist nil
   "Alist of all calls currently in processing.
 In form (ID . CALL)")
@@ -85,10 +84,15 @@ In form (ID . CALL)")
   "Currently active call.
 Active call is either outgoing call or accepted incoming call.
 Only one call can be currently active.")
+(defvar telega--scope-notification-settings (cons nil nil)
+  "Default notification settings for chats.
+cons cell where car is settings for private and secret chats
+and cdr is settings for groups/supergroups/channels.")
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
+  (setq telega--conn-state nil)
   (setq telega--status "Disconnected")
   (setq telega--status-aux "")
   (setq telega--me-id -1)
@@ -121,6 +125,7 @@ Done when telega server is ready to receive queries."
   (setq telega-voip--active-call nil)
 
   (setq telega--proxy-pings nil)
+  (setq telega--scope-notification-settings (cons nil nil))
   )
 
 (defmacro telega-save-excursion (&rest body)
@@ -219,19 +224,13 @@ Resulting in new string with no surrogate pairs."
         ((listp obj) (mapcar 'telega--tl-pack obj))
         (t obj)))
 
+;; DEPRECATED
 (defmacro telega-prefix (prefix str)
   "Concatenate PREFIX and STR in case STR is non empty."
   (let ((strsym (gensym "str")))
     `(let ((,strsym ,str))
        (when (and ,strsym (not (string-empty-p ,strsym)))
          (concat ,prefix ,strsym)))))
-
-(defun telega-short-filename (filename)
-  "Shortens FILENAME by removing `telega-cache-dir' prefix."
-  (if (and telega-use-short-filenames
-           (string-prefix-p telega-cache-dir filename))
-      (substring filename (length telega-cache-dir))
-    filename))
 
 
 ;;; Formatting
@@ -478,10 +477,12 @@ Renews the BUTTON."
 (defun telega-button--observable-p (button)
   "Return non-nil if BUTTON is observable in some window.
 I.e. shown in some window, see `pos-visible-in-window-p'."
-  (and (markerp button)
-       (get-buffer-window (marker-buffer button))
-       (pos-visible-in-window-p
-        button (get-buffer-window (marker-buffer button)))))
+  (when (markerp button)
+    (let* ((bwin (get-buffer-window (marker-buffer button)))
+           (bframe (window-frame bwin)))
+      (and bframe
+           (frame-focus-state bframe)
+           (pos-visible-in-window-p button bwin)))))
 
 (defun telega-button-forward (n)
   "Move forward to N visible/active button."
