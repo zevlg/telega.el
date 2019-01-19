@@ -32,6 +32,7 @@
 
 (require 'telega-customize)
 (require 'telega-tme)
+(require 'telega-webpage)
 
 (defun telega-browse-url (url &optional in-web-browser)
   "Open the URL.

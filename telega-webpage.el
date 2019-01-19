@@ -51,7 +51,7 @@
                 telega-webpage--url telega-webpage--sitename
                 telega-webpage--iv)
           telega-webpage-history)
-    (setq telega-webpage-history-index 0)))
+    (setq telega-webpage-history--index 0)))
 
 (defun telega-webpage--history-show (n)
   "Show N's instant view from history."
@@ -60,12 +60,12 @@
         (telega-webpage-history--ignore t))
     (apply 'telega-webpage--instant-view (cdr hiv))
     (goto-char (car hiv)))
-  (setq telega-webpage-history-index n))
+  (setq telega-webpage-history--index n))
 
 (defun telega-webpage-history-next (&optional n)
   "Goto N previous word in history."
   (interactive "p")
-  (let ((idx (- telega-webpage-history-index n)))
+  (let ((idx (- telega-webpage-history--index n)))
     (unless (>= idx 0)
       (error "No next webpage history"))
     (telega-webpage--history-show idx)))
@@ -73,7 +73,7 @@
 (defun telega-webpage-history-prev (&optional n)
   "Goto N next word in history."
   (interactive "p")
-  (let ((idx (+ telega-webpage-history-index n)))
+  (let ((idx (+ telega-webpage-history--index n)))
     (unless (< idx (length telega-webpage-history))
       (error "No previous webpage in history"))
     (telega-webpage--history-show idx)))
@@ -119,7 +119,7 @@ Return nil if URL is not available for instant view."
                        telega-webpage--url
                        "  "
                        (format "History: %d/%d"
-                               (1+ telega-webpage-history-index)
+                               (1+ telega-webpage-history--index)
                                (length telega-webpage-history))
                        )))
   "Header line format for instant webpage."
@@ -324,8 +324,8 @@ instant view for the URL."
    (get-buffer-create "*Telega Instant View*"))
 
   ;; Update current point location into history
-  (when (< telega-webpage-history-index (length telega-webpage-history))
-    (setcar (nth telega-webpage-history-index telega-webpage-history) (point)))
+  (when (< telega-webpage-history--index (length telega-webpage-history))
+    (setcar (nth telega-webpage-history--index telega-webpage-history) (point)))
 
   (setq telega-webpage--url url
         telega-webpage--sitename (or sitename
