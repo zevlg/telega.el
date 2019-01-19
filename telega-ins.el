@@ -328,7 +328,7 @@ Special messages are determined with `telega-msg-special-p'."
       (messageDocument
        (telega-ins--document (plist-get content :document)))
       (messagePhoto
-       (telega-ins--photo (plist-get content :photo) msg))
+       (telega-ins--photo (plist-get content :photo)))
       ;; special message
       ((messageContactRegistered messageChatAddMembers
         messageChatJoinByLink messageChatDeleteMember

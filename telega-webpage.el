@@ -25,6 +25,58 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'url-util)
+
+(defvar telega-webpage-history nil
+  "History of viewed webpages.")
+(defvar telega-webpage-history--index 0
+  "Nth element in `telega-webpage-history' we currently active.")
+(defvar telega-webpage-history--ignore nil
+  "Bind this to non-nil to ignore pushing to the history.")
+
+(defun telega-webpage--history-push ()
+  "Push current webpage instant view into the history."
+  (unless telega-webpage-history--ignore
+    (cl-assert telega-webpage--iv nil "No current instant view")
+
+    ;; truncate history
+    (cond ((and telega-webpage-history
+                (string= (cadar telega-webpage-history) telega-webpage--url))
+           ;; NOTE: do not push same url twice into history
+           (setq telega-webpage-history (cdr telega-webpage-history)))
+          ((> (length telega-webpage-history) telega-webpage-history-max)
+           (setq telega-webpage-history (butlast telega-webpage-history))))
+
+    (push (list (if (eq major-mode 'telega-webpage-mode) (point) 0)
+                telega-webpage--url telega-webpage--sitename
+                telega-webpage--iv)
+          telega-webpage-history)
+    (setq telega-webpage-history-index 0)))
+
+(defun telega-webpage--history-show (n)
+  "Show N's instant view from history."
+  (cl-assert (and (>= n 0) (< n (length telega-webpage-history))))
+  (let ((hiv (nth n telega-webpage-history))
+        (telega-webpage-history--ignore t))
+    (apply 'telega-webpage--instant-view (cdr hiv))
+    (goto-char (car hiv)))
+  (setq telega-webpage-history-index n))
+
+(defun telega-webpage-history-next (&optional n)
+  "Goto N previous word in history."
+  (interactive "p")
+  (let ((idx (- telega-webpage-history-index n)))
+    (unless (>= idx 0)
+      (error "No next webpage history"))
+    (telega-webpage--history-show idx)))
+
+(defun telega-webpage-history-prev (&optional n)
+  "Goto N next word in history."
+  (interactive "p")
+  (let ((idx (+ telega-webpage-history-index n)))
+    (unless (< idx (length telega-webpage-history))
+      (error "No previous webpage in history"))
+    (telega-webpage--history-show idx)))
 
 (define-button-type 'telega-instant-view
   :supertype 'telega
@@ -57,12 +109,19 @@ Return nil if URL is not available for instant view."
   "URL for the instant view webpage currently viewing.")
 (defvar telega-webpage--sitename nil
   "Sitename for the webpage currently viewing.")
+(defvar telega-webpage--iv nil
+  "Instant view for the current webpage.")
 (defvar telega-webpage--anchors nil)
 
 (defcustom telega-webpage-header-line-format
   '(" " (:eval (concat telega-webpage--sitename
                        (and telega-webpage--sitename ": ")
-                       telega-webpage--url)))
+                       telega-webpage--url
+                       "  "
+                       (format "History: %d/%d"
+                               (1+ telega-webpage-history-index)
+                               (length telega-webpage-history))
+                       )))
   "Header line format for instant webpage."
   :type 'list
   :group 'telega)
@@ -72,6 +131,8 @@ Return nil if URL is not available for instant view."
     (define-key map "g" 'telega-webpage-browse-url)
     (define-key map "w" 'telega-webpage-browse-url)
     (define-key map "c" 'telega-webpage-copy-url)
+    (define-key map "p" 'telega-webpage-history-prev)
+    (define-key map "n" 'telega-webpage-history-next)
     (define-key map [?\t] 'telega-button-forward)
     (define-key map "\e\t" 'telega-button-backward)
     (define-key map [backtab] 'telega-button-backward)
@@ -94,15 +155,7 @@ Keymap:
 (defun telega-webpage-browse-url (url)
   "Browse URL with web browser."
   (interactive (list telega-webpage--url))
-  (telega-browse-url url))
-
-(defun telega-webpage-maybe-instant-view-url (url)
-  "Browse URL with web browser."
-  (interactive (list telega-webpage--url))
-  (let ((instant-view (telega--getWebPageInstantView url)))
-    (if instant-view
-        (telega-webpage--instant-view url nil instant-view)
-      (telega-webpage-browse-url url))))
+  (telega-browse-url url 'in-web-browser))
 
 (defun telega-webpage-goto-anchor (name)
   "Goto at anchor NAME position."
@@ -156,7 +209,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
            'face 'link
            :help-echo (concat "URL: " url)
            :value url
-           :action 'telega-webpage-maybe-instant-view-url))))
+           :action 'telega-browse-url))))
     (richTextEmailAddress
      (telega-ins--with-attrs (list :face 'link)
        (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))))
@@ -270,18 +323,27 @@ instant view for the URL."
   (pop-to-buffer-same-window
    (get-buffer-create "*Telega Instant View*"))
 
+  ;; Update current point location into history
+  (when (< telega-webpage-history-index (length telega-webpage-history))
+    (setcar (nth telega-webpage-history-index telega-webpage-history) (point)))
+
   (setq telega-webpage--url url
-        telega-webpage--sitename sitename
+        telega-webpage--sitename (or sitename
+                                     (capitalize
+                                      (url-domain
+                                       (url-generic-parse-url url))))
+        telega-webpage--iv (or instant-view
+                               (telega--getWebPageInstantView url)
+                               (error "Can't instant view the URL: %s" url))
         telega-webpage--anchors nil)
-  (unless instant-view
-    (setq instant-view (telega--getWebPageInstantView url)))
+  (telega-webpage--history-push)
+
   (let ((buffer-read-only nil))
     (erase-buffer)
     (mapc 'telega-webpage--ins-PageBlock
-          (plist-get (telega--getWebPageInstantView url) :page_blocks))
-
+          (plist-get telega-webpage--iv :page_blocks))
     (when telega-debug
-      (telega-ins-fmt "\n---DEBUG---\n%S" instant-view))
+      (telega-ins-fmt "\n---DEBUG---\n%S" telega-webpage--iv))
     (goto-char (point-min)))
 
   (unless (eq major-mode 'telega-webpage-mode)

@@ -30,7 +30,7 @@
                 (:@type "chatTypeSupergroup"
                         :supergroup_id 11110 :is_channel t)
                 :title "test channel1"
-                :order 22
+                :order "22"
                 :unread_count 25
                 :unread_mention_count 0
                 :is_pinned nil
@@ -46,7 +46,7 @@
                 (:@type "chatTypePrivate"
                         :user_id 22220 :is_channel t)
                 :title "test channel1"
-                :order 11
+                :order "11"
                 :unread_count 25
                 :unread_mention_count 0
                 :is_pinned nil
@@ -123,5 +123,14 @@
   "Test json->plist converter."
   )
 
+(ert-deftest telega-tme-open ()
+  "Test info related functionality."
+  (should (string= (telega-tme-open "https://t.me/joinchat/itshitout" t)
+                   "tg:joinchat?invite=itshitout"))
+  (should (string= (telega-tme-open "https://t.me/itshit/23423" t)
+                   "tg:resolve?domain=itshit&post=23423"))
+  (should (string= (telega-tme-open "https://t.me/socks?server=my&port=1234" t)
+                   "tg:socks?server=my&port=1234"))
+  )
 
 ;;; test.el ends here

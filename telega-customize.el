@@ -274,6 +274,11 @@ In form (NAME . FILTER-SPEC)."
   :type 'integer
   :group 'telega-webpage)
 
+(defcustom telega-webpage-history-max 100
+  "*Maximum number of viewed webpages to remember in history."
+  :type 'number
+  :group 'telega-webpage)
+
 
 (defgroup telega-chat nil
   "Customization for chat buffer."
