@@ -21,12 +21,12 @@ to use `telega.el` for basic chat.
 - [ ] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
-- [x] VoIP calls
+- [x] VoIP calls, including D-Bus call notification
 - [x] Downloading files from the cloud
 - [ ] Uploading files/media to the cloud
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
-- [ ] Display chat actions, such as "@user is typing..."
+- [x] Display chat actions, such as "@user is typing..."
 - [ ] Emoji input via `:<emoji>:` syntax with completions
 - [ ] Username completions for fast mentions
 - [x] Secret chats
@@ -111,21 +111,23 @@ $ sudo make install
 ### Building libtgvoip
 
 VoIP support in `telega.el` is optional, if you don't need VoIP, just
-igrone this section.
+ignore this section.
 
-[libtgvoip](https://github.com/grishka/libtgvoip "libtgvoip") is the
-VoIP library for telegram clients.
+[libtgvoip](https://github.com/zevlg/libtgvoip "libtgvoip") is the
+VoIP library for telegram clients.  This is the fork from
+[original](https://github.com/grishka/libtgvoip) library with patches
+needed by `telega.el`.
 
 To get the source:
 ```console
-$ git clone https://github.com/grishka/libtgvoip.git
+$ git clone https://github.com/zevlg/libtgvoip.git
 ```
 
 Move into the folder with `cd libtgvoip`
 
 Prepare a folder for building the library:
 ```console
-$ autogen && ./configure && make
+$ autoreconf && ./configure && make
 ```
 
 Install the library system-wide:
