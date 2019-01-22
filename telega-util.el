@@ -29,6 +29,7 @@
 (require 'cl-lib)
 (require 'files)                        ; `locate-file'
 (require 'rx)                           ; `rx'
+(require 'svg)
 
 (require 'telega-customize)
 (require 'telega-tme)
@@ -295,7 +296,7 @@ Intented to be added to `telega-load-hook'."
                   :stroke-color (if played-p "#006400" "#228b22")
                   :stroke-width (if played-p (1+ wv-width) wv-width)
                   :stroke-linecap "round")
-        (incf wfd-idx)))
+        (cl-incf wfd-idx)))
     (svg-image svg :scale 1 :ascent 'center)))
 
 

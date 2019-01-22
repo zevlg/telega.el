@@ -29,7 +29,6 @@
 ;;  - Web pages
 ;;  etc
 
-
 ;;; Code:
 (require 'telega-core)
 (require 'telega-server)
@@ -64,7 +63,7 @@ hasn't been started, i.e. request hasn't been sent to server."
 
   (let ((callbacks (gethash file-id telega--downloadings)))
     (unwind-protect
-        (telega-file--run-callbacks callbacks (telega-file--get file-id))
+        (telega-file--run-callbacks callbacks (telega--getFile file-id))
       (remhash file-id telega--downloadings))))
 
 (defun telega--deleteFile (file-id)
@@ -171,7 +170,7 @@ PRIORITY is same as for `telega-file--download'."
 
   (let ((callbacks (gethash file-id telega--uploadings)))
     (unwind-protect
-        (telega-file--run-callbacks callbacks (telega-file--get file-id))
+        (telega-file--run-callbacks callbacks (telega--getFile file-id))
       (remhash file-id telega--uploadings))))
 
 (defsubst telega-file--uploaded-p (file)
@@ -253,7 +252,7 @@ into FILL-COLUMN."
             (cl-dolist (tn photo-sizes)
               (when (< (abs (- (plist-get tn :width) xwidth))
                        (abs (- (plist-get best :width) xwidth)))
-                (setq best ps)))
+                (setq best tn)))
             best)))))
 
 (defun telega-photo-file-format (file &optional one-line-p &rest image-props)

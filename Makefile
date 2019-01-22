@@ -10,11 +10,12 @@ test: test.el
 	         -f ert-run-tests-batch-and-exit
 	$(MAKE) -C server $@
 
+#EL_SOURCES=$(wildcard telega*.el)
 EL_SOURCES=telega.el telega-core.el telega-root.el \
   telega-server.el telega-util.el telega-notifications.el \
   telega-chat.el telega-ins.el telega-filter.el telega-info.el \
   telega-media.el telega-msg.el telega-customize.el \
-  telega-voip.el telega-webpage.el
+  telega-voip.el telega-webpage.el telega-vvnote.el
 
 compile: $(EL_SOURCES)
 	$(EMACS) -batch -L `pwd` -f batch-byte-compile $?

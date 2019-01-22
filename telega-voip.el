@@ -122,8 +122,7 @@
          (state (plist-get call :state))
          (call-id (plist-get call :id))
          (old-call (telega-voip--by-id call-id)))
-    (setq telega-voip--alist
-          (put-alist call-id call telega-voip--alist))
+    (setf (alist-get call-id telega-voip--alist) call)
 
     ;; Update active call value
     (when (eq call-id (plist-get telega-voip--active-call :id))
@@ -192,7 +191,7 @@
       (when (eq telega-voip--active-call call)
         (telega-server--send (list :@command "stop") "voip")
         (setq telega-voip--active-call nil))
-      (setq telega-voip--alist (del-alist call-id telega-voip--alist)))
+      (setq telega-voip--alist (assq-delete-all call-id telega-voip--alist)))
 
     ;; Update corresponding chat button
     (let ((chat (telega-chat--get (plist-get call :user_id) 'offline)))

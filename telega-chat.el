@@ -24,14 +24,18 @@
 ;;
 
 ;;; Code:
-(require 'cl)                           ;defsetf
+(require 'cl-lib)
 (require 'ring)
 (require 'telega-core)
 (require 'telega-msg)
 (require 'telega-voip)                  ;telega-voip-call
 (require 'telega-notifications)
 
-(declare-function telega-root--chat-update "telega-root" (chat))
+(eval-when-compile (require 'cl))       ;defsetf
+
+(declare-function tracking-add-buffer "tracking" (buffer &optional faces))
+
+(declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
 
 (defsubst telega-chat--order (chat)
@@ -419,8 +423,7 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
                         :limit 30))))
         (setq top (list category (time-to-seconds (current-time))
                         (mapcar #'telega-chat--get (plist-get cl :chat_ids))))
-        (setq telega--top-chats
-              (put-alist category (cdr top) telega--top-chats))))
+        (setf (alist-get category telega--top-chats) top)))
     (caddr top)))
 
 (defun telega--sendChatAction (chat action)
@@ -1273,7 +1276,7 @@ Message id could be updated on this update."
          (action (plist-get event :action)))
     (cl-case (telega--tl-type action)
       (chatActionCancel
-       (puthash chat-id (del-alist user-id acts-alist) telega--actions))
+       (puthash chat-id (assq-delete-all user-id acts-alist) telega--actions))
       (t (if current-action
              (setcdr current-action action)
            (puthash chat-id (list (cons user-id action)) telega--actions))))
@@ -1376,7 +1379,7 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
                    :disable_notification (or disable-notify :false)
                    :input_message_content imc)))
     (when reply-to-msg
-      (setq tsm (plist-put tms :reply_to_message_id
+      (setq tsm (plist-put tsm :reply_to_message_id
                            (plist-get reply-to-msg :id))))
     (when from-background
       (setq tsm (plist-put tsm :from_background t)))
@@ -1390,7 +1393,7 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
                    :disable_notification (or disable-notify :false)
                    :input_message_contents (cl-map 'vector 'identity imcs))))
     (when reply-to-msg
-      (setq tsm (plist-put tms :reply_to_message_id
+      (setq tsm (plist-put tsm :reply_to_message_id
                            (plist-get reply-to-msg :id))))
     (when from-background
       (setq tsm (plist-put tsm :from_background t)))
@@ -1734,7 +1737,7 @@ Return non-nil on success."
   (with-telega-chatbuf (telega-chat--get chat-id)
     (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
       (when node
-        (ewoc-goto-node node)
+        (ewoc-goto-node telega-chatbuf--ewoc node)
         (when highlight
           (message "TODO: animate message highlighting"))
         t))))

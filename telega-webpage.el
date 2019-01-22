@@ -82,6 +82,8 @@
   :supertype 'telega
   :inserter 'telega-ins--instant-view
   :button-props-func 'telega-instant-view-button--props
+  ;; :value is list of three elements - arguments to
+  ;; `telega-webpage--instant-view'
   'action #'telega-instant-view-button--action
   'face 'telega-link)
 
@@ -92,6 +94,10 @@
               " INSTANT VIEW "
               " ]")
   )
+
+(defun telega-instant-view-button--action (button)
+  "Open instant view when BUTTON is pressed."
+  (apply 'telega-webpage--instant-view (button-get button :value)))
 
 (defun telega--getWebPageInstantView (url &optional partial)
   "Return instant view for the URL.
@@ -265,9 +271,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
                                    :fill-column telega-webpage-fill-column)
        (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-))))
     (pageBlockAnchor
-     (setq telega-webpage--anchors
-           (put-alist (plist-get pb :name) (point)
-                      telega-webpage--anchors)))
+     (setf (alist-get (plist-get pb :name) telega-webpage--anchors) (point)))
     (pageBlockList
      (let ((orderedp (plist-get pb :is_ordered))
            (items (plist-get pb :items)))

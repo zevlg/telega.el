@@ -33,6 +33,8 @@
 (require 'telega-util)
 (require 'telega-customize)
 
+(declare-function tracking-mode "tracking" (&optional arg))
+
 (defvar telega-root--ewoc nil)
 
 (defvar telega-status--timer nil

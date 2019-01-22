@@ -31,7 +31,7 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(defsubst telega-ins (&rest args)
+(defun telega-ins (&rest args)
   "Insert all strings in ARGS.
 Return non-nil if something has been inserted."
   (< (prog1 (point) (apply 'insert args)) (point)))
@@ -212,7 +212,7 @@ PTYPE is `download' or `upload'."
   (let* ((filesize (plist-get file :size))
          (dsize (if (eq ptype 'download)
                     (telega--tl-get file :local :downloaded_size)
-                  (teleg--tl-get file :remote :uploaded_size)))
+                  (telega--tl-get file :remote :uploaded_size)))
          (dpart (/ (float dsize) filesize))
          (percents (round (* (/ (float dsize) filesize) 100))))
     (telega-ins-fmt "[%-10s%d%%]"

@@ -491,6 +491,55 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
           (plist-get (telega-server--call '(:@type "getActiveSessions"))
                      :sessions))))
 
+
+;; Proxies code
+(defun telega--getProxies ()
+  "Return list of currently registered proxies."
+  (let ((reply (telega-server--call (list :@type "getProxies"))))
+    (mapcar #'identity (plist-get reply :proxies))))
+
+(defun telega--pingProxies (proxies &optional callback)
+  "Update ping stats for the PROXIES.
+Call CALLBACK on updates."
+  (let ((track-timeout nil))
+    (cl-dolist (proxy proxies)
+      (let* ((proxy-id (plist-get proxy :id))
+             (ping (assq proxy-id telega--proxy-pings))
+             (currts (time-to-seconds)))
+        (when (> currts (+ (or (cadr ping) 0) 60))
+          (setq track-timeout t)
+          (setf (alist-get proxy-id telega--proxy-pings) (cons currts nil))
+          (telega-server--call
+           (list :@type "pingProxy" :proxy_id proxy-id)
+           `(lambda (seconds)
+              (setf (alist-get ,proxy-id telega--proxy-pings)
+                    (cons (time-to-seconds) (plist-get seconds :seconds)))
+              (when ',callback
+                (funcall ',callback)))))))
+
+    (when (and track-timeout callback)
+      ;; to track ping timeouts
+      (run-with-timer 10 nil callback))))
+
+(defun telega--enableProxy (proxy)
+  (telega-server--call
+   (list :@type "enableProxy"
+         :proxy_id (plist-get proxy :id))))
+
+(defun telega--disableProxy ()
+  (telega-server--call
+   (list :@type "disableProxy")))
+
+(defun telega-proxy-last-used (&optional proxies)
+  "Return last time used proxy."
+  (car (cl-sort (or (cl-copy-list proxies) (telega--getProxies))
+                '> :key (telega--tl-prop :last_used_date))))
+
+(defun telega-proxy-enabled (&optional proxies)
+  "Return enable proxy from PROXIES list."
+  (cl-find t (or proxies (telega--getProxies))
+           :test 'eq :key (telega--tl-prop :is_enabled)))
+
 (defun telega-ins--network (only-current)
   "Insert network settings/stats."
   (let* ((proxies (telega--getProxies))

@@ -72,7 +72,8 @@
   (should (fboundp 'cursor-intangible-mode))
 
   ;; imagemagick for images
-  (should (memq 'imagemagick image-types))
+  (should (image-type-available-p 'imagemagick))
+  (should (image-type-available-p 'svg))
   )
 
 (ert-deftest telega-info ()
