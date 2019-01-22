@@ -23,7 +23,7 @@ to use `telega.el` for basic chat.
       notifications
 - [x] VoIP calls, including D-Bus call notification
 - [x] Downloading files from the cloud
-- [ ] Uploading files/media to the cloud
+- [x] Uploading files/media (also pasting images from clipboard) to the cloud
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
 - [x] Display chat actions, such as "@user is typing..."
@@ -36,6 +36,7 @@ to use `telega.el` for basic chat.
 - [ ] Animated GIF
 - [ ] Special messages such as location/live location, voice/video
       messages, etc
+- [x] Handling local links, such as "tg:" or "https://t.me/xxx"
 - [ ] ReplyMarkup (inline keyboard buttons) in the messages
 - [ ] InstantView for web pages 
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support

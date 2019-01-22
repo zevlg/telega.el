@@ -279,7 +279,7 @@ If FLIST is empty then return t."
 
 (define-telega-filter name (chat regexp)
   "Matches CHAT if its title matches REGEXP."
-  (or (string-match regexp (telega-chat--title chat))
+  (or (string-match regexp (telega-chat-title chat))
       (let ((info (telega-chat--info chat)))
         (or (string-match regexp (or (plist-get info :first_name) ""))
             (string-match regexp (or (plist-get info :last_name) ""))

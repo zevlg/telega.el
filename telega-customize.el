@@ -45,8 +45,11 @@
   :type 'string
   :group 'telega)
 
-(defcustom telega-options-plist '(:online t :localization_target "tdesktop")
+(defcustom telega-options-plist
+  (list :online t :use_quick_ack t :localization_target "tdesktop")
   "*Plist of options to set.
+To use custom language pack (from \"tdesktop\" localization target),
+add `:language_pack_id' option.
 Only writable options can be set.  See: https://core.telegram.org/tdlib/options"
   :type 'plist
   :group 'telega)
@@ -254,7 +257,7 @@ In form (NAME . FILTER-SPEC)."
   :type 'function
   :group 'telega-inserters)
 
-(defcustom telega-inserter-for-msg-button 'telega-ins--msg
+(defcustom telega-inserter-for-msg-button 'telega-ins--message
   "Inserter for message button in chat buffer."
   :type 'function
   :group 'telega-inserter)
@@ -326,20 +329,22 @@ NOT YET IMPLEMENTED"
   "Setup for D-Bus notifications."
   :group 'telega)
 
-(defcustom telega-notifications-delay 1.0
+(defcustom telega-notifications-delay 0.5
   "*Delay in seconds before making decision show or not the message in notification.
 Taking pause before showing notification is wise, because another
 telegram may be active with the chat opened, you don't want the
 notification to be shown for already read message.
-TODO: Not yet implemented"
+Set it to 0, for no delay notifications."
   :type 'float
   :group 'telega-notifications)
 
-(defcustom telega-notifications-timeout 2.0
+(defcustom telega-notifications-timeout 4.0
   "*How long to show notification in seconds."
   :type 'float
   :group 'telega-notifications)
 
+;; NOTE: standard values for :sound-name
+;; http://0pointer.de/public/sound-naming-spec.html
 (defcustom telega-notifications-msg-args
   (list :sound-name "message-new-instant")
   "*Additional arguments to `notifications-notify' on chat messages."
@@ -551,6 +556,22 @@ Good candidates also are 🄌 or ⬤."
 
 (defcustom telega-symbol-ballout-check "☑"
   "Symbol used for checked ballout."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-contact "🚹"
+  "Symbol used for contacts."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
+  "Symbols used to emphasize attachement in chat buffer input."
+  :type 'cons
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-attach-line-break "⏎"
+  "Symbol used to visualize breaks between attachements.
+Separated attachements are sent as separate messages."
   :type 'string
   :group 'telega-symbol)
 

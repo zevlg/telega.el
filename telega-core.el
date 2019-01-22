@@ -96,7 +96,10 @@ Done when telega server is ready to receive queries."
   (setq telega--status "Disconnected")
   (setq telega--status-aux "")
   (setq telega--me-id -1)
-  (setq telega--options nil)
+  (setq telega--options
+        ;; default limits
+        (list :message_caption_length_max 1024
+              :message_text_length_max 4096))
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--top-chats nil)
   (setq telega--search-chats nil)
@@ -130,15 +133,16 @@ Done when telega server is ready to receive queries."
 
 (defmacro telega-save-excursion (&rest body)
   "Save current point as moving marker."
+  (declare (indent 0))
   (let ((pnt-sym (gensym)))
     `(let ((,pnt-sym (copy-marker (point) t)))
        (unwind-protect
            (progn ,@body)
          (goto-char ,pnt-sym)))))
-(put 'telega-save-excursion 'lisp-indent-function 0)
 
 (defmacro telega-save-cursor (&rest body)
   "Execute BODY saving cursor's line and column position."
+  (declare (indent 0))
   (let ((line-sym (gensym "line"))
         (col-sym (gensym "col")))
     `(let ((,line-sym (+ (if (bolp) 1 0) (count-lines 1 (point))))
@@ -149,7 +153,6 @@ Done when telega server is ready to receive queries."
          (cl-assert (> ,line-sym 0))
          (forward-line (1- ,line-sym))
          (move-to-column ,col-sym)))))
-(put 'telega-save-cursor 'lisp-indent-function 0)
 
 (defmacro with-telega-debug-buffer (&rest body)
   "Execute BODY only if `telega-debug' is non-nil, making debug buffer current."
@@ -450,6 +453,7 @@ NIL yields empty string for the convenience."
 
 (defun telega-button--insert (button-type value &rest props)
   "Insert telega button of BUTTON-TYPE with VALUE and PROPS."
+  (declare (indent 2))
   (let ((button (apply 'make-text-button
                        (prog1 (point)
                          (funcall (or (plist-get props :inserter)

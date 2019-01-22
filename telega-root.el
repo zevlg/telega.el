@@ -149,20 +149,20 @@ Terminate telega-server and kill all chat buffers."
 (defmacro with-telega-root-buffer (&rest body)
   "Execute BODY setting current buffer to root buffer.
 Inhibits read-only flag."
+  (declare (indent 0))
   `(when (buffer-live-p (telega-root--buffer))
      (with-current-buffer telega-root-buffer-name
        (let ((inhibit-read-only t))
          ,@body))))
-(put 'with-telega-root-buffer 'lisp-indent-function 0)
 
 
-;;; Connection Status
+;;; Auth/Connection Status
 (define-button-type 'telega-status
   :supertype 'telega
-  :inserter 'telega-status--inserter
+  :inserter 'telega-ins--status
   'inactive t)
 
-(defun telega-status--inserter (status)
+(defun telega-ins--status (status)
   "Default inserter for the `telega-status' button.
 STATUS is cons with connection status as car and aux status as cdr."
   (let ((conn-status (car status))
@@ -242,7 +242,7 @@ If RAW is given then do not modify statuses for animation."
 (defun telega-root--chat-update (chat &optional for-reorder)
   "Something changed in CHAT, button needs to be updated.
 If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
-  (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat--title chat))
+  (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat-title chat))
 
   ;; Update `telega--filtered-chats' according to chat update. It
   ;; might affect visibility, chat button formatting itself and custom
@@ -258,7 +258,7 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
       (telega-save-cursor
         (let ((enode (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
           (cl-assert enode nil "Ewoc node not found for chat:%s"
-                     (telega-chat--title chat))
+                     (telega-chat-title chat))
 
           (setf (ewoc--node-data enode) chat)
           (ewoc-invalidate telega-root--ewoc enode)))))
@@ -279,11 +279,7 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
         (ewoc-delete telega-root--ewoc node))
       (if node-after
           (ewoc-enter-before telega-root--ewoc node-after chat)
-        (ewoc-enter-last telega-root--ewoc chat))))
-
-  ;; NOTE: reorder might affect `telega--filtered-chats' and custom
-  ;; filters, so update the chat
-  (telega-root--chat-update chat 'for-reorder))
+        (ewoc-enter-last telega-root--ewoc chat)))))
 
 (defun telega-root--chat-new (chat)
   "New CHAT has been created. Display it in root's ewoc."

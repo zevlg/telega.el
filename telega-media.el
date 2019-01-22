@@ -84,17 +84,26 @@ hasn't been started, i.e. request hasn't been sent to server."
           (telega-file--run-callbacks ul-callbacks file))
 
       (when (telega-file--downloaded-p file)
-        (remhash file-id telega--downloadings)
-        (when telega-debug
+        (when (and telega-debug (gethash file-id telega--downloadings))
           (let ((msg (format "Downloading completed: %s (size=%s)"
                              (telega-short-filename
                               (telega--tl-get file :local :path))
                              (file-size-human-readable
                               (telega--tl-get file :local :downloaded_size)))))
             (telega-debug msg)
-            (message msg))))
+            (message msg)))
+        (remhash file-id telega--downloadings))
 
       (when (telega-file--uploaded-p file)
+        ;; Check for `telega-file--downloaded-p' so path info is available
+        (when (and telega-debug (telega-file--downloaded-p file))
+          (let ((msg (format "Uploading completed: %s (size=%s)"
+                             (telega-short-filename
+                              (telega--tl-get file :local :path))
+                             (file-size-human-readable
+                              (telega--tl-get file :local :downloaded_size)))))
+            (telega-debug msg)
+            (message msg)))
         (remhash file-id telega--uploadings))
       )))
   
@@ -115,7 +124,7 @@ hasn't been started, i.e. request hasn't been sent to server."
 
 (defun telega-file--run-callbacks (callbacks file)
   "Run CALLBACKS on FILE update."
-  (dolist (cb-with-args callbacks)
+  (cl-dolist (cb-with-args callbacks)
     (apply (car cb-with-args) file (cdr cb-with-args))))
 
 (defun telega-file--download-monitor-progress (file-id cb &rest cb-args)
@@ -129,7 +138,8 @@ First argument to callback is file, and only then CB-ARGS are supplied."
                telega--downloadings))
     ))
 
-(defun telega-file--download-monitoring (place prop &optional priority &rest callback-spec)
+(defun telega-file--download-monitoring (place prop &optional priority
+                                               &rest callback-spec)
   "Download file denoted by PLACE and PROP.
 PLACE is the plist where its PROP is a file to download.
 File is monitored so PLACE's PROP is updated on file updates."
@@ -143,14 +153,14 @@ File is monitored so PLACE's PROP is updated on file updates."
                file-id callback-spec))
       (telega--downloadFile file-id priority))))
 
-(defun telega-file--upload (filename &optional file-type priority)
+(defun telega--uploadFile (filename &optional file-type priority)
   "Asynchronously upload file denoted by FILENAME.
 FILE-TYPE is one of `photo', `animation', etc
 PRIORITY is same as for `telega-file--download'."
-  (telega-server--send
+  (telega-server--call
    (list :@type "uploadFile"
-         :file_id file-id
-         :file_type (format "fileType%S" (or file-type 'Unknown))
+         :file (list :@type "inputFileLocal" :path filename)
+         :file_type (list :@type (format "fileType%S" (or file-type 'Unknown)))
          :priority (or priority 1))))
 
 (defun telega--cancelUploadFile (file-id)
@@ -179,7 +189,8 @@ First argument to callback is file, and only then CB-ARGS are supplied."
   (let ((callbacks (gethash file-id telega--uploadings))
         (new-callback (cons cb cb-args)))
     (unless (member new-callback callbacks)
-      (puthash file-id (append callbacks new-callback) telega--uploadings))))
+      (puthash file-id (append callbacks (list new-callback))
+               telega--uploadings))))
 
 (defun telega-file--upload-monitoring (place prop &rest callback-spec)
   "Upload file denoted by PLACE and PROP.
@@ -221,8 +232,10 @@ Lowres is always goes first."
   (let ((photo-sizes (plist-get photo :sizes)))
     (aref photo-sizes (1- (length photo-sizes)))))
 
-(defun telega-photo--best (photo)
-  "Select best thumbnail size for the PHOTO."
+(defun telega-photo--best (photo &optional fill-column)
+  "Select best thumbnail size for the PHOTO.
+If FILL-COLUMN is specified, then select best thumbnail to fit
+into FILL-COLUMN."
   ;; NOTE: `reverse' is used to start from highes sizes
   (let ((photo-sizes (reverse (plist-get photo :sizes))))
     (or (cl-some (lambda (tn)
@@ -231,14 +244,25 @@ Lowres is always goes first."
         (cl-some (lambda (tn)
                    (and (telega-file--downloading-p (plist-get tn :photo)) tn))
                  photo-sizes)
-        (aref photo-sizes 0))))
+        (if (not fill-column)
+            (aref photo-sizes 0)
+
+          ;; Choose best suiting fill-column
+          (let ((xwidth (telega-pixel-width fill-column))
+                (best (aref photo-sizes 0)))
+            (cl-dolist (tn photo-sizes)
+              (when (< (abs (- (plist-get tn :width) xwidth))
+                       (abs (- (plist-get best :width) xwidth)))
+                (setq best ps)))
+            best)))))
 
 (defun telega-photo-file-format (file &optional one-line-p &rest image-props)
   "Create propertized text displaying image at PATH.
 If ONE-LINE-P is non-nil then create image for inlining.
 IMAGE-PROPS are passed directly to `create-image'."
   (let* ((file-path (telega--tl-get file :local :path))
-         (photo-img (apply #'create-image file-path 'imagemagick nil image-props))
+         (photo-img (apply #'create-image file-path 'imagemagick nil
+                           :scale 1 image-props))
          (xframe (telega-x-frame))
          (img-char-width (if xframe
                              (round (car (image-size photo-img nil xframe)))

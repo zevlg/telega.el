@@ -212,8 +212,9 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
         :value chat :action 'telega-chat-share-my-contact)
       (telega-ins "  ")
       (setq has-button-line t))
-    ;; NOTE: Secret chat with myself is not possible
-    (unless (eq (plist-get user :id) telega--me-id)
+    ;; NOTE: Secret chat with bots and myself is not possible
+    (unless (or (telega-user--bot-p user)
+                (eq (plist-get user :id) telega--me-id))
       ;; TODO: search for existing secret chat with Ready state and
       ;; create [Open Secret Chat] button instead
       (telega-ins--button (concat "[" telega-symbol-lock "Start Secret Chat]")
@@ -233,6 +234,10 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
 
     (when (= (plist-get user :id) telega--me-id)
       ;; Saved Messages
+      (telega-ins "Logged in: ")
+      (telega-ins--date-full
+       (plist-get telega--options :authorization_date))
+      (telega-ins "\n")
       (telega-ins-fmt "Account TTL: %d days\n"
         (plist-get (telega-server--call
                     (list :@type "getAccountTtl")) :days)))
@@ -669,6 +674,13 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
 
 
 ;; Contacts
+(defun telega--getContacts ()
+  "Return users that are in contact list."
+  (mapcar 'telega-user--get
+          (plist-get (telega-server--call
+                      (list :@type "getContacts"))
+                     :user_ids)))
+
 (defun telega--removeContacts (&rest user-ids)
   "Remove users determined by USER-IDS from contacts."
   (telega-server--call

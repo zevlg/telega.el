@@ -77,6 +77,10 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
               (cons (window-frame (get-buffer-window (telega-root--buffer)))
                     (frame-list))))
 
+(defun telega-pixel-width (line-width)
+  "Return pixel width for the LINE-WIDTH."
+  (* (frame-char-width (telega-x-frame) line-width)))
+      
 (defun telega-strip-newlines (string)
   "Strip STRING newlines from end and beginning."
   (replace-regexp-in-string
@@ -212,6 +216,15 @@ Intented to be added to `telega-load-hook'."
         entities)
   text)
 
+(defun telega--split-by-text-prop (string prop)
+  "Split STRING by property PROP changes."
+  (let ((start 0) end result)
+    (while (and (> (length string) start)
+                (setq end (next-single-char-property-change start prop string)))
+      (push (substring string start end) result)
+      (setq start end))
+    (nreverse result)))
+
 (defun telega--properties-to-entities (text)
   "Convert propertiezed TEXT to telegram ENTITIES."
   ;; TODO: convert text properties to tl text entities
@@ -232,12 +245,58 @@ Intented to be added to `telega-load-hook'."
   "Return list of titles ready for completing."
   (let ((result))
     (dolist (chat (telega-filter-chats 'all))
-      (setq result (cl-pushnew (telega-chat--title chat 'withusername) result
+      (setq result (cl-pushnew (telega-chat-title chat 'with-username) result
                                :test #'string=)))
     (dolist (user (hash-table-values (cdr (assq 'user telega--info))))
       (setq result (cl-pushnew (telega-user--name user) result
                                :test #'string=)))
     (nreverse result)))
+
+(defun telega-waveform-decode (waveform)
+  "Decode WAVEFORM returning list of heights."
+  (let ((bwv (base64-decode-string waveform))
+        (cc 0) (cv 0) (needbits 5) (leftbits 8) result)
+    (while (not (string-empty-p bwv))
+      (setq cc (logand (aref bwv 0) (lsh 255 (- leftbits 8))))
+      (when (<= leftbits needbits)
+        (setq bwv (substring bwv 1)))
+
+      (if (< leftbits needbits)
+          ;; Value not yet ready
+          (setq cv (logior (lsh cv leftbits) cc)
+                needbits (- needbits leftbits)
+                leftbits 8)
+
+        ;; Ready (needbits <= leftbits)
+        (push (logior (lsh cv needbits)
+                      (lsh cc (- needbits leftbits)))
+              result)
+        (setq leftbits (- leftbits needbits)
+              needbits 5
+              cv 0)
+        (when (zerop leftbits)
+          (setq leftbits 8))))
+    (nreverse result)))
+
+(defun telega-waveform-svg (waveform duration &optional played)
+  "Create SVG image for the voice note with WAVEFORM and DURATION."
+  (let* ((wfd (telega-waveform-decode waveform))
+         (wfd-idx 0)
+         (wv-width 3) (space-width 2)
+         (w (* (+ wv-width space-width) (length wfd))) (h 36)
+         (svg (svg-create w h)))
+    ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
+;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
+    (cl-dolist (wv wfd)
+      (let ((xoff (+ wv-width (* (+ wv-width space-width) wfd-idx)))
+            (played-p (< (/ (float wfd-idx) (length wfd))
+                         (/ (or played 0) duration))))
+        (svg-line svg xoff h xoff (- h (+ wv 1))
+                  :stroke-color (if played-p "#006400" "#228b22")
+                  :stroke-width (if played-p (1+ wv-width) wv-width)
+                  :stroke-linecap "round")
+        (incf wfd-idx)))
+    (svg-image svg :scale 1 :ascent 'center)))
 
 
 ;; ewoc stuff
@@ -268,8 +327,8 @@ Intented to be added to `telega-load-hook'."
     (ewoc--refresh-node hf-pp head dll)))
 
 (defun telega-ewoc--set-footer (ewoc footer)
-  "Set EWOC's new HEADER."
-  ;; NOTE: No ewoc API to change just header :(
+  "Set EWOC's new FOOTER."
+  ;; NOTE: No ewoc API to change just footer :(
   ;; only `ewoc-set-hf'
   (ewoc--set-buffer-bind-dll-let* ewoc
       ((foot (ewoc--footer ewoc))

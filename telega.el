@@ -166,20 +166,27 @@ Works only if current state is `authorizationStateWaitCode'."
      (list :@type "checkAuthenticationPassword"
            :password pswd))))
 
-(defun telega--setOptions (&optional options-plist)
+(defun telega--setOption (prop-kw val)
+  "Set option, defined by keyword PROP-KW to VAL."
+  (declare (indent 1))
+  (telega-server--send
+   (list :@type "setOption"
+         :name (substring (symbol-name prop-kw) 1) ; strip `:'
+         :value (list :@type (cond ((memq val '(t nil :false))
+                                    "optionValueBoolean")
+                                   ((integerp value)
+                                    "optionValueInteger")
+                                   ((stringp value)
+                                    "optionValueString")
+                                   (t (error "Unknown value type: %S"
+                                             (type-of value))))
+                      :value (or value :false)))))
+
+(defun telega--setOptions (options-plist)
   "Send custom options from `telega-options-plist' to server."
-  (cl-loop for (prop-name value) on (or options-plist telega-options-plist)
+  (cl-loop for (prop-name value) on options-plist
            by 'cddr
-           do (telega-server--send
-               (list :@type "setOption"
-                     :name (substring (symbol-name prop-name) 1) ; strip `:'
-                     :value (list :@type (cond ((memq value '(t nil))
-                                                "optionValueBoolean")
-                                               ((integerp value)
-                                                "optionValueInteger")
-                                               ((stringp value)
-                                                "optionValueString"))
-                                  :value (or value :false))))))
+           do (telega--setOption prop-name value)))
 
 (defun telega--setScopeNotificationSettings (scope-type setting)
   (telega-server--send
@@ -204,7 +211,12 @@ Works only if current state is `authorizationStateWaitCode'."
 
   (setq telega--me-id (plist-get telega--options :my_id))
   (cl-assert telega--me-id)
-  (telega--setOptions)
+  (telega--setOptions telega-options-plist)
+  ;; In case language pack id has not yet been selected, then select
+  ;; suggested one or fallback to "en"
+  (unless (plist-get telega--options :language_pack_id)
+    (telega--setOption :language_pack_id
+      (or (plist-get telega--options :suggested_language_pack_id) "en")))
 
   ;; Apply&update notifications settings
   (when (car telega-notifications-defaults)
