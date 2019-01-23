@@ -255,7 +255,7 @@ PTYPE is `download' or `upload'."
   "Insert outgoing status of the message MSG."
   (when (plist-get msg :is_outgoing)
     (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
-          (chat (telega-chat--get (plist-get msg :chat_id))))
+          (chat (telega-chat-get (plist-get msg :chat_id))))
       (telega-ins--with-face 'telega-msg-outgoing-status
         (telega-ins
          (cond ((and (stringp sending-state)
@@ -462,7 +462,7 @@ Special messages are determined with `telega-msg-special-p'."
 (defun telega-ins--channel-msg (msg)
   "Insert MSG received in channel chat."
   (telega-ins--with-attrs (list :face 'telega-chat-user-title)
-    (telega-ins (telega-chat-title (telega-msg--chat msg) 'with-username)))
+    (telega-ins (telega-chat-title (telega-msg-chat msg) 'with-username)))
   (telega-ins-prefix " "
     (let ((sign (plist-get msg :author_signature)))
       (unless (string-empty-p sign)

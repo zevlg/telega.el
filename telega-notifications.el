@@ -67,7 +67,7 @@ If DEFAULT-P is non-nil then return default setting for the CHAT."
   ;; Limit length of the message
   (telega-ins--with-attrs (list :max telega-notifications-msg-body-limit
                                 :elide t)
-    (let ((chat (telega-chat--get (plist-get msg :chat_id))))
+    (let ((chat (telega-chat-get (plist-get msg :chat_id))))
       (unless (memq (telega-chat--type chat 'raw) '(private secret))
         (when (telega-ins--username (plist-get msg :sender_user_id) 'name)
           (telega-ins ": "))
@@ -119,7 +119,7 @@ If ARG is not given then treat it as 1."
   ;; telegram client
   (let* ((msg-id (plist-get msg :id))
          (chat-id (plist-get msg :chat_id))
-         (chat (telega-chat--get chat-id)))
+         (chat (telega-chat-get chat-id)))
     (unless (<= msg-id (plist-get chat :last_read_inbox_message_id))
       (let ((notify-args
              (nconc
@@ -127,7 +127,7 @@ If ARG is not given then treat it as 1."
                     :on-action `(lambda (&rest args)
                                   (x-focus-frame (telega-x-frame))
                                   (telega-chat--goto-msg
-                                   (telega-chat--get ,chat-id)
+                                   (telega-chat-get ,chat-id)
                                    ,msg-id 'highlight))
                     :title (telega-chat-title chat 'with-username)
                     :body (if (telega-chat-notification-setting chat :show_preview)
@@ -163,7 +163,7 @@ If ARG is not given then treat it as 1."
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let* ((msg-id (plist-get msg :id))
            (chat-id (plist-get msg :chat_id))
-           (chat (telega-chat--get chat-id))
+           (chat (telega-chat-get chat-id))
            (last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
       (unless (or (<= msg-id last-read-msg-id)
                   (not (zerop (telega-chat-notification-setting chat :mute_for)))

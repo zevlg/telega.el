@@ -57,7 +57,7 @@
     (telega--info-update user)
 
     ;; Update corresponding private chat button
-    (let ((chat (telega-chat--get (plist-get user :user_id) 'offline)))
+    (let ((chat (telega-chat-get (plist-get user :user_id) 'offline)))
       (when chat
         (telega-root--chat-update chat)))
 
@@ -184,7 +184,7 @@ Default is: `full'"
                        :user_id (plist-get with-user :id)
                        :offset_chat_id 0
                        :limit gic-cnt)))))
-    (mapcar #'telega-chat--get (plist-get gic :chat_ids))))
+    (mapcar #'telega-chat-get (plist-get gic :chat_ids))))
 
 (defun telega--getSupergroupMembers (supergroup &optional filter)
   "Get SUPERGRUOP members.

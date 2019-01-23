@@ -64,14 +64,14 @@
     (when (and button (eq (button-type button) 'telega-msg))
       (button-get button :value))))
 
-(defsubst telega-msg--chat (msg)
+(defsubst telega-msg-chat (msg)
   "Return chat for the MSG."
-  (telega-chat--get (plist-get msg :chat_id)))
+  (telega-chat-get (plist-get msg :chat_id)))
 
 (defun telega-msg--get (chat-id msg-id)
   "Get message by CHAT-ID and MSG-ID pair."
   ;; Optimisation for formatting messages with reply
-  (or (with-telega-chatbuf (telega-chat--get chat-id)
+  (or (with-telega-chatbuf (telega-chat-get chat-id)
         (gethash msg-id telega-chatbuf--messages))
 
       (telega-server--call
@@ -108,14 +108,14 @@ Return nil if message can't be forwarded."
 Update message as file downloading/uploading progresses."
   ;; NOTE: MSG's place of FILE already has been uploaded, so we need
   ;; just to redisplay the MSG
-  (with-telega-chat-buffer (telega-chat--get (plist-get msg :chat_id))
+  (with-telega-chat-buffer (telega-chat-get (plist-get msg :chat_id))
     (let ((node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
       (when node
         (ewoc-invalidate telega-chatbuf--ewoc node)))))
 
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."
-  (telega-chat-title (telega-msg--chat msg) 'with-username))
+  (telega-chat-title (telega-msg-chat msg) 'with-username))
 
 (defun telega-msg-sender-shortname (msg &optional suffix)
   "Short name of the MSG sender."
@@ -165,7 +165,7 @@ Update message as file downloading/uploading progresses."
   "Outgoing status of the message."
   (when (plist-get msg :is_outgoing)
     (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
-          (chat (telega-chat--get (plist-get msg :chat_id))))
+          (chat (telega-chat-get (plist-get msg :chat_id))))
     (cond ((and (stringp sending-state)
                 (string= sending-state "messageSendingStatePending"))
            telega-symbol-msg-pending)
@@ -630,7 +630,7 @@ If MARKDOWN is non-nil then format TEXT as markdown."
           (insert-text-button (telega-user--name (telega-user--get sender-uid))
                               :telega-link (cons 'user sender-uid))
           (insert "\n")))
-      (when (telega-chat--public-p (telega-chat--get chat-id) 'supergroup)
+      (when (telega-chat--public-p (telega-chat-get chat-id) 'supergroup)
         (let ((link (plist-get (telega--getPublicMessageLink chat-id msg-id) :link)))
           (telega-ins "Link: ")
           (insert-text-button link :telega-link (cons 'url link)

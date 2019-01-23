@@ -352,7 +352,7 @@ Prefix every line with PREFIX."
   "Autodownload media in MSG according to `telega-auto-download'.
 Always download \"s\" type (for one-line reply/edit formatting).
 Downloads highres photos according to `telega-auto-download'."
-  (let ((chat (telega-chat--get (plist-get msg :chat_id)))
+  (let ((chat (telega-chat-get (plist-get msg :chat_id)))
         (content (plist-get msg :content)))
     (cl-case (telega--tl-type content)
       (messagePhoto
