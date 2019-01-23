@@ -151,13 +151,13 @@ $ git clone https://github.com/zevlg/telega.el
 Moving into the folder with `cd telega.el`, it is possible to build
 the `telega-server` executable and move into the `$HOME/.telega` with:
 ```console
-$ make && make install
+$ make && make test && make install
 ```
 
 If you want VoIP support in `telega.el` and `libtgvoip` is installed,
 then use this instead:
 ```console
-$ make WITH_VOIP=t && make WITH_VOIP=t install
+$ make WITH_VOIP=t && make WITH_VOIP=t test && make WITH_VOIP=t install
 ```
 
 This command does not require superuser privileges.
@@ -196,7 +196,7 @@ it ask for the phone number to login to the Telegram network.
 `telega.el` ships with support for D-Bus notifications, but they are disabled by default.  To enable notifications add next code to your `init.el`:
 
 ```elisp
-(add-hook 'telega-root-mode-hook (lambda () (telega-notifications-mode 1)))
+(setq telega-use-notifications t)
 ```
 
 # How to contribute

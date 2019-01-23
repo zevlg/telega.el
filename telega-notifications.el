@@ -26,7 +26,7 @@
 ;; 
 ;; To enable notifications use next code in your init.el:
 ;; 
-;;   (add-hook 'telega-load-hook 'telega-notifications-mode)
+;;   (setq telega-use-notifications t)
 ;; 
 
 ;;; Code:
@@ -85,9 +85,9 @@ If ARG is not given then treat it as 1."
   (if (or (null arg) (> arg 0))
       (progn
         (add-hook 'telega-chat-message-hook 'telega-notifications-chat-message)
-        (add-hook 'telega-incoming-call-hook 'telega-notifications-incoming-call))
+        (add-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call))
     (remove-hook 'telega-chat-message-hook 'telega-notifications-chat-message)
-    (remove-hook 'telega-incoming-call-hook 'telega-notifications-incoming-call)))
+    (remove-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call)))
 
 (defun telega-notifications--close (id)
   "Close notification by ID."
@@ -175,7 +175,7 @@ If ARG is not given then treat it as 1."
           (telega-notifications--chat-msg0 msg))))))
 
 (defun telega-notifications-incoming-call (call)
-  "Function intended to be added to `telega-incoming-call-hook'."
+  "Function intended to be added to `telega-call-incoming-hook'."
   (let* ((call-id (plist-get call :id))
          (user (telega-user--get (plist-get call :user_id)))
          (notargs (list :actions (list "default" "accept")
@@ -191,5 +191,9 @@ If ARG is not given then treat it as 1."
      (nconc notargs telega-notifications-call-args))))
 
 (provide 'telega-notifications)
+
+;; Maybe enable notifications mode
+(when telega-use-notifications
+  (telega-notifications-mode 1))
 
 ;;; telega-notifications.el ends here

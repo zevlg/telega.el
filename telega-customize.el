@@ -126,6 +126,12 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-use-notifications nil
+  "*Non-nil to enable D-Bus notifications for unmuted chats.
+If non-nil also enable notification for incoming calls."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-chat--display-buffer-action display-buffer--same-window-action
   "Action value when poping to chatbuffer.
 See docstring for `display-buffer' for the values."
@@ -322,6 +328,37 @@ In form (NAME . FILTER-SPEC)."
 NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
+
+
+;; VoIP
+(defgroup telega-voip nil
+  "VOIP settings."
+  :group 'telega)
+
+(defcustom telega-voip-allow-p2p nil
+  "*Non-nil to allow P2P connections for calls."
+  :type 'boolean
+  :group 'telega-voip)
+
+(defcustom telega-voip-auto-accept nil
+  "*Non-nil to automatically accept incoming calls."
+  :type 'boolean
+  :group 'telega-voip)
+
+(defcustom telega-voip-busy-if-active t
+  "*Reply with busy status to any incoming calls if have active call."
+  :type 'boolean
+  :group 'telega-voip)
+
+(defcustom telega-voip-help-echo t
+  "*Non-nil to show help messages in echo area on call activation."
+  :type 'boolean
+  :group 'telega-voip)
+
+(defcustom telega-voip-use-sounds t
+  "*Non-nil to play sounds (using ffplay) for call status changes."
+  :type 'boolean
+  :group 'telega-voip)
 
 
 ;; Notifications
@@ -845,10 +882,23 @@ Always called, even if corresponding chat is closed at the moment."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-incoming-call-hook nil
+(defcustom telega-call-incoming-hook nil
   "Hook called when incoming call pending.
 Called with single argument - incoming call.
-Use `telega-voip-call-active-p' to understand if call is currently active."
+Use `telega-voip-active-call-p' to understand if call is currently active."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-call-outgoing-hook nil
+  "Hook called when outgoing call is made.
+Called with single argument - outgoing call."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-call-end-hook nil
+  "Hook called when call is ended.
+Called with single argument - the call.
+To find out call state examine the `:state' value."
   :type 'hook
   :group 'telega-hooks)
 

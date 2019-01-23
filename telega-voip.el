@@ -32,34 +32,7 @@
 (declare-function telega-status--set "telega-root"
                   (conn-status &optional aux-status raw))
 
-(defgroup telega-voip nil
-  "VOIP settings."
-  :group 'telega)
-
-(defcustom telega-voip-allow-p2p nil
-  "*Non-nil to allow P2P connections for calls."
-  :type 'boolean
-  :group 'telega-voip)
-
-(defcustom telega-voip-auto-accept t
-  "*Non-nil to automatically accept incoming calls."
-  :type 'boolean
-  :group 'telega-voip)
-
-(defcustom telega-voip-busy-if-active t
-  "*Reply with busy status to any incoming calls if have active call."
-  :type 'boolean
-  :group 'telega-voip)
-
-(defcustom telega-voip-help-echo t
-  "*Non-nil to show help messages in echo area on call activation."
-  :type 'boolean
-  :group 'telega-voip)
-
-(defvar telega-voip--buffer nil
-  "Buffer currently used for the active call.")
-
-(defvar telega-voip-protocol
+(defconst telega-voip-protocol
   (list :@type "callProtocol"
         :udp_p2p t :udp_reflector t
         :min_layer 65 :max_layer 65))
@@ -130,8 +103,10 @@
 
     (cl-case (telega--tl-type state)
       (callStatePending
-       (unless (or old-call (plist-get call :is_outgoing))
-         (run-hook-with-args 'telega-incoming-call-hook call))
+       (unless old-call
+         (if (plist-get call :is_outgoing)
+             (run-hook-with-args 'telega-call-outgoing-hook call)
+           (run-hook-with-args 'telega-call-incoming-hook call)))
 
        ;; * If no active calls and CALL is outgoing, then make it
        ;;   active
@@ -141,7 +116,8 @@
            (unless telega-voip--active-call
              (setq telega-voip--active-call call))
 
-         (when (and telega-voip--active-call
+         (when (and telega-voip-busy-if-active
+                    telega-voip--active-call
                     (not (eq call telega-voip--active-call)))
            (telega--discardCall call-id)))
 
@@ -191,7 +167,8 @@
       (when (eq telega-voip--active-call call)
         (telega-server--send (list :@command "stop") "voip")
         (setq telega-voip--active-call nil))
-      (setq telega-voip--alist (assq-delete-all call-id telega-voip--alist)))
+      (setq telega-voip--alist (assq-delete-all call-id telega-voip--alist))
+      (run-hook-with-args 'telega-call-end-hook call))
 
     ;; Update corresponding chat button
     (let ((chat (telega-chat--get (plist-get call :user_id) 'offline)))
@@ -238,6 +215,11 @@ If called interactively then discard active call."
     (telega-server--send (list :@command "stop") "voip"))
 
   (telega--discardCall (plist-get call :id)))
+
+(defun telega-voip-active-call-p (call)
+  "Return non-nil if CALL currently active.
+Compare calls by `:id'."
+  (= (plist-get call :id) (plist-get telega-voip--active-call :id)))
 
 (defun telega-voip-activate-call (call)
   "Activate the CALL, i.e. make CALL currently active.
@@ -311,6 +293,43 @@ If prefix arg is given then list only missed calls."
         (telega-ins "\n")))
     ))
 
+
+(defun telega-voip-sounds--play-incoming (call)
+  "Incomming CALL pending."
+  (unless telega-voip--active-call
+    ;; TODO: Loop playing call_incoming.mp3
+    )
+  )
+
+(defun telega-voip-sounds--play-outgoing (call)
+  "Outgoing CALL initiated."
+  ;; TODO: Loop playing call_outgoing.mp3
+  )
+
+(defun telega-voip-sounds--play-end (call)
+  "Call finished."
+  (when (telega-voip-active-call-p call)
+    ;; TODO: Play call_end.mp3 or call_busy.mp3
+    ))
+
+(defun telega-voip-sounds-mode (&optional arg)
+  "Toggle soundsToggle telega notifications on or off.
+With positive ARG - enables notifications, otherwise disables.
+If ARG is not given then treat it as 1."
+  (interactive "p")
+  (if (or (null arg) (> arg 0))
+      (progn
+        (add-hook 'telega-call-incoming-hook 'telega-voip-sounds--play-incoming)
+        (add-hook 'telega-call-outgoing-hook 'telega-voip-sounds--play-outgoing)
+        (add-hook 'telega-call-end-hook 'telega-voip-sounds--play-end))
+    (remove-hook 'telega-call-incoming-hook 'telega-voip-sounds--play-incoming)
+    (remove-hook 'telega-call-outgoing-hook 'telega-voip-sounds--play-outgoing)
+    (remove-hook 'telega-call-end-hook 'telega-voip-sounds--play-end)))
+
 (provide 'telega-voip)
+
+;; On load
+(when telega-voip-use-sounds
+  (telega-voip-sounds-mode 1))
 
 ;;; telega-voip.el ends here

@@ -62,7 +62,7 @@
         (with-current-buffer buffer
           (goto-char (point-max))
           (insert output)
-          (when (re-search-backward "\\s-+\\([0-9.]+\\)" nil t)
+          (when (re-search-backward "\\s-*\\([0-9.]+\\)" nil t)
             (let ((np (string-to-number (match-string 1))))
               (when (> (- np telega-vvnote-progress) 0.25)
                 (setq telega-vvnote-progress np)
@@ -78,13 +78,18 @@
   (let ((buf (get-buffer telega-vvnote--ffplay-buffer-name)))
     (when (buffer-live-p buf)
       ;; Kill currently running ffplay
-      (kill-buffer buf)))
+      (kill-buffer buf)
+
+      (when telega-vvnote--callback
+        ;; nil progress mean DONE
+        (funcall telega-vvnote--callback nil))))
 
   ;; Start new ffplay
   (setq telega-vvnote--callback callback
         telega-vvnote-progress 0.0)
 
-  (let ((args (list "-hide_banner" "-autoexit" filename)))
+  ;; TODO: "-nodisp" args for audio voice notes
+  (let ((args (list "-hide_banner" "-autoexit" "-nodisp" filename)))
     (when seek-seconds
       (setq args (nconc (list "-ss" (number-to-string seek-seconds)) args)))
 
