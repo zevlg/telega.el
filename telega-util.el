@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sat Apr 21 03:56:02 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -78,10 +78,14 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
               (cons (window-frame (get-buffer-window (telega-root--buffer)))
                     (frame-list))))
 
-(defun telega-pixel-width (line-width)
-  "Return pixel width for the LINE-WIDTH."
-  (* (frame-char-width (telega-x-frame) line-width)))
-      
+(defun telega-chars-width (n)
+  "Return pixel width for N characters"
+  (* (frame-char-width (telega-x-frame)) n))
+
+(defun telega-chars-in-width (pixels)
+  "Return how many characters needed to cover PIXELS width."
+  (ceiling (/ pixels (float (frame-char-width (telega-x-frame))))))
+
 (defun telega-strip-newlines (string)
   "Strip STRING newlines from end and beginning."
   (replace-regexp-in-string
@@ -93,6 +97,22 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
 (defun telega-current-column ()
   "Same as `current-column', but take into account width of the characters."
   (string-width (buffer-substring (point-at-bol) (point))))
+
+(defsubst telega-color-to-hex (col)
+  (color-rgb-to-hex (car col) (cadr col) (caddr col) 2))
+
+(defun telega-color-random (&optional lightness)
+  "Generates random color with lightness below LIGHTNESS.
+Default LIGHTNESS is 0.85."
+  (telega-color-to-hex
+   (color-hsl-to-rgb (cl-random 1.0) (cl-random 1.0)
+                     (cl-random (or lightness 0.85)))))
+
+(defun telega-color-gradient (color)
+  "For given color return its darker version.
+Used to create gradients."
+  (telega-color-to-hex
+   (mapcar (lambda (c) (/ c 2)) (color-name-to-rgb color))))
 
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
@@ -236,10 +256,10 @@ Intented to be added to `telega-load-hook'."
   (let ((val (if (listp face) face (list face))) next prev)
     (while (/= start end)
       (setq next (next-single-property-change start 'face object end)
-	    prev (get-text-property start 'face object))
+            prev (get-text-property start 'face object))
       (put-text-property start next 'face
-			 (append val (if (listp prev) prev (list prev)))
-			 object)
+                         (append val (if (listp prev) prev (list prev)))
+                         object)
       (setq start next))))
 
 (defun telega-completing-titles ()

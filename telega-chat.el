@@ -59,6 +59,29 @@
       (setcdr place (cons chat (cdr place))))
     telega--ordered-chats))
 
+(defun telega-chat--set-uaprops (chat uaprops)
+  "Set CHAT's user application properties to UAPROPS."
+  (plist-put chat :uaprops uaprops)
+  (let ((client-data (if uaprops (prin1-to-string uaprops) "")))
+    (plist-put chat :client_data client-data)
+    (telega-server--send
+     (list :@type "setChatClientData"
+           :chat_id (plist-get chat :id)
+           :client_data client-data))))
+
+(defmacro telega-chat-uaprop-del (chat uaprop-name)
+  "Delete custom CHAT property named UAPROP-NAME."
+  `(telega-chat--set-uaprops
+    (cl--plist-remove (plist-get ,chat :uaprops) ,uaprop-name)))
+
+(defmacro telega-chat-uaprop (chat uaprop-name)
+  "Return value for CHAT's custom property with name UAPROP-NAME."
+  `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
+
+(defsetf telega-chat-uaprop (chat uaprop-name) (value)
+  `(telega-chat--set-uaprops
+    ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,value)))
+
 (defsubst telega-chat--ensure (chat)
   "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'.
 Return chat from `telega--chats'."
@@ -76,29 +99,15 @@ Return chat from `telega--chats'."
           (let ((client-data (plist-get chat :client_data)))
             (unless (string-empty-p client-data)
               (ignore-errors
-                (plist-put chat :uaprops (read-from-string client-data)))))
+                (plist-put chat :uaprops (car (read-from-string client-data))))))
+
+          ;; Assign the chat some color (used to draw avatars and
+          ;; highlight users in chat)
+          ;; We use custom chat property, so it is saved between restarts
+          (unless (telega-chat-uaprop chat :color)
+            (setf (telega-chat-uaprop chat :color)
+                  (telega-color-random)))
           ))))
-
-(defun telega-chat--set-uaprops (chat uaprops)
-  "Set CHAT's user application properties to UAPROPS."
-  (plist-put chat :uaprops uaprops)
-  (telega-server--call
-   (list :@type "setChatClientData"
-         :chat_id (plist-get chat :id)
-         :client_data (prin1-to-string uaprops))))
-
-(defmacro telega-chat--uaprop-del (chat uaprop-name)
-  "Deleta user application CHAT property with UAPROP-NAME."
-  ;; TODO
-  )
-
-(defmacro telega-chat--uaprop (chat uaprop-name)
-  "Return value for CHAT's custom property with name CUSTOM-PROP-NAME."
-  `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
-
-(defsetf telega-chat--uaprop (chat uaprop-name) (value)
-  `(telega-chat--set-uaprops
-    ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,value)))
 
 (defun telega-chat--get (chat-id &optional offline-p)
   "Get chat by its CHAT-ID.

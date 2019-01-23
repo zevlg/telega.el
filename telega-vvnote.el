@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Mon Jan 21 22:12:55 2019
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 
@@ -39,6 +39,61 @@
   "Command to use to save video notes."
   :type 'string
   :group 'telega-vvnote)
+
+(defvar telega-vvnote--ffplay-buffer-name "*telega ffplay*")
+(defvar telega-vvnote--progress nil)
+(defvar telega-vvnote--callback nil)
+
+(defun telega-vvnote--ffplay-sentinel (proc event)
+  "Sentinel for the ffplay process."
+  (unless telega-debug
+    (kill-buffer telega-vvnote--ffplay-buffer-name))
+  (when telega-debug
+    (message "ffplay SENTINEL: %S" event))
+
+  (when telega-vvnote--callback
+    ;; nil progress mean DONE
+    (funcall telega-vvnote--callback nil)))
+
+(defun telega-vvnote--ffplay-filter (proc output)
+  "Filter for the telega-server process."
+  (let ((buffer (process-buffer proc)))
+    (if (buffer-live-p buffer)
+        (with-current-buffer buffer
+          (goto-char (point-max))
+          (insert output)
+          (when (re-search-backward "\\s-+\\([0-9.]+\\)" nil t)
+            (let ((np (string-to-number (match-string 1))))
+              (when (> (- np telega-vvnote-progress) 0.25)
+                (setq telega-vvnote-progress np)
+                (when telega-vvnote--callback
+                  (funcall telega-vvnote--callback telega-vvnote-progress)))))
+
+          (unless telega-debug
+            (delete-region (point-min) (point-max)))
+          ))))
+
+(defun telega-vvnote--ffplay (filename &optional seek-seconds callback)
+  "Play FILENAME with ffplay, monitoring progress."
+  (let ((buf (get-buffer telega-vvnote--ffplay-buffer-name)))
+    (when (buffer-live-p buf)
+      ;; Kill currently running ffplay
+      (kill-buffer buf)))
+
+  ;; Start new ffplay
+  (setq telega-vvnote--callback callback
+        telega-vvnote-progress 0.0)
+
+  (let ((args (list "-hide_banner" "-autoexit" filename)))
+    (when seek-seconds
+      (setq args (nconc (list "-ss" (number-to-string seek-seconds)) args)))
+
+    (with-current-buffer (get-buffer-create telega-vvnote--ffplay-buffer-name)
+      (let ((proc (apply 'start-process "ffplay" (current-buffer)
+                         (executable-find "ffplay") args)))
+        (set-process-query-on-exit-flag proc nil)
+        (set-process-sentinel proc #'telega-vvnote--ffplay-sentinel)
+        (set-process-filter proc #'telega-vvnote--ffplay-filter)))))
 
 (provide 'telega-vvnote)
 

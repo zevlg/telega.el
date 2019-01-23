@@ -247,7 +247,7 @@ into FILL-COLUMN."
             (aref photo-sizes 0)
 
           ;; Choose best suiting fill-column
-          (let ((xwidth (telega-pixel-width fill-column))
+          (let ((xwidth (telega-chars-width fill-column))
                 (best (aref photo-sizes 0)))
             (cl-dolist (tn photo-sizes)
               (when (< (abs (- (plist-get tn :width) xwidth))
@@ -390,6 +390,44 @@ To customize automatic downloads, use `telega-auto-download'."
   (if (> arg 0)
       (add-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg)
     (remove-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg)))
+
+
+
+;; Avatars
+(defun telega-avatar--gen-svg (name height color)
+  "Generate svg with NAME in the circle.
+HEIGHT is height in chars (1 or 2)."
+  ;; Now generate the svg
+  (let* ((ah (* height (frame-char-height (telega-x-frame))))
+         (ah-chars (telega-chars-in-width ah))
+         aw)
+    ;; Correct the AH in case it sparses wider then 2 chars
+    (if (and (= height 1) (> ah-chars 2))
+        (setq aw (telega-chars-width 2)
+              ah aw)
+      (setq aw (telega-chars-width ah-chars)))
+
+    (let* ((ah2 (/ ah 2))
+           (fsz (/ ah 2.5))
+           (svg (svg-create aw ah))
+           (col2 (telega-color-gradient color)))
+      (svg-gradient svg "cgrad" 'linear
+                    (list (cons 0 color) (cons ah col2)))
+      (svg-circle svg ah2 ah2 ah2 :gradient "cgrad")
+      (svg-text
+       svg name
+       :font-size fsz
+       :font-weight "bold"
+       :fill "white"
+       :font-family "gotham"
+       :x (/ fsz 2)
+       :y (+ fsz (/ fsz 2)))
+      (svg-image svg :scale 1.0
+                 :ascent 'center
+                 ;; text of correct width
+                 :telega-text (substring
+                               (concat name (make-string ah-chars ?X))
+                               ah-chars)))))
 
 (provide 'telega-media)
 

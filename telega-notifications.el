@@ -120,7 +120,7 @@ If ARG is not given then treat it as 1."
   (let* ((msg-id (plist-get msg :id))
          (chat-id (plist-get msg :chat_id))
          (chat (telega-chat--get chat-id)))
-    (unless (< msg-id (plist-get chat :last_read_inbox_message_id))
+    (unless (<= msg-id (plist-get chat :last_read_inbox_message_id))
       (let ((notify-args
              (nconc
               (list :actions (list "default" "show message")
@@ -165,7 +165,7 @@ If ARG is not given then treat it as 1."
            (chat-id (plist-get msg :chat_id))
            (chat (telega-chat--get chat-id))
            (last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
-      (unless (or (< msg-id last-read-msg-id)
+      (unless (or (<= msg-id last-read-msg-id)
                   (not (zerop (telega-chat-notification-setting chat :mute_for)))
                   (telega-chat-msg-observable-p chat msg-id))
         (if (> telega-notifications-delay 0)
