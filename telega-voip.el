@@ -26,7 +26,7 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'telega-core)
-(require 'telega-notifications)
+(require 'telega-customize)
 
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-status--set "telega-root"
@@ -124,15 +124,19 @@
        (when (and telega-voip-help-echo
                   (not telega-voip--active-call)
                   (eq call (telega-voip--incoming-call)))
-         (message "telega: Press `%s' to answer, `%s' to decline"
-                  (substitute-command-keys
-                   "\\<telega-root-mode-map>\\[telega-voip-accept]")
-                  (substitute-command-keys
-                   "\\<telega-root-mode-map>\\[telega-voip-discard]"))))
+         (let ((prefix (when (eq (telega-root--buffer) (window-buffer))
+                         "\\<telega-root-mode-map>")))
+           (message "telega: Press `%s' to answer, `%s' to decline"
+                    (substitute-command-keys
+                     (concat prefix "\\[telega-voip-accept]"))
+                    (substitute-command-keys
+                     (concat prefix "\\[telega-voip-discard]"))))))
 
       (callStateReady
        (unless (eq call telega-voip--active-call)
          (error "Another call became Ready, while having active call"))
+
+       (run-hook-with-args 'telega-call-ready-hook call)
 
        (let ((start
               (list :@command "start"
@@ -147,7 +151,9 @@
        (when telega-voip-help-echo
          (message "telega: Press `%s' to hang up"
                   (substitute-command-keys
-                   "\\<telega-root-mode-map>\\[telega-voip-discard]"))))
+                   (concat (when (eq (telega-root--buffer) (window-buffer))
+                             "\\<telega-root-mode-map>")
+                           "\\[telega-voip-discard]")))))
 
       (callStateError
        (let ((err (plist-get state :error))
@@ -164,11 +170,12 @@
 
     ;; Delete call from the list, if call is ended
     (when (memq (telega--tl-type state) '(callStateError callStateDiscarded))
-      (when (eq telega-voip--active-call call)
-        (telega-server--send (list :@command "stop") "voip")
-        (setq telega-voip--active-call nil))
-      (setq telega-voip--alist (assq-delete-all call-id telega-voip--alist))
-      (run-hook-with-args 'telega-call-end-hook call))
+      (unwind-protect
+          (run-hook-with-args 'telega-call-end-hook call)
+        (when (eq telega-voip--active-call call)
+          (telega-server--send (list :@command "stop") "voip")
+          (setq telega-voip--active-call nil))
+        (setq telega-voip--alist (assq-delete-all call-id telega-voip--alist))))
 
     ;; Update corresponding chat button
     (let ((chat (telega-chat--get (plist-get call :user_id) 'offline)))
@@ -219,7 +226,7 @@ If called interactively then discard active call."
 (defun telega-voip-active-call-p (call)
   "Return non-nil if CALL currently active.
 Compare calls by `:id'."
-  (= (plist-get call :id) (plist-get telega-voip--active-call :id)))
+  (eq (plist-get call :id) (plist-get telega-voip--active-call :id)))
 
 (defun telega-voip-activate-call (call)
   "Activate the CALL, i.e. make CALL currently active.
@@ -297,19 +304,33 @@ If prefix arg is given then list only missed calls."
 (defun telega-voip-sounds--play-incoming (call)
   "Incomming CALL pending."
   (unless telega-voip--active-call
-    ;; TODO: Loop playing call_incoming.mp3
-    )
-  )
+    (telega-ffplay-run (telega-etc-file "sounds/call_incoming.mp3") nil
+                       "-nodisp" "-loop" "0")
+    ))
 
 (defun telega-voip-sounds--play-outgoing (call)
   "Outgoing CALL initiated."
-  ;; TODO: Loop playing call_outgoing.mp3
-  )
+  (telega-ffplay-run (telega-etc-file "sounds/call_outgoing.mp3") nil
+                     "-nodisp" "-loop" "0"))
+
+(defun telega-voip-sounds--play-connect (call)
+  "Call ready to be used."
+  (telega-ffplay-run (telega-etc-file "sounds/call_connect.mp3") nil
+                     "-nodisp"))
 
 (defun telega-voip-sounds--play-end (call)
-  "Call finished."
-  (when (telega-voip-active-call-p call)
-    ;; TODO: Play call_end.mp3 or call_busy.mp3
+  "CALL finished."
+  (when (or (not telega-voip--active-call)
+            (telega-voip-active-call-p call))
+    (let* ((state (plist-get call :state))
+           (reason (when (eq (telega--tl-type state) 'callStateDiscarded)
+                     (telega--tl-type (plist-get state :reason))))
+           (snd (if (and (plist-get call :is_outgoing)
+                         (memq reason '(callDiscardReasonDeclined
+                                        callDiscardReasonMissed)))
+                    "sounds/call_busy.mp3"
+                  "sounds/call_end.mp3")))
+      (telega-ffplay-run (telega-etc-file snd) nil "-nodisp"))
     ))
 
 (defun telega-voip-sounds-mode (&optional arg)
@@ -321,9 +342,11 @@ If ARG is not given then treat it as 1."
       (progn
         (add-hook 'telega-call-incoming-hook 'telega-voip-sounds--play-incoming)
         (add-hook 'telega-call-outgoing-hook 'telega-voip-sounds--play-outgoing)
+        (add-hook 'telega-call-ready-hook 'telega-voip-sounds--play-connect)
         (add-hook 'telega-call-end-hook 'telega-voip-sounds--play-end))
     (remove-hook 'telega-call-incoming-hook 'telega-voip-sounds--play-incoming)
     (remove-hook 'telega-call-outgoing-hook 'telega-voip-sounds--play-outgoing)
+    (remove-hook 'telega-call-ready-hook 'telega-voip-sounds--play-connect)
     (remove-hook 'telega-call-end-hook 'telega-voip-sounds--play-end)))
 
 (provide 'telega-voip)

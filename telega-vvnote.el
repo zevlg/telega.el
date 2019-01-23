@@ -40,65 +40,55 @@
   :type 'string
   :group 'telega-vvnote)
 
-(defvar telega-vvnote--ffplay-buffer-name "*telega ffplay*")
-(defvar telega-vvnote--progress nil)
-(defvar telega-vvnote--callback nil)
+(defun telega-vvnote--waveform-decode (waveform)
+  "Decode WAVEFORM returning list of heights."
+  (let ((bwv (base64-decode-string waveform))
+        (cc 0) (cv 0) (needbits 5) (leftbits 8) result)
+    (while (not (string-empty-p bwv))
+      (setq cc (logand (aref bwv 0) (lsh 255 (- leftbits 8))))
+      (when (<= leftbits needbits)
+        (setq bwv (substring bwv 1)))
 
-(defun telega-vvnote--ffplay-sentinel (proc event)
-  "Sentinel for the ffplay process."
-  (unless telega-debug
-    (kill-buffer telega-vvnote--ffplay-buffer-name))
-  (when telega-debug
-    (message "ffplay SENTINEL: %S" event))
+      (if (< leftbits needbits)
+          ;; Value not yet ready
+          (setq cv (logior (lsh cv leftbits) cc)
+                needbits (- needbits leftbits)
+                leftbits 8)
 
-  (when telega-vvnote--callback
-    ;; nil progress mean DONE
-    (funcall telega-vvnote--callback nil)))
+        ;; Ready (needbits <= leftbits)
+        (push (logior (lsh cv needbits)
+                      (lsh cc (- needbits leftbits)))
+              result)
+        (setq leftbits (- leftbits needbits)
+              needbits 5
+              cv 0)
+        (when (zerop leftbits)
+          (setq leftbits 8))))
+    (nreverse result)))
 
-(defun telega-vvnote--ffplay-filter (proc output)
-  "Filter for the telega-server process."
-  (let ((buffer (process-buffer proc)))
-    (if (buffer-live-p buffer)
-        (with-current-buffer buffer
-          (goto-char (point-max))
-          (insert output)
-          (when (re-search-backward "\\s-*\\([0-9.]+\\)" nil t)
-            (let ((np (string-to-number (match-string 1))))
-              (when (> (- np telega-vvnote-progress) 0.25)
-                (setq telega-vvnote-progress np)
-                (when telega-vvnote--callback
-                  (funcall telega-vvnote--callback telega-vvnote-progress)))))
-
-          (unless telega-debug
-            (delete-region (point-min) (point-max)))
-          ))))
-
-(defun telega-vvnote--ffplay (filename &optional seek-seconds callback)
-  "Play FILENAME with ffplay, monitoring progress."
-  (let ((buf (get-buffer telega-vvnote--ffplay-buffer-name)))
-    (when (buffer-live-p buf)
-      ;; Kill currently running ffplay
-      (kill-buffer buf)
-
-      (when telega-vvnote--callback
-        ;; nil progress mean DONE
-        (funcall telega-vvnote--callback nil))))
-
-  ;; Start new ffplay
-  (setq telega-vvnote--callback callback
-        telega-vvnote-progress 0.0)
-
-  ;; TODO: "-nodisp" args for audio voice notes
-  (let ((args (list "-hide_banner" "-autoexit" "-nodisp" filename)))
-    (when seek-seconds
-      (setq args (nconc (list "-ss" (number-to-string seek-seconds)) args)))
-
-    (with-current-buffer (get-buffer-create telega-vvnote--ffplay-buffer-name)
-      (let ((proc (apply 'start-process "ffplay" (current-buffer)
-                         (executable-find "ffplay") args)))
-        (set-process-query-on-exit-flag proc nil)
-        (set-process-sentinel proc #'telega-vvnote--ffplay-sentinel)
-        (set-process-filter proc #'telega-vvnote--ffplay-filter)))))
+(defun telega-vvnote-waveform-svg (waveform height duration &optional played)
+  "Create SVG image for the voice note with WAVEFORM and DURATION."
+  ;; TODO: use HEIGHT
+  (let* ((wfd (telega-vvnote--waveform-decode waveform))
+         (wfd-idx 0)
+         (wv-width 3) (space-width 2)
+         (w (* (+ wv-width space-width) (length wfd)))
+         (need-h 36)
+         (h height)
+         (h 36)
+         (svg (svg-create w h)))
+    ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
+;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
+    (cl-dolist (wv wfd)
+      (let ((xoff (+ wv-width (* (+ wv-width space-width) wfd-idx)))
+            (played-p (< (/ (float wfd-idx) (length wfd))
+                         (/ (or played 0) duration))))
+        (svg-line svg xoff h xoff (- h (+ wv 1))
+                  :stroke-color (if played-p "#006400" "#228b22")
+                  :stroke-width (if played-p (1+ wv-width) wv-width)
+                  :stroke-linecap "round")
+        (cl-incf wfd-idx)))
+    (svg-image svg :scale 1 :ascent 'center)))
 
 (provide 'telega-vvnote)
 

@@ -274,56 +274,6 @@ Intented to be added to `telega-load-hook'."
                                :test #'string=)))
     (nreverse result)))
 
-(defun telega-waveform-decode (waveform)
-  "Decode WAVEFORM returning list of heights."
-  (let ((bwv (base64-decode-string waveform))
-        (cc 0) (cv 0) (needbits 5) (leftbits 8) result)
-    (while (not (string-empty-p bwv))
-      (setq cc (logand (aref bwv 0) (lsh 255 (- leftbits 8))))
-      (when (<= leftbits needbits)
-        (setq bwv (substring bwv 1)))
-
-      (if (< leftbits needbits)
-          ;; Value not yet ready
-          (setq cv (logior (lsh cv leftbits) cc)
-                needbits (- needbits leftbits)
-                leftbits 8)
-
-        ;; Ready (needbits <= leftbits)
-        (push (logior (lsh cv needbits)
-                      (lsh cc (- needbits leftbits)))
-              result)
-        (setq leftbits (- leftbits needbits)
-              needbits 5
-              cv 0)
-        (when (zerop leftbits)
-          (setq leftbits 8))))
-    (nreverse result)))
-
-(defun telega-waveform-svg (waveform height duration &optional played)
-  "Create SVG image for the voice note with WAVEFORM and DURATION."
-  ;; TODO: use HEIGHT
-  (let* ((wfd (telega-waveform-decode waveform))
-         (wfd-idx 0)
-         (wv-width 3) (space-width 2)
-         (w (* (+ wv-width space-width) (length wfd)))
-         (need-h 36)
-         (h height)
-         (h 36)
-         (svg (svg-create w h)))
-    ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
-;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
-    (cl-dolist (wv wfd)
-      (let ((xoff (+ wv-width (* (+ wv-width space-width) wfd-idx)))
-            (played-p (< (/ (float wfd-idx) (length wfd))
-                         (/ (or played 0) duration))))
-        (svg-line svg xoff h xoff (- h (+ wv 1))
-                  :stroke-color (if played-p "#006400" "#228b22")
-                  :stroke-width (if played-p (1+ wv-width) wv-width)
-                  :stroke-linecap "round")
-        (cl-incf wfd-idx)))
-    (svg-image svg :scale 1 :ascent 'center)))
-
 
 ;; ewoc stuff
 (defun telega-ewoc--find-node (ewoc predicate)

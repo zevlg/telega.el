@@ -355,7 +355,7 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-voip)
 
-(defcustom telega-voip-use-sounds t
+(defcustom telega-voip-use-sounds nil
   "*Non-nil to play sounds (using ffplay) for call status changes."
   :type 'boolean
   :group 'telega-voip)
@@ -892,6 +892,12 @@ Use `telega-voip-active-call-p' to understand if call is currently active."
 (defcustom telega-call-outgoing-hook nil
   "Hook called when outgoing call is made.
 Called with single argument - outgoing call."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-call-ready-hook nil
+  "Hook called when call is ready.
+Called with single argument - the call."
   :type 'hook
   :group 'telega-hooks)
 
