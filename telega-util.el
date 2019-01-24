@@ -132,11 +132,6 @@ Use it if you have formatting issues."
       (set-char-table-parent table char-width-table)
       (setq char-width-table table))))
 
-(defun telega-load-symbol-widths ()
-  "Add `telega-symbol-widths' to char table.
-Intented to be added to `telega-load-hook'."
-  (telega-symbol-set-widths telega-symbol-widths))
-
 (defun telega-time-seconds ()
   "Return current time as unix timestamp."
   (floor (time-to-seconds)))

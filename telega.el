@@ -48,7 +48,10 @@
   (ignore-errors
     (mkdir telega-directory))
   (ignore-errors
-    (mkdir telega-cache-dir)))
+    (mkdir telega-cache-dir))
+  (ignore-errors
+    (mkdir telega-temp-dir))
+  )
 
 ;;;###autoload
 (defun telega ()
@@ -316,8 +319,9 @@ If called interactively, then print version into echo area."
 
 (provide 'telega)
 
-;; run load-time hooks
-(telega-load-symbol-widths)
+;; At load time load symbols widths and run load hook
+(cl-eval-when (load)
+  (telega-symbol-set-widths telega-symbol-widths))
 (run-hooks 'telega-load-hook)
 
 ;;; telega.el ends here

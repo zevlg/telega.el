@@ -40,6 +40,11 @@
   :type 'string
   :group 'telega)
 
+(defcustom telega-temp-dir (expand-file-name "temp" telega-directory)
+  "*Directory for temporary files used by telega."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-language "en"
   "*IETF language tag of the user's language."
   :type 'string

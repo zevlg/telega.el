@@ -90,6 +90,48 @@
         (cl-incf wfd-idx)))
     (svg-image svg :scale 1 :ascent 'center)))
 
+
+;; Play video note
+(defvar telega-vvnote--timer nil))
+
+(defun telega-vvnote--ffmpeg-sentinel (proc event)
+  "Sentinel for the ffmpeg process."
+  (let ((pcb (plist-get (process-plist proc) :progress-callback)))
+    (when pcb
+      ;; nil progress mean DONE
+      (funcall pcb nil))))
+
+(defun telega-vvnote-play-video (filename callback &rest ffplay-args)
+  "Play video note using ffmpeg.
+Play audio to ALSA output device.
+And video to series of PNG images.
+CALLBACK is called on updates with single argument - progress.
+progress is either float (in seconds) or nil (on ffplay exit).
+CALLBACK with `nil' argument is not called if ffplay was stopped
+prematurely, i.e. with explicit call to `telega-ffplay-stop'.
+FFPLAY-ARGS is additional args to the ffplay."
+  ;; Additional args:
+  ;;   -nodisp       for sounds
+  ;;   -ss <SECONDS> to seek
+  ;; Kill previously running ffplay if any
+  (telega-ffplay-stop)
+
+  ;; Start new ffplay
+  (let ((args (nconc (list "-hide_banner" "-autoexit")
+                     ffplay-args (list (expand-file-name filename))))
+        (ffplay-bin (or (executable-find "ffplay")
+                        (error "ffplay not found in `exec-path'"))))
+    (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
+      (let ((proc (apply 'start-process "ffplay" (current-buffer)
+                         ffplay-bin args)))
+        (set-process-plist proc (list :tmprefix
+                                      :progress-callback callback
+                                      :progress 0.0))
+        (set-process-query-on-exit-flag proc nil)
+        (set-process-sentinel proc #'telega-ffplay--sentinel)
+        (set-process-filter proc #'telega-ffplay--filter)
+        proc))))
+
 (provide 'telega-vvnote)
 
 ;;; telega-vvnote.el ends here

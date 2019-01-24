@@ -1581,38 +1581,59 @@ With prefix arg, apply markdown formatter to message."
           :voice_note (list :@type "inputFileLocal"
                             :path file-name))))
 
+(defun telega-chatbuf--attach-tmp-photo (tmpfile &optional doc-p)
+  "Attach temporary photo file TMPFILE.
+If DOC-P is non-nil, then attach it as document."
+  (let* ((preview (and (> (frame-char-height) 1)
+                       (create-image tmpfile 'imagemagick nil
+                                     :scale 1.0 :ascent 'center
+                                     :height (frame-char-height))))
+         (tlfile (telega--uploadFile
+                  tmpfile (if doc-p 'Document 'Photo) 16)))
+
+    ;; Delete the tmpfile once it has been uploaded to the cloud
+    (telega-file--upload-monitor-progress
+     (plist-get tlfile :id) (lambda (tlfile filepath)
+                              (when (telega-file--uploaded-p tlfile)
+                                (delete-file filepath)))
+     tmpfile)
+
+    (telega-chatbuf-input-insert
+     (list :@type (if doc-p "inputMessageDocument" "inputMessagePhoto")
+           (if doc-p :document :photo)
+           ;; NOTE: 'telega-preview used in `telega-ins--input-file'
+           ;; to insert document/photo preview
+           (list :@type (propertize "inputFileId" 'telega-preview preview)
+                 :id (plist-get tlfile :id))))
+    ))
+
 (defun telega-chatbuf-attach-clipboard (doc-p)
   "Send clipboard image to the chat.
 If DOC-P prefix arg as given, then send it as document."
   (interactive "P")
   (let* ((selection-coding-system 'no-conversion) ;for rawdata
-         (imgdata (gui-get-selection 'CLIPBOARD 'image/png)))
-    (unless imgdata
-      (error "No image in CLIPBOARD"))
-    (let* ((tmpfile (make-temp-file "telega-clipboard" nil ".png"))
-           (tlfile (let ((coding-system-for-write 'binary))
-                     (write-region imgdata nil tmpfile nil 'quiet)
-                     (telega--uploadFile
-                      tmpfile (if doc-p 'Document 'Photo)
-                      16)))
-           (preview (and (> (frame-char-height) 1)
-                         (create-image imgdata 'imagemagick t
-                                       :scale 1.0 :ascent 'center
-                                       :height (frame-char-height)))))
-      ;; Delete the tmpfile once it has been uploaded to the cloud
-      (telega-file--upload-monitor-progress
-       (plist-get tlfile :id) (lambda (tlfile filepath)
-                                (when (telega-file--uploaded-p tlfile)
-                                  (delete-file filepath)))
-       tmpfile)
+         (imgdata (or (gui-get-selection 'CLIPBOARD 'image/png)
+                      (error "No image in CLIPBOARD")))
+         (temporary-file-directory telega-temp-dir)
+         (tmpfile (make-temp-file "telega-clipboard" nil ".png"))
+         (coding-system-for-write 'binary))
+    (write-region imgdata nil tmpfile nil 'quiet)
+    (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
 
-      (telega-chatbuf-input-insert
-       (list :@type (if doc-p "inputMessageDocument" "inputMessagePhoto")
-             (if doc-p :document :photo)
-             ;; NOTE: 'telega-preview used in `telega-ins--input-file'
-             ;; to insert document/photo preview
-             (list :@type (propertize "inputFileId" 'telega-preview preview)
-                   :id (plist-get tlfile :id)))))))
+(defun telega-chatbuf-attach-screenshot (frame-only)
+  "Attach screenshot to the input.
+If prefix arg is given, then take screenshot only of current emacs frame."
+  (interactive "P")
+  (let* ((temporary-file-directory telega-temp-dir)
+         (tmpfile (make-temp-file "telega-screenshot" nil ".png")))
+    (call-process (or (executable-find "import")
+                      (error "Utility `import' (imagemagick) not found"))
+                  nil nil nil
+                  "-window" (if frame-only
+                                (format "0x%x" (frame-parameter nil 'window-id))
+                              "root")
+                  tmpfile)
+    (telega-chatbuf--attach-tmp-photo tmpfile)))
 
 (defun telega-chatbuf-attach (attach-type attach-value)
   "Attach something into message."
