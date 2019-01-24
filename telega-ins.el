@@ -210,6 +210,61 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
     (telega-ins
      (telega-user--name (telega-user--get user-id) (or fmt-type 'short)))))
 
+(defun telega-ins--chat-member-status (status)
+  "Format chat member STATUS."
+  (unless (eq (telega--tl-type status) 'chatMemberStatusMember)
+    (telega-ins (downcase (substring (plist-get status :@type) 16)))))
+
+(defun telega-ins--user-status (user)
+  "Insert USER's online status."
+  ;; TODO: check online's `:expires'
+  (let* ((status (telega--tl-type (plist-get user :status)))
+         (online-dur (- (telega-time-seconds)
+                        (or (plist-get user :telega-last-online) 0))))
+    (telega-ins--with-face (if (eq status 'userStatusOnline)
+                               'telega-user-online-status
+                             'telega-user-non-online-status)
+      (telega-ins
+       (cond ((eq status 'userStatusOnline)
+              ;; I18N: lng_status_online
+              "online")
+             ((< online-dur 60)
+              ;; I18N: lng_status_lastseen_now
+              "last seen just now")
+             ((< online-dur (* 3 24 60 60))
+              (format "last seen in %s"
+                      (telega-duration-human-readable online-dur 1)))
+             ((eq status 'userStatusRecently)
+              ;; I18N: lng_status_recently
+              "last seen recently")
+             (t
+              ;; TODO: other cases
+              (symbol-name status)))))))
+
+(defun telega-ins--chat-member (member)
+  "Formatting for the chat MEMBER.
+Return COLUMN at which user name is inserted."
+  (let* ((user (telega-user--get (plist-get member :user_id)))
+         (joined (plist-get member :joined_chat_date))
+         (avatar-svg (telega-user-avatar-svg user))
+         (column 0))
+    (telega-ins--image avatar-svg 0)
+    (setq column (telega-current-column))
+    (telega-ins (telega-user--name user))
+    (when (telega-ins-prefix " ("
+            (telega-ins--chat-member-status
+             (plist-get member :status)))
+      (telega-ins ")"))
+    (telega-ins "\n")
+    (telega-ins--image avatar-svg 1)
+    (telega-ins--user-status user)
+    column))
+    ;; (list
+    ;;  (telega-user--name user)
+    ;;  (telega-fmt-chat-member-status (plist-get member :status))
+    ;;  (unless (zerop joined)
+    ;;    (concat " joined at " (telega-fmt-timestamp joined))))))
+
 (defun telega-ins--button-aux (button)
   "Inserter for aux BUTTON."
   (let ((aux-title (button-get button :aux-title))

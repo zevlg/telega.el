@@ -121,70 +121,6 @@ TLOBJ could be one of: user, basicgroup or supergroup."
     full-info))
 
 
-(defun telega-user--get (user-id)
-  "Get user by USER-ID."
-  (telega--info 'user user-id))
-
-(defun telega--getMe ()
-  "Return me as telegram user."
-  (telega-server--call `(:@type "getMe")))
-
-(defun telega-user--type (user)
-  "Return USER type."
-  (intern (downcase (substring (plist-get (plist-get user :type) :@type) 8))))
-
-(defun telega-user--bot-p (user)
-  "Return non-nil if USER is bot."
-  (eq (telega-user--type user) 'bot))
-
-(defun telega-user--name (user &optional fmt-type)
-  "Return name for the USER.
-Format name using FMT-TYPE, one of:
-  `name' - Uses only first and last names
-  `short' - Uses username if set, name otherwise
-  `full' - Uses all available namings
-Default is: `full'"
-  (if (eq (telega-user--type user) 'deleted)
-      (format "DeletedUser-%d" (plist-get user :id))
-
-    (let ((fmt-type (or fmt-type 'full))
-          (name ""))
-      (when (memq fmt-type '(full short))
-        (let ((un (plist-get user :username)))
-          (if (string-empty-p un)
-              (when (eq fmt-type 'short)
-                (setq fmt-type 'name))
-            (setq name (concat "@" un)))))
-      (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (let ((ln (plist-get user :last_name)))
-          (unless (string-empty-p ln)
-            (setq name (concat ln (if (string-empty-p name) "" " ") name)))))
-      (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (let ((fn (plist-get user :first_name)))
-          (unless (string-empty-p fn)
-            (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
-      name)))
-
-(defun telega-user--seen (user)
-  "Return last seen status for the USER."
-  (substring (plist-get (plist-get user :status) :@type) 10))
-
-(defun telega--on-updateUserStatus (event)
-  "User status has been changed."
-  (let ((user (telega-user--get (plist-get event :user_id))))
-    (plist-put user :status (plist-get event :status))
-    (run-hook-with-args 'telega-user-update-hook user)))
-
-(defun telega-user--chats-in-common (with-user)
-  "Return CHATS in common WITH-USER."
-  (let* ((gic-cnt (plist-get (telega--full-info with-user) :group_in_common_count))
-         (gic (when (> gic-cnt 0)
-                (telega-server--call
-                 (list :@type "getGroupsInCommon"
-                       :user_id (plist-get with-user :id)
-                       :offset_chat_id 0
-                       :limit gic-cnt)))))
-    (mapcar #'telega-chat-get (plist-get gic :chat_ids))))
 
 (defun telega--getSupergroupMembers (supergroup &optional filter)
   "Get SUPERGRUOP members.
@@ -195,6 +131,10 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          :filter (list :@type (or filter "supergroupMembersFilterRecent"))
          :offset 0
          :limit 200)))
+
+(defun telega-sort-members-by (members by)
+  ;; TODO
+  )
 
 (defun telega-info--insert-user (user &optional chat)
   "Insert USER info into current buffer."
@@ -431,9 +371,24 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
     (insert (format "Members: %d" (plist-get full-info :member_count)) "\n")
     (when (plist-get full-info :can_get_members)
-      (mapc (lambda (member)
-              (insert "  " (telega-fmt-eval 'telega-fmt-chat-member member) "\n"))
-            (plist-get (telega--getSupergroupMembers supergroup) :members)))
+      (let* ((members (plist-get (telega--getSupergroupMembers supergroup)
+                                 :members))
+             (last-member (unless (zerop (length members))
+                            (aref members (1- (length members)))))
+             (delim-col 0))
+      (seq-doseq (member members)
+        (telega-ins--column 1 nil
+          (setq delim-col (+ 1 (telega-ins--chat-member member))))
+
+        ;; Insert the delimiter
+        (unless (eq member last-member)
+          (telega-ins "\n")
+          ;; NOTE: to apply `height' property \n must be included
+          (telega-ins--with-props
+              '(face default display ((space-width 2) (height 0.5)))
+            (telega-ins--column delim-col nil
+              (telega-ins (make-string 30 ?─) "\n")))))
+      (telega-ins "\n")))
 
     (when telega-debug
       (insert "\n---DEBUG---\n")

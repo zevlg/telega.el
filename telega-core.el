@@ -304,7 +304,10 @@ Return list of strings."
           (t estr))))
 
 (defun telega-fmt-eval-fill-prefix (estr attrs)
-  (concat (or (plist-get attrs :fill-prefix) "") estr))
+  ;; NOTE: Do not prefix empty lines
+  (concat (unless (string-empty-p estr)
+            (plist-get attrs :fill-prefix))
+          estr))
 
 (defun telega-fmt-eval-face (estr attrs)
   "Apply `:face' attribute to ESTR."
@@ -392,26 +395,6 @@ NIL yields empty string for the convenience."
                       :fill-prefix ,(make-string (length label) ?\s)
                       :fill-column ,fill-col))
    text))
-
-(defun telega-fmt-chat-member-status (status)
-  "Format chat member STATUS."
-  (cl-case (telega--tl-type status)
-    (chatMemberStatusCreator " (creator)")
-    (chatMemberStatusAdministrator " (admin)")
-    (chatMemberStatusBanned " (banned)")
-    (chatMemberStatusRestricted " (restricted)")
-    (chatMemberStatusLeft " (left)")
-    (t "")))
-
-(defun telega-fmt-chat-member (member)
-  "Formatting for the chat MEMBER."
-  (let ((user (telega-user--get (plist-get member :user_id)))
-        (joined (plist-get member :joined_chat_date)))
-    (list
-     (telega-user--name user)
-     (telega-fmt-chat-member-status (plist-get member :status))
-     (unless (zerop joined)
-       (concat " joined at " (telega-fmt-timestamp joined))))))
 
 ;;; Buttons for telega
 

@@ -137,16 +137,28 @@ Use it if you have formatting issues."
 Intented to be added to `telega-load-hook'."
   (telega-symbol-set-widths telega-symbol-widths))
 
-(defun telega-duration-human-readable (seconds)
-  "Convert SECONDS to human readable string."
-  (let (comps)
+(defun telega-time-seconds ()
+  "Return current time as unix timestamp."
+  (floor (time-to-seconds)))
+
+(defun telega-duration-human-readable (seconds &optional n)
+  "Convert SECONDS to human readable string.
+If N is given, then use only N significant components.
+For example if duration is 4h:20m:3s then with N=2 4H:20m will be returned.
+By default N=3 (all components).
+N can't be 0."
+  (cl-assert (or (null n) (> n 0)))
+  (let ((ncomponents (or n 3))
+        comps)
     (when (>= seconds 3600)
       (setq comps (list (format "%dh" (/ seconds 3600)))
-            seconds (% seconds 3600)))
-    (when (>= seconds 60)
+            seconds (% seconds 3600)
+            ncomponents (1- ncomponents)))
+    (when (and (> ncomponents 0) (>= seconds 60))
       (setq comps (nconc comps (list (format "%dm" (/ seconds 60))))
-            seconds (% seconds 60)))
-    (when (or (null comps) (> seconds 0))
+            seconds (% seconds 60)
+            ncomponents (1- ncomponents)))
+    (when (and (> ncomponents 0) (or (null comps) (> seconds 0)))
       (setq comps (nconc comps (list (format "%ds" seconds)))))
     (mapconcat #'identity comps ":")))
 

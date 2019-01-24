@@ -289,6 +289,16 @@ In form (NAME . FILTER-SPEC)."
   :group 'telega-webpage)
 
 
+(defgroup telega-user nil
+  "Customization for users."
+  :group 'telega)
+
+(defcustom telega-user-use-avatars (image-type-available-p 'svg)
+  "Non-nil to use avatars for the users."
+  :type 'boolean
+  :group 'telega-user)
+
+
 (defgroup telega-chat nil
   "Customization for chat buffer."
   :group 'telega)
@@ -808,6 +818,27 @@ You can customize its `:height' to fit width of the default face."
 (defface telega-webpage-preformatted
   '((t :inherit telega-webpage-fixed :background "gray85"))
   "Face to display preformatted text in webpage instant view."
+  :group 'telega-faces)
+
+(defface telega-user-online-status
+  '((((class color)
+      (background dark))
+     :foreground "green")
+    (((class color)
+      (background light))
+     :foreground "cornflower blue")
+    (t :bold t))
+  "Face to display user status if online."
+  :group 'telega-faces)
+
+(defface telega-user-non-online-status
+  '((t :inherit shadow))
+  "Face to display user status if non-online."
+  :group 'telega-faces)
+
+(defface telega-delim-face
+  '((t :inherit shadow :height 0.5))
+  "Face used to display horizontal delimiters."
   :group 'telega-faces)
 
 

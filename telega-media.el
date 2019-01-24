@@ -394,12 +394,13 @@ To customize automatic downloads, use `telega-auto-download'."
 
 
 ;; Avatars
-(defun telega-avatar--gen-svg (name height color)
+(defun telega-avatar--gen-svg (name height color &optional margin-h-factor)
   "Generate svg with NAME in the circle.
 HEIGHT is height in chars (1 or 2)."
   ;; Now generate the svg
   (let* ((ah (* height (frame-char-height (telega-x-frame))))
-         (ah-chars (telega-chars-in-width ah))
+         (ch (- ah (/ ah (or margin-h-factor 6)))) ; circle height
+         (ah-chars (telega-chars-in-width ch))
          aw)
     ;; Correct the AH in case it sparses wider then 2 chars
     (if (and (= height 1) (> ah-chars 2))
@@ -407,21 +408,21 @@ HEIGHT is height in chars (1 or 2)."
               ah aw)
       (setq aw (telega-chars-width ah-chars)))
 
-    (let* ((ah2 (/ ah 2))
-           (fsz (/ ah 2.5))
+    (let* ((fsz (/ ch 2))
            (svg (svg-create aw ah))
            (col2 (telega-color-gradient color)))
       (svg-gradient svg "cgrad" 'linear
                     (list (cons 0 color) (cons ah col2)))
-      (svg-circle svg ah2 ah2 ah2 :gradient "cgrad")
+      (svg-circle svg (/ aw 2) (/ ah 2) (/ ch 2) :gradient "cgrad")
       (svg-text
        svg name
        :font-size fsz
        :font-weight "bold"
        :fill "white"
-       :font-family "gotham"
-       :x (/ fsz 2)
-       :y (+ fsz (/ fsz 2)))
+       :font-family "monospace"
+       ;; XXX insane X/Y calculation
+       :x (/ (+ (/ (- aw ch) 2) (- ch (* (/ fsz 2) (length name)))) 2)
+       :y (+ (+ fsz (/ fsz 3)) (/ (- ah ch) 2)))
       (svg-image svg :scale 1.0
                  :ascent 'center
                  ;; text of correct width

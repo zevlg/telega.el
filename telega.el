@@ -36,6 +36,7 @@
 (require 'telega-ins)
 (require 'telega-filter)
 (require 'telega-chat)
+(require 'telega-user)
 (require 'telega-info)
 (require 'telega-media)
 (require 'telega-util)
