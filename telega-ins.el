@@ -701,8 +701,7 @@ Return t."
         (pinned-p (plist-get chat :is_pinned))
         (muted-p (telega-chat--muted-p chat))
         (chat-info (telega-chat--info chat))
-        (chat-ava (plist-get chat :telega-avatar-1))
-        (umwidth 7))
+        (chat-ava (plist-get chat :telega-avatar-1)))
     (when (plist-get chat-info :is_verified)
       (setq title (concat title telega-symbol-verified)))
     (when (telega-chat--secret-p chat)
@@ -730,7 +729,7 @@ Return t."
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
                           (telega-ins telega-symbol-unread)))))
-           (title-width (- telega-chat-button-width (length umstring))))
+           (title-width (- telega-chat-button-width (string-width umstring))))
       (telega-ins--with-attrs (list :min title-width
                                     :max title-width
                                     :align 'left

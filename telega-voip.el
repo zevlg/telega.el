@@ -27,6 +27,7 @@
 (require 'cl-lib)
 (require 'telega-core)
 (require 'telega-customize)
+(require 'telega-ffplay)
 
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-status--set "telega-root"

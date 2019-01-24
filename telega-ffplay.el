@@ -30,36 +30,38 @@
 (defvar telega-ffplay-buffer-name
   (concat (unless telega-debug " ") "*ffplay telega*"))
 
-(defvar telega-ffplay-progress 0.0)
-(defvar telega-ffplay--callback nil)
-
 (defun telega-ffplay-stop (&optional from-sentinel)
   "Stop running ffplay process."
   (let ((buf (get-buffer telega-ffplay-buffer-name)))
     (when (buffer-live-p buf)
       (kill-buffer buf)
-
-      (when telega-ffplay--callback
-        ;; nil progress mean DONE
-        (funcall telega-ffplay--callback nil)))))
+      ;; NOTE: Callback will be called in sentinel
+      )))
 
 (defun telega-ffplay--sentinel (proc event)
   "Sentinel for the ffplay process."
-  (telega-ffplay-stop 'sentinel))
+  (let ((pcb (plist-get (process-plist proc) :progress-callback)))
+    (when pcb
+      ;; nil progress mean DONE
+      (funcall pcb nil))))
 
 (defun telega-ffplay--filter (proc output)
   "Filter for the telega-server process."
-  (let ((buffer (process-buffer proc)))
+  (let* ((buffer (process-buffer proc))
+         (proc-plist (process-plist proc))
+         (pcb (plist-get proc-plist :progress-callback))
+         (progress (plist-get proc-plist :progress)))
     (if (buffer-live-p buffer)
         (with-current-buffer buffer
           (goto-char (point-max))
           (insert output)
           (when (re-search-backward "\\s-*\\([0-9.]+\\)" nil t)
             (let ((np (string-to-number (match-string 1))))
-              (when (> (- np telega-ffplay-progress) 0.25)
-                (setq telega-ffplay-progress np)
-                (when telega-ffplay--callback
-                  (funcall telega-ffplay--callback telega-ffplay-progress)))))
+              (when (> (- np progress) 0.25)
+                (set-process-plist
+                 proc (plist-put proc-plist :progress np))
+                (when pcb
+                  (funcall pcb np)))))
 
           (unless telega-debug
             (delete-region (point-min) (point-max)))
@@ -79,9 +81,6 @@ FFPLAY-ARGS is additional args to the ffplay."
   (telega-ffplay-stop)
 
   ;; Start new ffplay
-  (setq telega-ffplay--callback callback
-        telega-ffplay-progress 0.0)
-
   (let ((args (nconc (list "-hide_banner" "-autoexit")
                      ffplay-args (list (expand-file-name filename))))
         (ffplay-bin (or (executable-find "ffplay")
@@ -89,6 +88,8 @@ FFPLAY-ARGS is additional args to the ffplay."
     (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
       (let ((proc (apply 'start-process "ffplay" (current-buffer)
                          ffplay-bin args)))
+        (set-process-plist proc (list :progress-callback callback
+                                      :progress 0.0))
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-ffplay--sentinel)
         (set-process-filter proc #'telega-ffplay--filter)
