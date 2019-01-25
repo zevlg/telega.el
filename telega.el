@@ -320,8 +320,7 @@ If called interactively, then print version into echo area."
 (provide 'telega)
 
 ;; At load time load symbols widths and run load hook
-(cl-eval-when (load)
-  (telega-symbol-set-widths telega-symbol-widths))
+(telega-symbol-set-widths telega-symbol-widths)
 (run-hooks 'telega-load-hook)
 
 ;;; telega.el ends here

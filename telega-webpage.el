@@ -137,6 +137,8 @@ Return nil if URL is not available for instant view."
     (define-key map "g" 'telega-webpage-browse-url)
     (define-key map "w" 'telega-webpage-browse-url)
     (define-key map "c" 'telega-webpage-copy-url)
+    (define-key map "l" 'telega-webpage-history-prev) ;as in Info
+    (define-key map "r" 'telega-webpage-history-next) ;as in Info
     (define-key map "p" 'telega-webpage-history-prev)
     (define-key map "n" 'telega-webpage-history-next)
     (define-key map [?\t] 'telega-button-forward)

@@ -96,10 +96,11 @@ Default is: `full'"
                        :limit gic-cnt)))))
     (mapcar #'telega-chat-get (plist-get gic :chat_ids))))
 
-(defun telega-user-initials (users)
+(defun telega-user-initials (user)
   "Return initials composed from first and last name of the USER."
   (let ((ufn (telega--desurrogate-apply (plist-get user :first_name)))
-        (uln (telega--desurrogate-apply (plist-get user :last_name))))
+        (uln (telega--desurrogate-apply (plist-get user :last_name)))
+        (res ""))
     (unless (string-empty-p ufn)
       (setq res (capitalize (substring ufn 0 1))))
     (unless (string-empty-p uln)

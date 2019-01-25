@@ -355,11 +355,6 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-voip)
 
-(defcustom telega-voip-auto-accept nil
-  "*Non-nil to automatically accept incoming calls."
-  :type 'boolean
-  :group 'telega-voip)
-
 (defcustom telega-voip-busy-if-active t
   "*Reply with busy status to any incoming calls if have active call."
   :type 'boolean
@@ -623,7 +618,8 @@ Good candidates also are 🄌 or ⬤."
 
 (defcustom telega-symbol-attach-line-break "⏎"
   "Symbol used to visualize breaks between attachements.
-Separated attachements are sent as separate messages."
+Separated attachements are sent as separate messages.
+NOT USED."
   :type 'string
   :group 'telega-symbol)
 
@@ -685,6 +681,11 @@ Separated attachements are sent as separate messages."
 (defface telega-chat-prompt
   '((t (:inherit default :weight bold)))
   "Face for chat input prompt"
+  :group 'telega-faces)
+
+(defface telega-chat-input-attachment
+  '((t (:inherit bold)))
+  "Face for chat input attachements."
   :group 'telega-faces)
 
 (defface telega-unread-unmuted-modeline

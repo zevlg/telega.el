@@ -294,12 +294,19 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatReadInbox (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+        (unread-count (plist-get event :unread_count)))
     (cl-assert chat)
     (plist-put chat :last_read_inbox_message_id
                (plist-get event :last_read_inbox_message_id))
-    (plist-put chat :unread_count
-               (plist-get event :unread_count))
+    (plist-put chat :unread_count unread-count)
+
+    ;; NOTE: if all messages are read (in another telegram client) and
+    ;; tracking is enabled, then remove the buffer from tracking
+    (when (and telega-use-tracking (zerop unread-count))
+      (with-telega-chatbuf chat
+        (tracking-remove-buffer (current-buffer))))
+
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatReadOutbox (event)
@@ -855,9 +862,9 @@ Used to reply to messages and edit message.")
   :inserter 'telega-ins
   'face 'telega-chat-prompt
   'rear-nonsticky t
-  'front-sticky t
+  'front-sticky nil
   'read-only t
-  'cursor-intangible t
+;  'cursor-intangible t
   'field 'telega-prompt)
 
 (define-button-type 'telega-prompt-aux
@@ -918,7 +925,7 @@ Keymap:
   (setq telega-chatbuf--input-marker (point-marker))
 
   (add-hook 'window-scroll-functions 'telega-chatbuf-scroll nil t)
-  (add-hook 'post-command-hook 'telega-chat-action-post-command nil t)
+  (add-hook 'post-command-hook 'telega-chatbuf--post-command nil t)
   (add-hook 'isearch-mode-hook 'telega-chatbuf--input-isearch-setup nil t)
   (add-hook 'kill-buffer-hook 'telega-chatbuf--killed nil t)
 
@@ -978,15 +985,39 @@ Also mark messages as read with `viewMessages'."
   "Return non-nil if chatbuf has some input."
   (buffer-substring telega-chatbuf--input-marker (point-max)))
 
-(defun telega-chat-action-post-command ()
-  "Update chat's action after command execution."
+(defun telega-chatbuf--post-command ()
+  "Chabuf `post-command-hook' funcion."
+  ;; - Check that all atachements are valid (starting/ending chars are
+  ;;   ok) and remove invalid attachements
+  (let ((attach (telega--region-by-text-prop
+                 telega-chatbuf--input-marker 'telega-attach)))
+    (while attach
+      (if (and (get-text-property (car attach) 'attach-open-bracket)
+               (get-text-property (1- (cdr attach)) 'attach-close-bracket))
+          ;; Valid
+          (setq attach (telega--region-by-text-prop
+                        (cdr attach) 'telega-attach))
+
+        ;; Invalid attachement, remove it from input
+        (delete-region (car attach) (cdr attach))
+        (setq attach (telega--region-by-text-prop
+                      (car attach) 'telega-attach)))))
+
+  ;; - If point moves inside prompt, move it at the beginning of
+  ;; - input.
+  (when (and (>= (point) telega-chatbuf--aux-button)
+             (< (point) telega-chatbuf--input-marker))
+    (goto-char telega-chatbuf--input-marker))
+
+  ;; - Finally, when input is probably changed by above operations,
+  ;; - update chat's action after command execution.
   (let ((input-p (telega-chatbuf-has-input-p))
         (my-action (telega-chat--my-action telega-chatbuf--chat)))
     (cond ((and (not my-action) input-p)
            (telega--sendChatAction telega-chatbuf--chat "Typing"))
-
           ((and my-action (not input-p))
-           (telega--sendChatAction telega-chatbuf--chat "Cancel")))))
+           (telega--sendChatAction telega-chatbuf--chat "Cancel"))))
+  )
 
 (defmacro with-telega-chatbuf (chat &rest body)
   "Execute BODY setting current buffer to chat buffer of CHAT.
@@ -1491,11 +1522,18 @@ With prefix arg, apply markdown formatter to message."
   "Insert input content defined by IMC into current input."
   (when (get-text-property (point) 'telega-attach)
     (telega-ins " "))
-  (telega-ins--with-props (list 'telega-attach imc 'rear-nonsticky t)
-    (telega-ins (car telega-symbol-attach-brackets))
-    (telega-ins--input-content-one-line imc)
-    (telega-ins (cdr telega-symbol-attach-brackets))
-    (telega-ins " ")))
+  ;; NOTE: Put special properties `attach-open-bracket' and
+  ;; `attach-close-bracket' to be used by
+  ;; `telega-chatbuf--post-command' to determine if part of
+  ;; attachement is deleted by `delete-char' or `backward-delete'
+  (telega-ins--with-props `(telega-attach ,imc face telega-chat-input-attachment)
+    (telega-ins--with-props '(cursor-intangible t)
+      (telega-ins--with-props '(attach-open-bracket t)
+        (telega-ins (car telega-symbol-attach-brackets)))
+      (telega-ins--input-content-one-line imc)
+      (telega-ins (cdr telega-symbol-attach-brackets)))
+    (telega-ins--with-props '(attach-close-bracket t rear-nonsticky t)
+      (telega-ins " "))))
 
 (defun telega-chatbuf-attach-location (location)
   "Attach location to the current input."
@@ -1629,8 +1667,9 @@ If prefix arg is given, then take screenshot only of current emacs frame."
     (call-process (or (executable-find "import")
                       (error "Utility `import' (imagemagick) not found"))
                   nil nil nil
+                  "-silent"             ;no beep
                   "-window" (if frame-only
-                                (format "0x%x" (frame-parameter nil 'window-id))
+                                (frame-parameter nil 'window-id)
                               "root")
                   tmpfile)
     (telega-chatbuf--attach-tmp-photo tmpfile)))

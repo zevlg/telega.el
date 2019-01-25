@@ -83,6 +83,10 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
   "Return pixel width for N characters"
   (* (frame-char-width (telega-x-frame)) n))
 
+(defun telega-chars-in-height (pixels)
+  "Return how many lines needed to cover PIXELS height."
+  (ceiling (/ pixels (float (frame-char-height (telega-x-frame))))))
+
 (defun telega-chars-in-width (pixels)
   "Return how many characters needed to cover PIXELS width."
   (ceiling (/ pixels (float (frame-char-width (telega-x-frame))))))
@@ -114,6 +118,16 @@ Default LIGHTNESS is 0.85."
 Used to create gradients."
   (telega-color-to-hex
    (mapcar (lambda (c) (/ c 2)) (color-name-to-rgb color))))
+
+(defun telega-svg-clip-path (svg id)
+  (let ((cp (dom-node 'clipPath `((id . ,id)))))
+    (svg--def svg cp)
+    cp))
+
+(defun telega-svg-path (svg d &rest args)
+  (svg--append svg (dom-node 'path
+                             `((d . ,d)
+                               ,@(svg--arguments svg args)))))
 
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
@@ -244,6 +258,14 @@ N can't be 0."
               (add-text-properties beg end props text))))
         entities)
   text)
+
+(defun telega--region-by-text-prop (beg prop)
+  "Return region after BEG point with text property PROP set."
+  (unless (get-text-property beg prop)
+    (setq beg (next-single-char-property-change beg prop)))
+  (let ((end (next-single-char-property-change beg prop)))
+    (when (> end beg)
+      (cons beg end))))
 
 (defun telega--split-by-text-prop (string prop)
   "Split STRING by property PROP changes."

@@ -30,7 +30,7 @@
 (defvar telega-ffplay-buffer-name
   (concat (unless telega-debug " ") "*ffplay telega*"))
 
-(defun telega-ffplay-stop (&optional from-sentinel)
+(defun telega-ffplay-stop ()
   "Stop running ffplay process."
   (let ((buf (get-buffer telega-ffplay-buffer-name)))
     (when (buffer-live-p buf)
