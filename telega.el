@@ -319,8 +319,11 @@ If called interactively, then print version into echo area."
 
 (provide 'telega)
 
-;; At load time load symbols widths and run load hook
-(telega-symbol-set-widths telega-symbol-widths)
+;; Load hook might install new symbols into
+;; `telega-symbol-widths'
 (run-hooks 'telega-load-hook)
+
+;; At load time load symbols widths and run load hook
+(telega-symbol-widths-install telega-symbol-widths)
 
 ;;; telega.el ends here

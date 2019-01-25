@@ -131,7 +131,7 @@ Used to create gradients."
 
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
-(defun telega-symbol-set-widths (symbol-widths-alist)
+(defun telega-symbol-widths-install (symbol-widths-alist)
   "Add symbol widths from SYMBOL-WIDTHS-ALIST to `char-width-table'.
 Use it if you have formatting issues."
   (while (char-table-parent char-width-table)
@@ -145,6 +145,11 @@ Use it if you have formatting issues."
       (optimize-char-table table)
       (set-char-table-parent table char-width-table)
       (setq char-width-table table))))
+
+(defun telega-symbol-set-width (symbol width)
+  "Declare that SYMBOL's width is equal to WIDTH."
+  (setf (alist-get width telega-symbol-widths)
+        (cons symbol (alist-get width telega-symbol-widths))))
 
 (defun telega-time-seconds ()
   "Return current time as unix timestamp."
@@ -298,7 +303,7 @@ N can't be 0."
     (dolist (chat (telega-filter-chats 'all))
       (setq result (cl-pushnew (telega-chat-title chat 'with-username) result
                                :test #'string=)))
-    (dolist (user (hash-table-values (cdr (assq 'user telega--info))))
+    (dolist (user (hash-table-values (alist-get 'user telega--info)))
       (setq result (cl-pushnew (telega-user--name user) result
                                :test #'string=)))
     (nreverse result)))

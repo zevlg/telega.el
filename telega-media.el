@@ -371,7 +371,7 @@ Downloads highres photos according to `telega-auto-download'."
          (cl-assert highres-file)
          (when (and (telega-media--need-download-p highres-file)
                     (telega-filter-chats
-                     (cdr (assq 'photos telega-auto-download)) (list chat)))
+                     (alist-get 'photos telega-auto-download) (list chat)))
            (telega-debug "Autodownload HIGH-RES: %S" highres-file)
            (telega-file--download-monitoring highres :photo 5))))
       ;; TODO

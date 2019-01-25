@@ -635,7 +635,9 @@ NOT USED."
          telega-symbol-ballout-empty
          telega-symbol-ballout-check
          ))
-  "*Custom widths for some symbols, used for correct formatting."
+  "*Custom widths for some symbols, used for correct formatting.
+Use `telega-symbol-set-width' to install symbol's width.
+Install all symbol widths inside `telega-load-hook'."
   :type 'list
   :group 'telega-symbol)
 

@@ -40,7 +40,7 @@
 
 (defsubst telega-voip--by-id (call-id)
   "Return call by CALL-ID."
-  (cdr (assq call-id telega-voip--alist)))
+  (alist-get call-id telega-voip--alist))
 
 (defsubst telega-voip--by-user-id (user-id)
   "Return call to user defined by USER-ID."

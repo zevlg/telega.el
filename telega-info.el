@@ -536,7 +536,7 @@ Call CALLBACK on updates."
           (telega-ins-fmt "%s:%d\n"
             (plist-get proxy :server) (plist-get proxy :port))
 
-          (let ((ping (cdr (assq (plist-get proxy :id) telega--proxy-pings))))
+          (let ((ping (alist-get (plist-get proxy :id) telega--proxy-pings)))
             (telega-ins-fmt "%s, "
               (upcase (substring (telega--tl-get proxy :type :@type) 9)))
             (when (eq proxy enabled)
