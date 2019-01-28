@@ -346,6 +346,12 @@ N can't be 0."
     (setf (ewoc--node-data foot) footer)
     (ewoc--refresh-node hf-pp foot dll)))
 
+
+(defun telega-ewoc--set-pp (ewoc pretty-printer)
+  "Set EWOC's pretty printer to PRETTY-PRINTER.
+Does NOT refreshes the contents, use `ewoc-refresh' to refresh."
+  (setf (ewoc--pretty-printer ewoc) pretty-printer))
+
 (defun telega-ewoc--clean (ewoc)
   "Delete all nodes from EWOC.
 Header and Footer are not deleted."

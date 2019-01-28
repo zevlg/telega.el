@@ -311,6 +311,30 @@ Messages
 User1 msg
 User2 msg2
 
+^^^^^Плохо
+
+Или лучше, ввести понятие типа фильтрования и если сейчас отображены чаты то удалять всё из root ewoc, менять его pretty-printer и добалять другие элементы
+
+типа
+----(chats ...)----
+Обычный дисплей чатов
+
+----(global "keyword")----
+@user1
+@user2
+
+или:
+----(messages "keyword")----
+[chat1] msg1
+[chat2] msg2
+..
+----(shared 'type (type photo))----
+Thumbnail1 Thumbnail2
+[Load More]  button to load more
+
+----(calls missed)----
+missed call1
+missed call2
 
 =============
  Chat buffer

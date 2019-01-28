@@ -115,6 +115,7 @@ PROGRESS is current frame progress."
          (svg (svg-create w h))
          (clip (telega-svg-clip-path svg "clip"))
          (clip1 (telega-svg-clip-path svg "clip1"))
+         (angle-o (* 2 pi (/ progress duration)))
          (angle (+ (* 2 pi (- (/ progress duration))) pi))
          (dx (+ (* (/ size 2) (sin angle)) 120))
          (dy (+ (* (/ size 2) (cos angle)) 120)))
@@ -123,15 +124,19 @@ PROGRESS is current frame progress."
                :x xoff :y yoff
                :width (format "%dpx" size) :height (format "%dpx" size)
                :clip-path "url(#clip)")
-;    (telega-svg-svg-circle clip (/ w 2) (/ h 2) (/ size 2))
 
-    (message "DX/DY = %f/%f" dx dy)
-    (svg-circle svg (+ dx xoff) (+ dy yoff) 8 :stroke-color "red")
-    ;; (telega-svg-path svg "M 120 20
-    ;;                       v 130 h -120 v -130 Z")
-
-    (telega-svg-path clip1 "M 120 20
-                            v 130 h -120 v -130 Z")
+    ;; clip mask for the progress circle
+    (let ((cp (format "M %d %d L %d %d L %d 0" (/ w 2) (/ h 2) (/ w 2) 0 w)))
+      (when (> angle-o (/ pi 2))
+        (setq cp (concat cp (format " L %d %d" w h))))
+      (when (> angle-o pi)
+        (setq cp (concat cp (format " L 0 %d" h))))
+      (when (> angle-o (/ (* 3 pi) 2))
+        (setq cp (concat cp (format " L 0 0"))))
+      (setq cp (concat cp (format " L %d %d" (+ dx xoff) (+ dy yoff))))
+      (setq cp (concat cp " Z"))
+      (telega-svg-path clip1 cp))
+    ;; Progress circle itself
     (svg-circle svg (/ w 2) (/ h 2) (- (/ size 2) 4)
                 :fill "none"
                 :stroke-width 8
