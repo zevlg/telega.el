@@ -124,6 +124,7 @@ otherwise add to existing active filters."
   "Apply current filers."
   ;; Make search once more in case 'search' filter is used
   (setq telega--search-chats nil)
+  (setq telega--search-public-chats nil)
 
   (setq telega--filtered-chats (telega-filter-chats))
   (telega-root--redisplay))
@@ -153,14 +154,19 @@ This filter can be undone with `telega-filter-undo'."
   "Filter chats matching filter specification.
 If FILTER-SPEC is nil, then currently active filters are used.
 If CHATS-LIST is nil, then `telega--ordered-chats' is used."
-  (let ((fspec (or filter-spec (telega--filters-prepare))))
-    (cl-remove-if-not
-     (lambda (chat)
-       ;; Filter out chats we are not member of
-       ;; See https://github.com/zevlg/telega.el/issues/10
-       (and (telega-filter--test chat fspec)
-            (telega-filter--test chat 'has-order)))
-     (or chats-list telega--ordered-chats))))
+  (let* ((fspec (or filter-spec (telega--filters-prepare)))
+         (fchats (cl-remove-if-not
+                  (lambda (chat)
+                    ;; Filter out chats we are not member of
+                    ;; See https://github.com/zevlg/telega.el/issues/10
+                    (and (telega-filter--test chat fspec)
+                         (telega-filter--test chat 'has-order)))
+                  (or chats-list telega--ordered-chats))))
+
+    ;; Public searched chats goes out of order in first place
+    ;; NOTE: `telega--search-public-chats' might be set while
+    ;; executing filters (in `search' filter)
+    (append telega--search-public-chats fchats)))
 
 (defun telega-filters-reset ()
   "Reset all active filters to default."
@@ -472,6 +478,10 @@ Specify INCOMING-P to filter by incoming link relationship."
 (define-telega-filter search (chat query)
   "Filter chats by last search.
 Search filter can be added only via `telega-filter-by-search'."
+  (unless telega--search-public-chats
+    (setq telega--search-public-chats
+          (or (telega--searchPublicChats query) '(empty))))
+
   (unless telega--search-chats
     (setq telega--search-chats
           (or (telega--searchChats query) '(empty))))

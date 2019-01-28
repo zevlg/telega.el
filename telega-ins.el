@@ -707,7 +707,9 @@ Return t."
     (when (telega-chat--secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
 
-    (telega-ins (or (car brackets) "["))
+    (if (string= "0" (plist-get chat :order))
+        (telega-ins ")")
+      (telega-ins (or (car brackets) "[")))
 
     ;; 1) First we format unread@mentions as string to find out its
     ;;    final length
@@ -739,7 +741,9 @@ Return t."
         (telega-ins title))
       (telega-ins umstring))
 
-    (telega-ins (or (cdr brackets) "]"))
+    (if (string= "0" (plist-get chat :order))
+        (telega-ins "(")
+      (telega-ins (or (cdr brackets) "]")))
     (when pinned-p
       (telega-ins telega-symbol-pin))
     (when (telega-chat--secret-p chat)

@@ -531,9 +531,11 @@ be marked as read."
   "Search public chats by looking for specified QUERY.
 Return nil if QUERY is less then 5 chars."
   (unless (< (length query) 5)
-    (telega-server--call
-     (list :@type "searchPublicChats"
-           :query query))))
+    (mapcar #'telega-chat-get
+            (plist-get (telega-server--call
+                        (list :@type "searchPublicChats"
+                              :query query))
+                       :chat_ids))))
 
 (defun telega--searchChats (query &optional limit)
   "Search already known chats by QUERY."

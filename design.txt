@@ -320,8 +320,14 @@ User2 msg2
 Обычный дисплей чатов
 
 ----(global "keyword")----
-@user1
-@user2
+)chat1      (  ;; Такие скобки если не member
+)chat2      (
+--------------------------------- (divider)
+обычные чаты
+[normal-chat1]
+[narmal-chat2]
+...
+
 
 или:
 ----(messages "keyword")----

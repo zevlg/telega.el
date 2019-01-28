@@ -57,6 +57,8 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'")
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
+(defvar telega--search-public-chats nil
+  "Result of last `telega--searchPublicChats'.")
 
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
 (defvar telega--unread-message-count nil
@@ -103,6 +105,7 @@ Done when telega server is ready to receive queries."
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--top-chats nil)
   (setq telega--search-chats nil)
+  (setq telega--search-public-chats nil)
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--actions (make-hash-table :test 'eq))
