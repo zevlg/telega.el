@@ -157,8 +157,7 @@ Return `nil' if there is no recent file."
   (let* ((proc-plist (process-plist proc))
          (frame-num (plist-get proc-plist :frame))
          (prefix (plist-get proc-plist :prefix))
-         (framefile (expand-file-name
-                     (format "%s%05d.png" prefix frame-num) telega-temp-dir)))
+         (framefile (format "%s%05d.png" prefix frame-num)))
     (when (file-exists-p framefile)
       (set-process-plist proc (plist-put proc-plist :frame (1+ frame-num)))
       (cons framefile frame-num))))
@@ -245,29 +244,29 @@ File and progress are nil when file has been successfuly played."
   (telega-ffplay-stop)
 
   ;; Start new ffmpeg
-  (let ((args (list "-hide_banner"
-                    "-i" (expand-file-name videofile)
-                    "-vf" "scale=240:240"
-                    "-f" "alsa" "default"
-                    "-vsync" "0"))
-        (ffmpeg-bin (or (executable-find "ffmpeg")
-                        (error "ffmpeg not found in `exec-path'"))))
-    (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
-      (let* ((prefix (symbol-name (gensym "vvnote")))
-             (proc (apply 'start-process "ffplay" (current-buffer)
-                          ffmpeg-bin
-                          (nconc args (list (format "%s/%s%%05d.png"
-                                                    telega-temp-dir prefix)))))
-             (timer (run-with-timer 0 0.02 'telega-vvnote--next-frame proc)))
-        (set-process-plist proc (list :prefix prefix
-                                      :frame 1
-                                      :callback callback
-                                      :callback-args callback-args
-                                      :timer timer))
-        (set-process-query-on-exit-flag proc nil)
-        (set-process-sentinel proc #'telega-vvnote--ffmpeg-sentinel)
-        (set-process-filter proc #'telega-vvnote--ffmpeg-filter)
-        proc))))
+  (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
+    (let* ((prefix (telega-temp-name "vvnote"))
+           (ffmpeg-args (list "-hide_banner"
+                              "-i" (expand-file-name videofile)
+                              "-vf" "scale=240:240"
+                              "-f" "alsa" "default"
+                              "-vsync" "0"
+                              (format "%s%%05d.png" prefix)))
+           (proc (apply 'start-process "ffplay" (current-buffer)
+                        (or (executable-find "ffmpeg")
+                            (error "ffmpeg not found in `exec-path'"))
+                        ffmpeg-args))
+           (timer (run-with-timer 0 0.02 'telega-vvnote--next-frame proc)))
+
+      (set-process-plist proc (list :prefix prefix
+                                    :frame 1
+                                    :callback callback
+                                    :callback-args callback-args
+                                    :timer timer))
+      (set-process-query-on-exit-flag proc nil)
+      (set-process-sentinel proc #'telega-vvnote--ffmpeg-sentinel)
+      (set-process-filter proc #'telega-vvnote--ffmpeg-filter)
+      proc)))
 
 (provide 'telega-vvnote)
 

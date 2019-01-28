@@ -1653,7 +1653,7 @@ If DOC-P prefix arg as given, then send it as document."
          (imgdata (or (gui-get-selection 'CLIPBOARD 'image/png)
                       (error "No image in CLIPBOARD")))
          (temporary-file-directory telega-temp-dir)
-         (tmpfile (make-temp-file "telega-clipboard" nil ".png"))
+         (tmpfile (telega-temp-name "clipboard" ".png"))
          (coding-system-for-write 'binary))
     (write-region imgdata nil tmpfile nil 'quiet)
     (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
@@ -1663,7 +1663,7 @@ If DOC-P prefix arg as given, then send it as document."
 If prefix arg is given, then take screenshot only of current emacs frame."
   (interactive "P")
   (let* ((temporary-file-directory telega-temp-dir)
-         (tmpfile (make-temp-file "telega-screenshot" nil ".png")))
+         (tmpfile (telega-temp-name "screenshot" ".png")))
     (call-process (or (executable-find "import")
                       (error "Utility `import' (imagemagick) not found"))
                   nil nil nil
@@ -1678,14 +1678,14 @@ If prefix arg is given, then take screenshot only of current emacs frame."
   "Attach something into message."
   (interactive
    (list (funcall telega-completing-read-function
-                  "Attach type: " (list "photo"
-                                        "video"
-                                        "note-video"
-                                        "note-voice"
-                                        "file"
-                                        "location"
-                                        "poll"
-                                        "contact")
+                  "Attach type: " (nconc
+                                   (list "photo" "video"
+                                         "note-video" "note-voice"
+                                         "file" "location"
+                                         "poll" "contact"
+                                         "screenshot")
+                                   (when (gui-get-selection 'CLIPBOARD 'image/png)
+                                     (list "clipboard")))
                   nil t)
          nil))
   (let ((cmd (symbol-function

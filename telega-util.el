@@ -119,6 +119,11 @@ Used to create gradients."
   (telega-color-to-hex
    (mapcar (lambda (c) (/ c 2)) (color-name-to-rgb color))))
 
+(defun telega-temp-name (prefix &optional ext)
+  "Generate unique temporary file name with PREFIX and extension EXT.
+Specify EXT with leading `.'."
+  (concat (expand-file-name (make-temp-name prefix) telega-temp-dir) ext))
+
 (defun telega-svg-clip-path (svg id)
   (let ((cp (dom-node 'clipPath `((id . ,id)))))
     (svg--def svg cp)
