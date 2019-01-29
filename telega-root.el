@@ -104,21 +104,19 @@ Keymap:
   ;; Custom filters
   (telega-filters--create)
 
-  ;; NOTE: we are using ewoc with `nosep' so newline is not inserted
-  ;; for non-visible chat buttons
-  (goto-char (point-max))
-  (insert "  ")
-  (insert (propertize "\n" 'invisible t))
-  (setq telega-root-search--ewoc
-        (ewoc-create 'telega-chat-search--pp "" "" t))
-
   ;; Put invisible delimiter, so `telega-root-search--ewoc' can be
   ;; totally empty and its marker won't move by inserts made by
   ;; `telega-root--ewoc'
   (goto-char (point-max))
+  (insert " ")
+  (insert (propertize "\n" 'invisible t))
+  ;; NOTE: we are using ewoc with `nosep' so newline is not inserted
+  ;; for non-visible chat buttons
+  (setq telega-root-search--ewoc
+        (ewoc-create 'telega-chat-search--pp "" "" t))
+
+  (goto-char (point-max))
   (insert "\n")
-;  (insert "  ")
-;  (insert (propertize "\n" 'invisible t))
   (setq telega-root--ewoc
         (ewoc-create 'telega-chat-visible--pp nil nil t))
   (dolist (chat telega--ordered-chats)

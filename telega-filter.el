@@ -127,11 +127,13 @@ otherwise add to existing active filters."
 
 
 ;;; Filtering routines
-(defun telega--filters-apply ()
-  "Apply current filers."
-  ;; Make search once more in case 'search' filter is used
-  (setq telega--search-chats nil)
-  (setq telega--search-public-chats nil)
+(defun telega--filters-apply (&optional async-search-done)
+  "Apply current filers.
+If ASYNC-SEARCH-DONE is non-nil then do not reset search results."
+  (unless async-search-done
+    ;; Make search once more in case 'search' filter is used
+    (setq telega--search-chats nil)
+    (setq telega--search-public-chats nil))
 
   (setq telega--filtered-chats
         (telega-filter-chats nil telega--ordered-chats))
@@ -393,11 +395,9 @@ Also matches chats marked as unread."
 (defun telega-filter-by-created-by-me ()
   "Filter public chats created by me."
   (interactive)
-  (let ((chat-ids (mapcar #'identity
-                          (plist-get (telega-server--call
-                                      `(:@type "getCreatedPublicChats"))
-                                     :chat_ids))))
-    (telega-filter-add `(ids ,@chat-ids))))
+  (telega-filter-add
+   (cons 'ids (mapcar (telega--tl-prop :id)
+                      (telega--getCreatedPublicChats)))))
 
 (define-telega-filter me-is-member (chat)
   "Filter chats where me is valid member."
@@ -485,9 +485,15 @@ Specify INCOMING-P to filter by incoming link relationship."
   "Filter chats by last search.
 Search filter can be added only via `telega-filter-by-search'."
   (unless telega--search-public-chats
-    ;; TODO: make it async
-    (setq telega--search-public-chats
-          (or (telega--searchPublicChats query) '(empty))))
+    ;; Asynchronously search for public chats and display them on
+    ;; success
+    (setq telega--search-public-chats '(empty))
+    (when (telega--searchPublicChats
+           query (lambda (chats)
+                   (telega-status--set nil "")
+                   (setq telega--search-public-chats (or chats '(empty)))
+                   (telega--filters-apply 'async-search-done)))
+      (telega-status--set nil "Searching.")))
 
   (unless telega--search-chats
     (setq telega--search-chats

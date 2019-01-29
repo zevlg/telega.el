@@ -86,15 +86,15 @@ Default is: `full'"
 
 (defun telega-user--chats-in-common (with-user)
   "Return CHATS in common WITH-USER."
-  (let* ((gic-cnt (plist-get (telega--full-info with-user)
-                             :group_in_common_count))
-         (gic (when (> gic-cnt 0)
-                (telega-server--call
-                 (list :@type "getGroupsInCommon"
-                       :user_id (plist-get with-user :id)
-                       :offset_chat_id 0
-                       :limit gic-cnt)))))
-    (mapcar #'telega-chat-get (plist-get gic :chat_ids))))
+  (let ((gic-cnt (plist-get (telega--full-info with-user)
+                            :group_in_common_count)))
+    (unless (zerop gic-cnt)
+      (telega-chats-list-get
+       (telega-server--call
+        (list :@type "getGroupsInCommon"
+              :user_id (plist-get with-user :id)
+              :offset_chat_id 0
+              :limit gic-cnt))))))
 
 (defun telega-user-initials (user)
   "Return initials composed from first and last name of the USER."

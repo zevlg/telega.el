@@ -42,7 +42,7 @@
   (plist-get chat :order))
 
 (defsubst telega--ordered-chats-insert (chat)
-  "Insert CHAT to `telega--ordered-chats' according to CHAT's order"
+  "Insert CHAT into `telega--ordered-chats' according to CHAT's order."
   (let ((place telega--ordered-chats))
     (if (or (null place)
             (string> (telega-chat--order chat)
@@ -120,6 +120,10 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
       (cl-assert chat nil "getChat timed out chat_id=%d" chat-id)
       (telega-chat--ensure chat))
     chat))
+
+(defsubst telega-chats-list-get (tl-obj-Chats)
+  "Return chats list of TL-OBJ-CHATS represeting `Chats' object."
+  (mapcar #'telega-chat-get (plist-get tl-obj-Chats :chat_ids)))
 
 (defun telega-chat-by-username (username)
   "Find chat by its USERNAME."
@@ -416,6 +420,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
      (list :@type "getChatPinnedMessage"
            :chat_id (plist-get chat :id)))))
 
+(defun telega--getCreatedPublicChats ()
+  "Return list of public chats created by the user."
+  (telega-chats-list-get
+   (telega-server--call
+    (list :@type "getCreatedPublicChats"))))
+
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
   (dolist (cbuf telega--chat-buffers)
@@ -444,7 +454,7 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
                         :category cattype
                         :limit 30))))
         (setq top (list category (time-to-seconds (current-time))
-                        (mapcar #'telega-chat-get (plist-get cl :chat_ids))))
+                        (telega-chats-list-get cl)))
         (setf (alist-get category telega--top-chats) top)))
     (caddr top)))
 
@@ -533,24 +543,29 @@ be marked as read."
    (list :@type "searchPublicChat"
          :username username)))
 
-(defun telega--searchPublicChats (query)
+(defun telega--searchPublicChats (query &optional callback)
   "Search public chats by looking for specified QUERY.
-Return nil if QUERY is less then 5 chars."
+Return nil if QUERY is less then 5 chars.
+If CALLBACK is specified, then do async call and run CALLBACK
+with list of chats received."
   (unless (< (length query) 5)
-    (mapcar #'telega-chat-get
-            (plist-get (telega-server--call
-                        (list :@type "searchPublicChats"
-                              :query query))
-                       :chat_ids))))
+    (let ((ret (telega-server--call
+                (list :@type "searchPublicChats"
+                      :query query)
+                (and callback
+                     `(lambda (reply)
+                        (funcall ',callback (telega-chats-list-get reply)))))))
+      (if callback
+          ret
+        (telega-chats-list-get ret)))))
 
 (defun telega--searchChats (query &optional limit)
   "Search already known chats by QUERY."
-  (mapcar #'telega-chat-get
-          (plist-get (telega-server--call
-                      (list :@type "searchChats"
-                            :query query
-                            :limit (or limit 200)))
-                     :chat_ids)))
+  (telega-chats-list-get 
+   (telega-server--call
+    (list :@type "searchChats"
+          :query query
+          :limit (or limit 200)))))
 
 (defun telega--searchChatsOnServer (query &optional limit)
   "Search already known chats on server by QUERY."
