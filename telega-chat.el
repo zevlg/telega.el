@@ -379,6 +379,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
           (telega--getChats))
 
       ;; All chats has been fetched
+
+      ;; TODO: some chats remains with order="0", i.e. known chats, do
+      ;; not proceed with chats that once was used, such as basic
+      ;; groups upgraded to supergroups, closed secret chats, etc.  We
+      ;; might want to remove them from `telega--ordered-chats' list
+      ;; for faster processing, but keep it in chats hash
       (setq telega-filters--inhibit-redisplay nil)
       (telega-filters--redisplay)
       (telega-status--set nil "")       ;reset aux status
@@ -579,14 +585,27 @@ Return nil if QUERY is less then 5 chars."
   "Action to take when chat BUTTON is pressed."
   (telega-chat--pop-to-buffer (button-get button :value)))
 
-(defun telega-chat--pp (chat)
+(defsubst telega-chat--pp (chat)
+  "Pretty printer for CHAT button."
+  (telega-button--insert 'telega-chat chat)
+  (insert "\n"))
+
+(defun telega-chat-visible--pp (chat)
   "Pretty printer for CHAT button."
   ;; Insert only visible chat buttons
   ;; See https://github.com/zevlg/telega.el/issues/3
-  (let ((visible-p (telega-filter-chats nil (list chat))))
+  (let ((visible-p (and (telega-filter-chats nil (list chat))
+                        ;; Exclude globally searched chats from being
+                        ;; visible in `telega-root--ewoc'
+                        (not (memq chat telega--search-public-chats)))))
     (when visible-p
-      (telega-button--insert 'telega-chat chat)
-      (insert "\n"))))
+      (telega-chat--pp chat))))
+
+(defun telega-chat-search--pp (chat)
+  "Display CHAT found in global public chats search."
+  (let ((telega-chat-button-width (+ telega-chat-button-width
+                                     (/ telega-chat-button-width 2))))
+    (telega-chat--pp chat)))
 
 (defun telega-chat--pop-to-buffer (chat)
   "Pop to CHAT's buffer."
@@ -1006,13 +1025,16 @@ Also mark messages as read with `viewMessages'."
                       (car attach) 'telega-attach)))))
 
   ;; - If point moves inside prompt, move it at the beginning of
-  ;; - input.
-  (when (and (>= (point) telega-chatbuf--aux-button)
+  ;;   input.  However inhibit this behaviour in case main prompt is
+  ;;   invisible, prompt is invisible if we are not member of the
+  ;;   group and [JOIN] button is shown
+  (when (and (not (button-get telega-chatbuf--prompt-button 'invisible))
+             (>= (point) telega-chatbuf--aux-button)
              (< (point) telega-chatbuf--input-marker))
     (goto-char telega-chatbuf--input-marker))
 
   ;; - Finally, when input is probably changed by above operations,
-  ;; - update chat's action after command execution.
+  ;;   update chat's action after command execution.
   (let ((input-p (telega-chatbuf-has-input-p))
         (my-action (telega-chat--my-action telega-chatbuf--chat)))
     (cond ((and (not my-action) input-p)
@@ -1060,6 +1082,19 @@ If TITLE is specified, use it instead of chat's title."
           (telega--desurrogate-apply
            (or title (telega-chat-title chat)))))
 
+(defun telega-chatbuf--join (chat)
+  "[JOIN] button has been pressed."
+  (cl-assert (eq chat telega-chatbuf--chat))
+  (telega--joinChat chat)
+
+  ;; reset the prompt
+  (let ((inhibit-read-only t))
+    (button-put telega-chatbuf--prompt-button
+                'invisible nil)
+    (goto-char telega-chatbuf--prompt-button)
+    (delete-region (point-at-bol) telega-chatbuf--prompt-button)
+    (goto-char telega-chatbuf--input-marker)))
+
 (defun telega-chatbuf--get-create (chat)
   "Get or create chat buffer for the CHAT."
   (let ((bufname (telega-chatbuf--name chat)))
@@ -1068,6 +1103,17 @@ If TITLE is specified, use it instead of chat's title."
         (with-current-buffer (generate-new-buffer bufname)
           (telega-chat-mode)
           (setq telega-chatbuf--chat chat)
+
+          ;; If me is not member of this chat, then show [JOIN] button
+          ;; instead of the prompt
+          (unless (telega-filter-chats 'me-is-member (list chat))
+            (let ((inhibit-read-only t))
+              (button-put telega-chatbuf--prompt-button
+                          'invisible t)
+              (goto-char telega-chatbuf--prompt-button)
+              (save-excursion
+                (telega-ins--button "[JOIN]"
+                  :value chat :action 'telega-chatbuf--join))))
 
           (telega--openChat chat)
           ;; Insert last message if any
@@ -1182,9 +1228,9 @@ Return newly inserted message button."
 (defun telega-chatbuf--visible-messages (window)
   "Return list of messages visible in chat buffer WINDOW."
   (let ((footer (ewoc--footer telega-chatbuf--ewoc))
-        (node (ewoc-locate telega-chatbuf--ewoc))
+        (node (ewoc-locate telega-chatbuf--ewoc (window-start window)))
         (messages nil))
-    (while (not (eq node footer))
+    (while (and node (not (eq node footer)))
       (if (not (pos-visible-in-window-p (ewoc-location node) window))
           (setq node footer)            ; done
 

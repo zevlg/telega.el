@@ -44,7 +44,8 @@
 (defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions)")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
-  "Chats filtered by currently active filters.")
+  "Chats filtered by currently active filters.
+Used to calculate numbers displayed in custom filter buttons.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
 
@@ -416,8 +417,6 @@ NIL yields empty string for the convenience."
 ;; DEPRECATED
 (put 'telega-button :format 'telega-button--format-error)
 (put 'telega-button :inserter 'telega-button--ins-error)
-;; Function that returns additional properties for the button
-(put 'telega-button :button-props-func 'ignore)
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
 
@@ -429,13 +428,6 @@ NIL yields empty string for the convenience."
       (setq help-echo (funcall help-echo (button-get button :value))))
     (when help-echo
       (message "%s" (eval help-echo)))))
-
-(defun telega-button--apply-props-func (button)
-  "Apply runtime BUTTON properties."
-  (let ((props (funcall (button-get button :button-props-func)
-                        (button-get button :value))))
-    (cl-loop for (prop val) on props by 'cddr
-             do (button-put button prop val))))
 
 (defun telega-button--insert (button-type value &rest props)
   "Insert telega button of BUTTON-TYPE with VALUE and PROPS."
@@ -449,7 +441,6 @@ NIL yields empty string for the convenience."
                        :type button-type
                        :value value
                        props)))
-    (telega-button--apply-props-func button)
     (button-at button)))
 
 (defun telega-button--update-value (button new-value)

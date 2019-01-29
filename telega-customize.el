@@ -625,6 +625,8 @@ NOT USED."
 
 (defcustom telega-symbol-widths
   (list
+   (list 1
+         telega-symbol-contact)
    (list 2
          telega-symbol-unread
          telega-symbol-verified
@@ -710,8 +712,19 @@ Install all symbol widths inside `telega-load-hook'."
   "Face to display count of the mentions."
   :group 'telega-faces)
 
+(defface telega-username
+  '((((class color)
+      (background dark))
+     :foreground "DodgerBlue")
+    (((class color)
+      (background light))
+     :foreground "RoyalBlue")
+    (t :bold t))
+  "Face to display username for chats/users."
+  :group 'telega-faces)
+
 (defface telega-entity-type-mention
-  '((t :inherit default :foreground "blue"))
+  '((t :inherit telega-username))
   "Face to display @mentions."
   :group 'telega-faces)
 

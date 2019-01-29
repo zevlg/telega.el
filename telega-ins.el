@@ -669,27 +669,35 @@ Special messages are determined with `telega-msg-special-p'."
   "Inserter for the CUSTOM filter button in root buffer."
   (let* ((name (car custom))
          (chats (telega-filter-chats (cdr custom) telega--filtered-chats))
+         (active-p (not (null chats)))
          (nchats (length chats))
          (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
          (mentions (apply #'+ (mapcar
                                (telega--tl-prop :unread_mention_count) chats)))
          (umwidth 7)
          (title-width (- telega-filter-button-width umwidth)))
-    (telega-ins "[")
-    (telega-ins--with-attrs (list :min title-width
-                                  :max title-width
-                                  :elide t
-                                  :align 'left)
-      (telega-ins-fmt "%d:%s" nchats name))
-    (telega-ins--with-attrs (list :min umwidth
-                                  :max umwidth
-                                  :elide t
-                                  :align 'right)
-      (unless (zerop unread)
-        (telega-ins-fmt "%d" unread))
-      (unless (zerop mentions)
-        (telega-ins-fmt "@%d" mentions)))
-    (telega-ins "]")))
+    (telega-ins--with-props (list 'inactive (not active-p)
+                                  'face (if active-p
+                                            'telega-filter-button-active
+                                          'telega-filter-button-inactive)
+                                  'action (if active-p
+                                              'telega-filter-button--action
+                                            'ignore))
+      (telega-ins "[")
+      (telega-ins--with-attrs (list :min title-width
+                                    :max title-width
+                                    :elide t
+                                    :align 'left)
+        (telega-ins-fmt "%d:%s" nchats name))
+      (telega-ins--with-attrs (list :min umwidth
+                                    :max umwidth
+                                    :elide t
+                                    :align 'right)
+        (unless (zerop unread)
+          (telega-ins-fmt "%d" unread))
+        (unless (zerop mentions)
+          (telega-ins-fmt "@%d" mentions)))
+      (telega-ins "]"))))
 
 
 (defun telega-ins--chat (chat &optional brackets)
@@ -707,9 +715,7 @@ Return t."
     (when (telega-chat--secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
 
-    (if (string= "0" (plist-get chat :order))
-        (telega-ins ")")
-      (telega-ins (or (car brackets) "[")))
+    (telega-ins (or (car brackets) "["))
 
     ;; 1) First we format unread@mentions as string to find out its
     ;;    final length
@@ -730,7 +736,28 @@ Return t."
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
-                          (telega-ins telega-symbol-unread)))))
+                          (telega-ins telega-symbol-unread)))
+                      ;; For chats searched by
+                      ;; `telega--searchPublicChats' insert number of
+                      ;; members in the group
+                      (when (string= "0" (plist-get chat :order))
+                        (telega-ins--with-face 'telega-username
+                          (telega-ins "@" (telega-chat-username chat)))
+                        (telega-ins--with-face (if muted-p
+                                                   'telega-muted-count
+                                                 'telega-unmuted-count)
+                          (cl-case (telega-chat--type chat 'no-interpret)
+                            (basicgroup
+                             (telega-ins telega-symbol-contact
+                                         (number-to-string
+                                          (plist-get chat-info :member_count))))
+                            (supergroup
+                             (telega-ins telega-symbol-contact
+                                         (number-to-string
+                                          (plist-get
+                                           (telega--full-info chat-info)
+                                           :member_count)))))))
+                      ))
            (title-width (- telega-chat-button-width (string-width umstring))))
       (telega-ins--with-attrs (list :min title-width
                                     :max title-width
@@ -741,9 +768,7 @@ Return t."
         (telega-ins title))
       (telega-ins umstring))
 
-    (if (string= "0" (plist-get chat :order))
-        (telega-ins "(")
-      (telega-ins (or (cdr brackets) "]")))
+    (telega-ins (or (cdr brackets) "]"))
     (when pinned-p
       (telega-ins telega-symbol-pin))
     (when (telega-chat--secret-p chat)

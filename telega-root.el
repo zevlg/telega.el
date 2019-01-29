@@ -36,6 +36,8 @@
 (declare-function tracking-mode "tracking" (&optional arg))
 
 (defvar telega-root--ewoc nil)
+(defvar telega-root-search--ewoc nil
+  "Ewoc for global chats searched.")
 
 (defvar telega-status--timer nil
   "Timer used to animate status string.")
@@ -75,20 +77,7 @@
     map)
   "The key map for telega root buffer.")
 
-(defun telega-root--header ()
-  "Generate string used as root header."
-  (let ((filters-width (- telega-root-fill-column 8)))
-    (telega-ins--as-string
-     (telega-ins "----")
-     (telega-ins--with-attrs (list :min filters-width
-                                   :align 'center
-                                   :align-symbol "-"
-                                   :max filters-width
-                                   :elide t
-                                   :elide-trail (/ filters-width 2))
-       (telega-ins (prin1-to-string (car telega--filters))))
-     (telega-ins "----")
-     (telega-ins "\n"))))
+
 
 (define-derived-mode telega-root-mode nil "Telega-Root"
   "The mode for telega root buffer.
@@ -115,18 +104,23 @@ Keymap:
   ;; Custom filters
   (telega-filters--create)
 
-  ;; delim
-  (goto-char (point-max))
-  (insert "\n")
-  (unless telega-root-compact-view
-    (insert "\n"))
-
-  ;; Chats list with active filter as header
   ;; NOTE: we are using ewoc with `nosep' so newline is not inserted
   ;; for non-visible chat buttons
+  (goto-char (point-max))
+  (insert "  ")
+  (insert (propertize "\n" 'invisible t))
+  (setq telega-root-search--ewoc
+        (ewoc-create 'telega-chat-search--pp "" "" t))
+
+  ;; Put invisible delimiter, so `telega-root-search--ewoc' can be
+  ;; totally empty and its marker won't move by inserts made by
+  ;; `telega-root--ewoc'
+  (goto-char (point-max))
+  (insert "\n")
+;  (insert "  ")
+;  (insert (propertize "\n" 'invisible t))
   (setq telega-root--ewoc
-        (ewoc-create 'telega-chat--pp
-                     (telega-root--header) nil t))
+        (ewoc-create 'telega-chat-visible--pp nil nil t))
   (dolist (chat telega--ordered-chats)
     (ewoc-enter-last telega-root--ewoc chat))
 
@@ -238,7 +232,24 @@ If RAW is given then do not modify statuses for animation."
   (telega-filters--redisplay)
   (with-telega-root-buffer
     (telega-save-cursor
-      (telega-ewoc--set-header telega-root--ewoc (telega-root--header))
+      (let ((global-search-chats
+             (telega-filter-chats
+              nil (remq 'empty telega--search-public-chats))))
+
+        ;; If there any globally searched public chats matching
+        ;; current filters, fill the `telega-root-search--ewoc' with
+        ;; them and install the footer as separator
+        (telega-ewoc--set-header telega-root-search--ewoc "")
+        (telega-ewoc--set-footer telega-root-search--ewoc "")
+        (telega-ewoc--clean telega-root-search--ewoc)
+        (when global-search-chats
+          (dolist (gschat global-search-chats)
+            (ewoc-enter-last telega-root-search--ewoc gschat))
+          (telega-ewoc--set-header telega-root-search--ewoc
+                                   "\n.---------[GLOBAL SEARCH\n")
+          (telega-ewoc--set-footer telega-root-search--ewoc
+                                   "`---------")))
+
       (ewoc-refresh telega-root--ewoc))))
 
 (defun telega-root--chat-update (chat &optional for-reorder)

@@ -93,7 +93,7 @@
   "Test `telega-filter' functionality."
   (should (not (null telega--ordered-chats)))
   (should (null (telega-filter--test 10 '(not all))))
-  (should (= (length (telega-filter-chats 'all))
+  (should (= (length (telega-filter-chats 'all telega--ordered-chats))
              (length telega--ordered-chats)))
   (should (telega-filter--test 10 '(not any)))
   (should (telega-filter--test (car telega--ordered-chats) '(type channel)))

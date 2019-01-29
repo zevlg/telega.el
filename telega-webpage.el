@@ -81,7 +81,6 @@
 (define-button-type 'telega-instant-view
   :supertype 'telega
   :inserter 'telega-ins--instant-view
-  :button-props-func 'telega-instant-view-button--props
   ;; :value is list of three elements - arguments to
   ;; `telega-webpage--instant-view'
   'action #'telega-instant-view-button--action

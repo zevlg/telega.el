@@ -74,7 +74,8 @@
     (telega--info-update secretchat)
 
     ;; update corresponding secret chat button
-    (let ((chat (cl-find secretchat (telega-filter-chats '(type secret))
+    (let ((chat (cl-find secretchat
+                         (telega-filter-chats '(type secret) telega--ordered-chats)
                          :test 'eq :key #'telega-chat--info)))
       (when chat
         (telega-root--chat-update chat)))))

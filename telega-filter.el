@@ -61,25 +61,10 @@ Used for optimization, when initially fetching chats, to speed things up.")
 (define-button-type 'telega-filter
   :supertype 'telega
   :inserter telega-inserter-for-filter-button
-  :button-props-func 'telega-filter-button--props
   :help-echo (lambda (custom)
                (format "Filter (custom \"%s\") expands to: %s"
                        (car custom) (cdr custom)))
-  'action #'telega-filter-button--action
-  'face 'telega-filter-button-active)
-
-(defun telega-filter-button--props (custom)
-  "Return additional button properties for CUSTOM filter.
-Used to activate/inactivate the button."
-  (let ((active-p (telega-filter-chats
-                   (cdr custom) telega--filtered-chats)))
-    (list 'inactive (not active-p)
-          'face (if active-p
-                    'telega-filter-button-active
-                  'telega-filter-button-inactive)
-          'action (if active-p
-                      'telega-filter-button--action
-                    'ignore))))
+  'action #'telega-filter-button--action)
 
 (defun telega-filter-button--action (button)
   "Action to take when custom filter button is pressed.
@@ -103,11 +88,31 @@ otherwise add to existing active filters."
   (telega-button--insert 'telega-filter custom)
   (insert "  "))
 
+(defun telega-filters--footer ()
+  "Generate string used as root header."
+  (let ((filters-width (- telega-root-fill-column 8)))
+    (telega-ins--as-string
+     (telega-ins "\n")
+     (unless telega-root-compact-view
+       (telega-ins "\n"))
+     (telega-ins "----")
+     (telega-ins--with-attrs (list :min filters-width
+                                   :align 'center
+                                   :align-symbol "-"
+                                   :max filters-width
+                                   :elide t
+                                   :elide-trail (/ filters-width 2))
+       (telega-ins (prin1-to-string (car telega--filters))))
+     (telega-ins "----"))))
+
 (defun telega-filters--create ()
   "Create ewoc for custom filters."
   (setq telega-filters--inhibit-redisplay nil)
+
+  ;; Footer of the `telega-filters--ewoc' is active filter at the
+  ;; moment
   (setq telega-filters--ewoc
-        (ewoc-create #'telega-filter--pp nil nil t))
+        (ewoc-create #'telega-filter--pp nil (telega-filters--footer) t))
   (dolist (custom telega-filters-custom)
     (ewoc-enter-last telega-filters--ewoc custom)))
 
@@ -116,6 +121,8 @@ otherwise add to existing active filters."
   (unless telega-filters--inhibit-redisplay
     (with-telega-root-buffer
       (telega-save-cursor
+        (telega-ewoc--set-footer
+         telega-filters--ewoc (telega-filters--footer))
         (ewoc-refresh telega-filters--ewoc)))))
 
 
@@ -126,7 +133,9 @@ otherwise add to existing active filters."
   (setq telega--search-chats nil)
   (setq telega--search-public-chats nil)
 
-  (setq telega--filtered-chats (telega-filter-chats))
+  (setq telega--filtered-chats
+        (telega-filter-chats nil telega--ordered-chats))
+
   (telega-root--redisplay))
 
 (defun telega--filters-reset (&optional default)
@@ -150,23 +159,17 @@ Set active filter to DEFAULT."
 This filter can be undone with `telega-filter-undo'."
   (telega--filters-push (append (car telega--filters) (list fspec))))
 
-(defun telega-filter-chats (&optional filter-spec chats-list)
-  "Filter chats matching filter specification.
-If FILTER-SPEC is nil, then currently active filters are used.
-If CHATS-LIST is nil, then `telega--ordered-chats' is used."
-  (let* ((fspec (or filter-spec (telega--filters-prepare)))
-         (fchats (cl-remove-if-not
-                  (lambda (chat)
-                    ;; Filter out chats we are not member of
-                    ;; See https://github.com/zevlg/telega.el/issues/10
-                    (and (telega-filter--test chat fspec)
-                         (telega-filter--test chat 'has-order)))
-                  (or chats-list telega--ordered-chats))))
-
-    ;; Public searched chats goes out of order in first place
-    ;; NOTE: `telega--search-public-chats' might be set while
-    ;; executing filters (in `search' filter)
-    (append telega--search-public-chats fchats)))
+(defun telega-filter-chats (filter-spec chats-list)
+  "Filter CHATS-LIST matching filter specification FILTER-SPEC.
+If FILTER-SPEC is nil, then currently active filters are used."
+  (let ((fspec (or filter-spec (telega--filters-prepare))))
+    (cl-remove-if-not
+     (lambda (chat)
+       ;; Filter out chats we are not member of
+       ;; See https://github.com/zevlg/telega.el/issues/10
+       (and (telega-filter--test chat fspec)
+            (telega-filter--test chat 'has-order)))
+     chats-list)))
 
 (defun telega-filters-reset ()
   "Reset all active filters to default."
@@ -408,7 +411,10 @@ Also matches chats marked as unread."
 
 (define-telega-filter has-order (chat)
   "Filter chats which non-0 order."
-  (not (string= "0" (plist-get chat :order))))
+  ;; NOTE: Globally searched chats has "0" order, however include them
+  ;; into the list
+  (or (not (string= "0" (plist-get chat :order)))
+      (memq chat telega--search-public-chats)))
 
 (define-telega-filter opened (chat)
   "Filter chats that are opened, i.e. has corresponding chat buffer."
@@ -479,13 +485,16 @@ Specify INCOMING-P to filter by incoming link relationship."
   "Filter chats by last search.
 Search filter can be added only via `telega-filter-by-search'."
   (unless telega--search-public-chats
+    ;; TODO: make it async
     (setq telega--search-public-chats
           (or (telega--searchPublicChats query) '(empty))))
 
   (unless telega--search-chats
     (setq telega--search-chats
           (or (telega--searchChats query) '(empty))))
-  (memq chat telega--search-chats))
+
+  (or (memq chat telega--search-public-chats)
+      (memq chat telega--search-chats)))
 
 (defun telega-filter-by-search (query)
   "Filter chats by QUERY."

@@ -305,7 +305,7 @@ N can't be 0."
 (defun telega-completing-titles ()
   "Return list of titles ready for completing."
   (let ((result))
-    (dolist (chat (telega-filter-chats 'all))
+    (dolist (chat (telega-filter-chats 'all telega--ordered-chats))
       (setq result (cl-pushnew (telega-chat-title chat 'with-username) result
                                :test #'string=)))
     (dolist (user (hash-table-values (alist-get 'user telega--info)))
