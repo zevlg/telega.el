@@ -74,6 +74,7 @@
     (define-key map (kbd "c b") 'telega-voip-buffer-show)
     (define-key map (kbd "c l") 'telega-voip-list-calls)
 
+    (define-key map (kbd "s") 'telega-search)
     (define-key map (kbd "q") 'telega-kill)
     (define-key map (kbd "m") 'telega-chat-with)
     map)
@@ -231,6 +232,35 @@ If RAW is given then do not modify statuses for animation."
         (telega-button--update-value
          button (cons telega--status telega--status-aux)))))
   ))
+
+(defun telega-search-cancel ()
+  "Cancel currently active search results."
+  (interactive)
+
+  (setq telega--search-query query)
+
+  ;; TODO: Cancel all currently pending async searches for global
+  ;; chats and messages
+
+  (message "QUERY: %s" query))
+
+(defun telega-search (cancel-p)
+  "Search for the QUERY in chats, global public chats and messages.
+If used with PREFIX-ARG, then cancel current search."
+  (interactive "P")
+
+  (if cancel-p
+      (telega-search-cancel)
+
+    ;; TODO: initiate new search
+   (let ((query (read-string "Search for: " nil 'telega--search-history)))
+
+     (setq telega--search-query query)
+
+     ;; TODO: Cancel all currently pending async searches for global
+     ;; chats and messages
+     
+     (message "QUERY: %s" query))))
 
 
 (defun telega-root--redisplay-search ()

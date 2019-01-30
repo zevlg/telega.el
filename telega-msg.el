@@ -66,7 +66,7 @@
     (when visible-p
       (telega-button--insert 'telega-msg msg
         :inserter 'telega-ins--root-msg
-        :action 'telega-msg-goto-TODO)
+        :action 'telega-msg-goto)
       (telega-ins "\n"))))
 
 (defun telega-msg-at-point ()
@@ -78,6 +78,11 @@
 (defsubst telega-msg-chat (msg)
   "Return chat for the MSG."
   (telega-chat-get (plist-get msg :chat_id)))
+
+(defsubst telega-msg-goto (msg &optional highlight)
+  "Goto message MSG."
+  (telega-chat--goto-msg
+   (telega-msg-chat msg) (plist-get msg :id) highlight))
 
 (defun telega-msg--get (chat-id msg-id)
   "Get message by CHAT-ID and MSG-ID pair."

@@ -176,7 +176,8 @@ Raise error if not found"
 (defun telega-server--call (sexp &optional callback)
   "Same as `telega-server--send', but waits for answer from telega-server.
 If CALLBACK is specified, then make async call and call CALLBACK
-when result is received."
+when result is received.
+If CALLBACK is specified return `:@extra' value used for the call."
   (unless (plist-get sexp :@extra)
     (setq sexp (plist-put sexp :@extra (cl-incf telega-server--extra))))
   (telega-server--send sexp)
@@ -186,10 +187,12 @@ when result is received."
 
     ;; synchronous call aka exec
     (let ((cb-extra telega-server--extra))
-      (telega-server--callback-put
-       telega-server--extra
-       `(lambda (event)
-          (puthash ,cb-extra event telega-server--results)))
+      (progn
+        (telega-server--callback-put
+         telega-server--extra
+         `(lambda (event)
+            (puthash ,cb-extra event telega-server--results)))
+        telega-server--extra)
 
       ;; Loop waiting for call completion
       (while (and (telega-server--callback-get cb-extra)

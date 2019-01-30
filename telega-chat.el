@@ -1416,23 +1416,21 @@ CALLBACK is called after history has been loaded."
 
       (when from-msg-id
         ;; Asynchronously load chat history
-        (setq telega-chatbuf--history-loading (cl-incf telega-server--extra))
-
-        (telega-server--call
-         (list :@type "getChatHistory"
-               :chat_id (plist-get chat :id)
-               :from_message_id from-msg-id
-               :offset offset
-               :limit (or limit telega-chat-history-limit)
-               :@extra telega-chatbuf--history-loading)
-
-         `(lambda (history)
-            (with-telega-chatbuf (telega-chat-get ,(plist-get chat :id))
-              (mapc #'telega-chatbuf--enter-oldest-msg
-                    (plist-get history :messages))
-              (setq telega-chatbuf--history-loading nil)
-              (when ,callback
-                (funcall ,callback)))))))))
+        (setq telega-chatbuf--history-loading
+              (telega-server--call
+               (list :@type "getChatHistory"
+                     :chat_id (plist-get chat :id)
+                     :from_message_id from-msg-id
+                     :offset offset
+                     :limit (or limit telega-chat-history-limit))
+               ;; The callback
+               `(lambda (history)
+                  (with-telega-chatbuf (telega-chat-get ,(plist-get chat :id))
+                    (mapc #'telega-chatbuf--enter-oldest-msg
+                          (plist-get history :messages))
+                    (setq telega-chatbuf--history-loading nil)
+                    (when ,callback
+                      (funcall ',callback))))))))))
 
 ;; DEPRECATED
 (defun telega-chat-send-msg (chat text &optional markdown reply-to-msg
