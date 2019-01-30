@@ -38,6 +38,8 @@
 (defvar telega-root--ewoc nil)
 (defvar telega-root-search--ewoc nil
   "Ewoc for global chats searched.")
+(defvar telega-root-messages--ewoc nil
+  "Ewoc for searched messages.")
 
 (defvar telega-status--timer nil
   "Timer used to animate status string.")
@@ -104,27 +106,33 @@ Keymap:
   ;; Custom filters
   (telega-filters--create)
 
-  ;; Put invisible delimiter, so `telega-root-search--ewoc' can be
-  ;; totally empty and its marker won't move by inserts made by
-  ;; `telega-root--ewoc'
-  (goto-char (point-max))
-  (insert " ")
-  (insert (propertize "\n" 'invisible t))
-  ;; NOTE: we are using ewoc with `nosep' so newline is not inserted
-  ;; for non-visible chat buttons
-  (setq telega-root-search--ewoc
-        (ewoc-create 'telega-chat-search--pp "" "" t))
+  (save-excursion
+    ;; NOTE: we are using ewoc with `nosep' so newline is not inserted
+    ;; for non-visible chat buttons
+    (goto-char (point-max))
+    (insert "\n")
+    (setq telega-root--ewoc
+          (ewoc-create 'telega-chat-visible--pp nil nil t))
+    (dolist (chat telega--ordered-chats)
+      (ewoc-enter-last telega-root--ewoc chat))
 
-  (goto-char (point-max))
-  (insert "\n")
-  (setq telega-root--ewoc
-        (ewoc-create 'telega-chat-visible--pp nil nil t))
-  (dolist (chat telega--ordered-chats)
-    (ewoc-enter-last telega-root--ewoc chat))
+    ;; Global search
+    (goto-char (point-max))
+    (insert (propertize "\n" 'invisible t))
+    (setq telega-root-search--ewoc
+          (ewoc-create 'telega-chat-search--pp "" "" t))
+
+    ;; Messages
+    (goto-char (point-max))
+    (insert (propertize "\n" 'invisible t))
+    (setq telega-root-messages--ewoc
+          (ewoc-create 'telega-msg-root--pp "" "" t))
+    )
 
   (setq buffer-read-only t)
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t)
 
+  (cursor-sensor-mode 1)
   (when telega-use-tracking
     (tracking-mode 1)))
 
@@ -225,9 +233,8 @@ If RAW is given then do not modify statuses for animation."
   ))
 
 
-(defun telega-root--redisplay ()
-  "Redisplay root's buffer contents."
-  (telega-filters--redisplay)
+(defun telega-root--redisplay-search ()
+  "Redisplay `telega-root-search--ewoc'."
   (with-telega-root-buffer
     (telega-save-cursor
       (let ((global-search-chats
@@ -237,17 +244,82 @@ If RAW is given then do not modify statuses for animation."
         ;; If there any globally searched public chats matching
         ;; current filters, fill the `telega-root-search--ewoc' with
         ;; them and install the footer as separator
-        (telega-ewoc--set-header telega-root-search--ewoc "")
-        (telega-ewoc--set-footer telega-root-search--ewoc "")
         (telega-ewoc--clean telega-root-search--ewoc)
+        (ewoc-set-hf telega-root-search--ewoc "" "")
+
         (when global-search-chats
           (dolist (gschat global-search-chats)
             (ewoc-enter-last telega-root-search--ewoc gschat))
-          (telega-ewoc--set-header telega-root-search--ewoc
-                                   "\n.---------[GLOBAL SEARCH\n")
-          (telega-ewoc--set-footer telega-root-search--ewoc
-                                   "`---------")))
+          (telega-ewoc--set-header
+           telega-root-search--ewoc
+           (telega-ins--as-string
+            (telega-ins--with-attrs (list :min telega-root-fill-column
+                                          :max telega-root-fill-column
+                                          :align 'left
+                                          :face 'telega-root-heading)
+              ;; I18N: lng_search_global_results
+              (telega-ins " GLOBAL SEARCH"))
+            (telega-ins "\n"))))))))
 
+(defun telega-root--messages-clean ()
+  "Clean `telega-root-messages--ewoc' preparing for the search.
+If LOADING is specified, then currently searching for the messages."
+  (telega-ewoc--clean telega-root-messages--ewoc)
+  (ewoc-set-hf telega-root-messages--ewoc "" ""))
+
+(defun telega-root--messages-load (&optional last-msg)
+  "Load more messages."
+  (let ((hdr (telega-ins--as-string
+              (telega-ins--with-attrs
+                  (list :min telega-root-fill-column
+                        :max telega-root-fill-column
+                        :align 'left
+                        :face 'telega-root-heading)
+                (telega-ins " MESSAGES"))
+              (telega-ins "\n"))))
+    (ewoc-set-hf telega-root-messages--ewoc hdr "Loading..."))
+
+  (telega--searchMessages
+   telega--search-query last-msg
+   'telega-root--messages-add))
+
+(defun telega-root--messages-add (messages)
+  "Add MESSAGES to the `telega-root-messages--ewoc'."
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (telega-ewoc--set-footer telega-root-messages--ewoc "")
+      (dolist (msg messages)
+        (ewoc-enter-last telega-root-messages--ewoc msg))
+
+      ;; If none of the messages is visible (according to active
+      ;; filters) and last-msg is available, then fetch more messages
+      ;; automatically.
+      ;; Otherwise, when at least one message is display, show "Load
+      ;; more" button
+      (let ((last-msg (car (last messages)))
+            (n0 (ewoc-nth telega-root-messages--ewoc 0)))
+        (when last-msg
+          (if (= (ewoc-location n0)
+                 (ewoc-location (ewoc--footer
+                                 telega-root-messages--ewoc)))
+              ;; no nodes visible, fetch next automatically
+              (telega-root--messages-load last-msg)
+
+            (telega-ewoc--set-footer
+             telega-root-messages--ewoc
+             (telega-ins--as-string
+              (telega-ins--button " Load More "
+                :value last-msg
+                :action 'telega-root--messages-load)))))))))
+
+(defun telega-root--redisplay ()
+  "Redisplay root's buffer contents."
+  (telega-filters--redisplay)
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (unless telega--search-query
+        (telega-root--messages-clean))
+      (telega-root--redisplay-search)
       (ewoc-refresh telega-root--ewoc))))
 
 (defun telega-root--chat-update (chat &optional for-reorder)

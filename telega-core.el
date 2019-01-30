@@ -26,6 +26,7 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'subr-x)
+(require 'cursor-sensor)
 
 (require 'telega-customize)
 
@@ -56,6 +57,9 @@ Used to calculate numbers displayed in custom filter buttons.")
   "Alist of (CATEGORY LAST-UPDATE-TIME ..)
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'")
+(defvar telega--search-query nil
+  "Last search query.
+Used to continue searching messages.")
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
 (defvar telega--search-public-chats nil
@@ -105,6 +109,7 @@ Done when telega server is ready to receive queries."
               :message_text_length_max 4096))
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--top-chats nil)
+  (setq telega--search-query nil)
   (setq telega--search-chats nil)
   (setq telega--search-public-chats nil)
   (setq telega--ordered-chats nil)
@@ -164,6 +169,13 @@ Done when telega server is ready to receive queries."
      (with-current-buffer (get-buffer-create "*telega-debug*")
        (telega-save-excursion
          ,@body))))
+
+(defmacro with-telega-help-win (buffer-or-name &rest body)
+  "Execute BODY in help buffer."
+  `(with-help-window ,buffer-or-name
+     (set-buffer standard-output)
+     (cursor-sensor-mode 1)
+     ,@body))
 
 (defsubst telega-debug (fmt &rest args)
   (with-telega-debug-buffer
@@ -419,6 +431,20 @@ NIL yields empty string for the convenience."
 (put 'telega-button :inserter 'telega-button--ins-error)
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
+
+(defun telega-button--sensor-func (window oldpos dir)
+  "Function to be used in `cursor-sensor-functions' text property.
+Activates button if cursor enter, deactivates if leaves."
+  (let ((inhibit-read-only t))
+    (if (eq dir 'entered)
+        (let ((button (button-at (point))))
+          (when button
+            (button-put button 'face 'telega-button-active)))
+
+      (cl-assert (eq dir 'left))
+      (let ((button (button-at oldpos)))
+        (when button
+          (button-put button 'face 'telega-button))))))
 
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)

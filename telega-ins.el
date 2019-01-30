@@ -95,10 +95,14 @@ If COLUMN is nil or less then current column, then current column is used."
        ,@body)))
 
 (defun telega-ins--button (label &rest props)
-  "Insert pressable button labeled with LABEL."
+  "Insert pressable button labeled with LABEL.
+If custom face is specified in PROPS, then
+`telega-button--sensor-func' is not set as sensor function."
   (declare (indent 1))
   (unless (plist-get props 'face)
-    (setq props (plist-put props 'face 'telega-link)))
+    (setq props (plist-put props 'face 'telega-button))
+    (setq props (plist-put props 'cursor-sensor-functions
+                           '(telega-button--sensor-func))))
   (unless (plist-get props 'action)
     (setq props (plist-put props 'action
                            (lambda (button)
@@ -489,6 +493,7 @@ Special messages are determined with `telega-msg-special-p'."
 
     ;; Date/status starts at `telega-chat-fill-column' column
     (let ((slen (- telega-chat-fill-column (telega-current-column))))
+      (when (< slen 0) (setq slen 1))
       (telega-ins (make-string slen ?\s)))
 
     (telega-ins--with-attrs (list :align 'right :min 10)
@@ -700,6 +705,31 @@ Special messages are determined with `telega-msg-special-p'."
       (telega-ins "]"))))
 
 
+(defun telega-ins--chat-msg-one-line (chat msg max-width)
+  "Insert message for the chat button usage."
+  ;; NOTE: date - 10 chars, outgoing-status - 1 char
+  (telega-ins--with-attrs (list :align 'left
+                                :min (- max-width 10 1)
+                                :max (- max-width 10 1)
+                                :elide t)
+    ;; NOTE: Do not show username for:
+    ;;  - Saved Messages
+    ;;  - If sent by user in private/secret chat
+    ;;  - Special messages
+    (unless (or (eq (plist-get msg :sender_user_id)
+                    (plist-get chat :id))
+                (telega-chat--secret-p chat)
+                (telega-msg-special-p msg))
+      (when (telega-ins--username (plist-get msg :sender_user_id))
+        (telega-ins ": ")))
+
+    (telega-ins--content-one-line msg))
+
+  (telega-ins--with-attrs (list :align 'right :min 10)
+    (telega-ins--date (plist-get msg :date)))
+  (telega-ins--outgoing-status msg)
+  )
+
 (defun telega-ins--chat (chat &optional brackets)
   "Inserter for CHAT button in root buffer.
 Return t."
@@ -740,9 +770,12 @@ Return t."
                       ;; For chats searched by
                       ;; `telega--searchPublicChats' insert number of
                       ;; members in the group
+                      ;; Basicgroups converted to supergroups
+                      ;; does not have username and have "0" order
                       (when (string= "0" (plist-get chat :order))
-                        (telega-ins--with-face 'telega-username
-                          (telega-ins "@" (telega-chat-username chat)))
+                        (when (telega-chat-username chat)
+                          (telega-ins--with-face 'telega-username
+                            (telega-ins "@" (telega-chat-username chat))))
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
@@ -826,28 +859,7 @@ Return t."
                 (telega-ins--text (plist-get inmsg :text))))))
 
           (last-msg
-           ;; NOTE: date - 10 chars, outgoing-status - 1 char
-           (telega-ins--with-attrs (list :align 'left
-                                         :min (- max-width 10 1)
-                                         :max (- max-width 10 1)
-                                         :elide t)
-             ;; NOTE: Do not show username for:
-             ;;  - Saved Messages
-             ;;  - If sent by user in private/secret chat
-             ;;  - Special messages
-             (unless (or (eq (plist-get last-msg :sender_user_id)
-                             (plist-get chat :id))
-                         (telega-chat--secret-p chat)
-                         (telega-msg-special-p last-msg))
-               (when (telega-ins--username (plist-get last-msg :sender_user_id))
-                 (telega-ins ": ")))
-
-             (telega-ins--content-one-line last-msg))
-
-           (telega-ins--with-attrs (list :align 'right :min 10)
-             (telega-ins--date (plist-get last-msg :date)))
-           (telega-ins--outgoing-status last-msg)
-           )
+           (telega-ins--chat-msg-one-line chat last-msg max-width))
 
           ((and (telega-chat--secret-p chat)
                 (eq (telega--tl-type (plist-get chat-info :state))
@@ -858,6 +870,15 @@ Return t."
                         'face 'shadow)))
           ))
   t)
+
+(defun telega-ins--root-msg (msg)
+  "Inserter for message MSG shown in `telega-root-messages--ewoc'."
+  (let ((chat (telega-msg-chat msg))
+        (telega-chat-button-width (* 3 (/ telega-chat-button-width 4))))
+    (telega-ins--chat chat)
+    (telega-ins " ")
+    (let ((max-width (- telega-root-fill-column (current-column))))
+      (telega-ins--chat-msg-one-line chat msg max-width))))
 
 (provide 'telega-ins)
 

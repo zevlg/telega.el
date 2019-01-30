@@ -32,6 +32,9 @@
 (defvar telega-filters--inhibit-redisplay nil
   "Non-nil to do nothing on `telega-filters--redisplay'.
 Used for optimization, when initially fetching chats, to speed things up.")
+(defvar telega-filters--inhibit-list nil
+  "List of filters to inhibit.
+Bind it to temporary disable some filters.")
 
 (defvar telega-filter-map
   (let ((map (make-sparse-keymap)))
@@ -132,6 +135,7 @@ otherwise add to existing active filters."
 If ASYNC-SEARCH-DONE is non-nil then do not reset search results."
   (unless async-search-done
     ;; Make search once more in case 'search' filter is used
+    (setq telega--search-query nil)
     (setq telega--search-chats nil)
     (setq telega--search-public-chats nil))
 
@@ -229,12 +233,15 @@ ARGS specifies arguments to operation, first must always be chat."
        ,@body)))
 
 (defun telega-filter--get (fname)
-  (let ((fsym (intern (format "telega--filter-%S" fname))))
-    (unless (fboundp fsym)
-      (error (concat "Filter function `%S' for filter \"%s\" is undefined.\n"
-                     "Use `define-telega-filter' to define new filters.")
-             fsym fname))
-    (symbol-function fsym)))
+  (if (memq fname telega-filters--inhibit-list)
+    (lambda (&rest args) t)
+
+    (let ((fsym (intern (format "telega--filter-%S" fname))))
+      (unless (fboundp fsym)
+        (error (concat "Filter function `%S' for filter \"%s\" is undefined.\n"
+                       "Use `define-telega-filter' to define new filters.")
+               fsym fname))
+      (symbol-function fsym))))
 
 (defun telega-filter--test (chat fspec)
   "Return non-nil if CHAT matches filters specified by FSPEC."
@@ -484,6 +491,11 @@ Specify INCOMING-P to filter by incoming link relationship."
 (define-telega-filter search (chat query)
   "Filter chats by last search.
 Search filter can be added only via `telega-filter-by-search'."
+  (unless telega--search-query
+    ;; Asynchronously search for messages
+    (setq telega--search-query query)
+    (telega-root--messages-load))
+
   (unless telega--search-public-chats
     ;; Asynchronously search for public chats and display them on
     ;; success

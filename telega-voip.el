@@ -283,8 +283,7 @@ If prefix arg is given then list only missed calls."
                      ;; NOTE: `:only_missed t' gives some problems :(
                      :only_missed (if (null only-missed) :false t))))
          (messages (mapcar #'identity (plist-get ret :messages))))
-    (with-help-window "*Telega Recent Calls*"
-      (set-buffer standard-output)
+    (with-telega-help-win "*Telega Recent Calls*"
       (telega-ins (if only-missed "Missed" "All") " Calls\n")
       (telega-ins (make-string (- (point-max) 2) ?-) "\n")
 

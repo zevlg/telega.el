@@ -667,13 +667,12 @@ with list of chats received."
 (defun telega-describe-chat (chat)
   "Show info about chat at point."
   (interactive (list (telega-chat-at-point)))
-  (with-help-window "*Telegram Chat Info*"
-    (set-buffer standard-output)
+  (with-telega-help-win "*Telegram Chat Info*"
     (telega-ins-fmt "%s: %s"
       (capitalize (symbol-name (telega-chat--type chat)))
       (telega-chat-title chat 'with-username))
     (telega-ins " ")
-    (telega-ins--button "[Open]"
+    (telega-ins--button " Open "
       :value chat
       :action 'telega-chat--pop-to-buffer)
     (telega-ins "\n")
@@ -700,8 +699,8 @@ with list of chats received."
                               (cons :false 599634793)
                             (cons t 0))))
         (telega-ins--button (if unmuted-p
-                                telega-symbol-ballout-check
-                              telega-symbol-ballout-empty)
+                                telega-symbol-heavy-checkmark
+                              "  ")
           :value chat
           :action `(lambda (chat)
                      (telega--setChatNotificationSettings chat
@@ -711,9 +710,10 @@ with list of chats received."
                        (telega-describe-chat chat))))
         (when unmuted-p
           (telega-ins ", Preview: ")
-          (telega-ins (if show-preview
-                          telega-symbol-ballout-check
-                        telega-symbol-ballout-empty)))
+          (telega-ins--with-face 'telega-box
+            (telega-ins (if show-preview
+                            telega-symbol-heavy-checkmark
+                          "  "))))
         (telega-ins "\n")))
 
     (insert "\n")
@@ -945,6 +945,7 @@ Keymap:
   (erase-buffer)
   (setq-local window-point-insertion-type t)
   (setq-local next-line-add-newlines nil)
+  (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
 
   (setq telega-chatbuf--ewoc
@@ -1127,7 +1128,7 @@ If TITLE is specified, use it instead of chat's title."
                           'invisible t)
               (goto-char telega-chatbuf--prompt-button)
               (save-excursion
-                (telega-ins--button "[JOIN]"
+                (telega-ins--button " JOIN "
                   :value chat :action 'telega-chatbuf--join))))
 
           (telega--openChat chat)

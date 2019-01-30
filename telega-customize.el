@@ -649,6 +649,38 @@ Install all symbol widths inside `telega-load-hook'."
   "Group to customize faces used by telega."
   :group 'telega)
 
+(defface telega-button
+  '((((class color) (min-colors 88) (background light))
+     :foreground "RoyalBlue3"
+     :box (:line-width -2 :color "RoyalBlue3" :style nil))
+    (((class color) (min-colors 88) (background dark))
+     :foreground "cyan1"
+     :box (:line-width -2 :color "cyan1" :style nil))
+    (t :inherit highlight))
+  "Face used for telega buttons."
+  :group 'telega-faces)
+
+(defface telega-button-active
+  '((((class color) (min-colors 88) (background light))
+     :inherit telega-button
+     :foreground "white" :background "RoyalBlue3")
+    (((class color) (min-colors 88) (background dark))
+     :foreground "white" :background "cyan1"
+     :inherit telega-button)
+    (t :inherit telega-button))
+  "Face used for active (cursor inside) telega buttons."
+  :group 'telega-faces)
+
+(defface telega-box
+  '((((class color) (min-colors 88) (background light))
+     :inherit default
+     :box (:line-width -2 :color "gray30" :style nil))
+    (((class color) (min-colors 88) (background dark))
+     :inherit default
+     :box (:line-width -2 :color "gray70" :style nil)))
+  "Face used to outline boxes."
+  :group 'telega-faces)
+
 (defface telega-blue
   '((t :inherit default :foreground "#2ca5e0"))
   "*Official blue color of telegram."
@@ -680,6 +712,14 @@ Install all symbol widths inside `telega-load-hook'."
 
 (defface telega-filter-button-inactive '((t :inherit shadow))
   "*Face to use for inactive custom filters."
+  :group 'telega-faces)
+
+(defface telega-root-heading
+  '((((background light))
+     :background "light gray" :foreground "dim gray")
+    (((background dark))
+     :background "dim gray" :foreground "light gray"))
+  "Face used to display headings, such as GLOBAL SEARCH, in root buffer."
   :group 'telega-faces)
 
 (defface telega-chat-prompt

@@ -30,7 +30,7 @@ to use `telega.el` for basic chat.
 - [ ] Emoji input via `:<emoji>:` syntax with completions
 - [ ] Username completions for fast mentions
 - [x] Secret chats
-- [ ] Online searching chats/messages
+- [x] Online searching chats/messages
 - [ ] Avatars, photos
 - [ ] Stickers
 - [ ] Animated GIF

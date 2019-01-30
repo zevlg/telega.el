@@ -149,7 +149,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (has-button-line nil))
 
     (unless (eq (telega--tl-type in-link) 'linkStateIsContact)
-      (telega-ins--button "[Share My Contact Info]"
+      (telega-ins--button " Share My Contact Info "
         :value chat :action 'telega-chat-share-my-contact)
       (telega-ins "  ")
       (setq has-button-line t))
@@ -158,15 +158,15 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                 (eq (plist-get user :id) telega--me-id))
       ;; TODO: search for existing secret chat with Ready state and
       ;; create [Open Secret Chat] button instead
-      (telega-ins--button (concat "[" telega-symbol-lock "Start Secret Chat]")
+      (telega-ins--button (concat " " telega-symbol-lock "Start Secret Chat ")
         :value user
         :action (lambda (user)
                   (telega-chat--pop-to-buffer
                    (telega--createNewSecretChat user))))
-      (telega-ins "  ")
+      (telega-ins " ")
       (setq has-button-line t))
     (when (plist-get full-info :can_be_called)
-      (telega-ins--button (concat "[" telega-symbol-phone "Call]")
+      (telega-ins--button (concat " " telega-symbol-phone "Call ")
         :value user
         :action 'telega-voip-call)
       (setq has-button-line t))
@@ -226,15 +226,15 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
   (cl-case (telega--tl-type (plist-get secretchat :state))
     (secretChatStateClosed
      (telega-ins " ")
-     (telega-ins--button "[Delete and Exit]"
+     (telega-ins--button " Delete and Exit "
        :value chat
        :action (lambda (chat)
                  (telega-chat-delete chat)
                  (quit-window))))
 
     ((secretChatStatePending secretChatStateReady)
-     (telega-ins "  ")
-     (telega-ins--button "[Close Secret Chat]"
+     (telega-ins " ")
+     (telega-ins--button " Close Secret Chat "
        :value chat
        :action (lambda (chat)
                  (telega--closeSecretChat (telega-chat--info chat))
@@ -289,7 +289,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
                invite-link (telega-link-props 'url invite-link)))
       (when can-generate-p
         (telega-ins " ")
-        (telega-ins--button (if valid-link-p "[Regenerate]" "[Generate]")
+        (telega-ins--button (if valid-link-p " Regenerate " " Generate ")
           :value chat
           :action (lambda (chat)
                     (telega-chat-generate-invite-link
@@ -415,8 +415,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 (defun telega-describe-active-sessions ()
   "Describe active sessions."
   (interactive)
-  (with-help-window "*Telega Active Sessions*"
-    (set-buffer standard-output)
+  (with-telega-help-win "*Telega Active Sessions*"
     (mapc (lambda (session)
             (let ((app_name (plist-get session :application_name))
                   (app_ver (plist-get session :application_version))
@@ -616,8 +615,7 @@ Call CALLBACK on updates."
 If prefix argument is given, then show statistics only for current launch."
   (interactive "P")
   (if (called-interactively-p 'interactive)
-      (with-help-window "*Telega Network*"
-        (set-buffer standard-output)
+      (with-telega-help-win "*Telega Network*"
         (setq telega-describe-network--only-current only-current)
         (telega-ins--network telega-describe-network--only-current))
 
@@ -653,8 +651,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
 (defun telega-describe-privacy-settings ()
   "Show user privacy settings."
   (interactive)
-  (with-help-window "*Telega Privacy Settings*"
-    (set-buffer standard-output)
+  (with-telega-help-win "*Telega Privacy Settings*"
     ;; I18N: lng_settings_privacy_title
     (insert "Privacy\n")
     (insert "-------\n")
@@ -700,8 +697,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
 
 (defun telega-describe-contact (contact)
   "Show CONTACT information."
-  (with-help-window "*Telega Contact*"
-    (set-buffer standard-output)
+  (with-telega-help-win "*Telega Contact*"
     (let* ((user-id (plist-get contact :user_id))
            (user (telega-user--get user-id))
            (full-info (telega--full-info user)))
@@ -711,14 +707,14 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
       (telega-ins-fmt "Phone: %s\n" (plist-get contact :phone_number))
       (if (eq (telega--tl-type (plist-get user :outgoing_link))
               'linkStateIsContact)
-          (telega-ins--button "[RemoveContact]"
+          (telega-ins--button " RemoveContact "
             :value contact
             :action (lambda (contact)
                       (telega--removeContacts (plist-get contact :user_id))
                       (telega-save-cursor
                         (telega-describe-contact contact))))
 
-        (telega-ins--button "[ImportContact]"
+        (telega-ins--button " ImportContact "
           :value contact
           :action (lambda (contact)
                     (telega--importContacts contact)
@@ -729,14 +725,14 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
       (telega-ins "\n--- Telegram User Info ---\n")
       (telega-ins "Name: " (telega-user--name user 'name))
       (telega-ins " ")
-      (telega-ins--button "[ChatWith]"
+      (telega-ins--button " ChatWith "
         :value user
         :action (lambda (user)
                   (telega-chat--pop-to-buffer
                    (telega--createPrivateChat user))))
       (when (plist-get full-info :can_be_called)
         (telega-ins " ")
-        (telega-ins--button "[Call]"
+        (telega-ins--button (concat " " telega-symbol-phone "Call ")
           :value user
           :action 'telega-voip-call))
       (telega-ins "\n")

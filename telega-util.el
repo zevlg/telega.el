@@ -199,8 +199,7 @@ N can't be 0."
   (let ((link (button-get button :telega-link)))
     (telega-debug "Action on link: %S" link)
     (cl-ecase (car link)
-      (user (with-help-window "*Telegram User Info*"
-              (set-buffer standard-output)
+      (user (with-telega-help-win "*Telegram User Info*"
               (telega-info--insert-user
                (telega-user--get (cdr link)))))
       (hashtag

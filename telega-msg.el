@@ -58,6 +58,17 @@
   (telega-button--insert 'telega-msg msg)
   (telega-ins "\n"))
 
+(defun telega-msg-root--pp (msg)
+  "Pretty printer for MSG button shown in root buffer."
+  (let* ((chat (telega-msg-chat msg))
+         (telega-filters--inhibit-list '(search))
+         (visible-p (telega-filter-chats nil (list chat))))
+    (when visible-p
+      (telega-button--insert 'telega-msg msg
+        :inserter 'telega-ins--root-msg
+        :action 'telega-msg-goto-TODO)
+      (telega-ins "\n"))))
+
 (defun telega-msg-at-point ()
   "Return current message at point."
   (let ((button (button-at (point))))
@@ -78,6 +89,10 @@
        (list :@type "getMessage"
              :chat_id chat-id
              :message_id msg-id))))
+
+(defsubst telega-msg-list-get (tl-obj-Messages)
+  "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
+  (mapcar #'identity (plist-get tl-obj-Messages :messages)))
 
 (defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
   "Get https link to public message."
@@ -102,6 +117,25 @@
 Returns the forwarded messages.
 Return nil if message can't be forwarded."
   (error "`telega--forwardMessages' Not yet implemented"))
+
+(defun telega--searchMessages (query last-msg &optional callback)
+  "Search messages by QUERY.
+Specify LAST-MSG to continue searching from LAST-MSG searched.
+If CALLBACK is specified, then do async call and run CALLBACK
+with list of chats received."
+  (let ((ret (telega-server--call
+              (list :@type "searchMessages"
+                    :query query
+                    :offset_date (or (plist-get last-msg :date) 0)
+                    :offset_chat_id (or (plist-get last-msg :chat_id) 0)
+                    :offset_message_id (or (plist-get last-msg :id) 0)
+                    :limit 100)
+              (and callback
+                   `(lambda (reply)
+                      (funcall ',callback (telega-msg-list-get reply)))))))
+      (if callback
+          ret
+        (telega-msg-list-get ret))))
 
 (defun telega-file--update-msg (file msg)
   "Callback for downloading/uploading the FILE'.
@@ -616,8 +650,7 @@ If MARKDOWN is non-nil then format TEXT as markdown."
 (defun telega-describe-message (msg)
   "Show info about message at point."
   (interactive (list (telega-msg-at-point)))
-  (with-help-window "*Telegram Message Info*"
-    (set-buffer standard-output)
+  (with-telega-help-win "*Telegram Message Info*"
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
       (telega-ins "Date(ISO8601): ")
