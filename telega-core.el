@@ -57,13 +57,24 @@ Used to calculate numbers displayed in custom filter buttons.")
   "Alist of (CATEGORY LAST-UPDATE-TIME ..)
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'")
-(defvar telega--search-query nil
+
+;; Searching
+(defvar telega-search-query nil
   "Last search query done by `telega-search'.
 Used to continue searching messages.")
-(defvar telega--search-history nil
+(defvar telega-search-history nil
   "List of recent search queries.")
+
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
+(defvar telega--search-global-loading nil
+  "Non-nil if globally searching public chats asynchronously.
+Actualy value is `:@extra' of the call.")
+(defvar telega--search-messages-loading nil
+  "Non-nil if searching messages asynchronously.
+Actualy value is `:@extra' of the call.")
+
+;; DEPRECATED
 (defvar telega--search-public-chats nil
   "Result of last `telega--searchPublicChats'.")
 
@@ -111,10 +122,12 @@ Done when telega server is ready to receive queries."
               :message_text_length_max 4096))
   (setq telega--chats (make-hash-table :test 'eq))
   (setq telega--top-chats nil)
-  (setq telega--search-query nil)
-  (setq telega--search-history nil)
+
+  (setq telega-search-query nil)
   (setq telega--search-chats nil)
-  (setq telega--search-public-chats nil)
+  (setq telega--search-global-loading nil)
+  (setq telega--search-messages-loading nil)
+
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--actions (make-hash-table :test 'eq))
@@ -435,18 +448,24 @@ NIL yields empty string for the convenience."
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
 
+(defun telega-button--has-face (button face)
+  "Return non-nil if BUTTON's property `face' containst FACE."
+  (when button
+    (let ((bfaces (button-get button 'face)))
+      (if (listp bfaces) (memq face bfaces) (eq bfaces face)))))
+
 (defun telega-button--sensor-func (window oldpos dir)
   "Function to be used in `cursor-sensor-functions' text property.
 Activates button if cursor enter, deactivates if leaves."
   (let ((inhibit-read-only t))
     (if (eq dir 'entered)
         (let ((button (button-at (point))))
-          (when button
+          (when (and button (telega-button--has-face button 'telega-button))
             (button-put button 'face 'telega-button-active)))
 
       (cl-assert (eq dir 'left))
       (let ((button (button-at oldpos)))
-        (when button
+        (when (and button (telega-button--has-face button 'telega-button-active))
           (button-put button 'face 'telega-button))))))
 
 ;; `:help-echo' is also available for buttons

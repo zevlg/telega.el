@@ -314,7 +314,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
        (telega-ins (plist-get pb :title) " "
                    "@" (plist-get pb :username) " ")
-       (telega-ins--button " Open "
+       (telega-ins--button "Open"
          :value (telega-chat-by-username (plist-get pb :username))
          :action 'telega-chat--pop-to-buffer)))
     )

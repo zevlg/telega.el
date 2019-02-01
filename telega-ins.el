@@ -100,6 +100,15 @@ If custom face is specified in PROPS, then
 `telega-button--sensor-func' is not set as sensor function."
   (declare (indent 1))
   (unless (plist-get props 'face)
+    ;; XXX inclose LABEL with shrink version of spaces, so button
+    ;; width will be char aligned
+    (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
+                                        :line-width)
+                             0)))
+           (space `(space (,(- (frame-char-width) box-width)))))
+      (setq label (concat (propertize " " 'display space)
+                          label
+                          (propertize " " 'display space))))
     (setq props (plist-put props 'face 'telega-button))
     (setq props (plist-put props 'cursor-sensor-functions
                            '(telega-button--sensor-func))))
@@ -673,6 +682,7 @@ Special messages are determined with `telega-msg-special-p'."
 (defun telega-ins--filter (custom)
   "Inserter for the CUSTOM filter button in root buffer."
   (let* ((name (car custom))
+         (telega-filters--inhibit-list '(has-order))
          (chats (telega-filter-chats (cdr custom) telega--filtered-chats))
          (active-p (not (null chats)))
          (nchats (length chats))
@@ -874,7 +884,7 @@ Return t."
 (defun telega-ins--root-msg (msg)
   "Inserter for message MSG shown in `telega-root-messages--ewoc'."
   (let ((chat (telega-msg-chat msg))
-        (telega-chat-button-width (* 3 (/ telega-chat-button-width 4))))
+        (telega-chat-button-width (* 2 (/ telega-chat-button-width 3))))
     (telega-ins--chat chat)
     (telega-ins " ")
     (let ((max-width (- telega-root-fill-column (current-column))))

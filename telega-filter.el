@@ -51,8 +51,7 @@ Bind it to temporary disable some filters.")
     (define-key map (kbd "v") 'telega-filter-by-verified)
     (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "r") 'telega-filter-by-restriction)
-    (define-key map (kbd "s") 'telega-filter-by-search)
-    (define-key map (kbd "S") 'telega-filter-by-user-status)
+    (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "T") 'telega-filter-by-top)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
@@ -78,7 +77,7 @@ otherwise add to existing active filters."
                     (cdr custom)
                   (list 'custom (car custom)))))
     (if current-prefix-arg
-        (telega--filters-push (list fspec))
+        (telega-filters-push (list fspec))
       (telega-filter-add fspec))))
 
 
@@ -130,21 +129,39 @@ otherwise add to existing active filters."
 
 
 ;;; Filtering routines
-(defun telega--filters-apply (&optional async-search-done)
+(defun telega-filters-apply (&optional no-root-redisplay)
   "Apply current filers.
-If ASYNC-SEARCH-DONE is non-nil then do not reset search results."
-  (unless async-search-done
-    ;; Make search once more in case 'search' filter is used
-    (setq telega--search-query nil)
-    (setq telega--search-chats nil)
-    (setq telega--search-public-chats nil))
+If NO-ROOT-REDISPLAY is specified, then redisplay only custom
+filters buttons.
+Used on search results updates."
+  (if telega-search-query
+      (setq telega--filtered-chats
+            (nconc (telega-filter-chats nil telega--search-chats)
+;                   (telega-filter-chats nil (telega-root--messages-chats))
+                   (let ((telega-filters--inhibit-list '(has-order)))
+                     (telega-filter-chats nil (telega-root--global-chats)))))
 
-  (setq telega--filtered-chats
-        (telega-filter-chats nil telega--ordered-chats))
+    (setq telega--filtered-chats
+          (telega-filter-chats nil telega--ordered-chats)))
 
-  (telega-root--redisplay))
+  (if no-root-redisplay
+      (telega-filters--redisplay)
+    (telega-root--redisplay)))
 
-(defun telega--filters-reset (&optional default)
+(defun telega-filters--chat-update (chat)
+  "CHAT has been updated, it might affect custom filters."
+  (if telega-search-query
+      (telega-filters-apply 'no-root-redisplay)
+
+    ;; Fast version of what is done in `telega-filters-apply'
+    (setq telega--filtered-chats
+          (delq chat telega--filtered-chats))
+    (when (telega-filter-chats nil (list chat))
+      (setq telega--filtered-chats
+            (push chat telega--filtered-chats)))
+    (telega-filters--redisplay)))
+
+(defun telega-filters--reset (&optional default)
   "Reset all filters.
 Set active filter to DEFAULT."
   (setq telega--filters (when default
@@ -153,17 +170,20 @@ Set active filter to DEFAULT."
                             (list (list default))))
         telega--undo-filters nil))
 
-(defun telega--filters-push (flist)
+(defun telega-filters-push (flist)
   "Set active filters list to FLIST."
   (unless (equal flist (car telega--filters))
     (setq telega--undo-filters nil)
     (setq telega--filters (push flist telega--filters)))
-  (telega--filters-apply))
+  (telega-filters-apply))
 
 (defun telega-filter-add (fspec)
   "Add filter specified by FSPEC.
-This filter can be undone with `telega-filter-undo'."
-  (telega--filters-push (append (car telega--filters) (list fspec))))
+This filter can be undone with `telega-filter-undo'.
+Do not add FSPEC if it is already in the list."
+  (unless (member fspec (car telega--filters))
+    (telega-filters-push
+     (append (car telega--filters) (list fspec)))))
 
 (defun telega-filter-chats (filter-spec chats-list)
   "Filter CHATS-LIST matching filter specification FILTER-SPEC.
@@ -180,8 +200,8 @@ If FILTER-SPEC is nil, then currently active filters are used."
 (defun telega-filters-reset ()
   "Reset all active filters to default."
   (interactive)
-  (telega--filters-reset)
-  (telega--filters-push (list telega-filter-default)))
+  (telega-filters--reset)
+  (telega-filters-push (list telega-filter-default)))
 
 (defun telega-filter-undo (&optional arg)
   "Undo last ARG filters."
@@ -192,7 +212,7 @@ If FILTER-SPEC is nil, then currently active filters are used."
     (when (cdr telega--filters)
       (push (car telega--filters) telega--undo-filters)
       (setq telega--filters (cdr telega--filters))))
-  (telega--filters-apply)
+  (telega-filters-apply)
   (message "Undo last filter!"))
 
 (defun telega-filter-redo (&optional arg)
@@ -203,7 +223,7 @@ If FILTER-SPEC is nil, then currently active filters are used."
   (dotimes (_ arg)
     (when telega--undo-filters
       (push (pop telega--undo-filters) telega--filters)))
-  (telega--filters-apply)
+  (telega-filters-apply)
   (message "Redo last filter!"))
 
 (defun telega-filters-edit (flist)
@@ -216,12 +236,12 @@ If FILTER-SPEC is nil, then currently active filters are used."
           (new-flist (read-from-minibuffer
                       "Filters: " flist-as-string read-expression-map t)))
      (list new-flist)))
-  (telega--filters-push flist))
+  (telega-filters-push flist))
 
 (defun telega-filters-pop-last (n)
   "Pop last N filters."
   (interactive "p")
-  (telega--filters-push (butlast (car telega--filters) n)))
+  (telega-filters-push (butlast (car telega--filters) n)))
 
 
 ;;; Filters definitions
@@ -266,7 +286,7 @@ If FLIST is empty then return t."
   "Negage filter FSPEC."
   (not (telega-filter--test chat fspec)))
 
-(defun telega--filters-prepare ()
+(defun telega-filters--prepare ()
   "Prepare `telega--filters' for the application."
   (let ((active-filters (car telega--filters)))
     (cond ((null active-filters) 'all)
@@ -280,7 +300,7 @@ If FLIST is empty then return t."
 (defun telega-filters-negate ()
   "Negate active filters."
   (interactive)
-  (telega--filters-push (list `(not ,(telega--filters-prepare)))))
+  (telega-filters-push (list `(not ,(telega-filters--prepare)))))
 
 (define-telega-filter type (chat &rest ctypes)
   "Matches CHAT by its type."
@@ -393,7 +413,7 @@ Also matches chats marked as unread."
 (defun telega-filter-unread-unmuted ()
   "Filter unmuted chats with unread messages."
   (interactive)
-  (telega--filters-push '(notify unread)))
+  (telega-filters-push '(notify unread)))
 
 (define-telega-filter ids (chat &rest ids)
   "Matches only chats which :id is in IDS."
@@ -418,10 +438,7 @@ Also matches chats marked as unread."
 
 (define-telega-filter has-order (chat)
   "Filter chats which non-0 order."
-  ;; NOTE: Globally searched chats has "0" order, however include them
-  ;; into the list
-  (or (not (string= "0" (plist-get chat :order)))
-      (memq chat telega--search-public-chats)))
+  (not (string= "0" (plist-get chat :order))))
 
 (define-telega-filter opened (chat)
   "Filter chats that are opened, i.e. has corresponding chat buffer."
@@ -487,37 +504,6 @@ Specify INCOMING-P to filter by incoming link relationship."
   "Filter top used chats by CATEGORY."
   (interactive)
   (telega-filter-add 'top))
-
-(define-telega-filter search (chat query)
-  "Filter chats by last search.
-Search filter can be added only via `telega-filter-by-search'."
-  (unless telega--search-query
-    ;; Asynchronously search for messages
-    (setq telega--search-query query)
-    (telega-root--messages-load))
-
-  (unless telega--search-public-chats
-    ;; Asynchronously search for public chats and display them on
-    ;; success
-    (setq telega--search-public-chats '(empty))
-    (when (telega--searchPublicChats
-           query (lambda (chats)
-                   (telega-status--set nil "")
-                   (setq telega--search-public-chats (or chats '(empty)))
-                   (telega--filters-apply 'async-search-done)))
-      (telega-status--set nil "Searching.")))
-
-  (unless telega--search-chats
-    (setq telega--search-chats
-          (or (telega--searchChats query) '(empty))))
-
-  (or (memq chat telega--search-public-chats)
-      (memq chat telega--search-chats)))
-
-(defun telega-filter-by-search (query)
-  "Filter chats by QUERY."
-  (interactive "sSearch by query: ")
-  (telega-filter-add (list 'search query)))
 
 (provide 'telega-filter)
 

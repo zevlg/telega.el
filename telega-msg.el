@@ -60,9 +60,7 @@
 
 (defun telega-msg-root--pp (msg)
   "Pretty printer for MSG button shown in root buffer."
-  (let* ((chat (telega-msg-chat msg))
-         (telega-filters--inhibit-list '(search))
-         (visible-p (telega-filter-chats nil (list chat))))
+  (let ((visible-p (telega-filter-chats nil (list (telega-msg-chat msg)))))
     (when visible-p
       (telega-button--insert 'telega-msg msg
         :inserter 'telega-ins--root-msg

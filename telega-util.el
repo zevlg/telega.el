@@ -297,7 +297,7 @@ N can't be 0."
       (setq next (next-single-property-change start 'face object end)
             prev (get-text-property start 'face object))
       (put-text-property start next 'face
-                         (append val (if (listp prev) prev (list prev)))
+                         (append (if (listp prev) prev (list prev)) val)
                          object)
       (setq start next))))
 
@@ -311,6 +311,14 @@ N can't be 0."
       (setq result (cl-pushnew (telega-user--name user) result
                                :test #'string=)))
     (nreverse result)))
+
+(defun telega--animate-dots (text)
+  "Animate TEXT's trailing dots.
+Return `nil' if there is nothing to animate and new string otherwise."
+  (when (string-match "\\.+$" text)
+    (concat (substring text nil (match-beginning 0))
+            (make-string
+             (1+ (% (- (match-end 0) (match-beginning 0)) 3)) ?.))))
 
 
 ;; ewoc stuff
@@ -350,7 +358,6 @@ N can't be 0."
     (setf (ewoc--node-data foot) footer)
     (ewoc--refresh-node hf-pp foot dll)))
 
-
 (defun telega-ewoc--set-pp (ewoc pretty-printer)
   "Set EWOC's pretty printer to PRETTY-PRINTER.
 Does NOT refreshes the contents, use `ewoc-refresh' to refresh."
@@ -360,6 +367,13 @@ Does NOT refreshes the contents, use `ewoc-refresh' to refresh."
   "Delete all nodes from EWOC.
 Header and Footer are not deleted."
   (ewoc-filter ewoc 'ignore))
+
+(defun telega-ewoc--empty-p (ewoc)
+  "Return non-nil if there is no visible EWOC nodes."
+  (let ((n0 (ewoc-nth ewoc 0)))
+    (or (null n0)
+        (= (ewoc-location (ewoc-nth ewoc 0))
+           (ewoc-location (ewoc--footer ewoc))))))
 
 (provide 'telega-util)
 

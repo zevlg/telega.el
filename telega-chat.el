@@ -34,6 +34,7 @@
 (eval-when-compile (require 'cl))       ;defsetf
 
 (declare-function tracking-add-buffer "tracking" (buffer &optional faces))
+(declare-function tracking-remove-buffer "tracking" (buffer))
 
 (declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
@@ -605,22 +606,25 @@ with list of chats received."
   (telega-button--insert 'telega-chat chat)
   (insert "\n"))
 
-(defun telega-chat-visible--pp (chat)
-  "Pretty printer for CHAT button."
+(defun telega-chat-known--pp (chat)
+  "Pretty printer for known CHAT button."
   ;; Insert only visible chat buttons
   ;; See https://github.com/zevlg/telega.el/issues/3
   (let ((visible-p (and (telega-filter-chats nil (list chat))
-                        ;; Exclude globally searched chats from being
-                        ;; visible in `telega-root--ewoc'
-                        (not (memq chat telega--search-public-chats)))))
+                        (if telega-search-query
+                            (memq chat telega--search-chats)
+                          t))))
     (when visible-p
       (telega-chat--pp chat))))
 
-(defun telega-chat-search--pp (chat)
+(defun telega-chat-global--pp (chat)
   "Display CHAT found in global public chats search."
-  (let ((telega-chat-button-width (+ telega-chat-button-width
-                                     (/ telega-chat-button-width 2))))
-    (telega-chat--pp chat)))
+  (let* ((telega-chat-button-width (+ telega-chat-button-width
+                                     (/ telega-chat-button-width 2)))
+         (telega-filters--inhibit-list '(has-order))
+         (visible-p (telega-filter-chats nil (list chat))))
+    (when visible-p
+      (telega-chat--pp chat))))
 
 (defun telega-chat--pop-to-buffer (chat)
   "Pop to CHAT's buffer."
@@ -672,7 +676,7 @@ with list of chats received."
       (capitalize (symbol-name (telega-chat--type chat)))
       (telega-chat-title chat 'with-username))
     (telega-ins " ")
-    (telega-ins--button " Open "
+    (telega-ins--button "Open"
       :value chat
       :action 'telega-chat--pop-to-buffer)
     (telega-ins "\n")
@@ -1128,7 +1132,7 @@ If TITLE is specified, use it instead of chat's title."
                           'invisible t)
               (goto-char telega-chatbuf--prompt-button)
               (save-excursion
-                (telega-ins--button " JOIN "
+                (telega-ins--button "JOIN"
                   :value chat :action 'telega-chatbuf--join))))
 
           (telega--openChat chat)

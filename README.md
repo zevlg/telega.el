@@ -34,7 +34,7 @@ to use `telega.el` for basic chat.
 - [ ] Avatars, photos
 - [ ] Stickers
 - [ ] Animated GIF
-- [ ] Special messages such as location/live location, voice/video
+- [x] Special messages such as location/live location, voice/video
       messages, etc
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx"
 - [ ] ReplyMarkup (inline keyboard buttons) in the messages

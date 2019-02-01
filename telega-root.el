@@ -36,13 +36,15 @@
 (declare-function tracking-mode "tracking" (&optional arg))
 
 (defvar telega-root--ewoc nil)
-(defvar telega-root-search--ewoc nil
+(defvar telega-search--ewoc nil
   "Ewoc for global chats searched.")
-(defvar telega-root-messages--ewoc nil
+(defvar telega-messages--ewoc nil
   "Ewoc for searched messages.")
 
 (defvar telega-status--timer nil
   "Timer used to animate status string.")
+(defvar telega-search--timer nil
+  "Timer used to animate Loading.. status of global/messages search.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
@@ -80,8 +82,6 @@
     map)
   "The key map for telega root buffer.")
 
-
-
 (define-derived-mode telega-root-mode nil "Telega-Root"
   "The mode for telega root buffer.
 Keymap:
@@ -90,7 +90,7 @@ Keymap:
   (setq mode-line-buffer-identification
         (telega-root--modeline-buffer-identification))
 
-  (telega--filters-reset telega-filter-default)
+  (telega-filters--reset telega-filter-default)
 
   (setq buffer-read-only nil)
   (erase-buffer)
@@ -113,20 +113,20 @@ Keymap:
     (goto-char (point-max))
     (insert "\n")
     (setq telega-root--ewoc
-          (ewoc-create 'telega-chat-visible--pp nil nil t))
+          (ewoc-create 'telega-chat-known--pp nil nil t))
     (dolist (chat telega--ordered-chats)
       (ewoc-enter-last telega-root--ewoc chat))
 
     ;; Global search
     (goto-char (point-max))
-    (insert (propertize "\n" 'invisible t))
-    (setq telega-root-search--ewoc
-          (ewoc-create 'telega-chat-search--pp "" "" t))
+    (insert "\n")
+    (setq telega-search--ewoc
+          (ewoc-create 'telega-chat-global--pp "" "" t))
 
     ;; Messages
     (goto-char (point-max))
-    (insert (propertize "\n" 'invisible t))
-    (setq telega-root-messages--ewoc
+    (insert "\n")
+    (setq telega-messages--ewoc
           (ewoc-create 'telega-msg-root--pp "" "" t))
     )
 
@@ -142,6 +142,8 @@ Keymap:
 Terminate telega-server and kill all chat buffers."
   (when telega-status--timer
     (cancel-timer telega-status--timer))
+  (when telega-search--timer
+    (cancel-timer telega-search--timer))
   (telega-chats--kill-em-all)
   (telega-server-kill))
 
@@ -177,22 +179,14 @@ STATUS is cons with connection status as car and aux status as cdr."
         (insert "  "))
       (telega-ins aux-status))))
 
-(defmacro telega-status--animate-dots (status)
-  "Animate status dots at the end of the STATUS string.
-Return `nil' if there is nothing to animate and new string otherwise."
-  `(when (string-match "\\.+$" ,status)
-     (concat (substring ,status nil (match-beginning 0))
-             (make-string
-              (1+ (% (- (match-end 0) (match-beginning 0)) 3)) ?.))))
-
 (defun telega-status--animate ()
   "Animate dots at the end of the current connection or/and aux status."
-  (let ((conn-status (telega-status--animate-dots telega--status))
-        (aux-status (telega-status--animate-dots telega--status-aux)))
+  (let ((conn-status (telega--animate-dots telega--status))
+        (aux-status (telega--animate-dots telega--status-aux)))
     (when (or conn-status aux-status)
       (telega-status--set conn-status aux-status 'raw))))
 
-(defun telega-status--start-timer ()
+(defun telega-status--timer-start ()
   "Start telega status animation timer."
   (when telega-status--timer
     (cancel-timer telega-status--timer))
@@ -218,9 +212,9 @@ If RAW is given then do not modify statuses for animation."
 
       (cond ((string-match "ing" telega--status)
              (setq telega--status (concat telega--status "."))
-             (telega-status--start-timer))
+             (telega-status--timer-start))
             ((string-match "\\.+$" telega--status-aux)
-             (telega-status--start-timer))
+             (telega-status--timer-start))
             (telega-status--timer
              (cancel-timer telega-status--timer))))
 
@@ -233,151 +227,87 @@ If RAW is given then do not modify statuses for animation."
          button (cons telega--status telega--status-aux)))))
   ))
 
-(defun telega-search-cancel ()
-  "Cancel currently active search results."
-  (interactive)
-
-  (setq telega--search-query query)
-
-  ;; TODO: Cancel all currently pending async searches for global
-  ;; chats and messages
-
-  (message "QUERY: %s" query))
-
-(defun telega-search (cancel-p)
-  "Search for the QUERY in chats, global public chats and messages.
-If used with PREFIX-ARG, then cancel current search."
-  (interactive "P")
-
-  (if cancel-p
-      (telega-search-cancel)
-
-    ;; TODO: initiate new search
-   (let ((query (read-string "Search for: " nil 'telega--search-history)))
-
-     (setq telega--search-query query)
-
-     ;; TODO: Cancel all currently pending async searches for global
-     ;; chats and messages
-     
-     (message "QUERY: %s" query))))
-
-
-(defun telega-root--redisplay-search ()
-  "Redisplay `telega-root-search--ewoc'."
-  (with-telega-root-buffer
-    (telega-save-cursor
-      (let ((global-search-chats
-             (telega-filter-chats
-              nil (remq 'empty telega--search-public-chats))))
-
-        ;; If there any globally searched public chats matching
-        ;; current filters, fill the `telega-root-search--ewoc' with
-        ;; them and install the footer as separator
-        (telega-ewoc--clean telega-root-search--ewoc)
-        (ewoc-set-hf telega-root-search--ewoc "" "")
-
-        (when global-search-chats
-          (dolist (gschat global-search-chats)
-            (ewoc-enter-last telega-root-search--ewoc gschat))
-          (telega-ewoc--set-header
-           telega-root-search--ewoc
-           (telega-ins--as-string
-            (telega-ins--with-attrs (list :min telega-root-fill-column
-                                          :max telega-root-fill-column
-                                          :align 'left
-                                          :face 'telega-root-heading)
-              ;; I18N: lng_search_global_results
-              (telega-ins " GLOBAL SEARCH"))
-            (telega-ins "\n"))))))))
-
-(defun telega-root--messages-clean ()
-  "Clean `telega-root-messages--ewoc' preparing for the search.
-If LOADING is specified, then currently searching for the messages."
-  (telega-ewoc--clean telega-root-messages--ewoc)
-  (ewoc-set-hf telega-root-messages--ewoc "" ""))
-
-(defun telega-root--messages-load (&optional last-msg)
-  "Load more messages."
-  (let ((hdr (telega-ins--as-string
-              (telega-ins--with-attrs
-                  (list :min telega-root-fill-column
-                        :max telega-root-fill-column
-                        :align 'left
-                        :face 'telega-root-heading)
-                (telega-ins " MESSAGES"))
-              (telega-ins "\n"))))
-    (ewoc-set-hf telega-root-messages--ewoc hdr "Loading..."))
-
-  (telega--searchMessages
-   telega--search-query last-msg
-   'telega-root--messages-add))
-
-(defun telega-root--messages-add (messages)
-  "Add MESSAGES to the `telega-root-messages--ewoc'."
-  (with-telega-root-buffer
-    (telega-save-cursor
-      (telega-ewoc--set-footer telega-root-messages--ewoc "")
-      (dolist (msg messages)
-        (ewoc-enter-last telega-root-messages--ewoc msg))
-
-      ;; If none of the messages is visible (according to active
-      ;; filters) and last-msg is available, then fetch more messages
-      ;; automatically.
-      ;; Otherwise, when at least one message is display, show "Load
-      ;; more" button
-      (let ((last-msg (car (last messages)))
-            (n0 (ewoc-nth telega-root-messages--ewoc 0)))
-        (when last-msg
-          (if (= (ewoc-location n0)
-                 (ewoc-location (ewoc--footer
-                                 telega-root-messages--ewoc)))
-              ;; no nodes visible, fetch next automatically
-              (telega-root--messages-load last-msg)
-
-            (telega-ewoc--set-footer
-             telega-root-messages--ewoc
-             (telega-ins--as-string
-              (telega-ins--button " Load More "
-                :value last-msg
-                :action 'telega-root--messages-load)))))))))
-
 (defun telega-root--redisplay ()
   "Redisplay root's buffer contents."
   (telega-filters--redisplay)
   (with-telega-root-buffer
     (telega-save-cursor
-      (unless telega--search-query
-        (telega-root--messages-clean))
-      (telega-root--redisplay-search)
-      (ewoc-refresh telega-root--ewoc))))
+      (if telega-search-query
+          ;; Setup headers of all the ewocs
+          (let ((heading-attrs (list :min telega-root-fill-column
+                                     :max telega-root-fill-column
+                                     :align 'left
+                                     :face 'telega-root-heading)))
+            (telega-ewoc--set-header
+             telega-root--ewoc
+             (telega-ins--as-string
+              (telega-ins--with-attrs
+                  (nconc (list :elide t
+                               :elide-trail (/ telega-root-fill-column 3))
+                         heading-attrs)
+                (telega-ins "Search: ")
+                (telega-ins--with-face 'bold
+                  (telega-ins telega-search-query))
+                (telega-ins " ")
+                (telega-ins--button "Cancel"
+                  :action 'telega-search-cancel)
+                (telega-ins " "))
+              (telega-ins "\n")))
+
+            (telega-ewoc--set-header
+             telega-search--ewoc
+             (telega-ins--as-string
+              (telega-ins--with-attrs heading-attrs
+                ;; I18N: lng_search_global_results
+                (telega-ins "GLOBAL SEARCH"))
+              (telega-ins "\n")))
+
+            (telega-ewoc--set-header
+             telega-messages--ewoc
+             (telega-ins--as-string
+              (telega-ins--with-attrs heading-attrs
+                (telega-ins "MESSAGES"))
+              (telega-ins "\n"))))
+
+        ;; No active search
+        (ewoc-set-hf telega-search--ewoc "" "")
+        (ewoc-set-hf telega-messages--ewoc "" "")
+        (telega-ewoc--set-header telega-root--ewoc ""))
+
+      (ewoc-refresh telega-root--ewoc)
+      (ewoc-refresh telega-search--ewoc)
+      (ewoc-refresh telega-messages--ewoc))))
 
 (defun telega-root--chat-update (chat &optional for-reorder)
   "Something changed in CHAT, button needs to be updated.
 If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
   (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat-title chat))
 
-  ;; Update `telega--filtered-chats' according to chat update. It
-  ;; might affect visibility, chat button formatting itself and custom
-  ;; filters
-  (setq telega--filtered-chats
-        (delq chat telega--filtered-chats))
-  (when (telega-filter-chats nil (list chat))
-    (setq telega--filtered-chats
-          (push chat telega--filtered-chats)))
+  (telega-filters--chat-update chat)
 
   (unless for-reorder
     (with-telega-root-buffer
       (telega-save-cursor
-        (let ((enode (telega-ewoc--find-node-by-data telega-root--ewoc chat)))
+        (let ((enode (telega-ewoc--find-node-by-data
+                      telega-root--ewoc chat)))
           (cl-assert enode nil "Ewoc node not found for chat:%s"
                      (telega-chat-title chat))
 
           (setf (ewoc--node-data enode) chat)
-          (ewoc-invalidate telega-root--ewoc enode)))))
+          (ewoc-invalidate telega-root--ewoc enode))
 
-  ;; NOTE: Update might affect custom filters, refresh them too
-  (telega-filters--redisplay))
+        ;; Possible update chat in global search 
+        ;; (let ((gnode (telega-ewoc--find-node-by-data
+        ;;               telega-search--ewoc chat)))
+        ;;   (when gnode
+        ;;     (setf (ewoc--node-data gnode) chat)
+        ;;     (ewoc-invalidate telega-search--ewoc gnode)))
+
+        ;; Update chats in searched messages
+        (ewoc-map (lambda (msg)
+                    (eq chat (telega-msg-chat msg)))
+                  telega-messages--ewoc)
+        ))))
 
 (defun telega-root--chat-reorder (chat &optional new-chat-p)
   "Move CHAT to correct place according to its order.
@@ -449,6 +379,150 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
     (setq mode-line-buffer-identification
           (telega-root--modeline-buffer-identification))
     (force-mode-line-update)))
+
+
+;;; Searching global public chats and messages
+(defun telega-search--animate ()
+  "Animate loading dots for the footers of search ewocs."
+  (let ((new-sf (telega--animate-dots
+                 (cdr (ewoc-get-hf telega-search--ewoc))))
+        (new-mf (telega--animate-dots
+                 (cdr (ewoc-get-hf telega-messages--ewoc)))))
+    (with-telega-root-buffer
+      (telega-save-cursor
+        (when new-sf
+          (telega-ewoc--set-footer telega-search--ewoc (concat new-sf "\n")))
+        (when new-mf
+          (telega-ewoc--set-footer telega-messages--ewoc (concat new-mf "\n")))))
+
+    (unless (or new-sf new-mf)
+      (cancel-timer telega-search--timer))))
+
+(defun telega-search--timer-start ()
+  (when telega-search--timer
+    (cancel-timer telega-search--timer))
+  (setq telega-search--timer
+        (run-with-timer telega-status-animate-interval
+                        telega-status-animate-interval
+                        #'telega-search--animate)))
+
+(defun telega-root--messages-chats ()
+  "Return chats of the searched messages."
+  (mapcar 'telega-msg-chat (ewoc-collect telega-messages--ewoc 'identity)))
+
+(defun telega-root--messages-search (&optional last-msg)
+  "Search the messages with `telega-search-query'.
+If LAST-MSG is specified, then continue searching."
+  (cl-assert (not telega--search-messages-loading))
+  (setq telega--search-messages-loading
+        (telega--searchMessages
+         telega-search-query last-msg
+         'telega-root--messages-add))
+
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (telega-ewoc--set-footer telega-messages--ewoc "Loading..\n")
+      (telega-search--timer-start))))
+
+(defun telega-root--messages-add (messages)
+  "Add MESSAGES to the `telega-messages--ewoc'."
+  (setq telega--search-messages-loading nil)
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (telega-ewoc--set-footer telega-messages--ewoc "")
+      (dolist (msg messages)
+        (ewoc-enter-last telega-messages--ewoc msg))
+
+      (telega-filters-apply 'no-root-redisplay)
+
+      ;; If none of the messages is visible (according to active
+      ;; filters) and last-msg is available, then fetch more messages
+      ;; automatically.
+      ;; Otherwise, when at least one message is display, show
+      ;; "Load More" button
+      (let ((last-msg (car (last messages))))
+        (when last-msg
+          (if (telega-ewoc--empty-p telega-messages--ewoc)
+              ;; no nodes visible, fetch next automatically
+              (telega-root--messages-search last-msg)
+
+            (telega-ewoc--set-footer
+             telega-messages--ewoc
+             (telega-ins--as-string
+              (telega-ins--button "Load More"
+                :value last-msg
+                :action 'telega-root--messages-search))))
+          )))))
+
+(defun telega-root--global-chats ()
+  "Return globally found chats."
+  (ewoc-collect telega-search--ewoc 'identity))
+
+(defun telega-root--global-search ()
+  "Globally search for public chats with `telega-search-query'"
+  (cl-assert (not telega--search-global-loading))
+  ;; telega--searchPublicChats may return nil, meaning no search is
+  ;; done.  For example if query is less then 5 chars
+  (when (setq telega--search-global-loading
+              (telega--searchPublicChats
+               telega-search-query 'telega-root--global-add))
+    (with-telega-root-buffer
+      (telega-save-cursor
+        (telega-ewoc--set-footer telega-search--ewoc "Loading.\n")
+        (telega-search--timer-start)))))
+
+(defun telega-root--global-add (chats)
+  "Add CHATS to `telega-search--ewoc'."
+  (setq telega--search-global-loading nil)
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (telega-ewoc--set-footer telega-search--ewoc "")
+      (dolist (chat chats)
+        (ewoc-enter-last telega-search--ewoc chat))
+
+      (telega-filters-apply 'no-root-redisplay)
+      )))
+
+(defun telega-search-async--cancel ()
+  "Cancel async searches."
+  (telega-ewoc--clean telega-search--ewoc)
+  (telega-ewoc--clean telega-messages--ewoc)
+
+  (when telega--search-global-loading
+    (telega-server--callback-put telega--search-global-loading 'ignore)
+    (setq  telega--search-global-loading nil))
+  (when telega--search-messages-loading
+    (telega-server--callback-put telega--search-messages-loading 'ignore)
+    (setq telega--search-messages-loading nil)))
+
+(defun telega-search-cancel (&rest ignore-args)
+  "Cancel currently active search results."
+  (interactive)
+  (telega-search-async--cancel)
+  (setq telega-search-query nil)
+  (setq telega--search-chats nil)
+
+  (telega-filters-apply))
+
+(defun telega-search (cancel-p)
+  "Search for the QUERY in chats, global public chats and messages.
+If used with PREFIX-ARG, then cancel current search."
+  (interactive "P")
+  (if cancel-p
+      (telega-search-cancel)
+
+    (let ((query (read-string "Search for: " nil 'telega-search-history)))
+      ;; Asynchronously load results from global search for chats and
+      ;; messages
+      (telega-search-async--cancel)
+
+      (setq telega-search-query query)
+      (setq telega--search-chats
+            (telega--searchChats query))
+      (telega-root--global-search)
+      (telega-root--messages-search)
+
+      (telega-filters-apply))))
 
 (provide 'telega-root)
 
