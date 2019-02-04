@@ -49,7 +49,31 @@
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
 (defvar telega-server--results nil)
+(defvar telega-server--on-event-func #'telega--on-event
+  "Func used to trigger on event.
+Used to make deferred calls.")
+(defvar telega-server--deferred-events nil)
 
+(defun telega--on-deferred-event (event)
+  (setq telega-server--deferred-events
+        (push event telega-server--deferred-events))
+  (telega-debug "DEFERRED event: %S" event))
+
+(defmacro with-telega-deferred-events (body)
+  "Execute BODY deferring telega-server events processing."
+  (let ((evsym (gensym "event")))
+    `(progn
+       (setq telega-server--on-event-func 'telega--on-deferred-event)
+       (unwind-protect
+           (progn ,@body)
+
+         (setq telega-server--on-event-func 'telega--on-event)
+         (while telega-server--deferred-events
+           (let ((,evsym (car telega-server--deferred-events)))
+             (setq telega-server--deferred-events
+                   (cdr telega-server--deferred-events))
+             (telega--on-event ,evsym)))))))
+        
 (defmacro telega-server--callback-put (extra cb)
   `(puthash ,extra ,cb telega-server--callbacks))
 
@@ -96,7 +120,7 @@ Raise error if not found"
                 (call-cb (telega-server--callback-get extra)))
            (if call-cb
                (telega-server--callback-rm extra)
-             (setq call-cb #'telega--on-event))
+             (setq call-cb telega-server--on-event-func))
 
            ;; Function call may return errors
            (if (or (not (eq 'error (telega--tl-type value)))

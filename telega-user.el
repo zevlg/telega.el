@@ -25,6 +25,20 @@
 
 ;;; Code:
 
+(define-button-type 'telega-user
+  :supertype 'telega
+  'action #'telega-user-button--action)
+
+(define-button-type 'telega-member
+  :supertype 'telega-user
+  :inserter 'telega-ins--chat-member
+  'action #'telega-member-button--action)
+
+(defun telega-member-button--action (button)
+  (let ((member (button-get button :value)))
+    (telega-describe-chat
+     (telega-chat-get (plist-get member :user_id)))))
+
 (defun telega-user--get (user-id)
   "Get user by USER-ID."
   (telega--info 'user user-id))

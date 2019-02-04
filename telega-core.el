@@ -442,6 +442,7 @@ NIL yields empty string for the convenience."
 (put 'telega-button 'keymap button-map)
 (put 'telega-button 'action 'ignore)
 (put 'telega-button 'rear-nonsticky t)
+(put 'telega-button 'face nil)
 ;; DEPRECATED
 (put 'telega-button :format 'telega-button--format-error)
 (put 'telega-button :inserter 'telega-button--ins-error)

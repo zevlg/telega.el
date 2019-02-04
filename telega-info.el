@@ -321,14 +321,8 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
     (insert (format "Members: %d users\n"
                     (plist-get basicgroup :member_count)))
-    (mapc (lambda (mbr)
-            (let ((mbr-id (plist-get mbr :user_id)))
-              (insert "    ")
-              (apply 'insert-text-button
-                     (telega-user--name (telega-user--get mbr-id))
-                     (telega-link-props 'user mbr-id))
-              (insert "\n")))
-          members)))
+    (telega-ins--chat-members members)
+    ))
 
 (defun telega-info--insert-supergroup (supergroup chat)
   (let* ((full-info (telega--full-info supergroup))
@@ -372,24 +366,8 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
     (insert (format "Members: %d" (plist-get full-info :member_count)) "\n")
     (when (plist-get full-info :can_get_members)
-      (let* ((members (plist-get (telega--getSupergroupMembers supergroup)
-                                 :members))
-             (last-member (unless (zerop (length members))
-                            (aref members (1- (length members)))))
-             (delim-col 0))
-      (seq-doseq (member members)
-        (telega-ins--column 1 nil
-          (setq delim-col (+ 1 (telega-ins--chat-member member))))
-
-        ;; Insert the delimiter
-        (unless (eq member last-member)
-          (telega-ins "\n")
-          ;; NOTE: to apply `height' property \n must be included
-          (telega-ins--with-props
-              '(face default display ((space-width 2) (height 0.5)))
-            (telega-ins--column delim-col nil
-              (telega-ins (make-string 30 ?─) "\n")))))
-      (telega-ins "\n")))
+      (telega-ins--chat-members
+       (plist-get (telega--getSupergroupMembers supergroup) :members)))
 
     (when telega-debug
       (insert "\n---DEBUG---\n")

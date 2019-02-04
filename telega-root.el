@@ -283,8 +283,6 @@ If RAW is given then do not modify statuses for animation."
 If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
   (telega-debug "IN: `telega-root--chat-update': %s" (telega-chat-title chat))
 
-  (telega-filters--chat-update chat)
-
   (unless for-reorder
     (with-telega-root-buffer
       (telega-save-cursor
@@ -297,17 +295,18 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
           (ewoc-invalidate telega-root--ewoc enode))
 
         ;; Possible update chat in global search 
-        ;; (let ((gnode (telega-ewoc--find-node-by-data
-        ;;               telega-search--ewoc chat)))
-        ;;   (when gnode
-        ;;     (setf (ewoc--node-data gnode) chat)
-        ;;     (ewoc-invalidate telega-search--ewoc gnode)))
+        (let ((gnode (telega-ewoc--find-node-by-data
+                      telega-search--ewoc chat)))
+          (when gnode
+            (setf (ewoc--node-data gnode) chat)
+            (ewoc-invalidate telega-search--ewoc gnode)))
 
         ;; Update chats in searched messages
         (ewoc-map (lambda (msg)
                     (eq chat (telega-msg-chat msg)))
-                  telega-messages--ewoc)
-        ))))
+                  telega-messages--ewoc))))
+
+  (telega-filters--chat-update chat))
 
 (defun telega-root--chat-reorder (chat &optional new-chat-p)
   "Move CHAT to correct place according to its order.
@@ -478,15 +477,19 @@ If LAST-MSG is specified, then continue searching."
     (telega-save-cursor
       (telega-ewoc--set-footer telega-search--ewoc "")
       (dolist (chat chats)
+        ;; XXX fetch full-info before inserting, so chat update events
+        ;; won't be triggered inside chat inserter
+        (telega--full-info (telega-chat--info chat))
         (ewoc-enter-last telega-search--ewoc chat))
 
-      (telega-filters-apply 'no-root-redisplay)
-      )))
+      (telega-filters-apply 'no-root-redisplay))))
 
 (defun telega-search-async--cancel ()
   "Cancel async searches."
-  (telega-ewoc--clean telega-search--ewoc)
-  (telega-ewoc--clean telega-messages--ewoc)
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (telega-ewoc--clean telega-search--ewoc)
+      (telega-ewoc--clean telega-messages--ewoc)))
 
   (when telega--search-global-loading
     (telega-server--callback-put telega--search-global-loading 'ignore)

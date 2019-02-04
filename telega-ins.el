@@ -254,29 +254,51 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
               ;; TODO: other cases
               (symbol-name status)))))))
 
+(defun telega-ins--user (user &optional member)
+  "Insert USER, aligning multiple lines at current column."
+  (let* ((joined (plist-get member :joined_chat_date))
+         (avatar-svg (telega-user-avatar-svg user))
+         (off-column (telega-current-column)))
+    (telega-ins--image avatar-svg 0)
+    (telega-ins (telega-user--name user))
+    (when (and member
+               (telega-ins-prefix " ("
+                 (telega-ins--chat-member-status
+                  (plist-get member :status))))
+      (telega-ins ")"))
+    (telega-ins "\n")
+    (telega-ins (make-string off-column ?\s))
+    (telega-ins--image avatar-svg 1)
+    (telega-ins--user-status user)
+    ;; TODO: for member insert join date
+    ;;  (unless (zerop joined)
+    ;;    (concat " joined at " (telega-fmt-timestamp joined))))))
+    ))
+  
 (defun telega-ins--chat-member (member)
   "Formatting for the chat MEMBER.
 Return COLUMN at which user name is inserted."
-  (let* ((user (telega-user--get (plist-get member :user_id)))
-         (joined (plist-get member :joined_chat_date))
-         (avatar-svg (telega-user-avatar-svg user))
-         (column 0))
-    (telega-ins--image avatar-svg 0)
-    (setq column (telega-current-column))
-    (telega-ins (telega-user--name user))
-    (when (telega-ins-prefix " ("
-            (telega-ins--chat-member-status
-             (plist-get member :status)))
-      (telega-ins ")"))
-    (telega-ins "\n")
-    (telega-ins--image avatar-svg 1)
-    (telega-ins--user-status user)
-    column))
-    ;; (list
-    ;;  (telega-user--name user)
-    ;;  (telega-fmt-chat-member-status (plist-get member :status))
-    ;;  (unless (zerop joined)
-    ;;    (concat " joined at " (telega-fmt-timestamp joined))))))
+  (telega-ins--user
+   (telega-user--get (plist-get member :user_id)) member))
+
+(defun telega-ins--chat-members (members)
+  "Insert chat MEMBERS list."
+  (let ((last-member (unless (zerop (length members))
+                       (aref members (1- (length members)))))
+        (delim-col 5))
+    (seq-doseq (member members)
+      (telega-ins " ")
+      (telega-button--insert 'telega-member member)
+
+      ;; Insert the delimiter
+      (unless (eq member last-member)
+        (telega-ins "\n")
+        ;; NOTE: to apply `height' property \n must be included
+        (telega-ins--with-props
+            '(face default display ((space-width 2) (height 0.5)))
+          (telega-ins--column delim-col nil
+            (telega-ins (make-string 30 ?─) "\n")))))
+    (telega-ins "\n")))
 
 (defun telega-ins--button-aux (button)
   "Inserter for aux BUTTON."
@@ -398,7 +420,8 @@ PTYPE is `download' or `upload'."
               'messageChatJoinByLink 'messageChatDeleteMember
               'messageChatChangeTitle 'messageSupergroupChatCreate
               'messageBasicGroupChatCreate 'messageCustomServiceAction
-              'messageChatSetTtl 'messageExpiredPhoto)))
+              'messageChatSetTtl 'messageExpiredPhoto
+              'messageChatChangePhoto)))
 
 (defun telega-ins--special (msg)
   "Insert special message MSG.
@@ -446,6 +469,8 @@ Special messages are determined with `telega-msg-special-p'."
       (messageExpiredPhoto
        ;; I18N: lng_ttl_photo_expired
        (telega-ins "Photo has expired"))
+      (messageChatChangePhoto
+       (telega-ins "Group photo updated"))
       (t (telega-ins-fmt "<unsupported special message: %S>"
            (telega--tl-type content)))))
   (telega-ins ")--"))
@@ -466,7 +491,8 @@ Special messages are determined with `telega-msg-special-p'."
         messageChatJoinByLink messageChatDeleteMember
         messageChatChangeTitle messageSupergroupChatCreate
         messageBasicGroupChatCreate messageCustomServiceAction
-        messageChatSetTtl messageExpiredPhoto)
+        messageChatSetTtl messageExpiredPhoto
+        messageChatChangePhoto)
        (telega-ins--special msg))
       (t (telega-ins-fmt "<TODO: %S>"
                          (telega--tl-type content))))
