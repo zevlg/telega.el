@@ -170,6 +170,17 @@ Set active filter to DEFAULT."
                             (list (list default))))
         telega--undo-filters nil))
 
+(defun telega-filters--prepare ()
+  "Prepare `telega--filters' for the application."
+  (let ((active-filters (car telega--filters)))
+    (cond ((null active-filters) 'all)
+          ((= (length active-filters) 1) (car active-filters))
+          ((eq 'all (car active-filters))
+           (if (= 1 (length (cdr active-filters)))
+               (cadr active-filters)
+             active-filters))
+          (t (cons 'all active-filters)))))
+
 (defun telega-filters-push (flist)
   "Set active filters list to FLIST."
   (unless (equal flist (car telega--filters))
@@ -188,7 +199,7 @@ Do not add FSPEC if it is already in the list."
 (defun telega-filter-chats (filter-spec chats-list)
   "Filter CHATS-LIST matching filter specification FILTER-SPEC.
 If FILTER-SPEC is nil, then currently active filters are used."
-  (let ((fspec (or filter-spec (telega--filters-prepare))))
+  (let ((fspec (or filter-spec (telega-filters--prepare))))
     (cl-remove-if-not
      (lambda (chat)
        ;; Filter out chats we are not member of
@@ -285,17 +296,6 @@ If FLIST is empty then return t."
 (define-telega-filter not (chat fspec)
   "Negage filter FSPEC."
   (not (telega-filter--test chat fspec)))
-
-(defun telega-filters--prepare ()
-  "Prepare `telega--filters' for the application."
-  (let ((active-filters (car telega--filters)))
-    (cond ((null active-filters) 'all)
-          ((= (length active-filters) 1) (car active-filters))
-          ((eq 'all (car active-filters))
-           (if (= 1 (length (cdr active-filters)))
-               (cadr active-filters)
-             active-filters))
-          (t (cons 'all active-filters)))))
 
 (defun telega-filters-negate ()
   "Negate active filters."

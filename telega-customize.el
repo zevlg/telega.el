@@ -197,7 +197,11 @@ See docstring for `display-buffer' for the values."
   :group 'telega-root)
 
 (defcustom telega-chat-button-brackets
-  '((all "[" "]"))
+  '(((type private)    "{" "}")
+    ((type basicgroup) "(" ")")
+    ((type supergroup) "[" "]")
+    ((type channel)    "<" ">")
+    (all               "[" "]"))
   "Brackets to use for chat button."
   :type 'list
   :group 'telega-root)

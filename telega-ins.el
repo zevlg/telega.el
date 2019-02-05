@@ -837,7 +837,7 @@ Return t."
         (telega-ins title))
       (telega-ins umstring))
 
-    (telega-ins (or (cdr brackets) "]"))
+    (telega-ins (or (cadr brackets) "]"))
     (when pinned-p
       (telega-ins telega-symbol-pin))
     (when (telega-chat--secret-p chat)
@@ -846,7 +846,11 @@ Return t."
 
 (defun telega-ins--chat-full (chat)
   "Full status inserter for CHAT button in root buffer."
-  (telega-ins--chat chat)
+  (let ((brackets (cdr (seq-find (lambda (bspec)
+                                   (telega-filter-chats
+                                    (car bspec) (list chat)))
+                                 telega-chat-button-brackets))))
+    (telega-ins--chat chat brackets))
   (telega-ins "  ")
 
   ;; And the status
