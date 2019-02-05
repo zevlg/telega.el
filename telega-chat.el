@@ -105,9 +105,13 @@ Return chat from `telega--chats'."
           ;; Assign the chat some color (used to draw avatars and
           ;; highlight users in chat)
           ;; We use custom chat property, so it is saved between restarts
+          ;; list of three elements - (LIGHT-COLOR COLOR DARK-COLOR)
           (unless (telega-chat-uaprop chat :color)
-            (setf (telega-chat-uaprop chat :color)
-                  (telega-color-random)))
+            (let ((col (telega-color-random)))
+              (setf (telega-chat-uaprop chat :color)
+                    (list (telega-color-gradient col 'light)
+                          col
+                          (telega-color-gradient col)))))
           ))))
 
 (defun telega-chat-get (chat-id &optional offline-p)
@@ -138,6 +142,12 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
 Return nil if can't join the chat."
   (telega-server--call
    (list :@type "joinChatByInviteLink"
+         :invite_link invite-link)))
+
+(defun telega--checkChatInviteLink (invite-link)
+  "Check invitation link INVITE-LINK."
+  (telega-server--call
+   (list :@type "checkChatInviteLink"
          :invite_link invite-link)))
 
 (defun telega--joinChat (chat)
@@ -562,7 +572,7 @@ with list of chats received."
 
 (defun telega--searchChats (query &optional limit)
   "Search already known chats by QUERY."
-  (telega-chats-list-get 
+  (telega-chats-list-get
    (telega-server--call
     (list :@type "searchChats"
           :query query
@@ -672,9 +682,12 @@ with list of chats received."
   "Show info about chat at point."
   (interactive (list (telega-chat-at-point)))
   (with-telega-help-win "*Telegram Chat Info*"
-    (telega-ins-fmt "%s: %s"
-      (capitalize (symbol-name (telega-chat--type chat)))
-      (telega-chat-title chat 'with-username))
+    (telega-ins (capitalize (symbol-name (telega-chat--type chat))) ": ")
+    (telega-ins--with-face
+        (list :foreground (if (eq (frame-parameter nil 'background-mode) 'light)
+                              (nth 2 (telega-chat-uaprop chat :color))
+                            (nth 0 (telega-chat-uaprop chat :color))))
+      (telega-ins (telega-chat-title chat 'with-username)))
     (telega-ins " ")
     (telega-ins--button "Open"
       :value chat
@@ -1233,7 +1246,7 @@ Return newly inserted message button."
           (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
           (ewoc-enter-last telega-chatbuf--ewoc msg)
 
-          (when telega-use-tracking
+          (when (and telega-use-tracking (not disable-notification))
             (tracking-add-buffer (current-buffer)))
           ))
 
@@ -1366,14 +1379,14 @@ Message id could be updated on this update."
   (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
     (let ((from-cache-p (plist-get event :from_cache))
           (permanent-p (plist-get event :is_permanent)))
-      (cl-loop for msg-id being the elements of (plist-get event :message_ids)
-               when from-cache-p do
-               (remhash msg-id telega-chatbuf--messages)
-
-               when permanent-p do
-               (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
-                 (when node
-                   (ewoc-delete telega-chatbuf--ewoc node)))))))
+      (seq-doseq (msg-id (plist-get event :message_ids))
+        (when from-cache-p
+          (remhash msg-id telega-chatbuf--messages))
+        (when permanent-p
+          (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
+            (when node
+              (ewoc-delete telega-chatbuf--ewoc node))))
+        ))))
 
 (defun telega--on-updateUserChatAction (event)
   "Some user has actions on chat."

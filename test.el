@@ -61,7 +61,7 @@
                 )
         
         ;; TODO: add more chats
-        (:@type "chat" :id -1001263892563 :type (:@type "chatTypeSupergroup" :supergroup_id 1263892563 :is_channel t) :title "Premium Signals Forward" :photo (:@type "chatPhoto" :small (:@type "file" :id 2213 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEDMzuE4el7_5oeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0)) :big (:@type "file" :id 2214 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEandjHTisoJpqeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0))) :order "0" :is_pinned nil :is_marked_as_unread nil :is_sponsored nil :can_be_reported t :default_disable_notification nil :unread_count 0 :last_read_inbox_message_id 0 :last_read_outbox_message_id 2251799812636672 :unread_mention_count 0 :notification_settings (:@type "chatNotificationSettings" :use_default_mute_for t :mute_for 0 :use_default_sound t :sound "" :use_default_show_preview t :show_preview nil) :reply_markup_message_id 0 :client_data "(:color \"#081204\")" :uaprops (:color "#081204") :last_message (:@type "message" :id 599785472 :sender_user_id 0 :chat_id -1001263892563 :is_outgoing nil :can_be_edited nil :can_be_forwarded t :can_be_deleted_only_for_self nil :can_be_deleted_for_all_users nil :is_channel_post t :contains_unread_mention nil :date 1547562092 :edit_date 0 :reply_to_message_id 0 :ttl 0 :ttl_expires_in 0.0 :via_bot_user_id 0 :author_signature "" :views 26731 :media_album_id "0" :content (:@type "messageText" :text (:@type "formattedText" :text #("Buy GTO between 755-765 satoshi.
+        (:@type "chat" :id -1001263892563 :type (:@type "chatTypeSupergroup" :supergroup_id 1263892563 :is_channel t) :title "Premium Signals Forward" :photo (:@type "chatPhoto" :small (:@type "file" :id 2213 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEDMzuE4el7_5oeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0)) :big (:@type "file" :id 2214 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEandjHTisoJpqeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0))) :order "0" :is_pinned nil :is_marked_as_unread nil :is_sponsored nil :can_be_reported t :default_disable_notification nil :unread_count 0 :last_read_inbox_message_id 0 :last_read_outbox_message_id 2251799812636672 :unread_mention_count 0 :notification_settings (:@type "chatNotificationSettings" :use_default_mute_for t :mute_for 0 :use_default_sound t :sound "" :use_default_show_preview t :show_preview nil) :reply_markup_message_id 0 :client_data "(:color (\"#849b34\" \"#596823\" \"#2c3311\"))" :uaprops (:color ("#849b34" "#596823" "#2c3311")) :last_message (:@type "message" :id 599785472 :sender_user_id 0 :chat_id -1001263892563 :is_outgoing nil :can_be_edited nil :can_be_forwarded t :can_be_deleted_only_for_self nil :can_be_deleted_for_all_users nil :is_channel_post t :contains_unread_mention nil :date 1547562092 :edit_date 0 :reply_to_message_id 0 :ttl 0 :ttl_expires_in 0.0 :via_bot_user_id 0 :author_signature "" :views 26731 :media_album_id "0" :content (:@type "messageText" :text (:@type "formattedText" :text #("Buy GTO between 755-765 satoshi.
 
 Breaking out resistance risk level medium. 
 
@@ -72,7 +72,6 @@ Have Stoploss 690 Satoshi. í ½í»‘
 í ½íº€ í ½íº€" 131 133 (display "ðŸ›‘" telega-desurrogate t) 136 138 (display "ðŸš€" telega-desurrogate t) 139 141 (display "ðŸš€" telega-desurrogate t)) :entities []))))
         ))
 (cl-dolist (chat telega--ordered-chats)
-  (message "CHAT: %S -> tt" (plist-get chat :id))
   (puthash (plist-get chat :id) chat telega--chats))
 
 
@@ -145,7 +144,7 @@ Have Stoploss 690 Satoshi. í ½í»‘
 (ert-deftest telega-tme-open ()
   "Test info related functionality."
   (should (string= (telega-tme-open "https://t.me/joinchat/itshitout" t)
-                   "tg:joinchat?invite=itshitout"))
+                   "tg:join?invite=itshitout"))
   (should (string= (telega-tme-open "https://t.me/itshit/23423" t)
                    "tg:resolve?domain=itshit&post=23423"))
   (should (string= (telega-tme-open "https://t.me/socks?server=my&port=1234" t)

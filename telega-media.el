@@ -394,7 +394,7 @@ To customize automatic downloads, use `telega-auto-download'."
 
 
 ;; Avatars
-(defun telega-avatar--gen-svg (name height color &optional margin-h-factor)
+(defun telega-avatar--gen-svg (name height gradient &optional margin-h-factor)
   "Generate svg with NAME in the circle.
 HEIGHT is height in chars (1 or 2)."
   ;; Now generate the svg
@@ -409,10 +409,9 @@ HEIGHT is height in chars (1 or 2)."
       (setq aw (telega-chars-width ah-chars)))
 
     (let* ((fsz (/ ch 2))
-           (svg (svg-create aw ah))
-           (col2 (telega-color-gradient color)))
+           (svg (svg-create aw ah)))
       (svg-gradient svg "cgrad" 'linear
-                    (list (cons 0 color) (cons ah col2)))
+                    (list (cons 0 (car gradient)) (cons ah (cadr gradient))))
       (svg-circle svg (/ aw 2) (/ ah 2) (/ ch 2) :gradient "cgrad")
       (svg-text
        svg name

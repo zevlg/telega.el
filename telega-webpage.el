@@ -94,9 +94,12 @@
               " ]")
   )
 
-(defun telega-instant-view-button--action (button)
+(defun telega-msg-button--iv-action (button)
   "Open instant view when BUTTON is pressed."
-  (apply 'telega-webpage--instant-view (button-get button :value)))
+  (let* ((msg (button-get button :value))
+         (web-page (telega--tl-get msg :content :web_page)))
+    (funcall 'telega-webpage--instant-view (plist-get web-page :url)
+             (plist-get web-page :site_name))))
 
 (defun telega--getWebPageInstantView (url &optional partial)
   "Return instant view for the URL.

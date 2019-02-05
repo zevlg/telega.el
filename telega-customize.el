@@ -348,6 +348,11 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
+(defcustom telega-chat-rainbow-users t
+  "*Non-nil to display user names in chatbuf with their assigned color."
+  :type 'boolean
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil
@@ -851,7 +856,7 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-webpage-sitename
-  '((t :inherit link :bold t))
+  '((t :inherit telega-link :bold t))
   "Face to display webpage's site_name."
   :group 'telega-faces)
 

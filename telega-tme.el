@@ -46,10 +46,22 @@
 
 (defun telega-tme-open-group (group)
   "Join the GROUP."
-  ;; TODO: maybe combine with `telega-tme-open-username'
-  ;; 1) Check is the link to the public chat (to avoid joining)
-  ;; 2) If not, then ask user would he like to join the private chat
-  )
+  (let* ((url (concat (or (plist-get telega--options :t_me_url)
+                          "https://t.me/")
+                      "joinchat/" group))
+         (link-check (telega--checkChatInviteLink url))
+         (chat-id (plist-get link-check :chat_id))
+         (chat (when link-check
+                 (if (zerop chat-id)
+                     ;; Can only join by link
+                     (when (y-or-n-p (format "Join \"%s\": "
+                                             (plist-get link-check :title)))
+                       (telega--joinChatByInviteLink url))
+
+                   ;; Can preview messages before deciding to join
+                   (telega-chat-get chat-id)))))
+    (when chat
+      (telega-chat--pop-to-buffer chat))))
 
 (defun telega-tme-open-proxy (type proxy)
   "Open the PROXY."
@@ -111,7 +123,7 @@ Return non-nil if url has been handled."
          (query (cdr path-query))
          (case-fold-search nil)         ;ignore case
          (tg (cond ((string-match "^/joinchat/\\([a-zA-Z0-9._-]+\\)$" path)
-                    (concat "tg:joinchat?invite=" (match-string 1 path)))
+                    (concat "tg:join?invite=" (match-string 1 path)))
                    ((string-match "^/addstickers/\\([a-zA-Z0-9._]+\\)$" path)
                     (concat "tg:addstickers?set=" (match-string 1 path)))
                    ((string-match "^/share/url$" path)

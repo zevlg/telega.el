@@ -376,7 +376,52 @@ PTYPE is `download' or `upload'."
   )
 
 (defun telega-ins--web-page (web-page)
-  )
+  "Insert WEB-PAGE.
+Return `non-nil' if WEB-PAGE has been inserted."
+  (let ((sitename (plist-get web-page :site_name))
+        (title (plist-get web-page :title))
+        (desc (plist-get web-page :description))
+        (instant-view-p (plist-get web-page :has_instant_view))
+        (photo (plist-get web-page :photo))
+        (width (- telega-chat-fill-column 10)))
+    (when web-page
+      (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
+                                    :fill-column width
+                                    :fill 'left)
+        (telega-ins telega-symbol-vertical-bar)
+        (when (telega-ins--with-face 'telega-webpage-sitename
+                (telega-ins sitename))
+          (telega-ins "\n"))
+        (when (telega-ins--with-face 'telega-webpage-title
+                (telega-ins title))
+          (telega-ins "\n"))
+        (when (telega-ins desc)
+          (telega-ins "\n"))
+
+       ;; (when photo
+       ;;   (concat "\n" telega-symbol-vertical-bar
+       ;;           (telega-photo-format (plist-get web-page :photo))))
+       (cl-case (intern (plist-get web-page :type))
+         (photo
+          ;; no-op, already displayed above
+          )
+         (article
+          ;; nothing to display
+          )
+         (t (telega-ins "<unsupported webPage:"
+                        (plist-get web-page :type) ">")))
+       )
+
+       (when instant-view-p
+         (telega-ins--button
+             (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
+           'action 'telega-msg-button--iv-action)
+         (telega-ins "\n"))
+
+       ;; Remove trailing newline, if any
+       (when (= (char-before) ?\n)
+         (delete-char -1))
+       t)))
 
 (defun telega-ins--location (location)
   "Inserter for the LOCATION."
@@ -481,7 +526,8 @@ Special messages are determined with `telega-msg-special-p'."
     (cl-case (telega--tl-type content)
       (messageText
        (telega-ins--text (plist-get content :text))
-       (telega-ins--web-page (plist-get content :web_page)))
+       (telega-ins-prefix "\n"
+         (telega-ins--web-page (plist-get content :web_page))))
       (messageDocument
        (telega-ins--document (plist-get content :document)))
       (messagePhoto
@@ -556,8 +602,14 @@ Special messages are determined with `telega-msg-special-p'."
 
 (defun telega-ins--channel-msg (msg)
   "Insert MSG received in channel chat."
-  (telega-ins--with-attrs (list :face 'telega-chat-user-title)
-    (telega-ins (telega-chat-title (telega-msg-chat msg) 'with-username)))
+  (let ((chat (telega-msg-chat msg)))
+    (telega-ins--with-attrs
+        (list :face (if telega-chat-rainbow-users
+                        (if (eq (frame-parameter nil 'background-mode) 'light)
+                            (nth 2 (telega-chat-uaprop chat :color))
+                          (nth 0 (telega-chat-uaprop chat :color)))
+                      'telega-chat-user-title))
+      (telega-ins (telega-chat-title chat 'with-username))))
   (telega-ins-prefix " "
     (let ((sign (plist-get msg :author_signature)))
       (unless (string-empty-p sign)

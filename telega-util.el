@@ -113,11 +113,13 @@ Default LIGHTNESS is 0.85."
    (color-hsl-to-rgb (cl-random 1.0) (cl-random 1.0)
                      (cl-random (or lightness 0.85)))))
 
-(defun telega-color-gradient (color)
+(defun telega-color-gradient (color &optional light)
   "For given color return its darker version.
-Used to create gradients."
+Used to create gradients.
+If LIGHT is non-nil then return lighter version."
   (telega-color-to-hex
-   (mapcar (lambda (c) (/ c 2)) (color-name-to-rgb color))))
+   (mapcar (lambda (c) (if light (color-clamp (* c 1.5)) (/ c 2)))
+           (color-name-to-rgb color))))
 
 (defun telega-temp-name (prefix &optional ext)
   "Generate unique temporary file name with PREFIX and extension EXT.
@@ -285,21 +287,19 @@ N can't be 0."
       (setq start end))
     (nreverse result)))
 
+(defun telega--region-with-cursor-sensor (pos)
+  "Locate region of the button with `cursor-sensor-functions' set.
+Return `nil' if there is no button with `cursor-sensor-functions' at POS."
+  (when (get-text-property pos 'cursor-sensor-functions)
+    (let ((prev (previous-single-property-change pos 'cursor-sensor-functions)))
+      (when (and prev (get-text-property prev 'cursor-sensor-functions))
+        (setq pos prev))
+      (telega--region-by-text-prop pos 'cursor-sensor-functions))))
+
 (defun telega--properties-to-entities (text)
   "Convert propertiezed TEXT to telegram ENTITIES."
   ;; TODO: convert text properties to tl text entities
   )
-
-(defun telega--merge-face (start end face &optional object)
-  "Merge OBJECT's face property at START and END by adding FACE."
-  (let ((val (if (listp face) face (list face))) next prev)
-    (while (/= start end)
-      (setq next (next-single-property-change start 'face object end)
-            prev (get-text-property start 'face object))
-      (put-text-property start next 'face
-                         (append (if (listp prev) prev (list prev)) val)
-                         object)
-      (setq start next))))
 
 (defun telega-completing-titles ()
   "Return list of titles ready for completing."

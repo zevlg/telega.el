@@ -51,7 +51,16 @@
 (define-button-type 'telega-msg
   :supertype 'telega
   :inserter telega-inserter-for-msg-button
-  'keymap telega-msg-button-map)
+  'keymap telega-msg-button-map
+  'action 'telega-msg-button--action)
+
+(defun telega-msg-button--action (button)
+  "Action to take when chat BUTTON is pressed."
+  (let ((msg (button-get button :value)))
+    (telega--openMessageContent msg)
+
+    ;; TODO: do some useful action to open message
+    ))
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
@@ -81,6 +90,13 @@
   "Goto message MSG."
   (telega-chat--goto-msg
    (telega-msg-chat msg) (plist-get msg :id) highlight))
+
+(defun telega--openMessageContent (msg)
+  "Open content of the message MSG."
+  (telega-server--send
+   (list :@type "openMessageContent"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))))
 
 (defun telega-msg--get (chat-id msg-id)
   "Get message by CHAT-ID and MSG-ID pair."

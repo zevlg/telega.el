@@ -130,20 +130,23 @@ Default is: `full'"
   (let ((ava (plist-get user :telega-avatar)))
     (unless ava
       (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
-             (color (telega-chat-uaprop chat :color)))
-        (unless color
+             (colors (telega-chat-uaprop chat :color)))
+        (unless colors
           ;; Assign the color to the user
-          (setq color (telega-color-random))
-
+          (let ((col (telega-color-random)))
+            (setq colors (list (telega-color-gradient col 'light)
+                               col
+                               (telega-color-gradient col))))
           ;; If there corresponding chat, then update its color
           (when chat
-            (setf (telega-chat-uaprop chat :color)
-                  (telega-color-random))))
+            (setf (telega-chat-uaprop chat :color) colors)))
 
         (setq ava (telega-avatar--gen-svg
-                   (telega-user-initials user) 2 color))
+                   (telega-user-initials user) 2
+                   (if (eq (frame-parameter nil 'background-mode) 'light)
+                       (cdr colors)
+                     colors)))
         (plist-put user :telega-avatar ava)))
-
     ava))
                                         
 (provide 'telega-user)

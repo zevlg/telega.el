@@ -345,7 +345,7 @@ Return list of strings."
   "Apply `:face' attribute to ESTR."
   (let ((face (plist-get attrs :face)))
     (when face
-      (telega--merge-face 0 (length estr) face estr))
+      (add-face-text-property 0 (length estr) face t estr))
     estr))
 
 (defun telega-fmt-eval-attrs (estr attrs)
@@ -449,25 +449,17 @@ NIL yields empty string for the convenience."
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
 
-(defun telega-button--has-face (button face)
-  "Return non-nil if BUTTON's property `face' containst FACE."
-  (when button
-    (let ((bfaces (button-get button 'face)))
-      (if (listp bfaces) (memq face bfaces) (eq bfaces face)))))
-
 (defun telega-button--sensor-func (window oldpos dir)
   "Function to be used in `cursor-sensor-functions' text property.
 Activates button if cursor enter, deactivates if leaves."
-  (let ((inhibit-read-only t))
-    (if (eq dir 'entered)
-        (let ((button (button-at (point))))
-          (when (and button (telega-button--has-face button 'telega-button))
-            (button-put button 'face 'telega-button-active)))
-
-      (cl-assert (eq dir 'left))
-      (let ((button (button-at oldpos)))
-        (when (and button (telega-button--has-face button 'telega-button-active))
-          (button-put button 'face 'telega-button))))))
+  (let ((inhibit-read-only t)
+        (button-region (telega--region-with-cursor-sensor
+                        (if (eq dir 'entered) (point) oldpos))))
+    (when button-region
+      (put-text-property (car button-region) (cdr button-region)
+                         'face (if (eq dir 'entered)
+                                   'telega-button-active
+                                 'telega-button)))))
 
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)
