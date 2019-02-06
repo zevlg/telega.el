@@ -301,6 +301,16 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
   ;; TODO: convert text properties to tl text entities
   )
 
+(defun telega-completing-read-chat (prompt &optional only-filtered)
+  "Read chat by title."
+  (let ((choices (mapcar (lambda (chat)
+                           (list (telega-chat-title chat 'with-username)
+                                 chat))
+                         (telega-filter-chats (and (not only-filtered) 'all)
+                                              telega--ordered-chats))))
+    (car (alist-get (funcall telega-completing-read-function prompt choices)
+                    choices))))
+
 (defun telega-completing-titles ()
   "Return list of titles ready for completing."
   (let ((result))

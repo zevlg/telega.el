@@ -1032,6 +1032,24 @@ Also mark messages as read with `viewMessages'."
   "Return non-nil if chatbuf has some input."
   (buffer-substring telega-chatbuf--input-marker (point-max)))
 
+(defun telega-chatbuf--editing-msg ()
+  "Return message currently editing."
+  (and (eq (button-get telega-chatbuf--aux-button :inserter)
+           'telega-ins--aux-edit-inline)
+       (button-get telega-chatbuf--aux-button :value)))
+
+(defun telega-chatbuf--forwarding-msg ()
+  "Return message currently forwarding."
+  (and (eq (button-get telega-chatbuf--aux-button :inserter)
+           'telega-ins--aux-fwd-inline)
+       (button-get telega-chatbuf--aux-button :value)))
+
+(defun telega-chatbuf--replying-msg ()
+  "Return message currently editing."
+  (and (eq (button-get telega-chatbuf--aux-button :inserter)
+           'telega-ins--aux-reply-inline)
+       (button-get telega-chatbuf--aux-button :value)))
+
 (defun telega-chatbuf--post-command ()
   "Chabuf `post-command-hook' funcion."
   ;; - Check that all atachements are valid (starting/ending chars are
@@ -1503,6 +1521,23 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
       (setq tsm (plist-put tsm :from_background t)))
     (telega-server--send tsm)))
 
+(defun telega--forwardMessages (chat from-chat messages &optional disable-notify
+                                     from-background as-album)
+  "Forward MESSAGES FROM-CHAT into CHAT."
+  (telega-server--send
+   (list :@type "forwardMessages"
+         :chat_id (plist-get chat :id)
+         :from_chat_id (plist-get from-chat :id)
+         :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
+         :disable_notification (or disable-notify :false)
+         :from_background (or from-background :false)
+         :as_album (or as-album :false))))
+
+(defun telega--forwardMessage (chat msg &optional disable-notify from-background)
+  "Forward single message MSG to CHAT."
+  (telega--forwardMessages
+   chat (telega-msg-chat msg) (list msg) disable-notify from-background))
+
 (defun telega--editMessageText (chat msg imc &optional reply-markup)
   (telega-server--send
    (list :@type "editMessageText"
@@ -1578,49 +1613,54 @@ With prefix arg, apply markdown formatter to message."
   ;; Send the input
   (let ((input (telega-chatbuf-input-string))
         (imcs (telega-chatbuf--input-imcs markdown))
-        (reply-to-msg
-         (when (eq (button-get telega-chatbuf--aux-button :aux-type) 'reply)
-           (button-get telega-chatbuf--aux-button :aux-args))))
-    ;; Editing message
-    (if (eq (button-get telega-chatbuf--aux-button :aux-type) 'edit)
-        (let* ((edit-msg (button-get telega-chatbuf--aux-button :aux-args))
-               (edit-mc (plist-get edit-msg :content))
-               (imc (car imcs)))
+        (replying-msg (telega-chatbuf--replying-msg))
+        (editing-msg (telega-chatbuf--editing-msg))
+        (forwarding-msg (telega-chatbuf--forwarding-msg)))
+    (if editing-msg
+        (let ((edit-mc (plist-get editing-msg :content))
+              (imc (car imcs)))
           (when (> (length imcs) 1)
             (error "Multiple input messages while edit"))
           (cond ((and (eq (telega--tl-type imc) 'inputMessageText)
                       (eq (telega--tl-type edit-mc) 'messageText))
-                 (telega--editMessageText telega-chatbuf--chat edit-msg imc))
+                 (telega--editMessageText
+                  telega-chatbuf--chat editing-msg imc))
+
                 ((eq (telega--tl-type imc) 'inputMessageText)
                  (telega--editMessageCaption
-                  telega-chatbuf--chat edit-msg (plist-get imc :text)))
+                  telega-chatbuf--chat editing-msg (plist-get imc :text)))
+
                 (t
-                 (telega--editMessageMedia telega-chatbuf--chat edit-msg imc))))
+                 (telega--editMessageMedia
+                  telega-chatbuf--chat editing-msg imc))))
 
       ;; If all IMCS are photos and videos then send them as ablum
       ;; otherwise send IMCS as separate messages
-      (if (cl-every (lambda (imc)
-                      (memq (telega--tl-type imc)
-                            '(inputMessagePhoto inputMessageVideo)))
-                    imcs)
-          (telega--sendMessageAlbum telega-chatbuf--chat imcs reply-to-msg)
+      ;; NOTE: cl-every returns `t' on empty list
+      (if (and imcs (cl-every (lambda (imc)
+                                (memq (telega--tl-type imc)
+                                      '(inputMessagePhoto inputMessageVideo)))
+                              imcs))
+          (telega--sendMessageAlbum telega-chatbuf--chat imcs replying-msg)
         (cl-dolist (imc imcs)
-          (telega--sendMessage telega-chatbuf--chat imc reply-to-msg))))
+          (telega--sendMessage telega-chatbuf--chat imc replying-msg))))
+
+    (when forwarding-msg
+      (telega--forwardMessage telega-chatbuf--chat forwarding-msg))
 
     ;; Recover prompt to initial state
     (delete-region telega-chatbuf--input-marker (point-max))
     (telega-chatbuf--prompt-reset)
 
-    (when (string-empty-p input)
-      (error "No input"))
+    ;; Save input to history
+    (unless (string-empty-p input)
+      (when telega-chatbuf--input-pending-p
+        (ring-remove telega-chatbuf--input-ring 0)
+        (setq telega-chatbuf--input-pending-p nil))
 
-    (when telega-chatbuf--input-pending-p
-      (ring-remove telega-chatbuf--input-ring 0)
-      (setq telega-chatbuf--input-pending-p nil))
-
-    (ring-insert telega-chatbuf--input-ring input)
-    (setq telega-chatbuf--input-idx nil
-          telega-chatbuf--input-pending-p nil)))
+      (ring-insert telega-chatbuf--input-ring input)
+      (setq telega-chatbuf--input-idx nil
+            telega-chatbuf--input-pending-p nil))))
 
 (defun telega-chatbuf-input-insert (imc)
   "Insert input content defined by IMC into current input."
@@ -1807,11 +1847,7 @@ If prefix arg is given, then take screenshot only of current emacs frame."
   (with-telega-chatbuf (telega-msg-chat msg)
     (telega-button--update-value
      telega-chatbuf--aux-button msg
-     :inserter (lambda (msg)
-                 (telega-ins--aux-msg-inline
-                  "Reply" msg 'telega-chat-prompt 'with-username))
-     :aux-type 'reply
-     :aux-args msg
+     :inserter 'telega-ins--aux-reply-inline
      'invisible nil)
 
     (telega-button--update-value
@@ -1819,33 +1855,6 @@ If prefix arg is given, then take screenshot only of current emacs frame."
     (goto-char (point-max))
 
     (telega-chatbuf--help-cancel-keys "reply")))
-
-(defun telega-msg-content--to-imc (content)
-  "Convert message CONTENT to its imc representation."
-  (cl-ecase (telega--tl-type content)
-    (messageText
-     (list :@type "inputMessageText"
-           :text (plist-get content :text)
-           :clear_draft t))
-    (messagePhoto
-     (list :@type "inputMessagePhoto"
-           :photo (plist-get content :photo)
-           :caption (plist-get content :caption)))
-    (messageDocument
-     (list :@type "inputMessageDocument"
-           :document (plist-get content :document)
-           :caption (plist-get content :caption)))
-    (messageLocation
-     (list :@type "inputMessageLocation"
-           :location (plist-get content :location)
-           :live_period (plist-get content :live_period)))
-    (messageContact
-     (list :@type "inputMessageContact"
-           :contact (plist-get content :contact)))
-    (messageVideo
-     (list :@type "inputMessageVideo"
-           :video (plist-get content :video)
-           :caption (plist-get content :caption)))))
            
 (defun telega-msg-edit (msg)
   "Start editing the MSG."
@@ -1857,11 +1866,7 @@ If prefix arg is given, then take screenshot only of current emacs frame."
   (with-telega-chatbuf (telega-msg-chat msg)
     (telega-button--update-value
      telega-chatbuf--aux-button msg
-     :inserter (lambda (msg)
-                 (telega-ins--aux-msg-inline
-                  "Edit" msg 'telega-chat-prompt))
-     :aux-type 'edit
-     :aux-args msg
+     :inserter 'telega-ins--aux-edit-inline
      'invisible nil)
 
     (telega-button--update-value
@@ -1878,6 +1883,28 @@ If prefix arg is given, then take screenshot only of current emacs frame."
 
     (telega-chatbuf--help-cancel-keys "edit")))
 
+(defun telega-msg-forward (msg chat)
+  "Forward message to chat."
+  (interactive (list (telega-msg-at-point)
+                     (telega-completing-read-chat "Forward to chat: ")))
+
+  (unless (plist-get msg :can_be_forwarded)
+    (error "Message can't be forwarded"))
+
+  (with-current-buffer (telega-chat--pop-to-buffer chat)
+    (let ((inhibit-read-only t))
+      (telega-button--update-value
+       telega-chatbuf--aux-button msg
+       :inserter 'telega-ins--aux-fwd-inline
+       'invisible nil)
+
+      (goto-char (point-max))
+      (telega-button--update-value
+       telega-chatbuf--prompt-button telega-chat-fwd-prompt)
+
+      (telega-chatbuf--help-cancel-keys "forward"))
+  ))
+  
 (defun telega-msg-delete (msg &optional revoke)
   "Delete message MSG.
 With prefix arg delete only for yourself."

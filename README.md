@@ -18,7 +18,7 @@ to use `telega.el` for basic chat.
 - [x] Getting info about users, groups and supergroups
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
 - [x] Fetching chat history, sending messages, replies, edits, deleting
-- [ ] Forwarding messages
+- [x] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
 - [x] VoIP calls, including D-Bus call notification

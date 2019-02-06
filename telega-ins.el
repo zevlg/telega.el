@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sat Jul 14 19:06:40 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -158,9 +158,9 @@ If SLICE-NUM is specified, then insert N's"
                              slice-num slices))
                     (list 0 (* slice-num slice-h) (car imgsz) slice-h)))))
     (telega-ins--with-props `(display ,(if slice
-					 (list (cons 'slice slice) img)
-				       img)
-                                    rear-nonsticky (display))
+                                           (list (cons 'slice slice) img)
+                                         img)
+                                      rear-nonsticky (display))
       (telega-ins
        (or (plist-get img :telega-text)
            (make-string (telega-chars-in-width (car imgsz)) ?X))))))
@@ -274,7 +274,7 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
     ;;  (unless (zerop joined)
     ;;    (concat " joined at " (telega-fmt-timestamp joined))))))
     ))
-  
+
 (defun telega-ins--chat-member (member)
   "Formatting for the chat MEMBER.
 Return COLUMN at which user name is inserted."
@@ -583,6 +583,18 @@ Special messages are determined with `telega-msg-special-p'."
       (telega-ins--content-one-line msg)
       (telega-ins "\n"))))
 
+(defun telega-ins--aux-reply-inline (reply-msg &optional face)
+  (telega-ins--aux-msg-inline
+   "Reply" reply-msg (or face 'telega-chat-prompt) 'with-username))
+
+(defun telega-ins--aux-edit-inline (edit-msg)
+  (telega-ins--aux-msg-inline
+   "Edit" edit-msg 'telega-chat-prompt))
+
+(defun telega-ins--aux-fwd-inline (fwd-msg)
+  (telega-ins--aux-msg-inline
+   "Forward" fwd-msg 'telega-chat-prompt 'with-username))
+
 (defun telega-ins--channel-msg (msg)
   "Insert MSG received in channel chat."
   (let ((chat (telega-msg-chat msg)))
@@ -604,8 +616,8 @@ Special messages are determined with `telega-msg-special-p'."
     (unless (zerop (plist-get msg :edit_date))
       (telega-ins--date (plist-get msg :edit_date))))
   (telega-ins "\n")
-  (telega-ins--aux-msg-inline
-   "Reply" (telega-msg-reply-msg) 'telega-chat-inline-reply 'with-username)
+  (telega-ins--aux-reply-inline
+   (telega-msg-reply-msg msg) 'telega-chat-inline-reply)
   (telega-ins--content-markup-date-status msg)
   )
 
@@ -616,19 +628,6 @@ Special messages are determined with `telega-msg-special-p'."
         (t
          (telega-ins-fmt "MSG: %S" (plist-get msg :id))))
   )
-
-(defun telega-ins--aux-prompt (prompt-val)
-  "Inserter for chatbuf's aux prompt."
-  (let ((aux-title (car prompt-val))
-        (aux-msg (cadr prompt-val)))
-    (telega-ins--with-attrs  (list :max telega-chat-fill-column
-                                   :elide t
-                                   :face 'telega-chat-prompt)
-      (telega-ins "| " aux-title ": ")
-      (when (telega-ins--username (plist-get aux-msg :sender_user_id))
-        (telega-ins "> "))
-      (telega-ins--content-one-line aux-msg)
-      (telega-ins "\n"))))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."

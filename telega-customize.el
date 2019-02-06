@@ -327,6 +327,11 @@ In form (NAME . FILTER-SPEC)."
   :type 'string
   :group 'telega)
 
+(defcustom telega-chat-fwd-prompt telega-chat-input-prompt
+  "*Prompt to use when forwarding message."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-chat-input-ring-size 50
   "*Size of the chat input history."
   :type 'integer
