@@ -51,6 +51,7 @@
 (define-button-type 'telega-msg
   :supertype 'telega
   :inserter telega-inserter-for-msg-button
+  'read-only t
   'keymap telega-msg-button-map
   'action 'telega-msg-button--action)
 
@@ -85,6 +86,12 @@
 (defsubst telega-msg-chat (msg)
   "Return chat for the MSG."
   (telega-chat-get (plist-get msg :chat_id)))
+
+(defun telega-msg-reply-msg (msg)
+  "Return message MSG replying to."
+  (let ((reply-to-msg-id (plist-get msg :reply_to_message_id)))
+    (unless (zerop reply-to-msg-id)
+      (telega-msg--get (plist-get msg :chat_id) reply-to-msg-id))))
 
 (defsubst telega-msg-goto (msg &optional highlight)
   "Goto message MSG."

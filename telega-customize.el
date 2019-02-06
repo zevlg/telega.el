@@ -353,6 +353,11 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
+(defcustom telega-chat-open-on-forward nil
+  "*Non-nil to open corresponding chat when forwarding message to."
+  :type 'boolean
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil

@@ -300,19 +300,6 @@ Return COLUMN at which user name is inserted."
             (telega-ins (make-string 30 ?─) "\n")))))
     (telega-ins "\n")))
 
-(defun telega-ins--button-aux (button)
-  "Inserter for aux BUTTON."
-  (let ((aux-title (button-get button :aux-title))
-        (msg (button-get button :value)))
-    (telega-ins--with-attrs  (list :max telega-chat-fill-column
-                                   :elide t
-                                   :face 'telega-chat-prompt)
-      (telega-ins "| " aux-title ": ")
-      (when (telega-ins--username (plist-get msg :sender_user_id))
-        (telega-ins "> "))
-      (telega-ins--msg-one-line msg)
-      (telega-ins "\n"))))
-
 (defun telega-ins--via-bot (via-bot-user-id)
   "Insert via bot user."
   (unless (zerop via-bot-user-id)
@@ -582,23 +569,19 @@ Special messages are determined with `telega-msg-special-p'."
     (telega-ins--outgoing-status msg)
     t))
 
-(defun telega-ins--inline-reply (msg)
-  "Insert reply to MSG."
-  (let* ((reply-to-msg-id (plist-get msg :reply_to_message_id))
-         (reply-msg (unless (zerop reply-to-msg-id)
-                      (telega-msg--get (plist-get msg :chat_id)
-                                       reply-to-msg-id))))
-    (when reply-msg
-      (let ((fill-prefix (make-string (telega-current-column) ?\s)))
-        (telega-ins "| Reply: ")
-        (telega-ins--with-attrs (list :max (- telega-chat-fill-column
-                                              (length fill-prefix))
-                                      :elide t
-                                      :face 'telega-chat-inline-reply)
-          (when (telega-ins--username (plist-get msg :sender_user_id))
-            (telega-ins "> "))
-          (telega-ins--content-one-line msg))
-        (telega-ins "\n" fill-prefix)))))
+(defun telega-ins--aux-msg-inline (title msg face &optional with-username)
+  "Insert REPLY-MSG as one-line."
+  (when msg
+    (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
+                                           (telega-current-column))
+                                   :elide t
+                                   :face face)
+      (telega-ins "| " title ": ")
+      (when (and with-username
+                 (telega-ins--username (plist-get msg :sender_user_id)))
+        (telega-ins "> "))
+      (telega-ins--content-one-line msg)
+      (telega-ins "\n"))))
 
 (defun telega-ins--channel-msg (msg)
   "Insert MSG received in channel chat."
@@ -621,7 +604,8 @@ Special messages are determined with `telega-msg-special-p'."
     (unless (zerop (plist-get msg :edit_date))
       (telega-ins--date (plist-get msg :edit_date))))
   (telega-ins "\n")
-  (telega-ins--inline-reply msg)
+  (telega-ins--aux-msg-inline
+   "Reply" (telega-msg-reply-msg) 'telega-chat-inline-reply 'with-username)
   (telega-ins--content-markup-date-status msg)
   )
 
@@ -632,6 +616,19 @@ Special messages are determined with `telega-msg-special-p'."
         (t
          (telega-ins-fmt "MSG: %S" (plist-get msg :id))))
   )
+
+(defun telega-ins--aux-prompt (prompt-val)
+  "Inserter for chatbuf's aux prompt."
+  (let ((aux-title (car prompt-val))
+        (aux-msg (cadr prompt-val)))
+    (telega-ins--with-attrs  (list :max telega-chat-fill-column
+                                   :elide t
+                                   :face 'telega-chat-prompt)
+      (telega-ins "| " aux-title ": ")
+      (when (telega-ins--username (plist-get aux-msg :sender_user_id))
+        (telega-ins "> "))
+      (telega-ins--content-one-line aux-msg)
+      (telega-ins "\n"))))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."

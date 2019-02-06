@@ -484,17 +484,17 @@ Activates button if cursor enter, deactivates if leaves."
                        props)))
     (button-at button)))
 
-(defun telega-button--update-value (button new-value)
+(defun telega-button--update-value (button new-value &rest props)
   "Update BUTTON's value to VALUE.
 Renews the BUTTON."
   (let ((inhibit-read-only t)
-        (button-type (button-type button)))
+        (button-type (button-type button))
+        (end (copy-marker (button-end button))))
     (save-excursion
       (goto-char (button-start button))
-      (delete-region (button-start button) (button-end button))
-      (let ((cpnt (point)))
-        (telega-button--insert button-type new-value)
-        (set-marker button cpnt)))))
+      (set-marker button (apply 'telega-button--insert
+                                button-type new-value props))
+      (delete-region (point) end))))
 
 (defun telega-button--observable-p (button)
   "Return non-nil if BUTTON is observable in some window.
