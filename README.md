@@ -1,14 +1,13 @@
 # telega.el [![Join the chat at https://t.me/emacs_telega](etc/chat_emacs_telega.svg)](https://t.me/emacs_telega)
 
-`telega.el` is an unofficial client for
+`telega.el` is full featured an unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
 Emacs](https://gnu.org/emacs "GNU Emacs").
 
-`telega.el` is in its very alpha stages and it is actively
-developed. For this reason, many features are not implemented, or they
-are present just as skeleton for future implementation. However, the
-core parts of this major-mode are mature enough so that it is possible
-to use `telega.el` for basic chat.
+`telega.el` is actively developed, for this reason, some features are
+not implemented, or they are present just as skeleton for future
+implementation. However, the core parts are mature enough so that it
+is possible to use `telega.el` for basic chat.
 
 # Features
 
@@ -18,6 +17,8 @@ to use `telega.el` for basic chat.
 - [x] Getting info about users, groups and supergroups
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
 - [x] Fetching chat history, sending messages, replies, edits, deleting
+- [ ] Resend failed messages (see [TDLib#166](https://github.com/tdlib/td/issues/166))
+- [ ] Creating new groups
 - [x] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
@@ -35,10 +36,11 @@ to use `telega.el` for basic chat.
 - [ ] Stickers
 - [ ] Animated GIF
 - [x] Special messages such as location/live location, voice/video
-      messages, etc
+      messages, contacts, etc
+- [ ] Poll messages (not yet in TDLib 1.3.0)
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx"
 - [ ] ReplyMarkup (inline keyboard buttons) in the messages
-- [ ] InstantView for web pages 
+- [x] InstantView for web pages 
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
 
 # Screenshots

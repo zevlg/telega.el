@@ -188,6 +188,7 @@ Done when telega server is ready to receive queries."
 
 (defmacro with-telega-help-win (buffer-or-name &rest body)
   "Execute BODY in help buffer."
+  (declare (indent 1))
   `(with-help-window ,buffer-or-name
      (set-buffer standard-output)
      (cursor-sensor-mode 1)

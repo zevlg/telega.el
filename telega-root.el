@@ -79,6 +79,7 @@
     (define-key map (kbd "s") 'telega-search)
     (define-key map (kbd "q") 'telega-kill)
     (define-key map (kbd "m") 'telega-chat-with)
+    (define-key map (kbd "a") 'telega-chat-add-member)
     map)
   "The key map for telega root buffer.")
 

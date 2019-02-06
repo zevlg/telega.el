@@ -168,6 +168,13 @@ Cannot be used in channels and public supergroups."
          :chat_id (plist-get chat :id)
          :remove_from_chat_list (or remove-from-list :false))))
 
+(defun telega--setChatTitle (chat title)
+  "Changes the CHAT title to TITLE."
+  (telega-server--send
+   (list :@type "setChatTitle"
+         :chat_id (plist-get chat :id)
+         :title title)))
+
 (defun telega-chat--info (chat)
   "Return info structure for the CHAT.
 It could be user, secretChat, basicGroup or supergroup."
@@ -186,7 +193,7 @@ It could be user, secretChat, basicGroup or supergroup."
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
-(defun telega-chat--me ()
+(defun telega-chat-me ()
   "Chat with myself, a.k.a Saved Messages."
   ;; NOTE: Saved Messages has same id as me user
   (telega-chat-get telega--me-id 'offline))
@@ -242,7 +249,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
       (setq title (cl-ecase (telega-chat--type chat)
                     (private
                      (telega-user--name (telega-chat--user chat) 'name)))))
-    (when (and (eq chat (telega-chat--me)) telega-chat-me-custom-title)
+    (when (and (eq chat (telega-chat-me)) telega-chat-me-custom-title)
       (setq title telega-chat-me-custom-title))
     (when with-username
       (let ((username (telega-chat-username chat)))
@@ -644,6 +651,34 @@ with list of chats received."
   (interactive (list (telega-chat-at-point)))
   (telega--toggleChatIsPinned chat))
 
+(defun telega--addChatMembers (chat users)
+  "Add new members to the CHAT.
+CHAT must be supergroup or channel."
+  (telega-server--send
+   (list :@type "addChatMembers"
+         :chat_id (plist-get chat :id)
+         :user_ids (cl-map 'vector (telega--tl-prop :id) users))))
+
+(defun telega-chat-add-member (chat user &optional forward-limit)
+  "Add MEMBER to the CHAT."
+  (interactive (list (or telega-chatbuf--chat
+                         (telega-chat-at-point))
+                     (telega-completing-read-user "User: ")))
+  (telega-server--send
+   (list :@type "addChatMember"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id)
+         :forward_limit (or forward-limit 300))))
+
+(defun telega--setChatMemberStatus (chat user status)
+  "Change the STATUS of a CHAT USER, needs appropriate privileges.
+STATUS is one of: "
+  (telega-server--send
+   (list :@type "setChatMemberStatus"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id)
+         :status status)))
+
 (defun telega-chat-call (chat)
   "Call to the user associated with the given private CHAT."
   (interactive (list (telega-chat-at-point)))
@@ -674,6 +709,10 @@ with list of chats received."
   "Show info about chat at point."
   (interactive (list (telega-chat-at-point)))
   (with-telega-help-win "*Telegram Chat Info*"
+    ;; We use buffer local `telega-chatbuf--chat' to keep track on
+    ;; chat
+    (setq telega-chatbuf--chat chat)
+
     (telega-ins (capitalize (symbol-name (telega-chat--type chat))) ": ")
     (telega-ins--with-face
         (list :foreground (if (eq (frame-parameter nil 'background-mode) 'light)
@@ -792,21 +831,25 @@ with list of chats received."
 
 (defun telega-chat-delete (chat)
   "Delete CHAT."
-  (interactive (let ((chat (telega-chat-at-point)))
-                 (and (y-or-n-p "This action cannot be undone. Delete chat? ")
-                      (list chat))))
+  (interactive (list (and (y-or-n-p "This action cannot be undone. Delete chat? ")
+                          (telega-chat-at-point))))
 
-  (let ((chat-type (telega-chat--type chat)))
-    (cond ((eq chat-type 'secret)
-           (telega--closeSecretChat (telega-chat--info chat)))
-          ((not (eq chat-type 'private))
-           (telega--leaveChat chat)))
+  (when chat
+    (let ((chat-type (telega-chat--type chat)))
+      (cond ((eq chat-type 'secret)
+             (telega--closeSecretChat (telega-chat--info chat)))
+            ((not (eq chat-type 'private))
+             (telega--leaveChat chat)))
 
-    ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
-    ;; and public supergroups
-    (unless (or (eq (telega-chat--type chat) 'channel)
-                (telega-chat--public-p chat 'supergroup))
-      (telega--deleteChatHistory chat t))))
+      ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
+      ;; and public supergroups
+      (unless (or (eq (telega-chat--type chat) 'channel)
+                  (telega-chat--public-p chat 'supergroup))
+        (telega--deleteChatHistory chat t)))
+
+    ;; Kill corresponding chat buffer
+    (with-telega-chatbuf chat
+      (kill-buffer (current-buffer)))))
 
 (defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
@@ -926,8 +969,8 @@ Used to reply to messages and edit message.")
     (telega-ins--as-string
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        (telega-ins telega-symbol-underline-bar)
-       (telega-ins--with-attrs (list :min telega-chat-fill-column
-                                     :max telega-chat-fill-column
+       (telega-ins--with-attrs (list :min (- telega-chat-fill-column 2)
+                                     :max (- telega-chat-fill-column 2)
                                      :align 'left
                                      :align-symbol telega-symbol-underline-bar
                                      :elide t
@@ -1558,7 +1601,7 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
          :chat_id (plist-get chat :id)
          :message_id (plist-get msg :id)
          :caption caption)))
-  
+
 (defun telega-chatbuf--input-imcs (markdown)
   "Convert input to input message contents list."
   (let ((attaches (telega--split-by-text-prop
@@ -1818,6 +1861,11 @@ If prefix arg is given, then take screenshot only of current emacs frame."
                   tmpfile)
     (telega-chatbuf--attach-tmp-photo tmpfile)))
 
+(defun telega-chatbuf-attach-member (user)
+  "Add USER to the chat members."
+  (interactive (list (telega-completing-read-user "Add user: ")))
+  (telega-chat-add-member telega-chatbuf--chat user))
+
 (defun telega-chatbuf-attach (attach-type attach-value)
   "Attach something into message."
   (interactive
@@ -1827,7 +1875,7 @@ If prefix arg is given, then take screenshot only of current emacs frame."
                                          "note-video" "note-voice"
                                          "file" "location"
                                          "poll" "contact"
-                                         "screenshot")
+                                         "screenshot" "member")
                                    (when (gui-get-selection 'CLIPBOARD 'image/png)
                                      (list "clipboard")))
                   nil t)
@@ -1855,7 +1903,7 @@ If prefix arg is given, then take screenshot only of current emacs frame."
     (goto-char (point-max))
 
     (telega-chatbuf--help-cancel-keys "reply")))
-           
+
 (defun telega-msg-edit (msg)
   "Start editing the MSG."
   (interactive (list (telega-msg-at-point)))
@@ -1904,7 +1952,7 @@ If prefix arg is given, then take screenshot only of current emacs frame."
 
       (telega-chatbuf--help-cancel-keys "forward"))
   ))
-  
+
 (defun telega-msg-delete (msg &optional revoke)
   "Delete message MSG.
 With prefix arg delete only for yourself."

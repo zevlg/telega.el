@@ -40,6 +40,7 @@
     (define-key map (kbd "p") 'telega-button-backward)
 
     (define-key map (kbd "i") 'telega-describe-message)
+    (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "e") 'telega-msg-edit)
     (define-key map (kbd "f") 'telega-msg-forward)

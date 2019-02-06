@@ -24,20 +24,39 @@
 ;; 
 
 ;;; Code:
+(defvar telega-user-button-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map button-map)
+    (define-key map [remap self-insert-command] 'ignore)
+    (define-key map (kbd "n") 'telega-button-forward)
+    (define-key map (kbd "p") 'telega-button-backward)
+
+    (define-key map (kbd "i") 'telega-describe-user)
+    (define-key map (kbd "m") 'telega-user-message)
+    (define-key map (kbd "d") 'telega-user-delete)
+    (define-key map (kbd "k") 'telega-user-delete)
+    (define-key map (kbd "DEL") 'telega-user-delete)
+    map))
 
 (define-button-type 'telega-user
   :supertype 'telega
+  'read-only t
+  'keymap telega-user-button-map
   'action #'telega-user-button--action)
 
 (define-button-type 'telega-member
   :supertype 'telega-user
-  :inserter 'telega-ins--chat-member
-  'action #'telega-member-button--action)
+  :inserter 'telega-ins--chat-member)
 
-(defun telega-member-button--action (button)
-  (let ((member (button-get button :value)))
-    (telega-describe-chat
-     (telega-chat-get (plist-get member :user_id)))))
+(defun telega-user-at (pos)
+  "Return user at position POS."
+  (let ((member-or-user (button-get (button-at pos) :value)))
+    (if (eq (telega--tl-type member-or-user) 'chatMember)
+        (telega-user--get (plist-get member-or-user :user_id))
+      member-or-user)))
+
+(defun telega-user-button--action (button)
+  (telega-describe-user (telega-user-at button)))
 
 (defun telega-user--get (user-id)
   "Get user by USER-ID."
@@ -148,7 +167,23 @@ Default is: `full'"
                      colors)))
         (plist-put user :telega-avatar ava)))
     ava))
-                                        
+
+(defun telega--searchChatMembers (chat query &optional filter limit)
+  "Search CHAT members by QUERY.
+FILTER is one \"Administrators\", \"Members\", \"Restricted\",
+\"Banned\", \"Bots\", default is \"Members\".
+LIMIT by default is 50."
+  (let ((reply (telega-server--call
+                (list :@type "searchChatMembers"
+                      :chat_id (plist-get chat :id)
+                      :query query
+                      :limit (or limit 50)
+                      :filter (list :@type (concat "chatMembersFilter"
+                                                   (or filter "Members")))))))
+    (mapcar (lambda (member)
+              (telega-user--get (plist-get member :user_id)))
+            (plist-get reply :members))))
+
 (provide 'telega-user)
 
 ;;; telega-user.el ends here

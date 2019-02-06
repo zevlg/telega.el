@@ -479,9 +479,13 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins (telega-user--name sender)
                    " joined the group via invite link"))
       (messageChatDeleteMember
-       (telega-ins (telega-user--name
-                    (telega-user--get (plist-get content :user_id)))
-                   " left the group"))
+       (let ((user (telega-user--get (plist-get content :user_id))))
+         (if (eq sender user)
+             (telega-ins (telega-user--name user 'name) " left the group")
+           (telega-ins (telega-user--name sender 'name)
+                       " removed "
+                       (telega-user--name user 'name)))))
+
       (messageChatChangeTitle
        (telega-ins "Renamed to \"" (plist-get content :title) "\"")
        (when sender
@@ -626,7 +630,11 @@ Special messages are determined with `telega-msg-special-p'."
   (cond ((plist-get msg :is_channel_post)
          (telega-ins--channel-msg msg))
         (t
-         (telega-ins-fmt "MSG: %S" (plist-get msg :id))))
+         (telega-ins-fmt "MSG: %S " (plist-get msg :id))
+         (telega-ins--chat-msg-one-line
+          (telega-msg-chat msg) msg
+          (- telega-chat-fill-column (current-column)))
+         ))
   )
 
 (defun telega-ins--input-content-one-line (imc)
@@ -791,6 +799,7 @@ Special messages are determined with `telega-msg-special-p'."
 
 (defun telega-ins--chat-msg-one-line (chat msg max-width)
   "Insert message for the chat button usage."
+  (cl-assert (> max-width 11))
   ;; NOTE: date - 10 chars, outgoing-status - 1 char
   (telega-ins--with-attrs (list :align 'left
                                 :min (- max-width 10 1)

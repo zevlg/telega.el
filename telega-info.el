@@ -64,7 +64,11 @@
     (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega--on-updateBasicGroup (event)
-  (telega--info-update (plist-get event :basic_group)))
+  (telega--info-update (plist-get event :basic_group))
+
+  ;; TODO: chatbuf might need to be updated, status might be changed
+  ;; due to someone removed me from basic group
+  )
 
 (defun telega--on-updateSupergroup (event)
   (telega--info-update (plist-get event :supergroup)))
