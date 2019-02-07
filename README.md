@@ -13,7 +13,7 @@ is possible to use `telega.el` for basic chat.
 
 - [x] Listing chats, reordering chats according to internal Telegram
       order
-- [ ] Custom order for chats (some chats on top, some chats on bottom, etc)
+- [x] Custom order for chats (some chats on top, some chats on bottom, etc)
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`

@@ -36,29 +36,9 @@
 (declare-function tracking-add-buffer "tracking" (buffer &optional faces))
 (declare-function tracking-remove-buffer "tracking" (buffer))
 
-(declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
+(declare-function telega-root--chat-update "telega-root"
+                  (chat &optional for-reorder))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
-
-(defsubst telega-chat--order (chat)
-  (plist-get chat :order))
-
-(defsubst telega--ordered-chats-insert (chat)
-  "Insert CHAT into `telega--ordered-chats' according to CHAT's order."
-  (let ((place telega--ordered-chats))
-    (if (or (null place)
-            (string> (telega-chat--order chat)
-                     (telega-chat--order (car place))))
-        (setq telega--ordered-chats (push chat telega--ordered-chats))
-
-      (while (and (not (string< (telega-chat--order (car place))
-                                (telega-chat--order chat)))
-                  (cdr place)
-                  (not (string< (telega-chat--order (cadr place))
-                                (telega-chat--order chat))))
-        (setq place (cdr place)))
-      (cl-assert place)
-      (setcdr place (cons chat (cdr place))))
-    telega--ordered-chats))
 
 (defun telega-chat--set-uaprops (chat uaprops)
   "Set CHAT's user application properties to UAPROPS."
@@ -82,6 +62,27 @@
 (defsetf telega-chat-uaprop (chat uaprop-name) (value)
   `(telega-chat--set-uaprops
     ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,value)))
+
+(defsubst telega-chat--order (chat)
+  (or (telega-chat-uaprop chat :order) (plist-get chat :order)))
+
+(defsubst telega--ordered-chats-insert (chat)
+  "Insert CHAT into `telega--ordered-chats' according to CHAT's order."
+  (let ((place telega--ordered-chats))
+    (if (or (null place)
+            (string> (telega-chat--order chat)
+                     (telega-chat--order (car place))))
+        (setq telega--ordered-chats (push chat telega--ordered-chats))
+
+      (while (and (not (string< (telega-chat--order (car place))
+                                (telega-chat--order chat)))
+                  (cdr place)
+                  (not (string< (telega-chat--order (cadr place))
+                                (telega-chat--order chat))))
+        (setq place (cdr place)))
+      (cl-assert place)
+      (setcdr place (cons chat (cdr place))))
+    telega--ordered-chats))
 
 (defsubst telega-chat--ensure (chat)
   "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'.
@@ -258,7 +259,9 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     title))
 
 (defun telega-chat--reorder (chat order)
-  (plist-put chat :order order)
+  ;; NOTE: order=nil if reordering with custom ORDER
+  (when order
+    (plist-put chat :order order))
   ;; Reorder CHAT by removing and then adding it again at correct place
   (setq telega--ordered-chats (delq chat telega--ordered-chats))
   (telega--ordered-chats-insert chat)
@@ -591,6 +594,8 @@ with list of chats received."
     (set-keymap-parent map button-map)
     (define-key map (kbd "i") 'telega-describe-chat)
     (define-key map (kbd "h") 'telega-describe-chat)
+    (define-key map (kbd "a") 'telega-chat-add-member)
+    (define-key map (kbd "o") 'telega-chat-custom-order)
     (define-key map (kbd "r") 'telega-chat-toggle-read)
     (define-key map (kbd "d") 'telega-chat-delete)
     (define-key map (kbd "C-c p") 'telega-chat-pin)
@@ -669,6 +674,20 @@ CHAT must be supergroup or channel."
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
          :forward_limit (or forward-limit 300))))
+
+(defun telega-chat-custom-order (chat order)
+  "For the CHAT (un)set custom ORDER."
+  (interactive (list (telega-chat-at-point)
+                     (read-string "Custom Order [RET to unset]: ")))
+  (if (string-empty-p order)
+      (setq order nil)
+
+    (unless (numberp (read order))
+      (error "Invalid order, must contain only digits")))
+
+  (setf (telega-chat-uaprop chat :order) order)
+  (telega-chat--reorder chat nil)
+  (telega-root--chat-update chat))
 
 (defun telega--setChatMemberStatus (chat user status)
   "Change the STATUS of a CHAT USER, needs appropriate privileges.
