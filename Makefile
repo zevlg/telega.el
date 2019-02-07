@@ -16,7 +16,7 @@ EL_SOURCES=telega.el telega-core.el telega-root.el \
   telega-chat.el telega-ins.el telega-filter.el telega-info.el \
   telega-media.el telega-msg.el telega-customize.el \
   telega-voip.el telega-webpage.el telega-vvnote.el telega-ffplay.el \
-  telega-user.el
+  telega-user.el telega-emoji.el
 
 compile: $(EL_SOURCES)
 	$(EMACS) -batch -L `pwd` -f batch-byte-compile $?

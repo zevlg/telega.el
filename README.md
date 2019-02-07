@@ -1,6 +1,6 @@
 # telega.el [![Join the chat at https://t.me/emacs_telega](etc/chat_emacs_telega.svg)](https://t.me/emacs_telega)
 
-`telega.el` is full featured an unofficial client for
+`telega.el` is full featured unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
 Emacs](https://gnu.org/emacs "GNU Emacs").
 
@@ -13,6 +13,7 @@ is possible to use `telega.el` for basic chat.
 
 - [x] Listing chats, reordering chats according to internal Telegram
       order
+- [ ] Custom order for chats (some chats on top, some chats on bottom, etc)
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
@@ -28,7 +29,7 @@ is possible to use `telega.el` for basic chat.
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
 - [x] Display chat actions, such as "@user is typing..."
-- [ ] Emoji input via `:<emoji>:` syntax with completions
+- [x] Emoji input via `:<emoji>:` syntax with completions
 - [ ] Username completions for fast mentions
 - [x] Secret chats
 - [x] Online searching chats/messages
@@ -195,16 +196,35 @@ it ask for the phone number to login to the Telegram network.
 
 # Enabling D-Bus notifications
 
-`telega.el` ships with support for D-Bus notifications, but they are disabled by default.  To enable notifications add next code to your `init.el`:
+`telega.el` ships with support for D-Bus notifications, but they are
+disabled by default.  To enable notifications add next code to your
+`init.el`:
 
 ```elisp
 (setq telega-use-notifications t)
+```
+
+# Enabling emoji completions in chat buffer
+
+Emoji completions with `:<EMOJI-NAME>:` syntax, uses nice
+[company-mode](http://company-mode.github.io).  It provides
+`telega-company-emoji` company backend.  So you need to add it to
+`company-backends`, maybe along with other backends in
+`telega-chat-mode-hook`, for example:
+
+```elisp
+(add-hook telega-chat-mode-hook (lambda ()
+    (setq company-backends '(telega-company-emoji))
+    (company-mode 1)))
 ```
 
 # How to contribute
 
 Join our [Telegram group](https://t.me/emacs_telega "Telegram group")
 to discuss the development of `telega.el`.
+
+Submitting [issues](https://github.com/zevlg/telega.el/issues) is
+exceptionally helpful.
 
 # License
 
@@ -230,11 +250,18 @@ libtdjson.so: cannot open shared object file: No such file or directory
 
 **Q**: I'm from Russia, does `telega.el` has proxy support?
 
-**A**: Yes, use `telega-socks5-proxy` custom variable, for example:
+**A**: Yes, use `telega-proxies` custom variable, for example:
 
 ```elisp
-(setq telega-socks5-proxy
-      '(:server "1.2.3.4" :port 88 :username "rkn" :password "jopa"))
+(setq telega-proxies
+      (list
+       '(:server "1.2.3.4" :port 8080 :enable :false
+                 :type (:@type "proxyTypeSocks5"
+                               :username "rkn" :password "jopa"))
+       '(:server "2.3.4.5" :port 8088 :enable t
+                 :type (:@type "proxyTypeSocks5"
+                               :username "rkn" :password "jopa"))
+       ))
 ```
 
 **Q**: How to make telega automatically download media content inside messages?
@@ -257,9 +284,20 @@ Customization is done via `telega-auto-download` variable.
 (defun my-telega-load ()
   ;; 🄌 occupies two full chars, but (string-width "🄌") returns 1
   ;; so we install custom widths to `char-width-table'
-  (telega-symbol-set-widths
-   `((2 ,telega-symbol-unread)))
+  (telega-symbol-set-width telega-symbol-unread 2)
+
+  ;; ... other code
   )
 
 (add-hook 'telega-load-hook 'my-telega-load)
 ```
+
+There is also `telega-symbol-widths` custom variable, you might want
+to modify it.
+
+**Q**: Is there erc-like chats tracking functionality?
+
+**A**: Yes, set `telega-use-tracking` to non-nil.
+
+Take into account that telega tracks only opened chats with enabled
+notifications.

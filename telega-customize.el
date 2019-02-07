@@ -143,6 +143,19 @@ See docstring for `display-buffer' for the values."
   :type 'cons
   :group 'telega)
 
+(defcustom telega-emoji-fuzzy-match t
+  "*Non-nil to use fuzzy prefix matching.
+For example without fuzzy matches, prefix `:jo' will match only
+`:joy:', `:joy-cat:' and `:joystick:'.  With fuzzy matching
+enabled it will match alsy `:flag-jo:' and `:black-jocker:'."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-emoji-custom-alist nil
+  "*Alist of custom emojis to add along with `etc/emojis.alist'."
+  :type 'alist
+  :group 'telega)
+
 
 (defgroup telega-server nil
   "Customisation for telega-server."

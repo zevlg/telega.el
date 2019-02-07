@@ -1,4 +1,4 @@
-;;; telega-emoji.el --- Emoji support for telega
+;;; telega-emoji.el --- Emoji completions support for telega
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 
@@ -24,46 +24,52 @@
 ;;
 
 ;;; Code:
-(require 'company)
+(require 'telega-util)
+(eval-when (load)
+  (require 'company))                      ; company-grab
 
 (defvar telega-emoji-alist nil)
+(defvar telega-emoji-candidates nil)
+(defvar telega-emoji-max-length 0)
 
 (defun telega-emoji-init ()
   "Initialize emojis."
   (unless telega-emoji-alist
     (setq telega-emoji-alist
-          (with-temp-buffer
-            (insert-file-contents (telega-etc-file "emojis.alist"))
-            (goto-char (point-min))
-            (read (current-buffer))))))
-
-(defun telega-company-emoji-insert (match)
-  (message "INSERT: %S" match)
-  )
+          (nconc (with-temp-buffer
+                   (insert-file-contents (telega-etc-file "emojis.alist"))
+                   (goto-char (point-min))
+                   (read (current-buffer)))
+                 telega-emoji-custom-alist))
+    (setq telega-emoji-candidates (mapcar 'car telega-emoji-alist))
+    (setq telega-emoji-max-length
+          (apply 'max (mapcar 'length telega-emoji-candidates)))))
 
 (defun telega-company-emoji (command &optional arg &rest ignored)
   "Backend for `company'."
-  (message "COMMAND: %S / %S " command arg)
+  (interactive (list 'interactive))
   (cl-case command
+    (interactive (company-begin-backend 'telega-company-emoji))
     (init (telega-emoji-init))
-    (prefix (company-grab-symbol))
-    (candidates (mapcar 'car telega-emoji-alist))
-    (meta (cdr (assoc arg telega-emoji-alist)))))
-
-(defun telega-emoji-mode (&optional arg)
-  "Toggle emoji autocomplete mode."
-  (interactive "p")
-  (if (or (null arg) (> arg 0))
-      (progn
-        (company-mode 1)
-        (company-begin-backend 'telega-company-emoji
-                               'telega-company-emoji-insert))
-
-    (company-mode -1)))
+    (sorted t)
+    ;; Always match if having `:'
+    (prefix (let ((cg (company-grab ":[^: _]+" nil
+                                    (- (point) telega-emoji-max-length))))
+              (when cg (cons cg company-minimum-prefix-length))))
+    (candidates
+     (let ((fuzzy-regexp (regexp-quote (concat "-" (substring arg 1)))))
+       (cl-remove-if-not (lambda (en)
+                           (or (string-prefix-p arg en)
+                               (string-match-p fuzzy-regexp en)))
+                         telega-emoji-candidates)))
+    (annotation
+     (concat (make-string (- telega-emoji-max-length (length arg)) ?\s)
+             (cdr (assoc arg telega-emoji-alist))))
+    (post-completion
+     (delete-region (- (point) (length arg)) (point))
+     (insert (cdr (assoc arg telega-emoji-alist))))
+    ))
 
 (provide 'telega-emoji)
-
-;; On load
-(telega-emoji-init)
 
 ;;; telega-emoji.el ends here
