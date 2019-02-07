@@ -64,21 +64,22 @@
     ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,value)))
 
 (defsubst telega-chat--order (chat)
-  (or (telega-chat-uaprop chat :order) (plist-get chat :order)))
+  (string-to-number
+   (or (telega-chat-uaprop chat :order) (plist-get chat :order))))
 
 (defsubst telega--ordered-chats-insert (chat)
   "Insert CHAT into `telega--ordered-chats' according to CHAT's order."
   (let ((place telega--ordered-chats))
     (if (or (null place)
-            (string> (telega-chat--order chat)
-                     (telega-chat--order (car place))))
+            (> (telega-chat--order chat)
+               (telega-chat--order (car place))))
         (setq telega--ordered-chats (push chat telega--ordered-chats))
 
-      (while (and (not (string< (telega-chat--order (car place))
-                                (telega-chat--order chat)))
+      (while (and (not (< (telega-chat--order (car place))
+                          (telega-chat--order chat)))
                   (cdr place)
-                  (not (string< (telega-chat--order (cadr place))
-                                (telega-chat--order chat))))
+                  (not (< (telega-chat--order (cadr place))
+                          (telega-chat--order chat))))
         (setq place (cdr place)))
       (cl-assert place)
       (setcdr place (cons chat (cdr place))))
@@ -677,8 +678,11 @@ CHAT must be supergroup or channel."
 
 (defun telega-chat-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
-  (interactive (list (telega-chat-at-point)
-                     (read-string "Custom Order [RET to unset]: ")))
+  (interactive (let ((chat (telega-chat-at-point)))
+                 (list chat
+                       (read-string "Custom Order [empty to unset]: "
+                                    (number-to-string
+                                     (telega-chat--order chat))))))
   (if (string-empty-p order)
       (setq order nil)
 
@@ -752,7 +756,7 @@ STATUS is one of: "
         (apply 'insert-text-button link (telega-link-props 'url link 'link))
         (insert "\n")))
     (when telega-debug
-      (telega-ins-fmt "Order: %s\n" (telega-chat--order chat)))
+      (telega-ins-fmt "Order: %S\n" (telega-chat--order chat)))
 
     (let ((default-mute-for
             (telega-chat-notification-setting chat :mute_for 'default))

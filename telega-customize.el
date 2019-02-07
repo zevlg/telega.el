@@ -535,6 +535,13 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-custom-order (cons "↓" "↑")
+  "Symbols used to emphasize custom order for the chat.
+car is used if custom order is less then real chat's order.
+cdr is used if custom order is greater then real chat's order."
+  :type 'cons
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-lock "🔒"      ;\U0001F512
   "*String to use as lock symbol."
   :type 'string

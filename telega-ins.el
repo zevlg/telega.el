@@ -831,6 +831,7 @@ Return t."
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
         (pinned-p (plist-get chat :is_pinned))
+        (custom-order (telega-chat-uaprop chat :order))
         (muted-p (telega-chat--muted-p chat))
         (chat-info (telega-chat--info chat))
         (chat-ava (plist-get chat :telega-avatar-1)))
@@ -898,6 +899,12 @@ Return t."
     (telega-ins (or (cadr brackets) "]"))
     (when pinned-p
       (telega-ins telega-symbol-pin))
+    (when custom-order
+      (telega-ins
+       (if (< (string-to-number custom-order)
+              (string-to-number (plist-get chat :order)))
+           (car telega-symbol-custom-order)
+         (cdr telega-symbol-custom-order))))
     (when (telega-chat--secret-p chat)
       (telega-ins telega-symbol-lock))
     t))
