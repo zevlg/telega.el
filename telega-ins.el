@@ -79,7 +79,8 @@ If COLUMN is nil or less then current column, then current column is used."
        (when (or (null ,colsym) (< ,colsym ,curcol))
          (setq ,colsym ,curcol))
 
-       (move-to-column ,colsym t)
+       (telega-ins (make-string (- ,colsym ,curcol) ?\s))
+;       (move-to-column ,colsym t)
        (telega-ins--with-attrs
            (list :fill 'left
                  :fill-prefix (make-string ,colsym ?\s)

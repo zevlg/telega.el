@@ -176,8 +176,8 @@ STATUS is cons with connection status as car and aux status as cdr."
     (telega-ins "Status: " conn-status)
     (unless (string-empty-p aux-status)
       (if (< (current-column) 28)
-          (move-to-column 30 t)
-        (insert "  "))
+          (telega-ins (make-string (- 30 (current-column)) ?\s))
+        (telega-ins "  "))
       (telega-ins aux-status))))
 
 (defun telega-status--animate ()
