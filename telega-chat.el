@@ -374,15 +374,27 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatDraftMessage (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+        (draft-msg (plist-get event :draft_message)))
     (cl-assert chat)
-    (plist-put chat :draft_message (plist-get event :draft_message))
+    (plist-put chat :draft_message draft-msg)
     (unless (string= (plist-get event :order) (plist-get chat :order))
       (telega-chat--reorder chat (plist-get event :order)))
     (telega-root--chat-update chat)
 
-    ;; TODO: If CHAT's input currently empty, maybe update it
-    (telega-debug "TODO: `telega--on-updateChatDraftMessage' handle draft message")))
+    ;; If chat has no active input, then update it to the draft
+    (with-telega-chatbuf chat
+      (unless (telega-chatbuf-has-input-p)
+        (let ((reply-msg-id (plist-get draft-msg :reply_to_message_id)))
+          (when (and reply-msg-id (not (zerop reply-msg-id)))
+            (telega-msg-reply
+             (telega-msg--get (plist-get chat :id) reply-msg-id)))
+
+          (save-excursion
+            (goto-char telega-chatbuf--input-marker)
+            (telega-ins--text
+             (telega--tl-get draft-msg :input_message_text :text))))))
+    ))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -959,15 +971,6 @@ Do it only if FORCE is non-nil."
 Actual value is `:@extra` value of the call to load history.")
 (make-variable-buffer-local 'telega-chatbuf--history-loading)
 
-(defvar telega-chatbuf--send-func nil
-  "Function to call in order to send message.
-Used to reply to messages and edit message.")
-(make-variable-buffer-local 'telega-chatbuf--send-func)
-
-(defvar telega-chatbuf--send-args nil
-  "Additional arguments to `telega-chatbuf--send-func'.")
-(make-variable-buffer-local 'telega-chatbuf--send-args)
-
 (define-button-type 'telega-prompt
   :supertype 'telega
   :inserter 'telega-ins
@@ -1014,9 +1017,7 @@ Keymap:
         telega-chatbuf--input-ring (make-ring telega-chat-input-ring-size)
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending-p nil
-        telega-chatbuf--history-loading nil
-        telega-chatbuf--send-func 'telega-chat-send-msg
-        telega-chatbuf--send-args nil)
+        telega-chatbuf--history-loading nil)
 
   (erase-buffer)
   (setq-local window-point-insertion-type t)
@@ -1150,7 +1151,13 @@ Also mark messages as read with `viewMessages'."
     (cond ((and (not my-action) input-p)
            (telega--sendChatAction telega-chatbuf--chat "Typing"))
           ((and my-action (not input-p))
-           (telega--sendChatAction telega-chatbuf--chat "Cancel"))))
+           (telega--sendChatAction telega-chatbuf--chat "Cancel")))
+
+    ;; - If there is active draft_message and input is empty then
+    ;;   clear the draf
+    (when (and (plist-get telega-chatbuf--chat :draft_message)
+               (not input-p))
+      (telega--setChatDraftMessage telega-chatbuf--chat)))
   )
 
 (defmacro with-telega-chatbuf (chat &rest body)
@@ -1909,6 +1916,35 @@ If prefix arg is given, then take screenshot only of current emacs frame."
     (if attach-value
         (funcall cmd attach-value)
       (call-interactively cmd))))
+
+(defun telega--setChatDraftMessage (chat &optional draft-msg)
+  "Set CHAT's draft message to DRAFT-MSG.
+If DRAFT-MSG is ommited, then clear draft message."
+  (telega-server--send
+   (nconc (list :@type "setChatDraftMessage"
+                :chat_id (plist-get chat :id))
+          (when draft-msg
+            (list :draft_message draft-msg)))))
+
+(defun telega-chatbuf--switch-out ()
+  "Called when switching from chat buffer."
+  (when (telega-chatbuf-has-input-p)
+    (let ((input (telega-chatbuf-input-string)))
+      (when (telega-chat--my-action telega-chatbuf--chat)
+        (telega--sendChatAction telega-chatbuf--chat "Cancel"))
+
+      (telega--setChatDraftMessage
+       telega-chatbuf--chat
+       (list :@type "draftMessage"
+             :reply_to_message_id
+             (or (plist-get (telega-chatbuf--replying-msg) :id) 0)
+             :input_message_text
+             (list :@type "inputMessageText"
+                   :text (telega--formattedText input)))))))
+
+(defun telega-chatbuf--switch-in ()
+  "Called when switching to chat buffer."
+  )
 
 ;; Message commands
 (defun telega-msg-reply (msg)

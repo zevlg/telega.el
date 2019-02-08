@@ -318,6 +318,19 @@ If called interactively, then print version into echo area."
         (message version)
       version)))
 
+(defun telega-check-buffer-switch ()
+  "Check if chat buffer is switched."
+  (let ((cbuf (current-buffer)))
+    (unless (eq cbuf telega--last-buffer)
+      (condition-case err
+          (when (buffer-live-p telega--last-buffer)
+            (with-current-buffer telega--last-buffer
+              (when telega-chatbuf--chat
+                (telega-chatbuf--switch-out))))
+        (error
+         (message "telega: error in `telega-chatbuf--switched': %S" err)))
+      (setq telega--last-buffer cbuf))))
+
 (provide 'telega)
 
 ;; Load hook might install new symbols into
@@ -326,5 +339,8 @@ If called interactively, then print version into echo area."
 
 ;; At load time load symbols widths and run load hook
 (telega-symbol-widths-install telega-symbol-widths)
+
+;; Track buffer switches
+(add-hook 'post-command-hook 'telega-check-buffer-switch)
 
 ;;; telega.el ends here

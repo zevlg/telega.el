@@ -29,8 +29,9 @@ is possible to use `telega.el` for basic chat.
 - [x] Emoji support (only in GNU Emacs with surrogate pairs support,
       see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
 - [x] Display chat actions, such as "@user is typing..."
+- [x] Display/Update chat's draft message
 - [x] Emoji input via `:<emoji>:` syntax with completions
-- [ ] Username completions for fast mentions
+- [x] Username completions for fast mentions
 - [x] Secret chats
 - [x] Online searching chats/messages
 - [ ] Avatars, photos

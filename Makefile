@@ -6,20 +6,14 @@ $(SERVER_TARGETS):
 	$(MAKE) -C server $@
 
 test: test.el
-	$(EMACS) -batch -L `pwd` -l ert -l test.el \
+	$(EMACS) -batch -L . -l ert -l test.el \
 	         -f ert-run-tests-batch-and-exit
 	$(MAKE) -C server $@
 
 #EL_SOURCES=$(wildcard telega*.el)
-EL_SOURCES=telega.el telega-core.el telega-root.el \
-  telega-server.el telega-util.el telega-notifications.el \
-  telega-chat.el telega-ins.el telega-filter.el telega-info.el \
-  telega-media.el telega-msg.el telega-customize.el \
-  telega-voip.el telega-webpage.el telega-vvnote.el telega-ffplay.el \
-  telega-user.el telega-emoji.el
 
-compile: $(EL_SOURCES)
-	$(EMACS) -batch -L `pwd` -f batch-byte-compile $?
+compile:
+	$(EMACS) -batch -L . -f batch-byte-compile telega.el telega-*.el
 
 clean:
 	@rm -vf *.elc

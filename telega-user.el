@@ -24,6 +24,8 @@
 ;; 
 
 ;;; Code:
+(require 'telega-core)
+
 (defvar telega-user-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)

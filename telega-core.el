@@ -57,6 +57,9 @@ Used to calculate numbers displayed in custom filter buttons.")
   "Alist of (CATEGORY LAST-UPDATE-TIME ..)
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'")
+(defvar telega--last-buffer nil
+  "Track switching buffers, so we can run the code when switching
+from chat buffer.")
 
 ;; Searching
 (defvar telega-search-query nil
