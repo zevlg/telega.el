@@ -11,6 +11,8 @@ is possible to use `telega.el` for basic chat.
 
 # Features
 
+In some random order:
+
 - [x] Listing chats, reordering chats according to internal Telegram
       order
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
@@ -26,11 +28,9 @@ is possible to use `telega.el` for basic chat.
 - [x] VoIP calls, including D-Bus call notification
 - [x] Downloading files from the cloud
 - [x] Uploading files/media (also pasting images from clipboard) to the cloud
-- [x] Emoji support (only in GNU Emacs with surrogate pairs support,
-      see [Bug#24784](https://debbugs.gnu.org/cgi/bugreport.cgi?bug=24784))
 - [x] Display chat actions, such as "@user is typing..."
 - [x] Display/Update chat's draft message
-- [x] Emoji input via `:<emoji>:` syntax with completions
+- [x] Emoji support, with `:<emoji>:` input syntax completion
 - [x] Username completions for fast mentions
 - [x] Secret chats
 - [x] Online searching chats/messages
