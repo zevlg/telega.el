@@ -605,9 +605,10 @@ Special messages are determined with `telega-msg-special-p'."
   (let ((chat (telega-msg-chat msg)))
     (telega-ins--with-attrs
         (list :face (if telega-chat-rainbow-users
-                        (if (eq (frame-parameter nil 'background-mode) 'light)
-                            (nth 2 (telega-chat-uaprop chat :color))
-                          (nth 0 (telega-chat-uaprop chat :color)))
+                        (list :foreground
+                              (if (eq (frame-parameter nil 'background-mode) 'light)
+                                  (nth 2 (telega-chat-uaprop chat :color))
+                                (nth 0 (telega-chat-uaprop chat :color))))
                       'telega-chat-user-title))
       (telega-ins (telega-chat-title chat 'with-username))))
   (telega-ins-prefix " "
