@@ -64,7 +64,7 @@ Version: 0.3.X
 файлы в телеграме.  Но нужно проверить можно ли пересохранять файлы с
 тем же id.
 
-* Иконки - all-the-icons package
+* Иконки - all-the-icons package [NO PLEASE], используем unicode
 
 * ! Аватарки можно разбивать на части, чтобы можно было отображать в
 мультилайне.
@@ -74,6 +74,11 @@ Version: 0.3.X
 * [WON'T DO] Показывать как изменялся Status, типа:
     Status:  Conn Ready <-- Connecting <-- Auth Checking...
   Использовать elide для обрезки
+
+Stickers
+--------
+
+$ sudo apt-get install webp  - чтобы была поддержка в imagemagick
 
 File downloading/uploading
 --------------------------
@@ -86,7 +91,8 @@ Async loading
 
 - Если делается какой-до долгий запрос то можно вывести сначала
 Loading.. (можно анимировать даже точки) и когда запрос завершён, то
-удалить Loading и вызвать callback.
+удалить Loading и вызвать callback.  [DONE] для поиска по публичным
+группам и сообщениям
 
 Так, например, можно подгружать длинные списки members для супергрупп.
 Или chats in common для юзера

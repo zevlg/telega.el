@@ -95,6 +95,8 @@
                          (unless (string-empty-p username)
                            (concat "@" username))))
                      members))))
+    (post-completion
+     (insert " "))
     ))
 
 (provide 'telega-company)
