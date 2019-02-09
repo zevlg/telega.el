@@ -121,6 +121,15 @@ hasn't been started, i.e. request hasn't been sent to server."
   "Return non-nil if FILE is downloading right now."
   (telega--tl-get file :local :is_downloading_active))
 
+(defsubst telega-file--downloading-progress (file)
+  "Return progress of file downloading as float from 0 to 1."
+  ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
+  ;; size
+  (let ((fsize (plist-get file :size))
+        (esize (plist-get file :expected_size))
+        (dsize (telega--tl-get file :local :downloaded_size)))
+    (color-clamp (/ (float dsize) (if (zerop fsize) esize fsize)))))
+
 (defun telega-file--run-callbacks (callbacks file)
   "Run CALLBACKS on FILE update."
   (cl-dolist (cb-with-args callbacks)
@@ -130,6 +139,7 @@ hasn't been started, i.e. request hasn't been sent to server."
   "Start monitoring downloading progress for FILE-ID.
 CB and CB-ARGS denotes callback to call.
 First argument to callback is file, and only then CB-ARGS are supplied."
+  (declare (indent 1))
   (let ((callbacks (gethash file-id telega--downloadings))
         (new-callback (cons cb cb-args)))
     (unless (member new-callback callbacks)
@@ -142,15 +152,28 @@ First argument to callback is file, and only then CB-ARGS are supplied."
   "Download file denoted by PLACE and PROP.
 PLACE is the plist where its PROP is a file to download.
 File is monitored so PLACE's PROP is updated on file updates."
+  ;; - If file already downloaded, then just call the callback
+  ;; - If file already downloading, then just install the callback
+  ;; - If file can be downloaded, install the callback and download
+  ;;   the file
   (let* ((file (plist-get place prop))
          (file-id (plist-get file :id)))
-    (when (plist-get (plist-get file :local) :can_be_downloaded)
-      (telega-file--download-monitor-progress
-       file-id 'telega-file--update-place place prop)
-      (when callback-spec
-        (apply 'telega-file--download-monitor-progress
-               file-id callback-spec))
-      (telega--downloadFile file-id priority))))
+    (cond ((telega-file--downloaded-p file)
+           (when callback-spec
+             (apply (car callback-spec) file (cdr callback-spec))))
+
+          ((telega-file--downloading-p file)
+           (when callback-spec
+             (apply 'telega-file--download-monitor-progress
+                    file-id callback-spec)))
+
+          ((telega--tl-get file :local :can_be_downloaded)
+           (telega-file--download-monitor-progress
+               file-id 'telega-file--update-place place prop)
+           (when callback-spec
+             (apply 'telega-file--download-monitor-progress
+                    file-id callback-spec))
+           (telega--downloadFile file-id priority)))))
 
 (defun telega--uploadFile (filename &optional file-type priority)
   "Asynchronously upload file denoted by FILENAME.
@@ -336,10 +359,10 @@ Prefix every line with PREFIX."
 
 
 ;;; Auto-downloading media
-(defmacro telega-media--need-download-p (file)
-  `(and ,file
-        (not (telega-file--downloaded-p ,file))
-        (not (telega-file--downloading-p ,file))))
+(defsubst telega-media--need-download-p (file)
+  (and (telega--tl-get file :local :can_be_downloaded)
+       (not (telega-file--downloaded-p file))))
+;       (not (telega-file--downloading-p file))))
 
 (defun telega-media--autodownload-on-user (user)
   "Autodownload USER's profile avatar."

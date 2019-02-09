@@ -60,6 +60,20 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 (defvar telega--last-buffer nil
   "Track switching buffers, so we can run the code when switching
 from chat buffer.")
+(defvar telega--stickersets nil
+  "Alist of seen sticker sets.
+ID -> sticker set.
+Take into account that ID is the string.")
+(defvar telega--stickersets-installed nil
+  "List of installed sticker sets.")
+(defvar telega--stickersets-trending nil
+  "List of trending sticker sets info.")
+(defvar telega--stickers-favorite nil
+  "List of favorite stickers.")
+(defvar telega--stickers-recent nil
+  "List of recently used stickers.")
+(defvar telega--stickers-recent-attached nil
+  "List of recently attached stickers.")
 
 ;; Searching
 (defvar telega-search-query nil
@@ -76,10 +90,6 @@ Actualy value is `:@extra' of the call.")
 (defvar telega--search-messages-loading nil
   "Non-nil if searching messages asynchronously.
 Actualy value is `:@extra' of the call.")
-
-;; DEPRECATED
-(defvar telega--search-public-chats nil
-  "Result of last `telega--searchPublicChats'.")
 
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
 (defvar telega--unread-message-count nil
@@ -157,6 +167,13 @@ Done when telega server is ready to receive queries."
 
   (setq telega--proxy-pings nil)
   (setq telega--scope-notification-settings (cons nil nil))
+
+  (setq telega--stickersets nil)
+  (setq telega--stickersets-installed nil)
+  (setq telega--stickersets-trending nil)
+  (setq telega--stickers-favorite nil)
+  (setq telega--stickers-recent nil)
+  (setq telega--stickers-recent-attached nil)
   )
 
 (defmacro telega-save-excursion (&rest body)
@@ -488,17 +505,21 @@ Activates button if cursor enter, deactivates if leaves."
                        props)))
     (button-at button)))
 
+(defmacro telega-button--change (button new-button)
+  "Change BUTTON to NEW-BUTTON."
+  (declare (indent 1))
+  (let ((end (gensym "button-end")))
+    `(let ((inhibit-read-only t)
+           (,end (copy-marker (button-end ,button))))
+      (goto-char (button-start ,button))
+      (set-marker ,button ,new-button)
+      (delete-region (point) ,end))))
+
 (defun telega-button--update-value (button new-value &rest props)
   "Update BUTTON's value to VALUE.
 Renews the BUTTON."
-  (let ((inhibit-read-only t)
-        (button-type (button-type button))
-        (end (copy-marker (button-end button))))
-    (save-excursion
-      (goto-char (button-start button))
-      (set-marker button (apply 'telega-button--insert
-                                button-type new-value props))
-      (delete-region (point) end))))
+  (telega-button--change button
+    (apply 'telega-button--insert (button-type button) new-value props)))
 
 (defun telega-button--observable-p (button)
   "Return non-nil if BUTTON is observable in some window.

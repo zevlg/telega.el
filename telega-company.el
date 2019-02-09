@@ -31,7 +31,7 @@
   (require 'company))                      ; company-grab
 
 
-;; Emoji completions
+;;; Emoji completions
 (defvar telega-emoji-alist nil)
 (defvar telega-emoji-candidates nil)
 (defvar telega-emoji-max-length 0)
@@ -76,7 +76,22 @@
     ))
 
 
-;; Username completion for chat buffer
+;;; Username completion for chat buffer
+(defun telega-company-grab-username ()
+  "If point is at the end of a word, return it.
+Otherwise, if point is not inside a symbol, return an empty string."
+  (if (looking-at "\\>")
+      (let ((p (point)))
+        (save-excursion
+          (skip-syntax-backward "w")
+          (when (= (char-before) ?\@)
+            (cons (buffer-substring p (1- (point)))
+                  ;; Always match if `@' prefix
+                  company-minimum-prefix-length))))
+
+    (when (= (char-before) ?\@)
+      (cons "" company-minimum-prefix-length))))
+
 ;;;###autoload
 (defun telega-company-username (command &optional arg &rest ignored)
   "Backend for `company' to complete usernames."
