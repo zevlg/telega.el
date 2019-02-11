@@ -328,7 +328,7 @@ If called interactively, then print version into echo area."
               (when telega-chatbuf--chat
                 (telega-chatbuf--switch-out))))
         (error
-         (message "telega: error in `telega-chatbuf--switched': %S" err)))
+         (message "telega: error in `telega-chatbuf--switch-out': %S" err)))
       (setq telega--last-buffer cbuf))))
 
 (provide 'telega)

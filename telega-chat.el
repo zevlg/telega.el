@@ -1373,16 +1373,12 @@ Return newly inserted message button."
 (defun telega-chatbuf--read-outbox (old-last-read-outbox-msgid)
   "Redisplay chat messages affected by read-outbox change.
 OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id'."
-  ;; TODO: use ewoc
-  )
-  ;; (telega-save-excursion
-  ;;   (goto-char telega-chatbuf--output-marker)
-  ;;   (cl-block 'buttons-traverse-done
-  ;;     (telega-button-foreach0 previous-button 'telega-msg (button)
-  ;;       (when (>= old-last-read-outbox-msgid
-  ;;                 (plist-get (button-get button :value) :id))
-  ;;         (cl-return-from 'buttons-traverse-done))
-  ;;       (telega-button--redisplay button)))))
+  (let ((node (ewoc--footer telega-chatbuf--ewoc)))
+    (telega-save-cursor
+      (while (and (setq node (ewoc-prev telega-chatbuf--ewoc node))
+                  (>= old-last-read-outbox-msgid
+                      (plist-get (ewoc-data node) :id)))
+        (ewoc-invalidate telega-chatbuf--ewoc node)))))
 
 (defun telega--on-updateNewMessage (event)
   "A new message was received; can also be an outgoing message."
@@ -1679,13 +1675,16 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
       (setq attaches (cdr attaches)))
     (nreverse result)))
 
-(defun telega-chatbuf-input-send (markdown)
+(defun telega-chatbuf-input-send (prefix-arg)
   "Send current input to the chat.
-With prefix arg, apply markdown formatter to message."
+With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
   (interactive "P")
   ;; Send the input
   (let ((input (telega-chatbuf-input-string))
-        (imcs (telega-chatbuf--input-imcs markdown))
+        (imcs (telega-chatbuf--input-imcs
+               (if telega-chat-use-markdown-formatting
+                   (not prefix-arg)
+                 prefix-arg)))
         (replying-msg (telega-chatbuf--replying-msg))
         (editing-msg (telega-chatbuf--editing-msg))
         (forwarding-msg (telega-chatbuf--forwarding-msg)))

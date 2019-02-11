@@ -376,6 +376,11 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
+(defcustom telega-chat-use-markdown-formatting nil
+    "*Non-nil to use markdown formatting for outgoing messages."
+  :type 'boolean
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil

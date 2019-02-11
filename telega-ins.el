@@ -465,7 +465,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
               'messageChatChangeTitle 'messageSupergroupChatCreate
               'messageBasicGroupChatCreate 'messageCustomServiceAction
               'messageChatSetTtl 'messageExpiredPhoto
-              'messageChatChangePhoto)))
+              'messageChatChangePhoto 'messageChatUpgradeFrom)))
 
 (defun telega-ins--special (msg)
   "Insert special message MSG.
@@ -519,6 +519,9 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins "Photo has expired"))
       (messageChatChangePhoto
        (telega-ins "Group photo updated"))
+      (messageChatUpgradeFrom
+       (telega-ins (telega-user--name sender 'short)
+                   " upgraded the group to supergroup"))
       (t (telega-ins-fmt "<unsupported special message: %S>"
            (telega--tl-type content)))))
   (telega-ins ")--"))
@@ -526,24 +529,19 @@ Special messages are determined with `telega-msg-special-p'."
 (defun telega-ins--content (msg)
   "Insert message's MSG content."
   (let ((content (plist-get msg :content)))
-    (cl-case (telega--tl-type content)
-      (messageText
+    (pcase (telega--tl-type content)
+      ('messageText
        (telega-ins--text (plist-get content :text))
        (telega-ins-prefix "\n"
          (telega-ins--web-page (plist-get content :web_page))))
-      (messageDocument
+      ('messageDocument
        (telega-ins--document (plist-get content :document)))
-      (messagePhoto
+      ('messagePhoto
        (telega-ins--photo (plist-get content :photo)))
       ;; special message
-      ((messageContactRegistered messageChatAddMembers
-        messageChatJoinByLink messageChatDeleteMember
-        messageChatChangeTitle messageSupergroupChatCreate
-        messageBasicGroupChatCreate messageCustomServiceAction
-        messageChatSetTtl messageExpiredPhoto
-        messageChatChangePhoto)
+      ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))
-      (t (telega-ins-fmt "<TODO: %S>"
+      (_ (telega-ins-fmt "<TODO: %S>"
                          (telega--tl-type content))))
 
     (telega-ins-prefix "\n"

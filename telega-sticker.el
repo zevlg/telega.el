@@ -24,6 +24,7 @@
 ;;
 
 ;;; Code:
+(require 'telega-util)
 
 (defcustom telega-sticker-height 4
   "*Height of stickers in char heights."
