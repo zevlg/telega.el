@@ -35,9 +35,12 @@
 
 
 ;;; Files downloading/uploading
-(defun telega--getFile (file-id)
+(defun telega--getFile (file-id &optional callback)
+  (declare (indent 1))
   (telega-server--call
-   (list :@type "getFile" :file_id file-id)))
+   (list :@type "getFile"
+         :file_id file-id)
+   callback))
 
 (defun telega--downloadFile (file-id &optional priority)
   "Asynchronously downloads a file by its FILE-ID from the cloud.

@@ -117,7 +117,9 @@
 ;;; Stickers
 (defun telega-company-grab-sticker ()
   "If chat buffer has single emoji, then grab it."
-  )
+  (let ((input (telega-chatbuf-input-string)))
+    (when (= (length input) 1)
+      input)))
 
 (defun telega-company-sticker (command &optional arg &rest ignored)
   "Backend for `company' to complete stickers."
@@ -130,13 +132,11 @@
     (sorted t)
     (prefix (telega-company-grab-sticker))
     (candidates
-     (let ((members (telega--searchChatMembers telega-chatbuf--chat arg)))
-       (delq nil
-             (mapcar (lambda (member)
-                       (let ((username (plist-get member :username)))
-                         (unless (string-empty-p username)
-                           (concat "@" username))))
-                     members))))
+     (let ((stickers (telega--getStickers arg 10)))
+       (mapcar (lambda (sticker)
+                 (telega-ins--as-string
+                  (telega-ins--sticker sticker)))
+               stickers)))
     (post-completion
      (insert " "))
     ))

@@ -74,6 +74,8 @@ Take into account that ID is the string.")
   "List of recently used stickers.")
 (defvar telega--stickers-recent-attached nil
   "List of recently attached stickers.")
+(defvar telega--animations-saved nil
+  "List of saved animations.")
 
 ;; Searching
 (defvar telega-search-query nil
@@ -174,6 +176,7 @@ Done when telega server is ready to receive queries."
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
+  (setq telega--animations-saved nil)
   )
 
 (defmacro telega-save-excursion (&rest body)
