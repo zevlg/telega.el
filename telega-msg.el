@@ -46,6 +46,7 @@
     (define-key map (kbd "f") 'telega-msg-forward)
     (define-key map (kbd "d") 'telega-msg-delete)
     (define-key map (kbd "k") 'telega-msg-delete)
+    (define-key map (kbd "s") 'telega-msg-save)
     (define-key map (kbd "DEL") 'telega-msg-delete)
     map))
 
@@ -191,6 +192,7 @@ Update message as file downloading/uploading progresses."
     (unless (zerop sender-uid)
       (telega-user--name (telega-user--get sender-uid)))))
 
+;; DEPRECATED
 (defun telega-msg-sender-ava-h (msg)
   "High stripe of the MSG sender's avatar."
   ;; TODO: sender avatar high stripe
@@ -674,6 +676,13 @@ If MARKDOWN is non-nil then format TEXT as markdown."
           :text text :entities [])))
 
 
+(defun telega-msg-save (msg)
+  "Save messages's MSG media content to a file."
+  (interactive (list (telega-msg-at-point)))
+  (let ((content (plist-get msg :content)))
+    (cl-case (telega--tl-type content)
+      (t (error "TODO: `telega-msg-save'")))))
+
 (defun telega-describe-message (msg)
   "Show info about message at point."
   (interactive (list (telega-msg-at-point)))

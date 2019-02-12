@@ -501,8 +501,8 @@ Integer or `auto'."
     (file opened)
     (voice-message opened)
     (video-message opened)
-    (web-page all)
-    (instant-view all))
+    (web-page opened)
+    (instant-view opened))
   "*Alist in form (KIND . FILTER-SPEC).
 To denote for which chats to automatically download media content.
 KIND is one of `photo', `video', `file', `voice-message',
@@ -985,6 +985,13 @@ You can customize its `:height' to fit width of the default face."
   "Hook called with single argument USER, when USER's info is updated."
   :type 'hook
   :options '(telega-media--autodownload-on-user)
+  :group 'telega-hooks)
+
+(defcustom telega-chat-created-hook nil
+  "Hook called when new chat has been loaded/created.
+Called with one argument - chat."
+  :type 'hook
+  :options '(telega-media--autodownload-on-chat)
   :group 'telega-hooks)
 
 (defcustom telega-chat-before-oldest-msg-hook nil

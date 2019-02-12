@@ -214,7 +214,7 @@ them to bots or channels."
            'channel)
           ((and (not no-interpret)
                 (eq type-sym 'private)
-                (telega-user--bot-p (telega-chat--user chat)))
+                (telega-user-bot-p (telega-chat--user chat)))
            'bot)
           (t type-sym))))
 
@@ -272,7 +272,18 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   "New chat has been loaded or created."
   (let ((chat (plist-get event :chat)))
     (telega-chat--ensure chat)
-    (telega-root--chat-new chat)))
+    (telega-root--chat-new chat)
+
+    (run-hook-with-args 'telega-chat-created-hook chat)))
+
+(defun telega--on-updateChatPhoto (event)
+  "Chat's photo has been updated."
+  (let ((chat (telega-chat-get (plist-get event :chat_id)))
+        (photo (plist-get event :photo)))
+    (plist-put chat :photo photo)
+
+    ;; TODO: update chat's :telega-image
+    ))
 
 (defun telega--setChatNotificationSettings (chat &rest settings)
   "Set CHAT's notification settings to NOT-CFG."

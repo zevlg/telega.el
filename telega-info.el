@@ -158,7 +158,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega-ins "  ")
       (setq has-button-line t))
     ;; NOTE: Secret chat with bots and myself is not possible
-    (unless (or (telega-user--bot-p user)
+    (unless (or (telega-user-bot-p user)
                 (eq (plist-get user :id) telega--me-id))
       ;; TODO: search for existing secret chat with Ready state and
       ;; create [Open Secret Chat] button instead

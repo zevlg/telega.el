@@ -64,7 +64,7 @@ from chat buffer.")
   "Alist of seen sticker sets.
 ID -> sticker set.
 Take into account that ID is the string.")
-(defvar telega--stickersets-installed nil
+(defvar telega--stickersets-installed-ids nil
   "List of installed sticker sets.")
 (defvar telega--stickersets-trending nil
   "List of trending sticker sets info.")
@@ -169,7 +169,7 @@ Done when telega server is ready to receive queries."
   (setq telega--scope-notification-settings (cons nil nil))
 
   (setq telega--stickersets nil)
-  (setq telega--stickersets-installed nil)
+  (setq telega--stickersets-installed-ids nil)
   (setq telega--stickersets-trending nil)
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)

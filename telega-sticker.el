@@ -24,6 +24,7 @@
 ;;
 
 ;;; Code:
+(require 'telega-core)
 (require 'telega-util)
 
 (defcustom telega-sticker-height 4
@@ -89,29 +90,40 @@
   "Ensure sticker set SSET data is downloaded."
   (mapc 'telega-sticker--ensure-downloaded (plist-get sset :stickers)))
 
-(defun telega-stickerset-get (set-id)
+(defun telega--getStickerSet (set-id &optional callback)
+  (telega-server--call
+   (list :@type "getStickerSet"
+         :set_id set-id)
+   callback))
+
+(defun telega-stickerset--ensure (sset)
+  "Ensure sticker set SSET is put into `telega--stickersets'."
+  (setf (alist-get (plist-get sset :id) telega--stickersets nil nil 'equal)
+        sset)
+  (telega-stickerset--ensure-downloaded sset)
+  sset)
+
+(defun telega-stickerset-get (set-id &optional async-p)
   (let ((sset (cdr (assoc set-id telega--stickersets))))
     (unless sset
-      (setq sset (telega-server--call
-                  (list :@type "getStickerSet"
-                        :set_id set-id)))
+      (if async-p
+          (telega--getStickerSet set-id 'telega-stickerset--ensure)
 
-      ;; Asynchronously download sticker data for this set
-      (telega-stickerset--ensure-downloaded sset)
-
-      (setq telega--stickersets
-            (cons (cons set-id sset) telega--stickersets)))
+        (setq sset (telega--getStickerSet set-id))
+        (telega-stickerset--ensure sset)))
     sset))
 
 (defun telega--on-updateInstalledStickerSets (event)
   "The list of installed sticker sets was updated."
-  (let ((sset-ids (plist-get event :sticker_set_ids)))
-    (if (plist-get event :is_masks)
-        (telega-debug "TODO: `telega--on-updateInstalledStickerSets' is_mask=True")
+  (if (plist-get event :is_masks)
+      (telega-debug "TODO: `telega--on-updateInstalledStickerSets' is_mask=True")
 
-      (setq telega--stickersets-installed
-            (mapcar 'telega-stickerset-get sset-ids))
-      )))
+    ;; Asynchronously fetch sticker sets
+    (setq telega--stickersets-installed-ids
+          (mapcar 'identity (plist-get event :sticker_set_ids)))
+    (cl-dolist (set-id telega--stickersets-installed-ids)
+      (telega-stickerset-get set-id 'async))
+    ))
 
 (defun telega--on-updateTrendingStickerSets (event)
   "The list of trending sticker sets was updated or some of them were viewed."
@@ -150,10 +162,11 @@ LIMIT defaults to 20."
 (defun telega--searchStickers (emoji &optional limit)
   "Search for the public stickers that correspond to a given EMOJI.
 LIMIT defaults to 20."
-  (telega-server--call
-   (list :@type "searchStickers"
-         :emoji emoji
-         :limit (or limit 20))))
+  (let ((reply (telega-server--call
+                (list :@type "searchStickers"
+                      :emoji emoji
+                      :limit (or limit 20)))))
+    reply))
 
 (defun telega--getInstalledStickerSets (&optional masks-p)
   "Returns a list of installed sticker sets."
@@ -293,15 +306,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                             ?X))
     ))
 
-(defun telega-sticker--create-image (filename &optional props)
-  "Create sticker image frame FILENAME."
-  (apply 'create-image filename 'imagemagick nil
-         :height (* (frame-char-height) telega-sticker-height)
-         :scale 1.0
-         :ascent 'center
-         props))
-
-(defun telega-sticker--image (sticker)
+(defun telega-sticker--create-image (sticker &optional file)
   "Return image for the STICKER."
   ;; Three cases:
   ;;   1) Sticker downloaded
@@ -325,58 +330,29 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   (let* ((sfile (plist-get sticker :sticker))
          (sthumb (telega--tl-get sticker :thumbnail :photo))
          (filename (or (and (telega-file--downloaded-p sfile) sfile)
-                       (and (telega-file--downloaded-p sthumb) sthumb))))
+                       (and (telega-file--downloaded-p sthumb) sthumb)
+                       )))
     (if filename
-        (telega-sticker--create-image
-         (telega--tl-get filename :local :path)
-         (when (telega-sticker-favorite-p sticker)
-           (list :relief 4)))
+        (apply 'create-image (telega--tl-get filename :local :path)
+               'imagemagick nil
+               :height (* (frame-char-height) telega-sticker-height)
+               :scale 1.0
+               :ascent 'center
+               (when (telega-sticker-favorite-p sticker)
+                 (list :relief 4)))
       ;; Fallback to svg
       (telega-sticker--progress-svg sticker))))
 
-(defun telega-sticker--image-update (sticker)
-  "Possible update STICKER's image.
-Return new image."
-  (let ((cached-image (plist-get sticker :telega-image))
-        (simage (telega-sticker--image sticker)))
-    (unless (equal cached-image simage)
-      ;; Update the image
-      (if cached-image
-          (setcdr cached-image (cdr simage))
-        (setq cached-image simage))
-      (plist-put sticker :telega-image cached-image))
-    cached-image))
-
-(defun telega-sticker--download-monitor (file sticker)
-  (cl-assert (plist-get sticker :telega-image))
-  (telega-sticker--image-update sticker)
-  (force-window-update))
-  
 (defun telega-ins--sticker (sticker &optional slices-p &rest props)
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
-  (let ((cached-image (plist-get sticker :telega-image))
-        (simage (telega-sticker--image sticker))
-        (sfile (plist-get sticker :sticker))
-        (props (nconc (list 'button (list t)
-                        'keymap telega-sticker-button-map)
-                  props)))
-    (unless (equal cached-image simage)
-      ;; Update the image
-      (if cached-image
-          (setcdr cached-image (cdr simage))
-        (setq cached-image simage))
-      (plist-put sticker :telega-image cached-image))
-
-    ;; Possible monitor file downloading
-    (when (telega-media--need-download-p (plist-get sticker :sticker))
-      (telega-file--download-monitoring
-       sticker :sticker nil
-       'telega-sticker--download-monitor sticker))
-
-    (if slices-p
-        (apply 'telega-ins--image-slices cached-image props)
-      (apply 'telega-ins--image cached-image nil props))))
+  (telega-ins--media-image
+   (cons sticker 'telega-sticker--create-image)
+   (cons sticker :sticker)
+   slices-p
+   (nconc (list 'button (list t)
+                'keymap telega-sticker-button-map)
+          props)))
 
 (defun telega-ins--stickerset-change-button (sset)
   (telega-ins--button (if (plist-get sset :is_installed)
@@ -398,8 +374,13 @@ If SLICES-P is non-nil, then insert STICKER using slices."
 (defun telega-describe-stickerset (sset &optional info-p)
   "Describe the sticker set."
   (interactive (list (telega-sticker-set-at-point)))
-  (with-telega-help-win "*Telegram Sticker Set*"
-    (let ((stickers (plist-get sset (if info-p :covers :stickers))))
+  (let ((stickers (plist-get sset (if info-p :covers :stickers))))
+    ;; Pop the window before doing long lasting image creation
+    (with-telega-help-win "*Telegram Sticker Set*"
+      )
+    (redisplay)
+
+    (with-telega-help-win "*Telegram Sticker Set*"
       (telega-ins "Title: " (plist-get sset :title) " ")
       (telega-ins--stickerset-change-button sset)
       (telega-ins "\n")
@@ -413,9 +394,10 @@ If SLICES-P is non-nil, then insert STICKER using slices."
         (when (> (telega-current-column) (- telega-chat-fill-column 10))
           (telega-ins "\n\n"))
         (telega-ins--sticker sticker)
+        (sit-for 0)
         (telega-ins (plist-get sticker :emoji))
         (telega-ins "  "))
-  )))
+      )))
 
 (provide 'telega-sticker)
 

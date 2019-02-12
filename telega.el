@@ -39,6 +39,7 @@
 (require 'telega-user)
 (require 'telega-info)
 (require 'telega-media)
+(require 'telega-sticker)
 (require 'telega-util)
 (require 'telega-vvnote)
 
@@ -325,7 +326,10 @@ If called interactively, then print version into echo area."
       (condition-case err
           (when (buffer-live-p telega--last-buffer)
             (with-current-buffer telega--last-buffer
-              (when telega-chatbuf--chat
+              ;; NOTE: telega-chatbuf--chat also used in some help
+              ;; buffers, so check for major-mode as well
+              (when (and telega-chatbuf--chat
+                         (eq major-mode 'telega-chat-mode))
                 (telega-chatbuf--switch-out))))
         (error
          (message "telega: error in `telega-chatbuf--switch-out': %S" err)))

@@ -72,7 +72,7 @@
   "Return USER type."
   (intern (downcase (substring (plist-get (plist-get user :type) :@type) 8))))
 
-(defun telega-user--bot-p (user)
+(defsubst telega-user-bot-p (user)
   "Return non-nil if USER is bot."
   (eq (telega-user--type user) 'bot))
 
@@ -107,6 +107,26 @@ Default is: `full'"
 (defun telega-user--seen (user)
   "Return last seen status for the USER."
   (substring (plist-get (plist-get user :status) :@type) 10))
+
+(defun telega-user-color (user)
+  "Return color list associated with USER."
+  (let ((colors (plist-get user :color)))
+    (unless colors
+      ;; Try get color from chat
+      (let ((chat (telega-chat-get (plist-get user :id) 'offline)))
+        (setq colors (telega-chat-uaprop chat :color))
+        (unless colors
+          (let ((col (telega-color-random)))
+            (setq colors (list (telega-color-gradient col 'light)
+                               col
+                               (telega-color-gradient col))))
+          ;; If there corresponding chat, then update its color
+          (when chat
+            (setf (telega-chat-uaprop chat :color) colors))))
+      (plist-put user :color colors))
+
+    (cl-assert colors)
+    colors))
 
 (defun telega--on-updateUserStatus (event)
   "User status has been changed."
@@ -149,25 +169,17 @@ Default is: `full'"
 (defun telega-user-avatar-svg (user)
   "Return avatar for the USER."
   (let ((ava (plist-get user :telega-avatar)))
+    ;; (unless ava
+    ;;   (let ((pphoto (plist-get user :profile_photo)))
+    ;;     (
     (unless ava
-      (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
-             (colors (telega-chat-uaprop chat :color)))
-        (unless colors
-          ;; Assign the color to the user
-          (let ((col (telega-color-random)))
-            (setq colors (list (telega-color-gradient col 'light)
-                               col
-                               (telega-color-gradient col))))
-          ;; If there corresponding chat, then update its color
-          (when chat
-            (setf (telega-chat-uaprop chat :color) colors)))
-
+      (let ((colors (telega-user-color user)))
         (setq ava (telega-avatar--gen-svg
                    (telega-user-initials user) 2
                    (if (eq (frame-parameter nil 'background-mode) 'light)
                        (cdr colors)
-                     colors)))
-        (plist-put user :telega-avatar ava)))
+                     colors))))
+      (plist-put user :telega-avatar ava))
     ava))
 
 (defun telega--searchChatMembers (chat query &optional filter limit)

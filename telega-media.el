@@ -364,11 +364,20 @@ Prefix every line with PREFIX."
        (not (telega-file--downloaded-p file))))
 ;       (not (telega-file--downloading-p file))))
 
+(defun telega-media--autodownload-on-chat (chat)
+  "Autodownload CHAT's avatar."
+  (let* ((photo (plist-get user :photo))
+         (photo-file (plist-get photo :small)))
+    (when (and (telega-media--need-download-p photo-file)
+               (not (telega-file--downloading-p photo-file)))
+      (telega-file--download-monitoring photo :small 32))))
+
 (defun telega-media--autodownload-on-user (user)
   "Autodownload USER's profile avatar."
   (let* ((photo (plist-get user :profile_photo))
          (photo-file (plist-get photo :small)))
-    (when (telega-media--need-download-p photo-file)
+    (when (and (telega-media--need-download-p photo-file)
+               (not (telega-file--downloading-p photo-file)))
       (telega-file--download-monitoring photo :small 32))))
 
 (defun telega-media--autodownload-on-msg (msg disable-notification)
@@ -411,12 +420,72 @@ With positive ARG - enables automatic downloads, otherwise disables.
 To customize automatic downloads, use `telega-auto-download'."
   (interactive "p")
   (if (> arg 0)
-      (add-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg)
-    (remove-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg)))
+      (progn
+        (add-hook 'telega-user-update-hook 'telega-media--autodownload-on-user)
+        (add-hook 'telega-chat-created-hook 'telega-media--autodownload-on-chat)
+        (add-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg))
 
+    (remove-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg)
+    (remove-hook 'telega-chat-created-hook 'telega-media--autodownload-on-chat)
+    (remove-hook 'telega-user-update-hook 'telega-media--autodownload-on-user)))
 
 
 ;; Avatars
+(defun telega-media---image-update (obj-spec file)
+  "Called to update the image contents for the OBJ-SPEC.
+OBJ-SPEC is cons of object and create image function.
+Create image function accepts two arguments - object and FILE.
+Return updated image, cached or created with create image function."
+  (let ((cached-image (plist-get (car obj-spec) :telega-image))
+        (simage (funcall (cdr obj-spec) (car obj-spec) file)))
+    (unless (equal cached-image simage)
+      ;; Update the image
+      (if cached-image
+          (setcdr cached-image (cdr simage))
+        (setq cached-image simage))
+      (plist-put (car obj-spec) :telega-image cached-image))
+    cached-image))
+
+(defun telega-media--image-download-monitor (file obj-spec)
+  (cl-assert (plist-get (car obj-spec) :telega-image))
+  (telega-media---image-update obj-spec file)
+  (force-window-update))
+
+(defun telega-ins--media-image (obj-spec file-spec
+                                         &optional silces-p image-props)
+  "Insert media image monitoring download.
+OBJ-SPEC is cons of object and create image function.
+FILE-SPEC is cons of place and place-prop to update file to."
+  (let ((mimage (telega-media---image-update
+                 obj-spec (plist-get (car file-spec) (cdr file-spec)))))
+    ;; Possible monitor file downloading
+    (when (telega-media--need-download-p
+           (plist-get (car file-spec) (cdr file-spec)))
+      (telega-file--download-monitoring
+       (car file-spec) (cdr file-spec) nil
+       'telega-media--image-download-monitor obj-spec))
+
+    (if slices-p
+        (telega-ins--image-slices mimage image-props)
+      (telega-ins--image mimage nil image-props))))
+
+(defun telega-avatar--image-update (chat-or-user)
+  "Possible update CHAT-OR-USER's image.
+Return new image."
+  (let ((cached-image (plist-get chat-or-user :telega-image))
+        (simage (telega-avatar--image chat-or-user)))
+    (unless (equal cached-image simage)
+      ;; Update the image
+      (if cached-image
+          (setcdr cached-image (cdr simage))
+        (setq cached-image simage))
+      (plist-put sticker :telega-image cached-image))
+    cached-image))
+
+(defun telega-avatar--image (chat-or-user height &optional margin-h-factor)
+  "Return image for CHAT-OR-USER avatar."
+  )
+
 (defun telega-avatar--gen-svg (name height gradient &optional margin-h-factor)
   "Generate svg with NAME in the circle.
 HEIGHT is height in chars (1 or 2)."

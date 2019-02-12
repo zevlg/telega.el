@@ -78,8 +78,7 @@
 
 ;;; Username completion for chat buffer
 (defun telega-company-grab-username ()
-  "If point is at the end of a word, return it.
-Otherwise, if point is not inside a symbol, return an empty string."
+  "Grab string starting with `@'."
   (if (looking-at "\\>")
       (let ((p (point)))
         (save-excursion
@@ -99,9 +98,37 @@ Otherwise, if point is not inside a symbol, return an empty string."
   (cl-case command
     (interactive (company-begin-backend 'telega-company-username))
     (init (unless (eq major-mode 'telega-chat-mode)
-            (error "`telega-company-username' backend can be used only in chat buffers")))
+            (error "`telega-company-username' can be used only in chat buffer")))
     (sorted t)
     (prefix (telega-company-grab-username))
+    (candidates
+     (let ((members (telega--searchChatMembers telega-chatbuf--chat arg)))
+       (delq nil
+             (mapcar (lambda (member)
+                       (let ((username (plist-get member :username)))
+                         (unless (string-empty-p username)
+                           (concat "@" username))))
+                     members))))
+    (post-completion
+     (insert " "))
+    ))
+
+
+;;; Stickers
+(defun telega-company-grab-sticker ()
+  "If chat buffer has single emoji, then grab it."
+  )
+
+(defun telega-company-sticker (command &optional arg &rest ignored)
+  "Backend for `company' to complete stickers."
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'telega-company-sticker))
+    (init (if (eq major-mode 'telega-chat-mode)
+              (telega-emoji-init)
+            (error "`telega-company-sticker' can be used only in chat buffer")))
+    (sorted t)
+    (prefix (telega-company-grab-sticker))
     (candidates
      (let ((members (telega--searchChatMembers telega-chatbuf--chat arg)))
        (delq nil
