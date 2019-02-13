@@ -27,7 +27,7 @@
 (require 'telega-core)
 (require 'telega-util)
 
-(defcustom telega-sticker-height 4
+(defcustom telega-sticker-height 3
   "*Height of stickers in char heights."
   :type 'integer
   :group 'telega)
@@ -384,16 +384,16 @@ If SLICES-P is non-nil, then insert STICKER using slices."
   (interactive (list (telega-sticker-set-at-point)))
   (let ((stickers (plist-get sset (if info-p :covers :stickers))))
     (with-telega-help-win "*Telegram Sticker Set*"
-      (telega-ins "Title: " (plist-get sset :title) " ")
-      (telega-ins--stickerset-change-button sset)
-      (telega-ins "\n")
-      (telega-ins "Name: " (plist-get sset :name))
+      (telega-ins "Title: " (plist-get sset :title))
       (when (plist-get sset :is_official)
         (telega-ins telega-symbol-verified))
+      (telega-ins " ")
+      (telega-ins--stickerset-change-button sset)
+      (telega-ins "\n")
+      (telega-ins "Link:  ")
       (let ((link (concat (or (plist-get telega--options :t_me_url)
                               "https://t.me/")
                           "addstickers/" (plist-get sset :name))))
-        (telega-ins " ")
         (telega-ins--raw-button (telega-link-props 'url link)
           (telega-ins link))
         (telega-ins "\n"))

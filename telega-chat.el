@@ -1039,8 +1039,10 @@ Keymap:
                      (telega-chatbuf--footer) t))
   (goto-char (point-max))
 
+  ;; Use punctuation as "no-value" button content
+  ;; See https://github.com/zevlg/telega.el/issues/45
   (setq telega-chatbuf--aux-button
-        (telega-button--insert 'telega-prompt-aux "no-value"
+        (telega-button--insert 'telega-prompt-aux "!"
           'invisible t))
   (setq telega-chatbuf--prompt-button
         (telega-button--insert 'telega-prompt telega-chat-input-prompt))
@@ -1371,7 +1373,7 @@ Return newly inserted message button."
     (telega-save-excursion
       (unless (button-get telega-chatbuf--aux-button 'invisible)
         (telega-button--update-value
-         telega-chatbuf--aux-button "no-value"
+         telega-chatbuf--aux-button "!"
          :inserter 'telega-ins
          'invisible t))
 
@@ -1385,8 +1387,8 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
   (let ((node (ewoc--footer telega-chatbuf--ewoc)))
     (telega-save-cursor
       (while (and (setq node (ewoc-prev telega-chatbuf--ewoc node))
-                  (>= old-last-read-outbox-msgid
-                      (plist-get (ewoc-data node) :id)))
+                  (< old-last-read-outbox-msgid
+                     (plist-get (ewoc-data node) :id)))
         (ewoc-invalidate telega-chatbuf--ewoc node)))))
 
 (defun telega--on-updateNewMessage (event)
