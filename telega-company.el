@@ -75,6 +75,26 @@
      (insert (cdr (assoc arg telega-emoji-alist))))
     ))
 
+;;;###autoload
+(defun telega-chatbuf-maybe-choose-sticker ()
+  "If chatbuf has single emoji input, then popup stickers win.
+Intended to be added to `post-command-hook' in chat buffer."
+  (interactive)
+
+  (telega-emoji-init)
+  (let ((input (telega-chatbuf-input-string)))
+    (when (and (= (length input) 1)
+               (cl-member input telega-emoji-alist
+                          :key 'cdr :test 'string=))
+      ;; NOTE: Do nothing in case sticker's help win is exists and
+      ;; have same emoji
+      (let ((buf (get-buffer "*Telegram Stickers*")))
+        (when (or (called-interactively-p 'interactive)
+                  (not (buffer-live-p buf))
+                  (not (with-current-buffer buf
+                         (string= input telega-help-win--emoji))))
+          (telega-sticker-choose input telega-chatbuf--chat))))))
+
 
 ;;; Username completion for chat buffer
 (defun telega-company-grab-username ()
@@ -109,34 +129,6 @@
                          (unless (string-empty-p username)
                            (concat "@" username))))
                      members))))
-    (post-completion
-     (insert " "))
-    ))
-
-
-;;; Stickers
-(defun telega-company-grab-sticker ()
-  "If chat buffer has single emoji, then grab it."
-  (let ((input (telega-chatbuf-input-string)))
-    (when (= (length input) 1)
-      input)))
-
-(defun telega-company-sticker (command &optional arg &rest ignored)
-  "Backend for `company' to complete stickers."
-  (interactive (list 'interactive))
-  (cl-case command
-    (interactive (company-begin-backend 'telega-company-sticker))
-    (init (if (eq major-mode 'telega-chat-mode)
-              (telega-emoji-init)
-            (error "`telega-company-sticker' can be used only in chat buffer")))
-    (sorted t)
-    (prefix (telega-company-grab-sticker))
-    (candidates
-     (let ((stickers (telega--getStickers arg 10)))
-       (mapcar (lambda (sticker)
-                 (telega-ins--as-string
-                  (telega-ins--sticker sticker)))
-               stickers)))
     (post-completion
      (insert " "))
     ))

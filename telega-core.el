@@ -35,6 +35,11 @@
   "All types of chats supported by telega.")
 
 ;;; Runtime variables
+(defvar telega--chat nil
+  "Telega chat for the current buffer.
+Used in help buffers to refer chat.")
+(make-variable-buffer-local 'telega--chat)
+
 (defvar telega--me-id nil "User id of myself.")
 (defvar telega--options nil "Options updated from telega-server.")
 (defvar telega--conn-state nil)
@@ -212,10 +217,13 @@ Done when telega server is ready to receive queries."
 (defmacro with-telega-help-win (buffer-or-name &rest body)
   "Execute BODY in help buffer."
   (declare (indent 1))
-  `(with-help-window ,buffer-or-name
-     (set-buffer standard-output)
-     (cursor-sensor-mode 1)
-     ,@body))
+  `(progn
+     (with-help-window ,buffer-or-name)
+     (redisplay)
+     (with-help-window ,buffer-or-name
+       (set-buffer standard-output)
+       (cursor-sensor-mode 1)
+       ,@body)))
 
 (defsubst telega-debug (fmt &rest args)
   (with-telega-debug-buffer

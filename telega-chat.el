@@ -755,9 +755,7 @@ STATUS is one of: "
   "Show info about chat at point."
   (interactive (list (telega-chat-at-point)))
   (with-telega-help-win "*Telegram Chat Info*"
-    ;; We use buffer local `telega-chatbuf--chat' to keep track on
-    ;; chat
-    (setq telega-chatbuf--chat chat)
+    (setq telega--chat chat)
 
     (telega-ins (capitalize (symbol-name (telega-chat--type chat))) ": ")
     (telega-ins--with-face
@@ -1905,6 +1903,25 @@ If prefix arg is given, then take screenshot only of current emacs frame."
   "Add USER to the chat members."
   (interactive (list (telega-completing-read-user "Add user: ")))
   (telega-chat-add-member telega-chatbuf--chat user))
+
+(defun telega-chatbuf-attach-sticker (sticker)
+  "Attach STICKER to the input."
+  (let ((thumb (plist-get sticker :thumbnail))
+        (sticker (plist-get sticker :sticker)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageSticker"
+           :width (plist-get sticker :width)
+           :height (plist-get sticker :height)
+           ;; Use remote thumbnail and sticker files
+           :thumbnail (list :@type "inputThumbnail"
+                            :width (plist-get thumb :width)
+                            :height (plist-get thumb :height)
+                            :thumbnail (list :@type "inputFileId"
+                                             :id (telega--tl-get thumb :photo :id)))
+           :sticker (list :@type "inputFileId"
+                          :id (plist-get sticker :id))
+           ))
+    ))
 
 (defun telega-chatbuf-attach (attach-type attach-value)
   "Attach something into message."

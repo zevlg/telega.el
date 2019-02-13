@@ -70,6 +70,13 @@
   (message "TODO: `telega-tme-open-proxy'")
   )
 
+(defun telega-tme-open-stickerset (setname)
+  "Open sticker set with SETNAME."
+  (let ((sset (telega--searchStickerSet setname)))
+    (unless sset
+      (user-error "No such sticker set: %s" setname))
+    (telega-describe-stickerset sset)))
+
 (defun telega-tme-parse-query-string (query-string)
   "Parse QUERY-STRING and return it as plist.
 Multiple params with same name in QUERY-STRING is disallowed."

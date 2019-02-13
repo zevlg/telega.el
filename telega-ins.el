@@ -704,6 +704,8 @@ If NO-AVATAR is specified, then do not insert avatar."
       (telega-ins--input-file (plist-get imc :photo) telega-symbol-photo))
      (inputMessageVideo
       (telega-ins--input-file (plist-get imc :video) telega-symbol-video))
+     (inputMessageSticker
+      (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      )))

@@ -59,11 +59,16 @@
 
 (defun telega-msg-button--action (button)
   "Action to take when chat BUTTON is pressed."
-  (let ((msg (button-get button :value)))
+  (let* ((msg (button-get button :value))
+         (content (plist-get msg :content)))
     (telega--openMessageContent msg)
 
     ;; TODO: do some useful action to open message
-    ))
+    (cl-case (telega--tl-type content)
+      (messageSticker
+       (telega-describe-stickerset
+        (telega-stickerset-get (telega--tl-get content :sticker :set_id))))
+      )))
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
