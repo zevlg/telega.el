@@ -1,4 +1,4 @@
-;;; telega-voip.el --- Support for VOIP calls.
+;;; telega-voip.el --- Support for VOIP calls  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 

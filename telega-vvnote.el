@@ -1,4 +1,4 @@
-;;; telega-vvnote.el --- Voice/Video notes support for telega
+;;; telega-vvnote.el --- Voice/Video notes support for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 

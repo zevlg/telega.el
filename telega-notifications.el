@@ -1,4 +1,4 @@
-;;; telega-notifications.el --- Notifications support for telega.
+;;; telega-notifications.el --- Notifications support for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
@@ -139,7 +139,7 @@ If ARG is not given then treat it as 1."
         ;; Play sound only if CHAT setting has some sound
         (when (string-empty-p
                (or (telega-chat-notification-setting chat :sound) ""))
-          (setq notify-args (cl--plist-remove notify-args :sound-name)))
+          (setq notify-args (telega-plist-del notify-args :sound-name)))
 
         (telega-notifications--notify notify-args)
         ;; Workaround stuck notifications, force closing after

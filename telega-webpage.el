@@ -1,4 +1,4 @@
-;;; telega-webpage.el --- Webpage viewer
+;;; telega-webpage.el --- Webpage viewer  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 

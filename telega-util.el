@@ -1,4 +1,4 @@
-;;; telega-util.el --- Utility functions for telega
+;;; telega-util.el --- Utility functions for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 
@@ -35,6 +35,10 @@
 (require 'telega-customize)
 (require 'telega-tme)
 (require 'telega-webpage)
+
+(defsubst telega-plist-del (plist prop)
+  "From PLIST remove property PROP."
+  (cl--plist-remove plist (plist-member plist prop)))
 
 (defun telega-browse-url (url &optional in-web-browser)
   "Open the URL.

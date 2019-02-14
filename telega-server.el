@@ -1,6 +1,6 @@
-;;; telega-server.el --- telega-server functionality
+;;; telega-server.el --- telega-server functionality  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri Apr 20 13:52:34 2018

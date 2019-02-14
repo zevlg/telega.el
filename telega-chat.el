@@ -1,6 +1,6 @@
-;;; telega-chat.el --- Chat mode for telega
+;;; telega-chat.el --- Chat mode for telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Thu Apr 19 19:59:51 2018
@@ -53,7 +53,7 @@
 (defmacro telega-chat-uaprop-del (chat uaprop-name)
   "Delete custom CHAT property named UAPROP-NAME."
   `(telega-chat--set-uaprops
-    (cl--plist-remove (plist-get ,chat :uaprops) ,uaprop-name)))
+    ,chat (telega-plist-del (plist-get ,chat :uaprops) ,uaprop-name)))
 
 (defmacro telega-chat-uaprop (chat uaprop-name)
   "Return value for CHAT's custom property with name UAPROP-NAME."
@@ -1439,7 +1439,8 @@ Message id could be updated on this update."
                    :edit_date (plist-get event :edit_date))
         (plist-put (ewoc--node-data node)
                    :reply_markup (plist-get event :reply_markup))
-        (ewoc-invalidate telega-chatbuf--ewoc node)))))
+        (telega-save-cursor
+          (ewoc-invalidate telega-chatbuf--ewoc node))))))
 
 (defun telega--on-updateMessageViews (event)
   "Number of message views has been updated."
@@ -1449,7 +1450,8 @@ Message id could be updated on this update."
       (when node
         (plist-put (ewoc--node-data node)
                    :views (plist-get event :views))
-        (ewoc-invalidate telega-chatbuf--ewoc node)))))
+        (telega-save-cursor
+          (ewoc-invalidate telega-chatbuf--ewoc node))))))
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."
@@ -1468,7 +1470,8 @@ Message id could be updated on this update."
         (when permanent-p
           (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
             (when node
-              (ewoc-delete telega-chatbuf--ewoc node))))
+              (telega-save-cursor
+                (ewoc-delete telega-chatbuf--ewoc node)))))
         ))))
 
 (defun telega--on-updateUserChatAction (event)
@@ -1906,7 +1909,7 @@ If prefix arg is given, then take screenshot only of current emacs frame."
   (interactive (list (telega-completing-read-user "Add user: ")))
   (telega-chat-add-member telega-chatbuf--chat user))
 
-(defun telega-chatbuf-attach-sticker (sticker)
+(defun telega-chatbuf-sticker-insert (sticker)
   "Attach STICKER to the input."
   (let ((thumb (plist-get sticker :thumbnail))
         (sticker (plist-get sticker :sticker)))
@@ -1925,6 +1928,22 @@ If prefix arg is given, then take screenshot only of current emacs frame."
            ))
     ))
 
+(defun telega-chatbuf-attach-sticker (sset)
+  "Interactively attach sticker from sticker set SSET."
+  (interactive
+   (list (telega-stickerset-completing-read "Sticker set: ")))
+
+  (let ((tss-buffer (get-buffer "*Telegram Sticker Set*")))
+    (unless (or (buffer-live-p tss-buffer)
+                (not (with-current-buffer tss-buffer
+                       (and (eq telega-help-win--stickerset sset)
+                            (eq telega--chat telega-chatbuf--chat)))))
+      (telega-describe-stickerset
+       sset nil telega-chatbuf--chat))
+
+    (select-window
+     (temp-buffer-window-show tss-buffer))))
+
 (defun telega-chatbuf-attach (attach-type attach-value)
   "Attach something into message."
   (interactive
@@ -1934,7 +1953,8 @@ If prefix arg is given, then take screenshot only of current emacs frame."
                                          "note-video" "note-voice"
                                          "file" "location"
                                          "poll" "contact"
-                                         "screenshot" "member")
+                                         "screenshot" "member"
+                                         "sticker")
                                    (when (gui-get-selection 'CLIPBOARD 'image/png)
                                      (list "clipboard")))
                   nil t)

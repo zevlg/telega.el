@@ -1,4 +1,4 @@
-;;; telega-user.el --- Users handling for the telega
+;;; telega-user.el --- Users handling for the telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 

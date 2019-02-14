@@ -1,6 +1,6 @@
-;;; telega-media.el --- Media support for telega
+;;; telega-media.el --- Media support for telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Tue Jul 10 15:20:09 2018
@@ -434,7 +434,7 @@ To customize automatic downloads, use `telega-auto-download'."
 
 
 ;; Avatars
-(defun telega-media---image-update (obj-spec file)
+(defun telega-media--image-update (obj-spec file)
   "Called to update the image contents for the OBJ-SPEC.
 OBJ-SPEC is cons of object and create image function.
 Create image function accepts two arguments - object and FILE.
@@ -451,7 +451,7 @@ Return updated image, cached or created with create image function."
 
 (defun telega-media--image-download-monitor (file obj-spec)
   (cl-assert (plist-get (car obj-spec) :telega-image))
-  (telega-media---image-update obj-spec file)
+  (telega-media--image-update obj-spec file)
   (force-window-update))
 
 (defun telega-ins--media-image (obj-spec file-spec
@@ -459,7 +459,7 @@ Return updated image, cached or created with create image function."
   "Insert media image monitoring download.
 OBJ-SPEC is cons of object and create image function.
 FILE-SPEC is cons of place and place-prop to update file to."
-  (let ((mimage (telega-media---image-update
+  (let ((mimage (telega-media--image-update
                  obj-spec (plist-get (car file-spec) (cdr file-spec)))))
     ;; Possible monitor file downloading
     (when (telega-media--need-download-p

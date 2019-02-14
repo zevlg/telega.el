@@ -1,4 +1,4 @@
-;;; telega.el --- Telegram client (unofficial)
+;;; telega.el --- Telegram client (unofficial)  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2016-2019 by Zajcev Evgeny
 
@@ -24,7 +24,9 @@
 
 ;;; Commentary:
 
-;;
+;; See https://github.com/zevlg/telega.el/blob/master/README.md
+;; 
+;; Start with M-x telega RET
 
 ;;; Code:
 (require 'password-cache)               ; `password-read'

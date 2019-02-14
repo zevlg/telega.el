@@ -1,4 +1,4 @@
-;;; telega-ffplay.el --- Interface to ffplay for telega
+;;; telega-ffplay.el --- Interface to ffplay for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 

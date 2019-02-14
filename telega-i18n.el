@@ -1,6 +1,6 @@
-;;; telega-i18n.el --- I18N for the telega.
+;;; telega-i18n.el --- I18N for the telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Tue Dec 11 02:03:42 2018

@@ -1,4 +1,4 @@
-;;; telega-company.el --- Completions with company for telega
+;;; telega-company.el --- Completions with company for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 

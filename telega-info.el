@@ -1,4 +1,4 @@
-;;; telega-info.el --- Users/Secrets/Groups stuff for telega
+;;; telega-info.el --- Users/Secrets/Groups stuff for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 

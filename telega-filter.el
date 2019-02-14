@@ -1,4 +1,4 @@
-;;; telega-filter.el --- Chats filtering in root buffer
+;;; telega-filter.el --- Chats filtering in root buffer  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 

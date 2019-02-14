@@ -1,4 +1,4 @@
-;;; telega-tme.el --- Handling internal telegram links
+;;; telega-tme.el --- Handling internal telegram links  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 by Zajcev Evgeny.
 
@@ -97,7 +97,7 @@ Return non-nil, meaning URL has been handled."
          (query (telega-tme-parse-query-string (cdr path-query))))
     (cond ((string= path "resolve")
            (let ((username (plist-get query :domain)))
-             (setq query (cl--plist-remove query :domain))
+             (setq query (telega-plist-del query :domain))
              (apply 'telega-tme-open-username username query)))
           ((string= path "join")
            (telega-tme-open-group (plist-get query :invite)))
