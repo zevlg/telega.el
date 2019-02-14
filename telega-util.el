@@ -33,34 +33,10 @@
 (require 'color)                        ; `color-XXX'
 
 (require 'telega-customize)
-(require 'telega-tme)
-(require 'telega-webpage)
 
 (defsubst telega-plist-del (plist prop)
   "From PLIST remove property PROP."
   (cl--plist-remove plist (plist-member plist prop)))
-
-(defun telega-browse-url (url &optional in-web-browser)
-  "Open the URL.
-If URL can be opened directly inside telega, then do it.
-Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser."
-  (unless (or in-web-browser
-              (cond ((string-prefix-p "tg:" url)
-                     (telega-tme-open-tg url))
-                    ((or (string-prefix-p "https://t.me/" url)
-                         (string-prefix-p "https://telegram.me/" url)
-                         (string-prefix-p "https://telegram.dog/" url))
-                     (telega-tme-open url))
-                    (t
-                     ;; Try instant view
-                     (let ((iv (telega--getWebPageInstantView url)))
-                       (when iv
-                         (telega-webpage--instant-view url "Telegra.ph" iv)
-                         t)))))
-
-    ;; TODO: maybe use webkit x-widget to browse the URL
-    (browse-url url)))
 
 (defun telega-face-height (face)
   "Return float version of FACE height."

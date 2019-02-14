@@ -29,6 +29,9 @@
 (require 'url-parse)
 (require 'url-util)
 
+(require 'telega-sticker)
+
+
 (defun telega-tme-open-username (username &rest bot-params)
   "Open username link."
   (cond ((string= username "telegrampassport")

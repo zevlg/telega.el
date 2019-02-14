@@ -27,12 +27,23 @@
 (require 'cl-lib)
 (require 'url-util)
 
+(require 'telega-customize)
+(require 'telega-tme)
+
 (defvar telega-webpage-history nil
   "History of viewed webpages.")
 (defvar telega-webpage-history--index 0
   "Nth element in `telega-webpage-history' we currently active.")
 (defvar telega-webpage-history--ignore nil
   "Bind this to non-nil to ignore pushing to the history.")
+
+(defvar telega-webpage--url nil
+  "URL for the instant view webpage currently viewing.")
+(defvar telega-webpage--sitename nil
+  "Sitename for the webpage currently viewing.")
+(defvar telega-webpage--iv nil
+  "Instant view for the current webpage.")
+(defvar telega-webpage--anchors nil)
 
 (defun telega-webpage--history-push ()
   "Push current webpage instant view into the history."
@@ -112,27 +123,6 @@ Return nil if URL is not available for instant view."
     (and reply
          (eq (telega--tl-type reply) 'webPageInstantView)
          reply)))
-
-(defvar telega-webpage--url nil
-  "URL for the instant view webpage currently viewing.")
-(defvar telega-webpage--sitename nil
-  "Sitename for the webpage currently viewing.")
-(defvar telega-webpage--iv nil
-  "Instant view for the current webpage.")
-(defvar telega-webpage--anchors nil)
-
-(defcustom telega-webpage-header-line-format
-  '(" " (:eval (concat telega-webpage--sitename
-                       (and telega-webpage--sitename ": ")
-                       telega-webpage--url
-                       "  "
-                       (format "History: %d/%d"
-                               (1+ telega-webpage-history--index)
-                               (length telega-webpage-history))
-                       )))
-  "Header line format for instant webpage."
-  :type 'list
-  :group 'telega)
 
 (defvar telega-webpage-mode-map
   (let ((map (make-sparse-keymap)))
@@ -359,6 +349,28 @@ instant view for the URL."
 
   (message "Press `%s' to open in web browser"
            (substitute-command-keys "\\[telega-webpage-browse-url]")))
+
+(defun telega-browse-url (url &optional in-web-browser)
+  "Open the URL.
+If URL can be opened directly inside telega, then do it.
+Invite links and link to users can be directly opened in telega.
+If IN-WEB-BROWSER is non-nil then force opening in web browser."
+  (unless (or in-web-browser
+              (cond ((string-prefix-p "tg:" url)
+                     (telega-tme-open-tg url))
+                    ((or (string-prefix-p "https://t.me/" url)
+                         (string-prefix-p "https://telegram.me/" url)
+                         (string-prefix-p "https://telegram.dog/" url))
+                     (telega-tme-open url))
+                    (t
+                     ;; Try instant view
+                     (let ((iv (telega--getWebPageInstantView url)))
+                       (when iv
+                         (telega-webpage--instant-view url "Telegra.ph" iv)
+                         t)))))
+
+    ;; TODO: maybe use webkit x-widget to browse the URL
+    (browse-url url)))
 
 (provide 'telega-webpage)
 

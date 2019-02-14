@@ -30,6 +30,11 @@
 (eval-when (load)
   (require 'company))                      ; company-grab
 
+(require 'telega-sticker)
+
+(declare-function company-begin-backend "company" (backend &optional callback))
+(declare-function company-grab "company" (regexp &optional expression limit))
+
 
 ;;; Emoji completions
 (defvar telega-emoji-alist nil)

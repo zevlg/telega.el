@@ -320,6 +320,19 @@ In form (NAME . FILTER-SPEC)."
   :type 'number
   :group 'telega-webpage)
 
+(defcustom telega-webpage-header-line-format
+  '(" " (:eval (concat telega-webpage--sitename
+                       (and telega-webpage--sitename ": ")
+                       telega-webpage--url
+                       "  "
+                       (format "History: %d/%d"
+                               (1+ telega-webpage-history--index)
+                               (length telega-webpage-history))
+                       )))
+  "Header line format for instant webpage."
+  :type 'list
+  :group 'telega-webpage)
+
 
 (defgroup telega-user nil
   "Customization for users."

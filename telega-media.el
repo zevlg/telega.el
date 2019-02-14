@@ -455,7 +455,7 @@ Return updated image, cached or created with create image function."
   (force-window-update))
 
 (defun telega-ins--media-image (obj-spec file-spec
-                                         &optional silces-p image-props)
+                                         &optional slices-p image-props)
   "Insert media image monitoring download.
 OBJ-SPEC is cons of object and create image function.
 FILE-SPEC is cons of place and place-prop to update file to."

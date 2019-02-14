@@ -24,6 +24,8 @@
 ;;
 
 ;;; Code:
+(require 'seq)                          ;seq-doseq
+
 (require 'telega-core)
 (require 'telega-util)
 
@@ -37,6 +39,10 @@
 (defvar telega-sticker--use-thumbnail nil
   "Bind this variable to non-nil to use thumbnail instead of image.
 Thumbnail is a smaller (and faster) version of sticker image.")
+(defvar telega-minibuffer--choices nil
+  "Bind to list of choices.")
+(defvar telega-minibuffer--chat nil
+  "Bind to chat currently active.")
 
 (defvar telega-sticker-button-map
   (let ((map (make-sparse-keymap)))
@@ -421,7 +427,6 @@ If SLICES-P is non-nil, then insert STICKER using slices."
 (defun telega-describe-stickerset (sset &optional info-p for-chat)
   "Describe the sticker set.
 If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
-  (interactive (list (telega-sticker-set-at-point)))
   (let ((stickers (plist-get sset (if info-p :covers :stickers))))
     (with-telega-help-win "*Telegram Sticker Set*"
       (setq telega--chat for-chat)
@@ -440,6 +445,9 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
         (telega-ins--raw-button (telega-link-props 'url link)
           (telega-ins link))
         (telega-ins "\n"))
+      (when telega-debug
+        (telega-ins-fmt "Get: (telega-stickerset-get \"%s\")\n"
+          (plist-get sset :id)))
       (telega-ins-fmt "%s: %d\n"
         (if (plist-get sset :is_masks) "Masks" "Stickers")
         (length stickers))
@@ -453,6 +461,12 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
           (telega-ins (plist-get sticker :emoji) "  "))
         ))
     ))
+
+(defun telega-sticker-help (sticker)
+  "Describe sticker set for STICKER."
+  (interactive (list (telega-sticker-at (point))))
+  (telega-describe-stickerset
+   (telega-stickerset-get (plist-get sticker :set_id))))
 
 (defun telega-ins--sticker-list (stickers &optional no-redisplay)
   "Insert STICKERS list int current buffer."
@@ -496,23 +510,21 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
 
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."
-  (declare (special telega-minibuffer-choices))
-  (declare (special telega-minibuffer-chat))
   (let* ((start (minibuffer-prompt-end))
          (end (point))
          (str (if ido-matches           ;in case of ido completion
                   (caar ido-matches)
                 (buffer-substring start end)))
-         (comp (car (all-completions str telega-minibuffer-choices)))
-         (sset (cadr (assoc comp telega-minibuffer-choices)))
+         (comp (car (all-completions str telega-minibuffer--choices)))
+         (sset (cadr (assoc comp telega-minibuffer--choices)))
          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
     (when (and sset
                (or (not (buffer-live-p tss-buffer))
                    (not (with-current-buffer tss-buffer
-                          (and (eq telega-minibuffer-chat telega--chat)
+                          (and (eq telega-minibuffer--chat telega--chat)
                                (eq sset telega-help-win--stickerset))))))
       (let ((telega-sticker--use-thumbnail t))
-        (telega-describe-stickerset sset nil telega-minibuffer-chat)))
+        (telega-describe-stickerset sset nil telega-minibuffer--chat)))
 
     ;; Always pop to buffer, it might be hidden at the moment
     (when (buffer-live-p tss-buffer)
@@ -528,8 +540,8 @@ Return sticker set."
          (ssets (mapcar 'telega-stickerset-get
                         telega--stickersets-installed-ids))
          ;; Bindings used in `telega-stickerset-completing-read'
-         (telega-minibuffer-chat telega-chatbuf--chat)
-         (telega-minibuffer-choices
+         (telega-minibuffer--chat telega-chatbuf--chat)
+         (telega-minibuffer--choices
           (mapcar (lambda (sset)
                     (list (plist-get sset :name) sset))
                   ssets))
@@ -539,8 +551,8 @@ Return sticker set."
                 (add-hook 'post-command-hook
                           'telega-stickerset--minibuf-post-command nil t))
             (funcall telega-completing-read-function
-                     prompt telega-minibuffer-choices nil t))))
-    (cadr (assoc sset-name telega-minibuffer-choices))
+                     prompt telega-minibuffer--choices nil t))))
+    (cadr (assoc sset-name telega-minibuffer--choices))
   ))
 
 (defun telega-stickerset-choose (sset)

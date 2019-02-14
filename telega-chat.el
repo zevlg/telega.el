@@ -1912,7 +1912,10 @@ If prefix arg is given, then take screenshot only of current emacs frame."
 (defun telega-chatbuf-sticker-insert (sticker)
   "Attach STICKER to the input."
   (let ((thumb (plist-get sticker :thumbnail))
-        (sticker (plist-get sticker :sticker)))
+        (preview (telega-sticker--create-image sticker)))
+    ;; Scale down preview to single char
+    (plist-put (cdr preview) :scale (/ 1.0 telega-sticker-height))
+
     (telega-chatbuf-input-insert
      (list :@type "inputMessageSticker"
            :width (plist-get sticker :width)
@@ -1923,26 +1926,33 @@ If prefix arg is given, then take screenshot only of current emacs frame."
                             :height (plist-get thumb :height)
                             :thumbnail (list :@type "inputFileId"
                                              :id (telega--tl-get thumb :photo :id)))
-           :sticker (list :@type "inputFileId"
-                          :id (plist-get sticker :id))
+           ;; NOTE: 'telega-preview used in `telega-ins--input-file'
+           ;; to insert document/photo/sticker preview
+           :sticker (list :@type (propertize "inputFileId" 'telega-preview preview)
+                          :id (telega--tl-get sticker :sticker :id))
            ))
     ))
 
-(defun telega-chatbuf-attach-sticker (sset)
-  "Interactively attach sticker from sticker set SSET."
-  (interactive
-   (list (telega-stickerset-completing-read "Sticker set: ")))
+(defun telega-chatbuf-attach-sticker (fav-or-recent-p)
+  "Attach the sticker.
+If prefix argument is specified, then attach recent or favorite sticker.
+Otherwise choose sticker from some installed sticker set."
+  (interactive "P")
+  (if fav-or-recent-p
+      (telega-sticker-choose-favorite-or-recent telega-chatbuf--chat)
 
-  (let ((tss-buffer (get-buffer "*Telegram Sticker Set*")))
-    (unless (or (buffer-live-p tss-buffer)
-                (not (with-current-buffer tss-buffer
-                       (and (eq telega-help-win--stickerset sset)
-                            (eq telega--chat telega-chatbuf--chat)))))
-      (telega-describe-stickerset
-       sset nil telega-chatbuf--chat))
+    ;; Select some stickerset
+    (let ((sset (telega-stickerset-completing-read "Sticker set: "))
+          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
+      (unless (or (buffer-live-p tss-buffer)
+                  (not (with-current-buffer tss-buffer
+                         (and (eq telega-help-win--stickerset sset)
+                              (eq telega--chat telega-chatbuf--chat)))))
+        (telega-describe-stickerset
+         sset nil telega-chatbuf--chat))
 
-    (select-window
-     (temp-buffer-window-show tss-buffer))))
+      (select-window
+       (temp-buffer-window-show tss-buffer)))))
 
 (defun telega-chatbuf-attach (attach-type attach-value)
   "Attach something into message."

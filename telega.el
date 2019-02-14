@@ -300,7 +300,7 @@ Works only if current state is `authorizationStateWaitCode'."
       (authorizationStateClosed
        (telega--authorization-closed)))))
 
-(defun telega--on-ok (event)
+(defun telega--on-ok (_event)
   "On ok result from command function call."
   ;; no-op
   )
