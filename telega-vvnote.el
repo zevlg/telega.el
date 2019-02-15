@@ -64,7 +64,7 @@
          (svg (svg-create cw height)))
     ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
     ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
-    (cl-dolist (wv waves)
+    (dolist (wv waves)
       (let ((xoff (+ wv-width (* (+ wv-width space-width) w-idx)))
             (played-p (< (/ (float w-idx) (length waves))
                          (/ (or played 0) duration))))

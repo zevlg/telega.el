@@ -24,9 +24,26 @@
 ;; 
 
 ;;; Code:
+(require 'telega-server)
+(require 'telega-ins)
+
+(defun telega--on-getCallbackQueryAnswer (event)
+  "Handle callback reply answer."
+  (let ((text (plist-get reply :text))
+        (link (plist-get reply :url)))
+    (if (plist-get reply :show_alert)
+        ;; Maybe popup message from the bot
+        (with-telega-help-win "*Callback Alert*"
+          (telega-ins text)
+          (when link
+            (telega-ins "\n")
+            (telega-ins--raw-button (telega-link-props 'url link)
+              (telega-ins link))))
+      (message (plist-get reply :text)))))
 
 (defun telega--getCallbackQueryAnswer (msg payload)
-  (telega-server--call
+  "Async send callback to bot."
+  (telega-server--send
    (list :@type "getCallbackQueryAnswer"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
@@ -40,23 +57,16 @@
     ;; TODO: other types
     ))
 
-(defun telega-inline--get-callback (msg kbd-button-type)
-  "Get answer for the button callback."
-  (let ((reply (telega--getCallbackQueryAnswer
-                msg (telega-inline--callback-payload kbd-button-type))))
-    (telega-debug "CallbackAnswer: %S" reply)
-
-    (if (plist-get reply :show_alert)
-        ;; Maybe popup message from the bot
-        (with-telega-help-win "*Callback Alert*"
-          (telega-ins (plist-get reply :text))
-          (telega-ins-prefix "\n"
-            (let ((link (plist-get reply :url)))
-              (when link
-                (telega-ins--raw-button (telega-link-props 'url link)
-                  (telega-ins link))))))
-
-      (message (plist-get reply :text)))))
+(defun telega-ins--inline-kbd (keyboard-button msg)
+  "Insert inline KEYBOARD-BUTTON for the MSG."
+  (cl-case (telega--tl-type keyboard-button)
+    (inlineKeyboardButton
+     (telega-ins--button (plist-get keyboard-button :text)
+       'action (lambda (ignored)
+                 (telega--getCallbackQueryAnswer
+                  msg (telega-inline--callback-payload
+                       (plist-get keyboard-button :type))))))
+    (t (telega-ins-fmt "<TODO: %S>" keyboard-button))))
 
 (provide 'telega-inline)
 

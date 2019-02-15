@@ -110,23 +110,13 @@ Default is: `full'"
 
 (defun telega-user-color (user)
   "Return color list associated with USER."
-  (let ((colors (plist-get user :color)))
-    (unless colors
-      ;; Try get color from chat
-      (let ((chat (telega-chat-get (plist-get user :id) 'offline)))
-        (setq colors (telega-chat-uaprop chat :color))
-        (unless colors
-          (let ((col (telega-color-random)))
-            (setq colors (list (telega-color-gradient col 'light)
-                               col
-                               (telega-color-gradient col))))
-          ;; If there corresponding chat, then update its color
-          (when chat
-            (setf (telega-chat-uaprop chat :color) colors))))
-      (plist-put user :color colors))
-
-    (cl-assert colors)
-    colors))
+  (or (plist-get user :color)
+      (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
+             (colors (if chat
+                         (telega-chat-color chat)
+                       (telega-color-tripple (telega-color-random)))))
+        (plist-put user :color colors)
+        colors)))
 
 (defun telega--on-updateUserStatus (event)
   "User status has been changed."

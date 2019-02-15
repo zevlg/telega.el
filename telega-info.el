@@ -267,7 +267,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                    (k2 (lsh (logand kv 12) -2))
                    (k3 (lsh (logand kv 48) -4))
                    (k4 (lsh (logand kv 192) -6)))
-              (cl-dolist (kk (list k1 k2 k3 k4))
+              (dolist (kk (list k1 k2 k3 k4))
                 (telega-ins (propertize telega-symbol-square
                                         'face (nth kk efaces))))))
           (telega-ins "\n")
@@ -311,20 +311,18 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
           (cl-find creator-id members :test '= :key (telega--tl-prop :user_id)))
          (member-status-name (plist-get (plist-get basicgroup :status) :@type))
          (invite-link (plist-get full-info :invite_link)))
-    (insert "Status: " (substring member-status-name 16) "\n")
-    (insert (format "Created: %s  %s\n"
-                    (telega-user--name creator)
-                    (if creator-member
-                        (telega-fmt-timestamp
-                         (plist-get creator-member :joined_chat_date))
-                      "")))
+    (telega-ins "Status: " (substring member-status-name 16) "\n")
+    (telega-ins "Created: " (telega-user--name creator) "  ")
+    (when creator-member
+      (telega-ins--date (plist-get creator-member :joined_chat_date)))
+    (telega-ins "\n")
 
     ;; For basic groups only creator can generate invite link
     (telega-info--insert-invite-link
      chat invite-link (string= member-status-name "chatMemberStatusCreator"))
 
-    (insert (format "Members: %d users\n"
-                    (plist-get basicgroup :member_count)))
+    (telega-ins-fmt "Members: %d users\n"
+      (plist-get basicgroup :member_count))
     (telega-ins--chat-members members)
     ))
 
@@ -336,16 +334,16 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
          (member-status (plist-get supergroup :status))
          (member-status-name (plist-get member-status :@type))
          (invite-link (plist-get full-info :invite_link)))
-    (insert "Status: " (substring member-status-name 16) "\n")
-    (insert (if (or (string= member-status-name "chatMemberStatusMember")
-                    (and (member member-status-name
-                                 '("chatMemberStatusCreator"
-                                   "chatMemberStatusRestricted"))
-                         (plist-get member-status :is_member)))
-                "Joined at: "
-              "Created at: ")
-            (telega-fmt-timestamp (plist-get supergroup :date))
-            "\n")
+    (telega-ins "Status: " (substring member-status-name 16) "\n")
+    (telega-ins (if (or (string= member-status-name "chatMemberStatusMember")
+                        (and (member member-status-name
+                                     '("chatMemberStatusCreator"
+                                       "chatMemberStatusRestricted"))
+                             (plist-get member-status :is_member)))
+                    "Joined at: "
+                  "Created at: "))
+    (telega-ins--date (plist-get supergroup :date))
+    (telega-ins "\n")
 
     ;; Creator and admins can [re]generate invite link
     (telega-info--insert-invite-link
@@ -354,21 +352,22 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
                                 "chatMemberStatusAdministrator")))
 
     (unless (string-empty-p descr)
-      (insert (telega-fmt-labeled-text "Desc: " descr) "\n"))
+      (telega-ins--labeled "Desc: " nil
+        (telega-ins descr "\n")))
     (unless (string-empty-p restr-reason)
-      (insert (telega-fmt-labeled-text "Restriction: " restr-reason) "\n"))
+      (telega-ins--labeled "Restriction: " nil
+        (telega-ins restr-reason "\n")))
 
-    (unless (zerop pin-msg-id)
-      (let ((pinned-msg (telega--getChatPinnedMessage chat)))
-        (cl-assert pinned-msg)
-        (insert "----(pinned message)----\n")
-        (telega-button-insert 'telega-msg
-          :value pinned-msg
-          :format (telega-msg-button--format pinned-msg)
-          :action 'ignore))
-      (insert "------------------------\n"))
+    ;; (unless (zerop pin-msg-id)
+    ;;   (let ((pinned-msg (telega--getChatPinnedMessage chat)))
+    ;;     (cl-assert pinned-msg)
+    ;;     (insert "----(pinned message)----\n")
+    ;;     (telega-button--insert 'telega-msg pinned-msg
+    ;;       :inserter 'telega-ins--message-content
+    ;;       :action 'telega-msg-goto))
+    ;;   (insert "\n------------------------\n"))
 
-    (insert (format "Members: %d" (plist-get full-info :member_count)) "\n")
+    (telega-ins-fmt "Members: %d\n" (plist-get full-info :member_count))
     (when (plist-get full-info :can_get_members)
       (telega-ins--chat-members
        (plist-get (telega--getSupergroupMembers supergroup) :members)))
@@ -394,39 +393,48 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
      (telega-info--insert-supergroup
       (telega--info 'supergroup (plist-get tlobj :supergroup_id)) chat))))
 
-(defun telega-describe-active-sessions ()
-  "Describe active sessions."
+(defun telega-describe-active-sessions (&optional sessions)
+  "Describe active SESSIONS."
   (interactive)
   (with-telega-help-win "*Telega Active Sessions*"
-    (mapc (lambda (session)
-            (let ((app_name (plist-get session :application_name))
-                  (app_ver (plist-get session :application_version))
-                  (api_id (plist-get session :api_id))
-                  (official-p (plist-get session :is_official_application))
-                  (current-p (plist-get session :is_current))
-                  (device (plist-get session :device_model))
-                  (platform (plist-get session :platform))
-                  (sys_ver (plist-get session :system_version))
-                  (ip (plist-get session :ip))
-                  (country (plist-get session :country))
-                  (login-ts (plist-get session :log_in_date))
-                  (last-ts (plist-get session :last_active_date)))
-              (insert (format "%s v%s " app_name app_ver)
-                      (if official-p
-                          "(official)"
-                        (format "(ID:%s)" api_id))
-                      (if current-p
-                          (propertize " (current)" 'face 'bold)
-                        "")
-                      "\n")
-              (insert (format "%s, %s %s\n" device platform sys_ver))
-              (insert (format "%s %s\n" ip country))
-              (insert (format "Login: %s, Last: %s\n"
-                              (telega-fmt-timestamp login-ts)
-                              (telega-fmt-timestamp last-ts)))
-              (insert "\n")))
-          (plist-get (telega-server--call '(:@type "getActiveSessions"))
-                     :sessions))))
+    (if (not sessions)
+        (progn
+          (telega-ins "Loading...")
+          ;; Async sessions loading
+          (telega-server--call
+           (list :@type "getActiveSessions")
+           (lambda (reply)
+             (telega-describe-active-sessions
+              (mapcar 'identity (plist-get reply :sessions))))))
+
+      (dolist (session sessions)
+        (let ((app-name (plist-get session :application_name))
+              (app-ver (plist-get session :application_version))
+              (api-id (plist-get session :api_id))
+              (official-p (plist-get session :is_official_application))
+              (current-p (plist-get session :is_current))
+              (device (plist-get session :device_model))
+              (platform (plist-get session :platform))
+              (sys-ver (plist-get session :system_version))
+              (ip (plist-get session :ip))
+              (country (plist-get session :country))
+              (login-ts (plist-get session :log_in_date))
+              (last-ts (plist-get session :last_active_date)))
+          (telega-ins app-name " v" app-ver " ")
+          (if official-p
+              (telega-ins "(official)")
+            (telega-ins-fmt "(ID:%s)" api-id ))
+          (when current-p
+            (telega-ins (propertize " (current)" 'face 'bold)))
+          (telega-ins "\n")
+          (telega-ins-fmt "%s, %s %s\n" device platform sys-ver)
+          (telega-ins-fmt "%s %s\n" ip country)
+          (telega-ins "Login: ")
+          (telega-ins--date login-ts)
+          (telega-ins ", Last: ")
+          (telega-ins--date last-ts)
+          (telega-ins "\n")
+          (insert "\n"))))))
 
 
 ;; Proxies code
@@ -439,7 +447,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
   "Update ping stats for the PROXIES.
 Call CALLBACK on updates."
   (let ((track-timeout nil))
-    (cl-dolist (proxy proxies)
+    (dolist (proxy proxies)
       (let* ((proxy-id (plist-get proxy :id))
              (ping (assq proxy-id telega--proxy-pings))
              (currts (time-to-seconds)))
@@ -448,11 +456,11 @@ Call CALLBACK on updates."
           (setf (alist-get proxy-id telega--proxy-pings) (cons currts nil))
           (telega-server--call
            (list :@type "pingProxy" :proxy_id proxy-id)
-           `(lambda (seconds)
-              (setf (alist-get ,proxy-id telega--proxy-pings)
-                    (cons (time-to-seconds) (plist-get seconds :seconds)))
-              (when ',callback
-                (funcall ',callback)))))))
+           (lambda (seconds)
+             (setf (alist-get proxy-id telega--proxy-pings)
+                   (cons (time-to-seconds) (plist-get seconds :seconds)))
+             (when callback
+               (funcall callback)))))))
 
     (when (and track-timeout callback)
       ;; to track ping timeouts
@@ -500,7 +508,7 @@ Call CALLBACK on updates."
                      (telega--disableProxy))
                    (telega-describe-network)))
       (telega-ins "\n")
-      (cl-dolist (proxy proxies)
+      (dolist (proxy proxies)
         (if (eq proxy enabled)
             (telega-ins telega-symbol-ballout-check)
 
@@ -644,7 +652,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
                   (mapconcat 'telega-user--name blocked-users ", ")
                 "None"))
       (insert "\n"))
-    (cl-dolist (setting '(show-status allow-chat-invites allow-calls))
+    (dolist (setting '(show-status allow-chat-invites allow-calls))
       (telega-ins-fmt "%S: " setting)
       (telega-ins-fmt "%S" (telega--getUserPrivacySettingRules setting))
       (insert "\n")

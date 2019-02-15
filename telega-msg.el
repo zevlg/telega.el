@@ -27,11 +27,6 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(defgroup telega-msg nil
-  "Customization for telega messages formatting."
-  :prefix "telega-msg-"
-  :group 'telega)
-
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
@@ -47,6 +42,7 @@
     (define-key map (kbd "d") 'telega-msg-delete)
     (define-key map (kbd "k") 'telega-msg-delete)
     (define-key map (kbd "s") 'telega-msg-save)
+    (define-key map (kbd "l") 'telega-msg-redisplay)
     (define-key map (kbd "DEL") 'telega-msg-delete)
     map))
 
@@ -67,7 +63,8 @@
     (cl-case (telega--tl-type content)
       (messageSticker
        (telega-describe-stickerset
-        (telega-stickerset-get (telega--tl-get content :sticker :set_id))))
+        (telega-stickerset-get (telega--tl-get content :sticker :set_id))
+        nil (telega-msg-chat msg)))
       )))
 
 (defun telega-msg--pp (msg)
@@ -84,9 +81,9 @@
         :action 'telega-msg-goto)
       (telega-ins "\n"))))
 
-(defun telega-msg-at-point ()
+(defun telega-msg-at (&optional pos)
   "Return current message at point."
-  (let ((button (button-at (point))))
+  (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-msg))
       (button-get button :value))))
 
@@ -118,10 +115,13 @@
   (or (with-telega-chatbuf (telega-chat-get chat-id)
         (gethash msg-id telega-chatbuf--messages))
 
-      (telega-server--call
-       (list :@type "getMessage"
-             :chat_id chat-id
-             :message_id msg-id))))
+      (let ((reply (telega-server--call
+                    (list :@type "getMessage"
+                          :chat_id chat-id
+                          :message_id msg-id))))
+        ;; Probably message already deleted
+        (unless (eq (telega--tl-type reply) 'error)
+          reply))))
 
 (defsubst telega-msg-list-get (tl-obj-Messages)
   "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
@@ -184,6 +184,17 @@ Update message as file downloading/uploading progresses."
   "Title of the message's chat."
   (telega-chat-title (telega-msg-chat msg) 'with-username))
 
+(defsubst telega-msg-sender (msg)
+  "Return sender (if any) for message MSG."
+  (let ((sender-uid (plist-get msg :sender_user_id)))
+    (unless (zerop sender-uid)
+      (telega-user--get sender-uid))))
+
+(defsubst telega-msg-by-me-p (msg)
+  "Return non-nil if sender of MSG is me."
+  (= (plist-get msg :sender_user_id) telega--me-id))
+
+;; DEPRECATED
 (defun telega-msg-sender-shortname (msg &optional suffix)
   "Short name of the MSG sender."
   (let ((sender-uid (plist-get msg :sender_user_id)))
@@ -191,6 +202,7 @@ Update message as file downloading/uploading progresses."
       (concat (telega-user--name (telega-user--get sender-uid) 'short)
               (or suffix "")))))
 
+;; DEPRECATED
 (defun telega-msg-sender-name (msg)
   "Title of the MSG sender."
   (let ((sender-uid (plist-get msg :sender_user_id)))
@@ -224,26 +236,6 @@ Update message as file downloading/uploading progresses."
   (let ((sender-uid (plist-get msg :sender_user_id)))
     (unless (zerop sender-uid)
       "    ")))
-
-(defun telega-msg-timestamp (msg)
-  "Format MSG date."
-  (telega-fmt-timestamp (plist-get msg :date)))
-
-(defun telega-msg-outgoing-status (msg)
-  "Outgoing status of the message."
-  (when (plist-get msg :is_outgoing)
-    (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
-          (chat (telega-chat-get (plist-get msg :chat_id))))
-    (cond ((and (stringp sending-state)
-                (string= sending-state "messageSendingStatePending"))
-           telega-symbol-msg-pending)
-          ((and (stringp sending-state)
-                (string= sending-state "messageSendingStateFailed"))
-           telega-symbol-failed)
-          ((>= (plist-get chat :last_read_outbox_message_id)
-               (plist-get msg :id))
-           telega-symbol-heavy-checkmark)
-          (t telega-symbol-checkmark)))))
 
 (defun telega-msg-caption (msg)
   "Display MSG's caption if any.
@@ -516,35 +508,6 @@ Makes heavy online requests without caching, be carefull."
     "\n"))
 
 ;; DEPRECATED
-(defun telega-msg-button--format-channel (msg)
-  `((telega-msg-chat-title :face telega-chat-user-title)
-    telega-msg-via-bot
-    " " ,telega-symbol-eye " " ,(plist-get msg :views)
-    telega-msg-edit-date
-    "\n"
-    ,@(telega-msg-inline-reply msg "")
-    ,@(telega-msg-text-with-timestamp msg "")))
-
-(defconst telega-msg-full-prefix "     ")
-
-;; DEPRECATED
-(defun telega-msg-button--format-full (msg &optional reply-msg)
-  `(telega-msg-sender-ava-h
-    " "
-    (telega-msg-sender-name
-     :face ,(if (= (plist-get msg :sender_user_id) telega--me-id)
-                'telega-chat-self-title
-              'telega-chat-user-title))
-    ,(when telega-msg-show-sender-status
-       '(telega-msg-sender-status :face shadow))
-    telega-msg-via-bot
-    telega-msg-edit-date
-    "\n"
-    telega-msg-sender-ava-l " "
-    ,@(telega-msg-inline-reply msg telega-msg-full-prefix)
-    ,@(telega-msg-text-with-timestamp msg telega-msg-full-prefix)))
-
-;; DEPRECATED
 (defun telega-msg-button--format-same (msg)
   "Fromat message when previous msg is from the same sender."
   `(,telega-msg-full-prefix
@@ -593,6 +556,7 @@ Makes heavy online requests without caching, be carefull."
       (telega-msg-timestamp :align right :min 10)
       "\n")))
 
+;; DEPRECATED
 (defun telega-msg-button--format (msg &optional prev-msg)
   "Produce fmt spec for the message MSG.
 PREV-MSG is non-nil if there any previous message exists."
@@ -683,14 +647,14 @@ If MARKDOWN is non-nil then format TEXT as markdown."
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."
-  (interactive (list (telega-msg-at-point)))
+  (interactive (list (telega-msg-at (point))))
   (let ((content (plist-get msg :content)))
     (cl-case (telega--tl-type content)
       (t (error "TODO: `telega-msg-save'")))))
 
 (defun telega-describe-message (msg)
   "Show info about message at point."
-  (interactive (list (telega-msg-at-point)))
+  (interactive (list (telega-msg-at (point))))
   (with-telega-help-win "*Telegram Message Info*"
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
@@ -700,10 +664,10 @@ If MARKDOWN is non-nil then format TEXT as markdown."
       (telega-ins-fmt "Message-id: %d\n" msg-id)
       (let ((sender-uid (plist-get msg :sender_user_id)))
         (unless (zerop sender-uid)
-          (insert "Sender: ")
+          (telega-ins "Sender: ")
           (insert-text-button (telega-user--name (telega-user--get sender-uid))
                               :telega-link (cons 'user sender-uid))
-          (insert "\n")))
+          (telega-ins "\n")))
       (when (telega-chat--public-p (telega-chat-get chat-id) 'supergroup)
         (let ((link (plist-get (telega--getPublicMessageLink chat-id msg-id) :link)))
           (telega-ins "Link: ")

@@ -35,24 +35,10 @@
 (declare-function company-begin-backend "company" (backend &optional callback))
 (declare-function company-grab "company" (regexp &optional expression limit))
 
-
-;;; Emoji completions
-(defvar telega-emoji-alist nil)
-(defvar telega-emoji-candidates nil)
-(defvar telega-emoji-max-length 0)
-
-(defun telega-emoji-init ()
-  "Initialize emojis."
-  (unless telega-emoji-alist
-    (setq telega-emoji-alist
-          (nconc (with-temp-buffer
-                   (insert-file-contents (telega-etc-file "emojis.alist"))
-                   (goto-char (point-min))
-                   (read (current-buffer)))
-                 telega-emoji-custom-alist))
-    (setq telega-emoji-candidates (mapcar 'car telega-emoji-alist))
-    (setq telega-emoji-max-length
-          (apply 'max (mapcar 'length telega-emoji-candidates)))))
+(defun telega-company-grab-emoji ()
+  (let ((cg (company-grab ":[^: _]+" nil
+                          (- (point) telega-emoji-max-length))))
+    (when cg (cons cg company-minimum-prefix-length))))
 
 ;;;###autoload
 (defun telega-company-emoji (command &optional arg &rest ignored)
@@ -61,11 +47,10 @@
   (cl-case command
     (interactive (company-begin-backend 'telega-company-emoji))
     (init (telega-emoji-init))
+    (require-match 'never)
     (sorted t)
     ;; Always match if having `:'
-    (prefix (let ((cg (company-grab ":[^: _]+" nil
-                                    (- (point) telega-emoji-max-length))))
-              (when cg (cons cg company-minimum-prefix-length))))
+    (prefix (telega-company-grab-emoji))
     (candidates
      (let ((fuzzy-regexp (regexp-quote (concat "-" (substring arg 1)))))
        (cl-remove-if-not (lambda (en)
@@ -79,26 +64,6 @@
      (delete-region (- (point) (length arg)) (point))
      (insert (cdr (assoc arg telega-emoji-alist))))
     ))
-
-;;;###autoload
-(defun telega-chatbuf-maybe-choose-sticker ()
-  "If chatbuf has single emoji input, then popup stickers win.
-Intended to be added to `post-command-hook' in chat buffer."
-  (interactive)
-
-  (telega-emoji-init)
-  (let ((input (telega-chatbuf-input-string)))
-    (when (and (= (length input) 1)
-               (cl-member input telega-emoji-alist
-                          :key 'cdr :test 'string=))
-      ;; NOTE: Do nothing in case sticker's help win is exists and
-      ;; have same emoji
-      (let ((buf (get-buffer "*Telegram Stickers*")))
-        (when (or (called-interactively-p 'interactive)
-                  (not (buffer-live-p buf))
-                  (not (with-current-buffer buf
-                         (string= input telega-help-win--emoji))))
-          (telega-sticker-choose input telega-chatbuf--chat))))))
 
 
 ;;; Username completion for chat buffer
@@ -126,6 +91,7 @@ Intended to be added to `post-command-hook' in chat buffer."
             (error "`telega-company-username' can be used only in chat buffer")))
     (sorted t)
     (prefix (telega-company-grab-username))
+    (require-match 'never)
     (candidates
      (let ((members (telega--searchChatMembers telega-chatbuf--chat arg)))
        (delq nil

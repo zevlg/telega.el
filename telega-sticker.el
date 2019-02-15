@@ -76,6 +76,10 @@ Thumbnail is a smaller (and faster) version of sticker image.")
            :key (telega--tl-prop :id)
            :test 'eq))
 
+(defun telega-sticker-emoji (sticker)
+  "Return STICKER's emoji."
+  (telega--desurrogate-apply (plist-get sticker :emoji)))
+
 (defun telega-file--ensure-downloaded (sfile files-list)
   (cl-assert (memq sfile files-list))
   (when (telega-media--need-download-p sfile)
@@ -132,7 +136,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
     ;; Asynchronously fetch sticker sets
     (setq telega--stickersets-installed-ids
           (mapcar 'identity (plist-get event :sticker_set_ids)))
-    (cl-dolist (set-id telega--stickersets-installed-ids)
+    (dolist (set-id telega--stickersets-installed-ids)
       (telega-stickerset-get set-id 'async))
     ))
 
@@ -290,7 +294,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-sticker--progress-svg (sticker)
   (let* ((progress (telega-file--downloading-progress
                     (plist-get sticker :sticker)))
-         (emoji (telega--desurrogate-apply (plist-get sticker :emoji)))
+         (emoji (telega-sticker-emoji sticker))
          (h (* (frame-char-height) telega-sticker-height))
          (w-chars (telega-chars-in-width h))
          (w (* (telega-chars-width 1) w-chars))
@@ -330,9 +334,10 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                :ascent 'center
                ;; text of correct width
                :telega-text
-               (make-string (or (plist-get sticker :telega-image-char-width)
-                                w-chars)
-                            ?X))
+               (make-string
+                (or (car (plist-get sticker :telega-image-cwidth-xmargin))
+                    w-chars)
+                ?X))
     ))
 
 (defun telega-sticker--create-image (sticker &optional file)
@@ -348,30 +353,28 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   ;;   3) Thumbnail and sticker downloading
   ;;      Fallback to `telega-sticker--progress-svg', waiting for
   ;;      thumbnail or sticker to be downloaded
-  (unless (plist-get sticker :telega-image-char-width)
-    ;; Calculate resulting image width in chars
-    (let ((sw (plist-get sticker :width))
-          (sh (plist-get sticker :height))
-          (mh (* (frame-char-height) telega-sticker-height)))
-      (plist-put sticker :telega-image-char-width
-                 (telega-chars-in-width (* (/ (float sw) sh) mh)))
-      (cl-assert (> (plist-get sticker :telega-image-char-width) 0))))
-
   (let* ((sfile (plist-get sticker :sticker))
          (sthumb (telega--tl-get sticker :thumbnail :photo))
          (filename (or (and telega-sticker--use-thumbnail
                             (telega-file--downloaded-p sthumb) sthumb)
                        (and (telega-file--downloaded-p sfile) sfile)
-                       (and (telega-file--downloaded-p sthumb) sthumb)
-                       )))
+                       (and (telega-file--downloaded-p sthumb) sthumb)))
+         (cwidth-xmargin (plist-get sticker :telega-image-cwidth-xmargin)))
+    (unless cwidth-xmargin 
+      (setq cwidth-xmargin (telega-media--cwidth-xmargin
+                            (plist-get sticker :width)
+                            (plist-get sticker :height)
+                            telega-sticker-height))
+      (plist-put sticker :telega-image-cwidth-xmargin cwidth-xmargin))
+
     (if filename
         (apply 'create-image (telega--tl-get filename :local :path)
                'imagemagick nil
                :height (* (frame-char-height) telega-sticker-height)
                :scale 1.0
                :ascent 'center
-               :telega-text (make-string
-                             (plist-get sticker :telega-image-char-width) ?X)
+               :margin (cons (cdr cwidth-xmargin) 0)
+               :telega-text (make-string (car cwidth-xmargin) ?X)
                (when (telega-sticker-favorite-p sticker)
                  (list :relief 4)))
       ;; Fallback to svg
@@ -409,20 +412,24 @@ If SLICES-P is non-nil, then insert STICKER using slices."
   "Execute action when sticker BUTTON is pressed."
   (cl-assert telega--chat)
   (cl-assert (eq major-mode 'help-mode))
-  (let ((sticker (telega-sticker-at button)))
-    (with-telega-chatbuf telega--chat
+  (let ((sticker (telega-sticker-at button))
+        (thw-emoji telega-help-win--emoji)
+        (chat telega--chat))
+    ;; NOTE: Kill help win before modifying chatbuffer, because it
+    ;; recovers window configuration on
+    (quit-window 'kill-buffer)
+
+    (with-telega-chatbuf chat
       ;; Substitute emoji with sticker, in case help win has
       ;; `telega-help-win--emoji' set
-      (when telega-help-win--emoji
+      (when thw-emoji
         (let* ((input (telega-chatbuf-input-string))
                (emoji (and (> (length input) 0) (substring input 0 1))))
-          (unless (string= emoji telega-help-win--emoji)
-            (error "Emoji changed %s -> %s" telega-help-win--emoji emoji))
-          (save-excursion
-            (goto-char telega-chatbuf--input-marker)
-            (delete-char 1))))
-      (telega-chatbuf-sticker-insert sticker)))
-  (quit-window 'kill-buffer))
+          (unless (string= emoji thw-emoji)
+            (error "Emoji changed %s -> %s" thw-emoji emoji))
+          (goto-char telega-chatbuf--input-marker)
+          (delete-char 1)))
+      (telega-chatbuf-sticker-insert sticker))))
 
 (defun telega-describe-stickerset (sset &optional info-p for-chat)
   "Describe the sticker set.
@@ -455,6 +462,9 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
         (when (> (telega-current-column) (- telega-chat-fill-column 10))
           (telega-ins "\n"))
         (telega-button--insert 'telega-sticker sticker
+          'help-echo (unless telega-sticker-set-show-emoji
+                       (let ((emoji (telega-sticker-emoji sticker)))
+                         (concat "Emoji: " emoji " " (telega-emoji-name emoji))))
           'action (if for-chat 'telega-sticker--choosen-action 'ignore))
         (sit-for 0.0)
         (when telega-sticker-set-show-emoji
@@ -474,6 +484,8 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
     (when (> (telega-current-column) (- telega-chat-fill-column 10))
       (telega-ins "\n"))
     (telega-button--insert 'telega-sticker sticker
+      'help-echo (let ((emoji (telega-sticker-emoji sticker)))
+                   (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
       'action 'telega-sticker--choosen-action)
     (unless no-redisplay
       (sit-for 0))
@@ -502,10 +514,10 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
       (let ((istickers (telega--getStickers emoji))
             (sstickers (telega--searchStickers emoji)))
         (telega-ins "Installed:\n")
-        (telega-ins--sticker-list istickers)
+        (telega-ins--sticker-list istickers 'no-redisplay)
 
         (telega-ins "\nPublic:\n")
-        (telega-ins--sticker-list sstickers)
+        (telega-ins--sticker-list sstickers 'no-redisplay)
         ))))
 
 (defun telega-stickerset--minibuf-post-command ()

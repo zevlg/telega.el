@@ -50,7 +50,7 @@
   (if (and telega-use-short-filenames
            (string-prefix-p (concat telega-directory "/") filename))
       (substring filename (1+ (length telega-directory)))
-    filename))
+    (abbreviate-file-name filename)))
 
 (defun telega-x-frame ()
   "Return window system frame, if any."
@@ -100,6 +100,12 @@ If LIGHT is non-nil then return lighter version."
   (telega-color-to-hex
    (mapcar (lambda (c) (if light (color-clamp (* c 1.5)) (/ c 2)))
            (color-name-to-rgb color))))
+
+(defun telega-color-tripple (col)
+  "Return color COL tripple in form (LIGHT-COL COL DARK-COL)."
+  (list (telega-color-gradient col 'light)
+        col
+        (telega-color-gradient col)))
 
 (defun telega-temp-name (prefix &optional ext)
   "Generate unique temporary file name with PREFIX and extension EXT.
@@ -321,21 +327,30 @@ Return `nil' if there is nothing to animate and new string otherwise."
 
 
 ;; ewoc stuff
-(defun telega-ewoc--find-node (ewoc predicate)
-  "Find EWOC's node by PREDICATE run on node's data."
+(defun telega-ewoc--find (ewoc item test &optional key)
+  "Find EWOC's node by item and TEST funcion.
+TEST function is run with two arguments - ITEM and NODE-VALUE.
+Optionally KEY can be specified to get KEY from node value."
   (ewoc--set-buffer-bind-dll-let* ewoc
       ((node (ewoc--node-nth dll 1))
        (footer (ewoc--footer ewoc))
        (inhibit-read-only t))
     (cl-block 'ewoc-node-found
       (while (not (eq node footer))
-        (when (funcall predicate (ewoc--node-data node))
+        (when (funcall test item (if key
+                                     (funcall key (ewoc--node-data node))
+                                   (ewoc--node-data node)))
           (cl-return-from 'ewoc-node-found node))
         (setq node (ewoc--node-next dll node))))))
 
-(defun telega-ewoc--find-node-by-data (ewoc data)
-  "Find EWOC's node by its DATA."
-  (telega-ewoc--find-node ewoc (lambda (node-data) (eq node-data data))))
+(defun telega-ewoc--find-if (ewoc predicate &optional key)
+  "Find EWOC's node by PREDICATE run on node's data."
+  (telega-ewoc--find
+   ewoc nil (lambda (_ignored kval)
+              (funcall predicate kval) key)))
+
+(defmacro telega-ewoc--find-by-data (ewoc data)
+  `(telega-ewoc--find ,ewoc ,data 'eq))
 
 (defun telega-ewoc--set-header (ewoc header)
   "Set EWOC's new HEADER."
@@ -373,6 +388,30 @@ Header and Footer are not deleted."
     (or (null n0)
         (= (ewoc-location (ewoc-nth ewoc 0))
            (ewoc-location (ewoc--footer ewoc))))))
+
+
+;; Emoji
+(defvar telega-emoji-alist nil)
+(defvar telega-emoji-candidates nil)
+(defvar telega-emoji-max-length 0)
+
+(defun telega-emoji-init ()
+  "Initialize emojis."
+  (unless telega-emoji-alist
+    (setq telega-emoji-alist
+          (nconc (with-temp-buffer
+                   (insert-file-contents (telega-etc-file "emojis.alist"))
+                   (goto-char (point-min))
+                   (read (current-buffer)))
+                 telega-emoji-custom-alist))
+    (setq telega-emoji-candidates (mapcar 'car telega-emoji-alist))
+    (setq telega-emoji-max-length
+          (apply 'max (mapcar 'length telega-emoji-candidates)))))
+
+(defun telega-emoji-name (emoji)
+  "Find EMOJI name."
+  (telega-emoji-init)
+  (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
 
 (provide 'telega-util)
 

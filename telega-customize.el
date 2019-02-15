@@ -389,11 +389,6 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
-(defcustom telega-chat-rainbow-users t
-  "*Non-nil to display user names in chatbuf with their assigned color."
-  :type 'boolean
-  :group 'telega-chat)
-
 (defcustom telega-chat-open-on-forward nil
   "*Non-nil to open corresponding chat when forwarding message to."
   :type 'boolean
@@ -484,10 +479,20 @@ For example:
   :group 'telega-notifications)
 
 
+(defgroup telega-msg nil
+  "Customization for telega messages formatting."
+  :prefix "telega-msg-"
+  :group 'telega)
+
 (defcustom telega-msg-show-sender-status nil
   "*Non-nil to show message sender status.
 Such as admin, creator, etc
 DO NOT USE.  TODO: sender statuses need to be cached."
+  :type 'boolean
+  :group 'telega-msg)
+
+(defcustom telega-msg-rainbow-title t
+  "*Non-nil to display user names in chatbuf with their assigned color."
   :type 'boolean
   :group 'telega-msg)
 
@@ -716,6 +721,11 @@ Install all symbol widths inside `telega-load-hook'."
   "Group to customize faces used by telega."
   :group 'telega)
 
+(defface telega-link
+  '((t :inherit link :underline nil))
+  "Face to display various links."
+  :group 'telega-faces)
+
 (defface telega-button
   '((((class color) (min-colors 88) (background light))
      :foreground "RoyalBlue3"
@@ -773,11 +783,13 @@ Install all symbol widths inside `telega-load-hook'."
   "Face used for encryption key"
   :group 'telega-faces)
 
-(defface telega-filter-button-active '((t :inherit default))
+(defface telega-filter-button-active
+  '((t :inherit default))
   "*Face to use for active custom filters."
   :group 'telega-faces)
 
-(defface telega-filter-button-inactive '((t :inherit shadow))
+(defface telega-filter-button-inactive
+  '((t :inherit shadow))
   "*Face to use for inactive custom filters."
   :group 'telega-faces)
 
@@ -835,11 +847,6 @@ Install all symbol widths inside `telega-load-hook'."
   "Face to display @mentions."
   :group 'telega-faces)
 
-(defface telega-link
-  '((t :inherit link :underline nil))
-  "Face to display various links."
-  :group 'telega-faces)
-
 (defface telega-entity-type-hashtag
   '((t :inherit telega-link))
   "Face to display #hashtags."
@@ -888,19 +895,24 @@ You can customize its `:height' to fit width of the default face."
   "Face to display title of secret chat in root buffer."
   :group 'telega-faces)
 
-(defface telega-chat-user-title
-  '((t :inherit widget-field))
+(defface telega-msg-heading
+  '((t :inherit 'widget-field))
+  "Face to display messages header."
+  :group 'telega-faces)
+
+(defface telega-msg-self-title
+  '((t :bold t))
+  "Face to display title of myself in chat buffers."
+  :group 'telega-faces)
+
+(defface telega-msg-user-title
+  '((t nil))
   "Face to display user title in chat buffers."
   :group 'telega-faces)
 
-(defface telega-chat-inline-reply
-  '((t :inherit 'widget-field))
+(defface telega-msg-inline-reply
+  '((t :inherit 'telega-msg-heading))
   "Face to highlight replies to messages."
-  :group 'telega-faces)
-
-(defface telega-chat-self-title
-  '((t :inherit 'telega-chat-user-title :bold t))
-  "Face to display title of myself in chat buffers."
   :group 'telega-faces)
 
 (defface telega-msg-outgoing-status

@@ -60,8 +60,20 @@
   `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
 
 (defsetf telega-chat-uaprop (chat uaprop-name) (value)
-  `(telega-chat--set-uaprops
-    ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,value)))
+  "Set CHAT's user property UAPROP-NAME to VALUE.
+Return VALUE."
+  (let ((valsym (gensym "value")))
+    `(let ((,valsym ,value))
+       (telega-chat--set-uaprops
+        ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,valsym))
+       ,valsym)))
+
+(defun telega-chat-color (chat)
+  "Return color list associated with CHAT.
+If there is no CHAT color, then generate new and assign it to CHAT."
+  (or (telega-chat-uaprop chat :color)
+      (setf (telega-chat-uaprop chat :color)
+            (telega-color-tripple (telega-color-random)))))
 
 (defsubst telega-chat--order (chat)
   (string-to-number
@@ -497,16 +509,22 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 
 (defun telega--sendChatAction (chat action)
   "Send ACTION on CHAT."
-  (cl-assert (member action '("Typing" "RecordingVideo" "UploadingVideo"
-                              "RecordingVoiceNote" "UploadingVoiceNote"
-                              "UploadingPhoto" "UploadingDocument"
-                              "ChoosingLocation" "ChoosingContact"
-                              "StartPlayingGame" "RecordingVideoNote"
-                              "UploadingVideoNote" "Cancel")))
+  (when (stringp action)
+    (cl-assert (member action '("Typing" "RecordingVideo" "UploadingVideo"
+                                "RecordingVoiceNote" "UploadingVoiceNote"
+                                "UploadingPhoto" "UploadingDocument"
+                                "ChoosingLocation" "ChoosingContact"
+                                "StartPlayingGame" "RecordingVideoNote"
+                                "UploadingVideoNote" "Cancel")))
+    (setq action (list :@type (concat "chatAction" action))))
+  ;; NOTE: special case is for `chatActionUploadingVideoNote', it
+  ;; might have additional `:progress' argument.  In this case, pass
+  ;; it directly as list to `telega--sendChatAction'
+
   (telega-server--send
    (list :@type "sendChatAction"
          :chat_id (plist-get chat :id)
-         :action (list :@type (concat "chatAction" action)))))
+         :action action)))
 
 (defun telega--createPrivateChat (user)
   "Create private chat with USER.
@@ -759,9 +777,9 @@ STATUS is one of: "
 
     (telega-ins (capitalize (symbol-name (telega-chat--type chat))) ": ")
     (telega-ins--with-face
-        (list :foreground (if (eq (frame-parameter nil 'background-mode) 'light)
-                              (nth 2 (telega-chat-uaprop chat :color))
-                            (nth 0 (telega-chat-uaprop chat :color))))
+        (let ((color (telega-chat-color chat))
+              (lightp (eq (frame-parameter nil 'background-mode) 'light)))
+          (list :foreground (nth (if lightp 2 0) color)))
       (telega-ins (telega-chat-title chat 'with-username)))
     (telega-ins " ")
     (telega-ins--button "Open"
@@ -1346,11 +1364,11 @@ Return newly inserted message button."
 
     (run-hook-with-args 'telega-chat-message-hook msg disable-notification)))
 
-(defmacro telega-chatbuf--node-by-msg-id (msg-id)
+(defun telega-chatbuf--node-by-msg-id (msg-id)
   "In current chatbuffer find message button with MSG-ID."
-  `(telega-ewoc--find-node
-    telega-chatbuf--ewoc
-    (lambda (msg) (= ,msg-id (plist-get msg :id)))))
+  ;; TODO: maybe do binary search on buffer position (getting message
+  ;; as `telega-msg-at'), since message ids grows monotonically
+  (telega-ewoc--find telega-chatbuf--ewoc msg-id '= (telega--tl-prop :id)))
 
 (defun telega-chatbuf--visible-messages (window)
   "Return list of messages visible in chat buffer WINDOW."
@@ -1728,7 +1746,7 @@ With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
                                       '(inputMessagePhoto inputMessageVideo)))
                               imcs))
           (telega--sendMessageAlbum telega-chatbuf--chat imcs replying-msg)
-        (cl-dolist (imc imcs)
+        (dolist (imc imcs)
           (telega--sendMessage telega-chatbuf--chat imc replying-msg))))
 
     (when forwarding-msg
@@ -1750,6 +1768,10 @@ With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
 
 (defun telega-chatbuf-input-insert (imc)
   "Insert input content defined by IMC into current input."
+  ;; Check that point is in input area, otherwise move to the end
+  (when (< (point) telega-chatbuf--input-marker)
+    (goto-char (point-max)))
+
   (when (get-text-property (point) 'telega-attach)
     (telega-ins " "))
   ;; NOTE: Put special properties `attach-open-bracket' and
@@ -1933,6 +1955,28 @@ If prefix arg is given, then take screenshot only of current emacs frame."
            ))
     ))
 
+(defun telega-chatbuf-attach-sticker-by-emoji ()
+  "If chatbuf has single emoji input, then popup stickers win.
+Intended to be added to `post-command-hook' in chat buffer.
+Or to be called directly.
+Return non-nil if input has single emoji."
+  (interactive)
+
+  (telega-emoji-init)
+  (let ((input (telega-chatbuf-input-string)))
+    (when (and (= (length input) 1)
+               (cl-member input telega-emoji-alist
+                          :key 'cdr :test 'string=))
+      ;; NOTE: Do nothing in case sticker's help win is exists and
+      ;; have same emoji
+      (let ((buf (get-buffer "*Telegram Stickers*")))
+        (when (or (called-interactively-p 'interactive)
+                  (not (buffer-live-p buf))
+                  (not (with-current-buffer buf
+                         (string= input telega-help-win--emoji))))
+          (telega-sticker-choose-emoji input telega-chatbuf--chat)))
+      t)))
+
 (defun telega-chatbuf-attach-sticker (fav-or-recent-p)
   "Attach the sticker.
 If prefix argument is specified, then attach recent or favorite sticker.
@@ -2006,9 +2050,18 @@ If DRAFT-MSG is ommited, then clear draft message."
   )
 
 ;; Message commands
+(defun telega-msg-redisplay (msg)
+  "Redisplay the message."
+  (interactive (list (telega-msg-at (point))))
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (telega-save-cursor
+      (let ((node (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)))
+        (when node
+          (ewoc-invalidate telega-chatbuf--ewoc node))))))
+
 (defun telega-msg-reply (msg)
   "Start replying to MSG."
-  (interactive (list (telega-msg-at-point)))
+  (interactive (list (telega-msg-at (point))))
 
   (with-telega-chatbuf (telega-msg-chat msg)
     (telega-button--update-value
@@ -2024,7 +2077,7 @@ If DRAFT-MSG is ommited, then clear draft message."
 
 (defun telega-msg-edit (msg)
   "Start editing the MSG."
-  (interactive (list (telega-msg-at-point)))
+  (interactive (list (telega-msg-at (point))))
 
   (unless (plist-get msg :can_be_edited)
     (error "Message can't be edited"))
@@ -2051,7 +2104,7 @@ If DRAFT-MSG is ommited, then clear draft message."
 
 (defun telega-msg-forward (msg chat)
   "Forward message to chat."
-  (interactive (list (telega-msg-at-point)
+  (interactive (list (telega-msg-at (point))
                      (telega-completing-read-chat "Forward to chat: ")))
 
   (unless (plist-get msg :can_be_forwarded)
@@ -2081,14 +2134,26 @@ With prefix arg delete only for yourself."
     (telega--deleteMessages
      (plist-get msg :chat_id) (vector (plist-get msg :id)) revoke)))
 
-(defun telega-chat-complete-username ()
-  "Complete username at point."
+(defun telega-chat-complete ()
+  "Complete thing at chat input."
   (interactive)
-  (error "Username completion not yet implemented"))
+  (or (call-interactively 'telega-chatbuf-attach-sticker-by-emoji)
+      (when (and (boundp 'company-mode) company-mode)
+        (cond ((telega-company-grab-username)
+               (company-begin-backend 'telega-company-username)
+               (company-complete-common)
+               t)
+              ((telega-company-grab-emoji)
+               (company-begin-backend 'telega-company-emoji)
+               (company-complete-common)
+               t)))
+      ;; TODO: add other completions
+      ))
 
 (defun telega-chat-next-link (n)
   (interactive "p")
-  (error "`telega-chat-next-link' not yet implemented"))
+  ;; TODO: maybe be more smarter about links
+  (telega-button-forward n))
 
 (defun telega-chat-prev-link (n)
   (interactive "p")
@@ -2098,7 +2163,7 @@ With prefix arg delete only for yourself."
   "Complete username at point, or jump to next link."
   (interactive)
   (if (<= telega-chatbuf--input-marker (point))
-      (call-interactively 'telega-chat-complete-username)
+      (call-interactively 'telega-chat-complete)
     (call-interactively 'telega-chat-next-link)))
 
 (defun telega-chat-generate-invite-link (chat-id)

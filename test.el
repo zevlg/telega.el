@@ -1,4 +1,4 @@
-;;; test.el --- Testing routines for telega.
+;;; test.el --- Testing routines for telega  -*- lexical-binding:t -*-
 (require 'telega)
 
 ;; Setup
@@ -71,7 +71,7 @@ Have Stoploss 690 Satoshi. í ½í»‘
 
 í ½íº€ í ½íº€" 131 133 (display "ğŸ›‘" telega-desurrogate t) 136 138 (display "ğŸš€" telega-desurrogate t) 139 141 (display "ğŸš€" telega-desurrogate t)) :entities []))))
         ))
-(cl-dolist (chat telega--ordered-chats)
+(dolist (chat telega--ordered-chats)
   (puthash (plist-get chat :id) chat telega--chats))
 
 

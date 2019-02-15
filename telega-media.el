@@ -135,7 +135,7 @@ hasn't been started, i.e. request hasn't been sent to server."
 
 (defun telega-file--run-callbacks (callbacks file)
   "Run CALLBACKS on FILE update."
-  (cl-dolist (cb-with-args callbacks)
+  (dolist (cb-with-args callbacks)
     (apply (car cb-with-args) file (cdr cb-with-args))))
 
 (defun telega-file--download-monitor-progress (file-id cb &rest cb-args)
@@ -275,7 +275,7 @@ into FILL-COLUMN."
           ;; Choose best suiting fill-column
           (let ((xwidth (telega-chars-width fill-column))
                 (best (aref photo-sizes 0)))
-            (cl-dolist (tn photo-sizes)
+            (dolist (tn photo-sizes)
               (when (< (abs (- (plist-get tn :width) xwidth))
                        (abs (- (plist-get best :width) xwidth)))
                 (setq best tn)))
@@ -434,6 +434,33 @@ To customize automatic downloads, use `telega-auto-download'."
 
 
 ;; Avatars
+(defun telega-media--cwidth-xmargin (width height char-height)
+  "Calculate width in chars and margin X pixels.
+Return cons cell, where car is width in char and cdr is margin value."
+  (let* ((pix-h (* (frame-char-height) char-height))
+         (pix-w (* (/ (float width) height) pix-h))
+         (cw (telega-chars-in-width pix-w))
+         (xmargin (/ (- (telega-chars-width cw) pix-w) 2)))
+    (cl-assert (> cw 0))
+    (cons cw (floor xmargin))))
+
+(defun telega-thumb--create-image-one-line (thumb &optional file)
+  "Create image for thubmnail (photoSize) for one line use."
+  (unless file
+    (setq file (plist-get thumb :photo)))
+
+  (let ((cwidth-xmargin (telega-media--cwidth-xmargin
+                         (plist-get thumb :width)
+                         (plist-get thumb :height)
+                         1)))
+    (create-image (telega--tl-get file :local :path)
+                  'imagemagick nil
+                  :height (frame-char-height)
+                  :scale 1.0
+                  :ascent 'center
+                  :margin (cons (cdr cwidth-xmargin) 0)
+                  :telega-text (make-string (car cwidth-xmargin) ?X))))
+
 (defun telega-media--image-update (obj-spec file)
   "Called to update the image contents for the OBJ-SPEC.
 OBJ-SPEC is cons of object and create image function.

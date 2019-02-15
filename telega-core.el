@@ -291,14 +291,6 @@ Resulting in new string with no surrogate pairs."
         ((listp obj) (mapcar 'telega--tl-pack obj))
         (t obj)))
 
-;; DEPRECATED
-(defmacro telega-prefix (prefix str)
-  "Concatenate PREFIX and STR in case STR is non empty."
-  (let ((strsym (gensym "str")))
-    `(let ((,strsym ,str))
-       (when (and ,strsym (not (string-empty-p ,strsym)))
-         (concat ,prefix ,strsym)))))
-
 
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)
@@ -367,12 +359,6 @@ Return list of strings."
            (telega-fmt-eval-align estr attrs))
           (t estr))))
 
-(defun telega-fmt-eval-fill-prefix (estr attrs)
-  ;; NOTE: Do not prefix empty lines
-  (concat (unless (string-empty-p estr)
-            (plist-get attrs :fill-prefix))
-          estr))
-
 (defun telega-fmt-eval-face (estr attrs)
   "Apply `:face' attribute to ESTR."
   (let ((face (plist-get attrs :face)))
@@ -382,18 +368,32 @@ Return list of strings."
 
 (defun telega-fmt-eval-attrs (estr attrs)
   "Apply all attributes to ESTR."
-  (let ((formatted-estrs
-         (mapcar (lambda (estrline)
-                   (telega-fmt-eval-min-max
-                    (telega-fmt-eval-fill-prefix estrline attrs)
-                    attrs))
-                 (telega-fmt-eval-fill estr attrs))))
-    ;; NOTE: strip prefix on the first line
+  ;; Blackmagic for fast execution, but
+  ;; NOTE:
+  ;;  - Do not prefix first line
+  ;;  - Do not prefix empty lines with blank prefix
+  ;;  - If last string is empty, do not prefix it
+  (let* ((fpx (plist-get attrs :fill-prefix))
+         (fpx-blank-p (or (not fpx) (string-blank-p fpx)))
+         (filled-estrs (telega-fmt-eval-fill estr attrs))
+         (formatted-estrs (list (telega-fmt-eval-min-max
+                                 (pop filled-estrs) attrs)))
+         (festr-tail formatted-estrs))
+    (while filled-estrs
+      (let* ((estr (car filled-estrs))
+             (estr-last-p (not (cdr filled-estrs)))
+             (festr-elem
+              (list (telega-fmt-eval-min-max
+                     (concat (unless (and (string-empty-p estr)
+                                          (or estr-last-p fpx-blank-p))
+                               fpx)
+                             estr)
+                     attrs))))
+        (setcdr festr-tail festr-elem)
+        (setq festr-tail festr-elem)
+        (setq filled-estrs (cdr filled-estrs))))
     (telega-fmt-eval-face
-     (mapconcat #'identity
-                (cons (substring (car formatted-estrs)
-                                 (length (plist-get attrs :fill-prefix)))
-                      (cdr formatted-estrs)) "\n")
+     (mapconcat #'identity formatted-estrs "\n")
      attrs)))
 
 (defsubst telega-fmt-atom (atom)
@@ -446,26 +446,7 @@ NIL yields empty string for the convenience."
   (telega-ins--as-string
    (telega-ins--date timestamp)))
 
-;; DEPRECATED
-(defun telega-fmt-timestamp-iso8601 (timestamp)
-  (telega-ins--as-string
-   (telega-ins--date-iso8601 timestamp)))
-
-;; DEPRECATED --> telega-ins--labeled-text
-(defun telega-fmt-labeled-text (label text &optional fill-col)
-  "Format TEXT filling it, prefix with LABEL."
-  (telega-fmt-eval
-   `(,label (identity :fill left
-                      :fill-prefix ,(make-string (length label) ?\s)
-                      :fill-column ,fill-col))
-   text))
-
 ;;; Buttons for telega
-
-;; DEPRECATED
-(defun telega-button--format-error (msg)
-  (error "Button `:format' is unset."))
-
 (defun telega-button--ins-error (val)
   (error "Button `:inserter' is unset."))
 
@@ -475,8 +456,6 @@ NIL yields empty string for the convenience."
 (put 'telega-button 'action 'ignore)
 (put 'telega-button 'rear-nonsticky t)
 (put 'telega-button 'face nil)
-;; DEPRECATED
-(put 'telega-button :format 'telega-button--format-error)
 (put 'telega-button :inserter 'telega-button--ins-error)
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)

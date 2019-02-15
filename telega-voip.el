@@ -287,7 +287,7 @@ If prefix arg is given then list only missed calls."
       (telega-ins (if only-missed "Missed" "All") " Calls\n")
       (telega-ins (make-string (- (point-max) 2) ?-) "\n")
 
-      (cl-dolist (call-msg messages)
+      (dolist (call-msg messages)
         (telega-ins--with-attrs (list :align 'left
                                       :min 60
                                       :max 60
