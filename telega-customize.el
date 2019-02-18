@@ -51,7 +51,7 @@
   :group 'telega)
 
 (defcustom telega-options-plist
-  (list :online t :use_quick_ack t :localization_target "tdesktop")
+  (list :online t :localization_target "tdesktop")
   "*Plist of options to set.
 To use custom language pack (from \"tdesktop\" localization target),
 add `:language_pack_id' option.

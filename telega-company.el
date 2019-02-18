@@ -98,8 +98,13 @@
              (mapcar (lambda (member)
                        (let ((username (plist-get member :username)))
                          (unless (string-empty-p username)
-                           (concat "@" username))))
+                           (propertize (concat "@" username) 'telega-member member))))
                      members))))
+    (annotation
+     ;; Use non-nil `company-tooltip-align-annotations' to align
+     (let ((member (get-text-property 0 'telega-member arg)))
+       (when member
+         (concat "  " (telega-user--name member 'name)))))
     (post-completion
      (insert " "))
     ))

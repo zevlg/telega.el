@@ -35,14 +35,14 @@
     (define-key map (kbd "p") 'telega-button-backward)
 
     (define-key map (kbd "i") 'telega-describe-message)
-    (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "e") 'telega-msg-edit)
     (define-key map (kbd "f") 'telega-msg-forward)
     (define-key map (kbd "d") 'telega-msg-delete)
     (define-key map (kbd "k") 'telega-msg-delete)
-    (define-key map (kbd "s") 'telega-msg-save)
     (define-key map (kbd "l") 'telega-msg-redisplay)
+    (define-key map (kbd "R") 'telega-msg-resend)
+    (define-key map (kbd "S") 'telega-msg-save)
     (define-key map (kbd "DEL") 'telega-msg-delete)
     map))
 

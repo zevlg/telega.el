@@ -405,18 +405,22 @@ If WITH-USERNAME is specified, append trailing username for this chat."
       (telega-chat--reorder chat (plist-get event :order)))
     (telega-root--chat-update chat)
 
-    ;; If chat has no active input, then update it to the draft
+    ;; Update chat's input to the value of the draft
     (with-telega-chatbuf chat
-      (unless (telega-chatbuf-has-input-p)
-        (let ((reply-msg-id (plist-get draft-msg :reply_to_message_id)))
-          (when (and reply-msg-id (not (zerop reply-msg-id)))
+      (let ((reply-msg-id (plist-get draft-msg :reply_to_message_id)))
+        (if (and reply-msg-id (not (zerop reply-msg-id)))
             (telega-msg-reply
-             (telega-msg--get (plist-get chat :id) reply-msg-id)))
+             (telega-msg--get (plist-get chat :id) reply-msg-id))
+          ;; Reset only if replying, but `:reply_to_message_id' is not
+          ;; specified, otherwise keep the aux, for example editing
+          (when (telega-chatbuf--replying-msg)
+            (telega-chatbuf--prompt-reset)))
 
-          (save-excursion
-            (goto-char telega-chatbuf--input-marker)
-            (telega-ins--text
-             (telega--tl-get draft-msg :input_message_text :text))))))
+        (telega-save-cursor
+          (delete-region telega-chatbuf--input-marker (point-max))
+          (goto-char telega-chatbuf--input-marker)
+          (telega-ins--text
+           (telega--tl-get draft-msg :input_message_text :text)))))
     ))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
