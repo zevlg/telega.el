@@ -79,7 +79,7 @@
                   company-minimum-prefix-length))))
 
     (when (= (char-before) ?\@)
-      (cons "" company-minimum-prefix-length))))
+      (cons "@" company-minimum-prefix-length))))
 
 ;;;###autoload
 (defun telega-company-username (command &optional arg &rest ignored)
@@ -93,7 +93,9 @@
     (prefix (telega-company-grab-username))
     (require-match 'never)
     (candidates
-     (let ((members (telega--searchChatMembers telega-chatbuf--chat arg)))
+     (cl-assert (> (length arg) 0))
+     (let ((members (telega--searchChatMembers
+                     telega-chatbuf--chat (substring arg 1))))
        (delq nil
              (mapcar (lambda (member)
                        (let ((username (plist-get member :username)))
