@@ -225,13 +225,14 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockSubtitle
      (telega-webpage--ins-rt (plist-get pb :subtitle)))
     (pageBlockAuthorDate
-     (telega-ins "By ")
-     (telega-webpage--ins-rt (plist-get pb :author))
-     (telega-ins " • ")
-     (let ((publish-date (plist-get pb :publish_date)))
-       (when (zerop publish-date)
-         (setq publish-date (time-to-seconds)))
-       (telega-ins--date-full publish-date))
+     (telega-ins--with-attrs (list :face 'shadow)
+       (telega-ins "By ")
+       (telega-webpage--ins-rt (plist-get pb :author))
+       (telega-ins " • ")
+       (let ((publish-date (plist-get pb :publish_date)))
+         (when (zerop publish-date)
+           (setq publish-date (time-to-seconds)))
+         (telega-ins--date-full publish-date)))
      (telega-ins "\n"))
     (pageBlockHeader
      (telega-ins--with-attrs
@@ -240,7 +241,8 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
                :fill-column
                (round (/ telega-webpage-fill-column
                          (telega-face-height 'telega-webpage-header))))
-       (telega-webpage--ins-rt (plist-get pb :header))))
+       (telega-webpage--ins-rt (plist-get pb :header))
+       (telega-ins "\n")))
     (pageBlockSubheader
      (telega-ins--with-attrs
          (list :face 'telega-webpage-subheader
@@ -248,7 +250,8 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
                :fill-column
                (round (/ telega-webpage-fill-column
                          (telega-face-height 'telega-webpage-subheader))))
-       (telega-webpage--ins-rt (plist-get pb :subheader))))
+       (telega-webpage--ins-rt (plist-get pb :subheader))
+       (telega-ins "\n")))
     (pageBlockParagraph
      (telega-ins--with-attrs (list :fill 'left
                                    :fill-column telega-webpage-fill-column)
@@ -275,9 +278,9 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
              (telega-webpage--ins-rt (aref items ordernum))))
          (telega-ins "\n"))))
     (pageBlockBlockQuote
-     (telega-ins telega-symbol-vertical-bar)
+     (telega-ins (propertize telega-symbol-vertical-bar 'face 'bold))
      (telega-ins--with-attrs (list :fill 'left
-                                   :fill-prefix telega-symbol-vertical-bar
+                                   :fill-prefix (propertize telega-symbol-vertical-bar 'face 'bold)
                                    :fill-column telega-webpage-fill-column)
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))

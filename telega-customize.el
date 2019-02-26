@@ -941,12 +941,12 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-webpage-header
-  '((t :height 1.4))
+  '((t :family "Georgia" :height 1.2))
   "Face to display header in webpage instant view."
   :group 'telega-faces)
 
 (defface telega-webpage-subheader
-  '((t :height 1.2))
+  '((t :inherit telega-webpage-header :height 1.1))
   "Face to display subheader in webpage instant view."
   :group 'telega-faces)
 
