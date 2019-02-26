@@ -219,6 +219,7 @@ If RAW is given then do not modify statuses for animation."
              (cancel-timer telega-status--timer))))
 
   (with-telega-root-buffer
+    (setq mode-line-process (concat ":" telega--status))
     (telega-save-cursor
       (let ((button (button-at (point-min))))
         (cl-assert (eq (button-type button) 'telega-status)

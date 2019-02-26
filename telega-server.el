@@ -184,6 +184,8 @@ Raise error if not found"
 (defun telega-server--send (sexp &optional command)
   "Send SEXP to telega-server."
   (let* ((print-circle nil)
+         (print-level nil)
+         (print-length nil)
          (value (prin1-to-string (telega--tl-pack sexp)))
          (proc (telega-server--proc)))
     (cl-assert (process-live-p proc) nil "telega-server is not running")
