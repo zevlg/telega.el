@@ -514,7 +514,10 @@ File is specified with FILE-SPEC."
          (aw-chars (telega-chars-in-width cfull))
          (xw (telega-chars-width aw-chars))
          (svg (svg-create xw xh)))
-    (if (and photofile (file-exists-p photofile))
+    ;; NOTE: `file-exists-p' return t on empty string
+    (if (and photofile
+             (not (string-empty-p photofile))
+             (file-exists-p photofile))
         (let ((file-ext (downcase (file-name-extension photofile)))
               (clip (telega-svg-clip-path svg "clip")))
           (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))
@@ -578,7 +581,7 @@ File is specified with FILE-SPEC."
 Typical usage is to emojify `telega-symbol-XXX' values.
 Like (telega-symbol-emojify telega-symbol-pin).
 EMOJY must be single char string."
-  (cl-assert (= (length emojify) 1))
+  (cl-assert (= (length emoji) 1))
   (add-text-properties 0 1 (list 'rear-nonsticky '(display)
                                  'display (telega-media--emoji-image emoji))
                        emoji))

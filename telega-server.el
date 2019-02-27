@@ -56,8 +56,7 @@ Used to make deferred calls.")
 
 (defun telega--on-deferred-event (event)
   (setq telega-server--deferred-events
-        (push event telega-server--deferred-events))
-  (telega-debug "DEFERRED event: %S" event))
+        (nconc telega-server--deferred-events (list event))))
 
 (defmacro with-telega-deferred-events (&rest body)
   "Execute BODY deferring telega-server events processing."
@@ -71,10 +70,13 @@ Used to make deferred calls.")
          (unwind-protect
              (while telega-server--deferred-events
                (let ((,evsym (car telega-server--deferred-events)))
+                 (telega-debug "DEFERRED event: %S" ,evsym)
                  (setq telega-server--deferred-events
                        (cdr telega-server--deferred-events))
                  (telega--on-event ,evsym)))
-           (setq telega-server--on-event-func 'telega--on-event)
+
+           (setq telega-server--deferred-events nil
+                 telega-server--on-event-func 'telega--on-event)
          )))))
         
 (defmacro telega-server--callback-put (extra cb)

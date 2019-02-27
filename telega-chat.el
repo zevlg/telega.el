@@ -2208,19 +2208,12 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
           `(lambda ()
              (telega-chat--goto-msg0 ,chat-id ,msg-id ,highlight)))))))
 
-(defun telega-chat-avatar-svg (user)
+(defun telega-chat-avatar-svg (chat)
   "Return avatar for the USER."
-  (let ((ava (plist-get chat :telega-avatar)))
-    ;; TODO: use :photo :small
-    (unless ava
-      (let ((colors (telega-chat-color chat)))
-        (setq ava (telega-avatar--gen-svg
-                   (capitalize (substring (telega-chat-title chat) 0 1))
-                   (if (eq (frame-parameter nil 'background-mode) 'light)
-                       (cdr colors)
-                     colors))))
-      (plist-put chat :telega-avatar ava))
-    ava))
+  (let ((photo (plist-get chat :photo)))
+    (telega-media--image
+     (cons chat 'telega-avatar--create-image)
+     (cons photo :small))))
 
 (provide 'telega-chat)
 

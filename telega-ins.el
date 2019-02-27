@@ -484,7 +484,9 @@ Return `non-nil' if WEB-PAGE has been inserted."
           ;; nothing to display
           )
          (document
-          (telega-ins--document msg (plist-get web-page :document)))
+          (let ((doc (plist-get web-page :document)))
+            (when doc
+              (telega-ins--document msg doc))))
          (t (telega-ins "<unsupported webPage:"
                         (plist-get web-page :type) ">")))
        )
