@@ -498,12 +498,12 @@ Activates button if cursor enter, deactivates if leaves."
 (defmacro telega-button--change (button new-button)
   "Change BUTTON to NEW-BUTTON."
   (declare (indent 1))
-  (let ((end (gensym "button-end")))
-    `(let ((inhibit-read-only t)
-           (,end (copy-marker (button-end ,button))))
-      (goto-char (button-start ,button))
-      (set-marker ,button ,new-button)
-      (delete-region (point) ,end))))
+  (let ((newbutton (gensym "newbutton")))
+    `(let ((inhibit-read-only t))
+       (goto-char (button-start ,button))
+       (let ((,newbutton ,new-button))
+         (delete-region (point) (button-end ,button))
+         (set-marker ,button ,newbutton)))))
 
 (defun telega-button--update-value (button new-value &rest props)
   "Update BUTTON's value to VALUE.

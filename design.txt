@@ -417,6 +417,10 @@ with reply markup
      sntahoe ntoahssssss asonth eosn       11:18
      [ button1 ]  [ button2 ]
 
+[AH] @vpupkin
+[AL] | Forwarded From: @user
+     msg msg
+
 Prompt with chat action
 ~~~~~~~~~~~~~~~~~~~~~~~
 

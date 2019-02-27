@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Tue Jul 10 15:20:09 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,6 +33,9 @@
 (require 'telega-core)
 (require 'telega-server)
 
+(defvar telega-emoji-svg-images nil
+  "Cache of SVG images for emoji.
+Alist with elements in form (emoji . image)")
 
 ;;; Files downloading/uploading
 (defun telega--getFile (file-id &optional callback)
@@ -108,7 +111,7 @@ hasn't been started, i.e. request hasn't been sent to server."
             (message msg)))
         (remhash file-id telega--uploadings))
       )))
-  
+
 (defun telega--on-updateFile (event)
   "File has been updated, call all the associated hooks."
   (telega--on-file (plist-get event :file)))
@@ -132,6 +135,11 @@ hasn't been started, i.e. request hasn't been sent to server."
         (esize (plist-get file :expected_size))
         (dsize (telega--tl-get file :local :downloaded_size)))
     (color-clamp (/ (float dsize) (if (zerop fsize) esize fsize)))))
+
+(defsubst telega-file--need-download-p (file)
+  (and (telega--tl-get file :local :can_be_downloaded)
+       (not (telega-file--downloaded-p file))))
+;       (not (telega-file--downloading-p file))))
 
 (defun telega-file--run-callbacks (callbacks file)
   "Run CALLBACKS on FILE update."
@@ -362,16 +370,11 @@ Prefix every line with PREFIX."
 
 
 ;;; Auto-downloading media
-(defsubst telega-media--need-download-p (file)
-  (and (telega--tl-get file :local :can_be_downloaded)
-       (not (telega-file--downloaded-p file))))
-;       (not (telega-file--downloading-p file))))
-
 (defun telega-media--autodownload-on-chat (chat)
   "Autodownload CHAT's avatar."
   (let* ((photo (plist-get user :photo))
          (photo-file (plist-get photo :small)))
-    (when (and (telega-media--need-download-p photo-file)
+    (when (and (telega-file--need-download-p photo-file)
                (not (telega-file--downloading-p photo-file)))
       (telega-file--download-monitoring photo :small 32))))
 
@@ -379,7 +382,7 @@ Prefix every line with PREFIX."
   "Autodownload USER's profile avatar."
   (let* ((photo (plist-get user :profile_photo))
          (photo-file (plist-get photo :small)))
-    (when (and (telega-media--need-download-p photo-file)
+    (when (and (telega-file--need-download-p photo-file)
                (not (telega-file--downloading-p photo-file)))
       (telega-file--download-monitoring photo :small 32))))
 
@@ -399,12 +402,12 @@ Downloads highres photos according to `telega-auto-download'."
 
          ;; Always download lowres files
          (cl-assert lowres-file)
-         (when (telega-media--need-download-p lowres-file)
+         (when (telega-file--need-download-p lowres-file)
            (telega-debug "Autodownload LOWRES: %S" lowres-file)
            (telega-file--download-monitoring lowres :photo 32))
 
          (cl-assert highres-file)
-         (when (and (telega-media--need-download-p highres-file)
+         (when (and (telega-file--need-download-p highres-file)
                     (telega-filter-chats
                      (alist-get 'photos telega-auto-download) (list chat)))
            (telega-debug "Autodownload HIGH-RES: %S" highres-file)
@@ -481,75 +484,104 @@ Return updated image, cached or created with create image function."
   (telega-media--image-update obj-spec file)
   (force-window-update))
 
-(defun telega-ins--media-image (obj-spec file-spec
-                                         &optional slices-p image-props)
-  "Insert media image monitoring download.
-OBJ-SPEC is cons of object and create image function.
-FILE-SPEC is cons of place and place-prop to update file to."
-  (let ((mimage (telega-media--image-update
-                 obj-spec (plist-get (car file-spec) (cdr file-spec)))))
-    ;; Possible monitor file downloading
-    (when (telega-media--need-download-p
-           (plist-get (car file-spec) (cdr file-spec)))
-      (telega-file--download-monitoring
-       (car file-spec) (cdr file-spec) nil
-       'telega-media--image-download-monitor obj-spec))
+(defun telega-media--image (obj-spec file-spec &optional force-update)
+  "Return image for media object specified by OBJ-SPEC.
+File is specified with FILE-SPEC."
+  (let ((cached-image (plist-get (car obj-spec) :telega-image)))
+    (when (or force-update (not cached-image))
+      (let ((media-file (plist-get (car file-spec) (cdr file-spec))))
+        ;; First time image is created or update is forced
+        (setq cached-image
+              (telega-media--image-update obj-spec media-file))
 
-    (if slices-p
-        (telega-ins--image-slices mimage image-props)
-      (telega-ins--image mimage nil image-props))))
-
-(defun telega-avatar--image-update (chat-or-user)
-  "Possible update CHAT-OR-USER's image.
-Return new image."
-  (let ((cached-image (plist-get chat-or-user :telega-image))
-        (simage (telega-avatar--image chat-or-user)))
-    (unless (equal cached-image simage)
-      ;; Update the image
-      (if cached-image
-          (setcdr cached-image (cdr simage))
-        (setq cached-image simage))
-      (plist-put sticker :telega-image cached-image))
+        ;; Possible initiate file downloading
+        (when (or (telega-file--need-download-p media-file)
+                  (telega-file--downloading-p media-file))
+          (telega-file--download-monitoring
+           (car file-spec) (cdr file-spec) nil
+           'telega-media--image-download-monitor obj-spec))))
     cached-image))
 
-(defun telega-avatar--image (chat-or-user height &optional margin-h-factor)
-  "Return image for CHAT-OR-USER avatar."
-  )
+(defun telega-avatar--create-image (chat-or-user file)
+  "Create image for CHAT-OR-USER avatar."
+  (let* ((photofile (telega--tl-get file :local :path))
+         (cfactor (or (car telega-avatar-factors) 0.9))
+         (mfactor (or (cdr telega-avatar-factors) 0.1))
+         (xh (* 2 (frame-char-height (telega-x-frame))))
+         (margin (* mfactor xh))
+         (ch (* cfactor xh))
+         (cfull (+ ch margin))
+         (aw-chars (telega-chars-in-width cfull))
+         (xw (telega-chars-width aw-chars))
+         (svg (svg-create xw xh)))
+    (if (and photofile (file-exists-p photofile))
+        (let ((file-ext (downcase (file-name-extension photofile)))
+              (clip (telega-svg-clip-path svg "clip")))
+          (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))
+          (svg-embed svg photofile
+                     (if (string= file-ext "png") "image/png" "image/jpeg")
+                     nil
+                     :x (/ (- xw ch) 2) :y (/ margin 2)
+                     :width ch :height ch
+                     :clip-path "url(#clip)"))
 
-(defun telega-avatar--gen-svg (name height gradient &optional margin-h-factor)
-  "Generate svg with NAME in the circle.
-HEIGHT is height in chars (1 or 2)."
-  ;; Now generate the svg
-  (let* ((ah (* height (frame-char-height (telega-x-frame))))
-         (ch (- ah (/ ah (or margin-h-factor 6)))) ; circle height
-         (ah-chars (telega-chars-in-width ch))
-         aw)
-    ;; Correct the AH in case it sparses wider then 2 chars
-    (if (and (= height 1) (> ah-chars 2))
-        (setq aw (telega-chars-width 2)
-              ah aw)
-      (setq aw (telega-chars-width ah-chars)))
+      ;; Draw initials
+      (let ((fsz (/ ch 2))
+            color name)
+        (if (eq (telega--tl-type chat-or-user) 'user)
+            (setq color (telega-user-color chat-or-user)
+                  name (telega-user--name chat-or-user))
+          (setq color (telega-chat-color chat-or-user)
+                name (telega-chat-title chat-or-user)))
 
-    (let* ((fsz (/ ch 2))
-           (svg (svg-create aw ah)))
-      (svg-gradient svg "cgrad" 'linear
-                    (list (cons 0 (car gradient)) (cons ah (cadr gradient))))
-      (svg-circle svg (/ aw 2) (/ ah 2) (/ ch 2) :gradient "cgrad")
-      (svg-text
-       svg name
-       :font-size fsz
-       :font-weight "bold"
-       :fill "white"
-       :font-family "monospace"
-       ;; XXX insane X/Y calculation
-       :x (/ (+ (/ (- aw ch) 2) (- ch (* (/ fsz 2) (length name)))) 2)
-       :y (+ (+ fsz (/ fsz 3)) (/ (- ah ch) 2)))
-      (svg-image svg :scale 1.0
-                 :ascent 'center
-                 ;; text of correct width
-                 :telega-text (substring
-                               (concat name (make-string ah-chars ?X))
-                               ah-chars)))))
+        (svg-gradient svg "cgrad" 'linear
+                      (list (cons 0 (cadr color)) (cons ch (caddr color))))
+        (svg-circle svg (/ xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
+        (svg-text svg (substring name 0 1)
+                  :font-size (/ ch 2)
+                  :font-weight "bold"
+                  :fill "white"
+                  :font-family "monospace"
+                  ;; XXX insane X/Y calculation
+                  :x (- (/ xw 2) (/ fsz 3))
+                  :y (+ (/ fsz 3) (/ cfull 2)))))
+
+    (svg-image svg :scale 1.0
+               :ascent 'center
+               :mask 'heuristic
+               :width xw :height xh
+               ;; text of correct width
+               :telega-text (make-string aw-chars ?X))))
+
+(defun telega-media--emoji-image (emoji)
+  "Create svg image for the EMOJI."
+  (let ((image (assoc emoji telega-emoji-svg-images)))
+    (unless image
+      (let* ((xframe (telega-x-frame))
+             (xh (frame-char-height xframe))
+             (font-size (- xh (/ xh 4)))
+             (aw-chars (telega-chars-in-width font-size))
+             (xw (telega-chars-width aw-chars))
+             (svg (svg-create xw xh)))
+        (svg-text svg (substring emoji 0 1)
+                  :font-size font-size
+                  :x 0 :y font-size)
+        (setq image (svg-image svg :scale 1.0
+                               :ascent 'center
+                               :mask 'heuristic
+                               :width xw :height xh
+                               :telega-text (make-string aw-chars ?E)))))
+    image))
+
+(defun telega-symbol-emojify (emoji)
+  "Attach `display' property with emoji svg to EMOJI string.
+Typical usage is to emojify `telega-symbol-XXX' values.
+Like (telega-symbol-emojify telega-symbol-pin).
+EMOJY must be single char string."
+  (cl-assert (= (length emojify) 1))
+  (add-text-properties 0 1 (list 'rear-nonsticky '(display)
+                                 'display (telega-media--emoji-image emoji))
+                       emoji))
 
 (provide 'telega-media)
 

@@ -320,9 +320,10 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
                         telega-root--ewoc chat-after)))
       (when node
         (ewoc-delete telega-root--ewoc node))
-      (if node-after
-          (ewoc-enter-before telega-root--ewoc node-after chat)
-        (ewoc-enter-last telega-root--ewoc chat)))))
+      (with-telega-deferred-events
+        (if node-after
+            (ewoc-enter-before telega-root--ewoc node-after chat)
+          (ewoc-enter-last telega-root--ewoc chat))))))
 
 (defun telega-root--chat-new (chat)
   "New CHAT has been created. Display it in root's ewoc."

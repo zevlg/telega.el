@@ -64,9 +64,9 @@
   "Get user by USER-ID."
   (telega--info 'user user-id))
 
-(defun telega--getMe ()
-  "Return me as telegram user."
-  (telega-server--call `(:@type "getMe")))
+(defmacro telega-user-me ()
+  "Return me is a user."
+  `(telega-user--get telega--me-id))
 
 (defun telega-user--type (user)
   "Return USER type."
@@ -156,21 +156,12 @@ Default is: `full'"
       (setq res "DU"))
     res))
 
-(defun telega-user-avatar-svg (user)
-  "Return avatar for the USER."
-  (let ((ava (plist-get user :telega-avatar)))
-    ;; (unless ava
-    ;;   (let ((pphoto (plist-get user :profile_photo)))
-    ;;     (
-    (unless ava
-      (let ((colors (telega-user-color user)))
-        (setq ava (telega-avatar--gen-svg
-                   (telega-user-initials user) 2
-                   (if (eq (frame-parameter nil 'background-mode) 'light)
-                       (cdr colors)
-                     colors))))
-      (plist-put user :telega-avatar ava))
-    ava))
+(defun telega-user-avatar-image (user)
+  "Return avatar image for the USER."
+  (let ((photo (plist-get user :profile_photo)))
+    (telega-media--image
+     (cons user 'telega-avatar--create-image)
+     (cons photo :small))))
 
 (defun telega--searchChatMembers (chat query &optional filter limit)
   "Search CHAT members by QUERY.

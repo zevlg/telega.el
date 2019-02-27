@@ -34,7 +34,7 @@
             (cdr (assq (telega--tl-type ,tlobj) telega--info))))
 
 (defun telega--info (tlobj-type tlobj-id)
-  (let* ((info-hash (cdr (assq tlobj-type telega--info)))
+  (let* ((info-hash (alist-get tlobj-type telega--info))
          (info (gethash tlobj-id info-hash)))
     (unless info
       (setq info (telega-server--call

@@ -81,6 +81,24 @@
         :action 'telega-msg-goto)
       (telega-ins "\n"))))
 
+(defun telega-msg--get (chat-id msg-id)
+  "Get message by CHAT-ID and MSG-ID pair."
+  ;; Optimisation for formatting messages with reply
+  (or (with-telega-chatbuf (telega-chat-get chat-id)
+        (gethash msg-id telega-chatbuf--messages))
+
+      (let ((reply (telega-server--call
+                    (list :@type "getMessage"
+                          :chat_id chat-id
+                          :message_id msg-id))))
+        ;; Probably message already deleted
+        (unless (eq (telega--tl-type reply) 'error)
+          reply))))
+
+(defsubst telega-msg-list-get (tl-obj-Messages)
+  "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
+  (mapcar #'identity (plist-get tl-obj-Messages :messages)))
+
 (defun telega-msg-at (&optional pos)
   "Return current message at point."
   (let ((button (button-at (or pos (point)))))
@@ -108,24 +126,6 @@
    (list :@type "openMessageContent"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id))))
-
-(defun telega-msg--get (chat-id msg-id)
-  "Get message by CHAT-ID and MSG-ID pair."
-  ;; Optimisation for formatting messages with reply
-  (or (with-telega-chatbuf (telega-chat-get chat-id)
-        (gethash msg-id telega-chatbuf--messages))
-
-      (let ((reply (telega-server--call
-                    (list :@type "getMessage"
-                          :chat_id chat-id
-                          :message_id msg-id))))
-        ;; Probably message already deleted
-        (unless (eq (telega--tl-type reply) 'error)
-          reply))))
-
-(defsubst telega-msg-list-get (tl-obj-Messages)
-  "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
-  (mapcar #'identity (plist-get tl-obj-Messages :messages)))
 
 (defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
   "Get https link to public message."
@@ -468,32 +468,6 @@ Makes heavy online requests without caching, be carefull."
                     :chat_id (plist-get msg :chat_id)
                     :user_id (plist-get msg :sender_user_id)))))
     (telega-fmt-chat-member-status (plist-get ucm :status))))
-
-;; DEPRECATED
-(defun telega-msg-via-bot (msg)
-  (let ((via-bot-id (plist-get msg :via_bot_user_id)))
-    (unless (zerop via-bot-id)
-      (concat " via @" (plist-get (telega-user--get via-bot-id) :username)))))
-
-;; DEPRECATED
-(defun telega-msg-edit-date (msg)
-  (let ((edit-date (plist-get msg :edit_date)))
-    (unless (zerop edit-date)
-      (concat " edited at " (telega-fmt-timestamp edit-date)))))
-
-;; DEPRECATED
-(defun telega-msg-inline-reply (msg fill-prefix)
-  (let* ((reply-to-msg-id (plist-get msg :reply_to_message_id))
-         (reply-msg (unless (zerop reply-to-msg-id)
-                      (telega-msg--get (plist-get msg :chat_id)
-                                       reply-to-msg-id))))
-    (when reply-msg
-      `((("| Reply: "
-          ,(telega-msg-sender-shortname reply-msg "> ")
-          ,(telega-msg-format-one-line reply-msg))
-         :max ,(- telega-chat-fill-column (length fill-prefix))
-         :face telega-chat-inline-reply)
-        "\n" ,fill-prefix))))
 
 ;; DEPRECATED
 (defun telega-msg-text-with-timestamp (msg fill-prefix)

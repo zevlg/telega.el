@@ -82,7 +82,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (defun telega-file--ensure-downloaded (sfile files-list)
   (cl-assert (memq sfile files-list))
-  (when (telega-media--need-download-p sfile)
+  (when (telega-file--need-download-p sfile)
     (telega-file--download-monitor-progress (plist-get sfile :id)
       (lambda (file slist)
         (let ((stail (cl-member (plist-get file :id) slist
@@ -95,9 +95,9 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 (defun telega-sticker--ensure-downloaded (sticker)
   "Ensure STICKER data is downloaded."
   (let ((sthumb (plist-get sticker :thumbnail)))
-    (when (telega-media--need-download-p (plist-get sthumb :photo))
+    (when (telega-file--need-download-p (plist-get sthumb :photo))
       (telega-file--download-monitoring sthumb :photo))
-    (when (telega-media--need-download-p (plist-get sticker :sticker))
+    (when (telega-file--need-download-p (plist-get sticker :sticker))
       (telega-file--download-monitoring sticker :sticker))
     ))
 
@@ -383,12 +383,11 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-ins--sticker (sticker &optional slices-p)
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
-  (telega-ins--media-image
-   (cons sticker 'telega-sticker--create-image)
-   (cons sticker :sticker)
-   slices-p
-;   '(lazy-display t)
-   ))
+  (let ((simage (telega-media--image (cons sticker 'telega-sticker--create-image)
+                                     (cons sticker :sticker))))
+    (if slices-p
+        (telega-ins--image-slices simage)
+      (telega-ins--image simage))))
 
 (defun telega-ins--stickerset-change-button (sset)
   (telega-ins--button (if (plist-get sset :is_installed)
@@ -587,9 +586,9 @@ Return sticker set."
 (defun telega-animation--ensure-downloaded (animation)
   "Ensure media content for ANIMATION has been downloaded."
   (let ((athumb (plist-get animation :thumbnail)))
-    (when (telega-media--need-download-p (plist-get athumb :photo))
+    (when (telega-file--need-download-p (plist-get athumb :photo))
       (telega-file--download-monitoring athumb :photo))
-    (when (telega-media--need-download-p (plist-get animation :animation))
+    (when (telega-file--need-download-p (plist-get animation :animation))
       (telega-file--download-monitoring animation :animation))
     ))
 
@@ -601,9 +600,7 @@ Return sticker set."
     (telega--getFile aid
       (lambda (afile)
         (push afile telega--animations-saved)
-        (telega-file--ensure-downloaded
-         afile telega--animations-saved)
-        ))))
+        (telega-file--ensure-downloaded afile telega--animations-saved)))))
 
 (defun telega--getSavedAnimations ()
   "Return list of saved animations."

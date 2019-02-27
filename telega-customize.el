@@ -101,13 +101,6 @@ where PROXY-TYPE is one of:
   :type 'list
   :group 'telega)
 
-;; DEPRECATED, use `telega-proxies'
-(defcustom telega-socks5-proxy nil
-  "*Plist specifying socks5 proxy to use.
-`(:server <SERVER> :port <PORT> :username <NAME> :password <PASSWORD>)"
-  :type 'plist
-  :group 'telega)
-
 (defcustom telega-week-start-day 1
   "*The day of the week on which a week in the calendar begins.
 0 means Sunday, 1 means Monday (default), and so on."
@@ -166,6 +159,13 @@ enabled it will match alsy `:flag-jo:' and `:black-jocker:'."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-avatar-factors '(0.6 . 0.1)
+  "*Factors for avatar generation.
+car is factor for circle
+cdr is factor for margin.
+See `telega-avatar--create-img' for more info."
+  :type 'cons
+  :group 'telega)
 
 (defgroup telega-server nil
   "Customisation for telega-server."
@@ -493,6 +493,12 @@ DO NOT USE.  TODO: sender statuses need to be cached."
 
 (defcustom telega-msg-rainbow-title t
   "*Non-nil to display user names in chatbuf with their assigned color."
+  :type 'boolean
+  :group 'telega-msg)
+
+(defcustom telega-msg-heading-whole-line nil
+  "*Non-nil to spread `telega-msg-heading' face to full line width.
+Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
@@ -913,6 +919,11 @@ You can customize its `:height' to fit width of the default face."
 (defface telega-msg-inline-reply
   '((t :inherit 'telega-msg-heading))
   "Face to highlight replies to messages."
+  :group 'telega-faces)
+
+(defface telega-msg-inline-forward
+  '((t :inherit 'telega-msg-heading))
+  "Face to highlight message forwarding header."
   :group 'telega-faces)
 
 (defface telega-msg-outgoing-status

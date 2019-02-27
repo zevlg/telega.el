@@ -59,20 +59,23 @@ Used to make deferred calls.")
         (push event telega-server--deferred-events))
   (telega-debug "DEFERRED event: %S" event))
 
-(defmacro with-telega-deferred-events (body)
+(defmacro with-telega-deferred-events (&rest body)
   "Execute BODY deferring telega-server events processing."
+  (declare (indent 0))
   (let ((evsym (gensym "event")))
     `(progn
        (setq telega-server--on-event-func 'telega--on-deferred-event)
        (unwind-protect
            (progn ,@body)
 
-         (setq telega-server--on-event-func 'telega--on-event)
-         (while telega-server--deferred-events
-           (let ((,evsym (car telega-server--deferred-events)))
-             (setq telega-server--deferred-events
-                   (cdr telega-server--deferred-events))
-             (telega--on-event ,evsym)))))))
+         (unwind-protect
+             (while telega-server--deferred-events
+               (let ((,evsym (car telega-server--deferred-events)))
+                 (setq telega-server--deferred-events
+                       (cdr telega-server--deferred-events))
+                 (telega--on-event ,evsym)))
+           (setq telega-server--on-event-func 'telega--on-event)
+         )))))
         
 (defmacro telega-server--callback-put (extra cb)
   `(puthash ,extra ,cb telega-server--callbacks))
@@ -95,7 +98,8 @@ Raise error if not found"
   (get-buffer-process telega-server--buffer))
 
 (defsubst telega-server--parse-cmd ()
-  "Parse single reply from telega-server."
+  "Parse single reply from telega-server.
+Return parsed command."
   (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
     ;; New command always start at the beginning, no garbage inbetween
     ;; commands

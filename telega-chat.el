@@ -419,8 +419,13 @@ If WITH-USERNAME is specified, append trailing username for this chat."
         (telega-save-cursor
           (delete-region telega-chatbuf--input-marker (point-max))
           (goto-char telega-chatbuf--input-marker)
-          (telega-ins--text
-           (telega--tl-get draft-msg :input_message_text :text)))))
+          ;; NOTE: We want real UTF-8 chars to be inserted, not using
+          ;; 'display trick for desurrogating
+          (telega-ins
+           (telega--desurrogate-apply
+            (telega-ins--as-string
+             (telega-ins--text
+              (telega--tl-get draft-msg :input_message_text :text))))))))
     ))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
@@ -1333,21 +1338,30 @@ If TITLE is specified, use it instead of chat's title."
   ;;   (
   )
 
+;; NOTE: Inserting message might perform some blocking calls to the
+;; server, so we do deferr all the server events untill message is
+;; inserted
 (defun telega-chatbuf--enter-oldest-msg (msg)
   "Insert message MSG as oldest message in chatbuffer."
   (run-hook-with-args 'telega-chat-pre-message-hook msg t)
 
   (with-telega-chatbuf (telega-msg-chat msg)
+    (puthash (plist-get msg :id) msg telega-chatbuf--messages)
+
     (save-excursion
       (run-hook-with-args 'telega-chat-before-oldest-msg-hook msg)
 
-      (let ((onode (ewoc-enter-first telega-chatbuf--ewoc msg)))
-        ;; NOTE: Inserting oldest node might affect how message next
-        ;; to it is formatted, so redisplay it
-        (cl-assert onode)
-        (let ((nnode (ewoc-next telega-chatbuf--ewoc onode)))
-          (when nnode
-            (ewoc-invalidate telega-chatbuf--ewoc nnode)))))))
+      (let* ((onode (with-telega-deferred-events
+                      (ewoc-enter-first telega-chatbuf--ewoc msg)))
+             (nnode (ewoc-next telega-chatbuf--ewoc onode)))
+        ;; NOTE: Inserting oldest message might affect how message
+        ;; next to it is formatted (i.e. sent from same user), so
+        ;; redisplay it.
+        (when (and nil                  ; NOT YET
+                   nnode
+                   (eq (plist-get (ewoc--node-data onode) :sender_user_id)
+                       (plist-get (ewoc--node-data nnode) :sender_user_id)))
+          (ewoc-invalidate telega-chatbuf--ewoc nnode))))))
 
 (defun telega-chatbuf--enter-youngest-msg (msg &optional disable-notification)
   "Insert newly arrived message MSG as youngest into chatbuffer.
@@ -1358,9 +1372,12 @@ Return newly inserted message button."
 
   (unwind-protect
       (with-telega-chatbuf (telega-msg-chat msg)
+        (puthash (plist-get msg :id) msg telega-chatbuf--messages)
+
         (telega-save-excursion
           (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
-          (ewoc-enter-last telega-chatbuf--ewoc msg)
+          (with-telega-deferred-events
+            (ewoc-enter-last telega-chatbuf--ewoc msg))
 
           (when (and telega-use-tracking (not disable-notification))
             (tracking-add-buffer (current-buffer)))
@@ -1557,35 +1574,6 @@ CALLBACK is called after history has been loaded."
                     (when ,callback
                       (funcall ',callback))))))))))
 
-;; DEPRECATED
-(defun telega-chat-send-msg (chat text &optional markdown reply-to-msg
-                                  reply-markup notify from-background)
-  "Send message to the CHAT.
-REPLY-TO-MSG-ID - Id of the message to reply to.
-Pass non-nil NOTIFY to generate notification for this message.
-Pass non-nil FROM-BACKGROUND if message sent from background."
-  (let ((tl-msg (list :@type "sendMessage"
-                      :chat_id (plist-get chat :id)
-                      :disable_notification (or (not notify) :false)
-                      :input_message_content
-                      (telega-msg--input-content text markdown))))
-    (when reply-to-msg
-      (setq tl-msg (plist-put tl-msg :reply_to_message_id
-                              (plist-get reply-to-msg :id))))
-    (when from-background
-      (setq tl-msg (plist-put tl-msg :from_background t)))
-    (telega-server--send tl-msg)))
-
-;; DEPRECATED
-(defun telega-chat-edit-msg (chat text &optional markdown edit-msg-id reply-markup)
-  "Message MSG has been edited."
-  (let ((tl-msg (list :@type "editMessageText"
-                      :chat_id (plist-get chat :id)
-                      :message_id edit-msg-id
-                      :input_message_content
-                      (telega-msg--input-content text markdown))))
-    (telega-server--send tl-msg)))
-
 (defun telega-chatbuf-cancel-aux ()
   "Cancel current aux prompt."
   (interactive)
@@ -1610,7 +1598,13 @@ Pass non-nil FROM-BACKGROUND if message sent from background."
                            (plist-get reply-to-msg :id))))
     (when from-background
       (setq tsm (plist-put tsm :from_background t)))
-    (telega-server--send tsm)))
+
+    ;; We catch new message with `telega--on-updateNewMessage', so
+    ;; ignore result returned from `sendMessage'
+    (telega-debug "------------------> send message")
+    (telega-server--call tsm 'ignore)
+    (telega-debug "<================== send message")
+    ))
 
 (defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg disable-notify
                                       from-background)
@@ -2213,6 +2207,20 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
         (telega-chat--load-history chat msg-id -10 20
           `(lambda ()
              (telega-chat--goto-msg0 ,chat-id ,msg-id ,highlight)))))))
+
+(defun telega-chat-avatar-svg (user)
+  "Return avatar for the USER."
+  (let ((ava (plist-get chat :telega-avatar)))
+    ;; TODO: use :photo :small
+    (unless ava
+      (let ((colors (telega-chat-color chat)))
+        (setq ava (telega-avatar--gen-svg
+                   (capitalize (substring (telega-chat-title chat) 0 1))
+                   (if (eq (frame-parameter nil 'background-mode) 'light)
+                       (cdr colors)
+                     colors))))
+      (plist-put chat :telega-avatar ava))
+    ava))
 
 (provide 'telega-chat)
 

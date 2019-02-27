@@ -53,11 +53,14 @@
     (abbreviate-file-name filename)))
 
 (defun telega-x-frame ()
-  "Return window system frame, if any."
+  "Return window system frame, if any.
+Selected frame and frame displaying root buffer are examined first."
   (cl-find-if (lambda (frame)
                 (frame-parameter frame 'window-system))
-              (cons (window-frame (get-buffer-window (telega-root--buffer)))
-                    (frame-list))))
+              (nconc (list (selected-frame)
+                           (window-frame
+                            (get-buffer-window (telega-root--buffer))))
+                     (frame-list))))
 
 (defun telega-chars-width (n)
   "Return pixel width for N characters"
