@@ -432,6 +432,38 @@ PTYPE is `download' or `upload'."
       (telega-ins " "))
     ))
 
+(defun telega-ins--voice-note (msg &optional note)
+  "Insert message with voiceNote content."
+  (unless note
+    (setq note (telega--tl-get msg :content :voice_note)))
+  (let* ((dur (plist-get note :duration))
+         (proc (plist-get msg :telega-vvnote-proc))
+         (proc-status (and (process-live-p proc)
+                           (process-status proc)))
+         (played (and proc-status
+                      (plist-get (process-plist proc) :progress)))
+         (file (plist-get note :voice))
+         (waveform (plist-get note :waveform))
+         (waves (telega-vvnote--waveform-decode waveform))
+         (listened-p (plist-get note :is_listened)))
+
+    ;; play/pause
+    (if (eq proc-status 'run)
+        (telega-ins telega-symbol-pause)
+      (telega-ins telega-symbol-play))
+    (telega-ins " ")
+
+    ;; waveform image
+    (telega-ins--image
+     (telega-vvnote--waves-svg
+      waves (/ (frame-char-height (telega-x-frame)) 2) dur played))
+
+    ;; duration and download status
+    (telega-ins " (" (telega-duration-human-readable dur) ")")
+    (telega-ins-prefix " "
+      (telega-ins--upload-download msg note :voice))
+    ))
+
 (defun telega-ins--document (msg &optional doc)
   "Insert document DOC."
   (unless doc
@@ -646,6 +678,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--sticker (plist-get content :sticker) 'slices))
       ('messageVideo
        (telega-ins--video msg))
+      ('messageVoiceNote
+       (telega-ins--voice-note msg))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))

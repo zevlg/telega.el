@@ -696,6 +696,16 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-play "▶"
+  "Symbol used for playing."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-pause "⏸"
+  "Symbol used for pause."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
   "Symbols used to emphasize attachement in chat buffer input."
   :type 'cons

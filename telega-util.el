@@ -34,6 +34,14 @@
 
 (require 'telega-customize)
 
+(defun telega-file-exists-p (filename)
+  "Return non-nil if FILENAME exists.
+Unlike `file-exists-p' this return nil for empty string FILENAME.
+Also return `nil' if FILENAME is `nil'."
+  (and filename
+       (not (string-empty-p filename))
+       (file-exists-p filename)))
+
 (defsubst telega-plist-del (plist prop)
   "From PLIST remove property PROP."
   (cl--plist-remove plist (plist-member plist prop)))
@@ -330,12 +338,13 @@ Return `nil' if there is nothing to animate and new string otherwise."
 
 
 ;; ewoc stuff
-(defun telega-ewoc--find (ewoc item test &optional key)
+(defun telega-ewoc--find (ewoc item test &optional key start-node)
   "Find EWOC's node by item and TEST funcion.
 TEST function is run with two arguments - ITEM and NODE-VALUE.
-Optionally KEY can be specified to get KEY from node value."
+Optionally KEY can be specified to get KEY from node value.
+START-NODE is node to start from, default is first node."
   (ewoc--set-buffer-bind-dll-let* ewoc
-      ((node (ewoc--node-nth dll 1))
+      ((node (or start-node (ewoc--node-nth dll 1)))
        (footer (ewoc--footer ewoc))
        (inhibit-read-only t))
     (cl-block 'ewoc-node-found
@@ -346,11 +355,12 @@ Optionally KEY can be specified to get KEY from node value."
           (cl-return-from 'ewoc-node-found node))
         (setq node (ewoc--node-next dll node))))))
 
-(defun telega-ewoc--find-if (ewoc predicate &optional key)
+(defun telega-ewoc--find-if (ewoc predicate &optional key start-node)
   "Find EWOC's node by PREDICATE run on node's data."
   (telega-ewoc--find
-   ewoc nil (lambda (_ignored kval)
-              (funcall predicate kval) key)))
+   ewoc nil (lambda (_ignored node-value)
+              (funcall predicate node-value))
+   key start-node))
 
 (defmacro telega-ewoc--find-by-data (ewoc data)
   `(telega-ewoc--find ,ewoc ,data 'eq))

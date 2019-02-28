@@ -1027,16 +1027,17 @@ Actual value is `:@extra` value of the call to load history.")
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
   (let ((actions (gethash (plist-get telega-chatbuf--chat :id)
-                          telega--actions)))
+                          telega--actions))
+        (column (+ telega-chat-fill-column 10 1)))
     (telega-ins--as-string
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        (telega-ins telega-symbol-underline-bar)
-       (telega-ins--with-attrs (list :min (- telega-chat-fill-column 2)
-                                     :max (- telega-chat-fill-column 2)
+       (telega-ins--with-attrs (list :min (- column 2)
+                                     :max (- column 2)
                                      :align 'left
                                      :align-symbol telega-symbol-underline-bar
                                      :elide t
-                                     :elide-trail (/ telega-chat-fill-column 2))
+                                     :elide-trail (/ column 2))
          (when actions
            (telega-ins "(")
            (telega-ins--actions actions)
@@ -1390,6 +1391,22 @@ Return newly inserted message button."
   ;; TODO: maybe do binary search on buffer position (getting message
   ;; as `telega-msg-at'), since message ids grows monotonically
   (telega-ewoc--find telega-chatbuf--ewoc msg-id '= (telega--tl-prop :id)))
+
+(defun telega-chatbuf--next-voice-msg (msg)
+  "Search for voice message next to MSG.
+Return `nil' if there is no such message."
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (let* ((mnode (telega-chatbuf--node-by-msg-id (plist-get msg :id)))
+           (mnode1 (ewoc-next telega-chatbuf--ewoc mnode))
+           (nnode (and mnode1
+                       (telega-ewoc--find-if
+                        telega-chatbuf--ewoc
+                        (lambda (content)
+                          (eq (telega--tl-type content) 'messageVoiceNote))
+                        (telega--tl-prop :content)
+                        mnode1))))
+      (when nnode
+        (ewoc--node-data nnode)))))
 
 (defun telega-chatbuf--visible-messages (window)
   "Return list of messages visible in chat buffer WINDOW."

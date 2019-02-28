@@ -24,15 +24,26 @@
 ;;
 
 ;;; Code:
-
-(defcustom telega-vvnote-voice-cmd "ffmpeg -f alsa -i default -strict -2 -acodec opus -ab 30k"
-  "Command to use to save voice notes."
-  :type 'string
-  :group 'telega-vvnote)
+(require 'telega-ffplay)
 
 (defcustom telega-vvnote-voice-max-dur (* 30 60)
   "Maximum duration of voice command in seconds."
   :type 'number
+  :group 'telega-vvnote)
+
+(defcustom telega-vvnote-waves-colors '("#006600" . "#229922")
+  "Colors to display voice note waves."
+  :type 'cons
+  :group 'telega-vvnote)
+
+(defcustom telega-vvnote-voice-play-next t
+  "*After playing voice note continue playing next voice note in the chat."
+  :type 'boolean
+  :group 'telega-vvnote)
+
+(defcustom telega-vvnote-voice-cmd "ffmpeg -f alsa -i default -strict -2 -acodec opus -ab 30k"
+  "Command to use to save voice notes."
+  :type 'string
   :group 'telega-vvnote)
 
 (defcustom telega-vvnote-video-cmd "ffmpeg -f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default -vf format=yuv420p,crop=240:240:40:0 -strict -2 -vcodec hevc -acodec opus -vb 300k -ab 30k"
@@ -60,7 +71,8 @@
          (wv-width 3) (space-width 2)
          (wv-height (- height 6))
          (w (* (+ wv-width space-width) (length waves)))
-         (cw (telega-chars-width (telega-chars-in-width w)))
+         (aw-chars (telega-chars-in-width w))
+         (cw (telega-chars-width aw-chars))
          (svg (svg-create cw height)))
     ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
     ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
@@ -70,11 +82,18 @@
                          (/ (or played 0) duration))))
         (svg-line svg xoff (- height 3 (if played-p 0.5 0)) xoff
                   (- height 3 (if played-p 0.5 0) (* wv wv-height))
-                  :stroke-color (if played-p "#006400" "#228b22")
+                  :stroke-color (if played-p
+                                    (car telega-vvnote-waves-colors)
+                                  (cdr telega-vvnote-waves-colors))
                   :stroke-width (if played-p (1+ wv-width) wv-width)
                   :stroke-linecap "round")
         (cl-incf w-idx)))
-    (svg-image svg :scale 1 :ascent 'center)))
+    (svg-image svg :scale 1
+               :width cw :height height
+               :mask 'heuristic
+               :ascent 'center
+               ;; text of correct width
+               :telega-text (make-string aw-chars ?#))))
 
 (defun telega-vvnote--waveform-decode (waveform)
   "Decode WAVEFORM returning list of heights.
@@ -146,7 +165,9 @@ PROGRESS is current frame progress."
 
 ;    (setq vbox (svg-viewbox svg 300 36 "20 20 30 30"))
 ;    (svg-rectangle vbox 0 0 100 36)
-    (svg-image svg :scale 1.0 :ascent 'center)))
+    (svg-image svg :scale 1.0
+               :ascent 'center
+               )))
 
 
 ;; Play video note

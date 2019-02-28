@@ -56,32 +56,9 @@
 
 (defun telega-msg-button--action (button)
   "Action to take when chat BUTTON is pressed."
-  (let* ((msg (button-get button :value))
-         (content (plist-get msg :content)))
-    (telega--openMessageContent msg)
-
-    ;; TODO: do some useful action to open message
-    (cl-case (telega--tl-type content)
-      (messageSticker
-       (telega-describe-stickerset
-        (telega-stickerset-get (telega--tl-get content :sticker :set_id))
-        nil (telega-msg-chat msg)))
-      (messageVideo
-       (let ((video (plist-get content :video)))
-         ;; NOTE: `telega-file--download-monitoring' triggers callback
-         ;; in case file is already downloaded
-         (telega-file--download-monitoring
-          video :video 32
-          (lambda (file)
-            (telega-msg-redisplay msg)
-            (when (telega-file--downloaded-p file)
-              (apply 'telega-ffplay-run
-                     (telega--tl-get file :local :path) nil
-                     telega-video-ffplay-args))))))
-      (messagePhoto
-       ;; TODO: view highres image
-       )
-      )))
+  (let ((msg (telega-msg-at button)))
+    (cl-assert msg)
+    (telega-msg-open-content msg)))
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
@@ -142,6 +119,82 @@
    (list :@type "openMessageContent"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id))))
+
+(defun telega-msg-open-sticker (msg)
+  "Open content for sticker message MSG."
+  (let ((sset-id (telega--tl-get msg :content :sticker :set_id)))
+    (telega-describe-stickerset
+     (telega-stickerset-get sset-id) nil (telega-msg-chat msg))))
+
+(defun telega-msg-open-video (msg)
+  "Open content for video message MSG."
+  (let ((video (telega--tl-get msg :content :video)))
+    ;; NOTE: `telega-file--download-monitoring' triggers callback
+    ;; in case file is already downloaded
+    (telega-file--download-monitoring
+     video :video 32
+     (lambda (file)
+       (telega-msg-redisplay msg)
+       (when (telega-file--downloaded-p file)
+         (apply 'telega-ffplay-run
+                (telega--tl-get file :local :path) nil
+                telega-video-ffplay-args))))))
+
+(defun telega-msg-voice-note--ffplay-callback (msg)
+  "Return callback to be used in `telega-ffplay-run'."
+  (lambda (_progressnotused)
+    (telega-msg-redisplay msg)
+
+    (let ((proc (plist-get msg :telega-vvnote-proc)))
+      ;; If voice message finished playing, then possible play next
+      ;; voice message
+      (when (and (not (process-live-p proc)) telega-vvnote-voice-play-next)
+        (let ((next-voice-msg (telega-chatbuf--next-voice-msg msg)))
+          (when next-voice-msg
+            (telega-msg-open-content next-voice-msg)))))))
+
+(defun telega-msg-open-voice-note (msg)
+  "Open content for voiceNote message MSG."
+  ;; - If already playing, then pause
+  ;; - If paused, start from paused position
+  ;; - If not start, start playing
+  (let ((note (telega--tl-get msg :content :voice_note))
+        (proc (plist-get msg :telega-vvnote-proc)))
+    (cl-case (and (process-live-p proc) (process-status proc))
+      (run (telega-ffplay-pause proc))
+      (stop (telega-ffplay-resume proc))
+      (t (telega-file--download-monitoring
+          note :voice 32
+          (lambda (file)
+            (telega-msg-redisplay msg)
+            (when (telega-file--downloaded-p file)
+              (plist-put msg :telega-vvnote-proc
+                         (telega-ffplay-run
+                          (telega--tl-get file :local :path)
+                          (telega-msg-voice-note--ffplay-callback msg)
+                          "-nodisp")))))))
+    ))
+
+(defun telega-msg-open-photo (msg)
+  "Open content for photo message MSG."
+  ;; TODO: view highres image
+  )
+
+(defun telega-msg-open-content (msg)
+  "Open message MSG content."
+  (telega--openMessageContent msg)
+
+  (cl-case (telega--tl-type (plist-get msg :content))
+    (messageSticker
+     (telega-msg-open-sticker msg))
+    (messageVideo
+     (telega-msg-open-video msg))
+    (messageVoiceNote
+     (telega-msg-open-voice-note msg))
+    (messagePhoto
+     (telega-msg-open-photo msg))
+    (t (message "TODO: `open-content' for <%S>"
+                (telega--tl-type (plist-get msg :content))))))
 
 (defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
   "Get https link to public message."

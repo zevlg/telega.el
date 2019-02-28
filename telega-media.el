@@ -525,10 +525,7 @@ File is specified with FILE-SPEC."
          (aw-chars (telega-chars-in-width cfull))
          (xw (telega-chars-width aw-chars))
          (svg (svg-create xw xh)))
-    ;; NOTE: `file-exists-p' return t on empty string
-    (if (and photofile
-             (not (string-empty-p photofile))
-             (file-exists-p photofile))
+    (if (telega-file-exists-p photofile)
         (let ((file-ext (downcase (file-name-extension photofile)))
               (clip (telega-svg-clip-path svg "clip")))
           (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))

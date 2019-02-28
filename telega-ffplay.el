@@ -30,6 +30,26 @@
 (defvar telega-ffplay-buffer-name
   (concat (unless telega-debug " ") "*ffplay telega*"))
 
+(defun telega-ffplay-proc ()
+  "Return current ffplay process."
+  (let ((buf (get-buffer telega-ffplay-buffer-name)))
+    (when (buffer-live-p buf)
+      (get-buffer-process buf))))
+
+(defun telega-ffplay-pause (&optional proc)
+  "Pause ffplay process PROC."
+  ;; SIGSTOP to pause ffplay
+  (let ((ffproc (or proc (telega-ffplay-proc))))
+    (when ffproc
+      (signal-process ffproc 19))))
+
+(defun telega-ffplay-resume (&optional proc)
+  "Resume ffplay process PROC."
+  ;; SIGCONT to resume ffplay
+  (let ((ffproc (or proc (telega-ffplay-proc))))
+    (when ffproc
+      (signal-process ffproc 18))))
+
 (defun telega-ffplay-stop ()
   "Stop running ffplay process."
   (let ((buf (get-buffer telega-ffplay-buffer-name)))
@@ -57,15 +77,14 @@
           (insert output)
           (when (re-search-backward "\\s-*\\([0-9.]+\\)" nil t)
             (let ((np (string-to-number (match-string 1))))
-              (when (> (- np progress) 0.25)
-                (set-process-plist
-                 proc (plist-put proc-plist :progress np))
-                (when pcb
-                  (funcall pcb np)))))
+              (set-process-plist
+               proc (plist-put proc-plist :progress np))
+              (when (and pcb (> np progress))
+                (funcall pcb np)))))
 
           (unless telega-debug
             (delete-region (point-min) (point-max)))
-          ))))
+          )))
 
 (defun telega-ffplay-run (filename callback &rest ffplay-args)
   "Start ffplay to play FILENAME.
@@ -73,7 +92,8 @@ CALLBACK is called on updates with single argument - progress.
 progress is either float (in seconds) or nil (on ffplay exit).
 CALLBACK with `nil' argument is not called if ffplay was stopped
 prematurely, i.e. with explicit call to `telega-ffplay-stop'.
-FFPLAY-ARGS is additional args to the ffplay."
+FFPLAY-ARGS is additional args to the ffplay.
+Return newly created process."
   ;; Additional args:
   ;;   -nodisp       for sounds
   ;;   -ss <SECONDS> to seek
