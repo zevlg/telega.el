@@ -26,6 +26,7 @@
 ;;; Code:
 (require 'telega-core)
 (require 'telega-customize)
+(require 'telega-ffplay)                ; telega-ffplay-run
 
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
@@ -65,6 +66,21 @@
        (telega-describe-stickerset
         (telega-stickerset-get (telega--tl-get content :sticker :set_id))
         nil (telega-msg-chat msg)))
+      (messageVideo
+       (let ((video (plist-get content :video)))
+         ;; NOTE: `telega-file--download-monitoring' triggers callback
+         ;; in case file is already downloaded
+         (telega-file--download-monitoring
+          video :video 32
+          (lambda (file)
+            (telega-msg-redisplay msg)
+            (when (telega-file--downloaded-p file)
+              (apply 'telega-ffplay-run
+                     (telega--tl-get file :local :path) nil
+                     telega-video-ffplay-args))))))
+      (messagePhoto
+       ;; TODO: view highres image
+       )
       )))
 
 (defun telega-msg--pp (msg)

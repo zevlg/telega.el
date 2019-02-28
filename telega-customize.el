@@ -166,6 +166,13 @@ cdr is factor for margin.
 See `telega-avatar--create-img' for more info."
   :type 'cons
   :group 'telega)
+
+(defcustom telega-video-ffplay-args nil
+  "*Additional arguments to ffplay to play video messages.
+To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
+  :type 'list
+  :group 'telega)
+
 
 (defgroup telega-server nil
   "Customisation for telega-server."

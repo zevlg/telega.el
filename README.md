@@ -34,11 +34,12 @@ In some random order:
 - [x] Username completions for fast mentions
 - [x] Secret chats
 - [x] Online searching chats/messages
-- [ ] Avatars, photos
-- [ ] Stickers
+- [X] Avatars
+- [x] Stickers
+- [ ] Photos
 - [ ] Animated GIF
 - [x] Special messages such as location/live location, voice/video
-      messages, contacts, etc
+      messages, contacts, etc (PARTLY)
 - [ ] Poll messages (not yet in TDLib 1.3.0)
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx"
 - [ ] ReplyMarkup (inline keyboard buttons) in the messages

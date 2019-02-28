@@ -447,22 +447,33 @@ Return cons cell, where car is width in char and cdr is margin value."
     (cl-assert (> cw 0))
     (cons cw (floor xmargin))))
 
-(defun telega-thumb--create-image-one-line (thumb &optional file)
-  "Create image for thubmnail (photoSize) for one line use."
+(defun telega-thumb--create-image (thumb &optional file cheight)
+  "Create image for the thumbnail THUMB.
+CHEIGHT is the height in chars (default=1)."
   (unless file
     (setq file (plist-get thumb :photo)))
-
+  (unless cheight
+    (setq cheight 1))
   (let ((cwidth-xmargin (telega-media--cwidth-xmargin
                          (plist-get thumb :width)
                          (plist-get thumb :height)
-                         1)))
+                         cheight)))
     (create-image (telega--tl-get file :local :path)
                   'imagemagick nil
-                  :height (frame-char-height)
+                  :height (* cheight (frame-char-height (telega-x-frame)))
                   :scale 1.0
                   :ascent 'center
                   :margin (cons (cdr cwidth-xmargin) 0)
                   :telega-text (make-string (car cwidth-xmargin) ?X))))
+
+(defun telega-thumb--create-image-one-line (thumb &optional file)
+  "Create image for thumbnail (photoSize) for one line use."
+  (telega-thumb--create-image thumb file 1))
+
+(defun telega-thumb--create-image-as-is (thumb &optional file)
+  "Create image for thumbnail THUMB (photoSize) with size as is."
+  (telega-thumb--create-image
+   thumb file (telega-chars-in-height (plist-get thumb :height))))
 
 (defun telega-media--image-update (obj-spec file)
   "Called to update the image contents for the OBJ-SPEC.

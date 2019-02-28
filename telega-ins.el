@@ -375,6 +375,35 @@ PTYPE is `download' or `upload'."
   (telega-ins "TODO: PHOTO")
   )
 
+(defun telega-ins--upload-download (msg place prop)
+  "Insert Upload/Download status for the document."
+  (let* ((file (plist-get place prop))
+         (local (plist-get file :local)))
+    ;; Downloading status:
+    ;;   /link/to-file         if file has been downloaded
+    ;;   [Download]            if no local copy
+    ;;   [...   20%] [Cancel]  if download in progress
+    (cond ((telega-file--uploading-p file)
+           ;; TODO:
+           )
+          ((telega-file--downloading-p file)
+           (let ((progress (telega-file--downloading-progress file)))
+             (telega-ins-fmt "[%-10s%d%%]"
+               (make-string (round (* progress 10)) ?\.)
+               (round (* progress 100)))
+             (telega-ins " ")
+             ;; TODO: action
+             (telega-ins--button "Cancel")))
+          ((not (telega-file--downloaded-p file))
+           ;; TODO: action
+           (telega-ins--button "Download"
+             'action (lambda (_ignored)
+                       (telega-file--download-monitoring
+                        place prop 32
+                        (lambda (_fileignored)
+                          (telega-msg-redisplay msg)))))))
+    ))
+
 (defun telega-ins--video (msg &optional video)
   "Insert video message MSG."
   ;; TODO
@@ -385,17 +414,23 @@ PTYPE is `download' or `upload'."
         (file-name (plist-get video :file_name))
         (file (plist-get video :video)))
     (telega-ins telega-symbol-video " ")
+    (if (telega-file--downloaded-p file)
+        (let ((local-path (telega--tl-get file :local :path)))
+          (telega-ins--with-props
+              (telega-link-props 'file local-path)
+            (telega-ins (telega-short-filename local-path))))
+      (telega-ins file-name))
+    (telega-ins " (" (telega-duration-human-readable dur) ")")
+    (telega-ins-prefix " "
+      (telega-ins--upload-download msg video :video))
+    (telega-ins "\n")
     (when thumb
       (let ((thumb-img (telega-media--image
-                        (cons thumb 'telega-thumb--create-image-one-line)
+                        (cons thumb 'telega-thumb--create-image-as-is)
                         (cons thumb :photo))))
-        (telega-ins--image thumb-img))
+        (telega-ins--image-slices thumb-img))
       (telega-ins " "))
     ))
-
-(defun telega-ins--upload-download (msg place prop)
-  "Insert Upload/Download status for the document."
-  )
 
 (defun telega-ins--document (msg &optional doc)
   "Insert document DOC."
@@ -420,30 +455,7 @@ PTYPE is `download' or `upload'."
           (telega-ins (telega-short-filename local-path)))
       (telega-ins fname))
     (telega-ins " (" (file-size-human-readable (plist-get file :size)) ") ")
-
-    ;; Downloading status:
-    ;;   /link/to-file         if file has been downloaded
-    ;;   [Download]            if no local copy
-    ;;   [...   20%] [Cancel]  if download in progress
-    (cond ((plist-get local :is_uploading_active)
-           ;; TODO:
-           )
-          ((plist-get local :is_downloading_active)
-           (let ((progress (telega-file--downloading-progress file)))
-             (telega-ins-fmt "[%-10s%d%%]"
-               (make-string (round (* progress 10)) ?\.)
-               (round (* progress 100)))
-             (telega-ins " ")
-             ;; TODO: action
-             (telega-ins--button "Cancel")))
-          ((not downloaded-p)
-           ;; TODO: action
-           (telega-ins--button "Download"
-             'action (lambda (_ignored)
-                       (telega-file--download-monitoring
-                        doc :document 32
-                        (lambda (_fileignored)
-                          (telega-msg-redisplay msg)))))))
+    (telega-ins--upload-download msg doc :document)
     ))
 
 (defun telega-ins--web-page (msg &optional web-page)
