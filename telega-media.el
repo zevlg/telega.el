@@ -265,29 +265,54 @@ Lowres is always goes first."
   (let ((photo-sizes (plist-get photo :sizes)))
     (aref photo-sizes (1- (length photo-sizes)))))
 
-(defun telega-photo--best (photo &optional fill-column)
-  "Select best thumbnail size for the PHOTO.
-If FILL-COLUMN is specified, then select best thumbnail to fit
-into FILL-COLUMN."
-  ;; NOTE: `reverse' is used to start from highes sizes
-  (let ((photo-sizes (reverse (plist-get photo :sizes))))
-    (or (cl-some (lambda (tn)
-                   (and (telega-file--downloaded-p (plist-get tn :photo)) tn))
-                 photo-sizes)
-        (cl-some (lambda (tn)
-                   (and (telega-file--downloading-p (plist-get tn :photo)) tn))
-                 photo-sizes)
-        (if (not fill-column)
-            (aref photo-sizes 0)
+(defun telega-photo--best (photo &optional limits)
+  "Select best thumbnail from PHOTO suiting LIMITS.
+By default LIMITS is `telega-photo-maxsize'."
+  (unless limits
+    (setq limits telega-photo-maxsize))
 
-          ;; Choose best suiting fill-column
-          (let ((xwidth (telega-chars-width fill-column))
-                (best (aref photo-sizes 0)))
-            (dolist (tn photo-sizes)
-              (when (< (abs (- (plist-get tn :width) xwidth))
-                       (abs (- (plist-get best :width) xwidth)))
-                (setq best tn)))
-            best)))))
+  ;; NOTE: `reverse' is used to start from highes sizes
+  (let ((lim-xwidth (* (frame-char-width (telega-x-frame))
+                       (car limits)))
+        (lim-xheight (* (frame-char-height (telega-x-frame))
+                        (cdr limits)))
+        (photo-sizes (reverse (plist-get photo :sizes)))
+        ret)
+    (setq ret (aref photo-sizes 0))
+    (dotimes (idx (length photo-sizes))
+      (let* ((thumb (aref photo-sizes idx))
+             (tw (plist-get thumb :width))
+             (th (plist-get thumb :height)))
+        (when (or (and (>= tw lim-xwidth)
+                       (<= (* th (/ lim-xwidth tw 1.0)) lim-xheight))
+                  (and (>= th lim-xheight)
+                       (<= (* tw (/ lim-xheight th 1.0)) lim-xwidth)))
+          (setq ret thumb))))
+    ret))
+
+;; (defun telega-photo--best (photo &optional fill-column)
+;;   "Select best thumbnail size for the PHOTO.
+;; If FILL-COLUMN is specified, then select best thumbnail to fit
+;; into FILL-COLUMN."
+;;   ;; NOTE: `reverse' is used to start from highes sizes
+;;   (let ((photo-sizes (reverse (plist-get photo :sizes))))
+;;     (or (cl-some (lambda (tn)
+;;                    (and (telega-file--downloaded-p (plist-get tn :photo)) tn))
+;;                  photo-sizes)
+;;         (cl-some (lambda (tn)
+;;                    (and (telega-file--downloading-p (plist-get tn :photo)) tn))
+;;                  photo-sizes)
+;;         (if (not fill-column)
+;;             (aref photo-sizes 0)
+
+;;           ;; Choose best suiting fill-column
+;;           (let ((xwidth (telega-chars-width fill-column))
+;;                 (best (aref photo-sizes 0)))
+;;             (dolist (tn photo-sizes)
+;;               (when (< (abs (- (plist-get tn :width) xwidth))
+;;                        (abs (- (plist-get best :width) xwidth)))
+;;                 (setq best tn)))
+;;             best)))))
 
 (defun telega-photo-file-format (file &optional one-line-p &rest image-props)
   "Create propertized text displaying image at PATH.
@@ -474,6 +499,23 @@ CHEIGHT is the height in chars (default=1)."
   "Create image for thumbnail THUMB (photoSize) with size as is."
   (telega-thumb--create-image
    thumb file (telega-chars-in-height (plist-get thumb :height))))
+
+(defun telega-thumb--gen-create-image (thumb limits)
+  "Generate create-image function for THUMB to fit into LIMITS.
+LIMITS is cons cell, see `telega-photo-maxsize'."
+  ;; TODO: use vertical margin instead of horizontal, so image is
+  ;; always displayed with 0 x offset
+  (let* ((lim-xwidth (* (frame-char-width (telega-x-frame))
+                        (car limits)))
+         (lim-xheight (* (frame-char-height (telega-x-frame))
+                         (cdr limits)))
+         (th (plist-get thumb :height))
+         (cheight (if (> th lim-xheight)
+                      (cdr limits)
+                    (telega-chars-in-height th))))
+    (cl-assert (<= cheight lim-xheight))
+    (lambda (ppp &optional file)
+      (telega-thumb--create-image thumb file cheight))))
 
 (defun telega-media--image-update (obj-spec file)
   "Called to update the image contents for the OBJ-SPEC.

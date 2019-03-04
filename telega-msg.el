@@ -178,8 +178,15 @@
 
 (defun telega-msg-open-photo (msg)
   "Open content for photo message MSG."
-  ;; TODO: view highres image
-  )
+  (let* ((photo (telega--tl-get msg :content :photo))
+         (hr (telega-photo--highres photo))
+         (hr-file (plist-get hr :photo)))
+    (telega-file--download-monitoring
+     hr :photo 32
+     (lambda (file)
+       (telega-msg-redisplay msg)
+       (when (telega-file--downloaded-p file)
+         (find-file (telega--tl-get file :local :path)))))))
 
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
@@ -243,7 +250,7 @@ with list of chats received."
 (defun telega-file--update-msg (file msg)
   "Callback for downloading/uploading the FILE'.
 Update message as file downloading/uploading progresses."
-  ;; NOTE: MSG's place of FILE already has been uploaded, so we need
+  ;; NOTE: MSG's place of FILE already has been updated, so we need
   ;; just to redisplay the MSG
   (with-telega-chat-buffer (telega-chat-get (plist-get msg :chat_id))
     (let ((node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
@@ -357,13 +364,6 @@ PREFIX and SUFFIX specifies addons in case caption is used."
                  "  ]"))
        ))))
 
-(defun telega-msg-reply-markup (msg)
-  "Format :reply_markup for the message MSG."
-  (let ((reply-markup (plist-get msg :reply_markup)))
-    (when reply-markup
-      (concat "\n" "<unsupported replyMarkup:"
-              (substring (plist-get reply-markup :@type) 11) ">"))
-    ))
 
 (defun telega-msg-photo-one-line (msg)
   "Format photo in MSG as one-line."
@@ -509,17 +509,6 @@ Format without rendering web-page."
                   (telega-prefix "\n" (telega-msg-caption msg))))))
 
    (telega-msg-reply-markup msg)))
-
-;; DEPRECATED
-(defun telega-msg-format-one-line (msg)
-  "Format MSG's text as one line."
-  (replace-regexp-in-string
-   "\n" " " (cl-case (telega--tl-type (plist-get msg :content))
-              (messageText
-               (telega-msg-text-one-line msg))
-              (messagePhoto
-               (telega-msg-photo-one-line msg))
-              (t (telega-msg-format msg)))))
 
 (defun telega-msg-sender-admin-status (msg)
   (let ((admins-tl (telega-server--call

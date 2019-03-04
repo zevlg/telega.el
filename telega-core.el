@@ -470,7 +470,10 @@ Activates button if cursor enter, deactivates if leaves."
       (put-text-property (car button-region) (cdr button-region)
                          'face (if (eq dir 'entered)
                                    'telega-button-active
-                                 'telega-button)))))
+                                 'telega-button))
+      (when (eq dir 'entered)
+        (telega-button--help-echo (car button-region)))
+      )))
 
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)

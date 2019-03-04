@@ -332,6 +332,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                 :clip-path "url(#pclip)")
     (svg-image svg :scale 1.0
                :ascent 'center
+               :mask 'heuristic
                ;; text of correct width
                :telega-text
                (make-string

@@ -520,8 +520,8 @@ Integer or `auto'."
   :type 'integer
   :group 'telega-msg)
 
-(defcustom telega-photo-maxsize '(432 . 960)
-  "*Limit displayed image size to this (WIDTH . HEIGHT) value."
+(defcustom telega-photo-maxsize '(40 . 10)
+  "*Limit displayed image size to this (WIDTH . HEIGHT) characters."
   :type '(cons integer integer)
   :group 'telega)
 
@@ -703,6 +703,11 @@ Good candidates also are 🄌 or ⬤."
 
 (defcustom telega-symbol-pause "⏸"
   "Symbol used for pause."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-invoice "🛒"
+  "Symbol used in invoice messages."
   :type 'string
   :group 'telega-symbol)
 

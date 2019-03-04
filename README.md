@@ -133,7 +133,7 @@ Move into the folder with `cd libtgvoip`
 
 Prepare a folder for building the library:
 ```console
-$ autoreconf && ./configure && make
+$ autoreconf --force --install && ./configure && make
 ```
 
 Install the library system-wide:

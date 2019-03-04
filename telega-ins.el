@@ -29,6 +29,7 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-inline)                ;telega-inline--callback
 (require 'telega-customize)
 
 (defun telega-ins (&rest args)
@@ -326,56 +327,7 @@ Return COLUMN at which user name is inserted."
             (telega-user--name (telega-user--get via-bot-user-id) 'short)
             (telega-link-props 'user via-bot-user-id)))))
 
-(defun telega-ins--file-progress (file ptype)
-  "Format FILE's progress of PTYPE.
-PTYPE is `download' or `upload'."
-  (let* ((filesize (plist-get file :size))
-         (dsize (if (eq ptype 'download)
-                    (telega--tl-get file :local :downloaded_size)
-                  (telega--tl-get file :remote :uploaded_size)))
-         (dpart (/ (float dsize) filesize))
-         (percents (round (* (/ (float dsize) filesize) 100))))
-    (telega-ins-fmt "[%-10s%d%%]"
-                    (make-string (round (* dpart 10)) ?\.)
-                    (round (* dpart 100)))
-    (telega-ins " ")
-    (telega-ins
-     (apply 'propertize "[Cancel]"
-            (telega-link-props
-             (intern (format "cancel-%S" ptype))
-             (plist-get file :id))))))
-
-(defun telega-ins--outgoing-status (msg)
-  "Insert outgoing status of the message MSG."
-  (when (plist-get msg :is_outgoing)
-    (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
-          (chat (telega-chat-get (plist-get msg :chat_id))))
-      (telega-ins--with-face 'telega-msg-outgoing-status
-        (telega-ins
-         (cond ((and (stringp sending-state)
-                     (string= sending-state "messageSendingStatePending"))
-                telega-symbol-pending)
-               ((and (stringp sending-state)
-                     (string= sending-state "messageSendingStateFailed"))
-                telega-symbol-failed)
-               ((>= (plist-get chat :last_read_outbox_message_id)
-                    (plist-get msg :id))
-                telega-symbol-heavy-checkmark)
-               (t telega-symbol-checkmark)))))))
-
-(defun telega-ins--text (text)
-  "Insert TEXT applying telegram entities."
-  (when text
-    (telega-ins
-     (telega--entities-apply
-      (plist-get text :entities) (plist-get text :text)))))
-(defalias 'telega-ins--caption 'telega-ins--text)
-
-(defun telega-ins--photo (photo)
-  (telega-ins "TODO: PHOTO")
-  )
-
-(defun telega-ins--upload-download (msg place prop)
+(defun telega-ins--file-progress (msg place prop)
   "Insert Upload/Download status for the document."
   (let* ((file (plist-get place prop))
          (local (plist-get file :local)))
@@ -404,6 +356,51 @@ PTYPE is `download' or `upload'."
                           (telega-msg-redisplay msg)))))))
     ))
 
+(defun telega-ins--outgoing-status (msg)
+  "Insert outgoing status of the message MSG."
+  (when (plist-get msg :is_outgoing)
+    (let ((sending-state (plist-get (plist-get msg :sending_state) :@type))
+          (chat (telega-chat-get (plist-get msg :chat_id))))
+      (telega-ins--with-face 'telega-msg-outgoing-status
+        (telega-ins
+         (cond ((and (stringp sending-state)
+                     (string= sending-state "messageSendingStatePending"))
+                telega-symbol-pending)
+               ((and (stringp sending-state)
+                     (string= sending-state "messageSendingStateFailed"))
+                telega-symbol-failed)
+               ((>= (plist-get chat :last_read_outbox_message_id)
+                    (plist-get msg :id))
+                telega-symbol-heavy-checkmark)
+               (t telega-symbol-checkmark)))))))
+
+(defun telega-ins--text (text)
+  "Insert TEXT applying telegram entities."
+  (when text
+    (telega-ins
+     (telega--entities-apply
+      (plist-get text :entities) (plist-get text :text)))))
+(defalias 'telega-ins--caption 'telega-ins--text)
+
+(defun telega-ins--photo (photo &optional msg)
+  "Inserter for the PHOTO."
+  (let* ((hr (telega-photo--highres photo))
+         (hr-file (plist-get hr :photo)))
+    ;; Show downloading status of highres thumbnail
+    (when (and (telega-file--downloading-p hr-file) msg)
+      (telega-ins telega-symbol-photo " " (plist-get photo :id))
+      (telega-ins-fmt " (%dx%d) " (plist-get hr :width) (plist-get hr :height))
+      (telega-ins--file-progress msg hr :photo)
+      (telega-ins "\n"))
+
+    (let* ((best (telega-photo--best photo telega-photo-maxsize))
+           (best-img (telega-media--image
+                      (cons best (telega-thumb--gen-create-image
+                                  best telega-photo-maxsize))
+                      (cons best :photo))))
+      (telega-ins--image-slices best-img))
+    ))
+
 (defun telega-ins--video (msg &optional video)
   "Insert video message MSG."
   ;; TODO
@@ -422,7 +419,7 @@ PTYPE is `download' or `upload'."
       (telega-ins file-name))
     (telega-ins " (" (telega-duration-human-readable dur) ")")
     (telega-ins-prefix " "
-      (telega-ins--upload-download msg video :video))
+      (telega-ins--file-progress msg video :video))
     (telega-ins "\n")
     (when thumb
       (let ((thumb-img (telega-media--image
@@ -461,7 +458,7 @@ PTYPE is `download' or `upload'."
     ;; duration and download status
     (telega-ins " (" (telega-duration-human-readable dur) ")")
     (telega-ins-prefix " "
-      (telega-ins--upload-download msg note :voice))
+      (telega-ins--file-progress msg note :voice))
     ))
 
 (defun telega-ins--document (msg &optional doc)
@@ -487,7 +484,7 @@ PTYPE is `download' or `upload'."
           (telega-ins (telega-short-filename local-path)))
       (telega-ins fname))
     (telega-ins " (" (file-size-human-readable (plist-get file :size)) ") ")
-    (telega-ins--upload-download msg doc :document)
+    (telega-ins--file-progress msg doc :document)
     ))
 
 (defun telega-ins--web-page (msg &optional web-page)
@@ -516,7 +513,9 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (telega-ins "\n"))
 
         (when photo
-          (telega-ins "<TODO: PHOTO>\n"))
+          (telega-ins--photo (plist-get web-page :photo))
+          (telega-ins "\n"))
+;          (telega-ins "<TODO: PHOTO>\n"))
        ;; (when photo
        ;;   (concat "\n" telega-symbol-vertical-bar
        ;;           (telega-photo-format (plist-get web-page :photo))))
@@ -560,6 +559,25 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (when (telega-ins (plist-get contact :last_name))
     (telega-ins " "))
   (telega-ins "(" (plist-get contact :phone_number) ")"))
+
+(defun telega-ins--invoice (invoice)
+  "Insert invoice message MSG."
+  (let ((title (plist-get invoice :title))
+        (desc (plist-get invoice :description))
+        (photo (plist-get invoice :photo)))
+    (telega-ins telega-symbol-invoice " ")
+    (telega-ins-fmt "%.2f%s" (/ (plist-get invoice :total_amount) 100.0)
+                    (plist-get invoice :currency))
+    (when (plist-get invoice :is_test)
+      (telega-ins " (Test)"))
+    (telega-ins "\n")
+    (when photo
+      (telega-ins--photo photo)
+      (telega-ins "\n"))
+    (telega-ins--with-face 'telega-webpage-title
+      (telega-ins title))
+    (telega-ins "\n")
+    (telega-ins desc)))
 
 (defun telega-ins--input-file (document &optional attach-symbol)
   "Insert input file."
@@ -673,13 +691,15 @@ Special messages are determined with `telega-msg-special-p'."
       ('messageDocument
        (telega-ins--document msg))
       ('messagePhoto
-       (telega-ins--photo (plist-get content :photo)))
+       (telega-ins--photo (plist-get content :photo) msg))
       ('messageSticker
        (telega-ins--sticker (plist-get content :sticker) 'slices))
       ('messageVideo
        (telega-ins--video msg))
       ('messageVoiceNote
        (telega-ins--voice-note msg))
+      ('messageInvoice
+       (telega-ins--invoice content))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))
@@ -689,6 +709,16 @@ Special messages are determined with `telega-msg-special-p'."
     (telega-ins-prefix "\n"
       (telega-ins--text (plist-get content :caption))))
   )
+
+(defun telega-ins--inline-kbd (kbd-button msg)
+  "Insert inline KBD-BUTTON for the MSG."
+  (cl-case (telega--tl-type kbd-button)
+    (inlineKeyboardButton
+     (telega-ins--button (plist-get kbd-button :text)
+       'action (lambda (ignored)
+                 (telega-inline--callback kbd-button msg))
+       :help-echo (telega-inline--help-echo kbd-button msg)))
+    (t (telega-ins-fmt "<TODO: %S>" kbd-button))))
 
 (defun telega-ins--reply-markup (msg)
   "Insert reply markup."
