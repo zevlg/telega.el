@@ -142,13 +142,14 @@
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
-  (lambda (_progressnotused)
+  (lambda (progress)
     (telega-msg-redisplay msg)
 
-    (let ((proc (plist-get msg :telega-vvnote-proc)))
+    (when (not progress)
+      ;; DONE (progress==nil)
       ;; If voice message finished playing, then possible play next
       ;; voice message
-      (when (and (not (process-live-p proc)) telega-vvnote-voice-play-next)
+      (when telega-vvnote-voice-play-next
         (let ((next-voice-msg (telega-chatbuf--next-voice-msg msg)))
           (when next-voice-msg
             (telega-msg-open-content next-voice-msg)))))))

@@ -54,16 +54,19 @@
   "Stop running ffplay process."
   (let ((buf (get-buffer telega-ffplay-buffer-name)))
     (when (buffer-live-p buf)
-      (kill-buffer buf)
-      ;; NOTE: Callback will be called in sentinel
-      )))
+      (kill-buffer buf))
+    ;; NOTE: Callback will be called in sentinel
+    ))
 
 (defun telega-ffplay--sentinel (proc event)
   "Sentinel for the ffplay process."
-  (let ((pcb (plist-get (process-plist proc) :progress-callback)))
+  (let* ((proc-plist (process-plist proc))
+         (pcb (plist-get proc-plist :progress-callback)))
     (when pcb
-      ;; nil progress mean DONE
-      (funcall pcb nil))))
+      (if (process-live-p proc)
+          (funcall pcb (plist-get proc-plist :progress))
+        ;; nil progress mean process is DONE
+        (funcall pcb nil)))))
 
 (defun telega-ffplay--filter (proc output)
   "Filter for the telega-server process."
