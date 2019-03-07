@@ -31,7 +31,6 @@
 
 (require 'telega-sticker)
 
-
 (defun telega-tme-open-username (username &rest bot-params)
   "Open username link."
   (cond ((string= username "telegrampassport")
@@ -42,10 +41,18 @@
          (message "telega TODO: handle bot start"))
 
         (t
-         ;; Ordinary user
-         (message "telega TODO: handle ordinary user: %S %S"
-                  username bot-params)
-         )))
+         ;; Ordinary user/channel/group, :post
+         (let ((chat (telega--searchPublicChat username))
+               (post (plist-get bot-params :post)))
+           (unless chat
+             (error "Unknown public chat: %s" username))
+           (if post
+               ;; See https://github.com/tdlib/td/issues/16
+               ;; msg-id = post * 1048576
+               (telega-chat--goto-msg
+                chat (* (string-to-number post) 1048576) 'highlight)
+             (telega-chat--pop-to-buffer chat))))
+        ))
 
 (defun telega-tme-open-group (group)
   "Join the GROUP."

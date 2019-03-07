@@ -45,6 +45,26 @@ Alist with elements in form (emoji . image)")
          :file_id file-id)
    callback))
 
+(defsubst telega-file--ensure (file)
+  "Ensure FILE is in `telega--files'.
+Return FILE."
+  (puthash (plist-get file :id) file telega--files)
+  file)
+
+(defun telega-file-get (file-id)
+  "Return file associated with FILE-ID."
+  (or (gethash file-id telega--files)
+      (telega-file--ensure (telega--getFile file-id))))
+
+(defun telega-file--renew (place prop)
+  "Renew file value at PLACE and PROP."
+  (let* ((ppfile (plist-get place prop))
+         (file-id (plist-get ppfile :id))
+         (file (or (gethash file-id telega--files)
+                   (telega-file--ensure ppfile))))
+    (plist-put place prop file)
+    file))
+
 (defun telega--downloadFile (file-id &optional priority)
   "Asynchronously downloads a file by its FILE-ID from the cloud.
 `telega--on-updateFile' will be called to notify about the
@@ -65,12 +85,7 @@ hasn't been started, i.e. request hasn't been sent to server."
   (telega-server--send
    (list :@type "cancelDownloadFile"
          :file_id file-id
-         :only_if_pending (or only-if-pending :false)))
-
-  (let ((callbacks (gethash file-id telega--downloadings)))
-    (unwind-protect
-        (telega-file--run-callbacks callbacks (telega--getFile file-id))
-      (remhash file-id telega--downloadings))))
+         :only_if_pending (or only-if-pending :false))))
 
 (defun telega--deleteFile (file-id)
   "Delete file from cache."
@@ -79,45 +94,27 @@ hasn't been started, i.e. request hasn't been sent to server."
          :file_id file-id)))
 
 (defun telega--on-file (file)
-  "FILE has been updated."
-  (let* ((file-id (plist-get file :id))
-         (dl-callbacks (gethash file-id telega--downloadings))
-         (ul-callbacks (gethash file-id telega--uploadings)))
-    (unwind-protect
-        (progn
-          (telega-file--run-callbacks dl-callbacks file)
-          (telega-file--run-callbacks ul-callbacks file))
+  "FILE has been returned from some call to `telega-server--send'."
+  (telega-file--ensure file)
 
-      (when (telega-file--downloaded-p file)
-        (when (and telega-debug (gethash file-id telega--downloadings))
-          (let ((msg (format "Downloading completed: %s (size=%s)"
-                             (telega-short-filename
-                              (telega--tl-get file :local :path))
-                             (file-size-human-readable
-                              (telega--tl-get file :local :downloaded_size)))))
-            (telega-debug msg)
-            (message msg)))
-        (remhash file-id telega--downloadings))
-
-      (when (telega-file--uploaded-p file)
-        ;; Check for `telega-file--downloaded-p' so path info is available
-        (when (and telega-debug (telega-file--downloaded-p file))
-          (let ((msg (format "Uploading completed: %s (size=%s)"
-                             (telega-short-filename
-                              (telega--tl-get file :local :path))
-                             (file-size-human-readable
-                              (telega--tl-get file :local :downloaded_size)))))
-            (telega-debug msg)
-            (message msg)))
-        (remhash file-id telega--uploadings))
-      )))
+  ;; Run update callbacks
+  (let* ((callbacks (gethash (plist-get file :id) telega--files-updates))
+         (left-cbs (cl-loop for cb in callbacks
+                            when (funcall cb file)
+                            collect cb)))
+    (puthash (plist-get file :id) left-cbs telega--files-updates)))
 
 (defun telega--on-updateFile (event)
   "File has been updated, call all the associated hooks."
   (telega--on-file (plist-get event :file)))
 
-(defun telega-file--update-place (file place prop)
-  (plist-put place prop file))
+(defsubst telega-file--size (file)
+  "Return FILE size."
+  ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
+  ;; size
+  (let ((fsize (plist-get file :size))
+        (esize (plist-get file :expected_size)))
+    (if (zerop fsize) esize fsize)))
 
 (defsubst telega-file--downloaded-p (file)
   "Return non-nil if FILE has been downloaded."
@@ -129,23 +126,52 @@ hasn't been started, i.e. request hasn't been sent to server."
 
 (defsubst telega-file--downloading-progress (file)
   "Return progress of file downloading as float from 0 to 1."
-  ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
-  ;; size
-  (let ((fsize (plist-get file :size))
-        (esize (plist-get file :expected_size))
-        (dsize (telega--tl-get file :local :downloaded_size)))
-    (color-clamp (/ (float dsize) (if (zerop fsize) esize fsize)))))
+  (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
+                  (telega-file--size file))))
 
 (defsubst telega-file--need-download-p (file)
   (and (telega--tl-get file :local :can_be_downloaded)
        (not (telega-file--downloaded-p file))))
 ;       (not (telega-file--downloading-p file))))
 
+;; (defun telega-file--download-callback-wrap (callback)
+;;   "Wrapper for CALLBACK.
+;; Removes callback in case downloading is canceled or completed."
+;;   (when callback
+;;     (lambda (file)
+;;       (let ((ret (funcall callback file)))
+;;         (telega-file--downloading-p file)))))
+
+(defun telega-file--download (file &optional priority callback)
+  "Download file denoted by FILE-ID."
+  (declare (indent 2))
+  ;; - If file already downloaded, then just call the callback
+  ;; - If file already downloading, then just install the callback
+  ;; - If file can be downloaded, install the callback and download
+  ;;   the file
+  (let* ((file-id (plist-get file :id))
+         (dfile (telega-file-get file-id)))
+    (cond ((telega-file--downloaded-p dfile)
+           (when callback
+             (funcall callback dfile)))
+
+          ((telega--tl-get dfile :local :can_be_downloaded)
+           (when callback
+             (let ((cb-list (gethash file-id telega--files-updates)))
+               (puthash file-id (cons callback cb-list)
+                        telega--files-updates)))
+
+           (unless (telega-file--downloading-p dfile)
+             (telega--downloadFile file-id priority))))
+    ))
+
+;; DEPRECATED
 (defun telega-file--run-callbacks (callbacks file)
   "Run CALLBACKS on FILE update."
   (dolist (cb-with-args callbacks)
     (apply (car cb-with-args) file (cdr cb-with-args))))
 
+;; DEPRECATED
 (defun telega-file--download-monitor-progress (file-id cb &rest cb-args)
   "Start monitoring downloading progress for FILE-ID.
 CB and CB-ARGS denotes callback to call.
@@ -158,6 +184,7 @@ First argument to callback is file, and only then CB-ARGS are supplied."
                telega--downloadings))
     ))
 
+;; DEPRECATED
 (defun telega-file--download-monitoring (place prop &optional priority
                                                &rest callback-spec)
   "Download file denoted by PLACE and PROP.
@@ -200,12 +227,7 @@ PRIORITY is same as for `telega-file--download'."
   "Stop uploading file denoted by FILE-ID."
   (telega-server--send
    (list :@type "cancelUploadFile"
-         :file_id file-id))
-
-  (let ((callbacks (gethash file-id telega--uploadings)))
-    (unwind-protect
-        (telega-file--run-callbacks callbacks (telega--getFile file-id))
-      (remhash file-id telega--uploadings))))
+         :file_id file-id)))
 
 (defsubst telega-file--uploaded-p (file)
   "Return non-nil if FILE has been uploaded."
@@ -215,29 +237,15 @@ PRIORITY is same as for `telega-file--download'."
   "Return non-nil if FILE is uploading right now."
   (telega--tl-get file :remote :is_uploading_active))
 
-(defun telega-file--upload-monitor-progress (file-id cb &rest cb-args)
-  "Start monitoring uploading progress for FILE-ID.
-CB and CB-ARGS denotes callback to call.
-First argument to callback is file, and only then CB-ARGS are supplied."
-  (let ((callbacks (gethash file-id telega--uploadings))
-        (new-callback (cons cb cb-args)))
-    (unless (member new-callback callbacks)
-      (puthash file-id (append callbacks (list new-callback))
-               telega--uploadings))))
+(defsubst telega-file--uploading-progress (file)
+  "Return progress of file uploading as float from 0 to 1."
+  (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
+                  (telega-file--size file))))
 
-(defun telega-file--upload-monitoring (place prop &rest callback-spec)
-  "Upload file denoted by PLACE and PROP.
-PLACE is the plist where its PROP is a file to download.
-File is monitored so PLACE's PROP is updated on file updates."
-  (let* ((file (plist-get place prop))
-         (file-id (plist-get file :id)))
-    (when (plist-get :can_be_downloaded)
-      (telega-file--upload-monitor-progress
-       file-id 'telega-file--update-place place prop)
-      (when callback-spec
-        (apply 'telega-file--upload-monitor-progress
-               file-id callback-spec))
-      (telega-file--upload file-id))))
+(defun telega-file--upload (filename &optional file-type priority callback)
+  "Upload FILENAME to the cloud."
+  ;; TODO: same as for `telega-file--download'
+  )
 
 
 ;;; Photos
@@ -350,48 +358,6 @@ IMAGE-PROPS are passed directly to `create-image'."
 ;;; Stickers
 
 ;;; Animations
-
-;;; Web pages
-(defun telega-web-page-format (web-page &optional prefix)
-  "Format WEB-PAGE.
-Prefix every line with PREFIX."
-  (cl-assert web-page)
-
-  (unless prefix (setq prefix ""))
-  (concat
-   (let ((title (plist-get web-page :title)))
-     (unless (string-empty-p title)
-       (telega-fmt-eval
-        `(,prefix (identity :fill left
-                            :fill-prefix ,prefix
-                            :fill-column ,(- fill-column 10)
-                            :face bold)
-                  "\n")
-        title)))
-   (let ((desc (plist-get web-page :description)))
-     (unless (string-empty-p desc)
-       (telega-fmt-eval
-        `(,prefix (identity :fill left
-                            :fill-prefix ,prefix
-                            :fill-column ,(- fill-column 10))
-                  "\n")
-        desc)))
-   (let ((photo (plist-get web-page :description)))
-     (when photo
-       (concat prefix
-               (telega-thumbnail-format (plist-get web-page :photo))
-               "\n")))
-   (cl-case (intern (plist-get web-page :type))
-     (photo
-      ;; no-op, already displayed above
-      )
-     (article
-      ;; nothing to display
-      )
-     (t (concat prefix "<unsupported webPage:"
-                (plist-get web-page :type) ">"
-                "\n")))
-   ))
 
 
 ;;; Auto-downloading media

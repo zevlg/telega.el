@@ -133,6 +133,33 @@ Specify EXT with leading `.'."
                              `((d . ,d)
                                ,@(svg--arguments svg args)))))
 
+(defun telega-svg-progress (svg progress)
+  "Insert progress circle into SVG."
+  (let* ((w (alist-get 'width (cadr svg)))
+         (h (alist-get 'height (cadr svg)))
+         ;; progress clipping mask
+         (angle-o (+ pi (* 2 pi (- 1.0 progress))))
+         (clip-dx (* (/ w 2) (1+ (sin angle-o))))
+         (clip-dy (* (/ h 2) (1+ (cos angle-o))))
+         (pclip (telega-svg-clip-path svg "pclip")))
+    ;; clip mask for the progress circle
+    (let ((cp (format "M %d %d L %d %d L %d 0" (/ w 2) (/ h 2) (/ w 2) 0 0)))
+      (when (< progress 0.75)
+        (setq cp (concat cp (format " L 0 %d" h))))
+      (when (< progress 0.5)
+        (setq cp (concat cp (format " L %d %d" w h))))
+      (when (< progress 0.25)
+        (setq cp (concat cp (format " L %d 0" w))))
+      (setq cp (concat cp (format " L %d %d" clip-dx clip-dy)))
+      (setq cp (concat cp " Z"))
+      (telega-svg-path pclip cp))
+    ;; progress circle
+    (svg-circle svg (/ w 2) (/ h 2) (/ h 2)
+                :fill-color (face-foreground 'shadow)
+                :fill-opacity "0.25"
+                :clip-path "url(#pclip)")
+    svg))
+
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
 (defun telega-symbol-widths-install (symbol-widths-alist)

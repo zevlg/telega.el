@@ -70,6 +70,44 @@
       (inlineKeyboardButtonTypeUrl (plist-get kbd-type :url))
       )))
 
+
+(defun telega--getInlineQueryResults (bot-user query &optional chat
+                                               offset location callback)
+  "Query BOT-ID for the QUERY."
+  (declare (indent 5))
+  (telega-server--call
+   (nconc (list :@type "getInlineQueryResults"
+                :bot_user_id (plist-get bot-user :id)
+                :query query)
+          (when chat
+            (list :chat_id (plist-get chat :id)))
+          (when location
+            (list :location location))
+          (when offset
+            (list :offset offset)))
+   callback))
+
+(defun telega-inline-bot-query (bot query for-chat)
+  "Query BOT for inline results for the QUERY."
+  (with-telega-chatbuf for-chat
+    ;; Cancel currently active inline-query loading
+    (when (telega-server--callback-get telega-chatbuf--inline-query)
+      (telega-server--callback-put telega-chatbuf--inline-query 'ignore))
+
+    (setq telega-chatbuf--inline-query
+          (telega--getInlineQueryResults bot query nil nil nil
+            (lambda (reply)
+              (with-telega-help-win "*Telegram Inline Results*"
+                (setq telega--chat for-chat)
+
+                (dolist (qr (append (plist-get reply :results) nil))
+                  (cl-case (telega--tl-type qr)
+                    (inlineQueryResultAnimation
+                     (telega-animation--download (plist-get qr :animation))
+                     (telega-ins--animation (plist-get qr :animation)))
+                    ))
+                ))))))
+
 (provide 'telega-inline)
 
 ;;; telega-inline.el ends here

@@ -159,6 +159,11 @@ enabled it will match alsy `:flag-jo:' and `:black-jocker:'."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-animation-height 3
+  "*Height of animations in char heights."
+  :type 'integer
+  :group 'telega)
+
 (defcustom telega-avatar-factors '(0.6 . 0.1)
   "*Factors for avatar generation.
 car is factor for circle

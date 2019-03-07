@@ -58,8 +58,7 @@
                                (string-match-p fuzzy-regexp en)))
                          telega-emoji-candidates)))
     (annotation
-     (concat (make-string (- telega-emoji-max-length (length arg)) ?\s)
-             (cdr (assoc arg telega-emoji-alist))))
+     (concat "  " (cdr (assoc arg telega-emoji-alist))))
     (post-completion
      (delete-region (- (point) (length arg)) (point))
      (insert (cdr (assoc arg telega-emoji-alist))))
@@ -109,6 +108,40 @@
          (concat "  " (telega-user--name member 'name)))))
     (post-completion
      (insert " "))
+    ))
+
+
+;;; Bot commands completion
+(defun telega-company-grab-botcmd ()
+  (let ((cg (company-grab-line "/[^ ]*")))
+    (when cg (cons cg company-minimum-prefix-length))))
+
+(defun telega-company--bot-commands-alist ()
+  (cl-assert telega-chatbuf--chat)
+  (when (eq (telega-chat--type telega-chatbuf--chat) 'bot)
+    (let* ((info (telega-chat--info telega-chatbuf--chat))
+           (full-info (telega--full-info info))
+           (bot-info (plist-get full-info :bot_info)))
+      (mapcar (lambda (bot-cmd)
+                (cons (concat "/" (plist-get bot-cmd :command))
+                      (plist-get bot-cmd :description)))
+              (plist-get bot-info :commands)))))
+
+;;;###autoload
+(defun telega-company-botcmd (command &optional arg &rest ignored)
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'telega-company-botcmd))
+    (require-match 'never)
+    (sorted t)
+    ;; Always match if having `/'
+    (prefix (telega-company-grab-botcmd))
+    (candidates
+     (let ((cmd-alist (telega-company--bot-commands-alist)))
+       (all-completions arg cmd-alist)))
+    (annotation
+     (let ((cmd-alist (telega-company--bot-commands-alist)))
+       (concat "  " (cdr (assoc arg cmd-alist)))))
     ))
 
 (provide 'telega-company)

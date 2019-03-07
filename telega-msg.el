@@ -702,7 +702,8 @@ If MARKDOWN is non-nil then format TEXT as markdown."
                               :telega-link (cons 'user sender-uid))
           (telega-ins "\n")))
       (when (telega-chat--public-p (telega-chat-get chat-id) 'supergroup)
-        (let ((link (plist-get (telega--getPublicMessageLink chat-id msg-id) :link)))
+        (let ((link (plist-get
+                     (telega--getPublicMessageLink chat-id msg-id) :link)))
           (telega-ins "Link: ")
           (insert-text-button link :telega-link (cons 'url link)
                               'action 'telega-open-link-action)

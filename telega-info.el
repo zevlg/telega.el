@@ -358,14 +358,14 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (telega-ins--labeled "Restriction: " nil
         (telega-ins restr-reason "\n")))
 
-    ;; (unless (zerop pin-msg-id)
-    ;;   (let ((pinned-msg (telega--getChatPinnedMessage chat)))
-    ;;     (cl-assert pinned-msg)
-    ;;     (insert "----(pinned message)----\n")
-    ;;     (telega-button--insert 'telega-msg pinned-msg
-    ;;       :inserter 'telega-ins--message-content
-    ;;       :action 'telega-msg-goto))
-    ;;   (insert "\n------------------------\n"))
+    (unless (zerop pin-msg-id)
+      (let ((pinned-msg (telega--getChatPinnedMessage chat)))
+        (cl-assert pinned-msg)
+        (insert "----(pinned message)----\n")
+        (telega-button--insert 'telega-msg pinned-msg
+          :inserter 'telega-ins--message-content
+          :action 'telega-msg-goto))
+      (insert "\n------------------------\n"))
 
     (telega-ins-fmt "Members: %d\n" (plist-get full-info :member_count))
     (when (plist-get full-info :can_get_members)
@@ -405,7 +405,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
            (list :@type "getActiveSessions")
            (lambda (reply)
              (telega-describe-active-sessions
-              (mapcar 'identity (plist-get reply :sessions))))))
+              (append (plist-get reply :sessions) nil)))))
 
       (dolist (session sessions)
         (let ((app-name (plist-get session :application_name))

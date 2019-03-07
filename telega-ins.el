@@ -275,9 +275,9 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
 (defun telega-ins--user (user &optional member)
   "Insert USER, aligning multiple lines at current column."
   (let* ((joined (plist-get member :joined_chat_date))
-         (avatar-svg (telega-user-avatar-svg user))
+         (avatar (telega-user-avatar-image user))
          (off-column (telega-current-column)))
-    (telega-ins--image avatar-svg 0)
+    (telega-ins--image avatar 0)
     (telega-ins (telega-user--name user))
     (when (and member
                (telega-ins-prefix " ("
@@ -286,7 +286,7 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
       (telega-ins ")"))
     (telega-ins "\n")
     (telega-ins (make-string off-column ?\s))
-    (telega-ins--image avatar-svg 1)
+    (telega-ins--image avatar 1)
     (telega-ins--user-status user)
     ;; TODO: for member insert join date
     ;;  (unless (zerop joined)
@@ -327,33 +327,39 @@ Return COLUMN at which user name is inserted."
             (telega-user--name (telega-user--get via-bot-user-id) 'short)
             (telega-link-props 'user via-bot-user-id)))))
 
-(defun telega-ins--file-progress (msg place prop)
+(defun telega-ins--file-progress (msg file)
   "Insert Upload/Download status for the document."
-  (let* ((file (plist-get place prop))
-         (local (plist-get file :local)))
+  (let ((file-id (plist-get file :id))
+        (local (plist-get file :local)))
     ;; Downloading status:
     ;;   /link/to-file         if file has been downloaded
     ;;   [Download]            if no local copy
     ;;   [...   20%] [Cancel]  if download in progress
     (cond ((telega-file--uploading-p file)
-           ;; TODO:
-           )
-          ((telega-file--downloading-p file)
-           (let ((progress (telega-file--downloading-progress file)))
-             (telega-ins-fmt "[%-10s%d%%]"
+           (let ((progress (telega-file--uploading-progress file)))
+             (telega-ins-fmt "[%-10s%d%%] "
                (make-string (round (* progress 10)) ?\.)
                (round (* progress 100)))
-             (telega-ins " ")
-             ;; TODO: action
-             (telega-ins--button "Cancel")))
+             (telega-ins--button "Cancel"
+               'action (lambda (_ignored)
+                         (telega--cancelUploadFile file-id)))))
+
+          ((telega-file--downloading-p file)
+           (let ((progress (telega-file--downloading-progress file)))
+             (telega-ins-fmt "[%-10s%d%%] "
+               (make-string (round (* progress 10)) ?\.)
+               (round (* progress 100)))
+             (telega-ins--button "Cancel"
+               'action (lambda (_ignored)
+                         (telega--cancelDownloadFile file-id)))))
+
           ((not (telega-file--downloaded-p file))
-           ;; TODO: action
            (telega-ins--button "Download"
              'action (lambda (_ignored)
-                       (telega-file--download-monitoring
-                        place prop 32
-                        (lambda (_fileignored)
-                          (telega-msg-redisplay msg)))))))
+                       (telega-file--download file 32
+                         (lambda (dfile)
+                           (telega-msg-redisplay msg)
+                           (telega-file--downloading-p dfile)))))))
     ))
 
 (defun telega-ins--outgoing-status (msg)
@@ -380,7 +386,6 @@ Return COLUMN at which user name is inserted."
     (telega-ins
      (telega--entities-apply
       (plist-get text :entities) (plist-get text :text)))))
-(defalias 'telega-ins--caption 'telega-ins--text)
 
 (defun telega-ins--photo (photo &optional msg)
   "Inserter for the PHOTO."
@@ -390,7 +395,7 @@ Return COLUMN at which user name is inserted."
     (when (and (telega-file--downloading-p hr-file) msg)
       (telega-ins telega-symbol-photo " " (plist-get photo :id))
       (telega-ins-fmt " (%dx%d) " (plist-get hr :width) (plist-get hr :height))
-      (telega-ins--file-progress msg hr :photo)
+      (telega-ins--file-progress msg hr-file)
       (telega-ins "\n"))
 
     (let* ((best (telega-photo--best photo telega-photo-maxsize))
@@ -419,7 +424,7 @@ Return COLUMN at which user name is inserted."
       (telega-ins file-name))
     (telega-ins " (" (telega-duration-human-readable dur) ")")
     (telega-ins-prefix " "
-      (telega-ins--file-progress msg video :video))
+      (telega-ins--file-progress msg file))
     (telega-ins "\n")
     (when thumb
       (let ((thumb-img (telega-media--image
@@ -458,7 +463,7 @@ Return COLUMN at which user name is inserted."
     ;; duration and download status
     (telega-ins " (" (telega-duration-human-readable dur) ")")
     (telega-ins-prefix " "
-      (telega-ins--file-progress msg note :voice))
+      (telega-ins--file-progress msg file))
     ))
 
 (defun telega-ins--document (msg &optional doc)
@@ -484,7 +489,7 @@ Return COLUMN at which user name is inserted."
           (telega-ins (telega-short-filename local-path)))
       (telega-ins fname))
     (telega-ins " (" (file-size-human-readable (plist-get file :size)) ") ")
-    (telega-ins--file-progress msg doc :document)
+    (telega-ins--file-progress msg file)
     ))
 
 (defun telega-ins--web-page (msg &optional web-page)
@@ -851,7 +856,7 @@ unless message is edited."
            (sender (telega-msg-sender msg))
            (channel-post-p (plist-get msg :is_channel_post))
            (avatar (if channel-post-p
-                       (telega-chat-avatar-svg chat)
+                       (telega-chat-avatar-image chat)
                      (telega-user-avatar-image sender)))
            (awidth (string-width (plist-get (cdr avatar) :telega-text)))
            ccol)
@@ -899,6 +904,8 @@ unless message is edited."
       (telega-ins--input-file (plist-get imc :video) telega-symbol-video))
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
+     (inputMessageAnimation
+      (telega-ins--input-file (plist-get imc :animation) "Animation"))
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      )))

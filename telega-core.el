@@ -41,6 +41,8 @@ Used in help buffers to refer chat.")
 (make-variable-buffer-local 'telega--chat)
 
 (defvar telega--me-id nil "User id of myself.")
+(defvar telega--gifbot-id nil "Bot used to search for animations.")
+(defvar telega--imgbot-id nil "Bot used to search for photos.")
 (defvar telega--options nil "Options updated from telega-server.")
 (defvar telega--conn-state nil)
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
@@ -108,10 +110,19 @@ Props are `:unread_count', `:unread_unmuted_count', `:marked_as_unread_count'
 and `:marked_as_unread_unmuted_count'")
 
 (defvar telega--chat-buffers nil "List of all chat buffers.")
+(defvar telega--files nil
+  "Files hash FILE-ID -> (list FILE UPDATE-CALBACKS..)")
+(defvar telega--files-updates
+  "Hash of FILE-ID -> (list-of (UPDATE-CB CB-ARGS))
+UPDATE-CB is callback to call when file updates. UPDATE-CB is
+called with FILE and CB-ARGS as arguments.
+UPDATE-CB should return non-nil to be removed after its being called.")
+;; DEPRECATED
 (defvar telega--downloadings nil
   "Hash of active downloadings FILE-ID -> (list-of (UPDATE-CB CB-ARGS)).
 Where UPDATE-CB is callback to call with FILE and CB-ARGS when file updates.
 Used to update messages on file updates.")
+;; DEPRECATED
 (defvar telega--uploadings nil
   "Hash of active uploadings FILE-ID -> (list of (UPDATE-CB CB-ARGS)).")
 (defvar telega--proxy-pings nil
@@ -136,6 +147,8 @@ Done when telega server is ready to receive queries."
   (setq telega--status "Disconnected")
   (setq telega--status-aux "")
   (setq telega--me-id -1)
+  (setq telega--gifbot-id nil)
+  (setq telega--imgbot-id nil)
   (setq telega--options
         ;; default limits
         (list :message_caption_length_max 1024
@@ -166,6 +179,8 @@ Done when telega server is ready to receive queries."
   (setq telega--unread-message-count nil)
   (setq telega--unread-chat-count nil)
 
+  (setq telega--files (make-hash-table :test 'eq))
+  (setq telega--files-updates (make-hash-table :test 'eq))
   (setq telega--downloadings (make-hash-table :test 'eq))
   (setq telega--uploadings (make-hash-table :test 'eq))
 

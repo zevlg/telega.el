@@ -30,8 +30,8 @@ In some random order:
 - [x] Uploading files/media (also pasting images from clipboard) to the cloud
 - [x] Display chat actions, such as "@user is typing..."
 - [x] Display/Update chat's draft message
-- [x] Emoji support, with `:<emoji>:` input syntax completion
-- [x] Username completions for fast mentions
+- [x] Company backends for emoji (`:<emoji>` syntax), usernames, bot
+      commands completions
 - [x] Secret chats
 - [x] Online searching chats/messages
 - [X] Avatars
@@ -41,8 +41,8 @@ In some random order:
 - [x] Special messages such as location/live location, voice/video
       messages, contacts, etc (PARTLY)
 - [ ] Poll messages (not yet in TDLib 1.3.0)
-- [x] Handling local links, such as "tg:" or "https://t.me/xxx"
-- [ ] ReplyMarkup (inline keyboard buttons) in the messages
+- [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
+- [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
 - [x] InstantView for web pages 
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
 

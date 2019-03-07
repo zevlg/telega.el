@@ -154,9 +154,11 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
 (defun telega--joinChatByInviteLink (invite-link)
   "Return new chat by its INVITE-LINK.
 Return nil if can't join the chat."
-  (telega-server--call
-   (list :@type "joinChatByInviteLink"
-         :invite_link invite-link)))
+  (let ((chat (telega-server--call
+               (list :@type "joinChatByInviteLink"
+                     :invite_link invite-link))))
+    (when chat
+      (telega-chat-get (plist-get chat :id)))))
 
 (defun telega--checkChatInviteLink (invite-link)
   "Check invitation link INVITE-LINK."
@@ -603,9 +605,11 @@ be marked as read."
 
 (defun telega--searchPublicChat (username)
   "Search public chat with USERNAME."
-  (telega-server--call
-   (list :@type "searchPublicChat"
-         :username username)))
+  (let ((schat (telega-server--call
+                (list :@type "searchPublicChat"
+                      :username username))))
+    (when schat
+      (telega-chat-get (plist-get schat :id)))))
 
 (defun telega--searchPublicChats (query &optional callback)
   "Search public chats by looking for specified QUERY.
@@ -633,10 +637,11 @@ with list of chats received."
 
 (defun telega--searchChatsOnServer (query &optional limit)
   "Search already known chats on server by QUERY."
-  (telega-server--call
-   (list :@type "searchChatsOnServer"
-         :query query
-         :limit (or limit 200))))
+  (telega-chats-list-get
+   (telega-server--call
+    (list :@type "searchChatsOnServer"
+          :query query
+          :limit (or limit 200)))))
 
 
 ;;; Chat buttons in root buffer
@@ -1007,6 +1012,11 @@ Do it only if FORCE is non-nil."
 Actual value is `:@extra` value of the call to load history.")
 (make-variable-buffer-local 'telega-chatbuf--history-loading)
 
+(defvar telega-chatbuf--inline-query nil
+  "Non-nil if some inline bot has been requested.
+Actual value is `:@extra` value of the call to inline bot.")
+(make-variable-buffer-local 'telega-chatbuf--inline-query)
+
 (define-button-type 'telega-prompt
   :supertype 'telega
   :inserter 'telega-ins
@@ -1054,7 +1064,8 @@ Keymap:
         telega-chatbuf--input-ring (make-ring telega-chat-input-ring-size)
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending-p nil
-        telega-chatbuf--history-loading nil)
+        telega-chatbuf--history-loading nil
+        telega-chatbuf--inline-query nil)
 
   (erase-buffer)
   (setq-local window-point-insertion-type t)
@@ -1157,7 +1168,7 @@ Also mark messages as read with `viewMessages'."
        (button-get telega-chatbuf--aux-button :value)))
 
 (defun telega-chatbuf--post-command ()
-  "Chabuf `post-command-hook' funcion."
+  "Chabuf `post-command-hook' function."
   ;; - Check that all atachements are valid (starting/ending chars are
   ;;   ok) and remove invalid attachements
   (let ((attach (telega--region-by-text-prop
@@ -1970,6 +1981,32 @@ If prefix arg is given, then take screenshot only of current emacs frame."
            ))
     ))
 
+(defun telega-chatbuf-animation-insert (animation)
+  "Attach ANIMATION to the input."
+  (let ((thumb (plist-get animation :thumbnail))
+        (preview (telega-animation--create-image animation)))
+    ;; Scale down preview to single char
+    (plist-put (cdr preview) :scale (/ 1.0 telega-animation-height))
+
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageAnimation"
+           :width (plist-get animation :width)
+           :height (plist-get animation :height)
+           :duration (plist-get animation :duration)
+           ;; Use remote thumbnail and animation files
+           :thumbnail (list :@type "inputThumbnail"
+                            :width (plist-get thumb :width)
+                            :height (plist-get thumb :height)
+                            :thumbnail (list :@type "inputFileId"
+                                             :id (telega--tl-get thumb :photo :id)))
+           ;; NOTE: 'telega-preview used in `telega-ins--input-file'
+           ;; to insert document/photo/sticker/animation preview
+           :animation (list :@type (propertize "inputFileId"
+                                               'telega-preview preview)
+                            :id (telega--tl-get animation :animation :id))
+           ))
+    ))
+
 (defun telega-chatbuf-attach-sticker-by-emoji ()
   "If chatbuf has single emoji input, then popup stickers win.
 Intended to be added to `post-command-hook' in chat buffer.
@@ -2013,6 +2050,33 @@ Otherwise choose sticker from some installed sticker set."
       (select-window
        (temp-buffer-window-show tss-buffer)))))
 
+(defun telega-chatbuf-attach-animation ()
+  "Attach the animation.
+If prefix argument is specified, then attach recent or favorite sticker.
+Otherwise choose sticker from some installed sticker set."
+  (interactive)
+  (telega-animation-choose-saved telega-chatbuf--chat))
+
+(defun telega-chatbuf-attach-inline-bot-query ()
+  "Popup results with inline bot query.
+Intended to be added to `post-command-hook' in chat buffer.
+Or to be called directly.
+Return non-nil if input has single emoji."
+  (interactive)
+  (let ((input (telega-chatbuf-input-string)))
+    (when (string-match "^@\\([^ ]+\\)[ \t]+\\(.*\\)" input)
+      (let* ((username (match-string 1 input))
+             (query (match-string 2 input))
+             (uchat (telega--searchPublicChat username))
+             (bot-user (and uchat (eq (telega-chat--type uchat) 'bot)
+                            (telega-chat--user uchat)))
+             (bot (plist-get bot-user :type))
+             (inline-help (plist-get bot :inline_query_placeholder)))
+        (when (plist-get bot :is_inline)
+          (message "Telega: %s" inline-help)
+          (telega-inline-bot-query bot-user query telega-chatbuf--chat)
+          t)))))
+
 (defun telega-chatbuf-attach (attach-type attach-value)
   "Attach something into message."
   (interactive
@@ -2023,7 +2087,7 @@ Otherwise choose sticker from some installed sticker set."
                                          "file" "location"
                                          "poll" "contact"
                                          "screenshot" "member"
-                                         "sticker")
+                                         "sticker" "animation")
                                    (when (gui-get-selection 'CLIPBOARD 'image/png)
                                      (list "clipboard")))
                   nil t)
@@ -2161,7 +2225,13 @@ With prefix arg delete only for yourself."
               ((telega-company-grab-emoji)
                (company-begin-backend 'telega-company-emoji)
                (company-complete-common)
-               t)))
+               t)
+              ((telega-company-grab-botcmd)
+               (company-begin-backend 'telega-company-botcmd)
+               (company-complete-common)
+               t)
+              ))
+      (call-interactively 'telega-chatbuf-attach-inline-bot-query)
       ;; TODO: add other completions
       ))
 
@@ -2202,30 +2272,33 @@ If called interactively then copy generated link into the kill ring."
       (when node
         (telega-button--observable-p (ewoc-location node))))))
 
-(defun telega-chat--goto-msg0 (chat-id msg-id &optional highlight)
+(defun telega-chat--goto-msg0 (chat msg-id &optional highlight)
   "In chat denoted by CHAT-ID goto message denoted by MSG-ID.
 Return non-nil on success."
-  (with-telega-chatbuf (telega-chat-get chat-id)
+  (with-telega-chatbuf chat
     (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
       (when node
         (ewoc-goto-node telega-chatbuf--ewoc node)
         (when highlight
-          (message "TODO: animate message highlighting"))
+          (let ((msgb (button-at (point)))
+                (pulse-delay .05) (pulse-iterations 10))
+            (with-no-warnings
+              (pulse-momentary-highlight-region
+               (button-start msgb) (button-end msgb) 'highlight))))
         t))))
 
 (defun telega-chat--goto-msg (chat msg-id &optional highlight)
   "In CHAT goto message denoted by MSG-ID.
 If HIGHLIGHT is non-nil then highlight with fading background color."
   (with-current-buffer (telega-chat--pop-to-buffer chat)
-    (let ((chat-id (plist-get chat :id)))
-      (unless (telega-chat--goto-msg0 chat-id msg-id highlight)
-        ;; Not found, need to fetch history
-        (telega-ewoc--clean telega-chatbuf--ewoc)
-        (telega-chat--load-history chat msg-id -10 20
-          `(lambda ()
-             (telega-chat--goto-msg0 ,chat-id ,msg-id ,highlight)))))))
+    (unless (telega-chat--goto-msg0 chat msg-id highlight)
+      ;; Not found, need to fetch history
+      (telega-ewoc--clean telega-chatbuf--ewoc)
+      (telega-chat--load-history chat msg-id -10 20
+        (lambda ()
+          (telega-chat--goto-msg0 chat msg-id highlight))))))
 
-(defun telega-chat-avatar-svg (chat)
+(defun telega-chat-avatar-image (chat)
   "Return avatar for the USER."
   (let ((photo (plist-get chat :photo)))
     (telega-media--image
