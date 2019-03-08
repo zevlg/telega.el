@@ -58,7 +58,7 @@
     ;; NOTE: Callback will be called in sentinel
     ))
 
-(defun telega-ffplay--sentinel (proc event)
+(defun telega-ffplay--sentinel (proc _event)
   "Sentinel for the ffplay process."
   (let* ((proc-plist (process-plist proc))
          (pcb (plist-get proc-plist :progress-callback)))

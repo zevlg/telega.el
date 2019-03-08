@@ -247,8 +247,7 @@ If CALLBACK is specified return `:@extra' value used for the call."
 
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering nil)
-        (server-bin (telega-server--find-bin))
-        proc)
+        (server-bin (telega-server--find-bin)))
     (with-current-buffer (generate-new-buffer " *telega-server*")
       ;; init vars and start proc
       (telega--init-vars)

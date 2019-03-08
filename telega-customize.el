@@ -164,6 +164,11 @@ enabled it will match alsy `:flag-jo:' and `:black-jocker:'."
   :type 'integer
   :group 'telega)
 
+(defcustom telega-animation-download-saved nil
+  "*Non-nil to automatically download saved animations."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-avatar-factors '(0.6 . 0.1)
   "*Factors for avatar generation.
 car is factor for circle
@@ -345,6 +350,11 @@ In form (NAME . FILTER-SPEC)."
   :type 'list
   :group 'telega-webpage)
 
+(defcustom telega-webpage-photo-maxsize (cons telega-webpage-fill-column 20)
+  "*Limit displayed image size to this (WIDTH . HEIGHT) characters."
+  :type '(cons integer integer)
+  :group 'telega-webpage)
+
 
 (defgroup telega-user nil
   "Customization for users."
@@ -390,7 +400,7 @@ In form (NAME . FILTER-SPEC)."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-history-limit 50
+(defcustom telega-chat-history-limit 20
   "Number of messages to fetch on history requests."
   :type 'integer
   :group 'telega-chat)
@@ -408,6 +418,12 @@ NOT YET IMPLEMENTED"
 
 (defcustom telega-chat-use-markdown-formatting nil
     "*Non-nil to use markdown formatting for outgoing messages."
+  :type 'boolean
+  :group 'telega-chat)
+
+(defcustom telega-chat-upload-attaches-ahead t
+  "*Non-nil to upload attachements ahead, before message actually sent.
+Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :type 'boolean
   :group 'telega-chat)
 

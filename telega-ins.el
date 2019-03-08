@@ -387,10 +387,10 @@ Return COLUMN at which user name is inserted."
      (telega--entities-apply
       (plist-get text :entities) (plist-get text :text)))))
 
-(defun telega-ins--photo (photo &optional msg)
+(defun telega-ins--photo (photo &optional msg limits)
   "Inserter for the PHOTO."
   (let* ((hr (telega-photo--highres photo))
-         (hr-file (plist-get hr :photo)))
+         (hr-file (telega-file--renew hr :photo)))
     ;; Show downloading status of highres thumbnail
     (when (and (telega-file--downloading-p hr-file) msg)
       (telega-ins telega-symbol-photo " " (plist-get photo :id))
@@ -398,12 +398,8 @@ Return COLUMN at which user name is inserted."
       (telega-ins--file-progress msg hr-file)
       (telega-ins "\n"))
 
-    (let* ((best (telega-photo--best photo telega-photo-maxsize))
-           (best-img (telega-media--image
-                      (cons best (telega-thumb--gen-create-image
-                                  best telega-photo-maxsize))
-                      (cons best :photo))))
-      (telega-ins--image-slices best-img))
+    (telega-ins--image-slices
+     (telega-photo--image photo (or limits telega-photo-maxsize)))
     ))
 
 (defun telega-ins--video (msg &optional video)
@@ -413,26 +409,26 @@ Return COLUMN at which user name is inserted."
     (setq video (telega--tl-get msg :content :video)))
   (let ((dur (plist-get video :duration))
         (thumb (plist-get video :thumbnail))
-        (file-name (plist-get video :file_name))
-        (file (plist-get video :video)))
+        (video-name (plist-get video :file_name))
+        (video-file (telega-file--renew video :video)))
     (telega-ins telega-symbol-video " ")
-    (if (telega-file--downloaded-p file)
-        (let ((local-path (telega--tl-get file :local :path)))
+    (if (telega-file--downloaded-p video-file)
+        (let ((local-path (telega--tl-get video-file :local :path)))
           (telega-ins--with-props
               (telega-link-props 'file local-path)
             (telega-ins (telega-short-filename local-path))))
-      (telega-ins file-name))
+      (telega-ins video-name))
     (telega-ins " (" (telega-duration-human-readable dur) ")")
     (telega-ins-prefix " "
-      (telega-ins--file-progress msg file))
+      (telega-ins--file-progress msg video-file))
     (telega-ins "\n")
     (when thumb
-      (let ((thumb-img (telega-media--image
-                        (cons thumb 'telega-thumb--create-image-as-is)
-                        (cons thumb :photo))))
-        (telega-ins--image-slices thumb-img))
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb :photo))))
+        (telega-ins--image-slices timg))
       (telega-ins " "))
-    ))
+    t))
 
 (defun telega-ins--voice-note (msg &optional note)
   "Insert message with voiceNote content."
@@ -444,7 +440,7 @@ Return COLUMN at which user name is inserted."
                            (process-status proc)))
          (played (and proc-status
                       (plist-get (process-plist proc) :progress)))
-         (file (plist-get note :voice))
+         (note-file (telega-file--renew note :voice))
          (waveform (plist-get note :waveform))
          (waves (telega-vvnote--waveform-decode waveform))
          (listened-p (plist-get note :is_listened)))
@@ -463,7 +459,7 @@ Return COLUMN at which user name is inserted."
     ;; duration and download status
     (telega-ins " (" (telega-duration-human-readable dur) ")")
     (telega-ins-prefix " "
-      (telega-ins--file-progress msg file))
+      (telega-ins--file-progress msg note-file))
     ))
 
 (defun telega-ins--document (msg &optional doc)
@@ -472,27 +468,27 @@ Return COLUMN at which user name is inserted."
     (setq doc (telega--tl-get msg :content :document)))
   (let* ((fname (plist-get doc :file_name))
          (thumb (plist-get doc :thumbnail))
-         (file (plist-get doc :document))
-         (local (plist-get file :local))
-         (downloaded-p (plist-get local :is_downloading_completed))
-         (local-path (plist-get local :path)))
+         (doc-file (telega-file--renew doc :document)))
     (telega-ins telega-symbol-attachment " ")
+    ;; documents thumbnail preview (if any)
     (when thumb
-      (let ((thumb-img (telega-media--image
-                        (cons thumb 'telega-thumb--create-image-one-line)
-                        (cons thumb :photo))))
-        (telega-ins--image thumb-img))
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-one-line)
+                   (cons thumb :photo))))
+        (telega-ins--image timg))
       (telega-ins " "))
-    (if downloaded-p
-        (telega-ins--with-props
-            (telega-link-props 'file local-path)
-          (telega-ins (telega-short-filename local-path)))
+
+    (if (telega-file--downloaded-p doc-file)
+        (let ((local-path (telega--tl-get doc-file :local :path)))
+          (telega-ins--with-props (telega-link-props 'file local-path)
+            (telega-ins (telega-short-filename local-path))))
       (telega-ins fname))
-    (telega-ins " (" (file-size-human-readable (plist-get file :size)) ") ")
-    (telega-ins--file-progress msg file)
+    (telega-ins " (" (file-size-human-readable
+                      (telega-file--size doc-file)) ") ")
+    (telega-ins--file-progress msg doc-file)
     ))
 
-(defun telega-ins--web-page (msg &optional web-page)
+(defun telega-ins--webpage (msg &optional web-page)
   "Insert WEB-PAGE.
 Return `non-nil' if WEB-PAGE has been inserted."
   (unless web-page
@@ -504,10 +500,10 @@ Return `non-nil' if WEB-PAGE has been inserted."
         (photo (plist-get web-page :photo))
         (width (- telega-chat-fill-column 10)))
     (when web-page
+      (telega-ins telega-symbol-vertical-bar)
       (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
                                     :fill-column width
                                     :fill 'left)
-        (telega-ins telega-symbol-vertical-bar)
         (when (telega-ins--with-face 'telega-webpage-sitename
                 (telega-ins sitename))
           (telega-ins "\n"))
@@ -518,12 +514,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (telega-ins "\n"))
 
         (when photo
-          (telega-ins--photo (plist-get web-page :photo))
+          (telega-ins--photo photo msg)
           (telega-ins "\n"))
-;          (telega-ins "<TODO: PHOTO>\n"))
-       ;; (when photo
-       ;;   (concat "\n" telega-symbol-vertical-bar
-       ;;           (telega-photo-format (plist-get web-page :photo))))
        (cl-case (intern (plist-get web-page :type))
          (photo
           ;; no-op, already displayed above
@@ -692,7 +684,7 @@ Special messages are determined with `telega-msg-special-p'."
       ('messageText
        (telega-ins--text (plist-get content :text))
        (telega-ins-prefix "\n"
-         (telega-ins--web-page msg)))
+         (telega-ins--webpage msg)))
       ('messageDocument
        (telega-ins--document msg))
       ('messagePhoto

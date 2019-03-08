@@ -29,6 +29,8 @@
 (require 'telega-core)
 (require 'telega-util)
 
+(defvar ido-matches)                    ;shutup compiler
+
 (defvar telega-help-win--emoji nil
   "Emoji for which help window is displayed.")
 (make-variable-buffer-local 'telega-help-win--emoji)
@@ -220,7 +222,8 @@ Photo and Video files have attached sticker sets."
 (defun telega--searchStickerSets (query)
   "Searches for ordinary sticker sets by looking for specified QUERY."
   (telega-server--call
-   (list :@type "searchStickerSets")))
+   (list :@type "searchStickerSets"
+         :query query)))
 
 (defun telega--viewTrendingStickerSets (set-id &rest other-ids)
   (telega-server--call
@@ -304,7 +307,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                 ?X))
     ))
 
-(defun telega-sticker--create-image (sticker &optional file)
+(defun telega-sticker--create-image (sticker &optional _ignoredfile)
   "Return image for the STICKER."
   ;; Three cases:
   ;;   1) Sticker downloaded
@@ -487,7 +490,14 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
 
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."
-  (let ((str (buffer-substring (minibuffer-prompt-end) (point))))
+  (let* ((start (minibuffer-prompt-end))
+         (end (point))
+         (str (if ido-matches           ;in case of ido completion
+                  (caar ido-matches)
+                (buffer-substring start end)))
+         (comp (car (all-completions str telega-minibuffer--choices)))
+         (sset (cadr (assoc comp telega-minibuffer--choices)))
+         (tss-buffer (get-buffer "*Telegram Sticker Set*")))
     (when (and sset
                (or (not (buffer-live-p tss-buffer))
                    (not (with-current-buffer tss-buffer
@@ -563,7 +573,8 @@ Return sticker set."
         (thumb-file (telega-animation--thumb-file animation)))
     (when (telega-file--need-download-p thumb-file)
       (telega-file--download thumb-file 5))
-    (when (telega-file--need-download-p animation-file)
+    (when (and telega-animation-download-saved
+               (telega-file--need-download-p animation-file))
       (telega-file--download animation-file 1))
     ))
 
@@ -600,8 +611,7 @@ Return sticker set."
   (let* ((h (* (frame-char-height) telega-animation-height))
          (w-chars (telega-chars-in-width h))
          (w (* (telega-chars-width 1) w-chars))
-         (svg (svg-create w h))
-         (font-size (/ h 2)))
+         (svg (svg-create w h)))
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-animation--file animation)))
     (svg-image svg :scale 1.0
@@ -615,7 +625,7 @@ Return sticker set."
                 ?X))
     ))
 
-(defun telega-animation--create-image (animation &optional file)
+(defun telega-animation--create-image (animation &optional _fileignored)
   "Return image for the ANIMATION."
   ;; Three cases:
   ;;   1) Animation file downloaded
@@ -682,27 +692,6 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
     (unless no-redisplay
       (sit-for 0))
     ))
-
-(defun telega-animation-read (prompt)
-  "Read animation."
-  (let* ((completion-ignore-case t)
-         (ssets (mapcar 'telega-stickerset-get
-                        telega--stickersets-installed-ids))
-         ;; Bindings used in `telega-stickerset-completing-read'
-         (telega-minibuffer--chat telega-chatbuf--chat)
-         (telega-minibuffer--choices
-          (mapcar (lambda (sset)
-                    (list (plist-get sset :name) sset))
-                  ssets))
-         (sset-name
-          (minibuffer-with-setup-hook
-              (lambda ()
-                (add-hook 'post-command-hook
-                          'telega-stickerset--minibuf-post-command nil t))
-            (funcall telega-completing-read-function
-                     prompt telega-minibuffer--choices nil t))))
-    (cadr (assoc sset-name telega-minibuffer--choices))
-  ))
 
 (defun telega-animation-choose-saved (for-chat)
   "Choose recent sticker FOR-CHAT."

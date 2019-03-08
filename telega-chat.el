@@ -30,8 +30,13 @@
 (require 'telega-msg)
 (require 'telega-voip)                  ;telega-voip-call
 (require 'telega-notifications)
+(require 'telega-company)
 
 (eval-when-compile (require 'cl))       ;defsetf
+
+;shutup compiler
+(declare-function company-complete-common "company")
+(declare-function company-begin-backend "company" (backend &optional callback))
 
 (declare-function tracking-add-buffer "tracking" (buffer &optional faces))
 (declare-function tracking-remove-buffer "tracking" (buffer))
@@ -811,10 +816,11 @@ STATUS is one of: "
     (when telega-debug
       (telega-ins-fmt "Order: %S\n" (telega-chat--order chat)))
 
-    (let ((default-mute-for
-            (telega-chat-notification-setting chat :mute_for 'default))
-          (default-show-preview
-            (telega-chat-notification-setting chat :show_preview 'default))
+    (let (
+          ;; (default-mute-for
+          ;;   (telega-chat-notification-setting chat :mute_for 'default))
+          ;; (default-show-preview
+          ;;   (telega-chat-notification-setting chat :show_preview 'default))
           (mute-for (telega-chat-notification-setting chat :mute_for))
           (show-preview (telega-chat-notification-setting chat :show_preview)))
       (telega-ins-fmt "Notifications: ")
@@ -1216,11 +1222,16 @@ Executes BODY only if chat buffer already exists.
 If there is no corresponding buffer, then do nothing.
 Inhibits read-only flag."
   (declare (indent 1))
-  (let ((bufsym (cl-gensym)))
-    `(let ((,bufsym (cl-find ,chat telega--chat-buffers
-                             :test (lambda (val buf)
-                                     (with-current-buffer buf
-                                       (eq telega-chatbuf--chat val))))))
+  (let ((bufsym (cl-gensym "buf"))
+        (chatsym (cl-gensym "chat")))
+    `(let* ((,chatsym ,chat)
+            (,bufsym (if (and telega-chatbuf--chat
+                              (eq telega-chatbuf--chat ,chatsym))
+                         (current-buffer)
+                       (cl-find ,chatsym telega--chat-buffers
+                                :test (lambda (val buf)
+                                        (with-current-buffer buf
+                                          (eq telega-chatbuf--chat val)))))))
        (when (buffer-live-p ,bufsym)
          (with-current-buffer ,bufsym
            (let ((inhibit-read-only t))
@@ -1350,6 +1361,11 @@ If TITLE is specified, use it instead of chat's title."
   ;;   (
   )
 
+(defmacro telega-chatbuf--redisplay-node (node)
+  `(telega-save-cursor
+     (with-telega-deferred-events
+       (ewoc-invalidate telega-chatbuf--ewoc ,node))))
+
 ;; NOTE: Inserting message might perform some blocking calls to the
 ;; server, so we do deferr all the server events untill message is
 ;; inserted
@@ -1373,7 +1389,7 @@ If TITLE is specified, use it instead of chat's title."
                    nnode
                    (eq (plist-get (ewoc--node-data onode) :sender_user_id)
                        (plist-get (ewoc--node-data nnode) :sender_user_id)))
-          (ewoc-invalidate telega-chatbuf--ewoc nnode))))))
+          (telega-chatbuf--redisplay-node nnode))))))
 
 (defun telega-chatbuf--enter-youngest-msg (msg &optional disable-notification)
   "Insert newly arrived message MSG as youngest into chatbuffer.
@@ -1452,11 +1468,12 @@ Return `nil' if there is no such message."
   "Redisplay chat messages affected by read-outbox change.
 OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id'."
   (let ((node (ewoc--footer telega-chatbuf--ewoc)))
-    (telega-save-cursor
-      (while (and (setq node (ewoc-prev telega-chatbuf--ewoc node))
-                  (< old-last-read-outbox-msgid
-                     (plist-get (ewoc-data node) :id)))
-        (ewoc-invalidate telega-chatbuf--ewoc node)))))
+    (while (and (setq node (ewoc-prev telega-chatbuf--ewoc node))
+                (< old-last-read-outbox-msgid
+                   (plist-get (ewoc-data node) :id)))
+      (telega-chatbuf--redisplay-node node))))
+
+(defalias 'telega--on-message 'ignore)
 
 (defun telega--on-updateNewMessage (event)
   "A new message was received; can also be an outgoing message."
@@ -1484,7 +1501,7 @@ Message id could be updated on this update."
       (let ((node (telega-chatbuf--node-by-msg-id old-id)))
         (cl-assert node nil (format "Can't find message id=%d" old-id))
         (setf (ewoc--node-data node) new-msg)
-        (ewoc-invalidate telega-chatbuf--ewoc node)))))
+        (telega-chatbuf--redisplay-node node)))))
 
 (defun telega--on-updateMessageContent (event)
   "Content of the message has been changed."
@@ -1494,7 +1511,7 @@ Message id could be updated on this update."
       (when node
         (plist-put (ewoc--node-data node)
                    :content (plist-get event :new_content))
-        (ewoc-invalidate telega-chatbuf--ewoc node)))))
+        (telega-chatbuf--redisplay-node node)))))
 
 (defun telega--on-updateMessageEdited (event)
   "Edited date of the message specified by EVENT has been changed."
@@ -1506,8 +1523,7 @@ Message id could be updated on this update."
                    :edit_date (plist-get event :edit_date))
         (plist-put (ewoc--node-data node)
                    :reply_markup (plist-get event :reply_markup))
-        (telega-save-cursor
-          (ewoc-invalidate telega-chatbuf--ewoc node))))))
+        (telega-chatbuf--redisplay-node node)))))
 
 (defun telega--on-updateMessageViews (event)
   "Number of message views has been updated."
@@ -1515,10 +1531,8 @@ Message id could be updated on this update."
     (let ((node (telega-chatbuf--node-by-msg-id
                  (plist-get event :message_id))))
       (when node
-        (plist-put (ewoc--node-data node)
-                   :views (plist-get event :views))
-        (telega-save-cursor
-          (ewoc-invalidate telega-chatbuf--ewoc node))))))
+        (plist-put (ewoc--node-data node) :views (plist-get event :views))
+        (telega-chatbuf--redisplay-node node)))))
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."
@@ -1617,22 +1631,19 @@ CALLBACK is called after history has been loaded."
 (defun telega--sendMessage (chat imc &optional reply-to-msg disable-notify
                                  from-background reply-markup)
   "Send the message content represented by IMC to CHAT."
-  (let ((tsm (list :@type "sendMessage"
-                   :chat_id (plist-get chat :id)
-                   :disable_notification (or disable-notify :false)
-                   :input_message_content imc)))
-    (when reply-to-msg
-      (setq tsm (plist-put tsm :reply_to_message_id
-                           (plist-get reply-to-msg :id))))
-    (when from-background
-      (setq tsm (plist-put tsm :from_background t)))
-
-    ;; We catch new message with `telega--on-updateNewMessage', so
-    ;; ignore result returned from `sendMessage'
-    (telega-debug "------------------> send message")
-    (telega-server--call tsm 'ignore)
-    (telega-debug "<================== send message")
-    ))
+  ;; We catch new message with `telega--on-updateNewMessage', so
+  ;; ignore result returned from `sendMessage'
+  (telega-server--send
+   (nconc (list :@type "sendMessage"
+                :chat_id (plist-get chat :id)
+                :disable_notification (or disable-notify :false)
+                :input_message_content imc)
+          (when reply-to-msg
+            (list :reply_to_message_id (plist-get reply-to-msg :id)))
+          (when from-background
+            (list :from_background t))
+          (when reply-markup
+            (list :reply_markup reply-markup)))))
 
 (defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg disable-notify
                                       from-background)
@@ -1667,24 +1678,30 @@ CALLBACK is called after history has been loaded."
 
 (defun telega--editMessageText (chat msg imc &optional reply-markup)
   (telega-server--send
-   (list :@type "editMessageText"
-         :chat_id (plist-get chat :id)
-         :message_id (plist-get msg :id)
-         :input_message_content imc)))
+   (nconc (list :@type "editMessageText"
+                :chat_id (plist-get chat :id)
+                :message_id (plist-get msg :id)
+                :input_message_content imc)
+          (when reply-markup
+            (list :reply_markup reply-markup)))))
 
 (defun telega--editMessageMedia (chat msg imc &optional reply-markup)
   (telega-server--send
-   (list :@type "editMessageMedia"
-         :chat_id (plist-get chat :id)
-         :message_id (plist-get msg :id)
-         :input_message_content imc)))
+   (nconc (list :@type "editMessageMedia"
+                :chat_id (plist-get chat :id)
+                :message_id (plist-get msg :id)
+                :input_message_content imc)
+          (when reply-markup
+            (list :reply_markup reply-markup)))))
 
 (defun telega--editMessageCaption (chat msg caption &optional reply-markup)
   (telega-server--send
-   (list :@type "editMessageCaption"
-         :chat_id (plist-get chat :id)
-         :message_id (plist-get msg :id)
-         :caption caption)))
+   (nconc (list :@type "editMessageCaption"
+                :chat_id (plist-get chat :id)
+                :message_id (plist-get msg :id)
+                :caption caption)
+          (when reply-markup
+            (list :reply_markup reply-markup)))))
 
 (defun telega-chatbuf--input-imcs (markdown)
   "Convert input to input message contents list."
@@ -1733,16 +1750,16 @@ CALLBACK is called after history has been loaded."
       (setq attaches (cdr attaches)))
     (nreverse result)))
 
-(defun telega-chatbuf-input-send (prefix-arg)
+(defun telega-chatbuf-input-send (arg)
   "Send current input to the chat.
-With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
+Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
   (interactive "P")
   ;; Send the input
   (let ((input (telega-chatbuf-input-string))
         (imcs (telega-chatbuf--input-imcs
                (if telega-chat-use-markdown-formatting
-                   (not prefix-arg)
-                 prefix-arg)))
+                   (not arg)
+                 arg)))
         (replying-msg (telega-chatbuf--replying-msg))
         (editing-msg (telega-chatbuf--editing-msg))
         (forwarding-msg (telega-chatbuf--forwarding-msg)))
@@ -1767,10 +1784,11 @@ With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
       ;; If all IMCS are photos and videos then send them as ablum
       ;; otherwise send IMCS as separate messages
       ;; NOTE: cl-every returns `t' on empty list
-      (if (and imcs (cl-every (lambda (imc)
-                                (memq (telega--tl-type imc)
-                                      '(inputMessagePhoto inputMessageVideo)))
-                              imcs))
+      (if (and (> (length imcs) 1)
+               (cl-every (lambda (imc)
+                           (memq (telega--tl-type imc)
+                                 '(inputMessagePhoto inputMessageVideo)))
+                         imcs))
           (telega--sendMessageAlbum telega-chatbuf--chat imcs replying-msg)
         (dolist (imc imcs)
           (telega--sendMessage telega-chatbuf--chat imc replying-msg))))
@@ -1852,76 +1870,71 @@ With PREFIX-ARG, inverses `telega-chat-use-markdown-formatting' setting."
      (list :@type "inputMessageContact"
            :contact contact)))
 
-(defun telega-chatbuf-attach-file (file-name)
+(defun telega-chatbuf--gen-input-file (filename &optional file-type preview-p)
+  "Generate InputFile using FILENAME.
+If PREVIEW-P is non-nil, then generate preview image."
+  (setq filename (expand-file-name filename))
+  (let ((preview (when (and preview-p (> (frame-char-height) 1))
+                   (create-image filename 'imagemagick nil
+                                 :scale 1.0 :ascent 'center
+                                 :height (frame-char-height))))
+        (ifile (if telega-chat-upload-attaches-ahead
+                   (let ((ufile (telega-file--upload filename file-type 16)))
+                     (list "inputFileId" :id (plist-get ufile :id)))
+                 (list "inputFileLocal" :path filename))))
+    (nconc (list :@type (propertize (car ifile) 'telega-preview preview))
+           (cdr ifile))))
+
+(defun telega-chatbuf-attach-file (filename &optional preview-p)
   "Attach FILE as document to the current input."
   (interactive (list (read-file-name "Attach file: ")))
-  (setq file-name (expand-file-name file-name))
-  (telega-chatbuf-input-insert
-   (list :@type "inputMessageDocument"
-         :document (list :@type "inputFileLocal"
-                         :path file-name))))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageDocument"
+           :document ifile))))
 
-(defun telega-chatbuf-attach-photo (file-name)
+(defun telega-chatbuf-attach-photo (filename)
   "Attach FILE as document to the current input."
   (interactive (list (read-file-name "Photo: ")))
-  (setq file-name (expand-file-name file-name))
-  (telega-chatbuf-input-insert
-   (list :@type "inputMessagePhoto"
-          :photo (list :@type "inputFileLocal"
-                       :path file-name))))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessagePhoto"
+           :photo ifile))))
 
-(defun telega-chatbuf-attach-video (file-name)
+(defun telega-chatbuf-attach-video (filename)
   "Attach FILE as document to the current input."
   (interactive (list (read-file-name "Photo: ")))
-  (setq file-name (expand-file-name file-name))
-  (telega-chatbuf-input-insert
-   (list :@type "inputMessageVideo"
-          :video (list :@type "inputFileLocal"
-                       :path file-name))))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Video)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageVideo"
+           :video ifile))))
 
-(defun telega-chatbuf-attach-note-video (file-name)
+(defun telega-chatbuf-attach-note-video (filename)
   "Attach FILE as document to the current input."
   (interactive (list (read-file-name "Video Note: ")))
-  (setq file-name (expand-file-name file-name))
-  (telega-chatbuf-input-insert
-   (list :@type "inputMessageVideoNote"
-          :video_note (list :@type "inputFileLocal"
-                            :path file-name))))
+  ;; TODO: start video note generation process
+  ;; see https://github.com/tdlib/td/issues/126
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'VideoNote)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageVideoNote"
+           :video_note ifile))))
 
-(defun telega-chatbuf-attach-note-voice (file-name)
+(defun telega-chatbuf-attach-note-voice (filename)
   "Attach FILE as document to the current input."
   (interactive (list (read-file-name "Voice Note: ")))
-  (setq file-name (expand-file-name file-name))
-  (telega-chatbuf-input-insert
-   (list :@type "inputMessageVoiceNote"
-          :voice_note (list :@type "inputFileLocal"
-                            :path file-name))))
+  ;; TODO: start voice note generation process
+  ;; see https://github.com/tdlib/td/issues/126
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageVoiceNote"
+           :voice_note ifile))))
 
 (defun telega-chatbuf--attach-tmp-photo (tmpfile &optional doc-p)
   "Attach temporary photo file TMPFILE.
 If DOC-P is non-nil, then attach it as document."
-  (let* ((preview (and (> (frame-char-height) 1)
-                       (create-image tmpfile 'imagemagick nil
-                                     :scale 1.0 :ascent 'center
-                                     :height (frame-char-height))))
-         (tlfile (telega--uploadFile
-                  tmpfile (if doc-p 'Document 'Photo) 16)))
-
-    ;; Delete the tmpfile once it has been uploaded to the cloud
-    (telega-file--upload-monitor-progress
-     (plist-get tlfile :id) (lambda (tlfile filepath)
-                              (when (telega-file--uploaded-p tlfile)
-                                (delete-file filepath)))
-     tmpfile)
-
-    (telega-chatbuf-input-insert
-     (list :@type (if doc-p "inputMessageDocument" "inputMessagePhoto")
-           (if doc-p :document :photo)
-           ;; NOTE: 'telega-preview used in `telega-ins--input-file'
-           ;; to insert document/photo preview
-           (list :@type (propertize "inputFileId" 'telega-preview preview)
-                 :id (plist-get tlfile :id))))
-    ))
+  (if doc-p
+      (telega-chatbuf-attach-file tmpfile t)
+    (telega-chatbuf-attach-photo tmpfile)))
 
 (defun telega-chatbuf-attach-clipboard (doc-p)
   "Send clipboard image to the chat.
@@ -1936,21 +1949,29 @@ If DOC-P prefix arg as given, then send it as document."
     (write-region imgdata nil tmpfile nil 'quiet)
     (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
 
-(defun telega-chatbuf-attach-screenshot (frame-only)
+(defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the input.
-If prefix arg is given, then take screenshot only of current emacs frame."
-  (interactive "P")
-  (let* ((temporary-file-directory telega-temp-dir)
-         (tmpfile (telega-temp-name "screenshot" ".png")))
-    (call-process (or (executable-find "import")
-                      (error "Utility `import' (imagemagick) not found"))
-                  nil nil nil
-                  "-silent"             ;no beep
-                  "-window" (if frame-only
-                                (frame-parameter nil 'window-id)
-                              "root")
-                  tmpfile)
-    (telega-chatbuf--attach-tmp-photo tmpfile)))
+If prefix arg is given, then take screenshot in N seconds."
+  (interactive (list (prefix-numeric-value current-prefix-arg)
+                     telega-chatbuf--chat))
+  (if (> n 0)
+      (progn
+        (message "Telega: taking screenshot in %d seconds" n)
+        (run-with-timer 1 nil 'telega-chatbuf-attach-screenshot (1- n) chat))
+
+    ;; Make a screenshot
+    (message nil)
+    (let* ((temporary-file-directory telega-temp-dir)
+           (tmpfile (telega-temp-name "screenshot" ".png")))
+      (call-process (or (executable-find "import")
+                        (error "Utility `import' (imagemagick) not found"))
+                    nil nil nil
+                    "-silent"             ;no beep
+                    "-window" "root"
+                    tmpfile)
+      ;; Switch back to chat buffer in case it has been changed
+      (telega-chat--pop-to-buffer chat)
+      (telega-chatbuf--attach-tmp-photo tmpfile))))
 
 (defun telega-chatbuf-attach-member (user)
   "Add USER to the chat members."
@@ -2078,7 +2099,15 @@ Return non-nil if input has single emoji."
           t)))))
 
 (defun telega-chatbuf-attach (attach-type attach-value)
-  "Attach something into message."
+  "Attach something into message.
+Prefix argument is available for next attachements:
+  screenshot - Takes numeric prefix argument to delay taking
+               screenshot.
+  sticker    - Takes C-u prefix argument to attach favorite/recent
+               sticker.
+  clipboard  - Available only if image is in the clipboard.
+               Takes C-u prefix argument to attach clipboard as
+               document."
   (interactive
    (list (funcall telega-completing-read-function
                   "Attach type: " (nconc
@@ -2130,13 +2159,14 @@ If DRAFT-MSG is ommited, then clear draft message."
 
 ;; Message commands
 (defun telega-msg-redisplay (msg)
-  "Redisplay the message."
+  "Redisplay the message MSG.
+NODE is ewoc's node if known, in this case MSG can be nil."
   (interactive (list (telega-msg-at (point))))
+
   (with-telega-chatbuf (telega-msg-chat msg)
-    (telega-save-cursor
-      (let ((node (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)))
-        (when node
-          (ewoc-invalidate telega-chatbuf--ewoc node))))))
+    (let ((node (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)))
+      (when node
+        (telega-chatbuf--redisplay-node node)))))
 
 (defun telega-msg-reply (msg)
   "Start replying to MSG."
@@ -2280,8 +2310,7 @@ Return non-nil on success."
       (when node
         (ewoc-goto-node telega-chatbuf--ewoc node)
         (when highlight
-          (let ((msgb (button-at (point)))
-                (pulse-delay .05) (pulse-iterations 10))
+          (let ((msgb (button-at (point))))
             (with-no-warnings
               (pulse-momentary-highlight-region
                (button-start msgb) (button-end msgb) 'highlight))))

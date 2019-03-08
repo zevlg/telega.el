@@ -500,7 +500,7 @@ If LAST-MSG is specified, then continue searching."
     (telega-server--callback-put telega--search-messages-loading 'ignore)
     (setq telega--search-messages-loading nil)))
 
-(defun telega-search-cancel (&rest ignore-args)
+(defun telega-search-cancel (&rest _ignoredargs)
   "Cancel currently active search results."
   (interactive)
   (telega-search-async--cancel)

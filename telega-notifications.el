@@ -27,6 +27,8 @@
 ;; To enable notifications use next code in your init.el:
 ;; 
 ;;   (setq telega-use-notifications t)
+;;
+;; before loading telega, or (telega-notifications-mode 1) in runtime
 ;; 
 
 ;;; Code:
@@ -56,7 +58,7 @@ If DEFAULT-P is non-nil then return default setting for the CHAT."
   "Handle `updateScopeNotificationSettings' EVENT."
   (let ((scope (plist-get event :scope))
         (settings (plist-get event :notification_settings)))
-    (cl-ecase (telega--tl-type (plist-get event :scope))
+    (cl-ecase (telega--tl-type scope)
       (notificationSettingsScopePrivateChats
        (setcar telega--scope-notification-settings settings))
       (notificationSettingsScopeGroupChats

@@ -205,11 +205,14 @@
 (defun telega--discardCall (call-id &optional disconnected-p duration connection-id)
   "Discard call defined by CALL-ID."
   (telega-server--send
-   (list :@type "discardCall"
-         :call_id call-id)))
-         ;; :is_disconnected (or disconnected-p :false)
-         ;; :duration duration
-         ;; :connection_id connection-id)))
+   (nconc (list :@type "discardCall"
+                :call_id call-id)
+          (when disconnected-p
+            (list :is_disconnected (or disconnected-p :false)))
+          (when duration
+            (list :duration duration))
+          (when connection-id
+            :connection_id connection-id))))
 
 
 (defun telega-voip-discard (call)
@@ -267,7 +270,7 @@ Discard active call if any."
   ;; TODO: show call buffer for the CALL
   )
 
-(defun telega-voip-buffer-show (call)
+(defun telega-voip-buffer-show (_call)
   "Show callbuf for the CALL."
   (interactive (list telega-voip--active-call))
   (message "TODO: `telega-voip-buffer-show'"))
@@ -301,19 +304,19 @@ If prefix arg is given then list only missed calls."
     ))
 
 
-(defun telega-voip-sounds--play-incoming (call)
+(defun telega-voip-sounds--play-incoming (_call)
   "Incomming CALL pending."
   (unless telega-voip--active-call
     (telega-ffplay-run (telega-etc-file "sounds/call_incoming.mp3") nil
                        "-nodisp" "-loop" "0")
     ))
 
-(defun telega-voip-sounds--play-outgoing (call)
+(defun telega-voip-sounds--play-outgoing (_call)
   "Outgoing CALL initiated."
   (telega-ffplay-run (telega-etc-file "sounds/call_outgoing.mp3") nil
                      "-nodisp" "-loop" "0"))
 
-(defun telega-voip-sounds--play-connect (call)
+(defun telega-voip-sounds--play-connect (_call)
   "Call ready to be used."
   (telega-ffplay-run (telega-etc-file "sounds/call_connect.mp3") nil
                      "-nodisp"))

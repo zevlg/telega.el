@@ -213,8 +213,7 @@ N can't be 0."
 
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."
-  (cl-assert (memq link-type '(url file user hashtag download cancel-download
-                                   upload cancel-upload hashtag)))
+  (cl-assert (memq link-type '(url file user hashtag)))
 
   (list 'action 'telega-link--button-action
         'face (or face 'telega-link)
@@ -233,24 +232,6 @@ N can't be 0."
       (url
        (telega-browse-url (cdr link)))
       (file (find-file (cdr link)))
-
-      ;; `link' for download is (PLACE PROP MSG)
-      (download
-       (telega-file--download-monitoring
-        (cadr link) (caddr link)
-        'telega-file--update-msg (cadddr link)))
-      ;; `link' for cancel-download is FILE-ID
-      (cancel-download
-       (telega--cancelDownloadFile (cadr link)))
-
-      ;; `link' for upload is (PLACE PROP MSG)
-      (upload
-       (telega-file--upload-monitoring
-        (cadr link) (caddr link)
-        'telega-file--update-msg (cadddr link)))
-      ;; `link' for cancel-upload is FILE-ID
-      (cancel-upload
-       (telega--cancelUploadFile (cadr link)))
       )))
 
 (defun telega--entity-to-properties (entity text)

@@ -128,17 +128,18 @@
 
 (defun telega-msg-open-video (msg)
   "Open content for video message MSG."
-  (let ((video (telega--tl-get msg :content :video)))
-    ;; NOTE: `telega-file--download-monitoring' triggers callback
-    ;; in case file is already downloaded
-    (telega-file--download-monitoring
-     video :video 32
-     (lambda (file)
-       (telega-msg-redisplay msg)
-       (when (telega-file--downloaded-p file)
-         (apply 'telega-ffplay-run
-                (telega--tl-get file :local :path) nil
-                telega-video-ffplay-args))))))
+  (let* ((video (telega--tl-get msg :content :video))
+         (video-file (telega-file--renew video :video)))
+    ;; NOTE: `telega-file--download' triggers callback in case file is
+    ;; already downloaded
+    (telega-file--download video-file 32
+      (lambda (file)
+        (telega-msg-redisplay msg)
+        (when (telega-file--downloaded-p file)
+          (apply 'telega-ffplay-run
+                 (telega--tl-get file :local :path) nil
+                 telega-video-ffplay-args))
+        (telega-file--downloading-p file)))))
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
@@ -159,13 +160,13 @@
   ;; - If already playing, then pause
   ;; - If paused, start from paused position
   ;; - If not start, start playing
-  (let ((note (telega--tl-get msg :content :voice_note))
-        (proc (plist-get msg :telega-vvnote-proc)))
+  (let* ((note (telega--tl-get msg :content :voice_note))
+         (note-file (telega-file--renew note :voice))
+         (proc (plist-get msg :telega-vvnote-proc)))
     (cl-case (and (process-live-p proc) (process-status proc))
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
-      (t (telega-file--download-monitoring
-          note :voice 32
+      (t (telega-file--download note-file
           (lambda (file)
             (telega-msg-redisplay msg)
             (when (telega-file--downloaded-p file)
@@ -173,20 +174,21 @@
                          (telega-ffplay-run
                           (telega--tl-get file :local :path)
                           (telega-msg-voice-note--ffplay-callback msg)
-                          "-nodisp")))))))
+                          "-nodisp")))
+            (telega-file--downloading-p file)))))
     ))
 
 (defun telega-msg-open-photo (msg)
   "Open content for photo message MSG."
   (let* ((photo (telega--tl-get msg :content :photo))
          (hr (telega-photo--highres photo))
-         (hr-file (plist-get hr :photo)))
-    (telega-file--download-monitoring
-     hr :photo 32
-     (lambda (file)
-       (telega-msg-redisplay msg)
-       (when (telega-file--downloaded-p file)
-         (find-file (telega--tl-get file :local :path)))))))
+         (hr-file (telega-file--renew hr :photo)))
+    (telega-file--download hr-file 32
+      (lambda (file)
+        (telega-msg-redisplay msg)
+        (when (telega-file--downloaded-p file)
+          (find-file (telega--tl-get file :local :path)))
+        (telega-file--downloading-p file)))))
 
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
@@ -201,6 +203,10 @@
      (telega-msg-open-voice-note msg))
     (messagePhoto
      (telega-msg-open-photo msg))
+    (messageText
+     (let* ((web-page (telega--tl-get msg :content :web_page))
+            (url (plist-get web-page :url)))
+       (telega-browse-url url)))
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 
@@ -271,245 +277,7 @@ Update message as file downloading/uploading progresses."
   "Return non-nil if sender of MSG is me."
   (= (plist-get msg :sender_user_id) telega--me-id))
 
-;; DEPRECATED
-(defun telega-msg-sender-shortname (msg &optional suffix)
-  "Short name of the MSG sender."
-  (let ((sender-uid (plist-get msg :sender_user_id)))
-    (unless (zerop sender-uid)
-      (concat (telega-user--name (telega-user--get sender-uid) 'short)
-              (or suffix "")))))
-
-;; DEPRECATED
-(defun telega-msg-sender-name (msg)
-  "Title of the MSG sender."
-  (let ((sender-uid (plist-get msg :sender_user_id)))
-    (unless (zerop sender-uid)
-      (telega-user--name (telega-user--get sender-uid)))))
-
-;; DEPRECATED
-(defun telega-msg-sender-ava-h (msg)
-  "High stripe of the MSG sender's avatar."
-  ;; TODO: sender avatar high stripe
-  (let ((sender-uid (plist-get msg :sender_user_id)))
-    (unless (zerop sender-uid)
-      (let* ((user (telega-user--get sender-uid))
-             (ufn (telega--desurrogate-apply (plist-get user :first_name)))
-             (uln (telega--desurrogate-apply (plist-get user :last_name)))
-             (res ""))
-        (unless (string-empty-p ufn)
-          (setq res (capitalize (substring ufn 0 1))))
-        (unless (string-empty-p uln)
-          (setq res (concat res (capitalize (substring uln 0 1)))))
-        (when (= 1 (length res))
-          (setq res (concat res res)))
-        (when (and (string-empty-p res)
-                   (eq (telega-user--type user) 'deleted))
-          (setq res "DU"))
-        (concat "(" res ")")))))
-
-(defun telega-msg-sender-ava-l (msg)
-  "Low stripe of the MSG sender's avatar."
-  ;; TODO: sender avatar low stripe
-  (let ((sender-uid (plist-get msg :sender_user_id)))
-    (unless (zerop sender-uid)
-      "    ")))
-
-(defun telega-msg-caption (msg)
-  "Display MSG's caption if any.
-PREFIX and SUFFIX specifies addons in case caption is used."
-  (let ((cap (telega--tl-get msg :content :caption)))
-    (telega-msg--ents-to-props
-     (plist-get cap :text) (plist-get cap :entities))))
-
-(defun telega-msg-web-page (msg)
-  "Format webPage embedded into MSG."
-  (let* ((web-page (telega--tl-get msg :content :web_page))
-         (sitename (plist-get web-page :site_name))
-         (title (plist-get web-page :title))
-         (desc (plist-get web-page :description))
-         (instant-view-p (plist-get web-page :has_instant_view))
-         (photo (plist-get web-page :photo)))
-    (when web-page
-      (concat
-       (unless (string-empty-p sitename)
-         (concat "\n" telega-symbol-vertical-bar
-                 (propertize sitename 'face 'telega-webpage-sitename)))
-       (unless (string-empty-p title)
-         (concat "\n" telega-symbol-vertical-bar
-                 (propertize title 'face 'telega-webpage-title)))
-       (unless (string-empty-p desc)
-         (telega-fmt-eval
-          `("\n"
-            ,telega-symbol-vertical-bar
-            (identity :fill left
-                      :fill-prefix ,telega-symbol-vertical-bar
-                      :fill-column ,(- fill-column 10)))
-          desc))
-       (when photo
-         (concat "\n" telega-symbol-vertical-bar
-                 (telega-photo-format (plist-get web-page :photo))))
-       (cl-case (intern (plist-get web-page :type))
-         (photo
-          ;; no-op, already displayed above
-          )
-         (article
-          ;; nothing to display
-          )
-         (t (concat "\n" telega-symbol-vertical-bar
-                    "<unsupported webPage:"
-                    (plist-get web-page :type) ">")))
-       (when instant-view-p
-         (concat "\n" "[  " telega-symbol-thunder
-                 "INSTANT VIEW"
-                 "  ]"))
-       ))))
-
-
-(defun telega-msg-photo-one-line (msg)
-  "Format photo in MSG as one-line."
-  (let* ((thumb (telega-photo--lowres
-                 (telega--tl-get msg :content :photo)))
-         (thumb-file (plist-get thumb :photo))
-         (thumb-img (and thumb-file
-                         (apply #'telega-photo-file-format
-                                thumb-file
-                                'one-line
-                                telega-msg-photo-props))))
-    (concat telega-symbol-photo " " thumb-img " " (telega-msg-caption msg))))
-
-(defun telega-msg-photo (msg)
-  "Format photo message."
-  (cl-assert (eq (telega--tl-type (plist-get msg :content)) 'messagePhoto))
-
-  (let* ((thumb (telega-photo--best (telega--tl-get msg :content :photo)))
-         (thumb-file (plist-get thumb :photo))
-         (thumb-path (telega--tl-get thumb-file :local :path)))
-    (concat telega-symbol-photo " "
-            ;; Photo itself or downloading progress
-            (if (telega-file--downloaded-p thumb-file)
-                (concat (apply 'propertize (telega-short-filename thumb-path)
-                               (telega-link-props 'file thumb-path))
-                        (format " (%dx%d)\n"
-                                (plist-get thumb :width)
-                                (plist-get thumb :height))
-                        (apply #'telega-photo-file-format
-                               thumb-file
-                               nil
-                               telega-msg-photo-props))
-
-              (unless (telega-file--downloading-p thumb-file)
-                (telega-file--download
-                 (plist-get thumb-file :id) nil #'telega-file--update-msg msg))
-
-              (telega-msg-downloading-progress msg thumb-file))
-
-            ;; Photo caption
-            (telega-prefix "\n" (telega-msg-caption msg)))))
-
-(defun telega-msg-downloading-progress (msg file)
-  "For message MSG format local FILE downloading progress."
-  (let ((filesize (plist-get file :size))
-        (local (plist-get file :local)))
-    (let* ((dsize (plist-get local :downloaded_size))
-           (dpart (/ (float dsize) filesize))
-           (percents (round (* (/ (float dsize) filesize) 100))))
-      (concat
-       (format "[%-10s%d%%]"
-               (make-string (round (* dpart 10)) ?\.)
-               (round (* dpart 100)))
-       " "
-       (apply 'propertize "[Cancel]"
-              (telega-link-props
-               'cancel-download
-               (list (plist-get file :id)
-                     #'telega-file--update-msg
-                     msg)))))))
-
-(defun telega-msg-uploading-progress (msg file)
-  "For message MSG format remote FILE uploading progress."
-  (let ((filesize (plist-get file :size))
-        (remote (plist-get file :local)))
-    (let* ((usize (plist-get remote :uploaded_size))
-           (upart (/ (float dsize) filesize))
-           (percents (round (* (/ (float dsize) filesize) 100))))
-      (concat
-       (format "[%-10s%d%%]"
-               (make-string (round (* upart 10)) ?\.)
-               (round (* upart 100)))
-       " "
-       (apply 'propertize "[Cancel]"
-              (telega-link-props
-               'cancel-upload
-               (list (plist-get file :id)
-                     #'telega-file--update-msg
-                     msg)))))))
-
-;; DEPRECATED
-(defun telega-msg-document (msg)
-  "Format document of the message."
-  (cl-assert (eq (telega--tl-type (plist-get msg :content)) 'messageDocument))
-
-  (let* ((document (telega--tl-get msg :content :document))
-         (file (plist-get document :document)))
-    (concat telega-symbol-attachment " "
-            (plist-get document :file_name)
-            " (" (file-size-human-readable (plist-get file :size)) ") "
-
-            ;; File status:
-            ;;   /link/to-file         if file has been uploaded/downloaded
-            ;;   [...   20%] [Cancel]  if upload/download in progress
-            ;;   [Download]            if no local copy
-            (cond ((telega-file--uploading-p file)
-                   (telega-fmt--file-progress file 'upload))
-                  ((telega-file--downloading-p file)
-                   (telega-fmt--file-progress file 'download))
-                  ((telega-file--downloaded-p file)
-                   (let ((file-path (telega--tl-get file :local :path)))
-                     (apply 'propertize (telega-short-filename file-path)
-                            (telega-link-props 'file file-path))))
-                  (t (apply 'propertize "[Download]"
-                            (telega-link-props
-                             'download
-                             document :document msg))))
-
-            ;; Caption
-            (telega-prefix "\n" (telega-msg-caption msg)))))
-
-;; DEPRECATED
-(defun telega-msg-text-one-line (msg)
-  "Format message text for one line formatting.
-Format without rendering web-page."
-  (cl-assert (eq (telega--tl-type (plist-get msg :content)) 'messageText))
-
-  (let ((text (telega--tl-get msg :content :text)))
-    (telega-msg--ents-to-props
-     (plist-get text :text)
-     (plist-get text :entities))))
-
-;; DEPRECATED
-(defun telega-msg-text (msg)
-  "Format text of the message MSG."
-  (concat
-   (telega-msg-text-one-line msg)
-   (telega-msg-web-page msg)))
-
-;; DEPRECATED
-(defun telega-msg-format (msg)
-  "Return formatted text for the MSG."
-  (concat
-   (let ((content (plist-get msg :content)))
-     (cl-case (telega--tl-type content)
-       (messageText
-        (telega-msg-text msg))
-       (messageDocument
-        (telega-msg-document msg))
-       (messagePhoto
-        (telega-msg-photo msg))
-       (t (concat (format "<unsupported message %S>" (telega--tl-type content))
-                  (telega-prefix "\n" (telega-msg-caption msg))))))
-
-   (telega-msg-reply-markup msg)))
-
+;; DEPRECATED ???
 (defun telega-msg-sender-admin-status (msg)
   (let ((admins-tl (telega-server--call
                     (list :@type "getChatAdministrators"
@@ -518,113 +286,6 @@ Format without rendering web-page."
                    (plist-get admins-tl :user_ids)
                    :test #'=)
       " (admin)")))
-
-(defun telega-msg-sender-status (msg)
-  "Format MSG sender status.
-Makes heavy online requests without caching, be carefull."
-  (let ((ucm (telega-server--call
-              (list :@type "getChatMember"
-                    :chat_id (plist-get msg :chat_id)
-                    :user_id (plist-get msg :sender_user_id)))))
-    (telega-fmt-chat-member-status (plist-get ucm :status))))
-
-;; DEPRECATED
-(defun telega-msg-text-with-timestamp (msg fill-prefix)
-  `((telega-msg-format
-     :fill left
-     :fill-prefix ,fill-prefix
-     :fill-column ,telega-chat-fill-column
-     :min ,telega-chat-fill-column
-     :align left)
-    (telega-msg-timestamp :align right :min 10)
-    (telega-msg-outgoing-status :face telega-msg-outgoing-status)
-    "\n"))
-
-;; DEPRECATED
-(defun telega-msg-button--format-same (msg)
-  "Fromat message when previous msg is from the same sender."
-  `(,telega-msg-full-prefix
-    ,@(telega-msg-inline-reply msg telega-msg-full-prefix)
-    ,@(telega-msg-text-with-timestamp msg telega-msg-full-prefix)))
-
-;; DEPRECATED
-(defun telega-msg-button--format-action (msg)
-  "Format chat's action message, such as messageChatAddMembers."
-  (let ((content (plist-get msg :content))
-        (sender (telega-user--get (plist-get msg :sender_user_id))))
-    `((("--("
-        ,(cl-case (telega--tl-type content)
-           (messageContactRegistered
-            (concat (telega-user--name sender)
-                    " joined the Telegram"))
-           (messageChatAddMembers
-            ;; If sender matches
-            (let ((user-ids (plist-get content :member_user_ids)))
-              (if (and (= 1 (length user-ids))
-                       (= (plist-get sender :id) (aref user-ids 0)))
-                  (concat
-                   (telega-user--name sender 'name)
-                   " joined the group")
-                (concat
-                 (telega-user--name sender 'name)
-                 " invited "
-                 (mapconcat 'telega-user--name
-                            (mapcar 'telega-user--get user-ids)
-                            ", ")))))
-           (messageChatJoinByLink
-            (concat (telega-user--name sender)
-                    " joined the group via invite link"))
-           (messageChatDeleteMember
-            (concat (telega-user--name
-                     (telega-user--get (plist-get content :user_id)))
-                    " left the group"))
-           (messageChatChangeTitle
-            (concat (telega-user--name sender)
-                    " renamed group to \"" (plist-get content :title) "\""))
-           (t "<unsupported chat action: %S>" (telega--tl-type content)))
-        ")--")
-       :min ,telega-chat-fill-column
-       :align center
-       :align-symbol "-")
-      (telega-msg-timestamp :align right :min 10)
-      "\n")))
-
-;; DEPRECATED
-(defun telega-msg-button--format (msg &optional prev-msg)
-  "Produce fmt spec for the message MSG.
-PREV-MSG is non-nil if there any previous message exists."
-  (cond ((plist-get msg :is_channel_post)
-         (telega-msg-button--format-channel msg))
-
-        ((memq (telega--tl-type (plist-get msg :content))
-               (list 'messageChatAddMembers 'messageChatJoinByLink
-                     'messageChatDeleteMember 'messageChatChangeTitle
-                     'messageContactRegistered))
-         (telega-msg-button--format-action msg))
-
-        (t (if (and prev-msg
-                    (zerop (plist-get msg :edit_date))
-                    (= (plist-get msg :sender_user_id)
-                       (plist-get prev-msg :sender_user_id))
-                    (string= (telega-msg-via-bot msg)
-                             (telega-msg-via-bot prev-msg)))
-               (telega-msg-button--format-same msg)
-             (telega-msg-button--format-full msg)))))
-
-(defsubst telega-msg-button--format-aux (title &optional msg)
-  `((("| " ,title ": "
-      ,(telega-msg-sender-shortname msg "> ")
-      ,(telega-msg-format-one-line msg))
-     :max ,telega-chat-fill-column
-     :elide t
-     :face telega-chat-prompt)
-    "\n"))
-
-(defun telega-msg-button--format-aux-reply (msg)
-  (telega-msg-button--format-aux "Reply" msg))
-
-(defun telega-msg-button--format-aux-edit (msg)
-  (telega-msg-button--format-aux "Edit" msg))
 
 (defun telega-msg--entity-to-properties (entity text)
   (let ((ent-type (plist-get entity :type)))
@@ -715,8 +376,6 @@ If MARKDOWN is non-nil then format TEXT as markdown."
       (when telega-debug
         (telega-ins-fmt "\nMessage: %S\n" msg))
       )))
-
-
 
 (provide 'telega-msg)
 

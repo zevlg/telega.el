@@ -27,13 +27,11 @@
 
 ;;; Code:
 (require 'telega-util)
-(eval-when (load)
-  (require 'company))                      ; company-grab
 
-(require 'telega-sticker)
-
+(defvar company-minimum-prefix-length)
 (declare-function company-begin-backend "company" (backend &optional callback))
 (declare-function company-grab "company" (regexp &optional expression limit))
+(declare-function company-grab-line "company" (regexp &optional expression))
 
 (defun telega-company-grab-emoji ()
   (let ((cg (company-grab ":[^: _]+" nil

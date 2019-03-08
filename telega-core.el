@@ -329,7 +329,8 @@ Return list of strings."
 
 (defun telega-fmt-eval-truncate (estr attrs)
   (let* ((max (plist-get attrs :max))
-         (elide (plist-get attrs :elide))
+         ;; NOTE: always apply elide
+;         (elide (plist-get attrs :elide))
          (elide-str (or (plist-get attrs :elide-string) telega-symbol-eliding))
          (elide-trail (or (plist-get attrs :elide-trail) 0))
          (estr-trail (if (> elide-trail 0) (substring estr (- elide-trail)) ""))
@@ -462,7 +463,7 @@ NIL yields empty string for the convenience."
    (telega-ins--date timestamp)))
 
 ;;; Buttons for telega
-(defun telega-button--ins-error (val)
+(defun telega-button--ins-error (_val)
   (error "Button `:inserter' is unset."))
 
 ;; Make 'telega-button be separate (from 'button) type
@@ -475,7 +476,7 @@ NIL yields empty string for the convenience."
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
 
-(defun telega-button--sensor-func (window oldpos dir)
+(defun telega-button--sensor-func (_window oldpos dir)
   "Function to be used in `cursor-sensor-functions' text property.
 Activates button if cursor enter, deactivates if leaves."
   (let ((inhibit-read-only t)

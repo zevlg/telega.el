@@ -89,22 +89,6 @@
       (error "No previous webpage in history"))
     (telega-webpage--history-show idx)))
 
-(define-button-type 'telega-instant-view
-  :supertype 'telega
-  :inserter 'telega-ins--instant-view
-  ;; :value is list of three elements - arguments to
-  ;; `telega-webpage--instant-view'
-  'action #'telega-instant-view-button--action
-  'face 'telega-link)
-
-(defun telega-ins--instant-view (iview)
-  "IVIEW is cons of URL and SITENAME."
-  (telega-ins "[ " telega-symbol-thunder
-              ;; I18N: ???
-              " INSTANT VIEW "
-              " ]")
-  )
-
 (defun telega-msg-button--iv-action (button)
   "Open instant view when BUTTON is pressed."
   (let* ((msg (button-get button :value))

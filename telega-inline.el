@@ -63,7 +63,7 @@
       ;; TODO: other types
       )))
 
-(defun telega-inline--help-echo (kbd-button msg)
+(defun telega-inline--help-echo (kbd-button _msg)
   "Generate help-echo value for KBD-BUTTON."
   (let ((kbd-type (plist-get kbd-button :type)))
     (cl-case (telega--tl-type kbd-type)

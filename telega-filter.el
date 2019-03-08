@@ -72,7 +72,7 @@ Bind it to temporary disable some filters.")
   "Action to take when custom filter button is pressed.
 If prefix ARG is specified then set custom filter as active,
 otherwise add to existing active filters."
-  (let* ((custom (button-get (button-at (point)) :value))
+  (let* ((custom (button-get button :value))
          (fspec (if telega-filter-custom-expand
                     (cdr custom)
                   (list 'custom (car custom)))))
@@ -265,7 +265,7 @@ ARGS specifies arguments to operation, first must always be chat."
 
 (defun telega-filter--get (fname)
   (if (memq fname telega-filters--inhibit-list)
-    (lambda (&rest args) t)
+    (lambda (&rest _ignored) t)
 
     (let ((fsym (intern (format "telega--filter-%S" fname))))
       (unless (fboundp fsym)
