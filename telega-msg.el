@@ -187,6 +187,20 @@
         (when (telega-file--downloaded-p file)
           (find-file (telega--tl-get file :local :path)))))))
 
+(defun telega-msg-open-animation (msg)
+  "Open content for animation message MSG."
+  (let* ((anim (telega--tl-get msg :content :animation))
+         (anim-file (telega-file--renew anim :animation)))
+    ;; NOTE: `telega-file--download' triggers callback in case file is
+    ;; already downloaded
+    (telega-file--download anim-file 32
+      (lambda (file)
+        (telega-msg-redisplay msg)
+        (when (telega-file--downloaded-p file)
+          (telega-ffplay-run
+           (telega--tl-get file :local :path) nil
+           "-loop" "0"))))))
+
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
   (telega--openMessageContent msg)
@@ -196,6 +210,8 @@
      (telega-msg-open-sticker msg))
     (messageVideo
      (telega-msg-open-video msg))
+    (messageAnimation
+     (telega-msg-open-animation msg))
     (messageVoiceNote
      (telega-msg-open-voice-note msg))
     (messagePhoto

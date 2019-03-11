@@ -580,6 +580,34 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (telega-ins "\n")
     (telega-ins desc)))
 
+(defun telega-ins--animation (msg &optional animation)
+  "Inserter for animation message MSG."
+  (unless animation
+    (setq animation (telega--tl-get msg :content :animation)))
+  (let ((anim-file (telega-file--renew animation :animation))
+        (thumb (plist-get animation :thumbnail)))
+    (telega-ins (propertize "GIF" 'face 'shadow) " ")
+    (if (telega-file--downloaded-p anim-file)
+        (let ((local-path (telega--tl-get anim-file :local :path)))
+          (telega-ins--with-props
+              (telega-link-props 'file local-path)
+            (telega-ins (telega-short-filename local-path))))
+      (telega-ins (plist-get animation :file_name)))
+    (telega-ins-fmt " (%dx%d %s)"
+      (plist-get animation :width)
+      (plist-get animation :height)
+      (telega-duration-human-readable
+       (telega--tl-get animation :duration)))
+    (telega-ins-prefix " "
+      (telega-ins--file-progress msg anim-file))
+    (telega-ins "\n")
+
+    (telega-ins--image-slices
+     (telega-media--image
+      (cons thumb 'telega-thumb--create-image-as-is)
+      (cons thumb :photo)))
+    ))
+
 (defun telega-ins--input-file (document &optional attach-symbol)
   "Insert input file."
   (telega-ins (or attach-symbol telega-symbol-attachment) " ")
@@ -701,6 +729,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--voice-note msg))
       ('messageInvoice
        (telega-ins--invoice content))
+      ('messageAnimation
+       (telega-ins--animation msg))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))
