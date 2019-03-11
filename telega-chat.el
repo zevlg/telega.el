@@ -918,10 +918,10 @@ STATUS is one of: "
 
   (when chat
     (let ((chat-type (telega-chat--type chat)))
-      (cond ((eq chat-type 'secret)
-             (telega--closeSecretChat (telega-chat--info chat)))
-            ((not (eq chat-type 'private))
-             (telega--leaveChat chat)))
+      (cl-case chat-type
+        (secret (telega--closeSecretChat (telega-chat--info chat)))
+        ((private bot) 'no-op)
+        (t (telega--leaveChat chat)))
 
       ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
       ;; and public supergroups
@@ -1263,7 +1263,13 @@ If TITLE is specified, use it instead of chat's title."
 (defun telega-chatbuf--join (chat)
   "[JOIN] button has been pressed."
   (cl-assert (eq chat telega-chatbuf--chat))
-  (telega--joinChat chat)
+  (cl-assert (memq (telega-chat--type chat) '(bot channel)))
+  (if (eq (telega-chat--type chat) 'bot)
+      (telega--sendMessage
+       chat (list :@type "inputMessageText"
+                  :text (telega--formattedText "/start")))
+    ;; join the channel
+    (telega--joinChat chat))
 
   ;; reset the prompt
   (let ((inhibit-read-only t))
@@ -1282,15 +1288,22 @@ If TITLE is specified, use it instead of chat's title."
           (telega-chat-mode)
           (setq telega-chatbuf--chat chat)
 
-          ;; If me is not member of this chat, then show [JOIN] button
-          ;; instead of the prompt
+          ;; If me is not member of this chat, then show [JOIN/START]
+          ;; button instead of the prompt
+          ;;  - For channels show JOIN button
+          ;;  - For bots show START button
           (unless (telega-filter-chats 'me-is-member (list chat))
-            (let ((inhibit-read-only t))
-              (button-put telega-chatbuf--prompt-button 'invisible t)
-              (goto-char telega-chatbuf--prompt-button)
-              (save-excursion
-                (telega-ins--button "JOIN"
-                  :value chat :action 'telega-chatbuf--join))))
+            (let ((inhibit-read-only t)
+                  (chat-type (telega-chat--type chat)))
+              (when (memq chat-type '(bot channel))
+                (button-put telega-chatbuf--prompt-button 'invisible t)
+                (goto-char telega-chatbuf--prompt-button)
+                (save-excursion
+                  (telega-ins--button
+                      (if (eq chat-type 'bot)
+                          "START"
+                        "JOIN")
+                    :value chat :action 'telega-chatbuf--join)))))
 
           (telega--openChat chat)
           ;; Insert last message if any

@@ -231,6 +231,7 @@ If RAW is given then do not modify statuses for animation."
 (defun telega-root--redisplay ()
   "Redisplay root's buffer contents."
   (telega-filters--redisplay)
+
   (with-telega-root-buffer
     (telega-save-cursor
       (if telega-search-query
@@ -291,21 +292,19 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
                       telega-root--ewoc chat)))
           (cl-assert enode nil "Ewoc node not found for chat:%s"
                      (telega-chat-title chat))
+          (with-telega-deferred-events
+            (ewoc-invalidate telega-root--ewoc enode))))))
 
-          (setf (ewoc--node-data enode) chat)
-          (ewoc-invalidate telega-root--ewoc enode))
+  ;; Possible update chat in global search 
+  (let ((gnode (telega-ewoc--find-by-data
+                telega-search--ewoc chat)))
+    (when gnode
+      (ewoc-invalidate telega-search--ewoc gnode)))
 
-        ;; Possible update chat in global search 
-        (let ((gnode (telega-ewoc--find-by-data
-                      telega-search--ewoc chat)))
-          (when gnode
-            (setf (ewoc--node-data gnode) chat)
-            (ewoc-invalidate telega-search--ewoc gnode)))
-
-        ;; Update chats in searched messages
-        (ewoc-map (lambda (msg)
-                    (eq chat (telega-msg-chat msg)))
-                  telega-messages--ewoc))))
+  ;; Update chats in searched messages
+  (ewoc-map (lambda (msg)
+              (eq chat (telega-msg-chat msg)))
+            telega-messages--ewoc)
 
   (telega-filters--chat-update chat))
 

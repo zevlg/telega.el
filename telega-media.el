@@ -134,13 +134,13 @@ hasn't been started, i.e. request hasn't been sent to server."
        (not (telega-file--downloaded-p file))))
 ;       (not (telega-file--downloading-p file))))
 
-;; (defun telega-file--download-callback-wrap (callback)
-;;   "Wrapper for CALLBACK.
-;; Removes callback in case downloading is canceled or completed."
-;;   (when callback
-;;     (lambda (file)
-;;       (let ((ret (funcall callback file)))
-;;         (telega-file--downloading-p file)))))
+(defun telega-file--callback-wrap (callback check-fun)
+  "Wrapper for CALLBACK.
+Removes callback in case downloading is canceled or completed."
+  (when callback
+    (lambda (file)
+      (funcall callback file)
+      (funcall check-fun file))))
 
 (defun telega-file--download (file &optional priority callback)
   "Download file denoted by FILE-ID."
@@ -150,15 +150,17 @@ hasn't been started, i.e. request hasn't been sent to server."
   ;; - If file can be downloaded, install the callback and download
   ;;   the file
   (let* ((file-id (plist-get file :id))
-         (dfile (telega-file-get file-id)))
+         (dfile (telega-file-get file-id))
+         (cbwrap (telega-file--callback-wrap
+                  callback 'telega-file--downloading-p)))
     (cond ((telega-file--downloaded-p dfile)
-           (when callback
-             (funcall callback dfile)))
+           (when cbwrap
+             (funcall cbwrap dfile)))
 
           ((telega--tl-get dfile :local :can_be_downloaded)
-           (when callback
+           (when cbwrap
              (let ((cb-list (gethash file-id telega--files-updates)))
-               (puthash file-id (cons callback cb-list)
+               (puthash file-id (cons cbwrap cb-list)
                         telega--files-updates)))
 
            (unless (telega-file--downloading-p dfile)
@@ -247,14 +249,16 @@ PRIORITY is same as for `telega-file--download'."
 Return file object, obtained from `telega--uploadFile'."
   (declare (indent 3))
   (let* ((file (telega--uploadFile filename file-type priority))
-         (file-id (plist-get file :id)))
+         (file-id (plist-get file :id))
+         (cbwrap (telega-file--callback-wrap
+                  callback 'telega-file--uploading-p)))
     (if (telega-file--uploaded-p file)
-        (when callback
-          (funcall callback file))
+        (when cbwrap
+          (funcall cbwrap file))
 
-      (when callback
+      (when cbwrap
         (let ((cb-list (gethash file-id telega--files-updates)))
-          (puthash file-id (cons callback cb-list)
+          (puthash file-id (cons cbwrap cb-list)
                    telega--files-updates))))
     file))
 
@@ -444,6 +448,21 @@ To customize automatic downloads, use `telega-auto-download'."
 
 
 ;; Avatars
+(defun telega-photo--progress-svg (best cheight)
+  "Generate svg for BEST variant of the photo."
+  (let* ((h (* (frame-char-height) cheight))
+         (w-chars (telega-chars-in-width h))
+         (w (* (telega-chars-width 1) w-chars))
+         (svg (svg-create w h))
+         (progress (telega-file--downloading-progress
+                    (telega-file--renew best :photo))))
+    (telega-svg-progress svg progress)
+    (svg-image svg :scale 1.0
+               :ascent 'center
+               :mask 'heuristic
+               ;; text of correct width
+               :telega-text (make-string w-chars ?X))))
+
 (defun telega-media--cwidth-xmargin (width height char-height)
   "Calculate width in chars and margin X pixels.
 Return cons cell, where car is width in char and cdr is margin value."
@@ -464,17 +483,20 @@ CHEIGHT is the height in chars (default=1)."
     (setq file (telega-file--renew thumb :photo)))
   (unless cheight
     (setq cheight 1))
-  (let ((cwidth-xmargin (telega-media--cwidth-xmargin
-                         (plist-get thumb :width)
-                         (plist-get thumb :height)
-                         cheight)))
-    (create-image (telega--tl-get file :local :path)
-                  'imagemagick nil
-                  :height (* cheight (frame-char-height (telega-x-frame)))
-                  :scale 1.0
-                  :ascent 'center
-                  :margin (cons (cdr cwidth-xmargin) 0)
-                  :telega-text (make-string (car cwidth-xmargin) ?X))))
+  (if (telega-file--downloaded-p file)
+      (let ((cwidth-xmargin (telega-media--cwidth-xmargin
+                             (plist-get thumb :width)
+                             (plist-get thumb :height)
+                             cheight)))
+        (create-image (telega--tl-get file :local :path)
+                      'imagemagick nil
+                      :height (* cheight (frame-char-height (telega-x-frame)))
+                      :scale 1.0
+                      :ascent 'center
+                      :margin (cons (cdr cwidth-xmargin) 0)
+                      :telega-text (make-string (car cwidth-xmargin) ?X)))
+
+    (telega-photo--progress-svg thumb cheight)))
 
 (defun telega-thumb--create-image-one-line (thumb &optional file)
   "Create image for thumbnail (photoSize) for one line use."
@@ -484,21 +506,6 @@ CHEIGHT is the height in chars (default=1)."
   "Create image for thumbnail THUMB (photoSize) with size as is."
   (telega-thumb--create-image
    thumb file (telega-chars-in-height (plist-get thumb :height))))
-
-(defun telega-photo--progress-svg (best cheight)
-  "Generate svg for BEST variant of the photo."
-  (let* ((h (* (frame-char-height) cheight))
-         (w-chars (telega-chars-in-width h))
-         (w (* (telega-chars-width 1) w-chars))
-         (svg (svg-create w h))
-         (progress (telega-file--downloading-progress
-                    (telega-file--renew best :photo))))
-    (telega-svg-progress svg progress)
-    (svg-image svg :scale 1.0
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text (make-string w-chars ?X))))
 
 (defun telega-media--image-update (obj-spec file)
   "Called to update the image contents for the OBJ-SPEC.

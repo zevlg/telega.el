@@ -21,7 +21,10 @@
 
 ;;; Commentary:
 
-;;
+;;; Testing:
+
+;; Large page: https://telegram.org/faq
+;; 
 
 ;;; Code:
 (require 'cl-lib)
@@ -276,12 +279,12 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins "<TODO: pageBlockAudio>"))
     (pageBlockPhoto
      (telega-ins--photo (plist-get pb :photo))
-     (telega-ins "\n")
-;     (telega-ins "<TODO: PHOTO>\n")
-     (telega-ins--with-attrs (list :face 'shadow
-                                   :fill 'left
-                                   :fill-column telega-webpage-fill-column)
-       (telega-webpage--ins-rt (plist-get pb :caption))))
+     (telega-ins-prefix "\n"
+       (telega-ins--with-attrs (list :face 'shadow
+                                     :fill 'left
+                                     :fill-column telega-webpage-fill-column)
+         (telega-webpage--ins-rt (plist-get pb :caption))))
+     (telega-ins "\n"))
     (pageBlockVideo
      (telega-ins "<TODO: pageBlockVideo>"))
     (pageBlockCover
@@ -346,19 +349,19 @@ instant view for the URL."
 If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
 If IN-WEB-BROWSER is non-nil then force opening in web browser."
-  (unless (or in-web-browser
-              (cond ((string-prefix-p "tg:" url)
-                     (telega-tme-open-tg url))
-                    ((or (string-prefix-p "https://t.me/" url)
-                         (string-prefix-p "https://telegram.me/" url)
-                         (string-prefix-p "https://telegram.dog/" url))
-                     (telega-tme-open url))
-                    (t
-                     ;; Try instant view
-                     (let ((iv (telega--getWebPageInstantView url)))
-                       (when iv
-                         (telega-webpage--instant-view url "Telegra.ph" iv)
-                         t)))))
+  (when (or in-web-browser
+            (not (cond ((string-prefix-p "tg:" url)
+                        (telega-tme-open-tg url))
+                       ((or (string-prefix-p "https://t.me/" url)
+                            (string-prefix-p "https://telegram.me/" url)
+                            (string-prefix-p "https://telegram.dog/" url))
+                        (telega-tme-open url))
+                       (t
+                        ;; Try instant view
+                        (let ((iv (telega--getWebPageInstantView url)))
+                          (when iv
+                            (telega-webpage--instant-view url "Telegra.ph" iv)
+                            t))))))
 
     ;; TODO: maybe use webkit x-widget to browse the URL
     (browse-url url)))

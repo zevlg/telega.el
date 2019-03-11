@@ -357,9 +357,8 @@ Return COLUMN at which user name is inserted."
            (telega-ins--button "Download"
              'action (lambda (_ignored)
                        (telega-file--download file 32
-                         (lambda (dfile)
-                           (telega-msg-redisplay msg)
-                           (telega-file--downloading-p dfile)))))))
+                         (lambda (_fileignored)
+                           (telega-msg-redisplay msg)))))))
     ))
 
 (defun telega-ins--outgoing-status (msg)
@@ -393,6 +392,11 @@ Return COLUMN at which user name is inserted."
          (hr-file (telega-file--renew hr :photo)))
     ;; Show downloading status of highres thumbnail
     (when (and (telega-file--downloading-p hr-file) msg)
+      ;; Monitor downloading progress for the HR-FILE
+      (telega-file--download hr-file 32
+        (lambda (_fileignored)
+          (telega-msg-redisplay msg)))
+
       (telega-ins telega-symbol-photo " " (plist-get photo :id))
       (telega-ins-fmt " (%dx%d) " (plist-get hr :width) (plist-get hr :height))
       (telega-ins--file-progress msg hr-file)
@@ -730,7 +734,7 @@ Special messages are determined with `telega-msg-special-p'."
                (telega-ins " "))
              (unless (= ridx (1- (length rows)))
                (telega-ins "\n")))))
-        (t (telega-ins-fmt "<TODO: %S>" reply-markup)))
+        (t (telega-ins-fmt "<TODO reply-markup: %S>" reply-markup)))
       t)))
 
 (defun telega-ins--aux-msg-inline (title msg face &optional with-username)

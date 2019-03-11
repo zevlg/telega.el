@@ -138,8 +138,7 @@
         (when (telega-file--downloaded-p file)
           (apply 'telega-ffplay-run
                  (telega--tl-get file :local :path) nil
-                 telega-video-ffplay-args))
-        (telega-file--downloading-p file)))))
+                 telega-video-ffplay-args))))))
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
@@ -166,7 +165,7 @@
     (cl-case (and (process-live-p proc) (process-status proc))
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
-      (t (telega-file--download note-file
+      (t (telega-file--download note-file 32
           (lambda (file)
             (telega-msg-redisplay msg)
             (when (telega-file--downloaded-p file)
@@ -174,8 +173,7 @@
                          (telega-ffplay-run
                           (telega--tl-get file :local :path)
                           (telega-msg-voice-note--ffplay-callback msg)
-                          "-nodisp")))
-            (telega-file--downloading-p file)))))
+                          "-nodisp")))))))
     ))
 
 (defun telega-msg-open-photo (msg)
@@ -187,8 +185,7 @@
       (lambda (file)
         (telega-msg-redisplay msg)
         (when (telega-file--downloaded-p file)
-          (find-file (telega--tl-get file :local :path)))
-        (telega-file--downloading-p file)))))
+          (find-file (telega--tl-get file :local :path)))))))
 
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
@@ -252,16 +249,6 @@ with list of chats received."
       (if callback
           ret
         (telega-msg-list-get ret))))
-
-(defun telega-file--update-msg (file msg)
-  "Callback for downloading/uploading the FILE'.
-Update message as file downloading/uploading progresses."
-  ;; NOTE: MSG's place of FILE already has been updated, so we need
-  ;; just to redisplay the MSG
-  (with-telega-chat-buffer (telega-chat-get (plist-get msg :chat_id))
-    (let ((node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
-      (when node
-        (ewoc-invalidate telega-chatbuf--ewoc node)))))
 
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."
