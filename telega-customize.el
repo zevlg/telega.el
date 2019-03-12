@@ -149,9 +149,11 @@ enabled it will match alsy `:flag-jo:' and `:black-jocker:'."
   :type 'alist
   :group 'telega)
 
-(defcustom telega-sticker-height 3
-  "*Height of stickers in char heights."
-  :type 'integer
+(defcustom telega-sticker-size '(3 . 24)
+  "*Size for the sticker.
+car is height in chars to use.
+cdr is maximum width in chars to use."
+  :type 'cons
   :group 'telega)
 
 (defcustom telega-sticker-set-show-emoji nil

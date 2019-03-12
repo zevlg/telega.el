@@ -1996,7 +1996,7 @@ If prefix arg is given, then take screenshot in N seconds."
   (let ((thumb (plist-get sticker :thumbnail))
         (preview (telega-sticker--create-image sticker)))
     ;; Scale down preview to single char
-    (plist-put (cdr preview) :scale (/ 1.0 telega-sticker-height))
+    (plist-put (cdr preview) :scale (/ 1.0 (car telega-sticker-size)))
 
     (telega-chatbuf-input-insert
      (list :@type "inputMessageSticker"

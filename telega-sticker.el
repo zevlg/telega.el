@@ -282,7 +282,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker))
-         (h (* (frame-char-height) telega-sticker-height))
+         (h (* (frame-char-height) (car telega-sticker-size)))
          (w-chars (telega-chars-in-width h))
          (w (* (telega-chars-width 1) w-chars))
          (svg (svg-create w h))
@@ -331,17 +331,17 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
       (setq cwidth-xmargin (telega-media--cwidth-xmargin
                             (plist-get sticker :width)
                             (plist-get sticker :height)
-                            telega-sticker-height))
+                            (car telega-sticker-size)))
       (plist-put sticker :telega-image-cwidth-xmargin cwidth-xmargin))
 
     (if filename
         (apply 'create-image (telega--tl-get filename :local :path)
                'imagemagick nil
-               :height (* (frame-char-height) telega-sticker-height)
+               :height (* (frame-char-height) (car telega-sticker-size))
+               :max-width (* (frame-char-width) (cdr telega-sticker-size))
                :scale 1.0
                :ascent 'center
                :margin (cons (cdr cwidth-xmargin) 0)
-               :telega-text (make-string (car cwidth-xmargin) ?X)
                (when (telega-sticker-favorite-p sticker)
                  (list :relief 4)))
       ;; Fallback to svg
