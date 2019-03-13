@@ -886,8 +886,9 @@ STATUS is one of: "
   "Toggle chat as read/unread."
   (interactive (list (telega-chat-at-point)))
   (let ((unread-count (plist-get chat :unread_count))
+        (unread-mentions-count (plist-get chat :unread_mention_count))
         (marked-unread-p (plist-get chat :is_marked_as_unread)))
-    (if (or (> unread-count 0) marked-unread-p)
+    (if (or (> unread-count 0) (> unread-mentions-count 0) marked-unread-p)
         (progn
           ;; Toggle chat as readed
           (when marked-unread-p
