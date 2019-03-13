@@ -215,16 +215,16 @@ If CALLBACK is specified return `:@extra' value used for the call."
   (telega-server--send sexp)
 
   (if callback
-      (telega-server--callback-put telega-server--extra callback)
+      (progn
+        (telega-server--callback-put telega-server--extra callback)
+        telega-server--extra)
 
     ;; synchronous call aka exec
     (let ((cb-extra telega-server--extra))
-      (progn
-        (telega-server--callback-put
-         telega-server--extra
-         `(lambda (event)
-            (puthash ,cb-extra event telega-server--results)))
-        telega-server--extra)
+      (telega-server--callback-put
+       cb-extra
+       `(lambda (event)
+          (puthash ,cb-extra event telega-server--results)))
 
       ;; Loop waiting for call completion
       (while (and (telega-server--callback-get cb-extra)

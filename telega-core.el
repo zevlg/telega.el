@@ -540,107 +540,25 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
            (frame-focus-state bframe)
            (pos-visible-in-window-p button bwin)))))
 
-(defun telega-button-forward (n)
-  "Move forward to N visible/active button."
+(defun telega-button-forward (n &optional button-type)
+  "Move forward to N visible/active button.
+If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
   (interactive "p")
   (let (button)
     (dotimes (_ (abs n))
       (while (and (setq button (forward-button (cl-signum n)))
-                  (or (button-get button 'invisible)
+                  (or (and button-type
+                           (not (eq (button-type button) button-type)))
+                      (button-get button 'invisible)
                       (button-get button 'inactive)))))
     (telega-button--help-echo button)
     button))
 
-(defun telega-button-backward (n)
-  "Move backward to N visible/active button."
+(defun telega-button-backward (n &optional button-type)
+  "Move backward to N visible/active button.
+If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
   (interactive "p")
-  (telega-button-forward (- n)))
-
-;;; DEPRECATED code follows
-;; DEPRECATED
-(defun telega-button-properties (button)
-  "Return all BUTTON properties specific for this type of buttons."
-  (let ((text-props (text-properties-at button))
-        (type-plist (symbol-plist
-                     (button-category-symbol (button-type button)))))
-    (cl-loop for (key _) on text-props by 'cddr
-             if (or (plist-member type-plist key)
-                    (memq key '(button category)))
-             nconc (list key (plist-get text-props key)))))
-
-;; DEPRECATED
-(defmacro telega-button-foreach0 (advance-func butt-type args &rest body)
-  "Run point accross all buttons of BUTTON-TYPE.
-Run BODY for each found point.
-Use `cl-block' and `cl-return' to prematurely stop the iteration.
-Run under `save-excursion' to preserve point."
-  (let ((button (car args)))
-    `(let ((,button (button-at (point))))
-       (while ,button
-         (goto-char ,button)
-         (when (eq (button-type ,button) ,butt-type)
-           ,@body)
-         (setq ,button (,advance-func ,button))))))
-(put 'telega-button-foreach0 'lisp-indent-function 'defun)
-
-;; DEPRECATED
-(defmacro telega-button-foreach (butt-type args &rest body)
-  "Run point accross all buttons of BUTTON-TYPE.
-Run BODY for each found point.
-Use `cl-block' and `cl-return' to prematurely stop the iteration.
-Run under `save-excursion' to preserve point."
-  `(telega-button-foreach0 next-button ,butt-type ,args ,@body))
-(put 'telega-button-foreach 'lisp-indent-function 'defun)
-
-;; DEPRECATED
-(defun telega-button-find (butt-type &rest value)
-  "Find button by BUTT-TYPE and its VALUE.
-If VALUE is not specified, then find fist one button of BUTT-TYPE."
-  (cl-block 'button-found
-    (telega-button-foreach butt-type (button)
-      (when (or (null value) (eq (button-get button :value) (car value)))
-        (cl-return-from 'button-found button)))))
-
-;; DEPRECATED, use `telega-button--insert' instead
-(defun telega-button-insert (button-type &rest props)
-  "Insert button of BUTTON-TYPE with properties PROPS.
-Return newly created button."
-  (let ((value (plist-get props :value))
-        (button-fmt (or (plist-get props :format)
-                        (button-type-get button-type :format))))
-    (button-at
-     (apply #'insert-text-button
-            (telega-fmt-eval button-fmt value)
-            :type button-type props))))
-(put 'telega-button-insert 'lisp-indent-function 'defun)
-
-;; DEPRECATED
-(defun telega-button-delete (button)
-  "Delete the BUTTON."
-  (let ((inhibit-read-only t))
-    (delete-region (button-start button) (button-end button))))
-
-;; DEPRECATED
-(defun telega-button-move (button point &optional new-label)
-  "Move BUTTON to POINT location."
-  (let ((inhibit-read-only t))
-    (unless new-label
-      (setq new-label
-            (buffer-substring (button-start button) (button-end button))))
-    (goto-char point)
-    (telega-button-delete button)
-    (let ((cpnt (point)))
-      (insert new-label)
-      (set-marker button cpnt))))
-
-;; DEPRECATED, rewrite to use `telega-button--update-value'
-(defun telega-button--redisplay (button)
-  "Redisplay the BUTTON contents."
-  (telega-button-move button (button-start button)
-                      (apply #'propertize
-                             (telega-fmt-eval (button-get button :format)
-                                              (button-get button :value))
-                             (telega-button-properties button))))
+  (telega-button-forward (- n) button-type))
 
 (provide 'telega-core)
 

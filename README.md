@@ -36,8 +36,8 @@ In some random order:
 - [x] Online searching chats/messages
 - [X] Avatars
 - [x] Stickers
-- [ ] Photos
-- [ ] Animated GIF
+- [x] Photos
+- [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
       messages, contacts, etc (PARTLY)
 - [ ] Poll messages (not yet in TDLib 1.3.0)

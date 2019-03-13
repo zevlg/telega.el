@@ -127,15 +127,17 @@ TLOBJ could be one of: user, basicgroup or supergroup."
 
 
 
-(defun telega--getSupergroupMembers (supergroup &optional filter)
+(defun telega--getSupergroupMembers (supergroup &optional filter callback)
   "Get SUPERGRUOP members.
 Default FILTER is \"supergroupMembersFilterRecent\"."
+  (declare (indent 2))
   (telega-server--call
    (list :@type "getSupergroupMembers"
          :supergroup_id (plist-get supergroup :id)
          :filter (list :@type (or filter "supergroupMembersFilterRecent"))
          :offset 0
-         :limit 200)))
+         :limit 200)
+   callback))
 
 (defun telega-sort-members-by (members by)
   ;; TODO
@@ -359,18 +361,30 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (telega-ins restr-reason "\n")))
 
     (unless (zerop pin-msg-id)
-      (let ((pinned-msg (telega--getChatPinnedMessage chat)))
+      (let ((pinned-msg (telega--getChatPinnedMessage chat))
+            (inhibit-read-only t))
         (cl-assert pinned-msg)
-        (insert "----(pinned message)----\n")
+        (telega-ins "----(pinned message)----\n")
         (telega-button--insert 'telega-msg pinned-msg
-          :inserter 'telega-ins--message-content
-          :action 'telega-msg-goto))
-      (insert "\n------------------------\n"))
+          :inserter 'telega-ins--content
+          :action 'telega-msg-goto-highlight)
+        (telega-ins "\n"))
+      (insert "------------------------\n"))
 
     (telega-ins-fmt "Members: %d\n" (plist-get full-info :member_count))
     (when (plist-get full-info :can_get_members)
-      (telega-ins--chat-members
-       (plist-get (telega--getSupergroupMembers supergroup) :members)))
+      ;; Asynchronously fetch/insert supergroup members
+      (telega--getSupergroupMembers supergroup nil
+        (let ((buffer (current-buffer))
+              (at-point (point)))
+          (lambda (reply)
+            (when (buffer-live-p buffer)
+              (with-current-buffer buffer
+                (let ((inhibit-read-only t))
+                  (save-excursion
+                    (goto-char at-point)
+                    (telega-ins--chat-members (plist-get reply :members)))))))
+          )))
 
     (when telega-debug
       (insert "\n---DEBUG---\n")

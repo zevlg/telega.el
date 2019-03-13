@@ -1023,6 +1023,10 @@ Actual value is `:@extra` value of the call to load history.")
 Actual value is `:@extra` value of the call to inline bot.")
 (make-variable-buffer-local 'telega-chatbuf--inline-query)
 
+(defvar telega-chatbuf--voice-msg nil
+  "Active (playing/paused) voice note message for the current chat.")
+(make-variable-buffer-local 'telega-chatbuf--voice-msg)
+
 (define-button-type 'telega-prompt
   :supertype 'telega
   :inserter 'telega-ins
@@ -1042,24 +1046,62 @@ Actual value is `:@extra` value of the call to inline bot.")
 
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
-  (let ((actions (gethash (plist-get telega-chatbuf--chat :id)
-                          telega--actions))
-        (column (+ telega-chat-fill-column 10 1)))
+  ;; Two parts
+  ;; --(actions part)---------------[additional status]--
+  ;;                        ^
+  ;;                     middle
+  (let* ((column (+ telega-chat-fill-column 10 1))
+         (column1 (/ column 2))
+         (column2 (- column column1))
+         (fill-symbol (if (and telega-chatbuf--ewoc
+                               (telega-chatbuf--last-msg-loaded-p))
+                          telega-symbol-underline-bar
+                        "v"))
+         ;; NOTE: `telega-ins--as-string' uses temporary buffer, so
+         ;; prepare everything we need before
+         (actions (gethash (plist-get telega-chatbuf--chat :id)
+                           telega--actions))
+         (history-loading-p telega-chatbuf--history-loading)
+         (voice-msg telega-chatbuf--voice-msg))
+
     (telega-ins--as-string
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
-       (telega-ins telega-symbol-underline-bar)
-       (telega-ins--with-attrs (list :min (- column 2)
-                                     :max (- column 2)
+       ;; Chat action part
+       (telega-ins fill-symbol)
+       (telega-ins--with-attrs (list :min (- column1 2)
+                                     :max (- column1 2)
                                      :align 'left
-                                     :align-symbol telega-symbol-underline-bar
+                                     :align-symbol fill-symbol
                                      :elide t
-                                     :elide-trail (/ column 2))
+                                     :elide-trail (/ column1 2))
          (when actions
            (telega-ins "(")
            (telega-ins--actions actions)
            (telega-ins ")")))
-       (telega-ins telega-symbol-underline-bar)
+       (telega-ins fill-symbol)
+
+       ;; Chat's additional info part
+       (telega-ins fill-symbol)
+       (telega-ins--with-attrs (list :min (- column2 2)
+                                     :max (- column2 2)
+                                     :align 'right
+                                     :align-symbol fill-symbol
+                                     :elide t
+                                     :elide-trail (/ column2 2))
+         (cond (history-loading-p
+                (telega-ins "[history loading]"))
+               (voice-msg
+                (telega-ins "[TODO: voice msg]"))
+               ;; TODO: voice note status
+               ))
+       (telega-ins fill-symbol)
        (telega-ins "\n")))))
+
+(defsubst telega-chatbuf--footer-redisplay ()
+  "Redisplay chatbuf's footer."
+  (telega-save-excursion
+    (telega-ewoc--set-footer
+     telega-chatbuf--ewoc (telega-chatbuf--footer))))
 
 (define-derived-mode telega-chat-mode nil "Telega-Chat"
   "The mode for telega chat buffer.
@@ -1071,7 +1113,8 @@ Keymap:
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending-p nil
         telega-chatbuf--history-loading nil
-        telega-chatbuf--inline-query nil)
+        telega-chatbuf--inline-query nil
+        telega-chatbuf--voice-msg nil)
 
   (erase-buffer)
   (setq-local window-point-insertion-type t)
@@ -1130,17 +1173,16 @@ Keymap:
   "If at the beginning then request for history messages.
 Also mark messages as read with `viewMessages'."
   (with-current-buffer (window-buffer window)
-    ;; If at the beginning of chatbuffer then request for the history
+    ;; If at the beginning of chatbuf then request for the history
     (when (= display-start 1)
-      (telega-chat--load-history telega-chatbuf--chat))
+      ;(telega-chat--load-history telega-chatbuf--chat)
+      )
 
     ;; Mark some messages as read
     (unless (zerop (plist-get telega-chatbuf--chat :unread_count))
-      (save-excursion
-        (goto-char display-start)
-        (telega--viewMessages
-         telega-chatbuf--chat
-         (telega-chatbuf--visible-messages window))))
+      (telega--viewMessages
+       telega-chatbuf--chat
+       (telega-chatbuf--visible-messages window display-start)))
     ))
 
 (defsubst telega-chat--my-action (chat)
@@ -1306,12 +1348,18 @@ If TITLE is specified, use it instead of chat's title."
                     :value chat :action 'telega-chatbuf--join)))))
 
           (telega--openChat chat)
-          ;; Insert last message if any
-          (let ((last-msg (plist-get chat :last_message)))
-            (when last-msg
-              (telega-chatbuf--enter-youngest-msg last-msg t)))
-          ;; Start loading chat's history
-          (telega-chat--load-history chat)
+          ;; Start from last read message
+          ;; see https://github.com/zevlg/telega.el/issues/48
+          (let ((last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
+            (telega-chat--load-history
+                chat last-read-msg-id (- (/ telega-chat-history-limit 2)) nil
+              (lambda ()
+                (telega-chat--goto-msg0 chat last-read-msg-id)
+                (condition-case err
+                    (telega-button-forward 1 'telega-msg)
+                (user-error
+                 ;; No more buttons, jump to input
+                 (goto-char (point-max)))))))
 
           ;; Openning chat may affect filtering, see `opened' filter
           (telega-root--chat-update chat)
@@ -1329,6 +1377,11 @@ If TITLE is specified, use it instead of chat's title."
   (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
     (when node
       (ewoc-data node))))
+
+(defsubst telega-chatbuf--last-msg-loaded-p ()
+  "Return non-nil if `:last_message' of the chat is loaded."
+  (eq (telega--tl-get telega-chatbuf--chat :last_message :id)
+      (plist-get (telega-chatbuf--youngest-msg) :id)))
 
 (defun telega-chat--modeline-buffer-identification (chat)
   "Return `mode-line-buffer-identification' for the CHAT buffer."
@@ -1417,8 +1470,11 @@ Return newly inserted message button."
 
         (telega-save-excursion
           (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
-          (with-telega-deferred-events
-            (ewoc-enter-last telega-chatbuf--ewoc msg))
+          ;; Add incoming message to ewoc only if `:last_message' of
+          ;; chat is already loaded
+          (when (telega-chatbuf--last-msg-loaded-p)
+            (with-telega-deferred-events
+              (ewoc-enter-last telega-chatbuf--ewoc msg)))
 
           (when (and telega-use-tracking (not disable-notification))
             (tracking-add-buffer (current-buffer)))
@@ -1448,18 +1504,18 @@ Return `nil' if there is no such message."
       (when nnode
         (ewoc--node-data nnode)))))
 
-(defun telega-chatbuf--visible-messages (window)
-  "Return list of messages visible in chat buffer WINDOW."
-  (let ((footer (ewoc--footer telega-chatbuf--ewoc))
-        (node (ewoc-locate telega-chatbuf--ewoc (window-start window)))
-        (messages nil))
-    (while (and node (not (eq node footer)))
-      (if (not (pos-visible-in-window-p (ewoc-location node) window))
-          (setq node footer)            ; done
-
-        (setq messages (push (ewoc-data node) messages))
-        (setq node (ewoc-next telega-chatbuf--ewoc node))))
-    messages))
+(defun telega-chatbuf--visible-messages (window &optional start-point)
+  "Return list of messages visible in chat buffer WINDOW.
+If START-POINT is specified, then start from this point.
+Otherwise start from WINDOW's `window-start'."
+  (save-excursion
+    (goto-char (or start-point (window-start window)))
+    (let (msg messages)
+      (while (and (setq msg (telega-msg-at (point)))
+                  (pos-visible-in-window-p (point) window))
+        (push msg messages)
+        (telega-button-forward 1))
+      messages)))
 
 (defun telega-chatbuf--prompt-reset ()
   "Reset prompt to initial state in chat buffer."
@@ -1585,9 +1641,7 @@ Message id could be updated on this update."
     (let ((chat (telega-chat-get chat-id)))
       (telega-root--chat-update chat)
       (with-telega-chatbuf chat
-        (telega-save-excursion
-          (telega-ewoc--set-footer
-           telega-chatbuf--ewoc (telega-chatbuf--footer)))))
+        (telega-chatbuf--footer-redisplay)))
     ))
 
 (defun telega-chat--load-history (chat &optional from-msg-id offset limit
@@ -1601,7 +1655,8 @@ CALLBACK is called after history has been loaded."
   (with-telega-chatbuf chat
     (when (and from-msg-id telega-chatbuf--history-loading)
       ;; Cancel currently active history load
-      (telega-server--callback-put telega-chatbuf--history-loading 'ignore))
+      (telega-server--callback-put telega-chatbuf--history-loading 'ignore)
+      (setq telega-chatbuf--history-loading nil))
 
     (unless telega-chatbuf--history-loading
       (unless from-msg-id
@@ -1621,13 +1676,16 @@ CALLBACK is called after history has been loaded."
                      :offset offset
                      :limit (or limit telega-chat-history-limit))
                ;; The callback
-               `(lambda (history)
-                  (with-telega-chatbuf (telega-chat-get ,(plist-get chat :id))
-                    (mapc #'telega-chatbuf--enter-oldest-msg
-                          (plist-get history :messages))
-                    (setq telega-chatbuf--history-loading nil)
-                    (when ,callback
-                      (funcall ',callback))))))))))
+               (lambda (history)
+                 (with-telega-chatbuf chat
+                   (setq telega-chatbuf--history-loading nil)
+                   (mapc #'telega-chatbuf--enter-oldest-msg
+                         (plist-get history :messages))
+                   (telega-chatbuf--footer-redisplay)
+                   (when callback
+                     (funcall callback))))))
+        (telega-chatbuf--footer-redisplay)
+        ))))
 
 (defun telega-chatbuf-cancel-aux ()
   "Cancel current aux prompt."
@@ -2336,7 +2394,8 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
     (unless (telega-chat--goto-msg0 chat msg-id highlight)
       ;; Not found, need to fetch history
       (telega-ewoc--clean telega-chatbuf--ewoc)
-      (telega-chat--load-history chat msg-id -10 20
+      (telega-chat--load-history
+          chat msg-id (- (/ telega-chat-history-limit 2)) nil
         (lambda ()
           (telega-chat--goto-msg0 chat msg-id highlight))))))
 

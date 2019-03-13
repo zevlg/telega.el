@@ -56,9 +56,14 @@
 
 (defun telega-msg-button--action (button)
   "Action to take when chat BUTTON is pressed."
-  (let ((msg (telega-msg-at button)))
+  (let ((msg (telega-msg-at button))
+        ;; If custom `:action' is used for the button, then use it,
+        ;; otherwise open content
+        (custom-action (button-get button :action)))
     (cl-assert msg)
-    (telega-msg-open-content msg)))
+    (if custom-action
+        (funcall custom-action msg)
+      (telega-msg-open-content msg))))
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
@@ -71,7 +76,7 @@
     (when visible-p
       (telega-button--insert 'telega-msg msg
         :inserter 'telega-ins--root-msg
-        :action 'telega-msg-goto)
+        :action 'telega-msg-goto-highlight)
       (telega-ins "\n"))))
 
 (defun telega-msg--get (chat-id msg-id)
@@ -112,6 +117,10 @@
   "Goto message MSG."
   (telega-chat--goto-msg
    (telega-msg-chat msg) (plist-get msg :id) highlight))
+
+(defsubst telega-msg-goto-highlight (msg)
+  "Goto message MSG and hightlight it."
+  (telega-msg-goto msg 'hightlight))
 
 (defun telega--openMessageContent (msg)
   "Open content of the message MSG."
@@ -219,7 +228,8 @@
     (messageText
      (let* ((web-page (telega--tl-get msg :content :web_page))
             (url (plist-get web-page :url)))
-       (telega-browse-url url)))
+       (when url
+         (telega-browse-url url))))
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 

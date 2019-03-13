@@ -408,8 +408,7 @@ Return COLUMN at which user name is inserted."
   ;; TODO
   (unless video
     (setq video (telega--tl-get msg :content :video)))
-  (let ((dur (plist-get video :duration))
-        (thumb (plist-get video :thumbnail))
+  (let ((thumb (plist-get video :thumbnail))
         (video-name (plist-get video :file_name))
         (video-file (telega-file--renew video :video)))
     (telega-ins telega-symbol-video " ")
@@ -419,7 +418,11 @@ Return COLUMN at which user name is inserted."
               (telega-link-props 'file local-path)
             (telega-ins (telega-short-filename local-path))))
       (telega-ins video-name))
-    (telega-ins " (" (telega-duration-human-readable dur) ")")
+    (telega-ins-fmt " (%dx%d %s %s)"
+      (plist-get video :width)
+      (plist-get video :height)
+      (file-size-human-readable (telega-file--size video-file))
+      (telega-duration-human-readable (plist-get video :duration)))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg video-file))
     (telega-ins "\n")
@@ -590,11 +593,11 @@ Return `non-nil' if WEB-PAGE has been inserted."
               (telega-link-props 'file local-path)
             (telega-ins (telega-short-filename local-path))))
       (telega-ins (plist-get animation :file_name)))
-    (telega-ins-fmt " (%dx%d %s)"
+    (telega-ins-fmt " (%dx%d %s %s)"
       (plist-get animation :width)
       (plist-get animation :height)
-      (telega-duration-human-readable
-       (telega--tl-get animation :duration)))
+      (file-size-human-readable (telega-file--size anim-file))
+      (telega-duration-human-readable (telega--tl-get animation :duration)))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg anim-file))
     (telega-ins "\n")
