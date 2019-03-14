@@ -308,6 +308,8 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
   ;; TODO: convert text properties to tl text entities
   )
 
+;; NOTE: ivy returns copy of the string given in choices, thats why we
+;; need to use 'string= as testfun in `alist-get'
 (defun telega-completing-read-chat (prompt &optional only-filtered)
   "Read chat by title."
   (let ((choices (mapcar (lambda (chat)
@@ -317,7 +319,7 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                                               telega--ordered-chats))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
-                    choices))))
+                    choices nil nil 'string=))))
 
 (defun telega-completing-read-user (prompt)
   "Read user by his name."
@@ -327,7 +329,7 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                          (hash-table-values (alist-get 'user telega--info)))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
-                    choices))))
+                    choices nil nil 'string=))))
 
 (defun telega-completing-titles ()
   "Return list of titles ready for completing."
