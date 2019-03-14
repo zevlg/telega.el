@@ -25,12 +25,15 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'pp)                           ;pp-to-string
 
 (require 'telega-core)
 (require 'telega-customize)
 
 (defun telega--on-event (event)
-  (telega-debug "IN event: %S" event)
+  (telega-debug "%s event: %S"
+                (propertize "IN" 'face 'bold)
+                event)
 
   (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
     (if (symbol-function event-sym)
@@ -192,11 +195,14 @@ Return parsed command."
   (let* ((print-circle nil)
          (print-level nil)
          (print-length nil)
-         (value (prin1-to-string (telega--tl-pack sexp)))
+         (sexp-packed (telega--tl-pack sexp))
+         (value (prin1-to-string sexp-packed))
          (proc (telega-server--proc)))
     (cl-assert (process-live-p proc) nil "telega-server is not running")
-    (telega-debug "OUTPUT: %s %d %s"
-                  (or command "send") (string-bytes value) value)
+    (telega-debug "%s: %s %d %s"
+                  (propertize "OUTPUT" 'face 'bold)
+                  (or command "send") (string-bytes value)
+                  value)
 
     (process-send-string
      proc

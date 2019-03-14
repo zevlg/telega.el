@@ -190,7 +190,8 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'list
   :group 'telega)
 
-(defcustom telega-location-url-format "http://maps.google.com/?q=%N,%E&z=5"
+(defcustom telega-location-url-format
+  "http://maps.google.com/?q=%N,%E&ll=%N,%E&z=15"
   "*URL format used to open location messages.
 %N substituted with lattitude.
 %E substituted with longitude."
@@ -777,6 +778,8 @@ NOT USED."
          telega-symbol-heavy-checkmark
          telega-symbol-ballout-empty
          telega-symbol-ballout-check
+
+         telega-symbol-play
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.

@@ -125,7 +125,8 @@ hasn't been started, i.e. request hasn't been sent to server."
   (telega--tl-get file :local :is_downloading_active))
 
 (defsubst telega-file--can-download-p (file)
-  "Return non-nil if FILE can be downloaded."
+  "Return non-nil if FILE can be downloaded.
+May return nil even when `telega-file--downloaded-p' returns non-nil."
   (telega--tl-get file :local :can_be_downloaded))
 
 (defsubst telega-file--need-download-p (file)
@@ -237,9 +238,10 @@ Thumbnail TYPE and its sizes:
   "Return thumbnail of highest resolution for the PHOTO.
 Return thumbnail that can be downloaded."
   (cl-some (lambda (tn)
-             (when (telega-file--can-download-p
-                    (telega-file--renew tn :photo))
-               tn))
+             (let ((tn-file (telega-file--renew tn :photo)))
+               (when (or (telega-file--downloaded-p tn-file)
+                         (telega-file--can-download-p tn-file))
+                 tn)))
            ;; From highest res to lower
            (reverse (plist-get photo :sizes))))
 
@@ -282,7 +284,8 @@ By default LIMITS is `telega-photo-maxsize'."
              (thumb-file (telega-file--renew thumb :photo))
              (tw (plist-get thumb :width))
              (th (plist-get thumb :height)))
-        (when (and (telega-file--can-download-p thumb-file)
+        (when (and (or (telega-file--downloaded-p thumb-file)
+                       (telega-file--can-download-p thumb-file))
                    (or (and (>= tw lim-xwidth)
                             (<= (* th (/ lim-xwidth tw 1.0)) lim-xheight))
                        (and (>= th lim-xheight)
@@ -482,6 +485,7 @@ File is specified with FILE-SPEC."
                         (telega-thumb--create-image thumb thumb-file cheight)
                       (telega-photo--progress-svg best cheight)))))))))
 
+;    (telega-photo--progress-svg best cheight)))
     (telega-media--image
      (cons photo create-image-fun)
      (cons best :photo))))
