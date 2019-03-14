@@ -554,12 +554,6 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (telega-ins--photo photo msg)
           (telega-ins "\n"))
        (cl-case (intern (plist-get web-page :type))
-         (photo
-          ;; no-op, already displayed above
-          )
-         (article
-          ;; nothing to display
-          )
          (document
           (let ((doc (plist-get web-page :document)))
             (when doc
@@ -567,10 +561,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (video
           (let ((video (plist-get web-page :video)))
             (when video
-              (telega-ins "<TODO: webPage:video>"))))
-         (t (telega-ins "<unsupported webPage:"
-                        (plist-get web-page :type) ">")))
-       )
+              (telega-ins "<TODO: webPage:video>"))))))
 
        (when instant-view-p
          (telega-ins--button

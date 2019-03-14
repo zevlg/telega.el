@@ -2216,15 +2216,18 @@ Prefix argument is available for next attachements:
                document."
   (interactive
    (list (funcall telega-completing-read-function
-                  "Attach type: " (nconc
-                                   (list "photo" "video"
-                                         "note-video" "note-voice"
-                                         "file" "location"
-                                         "poll" "contact"
-                                         "screenshot" "member"
-                                         "sticker" "animation")
-                                   (when (gui-get-selection 'CLIPBOARD 'image/png)
-                                     (list "clipboard")))
+                  "Attach type: "
+                  (nconc (list "photo" "video"
+                               "note-video" "note-voice"
+                               "file" "location"
+                               "poll" "contact"
+                               "screenshot" "member"
+                               "sticker" "animation")
+                         ;; Avoid any "Selection owner couldn't convert"
+                         ;; errors
+                         (when (ignore-errors
+                                 (gui-get-selection 'CLIPBOARD 'image/png))
+                           (list "clipboard")))
                   nil t)
          nil))
   (let ((cmd (symbol-function
