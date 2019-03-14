@@ -1045,6 +1045,34 @@ Actual value is `:@extra` value of the call to inline bot.")
   'cursor-intangible t
   'field 'telega-prompt)
 
+(defun telega-ins--voice-msg-status (msg)
+  "Insert voice message MSG status.
+Used in chatbuf footer."
+  (let* ((proc (plist-get msg :telega-vvnote-proc))
+         (proc-status (and (process-live-p proc) (process-status proc)))
+         (played (and proc-status (plist-get (process-plist proc) :progress)))
+         (sender (telega-msg-sender msg)))
+    (when played ;(memq proc-status '(run stop))
+      (telega-ins "[")
+      (telega-ins--raw-button
+          (list 'action (lambda (_button)
+                          (if (eq proc-status 'run)
+                              (telega-ffplay-pause proc)
+                            (telega-ffplay-resume proc)))
+                'face nil)
+        (if (eq proc-status 'run)
+            (telega-ins telega-symbol-pause)
+          (telega-ins telega-symbol-play))
+        (telega-ins " ")
+        (if sender
+            (telega-ins (telega-user--name sender))
+          (telega-ins (telega-chat-title (telega-msg-chat msg)))))
+      (telega-ins " ")
+      (telega-ins--button "stop"
+        'action (lambda (_ignored)
+                  (telega-ffplay-stop)))
+      (telega-ins "]"))))
+
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
   ;; Two parts
@@ -1092,15 +1120,21 @@ Actual value is `:@extra` value of the call to inline bot.")
          (cond (history-loading-p
                 (telega-ins "[history loading]"))
                (voice-msg
-                (telega-ins "[TODO: voice msg]"))
-               ;; TODO: voice note status
+                (telega-ins--voice-msg-status voice-msg))
                ))
        (telega-ins fill-symbol)
        (telega-ins "\n")))))
 
 (defsubst telega-chatbuf--footer-redisplay ()
-  "Redisplay chatbuf's footer."
-  (telega-save-excursion
+  "Redisplay chatbuf's footer.
+Update modeline as well."
+  (setq mode-line-process
+        (cond (telega-chatbuf--history-loading
+               "[history loading]")
+              (telega-chatbuf--voice-msg
+               "[voice note]")))
+
+  (telega-save-cursor
     (telega-ewoc--set-footer
      telega-chatbuf--ewoc (telega-chatbuf--footer))))
 
@@ -1176,7 +1210,7 @@ Also mark messages as read with `viewMessages'."
   (with-current-buffer (window-buffer window)
     ;; If at the beginning of chatbuf then request for the history
     (when (= display-start 1)
-      ;(telega-chat--load-history telega-chatbuf--chat)
+      (telega-chat--load-history telega-chatbuf--chat)
       )
 
     ;; Mark some messages as read
@@ -1443,7 +1477,7 @@ If TITLE is specified, use it instead of chat's title."
   (with-telega-chatbuf (telega-msg-chat msg)
     (puthash (plist-get msg :id) msg telega-chatbuf--messages)
 
-    (save-excursion
+    (telega-save-excursion
       (run-hook-with-args 'telega-chat-before-oldest-msg-hook msg)
 
       (let* ((onode (with-telega-deferred-events
@@ -1569,9 +1603,9 @@ Message id could be updated on this update."
       (puthash new-id new-msg telega-chatbuf--messages)
 
       (let ((node (telega-chatbuf--node-by-msg-id old-id)))
-        (cl-assert node nil (format "Can't find message id=%d" old-id))
-        (setf (ewoc--node-data node) new-msg)
-        (telega-chatbuf--redisplay-node node)))))
+        (when node
+          (setf (ewoc--node-data node) new-msg)
+          (telega-chatbuf--redisplay-node node))))))
 
 (defun telega--on-updateMessageContent (event)
   "Content of the message has been changed."
@@ -2236,9 +2270,20 @@ NODE is ewoc's node if known, in this case MSG can be nil."
   (interactive (list (telega-msg-at (point))))
 
   (with-telega-chatbuf (telega-msg-chat msg)
+    ;; Redisplay footer in case active voice note is redisplayed
+    (when (eq msg telega-chatbuf--voice-msg)
+      (telega-chatbuf--footer-redisplay))
+
     (let ((node (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)))
       (when node
         (telega-chatbuf--redisplay-node node)))))
+
+(defun telega-msg-activate-voice-note (msg &optional for-chat)
+  "Activate voice note MSG FOR-CHAT.
+MSG can be nil in case there is no active voice message."
+  (with-telega-chatbuf (or for-chat (telega-msg-chat msg))
+    (setq telega-chatbuf--voice-msg msg)
+    (telega-chatbuf--footer-redisplay)))
 
 (defun telega-msg-reply (msg)
   "Start replying to MSG."
@@ -2385,7 +2430,7 @@ Return non-nil on success."
           (let ((msgb (button-at (point))))
             (with-no-warnings
               (pulse-momentary-highlight-region
-               (button-start msgb) (button-end msgb) 'highlight))))
+               (button-start msgb) (button-end msgb)))))
         t))))
 
 (defun telega-chat--goto-msg (chat msg-id &optional highlight)

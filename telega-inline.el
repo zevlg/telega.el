@@ -104,7 +104,7 @@
                   (cl-case (telega--tl-type qr)
                     (inlineQueryResultAnimation
                      (telega-animation--download (plist-get qr :animation))
-                     (telega-ins--animation (plist-get qr :animation)))
+                     (telega-ins--animation-image (plist-get qr :animation)))
                     ))
                 ))))))
 

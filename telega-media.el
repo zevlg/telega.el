@@ -124,15 +124,18 @@ hasn't been started, i.e. request hasn't been sent to server."
   "Return non-nil if FILE is downloading right now."
   (telega--tl-get file :local :is_downloading_active))
 
+(defsubst telega-file--can-download-p (file)
+  "Return non-nil if FILE can be downloaded."
+  (telega--tl-get file :local :can_be_downloaded))
+
+(defsubst telega-file--need-download-p (file)
+  (and (telega-file--can-download-p file)
+       (not (telega-file--downloaded-p file))))
+
 (defsubst telega-file--downloading-progress (file)
   "Return progress of file downloading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
                   (telega-file--size file))))
-
-(defsubst telega-file--need-download-p (file)
-  (and (telega--tl-get file :local :can_be_downloaded)
-       (not (telega-file--downloaded-p file))))
-;       (not (telega-file--downloading-p file))))
 
 (defun telega-file--callback-wrap (callback check-fun)
   "Wrapper for CALLBACK.
@@ -230,15 +233,15 @@ Thumbnail TYPE and its sizes:
 \"d\"  crop  1280x1280"
   `(cl-find ,type ,thumbnails :test 'string= :key (telega--tl-prop :type)))
 
-(defun telega-photo--lowres (photo)
-  "Return lowres thumbnail for the PHOTO.
-Lowres is always goes first."
-  (aref (plist-get photo :sizes) 0))
-
 (defun telega-photo--highres (photo)
-  "Return thumbnail of highest resolution for the PHOTO."
-  (let ((photo-sizes (plist-get photo :sizes)))
-    (aref photo-sizes (1- (length photo-sizes)))))
+  "Return thumbnail of highest resolution for the PHOTO.
+Return thumbnail that can be downloaded."
+  (cl-some (lambda (tn)
+             (when (telega-file--can-download-p
+                    (telega-file--renew tn :photo))
+               tn))
+           ;; From highest res to lower
+           (reverse (plist-get photo :sizes))))
 
 (defun telega-photo--thumb (photo)
   "While downloading best photo, get small thumbnail for the PHOTO."
@@ -252,7 +255,13 @@ Lowres is always goes first."
                    (when (telega-file--downloading-p
                           (telega-file--renew tn :photo))
                      tn))
-                 photo-sizes))))
+                 photo-sizes)
+        (cl-some (lambda (tn)
+                   (when (telega-file--can-download-p
+                          (telega-file--renew tn :photo))
+                     tn))
+                 photo-sizes)
+        )))
 
 (defun telega-photo--best (photo &optional limits)
   "Select best thumbnail from PHOTO suiting LIMITS.
@@ -270,42 +279,16 @@ By default LIMITS is `telega-photo-maxsize'."
     (setq ret (aref photo-sizes 0))
     (dotimes (idx (length photo-sizes))
       (let* ((thumb (aref photo-sizes idx))
+             (thumb-file (telega-file--renew thumb :photo))
              (tw (plist-get thumb :width))
              (th (plist-get thumb :height)))
-        ;; If some thumbnail is downloaded or downloading, then use it
-        (when (or (and (>= tw lim-xwidth)
-                       (<= (* th (/ lim-xwidth tw 1.0)) lim-xheight))
-                  (and (>= th lim-xheight)
-                       (<= (* tw (/ lim-xheight th 1.0)) lim-xwidth)))
+        (when (and (telega-file--can-download-p thumb-file)
+                   (or (and (>= tw lim-xwidth)
+                            (<= (* th (/ lim-xwidth tw 1.0)) lim-xheight))
+                       (and (>= th lim-xheight)
+                            (<= (* tw (/ lim-xheight th 1.0)) lim-xwidth))))
           (setq ret thumb))))
     ret))
-
-(defun telega-photo-file-format (file &optional one-line-p &rest image-props)
-  "Create propertized text displaying image at PATH.
-If ONE-LINE-P is non-nil then create image for inlining.
-IMAGE-PROPS are passed directly to `create-image'."
-  (let* ((file-path (telega--tl-get file :local :path))
-         (photo-img (apply #'create-image file-path 'imagemagick nil
-                           :scale 1 image-props))
-         (xframe (telega-x-frame))
-         (img-char-width (if xframe
-                             (round (car (image-size photo-img nil xframe)))
-                           0)))
-    (when one-line-p
-      (plist-put (cdr photo-img) :ascent 'center)
-      (when xframe
-        (plist-put (cdr photo-img) :height (frame-char-height xframe))))
-
-    (propertize
-     (concat (substring (concat "<Photo" (make-string img-char-width ?X))
-                        0 img-char-width)
-             ">")
-     'display photo-img)))
-
-
-;;; Stickers
-
-;;; Animations
 
 
 ;;; Auto-downloading media
@@ -334,7 +317,7 @@ Downloads highres photos according to `telega-auto-download'."
     (cl-case (telega--tl-type content)
       (messagePhoto
        (let* ((photo (plist-get content :photo))
-              (lowres (telega-photo--lowres photo))
+              (lowres (telega-photo--thumb photo))
               (lowres-file (plist-get lowres :photo))
               (highres (telega-photo--highres photo))
               (highres-file (plist-get highres :photo)))
@@ -343,14 +326,14 @@ Downloads highres photos according to `telega-auto-download'."
          (cl-assert lowres-file)
          (when (telega-file--need-download-p lowres-file)
            (telega-debug "Autodownload LOWRES: %S" lowres-file)
-           (telega-file--download-monitoring lowres :photo 32))
+           (telega-file--download lowres-file 32))
 
          (cl-assert highres-file)
          (when (and (telega-file--need-download-p highres-file)
                     (telega-filter-chats
                      (alist-get 'photos telega-auto-download) (list chat)))
            (telega-debug "Autodownload HIGH-RES: %S" highres-file)
-           (telega-file--download-monitoring highres :photo 5))))
+           (telega-file--download highres-file 5))))
       ;; TODO
       (messageVideo
        )
@@ -379,7 +362,11 @@ To customize automatic downloads, use `telega-auto-download'."
 (defun telega-photo--progress-svg (best cheight)
   "Generate svg for BEST variant of the photo."
   (let* ((h (* (frame-char-height) cheight))
-         (w-chars (telega-chars-in-width h))
+         (cwidth-xmargin (telega-media--cwidth-xmargin
+                          (plist-get best :width)
+                          (plist-get best :height)
+                          cheight))
+         (w-chars (car cwidth-xmargin))
          (w (* (telega-chars-width 1) w-chars))
          (svg (svg-create w h))
          (progress (telega-file--downloading-progress
@@ -407,8 +394,8 @@ Return cons cell, where car is width in char and cdr is margin value."
 (defun telega-thumb--create-image (thumb &optional file cheight)
   "Create image for the thumbnail THUMB.
 CHEIGHT is the height in chars (default=1)."
-  (unless file
-    (setq file (telega-file--renew thumb :photo)))
+  ;; Always renew thumb file, even if FILE is given
+  (setq file (telega-file--renew thumb :photo))
   (unless cheight
     (setq cheight 1))
   (if (telega-file--downloaded-p file)
@@ -473,8 +460,6 @@ File is specified with FILE-SPEC."
 (defun telega-photo--image (photo limits)
   "Return best suitable image for the PHOTO."
   (let* ((best (telega-photo--best photo limits))
-         (lim-xwidth (* (frame-char-width (telega-x-frame))
-                        (car limits)))
          (lim-xheight (* (frame-char-height (telega-x-frame))
                          (cdr limits)))
          (th (plist-get best :height))
@@ -484,7 +469,7 @@ File is specified with FILE-SPEC."
          (create-image-fun
           (progn
             (cl-assert (<= cheight (cdr limits)))
-            (lambda (_photoignored &optional file)
+            (lambda (_photoignored &optional _fileignored)
               ;; 1) FILE downloaded, show photo
               ;; 2) Thumbnail is downloaded, use it
               ;; 3) FILE downloading, fallback to progress svg
@@ -499,8 +484,8 @@ File is specified with FILE-SPEC."
 
     (telega-media--image
      (cons photo create-image-fun)
-     (cons best :photo)
-     'force-update)))
+     (cons best :photo))))
+;     'force-update)))
 
 (defun telega-avatar--create-image (chat-or-user file)
   "Create image for CHAT-OR-USER avatar."
@@ -582,6 +567,26 @@ EMOJY must be single char string."
   (add-text-properties 0 1 (list 'rear-nonsticky '(display)
                                  'display (telega-media--emoji-image emoji))
                        emoji))
+
+
+;; Location
+(defun telega--getMapThumbnailFile (loc &optional zoom width height scale chat callback)
+  "Get file with the map showing LOC.
+ZOOM - zoom level in [13-20], default=13
+WIDTH/HEIGHT - in [16-1024]
+SCALE - in [1-3]"
+  (declare (indent 6))
+  (telega-server--call
+   (list :@type "getMapThumbnailFile"
+         :location loc
+         :zoom (or zoom 13)
+         :width (or width 300)
+         :height (or height 200)
+         :scale (or scale 1)
+         :chat_id (if chat
+                      (plist-get chat :id)
+                    0))
+   callback))
 
 (provide 'telega-media)
 

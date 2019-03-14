@@ -59,9 +59,10 @@
   )
 
 ;;;###autoload
-(defun telega ()
-  "Start telegramming."
-  (interactive)
+(defun telega (arg)
+  "Start telegramming.
+If prefix ARG is given, then will not pop to telega root buffer."
+  (interactive "P")
   (telega--create-hier)
 
   (unless (process-live-p (telega-server--proc))
@@ -77,7 +78,8 @@
     (with-current-buffer (get-buffer-create telega-root-buffer-name)
       (telega-root-mode)))
 
-  (pop-to-buffer-same-window telega-root-buffer-name))
+  (unless arg
+    (pop-to-buffer-same-window telega-root-buffer-name)))
 
 ;;;###autoload
 (defun telega-kill (force)

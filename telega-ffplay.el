@@ -54,25 +54,26 @@
   "Stop running ffplay process."
   (let ((buf (get-buffer telega-ffplay-buffer-name)))
     (when (buffer-live-p buf)
-      (kill-buffer buf))
-    ;; NOTE: Callback will be called in sentinel
-    ))
+      (kill-buffer buf)
+      ;; NOTE:
+      ;;  - killing buffer when ffplay is paused does not trigger
+      ;;    sentinel, so we resume the process after killing buffer
+      ;;
+      ;;  - Callback will be called in sentinel
+      (telega-ffplay-resume (get-buffer-process buf)))))
 
 (defun telega-ffplay--sentinel (proc _event)
   "Sentinel for the ffplay process."
   (let* ((proc-plist (process-plist proc))
-         (pcb (plist-get proc-plist :progress-callback)))
-    (when pcb
-      (if (process-live-p proc)
-          (funcall pcb (plist-get proc-plist :progress))
-        ;; nil progress mean process is DONE
-        (funcall pcb nil)))))
+         (callback (plist-get proc-plist :progress-callback)))
+    (when callback
+      (funcall callback proc))))
 
 (defun telega-ffplay--filter (proc output)
   "Filter for the telega-server process."
   (let* ((buffer (process-buffer proc))
          (proc-plist (process-plist proc))
-         (pcb (plist-get proc-plist :progress-callback))
+         (callback (plist-get proc-plist :progress-callback))
          (progress (plist-get proc-plist :progress)))
     (if (buffer-live-p buffer)
         (with-current-buffer buffer
@@ -82,8 +83,8 @@
             (let ((np (string-to-number (match-string 1))))
               (set-process-plist
                proc (plist-put proc-plist :progress np))
-              (when (and pcb (> np progress))
-                (funcall pcb np)))))
+              (when (and callback (> np progress))
+                (funcall callback proc)))))
 
           (unless telega-debug
             (delete-region (point-min) (point-max)))
@@ -91,10 +92,7 @@
 
 (defun telega-ffplay-run (filename callback &rest ffplay-args)
   "Start ffplay to play FILENAME.
-CALLBACK is called on updates with single argument - progress.
-progress is either float (in seconds) or nil (on ffplay exit).
-CALLBACK with `nil' argument is not called if ffplay was stopped
-prematurely, i.e. with explicit call to `telega-ffplay-stop'.
+CALLBACK is called on updates with single argument - process.
 FFPLAY-ARGS is additional args to the ffplay.
 Return newly created process."
   ;; Additional args:

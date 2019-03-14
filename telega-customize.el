@@ -156,6 +156,11 @@ cdr is maximum width in chars to use."
   :type 'cons
   :group 'telega)
 
+(defcustom telega-sticker-favorite-background "cornflower blue"
+  "*Background for the favorite stickers."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-sticker-set-show-emoji nil
   "*Non-nil to show emoji along with sticker in sticker set help win."
   :type 'boolean
@@ -182,6 +187,18 @@ See `telega-avatar--create-img' for more info."
 (defcustom telega-video-ffplay-args nil
   "*Additional arguments to ffplay to play video messages.
 To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
+  :type 'list
+  :group 'telega)
+
+(defcustom telega-location-url-format "http://maps.google.com/?q=%N,%E&z=5"
+  "*URL format used to open location messages.
+%N substituted with lattitude.
+%E substituted with longitude."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-location-thumb-params (list 15 700 400 1)
+  "*Parameters to `telega--getMapThumbnailFile' to generate location map."
   :type 'list
   :group 'telega)
 
@@ -751,6 +768,7 @@ NOT USED."
    (list 1
          telega-symbol-contact)
    (list 2
+         telega-symbol-eye
          telega-symbol-unread
          telega-symbol-verified
          telega-symbol-thunder

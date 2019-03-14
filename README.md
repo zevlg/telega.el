@@ -33,10 +33,8 @@ In some random order:
 - [x] Company backends for emoji (`:<emoji>` syntax), usernames, bot
       commands completions
 - [x] Secret chats
-- [x] Online searching chats/messages
-- [X] Avatars
-- [x] Stickers
-- [x] Photos
+- [x] Online global searching chats/messages
+- [X] Avatars, Photos, Stickers
 - [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
       messages, contacts, etc (PARTLY)
@@ -44,6 +42,9 @@ In some random order:
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
 - [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
 - [x] InstantView for web pages 
+- [ ] Searching for messages in chat
+- [ ] Shared media
+- [ ] Inline bots requests
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
 
 # Screenshots

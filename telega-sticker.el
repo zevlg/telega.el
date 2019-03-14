@@ -58,7 +58,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (define-button-type 'telega-sticker
   :supertype 'telega
-  :inserter 'telega-ins--sticker
+  :inserter 'telega-ins--sticker-image
 ;  'read-only t
   'keymap telega-sticker-button-map)
 
@@ -231,9 +231,10 @@ Photo and Video files have attached sticker sets."
          :sticker_set_ids (cl-map 'vector 'identity
                                   (nconc (list set-id) other-ids)))))
 
-(defun telega--getRecentStickers (&optional attached-p)
+(defun telega--getRecentStickers (&optional attached-p callback)
   "Returns a list of recently used stickers.
 Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
+  ;; TODO: async callback
   (let ((reply (telega-server--call
                 (list :@type "getRecentStickers"
                       :is_attached (or attached-p :false)))))
@@ -343,11 +344,11 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                :ascent 'center
                :margin (cons (cdr cwidth-xmargin) 0)
                (when (telega-sticker-favorite-p sticker)
-                 (list :relief 4)))
+                 (list :background telega-sticker-favorite-background)))
       ;; Fallback to svg
       (telega-sticker--progress-svg sticker))))
 
-(defun telega-ins--sticker (sticker &optional slices-p)
+(defun telega-ins--sticker-image (sticker &optional slices-p)
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
   (let ((simage (telega-media--image (cons sticker 'telega-sticker--create-image)
@@ -659,12 +660,12 @@ Return sticker set."
 
       (telega-animation--progress-svg animation))))
 
-(defun telega-ins--animation (animation &optional slices-p)
+(defun telega-ins--animation-image (animation &optional slices-p)
   "Inserter for the ANIMATION.
 If SLICES-P is non-nil, then insert ANIMATION using slices."
   (let ((aimage (telega-media--image
                  (cons animation 'telega-animation--create-image)
-                 (cons animation :sticker))))
+                 (cons animation :animation))))
     (if slices-p
         (telega-ins--image-slices aimage)
       (telega-ins--image aimage))))

@@ -24,6 +24,8 @@
 ;;
 
 ;;; Code:
+(require 'format-spec)
+
 (require 'telega-core)
 (require 'telega-customize)
 (require 'telega-ffplay)                ; telega-ffplay-run
@@ -151,17 +153,19 @@
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
-  (lambda (progress)
+  (lambda (proc)
     (telega-msg-redisplay msg)
 
-    (when (not progress)
-      ;; DONE (progress==nil)
-      ;; If voice message finished playing, then possible play next
-      ;; voice message
-      (when telega-vvnote-voice-play-next
-        (let ((next-voice-msg (telega-chatbuf--next-voice-msg msg)))
-          (when next-voice-msg
-            (telega-msg-open-content next-voice-msg)))))))
+    (unless (process-live-p proc)
+      (telega-msg-activate-voice-note nil (telega-msg-chat msg)))
+
+    (when (and (eq (process-status proc) 'exit)
+               telega-vvnote-voice-play-next)
+      ;; ffplay exited normally (finished playing), try to play next
+      ;; voice message if any
+      (let ((next-voice-msg (telega-chatbuf--next-voice-msg msg)))
+        (when next-voice-msg
+          (telega-msg-open-content next-voice-msg))))))
 
 (defun telega-msg-open-voice-note (msg)
   "Open content for voiceNote message MSG."
@@ -182,8 +186,22 @@
                          (telega-ffplay-run
                           (telega--tl-get file :local :path)
                           (telega-msg-voice-note--ffplay-callback msg)
-                          "-nodisp")))))))
+                          "-nodisp"))
+              (telega-msg-activate-voice-note msg))))))
     ))
+
+(defun telega-msg-open-video-note (msg)
+  "Open content for videoNote message MSG."
+  (let* ((note (telega--tl-get msg :content :video_note))
+         (note-file (telega-file--renew note :video)))
+    ;; NOTE: `telega-file--download' triggers callback in case file is
+    ;; already downloaded
+    (telega-file--download note-file 32
+      (lambda (file)
+        (telega-msg-redisplay msg)
+        (when (telega-file--downloaded-p file)
+          (telega-ffplay-run
+           (telega--tl-get file :local :path) nil))))))
 
 (defun telega-msg-open-photo (msg)
   "Open content for photo message MSG."
@@ -210,11 +228,32 @@
            (telega--tl-get file :local :path) nil
            "-loop" "0"))))))
 
+(defun telega-msg-open-document (msg)
+  "Open content for document message MSG."
+  (let* ((doc (telega--tl-get msg :content :document))
+         (doc-file (telega-file--renew doc :document)))
+    (telega-file--download doc-file 32
+      (lambda (file)
+        (telega-msg-redisplay msg)
+        (when (telega-file--downloaded-p file)
+          (find-file (telega--tl-get file :local :path)))))))
+
+(defun telega-msg-open-location (msg)
+  "Open content for location message MSG."
+  (let* ((loc (telega--tl-get msg :content :location))
+         (lat (plist-get loc :latitude))
+         (lon (plist-get loc :longitude))
+         (url (format-spec telega-location-url-format
+                           (format-spec-make ?N lat ?E lon))))
+    (telega-browse-url url 'in-web-browser)))
+
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
   (telega--openMessageContent msg)
 
   (cl-case (telega--tl-type (plist-get msg :content))
+    (messageDocument
+     (telega-msg-open-document msg))
     (messageSticker
      (telega-msg-open-sticker msg))
     (messageVideo
@@ -223,8 +262,12 @@
      (telega-msg-open-animation msg))
     (messageVoiceNote
      (telega-msg-open-voice-note msg))
+    (messageVideoNote
+     (telega-msg-open-video-note msg))
     (messagePhoto
      (telega-msg-open-photo msg))
+    (messageLocation
+     (telega-msg-open-location msg))
     (messageText
      (let* ((web-page (telega--tl-get msg :content :web_page))
             (url (plist-get web-page :url)))

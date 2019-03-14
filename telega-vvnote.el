@@ -141,7 +141,7 @@ PROGRESS is current frame progress."
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
     (svg-embed svg framefile "image/png" nil
                :x xoff :y yoff
-               :width (format "%dpx" size) :height (format "%dpx" size)
+               :width size :height size
                :clip-path "url(#clip)")
 
     ;; clip mask for the progress circle

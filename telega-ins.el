@@ -171,7 +171,8 @@ If SLICE-NUM is specified, then insert N's."
            (make-string (ceiling (car img-size)) ?X))))))
 
 (defun telega-ins--image-slices (image &optional props)
-  "Insert sliced IMAGE at current column."
+  "Insert sliced IMAGE at current column.
+PROPS - additional image properties."
   (let ((img-slices (ceiling (cdr (image-size image)))))
     (telega-ins--column (current-column) nil
       (dotimes (slice-num img-slices)
@@ -447,7 +448,7 @@ Return COLUMN at which user name is inserted."
          (note-file (telega-file--renew note :voice))
          (waveform (plist-get note :waveform))
          (waves (telega-vvnote--waveform-decode waveform))
-         (listened-p (plist-get note :is_listened)))
+         (listened-p (telega--tl-get msg :content :is_listened)))
 
     ;; play/pause
     (if (eq proc-status 'run)
@@ -462,8 +463,38 @@ Return COLUMN at which user name is inserted."
 
     ;; duration and download status
     (telega-ins " (" (telega-duration-human-readable dur) ")")
+    (when listened-p
+      (telega-ins telega-symbol-eye))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg note-file))
+    ))
+
+(defun telega-ins--video-note (msg &optional note)
+  "Insert message with videoNote content."
+  (unless note
+    (setq note (telega--tl-get msg :content :video_note)))
+  (let* ((dur (plist-get note :duration))
+         (thumb (plist-get note :thumbnail))
+         (note-file (telega-file--renew note :video))
+         (viewed-p (telega--tl-get msg :content :is_viewed)))
+
+    (telega-ins (propertize "NOTE" 'face 'shadow))
+    (telega-ins-fmt " (%dx%d %s %s)"
+      (plist-get note :length) (plist-get note :length)
+      (file-size-human-readable (telega-file--size note-file))
+      (telega-duration-human-readable (plist-get note :duration)))
+    (when viewed-p
+      (telega-ins telega-symbol-eye))
+    (telega-ins-prefix " "
+      (telega-ins--file-progress msg note-file))
+
+    (telega-ins "\n")
+    (when thumb
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb :photo))))
+        (telega-ins--image-slices timg))
+      (telega-ins " "))
     ))
 
 (defun telega-ins--document (msg &optional doc)
@@ -474,13 +505,6 @@ Return COLUMN at which user name is inserted."
          (thumb (plist-get doc :thumbnail))
          (doc-file (telega-file--renew doc :document)))
     (telega-ins telega-symbol-attachment " ")
-    ;; documents thumbnail preview (if any)
-    (when thumb
-      (let ((timg (telega-media--image
-                   (cons thumb 'telega-thumb--create-image-one-line)
-                   (cons thumb :photo))))
-        (telega-ins--image timg))
-      (telega-ins " "))
 
     (if (telega-file--downloaded-p doc-file)
         (let ((local-path (telega--tl-get doc-file :local :path)))
@@ -490,6 +514,15 @@ Return COLUMN at which user name is inserted."
     (telega-ins " (" (file-size-human-readable
                       (telega-file--size doc-file)) ") ")
     (telega-ins--file-progress msg doc-file)
+
+    ;; documents thumbnail preview (if any)
+    (when thumb
+      (telega-ins "\n")
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb :photo))))
+        (telega-ins--image-slices timg))
+      (telega-ins " "))
     ))
 
 (defun telega-ins--webpage (msg &optional web-page)
@@ -531,6 +564,10 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (let ((doc (plist-get web-page :document)))
             (when doc
               (telega-ins--document msg doc))))
+         (video
+          (let ((video (plist-get web-page :video)))
+            (when video
+              (telega-ins "<TODO: webPage:video>"))))
          (t (telega-ins "<unsupported webPage:"
                         (plist-get web-page :type) ">")))
        )
@@ -580,7 +617,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (telega-ins "\n")
     (telega-ins desc)))
 
-(defun telega-ins--animation (msg &optional animation)
+(defun telega-ins--animation-msg (msg &optional animation)
   "Inserter for animation message MSG."
   (unless animation
     (setq animation (telega--tl-get msg :content :animation)))
@@ -606,6 +643,37 @@ Return `non-nil' if WEB-PAGE has been inserted."
      (telega-media--image
       (cons thumb 'telega-thumb--create-image-as-is)
       (cons thumb :photo)))
+    ))
+
+(defun telega-ins--location-msg (msg)
+  "Insert content for location message MSG."
+  (let* ((content (plist-get msg :content))
+         (loc (plist-get content :location))
+         (loc-thumb (plist-get loc :telega-map-thumbnail)))
+    (telega-ins--location loc)
+
+    (if loc-thumb
+        (progn
+          (telega-ins "\n")
+          (telega-ins--image-slices
+           (telega-media--image
+            (cons loc-thumb 'telega-thumb--create-image-as-is)
+            (cons loc-thumb :photo))))
+
+      ;; Get the map thumbnail
+      (let ((zoom (nth 0 telega-location-thumb-params))
+            (width (nth 1 telega-location-thumb-params))
+            (height (nth 2 telega-location-thumb-params))
+            (scale (nth 3 telega-location-thumb-params)))
+        (telega--getMapThumbnailFile
+            loc zoom width height scale (telega-msg-chat msg)
+          (lambda (file)
+            (telega-file--ensure file)
+            ;; Generate pseudo thumbnail, suitable for
+            ;; `telega-media--image'
+            (plist-put loc :telega-map-thumbnail
+                       (list :width width :height height :photo file))
+            (telega-msg-redisplay msg)))))
     ))
 
 (defun telega-ins--input-file (document &optional attach-symbol)
@@ -722,15 +790,19 @@ Special messages are determined with `telega-msg-special-p'."
       ('messagePhoto
        (telega-ins--photo (plist-get content :photo) msg))
       ('messageSticker
-       (telega-ins--sticker (plist-get content :sticker) 'slices))
+       (telega-ins--sticker-image (plist-get content :sticker) 'slices))
       ('messageVideo
        (telega-ins--video msg))
       ('messageVoiceNote
        (telega-ins--voice-note msg))
+      ('messageVideoNote
+       (telega-ins--video-note msg))
       ('messageInvoice
        (telega-ins--invoice content))
       ('messageAnimation
-       (telega-ins--animation msg))
+       (telega-ins--animation-msg msg))
+      ('messageLocation
+       (telega-ins--location-msg msg))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))
@@ -843,28 +915,46 @@ If NO-AVATAR is specified, then do not insert avatar."
 (defun telega-ins--fwd-info-inline (fwd-info)
   "Insert forward info FWD-INFO as one liner."
   (when fwd-info
-    (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
-                                           (telega-current-column))
-                                   :elide t
-                                   :face 'telega-msg-inline-forward)
-      (telega-ins "| Forwarded From: ")
-      (cl-ecase (telega--tl-type fwd-info)
-        (messageForwardedFromUser
-         (let ((sender (telega-user--get (plist-get fwd-info :sender_user_id))))
-           (telega-ins (telega-user--name sender))))
-        (messageForwardedPost
-         (let ((chat (telega-chat-get (plist-get fwd-info :chat_id))))
-           (telega-ins (telega-chat-title chat 'with-username)))))
+    (telega-ins--with-props
+        ;; When pressen, then jump to original message
+        (list 'action
+              (lambda (_button)
+                (let ((chat-id (plist-get fwd-info :forwarded_from_chat_id))
+                      (msg-id (plist-get fwd-info :forwarded_from_message_id)))
+                  (when (and chat-id msg-id (not (zerop chat-id)))
+                    (telega-chat--goto-msg (telega-chat-get chat-id) msg-id t)))))
+      (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
+                                             (telega-current-column))
+                                     :elide t
+                                     :face 'telega-msg-inline-forward)
+        (telega-ins "| Forwarded From: ")
+        (cl-ecase (telega--tl-type fwd-info)
+          (messageForwardedFromUser
+           (let ((sender (telega-user--get (plist-get fwd-info :sender_user_id))))
+             (telega-ins (telega-user--name sender))))
+          (messageForwardedPost
+           (let ((chat (telega-chat-get (plist-get fwd-info :chat_id))))
+             (telega-ins (telega-chat-title chat 'with-username)))))
 
-      (let ((date (plist-get fwd-info :date)))
-        (unless (zerop date)
-          (telega-ins " at ")
-          (telega-ins--date date)))
-      (when telega-msg-heading-whole-line
+        (let ((date (plist-get fwd-info :date)))
+          (unless (zerop date)
+            (telega-ins " at ")
+            (telega-ins--date date)))
+        (when telega-msg-heading-whole-line
+          (telega-ins "\n")))
+      (unless telega-msg-heading-whole-line
         (telega-ins "\n")))
-    (unless telega-msg-heading-whole-line
-      (telega-ins "\n"))
     t))
+
+(defun telega-ins--reply-inline (reply-to-msg)
+  "Insert REPLY-TO-MSG as one liner."
+  (when reply-to-msg
+    (telega-ins--with-props
+        ;; When pressen, then jump to the REPLY-TO-MSG message
+        (list 'action
+              (lambda (_button)
+                (telega-msg-goto-highlight reply-to-msg)))
+      (telega-ins--aux-reply-inline reply-to-msg 'telega-msg-inline-reply))))
 
 (defun telega-ins--message (msg &optional no-header)
   "Insert message MSG.
@@ -892,10 +982,9 @@ unless message is edited."
         (telega-ins--message-header msg)
         (telega-ins--image avatar 1))
 
-      (setq ccol (telega-current-column)) ; content column
+      (setq ccol (telega-current-column))
       (telega-ins--fwd-info-inline (plist-get msg :forward_info))
-      (telega-ins--aux-reply-inline
-       (telega-msg-reply-msg msg) 'telega-msg-inline-reply)
+      (telega-ins--reply-inline (telega-msg-reply-msg msg))
       (telega-ins--column ccol telega-chat-fill-column
         (telega-ins--content msg)
         (telega-ins-prefix "\n"

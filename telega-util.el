@@ -34,6 +34,8 @@
 
 (require 'telega-customize)
 
+(declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
+
 (defun telega-file-exists-p (filename)
   "Return non-nil if FILENAME exists.
 Unlike `file-exists-p' this return nil for empty string FILENAME.
