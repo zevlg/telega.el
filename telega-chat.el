@@ -1278,6 +1278,11 @@ Also mark messages as read with `viewMessages'."
              (< (point) telega-chatbuf--input-marker))
     (goto-char telega-chatbuf--input-marker))
 
+  ;; - If at the beginning of chatbuf then request for the history
+  ;;   same as in telega-chatbuf-scroll
+  (when (= (point) 1)
+    (telega-chat--load-history telega-chatbuf--chat))
+
   ;; - Finally, when input is probably changed by above operations,
   ;;   update chat's action after command execution.
   (let ((input-p (telega-chatbuf-has-input-p))

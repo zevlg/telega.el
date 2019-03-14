@@ -493,25 +493,32 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
   "Function to complete stickerset for `completion-in-region-function'."
   (let* ((start (minibuffer-prompt-end))
          (end (point))
-         (str (if ido-matches           ;in case of ido completion
-                  (caar ido-matches)
-                (buffer-substring start end)))
+         (str (cond ((memq 'ido-exhibit post-command-hook)
+                     ;; ido used
+                     ;;(and (boundp 'ido-cur-item) ido-matches)
+                     (caar ido-matches))
+                    ((memq 'ivy--queue-exhibit post-command-hook)
+                     ;; ivy used
+                     (nth ivy--index ivy--old-cands))
+                    (t (buffer-substring start end))))
          (comp (car (all-completions str telega-minibuffer--choices)))
          (sset (cadr (assoc comp telega-minibuffer--choices)))
          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
+
     (when (and sset
                (or (not (buffer-live-p tss-buffer))
                    (not (with-current-buffer tss-buffer
                           (and (eq telega-minibuffer--chat telega--chat)
                                (eq sset telega-help-win--stickerset))))))
       (let ((telega-sticker--use-thumbnail t))
-        (telega-describe-stickerset sset nil telega-minibuffer--chat)))
+        (telega-describe-stickerset sset nil telega-minibuffer--chat)
+        ;; Remove annoying "Type C-x 1 to delete the help window."
+        ;; message
+        (message nil)))
 
     ;; Always pop to buffer, it might be hidden at the moment
     (when (buffer-live-p tss-buffer)
       (temp-buffer-window-show tss-buffer))
-    ;; Remove annoying "Type C-x 1 to delete the help window." message
-    (message nil)
     ))
 
 (defun telega-stickerset-completing-read (prompt)
@@ -530,7 +537,7 @@ Return sticker set."
           (minibuffer-with-setup-hook
               (lambda ()
                 (add-hook 'post-command-hook
-                          'telega-stickerset--minibuf-post-command nil t))
+                          'telega-stickerset--minibuf-post-command t t))
             (funcall telega-completing-read-function
                      prompt telega-minibuffer--choices nil t))))
     (cadr (assoc sset-name telega-minibuffer--choices))
