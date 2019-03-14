@@ -730,6 +730,7 @@ CHAT must be supergroup or channel."
   (interactive (list (or telega-chatbuf--chat
                          (telega-chat-at-point))
                      (telega-completing-read-user "User: ")))
+  (cl-assert user)
   (telega-server--send
    (list :@type "addChatMember"
          :chat_id (plist-get chat :id)
@@ -2082,6 +2083,7 @@ If prefix arg is given, then take screenshot in N seconds."
 (defun telega-chatbuf-attach-member (user)
   "Add USER to the chat members."
   (interactive (list (telega-completing-read-user "Add user: ")))
+  (cl-assert user)
   (telega-chat-add-member telega-chatbuf--chat user))
 
 (defun telega-chatbuf-sticker-insert (sticker)
@@ -2336,6 +2338,7 @@ MSG can be nil in case there is no active voice message."
   (interactive (list (telega-msg-at (point))
                      (telega-completing-read-chat "Forward to chat: ")))
 
+  (cl-assert chat)
   (unless (plist-get msg :can_be_forwarded)
     (error "Message can't be forwarded"))
 

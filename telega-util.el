@@ -315,7 +315,8 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                                  chat))
                          (telega-filter-chats (and (not only-filtered) 'all)
                                               telega--ordered-chats))))
-    (car (alist-get (funcall telega-completing-read-function prompt choices)
+    (car (alist-get (funcall telega-completing-read-function
+                             prompt choices nil t)
                     choices))))
 
 (defun telega-completing-read-user (prompt)
@@ -324,7 +325,8 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                            (list (telega-user--name user)
                                  user))
                          (hash-table-values (alist-get 'user telega--info)))))
-    (car (alist-get (funcall telega-completing-read-function prompt choices)
+    (car (alist-get (funcall telega-completing-read-function
+                             prompt choices nil t)
                     choices))))
 
 (defun telega-completing-titles ()
