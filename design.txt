@@ -472,5 +472,6 @@ Fonts
 
 * fonts-emojione  (colored emojis, for `telega-symbol-emojify')
 * fonts-noto      (quite bad)
-* fonts-symbola   (for unicode emojis)
-* ttf-ancient-fonts-symbola (unicode emojis with good vertical spacing)
+* Symbola from https://fonts2u.com/symbola.font (for unicode emojis with good vertical spacing)
+
+* http://users.teilar.gr/~g1951d/

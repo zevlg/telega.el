@@ -350,7 +350,10 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
                            keymap (mouse-1 . telega-filter-unread-unmuted)))
                         'mouse-face 'mode-line-highlight
                         'help-echo
-                        "Click to filter chats with unread/unmuted messages"))))
+                        "Click to filter chats with unread/unmuted messages")))
+         ;; TODO: unread mentions count
+         ;; see https://github.com/tdlib/td/issues/510
+         )
     (when (display-graphic-p)
       (let ((logo-img (or telega--logo-image-cache
                           (setq telega--logo-image-cache

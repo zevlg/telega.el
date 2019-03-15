@@ -357,11 +357,16 @@ If WITH-USERNAME is specified, append trailing username for this chat."
                (plist-get event :last_read_inbox_message_id))
     (plist-put chat :unread_count unread-count)
 
-    ;; NOTE: if all messages are read (in another telegram client) and
-    ;; tracking is enabled, then remove the buffer from tracking
-    (when (and telega-use-tracking (zerop unread-count))
-      (with-telega-chatbuf chat
-        (tracking-remove-buffer (current-buffer))))
+    ;; NOTE: unread_count affects modeline and footer
+    (with-telega-chatbuf chat
+      ;; NOTE: if all messages are read (in another telegram client) and
+      ;; tracking is enabled, then remove the buffer from tracking
+      (when (and telega-use-tracking (zerop unread-count))
+        (tracking-remove-buffer (current-buffer)))
+
+      (setq mode-line-buffer-identification
+            (telega-chatbuf--modeline-buffer-identification))
+      (telega-chatbuf--footer-redisplay))
 
     (telega-root--chat-update chat)))
 
@@ -380,11 +385,18 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (cl-assert chat)
     (plist-put chat :unread_mention_count
                (plist-get event :unread_mention_count))
+
+    ;; NOTE: unread_mention_count affects modeline and footer
+    (with-telega-chatbuf chat
+      (setq mode-line-buffer-identification
+            (telega-chatbuf--modeline-buffer-identification))
+      (telega-chatbuf--footer-redisplay))
+
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateMessageMentionRead (event)
   (telega--on-updateChatUnreadMentionCount event)
-  ;; TODO: might be workout with message of `:message_id' as well
+  ;; TODO: might be some action needed on `:message_id' as well
   )
 
 (defun telega--on-updateChatReplyMarkup (event)
@@ -957,6 +969,8 @@ Do it only if FORCE is non-nil."
     (define-key map (kbd "M-p") 'telega-chatbuf-input-prev)
     (define-key map (kbd "M-n") 'telega-chatbuf-input-next)
     (define-key map (kbd "M-r") 'telega-chatbuf-input-search)
+    (define-key map (kbd "M-g r") 'telega-chatbuf-read-all)
+    (define-key map (kbd "M-g m") 'telega-chatbuf-next-mention)
 
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chat-complete-or-next-link)
@@ -1381,6 +1395,8 @@ If TITLE is specified, use it instead of chat's title."
         (with-current-buffer (generate-new-buffer bufname)
           (telega-chat-mode)
           (setq telega-chatbuf--chat chat)
+          (setq mode-line-buffer-identification
+                (telega-chatbuf--modeline-buffer-identification))
 
           ;; If me is not member of this chat, then show [JOIN/START]
           ;; button instead of the prompt
@@ -1433,15 +1449,42 @@ If TITLE is specified, use it instead of chat's title."
 (defsubst telega-chatbuf--last-msg-loaded-p (&optional for-msg)
   "Return non-nil if `:last_message' of the chat is loaded.
 FOR-MSG can be optionally specified, and used instead of yongest message."
-  (let ((last-msg-id (telega--tl-get telega-chatbuf--chat :last_message :id)))
-    (or (eq last-msg-id (plist-get (telega-chatbuf--youngest-msg) :id))
-        (and for-msg (eq last-msg-id (plist-get for-msg :id))))))
+  (let ((last-msg-id
+         (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
+    (or (<= last-msg-id (or (plist-get (telega-chatbuf--youngest-msg) :id) 0))
+        (and for-msg (<= last-msg-id (plist-get for-msg :id))))))
 
-(defun telega-chat--modeline-buffer-identification (chat)
+(defun telega-chatbuf--modeline-buffer-identification ()
   "Return `mode-line-buffer-identification' for the CHAT buffer."
-  ;; TODO: Display number of mentions that are unread and not visible
-  ;; at the moment
-  )
+  (let* ((title "%12b")
+         (unread-count (plist-get telega-chatbuf--chat :unread_count))
+         (mention-count (plist-get telega-chatbuf--chat :unread_mention_count))
+         (brackets (or (> unread-count 0) (> mention-count 0))))
+
+    (list title
+          (when brackets " (")
+          (when (> unread-count 0)
+            (propertize (format "unread:%d" unread-count)
+                        'face 'bold
+                        'local-map
+                        '(keymap
+                          (mode-line
+                           keymap (mouse-1 . telega-chatbuf-read-all)))
+                        'mouse-face 'mode-line-highlight
+                        'help-echo "mouse-1: Read all messages"
+                        ))
+          (when (> mention-count 0)
+            (concat
+             (when (> unread-count 0) " ")
+             (propertize (format "@%d" mention-count)
+                         'face 'telega-mention-count
+                         'local-map
+                         '(keymap
+                           (mode-line
+                            keymap (mouse-1 . telega-chatbuf-next-mention)))
+                         'mouse-face 'mode-line-highlight
+                         'help-echo "mouse-1: Goto next mention")))
+          (when brackets ")"))))
 
 (defun telega-chatbuf-input-prev (n)
   "Goto N previous items in chat input history."
@@ -1515,7 +1558,7 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
   "Insert newly arrived message MSG as youngest into chatbuffer.
 If DISABLE-NOTIFICATION is non-nil, then do not trigger
 notification for this message.
-Return newly inserted message button."
+Return newly inserted node or nil if it was not inserted."
   (run-hook-with-args 'telega-chat-pre-message-hook msg disable-notification)
 
   (unwind-protect
@@ -1528,12 +1571,13 @@ Return newly inserted message button."
           ;; `:last_message' of chat is already loaded, or incoming
           ;; MSG is actually a last message (`updateChatLastMessage'
           ;; can arrive before `updateNewMessage')
-          (when (telega-chatbuf--last-msg-loaded-p msg)
-            (with-telega-deferred-events
-              (ewoc-enter-last telega-chatbuf--ewoc msg)))
+          (prog1
+              (when (telega-chatbuf--last-msg-loaded-p msg)
+                (with-telega-deferred-events
+                  (ewoc-enter-last telega-chatbuf--ewoc msg)))
 
-          (when (and telega-use-tracking (not disable-notification))
-            (tracking-add-buffer (current-buffer)))
+            (when (and telega-use-tracking (not disable-notification))
+              (tracking-add-buffer (current-buffer))))
           ))
 
     (run-hook-with-args 'telega-chat-message-hook msg disable-notification)))
@@ -1603,12 +1647,12 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
 (defun telega--on-updateNewMessage (event)
   "A new message was received; can also be an outgoing message."
   (let* ((new-msg (plist-get event :message))
-         (button (telega-chatbuf--enter-youngest-msg
-                  new-msg (plist-get event :disable_notification))))
+         (node (telega-chatbuf--enter-youngest-msg
+                new-msg (plist-get event :disable_notification))))
 
     ;; If message is visibible in some window, then mark it as read
     ;; see https://github.com/zevlg/telega.el/issues/4
-    (when (telega-button--observable-p button)
+    (when (and node (telega-button--observable-p (ewoc-location node)))
       (telega--viewMessages
        (telega-chat-get (plist-get new-msg :chat_id))
        (list new-msg)))))
@@ -1972,6 +2016,26 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
     (telega-ins--with-props '(attach-close-bracket t rear-nonsticky t)
       (telega-ins " "))))
 
+(defun telega-chatbuf-read-all ()
+  "Read all messages in chat buffer."
+  (interactive)
+  ;; TODO:
+  ;;   - If last message is show
+  ;;   - If not, load the history
+  ;; Then go to the input
+  (user-error "`telega-chatbuf-read-all' not yet implemented")
+  )
+
+(defun telega-chatbuf-next-mention ()
+  "Goto next mention in chat buffer."
+  (interactive)
+  ;; TODO:
+  ;; - searchChatMessages with :filter searchMessagesFilterUnreadMention
+  ;; - Goto first found message
+  (user-error "`telega-chatbuf-next-mention' not yet implemented")
+  )
+
+;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location)
   "Attach location to the current input."
   (interactive (list (with-telega-chatbuf-action "ChoosingLocation"
