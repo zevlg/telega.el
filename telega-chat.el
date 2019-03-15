@@ -525,18 +525,6 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 
 (defun telega--sendChatAction (chat action)
   "Send ACTION on CHAT."
-  (when (stringp action)
-    (cl-assert (member action '("Typing" "RecordingVideo" "UploadingVideo"
-                                "RecordingVoiceNote" "UploadingVoiceNote"
-                                "UploadingPhoto" "UploadingDocument"
-                                "ChoosingLocation" "ChoosingContact"
-                                "StartPlayingGame" "RecordingVideoNote"
-                                "UploadingVideoNote" "Cancel")))
-    (setq action (list :@type (concat "chatAction" action))))
-  ;; NOTE: special case is for `chatActionUploadingVideoNote', it
-  ;; might have additional `:progress' argument.  In this case, pass
-  ;; it directly as list to `telega--sendChatAction'
-
   (telega-server--send
    (list :@type "sendChatAction"
          :chat_id (plist-get chat :id)
@@ -1029,6 +1017,10 @@ Actual value is `:@extra` value of the call to inline bot.")
   "Active (playing/paused) voice note message for the current chat.")
 (make-variable-buffer-local 'telega-chatbuf--voice-msg)
 
+(defvar telega-chatbuf--my-action nil
+  "My current action in chat buffer.")
+(make-variable-buffer-local 'telega-chatbuf--my-action)
+
 (define-button-type 'telega-prompt
   :supertype 'telega
   :inserter 'telega-ins
@@ -1086,7 +1078,7 @@ Used in chatbuf footer."
          (fill-symbol (if (and telega-chatbuf--ewoc
                                (telega-chatbuf--last-msg-loaded-p))
                           telega-symbol-underline-bar
-                        "v"))
+                        "."))
          ;; NOTE: `telega-ins--as-string' uses temporary buffer, so
          ;; prepare everything we need before
          (actions (gethash (plist-get telega-chatbuf--chat :id)
@@ -1150,7 +1142,8 @@ Keymap:
         telega-chatbuf--input-pending-p nil
         telega-chatbuf--history-loading nil
         telega-chatbuf--inline-query nil
-        telega-chatbuf--voice-msg nil)
+        telega-chatbuf--voice-msg nil
+        telega-chatbuf--my-action nil)
 
   (erase-buffer)
   (setq-local window-point-insertion-type t)
@@ -1209,21 +1202,40 @@ Keymap:
   "If at the beginning then request for history messages.
 Also mark messages as read with `viewMessages'."
   (with-current-buffer (window-buffer window)
-    ;; If at the beginning of chatbuf then request for the history
-    (when (= display-start 1)
-      (telega-chat--load-history telega-chatbuf--chat)
-      )
+    ;; If point moves near the beginning of chatbuf, then request for
+    ;; the previous history
+    (when (< display-start 500)
+      (telega-chat--load-history telega-chatbuf--chat))
 
     ;; Mark some messages as read
-    (unless (zerop (plist-get telega-chatbuf--chat :unread_count))
+    (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
+              (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
+                 (telega--tl-get telega-chatbuf--chat :last_message :id)))
       (telega--viewMessages
        telega-chatbuf--chat
        (telega-chatbuf--visible-messages window display-start)))
     ))
 
-(defsubst telega-chat--my-action (chat)
-  "Return my current action in chatbuffer."
-  (assq telega--me-id (gethash (plist-get chat :id) telega--actions)))
+(defun telega-chatbuf--set-action (action)
+  "Set my chatbuf action to ACTION"
+  (when (stringp action)
+    (cl-assert (member action '("Typing" "RecordingVideo" "UploadingVideo"
+                                "RecordingVoiceNote" "UploadingVoiceNote"
+                                "UploadingPhoto" "UploadingDocument"
+                                "ChoosingLocation" "ChoosingContact"
+                                "StartPlayingGame" "RecordingVideoNote"
+                                "UploadingVideoNote" "Cancel")))
+    (setq action (list :@type (concat "chatAction" action))))
+  ;; NOTE: special case is for `chatActionUploadingVideoNote', it
+  ;; might have additional `:progress' argument.  In this case, pass
+  ;; it directly as list to `telega-chatbuf--set-action'
+
+  (unless (equal telega-chatbuf--my-action action)
+    (let ((cancel-p (eq (telega--tl-type action) 'chatActionCancel)))
+      (setq telega-chatbuf--my-action (unless cancel-p action)))
+
+    ;; Update it on server as well
+    (telega--sendChatAction telega-chatbuf--chat action)))
 
 (defsubst telega-chatbuf-has-input-p ()
   "Return non-nil if chatbuf has some input."
@@ -1246,7 +1258,7 @@ Also mark messages as read with `viewMessages'."
        (button-get telega-chatbuf--aux-button :value)))
 
 (defun telega-chatbuf--replying-msg ()
-  "Return message currently editing."
+  "Return message currently replying."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
            'telega-ins--aux-reply-inline)
        (button-get telega-chatbuf--aux-button :value)))
@@ -1285,12 +1297,11 @@ Also mark messages as read with `viewMessages'."
 
   ;; - Finally, when input is probably changed by above operations,
   ;;   update chat's action after command execution.
-  (let ((input-p (telega-chatbuf-has-input-p))
-        (my-action (telega-chat--my-action telega-chatbuf--chat)))
-    (cond ((and (not my-action) input-p)
-           (telega--sendChatAction telega-chatbuf--chat "Typing"))
-          ((and my-action (not input-p))
-           (telega--sendChatAction telega-chatbuf--chat "Cancel")))
+  (let ((input-p (telega-chatbuf-has-input-p)))
+    (cond ((and (not telega-chatbuf--my-action) input-p)
+           (telega-chatbuf--set-action "Typing"))
+          ((and telega-chatbuf--my-action (not input-p))
+           (telega-chatbuf--set-action "Cancel")))
 
     ;; - If there is active draft_message and input is empty then
     ;;   clear the draf
@@ -1325,13 +1336,13 @@ Inhibits read-only flag."
 Recover previous active action after BODY execution."
   (declare (indent 1))
   (let ((actsym (gensym "action")))
-    `(let ((,actsym (caddr (telega-chat--my-action telega-chatbuf--chat))))
-       (telega--sendChatAction telega-chatbuf--chat ,action)
+    `(let ((,actsym (plist-get telega-chatbuf--my-action :@type)))
+       (telega-chatbuf--set-action ,action)
        (unwind-protect
            (progn ,@body)
-         (telega--sendChatAction telega-chatbuf--chat
-                                 (or (and ,actsym (substring ,actsym 10))
-                                     "Cancel"))))))
+         (telega-chatbuf--set-action
+          (or (and ,actsym (substring ,actsym 10))
+              "Cancel"))))))
 
 (defun telega-chatbuf--name (chat &optional title)
   "Return name for the CHAT buffer.
@@ -1419,10 +1430,12 @@ If TITLE is specified, use it instead of chat's title."
     (when node
       (ewoc-data node))))
 
-(defsubst telega-chatbuf--last-msg-loaded-p ()
-  "Return non-nil if `:last_message' of the chat is loaded."
-  (eq (telega--tl-get telega-chatbuf--chat :last_message :id)
-      (plist-get (telega-chatbuf--youngest-msg) :id)))
+(defsubst telega-chatbuf--last-msg-loaded-p (&optional for-msg)
+  "Return non-nil if `:last_message' of the chat is loaded.
+FOR-MSG can be optionally specified, and used instead of yongest message."
+  (let ((last-msg-id (telega--tl-get telega-chatbuf--chat :last_message :id)))
+    (or (eq last-msg-id (plist-get (telega-chatbuf--youngest-msg) :id))
+        (and for-msg (eq last-msg-id (plist-get for-msg :id))))))
 
 (defun telega-chat--modeline-buffer-identification (chat)
   "Return `mode-line-buffer-identification' for the CHAT buffer."
@@ -1511,9 +1524,11 @@ Return newly inserted message button."
 
         (telega-save-excursion
           (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
-          ;; Add incoming message to ewoc only if `:last_message' of
-          ;; chat is already loaded
-          (when (telega-chatbuf--last-msg-loaded-p)
+          ;; NOTE: Add incoming message to ewoc only if
+          ;; `:last_message' of chat is already loaded, or incoming
+          ;; MSG is actually a last message (`updateChatLastMessage'
+          ;; can arrive before `updateNewMessage')
+          (when (telega-chatbuf--last-msg-loaded-p msg)
             (with-telega-deferred-events
               (ewoc-enter-last telega-chatbuf--ewoc msg)))
 
@@ -1668,20 +1683,26 @@ Message id could be updated on this update."
 (defun telega--on-updateUserChatAction (event)
   "Some user has actions on chat."
   (let* ((chat-id (plist-get event :chat_id))
-         (acts-alist (gethash chat-id telega--actions))
+         (chat-actions (gethash chat-id telega--actions))
          (user-id (plist-get event :user_id))
-         (current-action (assq user-id acts-alist))
-         (action (plist-get event :action)))
-    (cl-case (telega--tl-type action)
-      (chatActionCancel
-       (puthash chat-id (assq-delete-all user-id acts-alist) telega--actions))
-      (t (if current-action
-             (setcdr current-action action)
-           (puthash chat-id (list (cons user-id action)) telega--actions))))
+         (user-action (assq user-id chat-actions))
+         (action (plist-get event :action))
+         (cancel-p (eq (telega--tl-type action) 'chatActionCancel)))
+    (cond (cancel-p
+           (puthash chat-id (assq-delete-all user-id chat-actions)
+                    telega--actions))
+          (user-action
+           (setcdr user-action action))
+          (t (puthash chat-id (cons (cons user-id action) chat-actions)
+                      telega--actions)))
 
     (let ((chat (telega-chat-get chat-id)))
       (telega-root--chat-update chat)
       (with-telega-chatbuf chat
+        ;; If action by me, update `telega-chatbuf--my-action' as well
+        (when (eq user-id telega--me-id)
+          (setq telega-chatbuf--my-action (unless cancel-p action)))
+
         (telega-chatbuf--footer-redisplay)))
     ))
 
@@ -1727,6 +1748,14 @@ CALLBACK is called after history has been loaded."
                      (funcall callback))))))
         (telega-chatbuf--footer-redisplay)
         ))))
+
+(defun telega-chatbuf--load-older-history (&optional callback)
+  "In chat buffer load older messages."
+  )
+
+(defun telega-chatbuf--load-newer-history (&optional callback)
+  "In chat buffer load newer messages."
+  )
 
 (defun telega-chatbuf-cancel-aux ()
   "Cancel current aux prompt."
@@ -2257,8 +2286,8 @@ If DRAFT-MSG is ommited, then clear draft message."
   "Called when switching from chat buffer."
   (when (telega-chatbuf-has-input-p)
     (let ((input (telega-chatbuf-input-string)))
-      (when (telega-chat--my-action telega-chatbuf--chat)
-        (telega--sendChatAction telega-chatbuf--chat "Cancel"))
+      (when telega-chatbuf--my-action
+        (telega-chatbuf--set-action "Cancel"))
 
       (telega--setChatDraftMessage
        telega-chatbuf--chat
@@ -2334,7 +2363,8 @@ MSG can be nil in case there is no active voice message."
     ;; Insert message's text or attachement caption
     (let ((content (plist-get msg :content)))
       (telega-ins--text (or (plist-get content :text)
-                            (plist-get content :caption))))
+                            (plist-get content :caption))
+                        'as-markdown))
 
     (telega-chatbuf--help-cancel-keys "edit")))
 

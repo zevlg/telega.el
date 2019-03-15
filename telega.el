@@ -72,11 +72,11 @@ If prefix ARG is given, then will not pop to telega root buffer."
     (when (buffer-live-p (telega-root--buffer))
       (kill-buffer (telega-root--buffer)))
 
-    (telega-server--start))
-
-  (unless (buffer-live-p (telega-root--buffer))
+    (telega--init-vars)
     (with-current-buffer (get-buffer-create telega-root-buffer-name)
-      (telega-root-mode)))
+      (telega-root-mode))
+
+    (telega-server--start))
 
   (unless arg
     (pop-to-buffer-same-window telega-root-buffer-name)))

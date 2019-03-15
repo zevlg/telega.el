@@ -265,15 +265,57 @@ N can't be 0."
                           'telega-entity-type-texturl))
       )))
 
-(defun telega--entities-apply (entities text)
-  "Apply telegram ENTITIES to TEXT."
+;; https://core.telegram.org/bots/api#markdown-style
+(defun telega--entity-to-markdown (entity text)
+  "Convert ENTITY back to markdown syntax applied to TEXT.
+Return now text with markdown syntax."
+  (let ((ent-type (plist-get entity :type)))
+    (cl-case (and ent-type (telega--tl-type ent-type))
+      (textEntityTypeBold (concat "*" text "*"))
+      (textEntityTypeItalic (concat "_" text "_"))
+      (textEntityTypeCode (concat "`" text "`"))
+      ((textEntityTypePreCode textEntityTypePre)
+       (concat "```" text "```"))
+      (textEntityTypeMentionName
+       (format "[%s](tg://user?id=%d)"
+               text (plist-get ent-type :user_id)))
+      (textEntityTypeTextUrl
+       (format "[%s](%s)" text (plist-get ent-type :url)))
+      (t text))))
+
+(defun telega--entities-as-markdown (entities text)
+  "Convert propertiezed TEXT to markdown syntax text.
+Use `telega-entity-type-XXX' faces as triggers."
+  (let ((offset 0) (strings nil))
+    (seq-doseq (ent entities)
+      (let ((ent-off (plist-get ent :offset))
+            (ent-len (plist-get ent :length)))
+        ;; Part without attached entity
+        (when (> ent-off offset)
+          (push (list nil (substring text offset ent-off)) strings))
+
+        (setq offset (+ ent-off ent-len))
+        (push (list ent (substring text ent-off offset)) strings)))
+    ;; Trailing part, may be empty
+    (push (list nil (substring text offset)) strings)
+
+    (mapconcat 'substring-no-properties
+               (mapcar (lambda (et)
+                         (apply 'telega--entity-to-markdown et))
+                       (nreverse strings))
+               "")))
+
+(defun telega--entities-as-faces (entities text)
+  "Apply telegram ENTITIES to TEXT.
+If AS-MARKDOWN is non-nil, then apply markdown syntax, instead of faces."
   (mapc (lambda (ent)
           (let* ((beg (plist-get ent :offset))
                  (end (+ (plist-get ent :offset) (plist-get ent :length)))
                  (props (telega--entity-to-properties
                          ent (substring text beg end))))
             (when props
-              (add-text-properties beg end props text))))
+              (add-text-properties
+               beg end (nconc (list 'rear-nonsticky t) props) text))))
         entities)
   text)
 
@@ -302,11 +344,6 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
       (when (and prev (get-text-property prev 'cursor-sensor-functions))
         (setq pos prev))
       (telega--region-by-text-prop pos 'cursor-sensor-functions))))
-
-(defun telega--properties-to-entities (text)
-  "Convert propertiezed TEXT to telegram ENTITIES."
-  ;; TODO: convert text properties to tl text entities
-  )
 
 ;; NOTE: ivy returns copy of the string given in choices, thats why we
 ;; need to use 'string= as testfun in `alist-get'

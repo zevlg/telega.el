@@ -99,6 +99,7 @@
   (let ((ufi (cdr (assq 'supergroup telega--full-info))))
     (puthash (plist-get event :supergroup_id)
              (plist-get event :supergroup_full_info) ufi)
+    ;; Might affect root's buffer view
     ;; TODO: chatbuf might need to be updated, since for example
     ;; pinned message might change
     ))

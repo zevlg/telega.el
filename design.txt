@@ -465,3 +465,10 @@ TODO
 * Всегда трекать файлы в msg на апдейты, чтобы например
   `telega--deleteFile' отрабатывался.  Возможно ещё потребуется это
   для трекинга заливки файла
+
+Fonts
+-----
+
+* fonts-emojione  (colored emojis, for `telega-symbol-emojify')
+* fonts-noto      
+* Symbola         (for unicode emojis)

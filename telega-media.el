@@ -381,8 +381,9 @@ To customize automatic downloads, use `telega-auto-download'."
                ;; text of correct width
                :telega-text (make-string w-chars ?X))))
 
-(defun telega-media--cwidth-xmargin (width height char-height)
-  "Calculate width in chars and margin X pixels.
+(defun telega-media--cwidth-xmargin (width height char-height &optional max-cwidth)
+  "Calculate width in chars and margins X pixels.
+MAX-CWIDTH is maximum width in chars.
 Return cons cell, where car is width in char and cdr is margin value."
   ;; NOTE: handle case where WIDTH or HEIGHT can be zero
   (let* ((pix-h (* (frame-char-height) char-height))

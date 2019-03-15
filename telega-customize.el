@@ -225,7 +225,7 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'number
   :group 'telega-server)
 
-(defcustom telega-server-call-timeout 0.5
+(defcustom telega-server-call-timeout 0.75
   "*Timeout for `telega-server--call'."
   :type 'number
   :group 'telega-server)
@@ -428,11 +428,6 @@ In form (NAME . FILTER-SPEC)."
 (defcustom telega-chat-insert-date-breaks t
   "*Non-nil to insert breaks inbetween messages of different days.
 NOT YET IMPLEMENTED"
-  :type 'boolean
-  :group 'telega-chat)
-
-(defcustom telega-chat-open-on-forward nil
-  "*Non-nil to open corresponding chat when forwarding message to."
   :type 'boolean
   :group 'telega-chat)
 

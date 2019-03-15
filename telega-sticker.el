@@ -29,7 +29,11 @@
 (require 'telega-core)
 (require 'telega-util)
 
-(defvar ido-matches)                    ;shutup compiler
+;; shutup compiler
+(defvar ido-matches)
+(defvar ivy--index)
+(defvar ivy--old-cands)
+
 
 (defvar telega-help-win--emoji nil
   "Emoji for which help window is displayed.")

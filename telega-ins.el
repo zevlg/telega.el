@@ -377,12 +377,16 @@ Return COLUMN at which user name is inserted."
                 telega-symbol-heavy-checkmark)
                (t telega-symbol-checkmark)))))))
 
-(defun telega-ins--text (text)
-  "Insert TEXT applying telegram entities."
+(defun telega-ins--text (text &optional as-markdown)
+  "Insert TEXT applying telegram entities.
+If AS-MARKDOWN is non-nil, then instead of applying faces, apply
+markdown syntax to the TEXT."
   (when text
     (telega-ins
-     (telega--entities-apply
-      (plist-get text :entities) (plist-get text :text)))))
+     (funcall (if as-markdown
+                  'telega--entities-as-markdown
+                'telega--entities-as-faces)
+              (plist-get text :entities) (plist-get text :text)))))
 
 (defun telega-ins--photo (photo &optional msg limits)
   "Inserter for the PHOTO."

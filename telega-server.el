@@ -25,10 +25,11 @@
 
 ;;; Code:
 (require 'cl-lib)
-(require 'pp)                           ;pp-to-string
 
 (require 'telega-core)
 (require 'telega-customize)
+
+(declare-function telega-root--buffer "telega-root")
 
 (defun telega--on-event (event)
   (telega-debug "%s event: %S"
@@ -245,7 +246,10 @@ If CALLBACK is specified return `:@extra' value used for the call."
 (defun telega-server--start ()
   "Start telega-server process."
   (when (process-live-p (telega-server--proc))
-    (error "Error: telega-server already running"))
+    (user-error "Error: telega-server already running"))
+
+  (cl-assert (buffer-live-p (telega-root--buffer)) nil
+             "Use M-x telega RET to start telega")
 
   (with-telega-debug-buffer
    (erase-buffer)
@@ -255,8 +259,6 @@ If CALLBACK is specified return `:@extra' value used for the call."
         (process-adaptive-read-buffering nil)
         (server-bin (telega-server--find-bin)))
     (with-current-buffer (generate-new-buffer " *telega-server*")
-      ;; init vars and start proc
-      (telega--init-vars)
       (setq telega-server--extra 0)
       (setq telega-server--callbacks (make-hash-table :test 'eq))
       (setq telega-server--results (make-hash-table :test 'eq))

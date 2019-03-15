@@ -343,45 +343,11 @@ with list of chats received."
                    :test #'=)
       " (admin)")))
 
-(defun telega-msg--entity-to-properties (entity text)
-  (let ((ent-type (plist-get entity :type)))
-    (cl-case (telega--tl-type ent-type)
-      (textEntityTypeMention
-       (list 'face 'telega-entity-type-mention))
-      (textEntityTypeMentionName
-       (telega-link-props 'user (plist-get ent-type :user_id)
-                          'telega-entity-type-mention))
-      (textEntityTypeHashtag
-       (telega-link-props 'hashtag text))
-      (textEntityTypeBold
-       (list 'face 'telega-entity-type-bold))
-      (textEntityTypeItalic
-       (list 'face 'telega-entity-type-italic))
-      (textEntityTypeCode
-       (list 'face 'telega-entity-type-code))
-      (textEntityTypePre
-       (list 'face 'telega-entity-type-pre))
-      (textEntityTypePreCode
-       (list 'face 'telega-entity-type-pre))
-
-      (textEntityTypeUrl
-       (telega-link-props 'url text 'telega-entity-type-texturl))
-      (textEntityTypeTextUrl
-       (telega-link-props 'url (plist-get ent-type :url)
-                          'telega-entity-type-texturl))
-      )))
-
-(defun telega-msg--ents-to-props (text entities)
-  "Convert message TEXT with text ENTITIES to propertized string."
-  (mapc (lambda (ent)
-          (let* ((beg (plist-get ent :offset))
-                 (end (+ (plist-get ent :offset) (plist-get ent :length)))
-                 (props (telega-msg--entity-to-properties
-                         ent (substring text beg end))))
-            (when props
-              (add-text-properties beg end props text))))
-        entities)
-  text)
+(defun telega--parseTextEntities (text &optional type)
+  (telega-server--call
+   (list :@type "parseTextEntities"
+         :text text
+         :parse_mode (list :@type (or type "textParseModeMarkdown")))))
 
 (defun telega--formattedText (text &optional markdown)
   "Convert TEXT to `formattedTex' type.
@@ -391,8 +357,20 @@ If MARKDOWN is non-nil then format TEXT as markdown."
        (list :@type "parseTextEntities"
              :text text
              :parse_mode (list :@type "textParseModeMarkdown")))
-    (list :@type "formattedText"
-          :text text :entities [])))
+     (list :@type "formattedText"
+          :text (substring-no-properties text) :entities [])))
+
+  ;; (let* ((ft-text (when markdown
+  ;;                   (telega--parseTextEntities text "textParseModeMarkdown")))
+  ;;        (ft-ents (telega--properties-to-entities text))
+  ;;        (add-ents (when markdown
+  ;;                    (plist-get (telega--parseTextEntities
+  ;;                                text "textParseModeMarkdown")
+  ;;                               :entities)))
+  ;;        (entities (vconcat ft-ents add-ents)))
+  ;;   (list :@type "formattedText"
+  ;;         :text (substring-no-properties text)
+  ;;         :entities entities)))
 
 
 (defun telega-msg-save (msg)
