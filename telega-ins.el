@@ -463,7 +463,9 @@ markdown syntax to the TEXT."
     ;; waveform image
     (telega-ins--image
      (telega-vvnote--waves-svg
-      waves (/ (frame-char-height (telega-x-frame)) 2) dur played))
+      waves (* telega-vvnote-waves-height-factor
+               (frame-char-height (telega-x-frame)))
+      dur played))
 
     ;; duration and download status
     (telega-ins " (" (telega-duration-human-readable dur) ")")

@@ -184,6 +184,13 @@ See `telega-avatar--create-img' for more info."
   :type 'cons
   :group 'telega)
 
+(defcustom telega-vvnote-waves-height-factor 0.75
+  "*Factor for waves svg height.
+There is a restriction to its value:
+`(* (frame-char-height) telega-vvnote-waves-height-factor)' must be > 8."
+  :type 'float
+  :group 'telega)
+
 (defcustom telega-video-ffplay-args nil
   "*Additional arguments to ffplay to play video messages.
 To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."

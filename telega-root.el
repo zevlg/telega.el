@@ -222,7 +222,7 @@ If RAW is given then do not modify statuses for animation."
     (setq mode-line-process (concat ":" telega--status))
     (telega-save-cursor
       (let ((button (button-at (point-min))))
-        (cl-assert (eq (button-type button) 'telega-status)
+        (cl-assert (and button (eq (button-type button) 'telega-status))
                    nil "Telega status button is gone")
         (telega-button--update-value
          button (cons telega--status telega--status-aux)))))
