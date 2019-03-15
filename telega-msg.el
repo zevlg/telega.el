@@ -349,15 +349,25 @@ with list of chats received."
          :text text
          :parse_mode (list :@type (or type "textParseModeMarkdown")))))
 
+(defun telega--parseTextEntities (text parse-mode &optional no-error)
+  "Parse TEXT using PARSE-MODE.
+PARSE-MODE is one of: \"textParseModeMarkdown\" or \"textParseModeHTML\".
+If NO-ERROR is non-nil and TEXT can't be do not raise an error, return nil."
+  (let ((fmt-text (telega-server--call
+                   (list :@type "parseTextEntities"
+                         :text text
+                         :parse_mode (list :@type parse-mode)))))
+    (unless (and fmt-text no-error)
+      (cl-assert telega-server--last-error)
+      (user-error (plist-get telega-server--last-error :message)))
+    fmt-text))
+
 (defun telega--formattedText (text &optional markdown)
   "Convert TEXT to `formattedTex' type.
 If MARKDOWN is non-nil then format TEXT as markdown."
   (if markdown
-      (telega-server--call
-       (list :@type "parseTextEntities"
-             :text text
-             :parse_mode (list :@type "textParseModeMarkdown")))
-     (list :@type "formattedText"
+      (telega--parseTextEntities text "textParseModeMarkdown")
+    (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))
 
   ;; (let* ((ft-text (when markdown

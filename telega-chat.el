@@ -1522,6 +1522,7 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
   ;; (let ((elem (cl-find regex (cddr telega-chatbuf--input-ring)
   ;;                      :test #'string-match)))
   ;;   (
+  (user-error "`telega-chatbuf-input-search' not yet implemented")
   )
 
 (defmacro telega-chatbuf--redisplay-node (node)
