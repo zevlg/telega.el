@@ -437,8 +437,9 @@ ____(@zevlg is typing...)_______________________
 
 - Если показываются сообщения, но самое последнее сообщение ещё
   загружено, то делать input недоступным, а в footer показывать
+  колво непрочитаных сообщений/меншонов, типа:
 
-  ---------vvvvvvvvvvvvvvvvvvvvv-------------
+  .................(100@2).................
 
 Shared media
 ~~~~~~~~~~~
@@ -455,7 +456,7 @@ MSG2
 _____________________________[search "привет"]__
 >>> []
 
-Если играется voice/videoNote
+Если играется voice/videoNote  [DONE partly, video ноты не показывает]
 _____________________________[⏸ @zevlg [stop]]__
 >>> []
 
@@ -464,11 +465,12 @@ TODO
 
 * Всегда трекать файлы в msg на апдейты, чтобы например
   `telega--deleteFile' отрабатывался.  Возможно ещё потребуется это
-  для трекинга заливки файла
+  для трекинга заливки файла [DONE]
 
 Fonts
 -----
 
 * fonts-emojione  (colored emojis, for `telega-symbol-emojify')
-* fonts-noto      
-* Symbola         (for unicode emojis)
+* fonts-noto      (quite bad)
+* fonts-symbola   (for unicode emojis)
+* ttf-ancient-fonts-symbola (unicode emojis with good vertical spacing)

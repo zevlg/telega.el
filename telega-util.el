@@ -275,7 +275,7 @@ Return now text with markdown syntax."
       (textEntityTypeItalic (concat "_" text "_"))
       (textEntityTypeCode (concat "`" text "`"))
       ((textEntityTypePreCode textEntityTypePre)
-       (concat "```" text "```"))
+       (concat "```" (plist-get ent-type :language) "\n" text "```"))
       (textEntityTypeMentionName
        (format "[%s](tg://user?id=%d)"
                text (plist-get ent-type :user_id)))
