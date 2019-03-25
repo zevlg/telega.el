@@ -1371,12 +1371,12 @@ If TITLE is specified, use it instead of chat's title."
 (defun telega-chatbuf--join (chat)
   "[JOIN] button has been pressed."
   (cl-assert (eq chat telega-chatbuf--chat))
-  (cl-assert (memq (telega-chat--type chat) '(bot channel)))
+  (cl-assert (memq (telega-chat--type chat) '(bot channel basicgroup supergroup)))
   (if (eq (telega-chat--type chat) 'bot)
       (telega--sendMessage
        chat (list :@type "inputMessageText"
                   :text (telega--formattedText "/start")))
-    ;; join the channel
+    ;; join the chat
     (telega--joinChat chat))
 
   ;; reset the prompt
@@ -1400,12 +1400,12 @@ If TITLE is specified, use it instead of chat's title."
 
           ;; If me is not member of this chat, then show [JOIN/START]
           ;; button instead of the prompt
-          ;;  - For channels show JOIN button
+          ;;  - For channels/groups show JOIN button
           ;;  - For bots show START button
           (unless (telega-filter-chats 'me-is-member (list chat))
             (let ((inhibit-read-only t)
                   (chat-type (telega-chat--type chat)))
-              (when (memq chat-type '(bot channel))
+              (when (memq chat-type '(bot channel basicgroup supergroup))
                 (button-put telega-chatbuf--prompt-button 'invisible t)
                 (goto-char telega-chatbuf--prompt-button)
                 (save-excursion
