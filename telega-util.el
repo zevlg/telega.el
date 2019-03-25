@@ -312,7 +312,7 @@ If AS-MARKDOWN is non-nil, then apply markdown syntax, instead of faces."
           (let* ((beg (plist-get ent :offset))
                  (end (+ (plist-get ent :offset) (plist-get ent :length)))
                  (props (telega--entity-to-properties
-                         ent (substring text beg end))))
+                         ent (substring-no-properties text beg end))))
             (when props
               (add-text-properties
                beg end (nconc (list 'rear-nonsticky t) props) text))))

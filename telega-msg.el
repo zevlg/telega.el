@@ -357,7 +357,7 @@ If NO-ERROR is non-nil and TEXT can't be do not raise an error, return nil."
                    (list :@type "parseTextEntities"
                          :text text
                          :parse_mode (list :@type parse-mode)))))
-    (unless (and fmt-text no-error)
+    (unless (or fmt-text no-error)
       (cl-assert telega-server--last-error)
       (user-error (plist-get telega-server--last-error :message)))
     fmt-text))
@@ -410,8 +410,8 @@ If MARKDOWN is non-nil then format TEXT as markdown."
         (let ((link (plist-get
                      (telega--getPublicMessageLink chat-id msg-id) :link)))
           (telega-ins "Link: ")
-          (insert-text-button link :telega-link (cons 'url link)
-                              'action 'telega-open-link-action)
+          (telega-ins--raw-button (telega-link-props 'url link)
+            (telega-ins link))
           (telega-ins "\n")))
 
       (when telega-debug
