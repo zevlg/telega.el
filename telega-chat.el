@@ -1706,9 +1706,15 @@ Message id could be updated on this update."
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."
-  ;; Triggered for example if trying to send bad picture
-  (telega-debug "TODO: `telega--on-updateMessageSendFailed'.")
-  )
+  ;; NOTE: Triggered for example if trying to send bad picture.
+  ;; `telega--on-updateMessageSendSucceeded' updates the message
+  ;; content with new(failed) state
+  (telega--on-updateMessageSendSucceeded event)
+
+  (let ((err-code (plist-get event :error_code))
+        (err-msg (plist-get event :error_message)))
+    (message "telega: Failed to send message: %d %s" err-code err-msg)
+    ))
 
 (defun telega--on-updateDeleteMessages (event)
   "Some messages has been deleted from chat."
