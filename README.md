@@ -90,6 +90,14 @@ Arch-based).
 to communicate with the servers. It requires a large amount of memory
 to be built.
 
+On MacOS you can install pre-build `tdlib` package using homebrew from
+[brew.sh](https://brew.sh).  Just run:
+```console
+$ brew install tdlib
+```
+
+On Linux you need build from sources.
+
 To get the source:
 ```console
 $ git clone https://github.com/tdlib/td.git

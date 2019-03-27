@@ -370,18 +370,6 @@ If MARKDOWN is non-nil then format TEXT as markdown."
     (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))
 
-  ;; (let* ((ft-text (when markdown
-  ;;                   (telega--parseTextEntities text "textParseModeMarkdown")))
-  ;;        (ft-ents (telega--properties-to-entities text))
-  ;;        (add-ents (when markdown
-  ;;                    (plist-get (telega--parseTextEntities
-  ;;                                text "textParseModeMarkdown")
-  ;;                               :entities)))
-  ;;        (entities (vconcat ft-ents add-ents)))
-  ;;   (list :@type "formattedText"
-  ;;         :text (substring-no-properties text)
-  ;;         :entities entities)))
-
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."

@@ -1343,7 +1343,9 @@ Inhibits read-only flag."
        (when (buffer-live-p ,bufsym)
          (with-current-buffer ,bufsym
            (let ((inhibit-read-only t))
-             ,@body))))))
+             (unwind-protect
+                 (progn ,@body)
+               (set-buffer-modified-p nil))))))))
 
 (defmacro with-telega-chatbuf-action (action &rest body)
   "Execute BODY setting current action to ACTION.
@@ -1587,6 +1589,7 @@ Return newly inserted node or nil if it was not inserted."
   "In current chatbuffer find message button with MSG-ID."
   ;; TODO: maybe do binary search on buffer position (getting message
   ;; as `telega-msg-at'), since message ids grows monotonically
+  ;; Or maybe search from youngest node
   (telega-ewoc--find telega-chatbuf--ewoc msg-id '= (telega--tl-prop :id)))
 
 (defun telega-chatbuf--next-voice-msg (msg)
@@ -1668,10 +1671,38 @@ Message id could be updated on this update."
       (remhash old-id telega-chatbuf--messages)
       (puthash new-id new-msg telega-chatbuf--messages)
 
-      (let ((node (telega-chatbuf--node-by-msg-id old-id)))
+      ;; Optimization: search message's node from youngest node
+      ;; NOTE: changing message might require resorting the message's
+      ;; place in the ewoc.
+      (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
+        (while (and node (not (= old-id (plist-get (ewoc-data node) :id))))
+          (setq node (ewoc-prev telega-chatbuf--ewoc node)))
+
         (when node
-          (setf (ewoc--node-data node) new-msg)
-          (telega-chatbuf--redisplay-node node))))))
+          (ewoc-delete telega-chatbuf--ewoc node)
+
+          (let ((before-node (ewoc-nth telega-chatbuf--ewoc -1)))
+            ;; Search the node to insert message with NEW-ID before
+            (while (and before-node
+                        (< new-id (plist-get (ewoc-data before-node) :id)))
+              (setq before-node (ewoc-prev telega-chatbuf--ewoc before-node)))
+
+            (with-telega-deferred-events
+              (if before-node
+                  (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
+                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))))
+
+(defun telega--on-updateMessageSendFailed (event)
+  "Message failed to send."
+  ;; NOTE: Triggered for example if trying to send bad picture.
+  ;; `telega--on-updateMessageSendSucceeded' updates the message
+  ;; content with new(failed) state
+  (telega--on-updateMessageSendSucceeded event)
+
+  (let ((err-code (plist-get event :error_code))
+        (err-msg (plist-get event :error_message)))
+    (message "telega: Failed to send message: %d %s" err-code err-msg)
+    ))
 
 (defun telega--on-updateMessageContent (event)
   "Content of the message has been changed."
@@ -1703,18 +1734,6 @@ Message id could be updated on this update."
       (when node
         (plist-put (ewoc--node-data node) :views (plist-get event :views))
         (telega-chatbuf--redisplay-node node)))))
-
-(defun telega--on-updateMessageSendFailed (event)
-  "Message failed to send."
-  ;; NOTE: Triggered for example if trying to send bad picture.
-  ;; `telega--on-updateMessageSendSucceeded' updates the message
-  ;; content with new(failed) state
-  (telega--on-updateMessageSendSucceeded event)
-
-  (let ((err-code (plist-get event :error_code))
-        (err-msg (plist-get event :error_message)))
-    (message "telega: Failed to send message: %d %s" err-code err-msg)
-    ))
 
 (defun telega--on-updateDeleteMessages (event)
   "Some messages has been deleted from chat."

@@ -537,7 +537,9 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
     (let* ((bwin (get-buffer-window (marker-buffer button)))
            (bframe (window-frame bwin)))
       (and bframe
-           (frame-focus-state bframe)
+           ;; NOTE: 26.1 Emacs has no `frame-focus-state'
+           (or (not (fboundp 'frame-focus-state))
+               (frame-focus-state bframe))
            (pos-visible-in-window-p button bwin)))))
 
 (defun telega-button-forward (n &optional button-type)

@@ -158,7 +158,9 @@ Inhibits read-only flag."
   `(when (buffer-live-p (telega-root--buffer))
      (with-current-buffer telega-root-buffer-name
        (let ((inhibit-read-only t))
-         ,@body))))
+         (unwind-protect
+             (progn ,@body)
+           (set-buffer-modified-p nil))))))
 
 
 ;;; Auth/Connection Status

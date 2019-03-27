@@ -489,8 +489,8 @@ File is specified with FILE-SPEC."
 ;    (telega-photo--progress-svg best cheight)))
     (telega-media--image
      (cons photo create-image-fun)
-     (cons best :photo))))
-;     'force-update)))
+     (cons best :photo)
+     'force-update)))
 
 (defun telega-avatar--create-image (chat-or-user file)
   "Create image for CHAT-OR-USER avatar."

@@ -87,6 +87,9 @@ Have Stoploss 690 Satoshi. í ½í»‘
   ;; see https://t.me/emacs_telega/1592
   (should (fboundp 'cursor-intangible-mode))
 
+  ;; For now stick with at least 26.1 Emacs
+  (should (string-version-lessp "26.0" emacs-version))
+
   ;; imagemagick for images
   (should (image-type-available-p 'imagemagick))
   (should (image-type-available-p 'svg))

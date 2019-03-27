@@ -902,6 +902,8 @@ If NO-AVATAR is specified, then do not insert avatar."
       (telega-ins-prefix " edited at "
         (unless (zerop (plist-get msg :edit_date))
           (telega-ins--date (plist-get msg :edit_date))))
+      (when telega-debug
+        (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
 
       (when telega-msg-heading-whole-line
         (telega-ins "\n")))
