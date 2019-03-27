@@ -157,13 +157,13 @@ $ git clone https://github.com/zevlg/telega.el
 Moving into the folder with `cd telega.el`, it is possible to build
 the `telega-server` executable and move into the `$HOME/.telega` with:
 ```console
-$ make && make test && make install
+$ make && make install && make test
 ```
 
 If you want VoIP support in `telega.el` and `libtgvoip` is installed,
 then use this instead:
 ```console
-$ make WITH_VOIP=t && make WITH_VOIP=t test && make WITH_VOIP=t install
+$ make WITH_VOIP=t && make WITH_VOIP=t install && make WITH_VOIP=t test
 ```
 
 This command does not require superuser privileges.
