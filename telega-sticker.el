@@ -495,7 +495,14 @@ If INFO-P is non-nil then use `stickerSetInfo' instead of `sticker'."
 
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."
-  (let* ((start (minibuffer-prompt-end))
+  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+  ;; NOTE:
+  ;;  - Avoid help window selection by binding `help-window-select'
+  ;;  - Avoid smart packages (such as shackle) to handle help window by
+  ;;    binding `display-buffer-alist'
+  (let* ((help-window-select nil)
+         (display-buffer-alist nil)     ;XXX
+         (start (minibuffer-prompt-end))
          (end (point))
          (str (cond ((memq 'ido-exhibit post-command-hook)
                      ;; ido used
