@@ -647,6 +647,11 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-audio "🎶"     ;\U0001F3B6
+  "*String to use as audio symbol."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-video "📹"     ;\U0001F4F9
   "*String to use as video symbol."
   :type 'string

@@ -2125,7 +2125,7 @@ If PREVIEW-P is non-nil, then generate preview image."
            :document ifile))))
 
 (defun telega-chatbuf-attach-photo (filename)
-  "Attach FILE as document to the current input."
+  "Attach FILENAME as photo to the current input."
   (interactive (list (read-file-name "Photo: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t)))
     (telega-chatbuf-input-insert
@@ -2133,12 +2133,20 @@ If PREVIEW-P is non-nil, then generate preview image."
            :photo ifile))))
 
 (defun telega-chatbuf-attach-video (filename)
-  "Attach FILE as document to the current input."
-  (interactive (list (read-file-name "Photo: ")))
+  "Attach FILENAME as video to the current input."
+  (interactive (list (read-file-name "Video: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Video)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVideo"
            :video ifile))))
+
+(defun telega-chatbuf-attach-audio (filename)
+  "Attach FILENAME as audio to the current input."
+  (interactive (list (read-file-name "Audio: ")))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Audio)))
+    (telega-chatbuf-input-insert
+     (list :@type "inputMessageAudio"
+           :audio ifile))))
 
 (defun telega-chatbuf-attach-note-video (filename)
   "Attach FILE as document to the current input."
@@ -2343,7 +2351,7 @@ Prefix argument is available for next attachements:
   (interactive
    (list (funcall telega-completing-read-function
                   "Attach type: "
-                  (nconc (list "photo" "video"
+                  (nconc (list "photo" "audio" "video"
                                "note-video" "note-voice"
                                "file" "location"
                                "poll" "contact"

@@ -446,35 +446,35 @@ markdown syntax to the TEXT."
       (telega-duration-human-readable dur))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg audio-file))
-    (telega-ins "\n")
 
     ;; Title --Performer
-    (when title
-      (telega-ins--with-face 'bold
-        (telega-ins title))
-      (telega-ins-prefix " --"
-        (telega-ins performer))
-      (telega-ins "\n"))
+    (telega-ins-prefix "\n"
+      (when title
+        (telega-ins--with-face 'bold
+          (telega-ins title))
+        (telega-ins-prefix " --"
+          (telega-ins performer))))
 
     ;; Progress and [Stop] button
-    (when played
-      (let* ((pcol (/ telega-chat-fill-column 2))
-             (progress (/ played dur))
-             (ps (make-string (round (* progress pcol)) ?\.))
-             (pl (make-string (- pcol (string-width ps)) ?\s)))
-        (telega-ins "[" ps pl "] ")
-        (telega-ins--button "Stop"
-          'action (lambda (_ignored)
-                    (telega-ffplay-stop)))
-        (telega-ins "\n")))
+    (telega-ins-prefix "\n"
+      (when played
+        (let* ((pcol (/ telega-chat-fill-column 2))
+               (progress (/ played dur))
+               (ps (make-string (round (* progress pcol)) ?\.))
+               (pl (make-string (- pcol (string-width ps)) ?\s)))
+          (telega-ins "[" ps pl "] ")
+          (telega-ins--button "Stop"
+            'action (lambda (_ignored)
+                      (telega-ffplay-stop))))))
 
     ;; Album cover
-    (when thumb
-      (let ((timg (telega-media--image
-                   (cons thumb 'telega-thumb--create-image-as-is)
-                   (cons thumb :photo))))
-        (telega-ins--image-slices timg))
-      (telega-ins " "))
+    (telega-ins-prefix "\n"
+      (when thumb
+        (let ((timg (telega-media--image
+                     (cons thumb 'telega-thumb--create-image-as-is)
+                     (cons thumb :photo))))
+          (telega-ins--image-slices timg))
+        (telega-ins " ")))
     t))
         
 (defun telega-ins--video (msg &optional video)
@@ -498,13 +498,14 @@ markdown syntax to the TEXT."
       (telega-duration-human-readable (plist-get video :duration)))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg video-file))
-    (telega-ins "\n")
-    (when thumb
-      (let ((timg (telega-media--image
-                   (cons thumb 'telega-thumb--create-image-as-is)
-                   (cons thumb :photo))))
-        (telega-ins--image-slices timg))
-      (telega-ins " "))
+
+    (telega-ins-prefix "\n"
+      (when thumb
+        (let ((timg (telega-media--image
+                     (cons thumb 'telega-thumb--create-image-as-is)
+                     (cons thumb :photo))))
+          (telega-ins--image-slices timg))
+        (telega-ins " ")))
     t))
 
 (defun telega-ins--voice-note (msg &optional note)
@@ -1084,6 +1085,8 @@ unless message is edited."
       (telega-ins--input-file (plist-get imc :document)))
      (inputMessagePhoto
       (telega-ins--input-file (plist-get imc :photo) telega-symbol-photo))
+     (inputMessageAudio
+      (telega-ins--input-file (plist-get imc :audio) telega-symbol-audio))
      (inputMessageVideo
       (telega-ins--input-file (plist-get imc :video) telega-symbol-video))
      (inputMessageSticker
@@ -1137,6 +1140,13 @@ unless message is edited."
        (messageAnimation
         (or (telega-ins--text (plist-get content :caption))
             (telega-ins (propertize "GIF" 'face 'shadow))))
+       (messageAudio
+        (telega-ins telega-symbol-audio " ")
+        (or (telega-ins--text (plist-get content :caption))
+            (telega-ins (propertize "Audio" 'face 'shadow)))
+        (telega-ins-fmt " (%s)"
+          (telega-duration-human-readable
+           (telega--tl-get content :audio :duration))))
        (messageVideo
         (telega-ins telega-symbol-video " ")
         (or (telega-ins--text (plist-get content :caption))
