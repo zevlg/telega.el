@@ -448,33 +448,33 @@ markdown syntax to the TEXT."
       (telega-ins--file-progress msg audio-file))
 
     ;; Title --Performer
-    (telega-ins-prefix "\n"
-      (when title
-        (telega-ins--with-face 'bold
-          (telega-ins title))
-        (telega-ins-prefix " --"
-          (telega-ins performer))))
+    (when title
+      (telega-ins "\n")
+      (telega-ins--with-face 'bold
+        (telega-ins title))
+      (telega-ins-prefix " --"
+        (telega-ins performer)))
 
     ;; Progress and [Stop] button
-    (telega-ins-prefix "\n"
-      (when played
-        (let* ((pcol (/ telega-chat-fill-column 2))
-               (progress (/ played dur))
-               (ps (make-string (round (* progress pcol)) ?\.))
-               (pl (make-string (- pcol (string-width ps)) ?\s)))
-          (telega-ins "[" ps pl "] ")
-          (telega-ins--button "Stop"
-            'action (lambda (_ignored)
-                      (telega-ffplay-stop))))))
+    (when played
+      (telega-ins "\n")
+      (let* ((pcol (/ telega-chat-fill-column 2))
+             (progress (/ played dur))
+             (ps (make-string (round (* progress pcol)) ?\.))
+             (pl (make-string (- pcol (string-width ps)) ?\s)))
+        (telega-ins "[" ps pl "] ")
+        (telega-ins--button "Stop"
+          'action (lambda (_ignored)
+                    (telega-ffplay-stop)))))
 
     ;; Album cover
-    (telega-ins-prefix "\n"
-      (when thumb
-        (let ((timg (telega-media--image
-                     (cons thumb 'telega-thumb--create-image-as-is)
-                     (cons thumb :photo))))
-          (telega-ins--image-slices timg))
-        (telega-ins " ")))
+    (when thumb
+      (telega-ins "\n")
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb :photo))))
+        (telega-ins--image-slices timg))
+      (telega-ins " "))
     t))
         
 (defun telega-ins--video (msg &optional video)
@@ -499,13 +499,13 @@ markdown syntax to the TEXT."
     (telega-ins-prefix " "
       (telega-ins--file-progress msg video-file))
 
-    (telega-ins-prefix "\n"
-      (when thumb
-        (let ((timg (telega-media--image
-                     (cons thumb 'telega-thumb--create-image-as-is)
-                     (cons thumb :photo))))
-          (telega-ins--image-slices timg))
-        (telega-ins " ")))
+    (when thumb
+      (telega-ins "\n")
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb :photo))))
+        (telega-ins--image-slices timg))
+      (telega-ins " "))
     t))
 
 (defun telega-ins--voice-note (msg &optional note)

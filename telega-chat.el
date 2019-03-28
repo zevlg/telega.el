@@ -2045,12 +2045,12 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
 (defun telega-chatbuf-read-all ()
   "Read all messages in chat buffer."
   (interactive)
-  ;; TODO:
-  ;;   - If last message is show
-  ;;   - If not, load the history
-  ;; Then go to the input
-  (user-error "`telega-chatbuf-read-all' not yet implemented")
-  )
+  (unless (telega-chatbuf--last-msg-loaded-p)
+    ;; Need to load most recent history
+    (telega-ewoc--clean telega-chatbuf--ewoc)
+    (telega-chat--load-history telega-chatbuf--chat))
+
+  (goto-char (point-max)))
 
 (defun telega-chatbuf-next-mention ()
   "Goto next mention in chat buffer."
