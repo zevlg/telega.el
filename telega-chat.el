@@ -1224,7 +1224,7 @@ Also mark messages as read with `viewMessages'."
     ;; Mark some messages as read
     (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
               (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
-                 (telega--tl-get telega-chatbuf--chat :last_message :id)))
+                 (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
       (telega--viewMessages
        telega-chatbuf--chat
        (telega-chatbuf--visible-messages window display-start)))

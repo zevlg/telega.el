@@ -137,6 +137,7 @@
     (telega-describe-stickerset
      (telega-stickerset-get sset-id) nil (telega-msg-chat msg))))
 
+;; TODO: revise the code, too much similar stuff
 (defun telega-msg-open-video (msg)
   "Open content for video message MSG."
   (let* ((video (telega--tl-get msg :content :video))
@@ -150,6 +151,28 @@
           (apply 'telega-ffplay-run
                  (telega--tl-get file :local :path) nil
                  telega-video-ffplay-args))))))
+
+(defun telega-msg-open-audio (msg)
+  "Open content for audio message MSG."
+  ;; - If already playing, then pause
+  ;; - If paused, start from paused position
+  ;; - If not start, start playing
+  (let* ((audio (telega--tl-get msg :content :audio))
+         (audio-file (telega-file--renew audio :audio))
+         (proc (plist-get msg :telega-audio-proc)))
+    (cl-case (and (process-live-p proc) (process-status proc))
+      (run (telega-ffplay-pause proc))
+      (stop (telega-ffplay-resume proc))
+      (t (telega-file--download audio-file 32
+          (lambda (file)
+            (telega-msg-redisplay msg)
+            (when (telega-file--downloaded-p file)
+              (plist-put msg :telega-audio-proc
+                         (telega-ffplay-run
+                          (telega--tl-get file :local :path)
+                          (lambda (_proc)
+                            (telega-msg-redisplay msg))
+                          "-nodisp")))))))))
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
@@ -258,6 +281,8 @@
      (telega-msg-open-sticker msg))
     (messageVideo
      (telega-msg-open-video msg))
+    (messageAudio
+     (telega-msg-open-audio msg))
     (messageAnimation
      (telega-msg-open-animation msg))
     (messageVoiceNote

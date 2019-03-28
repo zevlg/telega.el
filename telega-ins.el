@@ -408,9 +408,77 @@ markdown syntax to the TEXT."
      (telega-photo--image photo (or limits telega-photo-maxsize)))
     ))
 
+(defun telega-ins--audio (msg &optional audio)
+  "Insert audio message MSG."
+  (unless audio
+    (setq audio (telega--tl-get msg :content :audio)))
+  (let* ((dur (plist-get audio :duration))
+        (proc (plist-get msg :telega-audio-proc))
+        (proc-status (and (process-live-p proc)
+                          (process-status proc)))
+        (played (and proc-status
+                     (plist-get (process-plist proc) :progress)))
+
+        (thumb (plist-get audio :album_cover_thumbnail))
+        (audio-name (plist-get audio :file_name))
+        (audio-file (telega-file--renew audio :audio))
+        (title (plist-get audio :title))
+        (performer (plist-get audio :performer))
+        linup-col)
+
+    ;; play/pause
+    (if (eq proc-status 'run)
+        (telega-ins telega-symbol-pause)
+      (telega-ins telega-symbol-play))
+    (telega-ins " ")
+
+    (telega-ins--with-attrs (list :max (/ telega-chat-fill-column 2)
+                                  :elide t
+                                  :elide-trail (/ telega-chat-fill-column 4))
+      (if (telega-file--downloaded-p audio-file)
+          (let ((local-path (telega--tl-get audio-file :local :path)))
+            (telega-ins--with-props
+                (telega-link-props 'file local-path)
+              (telega-ins (telega-short-filename local-path))))
+        (telega-ins audio-name)))
+    (telega-ins-fmt " (%s %s)"
+      (file-size-human-readable (telega-file--size audio-file))
+      (telega-duration-human-readable dur))
+    (telega-ins-prefix " "
+      (telega-ins--file-progress msg audio-file))
+    (telega-ins "\n")
+
+    ;; Title --Performer
+    (when title
+      (telega-ins--with-face 'bold
+        (telega-ins title))
+      (telega-ins-prefix " --"
+        (telega-ins performer))
+      (telega-ins "\n"))
+
+    ;; Progress and [Stop] button
+    (when played
+      (let* ((pcol (/ telega-chat-fill-column 2))
+             (progress (/ played dur))
+             (ps (make-string (round (* progress pcol)) ?\.))
+             (pl (make-string (- pcol (string-width ps)) ?\s)))
+        (telega-ins "[" ps pl "] ")
+        (telega-ins--button "Stop"
+          'action (lambda (_ignored)
+                    (telega-ffplay-stop)))
+        (telega-ins "\n")))
+
+    ;; Album cover
+    (when thumb
+      (let ((timg (telega-media--image
+                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb :photo))))
+        (telega-ins--image-slices timg))
+      (telega-ins " "))
+    t))
+        
 (defun telega-ins--video (msg &optional video)
   "Insert video message MSG."
-  ;; TODO
   (unless video
     (setq video (telega--tl-get msg :content :video)))
   (let ((thumb (plist-get video :thumbnail))
@@ -788,6 +856,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--photo (plist-get content :photo) msg))
       ('messageSticker
        (telega-ins--sticker-image (plist-get content :sticker) 'slices))
+      ('messageAudio
+       (telega-ins--audio msg))
       ('messageVideo
        (telega-ins--video msg))
       ('messageVoiceNote
