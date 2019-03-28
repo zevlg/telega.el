@@ -74,7 +74,7 @@ source.
 
 ## Dependences
 
-   * `GNU Emacs` (at least 25.1 is required)
+   * `GNU Emacs` (at least 26.1 is required)
    * `GNU make`
    * `GNU gperf`
    * `CMake`
@@ -83,6 +83,24 @@ source.
 be download with the system package manager (such as `apt` for
 Debian-based distributions, `dnf` for Fedora or `pacman` for
 Arch-based).
+
+### MacOS users
+
+1. If you are using [Emacs For Mac OS X](https://emacsformacosx.com/),
+   or you installed Emacs by running `brew cask install emacs`, your
+   Emacs lacks svg support, so you cannot use telega. Please switch to
+   [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus)
+
+2. If you are using
+   [Emacs-mac](https://bitbucket.org/mituharu/emacs-mac/), or you
+   installed Emacs by running `brew install emacs-mac` or `brew cask
+   install emacs-mac`, your Emacs has bug dealing with complex svg,
+   which leads to Emacs hangup.  Until the bug is fixed, consider
+   switching to
+   [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus)
+
+3. [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus) is
+   the best choice to run telega.
 
 ### Building tdlib
 
@@ -96,7 +114,7 @@ On MacOS you can install pre-build `tdlib` package using homebrew from
 $ brew install tdlib
 ```
 
-On Linux you need build from sources.
+On Linux you need build `tdlib` from sources.
 
 To get the source:
 ```console
