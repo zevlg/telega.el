@@ -1173,7 +1173,7 @@ Keymap:
   ;; Use punctuation as "no-value" button content
   ;; See https://github.com/zevlg/telega.el/issues/45
   (setq telega-chatbuf--aux-button
-        (telega-button--insert 'telega-prompt-aux "!"
+        (telega-button--insert 'telega-prompt-aux "!aa!"
           'invisible t))
   (setq telega-chatbuf--prompt-button
         (telega-button--insert 'telega-prompt telega-chat-input-prompt))
@@ -1629,7 +1629,7 @@ Otherwise start from WINDOW's `window-start'."
     (telega-save-excursion
       (unless (button-get telega-chatbuf--aux-button 'invisible)
         (telega-button--update-value
-         telega-chatbuf--aux-button "!"
+         telega-chatbuf--aux-button "!aa!"
          :inserter 'telega-ins
          'invisible t))
 
