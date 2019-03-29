@@ -572,7 +572,7 @@ Return sticker set."
 ;;; Animations
 (define-button-type 'telega-animation
   :supertype 'telega
-  :inserter 'telega-ins--animation)
+  :inserter 'telega-ins--animation-image)
 
 (defun telega-animation-at (&optional pos)
   "Retur sticker at POS."
