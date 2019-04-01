@@ -1457,7 +1457,7 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
   (let ((last-msg-id
          (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
     (or (<= last-msg-id (or (plist-get (telega-chatbuf--youngest-msg) :id) 0))
-        (and for-msg (<= last-msg-id (plist-get for-msg :id))))))
+        (and for-msg (= last-msg-id (plist-get for-msg :id))))))
 
 (defun telega-chatbuf--modeline-buffer-identification ()
   "Return `mode-line-buffer-identification' for the CHAT buffer."
