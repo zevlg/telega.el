@@ -86,7 +86,10 @@
 
 (define-derived-mode telega-root-mode nil "Telega-Root"
   "The mode for telega root buffer.
-Keymap:
+
+Chat bindings (cursor on chat):
+\\{telega-chat-button-map}
+Global root bindings:
 \\{telega-root-mode-map}"
   :group 'telega-root
   (setq mode-line-buffer-identification

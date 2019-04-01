@@ -1147,7 +1147,10 @@ Update modeline as well."
 
 (define-derived-mode telega-chat-mode nil "Telega-Chat"
   "The mode for telega chat buffer.
-Keymap:
+
+Message bindings (cursor on message):
+\\{telega-msg-button-map}
+Global chat bindings:
 \\{telega-chat-mode-map}"
   :group 'telega-chat
   (setq telega-chatbuf--messages (make-hash-table :test 'eq)
