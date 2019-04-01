@@ -77,7 +77,9 @@
     (define-key map (kbd "c l") 'telega-voip-list-calls)
 
     (define-key map (kbd "s") 'telega-search)
-    (define-key map (kbd "q") 'telega-kill)
+    (define-key map (kbd "q") 'bury-buffer)
+    (define-key map (kbd "Q") 'telega-kill)
+
     (define-key map (kbd "m") 'telega-chat-with)
     map)
   "The key map for telega root buffer.")
