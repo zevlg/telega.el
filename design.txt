@@ -486,4 +486,4 @@ Fonts
 * fonts-noto      (quite bad)
 * Symbola from https://fonts2u.com/symbola.font (for unicode emojis with good vertical spacing)
 
-* http://users.teilar.gr/~g1951d/
+* http://users.teilar.gr/~g1951d/  (Symbola Author: George Dourosg 1951d@teilar.gr)
