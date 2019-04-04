@@ -1554,28 +1554,51 @@ in the search status stack."
 
 (defun telega-chatbuf--input-isearch-search ()
   (lambda (regexp &optional bound noerror count)
-    ;; Try searching current input
-    (or ;(funcall
-;         (if isearch-forward 're-search-forward 're-search-backward)
-;         regexp telega-chatbuf--input-marker noerror count)
+    (let ((search-fun (isearch-search-fun-default))
+          (h-point (point))
+          (h-bound telega-chatbuf--input-marker)
+          found)
+      (when (and bound isearch-forward (< h-point h-bound))
+        (goto-char h-bound))
 
-        ;; Search the history
+      (setq found (funcall search-fun regexp h-bound))
+      (message "HERE, found=%S" found)
+      (unless found
         (let ((idx (or telega-chatbuf--input-idx 0))
-              (step (if isearch-forward -1 1))
-              (found nil))
-          (while (and (not found)
+              (step (if isearch-forward -1 1)))
+          (while (and idx
                       (>= idx 0)
                       (< idx (ring-length telega-chatbuf--input-ring)))
-            (setq found (string-match regexp (ring-ref telega-chatbuf--input-ring idx)))
-            (if found
-                (telega-chatbuf-input-goto idx)
-              (incf idx step)))
+            (when (string-match regexp (ring-ref telega-chatbuf--input-ring idx))
+              ;; found
+              (telega-chatbuf-input-goto idx)
+              (setq idx -10))
+            (incf idx step)))
+        (setq found (funcall search-fun regexp h-bound)))
+      found
+      ))
+;;     ;; Try searching current input
+;;     (or ;(funcall
+;; ;         (if isearch-forward 're-search-forward 're-search-backward)
+;; ;         regexp telega-chatbuf--input-marker noerror count)
 
-          (when found
-            (point))
-          )))
-;  (message "ARGS: %S" args)
-;  (isearch-update)
+;;         ;; Search the history
+;;         (let ((idx (or telega-chatbuf--input-idx 0))
+;;               (step (if isearch-forward -1 1))
+;;               (found nil))
+;;           (while (and (not found)
+;;                       (>= idx 0)
+;;                       (< idx (ring-length telega-chatbuf--input-ring)))
+;;             (setq found (string-match regexp (ring-ref telega-chatbuf--input-ring idx)))
+;;             (if found
+;;                 (telega-chatbuf-input-goto idx)
+;;               (incf idx step)))
+
+;;           (when found
+;;             (point))
+;;           )))
+;; ;  (message "ARGS: %S" args)
+;; ;  (isearch-update)
   )
 
 (defun telega-chatbuf--input-isearch-end ()
@@ -2408,8 +2431,7 @@ Otherwise choose sticker from some installed sticker set."
                   (not (with-current-buffer tss-buffer
                          (and (eq telega-help-win--stickerset sset)
                               (eq telega--chat telega-chatbuf--chat)))))
-        (telega-describe-stickerset
-         sset nil telega-chatbuf--chat))
+        (telega-describe-stickerset sset telega-chatbuf--chat))
 
       (select-window
        (temp-buffer-window-show tss-buffer)))))

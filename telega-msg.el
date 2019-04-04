@@ -135,7 +135,7 @@
   "Open content for sticker message MSG."
   (let ((sset-id (telega--tl-get msg :content :sticker :set_id)))
     (telega-describe-stickerset
-     (telega-stickerset-get sset-id) nil (telega-msg-chat msg))))
+     (telega-stickerset-get sset-id) (telega-msg-chat msg))))
 
 ;; TODO: revise the code, too much similar stuff
 (defun telega-msg-open-video (msg)
