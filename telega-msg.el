@@ -368,12 +368,6 @@ with list of chats received."
                    :test #'=)
       " (admin)")))
 
-(defun telega--parseTextEntities (text &optional type)
-  (telega-server--call
-   (list :@type "parseTextEntities"
-         :text text
-         :parse_mode (list :@type (or type "textParseModeMarkdown")))))
-
 (defun telega--parseTextEntities (text parse-mode &optional no-error)
   "Parse TEXT using PARSE-MODE.
 PARSE-MODE is one of: \"textParseModeMarkdown\" or \"textParseModeHTML\".

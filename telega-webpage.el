@@ -324,7 +324,7 @@ instant view for the URL."
   (setq telega-webpage--url url
         telega-webpage--sitename (or sitename
                                      (capitalize
-                                      (url-domain
+                                      (url-host
                                        (url-generic-parse-url url))))
         telega-webpage--iv (or instant-view
                                (telega--getWebPageInstantView url)

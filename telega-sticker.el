@@ -45,10 +45,6 @@
 (defvar telega-sticker--use-thumbnail nil
   "Bind this variable to non-nil to use thumbnail instead of image.
 Thumbnail is a smaller (and faster) version of sticker image.")
-(defvar telega-minibuffer--choices nil
-  "Bind to list of choices.")
-(defvar telega-minibuffer--chat nil
-  "Bind to chat currently active.")
 
 (defvar telega-sticker-button-map
   (let ((map (make-sparse-keymap)))
