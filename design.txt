@@ -4,7 +4,7 @@ Codestyle
 Version: 0.3.X
 
 * Something that acts on chat buffer or any function that uses any
-  chat buffer local variable should be named with `telega-chatbuf-`
+  chat buffer local variables should be named with `telega-chatbuf-`
   prefix
   - TODO: what about chat buffer commands?
 
@@ -319,7 +319,9 @@ User2 msg2
 
 ^^^^^Плохо
 
-Или лучше, ввести понятие типа фильтрования и если сейчас отображены чаты то удалять всё из root ewoc, менять его pretty-printer и добалять другие элементы
+Или лучше, ввести понятие типа фильтрования и если сейчас отображены
+чаты то удалять всё из root ewoc, менять его pretty-printer и добалять
+другие элементы
 
 типа
 ----(chats ...)----
@@ -433,13 +435,19 @@ ____(@zevlg is typing...)_______________________
 ~~~~
 
 - Если чувак прокручивал историю и в это время приходят сообщения, то
-  показывать сколько сообщений в modeline. [TODO]
+  показывать сколько сообщений в modeline. [DONE]
 
-- Если показываются сообщения, но самое последнее сообщение ещё
-  загружено, то делать input недоступным, а в footer показывать
-  колво непрочитаных сообщений/меншонов, типа:
+- Если показываются сообщения, но самое последнее сообщение ещё не
+  загружено, то делать input недоступным, а в footer показывать колво
+  непрочитаных сообщений/меншонов, типа:
 
   .................(100@2).................
+
+- Если писать в чат нельзя, то не показывать prompt
+  см. https://t.me/emacs_telega/3775 [TODO]
+
+- Глобальный chat input history, и чтобы по нему можно было искать в
+  любом чате [TODO]
 
 Shared media
 ~~~~~~~~~~~
@@ -469,7 +477,7 @@ TODO
 
 * Не использовать `image-size' в media подсистеме, image-size
   полностью подгружает картинку даже если она ещё не показывается.
-  Это делает загрузку стикеров/анимаций очень медленной
+  Это делает загрузку стикеров/анимаций очень медленной [TODO]
 
 Fonts
 -----
@@ -478,4 +486,4 @@ Fonts
 * fonts-noto      (quite bad)
 * Symbola from https://fonts2u.com/symbola.font (for unicode emojis with good vertical spacing)
 
-* http://users.teilar.gr/~g1951d/
+* http://users.teilar.gr/~g1951d/  (Symbola Author: George Dourosg 1951d@teilar.gr)

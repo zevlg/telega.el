@@ -140,6 +140,14 @@ Only one call can be currently active.")
 cons cell where car is settings for private and secret chats
 and cdr is settings for groups/supergroups/channels.")
 
+;; Minibuffer stuff used by chatbuf and stickers
+(defvar telega-minibuffer--choices nil
+  "Bind to list of choices.")
+(defvar telega-minibuffer--chat nil
+  "Bind to chat currently active.")
+(defvar telega-minibuffer--string nil
+  "Bind to Saved string entered to minibuffer.")
+
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."

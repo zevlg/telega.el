@@ -210,7 +210,9 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
                                    :fill-column telega-webpage-fill-column)
        (telega-webpage--ins-rt (plist-get pb :title) 'strip-newlines)))
     (pageBlockSubtitle
-     (telega-webpage--ins-rt (plist-get pb :subtitle)))
+     (telega-ins--with-attrs (list :fill 'left
+                                   :fill-column telega-webpage-fill-column)
+       (telega-webpage--ins-rt (plist-get pb :subtitle))))
     (pageBlockAuthorDate
      (telega-ins--with-attrs (list :face 'shadow)
        (telega-ins "By ")
@@ -322,7 +324,7 @@ instant view for the URL."
   (setq telega-webpage--url url
         telega-webpage--sitename (or sitename
                                      (capitalize
-                                      (url-domain
+                                      (url-host
                                        (url-generic-parse-url url))))
         telega-webpage--iv (or instant-view
                                (telega--getWebPageInstantView url)

@@ -25,6 +25,7 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-ins)
 (require 'telega-customize)
 
 (defvar telega-filters--ewoc nil "ewoc for custom filters.")
