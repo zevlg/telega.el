@@ -436,7 +436,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
             (telega-chatbuf--prompt-reset)))
 
         (telega-save-cursor
-          (delete-region telega-chatbuf--input-marker (point-max))
+          (telega-chatbuf--input-delete)
           (goto-char telega-chatbuf--input-marker)
           ;; NOTE: We want real UTF-8 chars to be inserted, not using
           ;; 'display trick for desurrogating
@@ -1001,6 +1001,10 @@ Do it only if FORCE is non-nil."
 Real value is the pending input string.")
 (make-variable-buffer-local 'telega-chatbuf--input-pending)
 
+(defvar telega-chatbuf--input-match-overlay nil
+  "Overlay used to highlight match in chat's input.")
+(make-variable-buffer-local 'telega-chatbuf--input-match-overlay)
+
 (defvar telega-chatbuf--input-marker nil)
 (make-variable-buffer-local 'telega-chatbuf--input-marker)
 
@@ -1254,6 +1258,10 @@ Also mark messages as read with `viewMessages'."
   "Return non-nil if chatbuf has some input."
   (buffer-substring telega-chatbuf--input-marker (point-max)))
 
+(defsubst telega-chatbuf--input-delete ()
+  "Delete chatbuf's input."
+  (delete-region telega-chatbuf--input-marker (point-max)))
+
 (defun telega-chatbuf--editing-msg ()
   "Return message currently editing."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
@@ -1431,13 +1439,13 @@ If TITLE is specified, use it instead of chat's title."
 
           (current-buffer)))))
 
-(defun telega-chatbuf--oldest-msg ()
+(defsubst telega-chatbuf--oldest-msg ()
   "Return oldest message in the current chat buffer."
   (let ((node (ewoc-nth telega-chatbuf--ewoc 0)))
     (when node
       (ewoc-data node))))
 
-(defun telega-chatbuf--youngest-msg ()
+(defsubst telega-chatbuf--youngest-msg ()
   "Return youngest message in the current chat buffer."
   (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
     (when node
@@ -1490,7 +1498,8 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
     (setq telega-chatbuf--input-pending (telega-chatbuf-input-string)))
 
   (setq telega-chatbuf--input-idx pos)
-  (delete-region telega-chatbuf--input-marker (point-max))
+  (telega-chatbuf--input-delete)
+  (goto-char (point-max))
 
   (if (and pos (not (ring-empty-p telega-chatbuf--input-ring)))
       (insert (ring-ref telega-chatbuf--input-ring pos))
@@ -1502,42 +1511,24 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
 (defun telega-chatbuf-input-restore ()
   "Restore pending input."
   (when telega-chatbuf--input-idx
-    (delete-region telega-chatbuf--input-marker (point-max))
+    (telega-chatbuf--input-delete)
     (when telega-chatbuf--input-pending
+      (goto-char (point-max))
       (insert telega-chatbuf--input-pending))
     (setq telega-chatbuf--input-idx nil)))
-
-(defun telega-chatbuf-input-prev-matching-idx (regexp arg &optional start)
-  "Return position in input history matching REGEXP.
-Moves relative to START, or `telega-chatbuf--input-idx'."
-  (let ((comint-input-ring telega-chatbuf--input-ring))
-    (comint-previous-matching-input-string-position
-     regexp arg (or start telega-chatbuf--input-idx))))
-
-(defun telega-chatbuf-input-prev-match (regexp n)
-  "Search input history backward for match by REGEXP."
-  (let ((pos (telega-chatbuf-input-prev-matching-idx regexp n)))
-    (unless pos
-      (user-error "Not found"))
-    (unless isearch-mode
-      (let ((message-log-max nil))	; Do not write to *Messages*.
-	(message "History item: %d" (1+ pos))))
-    (telega-chatbuf-input-goto pos)))
 
 (defun telega-chatbuf-input-prev (n)
   "Goto N previous items in chat input history."
   (interactive "p")
-  ;; Same as in `comint-previous-input'
-  (if (and telega-chatbuf--input-idx
-	   (or             ;; leaving the "end" of the ring
-	    (and (< n 0)   ;; going down
-		 (eq telega-chatbuf--input-idx 0))
-	    (and (> n 0) ;; going up
-		 (eq telega-chatbuf--input-idx
-		     (1- (ring-length telega-chatbuf--input-ring)))))
-           telega-chatbuf--input-pending)
-      (telega-chatbuf-input-restore)
-    (telega-chatbuf-input-prev-match "." n)))
+  (let ((idx (if telega-chatbuf--input-idx
+                 (+ telega-chatbuf--input-idx n)
+               (1- n))))
+    ;; clamp IDX
+    (cond ((< idx 0)
+           (setq idx nil)) ;; restory pending input
+          ((>= idx (ring-length telega-chatbuf--input-ring))
+           (setq idx (1- (ring-length telega-chatbuf--input-ring)))))
+    (telega-chatbuf-input-goto idx)))
 
 (defun telega-chatbuf-input-next (n)
   "Goto next N's item in chat input history."
@@ -1545,10 +1536,52 @@ Moves relative to START, or `telega-chatbuf--input-idx'."
   (when telega-chatbuf--input-idx
     (telega-chatbuf-input-prev (- n))))
 
+(defun telega-chatbuf--input-isearch-push-state ()
+  "Save a function restoring the state of input history search.
+Save `telega-chatbuf--input-idx' to the additional state parameter
+in the search status stack."
+  (let ((idx telega-chatbuf--input-idx))
+    (lambda (_cmd)
+      (telega-chatbuf-input-goto idx))))
+
+(defun telega-chatbuf--input-isearch-wrap ()
+  (user-error "No previous search matching")
+  )
+
+(defun telega-chatbuf--input-isearch-message (&optional c-q-hack ellipsis)
+  (isearch-message c-q-hack ellipsis)
+  )
+
+(defun telega-chatbuf--input-isearch-search ()
+  (lambda (regexp &optional bound noerror count)
+    ;; Try searching current input
+    (or ;(funcall
+;         (if isearch-forward 're-search-forward 're-search-backward)
+;         regexp telega-chatbuf--input-marker noerror count)
+
+        ;; Search the history
+        (let ((idx (or telega-chatbuf--input-idx 0))
+              (step (if isearch-forward -1 1))
+              (found nil))
+          (while (and (not found)
+                      (>= idx 0)
+                      (< idx (ring-length telega-chatbuf--input-ring)))
+            (setq found (string-match regexp (ring-ref telega-chatbuf--input-ring idx)))
+            (if found
+                (telega-chatbuf-input-goto idx)
+              (incf idx step)))
+
+          (when found
+            (point))
+          )))
+;  (message "ARGS: %S" args)
+;  (isearch-update)
+  )
+
 (defun telega-chatbuf--input-isearch-end ()
   "Clean up the input after terminating isearch in input history."
-  (if comint-history-isearch-message-overlay
-      (delete-overlay comint-history-isearch-message-overlay))
+  (when telega-chatbuf--input-match-overlay
+    (delete-overlay telega-chatbuf--input-match-overlay))
   (setq isearch-message-prefix-add nil)
   (setq isearch-search-fun-function 'isearch-search-fun-default)
   (setq isearch-message-function nil)
@@ -1559,10 +1592,15 @@ Moves relative to START, or `telega-chatbuf--input-idx'."
   (remove-hook 'isearch-mode-end-hook-quit
                'telega-chatbuf--input-isearch-quit))
 
+(defun telega-chatbuf--input-isearch-quit ()
+  "Restore pending input in case isearch history search quited."
+  (telega-chatbuf--input-isearch-end)
+  (telega-chatbuf-input-restore))
+
 (defun telega-chatbuf--input-isearch-setup ()
   "Set up a minibuffer for using isearch to search the minibuffer history.
 Intended to be added to `minibuffer-setup-hook'."
-  (setq isearch-message-prefix-add "history ")
+  (setq isearch-message-prefix-add "Input history ")
   (set (make-local-variable 'isearch-search-fun-function)
        'telega-chatbuf--input-isearch-search)
   (set (make-local-variable 'isearch-message-function)
@@ -1578,15 +1616,18 @@ Intended to be added to `minibuffer-setup-hook'."
 
 (defun telega-chatbuf-input-search (&optional regex)
   "Search for REGEX in chat input history."
-  (interactive
-   (read-string "Chat input history (regexp): "))
+  (interactive)
+  (goto-char (point-max))
+  (telega-chatbuf--input-isearch-setup)
+  (call-interactively 'isearch-backward)
+;   (read-string "Chat input history (regexp): "))
   ;; TODO:
   ;;  incrementaly search for history
   ;;   see comint-history-isearch-setup
   ;; (let ((elem (cl-find regex (cddr telega-chatbuf--input-ring)
   ;;                      :test #'string-match)))
   ;;   (
-  (user-error "`telega-chatbuf-input-search' not yet implemented")
+;  (user-error "`telega-chatbuf-input-search' not yet implemented")
   )
 
 (defmacro telega-chatbuf--redisplay-node (node)
@@ -2070,7 +2111,7 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
       (telega--forwardMessage telega-chatbuf--chat forwarding-msg))
 
     ;; Recover prompt to initial state
-    (delete-region telega-chatbuf--input-marker (point-max))
+    (telega-chatbuf--input-delete)
     (telega-chatbuf--prompt-reset)
 
     ;; Save input to history
