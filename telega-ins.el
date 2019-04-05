@@ -656,13 +656,31 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (plist-get location :latitude) (plist-get location :longitude)))
 
 (defun telega-ins--contact (contact)
-  "Inserter for the CONTACT."
+  "One line variant inserter for CONTACT."
   (telega-ins telega-symbol-contact " ")
   (when (telega-ins (plist-get contact :first_name))
     (telega-ins " "))
   (when (telega-ins (plist-get contact :last_name))
     (telega-ins " "))
   (telega-ins "(" (plist-get contact :phone_number) ")"))
+
+(defun telega-ins--contact-msg (msg)
+  "Inserter for contact message MSG."
+  ;; Two lines for the contact
+  (let* ((content (plist-get msg :content))
+         (contact (plist-get content :contact))
+         (user-id (plist-get contact :user_id))
+         (user (unless (zerop user-id) (telega-user--get user-id)))
+         (user-ava (when user
+                     (telega-user-avatar-image user))))
+    (when user-ava
+      (telega-ins--image user-ava 0))
+    (telega-ins--contact (plist-get content :contact))
+    (telega-ins "\n")
+    (when user-ava
+      (telega-ins--image user-ava 1))
+    (telega-ins--button (concat "   VIEW CONTACT   ")
+      'action 'telega-msg-button--action)))
 
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
@@ -871,6 +889,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--animation-msg msg))
       ('messageLocation
        (telega-ins--location-msg msg))
+      ('messageContact
+       (telega-ins--contact-msg msg))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))

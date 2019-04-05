@@ -270,6 +270,11 @@
                            (format-spec-make ?N lat ?E lon))))
     (telega-browse-url url 'in-web-browser)))
 
+(defun telega-msg-open-contact (msg)
+  "Open content for contact message MSG."
+  (telega-describe-contact
+   (telega--tl-get msg :content :contact)))
+
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
   (telega--openMessageContent msg)
@@ -293,6 +298,8 @@
      (telega-msg-open-photo msg))
     (messageLocation
      (telega-msg-open-location msg))
+    (messageContact
+     (telega-msg-open-contact msg))
     (messageText
      (let* ((web-page (telega--tl-get msg :content :web_page))
             (url (plist-get web-page :url)))

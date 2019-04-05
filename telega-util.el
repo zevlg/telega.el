@@ -389,6 +389,17 @@ Return `nil' if there is nothing to animate and new string otherwise."
 
 
 ;; ewoc stuff
+(defun telega-ewoc--gen-pp (pp-fun)
+  "Wrap pretty printer function PP-FUN trapping all errors."
+  (lambda (arg)
+    (condition-case pp-err
+        (funcall pp-fun arg)
+      (t
+       (telega-ins "---[telega bug]\n")
+       (telega-ins-fmt "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
+       (telega-ins-fmt "  %S\n" pp-err)
+       (telega-ins "------\n")))))
+
 (defun telega-ewoc--find (ewoc item test &optional key start-node)
   "Find EWOC's node by item and TEST funcion.
 TEST function is run with two arguments - ITEM and NODE-VALUE.

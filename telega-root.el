@@ -118,7 +118,8 @@ Global root bindings:
     (goto-char (point-max))
     (insert "\n")
     (setq telega-root--ewoc
-          (ewoc-create 'telega-chat-known--pp nil nil t))
+          (ewoc-create (telega-ewoc--gen-pp 'telega-chat-known--pp)
+                       nil nil t))
     (dolist (chat telega--ordered-chats)
       (ewoc-enter-last telega-root--ewoc chat))
 
@@ -126,13 +127,15 @@ Global root bindings:
     (goto-char (point-max))
     (insert "\n")
     (setq telega-search--ewoc
-          (ewoc-create 'telega-chat-global--pp "" "" t))
+          (ewoc-create (telega-ewoc--gen-pp 'telega-chat-global--pp)
+                       "" "" t))
 
     ;; Messages
     (goto-char (point-max))
     (insert "\n")
     (setq telega-messages--ewoc
-          (ewoc-create 'telega-msg-root--pp "" "" t))
+          (ewoc-create (telega-ewoc--gen-pp 'telega-msg-root--pp)
+                       "" "" t))
     )
 
   (setq buffer-read-only t)
@@ -302,7 +305,7 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
           (with-telega-deferred-events
             (ewoc-invalidate telega-root--ewoc enode))))))
 
-  ;; Possible update chat in global search 
+  ;; Possible update chat in global search
   (let ((gnode (telega-ewoc--find-by-data
                 telega-search--ewoc chat)))
     (when gnode

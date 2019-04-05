@@ -744,23 +744,18 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
       (telega-ins "\n")
 
       (telega-ins "\n--- Telegram User Info ---\n")
-      (telega-ins "Name: " (telega-user--name user 'name))
-      (telega-ins " ")
+      (telega-ins "Name: " (telega-user--name user 'name) "\n")
       (telega-ins--button "ChatWith"
         :value user
         :action (lambda (user)
                   (telega-chat--pop-to-buffer
                    (telega--createPrivateChat user))))
-      (when (plist-get full-info :can_be_called)
-        (telega-ins " ")
-        (telega-ins--button (concat telega-symbol-phone "Call")
-          :value user
-          :action 'telega-voip-call))
-      (telega-ins "\n")
+      (telega-ins " ")
       (telega-info--insert-user user))))
 
 (defun telega-describe ()
   "Describe current telega state and configuration."
+  (user-error "`telega-describe' not yet implemented")
   )
 
 (provide 'telega-info)

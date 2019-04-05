@@ -1166,7 +1166,7 @@ Global chat bindings:
   (cursor-intangible-mode 1)
 
   (setq telega-chatbuf--ewoc
-        (ewoc-create 'telega-msg--pp nil
+        (ewoc-create (telega-ewoc--gen-pp 'telega-msg--pp) nil
                      (telega-chatbuf--footer) t))
   (goto-char (point-max))
 
