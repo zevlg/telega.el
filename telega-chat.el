@@ -1185,7 +1185,12 @@ Global chat bindings:
   (add-hook 'kill-buffer-hook 'telega-chatbuf--killed nil t)
 
   (setq telega--chat-buffers
-        (pushnew (current-buffer) telega--chat-buffers)))
+        (pushnew (current-buffer) telega--chat-buffers))
+
+  (unless (eq (cdr (assoc "^file" dnd-protocol-alist)) 'telega-chat-mode)
+    (setq dnd-protocol-alist
+          `(("^file" . telega-dnd-dispatcher)
+            ,@dnd-protocol-alist))))
 
 (defun telega-describe-chatbuf ()
   "Show info about chat."
@@ -2671,6 +2676,31 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
     (telega-media--image
      (cons chat 'telega-avatar--create-image)
      (cons photo :small))))
+
+(defun telega-dnd-dispatcher (uri action)
+  (if (not (eq major-mode 'telega-chat-mode))
+      (telega-dnd-fallback uri action)
+    (let ((filename (concat (expand-file-name (make-temp-name "telega-dnd")
+                                              telega-temp-dir)
+                            "."
+                            (url-file-extension uri)))
+          (doc-p (if (image-type-from-file-name uri)
+                     (y-or-n-p "Send it as file?")
+                   t)))
+      (condition-case _
+          (url-copy-file uri filename)
+        (user-error "Failed to get file %s" uri))
+      (if doc-p
+          (telega-chatbuf-attach-file filename)
+        (telega-chatbuf-attach-photo filename)))))
+
+(defun telega-dnd-fallback (uri action)
+  "DND fallback function."
+  (let ((dnd-protocol-alist
+         (rassq-delete-all
+          'telega-dnd-dispatcher
+          (copy-alist dnd-protocol-alist))))
+    (dnd-handle-one-url nil action uri)))
 
 (provide 'telega-chat)
 
