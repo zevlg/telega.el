@@ -25,13 +25,18 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'subr-x)
 (require 'ring)
+(require 'url-util)
 (require 'telega-core)
 (require 'telega-msg)
 (require 'telega-voip)                  ;telega-voip-call
 (require 'telega-notifications)
 (require 'telega-company)
 
+(eval-when-compile
+  (require 'rx)
+  (require 'pcase))                     ;`pcase-let*' and `rx'
 (eval-when-compile (require 'cl))       ;defsetf
 
 ;shutup compiler
@@ -1185,7 +1190,11 @@ Global chat bindings:
   (add-hook 'kill-buffer-hook 'telega-chatbuf--killed nil t)
 
   (setq telega--chat-buffers
-        (pushnew (current-buffer) telega--chat-buffers)))
+        (pushnew (current-buffer) telega--chat-buffers))
+
+  (let ((re (rx bol (or "file" "https" "http" "ftp"))))
+    (unless (eq (cdr (assoc re dnd-protocol-alist)) 'telega-chat-dnd-dispatcher)
+      (push (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))))
 
 (defun telega-describe-chatbuf ()
   "Show info about chat."
@@ -2671,6 +2680,34 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
     (telega-media--image
      (cons chat 'telega-avatar--create-image)
      (cons photo :small))))
+
+(defun telega-chat-dnd-dispatcher (uri action)
+  (if (not (eq major-mode 'telega-chat-mode))
+      (telega-dnd-fallback uri action)
+    (pcase-let* ((`(,proto ,content) (split-string uri "://"))
+                 (real-name (thread-first content
+                              (url-unhex-string)
+                              (decode-coding-string 'utf-8))))
+      (pcase proto
+        ("file"
+         (let ((doc-p (if (image-type-from-file-name real-name)
+                          (y-or-n-p "Send this as a file?")
+                        t)))
+           (if doc-p
+               (telega-chatbuf-attach-file real-name)
+             (telega-chatbuf-attach-photo real-name))))
+        (_
+         (save-excursion
+           (goto-char (marker-position telega-chatbuf--input-marker))
+           (insert (concat proto "://" real-name))))))))
+
+(defun telega-chat-dnd-fallback (uri action)
+  "DND fallback function."
+  (let ((dnd-protocol-alist
+         (rassq-delete-all
+          'telega-chat-dnd-dispatcher
+          (copy-alist dnd-protocol-alist))))
+    (dnd-handle-one-url nil action uri)))
 
 (provide 'telega-chat)
 
