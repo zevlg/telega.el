@@ -1190,11 +1190,7 @@ Global chat bindings:
   (add-hook 'kill-buffer-hook 'telega-chatbuf--killed nil t)
 
   (setq telega--chat-buffers
-        (pushnew (current-buffer) telega--chat-buffers))
-
-  (let ((re (rx bol (or "file" "https" "http" "ftp"))))
-    (unless (eq (cdr (assoc re dnd-protocol-alist)) 'telega-chat-dnd-dispatcher)
-      (push (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))))
+        (pushnew (current-buffer) telega--chat-buffers)))
 
 (defun telega-describe-chatbuf ()
   "Show info about chat."
@@ -2682,8 +2678,10 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
      (cons photo :small))))
 
 (defun telega-chat-dnd-dispatcher (uri action)
+  "DND open function for telega.
+If called outside chat buffer, then fallback to default DND behaviour."
   (if (not (eq major-mode 'telega-chat-mode))
-      (telega-dnd-fallback uri action)
+      (telega-chat-dnd-fallback uri action)
     (pcase-let* ((`(,proto ,content) (split-string uri "://"))
                  (real-name (thread-first content
                               (url-unhex-string)
@@ -2697,9 +2695,8 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
                (telega-chatbuf-attach-file real-name)
              (telega-chatbuf-attach-photo real-name))))
         (_
-         (save-excursion
-           (goto-char (marker-position telega-chatbuf--input-marker))
-           (insert (concat proto "://" real-name))))))))
+         (goto-char (point-max))
+         (insert (concat proto "://" real-name)))))))
 
 (defun telega-chat-dnd-fallback (uri action)
   "DND fallback function."
@@ -2710,5 +2707,9 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
     (dnd-handle-one-url nil action uri)))
 
 (provide 'telega-chat)
+
+;; Install DND dispatcher for telega at load time
+(let ((re (rx bol (or "file" "https" "http" "ftp"))))
+  (pushnew (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))
 
 ;;; telega-chat.el ends here
