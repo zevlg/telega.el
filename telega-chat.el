@@ -2705,7 +2705,7 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
   "DND fallback function."
   (let ((dnd-protocol-alist
          (rassq-delete-all
-          'telega-dnd-dispatcher
+          'telega-chat-dnd-dispatcher
           (copy-alist dnd-protocol-alist))))
     (dnd-handle-one-url nil action uri)))
 
