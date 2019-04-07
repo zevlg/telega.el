@@ -25,13 +25,18 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'subr-x)
 (require 'ring)
+(require 'url-util)
 (require 'telega-core)
 (require 'telega-msg)
 (require 'telega-voip)                  ;telega-voip-call
 (require 'telega-notifications)
 (require 'telega-company)
 
+(eval-when-compile
+  (require 'rx)
+  (require 'pcase))                     ;`pcase-let*' and `rx'
 (eval-when-compile (require 'cl))       ;defsetf
 
 ;shutup compiler
@@ -1187,10 +1192,9 @@ Global chat bindings:
   (setq telega--chat-buffers
         (pushnew (current-buffer) telega--chat-buffers))
 
-  (unless (eq (cdr (assoc "^file" dnd-protocol-alist)) 'telega-chat-mode)
-    (setq dnd-protocol-alist
-          `(("^file" . telega-dnd-dispatcher)
-            ,@dnd-protocol-alist))))
+  (let ((re (rx bol (or "file" "https" "http" "ftp"))))
+    (unless (eq (cdr (assoc re dnd-protocol-alist)) 'telega-dnd-dispatcher)
+      (push (cons re 'telega-dnd-dispatcher) dnd-protocol-alist))))
 
 (defun telega-describe-chatbuf ()
   "Show info about chat."
@@ -2677,24 +2681,27 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
      (cons chat 'telega-avatar--create-image)
      (cons photo :small))))
 
-(defun telega-dnd-dispatcher (uri action)
+(defun telega-chat-dnd-dispatcher (uri action)
   (if (not (eq major-mode 'telega-chat-mode))
       (telega-dnd-fallback uri action)
-    (let ((filename (concat (expand-file-name (make-temp-name "telega-dnd")
-                                              telega-temp-dir)
-                            "."
-                            (url-file-extension uri)))
-          (doc-p (if (image-type-from-file-name uri)
-                     (y-or-n-p "Send it as file?")
-                   t)))
-      (condition-case _
-          (url-copy-file uri filename)
-        (user-error "Failed to get file %s" uri))
-      (if doc-p
-          (telega-chatbuf-attach-file filename)
-        (telega-chatbuf-attach-photo filename)))))
+    (pcase-let* ((`(,proto ,content) (split-string uri "://"))
+                 (real-name (thread-first content
+                              (url-unhex-string)
+                              (decode-coding-string 'utf-8))))
+      (pcase proto
+        ("file"
+         (let ((doc-p (if (image-type-from-file-name real-name)
+                          (y-or-n-p "Send this as a file?")
+                        t)))
+           (if doc-p
+               (telega-chatbuf-attach-file real-name)
+             (telega-chatbuf-attach-photo real-name))))
+        (_
+         (save-excursion
+           (goto-char (marker-position telega-chatbuf--input-marker))
+           (insert (concat proto "://" real-name))))))))
 
-(defun telega-dnd-fallback (uri action)
+(defun telega-chat-dnd-fallback (uri action)
   "DND fallback function."
   (let ((dnd-protocol-alist
          (rassq-delete-all
