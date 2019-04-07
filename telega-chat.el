@@ -1193,8 +1193,8 @@ Global chat bindings:
         (pushnew (current-buffer) telega--chat-buffers))
 
   (let ((re (rx bol (or "file" "https" "http" "ftp"))))
-    (unless (eq (cdr (assoc re dnd-protocol-alist)) 'telega-dnd-dispatcher)
-      (push (cons re 'telega-dnd-dispatcher) dnd-protocol-alist))))
+    (unless (eq (cdr (assoc re dnd-protocol-alist)) 'telega-chat-dnd-dispatcher)
+      (push (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))))
 
 (defun telega-describe-chatbuf ()
   "Show info about chat."
