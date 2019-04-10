@@ -2677,15 +2677,23 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
      (cons chat 'telega-avatar--create-image)
      (cons photo :small))))
 
+(defun telega--uri-to-file-path (uri)
+  "Translate URI to file path."
+  (setq uri (thread-first uri
+              (url-unhex-string)
+              (decode-coding-string 'utf-8)))
+  ;; Expect "C:/path/to/somewhere" but get "/C:/path/to/somewhere" in Windows.
+  ;; So we handle this special case manually.
+  (if (eq system-type 'windows-nt) (setq uri (substring uri 1)))
+  uri)
+
 (defun telega-chat-dnd-dispatcher (uri action)
   "DND open function for telega.
 If called outside chat buffer, then fallback to default DND behaviour."
   (if (not (eq major-mode 'telega-chat-mode))
       (telega-chat-dnd-fallback uri action)
     (pcase-let* ((`(,proto ,content) (split-string uri "://"))
-                 (real-name (thread-first content
-                              (url-unhex-string)
-                              (decode-coding-string 'utf-8))))
+                 (real-name (telega--uri-to-file-path content)))
       (pcase proto
         ("file"
          (let ((doc-p (if (image-type-from-file-name real-name)
