@@ -102,6 +102,11 @@ Arch-based).
 3. [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus) is
    the best choice to run telega.
 
+### Linux users
+
+`telega.el` requires at least GNU Emacs 26.1 with `imagemagick` and
+`svg` support.
+
 ### Building tdlib
 
 [tdlib](https://core.telegram.org/tdlib "tdlib") is the backend used

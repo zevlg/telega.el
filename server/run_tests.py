@@ -6,6 +6,8 @@ import subprocess
 
 
 TELEGA_SERVER = os.path.expanduser('~/.telega/telega-server')
+if not os.path.isfile(TELEGA_SERVER):
+    TELEGA_SERVER += '.exe'
 
 # Tuple - (bool, json, plist).  If bool is True then test must pass,
 # if false then it must fail

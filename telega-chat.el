@@ -1901,6 +1901,19 @@ CALLBACK is called after history has been loaded."
         (telega-chatbuf--footer-redisplay)
         ))))
 
+(defun telega--getChatHistory (chat from-msg-id offset
+                                    &optional limit only-local callback)
+  "Returns messages in a chat.
+The messages are returned in a reverse chronological order."
+  (telega-server--call
+   (list :@type "getChatHistory"
+         :chat_id (plist-get chat :id)
+         :from_message_id from-msg-id
+         :offset offset
+         :limit (or limit telega-chat-history-limit)
+         :only_local (or only-local :false))
+   callback))
+
 (defun telega-chatbuf--load-older-history (&optional callback)
   "In chat buffer load older messages."
   )
