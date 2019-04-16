@@ -1216,7 +1216,7 @@ Also mark messages as read with `viewMessages'."
     ;; If point moves near the beginning of chatbuf, then request for
     ;; the previous history
     (when (< display-start 500)
-      (telega-chat--load-history telega-chatbuf--chat))
+      (telega-chatbuf--load-older-history))
 
     ;; Mark some messages as read
     (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
@@ -1308,7 +1308,7 @@ Also mark messages as read with `viewMessages'."
   ;; - If at the beginning of chatbuf then request for the history
   ;;   same as in telega-chatbuf-scroll
   (when (= (point) 1)
-    (telega-chat--load-history telega-chatbuf--chat))
+    (telega-chatbuf--load-older-history))
 
   ;; - Finally, when input is probably changed by above operations,
   ;;   update chat's action after command execution.
@@ -1863,6 +1863,20 @@ Message id could be updated on this update."
         (telega-chatbuf--footer-redisplay)))
     ))
 
+(defun telega--getChatHistory (chat from-msg-id offset
+                                    &optional limit only-local callback)
+  "Returns messages in a chat.
+The messages are returned in a reverse chronological order."
+  (declare (indent 5))
+  (telega-server--call
+   (list :@type "getChatHistory"
+         :chat_id (plist-get chat :id)
+         :from_message_id from-msg-id
+         :offset offset
+         :limit (or limit telega-chat-history-limit)
+         :only_local (or only-local :false))
+   callback))
+
 (defun telega-chat--load-history (chat &optional from-msg-id offset limit
                                        callback)
   "Load and insert CHAT's history.
@@ -1888,12 +1902,9 @@ CALLBACK is called after history has been loaded."
       (when from-msg-id
         ;; Asynchronously load chat history
         (setq telega-chatbuf--history-loading
-              (telega-server--call
-               (list :@type "getChatHistory"
-                     :chat_id (plist-get chat :id)
-                     :from_message_id from-msg-id
-                     :offset offset
-                     :limit (or limit telega-chat-history-limit))
+              (telega--getChatHistory
+                  chat from-msg-id offset
+                  (or limit telega-chat-history-limit) nil
                ;; The callback
                (lambda (history)
                  (with-telega-chatbuf chat
@@ -1906,26 +1917,34 @@ CALLBACK is called after history has been loaded."
         (telega-chatbuf--footer-redisplay)
         ))))
 
-(defun telega--getChatHistory (chat from-msg-id offset
-                                    &optional limit only-local callback)
-  "Returns messages in a chat.
-The messages are returned in a reverse chronological order."
-  (telega-server--call
-   (list :@type "getChatHistory"
-         :chat_id (plist-get chat :id)
-         :from_message_id from-msg-id
-         :offset offset
-         :limit (or limit telega-chat-history-limit)
-         :only_local (or only-local :false))
-   callback))
-
-(defun telega-chatbuf--load-older-history (&optional callback)
+(defun telega-chatbuf--load-older-history ()
   "In chat buffer load older messages."
-  )
+  (telega-chat--load-history telega-chatbuf--chat))
 
-(defun telega-chatbuf--load-newer-history (&optional callback)
+(defun telega-chatbuf--load-newer-history ()
   "In chat buffer load newer messages."
-  )
+  (with-telega-chatbuf telega-chatbuf--chat
+    (unless telega-chatbuf--history-loading
+      (let ((chat telega-chatbuf--chat)
+            (from-msg-id (plist-get (telega-chatbuf--youngest-msg) :id)))
+        (setq telega-chatbuf--history-loading
+              (telega--getChatHistory
+                  chat from-msg-id (- 1 telega-chat-history-limit)
+                  telega-chat-history-limit nil
+               ;; The callback
+               (lambda (history)
+                 (let ((rmsgs (append
+                               (nreverse (plist-get history :messages)) nil)))
+                   ;; Strip messages till FROM-MSG-ID
+                   (while (and rmsgs
+                               (<= (plist-get (car rmsgs) :id) from-msg-id))
+                     (setq rmsgs (cdr rmsgs)))
+                   (with-telega-chatbuf chat
+                     (setq telega-chatbuf--history-loading nil)
+                     (mapc #'telega-chatbuf--enter-youngest-msg rmsgs)
+                     (telega-chatbuf--footer-redisplay))))))
+        (telega-chatbuf--footer-redisplay)
+        ))))
 
 (defun telega-chatbuf-cancel-aux ()
   "Cancel current aux prompt."
@@ -2144,7 +2163,7 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
   (unless (telega-chatbuf--last-msg-loaded-p)
     ;; Need to load most recent history
     (telega-ewoc--clean telega-chatbuf--ewoc)
-    (telega-chat--load-history telega-chatbuf--chat))
+    (telega-chatbuf--load-older-history))
 
   (goto-char (point-max)))
 
