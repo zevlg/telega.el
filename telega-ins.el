@@ -104,13 +104,16 @@ If custom face is specified in PROPS, then
   (unless (plist-get props 'face)
     ;; XXX inclose LABEL with shrink version of spaces, so button
     ;; width will be char aligned
+
+    ;; NOTE: non-breakable space is used, so if line is feeded at the
+    ;; beginning of button, it won't loose its leading space
     (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
                                         :line-width)
                              0)))
            (space `(space (,(- (frame-char-width) box-width)))))
-      (setq label (concat (propertize " " 'display space)
+      (setq label (concat (propertize "\u00A0" 'display space)
                           label
-                          (propertize " " 'display space))))
+                          (propertize "\u00A0" 'display space))))
     (setq props (plist-put props 'face 'telega-button))
     (setq props (plist-put props 'cursor-sensor-functions
                            '(telega-button--sensor-func))))

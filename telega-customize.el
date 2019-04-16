@@ -682,7 +682,7 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-vertical-bar "| "
+(defcustom telega-symbol-vertical-bar "|\u00A0"
   "Symbol used to form vertical lines."
   :type 'string
   :group 'telega-symbol)
