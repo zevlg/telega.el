@@ -65,18 +65,36 @@ Return FILE."
     (plist-put place prop file)
     file))
 
-(defun telega--downloadFile (file-id &optional priority)
+(defun telega-file--update (file)
+  "FILE has been updated, call any pending callbacks."
+  (telega-file--ensure file)
+
+  ;; Run update callbacks
+  (let* ((callbacks (gethash (plist-get file :id) telega--files-updates))
+         (left-cbs (cl-loop for cb in callbacks
+                            when (funcall cb file)
+                            collect cb)))
+    (telega-debug "%s %S callbacks: %S -> %S" (propertize "FILE-UPDATE" 'face 'bold)
+                  (plist-get file :id) callbacks left-cbs)
+    (puthash (plist-get file :id) left-cbs telega--files-updates)))
+
+(defun telega--on-updateFile (event)
+  "File has been updated, call all the associated hooks."
+  (telega-file--update (plist-get event :file)))
+
+(defun telega--downloadFile (file-id &optional priority callback)
   "Asynchronously downloads a file by its FILE-ID from the cloud.
 `telega--on-updateFile' will be called to notify about the
 download progress and successful completion of the download.
-PRIORITY is integer in range 1-32 (higher downloads faster), default is 1."
-  ;; We use `telega-server--send' instead of `telega-server--call' to
-  ;; not block waiting for result.  We catch the result with
-  ;; `telega--on-file'
-  (telega-server--send
+PRIORITY is integer in range 1-32 (higher downloads faster), default is 1.
+CALLBACK is callback to call with single argument - file, by
+default `telega-file--update' is called."
+  (declare (indent 2))
+  (telega-server--call
    (list :@type "downloadFile"
          :file_id file-id
-         :priority (or priority 1))))
+         :priority (or priority 1))
+   (or callback 'telega-file--update)))
 
 (defun telega--cancelDownloadFile (file-id &optional only-if-pending)
   "Stop downloading the file denoted by FILE-ID.
@@ -92,21 +110,6 @@ hasn't been started, i.e. request hasn't been sent to server."
   (telega-server--send
    (list :@type "deleteFile"
          :file_id file-id)))
-
-(defun telega--on-file (file)
-  "FILE has been returned from some call to `telega-server--send'."
-  (telega-file--ensure file)
-
-  ;; Run update callbacks
-  (let* ((callbacks (gethash (plist-get file :id) telega--files-updates))
-         (left-cbs (cl-loop for cb in callbacks
-                            when (funcall cb file)
-                            collect cb)))
-    (puthash (plist-get file :id) left-cbs telega--files-updates)))
-
-(defun telega--on-updateFile (event)
-  "File has been updated, call all the associated hooks."
-  (telega--on-file (plist-get event :file)))
 
 (defsubst telega-file--size (file)
   "Return FILE size."
@@ -147,12 +150,15 @@ Removes callback in case downloading is canceled or completed."
       (funcall check-fun file))))
 
 (defun telega-file--download (file &optional priority callback)
-  "Download file denoted by FILE-ID."
+  "Download file denoted by FILE-ID.
+PRIORITY - (1-32) the higher the PRIORITY, the earlier the file
+will be downloaded. (default=1)
+Run CALLBACK every time FILE gets updated."
   (declare (indent 2))
   ;; - If file already downloaded, then just call the callback
   ;; - If file already downloading, then just install the callback
-  ;; - If file can be downloaded, install the callback and download
-  ;;   the file
+  ;; - If file can be downloaded, then start downloading file and
+  ;;   install callback after file started downloading
   (let* ((file-id (plist-get file :id))
          (dfile (telega-file-get file-id))
          (cbwrap (telega-file--callback-wrap
@@ -161,14 +167,20 @@ Removes callback in case downloading is canceled or completed."
            (when cbwrap
              (funcall cbwrap dfile)))
 
-          ((telega--tl-get dfile :local :can_be_downloaded)
+          ((telega-file--downloading-p dfile)
            (when cbwrap
              (let ((cb-list (gethash file-id telega--files-updates)))
                (puthash file-id (cons cbwrap cb-list)
-                        telega--files-updates)))
+                        telega--files-updates))))
 
-           (unless (telega-file--downloading-p dfile)
-             (telega--downloadFile file-id priority))))
+          ((telega-file--can-download-p dfile)
+           (telega--downloadFile file-id priority
+             (lambda (downfile)
+               (assert (or (telega-file--downloaded-p dfile)
+                           (telega-file--downloading-p downfile)))
+               (telega-file--update downfile)
+               (when cbwrap
+                 (telega-file--download downfile priority callback))))))
     ))
 
 (defun telega--uploadFile (filename &optional file-type priority)
