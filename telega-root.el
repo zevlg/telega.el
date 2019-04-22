@@ -63,6 +63,8 @@
     (define-key map (kbd "? w") 'telega-describe-connected-websites)
     (define-key map (kbd "? s") 'telega-describe-active-sessions)
     (define-key map (kbd "? n") 'telega-describe-network)
+    (define-key map (kbd "? y") 'telega-describe-notifications)
+    (define-key map (kbd "? N") 'telega-describe-notifications)
     (define-key map (kbd "? p") 'telega-describe-privacy-settings)
 
     (define-key map (kbd "j") 'telega-chat-join-by-link)

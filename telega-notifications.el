@@ -53,7 +53,27 @@ If DEFAULT-P is non-nil then return default setting for the CHAT."
         (setq not-cfg (cdr telega--scope-notification-settings))))
 
     (plist-get not-cfg setting)))
-  
+
+(defun telega--setScopeNotificationSettings (scope-type setting)
+  (telega-server--call
+   (list :@type "setScopeNotificationSettings"
+         :scope (list :@type scope-type)
+         :notification_settings
+         `(:@type "scopeNotificationSettings" ,@setting))))
+
+(defun telega--getScopeNotificationSettings (scope-type &optional callback)
+  (telega-server--call
+   (list :@type "getScopeNotificationSettings"
+         :scope (list :@type scope-type))
+   callback))
+
+(defun telega--resetAllNotificationSettings ()
+  "Resets all notification settings to their default values.
+By default, all chats are unmuted, the sound is set to
+\"default\" and message previews are shown."
+  (telega-server--call
+   (list :@type "resetAllNotificationSettings")))
+
 (defun telega--on-updateScopeNotificationSettings (event)
   "Handle `updateScopeNotificationSettings' EVENT."
   (let ((scope (plist-get event :scope))
@@ -77,6 +97,70 @@ If DEFAULT-P is non-nil then return default setting for the CHAT."
           (telega-ins "\n"))))
 
     (telega-ins--content msg)))
+
+(defun telega-ins--notification-scope (scope-type sconf)
+  "Insert notification scope."
+  (let* ((mute-for (plist-get sconf :mute_for))
+         (unmuted-p (zerop mute-for))
+         (sound (plist-get sconf :sound))
+         (preview-p (plist-get sconf :show_preview)))
+    (telega-ins "Show Notifications: ")
+    (telega-ins--button (if unmuted-p
+                            telega-symbol-heavy-checkmark
+                          "  ")
+      'action (lambda (_button)
+                (telega--setScopeNotificationSettings
+                 scope-type (list :mute_for (if unmuted-p 599634793 0)
+                                  :sound sound
+                                  :show_preview (or preview-p :false)))
+                (telega-save-cursor
+                  (telega-describe-notifications))))
+    (telega-ins "\n")
+    (telega-ins "Show Preview: ")
+    (telega-ins--button (if preview-p
+                            telega-symbol-heavy-checkmark
+                          "  ")
+      'action (lambda (_button)
+                (telega--setScopeNotificationSettings
+                 scope-type (list :mute_for mute-for
+                                  :sound sound
+                                  :show_preview (if preview-p :false t)))
+                (telega-save-cursor
+                  (telega-describe-notifications))))
+    (telega-ins "\n")
+    (telega-ins "Sound: " (if (string-empty-p sound) "None" sound) "\n")
+    ))
+
+(defun telega-describe-notifications (&rest _ignored)
+  "Show global notifications settings."
+  (interactive)
+  (with-telega-help-win "*Telega Notifications*"
+    (telega-ins--with-face 'bold
+      (telega-ins "Private/Secret chats:\n"))
+    (telega-ins--notification-scope
+     "notificationSettingsScopePrivateChats"
+     (cddr (car telega--scope-notification-settings)))
+    (telega-ins "\n")
+    ;; TODO: exceptions
+
+    (telega-ins--with-face 'bold
+      (telega-ins "Groups/Channels chats:\n"))
+    (telega-ins--notification-scope
+     "notificationSettingsScopeGroupChats"
+     (cddr (cdr telega--scope-notification-settings)))
+
+    (telega-ins "\n")
+    (telega-ins--button "Reset All Notifications"
+      'action (lambda (_button)
+                (when (y-or-n-p "Reset all notifications settings? ")
+                  (telega--resetAllNotificationSettings)
+                  (telega-save-cursor
+                    (telega-describe-notifications)))))
+    (telega-ins "\n")
+    (telega-ins--with-face 'shadow
+      (telega-ins " Undo all custom notification settings for all chats"))
+    (telega-ins "\n")
+    ))
 
 ;;;###autoload
 (defun telega-notifications-mode (&optional arg)

@@ -45,6 +45,7 @@
 (require 'telega-util)
 (require 'telega-vvnote)
 (require 'telega-webpage)
+(require 'telega-notifications)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
@@ -199,17 +200,6 @@ Works only if current state is `authorizationStateWaitCode'."
            by 'cddr
            do (telega--setOption prop-name value)))
 
-(defun telega--setScopeNotificationSettings (scope-type setting)
-  (telega-server--send
-   (list :@type "setScopeNotificationSettings"
-         :scope (list :@type scope-type)
-         :setting (nconc '(:@type "scopeNotificationSettings") setting))))
-
-(defun telega--getScopeNotificationSettings (scope-type)
-  (telega-server--call
-   (list :@type "getScopeNotificationSettings"
-         :scope (list :@type scope-type))))
-  
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   ;; Validate tdlib version
@@ -238,11 +228,13 @@ Works only if current state is `authorizationStateWaitCode'."
     (telega--setScopeNotificationSettings
      "notificationSettingsScopeGroupChats"
      (cdr telega-notifications-defaults)))
-  (setq telega--scope-notification-settings
-        (cons (telega--getScopeNotificationSettings
-               "notificationSettingsScopePrivateChats")
-              (telega--getScopeNotificationSettings
-               "notificationSettingsScopeGroupChats")))
+  ;; NOTE: telega--scope-notification-settings will be updated uppon
+  ;; `updateScopeNotificationSettings' event
+  ;; (setq telega--scope-notification-settings
+  ;;       (cons (telega--getScopeNotificationSettings
+  ;;              "notificationSettingsScopePrivateChats")
+  ;;             (telega--getScopeNotificationSettings
+  ;;              "notificationSettingsScopeGroupChats")))
 
   ;; All OK, request for chats/users/etc
   (telega-status--set nil "Fetching chats...")
@@ -260,6 +252,15 @@ Works only if current state is `authorizationStateWaitCode'."
          (status (substring conn-state 15)))
     (setq telega--conn-state (intern status))
     (telega-status--set status)
+
+    ;; NOTE: Optimisation: for Updating state, inhibit redisplaying
+    ;; filters, will speedup updating after TDLib wake up
+    (cl-case telega--conn-state
+      (connectionStateUpdating
+       (setq telega-filters--inhibit-redisplay t))
+      (connectionStateReady
+       (setq telega-filters--inhibit-redisplay nil)
+       (telega-filters--redisplay)))
 
     (run-hooks 'telega-connection-state-hook)))
 

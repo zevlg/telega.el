@@ -32,7 +32,8 @@
 
 (defvar telega-filters--inhibit-redisplay nil
   "Non-nil to do nothing on `telega-filters--redisplay'.
-Used for optimization, when initially fetching chats, to speed things up.")
+Used for optimization, when initially fetching chats, to speed things up.
+Also used when TDLib updates connection state after waking up.")
 (defvar telega-filters--inhibit-list nil
   "List of filters to inhibit.
 Bind it to temporary disable some filters.")

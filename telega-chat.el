@@ -818,40 +818,60 @@ STATUS is one of: "
         (insert "Link: ")
         (apply 'insert-text-button link (telega-link-props 'url link 'link))
         (insert "\n")))
-    (when telega-debug
-      (telega-ins-fmt "Order: %s\n" (telega-chat--order chat 'as-str)))
+    (telega-ins "Order")
+    (when (telega-chat-uaprop chat :order)
+      (telega-ins " (" (propertize "custom" 'face 'shadow) ")"))
+    (telega-ins ": " (telega-chat--order chat 'as-str) "\n")
 
-    (let (
-          ;; (default-mute-for
-          ;;   (telega-chat-notification-setting chat :mute_for 'default))
-          ;; (default-show-preview
-          ;;   (telega-chat-notification-setting chat :show_preview 'default))
-          (mute-for (telega-chat-notification-setting chat :mute_for))
-          (show-preview (telega-chat-notification-setting chat :show_preview)))
-      (telega-ins-fmt "Notifications: ")
-      (let* ((unmuted-p (zerop mute-for))
-             (change-args (if unmuted-p
-                              (cons :false 599634793)
-                            (cons t 0))))
-        (telega-ins--button (if unmuted-p
-                                telega-symbol-heavy-checkmark
-                              "  ")
+    (let* (;; (default-mute-for
+           ;;   (telega-chat-notification-setting chat :mute_for 'default))
+           ;; (default-show-preview
+           ;;   (telega-chat-notification-setting chat :show_preview 'default))
+           (not-cfg (plist-get chat :notification_settings))
+           (mute-for (telega-chat-notification-setting chat :mute_for))
+           (unmuted-p (zerop mute-for))
+           (show-preview (telega-chat-notification-setting chat :show_preview)))
+      (telega-ins "Notifications ("
+                  (propertize (if (plist-get not-cfg :use_default_mute_for)
+                                  "default" "custom")
+                              'face 'shadow)
+                  "): ")
+
+      (telega-ins--button (if unmuted-p
+                              telega-symbol-heavy-checkmark
+                            "  ")
+        :value chat
+        :action (lambda (chat)
+                  (telega--setChatNotificationSettings chat
+                    :use_default_mute_for nil
+                    :mute_for (if unmuted-p 599634793 0))
+                  (telega-save-cursor
+                    (telega-describe-chat chat))))
+      (when unmuted-p
+        (telega-ins ", Preview ("
+                    (propertize (if (plist-get not-cfg :use_default_show_preview)
+                                    "default" "custom")
+                                'face 'shadow)
+                    "): ")
+        (telega-ins--with-face 'telega-box
+          (telega-ins (if show-preview
+                          telega-symbol-heavy-checkmark
+                        "  "))))
+      ;; Reseting custom notification settings
+      (unless (and (plist-get not-cfg :use_default_mute_for)
+                   (plist-get not-cfg :use_default_show_preview))
+        (telega-ins " ")
+        (telega-ins--button "Reset"
           :value chat
-          :action `(lambda (chat)
-                     (telega--setChatNotificationSettings chat
-                       :use_default_mute_for ,(car change-args)
-                       :mute_for ,(cdr change-args))
-                     (telega-save-cursor
-                       (telega-describe-chat chat))))
-        (when unmuted-p
-          (telega-ins ", Preview: ")
-          (telega-ins--with-face 'telega-box
-            (telega-ins (if show-preview
-                            telega-symbol-heavy-checkmark
-                          "  "))))
-        (telega-ins "\n")))
+          :action (lambda (chat)
+                    (telega--setChatNotificationSettings chat
+                      :use_default_mute_for t
+                      :use_default_show_preview t)
+                    (telega-save-cursor
+                      (telega-describe-chat chat)))))
+      (telega-ins "\n"))
 
-    (insert "\n")
+    (telega-ins "\n")
     (telega-info--insert (plist-get chat :type) chat)
 
     (when telega-debug
