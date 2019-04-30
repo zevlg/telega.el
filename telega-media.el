@@ -176,7 +176,7 @@ Run CALLBACK every time FILE gets updated."
           ((telega-file--can-download-p dfile)
            (telega--downloadFile file-id priority
              (lambda (downfile)
-               (assert (or (telega-file--downloaded-p dfile)
+               (assert (or (telega-file--downloaded-p downfile)
                            (telega-file--downloading-p downfile)))
                (telega-file--update downfile)
                (when cbwrap
