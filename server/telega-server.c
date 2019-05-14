@@ -39,7 +39,7 @@ extern int telega_voip_cmd(const char* json);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.3.1";
+const char* version = "0.4.0";
 
 /* true when tdlib_loop is running */
 volatile bool tdlib_running;
@@ -215,6 +215,25 @@ parse_stdin(void)
         tdat_drop(&dst);
 }
 
+void
+telega_set_verbosity(int verbosity)
+{
+        char req[1024];
+        snprintf(req, 1024, "{\"@type\":\"setLogVerbosityLevel\","
+                 "\"new_verbosity_level\":%d}", verbosity);
+        td_json_client_execute(NULL, req);
+}
+
+void
+telega_set_logfile(char* logfile)
+{
+        char req[1024];
+        snprintf(req, 1024, "{\"@type\":\"setLogStream\","
+                 "\"log_stream\":{\"@type\":\"logStreamFile\","
+                 "\"path\":\"%s\", \"max_file_size\":2097152}}", logfile);
+        td_json_client_execute(NULL, req);
+}
+
 int
 main(int ac, char** av)
 {
@@ -223,11 +242,11 @@ main(int ac, char** av)
                 switch (ch) {
                 case 'v':
                         verbosity = atoi(optarg);
-                        td_set_log_verbosity_level(verbosity);
+                        telega_set_verbosity(verbosity);
                         break;
                 case 'l':
                         logfile = optarg;
-                        td_set_log_file_path(logfile);
+                        telega_set_logfile(logfile);
                         break;
                 case 'j':
                         parse_mode = PARSE_MODE_JSON;

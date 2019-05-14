@@ -5,9 +5,9 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.3.0
-(defconst telega-version "0.3.0")
-(defconst telega-tdlib-min-version "1.3.0")
+;; Version: 0.4.0
+(defconst telega-version "0.4.0")
+(defconst telega-tdlib-min-version "1.4.0")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -228,7 +228,7 @@ Works only if current state is `authorizationStateWaitCode'."
     (telega--setScopeNotificationSettings
      "notificationSettingsScopeGroupChats"
      (cdr telega-notifications-defaults)))
-  ;; NOTE: telega--scope-notification-settings will be updated uppon
+  ;; NOTE: telega--scope-notification-alist will be updated uppon
   ;; `updateScopeNotificationSettings' event
   ;; (setq telega--scope-notification-settings
   ;;       (cons (telega--getScopeNotificationSettings
