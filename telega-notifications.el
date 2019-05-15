@@ -48,9 +48,14 @@ If DEFAULT-P is non-nil then return default setting for the CHAT."
          (intern (concat ":use_default_" (substring (symbol-name setting) 1))))
         (not-cfg (plist-get chat :notification_settings)))
     (when (or default-p (plist-get not-cfg use-default-name))
-      (if (memq (telega-chat--type chat 'raw) '(private secret))
-          (setq not-cfg (car telega--scope-notification-settings))
-        (setq not-cfg (cdr telega--scope-notification-settings))))
+      (setq not-cfg
+            (cl-case (telega-chat--type chat)
+              (channel
+               (alist-get 'channel telega--scope-notification-alist))
+              ((basicgroup supergroup)
+               (alist-get 'group telega--scope-notification-alist))
+              (t
+               (alist-get 'private telega--scope-notification-alist)))))
 
     (plist-get not-cfg setting)))
 
@@ -76,13 +81,13 @@ By default, all chats are unmuted, the sound is set to
 
 (defun telega--on-updateScopeNotificationSettings (event)
   "Handle `updateScopeNotificationSettings' EVENT."
-  (let ((scope (plist-get event :scope))
-        (settings (plist-get event :notification_settings)))
-    (cl-ecase (telega--tl-type scope)
-      (notificationSettingsScopePrivateChats
-       (setcar telega--scope-notification-settings settings))
-      (notificationSettingsScopeGroupChats
-       (setcdr telega--scope-notification-settings settings)))))
+  (let* ((scope (plist-get event :scope))
+         (scope-key (cl-ecase (telega--tl-type scope)
+                      (notificationSettingsScopePrivateChats 'private)
+                      (notificationSettingsScopeGroupChats 'group)
+                      (notificationSettingsScopeChannelChats 'channel))))
+    (setf (alist-get scope-key telega--scope-notification-alist)
+          (plist-get event :notification_settings))))
 
 (defun telega-ins--msg-notification (msg)
   "Inserter to format MSG to notify about."
@@ -139,15 +144,21 @@ By default, all chats are unmuted, the sound is set to
       (telega-ins "Private/Secret chats:\n"))
     (telega-ins--notification-scope
      "notificationSettingsScopePrivateChats"
-     (cddr (car telega--scope-notification-settings)))
+     (alist-get 'private telega--scope-notification-alist))
     (telega-ins "\n")
     ;; TODO: exceptions
 
     (telega-ins--with-face 'bold
-      (telega-ins "Groups/Channels chats:\n"))
+      (telega-ins "Group chats:\n"))
     (telega-ins--notification-scope
      "notificationSettingsScopeGroupChats"
-     (cddr (cdr telega--scope-notification-settings)))
+     (alist-get 'group telega--scope-notification-alist))
+
+    (telega-ins--with-face 'bold
+      (telega-ins "Channel chats:\n"))
+    (telega-ins--notification-scope
+     "notificationSettingsScopeChannelChats"
+     (alist-get 'channel telega--scope-notification-alist))
 
     (telega-ins "\n")
     (telega-ins--button "Reset All Notifications"

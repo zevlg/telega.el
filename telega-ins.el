@@ -479,7 +479,7 @@ markdown syntax to the TEXT."
         (telega-ins--image-slices timg))
       (telega-ins " "))
     t))
-        
+
 (defun telega-ins--video (msg &optional video)
   "Insert video message MSG."
   (unless video
@@ -1012,8 +1012,8 @@ If NO-AVATAR is specified, then do not insert avatar."
         ;; When pressen, then jump to original message
         (list 'action
               (lambda (_button)
-                (let ((chat-id (plist-get fwd-info :forwarded_from_chat_id))
-                      (msg-id (plist-get fwd-info :forwarded_from_message_id)))
+                (let ((chat-id (plist-get fwd-info :from_chat_id))
+                      (msg-id (plist-get fwd-info :from_message_id)))
                   (when (and chat-id msg-id (not (zerop chat-id)))
                     (telega-chat--goto-msg (telega-chat-get chat-id) msg-id t)))))
       (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
@@ -1021,13 +1021,19 @@ If NO-AVATAR is specified, then do not insert avatar."
                                      :elide t
                                      :face 'telega-msg-inline-forward)
         (telega-ins "| Forwarded From: ")
-        (cl-ecase (telega--tl-type fwd-info)
-          (messageForwardedFromUser
-           (let ((sender (telega-user--get (plist-get fwd-info :sender_user_id))))
-             (telega-ins (telega-user--name sender))))
-          (messageForwardedPost
-           (let ((chat (telega-chat-get (plist-get fwd-info :chat_id))))
-             (telega-ins (telega-chat-title chat 'with-username)))))
+        (let ((origin (plist-get fwd-info :origin)))
+          (cl-ecase (telega--tl-type origin)
+            (messageForwardOriginUser
+             (let ((sender (telega-user--get (plist-get origin :sender_user_id))))
+               (telega-ins (telega-user--name sender))))
+            (messageForwardOriginHiddenUser
+             (telega-ins (plist-get origin :sender_name)))
+            (messageForwardOriginChannel
+             (let ((chat (telega-chat-get (plist-get origin :chat_id)))
+                   (signature (plist-get origin :author_signature)))
+               (telega-ins (telega-chat-title chat 'with-username))
+               (telega-ins-prefix " --"
+                 (telega-ins signature))))))
 
         (let ((date (plist-get fwd-info :date)))
           (unless (zerop date)

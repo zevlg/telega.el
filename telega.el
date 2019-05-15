@@ -230,11 +230,6 @@ Works only if current state is `authorizationStateWaitCode'."
      (cdr telega-notifications-defaults)))
   ;; NOTE: telega--scope-notification-alist will be updated uppon
   ;; `updateScopeNotificationSettings' event
-  ;; (setq telega--scope-notification-settings
-  ;;       (cons (telega--getScopeNotificationSettings
-  ;;              "notificationSettingsScopePrivateChats")
-  ;;             (telega--getScopeNotificationSettings
-  ;;              "notificationSettingsScopeGroupChats")))
 
   ;; All OK, request for chats/users/etc
   (telega-status--set nil "Fetching chats...")

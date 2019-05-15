@@ -135,10 +135,9 @@ In form (ID . CALL)")
   "Currently active call.
 Active call is either outgoing call or accepted incoming call.
 Only one call can be currently active.")
-(defvar telega--scope-notification-settings (cons nil nil)
+(defvar telega--scope-notification-alist (cons nil nil)
   "Default notification settings for chats.
-cons cell where car is settings for private and secret chats
-and cdr is settings for groups/supergroups/channels.")
+alist where key is one of `private', `group' or `channel'.")
 
 ;; Minibuffer stuff used by chatbuf and stickers
 (defvar telega-minibuffer--choices nil
@@ -196,7 +195,7 @@ Done when telega server is ready to receive queries."
   (setq telega-voip--active-call nil)
 
   (setq telega--proxy-pings nil)
-  (setq telega--scope-notification-settings (cons nil nil))
+  (setq telega--scope-notification-alist nil)
 
   (setq telega--stickersets nil)
   (setq telega--stickersets-installed-ids nil)

@@ -32,10 +32,6 @@
 (declare-function telega-root--buffer "telega-root")
 
 (defun telega--on-event (event)
-  (telega-debug "%s event: %S"
-                (propertize "IN" 'face 'bold)
-                event)
-
   (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
     (if (symbol-function event-sym)
         (funcall (symbol-function event-sym) event)
@@ -74,7 +70,8 @@ Used to make deferred calls.")
          (unwind-protect
              (while telega-server--deferred-events
                (let ((,evsym (car telega-server--deferred-events)))
-                 (telega-debug "DEFERRED event: %S" ,evsym)
+                 (telega-debug "%s event: %S"
+                               (propertize "DEFERRED" 'face 'bold) ,evsym)
                  (setq telega-server--deferred-events
                        (cdr telega-server--deferred-events))
                  (telega--on-event ,evsym)))
@@ -131,6 +128,8 @@ Return parsed command."
            (if call-cb
                (telega-server--callback-rm extra)
              (setq call-cb telega-server--on-event-func))
+
+           (telega-debug "%s event: %S" (propertize "IN" 'face 'bold) value)
 
            ;; Function call may return errors
            (if (or (not (eq 'error (telega--tl-type value)))
