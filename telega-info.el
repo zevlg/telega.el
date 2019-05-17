@@ -333,7 +333,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
   (let* ((full-info (telega--full-info supergroup))
          (descr (plist-get full-info :description))
          (restr-reason (plist-get supergroup :restriction_reason))
-         (pin-msg-id (plist-get full-info :pinned_message_id))
+         (pin-msg-id (plist-get chat :pinned_message_id))
          (member-status (plist-get supergroup :status))
          (member-status-name (plist-get member-status :@type))
          (invite-link (plist-get full-info :invite_link)))

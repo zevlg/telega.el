@@ -502,10 +502,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
 
 (defun telega--getChatPinnedMessage (chat)
   "Get pinned message for the CHAT, if any."
-  (when (and (eq (telega-chat--type chat 'raw) 'supergroup)
-             (not (zerop (plist-get
-                          (telega--full-info (telega-chat--supergroup chat))
-                          :pinned_message_id))))
+  (unless (zerop (plist-get chat :pinned_message_id))
     (telega-server--call
      (list :@type "getChatPinnedMessage"
            :chat_id (plist-get chat :id)))))
