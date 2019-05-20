@@ -611,7 +611,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (let ((sitename (plist-get web-page :site_name))
         (title (plist-get web-page :title))
         (desc (plist-get web-page :description))
-        (instant-view-p (plist-get web-page :has_instant_view))
+        (iv-version (plist-get web-page :instant_view_version))
         (photo (plist-get web-page :photo))
         (width (- telega-chat-fill-column 10)))
     (when web-page
@@ -641,7 +641,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
             (when video
               (telega-ins "<TODO: webPage:video>"))))))
 
-       (when instant-view-p
+       (unless (zerop iv-version)
          (telega-ins--button
              (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
            'action 'telega-msg-button--iv-action)

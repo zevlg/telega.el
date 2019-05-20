@@ -154,6 +154,10 @@ Keymap:
   "Insert RichText RT.
 If STRIP-NL is non-nil then strip leading/trailing newlines."
   (cl-ecase (telega--tl-type rt)
+    (richTextAnchor
+     (telega-ins "<TODO: richTextAnchor>"))
+    (richTextIcon
+     (telega-ins "<TODO: richTextIcon>"))
     (richTextPlain
      (telega-ins (funcall (if strip-nl 'telega-strip-newlines 'identity)
                           (plist-get rt :text))))
@@ -258,14 +262,12 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-))))
     (pageBlockAnchor
      (setf (alist-get (plist-get pb :name) telega-webpage--anchors) (point)))
+    (pageBlockListItem
+     (telega-ins--labeled (concat (plist-get pb :label) " ")
+         telega-webpage-fill-column
+       (mapc 'telega-webpage--ins-PageBlock (plist-get pb :page_blocks))))
     (pageBlockList
-     (let ((orderedp (plist-get pb :is_ordered))
-           (items (plist-get pb :items)))
-       (dotimes (ordernum (length items))
-         (let ((label (if orderedp (format "%d. " (1+ ordernum)) "• ")))
-           (telega-ins--labeled label telega-webpage-fill-column
-             (telega-webpage--ins-rt (aref items ordernum))))
-         (telega-ins "\n"))))
+     (mapc 'telega-webpage--ins-PageBlock (plist-get pb :items)))
     (pageBlockBlockQuote
      (telega-ins (propertize telega-symbol-vertical-bar 'face 'bold))
      (telega-ins--with-attrs (list :fill 'left
@@ -282,11 +284,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockPhoto
      (telega-ins--photo (plist-get pb :photo))
      (telega-ins-prefix "\n"
-       (telega-ins--with-attrs (list :face 'shadow
-                                     :fill 'left
-                                     :fill-column telega-webpage-fill-column)
-         (telega-webpage--ins-rt (plist-get pb :caption))))
-     (telega-ins "\n"))
+       (telega-webpage--ins-PageBlock (plist-get pb :caption))))
     (pageBlockVideo
      (telega-ins "<TODO: pageBlockVideo>"))
     (pageBlockCover
@@ -306,8 +304,16 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-ins--button "Open"
          :value (plist-get pb :username)
          :action 'telega-tme-open-username)))
+    (pageBlockCaption
+     (telega-ins--with-attrs (list :face 'shadow
+                                   :fill 'left
+                                   :fill-column telega-webpage-fill-column)
+       (telega-webpage--ins-rt (plist-get pb :text))
+       (telega-ins-prefix " --"
+         (telega-webpage--ins-rt (plist-get pb :credit)))))
     )
-  (unless (memq (telega--tl-type pb) '(pageBlockAnchor pageBlockCover))
+  (unless (memq (telega--tl-type pb)
+                '(pageBlockAnchor pageBlockCover pageBlockListItem))
     (telega-ins "\n")))
 
 (defun telega-webpage--instant-view (url &optional sitename instant-view)

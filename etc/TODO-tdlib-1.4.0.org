@@ -88,7 +88,8 @@ Changes in 1.4.0:
   - Added the synchronous method `getLogTagVerbosityLevel` for getting the current verbosity level for a specific part
     of the code.
   - Added the synchronous method `addLogMessage` for using the TDLib internal log by the application.
-* Added support for Instant View 2.0:
+* DONE Added support for Instant View 2.0:
+  CLOSED: [2019-05-20 Пн 18:52]
   - Replaced the field `has_instant_view` in class `webPage` with the `instant_view_version` field.
   - Added the field `version` to the class `webPageInstantView`.
   - Added the class `pageBlockCaption`.
@@ -115,7 +116,8 @@ Changes in 1.4.0:
     the `recovery_email_address_code_info` field containing full information about the code.
   - The necessity of recovery email address confirmation in `setPassword` and `setRecoveryEmailAddress` methods
     is now returned by the corresponding `passwordState` and not by the error `EMAIL_UNCONFIRMED`.
-* Improved the `MessageForwardInfo` class and added support for hidden original senders:
+* DONE Improved the `MessageForwardInfo` class and added support for hidden original senders:
+  CLOSED: [2019-05-20 Пн 18:26]
   - Removed the old `messageForwardedPost` and `messageForwardedFromUser` classes.
   - Added the class `messageForwardInfo` which contains information about the origin of the message, original sending
     date and identifies the place from which the message was forwarded the last time for messages forwarded to
