@@ -395,6 +395,10 @@ Return `nil' if there is nothing to animate and new string otherwise."
     (condition-case pp-err
         (funcall pp-fun arg)
       (t
+       (telega-debug "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
+       (telega-debug "    %S\n" pp-err)
+       (telega-debug "--------\n")
+
        (telega-ins "---[telega bug]\n")
        (telega-ins-fmt "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
        (telega-ins-fmt "  %S\n" pp-err)

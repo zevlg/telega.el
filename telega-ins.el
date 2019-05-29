@@ -402,7 +402,7 @@ markdown syntax to the TEXT."
         (lambda (_fileignored)
           (telega-msg-redisplay msg)))
 
-      (telega-ins telega-symbol-photo " " (plist-get photo :id))
+      (telega-ins telega-symbol-photo)
       (telega-ins-fmt " (%dx%d) " (plist-get hr :width) (plist-get hr :height))
       (telega-ins--file-progress msg hr-file)
       (telega-ins "\n"))
@@ -704,6 +704,20 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (telega-ins "\n")
     (telega-ins desc)))
 
+(defun telega-ins--poll (msg)
+  "Insert poll message MSG."
+  (let* ((content (plist-get msg :content))
+         (poll (plist-get content :poll))
+         (question (plist-get poll :question))
+         (nvotes (plist-get poll :total_voter_count))
+         (closed-p (plist-get poll :is_closed)))
+    (telega-ins telega-symbol-poll " " question)
+    (if closed-p
+        (telega-ins " (closed)")
+      (telega-ins-fmt " (%d votes)" nvotes))
+    (telega-ins "\n")
+    (telega-ins "<TODO: poll options>\n")))
+
 (defun telega-ins--animation-msg (msg &optional animation)
   "Inserter for animation message MSG."
   (unless animation
@@ -888,6 +902,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--video-note msg))
       ('messageInvoice
        (telega-ins--invoice content))
+      ('messagePoll
+       (telega-ins--poll msg))
       ('messageAnimation
        (telega-ins--animation-msg msg))
       ('messageLocation
@@ -1231,6 +1247,11 @@ unless message is edited."
         (telega-ins (propertize "Invoice" 'face 'shadow))
         (telega-ins-prefix " "
           (telega-ins (plist-get content :title))))
+       (messagePoll
+        (telega-ins telega-symbol-poll " ")
+        (let ((poll (plist-get content :poll)))
+          (telega-ins (plist-get poll :question))
+          (telega-ins-fmt " (%d votes)" (plist-get poll :total_voter_count))))
        (t (telega-ins--content msg))))))
 
 

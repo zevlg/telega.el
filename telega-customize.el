@@ -759,16 +759,19 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-poll "📊"
+  "Symbol used in poll messages."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
   "Symbols used to emphasize attachement in chat buffer input."
   :type 'cons
   :group 'telega-symbol)
 
-(defcustom telega-symbol-attach-line-break "⏎"
-  "Symbol used to visualize breaks between attachements.
-Separated attachements are sent as separate messages.
-NOT USED."
-  :type 'string
+(defcustom telega-symbol-webpage-details (cons "▼" "▲")
+  "Symbols used to display `pageBlockDetails' webpage block."
+  :type 'cons
   :group 'telega-symbol)
 
 (defcustom telega-symbol-widths
