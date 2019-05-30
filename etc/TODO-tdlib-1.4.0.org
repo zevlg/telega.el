@@ -125,7 +125,7 @@ Changes in 1.4.0:
   - Added the classes `messageForwardOriginUser`, `messageForwardOriginHiddenUser` and `messageForwardOriginChannel`
     which describe the exact origins of a message.
 * Improved getting the list of user profile photos:
-  - Added the class `userProfilePhoto`, containing `id`, `added_date` and `sizes` of a profile photo.
+  - [DONE] Added the class `userProfilePhoto`, containing `id`, `added_date` and `sizes` of a profile photo.
   - Changed the type of the field `photos` in `userProfilePhotos` to a list of `userProfilePhoto` instead of
     a list of `photo`. `getUserProfilePhotos` now returns a date for each profile photo.
   - Removed the field `id` from the class `photo` (this field was only needed in the result of `getUserProfilePhotos`).
