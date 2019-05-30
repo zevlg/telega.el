@@ -376,6 +376,12 @@ TODO: подумать чо как тут должно выглядить
   см. circe-new-day-notifier.el
   см. telega-chat-insert-date-breaks
 
+- Polls:
+
+    📊 Poll Title (10 votes)
+    [x] NO   ############## (70% 5 votes)
+    [ ] YES  #####          (20% 2 votes)
+
 Prompts
 ~~~~~~~
 

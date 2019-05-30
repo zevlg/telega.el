@@ -712,11 +712,20 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (nvotes (plist-get poll :total_voter_count))
          (closed-p (plist-get poll :is_closed)))
     (telega-ins telega-symbol-poll " " question)
-    (if closed-p
-        (telega-ins " (closed)")
-      (telega-ins-fmt " (%d votes)" nvotes))
-    (telega-ins "\n")
-    (telega-ins "<TODO: poll options>\n")))
+    (telega-ins-fmt " (%d votes" nvotes)
+    (when closed-p
+      (telega-ins ", " (propertize "closed" 'face 'error)))
+    (telega-ins ")")
+    (mapc (lambda (popt)
+            (telega-ins "\n")
+            (if (or (plist-get popt :is_chosen)
+                    (plist-get popt :is_being_chosen))
+                (telega-ins "[x]")
+              (telega-ins "[ ]"))
+            (telega-ins " " (plist-get popt :text))
+            (telega-ins-fmt " (%d%%, %d votes)" (plist-get popt :vote_percentage)
+                            (plist-get popt :voter_count)))
+          (plist-get poll :options))))
 
 (defun telega-ins--animation-msg (msg &optional animation)
   "Inserter for animation message MSG."
