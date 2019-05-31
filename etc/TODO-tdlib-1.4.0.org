@@ -19,10 +19,11 @@ Changes in 1.4.0:
     from a given offset without actually changing the download offset.
 * Added the parameter `synchronous` to `downloadFile` which causes the request to return the result only after
   the download is completed.
-* Added support for native polls in messages:
+* DONE Added support for native polls in messages:
+  CLOSED: [2019-05-31 Пт 14:24]
   - Added `messagePoll` to the types of message content; contains a poll.
   - Added the classes `poll` and `pollOption` describing a poll and a poll answer option respectively.
-  - Added `inputMessagePoll` to the types of new input message content; can be used to send a poll.
+  - [NOT YET] Added `inputMessagePoll` to the types of new input message content; can be used to send a poll.
   - Added the method `setPollAnswer` which can be used for voting in polls.
   - Added the method `stopPoll` which can be used to stop polls. Use the `Message.can_be_edited` field to check whether
     this method can be called on a message.

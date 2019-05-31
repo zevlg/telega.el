@@ -396,6 +396,22 @@ If MARKDOWN is non-nil then format TEXT as markdown."
     (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))
 
+(defun telega--stopPoll (msg)
+  "Stops a poll."
+  (telega-server--send
+   (list :@type "stopPoll"
+         :chat_id (plist-get (telega-msg-chat msg) :id)
+         :message_id (plist-get msg :id))))
+
+(defun telega--setPollAnswer (msg option-id)
+  "Changes user answer to a poll.
+OPTION-ID - 0-based identifiers of option, chosen by the user."
+  (telega-server--send
+   (list :@type "setPollAnswer"
+         :chat_id (plist-get (telega-msg-chat msg) :id)
+         :message_id (plist-get msg :id)
+         :option_ids (vector option-id))))
+
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."
