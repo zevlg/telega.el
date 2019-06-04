@@ -68,8 +68,12 @@
     (define-key map (kbd "? p") 'telega-describe-privacy-settings)
 
     (define-key map (kbd "j") 'telega-chat-join-by-link)
-    ;; commands to all currently filtered chats
-    (define-key map (kbd "D") 'telega-chats-filtered-delete)
+    ;; Commands to all currently filtered chats
+
+    ;; NOTE: Deleting all chats is very-very-very dangerous, so
+    ;; disabled, use M-x telega-chats-filtered-delete RET if you know
+    ;; what you are doing
+    ;; (define-key map (kbd "D") 'telega-chats-filtered-delete)
     (define-key map (kbd "R") 'telega-chats-filtered-toggle-read)
 
     ;; Calls bindings
