@@ -934,10 +934,13 @@ STATUS is one of: "
                            (length telega--filtered-chats)))))
   (mapc 'telega-chat-toggle-read telega--filtered-chats))
 
-(defun telega-chat-delete (chat)
-  "Delete CHAT."
+(defun telega-chat-delete (chat &optional leave-p)
+  "Delete CHAT.
+If LEAVE-P is non-nil, then just leave the chat.
+Leaving chat does not removes chat from chat list."
   (interactive (list (and (y-or-n-p "This action cannot be undone. Delete chat? ")
-                          (telega-chat-at-point))))
+                          (telega-chat-at-point))
+                     nil))
 
   (when chat
     (let ((chat-type (telega-chat--type chat)))
@@ -949,7 +952,8 @@ STATUS is one of: "
       ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
       ;; and public supergroups
       (unless (or (eq (telega-chat--type chat) 'channel)
-                  (telega-chat--public-p chat 'supergroup))
+                  (telega-chat--public-p chat 'supergroup)
+                  leave-p)
         (telega--deleteChatHistory chat t)))
 
     ;; Kill corresponding chat buffer
