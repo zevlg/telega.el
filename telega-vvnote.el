@@ -79,7 +79,7 @@
     (dolist (wv waves)
       (let ((xoff (+ wv-width (* (+ wv-width space-width) w-idx)))
             (played-p (< (/ (float w-idx) (length waves))
-                         (/ (or played 0) duration))))
+                         (/ (or played 0) (if (zerop duration) 0.1 duration)))))
         (svg-line svg xoff (- height 3 (if played-p 0.5 0)) xoff
                   (- height 3 (if played-p 0.5 0) (* wv wv-height))
                   :stroke-color (if played-p
