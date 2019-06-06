@@ -321,7 +321,11 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))
     (pageBlockPullQuote
-     (telega-ins "<TODO: pageBlockPullQuote>"))
+     (telega-ins--with-attrs (list :fill 'center
+                                   :fill-column (- telega-webpage-fill-column 2))
+       (telega-ins "\u00A0\u00A0")
+       (telega-webpage--ins-rt (plist-get pb :text)))
+     (telega-ins "\n"))
     (pageBlockAnimation
      (telega-ins "<TODO: pageBlockAnimation>"))
     (pageBlockAudio
@@ -373,10 +377,10 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins "}}}")))
     (pageBlockTable
      (telega-webpage--ins-rt (plist-get pb :caption))
-     (telega-ins "<TODO: table cells>\n"))
+     (telega-ins "<TODO: pageBlockTable"))
     (pageBlockRelatedArticles
      (telega-webpage--ins-rt (plist-get pb :header))
-     (telega-ins "<TODO: related articles>\n"))
+     (telega-ins "<TODO: pageBlockRelatedArticles"))
     )
 
   (unless (memq (telega--tl-type pb)
