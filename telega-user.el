@@ -58,7 +58,14 @@
       member-or-user)))
 
 (defun telega-user-button--action (button)
-  (telega-describe-user (telega-user-at button)))
+  "Action to take when user BUTTON is pressed.
+If BUTTON has custom `:action', then use it, otherwise describe the user."
+  (let ((user (telega-user-at button))
+        (custom-action (button-get button :action)))
+    (cl-assert user)
+    (if custom-action
+        (funcall custom-action user)
+      (telega-describe-user user))))
 
 (defun telega-user--get (user-id)
   "Get user by USER-ID."
@@ -188,6 +195,114 @@ LIMIT - limit number of photos (default=100)."
          :user_id (plist-get user :id)
          :offset (or offset 0)
          :limit (or limit 100))))
+
+(defun telega-describe-user (user)
+  "Show info about USER."
+  (with-telega-help-win "*Telega User*"
+    ;; TODO: display more stuff as in `telega-describe-chat'
+    (telega-info--insert-user user)))
+
+(defun telega-user-chat-with (user)
+  "Start private chat with USER."
+  (telega-chat--pop-to-buffer
+   (telega--createPrivateChat user)))
+
+
+;;; Contacts
+(defun telega-ins--root-contact (contact)
+  "Inserter for CONTACT user."
+  (telega-ins telega-symbol-contact " ")
+  (when (telega-ins (plist-get contact :first_name))
+    (telega-ins " "))
+  (when (telega-ins (plist-get contact :last_name))
+    (telega-ins " "))
+  (telega-ins-prefix "@"
+    (when (telega-ins (plist-get contact :username))
+      (telega-ins " ")))
+  (telega-ins-prefix "+"
+    (telega-ins (plist-get contact :phone_number))))
+
+(defun telega-contact-root--pp (contact)
+  "Pretty printer for CONTACT button shown in root buffer.
+CONTACT is some user you have exchanged contacs with."
+  (telega-button--insert 'telega-user contact
+    'keymap button-map
+    :inserter 'telega-ins--root-contact
+    :action 'telega-user-chat-with)
+  (telega-ins "\n"))
+
+(defun telega--getContacts ()
+  "Return users that are in contact list."
+  (mapcar 'telega-user--get
+          (plist-get (telega-server--call
+                      (list :@type "getContacts"))
+                     :user_ids)))
+
+(defun telega--removeContacts (&rest user-ids)
+  "Remove users determined by USER-IDS from contacts."
+  (telega-server--call
+   (list :@type "removeContacts"
+         :user_ids (cl-map 'vector 'identity user-ids))))
+
+(defun telega--searchContacts (query &optional limit)
+  "Search contacts for already chats by QUERY."
+  (mapcar 'telega-user--get
+          (plist-get (telega-server--call
+                      (list :@type "searchContacts"
+                            :query query
+                            :limit (or limit 200)))
+                     :user_ids)))
+
+(defun telega--importContacts (&rest contacts)
+  "Import CONTACTS into contacts list."
+  (telega-server--call
+   (list :@type "importContacts"
+         :contacts (cl-map 'vector 'identity contacts))))
+
+(defun telega-contact-add (phone)
+  "Add user by PHONE to contact list."
+  (interactive "sPhone number: ")
+  (let* ((reply (telega--importContacts (list :@type "contact"
+                                              :phone_number phone)))
+         (user-id (aref (plist-get reply :user_ids) 0)))
+    (when (zerop user-id)
+      (user-error "No telegram user with phone %s" phone))
+    (telega-describe-user (telega-user--get user-id))))
+
+(defun telega-describe-contact (contact)
+  "Show CONTACT information."
+  (with-telega-help-win "*Telega Contact*"
+    (let* ((user-id (plist-get contact :user_id))
+           (user (telega-user--get user-id))
+           (full-info (telega--full-info user)))
+      (when (telega-ins (plist-get contact :first_name))
+        (telega-ins " "))
+      (telega-ins (plist-get contact :last_name) "\n")
+      (telega-ins-fmt "Phone: %s\n" (plist-get contact :phone_number))
+      (if (eq (telega--tl-type (plist-get user :outgoing_link))
+              'linkStateIsContact)
+          (telega-ins--button "RemoveContact"
+            :value contact
+            :action (lambda (contact)
+                      (telega--removeContacts (plist-get contact :user_id))
+                      (telega-save-cursor
+                        (telega-describe-contact contact))))
+
+        (telega-ins--button "ImportContact"
+          :value contact
+          :action (lambda (contact)
+                    (telega--importContacts contact)
+                    (telega-save-cursor
+                      (telega-describe-contact contact)))))
+      (telega-ins "\n")
+
+      (telega-ins "\n--- Telegram User Info ---\n")
+      (telega-ins "Name: " (telega-user--name user 'name) "\n")
+      (telega-ins--button "ChatWith"
+        :value user
+        :action 'telega-user-chat-with)
+      (telega-ins " ")
+      (telega-info--insert-user user))))
 
 (provide 'telega-user)
 

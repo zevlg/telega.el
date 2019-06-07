@@ -36,6 +36,8 @@
 (declare-function tracking-mode "tracking" (&optional arg))
 
 (defvar telega-root--ewoc nil)
+(defvar telega-contacts--ewoc nil
+  "Ewoc for contacts list.")
 (defvar telega-search--ewoc nil
   "Ewoc for global chats searched.")
 (defvar telega-messages--ewoc nil
@@ -128,6 +130,13 @@ Global root bindings:
                        nil nil t))
     (dolist (chat telega--ordered-chats)
       (ewoc-enter-last telega-root--ewoc chat))
+
+    ;; Contacts
+    (goto-char (point-max))
+    (insert "\n")
+    (setq telega-contacts--ewoc
+          (ewoc-create (telega-ewoc--gen-pp 'telega-contact-root--pp)
+                       "" "" t))
 
     ;; Global search
     (goto-char (point-max))
@@ -273,6 +282,13 @@ If RAW is given then do not modify statuses for animation."
               (telega-ins "\n")))
 
             (telega-ewoc--set-header
+             telega-contacts--ewoc
+             (telega-ins--as-string
+              (telega-ins--with-attrs heading-attrs
+                (telega-ins "CONTACTS"))
+              (telega-ins "\n")))
+
+            (telega-ewoc--set-header
              telega-search--ewoc
              (telega-ins--as-string
               (telega-ins--with-attrs heading-attrs
@@ -289,10 +305,12 @@ If RAW is given then do not modify statuses for animation."
 
         ;; No active search
         (ewoc-set-hf telega-search--ewoc "" "")
+        (ewoc-set-hf telega-contacts--ewoc "" "")
         (ewoc-set-hf telega-messages--ewoc "" "")
         (telega-ewoc--set-header telega-root--ewoc ""))
 
       (ewoc-refresh telega-root--ewoc)
+      (ewoc-refresh telega-contacts--ewoc)
       (ewoc-refresh telega-search--ewoc)
       (ewoc-refresh telega-messages--ewoc))))
 
@@ -509,6 +527,7 @@ If LAST-MSG is specified, then continue searching."
   (with-telega-root-buffer
     (telega-save-cursor
       (telega-ewoc--clean telega-search--ewoc)
+      (telega-ewoc--clean telega-contacts--ewoc)
       (telega-ewoc--clean telega-messages--ewoc)))
 
   (when telega--search-global-loading
@@ -524,6 +543,7 @@ If LAST-MSG is specified, then continue searching."
   (telega-search-async--cancel)
   (setq telega-search-query nil)
   (setq telega--search-chats nil)
+  (setq telega--search-contacts nil)
 
   (telega-filters-apply))
 
@@ -542,6 +562,19 @@ If used with PREFIX-ARG, then cancel current search."
       (setq telega-search-query query)
       (setq telega--search-chats
             (telega--searchChats query))
+
+      (setq telega--search-contacts
+            (telega--searchContacts query))
+      ;; NOTE: filter out contacts, that are already in `telega--search-chats'
+      ;; (setq telega--search-contacts
+      ;;       (cl-remove-if (lambda (contact)
+      ;;                       (telega-filter-chats
+      ;;                        (list 'ids (plist-get contact :id))
+      ;;                        telega--search-chats))
+      ;;                     (telega--searchContacts query)))
+      (dolist (contact telega--search-contacts)
+        (ewoc-enter-last telega-contacts--ewoc contact))
+
       (telega-root--global-search)
       (telega-root--messages-search)
 

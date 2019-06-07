@@ -93,6 +93,8 @@ Used to continue searching messages.")
 
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
+(defvar telega--search-contacts nil
+  "Result of last `telega--searchContacts'")
 (defvar telega--search-global-loading nil
   "Non-nil if globally searching public chats asynchronously.
 Actualy value is `:@extra' of the call.")
@@ -165,6 +167,7 @@ Done when telega server is ready to receive queries."
 
   (setq telega-search-query nil)
   (setq telega--search-chats nil)
+  (setq telega--search-contacts nil)
   (setq telega--search-global-loading nil)
   (setq telega--search-messages-loading nil)
 

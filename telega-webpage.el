@@ -162,7 +162,7 @@ Keymap:
   (interactive (list (button-at (point))))
   (let ((val (button-value button)))
     (telega-button--update-value
-     button (plist-put val :is_open (not (plist-get pb :is_open))))
+     button (plist-put val :is_open (not (plist-get val :is_open))))
     ))
 
 (defun telega-webpage--ins-details (pb)
