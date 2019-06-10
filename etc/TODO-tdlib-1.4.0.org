@@ -141,7 +141,8 @@ Changes in 1.4.0:
 * Added the method `getCurrentState` returning all updates describing the current `TDLib` state. It can be used to
   restore the correct state after connecting to a running TDLib instance.
 * Added the class `updates` which contains a list of updates and is returned by the `getCurrentState` method.
-* Added the update `updateChatOnlineMemberCount` which is automatically sent for open group chats if the number of
+* DONE Added the update `updateChatOnlineMemberCount` which is automatically sent for open group chats if the number of
+  CLOSED: [2019-06-10 Пн 17:48]
   online members in a group changes.
 * Added support for custom language packs downloaded from the server:
   - Added the fields `base_language_pack_id`` to the `languagePackInfo` object. Strings from the base language pack

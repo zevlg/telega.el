@@ -324,8 +324,9 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     (telega-info--insert-invite-link
      chat invite-link (string= member-status-name "chatMemberStatusCreator"))
 
-    (telega-ins-fmt "Members: %d users\n"
-      (plist-get basicgroup :member_count))
+    (telega-ins-fmt "Members: %d users (%d online)\n"
+      (plist-get basicgroup :member_count)
+      (or (plist-get chat :x-online-count) 0))
     (telega-ins--chat-members members)
     ))
 
@@ -372,7 +373,9 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (telega-ins "\n"))
       (insert "------------------------\n"))
 
-    (telega-ins-fmt "Members: %d\n" (plist-get full-info :member_count))
+    (telega-ins-fmt "Members: %d (%d online)\n"
+      (plist-get full-info :member_count)
+      (or (plist-get chat :x-online-count) 0))
     (when (plist-get full-info :can_get_members)
       ;; Asynchronously fetch/insert supergroup members
       (telega--getSupergroupMembers supergroup nil

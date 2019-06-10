@@ -459,6 +459,21 @@ If WITH-USERNAME is specified, append trailing username for this chat."
                (plist-get event :is_marked_as_unread))
     (telega-root--chat-update chat)))
 
+(defun telega--on-updateChatOnlineMemberCount (event)
+  "The number of online group members has changed.
+NOTE: we store the number as custom chat property, to use it later."
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :x-online-count
+               (plist-get event :online_member_count))
+
+    ;; NOTE: this affects the modeline
+    (with-telega-chatbuf chat
+      (setq mode-line-buffer-identification
+            (telega-chatbuf--modeline-buffer-identification)))
+
+    (telega-root--chat-update chat)))
+
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (let ((chat-ids (plist-get result :chat_ids)))
@@ -1483,6 +1498,9 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
   (let* ((title "%12b")
          (unread-count (plist-get telega-chatbuf--chat :unread_count))
          (mention-count (plist-get telega-chatbuf--chat :unread_mention_count))
+         (member-count
+          (or (plist-get (telega-chat--info telega-chatbuf--chat) :member_count) 0))
+         (online-count (or (plist-get telega-chatbuf--chat :x-online-count) 0))
          (brackets (or (> unread-count 0) (> mention-count 0))))
 
     (list title
@@ -1508,7 +1526,13 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
                             keymap (mouse-1 . telega-chatbuf-next-mention)))
                          'mouse-face 'mode-line-highlight
                          'help-echo "mouse-1: Goto next mention")))
-          (when brackets ")"))))
+          (when brackets ")")
+          (unless (zerop member-count)
+            (format " [%d members%s]" member-count
+                    (if (zerop online-count)
+                        ""
+                      (format ", %d online" online-count))))
+          )))
 
 (defun telega-chatbuf--input-idx-valid-p (idx)
   "Return non-nil if input history position IDX is valid."

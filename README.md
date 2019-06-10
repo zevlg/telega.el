@@ -33,7 +33,7 @@ In some random order:
 - [x] Company backends for emoji (`:<emoji>` syntax), usernames, bot
       commands completions
 - [x] Secret chats
-- [x] Online global searching chats/messages
+- [x] Online global searching chats/contacts/messages
 - [X] Avatars, Photos, Stickers
 - [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
