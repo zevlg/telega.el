@@ -1254,6 +1254,12 @@ Also mark messages as read with `viewMessages'."
     (when (< display-start 500)
       (telega-chatbuf--load-older-history))
 
+    ;; If point moves near the end of the chatbuf, then request for
+    ;; newer history
+    (when (and (> display-start (- (point-max) 500))
+               (not (telega-chatbuf--last-msg-loaded-p)))
+      (telega-chatbuf--load-newer-history))
+      
     ;; Mark some messages as read
     (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
               (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
@@ -1343,8 +1349,13 @@ Also mark messages as read with `viewMessages'."
 
   ;; - If at the beginning of chatbuf then request for the history
   ;;   same as in telega-chatbuf-scroll
-  (when (= (point) 1)
+  (when (= (point) (point-min))
     (telega-chatbuf--load-older-history))
+
+  ;; - If at the bottom of the chatbuf and newer history is not yet
+  ;;   loaded, then load it.  Same as in `telega-chatbuf-scroll'
+  (when (and (= (point) (point-max)) (not (telega-chatbuf--last-msg-loaded-p)))
+    (telega-chatbuf--load-newer-history))
 
   ;; - Finally, when input is probably changed by above operations,
   ;;   update chat's action after command execution.
