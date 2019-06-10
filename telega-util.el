@@ -404,6 +404,10 @@ Return `nil' if there is nothing to animate and new string otherwise."
        (telega-ins-fmt "  %S\n" pp-err)
        (telega-ins "------\n")))))
 
+(defun telega-ewoc--location (ewoc)
+  "Return EWOC's start location."
+  (ewoc-location (ewoc--header ewoc)))
+
 (defun telega-ewoc--find (ewoc item test &optional key start-node)
   "Find EWOC's node by item and TEST funcion.
 TEST function is run with two arguments - ITEM and NODE-VALUE.

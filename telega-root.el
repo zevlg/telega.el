@@ -555,6 +555,9 @@ If used with PREFIX-ARG, then cancel current search."
       (telega-search-cancel)
 
     (let ((query (read-string "Search for: " nil 'telega-search-history)))
+      ;; Always move cursor to the search title
+      (goto-char (telega-ewoc--location telega-root--ewoc))
+
       ;; Asynchronously load results from global search for chats and
       ;; messages
       (telega-search-async--cancel)
