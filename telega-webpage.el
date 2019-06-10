@@ -47,6 +47,7 @@
 (defvar telega-webpage--iv nil
   "Instant view for the current webpage.")
 (defvar telega-webpage--anchors nil)
+(defvar telega-webpage--slides nil)
 
 (defvar telega-webpage-details-map
   (let ((map (make-sparse-keymap)))
@@ -300,13 +301,18 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))
     (pageBlockFooter
-     (telega-ins "<TODO: pageBlockFooter>"))
+     (telega-ins--with-attrs (list :face 'shadow
+                                   :fill 'left
+                                   :fill-column telega-webpage-fill-column)
+       (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-) "\n")
+       (telega-webpage--ins-rt (plist-get pb :footer))))
     (pageBlockDivider
      (telega-ins--with-attrs (list :align 'center
                                    :fill-column telega-webpage-fill-column)
        (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-))))
     (pageBlockAnchor
-     (setf (alist-get (plist-get pb :name) telega-webpage--anchors) (point)))
+     (setf (alist-get (plist-get pb :name) telega-webpage--anchors)
+           (point-marker)))
     (pageBlockListItem
      (telega-ins--labeled (concat " " (plist-get pb :label) " ")
          telega-webpage-fill-column

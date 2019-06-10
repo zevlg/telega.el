@@ -258,6 +258,8 @@ If CALLBACK is specified return `:@extra' value used for the call."
         (process-adaptive-read-buffering nil)
         (server-bin (telega-server--find-bin)))
     (with-current-buffer (generate-new-buffer " *telega-server*")
+      (setq telega-server--on-event-func 'telega--on-event)
+      (setq telega-server--deferred-events nil)
       (setq telega-server--extra 0)
       (setq telega-server--callbacks (make-hash-table :test 'eq))
       (setq telega-server--results (make-hash-table :test 'eq))

@@ -455,6 +455,13 @@ ____(@zevlg is typing...)_______________________
 - Глобальный chat input history, и чтобы по нему можно было искать в
   любом чате [TODO]
 
+- Показывать треды, как в https://t.me/designers/44
+
+  MSG1
+  MSG2
+  _______________________________[related messages]__
+  >>> []
+
 Shared media
 ~~~~~~~~~~~
 
