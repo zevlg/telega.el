@@ -1256,7 +1256,7 @@ Also mark messages as read with `viewMessages'."
 
     ;; If point moves near the end of the chatbuf, then request for
     ;; newer history
-    (when (and (> display-start (- (point-max) 500))
+    (when (and (> display-start (- (point-max) 2000))
                (not (telega-chatbuf--last-msg-loaded-p)))
       (telega-chatbuf--load-newer-history))
       
@@ -1700,10 +1700,14 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
                        (plist-get (ewoc--node-data nnode) :sender_user_id)))
           (telega-chatbuf--redisplay-node nnode))))))
 
-(defun telega-chatbuf--enter-youngest-msg (msg &optional disable-notification)
+(defun telega-chatbuf--enter-youngest-msg (msg &optional disable-notification
+                                               force)
   "Insert newly arrived message MSG as youngest into chatbuffer.
 If DISABLE-NOTIFICATION is non-nil, then do not trigger
 notification for this message.
+If FORCE is specified, then insert youngest message even if last
+message is not yet loaded, see
+`telega-chatbuf--last-msg-loaded-p'
 Return newly inserted node or nil if it was not inserted."
   (run-hook-with-args 'telega-chat-pre-message-hook msg disable-notification)
 
@@ -1718,7 +1722,7 @@ Return newly inserted node or nil if it was not inserted."
           ;; MSG is actually a last message (`updateChatLastMessage'
           ;; can arrive before `updateNewMessage')
           (prog1
-              (when (telega-chatbuf--last-msg-loaded-p msg)
+              (when (or force (telega-chatbuf--last-msg-loaded-p msg))
                 (with-telega-deferred-events
                   (ewoc-enter-last telega-chatbuf--ewoc msg)))
 
@@ -1997,7 +2001,9 @@ CALLBACK is called after history has been loaded."
                      (setq rmsgs (cdr rmsgs)))
                    (with-telega-chatbuf chat
                      (setq telega-chatbuf--history-loading nil)
-                     (mapc #'telega-chatbuf--enter-youngest-msg rmsgs)
+                     (telega-save-cursor
+                       (dolist (ymsg rmsgs)
+                         (telega-chatbuf--enter-youngest-msg ymsg nil t)))
                      (telega-chatbuf--footer-redisplay))))))
         (telega-chatbuf--footer-redisplay)
         ))))
