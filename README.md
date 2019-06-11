@@ -38,7 +38,7 @@ In some random order:
 - [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
       messages, contacts, etc (PARTLY)
-- [ ] Poll messages (not yet in TDLib 1.3.0)
+- [x] Poll messages
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
 - [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
 - [x] InstantView for web pages 
@@ -68,9 +68,9 @@ use is from this git repositary. This involves few simple steps
 described below.
 
 `telega.el` is built on top of the official library provided by
-Telegram [tdlib](https://core.telegram.org/tdlib "tdlib"). Most of the
-distributions do not package this libary, so it has to be build from
-source.
+Telegram [TDLib 1.4.0](https://core.telegram.org/tdlib "tdlib"). Most
+of the distributions do not package this libary, so it has to be build
+from source.
 
 ## Dependences
 
