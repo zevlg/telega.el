@@ -49,16 +49,17 @@ In some random order:
 
 # Screenshots
 
-Chat buffer and combination of root buffer/chat buffer running under
-iOS terminal [blink](https://github.com/blinksh/blink "blink"):
+Channels only chats filtered in root buffer:
 
-![screen0](https://zevlg.github.io/telega/screen0.png)
+![screen10](https://zevlg.github.io/telega/screen-10.png)
 
-![screen1](https://zevlg.github.io/telega/screen1.png)
+Chat in [@emacs_en](https://t.me/emacs_en "emacs_en") group:
 
-`telega.el` running under GUI version of Emacs:
+![screen11](https://zevlg.github.io/telega/screen-11.png)
 
-![screen2](https://zevlg.github.io/telega/screen2.png)
+Attaching funny cat sticker:
+
+![screen12](https://zevlg.github.io/telega/screen-12.png)
 
 # Installation
 
