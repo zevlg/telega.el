@@ -1,11 +1,13 @@
-;;; telega.el --- Telegram client (unofficial)
+;;; telega.el --- Telegram client (unofficial)  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2016-2018 by Zajcev Evgeny
+;; Copyright (C) 2016-2019 by Zajcev Evgeny
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords:
-;; Version: 0.2.5
+;; Version: 0.4.0
+(defconst telega-version "0.4.0")
+(defconst telega-tdlib-min-version "1.4.0")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -22,58 +24,82 @@
 
 ;;; Commentary:
 
+;; See https://github.com/zevlg/telega.el/blob/master/README.md
 ;;
+;; Start with M-x telega RET
 
 ;;; Code:
+(require 'password-cache)               ; `password-read'
+(require 'cl-lib)
+
+(require 'telega-customize)
 (require 'telega-server)
 (require 'telega-root)
+(require 'telega-ins)
 (require 'telega-filter)
 (require 'telega-chat)
+(require 'telega-user)
 (require 'telega-info)
+(require 'telega-media)
+(require 'telega-sticker)
+(require 'telega-util)
+(require 'telega-vvnote)
+(require 'telega-webpage)
+(require 'telega-notifications)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
-(defconst telega-version "0.2.5")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
   (ignore-errors
     (mkdir telega-directory))
   (ignore-errors
-    (mkdir telega-cache-dir)))
+    (mkdir telega-cache-dir))
+  (ignore-errors
+    (mkdir telega-temp-dir))
+  )
 
 ;;;###autoload
-(defun telega ()
-  "Start telegramming."
-  (interactive)
+(defun telega (arg)
+  "Start telegramming.
+If prefix ARG is given, then will not pop to telega root buffer."
+  (interactive "P")
   (telega--create-hier)
 
   (unless (process-live-p (telega-server--proc))
-    (telega-server--start))
-  (unless (buffer-live-p (telega-root--buffer))
-    (with-current-buffer (get-buffer-create telega-root-buffer-name)
-      (telega-root-mode)))
+    ;; NOTE: for telega-server restarts also recreate root buffer,
+    ;; killing root buffer also cleanup all chat buffers and stops any
+    ;; timers used for animation
+    (when (buffer-live-p (telega-root--buffer))
+      (kill-buffer (telega-root--buffer)))
 
-  (pop-to-buffer-same-window telega-root-buffer-name))
+    (telega--init-vars)
+    (with-current-buffer (get-buffer-create telega-root-buffer-name)
+      (telega-root-mode))
+
+    (telega-server--start))
+
+  (unless arg
+    (pop-to-buffer-same-window telega-root-buffer-name)))
 
 ;;;###autoload
 (defun telega-kill (force)
   "Kill currently running telega.
 With prefix arg force quit without confirmation."
   (interactive "P")
-  (when (or force (y-or-n-p (concat "Kill telega"
-                                    (let ((chat-count (length telega--chat-buffers)))
-                                      (cond ((eq chat-count 0) "")
-                                            ((eq chat-count 1) (format " (and 1 chat buffer)"))
-                                            (t (format " (and all %d chat buffers)" chat-count))))
-                                    "? ")))
-    (kill-buffer telega-root-buffer-name)))
+  (let* ((chat-count (length telega--chat-buffers))
+         (suffix (cond ((eq chat-count 0) "")
+                       ((eq chat-count 1) (format " (and 1 chat buffer)"))
+                       (t (format " (and all %d chat buffers)" chat-count)))))
+    (when (or force (y-or-n-p (concat "Kill telega" suffix "? ")))
+      (kill-buffer telega-root-buffer-name))))
 
 (defun telega-logout ()
   "Switch to another telegram account."
   (interactive)
   (telega-server--send `(:@type "logOut")))
 
-(defun telega--set-tdlib-parameters ()
+(defun telega--setTdlibParameters ()
   "Sets the parameters for TDLib initialization."
   (telega-server--send
    (list :@type "setTdlibParameters"
@@ -84,91 +110,130 @@ With prefix arg force quit without confirmation."
                            :use_file_database telega-use-file-database
                            :use_chat_info_database telega-use-chat-info-database
                            :use_message_database telega-use-message-database
+                           :use_secret_chats t
                            :api_id (car telega-app)
                            :api_hash (cdr telega-app)
                            :system_language_code telega-language
-                           :application_version telega-version
                            :device_model "Emacs"
                            :system_version emacs-version
-                           :ignore_file_names :false
+                           :application_version telega-version
                            :enable_storage_optimizer t
-                           )))
+                           :ignore_file_names :false
+                           ))))
 
-  ;; List of proxies, since tdlib 1.3.0
-  (dolist (proxy telega-proxies)
-    (telega-server--send
-     `(:@type "addProxy" ,@proxy))))
-
-(defun telega--check-database-encryption-key ()
+(defun telega--checkDatabaseEncryptionKey ()
   "Set database encryption key, if any."
   ;; NOTE: database encryption is disabled
   ;;   consider encryption as todo in future
   (telega-server--send
-   `(:@type "checkDatabaseEncryptionKey"
-            :encryption_key ""))
+   (list :@type "checkDatabaseEncryptionKey"
+         :encryption_key ""))
 
-  ;; Set proxy here, so registering phone will use it
-  (when telega-socks5-proxy
+  ;; List of proxies, since tdlib 1.3.0
+  ;; Do it after checkDatabaseEncryptionKey,
+  ;; See https://github.com/tdlib/td/issues/456
+  (dolist (proxy telega-proxies)
     (telega-server--send
-     `(:@type "setProxy" :proxy (:@type "proxySocks5" ,@telega-socks5-proxy)))))
+     `(:@type "addProxy" ,@proxy))))
 
-(defun telega--set-auth-phone-number ()
+(defun telega--setAuthenticationPhoneNumber (&optional phone-number)
   "Sets the phone number of the user."
-  (let ((phone (read-string "Telega phone number: " "+")))
+  (let ((phone (or phone-number (read-string "Telega phone number: " "+"))))
     (telega-server--send
      (list :@type "setAuthenticationPhoneNumber"
            :phone_number phone
            :allow_flash_call :false
            :is_current_phone_number :false))))
 
-(defun telega--resend-auth-code ()
-  "Resends auth code, works only if current state is authorizationStateWaitCode."
-  (message "TODO: `telega--resend-auth-code'")
-  )
+(defun telega-resend-auth-code ()
+  "Resend auth code.
+Works only if current state is `authorizationStateWaitCode'."
+  (interactive)
+  (telega-server--send
+   (list :@type "resendAuthenticationCode")))
 
-(defun telega--check-auth-code (registered-p)
+(defun telega--checkAuthenticationCode (registered-p &optional auth-code)
   "Send login auth code."
-  (let ((code (read-string "Telega login code: ")))
-    (assert registered-p)
+  (let ((code (or auth-code (read-string "Telega login code: ")))
+        ;; NOTE: first_name is required for newly registered accounts
+        (first-name (or (and registered-p "")
+                        (read-from-minibuffer "First Name: "))))
     (telega-server--send
-     `(:@type "checkAuthenticationCode"
-              :code ,code
-              :first_name ""
-              :last_name ""))))
+     (list :@type "checkAuthenticationCode"
+           :code code
+           :first_name first-name
+           :last_name ""))))
 
-(defun telega--check-password (auth-state)
+(defun telega--checkAuthenticationPassword (auth-state &optional password)
   "Check the password for the 2-factor authentification."
   (let* ((hint (plist-get auth-state :password_hint))
-         (passwd (password-read
-                  (concat "Telegram password"
-                          (if (string-empty-p hint)
-                              ""
-                            (format "(hint='%s')" hint))
-                          ": "))))
+         (pswd (or password
+                   (password-read
+                    (concat "Telegram password"
+                            (if (string-empty-p hint)
+                                ""
+                              (format "(hint='%s')" hint))
+                            ": ")))))
     (telega-server--send
-     `(:@type "checkAuthenticationPassword" :password ,passwd))))
+     (list :@type "checkAuthenticationPassword"
+           :password pswd))))
 
-(defun telega--set-options ()
+(defun telega--setOption (prop-kw val)
+  "Set option, defined by keyword PROP-KW to VAL."
+  (declare (indent 1))
+  (telega-server--send
+   (list :@type "setOption"
+         :name (substring (symbol-name prop-kw) 1) ; strip `:'
+         :value (list :@type (cond ((memq val '(t nil :false))
+                                    "optionValueBoolean")
+                                   ((integerp val)
+                                    "optionValueInteger")
+                                   ((stringp val)
+                                    "optionValueString")
+                                   (t (error "Unknown value type: %S"
+                                             (type-of val))))
+                      :value (or val :false)))))
+
+(defun telega--setOptions (options-plist)
   "Send custom options from `telega-options-plist' to server."
-  (cl-loop for (prop-name value) in telega-options-plist
-           do (telega-server--send
-               (list :@type "setOption"
-                     :name prop-name
-                     :value (list :@type (cond ((memq value '(t nil))
-                                                "optionValueBoolean")
-                                               ((integerp value)
-                                                "optionValueInteger")
-                                               ((stringp value)
-                                                "optionValueString"))
-                                  :value (or value :false))))))
+  (cl-loop for (prop-name value) on options-plist
+           by 'cddr
+           do (telega--setOption prop-name value)))
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
-  (setq telega--me-id
-        (plist-get (telega-server--call (list :@type "getMe")) :id))
-  (telega--set-options)
-  ;; Request for chats/users/etc
-  (telega-chat--getChats)
+  ;; Validate tdlib version
+  (when (string< (plist-get telega--options :version)
+                 telega-tdlib-min-version)
+    (error (concat "TDLib version=%s < %s (min required), "
+                   "please upgrade TDLib and recompile `telega-server'")
+           (plist-get telega--options :version)
+           telega-tdlib-min-version))
+
+  (setq telega--me-id (plist-get telega--options :my_id))
+  (cl-assert telega--me-id)
+  (telega--setOptions telega-options-plist)
+  ;; In case language pack id has not yet been selected, then select
+  ;; suggested one or fallback to "en"
+  (unless (plist-get telega--options :language_pack_id)
+    (telega--setOption :language_pack_id
+      (or (plist-get telega--options :suggested_language_pack_id) "en")))
+
+  ;; Apply&update notifications settings
+  (when (car telega-notifications-defaults)
+    (telega--setScopeNotificationSettings
+     "notificationSettingsScopePrivateChats"
+     (car telega-notifications-defaults)))
+  (when (cdr telega-notifications-defaults)
+    (telega--setScopeNotificationSettings
+     "notificationSettingsScopeGroupChats"
+     (cdr telega-notifications-defaults)))
+  ;; NOTE: telega--scope-notification-alist will be updated uppon
+  ;; `updateScopeNotificationSettings' event
+
+  ;; All OK, request for chats/users/etc
+  (telega-status--set nil "Fetching chats...")
+  (telega--getChats)
 
   (run-hooks 'telega-ready-hook))
 
@@ -178,9 +243,21 @@ With prefix arg force quit without confirmation."
 
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state."
-  (let* ((conn-state (plist-get (plist-get event :state) :@type))
+  (let* ((conn-state (telega--tl-get event :state :@type))
          (status (substring conn-state 15)))
-    (telega-status--set status)))
+    (setq telega--conn-state (intern status))
+    (telega-status--set status)
+
+    ;; NOTE: Optimisation: for Updating state, inhibit redisplaying
+    ;; filters, will speedup updating after TDLib wake up
+    (cl-case telega--conn-state
+      (connectionStateUpdating
+       (setq telega-filters--inhibit-redisplay t))
+      (connectionStateReady
+       (setq telega-filters--inhibit-redisplay nil)
+       (telega-filters--redisplay)))
+
+    (run-hooks 'telega-connection-state-hook)))
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server."
@@ -193,21 +270,21 @@ With prefix arg force quit without confirmation."
   (let* ((state (plist-get event :authorization_state))
          (stype (plist-get state :@type)))
     (telega-status--set (concat "Auth " (substring stype 18)))
-    (ecase (intern stype)
+    (cl-ecase (intern stype)
       (authorizationStateWaitTdlibParameters
-       (telega--set-tdlib-parameters))
+       (telega--setTdlibParameters))
 
       (authorizationStateWaitEncryptionKey
-       (telega--check-database-encryption-key))
+       (telega--checkDatabaseEncryptionKey))
 
       (authorizationStateWaitPhoneNumber
-       (telega--set-auth-phone-number))
+       (telega--setAuthenticationPhoneNumber))
 
       (authorizationStateWaitCode
-       (telega--check-auth-code (plist-get state :is_registered)))
+       (telega--checkAuthenticationCode (plist-get state :is_registered)))
 
       (authorizationStateWaitPassword
-       (telega--check-password state))
+       (telega--checkAuthenticationPassword state))
 
       (authorizationStateReady
        ;; TDLib is now ready to answer queries
@@ -222,11 +299,50 @@ With prefix arg force quit without confirmation."
       (authorizationStateClosed
        (telega--authorization-closed)))))
 
-(defun telega--on-ok (event)
+(defun telega--on-ok (_event)
   "On ok result from command function call."
   ;; no-op
   )
 
+(defun telega-version (&optional interactive-p)
+  "Return telega (and tdlib) version.
+If called interactively, then print version into echo area."
+  (interactive "p")
+  (let* ((tdlib-version (plist-get telega--options :version))
+         (version (concat "telega v"
+                          telega-version
+                          " ("
+                          (if tdlib-version
+                              (concat "TDLib version " tdlib-version)
+                            "TDLib version unknown, server not running")
+                          ")")))
+    (if interactive-p
+        (message version)
+      version)))
+
+(defun telega-check-buffer-switch ()
+  "Check if chat buffer is switched."
+  (let ((cbuf (current-buffer)))
+    (unless (eq cbuf telega--last-buffer)
+      (condition-case err
+          (when (buffer-live-p telega--last-buffer)
+            (with-current-buffer telega--last-buffer
+              (when telega-chatbuf--chat
+                (telega-chatbuf--switch-out))))
+        (error
+         (message "telega: error in `telega-chatbuf--switch-out': %S" err)))
+      (setq telega--last-buffer cbuf))))
+
 (provide 'telega)
+
+;; Load hook might install new symbols into
+;; `telega-symbol-widths'
+(run-hooks 'telega-load-hook)
+
+;; At load time load symbols widths and run load hook
+(telega-symbol-widths-install telega-symbol-widths)
+
+;; Track buffer switches
+(add-hook 'post-command-hook 'telega-check-buffer-switch)
 
 ;;; telega.el ends here

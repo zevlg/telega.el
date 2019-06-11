@@ -11,6 +11,10 @@
 #include <td/telegram/td_log.h>
 
 #include "telega-dat.h"
+#ifdef WITH_VOIP
+extern const char* telega_voip_version(void);
+extern int telega_voip_cmd(const char* json);
+#endif /* WITH_VOIP */
 
 /*
  * Input/Output Protocol:
@@ -20,6 +24,9 @@
  *
  * COMMAND is one of `send', `event' or `error'
  * `event' and `error' is used for output
+ *
+ * If VOIP support is compiled in (make WITH_VOIP=true) then also
+ * `voip' command available
  *
  * For example:
  *   event 105
@@ -32,7 +39,10 @@
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.2.1";
+const char* version = "0.4.0";
+
+/* true when tdlib_loop is running */
+volatile bool tdlib_running;
 
 int parse_mode = 0;
 #define PARSE_MODE_JSON 1
@@ -41,13 +51,29 @@ int parse_mode = 0;
 void
 usage(char* prog)
 {
-        printf("Version %s\n", version);
+        printf("Version %s", version);
+#ifdef WITH_VOIP
+        printf(", with VOIP tgvoip v%s", telega_voip_version());
+#endif /* WITH_VOIP */
+        printf("\n");
         printf("usage: %s [-jp] [-l FILE] [-v LVL] [-h]\n", prog);
         printf("\t-l FILE    Log to FILE (default=stderr)\n");
         printf("\t-v LVL     Verbosity level (default=5)\n");
-        printf("\n-j         Parse json from stdin and exit\n");
-        printf("\n-p         Parse plist from stdin and exit\n");
+        printf("\t-j         Parse json from stdin and exit\n");
+        printf("\t-p         Parse plist from stdin and exit\n");
         exit(0);
+}
+
+void
+telega_output(const char* otype, const char* json)
+{
+        if (verbosity > 4) {
+                fprintf(stderr, "[telega-server] "
+                        "OUTPUT %s: %s\n", otype, json);
+        }
+
+        printf("%s %zu\n%s\n", otype, strlen(json), json);
+        fflush(stdout);
 }
 
 static void
@@ -60,8 +86,7 @@ on_error_cb(const char* errmsg)
         tdat_json_value(&json_src, &plist_dst);
         tdat_append1(&plist_dst, "\0");
 
-        printf("error %zu\n%s\n", strlen(plist_dst.data), plist_dst.data);
-        fflush(stdout);
+        telega_output("error", plist_dst.data);
 
         tdat_drop(&json_src);
         tdat_drop(&plist_dst);
@@ -73,17 +98,14 @@ tdlib_loop(void* cln)
         struct telega_dat json_src = TDAT_INIT;
         struct telega_dat plist_dst = TDAT_INIT;
 
-        while (true) {
-                const char *res = td_json_client_receive(cln, 1);
+        while (tdlib_running) {
+                const char *res = td_json_client_receive(cln, 0.5);
                 if (res) {
-                        fprintf(stderr, "[telega-server] IN JSON: %s\n", res);
-
                         tdat_append(&json_src, res, strlen(res));
                         tdat_json_value(&json_src, &plist_dst);
                         tdat_append1(&plist_dst, "\0");
 
-                        printf("event %zu\n%s\n", strlen(plist_dst.data), plist_dst.data);
-                        fflush(stdout);
+                        telega_output("event", plist_dst.data);
 
                         tdat_reset(&json_src);
                         tdat_reset(&plist_dst);
@@ -118,7 +140,8 @@ stdin_loop(void* cln)
                 char cmd[33];
                 size_t cmdsz;
                 if (2 != sscanf(cmdline, "%s %zu\n", cmd, &cmdsz)) {
-                        fprintf(stderr, "Unexpected cmdline format: %s", cmdline);
+                        fprintf(stderr, "[telega-server] "
+                                "Unexpected cmdline format: %s\n", cmdline);
                         continue;
                 }
 
@@ -128,18 +151,32 @@ stdin_loop(void* cln)
                 size_t rc = fread(plist_src.data, 1, cmdsz + 1, stdin);
                 if (rc != cmdsz + 1) {
                         /* EOF or error */
-                        fprintf(stderr, "fread() error: %d\n", ferror(stdin));
+                        fprintf(stderr, "[telega-server] "
+                                "fread() error: %d\n", ferror(stdin));
                         break;
                 }
                 plist_src.end = cmdsz + 1;
 
                 tdat_plist_value(&plist_src, &json_dst);
                 tdat_append1(&json_dst, "\0");
+                if (verbosity > 4)
+                        fprintf(stderr, "[telega-server] "
+                                "INPUT: %s\n", json_dst.data);
 
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(cln, json_dst.data);
-                else
-                        fprintf(stderr, "Unknown command: %s", cmd);
+#ifdef WITH_VOIP
+                else if (!strcmp(cmd, "voip"))
+                        telega_voip_cmd(json_dst.data);
+#endif /* WITH_VOIP */
+                else {
+                        char error[128];
+                        snprintf(error, 128, "\"Unknown cmd `%s'\"", cmd);
+                        telega_output("error", error);
+
+                        fprintf(stderr, "[telega-server] "
+                                "Unknown command: %s\n", cmd);
+                }
 
                 tdat_reset(&plist_src);
                 tdat_reset(&json_dst);
@@ -172,10 +209,29 @@ parse_stdin(void)
                 tdat_plist_value(&src, &dst);
         tdat_append1(&dst, "\0");
 
-        fprintf(stderr, "%s\n", dst.data);
+        printf("%s\n", dst.data);
 
         tdat_drop(&src);
         tdat_drop(&dst);
+}
+
+void
+telega_set_verbosity(int verbosity)
+{
+        char req[1024];
+        snprintf(req, 1024, "{\"@type\":\"setLogVerbosityLevel\","
+                 "\"new_verbosity_level\":%d}", verbosity);
+        td_json_client_execute(NULL, req);
+}
+
+void
+telega_set_logfile(char* logfile)
+{
+        char req[1024];
+        snprintf(req, 1024, "{\"@type\":\"setLogStream\","
+                 "\"log_stream\":{\"@type\":\"logStreamFile\","
+                 "\"path\":\"%s\", \"max_file_size\":2097152}}", logfile);
+        td_json_client_execute(NULL, req);
 }
 
 int
@@ -186,11 +242,11 @@ main(int ac, char** av)
                 switch (ch) {
                 case 'v':
                         verbosity = atoi(optarg);
-                        td_set_log_verbosity_level(verbosity);
+                        telega_set_verbosity(verbosity);
                         break;
                 case 'l':
                         logfile = optarg;
-                        td_set_log_file_path(logfile);
+                        telega_set_logfile(logfile);
                         break;
                 case 'j':
                         parse_mode = PARSE_MODE_JSON;
@@ -204,6 +260,7 @@ main(int ac, char** av)
                         usage(av[0]);
                 }
         }
+
         if (parse_mode) {
                 parse_stdin();
                 return 0;
@@ -215,10 +272,16 @@ main(int ac, char** av)
         void *client = td_json_client_create();
 
         pthread_t td_thread;
+        tdlib_running = true;
         int rc = pthread_create(&td_thread, NULL, tdlib_loop, client);
         assert(rc == 0);
 
         stdin_loop(client);
+
+        /* Gracefully stop the tdlib_loop */
+        tdlib_running = false;
+        rc = pthread_join(td_thread, NULL);
+        assert(rc == 0);
 
         td_json_client_destroy(client);
 

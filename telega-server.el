@@ -1,6 +1,6 @@
-;;; telega-server.el --- telega-server functionality
+;;; telega-server.el --- telega-server functionality  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri Apr 20 13:52:34 2018
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;;
+;; Interface to `telega-server' process
 
 ;;; Code:
 (require 'cl-lib)
@@ -29,35 +29,9 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(defgroup telega-server nil
-  "Customisation for telega-server."
-  :prefix "telega-server-"
-  :group 'telega)
-
-(defcustom telega-server-command "telega-server"
-  "Command to run as telega server."
-  :type 'string
-  :group 'telega-server)
-
-(defcustom telega-server-logfile
-  (expand-file-name "telega-server.log" telega-directory)
-  "*Write server logs to this file."
-  :type 'string
-  :group 'telega-server)
-
-(defcustom telega-server-verbosity 5
-  "*Verbosity level for server process."
-  :type 'number
-  :group 'telega-server)
-
-(defcustom telega-server-call-timeout 0.5
-  "*Timeout for `telega-server--call'."
-  :type 'number
-  :group 'telega-server)
+(declare-function telega-root--buffer "telega-root")
 
 (defun telega--on-event (event)
-  (telega-debug "IN event: %s" event)
-
   (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
     (if (symbol-function event-sym)
         (funcall (symbol-function event-sym) event)
@@ -74,18 +48,46 @@
 (defvar telega-server--last-error nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
+(defvar telega-server--results nil)
+(defvar telega-server--on-event-func #'telega--on-event
+  "Func used to trigger on event.
+Used to make deferred calls.")
+(defvar telega-server--deferred-events nil)
 
-(defsubst telega-server--callback-add (extra cb)
-  (setq telega-server--callbacks
-        (plist-put telega-server--callbacks extra cb)))
+(defun telega--on-deferred-event (event)
+  (setq telega-server--deferred-events
+        (nconc telega-server--deferred-events (list event))))
 
-(defsubst telega-server--callback-rm (extra)
-  (if (eq extra (car telega-server--callbacks))
-       (setq telega-server--callbacks (cddr telega-server--callbacks))
-     (cl--do-remf telega-server--callbacks extra)))
+(defmacro with-telega-deferred-events (&rest body)
+  "Execute BODY deferring telega-server events processing."
+  (declare (indent 0))
+  (let ((evsym (gensym "event")))
+    `(progn
+       (setq telega-server--on-event-func 'telega--on-deferred-event)
+       (unwind-protect
+           (progn ,@body)
 
-(defsubst telega-server--callback-get (extra)
-  (plist-get telega-server--callbacks extra))
+         (unwind-protect
+             (while telega-server--deferred-events
+               (let ((,evsym (car telega-server--deferred-events)))
+                 (telega-debug "%s event: %S"
+                               (propertize "DEFERRED" 'face 'bold) ,evsym)
+                 (setq telega-server--deferred-events
+                       (cdr telega-server--deferred-events))
+                 (telega--on-event ,evsym)))
+
+           (setq telega-server--deferred-events nil
+                 telega-server--on-event-func 'telega--on-event)
+         )))))
+
+(defmacro telega-server--callback-put (extra cb)
+  `(puthash ,extra ,cb telega-server--callbacks))
+
+(defmacro telega-server--callback-rm (extra)
+  `(remhash ,extra telega-server--callbacks))
+
+(defmacro telega-server--callback-get (extra)
+  `(gethash ,extra telega-server--callbacks))
 
 (defun telega-server--find-bin ()
   "Find telega-server executable.
@@ -99,15 +101,24 @@ Raise error if not found"
   (get-buffer-process telega-server--buffer))
 
 (defsubst telega-server--parse-cmd ()
-  "Parse single reply from telega-server."
+  "Parse single reply from telega-server.
+Return parsed command."
   (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
+    ;; New command always start at the beginning, no garbage inbetween
+    ;; commands
+    (cl-assert (= (match-beginning 0) 1))
+
     (let ((cmd (match-string 1))
           (sexpsz (string-to-number (match-string 2))))
       (when (> (- (point-max) (point)) sexpsz)
         (let ((value (read (current-buffer))))
           (prog1
               (list cmd (telega--tl-unpack value))
-            (delete-region (point-min) (point))))))))
+            (delete-region (point-min) (point))
+
+            ;; remove trailing newline
+            (cl-assert (= (following-char) ?\n))
+            (delete-char 1)))))))
 
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
@@ -116,11 +127,15 @@ Raise error if not found"
                 (call-cb (telega-server--callback-get extra)))
            (if call-cb
                (telega-server--callback-rm extra)
-             (setq call-cb #'telega--on-event))
+             (setq call-cb telega-server--on-event-func))
+
+           (telega-debug "%s event: %S" (propertize "IN" 'face 'bold) value)
 
            ;; Function call may return errors
            (if (or (not (eq 'error (telega--tl-type value)))
-                   (= (plist-get value :code) 406))
+                   (= (plist-get value :code) 406)
+                   (= (plist-get value :code) 404) ;web page not found
+                   )
                (funcall call-cb value)
 
              ;; Error returned
@@ -150,9 +165,14 @@ Raise error if not found"
 
       ;; telega-server buffer is killed, but telega-server process
       ;; still sends us some events
-      (with-temp-buffer
-        (insert output)
-        (telega-server--parse-commands)))))
+      ;;
+      ;; NOTE: it causes problems when you quit telega in the middle
+      ;; of chats updates, so commented out
+      ;;
+      ;; (with-temp-buffer
+      ;;   (insert output)
+      ;;   (telega-server--parse-commands))
+      )))
 
 (defun telega-server--sentinel (proc event)
   "Sentinel for the telega-server process."
@@ -162,47 +182,73 @@ Raise error if not found"
                "")))
     (telega-status--set
      (concat "telega-server: " status (unless (string-empty-p err) "\n") err)
-     'raw)))
+     ""
+     'raw)
 
-(defun telega-server--send (sexp)
+    ;; Notify in echo area if telega-server exited abnormally
+    (unless (zerop (process-exit-status proc))
+      (message "[%d]telega-server: %s" (process-exit-status proc) status))
+    ))
+
+(defun telega-server--send (sexp &optional command)
   "Send SEXP to telega-server."
   (let* ((print-circle nil)
-         (value (prin1-to-string (telega--tl-pack sexp)))
+         (print-level nil)
+         (print-length nil)
+         (sexp-packed (telega--tl-pack sexp))
+         (value (prin1-to-string sexp-packed))
          (proc (telega-server--proc)))
-    (assert (process-live-p proc) nil "telega-server is not running")
-    (telega-debug "OUTPUT: %d %s" (string-bytes value) value)
+    (cl-assert (process-live-p proc) nil "telega-server is not running")
+    (telega-debug "%s: %s %d %s"
+                  (propertize "OUTPUT" 'face 'bold)
+                  (or command "send") (string-bytes value)
+                  value)
 
     (process-send-string
      proc
-     (concat "send " (number-to-string (string-bytes value)) "\n"))
+     (concat (or command "send") " "
+             (number-to-string (string-bytes value)) "\n"))
     (process-send-string proc value)
     (process-send-string proc "\n")))
 
 (defun telega-server--call (sexp &optional callback)
   "Same as `telega-server--send', but waits for answer from telega-server.
 If CALLBACK is specified, then make async call and call CALLBACK
-when result is received."
-  (telega-server--send (plist-put sexp :@extra (incf telega-server--extra)))
+when result is received.
+If CALLBACK is specified return `:@extra' value used for the call."
+  (unless (plist-get sexp :@extra)
+    (setq sexp (plist-put sexp :@extra (cl-incf telega-server--extra))))
+  (telega-server--send sexp)
 
   (if callback
-      (telega-server--callback-add telega-server--extra callback)
+      (progn
+        (telega-server--callback-put telega-server--extra callback)
+        telega-server--extra)
 
     ;; synchronous call aka exec
-    (let ((cb-extra telega-server--extra)
-          telega-server--result)
-      (telega-server--callback-add
-       telega-server--extra
-       (lambda (event) (setq telega-server--result event)))
+    (let ((cb-extra telega-server--extra))
+      (telega-server--callback-put
+       cb-extra
+       `(lambda (event)
+          (puthash ,cb-extra event telega-server--results)))
 
+      ;; Loop waiting for call completion
       (while (and (telega-server--callback-get cb-extra)
                   (accept-process-output
                    (telega-server--proc) telega-server-call-timeout)))
-      telega-server--result)))
+
+      ;; Return the result
+      (prog1
+          (gethash cb-extra telega-server--results)
+        (remhash cb-extra telega-server--results)))))
 
 (defun telega-server--start ()
   "Start telega-server process."
   (when (process-live-p (telega-server--proc))
-    (error "Error: telega-server already running"))
+    (user-error "Error: telega-server already running"))
+
+  (cl-assert (buffer-live-p (telega-root--buffer)) nil
+             "Use M-x telega RET to start telega")
 
   (with-telega-debug-buffer
    (erase-buffer)
@@ -210,16 +256,16 @@ when result is received."
 
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering nil)
-        (server-bin (telega-server--find-bin))
-        proc)
+        (server-bin (telega-server--find-bin)))
     (with-current-buffer (generate-new-buffer " *telega-server*")
-      ;; init vars and start proc
-      (telega--init-vars)
+      (setq telega-server--on-event-func 'telega--on-event)
+      (setq telega-server--deferred-events nil)
       (setq telega-server--extra 0)
-      (setq telega-server--callbacks nil)
+      (setq telega-server--callbacks (make-hash-table :test 'eq))
+      (setq telega-server--results (make-hash-table :test 'eq))
       (setq telega-server--buffer (current-buffer))
 
-      (telega-status--set "telega-server: starting")
+      (telega-status--set "telega-server: starting.")
       (let ((proc (start-process
                    "telega-server"
                    (current-buffer)
