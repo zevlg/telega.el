@@ -999,9 +999,10 @@ Special messages are determined with `telega-msg-special-p'."
   (telega-ins--aux-msg-inline
    "Forward" fwd-msg 'telega-chat-prompt 'with-username))
 
-(defun telega-ins--message-header (msg &optional no-avatar)
+(defun telega-ins--message-header (msg &optional addon-inserter)
   "Insert message's MSG header, everything except for message content.
-If NO-AVATAR is specified, then do not insert avatar."
+If ADDON-INSERTER function is specified, it is called with one
+argument - MSG to insert additional information after header."
   ;; twidth including 10 chars of date and 1 of outgoing status
   (let* ((fwidth (- telega-chat-fill-column (telega-current-column)))
          (twidth (+ 10 1 fwidth))
@@ -1038,6 +1039,9 @@ If NO-AVATAR is specified, then do not insert avatar."
       (when telega-debug
         (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
 
+      (when addon-inserter
+        (cl-assert (functionp addon-inserter))
+        (funcall addon-inserter msg))
       (when telega-msg-heading-whole-line
         (telega-ins "\n")))
     (unless telega-msg-heading-whole-line
@@ -1094,10 +1098,11 @@ If NO-AVATAR is specified, then do not insert avatar."
                 (telega-msg-goto-highlight reply-to-msg)))
       (telega-ins--aux-reply-inline reply-to-msg 'telega-msg-inline-reply))))
 
-(defun telega-ins--message (msg &optional no-header)
+(defun telega-ins--message (msg &optional no-header addon-header-inserter)
   "Insert message MSG.
 If NO-HEADER is non-nil, then do not display message header
-unless message is edited."
+unless message is edited.
+ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   (if (telega-msg-special-p msg)
       (telega-ins--with-attrs (list :min (- telega-chat-fill-column
                                             (telega-current-column))
@@ -1117,7 +1122,7 @@ unless message is edited."
       (if (and no-header (zerop (plist-get msg :edit_date)))
           (telega-ins (make-string awidth ?\s))
         (telega-ins--image avatar 0)
-        (telega-ins--message-header msg)
+        (telega-ins--message-header msg addon-header-inserter)
         (telega-ins--image avatar 1))
 
       (setq ccol (telega-current-column))
@@ -1136,6 +1141,13 @@ unless message is edited."
     (telega-ins--date (plist-get msg :date)))
   (telega-ins--outgoing-status msg)
   t)
+
+(defun telega-ins--message-ignored (msg)
+  "Inserter for ignored message MSG."
+  (telega-ins--message msg nil (lambda (imsg)
+                                 (telega-ins " --> ")
+                                 (telega-ins--chat (telega-msg-chat msg))))
+  (telega-ins "\n"))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."

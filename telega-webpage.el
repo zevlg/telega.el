@@ -161,7 +161,7 @@ Keymap:
 (defun telega-webpage-details-toggle (button)
   "Toggle open/close state of the details block."
   (interactive (list (button-at (point))))
-  (let ((val (button-value button)))
+  (let ((val (button-get button :value)))
     (telega-button--update-value
      button (plist-put val :is_open (not (plist-get val :is_open))))
     ))
@@ -383,10 +383,10 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins "}}}")))
     (pageBlockTable
      (telega-webpage--ins-rt (plist-get pb :caption))
-     (telega-ins "<TODO: pageBlockTable"))
+     (telega-ins "<TODO: pageBlockTable>"))
     (pageBlockRelatedArticles
      (telega-webpage--ins-rt (plist-get pb :header))
-     (telega-ins "<TODO: pageBlockRelatedArticles"))
+     (telega-ins "<TODO: pageBlockRelatedArticles>"))
     )
 
   (unless (memq (telega--tl-type pb)

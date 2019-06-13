@@ -1,6 +1,6 @@
 ;;; telega-msg.el --- Messages for telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri May  4 03:49:22 2018
@@ -415,13 +415,11 @@ OPTION-ID - 0-based identifiers of option, chosen by the user."
 ;;; Ignoring messages
 (defmacro telega-msg-ignored-p (msg)
   `(plist-get ,msg :ignored-p))
-(defsetf telega-msg-ignored-p (msg) (val)
-  `(plist-put ,msg :ignored-p ,val))
 (defun telega-msg-ignore (msg)
   "Mark message MSG to be ignored (not viewed, notified about) in chats.
 By side effect adds MSG into `telega--ignored-messages-ring' to be viewed
 with `M-x telega-ignored-messages RET'."
-  (setf (telega-msg-ignored-p msg) t)
+  (plist-put msg :ignored-p t)
   (ring-insert telega--ignored-messages-ring msg)
   (telega-debug "IGNORED msg: %S" msg))
 
@@ -475,25 +473,16 @@ blocked users."
         (telega-ins-fmt "\nMessage: %S\n" msg))
       )))
 
-(defun telega-msg-button--format-ignored (msg)
-  `(telega-msg-sender-ava-h " "
-    ,@(telega-msg-button--format-sender msg)
-    " --> [" telega-msg-chat-title "]\n"
-    telega-msg-sender-ava-l " "
-    ,@(telega-msg-inline-reply msg telega-msg-full-prefix)
-    ,@(telega-msg-text-with-timestamp msg telega-msg-full-prefix)))
-
 (defun telega-ignored-messages ()
   "Display all messages that has been ignored."
   (interactive)
   (with-help-window " *Telegram Ignored Messages*"
     (set-buffer standard-output)
     (dolist (msg (ring-elements telega--ignored-messages-ring))
-      (telega-button-insert 'telega-msg
-        :value msg
-        :prev-msg nil
-        :format (telega-msg-button--format-ignored msg)))
-    ))
+      (telega-button--insert 'telega-msg msg
+        :inserter 'telega-ins--message-ignored)
+      (telega-ins "\n")
+      )))
 
 (provide 'telega-msg)
 

@@ -1986,7 +1986,8 @@ CALLBACK is called after history has been loaded."
 (defun telega-chatbuf--load-newer-history ()
   "In chat buffer load newer messages."
   (with-telega-chatbuf telega-chatbuf--chat
-    (unless telega-chatbuf--history-loading
+    (unless (or telega-chatbuf--history-loading
+                (not (telega-chatbuf--youngest-msg)))
       (let ((chat telega-chatbuf--chat)
             (from-msg-id (plist-get (telega-chatbuf--youngest-msg) :id)))
         (setq telega-chatbuf--history-loading

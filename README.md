@@ -110,9 +110,9 @@ Arch-based).
 
 ### Building tdlib
 
-[tdlib](https://core.telegram.org/tdlib "tdlib") is the backend used
-to communicate with the servers. It requires a large amount of memory
-to be built.
+[TDLib](https://core.telegram.org/tdlib "tdlib") is the library for
+building Telegram clients. It requires a large amount of memory to be
+built.  Make sure you are using 1.4.0 TDLib version.
 
 On MacOS you can install pre-build `tdlib` package using homebrew from
 [brew.sh](https://brew.sh).  Just run:
