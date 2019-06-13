@@ -232,7 +232,7 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'number
   :group 'telega-server)
 
-(defcustom telega-server-call-timeout 0.75
+(defcustom telega-server-call-timeout 1.0
   "*Timeout for `telega-server--call'."
   :type 'number
   :group 'telega-server)
