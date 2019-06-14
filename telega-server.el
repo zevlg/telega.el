@@ -89,12 +89,26 @@ Used to make deferred calls.")
 (defmacro telega-server--callback-get (extra)
   `(gethash ,extra telega-server--callbacks))
 
+(defun telega-server-build (&optional with-voip)
+  "Build and install `telega-server' binary.
+Raise error if compilation/test fails."
+  (interactive
+   (list (y-or-n-p "Build `telega-server' with VOIP support? ")))
+  (let ((default-directory telega--lib-directory))
+    (unless (zerop
+             (shell-command
+              (concat "make " (if with-voip "WITH_VOIP=t" "") " install"
+                      " && make test")))
+      (error "`telega-server' installation failed"))))
+
 (defun telega-server--find-bin ()
   "Find telega-server executable.
-Raise error if not found"
+Raise error if not found."
   (let ((exec-path (cons telega-directory exec-path)))
     (or (executable-find "telega-server")
-        (error "telega-server not found in exec-path"))))
+        (progn (call-interactively 'telega-server-build)
+               (executable-find "telega-server"))
+        (error "`telega-server' not found in exec-path"))))
 
 (defsubst telega-server--proc ()
   "Return telega-server process."

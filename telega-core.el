@@ -31,6 +31,12 @@
 
 (require 'telega-customize)
 
+(defconst telega--lib-directory
+  (or (and load-file-name
+           (file-name-directory load-file-name))
+      default-directory)
+  "The directory from where this library was first loaded.")
+
 (defconst telega-chat-types
   '(private secret basicgroup supergroup bot channel)
   "All types of chats supported by telega.")

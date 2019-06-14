@@ -996,6 +996,7 @@ Do it only if FORCE is non-nil."
 
 (defvar telega-chat-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map [remap self-insert-command] 'ignore)
     ;; C-M-[ - cancels edit/reply
     (define-key map (kbd "\e\e") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
@@ -1004,6 +1005,9 @@ Do it only if FORCE is non-nil."
     (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
     (define-key map (kbd "C-c C-v") 'telega-chatbuf-attach-clipboard)
     (define-key map (kbd "C-c ?") 'telega-describe-chatbuf)
+    (define-key map (kbd "C-c C-r") 'telega-chatbuf-filter-related)
+    (define-key map (kbd "C-c C-s") 'telega-chatbuf-filter-search)
+    (define-key map (kbd "C-c C-c") 'telega-chatbuf-filter-cancel)
 
     (define-key map (kbd "RET") 'telega-chatbuf-input-send)
     (define-key map (kbd "M-p") 'telega-chatbuf-input-prev)
@@ -1701,38 +1705,12 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
                          (plist-get (ewoc--node-data nnode) :sender_user_id)))
             (telega-chatbuf--redisplay-node nnode)))))))
 
-(defun telega-chatbuf--enter-youngest-msg (msg &optional disable-notification
-                                               force)
+(defun telega-chatbuf--enter-youngest-msg (msg)
   "Insert newly arrived message MSG as youngest into chatbuffer.
-If DISABLE-NOTIFICATION is non-nil, then do not trigger
-notification for this message.
-If FORCE is specified, then insert youngest message even if last
-message is not yet loaded, see
-`telega-chatbuf--last-msg-loaded-p'
 Return newly inserted node or nil if it was not inserted."
-  (run-hook-with-args 'telega-chat-pre-message-hook msg disable-notification)
-
   (unless (telega-msg-ignored-p msg)
-    (unwind-protect
-        (with-telega-chatbuf (telega-msg-chat msg)
-          (puthash (plist-get msg :id) msg telega-chatbuf--messages)
-
-          (telega-save-excursion
-            (run-hook-with-args 'telega-chat-before-youngest-msg-hook msg)
-            ;; NOTE: Add incoming message to ewoc only if
-            ;; `:last_message' of chat is already loaded, or incoming
-            ;; MSG is actually a last message (`updateChatLastMessage'
-            ;; can arrive before `updateNewMessage')
-            (prog1
-                (when (or force (telega-chatbuf--last-msg-loaded-p msg))
-                  (with-telega-deferred-events
-                    (ewoc-enter-last telega-chatbuf--ewoc msg)))
-
-              (when (and telega-use-tracking (not disable-notification))
-                (tracking-add-buffer (current-buffer))))
-            ))
-
-      (run-hook-with-args 'telega-chat-message-hook msg disable-notification))))
+    (with-telega-deferred-events
+      (ewoc-enter-last telega-chatbuf--ewoc msg))))
 
 (defun telega-chatbuf--node-by-msg-id (msg-id)
   "In current chatbuffer find message button with MSG-ID."
@@ -1799,16 +1777,24 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
 
 (defun telega--on-updateNewMessage (event)
   "A new message was received; can also be an outgoing message."
-  (let* ((new-msg (plist-get event :message))
-         (node (telega-chatbuf--enter-youngest-msg
-                new-msg (plist-get event :disable_notification))))
+  (let ((new-msg (plist-get event :message)))
+    (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
 
-    ;; If message is visibible in some window, then mark it as read
-    ;; see https://github.com/zevlg/telega.el/issues/4
-    (when (and node (telega-button--observable-p (ewoc-location node)))
-      (telega--viewMessages
-       (telega-chat-get (plist-get new-msg :chat_id))
-       (list new-msg)))))
+    (with-telega-chatbuf (telega-msg-chat new-msg)
+      (puthash (plist-get new-msg :id) new-msg telega-chatbuf--messages)
+
+      (when (telega-chatbuf--last-msg-loaded-p new-msg)
+        (let ((node (telega-chatbuf--enter-youngest-msg new-msg)))
+          (when node
+            (run-hook-with-args 'telega-chat-message-hook new-msg)
+
+            (when telega-use-tracking
+              (tracking-add-buffer (current-buffer)))
+
+            ;; If message is visibible in some window, then mark it as read
+            ;; see https://github.com/zevlg/telega.el/issues/4
+            (when (telega-button--observable-p (ewoc-location node))
+              (telega--viewMessages telega-chatbuf--chat (list new-msg)))))))))
 
 (defun telega--on-updateMessageSendSucceeded (event)
   "Message has been successfully sent to server.
@@ -2006,7 +1992,7 @@ CALLBACK is called after history has been loaded."
                      (setq telega-chatbuf--history-loading nil)
                      (telega-save-cursor
                        (dolist (ymsg rmsgs)
-                         (telega-chatbuf--enter-youngest-msg ymsg nil t)))
+                         (telega-chatbuf--enter-youngest-msg ymsg)))
                      (telega-chatbuf--footer-redisplay))))))
         (telega-chatbuf--footer-redisplay)
         ))))
@@ -2802,6 +2788,21 @@ If called outside chat buffer, then fallback to default DND behaviour."
           'telega-chat-dnd-dispatcher
           (copy-alist dnd-protocol-alist))))
     (dnd-handle-one-url nil action uri)))
+
+;;; Filtering messages in chat buffer
+(defun telega-chatbuf-filter-related ()
+  "Show only related (to message at point) messages.
+See https://t.me/designers/44"
+  (user-error "`telega-chatbuf-filter-related' NOT yet implemented"))
+
+(defun telega-chatbuf-filter-search (query)
+  "Search messages in chatbuffer by QUERY."
+  (interactive "sSearch by query: ")
+  (user-error "`telega-chatbuf-filter-search' NOT yet implemented"))
+
+(defun telega-chatbuf-filter-cancel ()
+  "Cancel any message filtering."
+  (user-error "`telega-chatbuf-filter-cancel' NOT yet implemented"))
 
 (provide 'telega-chat)
 

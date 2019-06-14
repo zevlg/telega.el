@@ -64,9 +64,13 @@ Attaching funny cat sticker:
 # Installation
 
 Being in active development, `telega.el` is not ready to be
-distributed on archives such as MELPA. At the moment, the only way to
-use is from this git repository. This involves few simple steps
-described below.
+distributed on archives such as MELPA. At the moment, you could use
+git repository or this melpa-style recipe:
+
+```lisp
+(:fetcher github :repo "zevlg/telega.el"
+ :files (:defaults "README.md" "etc" "server"))
+```
 
 `telega.el` is built on top of the official library provided by
 Telegram [TDLib 1.4.0](https://core.telegram.org/tdlib "tdlib"). Most
@@ -176,9 +180,10 @@ $ sudo make install
 
 ## Building telega-server
 
-Now that the `tdlib` library is set-up, it is time to install
+Now that the `TDLib` library is set-up, it is time to install
 `telega.el`. The first step consists in building `telega-server`,
-which is a C interface to the `tdlib`.
+which is a C interface to the `TDLib`, or just let `telega` ask you at
+the first start and do the job.
 
 To get the source:
 

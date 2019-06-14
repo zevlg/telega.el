@@ -50,6 +50,7 @@
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map [remap self-insert-command] 'ignore)
     (define-key map "n" 'telega-button-forward)
     (define-key map "p" 'telega-button-backward)
     (define-key map [?\t] 'telega-button-forward)

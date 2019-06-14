@@ -211,7 +211,7 @@ N can't be 0."
 
 (defun telega-etc-file (filename)
   "Return absolute path to FILENAME from etc/ directory in telega."
-  (locate-file (concat "etc/" filename) load-path))
+  (expand-file-name (concat "etc/" filename) telega--lib-directory))
 
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."

@@ -29,7 +29,6 @@
 (defvar telega-user-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
-    (define-key map [remap self-insert-command] 'ignore)
     (define-key map (kbd "n") 'telega-button-forward)
     (define-key map (kbd "p") 'telega-button-backward)
 

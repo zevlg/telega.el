@@ -1122,22 +1122,6 @@ Called with one argument - chat."
   :options '(telega-media--autodownload-on-chat)
   :group 'telega-hooks)
 
-(defcustom telega-chat-before-oldest-msg-hook nil
-  "Hook called before oldest chat message is inserted.
-Called with single argument - MSG.
-Called only if corresponding chat is opened.
-Could be used for example to insert date breaks."
-  :type 'hook
-  :group 'telega-hooks)
-
-(defcustom telega-chat-before-youngest-msg-hook nil
-  "Hook called before youngest chat message is inserted.
-Called with single argument - MSG.
-Called only if corresponding chat is opened.
-Could be used for example to insert date breaks."
-  :type 'hook
-  :group 'telega-hooks)
-
 (defcustom telega-chat-pre-message-hook nil
   "Hook called uppon new message arrival, before inserting into chatbuffer.
 Called with two arguments - message and disable-notification.

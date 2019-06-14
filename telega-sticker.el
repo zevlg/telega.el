@@ -49,7 +49,6 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 (defvar telega-sticker-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
-    (define-key map [remap self-insert-command] 'ignore)
     (define-key map (kbd "f") 'telega-sticker-toggle-favorite)
     (define-key map (kbd "*") 'telega-sticker-toggle-favorite)
     (define-key map (kbd "i") 'telega-sticker-help)
