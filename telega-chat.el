@@ -996,7 +996,6 @@ Do it only if FORCE is non-nil."
 
 (defvar telega-chat-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map [remap self-insert-command] 'ignore)
     ;; C-M-[ - cancels edit/reply
     (define-key map (kbd "\e\e") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
