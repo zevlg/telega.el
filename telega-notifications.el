@@ -246,18 +246,16 @@ If ARG is not given then treat it as 1."
                         telega-notifications--last-id)
         ))))
 
-(defun telega-notifications-chat-message (msg disable-notification)
+(defun telega-notifications-chat-message (msg)
   "Function intended to be added to `telega-chat-message-hook'."
   ;; Do NOT notify message if:
-  ;;  - disable-notification is non-nil
   ;;  - Chat is muted
   ;;  - Message already has been read (see last_read_inbox_message_id)
   ;;  - Message is older then 1 min (to avoid poping up messages on
   ;;    laptop wakeup)
   ;;  - Message is currently observable in chatbuf
   ;;  - [TODO] If Emacs frame has focus and root buffer is current
-  (unless (or disable-notification
-              (> (- (time-to-seconds) (plist-get msg :date)) 60))
+  (unless (> (- (time-to-seconds) (plist-get msg :date)) 60)
     (let* ((msg-id (plist-get msg :id))
            (chat-id (plist-get msg :chat_id))
            (chat (telega-chat-get chat-id))

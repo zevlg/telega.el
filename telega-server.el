@@ -89,24 +89,32 @@ Used to make deferred calls.")
 (defmacro telega-server--callback-get (extra)
   `(gethash ,extra telega-server--callbacks))
 
-(defun telega-server-build (&optional with-voip)
+(defun telega-server-build (&optional no-query-p no-voip-query-p)
   "Build and install `telega-server' binary.
+If NO-QUERY-P is non-nil, then install `telega-server' without
+asking first.
+If NO-VOIP-QUERY-P is non-nil, then build `telega-server' without
+VOIP support, otherwise ask user.
 Raise error if compilation/test fails."
-  (interactive
-   (list (y-or-n-p "Build `telega-server' with VOIP support? ")))
-  (let ((default-directory telega--lib-directory))
-    (unless (zerop
-             (shell-command
-              (concat "make " (if with-voip "WITH_VOIP=t" "") " install"
-                      " && make test")))
-      (error "`telega-server' installation failed"))))
+  (interactive)
+  (when (or no-query-p
+            (y-or-n-p "Build `telega-server'? "))
+
+    (let ((default-directory telega--lib-directory)
+          (with-voip-p (unless no-voip-query-p
+                         (y-or-n-p "Build `telega-server' with VOIP support? "))))
+      (unless (zerop
+               (shell-command
+                (concat "make " (if with-voip-p "WITH_VOIP=t" "") " install"
+                        " && make test")))
+        (error "`telega-server' installation failed")))))
 
 (defun telega-server--find-bin ()
   "Find telega-server executable.
 Raise error if not found."
   (let ((exec-path (cons telega-directory exec-path)))
     (or (executable-find "telega-server")
-        (progn (call-interactively 'telega-server-build)
+        (progn (telega-server-build)
                (executable-find "telega-server"))
         (error "`telega-server' not found in exec-path"))))
 
