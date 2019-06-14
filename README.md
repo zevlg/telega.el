@@ -68,8 +68,10 @@ distributed on archives such as MELPA. At the moment, you could use
 git repository or this melpa-style recipe:
 
 ```lisp
-(:fetcher github :repo "zevlg/telega.el"
- :files (:defaults "README.md" "etc" "server"))
+(:fetcher github
+ :repo "zevlg/telega.el"
+ :branch "master"
+ :files (:defaults "README.md" "etc" "server" "Makefile" "test.el"))
 ```
 
 `telega.el` is built on top of the official library provided by
