@@ -676,7 +676,6 @@ with list of chats received."
     (define-key map (kbd "o") 'telega-chat-custom-order)
     (define-key map (kbd "r") 'telega-chat-toggle-read)
     (define-key map (kbd "d") 'telega-chat-delete)
-    (define-key map (kbd "C-c p") 'telega-chat-pin)
     (define-key map (kbd "P") 'telega-chat-pin)
     (define-key map (kbd "C") 'telega-chat-call)
     (define-key map (kbd "DEL") 'telega-chat-delete)
@@ -953,11 +952,11 @@ STATUS is one of: "
   "Delete CHAT.
 If LEAVE-P is non-nil, then just leave the chat.
 Leaving chat does not removes chat from chat list."
-  (interactive (list (and (y-or-n-p "This action cannot be undone. Delete chat? ")
-                          (telega-chat-at-point))
-                     nil))
-
-  (when chat
+  (interactive (list (telega-chat-at-point) nil))
+  (when (and chat
+             (y-or-n-p
+              (format "This action cannot be undone. Delete \"%s\" chat? "
+                      (telega-chat-title chat))))
     (let ((chat-type (telega-chat--type chat)))
       (cl-case chat-type
         (secret (telega--closeSecretChat (telega-chat--info chat)))
