@@ -340,7 +340,9 @@ In form (NAME . FILTER-SPEC)."
   :group 'telega-inserters)
 
 (defcustom telega-inserter-for-msg-button 'telega-ins--message
-  "Inserter for message button in chat buffer."
+  "Inserter for message button in chat buffer.
+Accepts at least two arguments - MSG and NO-HEADER-P.
+See `telega-ins--message' for NO-HEADER argument."
   :type 'function
   :group 'telega-inserter)
 
@@ -549,6 +551,12 @@ DO NOT USE.  TODO: sender statuses need to be cached."
 (defcustom telega-msg-heading-whole-line nil
   "*Non-nil to spread `telega-msg-heading' face to full line width.
 Also applies to `telega-msg-inline-reply' face."
+  :type 'boolean
+  :group 'telega-msg)
+
+(defcustom telega-msg-group-by-sender t
+  "*Non-nil to group messages by sender.
+Applied only if `telega-inserter-for-msg-button' is not customized."
   :type 'boolean
   :group 'telega-msg)
 

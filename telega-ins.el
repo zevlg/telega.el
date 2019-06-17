@@ -1142,6 +1142,10 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   (telega-ins--outgoing-status msg)
   t)
 
+(defun telega-ins--message-no-header (msg)
+  "Insert message MSG without header."
+  (funcall telega-inserter-for-msg-button msg :no-header))
+
 (defun telega-ins--message-ignored (msg)
   "Inserter for ignored message MSG."
   (telega-ins--message msg nil (lambda (imsg)

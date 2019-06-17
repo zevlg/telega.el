@@ -69,7 +69,16 @@
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
-  (telega-button--insert 'telega-msg msg)
+  ;; NOTE: check that we can group messages by sender
+  ;; see `telega-msg-group-by-sender'
+  (if (and telega-msg-group-by-sender
+           (> (point) 3)
+           (let ((prev-msg (telega-msg-at (- (point) 2))))
+             (eq (plist-get msg :sender_user_id)
+                 (plist-get prev-msg :sender_user_id))))
+      (telega-button--insert 'telega-msg msg
+        :inserter 'telega-ins--message-no-header)
+    (telega-button--insert 'telega-msg msg))
   (telega-ins "\n"))
 
 (defun telega-msg-root--pp (msg)

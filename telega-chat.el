@@ -1694,14 +1694,15 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
         (let* ((onode (with-telega-deferred-events
                         (ewoc-enter-first telega-chatbuf--ewoc msg)))
                (nnode (ewoc-next telega-chatbuf--ewoc onode)))
-          ;; NOTE: Inserting oldest message might affect how message
+          ;; NOTE: Inserting oldest message might affect how messages
           ;; next to it is formatted (i.e. sent from same user), so
-          ;; redisplay it.
-          (when (and nil                  ; NOT YET
-                     nnode
-                     (eq (plist-get (ewoc--node-data onode) :sender_user_id)
-                         (plist-get (ewoc--node-data nnode) :sender_user_id)))
-            (telega-chatbuf--redisplay-node nnode)))))))
+          ;; redisplay them.
+          (while (and telega-msg-group-by-sender
+                      nnode
+                      (eq (plist-get (ewoc--node-data onode) :sender_user_id)
+                          (plist-get (ewoc--node-data nnode) :sender_user_id)))
+            (telega-chatbuf--redisplay-node nnode)
+            (setq nnode (ewoc-next telega-chatbuf--ewoc nnode))))))))
 
 (defun telega-chatbuf--enter-youngest-msg (msg)
   "Insert newly arrived message MSG as youngest into chatbuffer.
