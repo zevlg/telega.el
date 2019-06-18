@@ -195,10 +195,20 @@ LIMIT - limit number of photos (default=100)."
          :offset (or offset 0)
          :limit (or limit 100))))
 
-(defun telega-describe-user (user)
-  "Show info about USER."
+(defun telega-describe-user (user &optional full-p)
+  "Show info about USER.
+If FULL-P is non-nil, then show full info about user."
   (with-telega-help-win "*Telega User*"
-    ;; TODO: display more stuff as in `telega-describe-chat'
+    (when full-p
+      (telega-ins "Name: ")
+      (when (telega-ins (plist-get user :first_name))
+        (telega-ins " "))
+      (telega-ins (plist-get user :last_name))
+      (telega-ins " ")
+      (telega-ins--button "Chat With"
+        :value user
+        :action 'telega-user-chat-with)
+      (telega-ins " "))
     (telega-info--insert-user user)))
 
 (defun telega-user-chat-with (user)
@@ -258,15 +268,21 @@ CONTACT is some user you have exchanged contacs with."
    (list :@type "importContacts"
          :contacts (cl-map 'vector 'identity contacts))))
 
-(defun telega-contact-add (phone)
+(defun telega-contact-add (phone &optional name)
   "Add user by PHONE to contact list."
-  (interactive "sPhone number: ")
-  (let* ((reply (telega--importContacts (list :@type "contact"
-                                              :phone_number phone)))
+  (interactive (list (read-string "Phone number: ")
+                     (read-string "Name: ")))
+  (let* ((names (split-string name " "))
+         (reply (telega--importContacts
+                 (nconc (list :@type "contact" :phone_number phone)
+                        (unless (string-empty-p (car names))
+                          (list :first_name (car names)))
+                        (when (cadr names)
+                          (list :last_name (cadr names))))))
          (user-id (aref (plist-get reply :user_ids) 0)))
     (when (zerop user-id)
       (user-error "No telegram user with phone %s" phone))
-    (telega-describe-user (telega-user--get user-id))))
+    (telega-describe-user (telega-user--get user-id) 'full)))
 
 (defun telega-describe-contact (contact)
   "Show CONTACT information."
