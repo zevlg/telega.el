@@ -510,7 +510,7 @@ Call CALLBACK on updates."
          (enabled (telega-proxy-enabled proxies)))
     (telega--pingProxies proxies 'telega-describe-network)
     (when proxies
-      (assert recent nil "No recent proxy")
+      (cl-assert recent nil "No recent proxy")
       (telega-ins "Proxy Settings\n")
       (telega-ins "--------------\n")
 
@@ -581,8 +581,8 @@ Call CALLBACK on updates."
     (telega-ins--date (plist-get net-stats :since_date))
     (insert "\n\n")
     (mapc (lambda (entry)
-            (incf total-sent (plist-get entry :sent_bytes))
-            (incf total-recv (plist-get entry :received_bytes))
+            (cl-incf total-sent (plist-get entry :sent_bytes))
+            (cl-incf total-recv (plist-get entry :received_bytes))
 
             (cl-ecase (telega--tl-type entry)
               (networkStatisticsEntryFile

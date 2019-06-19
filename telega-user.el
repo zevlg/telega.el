@@ -26,6 +26,8 @@
 ;;; Code:
 (require 'telega-core)
 
+(declare-function telega-info--insert-user "telega-info" (user &optional chat))
+
 (defvar telega-user-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
@@ -277,8 +279,9 @@ CONTACT is some user you have exchanged contacs with."
                  (nconc (list :@type "contact" :phone_number phone)
                         (unless (string-empty-p (car names))
                           (list :first_name (car names)))
-                        (when (cadr names)
-                          (list :last_name (cadr names))))))
+                        (when (cdr names)
+                          (list :last_name
+                                (mapconcat 'identity (cdr names) " "))))))
          (user-id (aref (plist-get reply :user_ids) 0)))
     (when (zerop user-id)
       (user-error "No telegram user with phone %s" phone))

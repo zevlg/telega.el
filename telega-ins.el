@@ -28,8 +28,10 @@
 ;; nothing has been inserted.
 
 ;;; Code:
+(require 'seq)
+
 (require 'telega-core)
-(require 'telega-inline)                ;telega-inline--callback
+(require 'telega-inline)
 (require 'telega-customize)
 
 (defun telega-ins (&rest args)

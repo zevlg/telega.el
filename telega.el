@@ -87,7 +87,7 @@ If prefix ARG is given, then will not pop to telega root buffer."
 ;;;###autoload
 (defun telega-kill (force)
   "Kill currently running telega.
-With prefix arg force quit without confirmation."
+With prefix arg FORCE quit without confirmation."
   (interactive "P")
   (let* ((chat-count (length telega--chat-buffers))
          (suffix (cond ((eq chat-count 0) "")
@@ -102,7 +102,7 @@ With prefix arg force quit without confirmation."
   (telega-server--send `(:@type "logOut")))
 
 (defun telega--setTdlibParameters ()
-  "Sets the parameters for TDLib initialization."
+  "Set the parameters for TDLib initialization."
   (telega-server--send
    (list :@type "setTdlibParameters"
          :parameters (list :@type "tdlibParameters"
@@ -139,7 +139,7 @@ With prefix arg force quit without confirmation."
      `(:@type "addProxy" ,@proxy))))
 
 (defun telega--setAuthenticationPhoneNumber (&optional phone-number)
-  "Sets the phone number of the user."
+  "Set user's phone number to PHONE-NUMBER."
   (let ((phone (or phone-number (read-string "Telega phone number: " "+"))))
     (telega-server--send
      (list :@type "setAuthenticationPhoneNumber"
@@ -155,7 +155,8 @@ Works only if current state is `authorizationStateWaitCode'."
    (list :@type "resendAuthenticationCode")))
 
 (defun telega--checkAuthenticationCode (registered-p &optional auth-code)
-  "Send login auth code."
+  "Send login AUTH-CODE.
+Specify non-nil REGISTERED-P for already registered user."
   (let ((code (or auth-code (read-string "Telega login code: ")))
         ;; NOTE: first_name is required for newly registered accounts
         (first-name (or (and registered-p "")
@@ -167,7 +168,8 @@ Works only if current state is `authorizationStateWaitCode'."
            :last_name ""))))
 
 (defun telega--checkAuthenticationPassword (auth-state &optional password)
-  "Check the password for the 2-factor authentification."
+  "Check the PASSWORD for the 2-factor authentification.
+AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
   (let* ((hint (plist-get auth-state :password_hint))
          (pswd (or password
                    (password-read
@@ -197,7 +199,7 @@ Works only if current state is `authorizationStateWaitCode'."
                       :value (or val :false)))))
 
 (defun telega--setOptions (options-plist)
-  "Send custom options from `telega-options-plist' to server."
+  "Send custom OPTIONS-PLIST to server."
   (cl-loop for (prop-name value) on options-plist
            by 'cddr
            do (telega--setOption prop-name value)))
@@ -240,11 +242,12 @@ Works only if current state is `authorizationStateWaitCode'."
   (run-hooks 'telega-ready-hook))
 
 (defun telega--authorization-closed ()
+  "Function to call when state is `authorizationStateClosed'."
   (telega-server-kill)
   (run-hooks 'telega-closed-hook))
 
 (defun telega--on-updateConnectionState (event)
-  "Update telega connection state."
+  "Update telega connection state using EVENT."
   (let* ((conn-state (telega--tl-get event :state :@type))
          (status (substring conn-state 15)))
     (setq telega--conn-state (intern status))
@@ -262,13 +265,14 @@ Works only if current state is `authorizationStateWaitCode'."
     (run-hooks 'telega-connection-state-hook)))
 
 (defun telega--on-updateOption (event)
-  "Proceed with option update from telega server."
+  "Proceed with option update from telega server using EVENT."
   (setq telega--options
         (plist-put telega--options
                    (intern (concat ":" (plist-get event :name)))
                    (plist-get (plist-get event :value) :value))))
 
 (defun telega--on-updateAuthorizationState (event)
+  "Proceed with user authorization state change using EVENT."
   (let* ((state (plist-get event :authorization_state))
          (stype (plist-get state :@type)))
     (telega-status--set (concat "Auth " (substring stype 18)))
@@ -307,8 +311,9 @@ Works only if current state is `authorizationStateWaitCode'."
   )
 
 (defun telega-version (&optional interactive-p)
-  "Return telega (and tdlib) version.
-If called interactively, then print version into echo area."
+  "Return telega (and TDLib) version.
+If prefix arg INTERACTIVE-P is non-nil, then print version into
+echo area."
   (interactive "p")
   (let* ((tdlib-version (plist-get telega--options :version))
          (version (concat "telega v"
