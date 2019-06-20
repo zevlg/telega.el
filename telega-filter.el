@@ -278,7 +278,8 @@ ARGS specifies arguments to operation, first must always be chat."
 
 (defun telega-filter--test (chat fspec)
   "Return non-nil if CHAT matches filters specified by FSPEC."
-  (cond ((symbolp fspec)
+  (cond ((null fspec) nil)
+        ((symbolp fspec)
          (funcall (telega-filter--get fspec) chat))
         ((consp fspec)
          (apply (telega-filter--get (car fspec)) chat (cdr fspec)))
@@ -506,6 +507,10 @@ Specify INCOMING-P to filter by incoming link relationship."
   "Filter top used chats by CATEGORY."
   (interactive)
   (telega-filter-add 'top))
+
+(define-telega-filter saved-messages (chat)
+  "Matches CHAT if it is SavedMessages chat."
+  (= (plist-get chat :id) telega--me-id))
 
 (provide 'telega-filter)
 

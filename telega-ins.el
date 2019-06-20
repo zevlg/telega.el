@@ -660,6 +660,27 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (telega-ins-fmt "%fN, %fE"
     (plist-get location :latitude) (plist-get location :longitude)))
 
+(defun telega-ins--location-live (msg)
+  "Insert live location description for location message MSG."
+  ;; NOTE: in case of unexpired live location show last update
+  ;; time and expiration period
+  (let* ((content (plist-get msg :content))
+         (live-period (plist-get content :live_period))
+         (expires-in (plist-get content :expires_in)))
+    (unless (or (zerop live-period) (zerop expires-in))
+      (telega-ins " " (propertize "Live" 'face 'shadow))
+      (let* ((current-ts (truncate (float-time)))
+             (since (if (zerop (plist-get msg :edit_date))
+                        (plist-get msg :date)
+                      (plist-get msg :edit_date)))
+             (live-for (- (+ since live-period) current-ts)))
+        (when (> live-for 0)
+          (telega-ins-fmt " for %s"
+            (telega-duration-human-readable live-for 1))
+          (telega-ins-fmt " (updated %s ago)"
+            (telega-duration-human-readable
+             (- current-ts since) 1)))))))
+
 (defun telega-ins--contact (contact)
   "One line variant inserter for CONTACT."
   (telega-ins telega-symbol-contact " ")
@@ -777,30 +798,31 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (loc (plist-get content :location))
          (loc-thumb (plist-get loc :telega-map-thumbnail)))
     (telega-ins--location loc)
+    (telega-ins--location-live msg)
 
-    (if loc-thumb
-        (progn
-          (telega-ins "\n")
-          (telega-ins--image-slices
-           (telega-media--image
-            (cons loc-thumb 'telega-thumb--create-image-as-is)
-            (cons loc-thumb :photo))))
+    (unless loc-thumb
+      ;; Synchronously get the map thumbnail file from server and
+      ;; generate pseudo thumbnail, suitable for `telega-media--image'
+      ;; NOTE: Synchronous call is needed to avoid double call to
+      ;; `getMapThumbnailFile', when two events occurs one after
+      ;; another `updateMessageContent' and `updateMessageEdited'
+      (let* ((zoom (nth 0 telega-location-thumb-params))
+             (width (nth 1 telega-location-thumb-params))
+             (height (nth 2 telega-location-thumb-params))
+             (scale (nth 3 telega-location-thumb-params))
+             (map-file (telega--getMapThumbnailFile
+                           loc zoom width height scale (telega-msg-chat msg))))
+        (setq loc-thumb
+              (list :width width :height height
+                    :photo (telega-file--ensure map-file)))
+        (plist-put loc :telega-map-thumbnail loc-thumb)))
 
-      ;; Get the map thumbnail
-      (let ((zoom (nth 0 telega-location-thumb-params))
-            (width (nth 1 telega-location-thumb-params))
-            (height (nth 2 telega-location-thumb-params))
-            (scale (nth 3 telega-location-thumb-params)))
-        (telega--getMapThumbnailFile
-            loc zoom width height scale (telega-msg-chat msg)
-          (lambda (file)
-            (telega-file--ensure file)
-            ;; Generate pseudo thumbnail, suitable for
-            ;; `telega-media--image'
-            (plist-put loc :telega-map-thumbnail
-                       (list :width width :height height :photo file))
-            (telega-msg-redisplay msg)))))
-    ))
+    (cl-assert loc-thumb)
+    (telega-ins "\n")
+    (telega-ins--image-slices
+     (telega-media--image
+      (cons loc-thumb 'telega-thumb--create-image-as-is)
+      (cons loc-thumb :photo)))))
 
 (defun telega-ins--input-file (document &optional attach-symbol)
   "Insert input file."
@@ -1201,28 +1223,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
             (telega-ins--text (plist-get content :caption))
             (telega-ins (propertize "Document" 'face 'shadow))))
        (messageLocation
-        (telega-ins telega-symbol-location " ")
-        (let ((loc (plist-get content :location)))
-          (telega-ins-fmt "%fN, %fE"
-            (plist-get loc :latitude) (plist-get loc :longitude)))
-
-        ;; NOTE: in case of unexpired live location show last update
-        ;; time and expiration period
-        (let ((live-period (plist-get content :live_period)))
-          (unless (zerop live-period)
-            (telega-ins " " (propertize "Live" 'face 'shadow))
-            (unless (zerop (plist-get content :expires_in))
-              (let* ((current-ts (truncate (float-time)))
-                     (since (if (zerop (plist-get msg :edit_date))
-                                (plist-get msg :date)
-                              (plist-get msg :edit_date)))
-                     (live-for (- (+ since live-period) current-ts)))
-                (when (> live-for 0)
-                  (telega-ins-fmt " for %s"
-                    (telega-duration-human-readable live-for))
-                  (telega-ins-fmt " (updated %s ago)"
-                    (telega-duration-human-readable
-                     (- current-ts since)))))))))
+        (telega-ins--location (plist-get content :location))
+        (telega-ins--location-live msg))
        (messageAnimation
         (or (telega-ins--text (plist-get content :caption))
             (telega-ins (propertize "GIF" 'face 'shadow))))

@@ -248,6 +248,11 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'boolean
   :group 'telega-root)
 
+(defcustom telega-root-keep-cursor t
+  "*Non-nil to keep cursor at current chat even if chat's order changes."
+  :type 'boolean
+  :group 'telega-root)
+
 (defcustom telega-root-buffer-name "*Telega Root*"
   "*Buffer name for telega root buffer."
   :type 'string
@@ -451,6 +456,11 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :type 'boolean
   :group 'telega-chat)
 
+(defcustom telega-chat-group-messages-for '(not (or saved-messages (type channel bot)))
+  "*If this filter returns non-nil for chat, then messages groups by sender."
+  :type 'list
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil
@@ -551,12 +561,6 @@ DO NOT USE.  TODO: sender statuses need to be cached."
 (defcustom telega-msg-heading-whole-line nil
   "*Non-nil to spread `telega-msg-heading' face to full line width.
 Also applies to `telega-msg-inline-reply' face."
-  :type 'boolean
-  :group 'telega-msg)
-
-(defcustom telega-msg-group-by-sender t
-  "*Non-nil to group messages by sender.
-Applied only if `telega-inserter-for-msg-button' is not customized."
   :type 'boolean
   :group 'telega-msg)
 
@@ -1132,16 +1136,19 @@ Called with one argument - chat."
 
 (defcustom telega-chat-pre-message-hook nil
   "Hook called uppon new message arrival, before inserting into chatbuffer.
-Called with two arguments - message and disable-notification.
-Always called, even if corresponding chat is closed at the moment."
+Called with single argument - MESSAGE.
+Always called, even if corresponding chat is closed at the moment.
+This hook can be used to ignore message, see
+https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
   :type 'hook
   :options '(telega-media--autodownload-on-msg)
   :group 'telega-hooks)
 
 (defcustom telega-chat-message-hook nil
   "Hook called when new message has been inserted into chatbuffer.
-Called with two arguments - message and disable-notification.
-Always called, even if corresponding chat is closed at the moment."
+Called with single argument - MESSAGE.
+Always called, even if corresponding chat is closed at the moment.
+Not called if message has been ignored by client side filtering."
   :type 'hook
   :group 'telega-hooks)
 

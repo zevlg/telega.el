@@ -70,8 +70,9 @@
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
   ;; NOTE: check that we can group messages by sender
-  ;; see `telega-msg-group-by-sender'
-  (if (and telega-msg-group-by-sender
+  ;; see `telega-chat-group-messages-for'
+  (if (and (telega-filter--test
+            (telega-msg-chat msg) telega-chat-group-messages-for)
            (> (point) 3)
            (let ((prev-msg (telega-msg-at (- (point) 2))))
              (eq (plist-get msg :sender_user_id)

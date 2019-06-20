@@ -802,7 +802,18 @@ STATUS is one of: "
 
 (defun telega-chat-share-my-contact (chat)
   "Share my contact info with CHAT."
-  (message "TODO: `telega-chat-share-contact'."))
+  (interactive (list telega-chatbuf--chat))
+  (when chat
+    (let* ((me (telega-user-me))
+           (me-contact
+            (list :@type "Contact"
+                  :phone_number (concat "+" (plist-get me :phone_number))
+                  :first_name (plist-get me :first_name)
+                  :last_name (plist-get me :last_name)
+                  :vcard ""
+                  :user_id (plist-get me :id))))
+      (telega--sendMessage chat (list :@type "inputMessageContact"
+                                      :contact me-contact)))))
 
 (defun telega-describe-chat (chat)
   "Show info about chat at point."
@@ -1253,7 +1264,7 @@ Also mark messages as read with `viewMessages'."
   (with-current-buffer (window-buffer window)
     ;; If point moves near the beginning of chatbuf, then request for
     ;; the previous history
-    (when (< display-start 500)
+    (when (< display-start 1000)
       (telega-chatbuf--load-older-history))
 
     ;; If point moves near the end of the chatbuf, then request for
@@ -1477,33 +1488,41 @@ If TITLE is specified, use it instead of chat's title."
                 (telega-chat--goto-msg0 chat last-read-msg-id)
                 (condition-case err
                     (telega-button-forward 1 'telega-msg)
-                (user-error
-                 ;; No more buttons, jump to input
-                 (goto-char (point-max)))))))
+                  (user-error
+                   ;; No more buttons, jump to input
+                   (goto-char (point-max))))
+                ;; NOTE: view all visible messages, see
+                ;; https://t.me/emacs_telega/4731
+                (let ((chat-win (get-buffer-window (current-buffer))))
+                  (when chat-win
+                    (telega-chatbuf-scroll
+                     chat-win (window-start chat-win)))))))
 
           ;; Openning chat may affect filtering, see `opened' filter
           (telega-root--chat-update chat)
 
           (current-buffer)))))
 
-(defsubst telega-chatbuf--oldest-msg ()
+(defsubst telega-chatbuf--nth-msg (n)
   "Return oldest message in the current chat buffer."
-  (let ((node (ewoc-nth telega-chatbuf--ewoc 0)))
+  (let ((node (ewoc-nth telega-chatbuf--ewoc n)))
     (when node
       (ewoc-data node))))
 
-(defsubst telega-chatbuf--youngest-msg ()
-  "Return youngest message in the current chat buffer."
-  (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
-    (when node
-      (ewoc-data node))))
+(defmacro telega-chatbuf--first-msg ()
+  "Return first message inserted in chat buffer."
+  `(telega-chatbuf--nth-msg 0))
+
+(defmacro telega-chatbuf--last-msg ()
+  "Return last message inserted in chat buffer."
+  `(telega-chatbuf--nth-msg -1))
 
 (defsubst telega-chatbuf--last-msg-loaded-p (&optional for-msg)
   "Return non-nil if `:last_message' of the chat is loaded.
 FOR-MSG can be optionally specified, and used instead of yongest message."
   (let ((last-msg-id
          (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
-    (or (<= last-msg-id (or (plist-get (telega-chatbuf--youngest-msg) :id) 0))
+    (or (<= last-msg-id (or (plist-get (telega-chatbuf--last-msg) :id) 0))
         (and for-msg (= last-msg-id (plist-get for-msg :id))))))
 
 (defun telega-chatbuf--modeline-buffer-identification ()
@@ -1672,41 +1691,41 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
       (telega-chatbuf-input-goto saved-input-idx))
     ))
 
-(defmacro telega-chatbuf--redisplay-node (node)
-  `(telega-save-cursor
-     (with-telega-deferred-events
-       (ewoc-invalidate telega-chatbuf--ewoc ,node))))
+(defsubst telega-chatbuf--redisplay-node (node)
+  "Redisplay NODE in chatbuffer.
+Try to keep point at its position."
+  (let* ((msg-button (button-at (point)))
+         (point-off (when (and msg-button
+                               (eq (button-get msg-button :value)
+                                   (ewoc--node-data node))
+                               (>= (point) (button-start msg-button))
+                               (<= (point) (button-end msg-button)))
+                      (- (point) (button-start msg-button)))))
+    (save-excursion
+      (with-telega-deferred-events
+        (ewoc-invalidate telega-chatbuf--ewoc node)))
+    (when point-off
+      (forward-char point-off))))
 
-;; NOTE: Inserting message might perform some blocking calls to the
-;; server, so we do deferr all the server events untill message is
-;; inserted
-(defun telega-chatbuf--enter-oldest-msg (msg)
-  "Insert message MSG as oldest message in chatbuffer."
-  (run-hook-with-args 'telega-chat-pre-message-hook msg t)
+(defun telega-chatbuf--prepend-messages (messages)
+  "Insert MESSAGES at the beginning of the chat buffer.
+First message in MESSAGE will be first message at the beginning."
+  (with-telega-deferred-events
+    (let ((node (ewoc--header telega-chatbuf--ewoc)))
+      (seq-doseq (msg messages)
+        (unless (telega-msg-ignored-p msg)
+          (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg)))))))
 
-  (unless (telega-msg-ignored-p msg)
-    (with-telega-chatbuf (telega-msg-chat msg)
-      (puthash (plist-get msg :id) msg telega-chatbuf--messages)
+(defun telega-chatbuf--append-messages (messages)
+  "Insert MESSAGES at the end of the chat buffer."
+  (with-telega-deferred-events
+    (seq-doseq (msg messages)
+      (unless (telega-msg-ignored-p msg)
+        (ewoc-enter-last telega-chatbuf--ewoc msg)))))
 
-      (telega-save-excursion
-        (run-hook-with-args 'telega-chat-before-oldest-msg-hook msg)
-
-        (let* ((onode (with-telega-deferred-events
-                        (ewoc-enter-first telega-chatbuf--ewoc msg)))
-               (nnode (ewoc-next telega-chatbuf--ewoc onode)))
-          ;; NOTE: Inserting oldest message might affect how messages
-          ;; next to it is formatted (i.e. sent from same user), so
-          ;; redisplay them.
-          (while (and telega-msg-group-by-sender
-                      nnode
-                      (eq (plist-get (ewoc--node-data onode) :sender_user_id)
-                          (plist-get (ewoc--node-data nnode) :sender_user_id)))
-            (telega-chatbuf--redisplay-node nnode)
-            (setq nnode (ewoc-next telega-chatbuf--ewoc nnode))))))))
-
-(defun telega-chatbuf--enter-youngest-msg (msg)
-  "Insert newly arrived message MSG as youngest into chatbuffer.
-Return newly inserted node or nil if it was not inserted."
+(defun telega-chatbuf--append-message (msg)
+  "Insert message MSG as last in chat buffer.
+Return newly created ewoc node."
   (unless (telega-msg-ignored-p msg)
     (with-telega-deferred-events
       (ewoc-enter-last telega-chatbuf--ewoc msg))))
@@ -1715,7 +1734,7 @@ Return newly inserted node or nil if it was not inserted."
   "In current chatbuffer find message button with MSG-ID."
   ;; TODO: maybe do binary search on buffer position (getting message
   ;; as `telega-msg-at'), since message ids grows monotonically
-  ;; Or maybe search from youngest node
+  ;; Or maybe search from last node
   (telega-ewoc--find telega-chatbuf--ewoc msg-id '= (telega--tl-prop :id)))
 
 (defun telega-chatbuf--next-voice-msg (msg)
@@ -1783,7 +1802,7 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
       (puthash (plist-get new-msg :id) new-msg telega-chatbuf--messages)
 
       (when (telega-chatbuf--last-msg-loaded-p new-msg)
-        (let ((node (telega-chatbuf--enter-youngest-msg new-msg)))
+        (let ((node (telega-chatbuf--append-message new-msg)))
           (when node
             (run-hook-with-args 'telega-chat-message-hook new-msg)
 
@@ -1805,7 +1824,7 @@ Message id could be updated on this update."
       (remhash old-id telega-chatbuf--messages)
       (puthash new-id new-msg telega-chatbuf--messages)
 
-      ;; Optimization: search message's node from youngest node
+      ;; Optimization: search message's node from last node
       ;; NOTE: changing message might require resorting the message's
       ;; place in the ewoc.
       (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
@@ -1880,8 +1899,7 @@ Message id could be updated on this update."
         (when permanent-p
           (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
             (when node
-              (telega-save-cursor
-                (ewoc-delete telega-chatbuf--ewoc node)))))
+              (ewoc-delete telega-chatbuf--ewoc node))))
         ))))
 
 (defun telega--on-updateUserChatAction (event)
@@ -1940,7 +1958,7 @@ CALLBACK is called after history has been loaded."
 
     (unless telega-chatbuf--history-loading
       (unless from-msg-id
-        (setq from-msg-id (plist-get (telega-chatbuf--oldest-msg) :id)
+        (setq from-msg-id (plist-get (telega-chatbuf--first-msg) :id)
               offset 0))
       (unless from-msg-id
         (setq from-msg-id (plist-get (plist-get chat :last_message) :id)
@@ -1956,8 +1974,8 @@ CALLBACK is called after history has been loaded."
                (lambda (history)
                  (with-telega-chatbuf chat
                    (setq telega-chatbuf--history-loading nil)
-                   (mapc #'telega-chatbuf--enter-oldest-msg
-                         (plist-get history :messages))
+                   (telega-chatbuf--prepend-messages
+                    (nreverse (plist-get history :messages)))
                    (telega-chatbuf--footer-redisplay)
                    (when callback
                      (funcall callback))))))
@@ -1972,9 +1990,9 @@ CALLBACK is called after history has been loaded."
   "In chat buffer load newer messages."
   (with-telega-chatbuf telega-chatbuf--chat
     (unless (or telega-chatbuf--history-loading
-                (not (telega-chatbuf--youngest-msg)))
+                (not (telega-chatbuf--last-msg)))
       (let ((chat telega-chatbuf--chat)
-            (from-msg-id (plist-get (telega-chatbuf--youngest-msg) :id)))
+            (from-msg-id (plist-get (telega-chatbuf--last-msg) :id)))
         (setq telega-chatbuf--history-loading
               (telega--getChatHistory
                   chat from-msg-id (- 1 telega-chat-history-limit)
@@ -1989,9 +2007,7 @@ CALLBACK is called after history has been loaded."
                      (setq rmsgs (cdr rmsgs)))
                    (with-telega-chatbuf chat
                      (setq telega-chatbuf--history-loading nil)
-                     (telega-save-cursor
-                       (dolist (ymsg rmsgs)
-                         (telega-chatbuf--enter-youngest-msg ymsg)))
+                     (telega-chatbuf--append-messages rmsgs)
                      (telega-chatbuf--footer-redisplay))))))
         (telega-chatbuf--footer-redisplay)
         ))))
