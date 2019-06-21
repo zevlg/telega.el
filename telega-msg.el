@@ -375,6 +375,22 @@ with list of chats received."
   "Return non-nil if sender of MSG is me."
   (= (plist-get msg :sender_user_id) telega--me-id))
 
+(defsubst telega-msg-seen-p (msg &optional chat)
+  "Return non-nil if MSG has been already read in CHAT."
+  (unless chat (setq chat (telega-msg-chat msg)))
+  (<= (plist-get msg :id) (plist-get chat :last_read_inbox_message_id)))
+
+(defun telega-msg-observable-p (msg &optional chat node)
+  "Return non-nil if MSG is observable in chatbuffer.
+CHAT - chat to search message for.
+NODE - ewoc node, if known."
+  (unless chat (setq chat (telega-msg-chat msg)))
+  (with-telega-chatbuf chat
+    (unless node
+      (setq node (telega-chatbuf--node-by-msg-id msg-id)))
+    (when node
+      (telega-button--observable-p (ewoc-location node)))))
+
 ;; DEPRECATED ???
 (defun telega-msg-sender-admin-status (msg)
   (let ((admins-tl (telega-server--call

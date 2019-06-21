@@ -217,7 +217,7 @@ If ARG is not given then treat it as 1."
   (let* ((msg-id (plist-get msg :id))
          (chat-id (plist-get msg :chat_id))
          (chat (telega-chat-get chat-id)))
-    (unless (<= msg-id (plist-get chat :last_read_inbox_message_id))
+    (unless (telega-msg-seen-p msg chat)
       (let ((notify-args
              (nconc
               (list :actions (list "default" "show message")
@@ -250,19 +250,16 @@ If ARG is not given then treat it as 1."
   "Function intended to be added to `telega-chat-message-hook'."
   ;; Do NOT notify message if:
   ;;  - Chat is muted
-  ;;  - Message already has been read (see last_read_inbox_message_id)
+  ;;  - Message already has been read (see `telega-msg-seen-p')
   ;;  - Message is older then 1 min (to avoid poping up messages on
   ;;    laptop wakeup)
   ;;  - Message is currently observable in chatbuf
   ;;  - [TODO] If Emacs frame has focus and root buffer is current
   (unless (> (- (time-to-seconds) (plist-get msg :date)) 60)
-    (let* ((msg-id (plist-get msg :id))
-           (chat-id (plist-get msg :chat_id))
-           (chat (telega-chat-get chat-id))
-           (last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
-      (unless (or (<= msg-id last-read-msg-id)
+    (let ((chat (telega-msg-chat msg)))
+      (unless (or (telega-msg-seen-p msg chat)
                   (not (zerop (telega-chat-notification-setting chat :mute_for)))
-                  (telega-chat-msg-observable-p chat msg-id))
+                  (telega-msg-observable-p msg chat))
         (if (> telega-notifications-delay 0)
             (run-with-timer telega-notifications-delay nil
                             'telega-notifications--chat-msg0 msg)

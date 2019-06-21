@@ -1695,12 +1695,10 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
   (let* ((msg-button (button-at (point)))
-         (point-off (when (and msg-button
-                               (eq (button-get msg-button :value)
-                                   (ewoc--node-data node))
-                               (>= (point) (button-start msg-button))
-                               (<= (point) (button-end msg-button)))
-                      (- (point) (button-start msg-button)))))
+         (point-off (and msg-button
+                         (eq (button-get msg-button :value)
+                             (ewoc--node-data node))
+                         (- (point) (button-start msg-button)))))
     (save-excursion
       (with-telega-deferred-events
         (ewoc-invalidate telega-chatbuf--ewoc node)))
@@ -1806,12 +1804,13 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
           (when node
             (run-hook-with-args 'telega-chat-message-hook new-msg)
 
-            (when telega-use-tracking
+            (when (and telega-use-tracking
+                       (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
               (tracking-add-buffer (current-buffer)))
 
             ;; If message is visibible in some window, then mark it as read
             ;; see https://github.com/zevlg/telega.el/issues/4
-            (when (telega-button--observable-p (ewoc-location node))
+            (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
               (telega--viewMessages telega-chatbuf--chat (list new-msg)))))))))
 
 (defun telega--on-updateMessageSendSucceeded (event)
@@ -2734,13 +2733,6 @@ If called interactively then copy generated link into the kill ring."
       (message "Invite link: %s (copied into kill ring)"
                (plist-get link :invite_link)))
     link))
-
-(defun telega-chat-msg-observable-p (chat msg-id)
-  "Return non-nil if MSG is observable in CHAT."
-  (with-telega-chatbuf chat
-    (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
-      (when node
-        (telega-button--observable-p (ewoc-location node))))))
 
 (defun telega-chat--goto-msg0 (chat msg-id &optional highlight)
   "In chat denoted by CHAT-ID goto message denoted by MSG-ID.
