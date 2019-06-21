@@ -786,10 +786,11 @@ Return `non-nil' if WEB-PAGE has been inserted."
       (telega-ins--file-progress msg anim-file))
     (telega-ins "\n")
 
-    (telega-ins--image-slices
-     (telega-media--image
-      (cons thumb 'telega-thumb--create-image-as-is)
-      (cons thumb :photo)))
+    (when thumb
+      (telega-ins--image-slices
+       (telega-media--image
+        (cons thumb 'telega-thumb--create-image-as-is)
+        (cons thumb :photo))))
     ))
 
 (defun telega-ins--location-msg (msg)
