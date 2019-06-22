@@ -387,7 +387,7 @@ NODE - ewoc node, if known."
   (unless chat (setq chat (telega-msg-chat msg)))
   (with-telega-chatbuf chat
     (unless node
-      (setq node (telega-chatbuf--node-by-msg-id msg-id)))
+      (setq node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
     (when node
       (telega-button--observable-p (ewoc-location node)))))
 
