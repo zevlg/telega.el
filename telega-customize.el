@@ -727,6 +727,11 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-star (propertize "★" 'face 'error)
+  "Symbol used to emphasize stared chats."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-thunder "🗲"
   "Symbol used inside INSTANT VIEW buttons."
   :type 'string

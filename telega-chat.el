@@ -1270,7 +1270,7 @@ Also mark messages as read with `viewMessages'."
     ;; If point moves near the end of the chatbuf, then request for
     ;; newer history
     (when (and (> display-start (- (point-max) 2000))
-               (not (telega-chatbuf--last-msg-loaded-p)))
+               (telega-chatbuf--need-newer-history-p))
       (telega-chatbuf--load-newer-history))
       
     ;; Mark some messages as read
@@ -1367,7 +1367,9 @@ Also mark messages as read with `viewMessages'."
 
   ;; - If at the bottom of the chatbuf and newer history is not yet
   ;;   loaded, then load it.  Same as in `telega-chatbuf-scroll'
-  (when (and (= (point) (point-max)) (not (telega-chatbuf--last-msg-loaded-p)))
+  ;;   Do not load newer history if prompt is active (reply, or forward)
+  (when (and (= (point) (point-max))
+             (telega-chatbuf--need-newer-history-p))
     (telega-chatbuf--load-newer-history))
 
   ;; - Finally, when input is probably changed by above operations,
@@ -1524,6 +1526,11 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
          (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
     (or (<= last-msg-id (or (plist-get (telega-chatbuf--last-msg) :id) 0))
         (and for-msg (= last-msg-id (plist-get for-msg :id))))))
+
+(defun telega-chatbuf--need-newer-history-p ()
+  "Return non-nil if newer history can be loaded."
+  (and (not (telega-chatbuf--last-msg-loaded-p))
+       (button-get telega-chatbuf--aux-button 'invisible)))
 
 (defun telega-chatbuf--modeline-buffer-identification ()
   "Return `mode-line-buffer-identification' for the CHAT buffer."
@@ -2006,8 +2013,9 @@ CALLBACK is called after history has been loaded."
                      (setq rmsgs (cdr rmsgs)))
                    (with-telega-chatbuf chat
                      (setq telega-chatbuf--history-loading nil)
-                     (telega-chatbuf--append-messages rmsgs)
-                     (telega-chatbuf--footer-redisplay))))))
+                     (telega-save-cursor
+                       (telega-chatbuf--append-messages rmsgs)
+                       (telega-chatbuf--footer-redisplay)))))))
         (telega-chatbuf--footer-redisplay)
         ))))
 
