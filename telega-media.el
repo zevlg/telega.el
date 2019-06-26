@@ -373,26 +373,6 @@ To customize automatic downloads, use `telega-auto-download'."
     (remove-hook 'telega-user-update-hook 'telega-media--autodownload-on-user)))
 
 
-;; Avatars
-(defun telega-photo--progress-svg (best cheight)
-  "Generate svg for BEST variant of the photo."
-  (let* ((h (* (frame-char-height) cheight))
-         (cwidth-xmargin (telega-media--cwidth-xmargin
-                          (plist-get best :width)
-                          (plist-get best :height)
-                          cheight))
-         (w-chars (car cwidth-xmargin))
-         (w (* (telega-chars-width 1) w-chars))
-         (svg (svg-create w h))
-         (progress (telega-file--downloading-progress
-                    (telega-file--renew best :photo))))
-    (telega-svg-progress svg progress)
-    (svg-image svg :scale 1.0
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text (make-string w-chars ?X))))
-
 (defun telega-media--cwidth-xmargin (width height char-height &optional max-cwidth)
   "Calculate width in chars and margins X pixels.
 MAX-CWIDTH is maximum width in chars.
@@ -407,18 +387,37 @@ Return cons cell, where car is width in char and cdr is margin value."
 ;    (cl-assert (> cw 0))
     (cons cw (floor xmargin))))
 
-(defun telega-thumb--create-image (thumb &optional file cheight)
-  "Create image for the thumbnail THUMB.
-CHEIGHT is the height in chars (default=1)."
-  ;; Always renew thumb file, even if FILE is given
-  (setq file (telega-file--renew thumb :photo))
+(defun telega-media--progress-svg (file width height cheight)
+  "Generate svg showing downloading progress for FILE."
+  (let* ((h (* (frame-char-height) cheight))
+         (cwidth-xmargin (telega-media--cwidth-xmargin width height cheight))
+         (w-chars (car cwidth-xmargin))
+         (w (* (telega-chars-width 1) w-chars))
+         (svg (svg-create w h))
+         (progress (telega-file--downloading-progress file)))
+    (telega-svg-progress svg progress)
+    (svg-image svg :scale 1.0
+               :ascent 'center
+               :mask 'heuristic
+               ;; text of correct width
+               :telega-text (make-string w-chars ?X))))
+
+(defsubst telega-photo--progress-svg (photo cheight)
+  "Generate svg for the PHOTO."
+  (telega-media--progress-svg
+   (telega-file--renew photo :photo)
+   (plist-get photo :width)
+   (plist-get photo :height)
+   cheight))
+
+(defun telega-media--create-image (file width height &optional cheight)
+  "Create image to display FILE.
+WIDTH and HEIGHT specifies size of the FILE's image.
+CHEIGHT is the height in chars to use (default=1)."
   (unless cheight
     (setq cheight 1))
   (if (telega-file--downloaded-p file)
-      (let ((cwidth-xmargin (telega-media--cwidth-xmargin
-                             (plist-get thumb :width)
-                             (plist-get thumb :height)
-                             cheight)))
+      (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight)))
         (create-image (telega--tl-get file :local :path)
                       'imagemagick nil
                       :height (* cheight (frame-char-height (telega-x-frame)))
@@ -427,7 +426,17 @@ CHEIGHT is the height in chars (default=1)."
                       :margin (cons (cdr cwidth-xmargin) 0)
                       :telega-text (make-string (car cwidth-xmargin) ?X)))
 
-    (telega-photo--progress-svg thumb cheight)))
+    (telega-media--progress-svg file width height cheight)))
+
+(defun telega-thumb--create-image (thumb &optional file cheight)
+  "Create image for the thumbnail THUMB.
+CHEIGHT is the height in chars (default=1)."
+  (telega-media--create-image
+   ;; Always renew thumb file, even if FILE is given (from callback)
+   (telega-file--renew thumb :photo)
+   (plist-get thumb :width)
+   (plist-get thumb :height)
+   cheight))
 
 (defun telega-thumb--create-image-one-line (thumb &optional file)
   "Create image for thumbnail (photoSize) for one line use."

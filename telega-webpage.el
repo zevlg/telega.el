@@ -186,6 +186,38 @@ Keymap:
         (mapc 'telega-webpage--ins-PageBlock (plist-get pb :page_blocks))))
     ))
 
+(defun telega-webpage-rticon--image (rt limits)
+  "Return image representing rich text icon for RT."
+  (let* ((doc (plist-get rt :document))
+         (width (plist-get rt :width))
+         (height (plist-get rt :height))
+         (lim-xheight (* (frame-char-height (telega-x-frame))
+                         (cdr limits)))
+         (cheight (if (> height lim-xheight)
+                      (cdr limits)
+                    (telega-chars-in-height height)))
+         (create-image-fun
+          (progn
+            (cl-assert (<= cheight (cdr limits)))
+            (lambda (_rtignored &optional _fileignored)
+              ;; 1) FILE downloaded, show FILE
+              ;; 2) Thumbnail is downloaded, use it
+              ;; 3) FILE downloading, fallback to progress svg
+              (let ((doc-file (telega-file--renew doc :document)))
+                (if (telega-file--downloaded-p doc-file)
+                    (telega-media--create-image doc-file width height cheight)
+                  (let* ((thumb (plist-get doc :thumbnail))
+                         (thumb-file (telega-file--renew thumb :photo)))
+                    (if (telega-file--downloaded-p thumb-file)
+                        (telega-thumb--create-image thumb thumb-file cheight)
+                      (telega-media--progress-svg
+                       doc-file width height cheight)))))))))
+
+    (telega-media--image
+     (cons rt create-image-fun)
+     (cons doc :document)
+     'force-update)))
+
 (defun telega-webpage--ins-rt (rt &optional strip-nl)
   "Insert RichText RT.
 If STRIP-NL is non-nil then strip leading/trailing newlines."
@@ -193,7 +225,8 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (richTextAnchor
      (telega-webpage--ins-rt (plist-get rt :text) strip-nl))
     (richTextIcon
-     (telega-ins "<TODO: richTextIcon>"))
+     (telega-ins--image-slices
+      (telega-webpage-rticon--image rt telega-photo-maxsize)))
     (richTextPlain
      (telega-ins (funcall (if strip-nl 'telega-strip-newlines 'identity)
                           (plist-get rt :text))))
@@ -337,7 +370,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockAudio
      (telega-ins "<TODO: pageBlockAudio>"))
     (pageBlockPhoto
-     (telega-ins--photo (plist-get pb :photo))
+     (telega-ins--photo (plist-get pb :photo) nil telega-webpage-photo-maxsize)
      (telega-ins-prefix "\n"
        (telega-webpage--ins-PageBlock (plist-get pb :caption))))
     (pageBlockVideo
