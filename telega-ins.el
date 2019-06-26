@@ -463,14 +463,15 @@ markdown syntax to the TEXT."
     ;; Progress and [Stop] button
     (when played
       (telega-ins "\n")
-      (let* ((pcol (/ telega-chat-fill-column 2))
-             (progress (/ played dur))
-             (ps (make-string (round (* progress pcol)) ?\.))
-             (pl (make-string (- pcol (string-width ps)) ?\s)))
-        (telega-ins "[" ps pl "] ")
-        (telega-ins--button "Stop"
-          'action (lambda (_ignored)
-                    (telega-ffplay-stop)))))
+      (unless (zerop dur)
+        (let* ((pcol (/ telega-chat-fill-column 2))
+               (progress (/ played dur))
+               (ps (make-string (round (* progress pcol)) ?\.))
+               (pl (make-string (- pcol (string-width ps)) ?\s)))
+          (telega-ins "[" ps pl "] ")))
+      (telega-ins--button "Stop"
+        'action (lambda (_ignored)
+                  (telega-ffplay-stop))))
 
     ;; Album cover
     (when thumb

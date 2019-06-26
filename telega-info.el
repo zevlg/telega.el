@@ -309,15 +309,17 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
   (let* ((full-info (telega--full-info basicgroup))
          (members (plist-get full-info :members))
          (creator-id (plist-get full-info :creator_user_id))
-         (creator (telega-user--get creator-id))
-         (creator-member
-          (cl-find creator-id members :test '= :key (telega--tl-prop :user_id)))
+         (creator (unless (zerop creator-id)
+                    (telega-user--get creator-id)))
          (member-status-name (plist-get (plist-get basicgroup :status) :@type))
          (invite-link (plist-get full-info :invite_link)))
     (telega-ins "Status: " (substring member-status-name 16) "\n")
-    (telega-ins "Created: " (telega-user--name creator) "  ")
-    (when creator-member
-      (telega-ins--date (plist-get creator-member :joined_chat_date)))
+    (when creator
+      (telega-ins "Created: " (telega-user--name creator) "  ")
+      (let ((creator-member
+             (cl-find creator-id members :test '= :key (telega--tl-prop :user_id))))
+        (when creator-member
+          (telega-ins--date (plist-get creator-member :joined_chat_date)))))
     (telega-ins "\n")
 
     ;; For basic groups only creator can generate invite link

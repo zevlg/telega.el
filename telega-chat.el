@@ -753,6 +753,14 @@ CHAT must be supergroup or channel."
          :user_id (plist-get user :id)
          :forward_limit (or forward-limit 300))))
 
+(defun telega-chat-set-title (chat title)
+  "Set CHAT's title to TITLE."
+  (interactive (let ((chat (or telega-chatbuf--chat
+                               (telega-chat-at-point))))
+                 (list chat
+                       (read-string "New title: " (telega-chat-title chat)))))
+  (telega--setChatTitle chat title))
+
 (defun telega-chat-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
   (interactive (let ((chat (telega-chat-at-point)))
