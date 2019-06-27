@@ -284,6 +284,40 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
     ))
 
+(defun telega-webpage--ins-RelatedArticle (pageblock)
+  "Inserter for pageBlockRelatedArticle PAGEBLOCK."
+  (let* ((ra-photo (plist-get pageblock :photo))
+         (photo-image (when pageblock-photo
+                        (telega-photo--image pageblock-photo (cons 10 3))))
+         (url (plist-get pageblock :url))
+         (title (plist-get pageblock :title))
+         (author (plist-get pageblock :author))
+         (publish-date (plist-get pageblock :publish_date)))
+    (telega-ins--with-attrs (list :max telega-webpage-fill-column
+                                  :elide t)
+      (when photo-image
+        (telega-ins--image photo-image 0))
+      (telega-ins--with-face 'bold
+        (if title
+            (telega-ins title)
+          (telega-ins url)))
+      (telega-ins "\n")
+      (when photo-image
+        (telega-ins--image photo-image 1))
+      (telega-ins--with-face 'shadow
+        (if author
+            (telega-ins author)
+          (telega-ins "Unknown author"))
+        (when (zerop publish-date)
+          (setq publish-date (time-to-seconds)))
+        (telega-ins " • ")
+        (telega-ins--date-full publish-date))
+      (telega-ins "\n")
+      (when photo-image
+        (telega-ins--image photo-image 2))
+      (telega-ins--with-face 'telega-link
+        (telega-ins url)))))
+
 (defun telega-webpage--ins-PageBlock (pb)
   "Render PageBlock BLK for the instant view."
   (cl-ecase (telega--tl-type pb)
@@ -420,46 +454,17 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-webpage--ins-rt (plist-get pb :caption))
      (telega-ins "<TODO: pageBlockTable>"))
     (pageBlockRelatedArticle
-     (let* ((ra-photo (plist-get pb :photo))
-            (photo-image (when ra-photo
-                           (telega-photo--image ra-photo (cons 10 3))))
-            (url (plist-get pb :url))
-            (title (plist-get pb :title))
-            (author (plist-get pb :author))
-            (publish-date (plist-get pb :publish_date)))
-       (telega-ins--raw-button (list 'type 'telega
-                                     'action 'telega-link--button-action
-                                     :telega-link (cons 'url url))
-         (when photo-image
-           (telega-ins--image photo-image 0))
-         (telega-ins--with-face 'bold
-           (if title
-               (telega-ins title)
-             (telega-ins url)))
-         (telega-ins "\n")
-         (when photo-image
-           (telega-ins--image photo-image 1))
-         (telega-ins--with-face 'shadow
-           (if author
-               (telega-ins author)
-             (telega-ins "Unknown author"))
-           (when (zerop publish-date)
-             (setq publish-date (time-to-seconds)))
-           (telega-ins " • ")
-           (telega-ins--date-full publish-date))
-         (telega-ins "\n")
-         (when photo-image
-           (telega-ins--image photo-image 2))
-         (telega-ins--with-face 'telega-link
-           (telega-ins url))))
+     (telega-button--insert 'telega pb
+       :inserter 'telega-webpage--ins-RelatedArticle
+       :action (lambda (_pbignored)
+                 (telega-browse-url (plist-get pb :url)))
+       :help-echo (concat "URL: " (plist-get pb :url)))
      (telega-ins "\n"))
     (pageBlockRelatedArticles
      (telega-ins--with-face '(telega-msg-heading bold)
-       (telega-webpage--ins-rt (plist-get pb :header))
-       (telega-ins "\n"))
-     (telega-ins--with-attrs (list :max telega-webpage-fill-column
-                                   :elide t)
-       (mapc 'telega-webpage--ins-PageBlock (plist-get pb :articles))))
+       (when (telega-webpage--ins-rt (plist-get pb :header))
+         (telega-ins "\n")))
+     (mapc 'telega-webpage--ins-PageBlock (plist-get pb :articles)))
     (pageBlockKicker
      (telega-webpage--ins-rt (plist-get pb :kicker)))
     )
