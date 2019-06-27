@@ -353,16 +353,18 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockList
      (mapc 'telega-webpage--ins-PageBlock (plist-get pb :items)))
     (pageBlockBlockQuote
-     (telega-ins (propertize telega-symbol-vertical-bar 'face 'bold))
-     (telega-ins--with-attrs (list :fill 'left
-                                   :fill-prefix (propertize telega-symbol-vertical-bar 'face 'bold)
-                                   :fill-column telega-webpage-fill-column)
-       (telega-webpage--ins-rt (plist-get pb :text)))
-     (telega-ins "\n"))
+     (let ((vbar-prefix (propertize telega-symbol-vertical-bar 'face 'bold)))
+       (telega-ins vbar-prefix)
+       (telega-ins--with-attrs (list :fill 'left
+                                     :fill-column telega-webpage-fill-column
+                                     :fill-prefix vbar-prefix)
+         (telega-webpage--ins-rt (plist-get pb :text)))
+       (telega-ins "\n")))
     (pageBlockPullQuote
+     (telega-ins "\u00A0\u00A0")
      (telega-ins--with-attrs (list :fill 'center
-                                   :fill-column (- telega-webpage-fill-column 2))
-       (telega-ins "\u00A0\u00A0")
+                                   :fill-column (- telega-webpage-fill-column 2)
+                                   :fill-prefix "\u00A0\u00A0")
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))
     (pageBlockAnimation
@@ -417,9 +419,47 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockTable
      (telega-webpage--ins-rt (plist-get pb :caption))
      (telega-ins "<TODO: pageBlockTable>"))
+    (pageBlockRelatedArticle
+     (let* ((ra-photo (plist-get pb :photo))
+            (photo-image (when ra-photo
+                           (telega-photo--image ra-photo (cons 10 3))))
+            (url (plist-get pb :url))
+            (title (plist-get pb :title))
+            (author (plist-get pb :author))
+            (publish-date (plist-get pb :publish_date)))
+       (telega-ins--raw-button (list 'type 'telega
+                                     'action 'telega-link--button-action
+                                     :telega-link (cons 'url url))
+         (when photo-image
+           (telega-ins--image photo-image 0))
+         (telega-ins--with-face 'bold
+           (if title
+               (telega-ins title)
+             (telega-ins url)))
+         (telega-ins "\n")
+         (when photo-image
+           (telega-ins--image photo-image 1))
+         (telega-ins--with-face 'shadow
+           (if author
+               (telega-ins author)
+             (telega-ins "Unknown author"))
+           (when (zerop publish-date)
+             (setq publish-date (time-to-seconds)))
+           (telega-ins " • ")
+           (telega-ins--date-full publish-date))
+         (telega-ins "\n")
+         (when photo-image
+           (telega-ins--image photo-image 2))
+         (telega-ins--with-face 'telega-link
+           (telega-ins url))))
+     (telega-ins "\n"))
     (pageBlockRelatedArticles
-     (telega-webpage--ins-rt (plist-get pb :header))
-     (telega-ins "<TODO: pageBlockRelatedArticles>"))
+     (telega-ins--with-face '(telega-msg-heading bold)
+       (telega-webpage--ins-rt (plist-get pb :header))
+       (telega-ins "\n"))
+     (telega-ins--with-attrs (list :max telega-webpage-fill-column
+                                   :elide t)
+       (mapc 'telega-webpage--ins-PageBlock (plist-get pb :articles))))
     )
 
   (unless (memq (telega--tl-type pb)

@@ -479,12 +479,6 @@ NIL yields empty string for the convenience."
   (let ((dt (or decoded-ts (decode-time timestamp))))
     (1+ (- timestamp (* 3600 (nth 2 dt)) (* 60 (nth 1 dt)) (nth 0 dt)))))
 
-;; DEPRECATED
-(defun telega-fmt-timestamp (timestamp)
-  "Format unix TIMESTAMP to human readable form."
-  (telega-ins--as-string
-   (telega-ins--date timestamp)))
-
 ;;; Buttons for telega
 (defun telega-button--ins-error (_val)
   (error "Button `:inserter' is unset."))
