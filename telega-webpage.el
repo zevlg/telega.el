@@ -460,6 +460,8 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins--with-attrs (list :max telega-webpage-fill-column
                                    :elide t)
        (mapc 'telega-webpage--ins-PageBlock (plist-get pb :articles))))
+    (pageBlockKicker
+     (telega-webpage--ins-rt (plist-get pb :kicker)))
     )
 
   (unless (memq (telega--tl-type pb)
