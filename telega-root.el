@@ -341,7 +341,8 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
               (eq chat (telega-msg-chat msg)))
             telega-messages--ewoc)
 
-  (telega-filters--chat-update chat))
+  (telega-filters--chat-update chat)
+  (run-hook-with-args 'telega-chat-update-hook chat))
 
 (defun telega-root--chat-reorder (chat &optional new-chat-p)
   "Move CHAT to correct place according to its order.

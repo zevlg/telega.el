@@ -1126,6 +1126,11 @@ You can customize its `:height' to fit width of the default face."
   :type 'hook
   :group 'telega-hooks)
 
+(defcustom telega-chat-update-hook nil
+  "Hook called with single argument CHAT, when CHAT updates."
+  :type 'hook
+  :group 'telega-hooks)
+
 (defcustom telega-user-update-hook nil
   "Hook called with single argument USER, when USER's info is updated."
   :type 'hook

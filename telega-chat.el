@@ -472,7 +472,9 @@ NOTE: we store the number as custom chat property, to use it later."
       (setq mode-line-buffer-identification
             (telega-chatbuf--modeline-buffer-identification)))
 
-    (telega-root--chat-update chat)))
+    ;; ARGUABLE: root buffer chat inserter might use the counter
+    ; (telega-root--chat-update chat)
+    ))
 
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
@@ -1413,10 +1415,9 @@ Inhibits read-only flag."
                                           (eq telega-chatbuf--chat val)))))))
        (when (buffer-live-p ,bufsym)
          (with-current-buffer ,bufsym
-           (let ((inhibit-read-only t))
-             (unwind-protect
-                 (progn ,@body)
-               (set-buffer-modified-p nil))))))))
+           (let ((inhibit-read-only t)
+                 (buffer-undo-list t))
+             ,@body))))))
 
 (defmacro with-telega-chatbuf-action (action &rest body)
   "Execute BODY setting current action to ACTION.
@@ -1453,7 +1454,8 @@ If TITLE is specified, use it instead of chat's title."
     (telega--joinChat chat))
 
   ;; reset the prompt
-  (let ((inhibit-read-only t))
+  (let ((inhibit-read-only t)
+        (buffer-undo-list t))
     (button-put telega-chatbuf--prompt-button
                 'invisible nil)
     (goto-char telega-chatbuf--prompt-button)
@@ -1477,6 +1479,7 @@ If TITLE is specified, use it instead of chat's title."
           ;;  - For bots show START button
           (unless (telega-filter-chats 'me-is-member (list chat))
             (let ((inhibit-read-only t)
+                  (buffer-undo-list t)
                   (chat-type (telega-chat--type chat)))
               (when (memq chat-type '(bot channel basicgroup supergroup))
                 (button-put telega-chatbuf--prompt-button 'invisible t)
@@ -1782,6 +1785,7 @@ Otherwise start from WINDOW's `window-start'."
 (defun telega-chatbuf--prompt-reset ()
   "Reset prompt to initial state in chat buffer."
   (let ((inhibit-read-only t)
+        (buffer-undo-list t)
         (prompt-invisible-p
          (button-get telega-chatbuf--prompt-button 'invisible)))
     (telega-save-excursion
@@ -2675,7 +2679,8 @@ MSG can be nil in case there is no active voice message."
     (error "Message can't be forwarded"))
 
   (with-current-buffer (telega-chat--pop-to-buffer chat)
-    (let ((inhibit-read-only t))
+    (let ((inhibit-read-only t)
+          (buffer-undo-list t))
       (telega-button--update-value
        telega-chatbuf--aux-button msg
        :inserter 'telega-ins--aux-fwd-inline
