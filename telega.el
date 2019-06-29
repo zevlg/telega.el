@@ -310,10 +310,10 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
   ;; no-op
   )
 
-(defun telega-version (&optional interactive-p)
+(defun telega-version (&optional print-p)
   "Return telega (and TDLib) version.
-If prefix arg INTERACTIVE-P is non-nil, then print version into
-echo area."
+If prefix arg PRINT-P is non-nil, then print version into echo
+area."
   (interactive "p")
   (let* ((tdlib-version (plist-get telega--options :version))
          (version (concat "telega v"
@@ -323,7 +323,7 @@ echo area."
                               (concat "TDLib version " tdlib-version)
                             "TDLib version unknown, server not running")
                           ")")))
-    (if interactive-p
+    (if print-p
         (message version)
       version)))
 
