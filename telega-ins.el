@@ -855,7 +855,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
               'messageBasicGroupChatCreate 'messageCustomServiceAction
               'messageChatSetTtl 'messageExpiredPhoto
               'messageChatChangePhoto 'messageChatUpgradeFrom
-              'messagePinMessage)))
+              'messagePinMessage 'messageScreenshotTaken)))
 
 (defun telega-ins--special (msg)
   "Insert special message MSG.
@@ -912,6 +912,9 @@ Special messages are determined with `telega-msg-special-p'."
       (messageChatUpgradeFrom
        (telega-ins (telega-user--name sender 'short)
                    " upgraded the group to supergroup"))
+      (messageScreenshotTaken
+       (cl-assert sender)
+       (telega-ins (telega-user--name sender) " took a screenshot!"))
       (messagePinMessage
        (if sender
            (telega-ins (telega-user--name sender 'short))

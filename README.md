@@ -317,6 +317,31 @@ libtdjson.so: cannot open shared object file: No such file or directory
 # ldconfig
 ```
 
+**Q**: I've got error, while running telega
+
+```elisp
+(error "Invalid image type ‘svg’")
+```
+
+and/or
+
+```elisp
+(error "Invalid image type ‘imagemagick’")
+```
+
+**A**: `telega.el` requires Emacs with SVG and ImageMagick support.
+SVG support in Emacs is done using `librsvg` library.  As to
+imagemagick, you will need `libmagickcore-dev` and `libmagickwand-dev`
+packages installed.  But unfortunately Emacs recently disabled
+imagemagick support by default (see
+https://lists.gnu.org/r/emacs-devel/2018-12/msg00036.html).  So you
+need to compile Emacs by hand, specifying `--with-imagemagick` flag to
+`./configure` script.
+
+Telega won't depend on `imagemagick` in future, since required image
+features has been added to newer Emacs, see
+https://lists.gnu.org/r/emacs-devel/2019-06/msg00242.html
+
 **Q**: I'm from Russia, does `telega.el` has proxy support?
 
 **A**: Yes, use `telega-proxies` custom variable, for example:
@@ -333,6 +358,10 @@ libtdjson.so: cannot open shared object file: No such file or directory
        ))
 ```
 See `C-h v telega-proxies RET` for full range of proxy types.
+
+**Q**: Stickers are not shown.
+
+**A**: Make sure you have `imagemagick` support and please install `webp` package
 
 **Q**: No glyphs for some unicode characters.
 
