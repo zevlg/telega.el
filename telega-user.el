@@ -26,6 +26,8 @@
 ;;; Code:
 (require 'telega-core)
 
+(declare-function telega-root--chat-update "telega-root"
+                  (chat &optional for-reorder))
 (declare-function telega-info--insert-user "telega-info" (user &optional chat))
 
 (defvar telega-user-button-map
@@ -128,13 +130,20 @@ Default is: `full'"
 
 (defun telega--on-updateUserStatus (event)
   "User status has been changed."
-  (let ((user (telega-user--get (plist-get event :user_id)))
-        (status (plist-get event :status)))
+  (let* ((user-id (plist-get event :user_id))
+         (user (telega-user--get user-id))
+         (status (plist-get event :status)))
     (plist-put user :status status)
     ;; NOTE: For online status, set special USER property with value
     ;; of time last seen online
     (when (eq (telega--tl-type status) 'userStatusOnline)
       (plist-put user :telega-last-online (telega-time-seconds)))
+
+    ;; Update root as well
+    (let ((chat (telega-chat-get user-id 'offline)))
+      (when (and chat (not (= telega--me-id user-id)))
+        (telega-root--chat-update chat)))
+
     (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega-user--chats-in-common (with-user)

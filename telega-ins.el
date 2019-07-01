@@ -1378,6 +1378,7 @@ Return t."
         (pinned-p (plist-get chat :is_pinned))
         (custom-order (telega-chat-uaprop chat :order))
         (muted-p (telega-chat--muted-p chat))
+        (chat-type (telega-chat--type chat 'no-interpret))
         (chat-info (telega-chat--info chat))
         (chat-ava (plist-get chat :telega-avatar-1)))
     (when (plist-get chat-info :is_verified)
@@ -1424,7 +1425,7 @@ Return t."
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
-                          (cl-case (telega-chat--type chat 'no-interpret)
+                          (cl-case chat-type
                             (basicgroup
                              (telega-ins telega-symbol-contact
                                          (number-to-string
@@ -1443,7 +1444,14 @@ Return t."
                                     :elide t)
         (when chat-ava
           (telega-ins--image chat-ava))
-        (telega-ins title))
+        (telega-ins title)
+        ;; Online status
+        (when (and telega-symbol-online-status (eq chat-type 'private))
+          (let ((user (telega-chat--user chat)))
+            (when (and (not (= telega--me-id (plist-get user :id)))
+                       (not (telega-user-bot-p user))
+                       (equal (telega-user--seen user) "Online"))
+              (telega-ins telega-symbol-online-status)))))
       (telega-ins umstring))
 
     (telega-ins (or (cadr brackets) "]"))

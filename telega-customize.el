@@ -797,6 +797,12 @@ Good candidates also are 🄌 or ⬤."
   :type 'cons
   :group 'telega-symbol)
 
+(defcustom telega-symbol-online-status (propertize "*" 'face 'success)
+  "Symbol used to display user's online status in root buffer.
+If nil, then user's online status is not displayed."
+  :type 'string-or-null-p
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
