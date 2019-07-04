@@ -28,6 +28,7 @@
 ;; nothing has been inserted.
 
 ;;; Code:
+(require 'format-spec)
 (require 'seq)
 
 (require 'telega-core)
@@ -1388,6 +1389,13 @@ Return t."
       (setq title (concat title telega-symbol-verified)))
     (when (telega-chat--secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
+    ;; Check for custom label
+    (let ((label (telega-chat-uaprop chat :label)))
+      (when (and label telega-chat-label-format)
+        (setq title (concat (format-spec telega-chat-label-format
+                                         (format-spec-make ?L label))
+                            title))))
+
     (unless brackets
       (setq brackets (cdr (seq-find (lambda (bspec)
                                       (telega-filter-chats

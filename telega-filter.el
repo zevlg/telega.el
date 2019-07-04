@@ -54,6 +54,7 @@ Bind it to temporary disable some filters.")
     (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "r") 'telega-filter-by-restriction)
     (define-key map (kbd "s") 'telega-filter-by-user-status)
+    (define-key map (kbd "l") 'telega-filter-by-label)
     (define-key map (kbd "T") 'telega-filter-by-top)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
@@ -515,6 +516,25 @@ Specify INCOMING-P to filter by incoming link relationship."
 (define-telega-filter saved-messages (chat)
   "Matches CHAT if it is SavedMessages chat."
   (= (plist-get chat :id) telega--me-id))
+
+(defun telega-filter-by-label (label)
+  "Filter chats by custom chat LABEL.
+See `telega-chat-custom-label'."
+  (interactive (list (funcall telega-completing-read-function
+                              "Custom label: "
+                              (seq-uniq
+                               (cl-remove-if-not
+                                'stringp
+                                (mapcar
+                                 (lambda (chat)
+                                   (telega-chat-uaprop chat :label))
+                                 telega--ordered-chats)))
+                              nil t)))
+  (telega-filter-add (list 'label label)))
+
+(define-telega-filter label (chat label)
+  "Matches CHAT if it is custom label is LABEL."
+  (equal (telega-chat-uaprop chat :label) label))
 
 (provide 'telega-filter)
 

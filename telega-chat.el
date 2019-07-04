@@ -779,6 +779,18 @@ CHAT must be supergroup or channel."
   (telega-chat--reorder chat nil)
   (telega-root--chat-update chat))
 
+(defun telega-chat-custom-label (chat label)
+  "For CHAT (un)set custom LABEL."
+  (interactive (let ((chat (telega-chat-at-point)))
+                 (list chat
+                       (read-string "Custom label [empty to unset]: "
+                                    (telega-chat-uaprop chat :label)))))
+  (when (string-empty-p label)
+    (setq label nil))
+
+  (setf (telega-chat-uaprop chat :label) label)
+  (telega-root--chat-update chat))
+
 (defun telega--setChatMemberStatus (chat user status)
   "Change the STATUS of a CHAT USER, needs appropriate privileges.
 STATUS is one of: "
@@ -1282,7 +1294,7 @@ Also mark messages as read with `viewMessages'."
     (when (and (> display-start (- (point-max) 2000))
                (telega-chatbuf--need-newer-history-p))
       (telega-chatbuf--load-newer-history))
-      
+
     ;; Mark some messages as read
     (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
               (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
