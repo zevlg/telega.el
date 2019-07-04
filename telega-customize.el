@@ -284,7 +284,7 @@ Set it to `nil' to use your user name instead of default \"Saved Messages\"."
   :type 'string
   :group 'telega-root)
 
-(defcustom telega-chat-label-format (propertize "%L || " 'face 'bold)
+(defcustom telega-chat-label-format (propertize "%L | " 'face 'bold)
   "*Non-nil to prefix chat's title with custom label.
 %L - replaced with chat's label.
 See `telega-chat-custom-label' for details."
