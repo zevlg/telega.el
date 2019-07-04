@@ -106,7 +106,11 @@ otherwise add to existing active filters."
                                    :max filters-width
                                    :elide t
                                    :elide-trail (/ filters-width 2))
-       (telega-ins (prin1-to-string (car telega--filters))))
+       (let* ((active-filter (car telega--filters))
+              (af-str (prin1-to-string active-filter)))
+         (unless (equal active-filter (list telega-filter-default))
+           (setq af-str (propertize af-str 'face 'telega-filter-active)))
+         (telega-ins af-str)))
      (telega-ins "----"))))
 
 (defun telega-filters--create ()

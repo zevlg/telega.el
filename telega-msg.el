@@ -238,14 +238,7 @@
 
 (defun telega-msg-open-photo (msg)
   "Open content for photo message MSG."
-  (let* ((photo (telega--tl-get msg :content :photo))
-         (hr (telega-photo--highres photo))
-         (hr-file (telega-file--renew hr :photo)))
-    (telega-file--download hr-file 32
-      (lambda (file)
-        (telega-msg-redisplay msg)
-        (when (telega-file--downloaded-p file)
-          (find-file (telega--tl-get file :local :path)))))))
+  (telega-photo--open (telega--tl-get msg :content :photo) msg))
 
 (defun telega-msg-open-animation (msg)
   "Open content for animation message MSG."

@@ -305,6 +305,18 @@ By default LIMITS is `telega-photo-maxsize'."
           (setq ret thumb))))
     ret))
 
+(defun telega-photo--open (photo &optional for-msg)
+  "Download highres PHOTO asynchronously and open it as a file.
+If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
+  (let* ((hr (telega-photo--highres photo))
+         (hr-file (telega-file--renew hr :photo)))
+    (telega-file--download hr-file 32
+      (lambda (file)
+        (when for-msg
+          (telega-msg-redisplay for-msg))
+        (when (telega-file--downloaded-p file)
+          (find-file (telega--tl-get file :local :path)))))))
+
 
 ;;; Auto-downloading media
 (defun telega-media--autodownload-on-chat (chat)

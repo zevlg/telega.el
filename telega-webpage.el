@@ -378,7 +378,10 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
     (pageBlockAudio
      (telega-ins "<TODO: pageBlockAudio>"))
     (pageBlockPhoto
-     (telega-ins--photo (plist-get pb :photo) nil telega-webpage-photo-maxsize)
+     (telega-button--insert 'telega (plist-get pb :photo)
+       :inserter (lambda (photo)
+                   (telega-ins--photo photo nil telega-webpage-photo-maxsize))
+       :action 'telega-photo--open)
      (telega-ins-prefix "\n"
        (telega-webpage--ins-pb (plist-get pb :caption))))
     (pageBlockVideo

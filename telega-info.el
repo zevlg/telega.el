@@ -153,7 +153,20 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (share-text (plist-get full-info :share_text))
          (out-link (plist-get user :outgoing_link))
          (in-link (plist-get user :incoming_link))
-         (has-button-line nil))
+         (has-button-line nil)
+         (profile-photos (telega--getUserProfilePhotos user)))
+
+    ;; Clickable user's profile photos
+    (when profile-photos
+      (dolist (photo profile-photos)
+        (telega-button--insert 'telega photo
+          :inserter (lambda (photo-val)
+                      (telega-ins--image
+                       (telega-photo--image
+                        photo-val telega-user-photo-maxsize)))
+          :action 'telega-photo--open)
+        (telega-ins " "))
+      (telega-ins "\n"))
 
     (unless (eq (telega--tl-type in-link) 'linkStateIsContact)
       (telega-ins--button "Share My Contact Info"

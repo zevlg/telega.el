@@ -74,6 +74,13 @@ If BUTTON has custom `:action', then use it, otherwise describe the user."
   "Get user by USER-ID."
   (telega--info 'user user-id))
 
+(defun telega-user--by-username (username)
+  "Get user by his USERNAME."
+  (when (string-prefix-p "@" username)
+    (setq username (substring username 1)))
+  (let ((users (hash-table-values (alist-get 'user telega--info))))
+    (cl-find username users :key (telega--tl-prop :username) :test 'equal)))
+
 (defmacro telega-user-me ()
   "Return me is a user."
   `(telega-user--get telega--me-id))
@@ -196,15 +203,16 @@ LIMIT by default is 50."
               (telega-user--get (plist-get member :user_id)))
             (plist-get reply :members))))
 
-(defun telega--getUserProfilePhotos (user &optional offset limit)
+(defun telega--getUserProfilePhotos (user &optional offset limit callback)
   "Return the profile photos (`UserProfilePhotos') of a USER.
 OFFSET - number of photos to skip (default=0)
 LIMIT - limit number of photos (default=100)."
-  (telega-server--call
-   (list :@type "getUserProfilePhotos"
-         :user_id (plist-get user :id)
-         :offset (or offset 0)
-         :limit (or limit 100))))
+  (let ((reply (telega-server--call
+                (list :@type "getUserProfilePhotos"
+                      :user_id (plist-get user :id)
+                      :offset (or offset 0)
+                      :limit (or limit 100)))))
+    (append (plist-get reply :photos) nil)))
 
 (defun telega-describe-user (user &optional full-p)
   "Show info about USER.

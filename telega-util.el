@@ -215,7 +215,7 @@ N can't be 0."
 
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."
-  (cl-assert (memq link-type '(url file user hashtag)))
+  (cl-assert (memq link-type '(url file username user hashtag)))
 
   (list 'action 'telega-link--button-action
         'face (or face 'telega-link)
@@ -226,9 +226,10 @@ N can't be 0."
   (let ((link (button-get button :telega-link)))
     (telega-debug "Action on link: %S" link)
     (cl-ecase (car link)
-      (user (with-telega-help-win "*Telegram User Info*"
-              (telega-info--insert-user
-               (telega-user--get (cdr link)))))
+      (user (telega-describe-user (telega-user--get (cdr link))))
+      (username
+       (telega-describe-user
+        (telega-user--by-username (cdr link))))
       (hashtag
        (message "TODO: `hashtag' button action: tag=%s" (cdr link)))
       (url
@@ -241,7 +242,8 @@ N can't be 0."
   (let ((ent-type (plist-get entity :type)))
     (cl-case (telega--tl-type ent-type)
       (textEntityTypeMention
-       (list 'face 'telega-entity-type-mention))
+       (telega-link-props 'username text
+                          'telega-entity-type-mention))
       (textEntityTypeMentionName
        (telega-link-props 'user (plist-get ent-type :user_id)
                           'telega-entity-type-mention))

@@ -486,12 +486,18 @@ NIL yields empty string for the convenience."
 ;; Make 'telega-button be separate (from 'button) type
 (put 'telega-button 'type 'telega)
 (put 'telega-button 'keymap button-map)
-(put 'telega-button 'action 'ignore)
+(put 'telega-button 'action 'telega-button--action)
 (put 'telega-button 'rear-nonsticky t)
 (put 'telega-button 'face nil)
 (put 'telega-button :inserter 'telega-button--ins-error)
 (put 'telega-button :value nil)
 (put 'telega 'button-category-symbol 'telega-button)
+
+(defun telega-button--action (button)
+  "Run BUTTON's `:action' function on its `:value'."
+  (let ((telega-action (button-get button :action)))
+    (when telega-action
+      (funcall telega-action (button-get button :value)))))
 
 (defun telega-button--sensor-func (_window oldpos dir)
   "Function to be used in `cursor-sensor-functions' text property.

@@ -399,6 +399,11 @@ See `telega-ins--message' for NO-HEADER argument."
   :type 'boolean
   :group 'telega-user)
 
+(defcustom telega-user-photo-maxsize '(10 . 10)
+  "*Limit displayed profile photos size to this (WIDTH . HEIGHT) characters."
+  :type '(cons integer integer)
+  :group 'telega-user)
+
 
 (defgroup telega-chat nil
   "Customization for chat buffer."
@@ -902,6 +907,11 @@ Install all symbol widths inside `telega-load-hook'."
 (defface telega-filter-button-inactive
   '((t :inherit shadow))
   "*Face to use for inactive custom filters."
+  :group 'telega-faces)
+
+(defface telega-filter-active
+  '((t :inherit bold))
+  "Face to emphasize active chat filter other then `telega-filter-default'."
   :group 'telega-faces)
 
 (defface telega-root-heading

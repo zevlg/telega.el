@@ -120,10 +120,7 @@ If custom face is specified in PROPS, then
     (setq props (plist-put props 'cursor-sensor-functions
                            '(telega-button--sensor-func))))
   (unless (plist-get props 'action)
-    (setq props (plist-put props 'action
-                           (lambda (button)
-                             (funcall (button-get button :action)
-                                      (button-get button :value))))))
+    (setq props (plist-put props 'action 'telega-button--action)))
   (button-at (apply 'insert-text-button label props)))
 
 (defmacro telega-ins--raw-button (props &rest body)
@@ -1150,9 +1147,15 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            ccol)
       (if (and no-header (zerop (plist-get msg :edit_date)))
           (telega-ins (make-string awidth ?\s))
-        (telega-ins--image avatar 0)
-        (telega-ins--message-header msg addon-header-inserter)
-        (telega-ins--image avatar 1))
+
+        ;; Show user profile when clicked on avatar, header
+        (telega-ins--with-props
+            (when sender
+              (list 'action (lambda (_bignored)
+                              (telega-describe-user sender))))
+          (telega-ins--image avatar 0)
+          (telega-ins--message-header msg addon-header-inserter)
+          (telega-ins--image avatar 1)))
 
       (setq ccol (telega-current-column))
       (telega-ins--fwd-info-inline (plist-get msg :forward_info))
