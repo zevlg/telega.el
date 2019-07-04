@@ -15,8 +15,6 @@ In some random order:
 
 - [x] Listing chats, reordering chats according to internal Telegram
       order
-- [x] Custom order for chats (some chats on top, some chats on bottom, etc)
-- [x] Expressive `ibuffer`-like chats filtering
 - [x] Getting info about users, groups and supergroups
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
 - [x] Fetching chat history, sending messages, replies, edits, deleting
@@ -46,6 +44,12 @@ In some random order:
 - [ ] Shared media
 - [ ] Inline bots requests
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
+
+## Unique features
+
+- [x] Expressive `ibuffer`-like chats filtering
+- [x] Custom order for chats (some chats on top, some chats on bottom, etc)
+- [x] Labeled chats, you can assign custom label to chat
 
 # Screenshots
 
