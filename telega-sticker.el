@@ -28,13 +28,17 @@
 
 (require 'telega-core)
 (require 'telega-util)
+(require 'telega-media)
 
 ;; shutup compiler
 (defvar ido-matches)
 (defvar ivy--index)
 (defvar ivy--old-cands)
 
+(declare-function telega-chatbuf-sticker-insert "telega-chat" (sticker))
+(declare-function telega-chatbuf-animation-insert "telega-chat" (animation))
 
+
 (defvar telega-help-win--emoji nil
   "Emoji for which help window is displayed.")
 (make-variable-buffer-local 'telega-help-win--emoji)
@@ -233,10 +237,9 @@ Photo and Video files have attached sticker sets."
 (defun telega--viewTrendingStickerSets (set-id &rest other-ids)
   (telega-server--call
    (list :@type "viewTrendingStickerSets"
-         :sticker_set_ids (cl-map 'vector 'identity
-                                  (nconc (list set-id) other-ids)))))
+         :sticker_set_ids (apply 'vector set-id other-ids))))
 
-(defun telega--getRecentStickers (&optional attached-p callback)
+(defun telega--getRecentStickers (&optional attached-p _callback)
   "Returns a list of recently used stickers.
 Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   ;; TODO: async callback
@@ -684,7 +687,7 @@ Return sticker set."
   ;;
   ;;   3) Thumbnail and animation downloading
   ;;      Fallback to svg loading image
-  (let* ((afile (telega-animation--file animation))
+  (let* ((_afile (telega-animation--file animation))
          (tfile (telega-animation--thumb-file animation))
          (filename (and (telega-file--downloaded-p tfile) tfile))
          (cwidth-xmargin (plist-get animation :telega-image-cwidth-xmargin)))

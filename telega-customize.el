@@ -1,4 +1,4 @@
-;;; telega-customize.el --- Customization for telega
+;;; telega-customize.el --- Customization for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 
@@ -89,7 +89,7 @@ Implies `telega-use-chat-info-database' set to non-nil."
 (defcustom telega-proxies nil
   "*List of proxies.
 Format is:
-(:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
+  (:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
 
 where PROXY-TYPE is one of:
   (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
@@ -97,7 +97,7 @@ where PROXY-TYPE is one of:
          :http_only <BOOL>)
   (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)
 
-<BOOL> is either `t' or `:false', `nil' is not valid value."
+<BOOL> is either t or `:false', nil is not valid value."
   :type 'list
   :group 'telega)
 
@@ -280,7 +280,7 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
 
 (defcustom telega-chat-me-custom-title (propertize "Saved Messages" 'face 'bold)
   "*Custom title for the chat with myself.
-Set it to `nil' to use your user name instead of default \"Saved Messages\"."
+Set it to nil to use your user name instead of default \"Saved Messages\"."
   :type 'string
   :group 'telega-root)
 
@@ -305,8 +305,7 @@ See `telega-chat-custom-label' for details."
 (defcustom telega-filter-default 'all
   "*Default chats filter to apply.
 For example:
-  `(any pin unread)'  - to show pinned or chats with unread messages.
-"
+  `(any pin unread)'  - to show pinned or chats with unread messages."
   :type 'list
   :group 'telega-filter)
 
@@ -359,7 +358,7 @@ See `telega-ins--message' for NO-HEADER argument."
   :group 'telega-inserter)
 
 (defcustom telega-inserter-for-msg-notification 'telega-ins--msg-notification
-  "*Inserter used to form body for notification bubble"
+  "*Inserter used to form body for notification bubble."
   :type 'function
   :group 'telega-inserter)
 
@@ -506,7 +505,9 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :group 'telega)
 
 (defcustom telega-notifications-delay 0.5
-  "*Delay in seconds before making decision show or not the message in notification.
+  "*Delay in seconds for notifications.
+This delay is taken before making decision show or not the
+message in notification.
 Taking pause before showing notification is wise, because another
 telegram may be active with the chat opened, you don't want the
 notification to be shown for already read message.
@@ -547,8 +548,7 @@ cdr for any groups including channels
 For example:
   (cons
     (list :mute_for 0 :show_preview t)
-    (list :mute_for 599695961 :show_preview t))
-"
+    (list :mute_for 599695961 :show_preview t))"
   :type 'cons
   :group 'telega-notifications)
 

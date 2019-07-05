@@ -111,36 +111,6 @@ hasn't been started, i.e. request hasn't been sent to server."
    (list :@type "deleteFile"
          :file_id file-id)))
 
-(defsubst telega-file--size (file)
-  "Return FILE size."
-  ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
-  ;; size
-  (let ((fsize (plist-get file :size))
-        (esize (plist-get file :expected_size)))
-    (if (zerop fsize) esize fsize)))
-
-(defsubst telega-file--downloaded-p (file)
-  "Return non-nil if FILE has been downloaded."
-  (telega--tl-get file :local :is_downloading_completed))
-
-(defsubst telega-file--downloading-p (file)
-  "Return non-nil if FILE is downloading right now."
-  (telega--tl-get file :local :is_downloading_active))
-
-(defsubst telega-file--can-download-p (file)
-  "Return non-nil if FILE can be downloaded.
-May return nil even when `telega-file--downloaded-p' returns non-nil."
-  (telega--tl-get file :local :can_be_downloaded))
-
-(defsubst telega-file--need-download-p (file)
-  (and (telega-file--can-download-p file)
-       (not (telega-file--downloaded-p file))))
-
-(defsubst telega-file--downloading-progress (file)
-  "Return progress of file downloading as float from 0 to 1."
-  (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
-                  (telega-file--size file))))
-
 (defun telega-file--callback-wrap (callback check-fun)
   "Wrapper for CALLBACK.
 Removes callback in case downloading is canceled or completed."
@@ -202,15 +172,6 @@ PRIORITY is same as for `telega-file--download'."
 (defsubst telega-file--uploaded-p (file)
   "Return non-nil if FILE has been uploaded."
   (telega--tl-get file :remote :is_uploading_completed))
-
-(defsubst telega-file--uploading-p (file)
-  "Return non-nil if FILE is uploading right now."
-  (telega--tl-get file :remote :is_uploading_active))
-
-(defsubst telega-file--uploading-progress (file)
-  "Return progress of file uploading as float from 0 to 1."
-  (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
-                  (telega-file--size file))))
 
 (defun telega-file--upload (filename &optional file-type priority callback)
   "Upload FILENAME to the cloud.

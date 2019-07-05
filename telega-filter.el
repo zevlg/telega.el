@@ -28,6 +28,9 @@
 (require 'telega-ins)
 (require 'telega-customize)
 
+(declare-function telega-chat--muted-p "telega-chat"  (chat))
+
+
 (defvar telega-filters--ewoc nil "ewoc for custom filters.")
 
 (defvar telega-filters--inhibit-redisplay nil

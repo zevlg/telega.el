@@ -25,11 +25,17 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-info)
 
-(declare-function telega-root--chat-update "telega-root"
-                  (chat &optional for-reorder))
-(declare-function telega-info--insert-user "telega-info" (user &optional chat))
+(declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
 
+(declare-function telega--getGroupsInCommon "telega-chat" (with-user))
+(declare-function telega--createPrivateChat "telega-chat" (user))
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat-color "telega-chat" (chat))
+(declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+
+
 (defvar telega-user-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
@@ -158,12 +164,7 @@ Default is: `full'"
   (let ((gic-cnt (plist-get (telega--full-info with-user)
                             :group_in_common_count)))
     (unless (zerop gic-cnt)
-      (telega-chats-list-get
-       (telega-server--call
-        (list :@type "getGroupsInCommon"
-              :user_id (plist-get with-user :id)
-              :offset_chat_id 0
-              :limit gic-cnt))))))
+      (telega--getGroupsInCommon with-user))))
 
 (defun telega-user-initials (user)
   "Return initials composed from first and last name of the USER."
@@ -203,7 +204,7 @@ LIMIT by default is 50."
               (telega-user--get (plist-get member :user_id)))
             (plist-get reply :members))))
 
-(defun telega--getUserProfilePhotos (user &optional offset limit callback)
+(defun telega--getUserProfilePhotos (user &optional offset limit _callback)
   "Return the profile photos (`UserProfilePhotos') of a USER.
 OFFSET - number of photos to skip (default=0)
 LIMIT - limit number of photos (default=100)."
@@ -270,7 +271,7 @@ CONTACT is some user you have exchanged contacs with."
   "Remove users determined by USER-IDS from contacts."
   (telega-server--call
    (list :@type "removeContacts"
-         :user_ids (cl-map 'vector 'identity user-ids))))
+         :user_ids (apply 'vector user-ids))))
 
 (defun telega--searchContacts (query &optional limit)
   "Search contacts for already chats by QUERY."
@@ -285,7 +286,7 @@ CONTACT is some user you have exchanged contacs with."
   "Import CONTACTS into contacts list."
   (telega-server--call
    (list :@type "importContacts"
-         :contacts (cl-map 'vector 'identity contacts))))
+         :contacts (apply 'vector contacts))))
 
 (defun telega-contact-add (phone &optional name)
   "Add user by PHONE to contact list."
@@ -307,9 +308,7 @@ CONTACT is some user you have exchanged contacs with."
 (defun telega-describe-contact (contact)
   "Show CONTACT information."
   (with-telega-help-win "*Telega Contact*"
-    (let* ((user-id (plist-get contact :user_id))
-           (user (telega-user--get user-id))
-           (full-info (telega--full-info user)))
+    (let ((user (telega-user--get (plist-get contact :user_id))))
       (when (telega-ins (plist-get contact :first_name))
         (telega-ins " "))
       (telega-ins (plist-get contact :last_name) "\n")

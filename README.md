@@ -36,7 +36,7 @@ In some random order:
 - [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
       messages, contacts, etc (PARTLY)
-- [x] Poll messages
+- [x] Poll messages, Poll creation
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
 - [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
 - [x] InstantView for web pages 

@@ -30,7 +30,9 @@
 (require 'telega-customize)
 
 (declare-function telega-root--buffer "telega-root")
+(declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
 
+
 (defun telega--on-event (event)
   (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
     (if (symbol-function event-sym)
@@ -97,6 +99,7 @@ If NO-VOIP-QUERY-P is non-nil, then build `telega-server' without
 VOIP support, otherwise ask user.
 Raise error if compilation/test fails."
   (interactive)
+  (telega-test-env 'quiet)
   (when (or no-query-p
             (y-or-n-p "Build `telega-server'? "))
 
@@ -105,8 +108,7 @@ Raise error if compilation/test fails."
                          (y-or-n-p "Build `telega-server' with VOIP support? "))))
       (unless (zerop
                (shell-command
-                (concat "make " (if with-voip-p "WITH_VOIP=t" "") " install"
-                        " && make test")))
+                "make " (if with-voip-p "WITH_VOIP=t" "") " install"))
         (error "`telega-server' installation failed")))))
 
 (defun telega-server--find-bin ()

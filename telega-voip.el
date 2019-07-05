@@ -29,10 +29,13 @@
 (require 'telega-customize)
 (require 'telega-ffplay)
 
+(declare-function telega-root--buffer "telega-root")
 (declare-function telega-root--chat-update "telega-root" (chat))
 (declare-function telega-status--set "telega-root"
                   (conn-status &optional aux-status raw))
+(declare-function telega-chat-get "telega-chat")
 
+
 (defconst telega-voip-protocol
   (list :@type "callProtocol"
         :udp_p2p t :udp_reflector t

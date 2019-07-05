@@ -31,8 +31,17 @@
 
 (require 'telega-sticker)
 
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
+(declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+(declare-function telega--searchPublicChat "telega-chat" (username))
+(declare-function telega--checkChatInviteLink "telega-chat" (invite-link))
+(declare-function telega--joinChatByInviteLink "telega-chat" (invite-link))
+
+
 (defun telega-tme-open-username (username &rest bot-params)
-  "Open username link."
+  "Open chat by its USERNAME.
+BOT-PARAMS are additional params."
   (cond ((string= username "telegrampassport")
          ;; TODO: passport
          (message "telega TODO: handle `telegrampassport'"))
@@ -64,7 +73,7 @@
          (chat (when link-check
                  (if (zerop chat-id)
                      ;; Can only join by link
-                     (when (y-or-n-p (format "Join \"%s\": "
+                     (when (y-or-n-p (format "Join \"%s\"? "
                                              (plist-get link-check :title)))
                        (telega--joinChatByInviteLink url))
 
@@ -73,7 +82,7 @@
     (when chat
       (telega-chat--pop-to-buffer chat))))
 
-(defun telega-tme-open-proxy (type proxy)
+(defun telega-tme-open-proxy (_type _proxy)
   "Open the PROXY."
   ;; TYPE is "socks" or "proxy"
   ;; :server, :port, :user, :pass, :secret

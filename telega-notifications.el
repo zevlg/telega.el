@@ -38,6 +38,11 @@
 (require 'telega-core)
 (require 'telega-util)
 
+(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+
+
 (defvar telega-notifications--last-id nil
   "Currently shown notification.")
 

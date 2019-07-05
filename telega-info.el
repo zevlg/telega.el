@@ -140,10 +140,6 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          :limit 200)
    callback))
 
-(defun telega-sort-members-by (members by)
-  ;; TODO
-  members)
-
 (defun telega-info--insert-user (user &optional chat)
   "Insert USER info into current buffer."
   (let* ((full-info (telega--full-info user))

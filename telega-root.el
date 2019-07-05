@@ -26,15 +26,24 @@
 ;;; Code:
 (require 'ewoc)
 (require 'telega-core)
+(require 'telega-util)
 (require 'telega-server)
 (require 'telega-filter)
+(require 'telega-info)
 (require 'telega-voip)
 (require 'telega-ins)
-(require 'telega-util)
 (require 'telega-customize)
 
 (declare-function tracking-mode "tracking" (&optional arg))
 
+(declare-function telega-chats--kill-em-all "telega-chat")
+(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega--searchPublicChats "telega-chat" (query &optional callback))
+(declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega--searchChats "telega-chat" (query &optional limit))
+
+
 (defvar telega-root--ewoc nil)
 (defvar telega-contacts--ewoc nil
   "Ewoc for contacts list.")
@@ -171,20 +180,9 @@ Terminate telega-server and kill all chat buffers."
   (telega-chats--kill-em-all)
   (telega-server-kill))
 
-(defsubst telega-root--buffer ()
+(defun telega-root--buffer ()
   "Return telega root buffer."
   (get-buffer telega-root-buffer-name))
-
-(defmacro with-telega-root-buffer (&rest body)
-  "Execute BODY setting current buffer to root buffer.
-Inhibits read-only flag."
-  (declare (indent 0))
-  `(when (buffer-live-p (telega-root--buffer))
-     (with-current-buffer telega-root-buffer-name
-       (let ((inhibit-read-only t))
-         (unwind-protect
-             (progn ,@body)
-           (set-buffer-modified-p nil))))))
 
 
 ;;; Auth/Connection Status

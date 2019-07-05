@@ -1,6 +1,6 @@
 ;;; telega-core.el --- Core functionality for telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018 by Zajcev Evgeny.
+;; Copyright (C) 2018-2019 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Mon Apr 23 18:09:01 2018
@@ -21,15 +21,18 @@
 
 ;;; Commentary:
 
-;; Variables and runtime goodies for telega
+;; Variables, macroses, defsubst and runtime goodies for telega
 
 ;;; Code:
 (require 'cl-lib)
 (require 'subr-x)
 (require 'ring)
 (require 'cursor-sensor)
+(eval-when-compile (require 'cl))       ;defsetf
 
 (require 'telega-customize)
+
+(declare-function telega-chat--info "telega-chat"  (chat))
 
 (defconst telega--lib-directory
   (or (and load-file-name
@@ -56,7 +59,7 @@ Used in help buffers to refer chat.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
-(defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions)")
+(defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions).")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
@@ -64,16 +67,16 @@ Used to calculate numbers displayed in custom filter buttons.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
 
-(defvar telega--info nil "Alist of (TYPE . INFO-TABLE)")
-(defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE)")
+(defvar telega--info nil "Alist of (TYPE . INFO-TABLE).")
+(defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE).")
 
 (defvar telega--top-chats nil
   "Alist of (CATEGORY LAST-UPDATE-TIME ..)
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 `InlineBots', `Calls'")
 (defvar telega--last-buffer nil
-  "Track switching buffers, so we can run the code when switching
-from chat buffer.")
+  "Used to track buffers switching.
+So we can run the code when switching from chat buffer.")
 (defvar telega--stickersets nil
   "Alist of seen sticker sets.
 ID -> sticker set.
@@ -101,7 +104,7 @@ Used to continue searching messages.")
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
 (defvar telega--search-contacts nil
-  "Result of last `telega--searchContacts'")
+  "Result of last `telega--searchContacts'.")
 (defvar telega--search-global-loading nil
   "Non-nil if globally searching public chats asynchronously.
 Actualy value is `:@extra' of the call.")
@@ -120,23 +123,15 @@ and `:marked_as_unread_unmuted_count'")
 
 (defvar telega--chat-buffers nil "List of all chat buffers.")
 (defvar telega--files nil
-  "Files hash FILE-ID -> (list FILE UPDATE-CALBACKS..)")
+  "Files hash FILE-ID -> (list FILE UPDATE-CALBACKS..).")
 (defvar telega--files-updates
   "Hash of FILE-ID -> (list-of (UPDATE-CB CB-ARGS))
 UPDATE-CB is callback to call when file updates. UPDATE-CB is
 called with FILE and CB-ARGS as arguments.
 UPDATE-CB should return non-nil to be removed after its being called.")
-;; DEPRECATED
-(defvar telega--downloadings nil
-  "Hash of active downloadings FILE-ID -> (list-of (UPDATE-CB CB-ARGS)).
-Where UPDATE-CB is callback to call with FILE and CB-ARGS when file updates.
-Used to update messages on file updates.")
-;; DEPRECATED
-(defvar telega--uploadings nil
-  "Hash of active uploadings FILE-ID -> (list of (UPDATE-CB CB-ARGS)).")
 (defvar telega--proxy-pings nil
   "Alist for the proxy pings.
-(PROXY-ID . TIMESTAMP SECONDS)")
+In form (PROXY-ID . TIMESTAMP SECONDS)")
 (defvar telega-voip--alist nil
   "Alist of all calls currently in processing.
 In form (ID . CALL)")
@@ -158,8 +153,28 @@ alist where key is one of `private', `group' or `channel'.")
 
 (defvar telega--ignored-messages-ring (make-ring 0)
   "Ring of ignored messages.
-Use M-x telega-ignored-messages RET to display the list.")
+Use \\[execute-extended-command] telega-ignored-messages RET to
+display the list.")
 
+
+;;; Shared chat buffer local variables
+(defvar telega-chatbuf--chat nil
+  "Telega chat for the current chat buffer.")
+(make-variable-buffer-local 'telega-chatbuf--chat)
+
+(defvar telega-chatbuf--messages nil
+  "Local cache for the messages.")
+(make-variable-buffer-local 'telega-chatbuf--messages)
+
+(defvar telega-chatbuf--inline-query nil
+  "Non-nil if some inline bot has been requested.
+Actual value is `:@extra` value of the call to inline bot.")
+(make-variable-buffer-local 'telega-chatbuf--inline-query)
+
+(defvar telega-chatbuf--input-marker nil)
+(make-variable-buffer-local 'telega-chatbuf--input-marker)
+
+
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
@@ -204,8 +219,6 @@ Done when telega server is ready to receive queries."
 
   (setq telega--files (make-hash-table :test 'eq))
   (setq telega--files-updates (make-hash-table :test 'eq))
-  (setq telega--downloadings (make-hash-table :test 'eq))
-  (setq telega--uploadings (make-hash-table :test 'eq))
 
   (setq telega-voip--alist nil)
   (setq telega-voip--active-call nil)
@@ -222,8 +235,42 @@ Done when telega server is ready to receive queries."
   (setq telega--animations-saved nil)
   )
 
+(defun telega-test-env (&optional quiet-p)
+  "Test Emacs environment.
+If QUIET-P is non-nil, then show success message in echo area.
+Return non-nil if all tests are passed."
+  (interactive "P")
+  ;; 62bits for numbers is required
+  ;; i.e. ./configure --with-wide-int
+  (cl-assert (= most-positive-fixnum 2305843009213693951) nil
+             "Emacs with wide ints (--with-wide-int) is required")
+  (cl-assert (= (string-to-number "542353335") 542353335) nil
+             (concat "Emacs with `(string-to-number \"542353335\") ==> 542353335'"
+                     " is required"))
+
+  ;; at least 25.1 emacs is required
+  ;; see https://t.me/emacs_telega/1592
+  (cl-assert (fboundp 'cursor-intangible-mode) nil
+             "Emacs with `cursor-intangible-mode' is required")
+
+  ;; For now stick with at least 26.1 Emacs
+  (cl-assert (string-version-lessp "26.0" emacs-version) nil
+             (format "At least Emacs 26.0 is required, but you have %s"
+                     emacs-version))
+
+  ;; imagemagick for images, no fallback yet
+  ;; however newer Emacs implements image properties needed by telega
+  (cl-assert (image-type-available-p 'imagemagick) nil
+             (concat "Emacs with `imagemagick' support is required."
+                     " (libmagickcore, libmagickwand, --with-imagemagick)"))
+  (cl-assert (image-type-available-p 'svg) nil
+             "Emacs with `svg' support is required. (librsvg)")
+  (unless quiet-p
+    (message "Your Emacs is suitable to run telega.el"))
+  t)
+
 (defmacro telega-save-excursion (&rest body)
-  "Save current point as moving marker."
+  "Execute BODY saving current point as moving marker."
   (declare (indent 0))
   (let ((pnt-sym (gensym)))
     `(let ((,pnt-sym (copy-marker (point) t)))
@@ -252,8 +299,41 @@ Done when telega server is ready to receive queries."
        (telega-save-excursion
          ,@body))))
 
+(defmacro with-telega-root-buffer (&rest body)
+  "Execute BODY setting current buffer to root buffer.
+Inhibits read-only flag."
+  (declare (indent 0))
+  `(when (buffer-live-p (telega-root--buffer))
+     (with-current-buffer telega-root-buffer-name
+       (let ((inhibit-read-only t))
+         (unwind-protect
+             (progn ,@body)
+           (set-buffer-modified-p nil))))))
+
+(defmacro with-telega-chatbuf (chat &rest body)
+  "Execute BODY setting current buffer to chat buffer of CHAT.
+Executes BODY only if chat buffer already exists.
+If there is no corresponding buffer, then do nothing.
+Inhibits read-only flag."
+  (declare (indent 1))
+  (let ((bufsym (cl-gensym "buf"))
+        (chatsym (cl-gensym "chat")))
+    `(let* ((,chatsym ,chat)
+            (,bufsym (if (and telega-chatbuf--chat
+                              (eq telega-chatbuf--chat ,chatsym))
+                         (current-buffer)
+                       (cl-find ,chatsym telega--chat-buffers
+                                :test (lambda (val buf)
+                                        (with-current-buffer buf
+                                          (eq telega-chatbuf--chat val)))))))
+       (when (buffer-live-p ,bufsym)
+         (with-current-buffer ,bufsym
+           (let ((inhibit-read-only t)
+                 (buffer-undo-list t))
+             ,@body))))))
+
 (defmacro with-telega-help-win (buffer-or-name &rest body)
-  "Execute BODY in help buffer."
+  "Execute BODY in help BUFFER-OR-NAME."
   (declare (indent 1))
   `(progn
      (with-help-window ,buffer-or-name)
@@ -264,6 +344,8 @@ Done when telega server is ready to receive queries."
        ,@body)))
 
 (defsubst telega-debug (fmt &rest args)
+  "Insert formatted string into debug buffer.
+FMT and ARGS are passed directly to `format'."
   (with-telega-debug-buffer
    (goto-char (point-max))
    (insert (apply 'format (cons (concat fmt "\n") args)))))
@@ -282,11 +364,50 @@ For example:
     ret))
 
 (defmacro telega--tl-prop (prop1 &rest props)
-  "Generates function to get property by PROP1 and PROPS.
+  "Generate function to get property by PROP1 and PROPS.
 Uses `telega--tl-get' to obtain the property."
   (let ((tl-obj-sym (cl-gensym "tl-obj")))
     `(lambda (,tl-obj-sym)
        (telega--tl-get ,tl-obj-sym ,prop1 ,@props))))
+
+(defsubst telega-file--size (file)
+  "Return FILE size."
+  ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
+  ;; size
+  (let ((fsize (plist-get file :size))
+        (esize (plist-get file :expected_size)))
+    (if (zerop fsize) esize fsize)))
+
+(defsubst telega-file--downloaded-p (file)
+  "Return non-nil if FILE has been downloaded."
+  (telega--tl-get file :local :is_downloading_completed))
+
+(defsubst telega-file--downloading-p (file)
+  "Return non-nil if FILE is downloading right now."
+  (telega--tl-get file :local :is_downloading_active))
+
+(defsubst telega-file--can-download-p (file)
+  "Return non-nil if FILE can be downloaded.
+May return nil even when `telega-file--downloaded-p' returns non-nil."
+  (telega--tl-get file :local :can_be_downloaded))
+
+(defsubst telega-file--need-download-p (file)
+  (and (telega-file--can-download-p file)
+       (not (telega-file--downloaded-p file))))
+
+(defsubst telega-file--downloading-progress (file)
+  "Return progress of file downloading as float from 0 to 1."
+  (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
+                  (telega-file--size file))))
+
+(defsubst telega-file--uploading-p (file)
+  "Return non-nil if FILE is uploading right now."
+  (telega--tl-get file :remote :is_uploading_active))
+
+(defsubst telega-file--uploading-progress (file)
+  "Return progress of file uploading as float from 0 to 1."
+  (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
+                  (telega-file--size file))))
 
 (defun telega--tl-desurrogate (str)
   "Decode surrogate pairs in STR string.
@@ -332,7 +453,7 @@ Resulting in new string with no surrogate pairs."
 
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)
-  "Fill ESTR to :fill-column.
+  "Fill ESTR to `:fill-column' value from ATTRS.
 Keeps newlines in ESTR.
 Return list of strings."
   (let ((fill-column (- (or (plist-get attrs :fill-column) fill-column)
@@ -351,6 +472,7 @@ Return list of strings."
                    (split-string estr "\n")))))
 
 (defun telega-fmt-eval-truncate (estr attrs)
+  "Apply `:max', `:elide-string' and `:elide-trail' properties from ATTRS to ESTR."
   (let* ((max (plist-get attrs :max))
          ;; NOTE: always apply elide
 ;         (elide (plist-get attrs :elide))
@@ -370,6 +492,7 @@ Return list of strings."
     ;; result))
 
 (defun telega-fmt-eval-align (estr attrs)
+  "Apply `:min', `:align' and `:align-symbol' properties from ATTRS to ESTR."
   (let* ((min (plist-get attrs :min))
          (width (- min (string-width estr)))
          (align (plist-get attrs :align))
@@ -388,7 +511,7 @@ Return list of strings."
       ((center centre) (concat left estr right)))))
 
 (defun telega-fmt-eval-min-max (estr attrs)
-  "Apply `:min' and `:max' properties to ESTR."
+  "Apply `:min' and `:max' properties from ATTRS to ESTR."
   (let ((max (plist-get attrs :max))
         (min (plist-get attrs :min))
         (estr-width (string-width estr)))
@@ -399,14 +522,14 @@ Return list of strings."
           (t estr))))
 
 (defun telega-fmt-eval-face (estr attrs)
-  "Apply `:face' attribute to ESTR."
+  "Apply `:face' attribute from ATTRS to ESTR."
   (let ((face (plist-get attrs :face)))
     (when face
       (add-face-text-property 0 (length estr) face t estr))
     estr))
 
 (defun telega-fmt-eval-attrs (estr attrs)
-  "Apply all attributes to ESTR."
+  "Apply all attributes ATTRS to ESTR."
   ;; Blackmagic for fast execution, but
   ;; NOTE:
   ;;  - Do not prefix first line
@@ -444,7 +567,7 @@ NIL yields empty string for the convenience."
              (princ atom)))))
 
 (defun telega-fmt-eval-elem (elem value)
-  "Format single element ELEM."
+  "Format single element ELEM with VALUE."
   (let (attrs)
     (when (and (not (functionp elem)) (listp elem))
       (setq attrs (cdr elem)
@@ -475,13 +598,15 @@ NIL yields empty string for the convenience."
     fmt-result))
 
 (defsubst telega--time-at00 (timestamp &optional decoded-ts)
-  "Return time at 00:00:001 at TIMESTAMP's day."
+  "Return time at 00:00:001 at TIMESTAMP's day.
+Optional DECODED-TS is the result of already applied `decode-time'."
   (let ((dt (or decoded-ts (decode-time timestamp))))
     (1+ (- timestamp (* 3600 (nth 2 dt)) (* 60 (nth 1 dt)) (nth 0 dt)))))
 
 ;;; Buttons for telega
 (defun telega-button--ins-error (_val)
-  (error "Button `:inserter' is unset."))
+  "Default inserter for the `telega' button."
+  (error "Button `:inserter' is unset"))
 
 ;; Make 'telega-button be separate (from 'button) type
 (put 'telega-button 'type 'telega)
@@ -548,8 +673,8 @@ Activates button if cursor enter, deactivates if leaves."
          (set-marker ,button ,newbutton)))))
 
 (defun telega-button--update-value (button new-value &rest props)
-  "Update BUTTON's value to VALUE.
-Renews the BUTTON."
+  "Update BUTTON's value to NEW-VALUE.
+Additional properties PROPS are updated in button."
   (telega-button--change button
     (apply 'telega-button--insert (button-type button) new-value props)))
 
@@ -584,6 +709,143 @@ If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
 If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
   (interactive "p")
   (telega-button-forward (- n) button-type))
+
+
+;;; Chats part
+(defmacro telega-chat-uaprop-del (chat uaprop-name)
+  "Delete custom CHAT property named UAPROP-NAME."
+  `(telega-chat--set-uaprops
+    ,chat (telega-plist-del (plist-get ,chat :uaprops) ,uaprop-name)))
+
+(defmacro telega-chat-uaprop (chat uaprop-name)
+  "Return value for CHAT's custom property with name UAPROP-NAME."
+  `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
+
+(defsetf telega-chat-uaprop (chat uaprop-name) (value)
+  "Set CHAT's user property UAPROP-NAME to VALUE.
+Return VALUE."
+  (let ((valsym (gensym "value")))
+    `(let ((,valsym ,value))
+       (telega-chat--set-uaprops
+        ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,valsym))
+       ,valsym)))
+
+(defsubst telega-chat-username (chat)
+  "Return CHAT's username.
+Return nil if no username is assigned to CHAT."
+  (let ((username (plist-get (telega-chat--info chat) :username)))
+    (unless (or (null username) (string-empty-p username))
+      username)))
+
+(defsubst telega-chat--order (chat &optional as-string)
+  "Return CHAT's order.
+If AS-STRING is non-nil, then return it as string."
+  (funcall (if as-string 'identity 'string-to-number)
+           (or (telega-chat-uaprop chat :order) (plist-get chat :order))))
+
+(defsubst telega-chatbuf-has-input-p ()
+  "Return non-nil if chatbuf has some input."
+  (< telega-chatbuf--input-marker (point-max)))
+
+(defsubst telega-chatbuf-input-string ()
+  "Return non-nil if chatbuf has some input."
+  (buffer-substring telega-chatbuf--input-marker (point-max)))
+
+(defsubst telega-chatbuf--input-delete ()
+  "Delete chatbuf's input."
+  (delete-region telega-chatbuf--input-marker (point-max)))
+
+
+;;; Inserters part
+(defun telega-ins (&rest args)
+  "Insert all strings in ARGS.
+Return non-nil if something has been inserted."
+  (< (prog1 (point) (apply 'insert args)) (point)))
+
+(defmacro telega-ins-fmt (fmt &rest args)
+  "Insert string formatted by FMT and ARGS.
+Return `t'."
+  (declare (indent 1))
+  `(telega-ins (format ,fmt ,@args)))
+
+(defmacro telega-ins--as-string (&rest body)
+  "Execute BODY inserters and return result as a string."
+  `(with-temp-buffer
+     ,@body
+     (buffer-string)))
+
+(defmacro telega-ins--one-lined (&rest body)
+  "Execute BODY making insertation one-lined.
+It makes one line by replacing all newlines by spaces."
+  `(telega-ins
+    (replace-regexp-in-string
+     "\n" " " (telega-ins--as-string ,@body))))
+
+(defmacro telega-ins--with-attrs (attrs &rest body)
+  "Execute inserters applying ATTRS after insertation.
+Return `t'."
+  (declare (indent 1))
+  `(telega-ins
+    (telega-fmt-eval-attrs (telega-ins--as-string ,@body) ,attrs)))
+
+(defmacro telega-ins--with-face (face &rest body)
+  "Execute BODY highlighting result with FACE."
+  (declare (indent 1))
+  `(telega-ins--with-attrs (list :face ,face)
+     ,@body))
+
+(defmacro telega-ins--column (column fill-col &rest body)
+  "Execute BODY at COLUMN filling to FILL-COLL.
+If COLUMN is nil or less then current column, then current column is used."
+  (declare (indent 2))
+  (let ((colsym (gensym "col"))
+        (curcol (gensym "curcol")))
+    `(let ((,colsym ,column)
+           (,curcol (telega-current-column)))
+       (when (or (null ,colsym) (< ,colsym ,curcol))
+         (setq ,colsym ,curcol))
+
+       (telega-ins (make-string (- ,colsym ,curcol) ?\s))
+;       (move-to-column ,colsym t)
+       (telega-ins--with-attrs
+           (list :fill 'left
+                 :fill-prefix (make-string ,colsym ?\s)
+                 :fill-column ,fill-col)
+         ,@body))))
+
+(defmacro telega-ins--labeled (label fill-col &rest body)
+  "Execute BODY filling it to FILL-COLL, prefixing first line with LABEL."
+  (declare (indent 2))
+  `(progn
+     (telega-ins ,label)
+     (telega-ins--column nil ,fill-col
+       ,@body)))
+
+(defmacro telega-ins--raw-button (props &rest body)
+  "Execute BODY creating text button with PROPS."
+  (declare (indent 1))
+  `(button-at (apply 'make-text-button (prog1 (point) ,@body) (point)
+                     ,props)))
+
+(defmacro telega-ins--with-props (props &rest body)
+  "Execute inserters applying PROPS after insertation.
+Return what BODY returns."
+  (declare (indent 1))
+  (let ((spnt-sym (gensym "pnt")))
+    `(let ((,spnt-sym (point)))
+       (prog1
+           (progn ,@body)
+         (add-text-properties ,spnt-sym (point) ,props)))))
+
+(defmacro telega-ins-prefix (prefix &rest body)
+  "In case BODY inserted anything then PREFIX is also inserted before BODY."
+  (declare (indent 1))
+  (let ((spnt-sym (gensym "pnt")))
+    `(let ((,spnt-sym (point)))
+       (when (progn ,@body)
+         (save-excursion
+           (goto-char ,spnt-sym)
+           (telega-ins ,prefix))))))
 
 (provide 'telega-core)
 

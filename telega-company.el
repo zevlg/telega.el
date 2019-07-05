@@ -27,12 +27,18 @@
 
 ;;; Code:
 (require 'telega-util)
+(require 'telega-user)
 
 (defvar company-minimum-prefix-length)
 (declare-function company-begin-backend "company" (backend &optional callback))
 (declare-function company-grab "company" (regexp &optional expression limit))
 (declare-function company-grab-line "company" (regexp &optional expression))
 
+(declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega--full-info "telega-info" (tlobj))
+
+
 (defun telega-company-grab-emoji ()
   (let ((cg (company-grab ":[^: _]+" nil
                           (- (point) telega-emoji-max-length))))

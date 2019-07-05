@@ -26,6 +26,9 @@
 ;;; Code:
 (require 'telega-core)
 
+(declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
+
+
 (defun telega--on-callbackQueryAnswer (reply)
   "Handle callback reply answer."
   (let ((text (plist-get reply :text))

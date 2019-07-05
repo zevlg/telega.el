@@ -29,9 +29,13 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'url-util)
+(require 'visual-fill-column)
 
-(require 'telega-customize)
+(require 'telega-server)
+(require 'telega-ins)
+(require 'telega-media)
 (require 'telega-tme)
+(require 'telega-customize)
 
 (defvar telega-webpage-history nil
   "History of viewed webpages.")

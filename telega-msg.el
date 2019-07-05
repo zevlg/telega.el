@@ -29,6 +29,7 @@
 (require 'telega-core)
 (require 'telega-customize)
 (require 'telega-ffplay)                ; telega-ffplay-run
+(require 'telega-vvnote)
 
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
@@ -324,7 +325,7 @@
   (telega-server--send
    (list :@type "deleteMessages"
          :chat_id chat-id
-         :message_ids (cl-map 'vector 'identity message-ids)
+         :message_ids (apply 'vector message-ids)
          :revoke (or revoke :false))))
 
 (defun telega--forwardMessages (chat-id from-chat-id message-ids

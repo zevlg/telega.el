@@ -78,22 +78,7 @@ Have Stoploss 690 Satoshi. í ½í»‘
 ;; Tests
 (ert-deftest telega-emacs-setup ()
   "Test emacs is suitable to run telega."
-  ;; 62bits for numbers is required
-  ;; i.e. ./configure --with-wide-int
-  (should (= most-positive-fixnum 2305843009213693951))
-  (should (= (string-to-number "542353335") 542353335))
-
-  ;; at least 25.1 emacs is required
-  ;; see https://t.me/emacs_telega/1592
-  (should (fboundp 'cursor-intangible-mode))
-
-  ;; For now stick with at least 26.1 Emacs
-  (should (string-version-lessp "26.0" emacs-version))
-
-  ;; imagemagick for images
-  (should (image-type-available-p 'imagemagick))
-  (should (image-type-available-p 'svg))
-  )
+  (should (telega-test-env 'quiet)))
 
 (ert-deftest telega-info ()
   "Test info related functionality."
