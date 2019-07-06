@@ -619,13 +619,22 @@ be marked as read."
    (list :@type "closeChat"
          :chat_id (plist-get chat :id))))
 
-(defun telega--searchPublicChat (username)
-  "Search public chat with USERNAME."
-  (let ((schat (telega-server--call
-                (list :@type "searchPublicChat"
-                      :username username))))
-    (when schat
-      (telega-chat-get (plist-get schat :id)))))
+(defun telega--searchPublicChat (username &optional callback)
+  "Search public chat with USERNAME.
+If CALLBACK is specified, call it with one argument - CHAT."
+  (declare (indent 1))
+  (let ((ret (telega-server--call
+              (list :@type "searchPublicChat"
+                    :username username)
+              (when callback
+                (lambda (reply)
+                  (when reply
+                    (funcall
+                     callback (telega-chat-get (plist-get reply :id)))))))))
+    (if callback
+        ret
+      (when ret
+        (telega-chat-get (plist-get ret :id))))))
 
 (defun telega--searchPublicChats (query &optional callback)
   "Search public chats by looking for specified QUERY.
@@ -923,8 +932,10 @@ STATUS is one of: "
 
     (when telega-debug
       (telega-ins "\n---DEBUG---\n")
-      (telega-ins-fmt "Chat: %S\n" chat)
-      (telega-ins-fmt "Info: %S" (telega-chat--info chat)))
+      (telega-ins (propertize "Chat: " 'face 'bold)
+                  (format "%S" chat) "\n")
+      (telega-ins (propertize "Info: " 'face 'bold)
+                  (format "%S" (telega-chat--info chat))))
     ))
 
 (defun telega-chat-with (name)
@@ -948,7 +959,7 @@ STATUS is one of: "
 
 (defun telega-chat-join-by-link (link)
   "Join chat by invitation LINK."
-  (interactive "sInvite link: ")
+  (interactive "sJoin chat by invite link: ")
   (telega-chat--pop-to-buffer
    (or (telega--joinChatByInviteLink link)
        (error "Can't join chat: %s"
@@ -982,6 +993,7 @@ STATUS is one of: "
   (interactive
    (list (y-or-n-p (format "Toggle read for %d chats? "
                            (length telega--filtered-chats)))))
+  ;; TODO: If no filter is applied, ask once more time
   (mapc 'telega-chat-toggle-read telega--filtered-chats))
 
 (defun telega-chat-delete (chat &optional leave-p)
@@ -1009,6 +1021,46 @@ Leaving chat does not removes chat from chat list."
     ;; Kill corresponding chat buffer
     (with-telega-chatbuf chat
       (kill-buffer (current-buffer)))))
+
+(defun telega-chat-create (title &rest users)
+  "Create new chat with TITLE and USERS."
+  (interactive
+   (cons (read-string "Chat title: ")
+         (let ((users nil) (done nil))
+           (while (not done)
+             (condition-case nil
+                 (setq users
+                       (cons (telega-completing-read-user
+                              (format "Add user (C-g when done)%s: "
+                                      (if users
+                                          (concat " [" (mapconcat 'telega-user--name users ",") "]")
+                                        "")))
+                              users))
+               (quit (setq done t))))
+           users)))
+
+  (telega-server--call
+   (list :@type "createNewBasicGroupChat"
+         :user_ids (cl-map 'vector (telega--tl-prop :id) users)
+         :title title)
+   (lambda (newchat)
+     ;; NOTE: Chat might change while created, so renew its value
+     ;; using `telega-chat-get'
+     (telega-chat--pop-to-buffer
+      (telega-chat-get (plist-get newchat :id))))))
+
+(defun telega-chat-upgrade-to-supergroup (chat)
+  "Upgrade basic group CHAT from basicgroup to supergroup."
+  (interactive (list (or telega-chatbuf--chat
+                         (telega-chat-at-point))))
+  (telega-server--call
+   (list :@type "upgradeBasicGroupChatToSupergroupChat"
+         :chat_id (plist-get chat :id))
+   (lambda (newchat)
+     ;; NOTE: Chat might change while upgrading, so renew its value
+     ;; using `telega-chat-get'
+     (telega-chat--pop-to-buffer
+      (telega-chat-get (plist-get newchat :id))))))
 
 (defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
@@ -1255,9 +1307,11 @@ Global chat bindings:
   "If at the beginning then request for history messages.
 Also mark messages as read with `viewMessages'."
   (with-current-buffer (window-buffer window)
-    ;; If point moves near the beginning of chatbuf, then request for
-    ;; the previous history
-    (when (< display-start 1000)
+    ;; If point moves near the beginning of chatbuf, then
+    ;; request for the previous history
+    ;; In case if there is less then 1000 chars, then wait while point
+    ;; moves to the beginning of the buffer
+    (when (and (< display-start 1000) (> (point-max) 1000))
       (telega-chatbuf--load-older-history))
 
     ;; If point moves near the end of the chatbuf, then request for

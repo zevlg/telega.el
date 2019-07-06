@@ -81,7 +81,9 @@ If BUTTON has custom `:action', then use it, otherwise describe the user."
   (telega--info 'user user-id))
 
 (defun telega-user--by-username (username)
-  "Get user by his USERNAME."
+  "Get user by his USERNAME.
+If ASYNC-CALLBACK is specified, then call it, when info about
+user is fetched from server."
   (when (string-prefix-p "@" username)
     (setq username (substring username 1)))
   (let ((users (hash-table-values (alist-get 'user telega--info))))
@@ -215,19 +217,13 @@ LIMIT - limit number of photos (default=100)."
                       :limit (or limit 100)))))
     (append (plist-get reply :photos) nil)))
 
-(defun telega-describe-user (user &optional full-p)
-  "Show info about USER.
-If FULL-P is non-nil, then show full info about user."
+(defun telega-describe-user (user)
+  "Show info about USER."
   (with-telega-help-win "*Telega User*"
-    (when full-p
-      (telega-ins "Name: ")
-      (when (telega-ins (plist-get user :first_name))
-        (telega-ins " "))
-      (telega-ins (plist-get user :last_name))
-      (telega-ins " ")
-      (telega-ins--button "Chat With"
-        :value user
-        :action 'telega-user-chat-with)
+    (telega-ins "Name: ")
+    (when (telega-ins (plist-get user :first_name))
+      (telega-ins " "))
+    (when (telega-ins (plist-get user :last_name))
       (telega-ins " "))
     (telega-info--insert-user user)))
 
@@ -303,7 +299,7 @@ CONTACT is some user you have exchanged contacs with."
          (user-id (aref (plist-get reply :user_ids) 0)))
     (when (zerop user-id)
       (user-error "No telegram user with phone %s" phone))
-    (telega-describe-user (telega-user--get user-id) 'full)))
+    (telega-describe-user (telega-user--get user-id))))
 
 (defun telega-describe-contact (contact)
   "Show CONTACT information."

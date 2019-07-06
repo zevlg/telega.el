@@ -19,7 +19,7 @@ In some random order:
 - [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
 - [x] Fetching chat history, sending messages, replies, edits, deleting
 - [ ] Resend failed messages (see [TDLib#166](https://github.com/tdlib/td/issues/166))
-- [ ] Creating new groups
+- [x] Creating new groups, upgrading basicgroup to supergroup
 - [x] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications

@@ -149,8 +149,34 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (share-text (plist-get full-info :share_text))
          (out-link (plist-get user :outgoing_link))
          (in-link (plist-get user :incoming_link))
-         (has-button-line nil)
          (profile-photos (telega--getUserProfilePhotos user)))
+
+    ;; Buttons line
+    (telega-ins--button "Chat With"
+      :value user
+      :action 'telega-user-chat-with)
+    (telega-ins " ")
+    (unless (or (telega-user-bot-p user)
+                (eq (telega--tl-type in-link) 'linkStateIsContact))
+      (telega-ins--button "Share My Contact"
+        :value chat :action 'telega-chat-share-my-contact)
+      (telega-ins " "))
+    ;; NOTE: Secret chat with bots and myself is not possible
+    (unless (or (telega-user-bot-p user)
+                (eq (plist-get user :id) telega--me-id))
+      ;; TODO: search for existing secret chat with Ready state and
+      ;; create [Open Secret Chat] button instead
+      (telega-ins--button (concat telega-symbol-lock "Start Secret Chat")
+        :value user
+        :action (lambda (user)
+                  (telega-chat--pop-to-buffer
+                   (telega--createNewSecretChat user))))
+      (telega-ins " "))
+    (when (plist-get full-info :can_be_called)
+      (telega-ins--button (concat telega-symbol-phone "Call")
+        :value user
+        :action 'telega-voip-call))
+    (telega-ins "\n")
 
     ;; Clickable user's profile photos
     (when profile-photos
@@ -162,31 +188,6 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
                         photo-val telega-user-photo-maxsize)))
           :action 'telega-photo--open)
         (telega-ins " "))
-      (telega-ins "\n"))
-
-    (unless (eq (telega--tl-type in-link) 'linkStateIsContact)
-      (telega-ins--button "Share My Contact Info"
-        :value chat :action 'telega-chat-share-my-contact)
-      (telega-ins "  ")
-      (setq has-button-line t))
-    ;; NOTE: Secret chat with bots and myself is not possible
-    (unless (or (telega-user-bot-p user)
-                (eq (plist-get user :id) telega--me-id))
-      ;; TODO: search for existing secret chat with Ready state and
-      ;; create [Open Secret Chat] button instead
-      (telega-ins--button (concat telega-symbol-lock "Start Secret Chat")
-        :value user
-        :action (lambda (user)
-                  (telega-chat--pop-to-buffer
-                   (telega--createNewSecretChat user))))
-      (telega-ins " ")
-      (setq has-button-line t))
-    (when (plist-get full-info :can_be_called)
-      (telega-ins--button (concat telega-symbol-phone "Call")
-        :value user
-        :action 'telega-voip-call)
-      (setq has-button-line t))
-    (when has-button-line
       (telega-ins "\n"))
 
     (when (= (plist-get user :id) telega--me-id)
@@ -216,7 +217,26 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
     (unless (string-empty-p share-text)
       (telega-ins--labeled "Share text: " nil
         (telega-ins share-text))
-      (telega-ins "\n")))
+      (telega-ins "\n"))
+
+    ;; Bot info
+    (let* ((bot-info (plist-get full-info :bot_info))
+           (bot-descr (plist-get bot-info :description))
+           (bot-cmds (append (plist-get bot-info :commands) nil)))
+      (when bot-info
+        (unless (string-empty-p bot-descr)
+          (telega-ins--labeled "Bot info: " nil
+            (telega-ins bot-descr))
+          (telega-ins "\n"))
+        (when bot-cmds
+          (telega-ins "Bot cmds: \n"))
+        (dolist (cmd bot-cmds)
+          (telega-ins--labeled
+              (format "  /%s - " (plist-get cmd :command)) nil
+            (telega-ins (plist-get cmd :description)))
+          (telega-ins "\n"))
+        (telega-ins "\n")))
+    )
 
   (let ((chats-in-common (telega-user--chats-in-common user)))
     (when chats-in-common
@@ -374,15 +394,15 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (telega-ins restr-reason "\n")))
 
     (unless (zerop pin-msg-id)
-      (let ((pinned-msg (telega--getChatPinnedMessage chat))
+      (let ((pinned-msg (telega-msg--get (plist-get chat :id) pin-msg-id))
             (inhibit-read-only t))
-        (cl-assert pinned-msg)
-        (telega-ins "----(pinned message)----\n")
-        (telega-button--insert 'telega-msg pinned-msg
-          :inserter 'telega-ins--content
-          :action 'telega-msg-goto-highlight)
-        (telega-ins "\n"))
-      (insert "------------------------\n"))
+        (when pinned-msg
+          (telega-ins "----(pinned message)----\n")
+          (telega-button--insert 'telega-msg pinned-msg
+            :inserter 'telega-ins--content
+            :action 'telega-msg-goto-highlight)
+          (telega-ins "\n")
+          (insert "------------------------\n"))))
 
     (telega-ins-fmt "Members: %d (%d online)\n"
       (plist-get full-info :member_count)
@@ -403,8 +423,10 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
     (when telega-debug
       (insert "\n---DEBUG---\n")
-      (insert (format "Info: %S\n" supergroup))
-      (insert (format "\nFull-Info: %S\n" full-info)))))
+      (insert (propertize "Info: " 'face 'bold)
+              (format "%S" supergroup) "\n")
+      (insert (propertize "Full-Info: " 'face 'bold)
+              (format "%S" full-info) "\n"))))
 
 (defun telega-info--insert (tlobj chat)
   "Insert information about TLOBJ into current buffer."

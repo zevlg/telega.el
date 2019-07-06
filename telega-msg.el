@@ -76,8 +76,9 @@
             (telega-msg-chat msg) telega-chat-group-messages-for)
            (> (point) 3)
            (let ((prev-msg (telega-msg-at (- (point) 2))))
-             (eq (plist-get msg :sender_user_id)
-                 (plist-get prev-msg :sender_user_id))))
+             (and (not (telega-msg-special-p prev-msg))
+                  (eq (plist-get msg :sender_user_id)
+                      (plist-get prev-msg :sender_user_id)))))
       (telega-button--insert 'telega-msg msg
         :inserter 'telega-ins--message-no-header)
     (telega-button--insert 'telega-msg msg))

@@ -79,7 +79,8 @@
     (define-key map (kbd "? N") 'telega-describe-notifications)
     (define-key map (kbd "? p") 'telega-describe-privacy-settings)
 
-    (define-key map (kbd "j") 'telega-chat-join-by-link)
+    (define-key map (kbd "J") 'telega-chat-join-by-link)
+    (define-key map (kbd "N") 'telega-chat-create)
     ;; Commands to all currently filtered chats
 
     ;; NOTE: Deleting all chats is very-very-very dangerous, so
@@ -351,6 +352,10 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
            (chat-button (button-at (point)))
            (point-off (and telega-root-keep-cursor
                            chat-button
+                           ;; If chat is deleted, postpone
+                           ;; `telega-root-keep-cursor' behaviour
+                           ;; Ignore custom order
+                           (not (string= "0" (plist-get chat :order)))
                            (eq (button-get chat-button :value) chat)
                            (- (point) (button-start chat-button))))
            (chat-after (cadr (memq chat telega--ordered-chats)))

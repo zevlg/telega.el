@@ -230,8 +230,17 @@ N can't be 0."
     (cl-ecase (car link)
       (user (telega-describe-user (telega-user--get (cdr link))))
       (username
-       (telega-describe-user
-        (telega-user--by-username (cdr link))))
+       (let ((user (telega-user--by-username (cdr link))))
+         (if user
+             (telega-describe-user user)
+           (message (format "Fetching info about %s" (cdr link)))
+           (telega--searchPublicChat (cdr link)
+             (lambda (chat)
+               (if (eq (telega-chat--type chat 'no-interpret)
+                       'private)
+                   (telega-describe-user
+                    (telega-user--get (plist-get chat :id)))
+                 (telega-describe-chat chat)))))))
       (hashtag
        (message "TODO: `hashtag' button action: tag=%s" (cdr link)))
       (url
@@ -373,7 +382,8 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                     choices nil nil 'string=))))
 
 (defun telega-completing-titles ()
-  "Return list of titles ready for completing."
+  "Return list of titles ready for completing.
+KIND is one of `chats', `users' or nil."
   (let ((result))
     (dolist (chat (telega-filter-chats 'all telega--ordered-chats))
       (setq result (cl-pushnew (telega-chat-title chat 'with-username) result

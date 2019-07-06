@@ -762,7 +762,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
               'messageChatChangeTitle 'messageSupergroupChatCreate
               'messageBasicGroupChatCreate 'messageCustomServiceAction
               'messageChatSetTtl 'messageExpiredPhoto
-              'messageChatChangePhoto 'messageChatUpgradeFrom
+              'messageChatChangePhoto
+              'messageChatUpgradeTo 'messageChatUpgradeFrom
               'messagePinMessage 'messageScreenshotTaken)))
 
 (defun telega-ins--special (msg)
@@ -806,7 +807,9 @@ Special messages are determined with `telega-msg-special-p'."
                        "Channel" "Supergroup"))
        (telega-ins " \"" (plist-get content :title) "\" created"))
       (messageBasicGroupChatCreate
-       (telega-ins "Group \"" (plist-get content :title) "\" created"))
+       (telega-ins--with-face 'bold
+         (telega-ins (telega-user--name sender)))
+       (telega-ins " created group \"" (plist-get content :title) "\""))
       (messageCustomServiceAction
        (telega-ins (plist-get content :text)))
       (messageChatSetTtl
@@ -817,9 +820,12 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins "Photo has expired"))
       (messageChatChangePhoto
        (telega-ins "Group photo updated"))
-      (messageChatUpgradeFrom
+      (messageChatUpgradeTo
        (telega-ins (telega-user--name sender 'short)
                    " upgraded the group to supergroup"))
+      (messageChatUpgradeFrom
+       (telega-ins (telega-user--name sender 'short)
+                   " created supergroup from the group"))
       (messageScreenshotTaken
        (cl-assert sender)
        (telega-ins (telega-user--name sender) " took a screenshot!"))

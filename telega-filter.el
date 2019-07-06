@@ -29,6 +29,16 @@
 (require 'telega-customize)
 
 (declare-function telega-chat--muted-p "telega-chat"  (chat))
+(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-chat--user "telega-chat" (user))
+(declare-function telega--getCreatedPublicChats "telega-chat")
+(declare-function telega-chats-top "telega-chat" (category))
+
+(declare-function telega-root--buffer "telega-root")
+(declare-function telega-root--global-chats "telega-root")
+(declare-function telega-root--redisplay "telega-root")
 
 
 (defvar telega-filters--ewoc nil "ewoc for custom filters.")
@@ -86,6 +96,19 @@ otherwise add to existing active filters."
         (telega-filters-push (list fspec))
       (telega-filter-add fspec))))
 
+(defmacro telega-filter-active ()
+  "Return active filter."
+  `(car telega--filters))
+
+(defun telega-filter-active-p (filter)
+  "Return non-nil if FILTER is active filter."
+  (equal filter (telega-filter-active)))
+
+(defun telega-filter-default-p (&optional filter)
+  "Return non-nil if FILTER is the `telega-filter-default'.
+If FILTER is nil, then active filter is used."
+  (equal (or filter (telega-filter-active)) (list telega-filter-default)))
+
 
 ;; ewoc stuff
 (defun telega-filter--pp (custom)
@@ -110,9 +133,9 @@ otherwise add to existing active filters."
                                    :max filters-width
                                    :elide t
                                    :elide-trail (/ filters-width 2))
-       (let* ((active-filter (car telega--filters))
+       (let* ((active-filter (telega-filter-active))
               (af-str (prin1-to-string active-filter)))
-         (unless (equal active-filter (list telega-filter-default))
+         (unless (telega-filter-default-p active-filter)
            (setq af-str (propertize af-str 'face 'telega-filter-active)))
          (telega-ins af-str)))
      (telega-ins "----"))))
@@ -182,7 +205,7 @@ Set active filter to DEFAULT."
 
 (defun telega-filters--prepare ()
   "Prepare `telega--filters' for the application."
-  (let ((active-filters (car telega--filters)))
+  (let ((active-filters (telega-filter-active)))
     (cond ((null active-filters) 'all)
           ((= (length active-filters) 1) (car active-filters))
           ((eq 'all (car active-filters))
@@ -193,7 +216,7 @@ Set active filter to DEFAULT."
 
 (defun telega-filters-push (flist)
   "Set active filters list to FLIST."
-  (unless (equal flist (car telega--filters))
+  (unless (telega-filter-active-p flist)
     (setq telega--undo-filters nil)
     (setq telega--filters (push flist telega--filters)))
   (telega-filters-apply))
@@ -202,9 +225,9 @@ Set active filter to DEFAULT."
   "Add filter specified by FSPEC.
 This filter can be undone with `telega-filter-undo'.
 Do not add FSPEC if it is already in the list."
-  (unless (member fspec (car telega--filters))
+  (unless (member fspec (telega-filter-active))
     (telega-filters-push
-     (append (car telega--filters) (list fspec)))))
+     (append (telega-filter-active) (list fspec)))))
 
 (defun telega-filter-chats (filter-spec chats-list)
   "Filter CHATS-LIST matching filter specification FILTER-SPEC.
@@ -251,18 +274,19 @@ If FILTER-SPEC is nil, then currently active filters are used."
   "Edit and reapply filters list."
   (interactive
    (let* ((print-level nil)
-          (flist-as-string (if (car telega--filters)
-                               (prin1-to-string (car telega--filters))
-                             ""))
+          (active-filter (telega-filter-active))
+          (af-as-string (if active-filter
+                            (prin1-to-string active-filter)
+                          ""))
           (new-flist (read-from-minibuffer
-                      "Filters: " flist-as-string read-expression-map t)))
+                      "Filters: " af-as-string read-expression-map t)))
      (list new-flist)))
   (telega-filters-push flist))
 
 (defun telega-filters-pop-last (n)
   "Pop last N filters."
   (interactive "p")
-  (telega-filters-push (butlast (car telega--filters) n)))
+  (telega-filters-push (butlast (telega-filter-active) n)))
 
 
 ;;; Filters definitions
