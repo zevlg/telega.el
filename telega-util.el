@@ -404,9 +404,10 @@ Return `nil' if there is nothing to animate and new string otherwise."
 
 ;; ewoc stuff
 (defun telega-ewoc--gen-pp (pp-fun)
-  "Wrap pretty printer function PP-FUN trapping all errors."
+  "Wrap pretty printer function PP-FUN trapping all errors.
+Do not trap errors if `debug-on-error' is enabled."
   (lambda (arg)
-    (condition-case pp-err
+    (condition-case-unless-debug pp-err
         (funcall pp-fun arg)
       (t
        (telega-debug "PP-ERROR: (%S %S) ==>\n" pp-fun arg)

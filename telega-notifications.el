@@ -51,9 +51,10 @@
 If DEFAULT-P is non-nil then return default setting for the CHAT."
   (let ((use-default-name
          (intern (concat ":use_default_" (substring (symbol-name setting) 1))))
-        (not-cfg (plist-get chat :notification_settings)))
+        (not-cfg (plist-get chat :notification_settings))
+        (default-cfg nil))
     (when (or default-p (plist-get not-cfg use-default-name))
-      (setq not-cfg
+      (setq default-cfg
             (cl-case (telega-chat--type chat)
               (channel
                (alist-get 'channel telega--scope-notification-alist))
@@ -62,7 +63,7 @@ If DEFAULT-P is non-nil then return default setting for the CHAT."
               (t
                (alist-get 'private telega--scope-notification-alist)))))
 
-    (plist-get not-cfg setting)))
+    (plist-get (or default-cfg not-cfg) setting)))
 
 (defun telega--setScopeNotificationSettings (scope-type setting)
   (telega-server--call
