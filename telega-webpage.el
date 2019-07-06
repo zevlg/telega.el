@@ -126,7 +126,6 @@ Return nil if URL is not available for instant view."
     (define-key map "p" 'telega-webpage-history-prev)
     (define-key map "n" 'telega-webpage-history-next)
     (define-key map [?\t] 'telega-button-forward)
-    (define-key map "\e\t" 'telega-button-backward)
     (define-key map [backtab] 'telega-button-backward)
     map))
 
