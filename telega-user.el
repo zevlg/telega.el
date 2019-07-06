@@ -39,9 +39,6 @@
 (defvar telega-user-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
-    (define-key map (kbd "n") 'telega-button-forward)
-    (define-key map (kbd "p") 'telega-button-backward)
-
     (define-key map (kbd "i") 'telega-describe-user)
     (define-key map (kbd "m") 'telega-user-message)
     (define-key map (kbd "d") 'telega-user-delete)
@@ -219,6 +216,7 @@ LIMIT - limit number of photos (default=100)."
 
 (defun telega-describe-user (user)
   "Show info about USER."
+  (interactive (list (telega-user-at (point))))
   (with-telega-help-win "*Telega User*"
     (telega-ins "Name: ")
     (when (telega-ins (plist-get user :first_name))
@@ -251,7 +249,6 @@ LIMIT - limit number of photos (default=100)."
   "Pretty printer for CONTACT button shown in root buffer.
 CONTACT is some user you have exchanged contacs with."
   (telega-button--insert 'telega-user contact
-    'keymap button-map
     :inserter 'telega-ins--root-contact
     :action 'telega-user-chat-with)
   (telega-ins "\n"))

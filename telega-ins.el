@@ -617,6 +617,26 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (telega-ins--button (concat "   VIEW CONTACT   ")
       'action 'telega-msg-button--action)))
 
+(defun telega-ins--call-msg (msg)
+  "Insert call message MSG."
+  (telega-ins telega-symbol-phone " ")
+  (let* ((content (plist-get msg :content))
+         (reason (telega--tl-type (plist-get content :discard_reason)))
+         (label (cond ((plist-get msg :is_outgoing)
+                       (if (eq reason 'callDiscardReasonMissed)
+                           "Cancelled call" ;; I18N: lng_call_cancelled
+                         "Outgoing call")) ;; I18N: lng_call_outgoing
+                      ((eq reason 'callDiscardReasonMissed)
+                       "Missed call") ;; I18N: lng_call_missed
+                      ((eq reason 'callDiscardReasonDeclined)
+                       "Declined call") ;; I18N: lng_call_declined
+                      (t
+                       "Incoming call")))) ;; I18N: lng_call_incoming
+    (telega-ins (propertize label 'face 'shadow))
+    (telega-ins-fmt " (%s)"
+      (telega-duration-human-readable
+       (plist-get content :duration)))))
+
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
   (let ((title (plist-get invoice :title))
@@ -876,6 +896,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--location-msg msg))
       ('messageContact
        (telega-ins--contact-msg msg))
+      ('messageCall
+       (telega-ins--call-msg msg))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))
@@ -1180,23 +1202,6 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
        (messageSticker
         (telega-ins (telega--tl-get content :sticker :emoji))
         (telega-ins " " (propertize "Sticker" 'face 'shadow)))
-       (messageCall
-        (telega-ins telega-symbol-phone " ")
-        (let* ((reason (telega--tl-type (plist-get content :discard_reason)))
-               (label (cond ((plist-get msg :is_outgoing)
-                             (if (eq reason 'callDiscardReasonMissed)
-                                 "Cancelled call" ;; I18N: lng_call_cancelled
-                               "Outgoing call")) ;; I18N: lng_call_outgoing
-                            ((eq reason 'callDiscardReasonMissed)
-                             "Missed call") ;; I18N: lng_call_missed
-                            ((eq reason 'callDiscardReasonDeclined)
-                             "Declined call") ;; I18N: lng_call_declined
-                            (t
-                             "Incoming call")))) ;; I18N: lng_call_incoming
-          (telega-ins (propertize label 'face 'shadow)))
-        (telega-ins-fmt " (%s)"
-          (telega-duration-human-readable
-           (plist-get content :duration))))
        (messageVoiceNote
         ;; I18N: lng_in_dlg_audio
         (telega-ins (propertize "Voice message" 'face 'shadow))
