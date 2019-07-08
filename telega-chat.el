@@ -304,6 +304,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     title))
 
 (defun telega-chat--reorder (chat order)
+  "Reorder CHAT in `telega--ordered-chats' according to ORDER."
   ;; NOTE: order=nil if reordering with custom ORDER
   (when order
     (plist-put chat :order order))
@@ -993,8 +994,10 @@ STATUS is one of: "
   (interactive
    (list (y-or-n-p (format "Toggle read for %d chats? "
                            (length telega--filtered-chats)))))
-  ;; TODO: If no filter is applied, ask once more time
-  (mapc 'telega-chat-toggle-read telega--filtered-chats))
+  ;; NOTE: If no filter is applied, ask once more time
+  (when (or (not (telega-filter-default-p))
+            (y-or-n-p "No filtering applied, toggle anyway? "))
+    (mapc 'telega-chat-toggle-read telega--filtered-chats)))
 
 (defun telega-chat-delete (chat &optional leave-p)
   "Delete CHAT.
@@ -2581,6 +2584,30 @@ Prefix argument is available for next attachements:
     (if attach-value
         (funcall cmd attach-value)
       (call-interactively cmd))))
+
+(defun telega-photo-send (file chat)
+  "Prepare FILE to be sent as photo to CHAT."
+  (interactive (list (buffer-file-name)
+                     (telega-completing-read-chat "Send photo to chat: ")))
+
+  (cl-assert chat)
+  (with-current-buffer (telega-chat--pop-to-buffer chat)
+    (let ((inhibit-read-only t)
+          (buffer-undo-list t))
+      (goto-char (point-max))
+      (telega-chatbuf-attach-photo file))))
+
+(defun telega-file-send (file chat)
+  "Prepare FILE to be sent as document to CHAT."
+  (interactive (list (buffer-file-name)
+                     (telega-completing-read-chat "Send file to chat: ")))
+
+  (cl-assert chat)
+  (with-current-buffer (telega-chat--pop-to-buffer chat)
+    (let ((inhibit-read-only t)
+          (buffer-undo-list t))
+      (goto-char (point-max))
+      (telega-chatbuf-attach-file file))))
 
 (defun telega--on-updateChatDraftMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
