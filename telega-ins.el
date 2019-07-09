@@ -253,7 +253,7 @@ Return COLUMN at which user name is inserted."
                (round (* progress 100)))
              (telega-ins--button "Cancel"
                'action (lambda (_ignored)
-                         (telega--cancelUploadFile file-id)))))
+                         (telega-msg-delete msg)))))
 
           ((telega-file--downloading-p file)
            (let ((progress (telega-file--downloading-progress file)))

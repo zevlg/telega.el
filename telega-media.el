@@ -33,6 +33,15 @@
 (require 'telega-core)
 (require 'telega-server)
 
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat-color "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+
+(declare-function telega-msg-redisplay "telega-msg" (msg))
+
+(declare-function telega-filter-chats "telega-filter" (filter-spec chats-list))
+
+
 (defvar telega-emoji-svg-images nil
   "Cache of SVG images for emoji.
 Alist with elements in form (emoji . image)")
@@ -173,12 +182,10 @@ PRIORITY is same as for `telega-file--download'."
   "Return non-nil if FILE has been uploaded."
   (telega--tl-get file :remote :is_uploading_completed))
 
-(defun telega-file--upload (filename &optional file-type priority callback)
-  "Upload FILENAME to the cloud.
-Return file object, obtained from `telega--uploadFile'."
-  (declare (indent 3))
-  (let* ((file (telega--uploadFile filename file-type priority))
-         (file-id (plist-get file :id))
+(defun telega-file--upload-internal (file &optional callback)
+  "Monitor FILE uploading progress by installing CALLBACK."
+  (declare (indent 1))
+  (let* ((file-id (plist-get file :id))
          (cbwrap (telega-file--callback-wrap
                   callback 'telega-file--uploading-p)))
     (if (telega-file--uploaded-p file)
@@ -190,6 +197,35 @@ Return file object, obtained from `telega--uploadFile'."
           (puthash file-id (cons cbwrap cb-list)
                    telega--files-updates))))
     file))
+
+(defun telega-file--upload (filename &optional file-type priority callback)
+  "Upload FILENAME to the cloud.
+Return file object, obtained from `telega--uploadFile'."
+  (declare (indent 3))
+  (let ((file (telega--uploadFile
+               (expand-file-name filename) file-type priority)))
+    (telega-file--upload-internal file callback)
+    file))
+
+(defun telega-file--used-in-msg (msg)
+  "Return File object associated with MSG.
+Return nil if no File object is associated with the message."
+  (let* ((content (plist-get msg :content))
+         (file (cl-case (telega--tl-type content)
+                 (messageDocument
+                  (telega--tl-get content :document :document))
+                 (messageAudio
+                  (telega--tl-get content :audio :audio))
+                 (messageVideo
+                  (telega--tl-get content :video :video))
+                 (messageVoiceNote
+                  (telega--tl-get content :voice_note :voice))
+                 (messageVideoNote
+                  (telega--tl-get content :video_note :video))
+                 ;; TODO: add other message types
+                 )))
+    (or (gethash (plist-get file :id) telega--files)
+        file)))
 
 
 ;;; Photos

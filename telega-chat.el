@@ -60,6 +60,7 @@
 (defvar telega-filters--inhibit-list)
 (declare-function telega-filters--redisplay "telega-filter")
 (declare-function telega-filter-chats "telega-filter" (filter-spec chats-list))
+(declare-function telega-filter-default-p "telega-filter" (&optional filter))
 
 ;;; Chatbuf vars
 (defvar telega-chatbuf--ewoc nil
@@ -1728,6 +1729,9 @@ First message in MESSAGE will be first message at the beginning."
 Return newly created ewoc node."
   (unless (telega-msg-ignored-p msg)
     (with-telega-deferred-events
+      ;; Track the uploading progress
+      ;; see: https://github.com/zevlg/telega.el/issues/60
+      (telega-msg--track-file-uploading-progress msg)
       (ewoc-enter-last telega-chatbuf--ewoc msg))))
 
 (defun telega-chatbuf--node-by-msg-id (msg-id)
@@ -2029,11 +2033,13 @@ CALLBACK is called after history has been loaded."
              (mapconcat #'key-description cancel-keys ", ") what)))
 
 (defun telega--sendMessage (chat imc &optional reply-to-msg disable-notify
-                                 from-background reply-markup)
-  "Send the message content represented by IMC to CHAT."
+                                 from-background reply-markup callback)
+  "Send the message content represented by IMC to CHAT.
+If CALLBACK is specified, then call it with one argument - new
+message uppon message is created."
   ;; We catch new message with `telega--on-updateNewMessage', so
   ;; ignore result returned from `sendMessage'
-  (telega-server--send
+  (telega-server--call
    (nconc (list :@type "sendMessage"
                 :chat_id (plist-get chat :id)
                 :disable_notification (or disable-notify :false)
@@ -2043,11 +2049,14 @@ CALLBACK is called after history has been loaded."
           (when from-background
             (list :from_background t))
           (when reply-markup
-            (list :reply_markup reply-markup)))))
+            (list :reply_markup reply-markup)))
+   (or callback 'ignore)))
 
 (defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg disable-notify
-                                      from-background)
-  "Send IMCS as media album."
+                                      from-background callback)
+  "Send IMCS as media album.
+If CALLBACK is specified, then call it with one argument - new
+message uppon message is created."
   (let ((tsm (list :@type "sendMessageAlbum"
                    :chat_id (plist-get chat :id)
                    :disable_notification (or disable-notify :false)
@@ -2057,7 +2066,7 @@ CALLBACK is called after history has been loaded."
                            (plist-get reply-to-msg :id))))
     (when from-background
       (setq tsm (plist-put tsm :from_background t)))
-    (telega-server--send tsm)))
+    (telega-server--call tsm (or callback 'ignore))))
 
 (defun telega--forwardMessages (chat from-chat messages &optional disable-notify
                                      from-background as-album)
@@ -2181,7 +2190,7 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
                  (telega--editMessageMedia
                   telega-chatbuf--chat editing-msg imc))))
 
-      ;; If all IMCS are photos and videos then send them as ablum
+      ;; If all IMCS are photos and videos then send them as album
       ;; otherwise send IMCS as separate messages
       ;; NOTE: cl-every returns `t' on empty list
       (if (and (> (length imcs) 1)
@@ -2673,8 +2682,7 @@ If DRAFT-MSG is ommited, then clear draft message."
 
 ;;; Message commands
 (defun telega-msg-redisplay (msg)
-  "Redisplay the message MSG.
-NODE is ewoc's node if known, in this case MSG can be nil."
+  "Redisplay the message MSG."
   (interactive (list (telega-msg-at (point))))
 
   (with-telega-chatbuf (telega-msg-chat msg)

@@ -28,6 +28,7 @@
 
 (require 'telega-core)
 (require 'telega-customize)
+(require 'telega-media)
 (require 'telega-ffplay)                ; telega-ffplay-run
 (require 'telega-vvnote)
 
@@ -312,6 +313,14 @@
          (telega-browse-url url))))
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
+
+(defun telega-msg--track-file-uploading-progress (msg)
+  "Track uploading progress for the file associated with MSG."
+  (let ((msg-file (telega-file--used-in-msg msg)))
+    (when (and msg-file (telega-file--uploading-p msg-file))
+      (telega-file--upload-internal msg-file
+        (lambda (_filenotused)
+          (telega-msg-redisplay msg))))))
 
 (defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
   "Get https link to public message."

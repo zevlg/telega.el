@@ -124,10 +124,10 @@ and `:marked_as_unread_unmuted_count'")
 (defvar telega--chat-buffers nil "List of all chat buffers.")
 (defvar telega--files nil
   "Files hash FILE-ID -> (list FILE UPDATE-CALBACKS..).")
-(defvar telega--files-updates
+(defvar telega--files-updates nil
   "Hash of FILE-ID -> (list-of (UPDATE-CB CB-ARGS))
-UPDATE-CB is callback to call when file updates. UPDATE-CB is
-called with FILE and CB-ARGS as arguments.
+UPDATE-CB is callback to call when file updates.
+UPDATE-CB is called with FILE and CB-ARGS as arguments.
 UPDATE-CB should return non-nil to be removed after its being called.")
 (defvar telega--proxy-pings nil
   "Alist for the proxy pings.
@@ -396,7 +396,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
        (not (telega-file--downloaded-p file))))
 
 (defsubst telega-file--downloading-progress (file)
-  "Return progress of file downloading as float from 0 to 1."
+  "Return progress of FILE downloading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
                   (telega-file--size file))))
 
@@ -405,7 +405,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (telega--tl-get file :remote :is_uploading_active))
 
 (defsubst telega-file--uploading-progress (file)
-  "Return progress of file uploading as float from 0 to 1."
+  "Return progress of FILE uploading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))
 
@@ -764,7 +764,7 @@ Return non-nil if something has been inserted."
 
 (defmacro telega-ins-fmt (fmt &rest args)
   "Insert string formatted by FMT and ARGS.
-Return `t'."
+Return t."
   (declare (indent 1))
   `(telega-ins (format ,fmt ,@args)))
 
@@ -782,8 +782,8 @@ It makes one line by replacing all newlines by spaces."
      "\n" " " (telega-ins--as-string ,@body))))
 
 (defmacro telega-ins--with-attrs (attrs &rest body)
-  "Execute inserters applying ATTRS after insertation.
-Return `t'."
+  "Execute inserters BODY applying ATTRS after insertation.
+Return t."
   (declare (indent 1))
   `(telega-ins
     (telega-fmt-eval-attrs (telega-ins--as-string ,@body) ,attrs)))
@@ -795,7 +795,7 @@ Return `t'."
      ,@body))
 
 (defmacro telega-ins--column (column fill-col &rest body)
-  "Execute BODY at COLUMN filling to FILL-COLL.
+  "Execute BODY at COLUMN filling to FILL-COL.
 If COLUMN is nil or less then current column, then current column is used."
   (declare (indent 2))
   (let ((colsym (gensym "col"))
@@ -814,7 +814,7 @@ If COLUMN is nil or less then current column, then current column is used."
          ,@body))))
 
 (defmacro telega-ins--labeled (label fill-col &rest body)
-  "Execute BODY filling it to FILL-COLL, prefixing first line with LABEL."
+  "Execute BODY filling it to FILL-COL, prefixing first line with LABEL."
   (declare (indent 2))
   `(progn
      (telega-ins ,label)
