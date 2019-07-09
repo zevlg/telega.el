@@ -14,6 +14,8 @@ struct telega_dat {
 };
 #define TDAT_INIT { 0, 0, 0, NULL}
 
+#define tdat_len(tdat) ((tdat)->end - (tdat)->start)
+
 /* Ensure ADD_CAP bytes can be written into TDAT */
 void tdat_ensure(struct telega_dat* tdat, size_t add_cap);
 #define tdat_reset(tdat) (tdat)->start = (tdat)->end = 0

@@ -65,54 +65,54 @@ usage(char* prog)
 }
 
 void
-telega_output(const char* otype, const char* json)
+telega_output(const char* otype, const char* str)
 {
+        if (verbosity > 4) {
+                fprintf(stderr, "[telega-server] "
+                        "OUTPUT %s: %s\n", otype, str);
+        }
+
+        printf("%s %zu\n%s\n", otype, strlen(str), str);
+        fflush(stdout);
+}
+
+void
+telega_output_json(const char* otype, const char* json)
+{
+        struct telega_dat json_src = TDAT_INIT;
+        struct telega_dat plist_dst = TDAT_INIT;
+
         if (verbosity > 4) {
                 fprintf(stderr, "[telega-server] "
                         "OUTPUT %s: %s\n", otype, json);
         }
 
-        printf("%s %zu\n%s\n", otype, strlen(json), json);
+        tdat_append(&json_src, json, strlen(json));
+        tdat_json_value(&json_src, &plist_dst);
+        tdat_append1(&plist_dst, "\0");
+
+        assert(tdat_len(&plist_dst) > 0);
+        printf("%s %zu\n%s\n", otype, tdat_len(&plist_dst)-1, plist_dst.data);
         fflush(stdout);
+
+        tdat_drop(&json_src);
+        tdat_drop(&plist_dst);
 }
 
 static void
 on_error_cb(const char* errmsg)
 {
-        struct telega_dat json_src = TDAT_INIT;
-        struct telega_dat plist_dst = TDAT_INIT;
-
-        tdat_append(&json_src, errmsg, strlen(errmsg));
-        tdat_json_value(&json_src, &plist_dst);
-        tdat_append1(&plist_dst, "\0");
-
-        telega_output("error", plist_dst.data);
-
-        tdat_drop(&json_src);
-        tdat_drop(&plist_dst);
+        telega_output_json("error", errmsg);
 }
 
 static void*
 tdlib_loop(void* cln)
 {
-        struct telega_dat json_src = TDAT_INIT;
-        struct telega_dat plist_dst = TDAT_INIT;
-
         while (tdlib_running) {
                 const char *res = td_json_client_receive(cln, 0.5);
-                if (res) {
-                        tdat_append(&json_src, res, strlen(res));
-                        tdat_json_value(&json_src, &plist_dst);
-                        tdat_append1(&plist_dst, "\0");
-
-                        telega_output("event", plist_dst.data);
-
-                        tdat_reset(&json_src);
-                        tdat_reset(&plist_dst);
-                }
+                if (res)
+                        telega_output_json("event", res);
         }
-        tdat_drop(&json_src);
-        tdat_drop(&plist_dst);
         return NULL;
 }
 
