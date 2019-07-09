@@ -1976,8 +1976,9 @@ CALLBACK is called after history has been loaded."
                (lambda (history)
                  (with-telega-chatbuf chat
                    (setq telega-chatbuf--history-loading nil)
-                   (telega-chatbuf--prepend-messages
-                    (nreverse (plist-get history :messages)))
+                   (telega-save-excursion
+                     (telega-chatbuf--prepend-messages
+                      (nreverse (plist-get history :messages))))
                    (telega-chatbuf--footer-redisplay)
                    (when callback
                      (funcall callback))))))
