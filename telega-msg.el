@@ -322,7 +322,8 @@
          :for_album (or for-album :false))))
 
 (defun telega--deleteMessages (chat-id message-ids &optional revoke)
-  "Delete message by its id"
+  "Delete messages by its MESSAGES-IDS list.
+If REVOKE is non-nil then delete message for all users."
   (telega-server--send
    (list :@type "deleteMessages"
          :chat_id chat-id

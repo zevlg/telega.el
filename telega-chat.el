@@ -2768,7 +2768,7 @@ With prefix arg delete only for yourself."
 
   (when (y-or-n-p (concat (if revoke "Revoke" "Kill") " the message? "))
     (telega--deleteMessages
-     (plist-get msg :chat_id) (vector (plist-get msg :id)) revoke)))
+     (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)))
 
 (defun telega-chat-complete ()
   "Complete thing at chat input."
