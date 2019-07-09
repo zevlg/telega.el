@@ -259,7 +259,7 @@ Emoji completions with `:<EMOJI-NAME>:` syntax, uses nice
 `telega-chat-mode-hook`, for example:
 
 ```elisp
-(add-hook telega-chat-mode-hook (lambda ()
+(add-hook 'telega-chat-mode-hook (lambda ()
     (setq company-backends '(telega-company-emoji))
     (company-mode 1)))
 ```
