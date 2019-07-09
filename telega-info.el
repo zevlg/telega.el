@@ -657,7 +657,7 @@ If prefix argument is given, then show statistics only for current launch."
   (interactive "P")
   (if (called-interactively-p 'interactive)
       (with-telega-help-win "*Telega Network*"
-        (setq telega-describe-network--only-current only-current)
+        (setq telega-describe-network--only-current (not (null only-current)))
         (telega-ins--network telega-describe-network--only-current))
 
     (let ((buffer (get-buffer "*Telega Network*")))
