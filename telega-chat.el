@@ -2398,9 +2398,16 @@ If DOC-P prefix arg as given, then send it as document."
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the input.
-If prefix arg is given, then take screenshot in N seconds."
-  (interactive (list (prefix-numeric-value current-prefix-arg)
-                     telega-chatbuf--chat))
+If numeric prefix arg is given, then take screenshot in N seconds.
+If `C-u' prefix arg is given, then take screenshot of the screen area."
+  (interactive (list current-prefix-arg telega-chatbuf--chat))
+
+  ;; NOTE: use negative N value as special, to make screenshot of the
+  ;; area
+  (if (and (listp n) (not (null n)))
+      (setq n -1)
+    (setq n (prefix-numeric-value n)))
+
   (if (> n 0)
       (progn
         (message "Telega: taking screenshot in %d seconds" n)
@@ -2408,14 +2415,15 @@ If prefix arg is given, then take screenshot in N seconds."
 
     ;; Make a screenshot
     (message nil)
-    (let* ((temporary-file-directory telega-temp-dir)
-           (tmpfile (telega-temp-name "screenshot" ".png")))
-      (call-process (or (executable-find "import")
-                        (error "Utility `import' (imagemagick) not found"))
-                    nil nil nil
-                    "-silent"             ;no beep
-                    "-window" "root"
-                    tmpfile)
+    (let* ((import-bin (or (executable-find "import")
+                           (error "Utility `import' (imagemagick) not found")))
+           (temporary-file-directory telega-temp-dir)
+           (tmpfile (telega-temp-name "screenshot" ".png"))
+           (import-args (nconc (unless (< n 0) (list "-window" "root"))
+                               (list tmpfile))))
+      (apply 'call-process import-bin nil nil nil
+             "-silent"                  ;no beep
+             import-args)
       ;; Switch back to chat buffer in case it has been changed
       (telega-chat--pop-to-buffer chat)
       (telega-chatbuf--attach-tmp-photo tmpfile))))
