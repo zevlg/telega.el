@@ -43,6 +43,7 @@ In some random order:
 - [ ] Searching for messages in chat
 - [ ] Shared media
 - [ ] Inline bots requests
+- [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
 
 ## Unique features
