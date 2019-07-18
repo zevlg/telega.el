@@ -417,7 +417,7 @@ If NO-ERROR is non-nil and TEXT can't be do not raise an error, return nil."
     (unless (or fmt-text no-error)
       (cl-assert telega-server--last-error)
       (user-error (plist-get telega-server--last-error :message)))
-    fmt-text))
+    (plist-put fmt-text :text (telega--desurrogate-apply (plist-get fmt-text :text)))))
 
 (defun telega--formattedText (text &optional markdown)
   "Convert TEXT to `formattedTex' type.
