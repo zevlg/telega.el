@@ -2236,6 +2236,13 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
     (telega-ins--with-props '(attach-close-bracket t rear-nonsticky t)
       (telega-ins " "))))
 
+(defun telega-chatbuf-input-has-attaches-p ()
+  "Return non-nil if chatbuf's input has some attaches."
+  (let ((attaches (telega--split-by-text-prop
+                   (telega-chatbuf-input-string) 'telega-attach)))
+    (not (and (= (length attaches) 1)
+              (not (get-text-property 0 'telega-attach (car attaches)))))))
+
 (defun telega-chatbuf-history-beginning ()
   "Jump to the chat creation beginning."
   ;; See https://github.com/tdlib/td/issues/195
@@ -2671,10 +2678,12 @@ If DRAFT-MSG is ommited, then clear draft message."
 (defun telega-chatbuf--switch-out ()
   "Called when switching from chat buffer."
   (when (telega-chatbuf-has-input-p)
-    (let ((input (telega-chatbuf-input-string)))
-      (when telega-chatbuf--my-action
-        (telega-chatbuf--set-action "Cancel"))
+    (when telega-chatbuf--my-action
+      (telega-chatbuf--set-action "Cancel"))
 
+    ;; NOTE: Set draft only if there is no attaches in the input,
+    ;; otherwise setting/updating draft will screw up text properties
+    (unless (telega-chatbuf-input-has-attaches-p)
       (telega--setChatDraftMessage
        telega-chatbuf--chat
        (list :@type "draftMessage"
@@ -2682,7 +2691,8 @@ If DRAFT-MSG is ommited, then clear draft message."
              (or (plist-get (telega-chatbuf--replying-msg) :id) 0)
              :input_message_text
              (list :@type "inputMessageText"
-                   :text (telega--formattedText input)))))))
+                   :text (telega--formattedText
+                          (telega-chatbuf-input-string))))))))
 
 (defun telega-chatbuf--switch-in ()
   "Called when switching to chat buffer."
