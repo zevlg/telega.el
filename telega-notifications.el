@@ -187,9 +187,9 @@ If ARG is not given then treat it as 1."
   (interactive "p")
   (if (or (null arg) (> arg 0))
       (progn
-        (add-hook 'telega-chat-message-hook 'telega-notifications-chat-message)
+        (add-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
         (add-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call))
-    (remove-hook 'telega-chat-message-hook 'telega-notifications-chat-message)
+    (remove-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
     (remove-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call)))
 
 (defun telega-notifications--close (id)
@@ -253,15 +253,17 @@ If ARG is not given then treat it as 1."
         ))))
 
 (defun telega-notifications-chat-message (msg)
-  "Function intended to be added to `telega-chat-message-hook'."
+  "Function intended to be added to `telega-chat-post-message-hook'."
   ;; Do NOT notify message if:
+  ;;  - Message is ignored by client side filtering (see `telega-msg-ignored-p')
   ;;  - Chat is muted
   ;;  - Message already has been read (see `telega-msg-seen-p')
   ;;  - Message is older then 1 min (to avoid poping up messages on
   ;;    laptop wakeup)
   ;;  - Message is currently observable in chatbuf
   ;;  - [TODO] If Emacs frame has focus and root buffer is current
-  (unless (> (- (time-to-seconds) (plist-get msg :date)) 60)
+  (unless (or (telega-msg-ignored-p msg)
+              (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
       (unless (or (telega-msg-seen-p msg chat)
                   (not (zerop (telega-chat-notification-setting chat :mute_for)))

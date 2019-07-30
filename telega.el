@@ -204,6 +204,10 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
            by 'cddr
            do (telega--setOption prop-name value)))
 
+(defun telega-online-status (&optional offline-p)
+  "Make use online."
+  (error "`telega-online-status' not yet implemented"))
+
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   ;; Validate tdlib version

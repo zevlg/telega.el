@@ -130,6 +130,11 @@ If non-nil also enable notification for incoming calls."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-use-online-status t
+  "*Non-nil to enable online status changes according to Emacs focus."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-chat--display-buffer-action display-buffer--same-window-action
   "Action value when poping to chatbuffer.
 See docstring for `display-buffer' for the values."
@@ -1177,11 +1182,13 @@ https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
   :options '(telega-media--autodownload-on-msg)
   :group 'telega-hooks)
 
-(defcustom telega-chat-message-hook nil
+(defcustom telega-chat-post-message-hook nil
   "Hook called when new message has been inserted into chatbuffer.
 Called with single argument - MESSAGE.
 Always called, even if corresponding chat is closed at the moment.
-Not called if message has been ignored by client side filtering."
+Called even for messages ignored by client side filtering, to
+check message is filtered by client side filtering use
+`telega-msg-ignored-p'."
   :type 'hook
   :group 'telega-hooks)
 

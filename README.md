@@ -51,6 +51,7 @@ In some random order:
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
 - [x] Labeled chats, you can assign custom label to chat
+- [x] Client side messages filtering
 
 # Screenshots
 

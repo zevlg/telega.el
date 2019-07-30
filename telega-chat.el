@@ -1809,8 +1809,6 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
       (when (telega-chatbuf--last-msg-loaded-p new-msg)
         (let ((node (telega-chatbuf--append-message new-msg)))
           (when node
-            (run-hook-with-args 'telega-chat-message-hook new-msg)
-
             (when (and telega-use-tracking
                        (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
               (tracking-add-buffer (current-buffer)))
@@ -1818,7 +1816,9 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
             ;; If message is visibible in some window, then mark it as read
             ;; see https://github.com/zevlg/telega.el/issues/4
             (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
-              (telega--viewMessages telega-chatbuf--chat (list new-msg)))))))))
+              (telega--viewMessages telega-chatbuf--chat (list new-msg)))))))
+
+    (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
 
 (defun telega--on-updateMessageSendSucceeded (event)
   "Message has been successfully sent to server.
