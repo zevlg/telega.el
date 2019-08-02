@@ -228,12 +228,14 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
 
 (defcustom telega-server-logfile
   (expand-file-name "telega-server.log" telega-directory)
-  "*Write server logs to this file."
+  "*Write server logs to this file.
+Set it to nil to disable telega-server logging."
   :type 'string
   :group 'telega-server)
 
-(defcustom telega-server-verbosity 5
-  "*Verbosity level for server process."
+(defcustom telega-server-verbosity 3
+  "*Verbosity level for server process.
+Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'number
   :group 'telega-server)
 

@@ -156,9 +156,13 @@ Return parsed command."
            (telega-debug "%s event: %S" (propertize "IN" 'face 'bold) value)
 
            ;; Function call may return errors
-           (if (or (not (eq 'error (telega--tl-type value)))
+           (if (or (not (telega--tl-error-p value))
+                   ;; If the error code is 406, the error message must
+                   ;; not be processed in any way and must not be
+                   ;; displayed to the user
                    (= (plist-get value :code) 406)
-                   (= (plist-get value :code) 404) ;web page not found
+                   ;; 404 - webpage or message not found
+                   (= (plist-get value :code) 404)
                    )
                (funcall call-cb value)
 
@@ -290,12 +294,13 @@ If CALLBACK is specified return `:@extra' value used for the call."
       (setq telega-server--buffer (current-buffer))
 
       (telega-status--set "telega-server: starting.")
-      (let ((proc (start-process
-                   "telega-server"
-                   (current-buffer)
-                   server-bin
-                   "-v" (int-to-string telega-server-verbosity)
-                   "-l" telega-server-logfile)))
+      (let* ((proc-args (if telega-server-logfile
+                            (list "-l" telega-server-logfile
+                                  "-v" (int-to-string telega-server-verbosity))
+                          (list "-v" "0")))
+             (proc (apply 'start-process
+                          "telega-server" (current-buffer) server-bin
+                          proc-args)))
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-server--sentinel)
         (set-process-filter proc #'telega-server--filter))))

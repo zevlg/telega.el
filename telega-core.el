@@ -353,6 +353,10 @@ FMT and ARGS are passed directly to `format'."
 (defmacro telega--tl-type (tl-obj)
   `(intern (plist-get ,tl-obj :@type)))
 
+(defmacro telega--tl-error-p (tl-obj)
+  "Return non-nil if TL-OBJ is error object."
+  `(eq (telega--tl-type ,tl-obj) 'error))
+
 (defmacro telega--tl-get (obj prop1 &rest props)
   "`plist-get' which works with multiple arguments.
 For example:
