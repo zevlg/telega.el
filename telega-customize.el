@@ -806,6 +806,12 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-poll-options (cons "○" "●")
+  "Symbols used to display poll options.
+car is for non-selected option, cdr is for selected option."
+  :type 'cons
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
   "Symbols used to emphasize attachement in chat buffer input."
   :type 'cons
@@ -838,6 +844,8 @@ If nil, then user's online status is not displayed."
          telega-symbol-ballout-check
 
          telega-symbol-play
+         (car telega-symbol-poll-options)
+         (cdr telega-symbol-poll-options)
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.

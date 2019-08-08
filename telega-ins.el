@@ -665,6 +665,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (closed-p (plist-get poll :is_closed))
          (options (plist-get poll :options))
          (max-opt-len (apply 'max (mapcar 'length (mapcar (telega--tl-prop :text) options))))
+         (opt-sym-len (max (string-width (car telega-symbol-poll-options))
+                           (string-width (cdr telega-symbol-poll-options))))
          (can-edit-p (plist-get msg :can_be_edited)))
     (telega-ins telega-symbol-poll " " question)
     (telega-ins-fmt " (%d votes" nvotes)
@@ -679,14 +681,14 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (dotimes (opt-id (length options))
       (let ((popt (aref options opt-id)))
         (telega-ins "\n")
-        (telega-ins--with-attrs (list :min (+ max-opt-len 4)
-                                      :max (+ max-opt-len 4)
+        (telega-ins--with-attrs (list :min (+ max-opt-len opt-sym-len 1)
+                                      :max (+ max-opt-len opt-sym-len 1)
                                       :align 'left)
           (if (or (plist-get popt :is_chosen)
                   (plist-get popt :is_being_chosen))
-              (telega-ins "[x]")
-            (telega-ins--button "[\u00A0]"
-              'face 'link
+              (telega-ins (cdr telega-symbol-poll-options))
+            (telega-ins--button (car telega-symbol-poll-options)
+              'face 'telega-link
               'action (lambda (_ignore)
                         (telega--setPollAnswer msg opt-id))))
           (telega-ins " " (plist-get popt :text)))
