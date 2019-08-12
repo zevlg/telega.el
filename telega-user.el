@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Jan 23 23:49:52 2019
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 (require 'telega-core)
@@ -124,7 +124,7 @@ Default is: `full'"
         (let ((fn (plist-get user :first_name)))
           (unless (string-empty-p fn)
             (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
-      name)))
+      (telega--desurrogate-apply name))))
 
 (defun telega-user--seen (user)
   "Return last seen status for the USER."
@@ -164,21 +164,6 @@ Default is: `full'"
                             :group_in_common_count)))
     (unless (zerop gic-cnt)
       (telega--getGroupsInCommon with-user))))
-
-(defun telega-user-initials (user)
-  "Return initials composed from first and last name of the USER."
-  (let ((ufn (telega--desurrogate-apply (plist-get user :first_name)))
-        (uln (telega--desurrogate-apply (plist-get user :last_name)))
-        (res ""))
-    (unless (string-empty-p ufn)
-      (setq res (capitalize (substring ufn 0 1))))
-    (unless (string-empty-p uln)
-      (setq res (concat res (capitalize (substring uln 0 1)))))
-    (when (string-empty-p res)
-      ;; NOTE: Might be so for deleted users
-      ;; i.e. (eq (telega-user--type user) 'deleted)
-      (setq res "DU"))
-    res))
 
 (defun telega-user-avatar-image (user)
   "Return avatar image for the USER."
