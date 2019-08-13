@@ -330,6 +330,13 @@
          :message_id msg-id
          :for_album (or for-album :false))))
 
+(defun telega-msg-public-link (msg &optional for-album)
+  "Return public http link for the message MSG."
+  (plist-get
+   (telega--getPublicMessageLink
+    (plist-get (telega-msg-chat msg) :id) (plist-get msg :id) for-album)
+   :link))
+
 (defun telega--deleteMessages (chat-id message-ids &optional revoke)
   "Delete messages by its MESSAGES-IDS list.
 If REVOKE is non-nil then delete message for all users."
@@ -490,8 +497,7 @@ blocked users."
                               :telega-link (cons 'user sender-uid))
           (telega-ins "\n")))
       (when (telega-chat--public-p (telega-chat-get chat-id) 'supergroup)
-        (let ((link (plist-get
-                     (telega--getPublicMessageLink chat-id msg-id) :link)))
+        (let ((link (telega-msg-public-link msg)))
           (telega-ins "Link: ")
           (telega-ins--raw-button (telega-link-props 'url link)
             (telega-ins link))
