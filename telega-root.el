@@ -137,7 +137,9 @@ Global root bindings:
     (goto-char (point-max))
     (insert "\n")
     (setq telega-root--ewoc
-          (ewoc-create (telega-ewoc--gen-pp 'telega-chat-known--pp)
+          (ewoc-create (if telega-debug
+                           'telega-chat-known--pp
+                         (telega-ewoc--gen-pp 'telega-chat-known--pp))
                        nil nil t))
     (dolist (chat telega--ordered-chats)
       (ewoc-enter-last telega-root--ewoc chat))
@@ -146,21 +148,27 @@ Global root bindings:
     (goto-char (point-max))
     (insert "\n")
     (setq telega-contacts--ewoc
-          (ewoc-create (telega-ewoc--gen-pp 'telega-contact-root--pp)
+          (ewoc-create (if telega-debug
+                           'telega-contact-root--pp
+                         (telega-ewoc--gen-pp 'telega-contact-root--pp))
                        "" "" t))
 
     ;; Global search
     (goto-char (point-max))
     (insert "\n")
     (setq telega-search--ewoc
-          (ewoc-create (telega-ewoc--gen-pp 'telega-chat-global--pp)
+          (ewoc-create (if telega-debug
+                           'telega-chat-global--pp
+                         (telega-ewoc--gen-pp 'telega-chat-global--pp))
                        "" "" t))
 
     ;; Messages
     (goto-char (point-max))
     (insert "\n")
     (setq telega-messages--ewoc
-          (ewoc-create (telega-ewoc--gen-pp 'telega-msg-root--pp)
+          (ewoc-create (if telega-debug
+                           'telega-msg-root--pp
+                         (telega-ewoc--gen-pp 'telega-msg-root--pp))
                        "" "" t))
     )
 

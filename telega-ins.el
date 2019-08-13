@@ -936,23 +936,31 @@ Special messages are determined with `telega-msg-special-p'."
         (t (telega-ins-fmt "<TODO reply-markup: %S>" reply-markup)))
       t)))
 
+(defmacro telega-ins--aux-inline (title face &rest body)
+  "Execute BODY inserters prefixing with TITLE.
+Display text using FACE."
+  (declare (indent 2))
+  `(progn
+     (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
+                                            (telega-current-column))
+                                    :elide t
+                                    :face ,face)
+       (telega-ins "| " ,title ": ")
+       (progn ,@body)
+       (when telega-msg-heading-whole-line
+         (telega-ins "\n")))
+     (unless telega-msg-heading-whole-line
+       (telega-ins "\n"))))
+
 (defun telega-ins--aux-msg-inline (title msg face &optional with-username)
-  "Insert REPLY-MSG as one-line."
+  "Insert MSG as one-line prefixing with TITLE.
+MSG might be a string, in th"
   (when msg
-    (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
-                                           (telega-current-column))
-                                   :elide t
-                                   :face face)
-      (telega-ins "| " title ": ")
+    (telega-ins--aux-inline title face
       (when (and with-username
                  (telega-ins--username (plist-get msg :sender_user_id)))
         (telega-ins "> "))
-      (telega-ins--content-one-line msg)
-      (when telega-msg-heading-whole-line
-        (telega-ins "\n")))
-    (unless telega-msg-heading-whole-line
-      (telega-ins "\n"))
-    ))
+      (telega-ins--content-one-line msg))))
 
 (defun telega-ins--aux-reply-inline (reply-msg &optional face)
   (telega-ins--aux-msg-inline
@@ -1055,15 +1063,26 @@ argument - MSG to insert additional information after header."
         (telega-ins "\n")))
     t))
 
-(defun telega-ins--reply-inline (reply-to-msg)
-  "Insert REPLY-TO-MSG as one liner."
-  (when reply-to-msg
-    (telega-ins--with-props
-        ;; When pressen, then jump to the REPLY-TO-MSG message
-        (list 'action
-              (lambda (_button)
-                (telega-msg-goto-highlight reply-to-msg)))
-      (telega-ins--aux-reply-inline reply-to-msg 'telega-msg-inline-reply))))
+(defun telega-ins--msg-reply-inline (msg)
+  "For message MSG insert reply header in case MSG is replying to some message."
+  (unless (zerop (plist-get msg :reply_to_message_id))
+    ;; NOTE: If reply msg is not instantly available, then fetch it
+    ;; asynchronously, cache it and then redisplay original message
+    (let ((reply-to-msg (telega-msg-reply-msg msg 'locally)))
+      (if reply-to-msg
+          (telega-ins--with-props
+              ;; When pressen, then jump to the REPLY-TO-MSG message
+              (list 'action
+                    (lambda (_button)
+                      (telega-msg-goto-highlight reply-to-msg)))
+            (telega-ins--aux-reply-inline reply-to-msg 'telega-msg-inline-reply))
+
+        (telega-msg-reply-msg msg nil
+          (lambda (reply-msg)
+            (telega-msg--cache-in-chatbuf reply-msg)
+            (telega-msg-redisplay msg)))
+        (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
+          (telega-ins "Loading..."))))))
 
 (defun telega-ins--message (msg &optional no-header addon-header-inserter)
   "Insert message MSG.
@@ -1100,7 +1119,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
 
       (setq ccol (telega-current-column))
       (telega-ins--fwd-info-inline (plist-get msg :forward_info))
-      (telega-ins--reply-inline (telega-msg-reply-msg msg))
+      (telega-ins--msg-reply-inline msg)
       (telega-ins--column ccol telega-chat-fill-column
         (telega-ins--content msg)
         (telega-ins-prefix "\n"

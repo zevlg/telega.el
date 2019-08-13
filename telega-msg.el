@@ -94,19 +94,37 @@
         :action 'telega-msg-goto-highlight)
       (telega-ins "\n"))))
 
-(defun telega-msg--get (chat-id msg-id)
-  "Get message by CHAT-ID and MSG-ID pair."
-  ;; Optimisation for formatting messages with reply
-  (or (with-telega-chatbuf (telega-chat-get chat-id)
-        (gethash msg-id telega-chatbuf--messages))
+(defun telega-msg--get (chat-id msg-id &optional locally-p callback)
+  "Get message by CHAT-ID and MSG-ID pair.
+If LOCALLY-P is non-nil, then do not perform request to telega-server.
+If CALLBACK is specified and message is not available at the
+moment, then fetch message asynchronously and call the CALLBACK
+function with one argument - message."
+  (let ((cached-msg (with-telega-chatbuf (telega-chat-get chat-id)
+                      (telega-chatbuf--msg msg-id))))
+    (if (or locally-p cached-msg)
+        cached-msg
 
-      (let ((reply (telega-server--call
-                    (list :@type "getMessage"
-                          :chat_id chat-id
-                          :message_id msg-id))))
+      ;; Perform request to the telega-server
+      (let ((ret (telega-server--call
+                  (list :@type "getMessage"
+                        :chat_id chat-id
+                        :message_id msg-id)
+                  (when callback
+                    (lambda (reply)
+                      (funcall callback
+                               (unless (telega--tl-error-p reply)
+                                 reply)))))))
         ;; Probably message already deleted
-        (unless (eq (telega--tl-type reply) 'error)
-          reply))))
+        (if callback
+            ret
+          (unless (telega--tl-error-p ret)
+            ret))))))
+
+(defun telega-msg--cache-in-chatbuf (msg)
+  "Cache message MSG in corresponding chatbuf messages cache."
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (telega-chatbuf--cache-msg msg)))
 
 (defsubst telega-msg-list-get (tl-obj-Messages)
   "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
@@ -122,11 +140,15 @@
   "Return chat for the MSG."
   (telega-chat-get (plist-get msg :chat_id)))
 
-(defun telega-msg-reply-msg (msg)
-  "Return message MSG replying to."
+(defun telega-msg-reply-msg (msg &optional locally-p callback)
+  "Return message MSG replying to.
+If LOCALLY-P is non-nil, then do not perform any requests to telega-server.
+If CALLBACK is specified, then get reply message asynchronously."
+  (declare (indent 2))
   (let ((reply-to-msg-id (plist-get msg :reply_to_message_id)))
     (unless (zerop reply-to-msg-id)
-      (telega-msg--get (plist-get msg :chat_id) reply-to-msg-id))))
+      (telega-msg--get
+       (plist-get msg :chat_id) reply-to-msg-id locally-p callback))))
 
 (defsubst telega-msg-goto (msg &optional highlight)
   "Goto message MSG."

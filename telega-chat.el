@@ -1269,8 +1269,10 @@ Global chat bindings:
   (cursor-intangible-mode 1)
 
   (setq telega-chatbuf--ewoc
-        (ewoc-create (telega-ewoc--gen-pp 'telega-msg--pp) nil
-                     (telega-chatbuf--footer) t))
+        (ewoc-create (if telega-debug
+                         'telega-msg--pp
+                       (telega-ewoc--gen-pp 'telega-msg--pp))
+                     nil (telega-chatbuf--footer) t))
   (goto-char (point-max))
 
   ;; Use punctuation as "no-value" button content
@@ -1741,6 +1743,22 @@ Return newly created ewoc node."
   ;; Or maybe search from last node
   (telega-ewoc--find telega-chatbuf--ewoc msg-id '= (telega--tl-prop :id)))
 
+(defun telega-chatbuf--msg (msg-id &optional with-node)
+  "In current chatbuf return message by MSG-ID.
+If WITH-NODE is non-nil then return also corresponding ewoc node.
+Return nil if message not found.
+Return message if WITH-NODE is nil.
+Return list, where first element is the message and second is the
+ewoc node if WITH-NODE is non-nil."
+  (let* ((cached-msg (gethash msg-id telega-chatbuf--messages))
+         (node (if (or (null cached-msg) with-node)
+                   (telega-chatbuf--node-by-msg-id msg-id)))
+         (msg (or cached-msg (when node (ewoc--node-data node)))))
+    (cl-assert (or (null cached-msg) (null msg) (eq msg cached-msg)))
+    (if with-node
+        (list msg node)
+      msg)))
+
 (defun telega-chatbuf--next-voice-msg (msg)
   "Search for voice message next to MSG.
 Return `nil' if there is no such message."
@@ -1804,7 +1822,7 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
 
     (with-telega-chatbuf (telega-msg-chat new-msg)
-      (puthash (plist-get new-msg :id) new-msg telega-chatbuf--messages)
+      (telega-chatbuf--cache-msg new-msg)
 
       (when (telega-chatbuf--last-msg-loaded-p new-msg)
         (let ((node (telega-chatbuf--append-message new-msg)))
@@ -1866,33 +1884,50 @@ Message id could be updated on this update."
 (defun telega--on-updateMessageContent (event)
   "Content of the message has been changed."
   (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (let ((node (telega-chatbuf--node-by-msg-id
-                 (plist-get event :message_id))))
-      (when node
-        (plist-put (ewoc--node-data node)
-                   :content (plist-get event :new_content))
-        (telega-chatbuf--redisplay-node node)))))
+    (cl-destructuring-bind (msg node)
+        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
+      (when msg
+        (plist-put msg :content (plist-get event :new_content))
+        (when node
+          (telega-chatbuf--redisplay-node node))))))
 
 (defun telega--on-updateMessageEdited (event)
   "Edited date of the message specified by EVENT has been changed."
   (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (let ((node (telega-chatbuf--node-by-msg-id
-                 (plist-get event :message_id))))
+    (cl-destructuring-bind (msg node)
+        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
+      (plist-put msg :edit_date (plist-get event :edit_date))
+      (plist-put msg :reply_markup (plist-get event :reply_markup))
       (when node
-        (plist-put (ewoc--node-data node)
-                   :edit_date (plist-get event :edit_date))
-        (plist-put (ewoc--node-data node)
-                   :reply_markup (plist-get event :reply_markup))
         (telega-chatbuf--redisplay-node node)))))
 
 (defun telega--on-updateMessageViews (event)
   "Number of message views has been updated."
   (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (let ((node (telega-chatbuf--node-by-msg-id
-                 (plist-get event :message_id))))
+    (cl-destructuring-bind (msg node)
+        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
+      (plist-put msg :views (plist-get event :views))
       (when node
-        (plist-put (ewoc--node-data node) :views (plist-get event :views))
         (telega-chatbuf--redisplay-node node)))))
+
+(defun telega--on-updateMessageContentOpened (event)
+  "The message content was opened.
+Updates voice note messages to \"listened\", video note messages
+to \"viewed\" and starts the TTL timer for self-destructing
+messages."
+  (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
+    (cl-destructuring-bind (msg node)
+        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
+      (let ((content (plist-get msg :content)))
+        (cl-case (telega--tl-type content)
+          (messageVoiceNote
+           (plist-put content :is_listened t)
+           (when node
+             (telega-chatbuf--redisplay-node node)))
+          (messageVideoNote
+           (plist-put content :is_viewed t)
+           (when node
+             (telega-chatbuf--redisplay-node node))))))))
 
 (defun telega--on-updateDeleteMessages (event)
   "Some messages has been deleted from chat."
@@ -2569,7 +2604,7 @@ OPTIONS - List of strings representing poll options."
                  (while (not (string-empty-p
                               (setq opt (read-string
                                          (format "Option %d): " optidx)))))
-                   (setq ilist (nconc ilist (list opt))) 
+                   (setq ilist (nconc ilist (list opt)))
                    (cl-incf optidx))
                  ilist))
   (telega-chatbuf-input-insert

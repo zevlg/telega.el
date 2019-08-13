@@ -759,6 +759,10 @@ If AS-STRING is non-nil, then return it as string."
   "Delete chatbuf's input."
   (delete-region telega-chatbuf--input-marker (point-max)))
 
+(defsubst telega-chatbuf--cache-msg (msg)
+  "Cache MSG in chatbuf's messages cache."
+  (puthash (plist-get msg :id) msg telega-chatbuf--messages))
+
 
 ;;; Inserters part
 (defun telega-ins (&rest args)
