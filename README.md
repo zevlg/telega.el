@@ -39,7 +39,7 @@ In some random order:
 - [x] Poll messages, Poll creation
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
 - [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
-- [x] InstantView for web pages 
+- [x] InstantView for web pages
 - [ ] Searching for messages in chat
 - [ ] Shared media
 - [ ] Inline bots requests
@@ -69,16 +69,9 @@ Attaching funny cat sticker:
 
 # Installation
 
-Being in active development, `telega.el` is not ready to be
-distributed on archives such as MELPA. At the moment, you could use
-git repository or this melpa-style recipe:
-
-```lisp
-(:fetcher github
- :repo "zevlg/telega.el"
- :branch "master"
- :files (:defaults "README.md" "etc" "server" "Makefile" "test.el"))
-```
+`telega.el` depends on `visual-fill-column` package.  This dependency
+automatically installs if you install telega from MELPA.  Otherwise
+you need to install this package by hand.
 
 `telega.el` is built on top of the official library provided by
 Telegram [TDLib 1.4.0](https://core.telegram.org/tdlib "tdlib"). Most
@@ -159,6 +152,9 @@ Finally, to install the library system-wide:
 $ sudo make install
 ```
 
+It will install headers to `/usr/local/include` and library itself
+into `/usr/local/lib`.  These paths are hardcoded in `telega.el`.
+
 ### Building libtgvoip
 
 VoIP support in `telega.el` is optional, if you don't need VoIP, just
@@ -184,6 +180,25 @@ $ autoreconf --force --install && ./configure && make
 Install the library system-wide:
 ```console
 $ sudo make install
+```
+
+It will also install headers to `/usr/local/include` and library into
+`/usr/local/lib`.
+
+## Installing telega.el from MELPA
+
+`telega.el` already in [MELPA](https://melpa.org), so you can install
+it from there as usual package.  This method is preferable, because it
+will handle all dependencies.  After installing `telega.el` from MELPA
+you can skip to [Fire up `telega.el`](#fire-up-telegael) section.
+
+Or you could use git repository or this melpa-style recipe:
+
+```lisp
+(:fetcher github
+ :repo "zevlg/telega.el"
+ :branch "master"
+ :files (:defaults "etc" "server" "Makefile"))
 ```
 
 ## Building telega-server
@@ -217,7 +232,7 @@ Start with `M-x telega RET` and follow instructions
 
 ## Installing telega.el
 
-Now it is time to install `telega.el` on GNU Emacs. 
+Now it is time to install `telega.el` on GNU Emacs.
 
 This can be done with `use-package`:
 
@@ -322,6 +337,16 @@ libtdjson.so: cannot open shared object file: No such file or directory
 # echo "/usr/local/lib" > /etc/ld.so.conf.d/usr_local_lib.conf
 # ldconfig
 ```
+
+**Q**: I've got the error installing telega
+
+```console
+Cannot open load file: No such file or directory, visual-fill-column
+```
+
+**A**: `telega.el` depends on `visual-fill-column` package, please
+install it first.  This package is available from
+[MELPA](https://melpa.org)
 
 **Q**: I've got error, while running telega
 

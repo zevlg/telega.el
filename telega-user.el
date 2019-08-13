@@ -40,7 +40,7 @@
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
     (define-key map (kbd "i") 'telega-describe-user)
-    (define-key map (kbd "m") 'telega-user-message)
+    (define-key map (kbd "m") 'telega-user-chat-with)
     (define-key map (kbd "d") 'telega-user-delete)
     (define-key map (kbd "k") 'telega-user-delete)
     (define-key map (kbd "DEL") 'telega-user-delete)
@@ -212,6 +212,7 @@ LIMIT - limit number of photos (default=100)."
 
 (defun telega-user-chat-with (user)
   "Start private chat with USER."
+  (interactive (list (telega-user-at (point))))
   (telega-chat--pop-to-buffer
    (telega--createPrivateChat user)))
 
