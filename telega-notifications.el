@@ -192,6 +192,15 @@ If ARG is not given then treat it as 1."
     (remove-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
     (remove-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call)))
 
+(defcustom telega-use-notifications nil
+  "*Non-nil to enable D-Bus notifications for unmuted chats.
+If non-nil also enable notification for incoming calls."
+  :type 'boolean
+  :group 'telega
+  :set (lambda (opt val)
+         (set-default opt val)
+         (telega-notifications-mode (if val 1 -1))))
+
 (defun telega-notifications--close (id)
   "Close notification by ID."
   (when (eq telega-notifications--last-id id)
@@ -291,9 +300,5 @@ If ARG is not given then treat it as 1."
      (nconc notargs telega-notifications-call-args))))
 
 (provide 'telega-notifications)
-
-;; Maybe enable notifications mode
-(when telega-use-notifications
-  (telega-notifications-mode 1))
 
 ;;; telega-notifications.el ends here

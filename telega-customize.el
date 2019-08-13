@@ -124,12 +124,6 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-use-notifications nil
-  "*Non-nil to enable D-Bus notifications for unmuted chats.
-If non-nil also enable notification for incoming calls."
-  :type 'boolean
-  :group 'telega)
-
 (defcustom telega-use-online-status t
   "*Non-nil to enable online status changes according to Emacs focus."
   :type 'boolean
