@@ -204,8 +204,10 @@ If non-nil also enable notification for incoming calls."
 (defun telega-notifications--close (id)
   "Close notification by ID."
   (when (eq telega-notifications--last-id id)
-    (notifications-close-notification id)
-    (setq telega-notifications--last-id nil)))
+    (setq telega-notifications--last-id nil)
+    (ignore-errors
+      ;; See https://t.me/emacs_telega/6532
+      (notifications-close-notification id))))
 
 (defun telega-notifications--notify (notify-spec)
   (when telega-notifications--last-id
