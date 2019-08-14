@@ -266,6 +266,7 @@ If non-nil also enable notification for incoming calls."
 (defun telega-notifications-chat-message (msg)
   "Function intended to be added to `telega-chat-post-message-hook'."
   ;; Do NOT notify message if:
+  ;;  - Message is outgoing
   ;;  - Message is ignored by client side filtering (see `telega-msg-ignored-p')
   ;;  - Chat is muted
   ;;  - Message already has been read (see `telega-msg-seen-p')
@@ -273,7 +274,8 @@ If non-nil also enable notification for incoming calls."
   ;;    laptop wakeup)
   ;;  - Message is currently observable in chatbuf
   ;;  - [TODO] If Emacs frame has focus and root buffer is current
-  (unless (or (telega-msg-ignored-p msg)
+  (unless (or (plist-get msg :is_outgoing)
+              (telega-msg-ignored-p msg)
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
       (unless (or (telega-msg-seen-p msg chat)
