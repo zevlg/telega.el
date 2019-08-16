@@ -180,12 +180,10 @@ By default, all chats are unmuted, the sound is set to
     ))
 
 ;;;###autoload
-(defun telega-notifications-mode (&optional arg)
-  "Toggle telega notifications on or off.
-With positive ARG - enables notifications, otherwise disables.
-If ARG is not given then treat it as 1."
-  (interactive "p")
-  (if (or (null arg) (> arg 0))
+(define-minor-mode telega-notifications-mode
+  "Telega D-Bus notifications."
+  :global t
+  (if telega-notifications-mode
       (progn
         (add-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
         (add-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call))
