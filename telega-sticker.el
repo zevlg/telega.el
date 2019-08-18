@@ -94,8 +94,9 @@ Thumbnail is a smaller (and faster) version of sticker image.")
         (thumb-file (telega-sticker--thumb-file sticker)))
     (when (telega-file--need-download-p thumb-file)
       (telega-file--download thumb-file 6))
-    (when (telega-file--need-download-p sticker-file)
-      (telega-file--download sticker-file 2))
+    (unless telega-sticker--use-thumbnail
+      (when (telega-file--need-download-p sticker-file)
+        (telega-file--download sticker-file 2)))
     ))
 
 (defun telega-stickerset--download (sset)
@@ -112,7 +113,8 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   "Ensure sticker set SSET is put into `telega--stickersets'."
   (setf (alist-get (plist-get sset :id) telega--stickersets nil nil 'equal)
         sset)
-  (telega-stickerset--download sset)
+  (when telega-sticker-set-download
+    (telega-stickerset--download sset))
   sset)
 
 (defun telega-stickerset-get (set-id &optional async-p)
@@ -154,14 +156,16 @@ Thumbnail is a smaller (and faster) version of sticker image.")
     (setq telega--stickers-recent
           (append (plist-get event :sticker_ids) nil))
     ;; Asynchronously download corresponding files
-    (mapc 'telega--downloadFile telega--stickers-recent)))
+;    (mapc 'telega--downloadFile telega--stickers-recent)
+    ))
 
 (defun telega--on-updateFavoriteStickers (event)
   "Favorite stickers has been updated."
   (setq telega--stickers-favorite
         (append (plist-get event :sticker_ids) nil))
   ;; Asynchronously download corresponding files
-  (mapc 'telega--downloadFile telega--stickers-favorite))
+;  (mapc 'telega--downloadFile telega--stickers-favorite)
+  )
 
 (defun telega--getStickers (emoji &optional limit callback)
   "Return installed stickers that correspond to a given EMOJI.
@@ -623,9 +627,9 @@ Return sticker set."
         (thumb-file (telega-animation--thumb-file animation)))
     (when (telega-file--need-download-p thumb-file)
       (telega-file--download thumb-file 5))
-    (when (and telega-animation-download-saved
-               (telega-file--need-download-p animation-file))
-      (telega-file--download animation-file 1))
+    (when telega-animation-download-saved
+      (when (telega-file--need-download-p animation-file)
+        (telega-file--download animation-file 1)))
     ))
 
 (defun telega--on-updateSavedAnimations (event)
@@ -633,7 +637,8 @@ Return sticker set."
   (setq telega--animations-saved
         (append (plist-get event :animation_ids) nil))
   ;; Asynchronously download corresponding files
-  (mapc 'telega--downloadFile telega--animations-saved))
+  (when telega-animation-download-saved
+    (mapc 'telega--downloadFile telega--animations-saved)))
 
 (defun telega--getSavedAnimations ()
   "Return list of saved animations."
@@ -641,7 +646,8 @@ Return sticker set."
                  (list :@type "getSavedAnimations")))
          (anims (append (plist-get reply :animations) nil)))
     ;; Start downloading animations
-    (mapc 'telega-animation--download anims)
+    (when telega-animation-download-saved
+      (mapc 'telega-animation--download anims))
     anims))
 
 (defun telega--addSavedAnimation (input-file)

@@ -139,7 +139,7 @@ See docstring for `display-buffer' for the values."
   "*Non-nil to use fuzzy prefix matching.
 For example without fuzzy matches, prefix `:jo' will match only
 `:joy:', `:joy-cat:' and `:joystick:'.  With fuzzy matching
-enabled it will match alsy `:flag-jo:' and `:black-jocker:'."
+enabled it will match also `:flag-jo:' and `:black-jocker:'."
   :type 'boolean
   :group 'telega)
 
@@ -156,8 +156,13 @@ cdr is maximum width in chars to use."
   :group 'telega)
 
 (defcustom telega-sticker-favorite-background "cornflower blue"
-  "*Background for the favorite stickers."
+  "*Background color for the favorite stickers."
   :type 'string
+  :group 'telega)
+
+(defcustom telega-sticker-set-download nil
+  "*Non-nil to automatically download known sticker sets."
+  :type 'boolean
   :group 'telega)
 
 (defcustom telega-sticker-set-show-emoji nil
