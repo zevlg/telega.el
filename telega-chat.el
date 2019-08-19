@@ -1297,23 +1297,6 @@ Global chat bindings:
   (interactive)
   (telega-describe-chat telega-chatbuf--chat))
 
-(defun telega-chatbuf--killed ()
-  "Called when chat buffer is killed."
-  (ignore-errors
-    ;; See https://github.com/zevlg/telega.el/issues/12
-    (telega--closeChat telega-chatbuf--chat))
-
-  ;; Cancel any active action
-  (ignore-errors
-    (when telega-chatbuf--my-action
-      (telega-chatbuf--set-action "Cancel")))
-
-  (setq telega--chat-buffers
-        (delq (current-buffer) telega--chat-buffers))
-
-  ;; Closing chat may affect filtering, see `opened' filter
-  (telega-root--chat-update telega-chatbuf--chat))
-
 (defun telega-chatbuf-scroll (window display-start)
   "If at the beginning then request for history messages.
 Also mark messages as read with `viewMessages'."
@@ -2747,6 +2730,23 @@ If DRAFT-MSG is ommited, then clear draft message."
 (defun telega-chatbuf--switch-in ()
   "Called when switching to chat buffer."
   )
+
+(defun telega-chatbuf--killed ()
+  "Called when chat buffer is killed."
+  ;; Cancel any active action and actualizes the draft
+  ;; see https://t.me/emacs_telega/6708
+  (ignore-errors
+    (telega-chatbuf--switch-out))
+
+  (ignore-errors
+    ;; See https://github.com/zevlg/telega.el/issues/12
+    (telega--closeChat telega-chatbuf--chat))
+
+  (setq telega--chat-buffers
+        (delq (current-buffer) telega--chat-buffers))
+
+  ;; Closing chat may affect filtering, see `opened' filter
+  (telega-root--chat-update telega-chatbuf--chat))
 
 ;;; Message commands
 (defun telega-msg-redisplay (msg)
