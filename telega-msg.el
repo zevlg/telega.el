@@ -452,7 +452,11 @@ If NO-ERROR is non-nil and TEXT can't be do not raise an error, return nil."
   "Convert TEXT to `formattedTex' type.
 If MARKDOWN is non-nil then format TEXT as markdown."
   (if markdown
-      (telega--parseTextEntities text "textParseModeMarkdown")
+      ;; For markdown mode, escape underscores in urls
+      ;; See https://github.com/tdlib/td/issues/672
+      (telega--parseTextEntities
+       (telega-escape-underscores-in-urls text) "textParseModeMarkdown")
+
     (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))
 

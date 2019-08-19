@@ -248,6 +248,18 @@ N can't be 0."
       (file (find-file (cdr link)))
       )))
 
+(defun telega-escape-underscores-in-urls (text)
+  "Replace underscores in TEXT's urls."
+  (let ((url-rx (rx (and word-start
+                         (group (or (and "http" (? "s") "://") "www\.")
+                                (1+ (not (in " \t\n"))))
+                         word-end))))
+    (replace-regexp-in-string
+     url-rx
+     (lambda (url-text)
+       (replace-regexp-in-string "_" "\\_" url-text nil t))
+     text nil t)))
+
 (defun telega--entity-to-properties (entity text)
   "Convert telegram ENTITY to emacs text properties to apply to TEXT."
   (let ((ent-type (plist-get entity :type)))
