@@ -551,6 +551,7 @@ Call CALLBACK on updates."
       (telega-ins--button (if enabled
                               telega-symbol-ballout-check
                             telega-symbol-ballout-empty)
+        'face 'telega-link
         :value (and (not enabled) recent)
         :action `(lambda (proxy)
                    (if proxy
@@ -567,6 +568,7 @@ Call CALLBACK on updates."
               (if (and (eq proxy recent) (eq proxy enabled))
                   telega-symbol-ballout-check
                 telega-symbol-ballout-empty)
+            'face 'telega-link
             :value proxy
             :action `(lambda (proxy)
                        (and (telega--enableProxy proxy)

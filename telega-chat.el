@@ -1006,7 +1006,7 @@ If LEAVE-P is non-nil, then just leave the chat.
 Leaving chat does not removes chat from chat list."
   (interactive (list (telega-chat-at-point) nil))
   (when (and chat
-             (y-or-n-p
+             (yes-or-no-p
               (format "This action cannot be undone. Delete \"%s\" chat? "
                       (telega-chat-title chat))))
     (let ((chat-type (telega-chat--type chat)))
@@ -1070,8 +1070,8 @@ Leaving chat does not removes chat from chat list."
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
   (interactive
-   (list (y-or-n-p (format "This action cannot be undone. Delete %d chats? "
-                           (length telega--filtered-chats)))))
+   (list (yes-or-no-p (format "This action cannot be undone. Delete %d chats? "
+                              (length telega--filtered-chats)))))
   (when force
     (mapc 'telega-chat-delete telega--filtered-chats)))
 
