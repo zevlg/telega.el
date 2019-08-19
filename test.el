@@ -139,6 +139,18 @@ Have Stoploss 690 Satoshi. í ½í»‘
                    "tg:socks?server=my&port=1234"))
   )
 
+(ert-deftest telega-formatting ()
+  "Test some formatting related functions."
+  (should (string= (telega-escape-underscores-in-urls "www.ru/here_url\n_lala_")
+                   "www.ru/here\\_url\n_lala_"))
+  (should (string= (telega-escape-underscores-in-urls " _lala_ www.ru/here_url www.me/lala_url")
+                   " _lala_ www.ru/here\\_url www.me/lala\\_url"))
+  (should (string= (telega-escape-underscores-in-urls " _lala_ https://ya.ru/here_url")
+                   " _lala_ https://ya.ru/here\\_url"))
+  (should (string= (telega-escape-underscores-in-urls "www.org/me_here _lala_ https://ya.ru/here_url http://www.ru/menounder")
+                   "www.org/me\\_here _lala_ https://ya.ru/here\\_url http://www.ru/menounder"))
+  )
+
 (ert-deftest telega-waveform ()
   "Test info related functionality."
   (should (equal (mapcar (lambda (e)
