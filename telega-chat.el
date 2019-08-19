@@ -1303,6 +1303,11 @@ Global chat bindings:
     ;; See https://github.com/zevlg/telega.el/issues/12
     (telega--closeChat telega-chatbuf--chat))
 
+  ;; Cancel any active action
+  (ignore-errors
+    (when telega-chatbuf--my-action
+      (telega-chatbuf--set-action "Cancel")))
+
   (setq telega--chat-buffers
         (delq (current-buffer) telega--chat-buffers))
 
@@ -1471,6 +1476,45 @@ If TITLE is specified, use it instead of chat's title."
     (delete-region (point-at-bol) telega-chatbuf--prompt-button)
     (goto-char telega-chatbuf--input-marker)))
 
+(defun telega-chatbuf--prompt-reset ()
+  "Reset prompt to initial state in chat buffer."
+  (let ((inhibit-read-only t)
+        (buffer-undo-list t)
+        (prompt-invisible-p
+         (button-get telega-chatbuf--prompt-button 'invisible)))
+    (telega-save-excursion
+      (unless (button-get telega-chatbuf--aux-button 'invisible)
+        (telega-button--update-value
+         telega-chatbuf--aux-button "!aa!"
+         :inserter 'telega-ins
+         'invisible t))
+
+      (telega-button--update-value
+       telega-chatbuf--prompt-button telega-chat-input-prompt
+       'invisible prompt-invisible-p))))
+
+(defun telega-chatbuf--input-draft (draft-msg)
+  "Update chatbuf's input to display draft message DRAFT-MSG."
+  (let ((reply-msg-id (plist-get draft-msg :reply_to_message_id)))
+    (if (and reply-msg-id (not (zerop reply-msg-id)))
+        (telega-msg-reply
+         (telega-msg--get (plist-get telega-chatbuf--chat :id) reply-msg-id))
+      ;; Reset only if replying, but `:reply_to_message_id' is not
+      ;; specified, otherwise keep the aux, for example editing
+      (when (telega-chatbuf--replying-msg)
+        (telega-chatbuf--prompt-reset)))
+
+    (telega-save-cursor
+      (telega-chatbuf--input-delete)
+      (goto-char telega-chatbuf--input-marker)
+      ;; NOTE: We want real UTF-8 chars to be inserted, not using
+      ;; 'display trick for desurrogating
+      (telega-ins
+       (telega--desurrogate-apply
+        (telega-ins--as-string
+         (telega-ins--text
+          (telega--tl-get draft-msg :input_message_text :text))))))))
+
 (defun telega-chatbuf--get-create (chat)
   "Get or create chat buffer for the CHAT."
   (let ((bufname (telega-chatbuf--name chat)))
@@ -1501,6 +1545,12 @@ If TITLE is specified, use it instead of chat's title."
                     :value chat :action 'telega-chatbuf--join)))))
 
           (telega--openChat chat)
+
+          ;; Show the draft message if any, see
+          ;; https://github.com/zevlg/telega.el/issues/80
+          (when-let ((draft-msg (plist-get chat :draft_message)))
+            (telega-chatbuf--input-draft draft-msg))
+
           ;; Start from last read message
           ;; see https://github.com/zevlg/telega.el/issues/48
           (let ((last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
@@ -1787,23 +1837,6 @@ Otherwise start from WINDOW's `window-start'."
         (push msg messages)
         (telega-button-forward 1))
       messages)))
-
-(defun telega-chatbuf--prompt-reset ()
-  "Reset prompt to initial state in chat buffer."
-  (let ((inhibit-read-only t)
-        (buffer-undo-list t)
-        (prompt-invisible-p
-         (button-get telega-chatbuf--prompt-button 'invisible)))
-    (telega-save-excursion
-      (unless (button-get telega-chatbuf--aux-button 'invisible)
-        (telega-button--update-value
-         telega-chatbuf--aux-button "!aa!"
-         :inserter 'telega-ins
-         'invisible t))
-
-      (telega-button--update-value
-       telega-chatbuf--prompt-button telega-chat-input-prompt
-       'invisible prompt-invisible-p))))
 
 (defun telega-chatbuf--read-outbox (old-last-read-outbox-msgid)
   "Redisplay chat messages affected by read-outbox change.
@@ -2680,25 +2713,7 @@ Prefix argument is available for next attachements:
 
     ;; Update chat's input to the value of the draft
     (with-telega-chatbuf chat
-      (let ((reply-msg-id (plist-get draft-msg :reply_to_message_id)))
-        (if (and reply-msg-id (not (zerop reply-msg-id)))
-            (telega-msg-reply
-             (telega-msg--get (plist-get chat :id) reply-msg-id))
-          ;; Reset only if replying, but `:reply_to_message_id' is not
-          ;; specified, otherwise keep the aux, for example editing
-          (when (telega-chatbuf--replying-msg)
-            (telega-chatbuf--prompt-reset)))
-
-        (telega-save-cursor
-          (telega-chatbuf--input-delete)
-          (goto-char telega-chatbuf--input-marker)
-          ;; NOTE: We want real UTF-8 chars to be inserted, not using
-          ;; 'display trick for desurrogating
-          (telega-ins
-           (telega--desurrogate-apply
-            (telega-ins--as-string
-             (telega-ins--text
-              (telega--tl-get draft-msg :input_message_text :text))))))))
+      (telega-chatbuf--input-draft draft-msg))
     ))
 
 (defun telega--setChatDraftMessage (chat &optional draft-msg)
