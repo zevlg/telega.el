@@ -88,13 +88,16 @@ If SLICE-NUM is specified, then insert N's."
 (defun telega-ins--image-slices (image &optional props)
   "Insert sliced IMAGE at current column.
 PROPS - additional image properties."
-  (let ((img-slices (ceiling (cdr (image-size image)))))
-    (telega-ins--column (current-column) nil
-      (dotimes (slice-num img-slices)
-        (telega-ins--image image slice-num props)
-        (unless (= slice-num (1- img-slices))
-          (telega-ins--with-props (list 'line-height t)
-            (telega-ins "\n")))))))
+  (if (not telega-use-images)
+      (telega-ins "<IMAGE>")
+
+    (let ((img-slices (ceiling (cdr (image-size image)))))
+      (telega-ins--column (current-column) nil
+        (dotimes (slice-num img-slices)
+          (telega-ins--image image slice-num props)
+          (unless (= slice-num (1- img-slices))
+            (telega-ins--with-props (list 'line-height t)
+              (telega-ins "\n"))))))))
 
 (defun telega-ins--actions (actions)
   "Insert chat ACTIONS alist."
@@ -856,8 +859,10 @@ Special messages are determined with `telega-msg-special-p'."
            (telega-ins (telega-user--name sender 'short))
          (telega-ins "Message"))
        (telega-ins " pinned \"")
-       (let ((pin-msg (telega-msg--get (plist-get msg :chat_id)
-                                       (plist-get content :message_id))))
+       ;; TODO: asynchronously fetch pinned message
+       (when-let ((pin-msg (telega-msg--get (plist-get msg :chat_id)
+                                            (plist-get content :message_id)
+                                            'locally)))
          (telega-ins--with-attrs (list :min 20 :max 20
                                        :align 'left :elide t)
          (telega-ins--content-one-line pin-msg)))

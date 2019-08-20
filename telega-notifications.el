@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Apr 18 18:18:22 2018
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -23,13 +23,13 @@
 
 ;; Notification pop-ups using `notifications.el' for incoming messages
 ;; and calls.
-;; 
+;;
 ;; To enable notifications use next code in your init.el:
-;; 
+;;
 ;;   (setq telega-use-notifications t)
 ;;
 ;; before loading telega, or (telega-notifications-mode 1) in runtime
-;; 
+;;
 
 ;;; Code:
 (require 'cl-lib)
@@ -107,7 +107,8 @@ By default, all chats are unmuted, the sound is set to
         (when (telega-ins--via-bot (plist-get msg :via_bot_user_id))
           (telega-ins "\n"))))
 
-    (telega-ins--content msg)))
+    (let ((telega-use-images nil))
+      (telega-ins--content msg))))
 
 (defun telega-ins--notification-scope (scope-type sconf)
   "Insert notification scope."

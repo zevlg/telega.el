@@ -363,11 +363,17 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-ins--sticker-image (sticker &optional slices-p)
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
-  (let ((simage (telega-media--image (cons sticker 'telega-sticker--create-image)
-                                     (cons sticker :sticker))))
-    (if slices-p
-        (telega-ins--image-slices simage)
-      (telega-ins--image simage))))
+  (if (not telega-use-images)
+      (telega-ins "<STICKER " (plist-get sticker :emoji) ">")
+
+    (let ((simage (telega-media--image
+                   (cons sticker 'telega-sticker--create-image)
+                   (if telega-sticker--use-thumbnail
+                       (cons (plist-get sticker :thumbnail) :photo)
+                     (cons sticker :sticker)))))
+      (if slices-p
+          (telega-ins--image-slices simage)
+        (telega-ins--image simage)))))
 
 (defun telega-ins--stickerset-change-button (sset)
   (telega-ins--button (if (telega-stickerset-installed-p sset)
@@ -720,7 +726,7 @@ Return sticker set."
 If SLICES-P is non-nil, then insert ANIMATION using slices."
   (let ((aimage (telega-media--image
                  (cons animation 'telega-animation--create-image)
-                 (cons animation :animation))))
+                 (cons (plist-get animation :thumbnail) :photo))))
     (if slices-p
         (telega-ins--image-slices aimage)
       (telega-ins--image aimage))))

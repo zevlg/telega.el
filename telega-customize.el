@@ -129,6 +129,17 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-use-images (fboundp 'imagemagick-types)
+  "Non-nil to show images."
+  :type 'boolean
+  :group 'telega
+  :set (lambda (option value)
+         (if (fboundp 'imagemagick-types)
+             (set-default option value)
+           (set-default option nil)
+           (when value
+             (warn "No ImageMagick support, so images can't be displayed in telega")))))
+
 (defcustom telega-chat--display-buffer-action display-buffer--same-window-action
   "Action value when poping to chatbuffer.
 See docstring for `display-buffer' for the values."
