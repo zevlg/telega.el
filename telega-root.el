@@ -111,8 +111,6 @@ Chat bindings (cursor on chat):
 Global root bindings:
 \\{telega-root-mode-map}"
   :group 'telega-root
-  (setq mode-line-buffer-identification
-        (telega-root--modeline-buffer-identification))
 
   (telega-filters--reset telega-filter-default)
 
@@ -392,53 +390,13 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
     (let ((telega-filters--inhibit-redisplay nil))
       (telega-filters--redisplay))))
 
-(defun telega-root--modeline-buffer-identification ()
-  "Return `mode-line-buffer-identification' for the root buffer."
-  (let* ((title "%12b")
-         (uu-chats-count
-          (or (plist-get telega--unread-chat-count :unread_unmuted_count) 0))
-         (unread-unmuted
-          (unless (zerop uu-chats-count)
-            (propertize (format " %d" uu-chats-count)
-                        'face 'telega-unread-unmuted-modeline
-                        'local-map
-                        '(keymap
-                          (mode-line
-                           keymap (mouse-1 . telega-filter-unread-unmuted)))
-                        'mouse-face 'mode-line-highlight
-                        'help-echo
-                        "Click to filter chats with unread/unmuted messages")))
-         ;; TODO: unread mentions count
-         ;; see https://github.com/tdlib/td/issues/510
-         )
-    (when (display-graphic-p)
-      (let ((logo-img (or telega--logo-image-cache
-                          (setq telega--logo-image-cache
-                                (find-image
-                                 '((:type xpm :file "etc/telegram-logo.xpm"
-                                          :ascent center)))))))
-        (setq title (concat "  " title))
-        (add-text-properties 0 1 (list 'display logo-img) title)))
-
-    (list title unread-unmuted)))
-
 (defun telega--on-updateUnreadMessageCount (event)
   "Number of unread messages has changed."
-  (setq telega--unread-message-count (cddr event))
-
-  (with-telega-root-buffer
-    (setq mode-line-buffer-identification
-          (telega-root--modeline-buffer-identification))
-    (force-mode-line-update)))
+  (setq telega--unread-message-count (cddr event)))
 
 (defun telega--on-updateUnreadChatCount (event)
   "Number of unread/unmuted chats has been changed."
-  (setq telega--unread-chat-count (cddr event))
-
-  (with-telega-root-buffer
-    (setq mode-line-buffer-identification
-          (telega-root--modeline-buffer-identification))
-    (force-mode-line-update)))
+  (setq telega--unread-chat-count (cddr event)))
 
 
 ;;; Searching global public chats and messages
