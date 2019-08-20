@@ -257,14 +257,24 @@ usually is `init.el`, or `emacs.el`.
 `telega.el` can now be started with `M-x telega RET`. The first time
 it ask for the phone number to login to the Telegram network.
 
-# Enabling D-Bus notifications
+# Minor modes
+
+## telega-mode-line-mode
+
+Minor mode to display telega status in modeline.  To enable it use
+
+```elisp
+(telega-mode-line-mode 1)
+```
+
+## telega-notifications-mode
 
 `telega.el` ships with support for D-Bus notifications, but they are
 disabled by default.  To enable notifications add next code to your
 `init.el`:
 
 ```elisp
-(setq telega-use-notifications t)
+(telega-notifications-mode 1)
 ```
 
 # Enabling emoji completions in chat buffer
