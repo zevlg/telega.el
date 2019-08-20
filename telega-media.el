@@ -382,6 +382,20 @@ To customize automatic downloads, use `telega-auto-download'."
     (remove-hook 'telega-user-update-hook 'telega-media--autodownload-on-user)))
 
 
+(defun telega-image--telega-text (img &optional slice-num)
+  "Return text version for image IMG and its slice SLICE-NUM.
+Return nil if `:telega-text' is not specified in IMG."
+  (let ((tt (plist-get (cdr img) :telega-text)))
+    (cond ((null tt) nil)
+          ((stringp tt) tt)
+          ((listp tt)
+           (if slice-num
+               (progn
+                 (cl-assert (> (length tt) slice-num))
+                 (nth slice-num tt))
+             (mapconcat 'identity tt "\n")))
+          (t (cl-assert nil nil "Invalid value for :telega-text=%S" tt)))))
+
 (defun telega-media--cwidth-xmargin (width height char-height &optional max-cwidth)
   "Calculate width in chars and margins X pixels.
 MAX-CWIDTH is maximum width in chars.
@@ -533,7 +547,10 @@ File is specified with FILE-SPEC."
          (cfull (+ ch margin))
          (aw-chars (telega-chars-in-width cfull))
          (xw (telega-chars-width aw-chars))
-         (svg (svg-create xw xh)))
+         (svg (svg-create xw xh))
+         (name (if (eq (telega--tl-type chat-or-user) 'user)
+                   (telega-user--name chat-or-user)
+                 (telega-chat-title chat-or-user))))
     (if (telega-file-exists-p photofile)
         (let ((file-ext (downcase (file-name-extension photofile)))
               (clip (telega-svg-clip-path svg "clip")))
@@ -547,13 +564,9 @@ File is specified with FILE-SPEC."
 
       ;; Draw initials
       (let ((fsz (/ ch 2))
-            color name)
-        (if (eq (telega--tl-type chat-or-user) 'user)
-            (setq color (telega-user-color chat-or-user)
-                  name (telega-user--name chat-or-user))
-          (setq color (telega-chat-color chat-or-user)
-                name (telega-chat-title chat-or-user)))
-
+            (color (if (eq (telega--tl-type chat-or-user) 'user)
+                       (telega-user-color chat-or-user)
+                     (telega-chat-color chat-or-user))))
         (svg-gradient svg "cgrad" 'linear
                       (list (cons 0 (cadr color)) (cons ch (caddr color))))
         (svg-circle svg (/ xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
@@ -570,8 +583,13 @@ File is specified with FILE-SPEC."
                :ascent 'center
                :mask 'heuristic
                :width xw :height xh
-               ;; text of correct width
-               :telega-text (make-string aw-chars ?X))))
+               ;; Correct text for tty-only avatar display
+               :telega-text (list (concat "(" (substring name 0 1) ")"
+                                          (if (> aw-chars 3)
+                                              (make-string (- aw-chars 3) ?\u00A0)
+                                            ""))
+                                  (make-string aw-chars ?\u00A0))
+               )))
 
 (defun telega-media--emoji-image (emoji)
   "Create svg image for the EMOJI."
