@@ -451,11 +451,24 @@ markdown syntax to the TEXT."
     (telega-ins " ")
 
     ;; waveform image
-    (telega-ins--image
-     (telega-vvnote--waves-svg
-      waves (* telega-vvnote-waves-height-factor
-               (frame-char-height (telega-x-frame)))
-      dur played))
+    (if telega-use-images
+        (telega-ins--image
+         (telega-vvnote--waves-svg
+          waves (* telega-vvnote-waves-height-factor
+                   (frame-char-height (telega-x-frame)))
+          dur played))
+
+      ;; tty version
+      (let* ((progress-len 15)
+             (played-len (ceiling
+                          (* progress-len
+                             (/ (or played 0) (if (zerop dur) 0.1 dur))))))
+        (when (> played-len progress-len)
+          ;; NOTE: workaround overflows
+          (setq played-len progress-len))
+        (telega-ins-fmt "[%s%s]"
+          (make-string played-len ?\#)
+          (make-string (- progress-len played-len) ?\.))))
 
     ;; duration and download status
     (telega-ins " (" (telega-duration-human-readable dur) ")")
