@@ -425,6 +425,10 @@ NODE - ewoc node, if known."
     (when node
       (telega-button--observable-p (ewoc-location node)))))
 
+(defun telega-msg-contains-unread-mention-p (msg)
+  "Return non-nil if MSG has unread mention."
+  (plist-get msg :contains_unread_mention))
+
 ;; DEPRECATED ???
 (defun telega-msg-sender-admin-status (msg)
   (let ((admins-tl (telega-server--call
