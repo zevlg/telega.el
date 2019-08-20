@@ -637,7 +637,7 @@ Used by `telega-msg-autodownload-media'."
   :group 'telega)
 
 (defcustom telega-ignored-messages-ring-size 100
-  "*Maximum number of ignored messages in `telega--ignored-messages'.
+  "*Maximum number of ignored messages in `telega--ignored-messages-ring'.
 Message is ignored if its `:ignore' option is set to non-nil."
   :type 'number
   :group 'telega-chat)
@@ -843,6 +843,11 @@ If nil, then user's online status is not displayed."
   :type 'string-or-null-p
   :group 'telega-symbol)
 
+(defcustom telega-symbol-blocked (propertize "⛒" 'face 'error)
+  "Symbol used to mark blacklisted users."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -861,6 +866,7 @@ If nil, then user's online status is not displayed."
          telega-symbol-play
          (car telega-symbol-poll-options)
          (cdr telega-symbol-poll-options)
+         telega-symbol-blocked
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.

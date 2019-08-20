@@ -140,7 +140,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          :limit 200)
    callback))
 
-(defun telega-info--insert-user (user &optional chat)
+(defun telega-info--insert-user (user &optional chat redisplay)
   "Insert USER info into current buffer."
   (let* ((full-info (telega--full-info user))
          (username (plist-get user :username))
@@ -150,6 +150,13 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (out-link (plist-get user :outgoing_link))
          (in-link (plist-get user :incoming_link))
          (profile-photos (telega--getUserProfilePhotos user)))
+
+    ;; Blacklist status
+    (when (plist-get full-info :is_blocked)
+      (telega-ins--with-face 'error
+        (telega-ins telega-symbol-blocked)
+        (telega-ins "BLOCKED"))
+      (telega-ins " "))
 
     ;; Buttons line
     (telega-ins--button "Chat With"
@@ -175,7 +182,17 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
     (when (plist-get full-info :can_be_called)
       (telega-ins--button (concat telega-symbol-phone "Call")
         :value user
-        :action 'telega-voip-call))
+        :action 'telega-voip-call)
+      (telega-ins " "))
+    (let ((user-blocked-p (plist-get full-info :is_blocked)))
+      (telega-ins--button
+          (concat telega-symbol-blocked
+                  (if user-blocked-p "Unblock" "Block") " User")
+        'action (lambda (_ignored)
+                  (telega-user-block user user-blocked-p)
+                  (when redisplay
+                    (telega-save-cursor
+                      (funcall redisplay))))))
     (telega-ins "\n")
 
     ;; Clickable user's profile photos
@@ -428,22 +445,6 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (insert (propertize "Full-Info: " 'face 'bold)
               (format "%S" full-info) "\n"))))
 
-(defun telega-info--insert (tlobj chat)
-  "Insert information about TLOBJ into current buffer."
-  (cl-ecase (telega--tl-type tlobj)
-    (chatTypePrivate
-     (telega-info--insert-user
-      (telega--info 'user (plist-get tlobj :user_id)) chat))
-    (chatTypeSecret
-     (telega-info--insert-secretchat
-      (telega--info 'secretChat (plist-get tlobj :secret_chat_id)) chat))
-    (chatTypeBasicGroup
-     (telega-info--insert-basicgroup
-      (telega--info 'basicGroup (plist-get tlobj :basic_group_id)) chat))
-    (chatTypeSupergroup
-     (telega-info--insert-supergroup
-      (telega--info 'supergroup (plist-get tlobj :supergroup_id)) chat))))
-
 (defun telega-describe-active-sessions (&optional sessions)
   "Describe active SESSIONS."
   (interactive)
@@ -683,28 +684,27 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
      (list :@type "getUserPrivacySettingRules"
            :setting (list :@type privacy-setting)))))
 
-(defun telega--getBlockedUsers (&optional offset)
-  "Get list of blocked users."
-  (let ((reply (telega-server--call
-                (list :@type "getBlockedUsers"
-                      :offset (or offset 0)
-                      :limit 100))))
-    (mapcar 'telega-user--get (plist-get reply :user_ids))))
-
 (defun telega-describe-privacy-settings ()
   "Show user privacy settings."
   (interactive)
   (with-telega-help-win "*Telega Privacy Settings*"
     ;; I18N: lng_settings_privacy_title
-    (insert "Privacy\n")
-    (insert "-------\n")
-    (let ((blocked-users (telega--getBlockedUsers)))
+    (telega-ins "Privacy\n")
+    (telega-ins "-------\n")
+    (when-let ((blocked-users (telega--getBlockedUsers)))
       ;; I18N: lng_blocked_list_title
-      (insert "Blocked Users: "
-              (if blocked-users
-                  (mapconcat 'telega-user--name blocked-users ", ")
-                "None"))
-      (insert "\n"))
+      (telega-ins "Blocked Users:\n")
+      (dolist (user blocked-users)
+        (telega-ins--button "Unblock"
+          'action (lambda (_ignored)
+                    (telega--unblockUser user)
+                    (telega-save-cursor
+                      (telega-describe-privacy-settings))))
+        (telega-ins " ")
+        (telega-button--insert 'telega-user user
+          :inserter 'telega-ins--user)
+        (telega-ins "\n"))
+      (telega-ins "\n"))
     (dolist (setting '(show-status allow-chat-invites allow-calls))
       (telega-ins-fmt "%S: " setting)
       (telega-ins-fmt "%S" (telega--getUserPrivacySettingRules setting))

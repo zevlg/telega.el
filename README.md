@@ -40,6 +40,7 @@ In some random order:
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
 - [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
 - [x] InstantView for web pages
+- [x] Blocking/Unblocking users, listing blocked users
 - [ ] Searching for messages in chat
 - [ ] Shared media
 - [ ] Inline bots requests

@@ -41,9 +41,10 @@
     (set-keymap-parent map button-map)
     (define-key map (kbd "i") 'telega-describe-user)
     (define-key map (kbd "m") 'telega-user-chat-with)
-    (define-key map (kbd "d") 'telega-user-delete)
-    (define-key map (kbd "k") 'telega-user-delete)
-    (define-key map (kbd "DEL") 'telega-user-delete)
+    (define-key map (kbd "B") 'telega-user-block)
+    (define-key map (kbd "D") 'telega-user-block)
+    (define-key map (kbd "K") 'telega-user-block)
+    (define-key map (kbd "DEL") 'telega-user-block)
     map))
 
 (define-button-type 'telega-user
@@ -206,15 +207,46 @@ LIMIT - limit number of photos (default=100)."
     (telega-ins "Name: ")
     (when (telega-ins (plist-get user :first_name))
       (telega-ins " "))
-    (when (telega-ins (plist-get user :last_name))
-      (telega-ins " "))
-    (telega-info--insert-user user)))
+    (telega-ins (plist-get user :last_name))
+    (telega-ins "\n")
+    (telega-info--insert-user
+     user nil (lambda () (telega-describe-user user)))))
 
 (defun telega-user-chat-with (user)
   "Start private chat with USER."
   (interactive (list (telega-user-at (point))))
   (telega-chat--pop-to-buffer
    (telega--createPrivateChat user)))
+
+(defun telega--blockUser (user)
+  "Add USER to the blacklist."
+  (telega-server--call
+   (list :@type "blockUser"
+         :user_id (plist-get user :id))))
+
+(defun telega--unblockUser (user)
+  "Remove USER from the blacklist."
+  (telega-server--call
+   (list :@type "unblockUser"
+         :user_id (plist-get user :id))))
+
+(defun telega--getBlockedUsers (&optional offset)
+  "Get list of blocked users."
+  (let ((reply (telega-server--call
+                (list :@type "getBlockedUsers"
+                      :offset (or offset 0)
+                      :limit 100))))
+    (mapcar 'telega-user--get (plist-get reply :user_ids))))
+
+(defun telega-user-block (user &optional unblock-p)
+  "Toggle block state of the USER.
+If UNBLOCK-P is specified, then unblock USER."
+  (interactive (list (telega-user-at (point))))
+  (if unblock-p
+      (telega--unblockUser user)
+    (when (yes-or-no-p
+           (format "Really block user %s? " (telega-user--name user)))
+      (telega--blockUser user))))
 
 
 ;;; Contacts
@@ -311,11 +343,8 @@ CONTACT is some user you have exchanged contacs with."
 
       (telega-ins "\n--- Telegram User Info ---\n")
       (telega-ins "Name: " (telega-user--name user 'name) "\n")
-      (telega-ins--button "ChatWith"
-        :value user
-        :action 'telega-user-chat-with)
-      (telega-ins " ")
-      (telega-info--insert-user user))))
+      (telega-info--insert-user
+       user nil (lambda () (telega-describe-contact contact))))))
 
 (provide 'telega-user)
 

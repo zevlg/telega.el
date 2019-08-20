@@ -941,7 +941,24 @@ STATUS is one of: "
       (telega-ins "\n"))
 
     (telega-ins "\n")
-    (telega-info--insert (plist-get chat :type) chat)
+    (cl-ecase (telega-chat--type chat 'no-interpret)
+      (private
+       (telega-ins "--- User Info ---\n")
+       (telega-info--insert-user
+        (telega-chat--info chat) chat
+        (lambda () (telega-describe-chat chat))))
+      (secret
+       (telega-ins "--- SecretChat Info ---\n")
+       (telega-info--insert-secretchat
+        (telega-chat--info chat) chat))
+      (basicgroup
+       (telega-ins "--- BasicGroup Info ---\n")
+       (telega-info--insert-basicgroup
+        (telega-chat--info chat) chat))
+      (supergroup
+       (telega-ins "--- SuperGroup Info ---\n")
+       (telega-info--insert-supergroup
+        (telega-chat--info chat) chat)))
 
     (when telega-debug
       (telega-ins "\n---DEBUG---\n")
