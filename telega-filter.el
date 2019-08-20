@@ -69,6 +69,7 @@ Bind it to temporary disable some filters.")
     (define-key map (kbd "s") 'telega-filter-by-user-status)
     (define-key map (kbd "l") 'telega-filter-by-label)
     (define-key map (kbd "T") 'telega-filter-by-top)
+    (define-key map (kbd "SPC") 'telega-filter-by-tracking)
     (define-key map (kbd "!") 'telega-filters-negate)
     (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd "d") 'telega-filters-pop-last)
@@ -445,11 +446,6 @@ Also matches chats marked as unread."
   (interactive)
   (telega-filter-add 'verified))
 
-(defun telega-filter-unread-unmuted ()
-  "Filter unmuted chats with unread messages."
-  (interactive)
-  (telega-filters-push '(notify unread)))
-
 (define-telega-filter ids (chat &rest ids)
   "Matches only chats which :id is in IDS."
   (memq (plist-get chat :id) ids))
@@ -562,6 +558,16 @@ See `telega-chat-custom-label'."
 (define-telega-filter label (chat label)
   "Matches CHAT if it is custom label is LABEL."
   (equal (telega-chat-uaprop chat :label) label))
+
+(defun telega-filter-by-tracking ()
+  "Filter chats currently tracking."
+  (interactive)
+  (telega-filter-add (list 'tracking)))
+
+(define-telega-filter tracking (chat)
+  "Matches CHAT if it is in tracking buffers list."
+  (with-telega-chatbuf chat
+    (member (buffer-name) tracking-buffers)))
 
 (provide 'telega-filter)
 
