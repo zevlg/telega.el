@@ -113,6 +113,13 @@ Actualy value is `:@extra' of the call.")
 Actualy value is `:@extra' of the call.")
 
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
+(defun telega-logo-image ()
+  "Return telega logo image."
+  (or telega--logo-image-cache
+      (setq telega--logo-image-cache
+            (find-image
+             '((:type xpm :file "etc/telegram-logo.xpm" :ascent center))))))
+
 (defvar telega--unread-message-count nil
   "Plist with counts for unread/unmuted messages.
 Props are `:unread_count' and `:unread_unmuted_count'")
