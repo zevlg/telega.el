@@ -48,6 +48,7 @@
 (require 'telega-vvnote)
 (require 'telega-webpage)
 (require 'telega-notifications)
+(require 'telega-modes)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
