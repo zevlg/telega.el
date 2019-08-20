@@ -466,6 +466,16 @@ NOTE: we store the number as custom chat property, to use it later."
     ; (telega-root--chat-update chat)
     ))
 
+(defun telega--on-updateChatPinnedMessage (event)
+  "The chat pinned message was changed."
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :pinned_message_id
+               (plist-get event :pinned_message_id))
+
+    ;; TODO: update chatbuf's view of the pinned message
+    ))
+
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (let ((chat-ids (plist-get result :chat_ids)))
@@ -507,12 +517,13 @@ NOTE: we store the number as custom chat property, to use it later."
            :limit 1000)
      #'telega-chat--on-getChats)))
 
-(defun telega--getChatPinnedMessage (chat)
+(defun telega--getChatPinnedMessage (chat &optional callback)
   "Get pinned message for the CHAT, if any."
   (unless (zerop (plist-get chat :pinned_message_id))
     (telega-server--call
      (list :@type "getChatPinnedMessage"
-           :chat_id (plist-get chat :id)))))
+           :chat_id (plist-get chat :id))
+     callback)))
 
 (defsubst telega-chats-list-get (tl-obj-chats)
   "Return chats list of TL-OBJ-CHATS represeting `Chats' object."
