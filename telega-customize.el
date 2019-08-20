@@ -652,6 +652,11 @@ Message is ignored if its `:ignore' option is set to non-nil."
   "Group to customize special symbols used by telega."
   :group 'telega)
 
+(defcustom telega-symbol-telegram (propertize "◀" 'face '(italic telega-blue))
+  "*String used as telegram logo."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-eliding "..."
   "*String used for eliding long string in formats.
 Nice looking middle dots can be done by setting
@@ -907,27 +912,27 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-faces)
 
 (defface telega-blue
-  '((t :inherit default :foreground "#2ca5e0"))
+  '((t :foreground "#2ca5e0"))
   "*Official blue color of telegram."
   :group 'telega-faces)
 
 (defface telega-enckey-00
-  '((t :inherit default :foreground "#ffffff" :background "#ffffff"))
+  '((t :foreground "#ffffff" :background "#ffffff"))
   "Face used for encryption key"
   :group 'telega-faces)
 
 (defface telega-enckey-01
-  '((t :inherit default :foreground "#d5e6f3" :background "#d5e6f3"))
+  '((t :foreground "#d5e6f3" :background "#d5e6f3"))
   "Face used for encryption key"
   :group 'telega-faces)
 
 (defface telega-enckey-10
-  '((t :inherit default :foreground "#2d5775" :background "#2d5775"))
+  '((t :foreground "#2d5775" :background "#2d5775"))
   "Face used for encryption key"
   :group 'telega-faces)
 
 (defface telega-enckey-11
-  '((t :inherit default :foreground "#2f99c9" :background "#2f99c9"))
+  '((t :foreground "#2f99c9" :background "#2f99c9"))
   "Face used for encryption key"
   :group 'telega-faces)
 
@@ -955,12 +960,12 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-faces)
 
 (defface telega-chat-prompt
-  '((t (:inherit default :weight bold)))
+  '((t :weight bold))
   "Face for chat input prompt"
   :group 'telega-faces)
 
 (defface telega-chat-input-attachment
-  '((t (:inherit bold)))
+  '((t :inherit bold))
   "Face for chat input attachements."
   :group 'telega-faces)
 
@@ -975,7 +980,7 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-faces)
 
 (defface telega-unmuted-count
-  '((t :inherit default :foreground "blue"))
+  '((t :foreground "blue"))
   "Face to display count messages in unmuted chats."
   :group 'telega-faces)
 
@@ -1006,12 +1011,12 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-faces)
 
 (defface telega-entity-type-cashtag
-  '((t :inherit default :foreground "blue"))
+  '((t :foreground "blue"))
   "Face to display $USD cashtags"
   :group 'telega-faces)
 
 (defface telega-entity-type-botcommand
-  '((t :inherit default :foreground "blue"))
+  '((t :foreground "blue"))
   "Face to display /command if there is bot in chat."
   :group 'telega-faces)
 
@@ -1049,7 +1054,7 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-msg-heading
-  '((t :inherit 'widget-field))
+  '((t :inherit widget-field))
   "Face to display messages header."
   :group 'telega-faces)
 
@@ -1159,7 +1164,7 @@ You can customize its `:height' to fit width of the default face."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-closed-hook nil
+(defcustom telega-kill-hook nil
   "Hook called when telega exited."
   :type 'hook
   :group 'telega-hooks)

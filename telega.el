@@ -245,11 +245,6 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
 
   (run-hooks 'telega-ready-hook))
 
-(defun telega--authorization-closed ()
-  "Function to call when state is `authorizationStateClosed'."
-  (telega-server-kill)
-  (run-hooks 'telega-closed-hook))
-
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state using EVENT."
   (let* ((conn-state (telega--tl-get event :state :@type))
@@ -307,7 +302,7 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
        )
 
       (authorizationStateClosed
-       (telega--authorization-closed)))))
+       (telega-server-kill)))))
 
 (defun telega--on-ok (_event)
   "On ok result from command function call."

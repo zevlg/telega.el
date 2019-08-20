@@ -311,7 +311,8 @@ If CALLBACK is specified return `:@extra' value used for the call."
   (interactive)
   (when (buffer-live-p telega-server--buffer)
     (kill-buffer telega-server--buffer)
-    (setq telega-server--buffer nil)))
+    (setq telega-server--buffer nil)
+    (run-hooks 'telega-kill-hook)))
 
 (provide 'telega-server)
 
