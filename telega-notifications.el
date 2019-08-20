@@ -26,10 +26,8 @@
 ;;
 ;; To enable notifications use next code in your init.el:
 ;;
-;;   (setq telega-use-notifications t)
-;;
-;; before loading telega, or (telega-notifications-mode 1) in runtime
-;;
+;;   (telega-notifications-mode 1)
+;; 
 
 ;;; Code:
 (require 'cl-lib)
@@ -180,26 +178,6 @@ By default, all chats are unmuted, the sound is set to
     (telega-ins "\n")
     ))
 
-;;;###autoload
-(define-minor-mode telega-notifications-mode
-  "Telega D-Bus notifications."
-  :global t
-  (if telega-notifications-mode
-      (progn
-        (add-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
-        (add-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call))
-    (remove-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
-    (remove-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call)))
-
-(defcustom telega-use-notifications nil
-  "*Non-nil to enable D-Bus notifications for unmuted chats.
-If non-nil also enable notification for incoming calls."
-  :type 'boolean
-  :group 'telega
-  :set (lambda (opt val)
-         (set-default opt val)
-         (telega-notifications-mode (if val 1 -1))))
-
 (defun telega-notifications--close (id)
   "Close notification by ID."
   (when (eq telega-notifications--last-id id)
@@ -209,6 +187,7 @@ If non-nil also enable notification for incoming calls."
       (notifications-close-notification id))))
 
 (defun telega-notifications--notify (notify-spec)
+  "Use `notifications-notify' to popup NOTIFY-SPEC."
   (when telega-notifications--last-id
     (notifications-close-notification telega-notifications--last-id))
   (let* ((base-spec (list :app-name "emacs.telega"
@@ -302,6 +281,21 @@ If non-nil also enable notification for incoming calls."
     (telega-notifications--notify
      (nconc notargs telega-notifications-call-args))))
 
+;;;###autoload
+(define-minor-mode telega-notifications-mode
+  "Telega D-Bus notifications."
+  :init-value nil :global t :group 'telega-notifications
+  (if telega-notifications-mode
+      (progn
+        (add-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
+        (add-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call))
+    (remove-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
+    (remove-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call)))
+
 (provide 'telega-notifications)
+
+
+(when (boundp 'telega-use-notifications)
+  (warn "`telega-use-notifications' is deprecated in favor for `telega-notifications-mode'."))
 
 ;;; telega-notifications.el ends here
