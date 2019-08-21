@@ -206,6 +206,16 @@ There is a restriction to its value:
   :type 'float
   :group 'telega)
 
+(defcustom telega-vvnote-video-height 6
+  "*Height in chars for video notes."
+  :type 'integer
+  :group 'telega)
+
+(defcustom telega-vvnote-video-inline nil
+  "*Non-nil to play video notes inside chatbuffer."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-video-ffplay-args nil
   "*Additional arguments to ffplay to play video messages.
 To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."

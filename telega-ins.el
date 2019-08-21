@@ -501,7 +501,7 @@ markdown syntax to the TEXT."
     (telega-ins "\n")
     (when thumb
       (let ((timg (telega-media--image
-                   (cons thumb 'telega-thumb--create-image-as-is)
+                   (cons thumb 'telega-vvnote-video--create-image)
                    (cons thumb :photo))))
         (telega-ins--image-slices timg))
       (telega-ins " "))

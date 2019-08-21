@@ -553,11 +553,11 @@ File is specified with FILE-SPEC."
                    (telega-user--name chat-or-user)
                  (telega-chat-title chat-or-user))))
     (if (telega-file-exists-p photofile)
-        (let ((file-ext (downcase (file-name-extension photofile)))
+        (let ((img-type (image-type-from-file-name photofile))
               (clip (telega-svg-clip-path svg "clip")))
           (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))
           (svg-embed svg photofile
-                     (if (string= file-ext "png") "image/png" "image/jpeg")
+                     (format "image/%S" img-type)
                      nil
                      :x (/ (- xw ch) 2) :y (/ margin 2)
                      :width ch :height ch

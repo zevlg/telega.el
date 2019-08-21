@@ -126,8 +126,9 @@ heights are normalized to [0-1] values."
   "Generate svg image for the video note FRAMEFILE.
 DURATION is overall duration of the video note.
 PROGRESS is current frame progress."
-  (let* ((size 240)
-         (h (* (frame-char-height) (telega-chars-in-height size)))
+  (let* ((img-type (image-type-from-file-name framefile))
+         (size (* (frame-char-height) telega-vvnote-video-height))
+         (h size)
          (w (* (telega-chars-width 1) (telega-chars-in-width size)))
          (xoff (/ (- w size) 2))
          (yoff (/ (- h size) 2))
@@ -139,7 +140,8 @@ PROGRESS is current frame progress."
          (dx (+ (* (/ size 2) (sin angle)) 120))
          (dy (+ (* (/ size 2) (cos angle)) 120)))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
-    (svg-embed svg framefile "image/png" nil
+    (svg-embed svg framefile
+               (format "image/%S" img-type) nil
                :x xoff :y yoff
                :width size :height size
                :clip-path "url(#clip)")
@@ -288,6 +290,12 @@ File and progress are nil when file has been successfuly played."
       (set-process-sentinel proc #'telega-vvnote--ffmpeg-sentinel)
       (set-process-filter proc #'telega-vvnote--ffmpeg-filter)
       proc)))
+
+(defun telega-vvnote-video--create-image (thumb &optional _file)
+  "Create image for video note frame THUMB."
+  (telega-vvnote--video-svg
+   (telega--tl-get (telega-file--renew thumb :photo) :local :path)
+   10.0 0))
 
 (provide 'telega-vvnote)
 
