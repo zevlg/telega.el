@@ -60,8 +60,11 @@
         (add-hook 'telega-ready-hook 'telega-mode-line-update)
         (add-hook 'telega-chats-fetched-hook 'telega-mode-line-update)
         (add-hook 'telega-kill-hook 'telega-mode-line-update)
-        (add-hook 'tracking-buffer-added-hook 'telega-mode-line-update)
-        (add-hook 'tracking-buffer-removed-hook 'telega-mode-line-update)
+        ;; NOTE: `tracking-buffer-added-hook', and
+        ;; `tracking-buffer-removed-hook' are called *before*
+        ;; tracking-buffers modification, so use advices instead
+        (advice-add 'tracking-add-buffer :after 'telega-mode-line-update)
+        (advice-add 'tracking-remove-buffer :after 'telega-mode-line-update)
         (telega-mode-line-update))
 
     (setq global-mode-string
@@ -75,12 +78,12 @@
     (remove-hook 'telega-ready-hook 'telega-mode-line-update)
     (remove-hook 'telega-chats-fetched-hook 'telega-mode-line-update)
     (remove-hook 'telega-kill-hook 'telega-mode-line-update)
-    (remove-hook 'tracking-buffer-added-hook 'telega-mode-line-update)
-    (remove-hook 'tracking-buffer-removed-hook 'telega-mode-line-update)
+    (advice-remove 'tracking-add-buffer 'telega-mode-line-update)
+    (advice-remove 'tracking-remove-buffer 'telega-mode-line-update)
     ))
 
 (defcustom telega-mode-line-format-spec " %I %t%c%M"
-  "Format for telega modeline
+  "Format for telega modeline.
 %I - Telegram logo.
 %c - Number of unread unmuted chats.
 %C - Number of unread messages in unmuted chats.
@@ -118,7 +121,7 @@ Suffixes does not inherit any faces used in formatting."
   :group 'telega)
 
 (defmacro telega-mode-line-filter-gen (&rest filter-spec)
-  "Generate filtering command for telega-mode-line-mode."
+  "Generate filtering command for telega-mode-line-mode using FILTER-SPEC."
   `(lambda ()
      (interactive)
      (telega nil)
