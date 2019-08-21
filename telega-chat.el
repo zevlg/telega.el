@@ -2780,6 +2780,11 @@ If DRAFT-MSG is ommited, then clear draft message."
     ;; See https://github.com/zevlg/telega.el/issues/12
     (telega--closeChat telega-chatbuf--chat))
 
+  ;; Stop any voice notes, see
+  ;; https://github.com/zevlg/telega.el/issues/49
+  (when telega-chatbuf--voice-msg
+    (telega-ffplay-stop))
+
   (setq telega--chat-buffers
         (delq (current-buffer) telega--chat-buffers))
 
