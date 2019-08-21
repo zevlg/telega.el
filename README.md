@@ -436,3 +436,8 @@ to modify it.
 
 Take into account that telega tracks only opened chats with enabled
 notifications.
+
+**Q**: Is it possible to use `telega.el` in tty-only Emacs (aka
+emacs-nox)?
+
+**A**: Yes, set `telega-use-images` to `nil`, before start.
