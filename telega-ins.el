@@ -29,13 +29,14 @@
 
 ;;; Code:
 (require 'format-spec)
-(require 'seq)
 
 (require 'telega-core)
 (require 'telega-inline)
 (require 'telega-customize)
 
 (defvar telega-filters--inhibit-list)
+(defvar telega-msg--reply-to-msg-deleted nil
+  "Bind to non-nil if reply-to-msg has been deleted.")
 
 (defun telega-ins--button (label &rest props)
   "Insert pressable button labeled with LABEL.
@@ -1106,12 +1107,21 @@ argument - MSG to insert additional information after header."
                       (telega-msg-goto-highlight reply-to-msg)))
             (telega-ins--aux-reply-inline reply-to-msg 'telega-msg-inline-reply))
 
-        (telega-msg-reply-msg msg nil
-          (lambda (reply-msg)
-            (telega-msg--cache-in-chatbuf reply-msg)
-            (telega-msg-redisplay msg)))
-        (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
-          (telega-ins "Loading..."))))))
+        ;; NOTE: if `telega-msg--reply-to-msg-deleted' is non-nil,
+        ;; then reply-to-msg has been deleted
+        (if telega-msg--reply-to-msg-deleted
+            (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
+              (telega-ins "<DELETED MESSAGE>"))
+
+          ;; Asynchronously load reply-to-msg and redisplay msg
+          (telega-msg-reply-msg msg nil
+            (lambda (reply-msg)
+              (let ((telega-msg--reply-to-msg-deleted (not reply-msg)))
+              (when reply-msg
+                (telega-msg--cache-in-chatbuf reply-msg))
+              (telega-msg-redisplay msg))))
+          (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
+            (telega-ins "Loading...")))))))
 
 (defun telega-ins--message (msg &optional no-header addon-header-inserter)
   "Insert message MSG.
@@ -1352,6 +1362,9 @@ BRACKETS is cons cell of open-close brackets to use.
 By default BRACKETS is choosen according to `telega-chat-button-brackets'.
 
 Return t."
+  (unless brackets
+    (setq brackets (telega-chat-brackets chat)))
+
   (let ((title (telega-chat-title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
@@ -1371,12 +1384,6 @@ Return t."
         (setq title (concat (format-spec telega-chat-label-format
                                          (format-spec-make ?L label))
                             title))))
-
-    (unless brackets
-      (setq brackets (cdr (seq-find (lambda (bspec)
-                                      (telega-filter-chats
-                                       (car bspec) (list chat)))
-                                    telega-chat-button-brackets))))
 
     (telega-ins (or (car brackets) "["))
 

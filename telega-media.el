@@ -546,6 +546,7 @@ File is specified with FILE-SPEC."
          (ch (* cfactor xh))
          (cfull (+ ch margin))
          (aw-chars (telega-chars-in-width cfull))
+         (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
          (xw (telega-chars-width aw-chars))
          (svg (svg-create xw xh))
          (name (if (eq (telega--tl-type chat-or-user) 'user)
@@ -585,10 +586,8 @@ File is specified with FILE-SPEC."
                :width xw :height xh
                ;; Correct text for tty-only avatar display
                :telega-text (list (concat "(" (substring name 0 1) ")"
-                                          (if (> aw-chars 3)
-                                              (make-string (- aw-chars 3) ?\u00A0)
-                                            ""))
-                                  (make-string aw-chars ?\u00A0))
+                                          (make-string aw-chars-3 ?\u00A0))
+                                  (make-string (+ 3 aw-chars-3) ?\u00A0))
                )))
 
 (defun telega-media--emoji-image (emoji)

@@ -28,6 +28,7 @@
 (require 'subr-x)
 (require 'ring)
 (require 'url-util)
+(require 'seq)
 
 (require 'telega-core)
 (require 'telega-server)
@@ -303,6 +304,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
         (when username
           (setq title (concat title " @" username)))))
     title))
+
+(defun telega-chat-brackets (chat)
+  "Return CHAT's brackets from `telega-chat-button-brackets'."
+  (cdr (seq-find (lambda (bspec)
+                   (telega-filter-chats (car bspec) (list chat)))
+                 telega-chat-button-brackets)))
 
 (defun telega-chat--reorder (chat order)
   "Reorder CHAT in `telega--ordered-chats' according to ORDER."
@@ -1460,12 +1467,15 @@ Recover previous active action after BODY execution."
 (defun telega-chatbuf--name (chat &optional title)
   "Return name for the CHAT buffer.
 If TITLE is specified, use it instead of chat's title."
-  (format "Telega-%S%s: %s" (telega-chat--type chat)
-          (telega--desurrogate-apply
-           (let ((un (plist-get (telega-chat--info chat) :username)))
-            (concat (if (string-empty-p un) "" "@") un)))
-          (telega--desurrogate-apply
-           (or title (telega-chat-title chat)))))
+  (let ((brackets (telega-chat-brackets chat)))
+    (concat telega-symbol-telegram
+            (or (car brackets) "[")
+            (telega--desurrogate-apply
+             (or title (telega-chat-title chat)))
+            (when-let ((un (plist-get (telega-chat--info chat) :username)))
+              (unless (string-empty-p un)
+                (concat "@" (telega--desurrogate-apply un))))
+            (or (cadr brackets) "]"))))
 
 (defun telega-chatbuf--join (chat)
   "[JOIN] button has been pressed."
