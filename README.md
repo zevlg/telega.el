@@ -53,6 +53,7 @@ In some random order:
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
 - [x] Labeled chats, you can assign custom label to chat
 - [x] Client side messages filtering
+- [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
 
 # Screenshots
 

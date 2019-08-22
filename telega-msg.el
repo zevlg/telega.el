@@ -31,6 +31,7 @@
 (require 'telega-media)
 (require 'telega-ffplay)                ; telega-ffplay-run
 (require 'telega-vvnote)
+(require 'telega-util)
 
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
@@ -46,6 +47,7 @@
     (define-key map (kbd "d") 'telega-msg-delete)
     (define-key map (kbd "k") 'telega-msg-delete)
     (define-key map (kbd "l") 'telega-msg-redisplay)
+    (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "S") 'telega-msg-save)
     (define-key map (kbd "DEL") 'telega-msg-delete)
@@ -571,6 +573,53 @@ blocked users."
         :inserter 'telega-ins--message-ignored)
       (telega-ins "\n")
       )))
+
+
+;; Viewing messages diffs
+(defun telega-msg-diff-edits (msg)
+  "Display edits to MSG user did."
+  (interactive (list (telega-msg-at (point))))
+
+  (when (zerop (plist-get msg :edit_date))
+    (user-error "Message was not edited"))
+
+  (let ((events (telega--getChatEventLog
+                 (telega-msg-chat msg) nil nil 50
+                 (telega-chatevent-log-filter :message_edits)
+                 (list (telega-msg-sender msg)))))
+    (unless events
+      (user-error "No edits found"))
+    (cl-flet ((find-msg (accesor events)
+                        (telega--tl-get
+                         (cl-find (plist-get msg :id) events
+                                  :key (telega--tl-prop :action accesor :id))
+                         :action accesor)))
+      (let ((msg-new (find-msg :new_message events))
+            (msg-old (find-msg :old_message (nreverse events))))
+        (unless (and msg-old msg-new)
+          (user-error "Can't find message edit in last 50 edits"))
+
+        (with-telega-help-win "*Telega Message Diff*"
+          (telega-ins--with-face (ansi-color-get-face-1 31)
+            (telega-ins "Orig"))
+          (telega-ins " message at: ")
+          (telega-ins--date-iso8601 (plist-get msg-old :date))
+          (telega-ins "\n")
+
+          (telega-ins--with-face (ansi-color-get-face-1 32)
+            (telega-ins "Edit"))
+          (telega-ins " message at: ")
+          (telega-ins--date-iso8601 (plist-get msg-new :edit_date))
+          (telega-ins "\n")
+
+          (telega-ins "-- Diff --\n")
+          (telega-ins
+           (telega-diff-wordwise (telega-ins--as-string
+                                  (telega-ins--content msg-old))
+                                 (telega-ins--as-string
+                                  (telega-ins--content msg-new))
+                                 'colorize))
+          )))))
 
 (provide 'telega-msg)
 

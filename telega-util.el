@@ -31,6 +31,7 @@
 (require 'rx)                           ; `rx'
 (require 'svg)
 (require 'color)                        ; `color-XXX'
+(require 'ansi-color)                   ; ansi-color-apply
 
 (require 'telega-customize)
 
@@ -175,14 +176,16 @@ Use it if you have formatting issues."
     (let ((width (car pair))
           (symbols (cdr pair))
           (table (make-char-table nil)))
-      (dolist (symbol-str symbols)
-        (set-char-table-range table (string-to-char symbol-str) width))
+      (dolist (sym symbols)
+        (set-char-table-range
+         table (if (stringp sym) (string-to-char sym) sym) width))
       (optimize-char-table table)
       (set-char-table-parent table char-width-table)
       (setq char-width-table table))))
 
 (defun telega-symbol-set-width (symbol width)
-  "Declare that SYMBOL's width is equal to WIDTH."
+  "Declare that SYMBOL's width is equal to WIDTH.
+SYMBOL could be a cons cell of codepoints, specifying the range."
   (setf (alist-get width telega-symbol-widths)
         (cons symbol (alist-get width telega-symbol-widths))))
 
@@ -522,6 +525,28 @@ Header and Footer are not deleted."
   "Find EMOJI name."
   (telega-emoji-init)
   (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
+
+(defun telega-diff-wordwise (str1 str2 &optional colorize)
+  "Compare two strings STR1 and STR2 wordwise.
+If COLORIZE is non-nil, then colorize changes with `font-lock-face'.
+Uses `git' command to compare."
+  (let ((tmp1 (make-temp-file "telega-diff1"))
+        (tmp2 (make-temp-file "telega-diff2")))
+    (unwind-protect
+        (progn
+          (with-temp-file tmp1
+            (insert str1))
+          (with-temp-file tmp2
+            (insert str2))
+          (ansi-color-apply
+           (shell-command-to-string
+            (concat "git diff --word-diff-regex=. --word-diff="
+                    (if colorize "color" "plain")
+                    " --no-index " tmp1 " " tmp2 " | tail -n +6"))))
+
+      ;; cleanup
+      (delete-file tmp1)
+      (delete-file tmp2))))
 
 (provide 'telega-util)
 
