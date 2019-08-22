@@ -1011,7 +1011,7 @@ argument - MSG to insert additional information after header."
                            'telega-msg-self-title
                          'telega-msg-user-title))))
     (telega-ins--with-attrs (list :face 'telega-msg-heading
-                                  :min fwidth :max twidth
+                                  :min twidth :max twidth
                                   :align 'left :elide t)
       ;; Maybe add some rainbow color to the message title
       (when telega-msg-rainbow-title

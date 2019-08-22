@@ -2495,14 +2495,14 @@ If DOC-P prefix arg as given, then send it as document."
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the input.
 If numeric prefix arg is given, then take screenshot in N seconds.
-If `C-u' prefix arg is given, then take screenshot of the screen area."
-  (interactive (list current-prefix-arg telega-chatbuf--chat))
+If `C-u' prefix arg is given, then take screenshot of the screen area.
+Multiple `C-u' increases delay before taking screenshot of the area."
+  (interactive (list (or current-prefix-arg 1) telega-chatbuf--chat))
 
-  ;; NOTE: use negative N value as special, to make screenshot of the
-  ;; area
-  (if (and (listp n) (not (null n)))
-      (setq n -1)
-    (setq n (prefix-numeric-value n)))
+  ;; NOTE: use float N value as special, to make screenshot of the
+  ;; area, `log' returns float
+  (when (listp n)
+    (setq n (log (car n) 4)))
 
   (if (> n 0)
       (progn
@@ -2515,7 +2515,7 @@ If `C-u' prefix arg is given, then take screenshot of the screen area."
                            (error "Utility `import' (imagemagick) not found")))
            (temporary-file-directory telega-temp-dir)
            (tmpfile (telega-temp-name "screenshot" ".png"))
-           (import-args (nconc (unless (< n 0) (list "-window" "root"))
+           (import-args (nconc (unless (floatp n) (list "-window" "root"))
                                (list tmpfile))))
       (apply 'call-process import-bin nil nil nil
              "-silent"                  ;no beep
@@ -3019,6 +3019,36 @@ See https://t.me/designers/44"
 (defun telega-chatbuf-filter-cancel ()
   "Cancel any message filtering."
   (user-error "`telega-chatbuf-filter-cancel' NOT yet implemented"))
+
+
+;; Chat Event Log
+(defun telega-chatevent-log-filter (&rest filters)
+  "Return chat event log filter.
+FILTERS are:
+`:message_edits', `:message_deletions', `:message_pins',
+`:member_joins', `:member_leaves', `:member_invites',
+`:member_promotions', `:member_restrictions', `:info_changes',
+`:setting_changes'."
+  (apply 'nconc (list :@type "chatEventLogFilters")
+         (mapcar (lambda (filter) (list filter t)) filters)))
+
+(defun telega--getChatEventLog (chat &optional query from-event-id
+                                     limit filters users)
+  "Return event log for the CHAT.
+FILTERS are created with `telega-chatevent-log-filter'."
+  (let ((reply (telega-server--call
+                (nconc (list :@type "getChatEventLog"
+                             :chat_id (plist-get chat :id)
+                             :from_event_id (or from-event-id 0)
+                             :limit (or limit 100))
+                       (when query
+                         (list :query query))
+                       (when filters
+                         (list :filters filters))
+                       (when users
+                         (list :user_ids
+                               (cl-map 'vector (telega--tl-prop :id) users)))))))
+    (append (plist-get reply :events) nil)))
 
 (provide 'telega-chat)
 
