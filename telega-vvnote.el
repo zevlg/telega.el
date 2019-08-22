@@ -122,7 +122,7 @@ heights are normalized to [0-1] values."
           (setq leftbits 8))))
     (mapcar (lambda (v) (/ v 31.0)) (nreverse result))))
 
-(defun telega-vvnote--video-svg (framefile duration &optional progress)
+(defun telega-vvnote--video-svg (framefile &optional duration progress)
   "Generate svg image for the video note FRAMEFILE.
 DURATION is overall duration of the video note.
 PROGRESS is current frame progress."
@@ -134,11 +134,7 @@ PROGRESS is current frame progress."
          (yoff (/ (- h size) 2))
          (svg (svg-create w h))
          (clip (telega-svg-clip-path svg "clip"))
-         (clip1 (telega-svg-clip-path svg "clip1"))
-         (angle-o (* 2 pi (/ progress duration)))
-         (angle (+ (* 2 pi (- (/ progress duration))) pi))
-         (dx (+ (* (/ size 2) (sin angle)) 120))
-         (dy (+ (* (/ size 2) (cos angle)) 120)))
+         (clip1 (telega-svg-clip-path svg "clip1")))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
     (svg-embed svg framefile
                (format "image/%S" img-type) nil
@@ -146,30 +142,31 @@ PROGRESS is current frame progress."
                :width size :height size
                :clip-path "url(#clip)")
 
-    ;; clip mask for the progress circle
-    (let ((cp (format "M %d %d L %d %d L %d 0" (/ w 2) (/ h 2) (/ w 2) 0 w)))
-      (when (> angle-o (/ pi 2))
-        (setq cp (concat cp (format " L %d %d" w h))))
-      (when (> angle-o pi)
-        (setq cp (concat cp (format " L 0 %d" h))))
-      (when (> angle-o (/ (* 3 pi) 2))
-        (setq cp (concat cp (format " L 0 0"))))
-      (setq cp (concat cp (format " L %d %d" (+ dx xoff) (+ dy yoff))))
-      (setq cp (concat cp " Z"))
-      (telega-svg-path clip1 cp))
-    ;; Progress circle itself
-    (svg-circle svg (/ w 2) (/ h 2) (- (/ size 2) 4)
-                :fill "none"
-                :stroke-width 8
-                :stroke-opacity "0.3"
-                :stroke-color "white"
-                :clip-path "url(#clip1)")
+    (when (and duration progress)
+      (let* ((angle-o (* 2 pi (/ progress duration)))
+             (angle (+ (* 2 pi (- (/ progress duration))) pi))
+             (dx (+ (* (/ size 2) (sin angle)) (/ size 2)))
+             (dy (+ (* (/ size 2) (cos angle)) (/ size 2))))
+        ;; clip mask for the progress circle
+        (let ((cp (format "M %d %d L %d %d L %d 0" (/ w 2) (/ h 2) (/ w 2) 0 w)))
+          (when (> angle-o (/ pi 2))
+            (setq cp (concat cp (format " L %d %d" w h))))
+          (when (> angle-o pi)
+            (setq cp (concat cp (format " L 0 %d" h))))
+          (when (> angle-o (/ (* 3 pi) 2))
+            (setq cp (concat cp (format " L 0 0"))))
+          (setq cp (concat cp (format " L %d %d" (+ dx xoff) (+ dy yoff))))
+          (setq cp (concat cp " Z"))
+          (telega-svg-path clip1 cp))
+        ;; Progress circle itself
+        (svg-circle svg (/ w 2) (/ h 2) (- (/ size 2) 4)
+                    :fill "none"
+                    :stroke-width (/ size 30)
+                    :stroke-opacity "0.35"
+                    :stroke-color "white"
+                    :clip-path "url(#clip1)")))
 
-;    (setq vbox (svg-viewbox svg 300 36 "20 20 30 30"))
-;    (svg-rectangle vbox 0 0 100 36)
-    (svg-image svg :scale 1.0
-               :ascent 'center
-               )))
+    (svg-image svg :scale 1.0 :ascent 'center)))
 
 
 ;; Play video note
@@ -192,11 +189,22 @@ Return non-nil if callback has been executed and frame deleted."
     (let* ((proc-plist (process-plist proc))
            (callback (plist-get proc-plist :callback))
            (callback-args (plist-get proc-plist :callback-args))
-           (fps (or (plist-get proc-plist :fps) 30)))
+           (fps (or (plist-get proc-plist :fps) 30))
+           (progress (/ (cdr frame) (float fps))))
+      (set-process-plist proc (plist-put proc-plist :progress progress))
       (when callback
-        (apply callback (car frame) (/ (cdr frame) (float fps)) callback-args))
+        (apply callback (car frame) progress callback-args))
       (delete-file (car frame))
       t)))
+
+(defun telega-vvnote--start-timer (proc)
+  "Start vvnote timer for the PROC."
+  (let* ((proc-plist (process-plist proc))
+         (timer (plist-get proc-plist :timer))
+         (fps (plist-get proc-plist :fps)))
+    (unless timer
+      (setq timer (run-with-timer 0 (/ 1.0 fps) 'telega-vvnote--next-frame proc))
+      (set-process-plist proc (plist-put proc-plist :timer timer)))))
 
 (defun telega-vvnote--cancel-timer (proc)
   "Stop vvnote timer associated with PROC."
@@ -218,28 +226,33 @@ Return non-nil if callback has been executed and frame deleted."
               (callback-args (plist-get (process-plist proc) :callback-args)))
           (apply callback nil nil callback-args)
           (telega-vvnote--cancel-timer proc)))
-
     (error
      (telega-vvnote--cancel-timer proc)
      (message "telega: error in vvnote callback: %S" err))))
 
 (defun telega-vvnote--ffmpeg-sentinel (proc event)
   "Sentinel for the ffmpeg process."
+  (telega-debug "vvnote SENTINEL: status=%S, live=%S"
+                (process-status proc) (process-live-p proc))
+
   ;; NOTE: timer will do all the job
-  (telega-debug "vvnote SENTINEL: %S, status=%S"
-                event (process-status proc))
+  (cl-case (process-status proc)
+    (run (telega-vvnote--start-timer proc))   ;resume
+    (stop (telega-vvnote--cancel-timer proc)) ;pause
+    (t (unless (plist-get (process-plist proc) :timer)
+         ;; Done playing, nil nil args mean DONE
+         (let ((callback (plist-get (process-plist proc) :callback))
+               (callback-args (plist-get (process-plist proc) :callback-args)))
+           (unwind-protect
+               (apply callback nil nil callback-args)
 
-  ;; If timer died or process exited prematurely
-  (unless (eq (process-status proc) 'exit)
-    (telega-vvnote--cancel-timer proc))
+           (telega-vvnote--cancel-timer proc)))
 
-  (unless (plist-get (process-plist proc) :timer)
-    ;; Timer died, probably some error in callback or premature stop
-    ;; Remove all the unused files
-    (set-process-plist proc (plist-put (process-plist proc) :callback nil))
-    (while (telega-vvnote--run-frame proc (telega-vvnote--recent-frame proc))
-      ;; no-op
-      )))
+         (set-process-plist proc (plist-put (process-plist proc) :callback nil))
+         (while (telega-vvnote--run-frame
+                 proc (telega-vvnote--recent-frame proc))
+           ;; no-op
+           )))))
 
 (defun telega-vvnote--ffmpeg-filter (proc output)
   "Filter for the ffmpeg process."
@@ -254,7 +267,11 @@ Return non-nil if callback has been executed and frame deleted."
           (when (re-search-backward ", \\([0-9.]+\\) fps," nil t)
             (set-process-plist
              proc (plist-put proc-plist :fps
-                             (string-to-number (match-string 1))))))))))
+                             (string-to-number (match-string 1))))
+            ;; Restart timer according to updated fps value
+            (telega-vvnote--cancel-timer proc)
+            (telega-vvnote--start-timer proc)
+            ))))))
 
 (defun telega-vvnote-play-video (videofile callback &rest callback-args)
   "Play video note using ffmpeg.
@@ -263,6 +280,7 @@ And video to series of PNG images.
 CALLBACK is called on updates with first two arguments - file to
 show and progress and rest CALLBACK-ARGS.
 File and progress are nil when file has been successfuly played."
+  (declare (indent 1))
   ;; Stop any ffplay running
   (telega-ffplay-stop)
 
@@ -275,17 +293,17 @@ File and progress are nil when file has been successfuly played."
                               "-f" "alsa" "default"
                               "-vsync" "0"
                               (format "%s%%05d.png" prefix)))
-           (proc (apply 'start-process "ffplay" (current-buffer)
+           (proc (apply 'start-process "ffmpeg" (current-buffer)
                         (or (executable-find "ffmpeg")
                             (error "ffmpeg not found in `exec-path'"))
-                        ffmpeg-args))
-           (timer (run-with-timer 0 0.02 'telega-vvnote--next-frame proc)))
+                        ffmpeg-args)))
 
       (set-process-plist proc (list :prefix prefix
                                     :frame 1
+                                    :fps 30.0
                                     :callback callback
-                                    :callback-args callback-args
-                                    :timer timer))
+                                    :callback-args callback-args))
+      (telega-vvnote--start-timer proc)
       (set-process-query-on-exit-flag proc nil)
       (set-process-sentinel proc #'telega-vvnote--ffmpeg-sentinel)
       (set-process-filter proc #'telega-vvnote--ffmpeg-filter)
@@ -293,9 +311,14 @@ File and progress are nil when file has been successfuly played."
 
 (defun telega-vvnote-video--create-image (thumb &optional _file)
   "Create image for video note frame THUMB."
-  (telega-vvnote--video-svg
-   (telega--tl-get (telega-file--renew thumb :photo) :local :path)
-   10.0 0))
+  (let ((file (telega-file--renew thumb :photo)))
+    (if (telega-file--downloaded-p file)
+        (telega-vvnote--video-svg
+         (telega--tl-get file :local :path))
+
+      (let* ((cheight telega-vvnote-video-height)
+             (x-size (* (frame-char-height) cheight)))
+        (telega-media--progress-svg file x-size x-size cheight)))))
 
 (provide 'telega-vvnote)
 

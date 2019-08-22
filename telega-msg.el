@@ -194,7 +194,7 @@ If CALLBACK is specified, then get reply message asynchronously."
   ;; - If not start, start playing
   (let* ((audio (telega--tl-get msg :content :audio))
          (audio-file (telega-file--renew audio :audio))
-         (proc (plist-get msg :telega-audio-proc)))
+         (proc (plist-get msg :telega-ffplay-proc)))
     (cl-case (and (process-live-p proc) (process-status proc))
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
@@ -202,7 +202,7 @@ If CALLBACK is specified, then get reply message asynchronously."
           (lambda (file)
             (telega-msg-redisplay msg)
             (when (telega-file--downloaded-p file)
-              (plist-put msg :telega-audio-proc
+              (plist-put msg :telega-ffplay-proc
                          (telega-ffplay-run
                           (telega--tl-get file :local :path)
                           (lambda (_proc)
@@ -219,6 +219,11 @@ If CALLBACK is specified, then get reply message asynchronously."
 
     (when (and (eq (process-status proc) 'exit)
                telega-vvnote-voice-play-next)
+      ;; NOTE: callback might be called *twice* with 'exit status,
+      ;; this might cause problems if not handled, to handle this, we
+      ;; simple unset the callback on proc
+      (set-process-plist proc nil)
+
       ;; ffplay exited normally (finished playing), try to play next
       ;; voice message if any
       (let ((next-voice-msg (telega-chatbuf--next-voice-msg msg)))
@@ -232,34 +237,50 @@ If CALLBACK is specified, then get reply message asynchronously."
   ;; - If not start, start playing
   (let* ((note (telega--tl-get msg :content :voice_note))
          (note-file (telega-file--renew note :voice))
-         (proc (plist-get msg :telega-vvnote-proc)))
+         (proc (plist-get msg :telega-ffplay-proc)))
     (cl-case (and (process-live-p proc) (process-status proc))
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
       (t (telega-file--download note-file 32
-          (lambda (file)
-            (telega-msg-redisplay msg)
-            (when (telega-file--downloaded-p file)
-              (plist-put msg :telega-vvnote-proc
-                         (telega-ffplay-run
-                          (telega--tl-get file :local :path)
-                          (telega-msg-voice-note--ffplay-callback msg)
-                          "-nodisp"))
-              (telega-msg-activate-voice-note msg))))))
+           (lambda (file)
+             (telega-msg-redisplay msg)
+             (when (telega-file--downloaded-p file)
+               (plist-put msg :telega-ffplay-proc
+                          (telega-ffplay-run
+                           (telega--tl-get file :local :path)
+                           (telega-msg-voice-note--ffplay-callback msg)
+                           "-nodisp"))
+               (telega-msg-activate-voice-note msg))))))
     ))
+
+(defun telega-msg-video-note--ffmpeg-callback (filename played msg)
+  "Callback for video note playback."
+  (let ((proc (plist-get msg :telega-ffplay-proc))
+        (dur (telega--tl-get msg :content :video_note :duration)))
+    (if filename
+        (plist-put msg :telega-ffplay-frame
+                   (telega-vvnote--video-svg filename dur played))
+      (plist-put msg :telega-ffplay-frame nil))
+    (telega-msg-redisplay msg)))
 
 (defun telega-msg-open-video-note (msg)
   "Open content for videoNote message MSG."
   (let* ((note (telega--tl-get msg :content :video_note))
-         (note-file (telega-file--renew note :video)))
-    ;; NOTE: `telega-file--download' triggers callback in case file is
-    ;; already downloaded
-    (telega-file--download note-file 32
-      (lambda (file)
-        (telega-msg-redisplay msg)
-        (when (telega-file--downloaded-p file)
-          (telega-ffplay-run
-           (telega--tl-get file :local :path) nil))))))
+         (note-file (telega-file--renew note :video))
+         (proc (plist-get msg :telega-ffplay-proc)))
+    (cl-case (and (process-live-p proc) (process-status proc))
+      (run (telega-ffplay-pause proc))
+      (stop (telega-ffplay-resume proc))
+      (t (telega-file--download note-file 32
+           (lambda (file)
+             (telega-msg-redisplay msg)
+             (when (telega-file--downloaded-p file)
+               (let ((filepath (telega--tl-get file :local :path)))
+                 (if telega-vvnote-video-play-inline
+                     (plist-put msg :telega-ffplay-proc
+                                (telega-vvnote-play-video filepath
+                                  'telega-msg-video-note--ffmpeg-callback msg))
+                   (telega-ffplay-run filepath nil))))))))))
 
 (defun telega-msg-open-photo (msg)
   "Open content for photo message MSG."

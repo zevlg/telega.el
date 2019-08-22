@@ -1168,7 +1168,7 @@ Do it only if FORCE is non-nil."
 (defun telega-ins--voice-msg-status (msg)
   "Insert voice message MSG status.
 Used in chatbuf footer."
-  (let* ((proc (plist-get msg :telega-vvnote-proc))
+  (let* ((proc (plist-get msg :telega-ffplay-proc))
          (proc-status (and (process-live-p proc) (process-status proc)))
          (played (and proc-status (plist-get (process-plist proc) :progress)))
          (sender (telega-msg-sender msg)))
@@ -2792,8 +2792,9 @@ If DRAFT-MSG is ommited, then clear draft message."
   (telega-root--chat-update telega-chatbuf--chat))
 
 ;;; Message commands
-(defun telega-msg-redisplay (msg)
-  "Redisplay the message MSG."
+(defun telega-msg-redisplay (msg &optional node)
+  "Redisplay the message MSG.
+NODE is already calculated ewoc NODE, or nil."
   (interactive (list (telega-msg-at (point))))
 
   (with-telega-chatbuf (telega-msg-chat msg)
@@ -2801,9 +2802,9 @@ If DRAFT-MSG is ommited, then clear draft message."
     (when (eq msg telega-chatbuf--voice-msg)
       (telega-chatbuf--footer-redisplay))
 
-    (let ((node (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)))
-      (when node
-        (telega-chatbuf--redisplay-node node)))))
+    (when-let ((msg-node (or node (telega-ewoc--find-by-data
+                                   telega-chatbuf--ewoc msg))))
+      (telega-chatbuf--redisplay-node msg-node))))
 
 (defun telega-msg-activate-voice-note (msg &optional for-chat)
   "Activate voice note MSG FOR-CHAT.

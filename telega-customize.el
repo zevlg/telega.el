@@ -186,6 +186,18 @@ cdr is maximum width in chars to use."
   :type 'integer
   :group 'telega)
 
+(defcustom telega-animation-play-inline nil
+  "*Non-nil to play animation inside telega."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-animation-autoplay-ntimes 0
+  "*Automatically play animations for this number of times.
+Start playing when message has been observed.
+Implies non-nil `telega-animation-play-inline'."
+  :type 'integer
+  :group 'telega)
+
 (defcustom telega-animation-download-saved nil
   "*Non-nil to automatically download saved animations."
   :type 'boolean
@@ -211,7 +223,7 @@ There is a restriction to its value:
   :type 'integer
   :group 'telega)
 
-(defcustom telega-vvnote-video-inline nil
+(defcustom telega-vvnote-video-play-inline nil
   "*Non-nil to play video notes inside chatbuffer."
   :type 'boolean
   :group 'telega)

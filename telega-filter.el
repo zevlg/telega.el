@@ -28,6 +28,8 @@
 (require 'telega-ins)
 (require 'telega-customize)
 
+(defvar tracking-buffers)
+
 (declare-function telega-chat--muted-p "telega-chat"  (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))

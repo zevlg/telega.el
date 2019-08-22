@@ -64,6 +64,9 @@
 
 (defun telega-ffplay--sentinel (proc _event)
   "Sentinel for the ffplay process."
+  (telega-debug "ffplay SENTINEL: status=%S, live=%S"
+                (process-status proc) (process-live-p proc))
+
   (let* ((proc-plist (process-plist proc))
          (callback (plist-get proc-plist :progress-callback)))
     (when callback
@@ -115,6 +118,69 @@ Return newly created process."
         (set-process-sentinel proc #'telega-ffplay--sentinel)
         (set-process-filter proc #'telega-ffplay--filter)
         proc))))
+
+(defun telega-ffplay-get-fps (filename)
+  "Probe number of frames of FILENAME video file."
+  (string-to-number
+   (shell-command-to-string
+    (concat "ffprobe -v error -select_streams v:0 "
+            "-show_entries stream=nb_frames "
+            "-of default=nokey=1:noprint_wrappers=1 "
+            "\"" (expand-file-name filename) "\""))))
+
+(defun telega-ffplay--png-extract ()
+  (let ((png-start "\x89PNG\x0d\x0a\x1a\x0a")
+        (png-end "IEND\xae\x42\x60\x82"))
+    ;; TODO
+    ))
+
+(defun telega-ffplay--png-sentinel (proc event)
+  "Sentinel for png extractor, see `telega-ffplay-to-png'."
+  ;; TODO
+  )
+
+(defun telega-ffplay--png-filter (proc output)
+  "Filter for png extractor, see `telega-ffplay-to-png'."
+  (let ((buffer (process-buffer proc))
+        (proc-plist (process-plist proc)))
+    (with-current-buffer buffer
+      (goto-char (point-max))
+      (insert output)
+      (let (png-image)
+        (while (setq png-image (telega-ffplay--png-extract))
+          ;; TODO: trigger callback
+          )))))
+
+(defun telega-ffplay-to-png (filename ffmpeg-args callback &rest callback-args)
+  "Play video FILENAME extracting png images from it.
+FFMPEG-ARGS - aditional ffmpeg args to add.
+Return newly created proc."
+  (declare (indent 1))
+  ;; Stop any ffplay running
+  (telega-ffplay-stop)
+
+  ;; Start new ffmpeg
+  (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
+    (let* ((ffmpeg-args (nconc (list "-hide_banner"
+                                     "-i" (expand-file-name filename))
+                               ffmpeg-args
+                               (list "-f" "alsa" "default"
+                                     "-vsync" "0"
+                                     "-f" "image2pipe"
+                                     "-vcodec" "png" "-")))
+           (proc (apply 'start-process "ffmpeg" (current-buffer)
+                        (or (executable-find "ffmpeg")
+                            (error "ffmpeg not found in `exec-path'"))
+                        ffmpeg-args)))
+
+      (set-process-plist proc (list :frame 1
+                                    :nframes (telega-ffplay-get-fps filename)
+                                    :callback callback
+                                    :callback-args callback-args))
+      (set-process-query-on-exit-flag proc nil)
+      (set-process-sentinel proc 'telega-ffplay--png-sentinel)
+      (set-process-filter proc 'telega-ffplay--png-filter)
+      proc)))
 
 (provide 'telega-ffplay)
 

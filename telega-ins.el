@@ -334,18 +334,18 @@ markdown syntax to the TEXT."
   (unless audio
     (setq audio (telega--tl-get msg :content :audio)))
   (let* ((dur (plist-get audio :duration))
-        (proc (plist-get msg :telega-audio-proc))
-        (proc-status (and (process-live-p proc)
-                          (process-status proc)))
-        (played (and proc-status
-                     (plist-get (process-plist proc) :progress)))
+         (proc (plist-get msg :telega-ffplay-proc))
+         (proc-status (and (process-live-p proc)
+                           (process-status proc)))
+         (played (and proc-status
+                      (plist-get (process-plist proc) :progress)))
 
-        (thumb (plist-get audio :album_cover_thumbnail))
-        (audio-name (plist-get audio :file_name))
-        (audio-file (telega-file--renew audio :audio))
-        (title (plist-get audio :title))
-        (performer (plist-get audio :performer))
-        linup-col)
+         (thumb (plist-get audio :album_cover_thumbnail))
+         (audio-name (plist-get audio :file_name))
+         (audio-file (telega-file--renew audio :audio))
+         (title (plist-get audio :title))
+         (performer (plist-get audio :performer))
+         linup-col)
 
     ;; play/pause
     (if (eq proc-status 'run)
@@ -435,7 +435,7 @@ markdown syntax to the TEXT."
   (unless note
     (setq note (telega--tl-get msg :content :voice_note)))
   (let* ((dur (plist-get note :duration))
-         (proc (plist-get msg :telega-vvnote-proc))
+         (proc (plist-get msg :telega-ffplay-proc))
          (proc-status (and (process-live-p proc)
                            (process-status proc)))
          (played (and proc-status
@@ -483,10 +483,10 @@ markdown syntax to the TEXT."
   "Insert message with videoNote content."
   (unless note
     (setq note (telega--tl-get msg :content :video_note)))
-  (let* ((dur (plist-get note :duration))
-         (thumb (plist-get note :thumbnail))
-         (note-file (telega-file--renew note :video))
-         (viewed-p (telega--tl-get msg :content :is_viewed)))
+  (let ((dur (plist-get note :duration))
+        (thumb (plist-get note :thumbnail))
+        (note-file (telega-file--renew note :video))
+        (viewed-p (telega--tl-get msg :content :is_viewed)))
 
     (telega-ins (propertize "NOTE" 'face 'shadow))
     (telega-ins-fmt " (%dx%d %s %s)"
@@ -499,13 +499,13 @@ markdown syntax to the TEXT."
       (telega-ins--file-progress msg note-file))
 
     (telega-ins "\n")
-    (when thumb
-      (let ((timg (telega-media--image
-                   (cons thumb 'telega-vvnote-video--create-image)
-                   (cons thumb :photo))))
-        (telega-ins--image-slices timg))
-      (telega-ins " "))
-    ))
+    (when-let ((img (or (plist-get msg :telega-ffplay-frame)
+                        (when thumb
+                          (telega-media--image
+                           (cons thumb 'telega-vvnote-video--create-image)
+                           (cons thumb :photo))))))
+      (telega-ins--image-slices img)
+      (telega-ins " "))))
 
 (defun telega-ins--document (msg &optional doc)
   "Insert document DOC."
