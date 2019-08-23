@@ -47,7 +47,6 @@
 
 ;; Server runtime vars
 (defvar telega-server--buffer nil)
-(defvar telega-server--last-error nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
 (defvar telega-server--results nil)
@@ -167,8 +166,10 @@ Return parsed command."
                (funcall call-cb value)
 
              ;; Error returned
-             (setq telega-server--last-error value)
-             (message "telega-server error: %s" (plist-get value :message)))))
+             (if (boundp 'telega-server--last-error)
+                 (set 'telega-server--last-error value)
+               (message "telega-server error: %s"
+                        (plist-get value :message))))))
 
         ((string= cmd "error")
          (telega--on-error value))
@@ -254,7 +255,8 @@ If CALLBACK is specified return `:@extra' value used for the call."
         telega-server--extra)
 
     ;; synchronous call aka exec
-    (let ((cb-extra telega-server--extra))
+    (let ((cb-extra telega-server--extra)
+          (telega-server--last-error nil))
       (telega-server--callback-put
        cb-extra
        `(lambda (event)
@@ -265,10 +267,16 @@ If CALLBACK is specified return `:@extra' value used for the call."
                   (accept-process-output
                    (telega-server--proc) telega-server-call-timeout)))
 
-      ;; Return the result
-      (prog1
-          (gethash cb-extra telega-server--results)
-        (remhash cb-extra telega-server--results)))))
+      ;; Return the result, checking for the error
+      ;; NOTE: actuall error might be clobbered by subsequent errors,
+      ;; we don't handle this situation :(
+      (let ((ret (gethash cb-extra telega-server--results)))
+        (remhash cb-extra telega-server--results)
+
+        (when (and (not ret) telega-server--last-error)
+          (user-error
+           "telega: %s" (plist-get telega-server--last-error :message)))
+        ret))))
 
 (defun telega-server--start ()
   "Start telega-server process."

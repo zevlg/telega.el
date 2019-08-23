@@ -196,8 +196,7 @@ Return nil if can't join the chat."
   (let ((chat (telega-server--call
                (list :@type "joinChatByInviteLink"
                      :invite_link invite-link))))
-    (when chat
-      (telega-chat-get (plist-get chat :id)))))
+    (telega-chat-get (plist-get chat :id))))
 
 (defun telega--checkChatInviteLink (invite-link)
   "Check invitation link INVITE-LINK."
@@ -997,10 +996,7 @@ STATUS is one of: "
 (defun telega-chat-join-by-link (link)
   "Join chat by invitation LINK."
   (interactive "sJoin chat by invite link: ")
-  (telega-chat--pop-to-buffer
-   (or (telega--joinChatByInviteLink link)
-       (error "Can't join chat: %s"
-              (plist-get telega-server--last-error :message)))))
+  (telega-chat--pop-to-buffer (telega--joinChatByInviteLink link)))
 
 (defun telega-chat-toggle-read (chat)
   "Toggle chat as read/unread."
@@ -3033,9 +3029,11 @@ FILTERS are:
          (mapcar (lambda (filter) (list filter t)) filters)))
 
 (defun telega--getChatEventLog (chat &optional query from-event-id
-                                     limit filters users)
+                                     limit filters users no-error-p)
   "Return event log for the CHAT.
-FILTERS are created with `telega-chatevent-log-filter'."
+FILTERS are created with `telega-chatevent-log-filter'.
+If NO-ERROR-P is specified, do not signal error."
+  ;; NOTE: use explicit extra value to check for the error
   (let ((reply (telega-server--call
                 (nconc (list :@type "getChatEventLog"
                              :chat_id (plist-get chat :id)

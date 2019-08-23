@@ -470,10 +470,8 @@ If NO-ERROR is non-nil and TEXT can't be do not raise an error, return nil."
                    (list :@type "parseTextEntities"
                          :text text
                          :parse_mode (list :@type parse-mode)))))
-    (unless (or fmt-text no-error)
-      (cl-assert telega-server--last-error)
-      (user-error (plist-get telega-server--last-error :message)))
-    (plist-put fmt-text :text (telega--desurrogate-apply (plist-get fmt-text :text)))))
+    (plist-put fmt-text :text
+               (telega--desurrogate-apply (plist-get fmt-text :text)))))
 
 (defun telega--formattedText (text &optional markdown)
   "Convert TEXT to `formattedTex' type.
@@ -583,43 +581,41 @@ blocked users."
   (when (zerop (plist-get msg :edit_date))
     (user-error "Message was not edited"))
 
-  (let ((events (telega--getChatEventLog
-                 (telega-msg-chat msg) nil nil 50
-                 (telega-chatevent-log-filter :message_edits)
-                 (list (telega-msg-sender msg)))))
-    (unless events
-      (user-error "No edits found"))
-    (cl-flet ((find-msg (accesor events)
-                        (telega--tl-get
-                         (cl-find (plist-get msg :id) events
-                                  :key (telega--tl-prop :action accesor :id))
-                         :action accesor)))
-      (let ((msg-new (find-msg :new_message events))
-            (msg-old (find-msg :old_message (nreverse events))))
-        (unless (and msg-old msg-new)
-          (user-error "Can't find message edit in last 50 edits"))
+  (cl-flet ((find-msg (accesor events)
+                      (telega--tl-get
+                       (cl-find (plist-get msg :id) events
+                                :key (telega--tl-prop :action accesor :id))
+                       :action accesor)))
+    (let* ((events (telega--getChatEventLog
+                    (telega-msg-chat msg) nil nil 50
+                    (telega-chatevent-log-filter :message_edits)
+                    (list (telega-msg-sender msg))))
+           (msg-new (find-msg :new_message events))
+           (msg-old (find-msg :old_message (nreverse events))))
+      (unless (and msg-old msg-new)
+        (user-error "Can't find message edit in last 50 edits"))
 
-        (with-telega-help-win "*Telega Message Diff*"
-          (telega-ins--with-face (ansi-color-get-face-1 31)
-            (telega-ins "Orig"))
-          (telega-ins " message at: ")
-          (telega-ins--date-iso8601 (plist-get msg-old :date))
-          (telega-ins "\n")
+      (with-telega-help-win "*Telega Message Diff*"
+        (telega-ins--with-face (ansi-color-get-face-1 31)
+          (telega-ins "Orig"))
+        (telega-ins " message at: ")
+        (telega-ins--date-iso8601 (plist-get msg-old :date))
+        (telega-ins "\n")
 
-          (telega-ins--with-face (ansi-color-get-face-1 32)
-            (telega-ins "Edit"))
-          (telega-ins " message at: ")
-          (telega-ins--date-iso8601 (plist-get msg-new :edit_date))
-          (telega-ins "\n")
+        (telega-ins--with-face (ansi-color-get-face-1 32)
+          (telega-ins "Edit"))
+        (telega-ins " message at: ")
+        (telega-ins--date-iso8601 (plist-get msg-new :edit_date))
+        (telega-ins "\n")
 
-          (telega-ins "-- Diff --\n")
-          (telega-ins
-           (telega-diff-wordwise (telega-ins--as-string
-                                  (telega-ins--content msg-old))
-                                 (telega-ins--as-string
-                                  (telega-ins--content msg-new))
-                                 'colorize))
-          )))))
+        (telega-ins "-- Diff --\n")
+        (telega-ins
+         (telega-diff-wordwise (telega-ins--as-string
+                                (telega-ins--content msg-old))
+                               (telega-ins--as-string
+                                (telega-ins--content msg-new))
+                               'colorize))
+        ))))
 
 (provide 'telega-msg)
 
