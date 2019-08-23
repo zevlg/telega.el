@@ -297,27 +297,26 @@ N can't be 0."
 (defun telega--entity-to-markdown (entity text)
   "Convert ENTITY back to markdown syntax applied to TEXT.
 Return now text with markdown syntax."
-  (let ((ent-type (plist-get entity :type)))
-    (cl-case (and ent-type (telega--tl-type ent-type))
-      (textEntityTypeBold (concat "*" text "*"))
-      (textEntityTypeItalic (concat "_" text "_"))
-      (textEntityTypeCode (concat "`" text "`"))
-      ((textEntityTypePreCode textEntityTypePre)
-       (concat "```" (plist-get ent-type :language) "\n" text "```"))
-      (textEntityTypeMentionName
-       (format "[%s](tg://user?id=%d)"
-               text (plist-get ent-type :user_id)))
-      (textEntityTypeTextUrl
-       (format "[%s](%s)" text (plist-get ent-type :url)))
-      (t text))))
+  ;; NOTE: text might have surrogated pairs, for example when editing
+  ;; message with emojis
+  (telega--desurrogate-apply  
+   (let ((ent-type (plist-get entity :type)))
+     (cl-case (and ent-type (telega--tl-type ent-type))
+       (textEntityTypeBold (concat "*" text "*"))
+       (textEntityTypeItalic (concat "_" text "_"))
+       (textEntityTypeCode (concat "`" text "`"))
+       ((textEntityTypePreCode textEntityTypePre)
+        (concat "```" (plist-get ent-type :language) "\n" text "```"))
+       (textEntityTypeMentionName
+        (format "[%s](tg://user?id=%d)"
+                text (plist-get ent-type :user_id)))
+       (textEntityTypeTextUrl
+        (format "[%s](%s)" text (plist-get ent-type :url)))
+       (t text)))))
 
 (defun telega--entities-as-markdown (entities text)
   "Convert propertiezed TEXT to markdown syntax text.
 Use `telega-entity-type-XXX' faces as triggers."
-  ;; NOTE: text might have surrogated pairs, for example when editing
-  ;; message with emojis
-  (setq text (telega--desurrogate-apply text))
-
   (let ((offset 0) (strings nil))
     (seq-doseq (ent entities)
       (let ((ent-off (plist-get ent :offset))
