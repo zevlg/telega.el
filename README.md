@@ -288,9 +288,11 @@ Emoji completions with `:<EMOJI-NAME>:` syntax, uses nice
 `telega-chat-mode-hook`, for example:
 
 ```elisp
-(add-hook 'telega-chat-mode-hook (lambda ()
-    (setq company-backends '(telega-company-emoji))
-    (company-mode 1)))
+(add-hook 'telega-chat-mode-hook
+          (lambda ()
+            (set (make-local-variable 'company-backends)
+                 '(telega-company-emoji telega-company-username))
+            (company-mode 1)))
 ```
 
 # Configuring client side messages filtering
