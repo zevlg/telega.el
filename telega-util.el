@@ -314,6 +314,10 @@ Return now text with markdown syntax."
 (defun telega--entities-as-markdown (entities text)
   "Convert propertiezed TEXT to markdown syntax text.
 Use `telega-entity-type-XXX' faces as triggers."
+  ;; NOTE: text might have surrogated pairs, for example when editing
+  ;; message with emojis
+  (setq text (telega--desurrogate-apply text))
+
   (let ((offset 0) (strings nil))
     (seq-doseq (ent entities)
       (let ((ent-off (plist-get ent :offset))
