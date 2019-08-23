@@ -226,7 +226,17 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
     (unless (string-empty-p phone_number)
       ;; I18N: lng_settings_phone_label
       (telega-ins-fmt "phone: +%s\n" phone_number))
-    (telega-ins-fmt "Seen: %s\n" (telega-user--seen user))
+    ;; Online status
+    (let ((last-online (plist-get user :telega-last-online))
+          (seen (telega-user--seen user)))
+      (telega-ins "Last seen: ")
+      (cond ((string= "Online" seen)
+             (telega-ins seen))
+            (last-online
+             (telega-ins "in " (telega-duration-human-readable
+                                (- (telega-time-seconds) last-online) 1)))
+            (t (telega-ins seen)))
+      (telega-ins "\n"))
     (unless (string-empty-p bio)
       ;; I18N: lng_bio_placeholder
       (telega-ins--labeled "bio: " nil (telega-ins bio))
