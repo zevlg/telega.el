@@ -461,6 +461,10 @@ Resulting in new string with no surrogate pairs."
         ((listp obj) (mapcar 'telega--tl-pack obj))
         (t obj)))
 
+(defsubst telega-me-p (chat-or-user)
+  "Return non-nil if CHAT-OR-USER is me."
+  (eq telega--me-id (plist-get chat-or-user :id)))
+
 
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)
@@ -693,12 +697,11 @@ Additional properties PROPS are updated in button."
   "Return non-nil if BUTTON is observable in some window.
 I.e. shown in some window, see `pos-visible-in-window-p'."
   (when (markerp button)
-    (let* ((bwin (get-buffer-window (marker-buffer button)))
-           (bframe (window-frame bwin)))
-      (and bframe
+    (let ((bwin (get-buffer-window (marker-buffer button))))
+      (and bwin
            ;; NOTE: 26.1 Emacs has no `frame-focus-state'
            (or (not (fboundp 'frame-focus-state))
-               (frame-focus-state bframe))
+               (frame-focus-state (window-frame bwin)))
            (pos-visible-in-window-p button bwin)))))
 
 (defun telega-button-forward (n &optional button-type)
