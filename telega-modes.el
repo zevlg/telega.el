@@ -29,6 +29,7 @@
 
 (require 'format-spec)
 
+(require 'telega-customize)
 (require 'telega-server)
 (require 'telega-filter)
 
@@ -82,7 +83,8 @@
     (advice-remove 'tracking-remove-buffer 'telega-mode-line-update)
     ))
 
-(defcustom telega-mode-line-format-spec " %I %t%c%M"
+(defcustom telega-mode-line-format-spec
+  (if telega-use-tracking " %I %t%c%M" " %I %c%M")
   "Format for telega modeline.
 %I - Telegram logo.
 %c - Number of unread unmuted chats.
