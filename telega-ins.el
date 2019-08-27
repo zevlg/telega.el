@@ -237,15 +237,6 @@ Return COLUMN at which user name is inserted."
             (telega-ins (make-string 30 ?─) "\n")))))
     (telega-ins "\n")))
 
-(defun telega-ins--via-bot (via-bot-user-id)
-  "Insert via bot user."
-  (unless (zerop via-bot-user-id)
-    (telega-ins
-     "via "
-     (apply 'propertize
-            (telega-user--name (telega-user--get via-bot-user-id) 'short)
-            (telega-link-props 'user via-bot-user-id)))))
-
 (defun telega-ins--file-progress (msg file)
   "Insert Upload/Download status for the document."
   (let ((file-id (plist-get file :id))
@@ -1006,7 +997,6 @@ argument - MSG to insert additional information after header."
          (twidth (+ 10 1 fwidth))
          (chat (telega-msg-chat msg))
          (sender (telega-msg-sender msg))
-         (channel-post-p (plist-get msg :is_channel_post))
          (tfaces (list (if (telega-msg-by-me-p msg)
                            'telega-msg-self-title
                          'telega-msg-user-title))))
@@ -1015,22 +1005,34 @@ argument - MSG to insert additional information after header."
                                   :align 'left :elide t)
       ;; Maybe add some rainbow color to the message title
       (when telega-msg-rainbow-title
-        (let ((color (if channel-post-p
-                         (telega-chat-color chat)
-                       (telega-user-color sender)))
+        (let ((color (if sender
+                         (telega-user-color sender)
+                       (telega-chat-color chat)))
               (lightp (eq (frame-parameter nil 'background-mode) 'light)))
           (push (list :foreground (nth (if lightp 2 0) color)) tfaces)))
       (telega-ins--with-attrs (list :face tfaces)
         ;; Message title itself
-        (if (not channel-post-p)
+        (if sender
             (telega-ins (telega-user--name sender))
           (telega-ins (telega-chat-title chat 'with-username))
           (telega-ins-prefix " --"
             (telega-ins (plist-get msg :author_signature)))))
 
+      ;; via <bot>
+      (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+             (via-bot (unless (zerop via-bot-user-id)
+                        (telega-user--get via-bot-user-id))))
+        (when via-bot
+          (telega-ins " via ")
+          ;; NOTE: `:via-bot' property is examined in `telega-ins--message'
+          (let ((via-bot (telega-user--get via-bot-user-id)))
+            (telega-ins--with-props (list :via-bot via-bot 'face 'telega-link)
+              (telega-ins (telega-user--name via-bot 'short))))))
+      ;; Number of views
       (let ((views (plist-get msg :views)))
         (unless (zerop views)
           (telega-ins-fmt " %s %d" telega-symbol-eye views)))
+      ;; Edited date
       (telega-ins-prefix " edited at "
         (unless (zerop (plist-get msg :edit_date))
           (telega-ins--date (plist-get msg :edit_date))))
@@ -1138,20 +1140,24 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
     ;; Message header needed
     (let* ((chat (telega-msg-chat msg))
            (sender (telega-msg-sender msg))
-           (channel-post-p (plist-get msg :is_channel_post))
-           (avatar (if channel-post-p
-                       (telega-chat-avatar-image chat)
-                     (telega-user-avatar-image sender)))
+           (avatar (if sender
+                       (telega-user-avatar-image sender)
+                     (telega-chat-avatar-image chat)))
            (awidth (string-width (telega-image--telega-text avatar 0)))
            ccol)
-      (if (and no-header (zerop (plist-get msg :edit_date)))
+      (if (and no-header
+               (zerop (plist-get msg :edit_date))
+               (zerop (plist-get msg :via_bot_user_id)))
           (telega-ins (make-string awidth ?\s))
 
         ;; Show user profile when clicked on avatar, header
         (telega-ins--with-props
-            (when sender
-              (list 'action (lambda (_bignored)
-                              (telega-describe-user sender))))
+            (list 'action (lambda (button)
+                            (let ((user (or (button-get button :via-bot)
+                                            sender)))
+                              (if user
+                                  (telega-describe-user user)
+                                (telega-describe-chat chat)))))
           (telega-ins--image avatar 0)
           (telega-ins--message-header msg addon-header-inserter)
           (telega-ins--image avatar 1)))
