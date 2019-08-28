@@ -1878,6 +1878,7 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
         (let ((node (telega-chatbuf--append-message new-msg)))
           (when node
             (when (and telega-use-tracking
+                       (not (plist-get new-msg :is_outgoing))
                        (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
               (tracking-add-buffer (current-buffer)))
 
