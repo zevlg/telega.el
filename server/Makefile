@@ -3,7 +3,7 @@ CFLAGS=-I/usr/local/include -Wall -g -pthread
 LDFLAGS=-L/usr/local/lib -ltdjson
 
 PROG=telega-server
-SOURCES=telega-server.c telega-dat.c
+SOURCES=telega-server.c telega-dat.c telega-pngext.c
 
 ifdef WITH_VOIP
 CC=c++

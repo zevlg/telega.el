@@ -15,6 +15,9 @@ struct telega_dat {
 #define TDAT_INIT { 0, 0, 0, NULL}
 
 #define tdat_len(tdat) ((tdat)->end - (tdat)->start)
+#define tdat_start(tdat) (&(tdat)->data[(tdat)->start])
+#define tdat_end(tdat) (&(tdat)->data[(tdat)->end])
+#define tdat_drain(tdat, n) do { (tdat)->start += n; } while (0)
 
 /* Ensure ADD_CAP bytes can be written into TDAT */
 void tdat_ensure(struct telega_dat* tdat, size_t add_cap);
@@ -26,6 +29,9 @@ void tdat_move(struct telega_dat* src, struct telega_dat* dst, size_t n);
 void tdat_append(struct telega_dat* dst, const char* data, size_t len);
 #define tdat_move1(src, dst) tdat_move(src, dst, 1)
 #define tdat_append1(dst, str) tdat_append(dst, str, 1)
+
+/* Rebase data to the beginning of the alocation */
+void tdat_rebase(struct telega_dat* tdat);
 
 /* Parsers */
 void tdat_json_value(struct telega_dat* json_src, struct telega_dat* plist_dst);

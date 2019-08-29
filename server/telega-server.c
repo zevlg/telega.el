@@ -16,6 +16,10 @@ extern const char* telega_voip_version(void);
 extern int telega_voip_cmd(const char* json);
 #endif /* WITH_VOIP */
 
+char* pngext_prefix = NULL;
+int pngext_rdsize = 1024;
+void pngext_loop(const char* prefix, size_t rdsize);
+
 /*
  * Input/Output Protocol:
  * ~~~~~~~~~~~~~~
@@ -39,7 +43,7 @@ extern int telega_voip_cmd(const char* json);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.4.0";
+const char* version = "0.4.2";
 
 /* true when tdlib_loop is running */
 volatile bool tdlib_running;
@@ -61,6 +65,14 @@ usage(char* prog)
         printf("\t-v LVL     Verbosity level (default=5)\n");
         printf("\t-j         Parse json from stdin and exit\n");
         printf("\t-p         Parse plist from stdin and exit\n");
+        printf("\n");
+        printf("---- PNG extracting functionality ----\n");
+        printf("usage: %s -E PREFIX [-R RDSIZE] CMD [ARGS]\n", prog);
+        printf("Captures output from external command CMD and extracts\n"
+               "png images from there, writing them to temporary location\n"
+               "with PREFIX\n");
+        printf("Used to animate gifs, play voice notes.\n");
+        printf("Emacs is etremely bad at processing huge outputs from external commands.\n");
         exit(0);
 }
 
@@ -238,7 +250,7 @@ int
 main(int ac, char** av)
 {
         int ch;
-        while ((ch = getopt(ac, av, "jpl:v:h")) != -1) {
+        while ((ch = getopt(ac, av, "E:R:jpl:v:h")) != -1) {
                 switch (ch) {
                 case 'v':
                         verbosity = atoi(optarg);
@@ -254,11 +266,23 @@ main(int ac, char** av)
                 case 'p':
                         parse_mode = PARSE_MODE_PLIST;
                         break;
+                case 'E':
+                        pngext_prefix = optarg;
+                        break;
+                case 'R':
+                        pngext_rdsize = atoi(optarg);
+                        break;
                 case 'h':
                 case '?':
                 default:
                         usage(av[0]);
                 }
+        }
+
+        if (pngext_prefix) {
+                pngext_loop(pngext_prefix, pngext_rdsize);
+                return 0;
+                /* NOT REACHED */
         }
 
         if (parse_mode) {

@@ -64,7 +64,7 @@ void
 tdat_ensure(struct telega_dat* tdat, size_t add_cap)
 {
         while (tdat->end + add_cap > tdat->cap) {
-                tdat->cap += 1 + tdat->cap;
+                tdat->cap += 1 + (add_cap > tdat->cap) ? add_cap : tdat->cap;
                 tdat->data = (char*)realloc(tdat->data, tdat->cap);
                 assert(tdat->data != NULL);
         }
@@ -84,16 +84,10 @@ tdat_has_data(struct telega_dat* tdat)
         return (tdat->start < tdat->end) && (tdat_at(tdat, 0) != '\0');
 }
 
-static inline void
-tdat_drain(struct telega_dat* tdat, size_t n)
-{
-        tdat->start += n;
-}
-
 void
 tdat_move(struct telega_dat* src, struct telega_dat* dst, size_t n)
 {
-        assert(src->start + n < src->end);
+        assert(src->start + n <= src->end);
 
         tdat_ensure(dst, dst->end + n);
         memcpy(&dst->data[dst->end], &src->data[src->start], n);
@@ -107,6 +101,15 @@ tdat_append(struct telega_dat* dst, const char* data, size_t len)
         tdat_ensure(dst, dst->end + len);
         memcpy(&dst->data[dst->end], data, len);
         dst->end += len;
+}
+
+void
+tdat_rebase(struct telega_dat* tdat)
+{
+        size_t clen = tdat_len(tdat);
+        memmove(tdat->data, &tdat->data[tdat->start], clen);
+        tdat->start = 0;
+        tdat->end = clen;
 }
 
 
