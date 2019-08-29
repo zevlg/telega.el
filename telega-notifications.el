@@ -102,12 +102,7 @@ By default, all chats are unmuted, the sound is set to
           (via-bot-user-id (plist-get msg :via_bot_user_id)))
       (unless (memq (telega-chat--type chat 'raw) '(private secret))
         (when (telega-ins--username (plist-get msg :sender_user_id) 'name)
-          (telega-ins ": "))
-        (unless (zerop via-bot-user-id)
-          (telega-ins
-           " via "
-           (telega-user--name (telega-user--get via-bot-user-id) 'short)
-           "\n"))))
+          (telega-ins ": "))))
 
     (let ((telega-use-images nil))
       (telega-ins--content msg))))
