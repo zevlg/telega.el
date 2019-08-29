@@ -98,12 +98,16 @@ By default, all chats are unmuted, the sound is set to
   ;; Limit length of the message
   (telega-ins--with-attrs (list :max telega-notifications-msg-body-limit
                                 :elide t)
-    (let ((chat (telega-chat-get (plist-get msg :chat_id))))
+    (let ((chat (telega-chat-get (plist-get msg :chat_id)))
+          (via-bot-user-id (plist-get msg :via_bot_user_id)))
       (unless (memq (telega-chat--type chat 'raw) '(private secret))
         (when (telega-ins--username (plist-get msg :sender_user_id) 'name)
           (telega-ins ": "))
-        (when (telega-ins--via-bot (plist-get msg :via_bot_user_id))
-          (telega-ins "\n"))))
+        (unless (zerop via-bot-user-id)
+          (telega-ins
+           " via "
+           (telega-user--name (telega-user--get via-bot-user-id) 'short)
+           "\n"))))
 
     (let ((telega-use-images nil))
       (telega-ins--content msg))))

@@ -356,7 +356,7 @@ For example:
     ("Private" . (type private))
     ("Channels" . (type channel))
     ("Contacts" . (contact out))
-    ("Notify" . notify)
+    ("Unmuted" . unmuted)
     ("Unread" . unread))
   "*Alist of custom filters for chats.
 In form (NAME . FILTER-SPEC)."
@@ -507,8 +507,16 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :group 'telega-chat)
 
 (defcustom telega-chat-group-messages-for '(not (or saved-messages (type channel bot)))
-  "*If this filter returns non-nil for chat, then messages groups by sender."
+  "*If this filter returns non-nil for chat, then messages are grouped by sender."
   :type 'list
+  :group 'telega-chat)
+
+(defcustom telega-chat-mode-line-format
+  '((:eval (telega-chatbuf-mode-line-unread))
+    (:eval (telega-chatbuf-mode-line-members 'use-icons)))
+  "Additional mode line format for chat buffer identification.
+See `mode-line-buffer-identification'."
+  :type 'sexp
   :group 'telega-chat)
 
 

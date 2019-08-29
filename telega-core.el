@@ -113,12 +113,35 @@ Actualy value is `:@extra' of the call.")
 Actualy value is `:@extra' of the call.")
 
 (defvar telega--logo-image-cache nil "Cached loaded logo image.")
-(defun telega-logo-image ()
-  "Return telega logo image."
-  (or telega--logo-image-cache
-      (setq telega--logo-image-cache
-            (find-image
-             '((:type xpm :file "etc/telegram-logo.xpm" :ascent center))))))
+(defun telega-logo-image (&optional for-modeline-p)
+  "Return telega logo image.
+If FOR-MODELINE-P is non-nil return logo image for use in modeline."
+  (let ((background (when for-modeline-p
+                      (face-attribute 'mode-line :background)))
+        (height (when for-modeline-p
+                  (window-mode-line-height))))
+    (unless (and (equal (plist-get (cdr telega--logo-image-cache) :background)
+                        background)
+                 (equal (plist-get (cdr telega--logo-image-cache) :height)
+                        height))
+      (setq telega--logo-image-cache nil))
+
+    (or telega--logo-image-cache
+        (setq telega--logo-image-cache
+              (find-image
+               (list (nconc (list :type 'imagemagick :file "etc/telegram-logo.png"
+                                  :ascent 'center :mask 'heuristic)
+                            (when for-modeline-p
+                              (list :background background :height height)))
+                     (nconc (list :type 'svg :file "etc/telegram-logo.svg"
+                                  :ascent 'center)
+                            (when for-modeline-p
+                              (list :background background :height height)))
+                     (nconc (list :type 'xpm :file "etc/telegram-logo.xpm"
+                                  :ascent 'center)
+                            (when for-modeline-p
+                              (list :background background :height height)))))))
+    ))
 
 (defvar telega--unread-message-count nil
   "Plist with counts for unread/unmuted messages.

@@ -36,7 +36,10 @@
 (require 'telega-customize)
 
 (declare-function telega-root--buffer "telega-root")
+(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-title "telega-chat")
+(declare-function telega-describe-chat "telega-chat" (chat))
+(declare-function telega--searchPublicChat "telega-chat" (username &optional callback))
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
 (defun telega-file-exists-p (filename)

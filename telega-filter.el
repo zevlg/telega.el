@@ -64,7 +64,7 @@ Bind it to temporary disable some filters.")
     (define-key map (kbd "u") 'telega-filter-by-unread)
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "p") 'telega-filter-by-pin)
-    (define-key map (kbd "y") 'telega-filter-by-notify)
+    (define-key map (kbd "y") 'telega-filter-by-unmuted)
     (define-key map (kbd "v") 'telega-filter-by-verified)
     (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "r") 'telega-filter-by-restriction)
@@ -415,14 +415,14 @@ Also matches chats marked as unread."
   (interactive "p")
   (telega-filter-add `(mention ,n)))
 
-(define-telega-filter notify (chat)
+(define-telega-filter unmuted (chat)
   "Matches CHAT with enabled notifications."
   (not (telega-chat--muted-p chat)))
 
-(defun telega-filter-by-notify ()
+(defun telega-filter-by-unmuted ()
   "Filter chats with enabled notifications."
   (interactive)
-  (telega-filter-add 'notify))
+  (telega-filter-add 'unmuted))
 
 (define-telega-filter user-status (chat &rest valid-statuses)
   "Matches private CHATs with user status in VALID-STATUSES."

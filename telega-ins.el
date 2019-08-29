@@ -239,37 +239,35 @@ Return COLUMN at which user name is inserted."
 
 (defun telega-ins--file-progress (msg file)
   "Insert Upload/Download status for the document."
-  (let ((file-id (plist-get file :id))
-        (local (plist-get file :local)))
-    ;; Downloading status:
-    ;;   /link/to-file         if file has been downloaded
-    ;;   [Download]            if no local copy
-    ;;   [...   20%] [Cancel]  if download in progress
-    (cond ((telega-file--uploading-p file)
-           (let ((progress (telega-file--uploading-progress file)))
-             (telega-ins-fmt "[%-10s%d%%] "
-               (make-string (round (* progress 10)) ?\.)
-               (round (* progress 100)))
-             (telega-ins--button "Cancel"
-               'action (lambda (_ignored)
-                         (telega-msg-delete msg)))))
-
-          ((telega-file--downloading-p file)
-           (let ((progress (telega-file--downloading-progress file)))
-             (telega-ins-fmt "[%-10s%d%%] "
-               (make-string (round (* progress 10)) ?\.)
-               (round (* progress 100)))
-             (telega-ins--button "Cancel"
-               'action (lambda (_ignored)
-                         (telega--cancelDownloadFile file-id)))))
-
-          ((not (telega-file--downloaded-p file))
-           (telega-ins--button "Download"
+  ;; Downloading status:
+  ;;   /link/to-file         if file has been downloaded
+  ;;   [Download]            if no local copy
+  ;;   [...   20%] [Cancel]  if download in progress
+  (cond ((telega-file--uploading-p file)
+         (let ((progress (telega-file--uploading-progress file)))
+           (telega-ins-fmt "[%-10s%d%%] "
+             (make-string (round (* progress 10)) ?\.)
+             (round (* progress 100)))
+           (telega-ins--button "Cancel"
              'action (lambda (_ignored)
-                       (telega-file--download file 32
-                         (lambda (_fileignored)
-                           (telega-msg-redisplay msg)))))))
-    ))
+                       (telega-msg-delete msg)))))
+
+        ((telega-file--downloading-p file)
+         (let ((progress (telega-file--downloading-progress file)))
+           (telega-ins-fmt "[%-10s%d%%] "
+             (make-string (round (* progress 10)) ?\.)
+             (round (* progress 100)))
+           (telega-ins--button "Cancel"
+             'action (lambda (_ignored)
+                       (telega--cancelDownloadFile
+                        (plist-get file :id))))))
+
+        ((not (telega-file--downloaded-p file))
+         (telega-ins--button "Download"
+           'action (lambda (_ignored)
+                     (telega-file--download file 32
+                       (lambda (_fileignored)
+                         (telega-msg-redisplay msg))))))))
 
 (defun telega-ins--outgoing-status (msg)
   "Insert outgoing status of the message MSG."
@@ -335,8 +333,7 @@ markdown syntax to the TEXT."
          (audio-name (plist-get audio :file_name))
          (audio-file (telega-file--renew audio :audio))
          (title (plist-get audio :title))
-         (performer (plist-get audio :performer))
-         linup-col)
+         (performer (plist-get audio :performer)))
 
     ;; play/pause
     (if (eq proc-status 'run)
@@ -474,8 +471,7 @@ markdown syntax to the TEXT."
   "Insert message with videoNote content."
   (unless note
     (setq note (telega--tl-get msg :content :video_note)))
-  (let ((dur (plist-get note :duration))
-        (thumb (plist-get note :thumbnail))
+  (let ((thumb (plist-get note :thumbnail))
         (note-file (telega-file--renew note :video))
         (viewed-p (telega--tl-get msg :content :is_viewed)))
 
@@ -678,8 +674,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (options (plist-get poll :options))
          (max-opt-len (apply 'max (mapcar 'length (mapcar (telega--tl-prop :text) options))))
          (opt-sym-len (max (string-width (car telega-symbol-poll-options))
-                           (string-width (cdr telega-symbol-poll-options))))
-         (can-edit-p (plist-get msg :can_be_edited)))
+                           (string-width (cdr telega-symbol-poll-options)))))
     (telega-ins telega-symbol-poll " " question)
     (telega-ins-fmt " (%d votes" nvotes)
     (when closed-p
@@ -1185,7 +1180,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
 
 (defun telega-ins--message-ignored (msg)
   "Inserter for ignored message MSG."
-  (telega-ins--message msg nil (lambda (imsg)
+  (telega-ins--message msg nil (lambda (_ignoredmsg)
                                  (telega-ins " --> ")
                                  (telega-ins--chat (telega-msg-chat msg))))
   (telega-ins "\n"))

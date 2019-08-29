@@ -69,7 +69,7 @@ If prefix ARG is given, then will not pop to telega root buffer."
   (interactive "P")
   (telega--create-hier)
 
-  (unless (process-live-p (telega-server--proc))
+  (unless (telega-server-live-p)
     ;; NOTE: for telega-server restarts also recreate root buffer,
     ;; killing root buffer also cleanup all chat buffers and stops any
     ;; timers used for animation
@@ -205,7 +205,7 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
            by 'cddr
            do (telega--setOption prop-name value)))
 
-(defun telega-online-status (&optional offline-p)
+(defun telega-online-status (&optional _offline-p)
   "Make use online."
   (error "`telega-online-status' not yet implemented"))
 

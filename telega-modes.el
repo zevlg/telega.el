@@ -27,8 +27,6 @@
 ;;
 ;;; Code:
 
-(require 'format-spec)
-
 (require 'telega-customize)
 (require 'telega-server)
 (require 'telega-filter)
@@ -36,8 +34,92 @@
 (defvar tracking-buffers)
 (declare-function telega "telega" (arg))
 
-(defvar telega-mode-line-string "")
-(put 'telega-mode-line-string 'risky-local-variable t)
+(defvar telega-mode-line-string ""
+  "Used to cache formatted modeline string.")
+
+(defcustom telega-mode-line-string-format
+  '("   " (:eval (telega-mode-line-icon))
+    (:eval (when telega-use-tracking
+             (telega-mode-line-tracking)))
+    (:eval (telega-mode-line-unread-unmuted))
+    (:eval (telega-mode-line-mentions 'messages)))
+  "Format in mode-line-format for `telega-mode-line-string'."
+  :type 'list
+  :group 'telega)
+
+(defcustom telega-mode-line-format
+  (list '(:eval (when (telega-server-live-p)
+                  telega-mode-line-string)))
+  "Format in mode-line-format to be used as part of `global-mode-string'."
+  :type 'sexp
+  :group 'telega
+  :risky t)
+
+(defun telega-mode-line-icon ()
+  "Return telegram logo icon to be used in modeline."
+  (propertize telega-symbol-telegram
+              'display (telega-logo-image 'for-modeline)
+              'local-map (eval-when-compile
+                           (make-mode-line-mouse-map 'mouse-1 'telega))
+              'mouse-face 'mode-line-highlight
+              'help-echo "Click to show telega root buffer"))
+
+(defmacro telega-mode-line-filter-gen (filter-spec)
+  "Generate filtering command for `telega-mode-line-mode' using FILTER-SPEC."
+  `(lambda ()
+     (interactive)
+     (telega nil)
+     (telega-filters-push ,filter-spec)))
+
+(defun telega-mode-line-tracking ()
+  "Format number of tracking chats."
+  (when tracking-buffers
+    (concat
+     " "
+     (propertize (concat "[" (number-to-string (length tracking-buffers)) "]")
+                 'local-map
+                 (eval-when-compile
+                   (make-mode-line-mouse-map
+                    'mouse-1 (telega-mode-line-filter-gen '(tracking))))
+                 'mouse-face 'mode-line-highlight
+                 'help-echo "Click to filter tracking chats"))))
+
+(defun telega-mode-line-unread-unmuted (&optional messages-p)
+  "Format unread-unmuted chats/messages.
+If MESSAGES-P is non-nil then use number of unread unmuted messages."
+  (let ((uu-count (if messages-p
+                      (plist-get telega--unread-message-count :unread_unmuted_count)
+                    (plist-get telega--unread-chat-count :unread_unmuted_count))))
+    (unless (zerop uu-count)
+      (concat
+       " "
+       (propertize (number-to-string uu-count)
+                   'face 'telega-unread-unmuted-modeline
+                   'local-map
+                   (eval-when-compile
+                     (make-mode-line-mouse-map
+                      'mouse-1 (telega-mode-line-filter-gen '(unread unmuted))))
+                   'mouse-face 'mode-line-highlight
+                   'help-echo "Click to filter chats with unread/unmuted messages")))))
+
+(defun telega-mode-line-mentions (&optional messages-p)
+  "Format number of chats/messages with mentions.
+If MESSAGES-P is non-nil then use number of messages with mentions."
+  (let* ((m-chats (telega-filter-chats '(mention) telega--ordered-chats))
+         (m-count (if messages-p
+                      (apply '+ (mapcar (telega--tl-prop :unread_mention_count) m-chats))
+                    (length m-chats))))
+    (unless (zerop m-count)
+      (concat
+       " "
+       (propertize (concat "@" (number-to-string m-count))
+                   'face 'telega-mention-count
+                   'local-map
+                   (eval-when-compile
+                     (make-mode-line-mouse-map
+                      'mouse-1 (telega-mode-line-filter-gen '(mention))))
+                   'mouse-face 'mode-line-highlight
+                   'help-echo "Click to filter chats with mentions")))))
 
 ;;;###autoload
 (define-minor-mode telega-mode-line-mode
@@ -49,9 +131,9 @@
 
   (if telega-mode-line-mode
       (progn
-        (unless (memq 'telega-mode-line-string global-mode-string)
+        (unless (memq 'telega-mode-line-format global-mode-string)
           (setq global-mode-string
-                (append global-mode-string '(telega-mode-line-string))))
+                (append global-mode-string '(telega-mode-line-format))))
         (advice-add 'telega--on-updateUnreadMessageCount
                     :after 'telega-mode-line-update)
         (advice-add 'telega--on-updateUnreadChatCount
@@ -69,7 +151,7 @@
         (telega-mode-line-update))
 
     (setq global-mode-string
-          (delq 'telega-mode-line-string global-mode-string))
+          (delq 'telega-mode-line-format global-mode-string))
     (advice-remove 'telega--on-updateUnreadMessageCount
                    'telega-mode-line-update)
     (advice-remove 'telega--on-updateUnreadChatCount
@@ -83,127 +165,11 @@
     (advice-remove 'tracking-remove-buffer 'telega-mode-line-update)
     ))
 
-(defcustom telega-mode-line-format-spec
-  (if telega-use-tracking " %I %t%c%M" " %I %c%M")
-  "Format for telega modeline.
-%I - Telegram logo.
-%c - Number of unread unmuted chats.
-%C - Number of unread messages in unmuted chats.
-%m - Number of chats with unread mentions.
-%M - Number of unread messages with mentions.
-%u - Number of all unread chats.
-%U - Number of all unread messages.
-%t - Number of chats in tracking-buffers.
-
-For %c and %C `telega-unread-unmuted-modeline' face is used.
-For %m and %M `telega-mention-count' face is used.
-For %u and %U `shadow' face is used.
-
-If value has non-zero value, then suffix according to
-`telega-mode-line-non-zero-suffixes' is inserted."
-  :type 'string
-  :group 'telega
-  :set (lambda (option value)
-         (set-default option value)
-         (when telega-mode-line-mode
-           (telega-mode-line-update))))
-
-(defcustom telega-mode-line-prefixes
-  '((?t . "[") (?c . "") (?C . "") (?m . "@") (?M . "@") (?u . "") (?U . ""))
-  "Prefixes for non-zero values in `telega-mode-line-format-spec'.
-Prefixes inherits corresponding face for %c, %C, %m and %M formats."
-  :type 'alist
-  :group 'telega)
-
-(defcustom telega-mode-line-suffixes
-  '((?t . "] ") (?c . " ") (?C . " ") (?m . " ") (?M . " ") (?u . " ") (?U . " "))
-  "Suffixes for non-zero values in `telega-mode-line-format-spec'.
-Suffixes does not inherit any faces used in formatting."
-  :type 'alist
-  :group 'telega)
-
-(defmacro telega-mode-line-filter-gen (&rest filter-spec)
-  "Generate filtering command for telega-mode-line-mode using FILTER-SPEC."
-  `(lambda ()
-     (interactive)
-     (telega nil)
-     (telega-filters-push '(,@filter-spec))))
-
-(defun telega-mode-line-format-spec (c val &optional face cmd help)
-  "Create format spec for the C and value VAL."
-  (cons
-   c
-   (if (> (or val 0) 0)
-       (concat
-        (apply 'propertize
-               (format "%s%d" (alist-get c telega-mode-line-prefixes) val)
-               (nconc (when face (list 'face face))
-                      (when cmd
-                        (list 'keymap (make-mode-line-mouse-map 'mouse-1 cmd)
-                              'mouse-face 'mode-line-highlight))
-                      (when help
-                        (list 'help-echo help))))
-        (alist-get c telega-mode-line-suffixes))
-     "")))
-
 (defun telega-mode-line-update (&rest _ignored)
   "Update value for `telega-mode-line-string'."
-  (setq telega-mode-line-string "")
-
-  (when (process-live-p (telega-server--proc))
-    ;; NOTE: lazy formatting, do not eval certain form unless it is
-    ;; specified in `telega-mode-line-format-spec'
-    (let* ((t-val (when (string-match-p (regexp-quote "%t") telega-mode-line-format-spec)
-                    (length tracking-buffers)))
-           (c-val (when (string-match-p (regexp-quote "%c") telega-mode-line-format-spec)
-                    (plist-get telega--unread-chat-count :unread_unmuted_count)))
-           (C-val (when (string-match-p (regexp-quote "%C") telega-mode-line-format-spec)
-                    (plist-get telega--unread-message-count :unread_unmuted_count)))
-           (u-val (when (string-match-p (regexp-quote "%u") telega-mode-line-format-spec)
-                    (plist-get telega--unread-chat-count :unread_count)))
-           (U-val (when (string-match-p (regexp-quote "%U") telega-mode-line-format-spec)
-                    (plist-get telega--unread-message-count :unread_count)))
-           (m-chats (when (string-match-p "%[mM]" telega-mode-line-format-spec)
-                      (telega-filter-chats '(mention) telega--ordered-chats)))
-           (m-val (length m-chats))
-           (M-val (apply '+ (mapcar (telega--tl-prop :unread_mention_count) m-chats))))
-      (setq telega-mode-line-string
-            (format-spec
-             telega-mode-line-format-spec
-             (list (cons
-                    ?I (propertize
-                        telega-symbol-telegram
-                        'display (telega-logo-image)
-                        'keymap (make-mode-line-mouse-map 'mouse-1 'telega)
-                        'help-echo "Click to show telega root buffer"))
-                   (telega-mode-line-format-spec
-                    ?t t-val nil
-                    (telega-mode-line-filter-gen tracking)
-                    "Click to filter tracking chats")
-                   (telega-mode-line-format-spec
-                    ?c c-val 'telega-unread-unmuted-modeline
-                    (telega-mode-line-filter-gen unread notify)
-                    "Click to filter chats with unread/unmuted messages")
-                   (telega-mode-line-format-spec
-                    ?C C-val 'telega-unread-unmuted-modeline
-                    (telega-mode-line-filter-gen unread notify)
-                    "Click to filter chats with unread/unmuted messages")
-                   (telega-mode-line-format-spec
-                    ?m m-val 'telega-mention-count
-                    (telega-mode-line-filter-gen mention)
-                    "Click to filter chats with mentions")
-                   (telega-mode-line-format-spec
-                    ?M M-val 'telega-mention-count
-                    (telega-mode-line-filter-gen mention)
-                    "Click to filter chats with mentions")
-                   (telega-mode-line-format-spec
-                    ?u u-val 'shadow
-                    (telega-mode-line-filter-gen unread)
-                    "Click to filter chats with unread messages")
-                   (telega-mode-line-format-spec
-                    ?U U-val 'shadow
-                    (telega-mode-line-filter-gen unread)
-                    "Click to filter chats with unread messages"))))))
+  (setq telega-mode-line-string
+        (when (telega-server-live-p)
+          (format-mode-line telega-mode-line-string-format)))
   (force-mode-line-update))
 
 (provide 'telega-modes)

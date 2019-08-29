@@ -34,6 +34,7 @@
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+(declare-function telega-chatbuf-mode-line-update "telega-chat")
 
 
 (defvar telega-user-button-map
@@ -152,9 +153,11 @@ Default is: `full'"
     (when (eq (telega--tl-type status) 'userStatusOnline)
       (plist-put user :telega-last-online (telega-time-seconds)))
 
-    ;; Update root as well
-    (let ((chat (telega-chat-get user-id 'offline)))
-      (when (and chat (not (= telega--me-id user-id)))
+    ;; Update chatbuf's modeline and root as well
+    (unless (telega-me-p user)
+      (when-let ((chat (telega-chat-get user-id 'offline)))
+        (with-telega-chatbuf chat
+          (telega-chatbuf-mode-line-update))
         (telega-root--chat-update chat)))
 
     (run-hook-with-args 'telega-user-update-hook user)))

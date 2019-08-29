@@ -397,8 +397,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
       (when (and telega-use-tracking (zerop unread-count))
         (tracking-remove-buffer (current-buffer)))
 
-      (setq mode-line-buffer-identification
-            (telega-chatbuf--modeline-buffer-identification))
+      (telega-chatbuf-mode-line-update)
       (telega-chatbuf--footer-redisplay))
 
     (telega-root--chat-update chat)))
@@ -421,8 +420,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
 
     ;; NOTE: unread_mention_count affects modeline and footer
     (with-telega-chatbuf chat
-      (setq mode-line-buffer-identification
-            (telega-chatbuf--modeline-buffer-identification))
+      (telega-chatbuf-mode-line-update)
       (telega-chatbuf--footer-redisplay))
 
     (telega-root--chat-update chat)))
@@ -465,8 +463,7 @@ NOTE: we store the number as custom chat property, to use it later."
 
     ;; NOTE: this affects the modeline
     (with-telega-chatbuf chat
-      (setq mode-line-buffer-identification
-            (telega-chatbuf--modeline-buffer-identification)))
+      (telega-chatbuf-mode-line-update))
 
     ;; ARGUABLE: root buffer chat inserter might use the counter
     ; (telega-root--chat-update chat)
@@ -1540,8 +1537,7 @@ If TITLE is specified, use it instead of chat's title."
         (with-current-buffer (generate-new-buffer bufname)
           (telega-chat-mode)
           (setq telega-chatbuf--chat chat)
-          (setq mode-line-buffer-identification
-                (telega-chatbuf--modeline-buffer-identification))
+          (telega-chatbuf-mode-line-update)
 
           ;; If me is not member of this chat, then show [JOIN/START]
           ;; button instead of the prompt
@@ -1597,46 +1593,64 @@ If TITLE is specified, use it instead of chat's title."
   (and (not (telega-chatbuf--last-msg-loaded-p))
        (button-get telega-chatbuf--aux-button 'invisible)))
 
-(defun telega-chatbuf--modeline-buffer-identification ()
-  "Return `mode-line-buffer-identification' for the CHAT buffer."
-  (let* ((title "%12b")
-         (unread-count (plist-get telega-chatbuf--chat :unread_count))
+(defun telega-chatbuf-mode-line-unread ()
+  "Format unread/mentions string for chat buffer modeline."
+  (let* ((unread-count (plist-get telega-chatbuf--chat :unread_count))
          (mention-count (plist-get telega-chatbuf--chat :unread_mention_count))
-         (member-count
-          (or (plist-get (telega-chat--info telega-chatbuf--chat) :member_count) 0))
-         (online-count (or (plist-get telega-chatbuf--chat :x-online-count) 0))
          (brackets (or (> unread-count 0) (> mention-count 0))))
+    (concat 
+     (when brackets " (")
+     (when (> unread-count 0)
+       (propertize (concat "unread:" (number-to-string unread-count))
+                   'face 'bold
+                   'local-map
+                   (eval-when-compile
+                     (make-mode-line-mouse-map 'mouse-1 'telega-chatbuf-read-all))
+                   'mouse-face 'mode-line-highlight
+                   'help-echo "mouse-1: Read all messages"))
+     (when (> mention-count 0)
+       (concat
+        (when (> unread-count 0) " ")
+        (propertize (concat "@" (number-to-string mention-count))
+                    'face 'telega-mention-count
+                    'local-map
+                    (eval-when-compile
+                      (make-mode-line-mouse-map 'mouse-1 'telega-chatbuf-next-mention))
+                    'mouse-face 'mode-line-highlight
+                    'help-echo "mouse-1: Goto next mention")))
+     (when brackets ")"))))
 
-    (list title
-          (when brackets " (")
-          (when (> unread-count 0)
-            (propertize (format "unread:%d" unread-count)
-                        'face 'bold
-                        'local-map
-                        '(keymap
-                          (mode-line
-                           keymap (mouse-1 . telega-chatbuf-read-all)))
-                        'mouse-face 'mode-line-highlight
-                        'help-echo "mouse-1: Read all messages"
-                        ))
-          (when (> mention-count 0)
-            (concat
-             (when (> unread-count 0) " ")
-             (propertize (format "@%d" mention-count)
-                         'face 'telega-mention-count
-                         'local-map
-                         '(keymap
-                           (mode-line
-                            keymap (mouse-1 . telega-chatbuf-next-mention)))
-                         'mouse-face 'mode-line-highlight
-                         'help-echo "mouse-1: Goto next mention")))
-          (when brackets ")")
-          (unless (zerop member-count)
-            (format " [%d members%s]" member-count
-                    (if (zerop online-count)
-                        ""
-                      (format ", %d online" online-count))))
-          )))
+(defun telega-chatbuf-mode-line-members (&optional use-icons-p)
+  "Format members string for chat buffer modeline.
+If ICONS-P is non-nil, then use icons for members count."
+  (let ((member-count
+         (or (plist-get (telega-chat--info telega-chatbuf--chat) :member_count) 0))
+        (online-count (or (plist-get telega-chatbuf--chat :x-online-count) 0)))
+    (unless (zerop member-count)
+      (concat " [" (number-to-string member-count)
+              (if use-icons-p
+                  (propertize telega-symbol-contact 'face 'shadow)
+                " members")
+              (unless (zerop online-count)
+                (concat ", " (number-to-string online-count)
+                        (if use-icons-p
+                            telega-symbol-online-status
+                          " online")))
+              "]"))))
+
+(defun telega-chatbuf-mode-line-update ()
+  "Update `mode-line-buffer-identification' for the CHAT buffer."
+  (setq mode-line-buffer-identification
+        (list (propertized-buffer-identification "%b")
+              ;; Online status
+              (when (and (eq (telega-chat--type telega-chatbuf--chat) 'private)
+                         (not (telega-me-p telega-chatbuf--chat))
+                         (string= "Online"
+                                  (telega-user--seen
+                                   (telega-chat--user telega-chatbuf--chat))))
+                telega-symbol-online-status)
+              (format-mode-line telega-chat-mode-line-format)))
+  (force-mode-line-update))
 
 (defun telega-chatbuf--input-idx-valid-p (idx)
   "Return non-nil if input history position IDX is valid."
@@ -3030,10 +3044,9 @@ FILTERS are:
          (mapcar (lambda (filter) (list filter t)) filters)))
 
 (defun telega--getChatEventLog (chat &optional query from-event-id
-                                     limit filters users no-error-p)
+                                     limit filters users)
   "Return event log for the CHAT.
-FILTERS are created with `telega-chatevent-log-filter'.
-If NO-ERROR-P is specified, do not signal error."
+FILTERS are created with `telega-chatevent-log-filter'."
   ;; NOTE: use explicit extra value to check for the error
   (let ((reply (telega-server--call
                 (nconc (list :@type "getChatEventLog"

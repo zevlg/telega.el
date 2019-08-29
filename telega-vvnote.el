@@ -230,7 +230,7 @@ Return non-nil if callback has been executed and frame deleted."
      (telega-vvnote--cancel-timer proc)
      (message "telega: error in vvnote callback: %S" err))))
 
-(defun telega-vvnote--ffmpeg-sentinel (proc event)
+(defun telega-vvnote--ffmpeg-sentinel (proc _event)
   "Sentinel for the ffmpeg process."
   (telega-debug "vvnote SENTINEL: status=%S, live=%S"
                 (process-status proc) (process-live-p proc))

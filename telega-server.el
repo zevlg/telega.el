@@ -123,6 +123,10 @@ Raise error if not found."
   "Return telega-server process."
   (get-buffer-process telega-server--buffer))
 
+(defun telega-server-live-p ()
+  "Return non-nil if telega-sever process is alive."
+  (process-live-p (telega-server--proc)))
+
 (defsubst telega-server--parse-cmd ()
   "Parse single reply from telega-server.
 Return parsed command."
