@@ -104,6 +104,10 @@ Actual value is `:@extra` value of the call to load history.")
   "My current action in chat buffer.")
 (make-variable-buffer-local 'telega-chatbuf--my-action)
 
+;; Special variable used to set `telega-chatbuf--chat'
+;; inside `telega-chat-mode'
+(defvar telega-chat--preparing-buffer-for)
+
 
 (defun telega-chat--set-uaprops (chat uaprops)
   "Set CHAT's user application properties to UAPROPS."
@@ -269,6 +273,10 @@ them to bots or channels."
                 (telega-user-bot-p (telega-chat--user chat)))
            'bot)
           (t type-sym))))
+
+(defsubst telega-chat-bot-p (chat)
+  "Return non-nil if CHAT is the chat with bot."
+  (eq (telega-chat--type chat) 'bot))
 
 (defun telega-chat--secret-p (chat)
   "Return non-nil if CHAT is secret."
@@ -1281,7 +1289,8 @@ Message bindings (cursor on message):
 Global chat bindings:
 \\{telega-chat-mode-map}"
   :group 'telega-chat
-  (setq telega-chatbuf--messages (make-hash-table :test 'eq)
+  (setq telega-chatbuf--chat telega-chat--preparing-buffer-for
+        telega-chatbuf--messages (make-hash-table :test 'eq)
         telega-chatbuf--input-ring (make-ring telega-chat-input-ring-size)
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending nil
@@ -1535,8 +1544,8 @@ If TITLE is specified, use it instead of chat's title."
     (or (get-buffer bufname)
 
         (with-current-buffer (generate-new-buffer bufname)
-          (telega-chat-mode)
-          (setq telega-chatbuf--chat chat)
+          (let ((telega-chat--preparing-buffer-for chat))
+            (telega-chat-mode))
           (telega-chatbuf-mode-line-update)
 
           ;; If me is not member of this chat, then show [JOIN/START]
@@ -1649,7 +1658,8 @@ If ICONS-P is non-nil, then use icons for members count."
                                   (telega-user--seen
                                    (telega-chat--user telega-chatbuf--chat))))
                 telega-symbol-online-status)
-              (format-mode-line telega-chat-mode-line-format)))
+              (format-mode-line telega-chat-mode-line-format nil nil
+                                (current-buffer))))
   (force-mode-line-update))
 
 (defun telega-chatbuf--input-idx-valid-p (idx)
@@ -2801,7 +2811,9 @@ If DRAFT-MSG is ommited, then clear draft message."
         (delq (current-buffer) telega--chat-buffers))
 
   ;; Closing chat may affect filtering, see `opened' filter
-  (telega-root--chat-update telega-chatbuf--chat))
+  (ignore-errors
+    (telega-root--chat-update telega-chatbuf--chat))
+  )
 
 ;;; Message commands
 (defun telega-msg-redisplay (msg &optional node)
