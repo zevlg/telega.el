@@ -55,10 +55,26 @@
   :group 'telega
   :risky t)
 
+(defvar telega-mode-line--logo-image-cache nil "Cached loaded logo image.")
+(defun telega-mode-line-logo-image ()
+  "Return telega logo image to be used in modeline."
+  (or telega-mode-line--logo-image-cache
+      (setq telega-mode-line--logo-image-cache
+            (find-image
+             (list (list :type 'imagemagick :file "etc/telegram-logo.png"
+                         :ascent 'center :mask 'heuristic
+                         :height (window-mode-line-height))
+                   (list :type 'svg :file "etc/telegram-logo.svg"
+                         :ascent 'center
+                         :background (face-attribute 'mode-line :background)
+                         :height (window-mode-line-height))
+                   (list :type 'xpm :file "etc/telegram-logo.xpm"
+                         :ascent 'center))))))
+
 (defun telega-mode-line-icon ()
   "Return telegram logo icon to be used in modeline."
   (propertize telega-symbol-telegram
-              'display (telega-logo-image 'for-modeline)
+              'display (telega-mode-line-logo-image)
               'local-map (eval-when-compile
                            (make-mode-line-mouse-map 'mouse-1 'telega))
               'mouse-face 'mode-line-highlight
