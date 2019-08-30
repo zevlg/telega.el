@@ -106,7 +106,10 @@ If MESSAGES-P is non-nil then use number of unread unmuted messages."
   (let ((uu-count (if messages-p
                       (plist-get telega--unread-message-count :unread_unmuted_count)
                     (plist-get telega--unread-chat-count :unread_unmuted_count))))
-    (unless (zerop uu-count)
+    ;; NOTE: `telega--unread-chat-count' or
+    ;; `telega--unread-message-count' might not be yet updated, so
+    ;; `uu-count' can be nil
+    (unless (zerop (or uu-count 0))
       (concat
        " "
        (propertize (number-to-string uu-count)
