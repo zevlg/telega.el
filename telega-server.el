@@ -147,6 +147,7 @@ Return parsed command."
             (cl-assert (= (following-char) ?\n))
             (delete-char 1)))))))
 
+(defvar telega-server--last-error)
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
   (cond ((string= cmd "event")
@@ -272,8 +273,6 @@ If CALLBACK is specified return `:@extra' value used for the call."
                    (telega-server--proc) telega-server-call-timeout)))
 
       ;; Return the result, checking for the error
-      ;; NOTE: actuall error might be clobbered by subsequent errors,
-      ;; we don't handle this situation :(
       (let ((ret (gethash cb-extra telega-server--results)))
         (remhash cb-extra telega-server--results)
 
