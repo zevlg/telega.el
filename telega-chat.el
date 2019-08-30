@@ -2329,10 +2329,11 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
   ;; attachement is deleted by `delete-char' or `backward-delete'
   (telega-ins--with-props `(telega-attach ,imc face telega-chat-input-attachment)
     (telega-ins--with-props '(cursor-intangible t)
-      (telega-ins--with-props '(attach-open-bracket t)
-        (telega-ins (car telega-symbol-attach-brackets)))
-      (telega-ins--input-content-one-line imc)
-      (telega-ins (cdr telega-symbol-attach-brackets)))
+      (when (telega-ins-prefix
+                (propertize (car telega-symbol-attach-brackets)
+                            'attach-open-bracket t)
+              (telega-ins--input-content-one-line imc))
+        (telega-ins (cdr telega-symbol-attach-brackets))))
     (telega-ins--with-props '(attach-close-bracket t rear-nonsticky t)
       (telega-ins " "))))
 
