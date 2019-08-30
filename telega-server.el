@@ -325,6 +325,15 @@ If CALLBACK is specified return `:@extra' value used for the call."
     (setq telega-server--buffer nil)
     (run-hooks 'telega-kill-hook)))
 
+
+;;; Misc TDLib API methods
+(defun telega--searchHashtags (prefix &optional limit)
+  (let ((reply (telega-server--call
+                (list :@type "searchHashtags"
+                      :prefix prefix
+                      :limit (or limit 20)))))
+    (append (plist-get reply :hashtags) nil)))
+
 (provide 'telega-server)
 
 ;;; telega-server.el ends here

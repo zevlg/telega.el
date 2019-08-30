@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri Feb  8 01:37:44 2019
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -38,7 +38,22 @@
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega--full-info "telega-info" (tlobj))
 
+(defun telega-company-grab-single-char (char)
+  "Grab string starting with single CHAR."
+  (if (looking-at "\\>")
+      (let ((p (point)))
+        (save-excursion
+          (skip-syntax-backward "w")
+          (when (= (char-before) char)
+            (cons (buffer-substring p (1- (point)))
+                  ;; Always match if CHAR is prefix
+                  company-minimum-prefix-length))))
+
+    (when (= (char-before) char)
+      (cons (char-to-string char) company-minimum-prefix-length))))
+
 
+;;; Emoji completion
 (defun telega-company-grab-emoji ()
   (let ((cg (company-grab ":[^: _]+" nil
                           (- (point) telega-emoji-max-length))))
@@ -70,20 +85,6 @@
 
 
 ;;; Username completion for chat buffer
-(defun telega-company-grab-username ()
-  "Grab string starting with `@'."
-  (if (looking-at "\\>")
-      (let ((p (point)))
-        (save-excursion
-          (skip-syntax-backward "w")
-          (when (= (char-before) ?\@)
-            (cons (buffer-substring p (1- (point)))
-                  ;; Always match if `@' prefix
-                  company-minimum-prefix-length))))
-
-    (when (= (char-before) ?\@)
-      (cons "@" company-minimum-prefix-length))))
-
 ;;;###autoload
 (defun telega-company-username (command &optional arg &rest ignored)
   "Backend for `company' to complete usernames."
@@ -93,7 +94,7 @@
     (init (unless (eq major-mode 'telega-chat-mode)
             (error "`telega-company-username' can be used only in chat buffer")))
     (sorted t)
-    (prefix (telega-company-grab-username))
+    (prefix (telega-company-grab-single-char ?\@))
     (require-match 'never)
     (candidates
      (cl-assert (> (length arg) 0))
@@ -110,6 +111,27 @@
      (let ((member (get-text-property 0 'telega-member arg)))
        (when member
          (concat "  " (telega-user--name member 'name)))))
+    (post-completion
+     (insert " "))
+    ))
+
+
+;;; Hashtags completion for chatbuffer
+;;;###autoload
+(defun telega-company-hashtag (command &optional arg &rest ignored)
+  "Backend for `company' to complete recent hashtags."
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'telega-company-hashtag))
+    (init (unless (eq major-mode 'telega-chat-mode)
+            (error "`telega-company-hashtag' can be used only in chat buffer")))
+    (sorted t)
+    (prefix (telega-company-grab-single-char ?\#))
+    (require-match 'never)
+    (candidates
+     (cl-assert (> (length arg) 0))
+     (mapcar (lambda (ht) (concat "#" ht))
+             (telega--searchHashtags (substring arg 1))))
     (post-completion
      (insert " "))
     ))
