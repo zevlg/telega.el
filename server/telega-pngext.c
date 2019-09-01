@@ -1,7 +1,9 @@
 /*
  * PNG extractor for telega
  */
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE             /* for memmem() */
+#endif /* _GNU_SOURCE */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -52,7 +54,7 @@ pngext_get_png(struct telega_dat* src, struct telega_dat* png)
         assert(end < tdat_end(src));
         if (end) {
                 /* FOUND */
-                assert(tdat_len(src) >= end - tdat_start(src) + 8);
+                assert(tdat_len(src) >= (size_t)(end - tdat_start(src) + 8));
                 tdat_move(src, png, end - tdat_start(src) + 8);
                 return 0;
         }
@@ -63,7 +65,7 @@ void
 pngext_loop(const char* prefix, size_t rdsize)
 {
         assert(strlen(prefix) < 500);
-        char* png_filename = malloc(strlen(prefix) + 32);
+        char* png_filename = (char*)malloc(strlen(prefix) + 32);
         assert(png_filename != NULL);
 
         int frame_num = 0;
