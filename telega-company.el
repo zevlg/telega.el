@@ -85,6 +85,10 @@
 
 
 ;;; Username completion for chat buffer
+(defun telega-company-grab-username ()
+  "Grab string starting with `@'."
+  (telega-company-grab-single-char ?\@))
+
 ;;;###autoload
 (defun telega-company-username (command &optional arg &rest ignored)
   "Backend for `company' to complete usernames."
@@ -94,7 +98,7 @@
     (init (unless (eq major-mode 'telega-chat-mode)
             (error "`telega-company-username' can be used only in chat buffer")))
     (sorted t)
-    (prefix (telega-company-grab-single-char ?\@))
+    (prefix (telega-company-grab-username))
     (require-match 'never)
     (candidates
      (cl-assert (> (length arg) 0))
@@ -117,6 +121,10 @@
 
 
 ;;; Hashtags completion for chatbuffer
+(defun telega-company-grab-hashtag ()
+  "Grab string starting with `#'."
+  (telega-company-grab-single-char ?\#))
+
 ;;;###autoload
 (defun telega-company-hashtag (command &optional arg &rest ignored)
   "Backend for `company' to complete recent hashtags."
@@ -126,7 +134,7 @@
     (init (unless (eq major-mode 'telega-chat-mode)
             (error "`telega-company-hashtag' can be used only in chat buffer")))
     (sorted t)
-    (prefix (telega-company-grab-single-char ?\#))
+    (prefix (telega-company-grab-hashtag))
     (require-match 'never)
     (candidates
      (cl-assert (> (length arg) 0))
