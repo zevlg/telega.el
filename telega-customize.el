@@ -323,10 +323,11 @@ Set it to nil to use your user name instead of default \"Saved Messages\"."
   :type 'string
   :group 'telega-root)
 
-(defcustom telega-chat-label-format (propertize "%L | " 'face 'bold)
+(defcustom telega-chat-label-format "%L | "
   "*Non-nil to prefix chat's title with custom label.
 %L - replaced with chat's label.
-See `telega-chat-custom-label' for details."
+See `telega-chat-custom-label' for details.
+`telega-chat-label' face is added to formatted string."
   :type 'string
   :group 'telega-root)
 
@@ -998,6 +999,11 @@ Install all symbol widths inside `telega-load-hook'."
 (defface telega-chat-prompt
   '((t :weight bold))
   "Face for chat input prompt"
+  :group 'telega-faces)
+
+(defface telega-chat-label
+  '((t :weight bold))
+  "Additional face for chat labels."
   :group 'telega-faces)
 
 (defface telega-chat-input-attachment

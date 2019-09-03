@@ -1380,10 +1380,12 @@ Return t."
     (when (telega-chat--secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
     ;; Check for custom label
-    (let ((label (telega-chat-uaprop chat :label)))
-      (when (and label telega-chat-label-format)
-        (setq title (concat (format-spec telega-chat-label-format
-                                         (format-spec-make ?L label))
+    (when telega-chat-label-format
+      (when-let ((label (telega-chat-uaprop chat :label)))
+        (setq title (concat (telega-fmt-eval-face
+                             (format-spec telega-chat-label-format
+                                          (format-spec-make ?L label))
+                             (list :face 'telega-chat-label))
                             title))))
 
     (telega-ins (or (car brackets) "["))

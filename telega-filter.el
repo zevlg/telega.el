@@ -545,16 +545,15 @@ Specify INCOMING-P to filter by incoming link relationship."
 (defun telega-filter-by-label (label)
   "Filter chats by custom chat LABEL.
 See `telega-chat-custom-label'."
-  (interactive (list (funcall telega-completing-read-function
-                              "Custom label: "
-                              (seq-uniq
-                               (cl-remove-if-not
-                                'stringp
-                                (mapcar
-                                 (lambda (chat)
-                                   (telega-chat-uaprop chat :label))
-                                 telega--ordered-chats)))
-                              nil t)))
+  (interactive
+   (list (funcall telega-completing-read-function
+                  "Custom label: "
+                  (let ((labels (mapcar (lambda (chat)
+                                          (telega-chat-uaprop chat :label))
+                                        telega--ordered-chats)))
+                    (mapcar 'substring-no-properties
+                            (seq-uniq (cl-remove-if-not 'stringp labels))))
+                  nil t)))
   (telega-filter-add (list 'label label)))
 
 (define-telega-filter label (chat label)
