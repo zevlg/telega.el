@@ -1,4 +1,4 @@
-# telega.el ![logo](etc/telega-logo64.png) [![Join the chat at https://t.me/emacs_telega](etc/chat_emacs_telega.svg)](https://t.me/emacs_telega)
+# ![logo](etc/telega-logo64.png) telega.el [![Join the chat at https://t.me/emacs_telega](etc/chat_emacs_telega.svg)](https://t.me/emacs_telega)
 
 `telega.el` is full featured unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
