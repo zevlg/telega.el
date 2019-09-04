@@ -26,6 +26,7 @@
 ;;  `telega-company-username' to complete usernames
 
 ;;; Code:
+(require 'telega-core)
 (require 'telega-util)
 (require 'telega-user)
 
@@ -39,18 +40,18 @@
 (declare-function telega--full-info "telega-info" (tlobj))
 
 (defun telega-company-grab-single-char (char)
-  "Grab string starting with single CHAR."
-  (if (looking-at "\\>")
-      (let ((p (point)))
-        (save-excursion
-          (skip-syntax-backward "w")
-          (when (= (char-before) char)
-            (cons (buffer-substring p (1- (point)))
-                  ;; Always match if CHAR is prefix
-                  company-minimum-prefix-length))))
-
-    (when (= (char-before) char)
-      (cons (char-to-string char) company-minimum-prefix-length))))
+  "Grab string starting with single CHAR.
+Matches only if CHAR does not apper in the middle of the word."
+  (let ((p (point)))
+    (save-excursion
+      (when (looking-at "\\>")
+        (skip-syntax-backward "w"))
+      (when (= (char-before) char)
+        (let ((char-str (char-to-string char)))
+          (skip-chars-backward char-str)
+          (unless (looking-at "\\>")
+            (cons (buffer-substring p (point))
+                  company-minimum-prefix-length)))))))
 
 
 ;;; Emoji completion
@@ -147,8 +148,10 @@
 
 ;;; Bot commands completion
 (defun telega-company-grab-botcmd ()
+  "Return non-nil if chatbuf input starts bot command."
   (let ((cg (company-grab-line "/[^ ]*")))
-    (when cg (cons cg company-minimum-prefix-length))))
+    (when (and cg (= telega-chatbuf--input-marker (match-beginning 0)))
+      (cons cg company-minimum-prefix-length))))
 
 (defun telega-company--bot-commands-alist ()
   (cl-assert telega-chatbuf--chat)
