@@ -61,14 +61,14 @@
   (or telega-mode-line--logo-image-cache
       (setq telega-mode-line--logo-image-cache
             (find-image
-             (list (list :type 'imagemagick :file "etc/telegram-logo.png"
+             (list (list :type 'imagemagick :file "etc/telega-logo.png"
                          :ascent 'center :mask 'heuristic
                          :height (window-mode-line-height))
-                   (list :type 'svg :file "etc/telegram-logo.svg"
+                   (list :type 'svg :file "etc/telega-logo.svg"
                          :ascent 'center
                          :background (face-attribute 'mode-line :background)
                          :height (window-mode-line-height))
-                   (list :type 'xpm :file "etc/telegram-logo.xpm"
+                   (list :type 'xpm :file "etc/telega-logo.xpm"
                          :ascent 'center))))))
 
 (defun telega-mode-line-icon ()

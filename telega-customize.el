@@ -805,6 +805,7 @@ Good candidates also are 🄌 or ⬤."
 (defcustom telega-symbol-location "🌐"
   "Symbol used for location."
   :type 'string
+  :options '("🌍")
   :group 'telega-symbol)
 
 (defcustom telega-symbol-phone "📞"
