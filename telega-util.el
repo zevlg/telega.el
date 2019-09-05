@@ -32,6 +32,7 @@
 (require 'svg)
 (require 'color)                        ; `color-XXX'
 (require 'ansi-color)                   ; ansi-color-apply
+(require 'url-util)                     ; url-unhex-string
 
 (require 'telega-customize)
 
@@ -290,7 +291,9 @@ N can't be 0."
        (list 'face 'telega-entity-type-pre))
 
       (textEntityTypeUrl
-       (telega-link-props 'url text 'telega-entity-type-texturl))
+       ;; Use 'display property to display unhexified verios of url
+       (nconc (list 'display (decode-coding-string (url-unhex-string text) 'utf-8))
+              (telega-link-props 'url text 'telega-entity-type-texturl)))
       (textEntityTypeTextUrl
        (telega-link-props 'url (plist-get ent-type :url)
                           'telega-entity-type-texturl))
