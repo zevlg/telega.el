@@ -1607,7 +1607,7 @@ If TITLE is specified, use it instead of chat's title."
   (let* ((unread-count (plist-get telega-chatbuf--chat :unread_count))
          (mention-count (plist-get telega-chatbuf--chat :unread_mention_count))
          (brackets (or (> unread-count 0) (> mention-count 0))))
-    (concat 
+    (concat
      (when brackets " (")
      (when (> unread-count 0)
        (propertize (concat "unread:" (number-to-string unread-count))
@@ -1974,7 +1974,21 @@ Message id could be updated on this update."
       (plist-put msg :edit_date (plist-get event :edit_date))
       (plist-put msg :reply_markup (plist-get event :reply_markup))
       (when node
-        (telega-chatbuf--redisplay-node node)))))
+        (telega-chatbuf--redisplay-node node))
+
+      ;; In case user has active aux-button with message from EVENT,
+      ;; then redisplay aux as well, see
+      ;; https://t.me/emacs_telega/7243
+      (when-let ((aux-msg (or (telega-chatbuf--replying-msg)
+                              (telega-chatbuf--editing-msg)
+                              (telega-chatbuf--forwarding-msg))))
+        (when (eq (plist-get msg :id) (plist-get aux-msg :id))
+          (cl-assert (not (button-get telega-chatbuf--aux-button 'invisible)))
+          (telega-save-excursion
+            (telega-button--update-value
+             telega-chatbuf--aux-button msg
+             :inserter (button-get telega-chatbuf--aux-button :inserter)))))
+      )))
 
 (defun telega--on-updateMessageViews (event)
   "Number of message views has been updated."
