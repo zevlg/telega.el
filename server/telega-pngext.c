@@ -8,12 +8,17 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "telega-dat.h"
+
+int cmd_pid;                    /* PID of external command */
 
 /*
  * Write PNGDATA to FILENAME
@@ -62,8 +67,27 @@ pngext_get_png(struct telega_dat* src, struct telega_dat* png)
 }
 
 void
+pngext_usage(char* prog)
+{
+        printf("usage: %s -E PREFIX [-R RDSIZE] -- CMD [ARGS]\n", prog);
+        printf("Captures output from external command CMD and extracts\n"
+               "png images from there, writing them to temporary location\n"
+               "with PREFIX\n");
+        printf("Used to animate gifs, play voice notes.\n");
+        printf("Emacs is extremely bad at processing huge outputs from external commands.\n");
+        exit(0);
+}
+
+static void
+pngext_signal_bypass(int sig)
+{
+        kill(cmd_pid, sig);
+}
+
+void
 pngext_loop(const char* prefix, size_t rdsize)
 {
+        assert(prefix != NULL);
         assert(strlen(prefix) < 500);
         char* png_filename = (char*)malloc(strlen(prefix) + 32);
         assert(png_filename != NULL);
@@ -72,12 +96,36 @@ pngext_loop(const char* prefix, size_t rdsize)
         struct telega_dat input = TDAT_INIT;
         struct telega_dat png_data = TDAT_INIT;
 
-        ssize_t rlen = 0;
-        do {
+        /* Non-blocking read from stdin */
+        fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(0, &rfds);
+        while (1) {
                 tdat_ensure(&input, rdsize);
-                rlen = read(0, tdat_end(&input), rdsize);
+                int err = select(1, &rfds, NULL, NULL, NULL);
+                if (err < 0) {
+                        if (errno == EINTR)
+                                continue;
+                        perror("select()");
+                        break;
+                        /* NOT REACHED */
+                }
+                assert(err != 0); /* no timeouts */
+
+                ssize_t rlen = read(0, tdat_end(&input), rdsize);
                 if (rlen > 0)
                         input.end += rlen;
+                else if (rlen == 0)
+                        break;  /* DONE */
+                else if (errno == EWOULDBLOCK || errno == EINTR)
+                        continue;
+                else {
+                        perror("read()");
+                        break;
+                        /* NOT REACHED */
+                }
 
                 if (!pngext_get_png(&input, &png_data)) {
                         char png_filename[512];
@@ -86,8 +134,65 @@ pngext_loop(const char* prefix, size_t rdsize)
                                 printf("%d %s\n", frame_num, png_filename);
                         tdat_reset(&png_data);
                 }
-        } while (rlen > 0);
+        }
 
         tdat_drop(&input);
         tdat_drop(&png_data);
+}
+
+void
+pngext_main(int ac, char** av)
+{
+        char* prefix = NULL;
+        int rdsize = 20 * 1024;
+
+        optind = 1;             /* rescan ac/av */
+        int ch;
+        while ((ch = getopt(ac, av, "E:R:")) != -1) {
+                switch (ch) {
+                case 'E':
+                        prefix = optarg;
+                        break;
+                case 'R':
+                        rdsize = atoi(optarg);
+                        break;
+                case '-':
+                        break;
+                default:
+                        /* IGNORE */
+                        break;
+                }
+        }
+
+        if (optind >= ac) {
+                pngext_usage(av[0]);
+                /* NOT REACHED */
+        }
+
+        int pipe_fds[2];
+        int err = pipe2(pipe_fds, 0);
+        assert(!err);
+
+        cmd_pid = fork();
+        if (cmd_pid == 0) {
+                /* child */
+                err = close(pipe_fds[0]);
+                assert(!err);
+                err = dup2(pipe_fds[1], STDOUT_FILENO);
+                assert(err >= 0);
+
+                err = execv(av[optind], &av[optind]);
+                exit(err);
+                /* NOT REACHED */
+        } else {
+                err = close(pipe_fds[1]);
+                assert(!err);
+                err = dup2(pipe_fds[0], STDIN_FILENO);
+                assert(err >= 0);
+
+                signal(SIGSTOP, pngext_signal_bypass);
+                signal(SIGCONT, pngext_signal_bypass);
+
+                pngext_loop(prefix, rdsize);
+        }
 }
