@@ -291,9 +291,12 @@ N can't be 0."
        (list 'face 'telega-entity-type-pre))
 
       (textEntityTypeUrl
-       ;; Use 'display property to display unhexified verios of url
-       (nconc (list 'display (decode-coding-string (url-unhex-string text) 'utf-8))
-              (telega-link-props 'url text 'telega-entity-type-texturl)))
+       ;; TODO: Use some property to replace url with unhexified
+       ;;       version at insert time.
+       ;;  'display won't work, it brokes formatting
+       ;; 
+       ;;    (nconc (list 'display (decode-coding-string (url-unhex-string text) 'utf-8))
+       (telega-link-props 'url text 'telega-entity-type-texturl))
       (textEntityTypeTextUrl
        (telega-link-props 'url (plist-get ent-type :url)
                           'telega-entity-type-texturl))
