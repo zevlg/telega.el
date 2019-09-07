@@ -204,14 +204,17 @@ By default, all chats are unmuted, the sound is set to
     (setq telega-notifications--last-id
           (apply 'notifications-notify notify-args))))
 
-(defun telega-notifications--chat-msg0 (msg)
-  "Function called after `telega-notifications-delay' delay."
+(defun telega-notifications--chat-msg0 (msg &optional force)
+  "Function called after `telega-notifications-delay' delay.
+If FORCE is specified, then always popup notification.
+Otherwise popup notification only if MSG have not been seen yet.
+FORCE is used for testing only, should not be used in real code."
   ;; Checks once more that message has not yet been read in another
   ;; telegram client
   (let* ((msg-id (plist-get msg :id))
          (chat-id (plist-get msg :chat_id))
          (chat (telega-chat-get chat-id)))
-    (unless (telega-msg-seen-p msg chat)
+    (unless (and (not force) (telega-msg-seen-p msg chat))
       (let ((notify-args
              (nconc
               (list :actions (list "default" "show message")
@@ -222,8 +225,9 @@ By default, all chats are unmuted, the sound is set to
                                    ,msg-id 'highlight))
                     :title (telega-chat-title chat 'with-username)
                     :body (if (telega-chat-notification-setting chat :show_preview)
-                              (telega-ins--as-string
-                               (funcall telega-inserter-for-msg-notification msg))
+                              (telega--desurrogate-apply
+                               (telega-ins--as-string
+                                (funcall telega-inserter-for-msg-notification msg)))
                             "Has new unread messages"))
               telega-notifications-msg-args)))
         ;; Play sound only if CHAT setting has some sound
