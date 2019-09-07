@@ -721,6 +721,8 @@ Return sticker set."
                  :margin (cons (cdr cwidth-xmargin) 0)
                  :telega-text (make-string (car cwidth-xmargin) ?X))))
     (cond (anim-frame-filename
+           ;; Remove this prop, because file is about to be deleted
+           (plist-put animation :telega-ffplay-frame-filename nil)
            (apply 'create-image
                   (with-temp-buffer
                     (set-buffer-multibyte nil)
