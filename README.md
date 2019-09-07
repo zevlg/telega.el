@@ -28,8 +28,8 @@ In some random order:
 - [x] Uploading files/media (also pasting images from clipboard) to the cloud
 - [x] Display chat actions, such as "@user is typing..."
 - [x] Display/Update chat's draft message
-- [x] Company backends for emoji (`:<emoji>` syntax), usernames, bot
-      commands completions
+- [x] Company backends for emoji (`:<emoji>` syntax), usernames,
+      hashtags, bot commands completions
 - [x] Secret chats
 - [x] Online global searching chats/contacts/messages
 - [X] Avatars, Photos, Stickers
@@ -42,6 +42,7 @@ In some random order:
 - [x] InstantView for web pages
 - [x] Blocking/Unblocking users, listing blocked users
 - [x] Inline bots requests, via "@bot query<TAB>"
+- [ ] Delayed messages
 - [ ] Searching for messages in chat
 - [ ] Shared media
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
@@ -291,7 +292,11 @@ Emoji completions with `:<EMOJI-NAME>:` syntax, uses nice
 (add-hook 'telega-chat-mode-hook
           (lambda ()
             (set (make-local-variable 'company-backends)
-                 '(telega-company-emoji telega-company-username))
+                 (append '(telega-company-emoji
+                           telega-company-username
+                           telega-company-hashtag)
+                         (when (telega-chat-bot-p telega-chatbuf--chat)
+                           '(telega-company-botcmd))))
             (company-mode 1)))
 ```
 
