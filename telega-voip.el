@@ -182,9 +182,8 @@
         (setq telega-voip--alist (assq-delete-all call-id telega-voip--alist))))
 
     ;; Update corresponding chat button
-    (let ((chat (telega-chat-get (plist-get call :user_id) 'offline)))
-      (when chat
-        (telega-root--chat-update chat)))
+    (when-let ((chat (telega-chat-get (plist-get call :user_id) 'offline)))
+      (telega-root--chat-update chat))
 
     ;; Update aux status
     (telega-voip--aux-status

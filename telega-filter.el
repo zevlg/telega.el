@@ -30,7 +30,7 @@
 
 (defvar tracking-buffers)
 
-(declare-function telega-chat--muted-p "telega-chat"  (chat))
+(declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat--info "telega-chat" (chat))
@@ -368,7 +368,7 @@ Use `telega-filter-by-name' for fuzzy searching."
   (telega-filter-add `(name ,regexp)))
 
 (define-telega-filter custom (chat name)
-  "Matches CHAT if custom filte with NAME matches."
+  "Matches CHAT if custom filter with NAME matches."
   (let ((fspec (cdr (assoc name telega-filters-custom))))
     (unless fspec
       (error "No such custom filter \"%s\"" name))
@@ -417,7 +417,7 @@ Also matches chats marked as unread."
 
 (define-telega-filter unmuted (chat)
   "Matches CHAT with enabled notifications."
-  (not (telega-chat--muted-p chat)))
+  (not (telega-chat-muted-p chat)))
 
 (defun telega-filter-by-unmuted ()
   "Filter chats with enabled notifications."
@@ -540,7 +540,7 @@ Specify INCOMING-P to filter by incoming link relationship."
 
 (define-telega-filter saved-messages (chat)
   "Matches CHAT if it is SavedMessages chat."
-  (= (plist-get chat :id) telega--me-id))
+  (telega-me-p chat))
 
 (defun telega-filter-by-label (label)
   "Filter chats by custom chat LABEL.

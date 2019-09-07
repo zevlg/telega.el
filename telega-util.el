@@ -79,9 +79,19 @@ Selected frame and frame displaying root buffer are examined first."
                             (get-buffer-window (telega-root--buffer))))
                      (frame-list))))
 
-(defun telega-chars-width (n)
+(defun telega-focus-state (&optional frame)
+  "Return non-nil if FRAME has focus."
+  (if (fboundp 'frame-focus-state)
+      (funcall 'frame-focus-state frame)
+    (frame-parameter frame 'x-has-focus)))
+
+(defun telega-chars-xwidth (n)
   "Return pixel width for N characters"
   (* (frame-char-width (telega-x-frame)) n))
+
+(defun telega-chars-xheight (n)
+  "Return pixel height for N characters"
+  (* (frame-char-height (telega-x-frame)) n))
 
 (defun telega-chars-in-height (pixels)
   "Return how many lines needed to cover PIXELS height."
@@ -289,14 +299,12 @@ N can't be 0."
        (list 'face 'telega-entity-type-pre))
       (textEntityTypePreCode
        (list 'face 'telega-entity-type-pre))
-
       (textEntityTypeUrl
-       ;; TODO: Use some property to replace url with unhexified
-       ;;       version at insert time.
-       ;;  'display won't work, it brokes formatting
-       ;; 
-       ;;    (nconc (list 'display (decode-coding-string (url-unhex-string text) 'utf-8))
-       (telega-link-props 'url text 'telega-entity-type-texturl))
+       ;; Unhexify url, using `telega-display' property to be
+       ;; substituted at `telega-ins--text' time
+       (nconc (list 'telega-display (decode-coding-string
+                                     (url-unhex-string text) 'utf-8))
+              (telega-link-props 'url text 'telega-entity-type-texturl)))
       (textEntityTypeTextUrl
        (telega-link-props 'url (plist-get ent-type :url)
                           'telega-entity-type-texturl))
@@ -308,7 +316,7 @@ N can't be 0."
 Return now text with markdown syntax."
   ;; NOTE: text might have surrogated pairs, for example when editing
   ;; message with emojis
-  (telega--desurrogate-apply  
+  (telega--desurrogate-apply
    (let ((ent-type (plist-get entity :type)))
      (cl-case (and ent-type (telega--tl-type ent-type))
        (textEntityTypeBold (concat "*" text "*"))
@@ -319,6 +327,13 @@ Return now text with markdown syntax."
        (textEntityTypeMentionName
         (format "[%s](tg://user?id=%d)"
                 text (plist-get ent-type :user_id)))
+       (textEntityTypeUrl
+        ;; Hexify only spaces and tabs, removing `telega-display'
+        ;; property, which is used in `telega--desurrogate-apply'
+        (replace-regexp-in-string
+         (regexp-quote "\t") "%09"
+         (replace-regexp-in-string (regexp-quote " ") "%20"
+                                   (substring-no-properties text))))
        (textEntityTypeTextUrl
         (format "[%s](%s)" text (plist-get ent-type :url)))
        (t text)))))
@@ -519,6 +534,9 @@ Header and Footer are not deleted."
 (defvar telega-emoji-alist nil)
 (defvar telega-emoji-candidates nil)
 (defvar telega-emoji-max-length 0)
+(defvar telega-emoji-svg-images nil
+  "Cache of SVG images for emojis of one char height.
+Alist with elements in form (emoji . image)")
 
 (defun telega-emoji-init ()
   "Initialize emojis."
@@ -538,6 +556,38 @@ Header and Footer are not deleted."
   (telega-emoji-init)
   (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
 
+(defun telega-emoji-create-svg (emoji &optional c-height)
+  "Create svg image for the EMOJI."
+  (let* ((emoji-cheight (or c-height 1))
+         (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
+         (image (when use-cache-p
+                  (alist-get emoji telega-emoji-svg-images))))
+    (unless image
+      (let* ((xh (telega-chars-xheight emoji-cheight))
+             (font-size (- xh (/ xh 4)))
+             (aw-chars (* (length emoji)
+                          (telega-chars-in-width (- xh (/ xh 8)))))
+             (xw (telega-chars-xwidth aw-chars))
+             (svg (svg-create xw xh))
+             ;; NOTE: if EMOJI width matches final width, then use
+             ;; EMOJI itself as telega-text
+             (telega-text (if (= (string-width emoji) aw-chars)
+                              emoji
+                            (make-string aw-chars ?E))))
+        (svg-text svg emoji
+                  :font-family telega-emoji-font-family
+                  :font-size font-size
+                  :x 0 :y font-size)
+        (setq image (svg-image svg :scale 1.0
+                               :ascent 'center
+                               :mask 'heuristic
+                               :width xw :height xh
+                               :telega-text telega-text)))
+      (when use-cache-p
+        (setf (alist-get emoji telega-emoji-svg-images) image)))
+    image))
+
+
 (defun telega-diff-wordwise (str1 str2 &optional colorize)
   "Compare two strings STR1 and STR2 wordwise.
 If COLORIZE is non-nil, then colorize changes with `font-lock-face'.
@@ -559,6 +609,54 @@ Uses `git' command to compare."
       ;; cleanup
       (delete-file tmp1)
       (delete-file tmp2))))
+
+(defun telega-momentary-display (string &optional pos exit-char)
+  "Momentarily display STRING in the buffer at POS.
+Display remains until next event is input.
+Same as `momentary-string-display', but keeps the point."
+  (unless exit-char
+    (setq exit-char last-command-event))
+  (let* ((start (or pos (point)))
+         (end pos))
+    (unwind-protect
+        (progn
+          (save-excursion
+            (goto-char start)
+            (insert string)
+            (setq end (point)))
+          (message "Type %s to continue editing."
+                   (single-key-description exit-char))
+          (let ((event (read-key)))
+            ;; `exit-char' can be an event, or an event description list.
+            (or (eq event exit-char)
+                (eq event (event-convert-list exit-char))
+                (setq unread-command-events
+                      (append (this-single-command-raw-keys)
+                              unread-command-events)))))
+      (delete-region start end))))
+
+(defun telega-remove-face-text-property (start end face &optional object)
+  "Remove FACE value from face text property at START END region of the OBJECT."
+  (let ((faces (get-text-property start 'face object)))
+    (cond ((listp faces)
+           (setq faces (delete face faces)))
+          ((eq faces face)
+           (setq faces nil)))
+    (put-text-property start end 'face faces)))
+
+(defun telega-button-highlight--sensor-func (_window oldpos dir)
+  "Sensor function to highlight buttons with `telega-button-highlight'."
+  (let ((inhibit-read-only t)
+        (button (button-at (if (eq dir 'entered) (point) oldpos))))
+    (when button
+      (funcall (if (eq dir 'entered)
+                   #'add-face-text-property
+                 #'telega-remove-face-text-property)
+               (button-start button)
+               (button-end button)
+               'telega-button-highlight)
+      (when (eq dir 'entered)
+        (telega-button--help-echo button)))))
 
 (provide 'telega-util)
 

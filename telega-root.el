@@ -36,12 +36,15 @@
 
 (declare-function tracking-mode "tracking" (&optional arg))
 
+(declare-function telega--setOption "telega" (prop-kw val))
 (declare-function telega-chats--kill-em-all "telega-chat")
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega--searchPublicChats "telega-chat" (query &optional callback))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega--searchChats "telega-chat" (query &optional limit))
+(declare-function telega-chatbuf--switch-out "telega-chat")
+(declare-function telega-chatbuf--check-focus-change "telega-chat")
 
 
 (defvar telega-root--ewoc nil)
@@ -56,6 +59,8 @@
   "Timer used to animate status string.")
 (defvar telega-search--timer nil
   "Timer used to animate Loading.. status of global/messages search.")
+(defvar telega-online--timer nil
+  "Timer used to change online status.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
@@ -111,7 +116,7 @@ Chat bindings (cursor on chat):
 Global root bindings:
 \\{telega-root-mode-map}"
   :group 'telega-root
-
+  (telega-runtime-setup)
   (telega-filters--reset telega-filter-default)
 
   (setq buffer-read-only nil)
@@ -184,8 +189,12 @@ Terminate telega-server and kill all chat buffers."
     (cancel-timer telega-status--timer))
   (when telega-search--timer
     (cancel-timer telega-search--timer))
+  (when telega-online--timer
+    (cancel-timer telega-online--timer))
   (telega-chats--kill-em-all)
-  (telega-server-kill))
+  (telega-server-kill)
+
+  (telega-runtime-teardown))
 
 (defun telega-root--buffer ()
   "Return telega root buffer."
@@ -332,8 +341,9 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
                       telega-root--ewoc chat)))
           (cl-assert enode nil "Ewoc node not found for chat:%s"
                      (telega-chat-title chat))
-          (with-telega-deferred-events
-            (ewoc-invalidate telega-root--ewoc enode))))))
+;          (with-telega-deferred-events
+            (ewoc-invalidate telega-root--ewoc enode)))))
+;)
 
   ;; Possible update chat in global search
   (let ((gnode (telega-ewoc--find-by-data
@@ -370,10 +380,11 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
       (when node
         (ewoc-delete telega-root--ewoc node))
       (setq node
-            (with-telega-deferred-events
+;            (with-telega-deferred-events
               (if node-after
                   (ewoc-enter-before telega-root--ewoc node-after chat)
-                (ewoc-enter-last telega-root--ewoc chat))))
+                (ewoc-enter-last telega-root--ewoc chat)))
+;)
       (cl-assert node)
       (when point-off
         (goto-char (ewoc-location node))
@@ -414,7 +425,8 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
           (telega-ewoc--set-footer telega-messages--ewoc (concat new-mf "\n")))))
 
     (unless (or new-sf new-mf)
-      (cancel-timer telega-search--timer))))
+      (cancel-timer telega-search--timer)
+      (setq telega-search--timer nil))))
 
 (defun telega-search--timer-start ()
   (when telega-search--timer
@@ -563,6 +575,87 @@ If used with PREFIX-ARG, then cancel current search."
       (telega-root--messages-search)
 
       (telega-filters-apply))))
+
+
+;;; Emacs runtime environment for telega
+(defun telega-check-buffer-switch ()
+  "Check if chat buffer is switched."
+  (let ((cbuf (current-buffer)))
+    (unless (eq cbuf telega--last-buffer)
+      (condition-case err
+          ;; NOTE: trigger switch out only if buffer loses visibility
+          ;; so help windows, such as bot inlines can be shown,
+          ;; without sending drafts
+          (when (and (buffer-live-p telega--last-buffer)
+                     (not (get-buffer-window telega--last-buffer)))
+            (with-current-buffer telega--last-buffer
+              (when telega-chatbuf--chat
+                (telega-chatbuf--switch-out))))
+        (error
+         (message "telega: error in `telega-chatbuf--switch-out': %S" err)))
+      (setq telega--last-buffer cbuf))))
+
+(defun telega-online-status-timer-function ()
+  "Timer function for online status change."
+  (setq telega-online--timer nil)
+  ;; NOTE: telega server might unexpectedly die
+  (when (telega-server-live-p)
+    (let ((online-p (telega-focus-state))
+          (curr-online-p (telega-user-online-p (telega-user-me))))
+      (unless (eq online-p curr-online-p)
+        (telega--setOption :online (or online-p :false))))))
+
+(defun telega-check-focus-change ()
+  "Function called when some emacs frame changes focus."
+  ;; Make a decision about online status in `status-interval' seconds
+  (let ((status-interval (if (telega-focus-state)
+                             telega-online-status-interval
+                           telega-offline-status-interval)))
+    (if telega-online--timer
+        (timer-set-time telega-online--timer (time-add nil status-interval))
+      (setq telega-online--timer
+            (run-with-timer
+             status-interval nil 'telega-online-status-timer-function))))
+
+  ;; Support for Emacs without 'after-focus-change-function
+  (unless (boundp 'after-focus-change-function)
+    (when (eq major-mode 'telega-chat-mode)
+      (telega-chatbuf--check-focus-change)))
+  )
+
+(defun telega-handle-focus-change (&optional in-p)
+  "Handle frame focus change.
+If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
+  (let ((frame (selected-frame)))
+    (when (frame-live-p frame)
+      (setf (frame-parameter frame 'x-has-focus) in-p)
+      (telega-check-focus-change))))
+
+(defalias 'telega-handle-focus-out 'telega-handle-focus-change)
+
+(defun telega-handle-focus-in ()
+  (telega-handle-focus-change t))
+
+(defun telega-runtime-setup ()
+  "Setup Emacs environment for telega runtime."
+  (add-hook 'post-command-hook 'telega-check-buffer-switch)
+  (if (boundp 'after-focus-change-function)
+      (add-function :after after-focus-change-function
+                    'telega-check-focus-change)
+
+    (add-hook 'focus-in-hook 'telega-handle-focus-in)
+    (add-hook 'focus-out-hook 'telega-handle-focus-out)))
+
+(defun telega-runtime-teardown ()
+  "Teardown telega runtime Emacs environment."
+  (remove-hook 'post-command-hook 'telega-check-buffer-switch)
+
+  (if (boundp 'after-focus-change-function)
+      (remove-function after-focus-change-function
+                       'telega-check-focus-change)
+
+    (remove-hook 'focus-in-hook 'telega-handle-focus-in)
+    (remove-hook 'focus-out-hook 'telega-handle-focus-out)))
 
 (provide 'telega-root)
 

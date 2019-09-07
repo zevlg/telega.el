@@ -119,6 +119,24 @@ Raise error if not found."
                (executable-find "telega-server"))
         (error "`telega-server' not found in exec-path"))))
 
+(defun telega-server-version ()
+  "Return telega-server version."
+  (let ((ts-usage (shell-command-to-string
+                   (concat (telega-server--find-bin) " -h"))))
+    (when (string-match "^Version \\([0-9.]+\\)" ts-usage)
+      (match-string 1 ts-usage))))
+
+(defun telega-server--check-version (required-version)
+  "Check telega-server version against REQUIRED-VERSION.
+If does not match, then query user to rebuild telega-server.
+If version does not match then query user to rebuild telega-server."
+  (let ((ts-version (telega-server-version)))
+    (unless (equal ts-version required-version)
+      (when (y-or-n-p
+             (format "Installed `telega-server' version %s≠%s, rebuild? "
+                     ts-version required-version))
+        (telega-server-build 'no-query)))))
+
 (defsubst telega-server--proc ()
   "Return telega-server process."
   (get-buffer-process telega-server--buffer))

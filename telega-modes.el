@@ -191,6 +191,29 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
           (format-mode-line telega-mode-line-string-format)))
   (force-mode-line-update))
 
+
+;; Animation autoplay mode
+(defcustom telega-autoplay-messages '(messageAnimation)
+  "Message types to automatically play when received."
+  :type 'list
+  :group 'telega)
+
+(defun telega-autoplay-on-msg (msg)
+  "Automatically play contents of the message MSG.
+Play in muted mode."
+  (when (and (not (plist-get msg :is_outgoing))
+             (memq (telega--tl-type (plist-get msg :content))
+                   telega-autoplay-messages))
+    (telega-msg-open-content msg)))
+
+;;;###autoload
+(define-minor-mode telega-autoplay-mode
+  "Automatically play animation messages."
+  :init-value nil :global t :group 'telega
+  (if telega-autoplay-mode
+      (add-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)
+    (remove-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)))
+
 (provide 'telega-modes)
 
 ;;; telega-modes.el ends here

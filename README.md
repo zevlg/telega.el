@@ -41,9 +41,9 @@ In some random order:
 - [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
 - [x] InstantView for web pages
 - [x] Blocking/Unblocking users, listing blocked users
+- [x] Inline bots requests, via "@bot query<TAB>"
 - [ ] Searching for messages in chat
 - [ ] Shared media
-- [ ] Inline bots requests
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
 

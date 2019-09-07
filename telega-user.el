@@ -92,6 +92,10 @@ user is fetched from server."
   "Return me is a user."
   `(telega-user--get telega--me-id))
 
+(defsubst telega-user-online-p (user)
+  "Return non-nil if USER is online."
+  (string= (telega-user--seen user) "Online"))
+
 (defun telega-user--type (user)
   "Return USER type."
   (intern (downcase (substring (plist-get (plist-get user :type) :@type) 8))))

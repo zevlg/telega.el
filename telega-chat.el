@@ -233,6 +233,11 @@ Cannot be used in channels and public supergroups."
          :chat_id (plist-get chat :id)
          :title title)))
 
+(defun telega-chat-me ()
+  "Chat with myself, a.k.a Saved Messages."
+  ;; NOTE: Saved Messages has same id as me user
+  (telega-chat-get telega--me-id 'offline))
+
 (defun telega-chat--info (chat)
   "Return info structure for the CHAT.
 It could be user, secretChat, basicGroup or supergroup."
@@ -250,11 +255,6 @@ It could be user, secretChat, basicGroup or supergroup."
 (defalias 'telega-chat--secretchat 'telega-chat--info)
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
-
-(defun telega-chat-me ()
-  "Chat with myself, a.k.a Saved Messages."
-  ;; NOTE: Saved Messages has same id as me user
-  (telega-chat-get telega--me-id 'offline))
 
 (defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
@@ -278,11 +278,16 @@ them to bots or channels."
   "Return non-nil if CHAT is the chat with bot."
   (eq (telega-chat--type chat) 'bot))
 
+(defun telega-chat-private-p (chat &optional include-bots-p)
+  "Return non-nil if CHAT is private.
+If INCLUDE-BOTS-P is non-nil, then return non-nil also for bots."
+  (eq (telega-chat--type chat include-bots-p) 'private))
+
 (defun telega-chat--secret-p (chat)
   "Return non-nil if CHAT is secret."
   (eq (telega-chat--type chat 'no-interpret) 'secret))
 
-(defun telega-chat--public-p (chat &optional chat-type)
+(defun telega-chat-public-p (chat &optional chat-type)
   "Return non-nil if CHAT is public.
 Public chats are only chats with non-empty username.
 CHAT-TYPE is either `private', `supergroup' or `any'.
@@ -292,9 +297,16 @@ By default CHAT-TYPE is `any'."
            (eq (telega-chat--type chat 'no-interpret) chat-type))
        (telega-chat-username chat)))
 
-(defun telega-chat--muted-p (chat)
+(defun telega-chat-muted-p (chat)
   "Return non-nil if CHAT is muted."
   (> (telega-chat-notification-setting chat :mute_for) 0))
+
+(defun telega-chat-user (chat &optional include-bots-p)
+  "For private CHAT return corresponding user.
+If CHAT is not private, return nil.
+If INCLUDE-BOTS-P is non-nil, return corresponding bot user."
+  (when (telega-chat-private-p chat include-bots-p)
+    (telega-user--get (telega--tl-get chat :type :user_id))))
 
 (defun telega-chat-title (chat &optional with-username)
   "Return title for the CHAT.
@@ -565,7 +577,7 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
                   (list :@type "getTopChats"
                         :category cattype
                         :limit 30))))
-        (setq top (list category (time-to-seconds (current-time))
+        (setq top (list (time-to-seconds (current-time))
                         (telega-chats-list-get cl)))
         (setf (alist-get category telega--top-chats) top)))
     (caddr top)))
@@ -610,6 +622,15 @@ be marked as read."
          :chat_id (plist-get chat :id)
          :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
          :force_read (or force :false))))
+
+(defun telega-chatbuf--view-visible-messages (window &optional display-start)
+  "View all visible messages in chatbuf's window."
+  (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
+            (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
+               (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
+    (telega--viewMessages
+     telega-chatbuf--chat
+     (telega-chatbuf--visible-messages window display-start))))
 
 (defun telega--toggleChatIsPinned (chat)
   "Toggle pin state of the CHAT."
@@ -879,19 +900,23 @@ STATUS is one of: "
   (with-telega-help-win "*Telegram Chat Info*"
     (setq telega--chat chat)
 
-    (telega-ins (capitalize (symbol-name (telega-chat--type chat))) ": ")
-    (telega-ins--with-face
-        (let ((color (telega-chat-color chat))
-              (lightp (eq (frame-parameter nil 'background-mode) 'light)))
-          (list :foreground (nth (if lightp 2 0) color)))
-      (telega-ins (telega-chat-title chat 'with-username)))
-    (telega-ins " ")
-    (telega-ins--button "Open"
-      :value chat
-      :action 'telega-chat--pop-to-buffer)
-    (telega-ins "\n")
+    (let ((chat-ava (telega-chat-avatar-image chat)))
+      (telega-ins--image chat-ava 0)
+      (telega-ins--with-face
+          (let ((color (telega-chat-color chat))
+                (lightp (eq (frame-parameter nil 'background-mode) 'light)))
+            (list :foreground (nth (if lightp 2 0) color)))
+        (telega-ins (telega-chat-title chat 'with-username)))
+      (telega-ins "\n")
+      (telega-ins--image chat-ava 1)
+      (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
+      (telega-ins--button "Open"
+        :value chat
+        :action 'telega-chat--pop-to-buffer)
+      (telega-ins "\n"))
+
     (telega-ins-fmt "Id: %d\n" (plist-get chat :id))
-    (when (telega-chat--public-p chat)
+    (when (telega-chat-public-p chat)
       (let ((link (concat (or (plist-get telega--options :t_me_url)
                               "https://t.me/")
                           (plist-get (telega-chat--supergroup chat) :username))))
@@ -908,8 +933,7 @@ STATUS is one of: "
            ;; (default-show-preview
            ;;   (telega-chat-notification-setting chat :show_preview 'default))
            (not-cfg (plist-get chat :notification_settings))
-           (mute-for (telega-chat-notification-setting chat :mute_for))
-           (unmuted-p (zerop mute-for))
+           (unmuted-p (not (telega-chat-muted-p chat)))
            (show-preview (telega-chat-notification-setting chat :show_preview)))
       (telega-ins "Notifications ("
                   (propertize (if (plist-get not-cfg :use_default_mute_for)
@@ -1054,7 +1078,7 @@ Leaving chat does not removes chat from chat list."
       ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
       ;; and public supergroups
       (unless (or (eq (telega-chat--type chat) 'channel)
-                  (telega-chat--public-p chat 'supergroup)
+                  (telega-chat-public-p chat 'supergroup)
                   leave-p)
         (telega--deleteChatHistory chat t)))
 
@@ -1276,10 +1300,20 @@ Update modeline as well."
                "[history loading]")
               (telega-chatbuf--voice-msg
                "[voice note]")))
+  (force-mode-line-update)
 
   (telega-save-cursor
     (telega-ewoc--set-footer
      telega-chatbuf--ewoc (telega-chatbuf--footer))))
+
+(defun telega-chatbuf--check-focus-change ()
+  "Check is some messages need to be viewed."
+  (cl-assert (eq major-mode 'telega-chat-mode))
+  (when (telega-focus-state)
+    ;; NOTE: on focus-in view all visible messages, see
+    ;; https://github.com/zevlg/telega.el/issues/81
+    (when-let ((chat-win (get-buffer-window (current-buffer))))
+      (telega-chatbuf--view-visible-messages chat-win))))
 
 (define-derived-mode telega-chat-mode nil "Telega-Chat"
   "The mode for telega chat buffer.
@@ -1325,6 +1359,9 @@ Global chat bindings:
   (add-hook 'window-scroll-functions 'telega-chatbuf-scroll nil t)
   (add-hook 'post-command-hook 'telega-chatbuf--post-command nil t)
   (add-hook 'kill-buffer-hook 'telega-chatbuf--killed nil t)
+  (when (boundp 'after-focus-change-function)
+    (add-function :after (local 'after-focus-change-function)
+                  'telega-chatbuf--check-focus-change))
 
   (setq telega--chat-buffers
         (pushnew (current-buffer) telega--chat-buffers)))
@@ -1352,12 +1389,7 @@ Also mark messages as read with `viewMessages'."
       (telega-chatbuf--load-newer-history))
 
     ;; Mark some messages as read
-    (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
-              (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
-                 (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
-      (telega--viewMessages
-       telega-chatbuf--chat
-       (telega-chatbuf--visible-messages window display-start)))
+    (telega-chatbuf--view-visible-messages window display-start)
     ))
 
 (defun telega-chatbuf--set-action (action)
@@ -1516,8 +1548,10 @@ If TITLE is specified, use it instead of chat's title."
        telega-chatbuf--prompt-button telega-chat-input-prompt
        'invisible prompt-invisible-p))))
 
-(defun telega-chatbuf--input-draft (draft-msg)
-  "Update chatbuf's input to display draft message DRAFT-MSG."
+(defun telega-chatbuf--input-draft (draft-msg &optional force)
+  "Update chatbuf's input to display draft message DRAFT-MSG.
+If FORCE is specified, then set input draft unconditionally,
+otherwise set draft only if current input is also draft."
   (let ((reply-msg-id (plist-get draft-msg :reply_to_message_id)))
     (if (and reply-msg-id (not (zerop reply-msg-id)))
         (telega-msg-reply
@@ -1527,16 +1561,15 @@ If TITLE is specified, use it instead of chat's title."
       (when (telega-chatbuf--replying-msg)
         (telega-chatbuf--prompt-reset)))
 
-    (telega-save-cursor
-      (telega-chatbuf--input-delete)
-      (goto-char telega-chatbuf--input-marker)
-      ;; NOTE: We want real UTF-8 chars to be inserted, not using
-      ;; 'display trick for desurrogating
-      (telega-ins
-       (telega--desurrogate-apply
-        (telega-ins--as-string
-         (telega-ins--text
-          (telega--tl-get draft-msg :input_message_text :text))))))))
+    ;; NOTE: update draft only if current chatbuf input is marked as
+    ;; draft, otherwise draft update may change current input
+    (when (or force (telega-chatbuf--input-draft-p))
+      (telega-save-cursor
+        (telega-chatbuf--input-delete)
+        (goto-char telega-chatbuf--input-marker)
+        (telega-ins--with-props '(:draft-input-p t)
+          (telega-ins--text
+           (telega--tl-get draft-msg :input_message_text :text)))))))
 
 (defun telega-chatbuf--get-create (chat)
   "Get or create chat buffer for the CHAT."
@@ -1571,7 +1604,7 @@ If TITLE is specified, use it instead of chat's title."
           ;; Show the draft message if any, see
           ;; https://github.com/zevlg/telega.el/issues/80
           (when-let ((draft-msg (plist-get chat :draft_message)))
-            (telega-chatbuf--input-draft draft-msg))
+            (telega-chatbuf--input-draft draft-msg 'force))
 
           ;; Start from last read message
           ;; see https://github.com/zevlg/telega.el/issues/48
@@ -1587,10 +1620,8 @@ If TITLE is specified, use it instead of chat's title."
                    (goto-char (point-max))))
                 ;; NOTE: view all visible messages, see
                 ;; https://t.me/emacs_telega/4731
-                (let ((chat-win (get-buffer-window (current-buffer))))
-                  (when chat-win
-                    (telega-chatbuf-scroll
-                     chat-win (window-start chat-win)))))))
+                (when-let ((chat-win (get-buffer-window (current-buffer))))
+                  (telega-chatbuf--view-visible-messages chat-win)))))
 
           ;; Openning chat may affect filtering, see `opened' filter
           (telega-root--chat-update chat)
@@ -1796,36 +1827,40 @@ Try to keep point at its position."
                              (ewoc--node-data node))
                          (- (point) (button-start msg-button)))))
     (save-excursion
-      (with-telega-deferred-events
-        (ewoc-invalidate telega-chatbuf--ewoc node)))
+;      (with-telega-deferred-events
+        (ewoc-invalidate telega-chatbuf--ewoc node))
+;    )
     (when point-off
       (forward-char point-off))))
 
 (defun telega-chatbuf--prepend-messages (messages)
   "Insert MESSAGES at the beginning of the chat buffer.
 First message in MESSAGE will be first message at the beginning."
-  (with-telega-deferred-events
+;  (with-telega-deferred-events
     (let ((node (ewoc--header telega-chatbuf--ewoc)))
       (seq-doseq (msg messages)
         (unless (telega-msg-ignored-p msg)
-          (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg)))))))
+          (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg))))))
+;)
 
 (defun telega-chatbuf--append-messages (messages)
   "Insert MESSAGES at the end of the chat buffer."
-  (with-telega-deferred-events
+;  (with-telega-deferred-events
     (seq-doseq (msg messages)
       (unless (telega-msg-ignored-p msg)
-        (ewoc-enter-last telega-chatbuf--ewoc msg)))))
+        (ewoc-enter-last telega-chatbuf--ewoc msg))))
+;)
 
 (defun telega-chatbuf--append-message (msg)
   "Insert message MSG as last in chat buffer.
 Return newly created ewoc node."
   (unless (telega-msg-ignored-p msg)
-    (with-telega-deferred-events
+;    (with-telega-deferred-events
       ;; Track the uploading progress
       ;; see: https://github.com/zevlg/telega.el/issues/60
       (telega-msg--track-file-uploading-progress msg)
-      (ewoc-enter-last telega-chatbuf--ewoc msg))))
+      (ewoc-enter-last telega-chatbuf--ewoc msg)))
+;)
 
 (defun telega-chatbuf--node-by-msg-id (msg-id)
   "In current chatbuffer find message button with MSG-ID."
@@ -1917,32 +1952,31 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
   "Message has been successfully sent to server.
 Message id could be updated on this update."
   (let* ((new-msg (plist-get event :message))
-         (new-id (plist-get new-msg :chat_id))
+         (new-id (plist-get new-msg :id))
          (old-id (plist-get event :old_message_id)))
-    (with-telega-chatbuf (telega-chat-get new-id)
+    (with-telega-chatbuf (telega-msg-chat new-msg)
       (remhash old-id telega-chatbuf--messages)
       (puthash new-id new-msg telega-chatbuf--messages)
 
-      ;; Optimization: search message's node from last node
-      ;; NOTE: changing message might require resorting the message's
-      ;; place in the ewoc.
+      ;; NOTE: Actualize message position according to NEW-ID
+      ;; Optimization: search old message's node from last node
       (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
         (while (and node (not (= old-id (plist-get (ewoc-data node) :id))))
           (setq node (ewoc-prev telega-chatbuf--ewoc node)))
 
         (when node
-          (ewoc-delete telega-chatbuf--ewoc node)
-
-          (let ((before-node (ewoc-nth telega-chatbuf--ewoc -1)))
-            ;; Search the node to insert message with NEW-ID before
+          (let ((before-node (ewoc-next telega-chatbuf--ewoc node)))
+            ;; Search the node to insert new message before
             (while (and before-node
-                        (< new-id (plist-get (ewoc-data before-node) :id)))
-              (setq before-node (ewoc-prev telega-chatbuf--ewoc before-node)))
+                        (> new-id (plist-get (ewoc-data before-node) :id)))
+              (setq before-node (ewoc-next telega-chatbuf--ewoc before-node)))
 
-            (with-telega-deferred-events
+            (ewoc-delete telega-chatbuf--ewoc node)
+;            (with-telega-deferred-events
               (if before-node
                   (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
-                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))))
+                (ewoc-enter-last telega-chatbuf--ewoc new-msg))))))))
+;)
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."
@@ -2144,10 +2178,13 @@ CALLBACK is called after history has been loaded."
         (telega-chatbuf--footer-redisplay)
         ))))
 
-(defun telega-chatbuf-cancel-aux ()
-  "Cancel current aux prompt."
-  (interactive)
-  (telega-chatbuf--prompt-reset))
+(defun telega-chatbuf-cancel-aux (&optional arg)
+  "Cancel current aux prompt.
+If prefix ARG is giver, also delete input."
+  (interactive "P")
+  (telega-chatbuf--prompt-reset)
+  (when arg
+    (telega-chatbuf--input-delete)))
 
 (defun telega-chatbuf--help-cancel-keys (what)
   "Show help about canceling reply/edit/fwd in echo area."
@@ -2191,6 +2228,25 @@ message uppon message is created."
     (when from-background
       (setq tsm (plist-put tsm :from_background t)))
     (telega-server--call tsm (or callback 'ignore))))
+
+(defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
+                                                  disable-notify from-background
+                                                  )
+  "Send IMC as inline query result from bot.
+If CALLBACK is specified, then call it with one argument - new
+message uppon message is created."
+  (telega-server--send
+   (nconc (list :@type "sendInlineQueryResultMessage"
+                :chat_id (plist-get chat :id)
+                :disable_notification (or disable-notify :false)
+                :query_id (plist-get imc :query-id)
+                :result_id (plist-get imc :result-id))
+          (when reply-to-msg
+            (list :reply_to_message_id (plist-get reply-to-msg :id)))
+          (when from-background
+            (list :from_background t))
+          (when (plist-get imc :hide-via-bot)
+            (list :hide_via_bot t)))))
 
 (defun telega--forwardMessages (chat from-chat messages &optional disable-notify
                                      from-background as-album)
@@ -2324,7 +2380,10 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
                          imcs))
           (telega--sendMessageAlbum telega-chatbuf--chat imcs replying-msg)
         (dolist (imc imcs)
-          (telega--sendMessage telega-chatbuf--chat imc replying-msg))))
+          (if (eq (telega--tl-type imc) 'telegaInlineQuery)
+              (telega--sendInlineQueryResultMessage
+               telega-chatbuf--chat imc replying-msg)
+            (telega--sendMessage telega-chatbuf--chat imc replying-msg)))))
 
     (when forwarding-msg
       (telega--forwardMessage telega-chatbuf--chat forwarding-msg))
@@ -2340,26 +2399,30 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
             telega-chatbuf--input-pending nil))))
 
 (defun telega-chatbuf-input-insert (imc)
-  "Insert input content defined by IMC into current input."
+  "Insert input content defined by IMC into current input.
+IMC might be a plain string or attachement specification."
   ;; Check that point is in input area, otherwise move to the end
   (when (< (point) telega-chatbuf--input-marker)
     (goto-char (point-max)))
 
   (when (get-text-property (point) 'telega-attach)
     (telega-ins " "))
-  ;; NOTE: Put special properties `attach-open-bracket' and
-  ;; `attach-close-bracket' to be used by
-  ;; `telega-chatbuf--post-command' to determine if part of
-  ;; attachement is deleted by `delete-char' or `backward-delete'
-  (telega-ins--with-props `(telega-attach ,imc face telega-chat-input-attachment)
-    (telega-ins--with-props '(cursor-intangible t)
-      (when (telega-ins-prefix
-                (propertize (car telega-symbol-attach-brackets)
-                            'attach-open-bracket t)
-              (telega-ins--input-content-one-line imc))
-        (telega-ins (cdr telega-symbol-attach-brackets))))
-    (telega-ins--with-props '(attach-close-bracket t rear-nonsticky t)
-      (telega-ins " "))))
+  (if (stringp imc)
+      (telega-ins imc)
+    ;; NOTE: Put special properties `attach-open-bracket' and
+    ;; `attach-close-bracket' to be used by
+    ;; `telega-chatbuf--post-command' to determine if part of
+    ;; attachement is deleted by `delete-char' or `backward-delete'
+    (telega-ins--with-props
+        `(telega-attach ,imc face telega-chat-input-attachment)
+      (telega-ins--with-props '(cursor-intangible t)
+        (when (telega-ins-prefix
+                  (propertize (car telega-symbol-attach-brackets)
+                              'attach-open-bracket t)
+                (telega-ins--input-content-one-line imc))
+          (telega-ins (cdr telega-symbol-attach-brackets))))
+      (telega-ins--with-props '(attach-close-bracket t rear-nonsticky t)
+        (telega-ins " ")))))
 
 (defun telega-chatbuf-input-has-attaches-p ()
   "Return non-nil if chatbuf's input has some attaches."
@@ -2665,11 +2728,12 @@ Otherwise choose sticker from some installed sticker set."
   (interactive)
   (telega-animation-choose-saved telega-chatbuf--chat))
 
-(defun telega-chatbuf-attach-inline-bot-query ()
+(defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.
 Intended to be added to `post-command-hook' in chat buffer.
 Or to be called directly.
-Return non-nil if input has single emoji."
+Return non-nil if input has inline bot query.
+If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
   (interactive)
   (let ((input (telega-chatbuf-input-string)))
     (when (string-match "^@\\([^ ]+\\)[ \t]+\\(.*\\)" input)
@@ -2681,8 +2745,14 @@ Return non-nil if input has single emoji."
              (bot (plist-get bot-user :type))
              (inline-help (plist-get bot :inline_query_placeholder)))
         (when (plist-get bot :is_inline)
-          (message "Telega: %s" inline-help)
-          (telega-inline-bot-query bot-user query telega-chatbuf--chat)
+          ;; Start querying the bot
+          (unless (and (string-empty-p query) no-empty-search)
+            (telega-inline-bot-query bot-user query telega-chatbuf--chat))
+
+          ;; Display the inline help
+          (when (string-empty-p query)
+            (telega-momentary-display
+             (propertize inline-help 'face 'shadow)))
           t)))))
 
 (defun telega-chatbuf-attach-poll (question &rest options)
@@ -2768,7 +2838,7 @@ Prefix argument is available for next attachements:
       (telega-chat--reorder chat (plist-get event :order)))
     (telega-root--chat-update chat)
 
-    ;; Update chat's input to the value of the draft
+    ;; Update chat's input to the text in DRAFT-MSG
     (with-telega-chatbuf chat
       (telega-chatbuf--input-draft draft-msg))
     ))
@@ -2824,10 +2894,10 @@ If DRAFT-MSG is ommited, then clear draft message."
   (setq telega--chat-buffers
         (delq (current-buffer) telega--chat-buffers))
 
-  ;; Closing chat may affect filtering, see `opened' filter
+  ;; NOTE: chatbuffer might be left from other telega start, so it
+  ;; will throw "Ewoc node not found" error - ignore it
   (ignore-errors
-    (telega-root--chat-update telega-chatbuf--chat))
-  )
+    (telega-root--chat-update telega-chatbuf--chat)))
 
 ;;; Message commands
 (defun telega-msg-redisplay (msg &optional node)

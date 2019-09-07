@@ -32,7 +32,8 @@
 
 (require 'telega-customize)
 
-(declare-function telega-chat--info "telega-chat"  (chat))
+(declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
 
 (defconst telega--lib-directory
   (or (and load-file-name
@@ -412,7 +413,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))
 
-(defun telega--tl-desurrogate (str)
+(defsubst telega--tl-desurrogate (str)
   "Decode surrogate pairs in STR string.
 Attach `display' text property to surrogated regions."
   (dotimes (idx (1- (length str)))
@@ -420,23 +421,42 @@ Attach `display' text property to surrogated regions."
           (low (aref str (1+ idx))))
       (when (and (>= high #xD800) (<= high #xDBFF)
                  (>= low #xDC00) (<= low #xDFFF))
-        (add-text-properties
-         idx (+ idx 2) (list 'display (char-to-string
-                                       (+ (lsh (- high #xD800) 10)
-                                          (- low #xDC00) #x10000))
-                             'telega-desurrogate t)
-         str))))
+        (let ((unicode-str (char-to-string
+                            (+ (lsh (- high #xD800) 10)
+                               (- low #xDC00) #x10000))))
+          (add-text-properties
+           idx (+ idx 2) (list 'display (if (and telega-use-images
+                                                 telega-emoji-use-images)
+                                            (telega-emoji-create-svg unicode-str)
+                                          unicode-str)
+                               'telega-display unicode-str) str)
+          ))))
   str)
 
-(defun telega--desurrogate-apply (str)
-  "Apply `telega-desurrogate' properties to STR.
-Resulting in new string with no surrogate pairs."
-  (let ((ret "") (beg 0) (fin (length str)) end)
-    (while (setq end (text-property-any beg fin 'telega-desurrogate t str))
-      (setq ret (concat ret (substring-no-properties str beg end)
-                        (get-text-property end 'display str))
-            beg (+ end 2)))
-    (concat ret (substring-no-properties str beg end))))
+(defsubst telega--desurrogate-apply-part (part &optional keep-properties)
+  "Apply PART's `telega-display'"
+  (let ((part-display (get-text-property 0 'telega-display part)))
+    (cond (part-display
+           (if keep-properties
+               ;; keep all properties except for `telega-display'
+               (apply 'propertize part-display
+                      (telega-plist-del
+                       (text-properties-at 0 part) 'telega-display))
+             part-display))
+          (keep-properties part)
+          (t (substring-no-properties part)))))
+
+(defsubst telega--desurrogate-apply-part-keep-properties (part)
+  (telega--desurrogate-apply-part part 'keep-props))
+
+(defun telega--desurrogate-apply (str &optional no-properties)
+  "Apply `telega-display' properties to STR.
+Resulting in new string with no surrogate pairs.
+If NO-PROPERTIES is specified, then do not keep text properties."
+  (mapconcat (if no-properties
+                 'telega--desurrogate-apply-part
+               'telega--desurrogate-apply-part-keep-properties)
+             (telega--split-by-text-prop str 'telega-display) ""))
 
 (defsubst telega--tl-unpack (obj)
   "Unpack (i.e. desurrogate strings) object OBJ."
@@ -691,9 +711,7 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
   (when (markerp button)
     (let ((bwin (get-buffer-window (marker-buffer button))))
       (and bwin
-           ;; NOTE: 26.1 Emacs has no `frame-focus-state'
-           (or (not (fboundp 'frame-focus-state))
-               (frame-focus-state (window-frame bwin)))
+           (telega-focus-state (window-frame bwin))
            (pos-visible-in-window-p button bwin)))))
 
 (defun telega-button-forward (n &optional button-type)
@@ -760,6 +778,12 @@ If AS-STRING is non-nil, then return it as string."
 (defsubst telega-chatbuf--input-delete ()
   "Delete chatbuf's input."
   (delete-region telega-chatbuf--input-marker (point-max)))
+
+(defsubst telega-chatbuf--input-draft-p ()
+  "Return non-nil if chatbuf input is the draft.
+Draft input is the input that have `:draft-input-p' property on both sides."
+  (and (get-text-property telega-chatbuf--input-marker :draft-input-p)
+       (get-text-property (point-max) :draft-input-p)))
 
 (defsubst telega-chatbuf--cache-msg (msg)
   "Cache MSG in chatbuf's messages cache."

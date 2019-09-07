@@ -124,11 +124,6 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-use-online-status t
-  "*Non-nil to enable online status changes according to Emacs focus."
-  :type 'boolean
-  :group 'telega)
-
 (defcustom telega-use-images (fboundp 'imagemagick-types)
   "Non-nil to show images."
   :type 'boolean
@@ -139,6 +134,11 @@ Make sure you have tracking.el loaded if this option is enabled."
            (set-default option nil)
            (when value
              (warn "No ImageMagick support, so images can't be displayed in telega")))))
+
+(defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")
+  "List of known bots for everyday use."
+  :type 'list
+  :group 'telega)
 
 (defcustom telega-chat--display-buffer-action display-buffer--same-window-action
   "Action value when poping to chatbuffer.
@@ -157,6 +157,26 @@ enabled it will match also `:flag-jo:' and `:black-jocker:'."
 (defcustom telega-emoji-custom-alist nil
   "*Alist of custom emojis to add along with `etc/emojis.alist'."
   :type 'alist
+  :group 'telega)
+
+(defcustom telega-emoji-font-family
+  (let ((ffl (font-family-list)))
+    (or (car (member "Emoji One" ffl))
+        (car (member "Noto Color Emoji" ffl))))
+  "*Font to use for emoji image generation using `telega-emoji-create-svg'."
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-emoji-use-images (when telega-emoji-font-family t)
+  "*Non-nil to use images for emojis.
+Value is ignored if `telega-use-images' is nil."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-emoji-large-height 2
+  "*Vertical size in characters for emoji only messages.
+Used only if `telega-emoji-use-images' is non-nil."
+  :type 'integer
   :group 'telega)
 
 (defcustom telega-sticker-size '(3 . 24)
@@ -181,21 +201,14 @@ cdr is maximum width in chars to use."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-animation-height 3
+(defcustom telega-animation-height 5
   "*Height of animations in char heights."
   :type 'integer
   :group 'telega)
 
-(defcustom telega-animation-play-inline nil
+(defcustom telega-animation-play-inline t
   "*Non-nil to play animation inside telega."
   :type 'boolean
-  :group 'telega)
-
-(defcustom telega-animation-autoplay-ntimes 0
-  "*Automatically play animations for this number of times.
-Start playing when message has been observed.
-Implies non-nil `telega-animation-play-inline'."
-  :type 'integer
   :group 'telega)
 
 (defcustom telega-animation-download-saved nil
@@ -218,13 +231,18 @@ There is a restriction to its value:
   :type 'float
   :group 'telega)
 
-(defcustom telega-vvnote-video-height 6
+(defcustom telega-video-note-height 6
   "*Height in chars for video notes."
   :type 'integer
   :group 'telega)
 
-(defcustom telega-vvnote-video-play-inline nil
+(defcustom telega-video-note-play-inline t
   "*Non-nil to play video notes inside chatbuffer."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-video-play-inline nil
+  "*Non-nil to play video files inside telega."
   :type 'boolean
   :group 'telega)
 
@@ -335,6 +353,16 @@ See `telega-chat-custom-label' for details.
   "Dots animation interval for telega status shown in root buffer."
   :type 'number
   :group 'telega-root)
+
+(defcustom telega-offline-status-interval 3
+  "Interval in seconds before going offline when emacs looses focus."
+  :type 'number
+  :group 'telega)
+
+(defcustom telega-online-status-interval 0.1
+  "Interval in seconds before going online when emacs gets focus."
+  :type 'number
+  :group 'telega)
 
 
 (defgroup telega-filter nil
@@ -880,11 +908,17 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-inline "⮍"
+  "Symbol used to mark attachements with inline result from bot."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
          telega-symbol-contact)
    (list 2
+         telega-symbol-telegram
          telega-symbol-eye
          telega-symbol-unread
          telega-symbol-verified
@@ -1185,6 +1219,11 @@ You can customize its `:height' to fit width of the default face."
 (defface telega-delim-face
   '((t :inherit shadow :height 0.5))
   "Face used to display horizontal delimiters."
+  :group 'telega-faces)
+
+(defface telega-button-highlight
+  '((t :inherit highlight))
+  "Face used to highlight active button."
   :group 'telega-faces)
 
 

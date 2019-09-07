@@ -72,7 +72,7 @@
          (wv-height (- height 6))
          (w (* (+ wv-width space-width) (length waves)))
          (aw-chars (telega-chars-in-width w))
-         (cw (telega-chars-width aw-chars))
+         (cw (telega-chars-xwidth aw-chars))
          (svg (svg-create cw height)))
     ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
     ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
@@ -122,14 +122,14 @@ heights are normalized to [0-1] values."
           (setq leftbits 8))))
     (mapcar (lambda (v) (/ v 31.0)) (nreverse result))))
 
-(defun telega-vvnote--video-svg (framefile &optional duration progress)
+(defun telega-vvnote-video--svg (framefile &optional progress)
   "Generate svg image for the video note FRAMEFILE.
-DURATION is overall duration of the video note.
-PROGRESS is current frame progress."
+PROGRESS is value from 0 to 1 indicating played content.
+PROGRESS might be nil."
   (let* ((img-type (image-type-from-file-name framefile))
-         (size (* (frame-char-height) telega-vvnote-video-height))
+         (size (telega-chars-xheight telega-video-note-height))
          (h size)
-         (w (* (telega-chars-width 1) (telega-chars-in-width size)))
+         (w (telega-chars-xwidth (telega-chars-in-width size)))
          (xoff (/ (- w size) 2))
          (yoff (/ (- h size) 2))
          (svg (svg-create w h))
@@ -142,9 +142,9 @@ PROGRESS is current frame progress."
                :width size :height size
                :clip-path "url(#clip)")
 
-    (when (and duration progress)
-      (let* ((angle-o (* 2 pi (/ progress duration)))
-             (angle (+ (* 2 pi (- (/ progress duration))) pi))
+    (when progress
+      (let* ((angle-o (* 2 pi progress))
+             (angle (+ (* 2 pi (- progress)) pi))
              (dx (+ (* (/ size 2) (sin angle)) (/ size 2)))
              (dy (+ (* (/ size 2) (cos angle)) (/ size 2))))
         ;; clip mask for the progress circle
@@ -168,156 +168,15 @@ PROGRESS is current frame progress."
 
     (svg-image svg :scale 1.0 :ascent 'center)))
 
-
-;; Play video note
-;; Idea taken from https://github.com/chep/chep-video.el
-(defun telega-vvnote--recent-frame (proc)
-  "Return recent file and its frame-num.
-Return `nil' if there is no recent file."
-  (let* ((proc-plist (process-plist proc))
-         (frame-num (plist-get proc-plist :frame))
-         (prefix (plist-get proc-plist :prefix))
-         (framefile (format "%s%05d.png" prefix frame-num)))
-    (when (file-exists-p framefile)
-      (set-process-plist proc (plist-put proc-plist :frame (1+ frame-num)))
-      (cons framefile frame-num))))
-
-(defun telega-vvnote--run-frame (proc frame)
-  "Run PROC's callback (if any) on the FRAME.
-Return non-nil if callback has been executed and frame deleted."
-  (when frame
-    (let* ((proc-plist (process-plist proc))
-           (callback (plist-get proc-plist :callback))
-           (callback-args (plist-get proc-plist :callback-args))
-           (fps (or (plist-get proc-plist :fps) 30))
-           (progress (/ (cdr frame) (float fps))))
-      (set-process-plist proc (plist-put proc-plist :progress progress))
-      (when callback
-        (apply callback (car frame) progress callback-args))
-      (delete-file (car frame))
-      t)))
-
-(defun telega-vvnote--start-timer (proc)
-  "Start vvnote timer for the PROC."
-  (let* ((proc-plist (process-plist proc))
-         (timer (plist-get proc-plist :timer))
-         (fps (plist-get proc-plist :fps)))
-    (unless timer
-      (setq timer (run-with-timer 0 (/ 1.0 fps) 'telega-vvnote--next-frame proc))
-      (set-process-plist proc (plist-put proc-plist :timer timer)))))
-
-(defun telega-vvnote--cancel-timer (proc)
-  "Stop vvnote timer associated with PROC."
-  (let* ((proc-plist (process-plist proc))
-         (timer (plist-get proc-plist :timer)))
-    (when timer
-      (cancel-timer timer)
-      (set-process-plist proc (plist-put proc-plist :timer nil)))))
-
-(defun telega-vvnote--next-frame (proc)
-  "Timer triggered, display next frame."
-  (condition-case err
-      ;; Run until the frame exists
-      (unless (or (telega-vvnote--run-frame
-                   proc (telega-vvnote--recent-frame proc))
-                  (process-live-p proc))
-        ;; Done playing, nil nil args mean DONE
-        (let ((callback (plist-get (process-plist proc) :callback))
-              (callback-args (plist-get (process-plist proc) :callback-args)))
-          (apply callback nil nil callback-args)
-          (telega-vvnote--cancel-timer proc)))
-    (error
-     (telega-vvnote--cancel-timer proc)
-     (message "telega: error in vvnote callback: %S" err))))
-
-(defun telega-vvnote--ffmpeg-sentinel (proc _event)
-  "Sentinel for the ffmpeg process."
-  (telega-debug "vvnote SENTINEL: status=%S, live=%S"
-                (process-status proc) (process-live-p proc))
-
-  ;; NOTE: timer will do all the job
-  (cl-case (process-status proc)
-    (run (telega-vvnote--start-timer proc))   ;resume
-    (stop (telega-vvnote--cancel-timer proc)) ;pause
-    (t (unless (plist-get (process-plist proc) :timer)
-         ;; Done playing, nil nil args mean DONE
-         (let ((callback (plist-get (process-plist proc) :callback))
-               (callback-args (plist-get (process-plist proc) :callback-args)))
-           (unwind-protect
-               (apply callback nil nil callback-args)
-
-           (telega-vvnote--cancel-timer proc)))
-
-         (set-process-plist proc (plist-put (process-plist proc) :callback nil))
-         (while (telega-vvnote--run-frame
-                 proc (telega-vvnote--recent-frame proc))
-           ;; no-op
-           )))))
-
-(defun telega-vvnote--ffmpeg-filter (proc output)
-  "Filter for the ffmpeg process."
-  (let ((buffer (process-buffer proc))
-        (proc-plist (process-plist proc)))
-    (unless (plist-get proc-plist :fps)
-      (when (buffer-live-p buffer)
-        (with-current-buffer buffer
-          (goto-char (point-max))
-          (insert output)
-          ;; Search for the fps info
-          (when (re-search-backward ", \\([0-9.]+\\) fps," nil t)
-            (set-process-plist
-             proc (plist-put proc-plist :fps
-                             (string-to-number (match-string 1))))
-            ;; Restart timer according to updated fps value
-            (telega-vvnote--cancel-timer proc)
-            (telega-vvnote--start-timer proc)
-            ))))))
-
-(defun telega-vvnote-play-video (videofile callback &rest callback-args)
-  "Play video note using ffmpeg.
-Play audio to ALSA output device.
-And video to series of PNG images.
-CALLBACK is called on updates with first two arguments - file to
-show and progress and rest CALLBACK-ARGS.
-File and progress are nil when file has been successfuly played."
-  (declare (indent 1))
-  ;; Stop any ffplay running
-  (telega-ffplay-stop)
-
-  ;; Start new ffmpeg
-  (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
-    (let* ((prefix (telega-temp-name "vvnote"))
-           (ffmpeg-args (list "-hide_banner"
-                              "-i" (expand-file-name videofile)
-                              "-vf" "scale=240:240"
-                              "-f" "alsa" "default"
-                              "-vsync" "0"
-                              (format "%s%%05d.png" prefix)))
-           (proc (apply 'start-process "ffmpeg" (current-buffer)
-                        (or (executable-find "ffmpeg")
-                            (error "ffmpeg not found in `exec-path'"))
-                        ffmpeg-args)))
-
-      (set-process-plist proc (list :prefix prefix
-                                    :frame 1
-                                    :fps 30.0
-                                    :callback callback
-                                    :callback-args callback-args))
-      (telega-vvnote--start-timer proc)
-      (set-process-query-on-exit-flag proc nil)
-      (set-process-sentinel proc #'telega-vvnote--ffmpeg-sentinel)
-      (set-process-filter proc #'telega-vvnote--ffmpeg-filter)
-      proc)))
-
 (defun telega-vvnote-video--create-image (thumb &optional _file)
   "Create image for video note frame THUMB."
   (let ((file (telega-file--renew thumb :photo)))
     (if (telega-file--downloaded-p file)
-        (telega-vvnote--video-svg
+        (telega-vvnote-video--svg
          (telega--tl-get file :local :path))
 
-      (let* ((cheight telega-vvnote-video-height)
-             (x-size (* (frame-char-height) cheight)))
+      (let* ((cheight telega-video-note-height)
+             (x-size (telega-chars-xheight cheight)))
         (telega-media--progress-svg file x-size x-size cheight)))))
 
 (provide 'telega-vvnote)

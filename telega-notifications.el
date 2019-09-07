@@ -39,6 +39,7 @@
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-muted-p "telega-chat" (chat))
 
 
 (defvar telega-notifications--last-id nil
@@ -221,9 +222,8 @@ By default, all chats are unmuted, the sound is set to
                                    ,msg-id 'highlight))
                     :title (telega-chat-title chat 'with-username)
                     :body (if (telega-chat-notification-setting chat :show_preview)
-                              (telega--desurrogate-apply
-                               (telega-ins--as-string
-                                (funcall telega-inserter-for-msg-notification msg)))
+                              (telega-ins--as-string
+                               (funcall telega-inserter-for-msg-notification msg))
                             "Has new unread messages"))
               telega-notifications-msg-args)))
         ;; Play sound only if CHAT setting has some sound
@@ -254,8 +254,8 @@ By default, all chats are unmuted, the sound is set to
               (telega-msg-ignored-p msg)
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
-      (unless (or (telega-msg-seen-p msg chat)
-                  (not (zerop (telega-chat-notification-setting chat :mute_for)))
+      (unless (or (telega-chat-muted-p chat)
+                  (telega-msg-seen-p msg chat)
                   (telega-msg-observable-p msg chat))
         (if (> telega-notifications-delay 0)
             (run-with-timer telega-notifications-delay nil

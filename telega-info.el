@@ -57,9 +57,8 @@
     (telega--info-update user)
 
     ;; Update corresponding private chat button
-    (let ((chat (telega-chat-get (plist-get user :user_id) 'offline)))
-      (when chat
-        (telega-root--chat-update chat)))
+    (when-let ((chat (telega-chat-get (plist-get user :id) 'offline)))
+      (telega-root--chat-update chat))
 
     (run-hook-with-args 'telega-user-update-hook user)))
 
@@ -170,7 +169,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega-ins " "))
     ;; NOTE: Secret chat with bots and myself is not possible
     (unless (or (telega-user-bot-p user)
-                (eq (plist-get user :id) telega--me-id))
+                (telega-me-p user))
       ;; TODO: search for existing secret chat with Ready state and
       ;; create [Open Secret Chat] button instead
       (telega-ins--button (concat telega-symbol-lock "Start Secret Chat")
@@ -207,7 +206,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
         (telega-ins " "))
       (telega-ins "\n"))
 
-    (when (= (plist-get user :id) telega--me-id)
+    (when (telega-me-p user)
       ;; Saved Messages
       (telega-ins "Logged in: ")
       (telega-ins--date-full

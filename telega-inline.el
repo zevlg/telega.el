@@ -21,12 +21,22 @@
 
 ;;; Commentary:
 
-;;
+;; Inline bots support
+
+;;  @gif @youtube @pic @vid etc
 
 ;;; Code:
 (require 'telega-core)
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
+(declare-function telega-chatbuf-input-insert "telega-chat" (imc))
+
+(defvar telega--inline-bot nil
+  "BOT value for the inline results help buffer.")
+(defvar telega--inline-query nil
+  "Query string in help buffer.")
+(defvar telega--inline-results nil
+  "Value for `inlineQueryResults' in help buffer.")
 
 
 (defun telega--on-callbackQueryAnswer (reply)
@@ -90,6 +100,219 @@
             (list :offset offset)))
    callback))
 
+(defun telega-ins--inline-delim ()
+  "Inserter for the delimiter."
+  (telega-ins--with-props
+      '(face default display ((space-width 2) (height 0.5)))
+    (telega-ins (make-string 30 ?─) "\n")))
+
+(defun telega-inline-bot--action (qr)
+  "Action to take when corresponding query result QR button is pressed."
+  (cl-assert telega--chat)
+  (cl-assert telega--inline-bot)
+  (cl-assert telega--inline-results)
+  (cl-assert (eq major-mode 'help-mode))
+
+  (let ((chat telega--chat)
+        (inline-query telega--inline-query)
+        (inline-results telega--inline-results)
+        (bot telega--inline-bot))
+    ;; NOTE: Kill help win before modifying chatbuffer, because it
+    ;; recovers window configuration on kill
+    (quit-window 'kill-buffer)
+
+    (let* ((thumb (cl-case (telega--tl-type qr)
+                    (inlineQueryResultAnimation
+                     (telega--tl-get qr :animation :thumbnail))
+                    (inlineQueryResultArticle
+                     (plist-get qr :thumbnail))
+                    (inlineQueryResultPhoto
+                     (telega-photo--thumb (plist-get qr :photo)))
+                    (inlineQueryResultVideo
+                     (telega--tl-get qr :video :thumbnail))))
+           (thumb-file (when thumb (telega-file--renew thumb :photo)))
+           (thumb-img (when (telega-file--downloaded-p thumb-file)
+                        (create-image (telega--tl-get thumb-file :local :path)
+                                      'imagemagick nil
+                                      :scale 1.0 :ascent 'center
+                                      :height (frame-char-height)))))
+      (with-telega-chatbuf chat
+        (telega-chatbuf--input-delete)
+        (telega-chatbuf-input-insert
+         (list :@type "telegaInlineQuery"
+               :preview thumb-img
+               :caption (substring (plist-get qr :@type) 17)
+               :query inline-query
+               :via-bot bot
+               :hide-via-bot current-prefix-arg
+               :query-id (plist-get inline-results :inline_query_id)
+               :result-id (plist-get qr :id)))))))
+
+(defun telega-ins--inline-audio (qr)
+  "Inserter for `inlineQueryResultAudio' QR."
+  (let ((audio (plist-get qr :audio)))
+    (telega-ins--audio nil audio telega-symbol-audio)
+    (telega-ins "\n")))
+
+(defun telega-ins--inline-sticker (qr)
+  "Inserter for `inlineQueryResultSticker' QR."
+  (let ((sticker (plist-get qr :sticker)))
+    (telega-ins--sticker-image sticker)))
+
+(defun telega-ins--inline-animation (qr)
+  "Inserter for `inlineQueryResultAnimation' QR."
+  (let ((anim (plist-get qr :animation)))
+    (telega-ins--animation-image anim)))
+
+(defun telega-ins--inline-photo (qr)
+  "Inserter for `inlineQueryResultPhoto' QR."
+  (let ((photo (plist-get qr :photo)))
+    (telega-ins--image
+     (telega-photo--image photo (cons 10 3)))))
+
+(defun telega-ins--inline-document (qr)
+  "Inserter for `inlineQueryResultDocument' QR."
+  (let* ((doc (plist-get qr :document))
+         (thumb (plist-get doc :thumbnail))
+         (thumb-img (when thumb
+                      (telega-media--image
+                       (cons thumb 'telega-thumb--create-image-two-lines)
+                       (cons thumb :photo)))))
+    (telega-ins--document-header doc)
+    (telega-ins "\n")
+
+    ;; documents thumbnail preview (if any)
+    (when thumb-img
+      (telega-ins--image thumb-img 0))
+    (telega-ins " " (plist-get qr :title) "\n")
+    (when thumb-img
+      (telega-ins--image thumb-img 1))
+    (telega-ins " " (plist-get qr :description) "\n")))
+
+(defun telega-ins--inline-article (qr)
+  "Inserter for `inlineQueryResultArticle' QR."
+  (let* ((thumb (plist-get qr :thumbnail))
+         (thumb-img (when thumb
+                      (telega-media--image
+                       (cons thumb 'telega-thumb--create-image-two-lines)
+                       (cons thumb :photo)))))
+    (when thumb-img
+      (telega-ins--image thumb-img 0))
+    (telega-ins " " (plist-get qr :title) "\n")
+    (when thumb-img
+      (telega-ins--image thumb-img 1))
+    (telega-ins " " (plist-get qr :description) "\n")
+    ))
+
+(defun telega-ins--inline-video (qr)
+  "Inserter for `inlineQueryResultVideo` QR."
+  (let* ((video (plist-get qr :video))
+         (thumb (plist-get video :thumbnail))
+         (thumb-img (when thumb
+                      (telega-media--image
+                       (cons thumb 'telega-thumb--create-image-two-lines)
+                       (cons thumb :photo)))))
+    (when thumb-img
+      (telega-ins--image thumb-img 0)
+      (telega-ins " "))
+    (telega-ins (plist-get qr :title))
+    (telega-ins "\n")
+    (when thumb-img
+      (telega-ins--image thumb-img 1)
+      (telega-ins " "))
+    (telega-ins-fmt "%dx%d %s"
+      (plist-get video :width)
+      (plist-get video :height)
+      (telega-duration-human-readable (plist-get video :duration)))
+    (telega-ins "\n")))
+
+(defun telega-inline-bot--gen-callback (bot query &optional for-chat)
+  "Generate callback for the BOT's QUERY result handling in FOR-CHAT."
+  (lambda (reply)
+    (if-let ((qr-results (append (plist-get reply :results) nil)))
+        (with-telega-help-win "*Telegram Inline Results*"
+          (visual-line-mode 1)
+          (setq telega--inline-bot bot)
+          (setq telega--inline-query query)
+          (setq telega--inline-results reply)
+          (setq telega--chat for-chat)
+
+          (dolist (qr qr-results)
+            ;; NOTE: possible insert the delimiter, so mixing for
+            ;; example Articles and Animations is possible
+            (when (memq (telega--tl-type qr)
+                        '(inlineQueryResultVideo
+                          inlineQueryResultAudio
+                          inlineQueryResultArticle
+                          inlineQueryResultDocument))
+              (unless (or (= (point) (point-at-bol))
+                          (= (point) 1))
+                (telega-ins "\n")
+                (telega-ins--inline-delim)))
+
+            (cl-case (telega--tl-type qr)
+              (inlineQueryResultDocument
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-document
+                 :action 'telega-inline-bot--action
+                 'cursor-sensor-functions
+                 '(telega-button-highlight--sensor-func))
+               (telega-ins--inline-delim))
+
+              (inlineQueryResultVideo
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-video
+                 :action 'telega-inline-bot--action
+                 'cursor-sensor-functions
+                 '(telega-button-highlight--sensor-func))
+               (telega-ins--inline-delim))
+
+              (inlineQueryResultAudio
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-audio
+                 :action 'telega-inline-bot--action
+                 'cursor-sensor-functions
+                 '(telega-button-highlight--sensor-func)
+                 (telega-ins--inline-delim)))
+
+              (inlineQueryResultArticle
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-article
+                 :action 'telega-inline-bot--action
+                 'cursor-sensor-functions
+                 '(telega-button-highlight--sensor-func))
+               (telega-ins--inline-delim))
+
+              (inlineQueryResultAnimation
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-animation
+                 :action 'telega-inline-bot--action
+                 'cursor-sensor-functions
+                 (list (telega-animation--gen-sensor-func
+                        (plist-get qr :animation)))
+                 'help-echo (when-let ((title (plist-get qr :title)))
+                              (unless (string-empty-p title)
+                                (format "GIF title: %s" title)))))
+
+              (inlineQueryResultPhoto
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-photo
+                 :action 'telega-inline-bot--action))
+
+              (inlineQueryResultSticker
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-sticker
+                 :action 'telega-inline-bot--action))
+
+              (t
+               (telega-ins-fmt "* %S\n" qr)))))
+
+      ;; Not found
+      (unless (string-empty-p query)
+        (message "telega: @%s Nothing found for %s"
+                 (plist-get bot :username) (propertize query 'face 'bold)))
+      )))
+
 (defun telega-inline-bot-query (bot query for-chat)
   "Query BOT for inline results for the QUERY."
   (with-telega-chatbuf for-chat
@@ -97,19 +320,11 @@
     (when (telega-server--callback-get telega-chatbuf--inline-query)
       (telega-server--callback-put telega-chatbuf--inline-query 'ignore))
 
+    (message "telega: @%s Searching for %s..."
+             (plist-get bot :username) (propertize query 'face 'bold))
     (setq telega-chatbuf--inline-query
           (telega--getInlineQueryResults bot query nil nil nil
-            (lambda (reply)
-              (with-telega-help-win "*Telegram Inline Results*"
-                (setq telega--chat for-chat)
-
-                (dolist (qr (append (plist-get reply :results) nil))
-                  (cl-case (telega--tl-type qr)
-                    (inlineQueryResultAnimation
-                     (telega-animation--download (plist-get qr :animation))
-                     (telega-ins--animation-image (plist-get qr :animation)))
-                    ))
-                ))))))
+            (telega-inline-bot--gen-callback bot query for-chat)))))
 
 (provide 'telega-inline)
 

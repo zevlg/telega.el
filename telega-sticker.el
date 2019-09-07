@@ -295,9 +295,9 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker))
-         (h (* (frame-char-height) (car telega-sticker-size)))
+         (h (telega-chars-xheight (car telega-sticker-size)))
          (w-chars (telega-chars-in-width h))
-         (w (* (telega-chars-width 1) w-chars))
+         (w (telega-chars-xwidth w-chars))
          (svg (svg-create w h))
          (font-size (/ h 2)))
     (svg-text svg (substring emoji 0 1)
@@ -350,13 +350,17 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
     (if filename
         (apply 'create-image (telega--tl-get filename :local :path)
                'imagemagick nil
-               :height (* (frame-char-height) (car telega-sticker-size))
-               :max-width (* (frame-char-width) (cdr telega-sticker-size))
+               :height (telega-chars-xheight (car telega-sticker-size))
+               ;; NOTE: do not use max-width setting, it will slow
+               ;; down displaying stickers
+;               :max-width (* (frame-char-width) (cdr telega-sticker-size))
                :scale 1.0
                :ascent 'center
                :margin (cons (cdr cwidth-xmargin) 0)
+               :telega-text (make-string (car cwidth-xmargin) ?X)
                (when (telega-sticker-favorite-p sticker)
                  (list :background telega-sticker-favorite-background)))
+
       ;; Fallback to svg
       (telega-sticker--progress-svg sticker))))
 
@@ -670,9 +674,9 @@ Return sticker set."
 
 (defun telega-animation--progress-svg (animation)
   "Generate svg for STICKER showing download progress."
-  (let* ((h (* (frame-char-height) telega-animation-height))
+  (let* ((h (telega-chars-xheight telega-animation-height))
          (w-chars (telega-chars-in-width h))
-         (w (* (telega-chars-width 1) w-chars))
+         (w (telega-chars-xwidth w-chars))
          (svg (svg-create w h)))
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-animation--file animation)))
@@ -689,9 +693,9 @@ Return sticker set."
 
 (defun telega-animation--create-image (animation &optional _fileignored)
   "Return image for the ANIMATION."
-  ;; Three cases:
-  ;;   1) Animation file downloaded
-  ;;      Just show/animate (and cache) animation image
+  ;; Cases:
+  ;;   1) Next inline animation frame (set in
+  ;;   `telega-msg-animation--callback') is available - display it
   ;;
   ;;   2) Thumbnail is downloaded, while animation still downloading
   ;;      Show thumbnail (caching temporary), waiting for animation to
@@ -699,9 +703,9 @@ Return sticker set."
   ;;
   ;;   3) Thumbnail and animation downloading
   ;;      Fallback to svg loading image
-  (let* ((_afile (telega-animation--file animation))
+  (let* ((anim-frame-filename
+          (plist-get animation :telega-ffplay-frame-filename))
          (tfile (telega-animation--thumb-file animation))
-         (filename (and (telega-file--downloaded-p tfile) tfile))
          (cwidth-xmargin (plist-get animation :telega-image-cwidth-xmargin)))
     (unless cwidth-xmargin
       (setq cwidth-xmargin (telega-media--cwidth-xmargin
@@ -710,23 +714,34 @@ Return sticker set."
                             telega-animation-height))
       (plist-put animation :telega-image-cwidth-xmargin cwidth-xmargin))
 
-    (if filename
-        (create-image
-         (telega--tl-get filename :local :path) 'imagemagick nil
-         :height (* (frame-char-height) telega-animation-height)
-         :scale 1.0
-         :ascent 'center
-         :margin (cons (cdr cwidth-xmargin) 0)
-         :telega-text (make-string (car cwidth-xmargin) ?X))
+    (let ((img-props
+           (list :height (telega-chars-xheight telega-animation-height)
+                 :scale 1.0
+                 :ascent 'center
+                 :margin (cons (cdr cwidth-xmargin) 0)
+                 :telega-text (make-string (car cwidth-xmargin) ?X))))
+    (cond (anim-frame-filename
+           (apply 'create-image
+                  (with-temp-buffer
+                    (set-buffer-multibyte nil)
+                    (insert-file-contents-literally anim-frame-filename)
+                    (buffer-string))
+                  'imagemagick t img-props))
 
-      (telega-animation--progress-svg animation))))
+          ((telega-file--downloaded-p tfile)
+           (apply 'create-image
+                  (telega--tl-get tfile :local :path)
+                  'imagemagick nil img-props))
+
+          (t (telega-animation--progress-svg animation))))))
 
 (defun telega-ins--animation-image (animation &optional slices-p)
   "Inserter for the ANIMATION.
 If SLICES-P is non-nil, then insert ANIMATION using slices."
   (let ((aimage (telega-media--image
                  (cons animation 'telega-animation--create-image)
-                 (cons (plist-get animation :thumbnail) :photo))))
+                 (cons (plist-get animation :thumbnail) :photo)
+                 'force-update)))
     (if slices-p
         (telega-ins--image-slices aimage)
       (telega-ins--image aimage))))
@@ -744,28 +759,56 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
     (with-telega-chatbuf chat
       (telega-chatbuf-animation-insert animation))))
 
-(defun telega-ins--animation-list (animations &optional no-redisplay)
-  "Insert ANIMATIONS list int current buffer."
-  (seq-doseq (anim animations)
-    (when (> (telega-current-column) (- telega-chat-fill-column 10))
-      (telega-ins "\n"))
-    (telega-button--insert 'telega-animation anim
-      'action 'telega-animation--choosen-action)
-    (unless no-redisplay
-      (sit-for 0))
-    ))
+(defun telega-animation--ffplay-callback (_proc filename anim)
+  "Ffplay callback to animate ANIM."
+  (plist-put anim :telega-ffplay-frame-filename filename)
+  (telega-media--image-update
+   (cons anim 'telega-animation--create-image) nil)
+  (force-window-update)
+  )
+
+(defun telega-animation--gen-sensor-func (anim)
+  "Return sensor function to animate ANIM when entered."
+  (cl-assert anim)
+  (lambda (_window _oldpos dir)
+    (when telega-animation-play-inline
+      (if (eq dir 'entered)
+          (telega-file--download (telega-file--renew anim :animation) 32
+            (lambda (file)
+              (when (telega-file--downloaded-p file)
+                (telega-ffplay-to-png (telega--tl-get file :local :path)
+                    nil 'telega-animation--ffplay-callback anim))))
+
+        ;; dir == left
+        (telega--cancelDownloadFile (telega--tl-get anim :animation :id))))))
+
+(defun telega-ins--animation (anim &rest props)
+  "Inserter for animation ANIM in help buffer.
+PROPS are additional properties to the animation button."
+  (declare (indent 1))
+  (apply 'telega-button--insert 'telega-animation anim
+         'action 'telega-animation--choosen-action
+         ;; NOTE: use different sensor functions, so all animations
+         ;; can be places next to each other and still sensor
+         ;; detection will work properly
+         'cursor-sensor-functions
+         (list (telega-animation--gen-sensor-func anim))
+         props))
+
+(defun telega-animation-choose (for-chat animations &optional window-select)
+  "Choose one of the ANIMATIONS for insertation into FOR-CHAT."
+  (cl-assert for-chat)
+  (let ((help-window-select window-select))
+    (with-telega-help-win "*Telegram Animations*"
+      (visual-line-mode 1)
+      (setq telega--chat for-chat)
+
+      (mapc 'telega-ins--animation animations))))
 
 (defun telega-animation-choose-saved (for-chat)
   "Choose recent sticker FOR-CHAT."
   (interactive (list telega-chatbuf--chat))
-  (cl-assert for-chat)
-  (let ((help-window-select t))
-    (with-telega-help-win "*Telegram Animations*"
-      (setq telega--chat for-chat)
-
-      ;; TODO: use callbacks for async stickers load
-      (telega-ins--animation-list (telega--getSavedAnimations) 'no-redisplay)
-      )))
+  (telega-animation-choose for-chat (telega--getSavedAnimations) t))
 
 (provide 'telega-sticker)
 

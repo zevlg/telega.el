@@ -37,6 +37,7 @@
 
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega--full-info "telega-info" (tlobj))
 
 (defun telega-company-grab-single-char (char)
@@ -81,7 +82,10 @@ Matches only if CHAR does not apper in the middle of the word."
      (concat "  " (cdr (assoc arg telega-emoji-alist))))
     (post-completion
      (delete-region (- (point) (length arg)) (point))
-     (insert (cdr (assoc arg telega-emoji-alist))))
+     (let ((emoji (cdr (assoc arg telega-emoji-alist))))
+       (when telega-emoji-use-images
+         (telega-symbol-emojify emoji))
+       (insert emoji)))
     ))
 
 
@@ -105,19 +109,27 @@ Matches only if CHAR does not apper in the middle of the word."
      (cl-assert (> (length arg) 0))
      (let ((members (telega--searchChatMembers
                      telega-chatbuf--chat (substring arg 1))))
-       (delq nil
-             (mapcar (lambda (member)
-                       (let ((username (plist-get member :username)))
-                         (unless (string-empty-p username)
-                           (propertize (concat "@" username) 'telega-member member))))
-                     members))))
+       (nconc (delq nil
+                    (mapcar (lambda (member)
+                              (let ((username (plist-get member :username)))
+                                (unless (string-empty-p username)
+                                  (propertize (concat "@" username)
+                                              'telega-member member))))
+                            members))
+               (cl-remove-if-not (lambda (botname)
+                                   (string-prefix-p arg botname))
+                                 telega-known-inline-bots))))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align
      (let ((member (get-text-property 0 'telega-member arg)))
        (when member
          (concat "  " (telega-user--name member 'name)))))
     (post-completion
-     (insert " "))
+     (let ((known-bot-p (member (telega-chatbuf-input-string)
+                                telega-known-inline-bots)))
+       (insert " ")
+       (when known-bot-p
+         (telega-chatbuf-attach-inline-bot-query 'no-search))))
     ))
 
 

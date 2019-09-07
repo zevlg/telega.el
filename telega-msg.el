@@ -252,17 +252,20 @@ If CALLBACK is specified, then get reply message asynchronously."
                            (telega--tl-get file :local :path)
                            (telega-msg-voice-note--ffplay-callback msg)
                            "-nodisp"))
-               (telega-msg-activate-voice-note msg))))))
-    ))
+               (telega-msg-activate-voice-note msg))))))))
 
-(defun telega-msg-video-note--ffmpeg-callback (filename played msg)
+(defun telega-msg-video-note--callback (proc filename msg)
   "Callback for video note playback."
-  (let ((proc (plist-get msg :telega-ffplay-proc))
-        (dur (telega--tl-get msg :content :video_note :duration)))
-    (if filename
-        (plist-put msg :telega-ffplay-frame
-                   (telega-vvnote--video-svg filename dur played))
-      (plist-put msg :telega-ffplay-frame nil))
+  (let* (;(proc (plist-get msg :telega-ffplay-proc))
+         (proc-plist (process-plist proc))
+         (nframes (or (float (plist-get proc-plist :nframes))
+                      (* 30.0 (telega--tl-get
+                               msg :content :video_note :duration))))
+         (frame-num (plist-get proc-plist :frame-num))
+         (progress (/ frame-num nframes)))
+    (plist-put msg :telega-ffplay-frame
+               (when filename
+                 (telega-vvnote-video--svg filename progress)))
     (telega-msg-redisplay msg)))
 
 (defun telega-msg-open-video-note (msg)
@@ -278,29 +281,49 @@ If CALLBACK is specified, then get reply message asynchronously."
              (telega-msg-redisplay msg)
              (when (telega-file--downloaded-p file)
                (let ((filepath (telega--tl-get file :local :path)))
-                 (if telega-vvnote-video-play-inline
+                 (if telega-video-note-play-inline
                      (plist-put msg :telega-ffplay-proc
-                                (telega-vvnote-play-video filepath
-                                  'telega-msg-video-note--ffmpeg-callback msg))
+                                (telega-ffplay-to-png filepath
+                                    (list "-vf" "scale=120:120"
+                                          "-f" "alsa" "default" "-vsync" "0")
+                                  'telega-msg-video-note--callback msg))
                    (telega-ffplay-run filepath nil))))))))))
 
 (defun telega-msg-open-photo (msg)
   "Open content for photo message MSG."
   (telega-photo--open (telega--tl-get msg :content :photo) msg))
 
+(defun telega-msg-animation--callback (proc filename msg)
+  "Callback for inline animation playback."
+  (let ((anim (telega--tl-get msg :content :animation)))
+    (plist-put anim :telega-ffplay-frame-filename filename)
+    ;; NOTE: just redisplay the image, not redisplaying full message
+    (telega-media--image-update
+     (cons anim 'telega-animation--create-image) nil)
+    (force-window-update)
+    ;; (unless filename
+    ;;   (telega-msg-open-animation msg))
+;    (telega-msg-redisplay msg)
+    ))
+
 (defun telega-msg-open-animation (msg)
   "Open content for animation message MSG."
   (let* ((anim (telega--tl-get msg :content :animation))
-         (anim-file (telega-file--renew anim :animation)))
-    ;; NOTE: `telega-file--download' triggers callback in case file is
-    ;; already downloaded
-    (telega-file--download anim-file 32
-      (lambda (file)
-        (telega-msg-redisplay msg)
-        (when (telega-file--downloaded-p file)
-          (telega-ffplay-run
-           (telega--tl-get file :local :path) nil
-           "-loop" "0"))))))
+         (anim-file (telega-file--renew anim :animation))
+         (proc (plist-get msg :telega-ffplay-proc)))
+    (cl-case (and (process-live-p proc) (process-status proc))
+      (run (telega-ffplay-pause proc))
+      (stop (telega-ffplay-resume proc))
+      (t (telega-file--download anim-file 32
+           (lambda (file)
+             (telega-msg-redisplay msg)
+             (when (telega-file--downloaded-p file)
+               (let ((filename (telega--tl-get file :local :path)))
+                 (if telega-animation-play-inline
+                     (plist-put msg :telega-ffplay-proc
+                                (telega-ffplay-to-png filename nil
+                                  'telega-msg-animation--callback msg))
+                   (telega-ffplay-run filename nil "-loop" "0"))))))))))
 
 (defun telega-msg-open-document (msg)
   "Open content for document message MSG."
@@ -547,7 +570,7 @@ blocked users."
           (insert-text-button (telega-user--name (telega-user--get sender-uid))
                               :telega-link (cons 'user sender-uid))
           (telega-ins "\n")))
-      (when (telega-chat--public-p (telega-chat-get chat-id) 'supergroup)
+      (when (telega-chat-public-p (telega-chat-get chat-id) 'supergroup)
         (let ((link (telega-msg-public-link msg)))
           (telega-ins "Link: ")
           (telega-ins--raw-button (telega-link-props 'url link)

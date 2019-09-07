@@ -113,13 +113,13 @@ Have Stoploss 690 Satoshi. ������
 (ert-deftest telega-desurrogate ()
   "Tests for `telega--desurrogate-apply'"
   (let ((tests '((#("\uD83D\uDC7B test"
-                    0 2 (display "👻" telega-desurrogate t)) . "👻 test")
+                    0 2 (telega-display "👻")) . "👻 test")
                 (#("test \uD83D\uDC41\uD83D\uDDE8"
-                   5 7 (display "👁" telega-desurrogate t)
-                   7 9 (display "🗨" telega-desurrogate t)) . "test 👁🗨")
+                   5 7 (telega-display "👁")
+                   7 9 (telega-display "🗨")) . "test 👁🗨")
                 (#("test \uD83D\uDC41mid\uD83D\uDDE8ending"
-                   5 7 (display "👁" telega-desurrogate t)
-                   10 12 (display "🗨" telega-desurrogate t)) . "test 👁mid🗨ending")
+                   5 7 (telega-display "👁")
+                   10 12 (telega-display "🗨")) . "test 👁mid🗨ending")
                 )))
     (dolist (ts tests)
       (should (string= (telega--desurrogate-apply (car ts)) (cdr ts))))

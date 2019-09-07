@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.4.0
-(defconst telega-version "0.4.0")
+;; Version: 0.4.3
+(defconst telega-version "0.4.3")
 (defconst telega-tdlib-min-version "1.4.0")
 
 ;; telega is free software: you can redistribute it and/or modify
@@ -80,6 +80,7 @@ If prefix ARG is given, then will not pop to telega root buffer."
     (with-current-buffer (get-buffer-create telega-root-buffer-name)
       (telega-root-mode))
 
+    (telega-server--check-version telega-version)
     (telega-server--start))
 
   (unless arg
@@ -205,10 +206,6 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
            by 'cddr
            do (telega--setOption prop-name value)))
 
-(defun telega-online-status (&optional _offline-p)
-  "Make use online."
-  (error "`telega-online-status' not yet implemented"))
-
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   ;; Validate tdlib version
@@ -327,29 +324,12 @@ area."
         (message version)
       version)))
 
-(defun telega-check-buffer-switch ()
-  "Check if chat buffer is switched."
-  (let ((cbuf (current-buffer)))
-    (unless (eq cbuf telega--last-buffer)
-      (condition-case err
-          (when (buffer-live-p telega--last-buffer)
-            (with-current-buffer telega--last-buffer
-              (when telega-chatbuf--chat
-                (telega-chatbuf--switch-out))))
-        (error
-         (message "telega: error in `telega-chatbuf--switch-out': %S" err)))
-      (setq telega--last-buffer cbuf))))
 
 (provide 'telega)
 
 ;; Load hook might install new symbols into
 ;; `telega-symbol-widths'
 (run-hooks 'telega-load-hook)
-
-;; At load time load symbols widths and run load hook
 (telega-symbol-widths-install telega-symbol-widths)
-
-;; Track buffer switches
-(add-hook 'post-command-hook 'telega-check-buffer-switch)
 
 ;;; telega.el ends here

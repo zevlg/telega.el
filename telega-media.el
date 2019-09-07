@@ -42,10 +42,6 @@
 (declare-function telega-filter-chats "telega-filter" (filter-spec chats-list))
 
 
-(defvar telega-emoji-svg-images nil
-  "Cache of SVG images for emoji.
-Alist with elements in form (emoji . image)")
-
 ;;; Files downloading/uploading
 (defun telega--getFile (file-id &optional callback)
   (declare (indent 1))
@@ -132,7 +128,9 @@ Removes callback in case downloading is canceled or completed."
   "Download file denoted by FILE-ID.
 PRIORITY - (1-32) the higher the PRIORITY, the earlier the file
 will be downloaded. (default=1)
-Run CALLBACK every time FILE gets updated."
+Run CALLBACK every time FILE gets updated.
+To cancel downloading use `telega--cancelDownloadFile', it will
+remove the callback as well."
   (declare (indent 2))
   ;; - If file already downloaded, then just call the callback
   ;; - If file already downloading, then just install the callback
@@ -281,10 +279,8 @@ By default LIMITS is `telega-photo-maxsize'."
     (setq limits telega-photo-maxsize))
 
   ;; NOTE: `reverse' is used to start from highes sizes
-  (let ((lim-xwidth (* (frame-char-width (telega-x-frame))
-                       (car limits)))
-        (lim-xheight (* (frame-char-height (telega-x-frame))
-                        (cdr limits)))
+  (let ((lim-xwidth (telega-chars-xwidth (car limits)))
+        (lim-xheight (telega-chars-xheight (cdr limits)))
         (photo-sizes (reverse (plist-get photo :sizes)))
         ret)
     (setq ret (aref photo-sizes 0))
@@ -387,6 +383,7 @@ To customize automatic downloads, use `telega-auto-download'."
 Return nil if `:telega-text' is not specified in IMG."
   (let ((tt (plist-get (cdr img) :telega-text)))
     (cond ((null tt) nil)
+          ((and (stringp tt) (string-empty-p tt)) nil)
           ((stringp tt) tt)
           ((listp tt)
            (if slice-num
@@ -396,26 +393,28 @@ Return nil if `:telega-text' is not specified in IMG."
              (mapconcat 'identity tt "\n")))
           (t (cl-assert nil nil "Invalid value for :telega-text=%S" tt)))))
 
-(defun telega-media--cwidth-xmargin (width height char-height &optional max-cwidth)
+(defun telega-media--cwidth-xmargin (width height char-height &optional _max-cwidth)
   "Calculate width in chars and margins X pixels.
 MAX-CWIDTH is maximum width in chars.
 Return cons cell, where car is width in char and cdr is margin value."
   ;; NOTE: handle case where WIDTH or HEIGHT can be zero
-  (let* ((pix-h (* (frame-char-height) char-height))
+  (let* ((pix-h (telega-chars-xheight char-height))
          (pix-w (if (zerop height)
                     0
                   (* (/ (float width) height) pix-h)))
          (cw (telega-chars-in-width pix-w))
-         (xmargin (/ (- (telega-chars-width cw) pix-w) 2)))
+         (xmargin (/ (- (telega-chars-xwidth cw) pix-w) 2)))
 ;    (cl-assert (> cw 0))
     (cons cw (floor xmargin))))
 
 (defun telega-media--progress-svg (file width height cheight)
   "Generate svg showing downloading progress for FILE."
-  (let* ((h (* (frame-char-height) cheight))
-         (cwidth-xmargin (telega-media--cwidth-xmargin width height cheight))
+  (let* ((h (telega-chars-xheight cheight))
+         (cwidth-xmargin (telega-media--cwidth-xmargin
+                          (if (zerop width) h width)
+                          (if (zerop height) h height) cheight))
          (w-chars (car cwidth-xmargin))
-         (w (* (telega-chars-width 1) w-chars))
+         (w (telega-chars-xwidth w-chars))
          (svg (svg-create w h))
          (progress (telega-file--downloading-progress file)))
     (telega-svg-progress svg progress)
@@ -443,7 +442,7 @@ CHEIGHT is the height in chars to use (default=1)."
       (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight)))
         (create-image (telega--tl-get file :local :path)
                       'imagemagick nil
-                      :height (* cheight (frame-char-height (telega-x-frame)))
+                      :height (telega-chars-xheight cheight)
                       :scale 1.0
                       :ascent 'center
                       :margin (cons (cdr cwidth-xmargin) 0)
@@ -451,7 +450,7 @@ CHEIGHT is the height in chars to use (default=1)."
 
     (telega-media--progress-svg file width height cheight)))
 
-(defun telega-thumb--create-image (thumb &optional file cheight)
+(defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.
 CHEIGHT is the height in chars (default=1)."
   (telega-media--create-image
@@ -464,6 +463,10 @@ CHEIGHT is the height in chars (default=1)."
 (defun telega-thumb--create-image-one-line (thumb &optional file)
   "Create image for thumbnail (photoSize) for one line use."
   (telega-thumb--create-image thumb file 1))
+
+(defun telega-thumb--create-image-two-lines (thumb &optional file)
+  "Create image for thumbnail (photoSize) for two lines use."
+  (telega-thumb--create-image thumb file 2))
 
 (defun telega-thumb--create-image-as-is (thumb &optional file)
   "Create image for thumbnail THUMB (photoSize) with size as is."
@@ -508,8 +511,7 @@ File is specified with FILE-SPEC."
 (defun telega-photo--image (photo limits)
   "Return best suitable image for the PHOTO."
   (let* ((best (telega-photo--best photo limits))
-         (lim-xheight (* (frame-char-height (telega-x-frame))
-                         (cdr limits)))
+         (lim-xheight (telega-chars-xheight (cdr limits)))
          (th (plist-get best :height))
          (cheight (if (> th lim-xheight)
                       (cdr limits)
@@ -541,13 +543,13 @@ File is specified with FILE-SPEC."
   (let* ((photofile (telega--tl-get file :local :path))
          (cfactor (or (car telega-avatar-factors) 0.9))
          (mfactor (or (cdr telega-avatar-factors) 0.1))
-         (xh (* 2 (frame-char-height (telega-x-frame))))
+         (xh (telega-chars-xheight 2))
          (margin (* mfactor xh))
          (ch (* cfactor xh))
          (cfull (+ ch margin))
          (aw-chars (telega-chars-in-width cfull))
          (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
-         (xw (telega-chars-width aw-chars))
+         (xw (telega-chars-xwidth aw-chars))
          (svg (svg-create xw xh))
          (name (if (eq (telega--tl-type chat-or-user) 'user)
                    (telega-user--name chat-or-user)
@@ -590,34 +592,13 @@ File is specified with FILE-SPEC."
                                   (make-string (+ 3 aw-chars-3) ?\u00A0))
                )))
 
-(defun telega-media--emoji-image (emoji)
-  "Create svg image for the EMOJI."
-  (let ((image (assoc emoji telega-emoji-svg-images)))
-    (unless image
-      (let* ((xframe (telega-x-frame))
-             (xh (frame-char-height xframe))
-             (font-size (- xh (/ xh 4)))
-             (aw-chars (telega-chars-in-width font-size))
-             (xw (telega-chars-width aw-chars))
-             (svg (svg-create xw xh)))
-        (svg-text svg (substring emoji 0 1)
-                  :font-size font-size
-                  :x 0 :y font-size)
-        (setq image (svg-image svg :scale 1.0
-                               :ascent 'center
-                               :mask 'heuristic
-                               :width xw :height xh
-                               :telega-text (make-string aw-chars ?E)))))
-    image))
-
 (defun telega-symbol-emojify (emoji)
   "Attach `display' property with emoji svg to EMOJI string.
 Typical usage is to emojify `telega-symbol-XXX' values.
-Like (telega-symbol-emojify telega-symbol-pin).
-EMOJY must be single char string."
-  (cl-assert (= (length emoji) 1))
-  (add-text-properties 0 1 (list 'rear-nonsticky '(display)
-                                 'display (telega-media--emoji-image emoji))
+Like (telega-symbol-emojify telega-symbol-pin)."
+  (add-text-properties 0 (length emoji)
+                       (list 'rear-nonsticky '(display)
+                             'display (telega-emoji-create-svg emoji))
                        emoji))
 
 
