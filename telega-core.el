@@ -428,11 +428,13 @@ Attach `display' text property to surrogated regions."
         (let ((unicode-str (char-to-string
                             (+ (lsh (- high #xD800) 10)
                                (- low #xDC00) #x10000))))
+          ;; NOTE: delay emoji svg creation to
+          ;; `telega--desurrogate-apply' by marking region with
+          ;; `telega-emoji-p' property.  Creating svg at receive time,
+          ;; might result in lockups when receiving sticker sets
           (add-text-properties
-           idx (+ idx 2) (list 'display (if (and telega-use-images
-                                                 telega-emoji-use-images)
-                                            (telega-emoji-create-svg unicode-str)
-                                          unicode-str)
+           idx (+ idx 2) (list ;'display unicode-str
+                               'telega-emoji-p t
                                'telega-display unicode-str) str)
           ))))
   str)
@@ -443,9 +445,17 @@ Attach `display' text property to surrogated regions."
     (cond (part-display
            (if keep-properties
                ;; keep all properties except for `telega-display'
-               (apply 'propertize part-display
-                      (telega-plist-del
-                       (text-properties-at 0 part) 'telega-display))
+               ;; Apply `telega-emoji-p' property as well
+               (let* ((part-props (telega-plist-del
+                                   (text-properties-at 0 part) 'telega-display))
+                      (emoji-p (plist-get part-props 'telega-emoji-p)))
+                 (apply 'propertize part-display
+                        (nconc part-props
+                               (when (and emoji-p
+                                          telega-use-images
+                                          telega-emoji-use-images)
+                                 (list 'display
+                                       (telega-emoji-create-svg part-display))))))
              part-display))
           (keep-properties part)
           (t (substring-no-properties part)))))

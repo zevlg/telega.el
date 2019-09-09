@@ -86,7 +86,8 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (defun telega-sticker-emoji (sticker)
   "Return STICKER's emoji."
-  (telega--desurrogate-apply (plist-get sticker :emoji)))
+  (let ((telega-emoji-use-images nil))
+    (telega--desurrogate-apply (plist-get sticker :emoji))))
 
 (defun telega-sticker--download (sticker)
   "Ensure STICKER data is downloaded."
@@ -139,8 +140,10 @@ Thumbnail is a smaller (and faster) version of sticker image.")
     (setq telega--stickersets-installed-ids
           (append (plist-get event :sticker_set_ids) nil))
     ;; Asynchronously fetch sticker sets
-    (dolist (set-id telega--stickersets-installed-ids)
-      (telega-stickerset-get set-id 'async))
+    ;; NOTE: this is too heavy, when `telega-emoji-use-images' is
+    ;; enabled, avoid doing so at start time
+    ;; (dolist (set-id telega--stickersets-installed-ids)
+    ;;   (telega-stickerset-get set-id 'async))
     ))
 
 (defun telega--on-updateTrendingStickerSets (event)
