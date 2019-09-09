@@ -52,6 +52,16 @@
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
+(defvar telega-prefix-map
+  (let ((map (make-sparse-keymap)))
+    (suppress-keymap map)
+    (define-key map (kbd "t") 'telega)
+    (define-key map (kbd "s") 'telega-saved-messages)
+    (define-key map (kbd "f") 'telega-file-send)
+    (define-key map (kbd "w") 'telega-save-buffer)
+    map)
+  "Keymap for the telega commands.")
+
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
   (ignore-errors
@@ -272,7 +282,8 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
   "Proceed with user authorization state change using EVENT."
   (let* ((state (plist-get event :authorization_state))
          (stype (plist-get state :@type)))
-    (telega-status--set (concat "Auth " (substring stype 18)))
+    (setq telega--auth-state (substring stype 18))
+    (telega-status--set (concat "Auth " telega--auth-state))
     (cl-ecase (intern stype)
       (authorizationStateWaitTdlibParameters
        (telega--setTdlibParameters))
