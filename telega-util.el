@@ -179,6 +179,30 @@ Specify EXT with leading `.'."
                 :clip-path "url(#pclip)")
     svg))
 
+(defun telega-poll-create-svg (cwidth percents &optional face)
+  "Create SVG for use in poll options inserter."
+  (cl-assert (<= percents 100))
+  (let* ((ndashes (ceiling (* cwidth (/ percents 100.0))))
+         (telega-text (propertize
+                       (if (> ndashes 0) (make-string ndashes ?\-) "·")
+                       'face (or face 'bold)))
+         (xheight (telega-chars-xheight 1))
+         (xwidth (telega-chars-xwidth (string-width telega-text)))
+         (stroke-xwidth (/ xheight 10))
+         (dashes-xwidth (* (- (telega-chars-xwidth cwidth) (* 2 stroke-xwidth))
+                           (/ percents 100.0)))
+         (svg (svg-create xwidth xheight)))
+    (svg-line svg stroke-xwidth (/ xheight 2)
+              (+ stroke-xwidth dashes-xwidth) (/ xheight 2)
+              :stroke-color telega-poll-result-color
+              :stroke-width stroke-xwidth
+              :stroke-linecap "round")
+    (svg-image svg :scale 1
+               :width xwidth :height xheight
+               :mask 'heuristic
+               :ascent 'center
+               :telega-text telega-text)))
+
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
 (defun telega-symbol-widths-install (symbol-widths-alist)

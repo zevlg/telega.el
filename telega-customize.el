@@ -265,6 +265,11 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'list
   :group 'telega)
 
+(defcustom telega-poll-result-color "#000066"
+  "Color used to draw poll results in poll messages."
+  :type 'cons
+  :group 'telega)
+
 
 (defgroup telega-server nil
   "Customisation for telega-server."
@@ -657,20 +662,9 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'list
   :group 'telega-msg)
 
-(defcustom telega-msg-photo-slices 'auto
-  "*Split photo into horisontal slices for better scrolling experience.
-Integer or `auto'."
-  :type 'integer
-  :group 'telega-msg)
-
 (defcustom telega-photo-maxsize '(40 . 10)
   "*Limit displayed image size to this (WIDTH . HEIGHT) characters."
   :type '(cons integer integer)
-  :group 'telega)
-
-(defcustom telega-photo-fill-char ?o
-  "Char to use for filling image placement."
-  :type 'char
   :group 'telega)
 
 ;; (defcustom telega-msg-photo-props

@@ -93,7 +93,7 @@ PROPS - additional image properties."
     (let* ((img-xheight (plist-get image :height))
            (img-slices (if img-xheight
                            (telega-chars-in-height img-xheight)
-                         (ceiling (cdr (image-size image))))))
+                         (ceiling (cdr (image-size image nil (telega-x-frame)))))))
       (telega-ins--column (current-column) nil
         (dotimes (slice-num img-slices)
           (telega-ins--image image slice-num props)
@@ -676,35 +676,47 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (nvotes (plist-get poll :total_voter_count))
          (closed-p (plist-get poll :is_closed))
          (options (plist-get poll :options))
+         (has-choice-p (cl-some (telega--tl-prop :is_chosen) options))
          (max-opt-len (apply 'max (mapcar 'length (mapcar (telega--tl-prop :text) options))))
          (opt-sym-len (max (string-width (car telega-symbol-poll-options))
                            (string-width (cdr telega-symbol-poll-options)))))
-    (telega-ins telega-symbol-poll " " question)
-    (telega-ins-fmt " (%d votes" nvotes)
+    ;; Poll header
+    ;; NOTE: Currently all polls are anonymous, this might be changed
+    ;; in future See https://telegram.org/blog/polls
+    (telega-ins telega-symbol-poll " ")
+    (telega-ins--with-face 'shadow
+      (telega-ins "Anonymous Poll"))
+    (telega-ins-fmt ", %d votes" nvotes)
     (when closed-p
-      (telega-ins ", " (propertize "closed" 'face 'error)))
-    (telega-ins ")")
+        (telega-ins ", " (propertize "closed" 'face 'error)))
     (when (and (not closed-p) (plist-get msg :can_be_edited))
       (telega-ins " ")
       (telega-ins--button "Close Poll"
-        'action (lambda (_ignored)
-                  (telega--stopPoll msg))))
+        'action (lambda (_ignored) (telega--stopPoll msg))))
+
+    ;; Question and options
+    (telega-ins "\n" question)
     (dotimes (opt-id (length options))
       (let ((popt (aref options opt-id)))
         (telega-ins "\n")
-        (telega-ins--with-attrs (list :min (+ max-opt-len opt-sym-len 1)
-                                      :max (+ max-opt-len opt-sym-len 1)
-                                      :align 'left)
-          (if (or (plist-get popt :is_chosen)
-                  (plist-get popt :is_being_chosen))
-              (telega-ins (cdr telega-symbol-poll-options))
-            (telega-ins--button (car telega-symbol-poll-options)
-              'face 'telega-link
-              'action (lambda (_ignore)
-                        (telega--setPollAnswer msg opt-id))))
-          (telega-ins " " (plist-get popt :text)))
-        (telega-ins-fmt " (%d%%, %d votes)" (plist-get popt :vote_percentage)
-                        (plist-get popt :voter_count))))))
+        (if (or (plist-get popt :is_chosen)
+                (plist-get popt :is_being_chosen))
+            (telega-ins (cdr telega-symbol-poll-options))
+          (telega-ins--button (car telega-symbol-poll-options)
+            'face 'telega-link
+            'action (lambda (_ignore)
+                      (telega--setPollAnswer msg opt-id))))
+        (telega-ins " " (plist-get popt :text))
+        (when (or has-choice-p closed-p)
+          (telega-ins "\n")
+          (telega-ins (make-string opt-sym-len ?\s) " ")
+          (telega-ins-fmt "%2d%% " (plist-get popt :vote_percentage))
+          (telega-ins--image
+           (telega-poll-create-svg
+            max-opt-len (plist-get popt :vote_percentage)))
+          (telega-ins--with-face 'shadow
+            (telega-ins-fmt " %d votes" (plist-get popt :voter_count))))
+        ))))
 
 (defun telega-ins--animation-msg (msg &optional animation)
   "Inserter for animation message MSG."

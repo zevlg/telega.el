@@ -607,7 +607,7 @@ If used with PREFIX-ARG, then cancel current search."
     (let ((online-p (telega-focus-state))
           (curr-online-p (telega-user-online-p (telega-user-me))))
       (unless (eq online-p curr-online-p)
-        (telega--setOption :online (or online-p :false))))))
+        (telega--setOption :online (if online-p t :false))))))
 
 (defun telega-check-focus-change ()
   "Function called when some emacs frame changes focus."
