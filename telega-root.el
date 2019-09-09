@@ -598,8 +598,12 @@ If used with PREFIX-ARG, then cancel current search."
 (defun telega-online-status-timer-function ()
   "Timer function for online status change."
   (setq telega-online--timer nil)
-  ;; NOTE: telega server might unexpectedly die
-  (when (telega-server-live-p)
+  ;; NOTE:
+  ;;  - telega server might unexpectedly die
+  ;;  - telega might not be in authorized state, so setOption will
+  ;;    result in error "Unauthorized"
+  (when (and (telega-server-live-p)
+             (equal telega--auth-state "Ready"))
     (let ((online-p (telega-focus-state))
           (curr-online-p (telega-user-online-p (telega-user-me))))
       (unless (eq online-p curr-online-p)

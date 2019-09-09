@@ -55,7 +55,10 @@ Used in help buffers to refer chat.")
 (defvar telega--gifbot-id nil "Bot used to search for animations.")
 (defvar telega--imgbot-id nil "Bot used to search for photos.")
 (defvar telega--options nil "Options updated from telega-server.")
-(defvar telega--conn-state nil)
+(defvar telega--auth-state nil
+  "Current Authorization state.")
+(defvar telega--conn-state nil
+  "Current connection state.")
 (defvar telega--status "Not Started" "Status of the connection to telegram.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
@@ -178,6 +181,7 @@ Actual value is `:@extra` value of the call to inline bot.")
 (defun telega--init-vars ()
   "Initialize runtime variables.
 Done when telega server is ready to receive queries."
+  (setq telega--auth-state nil)
   (setq telega--conn-state nil)
   (setq telega--status "Disconnected")
   (setq telega--status-aux "")
