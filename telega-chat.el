@@ -1135,6 +1135,16 @@ Do it only if FORCE is non-nil."
   (when force
     (mapc 'telega-chat-delete telega--filtered-chats)))
 
+(defun telega-saved-messages (arg)
+  "Switch to SavedMessages chat buffer.
+If SavedMessages chat is not opened, then open it.
+If prefix ARG is specified, then keep the point, otherwise goto
+end of the buffer."
+  (interactive "P")
+  (telega-chat--pop-to-buffer (telega-chat-me))
+  (unless arg
+    (goto-char (point-max))))
+
 
 ;;; Chat Buffer
 (defgroup telega-chat nil
@@ -2817,17 +2827,26 @@ Prefix argument is available for next attachements:
       (goto-char (point-max))
       (telega-chatbuf-attach-photo file))))
 
-(defun telega-file-send (file chat)
-  "Prepare FILE to be sent as document to CHAT."
-  (interactive (list (buffer-file-name)
-                     (telega-completing-read-chat "Send file to chat: ")))
+(defun telega-file-send (file chat &optional as-photo-p)
+  "Prepare FILE to be sent as document or photo to CHAT.
+If prefix argument is used, then always send as a file.
+Otherwise for `image-mode' major-mode, send file as photo."
+  (interactive
+   (let ((send-photo-p (and (not current-prefix-arg)
+                            (eq major-mode 'image-mode))))
+     (list (buffer-file-name)
+           (telega-completing-read-chat
+            (format "Send %s to chat: " (if send-photo-p "PHOTO" "FILE")))
+           send-photo-p)))
 
   (cl-assert chat)
   (with-current-buffer (telega-chat--pop-to-buffer chat)
     (let ((inhibit-read-only t)
           (buffer-undo-list t))
       (goto-char (point-max))
-      (telega-chatbuf-attach-file file))))
+      (if as-photo-p
+          (telega-chatbuf-attach-photo file)
+        (telega-chatbuf-attach-file file)))))
 
 (defun telega--on-updateChatDraftMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))

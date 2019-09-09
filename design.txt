@@ -533,3 +533,19 @@ Fonts
 * Symbola from https://fonts2u.com/symbola.font (for unicode emojis with good vertical spacing)
 
 * http://users.teilar.gr/~g1951d/  (Symbola Author: George Dourosg 1951d@teilar.gr)
+
+Telega prefix map
+-----------------
+
+См. https://github.com/zevlg/telega.el/issues/87
+
+C-c C-t  -> telega
+
+C-c t     -> PREFIX
+C-c t t   -> telega
+C-c t s   -> telega-saved-messages (переключается на чат Saved Messages)
+C-c t f   -> telega-file-send (посылает фото если режим image-mode,
+             иначе как файл)
+C-c t w   -> telega-save-buffer (записыват содержимое буфера в клауд)
+C-c t b   -> telega-switch-buffer
+C-c t C-s -> тоже самое что и C-c t w
