@@ -754,7 +754,8 @@ LIMIT - number of chats to get (default=100)"
 (defsubst telega-chat--pp (chat)
   "Pretty printer for CHAT button."
   (telega-button--insert 'telega-chat chat)
-  (insert "\n"))
+  (unless (= (char-before) ?\n)
+    (insert "\n")))
 
 (defun telega-chat-known--pp (chat)
   "Pretty printer for known CHAT button."
@@ -1144,6 +1145,14 @@ end of the buffer."
   (telega-chat--pop-to-buffer (telega-chat-me))
   (unless arg
     (goto-char (point-max))))
+
+(defun telega-switch-buffer (buffer)
+  "Interactive switch to chat BUFFER."
+  (interactive (list (funcall telega-completing-read-function
+                              "Telega chat: "
+                               (mapcar 'buffer-name telega--chat-buffers)
+                               nil t)))
+  (switch-to-buffer buffer))
 
 
 ;;; Chat Buffer

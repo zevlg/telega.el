@@ -1516,14 +1516,9 @@ Return t."
       (telega-ins telega-symbol-lock))
     t))
 
-(defun telega-ins--chat-full (chat)
-  "Full status inserter for CHAT button in root buffer."
-  (telega-ins--chat chat)
-  (telega-ins "  ")
-
-  ;; And the status
-  (let ((max-width (- telega-root-fill-column (current-column)))
-        (actions (gethash (plist-get chat :id) telega--actions))
+(defun telega-ins--chat-status (chat &optional max-width)
+  "Insert CHAT status, limiting it to MAX-WIDTH."
+  (let ((actions (gethash (plist-get chat :id) telega--actions))
         (call (telega-voip--by-user-id (plist-get chat :id)))
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message))
@@ -1547,7 +1542,7 @@ Return t."
                (telega-ins " " (telega-voip--call-emojis call)))
              ))
 
-           (actions
+          (actions
            (telega-debug "CHAT-ACTIONS: %s --> %S"
                          (telega-chat-title chat) actions)
            (telega-ins--with-attrs (list :align 'left
@@ -1576,7 +1571,14 @@ Return t."
            (telega-ins (propertize
                         (substring (telega--tl-get chat-info :state :@type) 15)
                         'face 'shadow)))
-          ))
+          )))
+
+(defun telega-ins--chat-full (chat)
+  "Full status inserter for CHAT button in root buffer."
+  (telega-ins--chat chat)
+  (telega-ins "  ")
+  (telega-ins--chat-status
+   chat (- telega-root-fill-column (current-column)))
   t)
 
 (defun telega-ins--root-msg (msg)
