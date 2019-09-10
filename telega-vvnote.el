@@ -166,7 +166,9 @@ PROGRESS might be nil."
                     :stroke-color "white"
                     :clip-path "url(#clip1)")))
 
-    (svg-image svg :scale 1.0 :ascent 'center)))
+    (svg-image svg :scale 1.0
+               :width w :height h
+               :ascent 'center)))
 
 (defun telega-vvnote-video--create-image (thumb &optional _file)
   "Create image for video note frame THUMB."

@@ -83,7 +83,10 @@ Selected frame and frame displaying root buffer are examined first."
   "Return non-nil if FRAME has focus."
   (if (fboundp 'frame-focus-state)
       (funcall 'frame-focus-state frame)
-    (frame-parameter frame 'x-has-focus)))
+    ;; NOTE: For tty frame always return non-nil
+    ;; see https://t.me/emacs_telega/7419
+    (or (not (display-graphic-p frame))
+        (frame-parameter frame 'x-has-focus))))
 
 (defun telega-chars-xwidth (n)
   "Return pixel width for N characters"
@@ -603,9 +606,9 @@ Alist with elements in form (emoji . image)")
                   :font-size font-size
                   :x 0 :y font-size)
         (setq image (svg-image svg :scale 1.0
+                               :width xw :height xh
                                :ascent 'center
                                :mask 'heuristic
-                               :width xw :height xh
                                :telega-text telega-text)))
       (when use-cache-p
         (setf (alist-get emoji telega-emoji-svg-images) image)))

@@ -298,11 +298,11 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker))
-         (h (telega-chars-xheight (car telega-sticker-size)))
-         (w-chars (telega-chars-in-width h))
-         (w (telega-chars-xwidth w-chars))
-         (svg (svg-create w h))
-         (font-size (/ h 2)))
+         (xh (telega-chars-xheight (car telega-sticker-size)))
+         (w-chars (telega-chars-in-width xh))
+         (xw (telega-chars-xwidth w-chars))
+         (svg (svg-create xw xh))
+         (font-size (/ xh 2)))
     (svg-text svg (substring emoji 0 1)
                 :font-size font-size
                 :font-weight "bold"
@@ -313,6 +313,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-sticker--file sticker)))
     (svg-image svg :scale 1.0
+               :width xw :height xh
                :ascent 'center
                :mask 'heuristic
                ;; text of correct width
@@ -370,7 +371,8 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 (defun telega-ins--sticker-image (sticker &optional slices-p)
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
-  (if (not telega-use-images)
+  (if (or (not telega-use-images)
+          (not (display-graphic-p)))
       (telega-ins "<STICKER " (plist-get sticker :emoji) ">")
 
     (let ((simage (telega-media--image
@@ -677,13 +679,14 @@ Return sticker set."
 
 (defun telega-animation--progress-svg (animation)
   "Generate svg for STICKER showing download progress."
-  (let* ((h (telega-chars-xheight telega-animation-height))
-         (w-chars (telega-chars-in-width h))
-         (w (telega-chars-xwidth w-chars))
-         (svg (svg-create w h)))
+  (let* ((xh (telega-chars-xheight telega-animation-height))
+         (w-chars (telega-chars-in-width xh))
+         (xw (telega-chars-xwidth w-chars))
+         (svg (svg-create xw xh)))
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-animation--file animation)))
     (svg-image svg :scale 1.0
+               :width xw :height xh
                :ascent 'center
                :mask 'heuristic
                ;; text of correct width

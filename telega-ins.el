@@ -87,10 +87,11 @@ If SLICE-NUM is specified, then insert N's."
 (defun telega-ins--image-slices (image &optional props)
   "Insert sliced IMAGE at current column.
 PROPS - additional image properties."
-  (if (not telega-use-images)
+  (if (or (not telega-use-images)
+          (not (display-graphic-p)))
       (telega-ins "<IMAGE>")
 
-    (let* ((img-xheight (plist-get image :height))
+    (let* ((img-xheight (plist-get (cdr image) :height))
            (img-slices (if img-xheight
                            (telega-chars-in-height img-xheight)
                          (ceiling (cdr (image-size image nil (telega-x-frame)))))))

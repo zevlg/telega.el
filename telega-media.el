@@ -409,16 +409,17 @@ Return cons cell, where car is width in char and cdr is margin value."
 
 (defun telega-media--progress-svg (file width height cheight)
   "Generate svg showing downloading progress for FILE."
-  (let* ((h (telega-chars-xheight cheight))
+  (let* ((xh (telega-chars-xheight cheight))
          (cwidth-xmargin (telega-media--cwidth-xmargin
-                          (if (zerop width) h width)
-                          (if (zerop height) h height) cheight))
+                          (if (zerop width) xh width)
+                          (if (zerop height) xh height) cheight))
          (w-chars (car cwidth-xmargin))
-         (w (telega-chars-xwidth w-chars))
-         (svg (svg-create w h))
+         (xw (telega-chars-xwidth w-chars))
+         (svg (svg-create xw xh))
          (progress (telega-file--downloading-progress file)))
     (telega-svg-progress svg progress)
     (svg-image svg :scale 1.0
+               :width xw :height xh
                :ascent 'center
                :mask 'heuristic
                ;; text of correct width
@@ -583,9 +584,9 @@ File is specified with FILE-SPEC."
                   :y (+ (/ fsz 3) (/ cfull 2)))))
 
     (svg-image svg :scale 1.0
+               :width xw :height xh
                :ascent 'center
                :mask 'heuristic
-               :width xw :height xh
                ;; Correct text for tty-only avatar display
                :telega-text (list (concat "(" (substring name 0 1) ")"
                                           (make-string aw-chars-3 ?\u00A0))
