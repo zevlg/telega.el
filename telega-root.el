@@ -640,6 +640,15 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
 (defun telega-runtime-setup ()
   "Setup Emacs environment for telega runtime."
+  ;; Adjust `telega-location-size' in case it exceeds 1024x1024
+  (let ((cheight (car telega-location-size))
+        (cwidth (cdr telega-location-size)))
+    (while (> (telega-chars-xheight cheight) 1024)
+      (decf cheight))
+    (while (> (telega-chars-xwidth cwidth) 1024)
+      (decf cwidth))
+    (setq telega-location-size (cons cheight cwidth)))
+
   (add-hook 'post-command-hook 'telega-check-buffer-switch)
   (if (boundp 'after-focus-change-function)
       (add-function :after after-focus-change-function

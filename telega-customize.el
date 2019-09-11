@@ -24,9 +24,6 @@
 ;;
 
 ;;; Code:
-(declare-function telega-chars-xwidth "telega-util" (n))
-(declare-function telega-chars-xheight "telega-util" (n))
-
 (defgroup telega nil
   "Telegram client."
   :prefix "telega-"
@@ -264,17 +261,7 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'string
   :group 'telega)
 
-(defcustom telega-location-size
-  (cons (let* ((cheight 10)
-               (xheight (telega-chars-xheight cheight)))
-          (while (> xheight 1024)
-            (setq xheight (telega-chars-xheight (decf cheight))))
-          cheight)
-        (let* ((cwidth (* 3 (/ telega-chat-fill-column 4)))
-               (xwidth (telega-chars-xwidth cwidth)))
-          (while (> xwidth 1024)
-            (setq xwidth (telega-chars-xwidth (decf cwidth))))
-          cwidth))
+(defcustom telega-location-size (cons 10 (* 3 (/ telega-chat-fill-column 4)))
   "*Size for location image in char height/width.
 In pixels height and width should be in range [16..1024]."
   :type 'cons
