@@ -414,14 +414,6 @@ If REVOKE is non-nil then delete message for all users."
          :message_ids (apply 'vector message-ids)
          :revoke (or revoke :false))))
 
-(defun telega--forwardMessages (chat-id from-chat-id message-ids
-                                        &optional disable-notification
-                                        from-background as-album)
-  "Forwards previously sent messages.
-Returns the forwarded messages.
-Return nil if message can't be forwarded."
-  (error "`telega--forwardMessages' Not yet implemented"))
-
 (defun telega--searchMessages (query last-msg &optional callback)
   "Search messages by QUERY.
 Specify LAST-MSG to continue searching from LAST-MSG searched.
