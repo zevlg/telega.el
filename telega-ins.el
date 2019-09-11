@@ -756,14 +756,19 @@ Return `non-nil' if WEB-PAGE has been inserted."
       ;; NOTE: Synchronous call is needed to avoid double call to
       ;; `getMapThumbnailFile', when two events occurs one after
       ;; another `updateMessageContent' and `updateMessageEdited'
-      (let* ((zoom (nth 0 telega-location-thumb-params))
-             (width (nth 1 telega-location-thumb-params))
-             (height (nth 2 telega-location-thumb-params))
-             (scale (nth 3 telega-location-thumb-params))
+      (let* ((zoom telega-location-zoom)
+             (width (telega-chars-xwidth (cdr telega-location-size)))
+             (height (telega-chars-xheight (car telega-location-size)))
+             (scale telega-location-scale)
              (map-file (telega--getMapThumbnailFile
                            loc zoom width height scale (telega-msg-chat msg))))
         (setq loc-thumb
               (list :width width :height height
+                    :telega-user-locs
+                    (list
+                     (list :user-id (plist-get msg :sender_user_id)
+                           :latitude (plist-get loc :latitude)
+                           :longitude (plist-get loc :longitude)))
                     :photo (telega-file--ensure map-file)))
         (plist-put loc :telega-map-thumbnail loc-thumb)))
 
@@ -1312,7 +1317,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
             (telega-ins (telega--tl-get content :game :short_name))
             (telega-ins (propertize "Game" 'face 'shadow))))
        (messageSticker
-        (telega-ins (telega--tl-get content :sticker :emoji))
+        (telega-ins (telega--desurrogate-apply
+                     (telega--tl-get content :sticker :emoji)))
         (telega-ins " " (propertize "Sticker" 'face 'shadow)))
        (messageVoiceNote
         ;; I18N: lng_in_dlg_audio

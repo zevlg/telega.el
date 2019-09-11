@@ -86,8 +86,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (defun telega-sticker-emoji (sticker)
   "Return STICKER's emoji."
-  (let ((telega-emoji-use-images nil))
-    (telega--desurrogate-apply (plist-get sticker :emoji))))
+  (telega--desurrogate-apply (plist-get sticker :emoji)))
 
 (defun telega-sticker--download (sticker)
   "Ensure STICKER data is downloaded."
@@ -170,25 +169,40 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 ;  (mapc 'telega--downloadFile telega--stickers-favorite)
   )
 
+;; TODO: generalize this on telega-server level
+(defun telega-stickers--async-call (call-params &optional callback)
+  "Perform call to telega-server with CALL-PARAMS.
+Then `:stickers' property is extracted from the reply and passed
+either to CALLBACK or returned."
+  (let ((reply (telega-server--call
+                call-params
+                (when callback
+                  (lambda (server-reply)
+                    (funcall callback
+                             (append (plist-get server-reply :stickers) nil)))))))
+    (if callback
+        reply
+      (append (plist-get reply :stickers) nil))))
+  
 (defun telega--getStickers (emoji &optional limit callback)
   "Return installed stickers that correspond to a given EMOJI.
 LIMIT defaults to 20."
-  (let ((reply (telega-server--call
-                (list :@type "getStickers"
-                      :emoji emoji
-                      :limit (or limit 20))
-                callback)))
-    (append (plist-get reply :stickers) nil)))
+  (declare (indent 2))
+  (telega-stickers--async-call
+   (list :@type "getStickers"
+         :emoji emoji
+         :limit (or limit 20))
+   callback))
 
 (defun telega--searchStickers (emoji &optional limit callback)
   "Search for the public stickers that correspond to a given EMOJI.
 LIMIT defaults to 20."
-  (let ((reply (telega-server--call
-                (list :@type "searchStickers"
-                      :emoji emoji
-                      :limit (or limit 20))
-                callback)))
-    (append (plist-get reply :stickers) nil)))
+  (declare (indent 2))
+  (telega-stickers--async-call
+   (list :@type "searchStickers"
+         :emoji emoji
+         :limit (or limit 20))
+   callback))
 
 (defun telega--getInstalledStickerSets (&optional masks-p)
   "Returns a list of installed sticker sets."
@@ -246,20 +260,21 @@ Photo and Video files have attached sticker sets."
    (list :@type "viewTrendingStickerSets"
          :sticker_set_ids (apply 'vector set-id other-ids))))
 
-(defun telega--getRecentStickers (&optional attached-p _callback)
+(defun telega--getRecentStickers (&optional attached-p callback)
   "Returns a list of recently used stickers.
 Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
-  ;; TODO: async callback
-  (let ((reply (telega-server--call
-                (list :@type "getRecentStickers"
-                      :is_attached (or attached-p :false)))))
-    (append (plist-get reply :stickers) nil)))
+  (declare (indent 1))
+  (telega-stickers--async-call
+   (list :@type "getRecentStickers"
+         :is_attached (or attached-p :false))
+   callback))
 
-(defun telega--getFavoriteStickers ()
+(defun telega--getFavoriteStickers (&optional callback)
   "Return favorite stickers."
-  (let ((reply (telega-server--call
-                (list :@type "getFavoriteStickers"))))
-    (append (plist-get reply :stickers) nil)))
+  (declare (indent 0))
+  (telega-stickers--async-call
+   (list :@type "getFavoriteStickers")
+   callback))
 
 (defun telega--addFavoriteSticker (sticker-input-file &optional callback)
   "Add STICKER-INPUT-FILE on top of favorite stickers."
@@ -297,7 +312,8 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
-  (let* ((emoji (telega-sticker-emoji sticker))
+  (let* ((telega-emoji-use-images nil)
+         (emoji (telega-sticker-emoji sticker))
          (xh (telega-chars-xheight (car telega-sticker-size)))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
@@ -423,11 +439,28 @@ If SLICES-P is non-nil, then insert STICKER using slices."
           (delete-char 1)))
       (telega-chatbuf-sticker-insert sticker))))
 
+(defun telega-ins--sticker-list (stickers &optional addon-inserter)
+  "Insert STICKERS list int current buffer."
+  (declare (indent 1))
+  (seq-doseq (sticker stickers)
+    ;; (when (> (telega-current-column) (- telega-chat-fill-column 10))
+    ;;   (telega-ins "\n"))
+    (telega-button--insert 'telega-sticker sticker
+      'help-echo (let* ((telega-emoji-use-images nil)
+                        (emoji (telega-sticker-emoji sticker)))
+                   (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
+      'action 'telega-sticker--choosen-action)
+    (when addon-inserter
+      (funcall addon-inserter sticker))
+;    (redisplay)
+    ))
+
 (defun telega-describe-stickerset (sset &optional for-chat)
   "Describe the sticker set.
 SSET can be either `sticker' or `stickerSetInfo'."
   (let ((stickers (or (plist-get sset :stickers) (plist-get sset :covers))))
     (with-telega-help-win "*Telegram Sticker Set*"
+      (visual-line-mode 1)
       (setq telega--chat for-chat)
       (setq telega-help-win--stickerset sset)
 
@@ -450,19 +483,10 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (telega-ins-fmt "%s: %d\n"
         (if (plist-get sset :is_masks) "Masks" "Stickers")
         (length stickers))
-      (seq-doseq (sticker stickers)
-        (when (> (telega-current-column) (- telega-chat-fill-column 10))
-          (telega-ins "\n"))
-        (telega-button--insert 'telega-sticker sticker
-          'help-echo (unless telega-sticker-set-show-emoji
-                       (let ((emoji (telega-sticker-emoji sticker)))
-                         (concat "Emoji: " emoji " " (telega-emoji-name emoji))))
-          'action (if for-chat 'telega-sticker--choosen-action 'ignore))
-        (sit-for 0.0)
+      (telega-ins--sticker-list stickers
         (when telega-sticker-set-show-emoji
-          (telega-ins (plist-get sticker :emoji) "  "))
-        ))
-    ))
+          (lambda (sticker)          
+            (telega-ins (plist-get sticker :emoji) "  ")))))))
 
 (defun telega-sticker-help (sticker)
   "Describe sticker set for STICKER."
@@ -470,18 +494,26 @@ SSET can be either `sticker' or `stickerSetInfo'."
   (telega-describe-stickerset
    (telega-stickerset-get (plist-get sticker :set_id))))
 
-(defun telega-ins--sticker-list (stickers &optional no-redisplay)
-  "Insert STICKERS list int current buffer."
-  (seq-doseq (sticker stickers)
-    (when (> (telega-current-column) (- telega-chat-fill-column 10))
-      (telega-ins "\n"))
-    (telega-button--insert 'telega-sticker sticker
-      'help-echo (let ((emoji (telega-sticker-emoji sticker)))
-                   (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
-      'action 'telega-sticker--choosen-action)
-    (unless no-redisplay
-      (sit-for 0))
-    ))
+(defun telega-sticker-list--gen-ins-callback (show-loading-p)
+  "Generate callback to be used as callback.
+Insert list of stickers at MARKER position.
+Functions to be used with:
+`telega--getStickers', `telega--getFavoriteStickers',
+`telega--getRecentStickers' or `telega--searchStickerSets'"
+  (let ((marker (point-marker)))
+    (when show-loading-p
+      (telega-ins "Loading...\n"))
+
+    (lambda (stickers)
+      (let ((marker-buf (marker-buffer marker)))
+        (when (buffer-live-p marker-buf)
+          (with-current-buffer marker-buf
+            (telega-save-excursion
+              (let ((inhibit-read-only t))
+                (goto-char marker)
+                (when show-loading-p
+                  (delete-region marker (point-at-eol)))
+                (telega-ins--sticker-list stickers)))))))))
 
 (defun telega-sticker-choose-favorite-or-recent (for-chat)
   "Choose recent sticker FOR-CHAT."
@@ -489,30 +521,34 @@ SSET can be either `sticker' or `stickerSetInfo'."
   (cl-assert for-chat)
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Stickers*"
+      (visual-line-mode 1)
       (setq telega--chat for-chat)
 
-      ;; TODO: use callbacks for async stickers load
+      ;; NOTE: use callbacks for async stickers loading
       (telega-ins "Favorite:\n")
-      (telega-ins--sticker-list (telega--getFavoriteStickers))
+      (telega--getFavoriteStickers
+        (telega-sticker-list--gen-ins-callback 'loading))
       (telega-ins "\nRecent:\n")
-      (telega-ins--sticker-list (telega--getRecentStickers) 'no-redisplay))))
+      (telega--getRecentStickers nil
+        (telega-sticker-list--gen-ins-callback 'loading)))))
 
 (defun telega-sticker-choose-emoji (emoji for-chat)
   "Choose sticker by EMOJI FOR-CHAT."
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Stickers*"
+      (visual-line-mode 1)
       (setq telega--chat for-chat)
       (setq telega-help-win--emoji emoji)
 
-      ;; TODO: use callbacks for async stickers load
-      (let ((istickers (telega--getStickers emoji))
-            (sstickers (telega--searchStickers emoji)))
-        (telega-ins "Installed:\n")
-        (telega-ins--sticker-list istickers 'no-redisplay)
+      ;; NOTE: use callbacks for async stickers loading
+      (telega-ins "Installed:\n")
+      (telega--getStickers emoji nil
+        (telega-sticker-list--gen-ins-callback 'loading))
 
-        (telega-ins "\nPublic:\n")
-        (telega-ins--sticker-list sstickers 'no-redisplay)
-        ))))
+      (telega-ins "\nPublic:\n")
+      (telega--searchStickers emoji nil
+        (telega-sticker-list--gen-ins-callback 'loading))
+    )))
 
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."
@@ -558,6 +594,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
 If STICKER-SETS is specified, then they are used,
 otherwise installed stickersets is used.
 Return sticker set."
+  (message "Loading stickers, please wait...")
   (let* ((completion-ignore-case t)
          (ssets (or sticker-sets
                     (mapcar 'telega-stickerset-get

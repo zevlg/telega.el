@@ -24,6 +24,9 @@
 ;;
 
 ;;; Code:
+(declare-function telega-chars-xwidth "telega-util" (n))
+(declare-function telega-chars-xheight "telega-util" (n))
+
 (defgroup telega nil
   "Telegram client."
   :prefix "telega-"
@@ -252,6 +255,7 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'list
   :group 'telega)
 
+;; Locations
 (defcustom telega-location-url-format
   "http://maps.google.com/?q=%N,%E&ll=%N,%E&z=15"
   "*URL format used to open location messages.
@@ -260,9 +264,32 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'string
   :group 'telega)
 
-(defcustom telega-location-thumb-params (list 15 700 400 1)
-  "*Parameters to `telega--getMapThumbnailFile' to generate location map."
-  :type 'list
+(defcustom telega-location-size
+  (cons (let* ((cheight 10)
+               (xheight (telega-chars-xheight cheight)))
+          (while (> xheight 1024)
+            (setq xheight (telega-chars-xheight (decf cheight))))
+          cheight)
+        (let* ((cwidth (* 3 (/ telega-chat-fill-column 4)))
+               (xwidth (telega-chars-xwidth cwidth)))
+          (while (> xwidth 1024)
+            (setq xwidth (telega-chars-xwidth (decf cwidth))))
+          cwidth))
+  "*Size for location image in char height/width.
+In pixels height and width should be in range [16..1024]."
+  :type 'cons
+  :group 'telega)
+
+(defcustom telega-location-zoom 15
+  "*Zoom for location image.
+In range [13..20]"
+  :type 'integer
+  :group 'telega)
+
+(defcustom telega-location-scale 1
+  "*Scale for location image.
+In range [1..3]"
+  :type 'number
   :group 'telega)
 
 (defcustom telega-poll-result-color "#000066"

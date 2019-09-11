@@ -352,7 +352,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins--with-face 'telega-webpage-strike-through
        (telega-ins (make-string telega-webpage-fill-column ?\s))))
     (pageBlockAnchor
-     (setf (alist-get (plist-get pb :name) telega-webpage--anchors)
+     (setf (alist-get (plist-get pb :name) telega-webpage--anchors nil nil 'equal)
            (point-marker)))
     (pageBlockListItem
      (telega-ins--labeled (concat " " (plist-get pb :label) " ") nil

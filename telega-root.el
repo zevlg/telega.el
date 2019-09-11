@@ -341,9 +341,8 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
                       telega-root--ewoc chat)))
           (cl-assert enode nil "Ewoc node not found for chat:%s"
                      (telega-chat-title chat))
-;          (with-telega-deferred-events
-            (ewoc-invalidate telega-root--ewoc enode)))))
-;)
+          (with-telega-deferred-events
+            (ewoc-invalidate telega-root--ewoc enode))))))
 
   ;; Possible update chat in global search
   (let ((gnode (telega-ewoc--find-by-data
@@ -380,11 +379,10 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
       (when node
         (ewoc-delete telega-root--ewoc node))
       (setq node
-;            (with-telega-deferred-events
+            (with-telega-deferred-events
               (if node-after
                   (ewoc-enter-before telega-root--ewoc node-after chat)
-                (ewoc-enter-last telega-root--ewoc chat)))
-;)
+                (ewoc-enter-last telega-root--ewoc chat))))
       (cl-assert node)
       (when point-off
         (goto-char (ewoc-location node))

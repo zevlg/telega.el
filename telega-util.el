@@ -583,16 +583,19 @@ Alist with elements in form (emoji . image)")
   (telega-emoji-init)
   (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
 
-(defun telega-emoji-create-svg (emoji &optional c-height)
-  "Create svg image for the EMOJI."
-  (let* ((emoji-cheight (or c-height 1))
+(defun telega-emoji-create-svg (emoji &optional cheight force-cwidth)
+  "Create svg image for the EMOJI.
+CHEIGHT is height for the svg in characters, default=1.
+If FORCE-CWIDTH is specified, use this number of chars for width,
+instead of auto width calculation."
+  (let* ((emoji-cheight (or cheight 1))
          (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
          (image (when use-cache-p
-                  (alist-get emoji telega-emoji-svg-images))))
+                  (cdr (assoc emoji telega-emoji-svg-images)))))
     (unless image
       (let* ((xh (telega-chars-xheight emoji-cheight))
              (font-size (- xh (/ xh 4)))
-             (aw-chars (* (length emoji)
+             (aw-chars (* (or force-cwidth (length emoji))
                           (telega-chars-in-width (- xh (/ xh 8)))))
              (xw (telega-chars-xwidth aw-chars))
              (svg (svg-create xw xh))
@@ -611,7 +614,8 @@ Alist with elements in form (emoji . image)")
                                :mask 'heuristic
                                :telega-text telega-text)))
       (when use-cache-p
-        (setf (alist-get emoji telega-emoji-svg-images) image)))
+        (setq telega-emoji-svg-images
+              (cons (cons emoji image) telega-emoji-svg-images))))
     image))
 
 

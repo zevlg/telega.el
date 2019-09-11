@@ -322,7 +322,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
       (let ((username (telega-chat-username chat)))
         (when username
           (setq title (concat title " @" username)))))
-    title))
+    (telega--desurrogate-apply title)))
 
 (defun telega-chat-brackets (chat)
   "Return CHAT's brackets from `telega-chat-button-brackets'."
@@ -1846,40 +1846,36 @@ Try to keep point at its position."
                              (ewoc--node-data node))
                          (- (point) (button-start msg-button)))))
     (save-excursion
-;      (with-telega-deferred-events
-        (ewoc-invalidate telega-chatbuf--ewoc node))
-;    )
+      (with-telega-deferred-events
+        (ewoc-invalidate telega-chatbuf--ewoc node)))
     (when point-off
       (forward-char point-off))))
 
 (defun telega-chatbuf--prepend-messages (messages)
   "Insert MESSAGES at the beginning of the chat buffer.
 First message in MESSAGE will be first message at the beginning."
-;  (with-telega-deferred-events
+  (with-telega-deferred-events
     (let ((node (ewoc--header telega-chatbuf--ewoc)))
       (seq-doseq (msg messages)
         (unless (telega-msg-ignored-p msg)
-          (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg))))))
-;)
+          (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg)))))))
 
 (defun telega-chatbuf--append-messages (messages)
   "Insert MESSAGES at the end of the chat buffer."
-;  (with-telega-deferred-events
+  (with-telega-deferred-events
     (seq-doseq (msg messages)
       (unless (telega-msg-ignored-p msg)
-        (ewoc-enter-last telega-chatbuf--ewoc msg))))
-;)
+        (ewoc-enter-last telega-chatbuf--ewoc msg)))))
 
 (defun telega-chatbuf--append-message (msg)
   "Insert message MSG as last in chat buffer.
 Return newly created ewoc node."
   (unless (telega-msg-ignored-p msg)
-;    (with-telega-deferred-events
+    (with-telega-deferred-events
       ;; Track the uploading progress
       ;; see: https://github.com/zevlg/telega.el/issues/60
       (telega-msg--track-file-uploading-progress msg)
-      (ewoc-enter-last telega-chatbuf--ewoc msg)))
-;)
+      (ewoc-enter-last telega-chatbuf--ewoc msg))))
 
 (defun telega-chatbuf--node-by-msg-id (msg-id)
   "In current chatbuffer find message button with MSG-ID."
@@ -1991,11 +1987,10 @@ Message id could be updated on this update."
               (setq before-node (ewoc-next telega-chatbuf--ewoc before-node)))
 
             (ewoc-delete telega-chatbuf--ewoc node)
-;            (with-telega-deferred-events
+            (with-telega-deferred-events
               (if before-node
                   (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
-                (ewoc-enter-last telega-chatbuf--ewoc new-msg))))))))
-;)
+                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))))
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."

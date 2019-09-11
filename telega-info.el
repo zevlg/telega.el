@@ -121,7 +121,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
                (supergroup
                 `(:@type "getSupergroupFullInfo" :supergroup_id ,tlobj-id)))))
       (cl-assert full-info nil
-                 "getting full-info for type=%S timeout" tlobj-type)
+                 "getting full-info for type=%S(%S) timeout" tlobj-type tlobj-id)
       (puthash tlobj-id full-info fi-hash))
     full-info))
 

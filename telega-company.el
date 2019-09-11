@@ -72,14 +72,28 @@ Matches only if CHAR does not apper in the middle of the word."
     (sorted t)
     ;; Always match if having `:'
     (prefix (telega-company-grab-emoji))
+    ;; No caching for fuzzy matching, otherwise it won't work
+    (no-cache telega-emoji-fuzzy-match)
     (candidates
-     (let ((fuzzy-regexp (regexp-quote (concat "-" (substring arg 1)))))
-       (cl-remove-if-not (lambda (en)
-                           (or (string-prefix-p arg en)
-                               (string-match-p fuzzy-regexp en)))
-                         telega-emoji-candidates)))
+     (cl-remove-if-not
+      (lambda (en)
+        (or (string-prefix-p arg en)
+            (and telega-emoji-fuzzy-match
+                 (string-match-p
+                  (regexp-quote (concat "-" (substring arg 1))) en))))
+      telega-emoji-candidates))
     (annotation
-     (concat "  " (cdr (assoc arg telega-emoji-alist))))
+     ;; NOTE: if `telega-emoji-use-images' is used, use "EE" as
+     ;; corresponding string for better formatting
+     ;; :flag-XX: has `1' width, though occupies 2 chars
+     (let* ((emoji (cdr (assoc arg telega-emoji-alist)))
+            (flag-p (string-prefix-p ":flag-" arg)))
+       (concat "  "
+               (if telega-emoji-use-images
+                   (propertize "EE" 'display
+                               (telega-emoji-create-svg
+                                emoji 1 (if flag-p 1 nil)))
+                 emoji))))
     (post-completion
      (delete-region (- (point) (length arg)) (point))
      (let ((emoji (cdr (assoc arg telega-emoji-alist))))
