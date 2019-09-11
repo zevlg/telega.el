@@ -451,6 +451,12 @@ CHEIGHT is the height in chars to use (default=1)."
 
     (telega-media--progress-svg file width height cheight)))
 
+(defun telega-minithumb--create-image (minithumb &rest props)
+  "Create image and use MINITHUMB minithumbnail as data."
+  (apply 'create-image (base64-decode-string (plist-get minithumb :data))
+         'imagemagick t :scale 1.0
+         props))
+
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.
 CHEIGHT is the height in chars (default=1)."
