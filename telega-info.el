@@ -150,12 +150,14 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
          (in-link (plist-get user :incoming_link))
          (profile-photos (telega--getUserProfilePhotos user)))
 
-    ;; Blacklist status
-    (when (plist-get full-info :is_blocked)
+    ;; Scam&Blacklist status
+    (when (or (plist-get user :is_scam) (plist-get full-info :is_blocked))
       (telega-ins--with-face 'error
         (telega-ins telega-symbol-blocked)
-        (telega-ins "BLOCKED"))
-      (telega-ins " "))
+        (when (plist-get user :is_scam)
+          (telega-ins "SCAM "))
+        (when (plist-get full-info :is_blocked)
+          (telega-ins "BLOCKED "))))
 
     ;; Buttons line
     (telega-ins--button "Chat With"
@@ -395,6 +397,13 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
          (member-status (plist-get supergroup :status))
          (member-status-name (plist-get member-status :@type))
          (invite-link (plist-get full-info :invite_link)))
+    ;; Scam status first
+    (when (plist-get supergroup :is_scam)
+      (telega-ins--with-face 'error
+        (telega-ins telega-symbol-blocked)
+        (telega-ins "SCAM"))
+      (telega-ins "\n"))
+
     (telega-ins "Status: " (substring member-status-name 16) "\n")
     (telega-ins (if (or (string= member-status-name "chatMemberStatusMember")
                         (and (member member-status-name

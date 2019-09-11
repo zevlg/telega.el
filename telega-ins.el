@@ -918,6 +918,8 @@ Special messages are determined with `telega-msg-special-p'."
       ('messagePhoto
        (telega-ins--photo (plist-get content :photo) msg))
       ('messageSticker
+       (telega-ins--with-face 'shadow
+         (telega-ins "Animated Sticker\n"))
        (telega-ins--sticker-image (plist-get content :sticker) 'slices))
       ('messageAudio
        (telega-ins--audio msg))

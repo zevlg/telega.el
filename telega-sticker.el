@@ -355,7 +355,8 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   ;;      thumbnail or sticker to be downloaded
   (let* ((sfile (telega-sticker--file sticker))
          (tfile (telega-sticker--thumb-file sticker))
-         (filename (or (and telega-sticker--use-thumbnail
+         (filename (or (and (or telega-sticker--use-thumbnail
+                                (plist-get sticker :is_animated))
                             (telega-file--downloaded-p tfile) tfile)
                        (and (telega-file--downloaded-p sfile) sfile)
                        (and (telega-file--downloaded-p tfile) tfile)))
@@ -393,7 +394,8 @@ If SLICES-P is non-nil, then insert STICKER using slices."
 
     (let ((simage (telega-media--image
                    (cons sticker 'telega-sticker--create-image)
-                   (if telega-sticker--use-thumbnail
+                   (if (or telega-sticker--use-thumbnail
+                           (plist-get sticker :is_animated))
                        (cons (plist-get sticker :thumbnail) :photo)
                      (cons sticker :sticker)))))
       (if slices-p
