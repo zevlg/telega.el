@@ -293,7 +293,7 @@ If CALLBACK is specified, then get reply message asynchronously."
   "Open content for photo message MSG."
   (telega-photo--open (telega--tl-get msg :content :photo) msg))
 
-(defun telega-msg-animation--callback (proc filename msg)
+(defun telega-msg-animation--callback (_proc filename msg)
   "Callback for inline animation playback."
   (let ((anim (telega--tl-get msg :content :animation)))
     (plist-put anim :telega-ffplay-frame-filename filename)
@@ -477,16 +477,14 @@ NODE - ewoc node, if known."
                    :test #'=)
       " (admin)")))
 
-(defun telega--parseTextEntities (text parse-mode &optional no-error)
+(defun telega--parseTextEntities (text parse-mode)
   "Parse TEXT using PARSE-MODE.
-PARSE-MODE is one of: \"textParseModeMarkdown\" or \"textParseModeHTML\".
-If NO-ERROR is non-nil and TEXT can't be do not raise an error, return nil."
+PARSE-MODE is one of: \"textParseModeMarkdown\" or \"textParseModeHTML\"."
   (let ((fmt-text (telega-server--call
                    (list :@type "parseTextEntities"
                          :text text
                          :parse_mode (list :@type parse-mode)))))
-    (plist-put fmt-text :text
-               (telega--desurrogate-apply (plist-get fmt-text :text)))))
+    (plist-put fmt-text :text (telega-tl-str fmt-text :text 'no-props))))
 
 (defun telega--formattedText (text &optional markdown)
   "Convert TEXT to `formattedTex' type.
@@ -527,7 +525,7 @@ with `M-x telega-ignored-messages RET'."
   (ring-insert telega--ignored-messages-ring msg)
   (telega-debug "IGNORED msg: %S" msg))
 
-(defun telega-msg-ignore-blocked-sender (msg &rest not-used)
+(defun telega-msg-ignore-blocked-sender (msg &rest _ignore)
   "Function to be used as `telega-chat-pre-message-hook'.
 Add it to `telega-chat-pre-message-hook' to ignore messages from
 blocked users."

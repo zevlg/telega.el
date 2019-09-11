@@ -117,20 +117,20 @@ Default is: `full'"
     (let ((fmt-type (or fmt-type 'full))
           (name ""))
       (when (memq fmt-type '(full short))
-        (let ((un (plist-get user :username)))
+        (let ((un (telega-tl-str user :username)))
           (if (string-empty-p un)
               (when (eq fmt-type 'short)
                 (setq fmt-type 'name))
             (setq name (concat "@" un)))))
       (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (let ((ln (plist-get user :last_name)))
+        (let ((ln (telega-tl-str user :last_name)))
           (unless (string-empty-p ln)
             (setq name (concat ln (if (string-empty-p name) "" " ") name)))))
       (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (let ((fn (plist-get user :first_name)))
+        (let ((fn (telega-tl-str user :first_name)))
           (unless (string-empty-p fn)
             (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
-      (telega--desurrogate-apply name))))
+      name)))
 
 (defun telega-user--seen (user)
   "Return last seen status for the USER."
@@ -212,9 +212,9 @@ LIMIT - limit number of photos (default=100)."
   (interactive (list (telega-user-at (point))))
   (with-telega-help-win "*Telega User*"
     (telega-ins "Name: ")
-    (when (telega-ins (plist-get user :first_name))
+    (when (telega-ins (telega-tl-str user :first_name))
       (telega-ins " "))
-    (telega-ins (plist-get user :last_name))
+    (telega-ins (telega-tl-str user :last_name))
     (telega-ins "\n")
     (telega-info--insert-user
      user nil (lambda () (telega-describe-user user)))))
@@ -260,12 +260,12 @@ If UNBLOCK-P is specified, then unblock USER."
 (defun telega-ins--root-contact (contact)
   "Inserter for CONTACT user."
   (telega-ins telega-symbol-contact " ")
-  (when (telega-ins (plist-get contact :first_name))
+  (when (telega-ins (telega-tl-str contact :first_name))
     (telega-ins " "))
-  (when (telega-ins (plist-get contact :last_name))
+  (when (telega-ins (telega-tl-str contact :last_name))
     (telega-ins " "))
   (telega-ins-prefix "@"
-    (when (telega-ins (plist-get contact :username))
+    (when (telega-ins (telega-tl-str contact :username))
       (telega-ins " ")))
   (telega-ins-prefix "+"
     (telega-ins (plist-get contact :phone_number))))
@@ -327,9 +327,9 @@ CONTACT is some user you have exchanged contacs with."
   "Show CONTACT information."
   (with-telega-help-win "*Telega Contact*"
     (let ((user (telega-user--get (plist-get contact :user_id))))
-      (when (telega-ins (plist-get contact :first_name))
+      (when (telega-ins (telega-tl-str contact :first_name))
         (telega-ins " "))
-      (telega-ins (plist-get contact :last_name) "\n")
+      (telega-ins (telega-tl-str contact :last_name) "\n")
       (telega-ins-fmt "Phone: %s\n" (plist-get contact :phone_number))
       (if (eq (telega--tl-type (plist-get user :outgoing_link))
               'linkStateIsContact)

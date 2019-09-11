@@ -142,10 +142,10 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
 (defun telega-info--insert-user (user &optional chat redisplay)
   "Insert USER info into current buffer."
   (let* ((full-info (telega--full-info user))
-         (username (plist-get user :username))
+         (username (telega-tl-str user :username))
          (phone_number (plist-get user :phone_number))
-         (bio (plist-get full-info :bio))
-         (share-text (plist-get full-info :share_text))
+         (bio (telega-tl-str user :bio))
+         (share-text (telega-tl-str full-info :share_text))
          (out-link (plist-get user :outgoing_link))
          (in-link (plist-get user :incoming_link))
          (profile-photos (telega--getUserProfilePhotos user)))
@@ -248,8 +248,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega-ins "\n"))
 
     ;; Bot info
-    (let* ((bot-info (plist-get full-info :bot_info))
-           (bot-descr (plist-get bot-info :description))
+    (let* ((bot-info (telega-tl-str full-info :bot_info))
+           (bot-descr (telega-tl-str bot-info :description))
            (bot-cmds (append (plist-get bot-info :commands) nil)))
       (when bot-info
         (unless (string-empty-p bot-descr)
@@ -260,8 +260,8 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
           (telega-ins "Bot cmds: \n"))
         (dolist (cmd bot-cmds)
           (telega-ins--labeled
-              (format "  /%s - " (plist-get cmd :command)) nil
-            (telega-ins (plist-get cmd :description)))
+              (format "  /%s - " (telega-tl-str cmd :command)) nil
+            (telega-ins (telega-tl-str cmd :description)))
           (telega-ins "\n"))
         (telega-ins "\n")))
     )
@@ -392,7 +392,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 (defun telega-info--insert-supergroup (supergroup chat)
   (let* ((full-info (telega--full-info supergroup))
          (descr (plist-get full-info :description))
-         (restr-reason (plist-get supergroup :restriction_reason))
+         (restr-reason (telega-tl-str supergroup :restriction_reason))
          (pin-msg-id (plist-get chat :pinned_message_id))
          (member-status (plist-get supergroup :status))
          (member-status-name (plist-get member-status :@type))

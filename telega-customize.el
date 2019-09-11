@@ -261,7 +261,7 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'string
   :group 'telega)
 
-(defcustom telega-location-size (cons 10 (* 3 (/ telega-chat-fill-column 4)))
+(defcustom telega-location-size (cons 10 40)
   "*Size for location image in char height/width.
 In pixels height and width should be in range [16..1024]."
   :type 'cons

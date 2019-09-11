@@ -125,7 +125,7 @@ Matches only if CHAR does not apper in the middle of the word."
                      telega-chatbuf--chat (substring arg 1))))
        (nconc (delq nil
                     (mapcar (lambda (member)
-                              (let ((username (plist-get member :username)))
+                              (let ((username (telega-tl-str member :username)))
                                 (unless (string-empty-p username)
                                   (propertize (concat "@" username)
                                               'telega-member member))))

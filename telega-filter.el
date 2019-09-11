@@ -357,9 +357,9 @@ If FLIST is empty then return t."
   "Matches CHAT if its title matches REGEXP."
   (or (string-match regexp (telega-chat-title chat))
       (let ((info (telega-chat--info chat)))
-        (or (string-match regexp (or (plist-get info :first_name) ""))
-            (string-match regexp (or (plist-get info :last_name) ""))
-            (string-match regexp (or (plist-get info :username) ""))))))
+        (or (string-match regexp (or (telega-tl-str info :first_name) ""))
+            (string-match regexp (or (telega-tl-str info :last_name) ""))
+            (string-match regexp (or (telega-tl-str info :username) ""))))))
 
 (defun telega-filter-by-name (regexp)
   "Filter by REGEXP matching chat's title.
@@ -493,7 +493,7 @@ Suffix can be one of:
   -wp       - Windows?
 
 If suffixes not specified, then match any restriction reason."
-  (let ((reason (or (plist-get (telega-chat--info chat) :restriction_reason) "")))
+  (let ((reason (telega-tl-str (telega-chat--info chat) :restriction_reason)))
     (unless (string-empty-p reason)
       (or (not suffixes)
           (cl-find reason suffixes

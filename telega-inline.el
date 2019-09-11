@@ -30,6 +30,7 @@
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))
+(declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 
 (defvar telega--inline-bot nil
   "BOT value for the inline results help buffer.")
@@ -41,7 +42,7 @@
 
 (defun telega--on-callbackQueryAnswer (reply)
   "Handle callback reply answer."
-  (let ((text (plist-get reply :text))
+  (let ((text (telega-tl-str reply :text))
         (link (plist-get reply :url)))
     (if (plist-get reply :show_alert)
         ;; Popup message from the bot
@@ -51,7 +52,7 @@
             (telega-ins "\n")
             (telega-ins--raw-button (telega-link-props 'url link)
               (telega-ins link))))
-      (message (plist-get reply :text)))))
+      (message text))))
 
 (defun telega--getCallbackQueryAnswer (msg payload)
   "Async send callback to bot."
@@ -72,6 +73,18 @@
        (telega--getCallbackQueryAnswer
         msg (list :@type "callbackQueryPayloadData"
                   :data (plist-get kbd-type :data))))
+
+      (inlineKeyboardButtonTypeSwitchInline
+       ;; Generate another inline query to the bot
+       (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+              (via-bot (unless (zerop via-bot-user-id)
+                         (telega-user--get via-bot-user-id)))
+              (new-query (telega-tl-str kbd-type :query)))
+         (when (and via-bot (not (string-empty-p new-query)))
+           (telega-chatbuf--input-delete)
+           (telega-chatbuf-input-insert
+            (concat "@" (telega-tl-str via-bot :username) " " new-query))
+           (telega-chatbuf-attach-inline-bot-query 'no-search))))
 
       ;; TODO: other types
       )))
@@ -184,10 +197,10 @@
     ;; documents thumbnail preview (if any)
     (when thumb-img
       (telega-ins--image thumb-img 0))
-    (telega-ins " " (plist-get qr :title) "\n")
+    (telega-ins " " (telega-tl-str qr :title) "\n")
     (when thumb-img
       (telega-ins--image thumb-img 1))
-    (telega-ins " " (plist-get qr :description) "\n")))
+    (telega-ins " " (telega-tl-str qr :description) "\n")))
 
 (defun telega-ins--inline-article (qr)
   "Inserter for `inlineQueryResultArticle' QR."
@@ -198,10 +211,10 @@
                        (cons thumb :photo)))))
     (when thumb-img
       (telega-ins--image thumb-img 0))
-    (telega-ins " " (plist-get qr :title) "\n")
+    (telega-ins " " (telega-tl-str qr :title) "\n")
     (when thumb-img
       (telega-ins--image thumb-img 1))
-    (telega-ins " " (plist-get qr :description) "\n")
+    (telega-ins " " (telega-tl-str qr :description) "\n")
     ))
 
 (defun telega-ins--inline-video (qr)
@@ -215,7 +228,7 @@
     (when thumb-img
       (telega-ins--image thumb-img 0)
       (telega-ins " "))
-    (telega-ins (plist-get qr :title))
+    (telega-ins (telega-tl-str qr :title))
     (telega-ins "\n")
     (when thumb-img
       (telega-ins--image thumb-img 1)
@@ -290,7 +303,7 @@
                  'cursor-sensor-functions
                  (list (telega-animation--gen-sensor-func
                         (plist-get qr :animation)))
-                 'help-echo (when-let ((title (plist-get qr :title)))
+                 'help-echo (when-let ((title (telega-tl-str qr :title)))
                               (unless (string-empty-p title)
                                 (format "GIF title: %s" title)))))
 
@@ -321,7 +334,7 @@
       (telega-server--callback-put telega-chatbuf--inline-query 'ignore))
 
     (message "telega: @%s Searching for %s..."
-             (plist-get bot :username) (propertize query 'face 'bold))
+             (telega-tl-str bot :username) (propertize query 'face 'bold))
     (setq telega-chatbuf--inline-query
           (telega--getInlineQueryResults bot query nil nil nil
             (telega-inline-bot--gen-callback bot query for-chat)))))

@@ -401,10 +401,10 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins "<TODO: pageBlockSlideshow>"))
     (pageBlockChatLink
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
-       (telega-ins (plist-get pb :title) " "
-                   "@" (plist-get pb :username) " ")
+       (telega-ins (telega-tl-str pb :title) " "
+                   "@" (telega-tl-str pb :username) " ")
        (telega-ins--button "Open"
-         :value (plist-get pb :username)
+         :value (telega-tl-str pb :username)
          :action 'telega-tme-open-username)))
     (pageBlockCaption
      (telega-ins--with-face 'shadow

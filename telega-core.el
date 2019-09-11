@@ -449,13 +449,15 @@ Attach `display' text property to surrogated regions."
                (let* ((part-props (telega-plist-del
                                    (text-properties-at 0 part) 'telega-display))
                       (emoji-p (plist-get part-props 'telega-emoji-p)))
+                 ;; NOTE: we always create new cell for 'display
+                 ;; property as in `image-insert', see comment about
+                 ;; this in `image-insert' sources
                  (apply 'propertize part-display
                         (nconc part-props
-                               (when (and emoji-p
-                                          telega-use-images
-                                          telega-emoji-use-images)
-                                 (list 'display
-                                       (telega-emoji-create-svg part-display))))))
+                               (when (and emoji-p telega-use-images telega-emoji-use-images)
+                                 (list 'rear-nonsticky '(display)
+                                       'display
+                                       (cons 'image (cdr (telega-emoji-create-svg part-display))))))))
              part-display))
           (keep-properties part)
           (t (substring-no-properties part)))))
@@ -486,6 +488,15 @@ If NO-PROPERTIES is specified, then do not keep text properties."
         ((vectorp obj) (cl-map 'vector 'telega--tl-pack obj))
         ((listp obj) (mapcar 'telega--tl-pack obj))
         (t obj)))
+
+(defmacro telega-tl-str (obj prop &optional no-properties)
+  "Get property PROP from OBJ, desurrogating resulting string.
+NO-PROPERTIES is passed directly to `telega--desurrogate-apply'."
+  `(telega--desurrogate-apply (plist-get ,obj ,prop) ,no-properties))
+  ;;TODO: Return nil if resulting string is empty."
+  ;; (let ((ret (telega--desurrogate-apply (plist-get obj prop) no-properties)))
+  ;;   (unless (string-empty-p ret)
+  ;;     ret)))
 
 (defsubst telega-me-p (chat-or-user)
   "Return non-nil if CHAT-OR-USER is me."

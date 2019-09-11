@@ -225,9 +225,8 @@ FORCE is used for testing only, should not be used in real code."
                                    ,msg-id 'highlight))
                     :title (telega-chat-title chat 'with-username)
                     :body (if (telega-chat-notification-setting chat :show_preview)
-                              (telega--desurrogate-apply
-                               (telega-ins--as-string
-                                (funcall telega-inserter-for-msg-notification msg)))
+                              (telega-ins--as-string
+                               (funcall telega-inserter-for-msg-notification msg))
                             "Has new unread messages"))
               telega-notifications-msg-args)))
         ;; Play sound only if CHAT setting has some sound

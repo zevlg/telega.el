@@ -84,10 +84,6 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   "Return non-nil if STICKER is in favorite list."
   (memq (telega--tl-get sticker :sticker :id) telega--stickers-favorite))
 
-(defun telega-sticker-emoji (sticker)
-  "Return STICKER's emoji."
-  (telega--desurrogate-apply (plist-get sticker :emoji)))
-
 (defun telega-sticker--download (sticker)
   "Ensure STICKER data is downloaded."
   (let ((sticker-file (telega-sticker--file sticker))
@@ -312,8 +308,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
-  (let* ((telega-emoji-use-images nil)
-         (emoji (telega-sticker-emoji sticker))
+  (let* ((emoji (telega-tl-str sticker :emoji 'no-props))
          (xh (telega-chars-xheight (car telega-sticker-size)))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
@@ -390,7 +385,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 If SLICES-P is non-nil, then insert STICKER using slices."
   (if (or (not telega-use-images)
           (not (display-graphic-p)))
-      (telega-ins "<STICKER " (plist-get sticker :emoji) ">")
+      (telega-ins "<STICKER " (telega-tl-str sticker :emoji) ">")
 
     (let ((simage (telega-media--image
                    (cons sticker 'telega-sticker--create-image)
@@ -448,13 +443,12 @@ If SLICES-P is non-nil, then insert STICKER using slices."
     ;; (when (> (telega-current-column) (- telega-chat-fill-column 10))
     ;;   (telega-ins "\n"))
     (telega-button--insert 'telega-sticker sticker
-      'help-echo (let* ((telega-emoji-use-images nil)
-                        (emoji (telega-sticker-emoji sticker)))
+      'help-echo (let ((emoji (telega-tl-str sticker :emoji 'no-props)))
                    (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
       'action 'telega-sticker--choosen-action)
     (when addon-inserter
       (funcall addon-inserter sticker))
-;    (redisplay)
+    (redisplay)
     ))
 
 (defun telega-describe-stickerset (sset &optional for-chat)
@@ -466,7 +460,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (setq telega--chat for-chat)
       (setq telega-help-win--stickerset sset)
 
-      (telega-ins "Title: " (plist-get sset :title))
+      (telega-ins "Title: " (telega-tl-str sset :title))
       (when (plist-get sset :is_official)
         (telega-ins telega-symbol-verified))
       (telega-ins " ")
@@ -485,10 +479,11 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (telega-ins-fmt "%s: %d\n"
         (if (plist-get sset :is_masks) "Masks" "Stickers")
         (length stickers))
+      (redisplay)
       (telega-ins--sticker-list stickers
         (when telega-sticker-set-show-emoji
           (lambda (sticker)          
-            (telega-ins (plist-get sticker :emoji) "  ")))))))
+            (telega-ins (telega-tl-str sticker :emoji) "  ")))))))
 
 (defun telega-sticker-help (sticker)
   "Describe sticker set for STICKER."

@@ -311,7 +311,7 @@ If INCLUDE-BOTS-P is non-nil, return corresponding bot user."
 (defun telega-chat-title (chat &optional with-username)
   "Return title for the CHAT.
 If WITH-USERNAME is specified, append trailing username for this chat."
-  (let ((title (plist-get chat :title)))
+  (let ((title (telega-tl-str chat :title)))
     (when (string-empty-p title)
       (setq title (cl-ecase (telega-chat--type chat)
                     (private
@@ -322,7 +322,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
       (let ((username (telega-chat-username chat)))
         (when username
           (setq title (concat title " @" username)))))
-    (telega--desurrogate-apply title)))
+    title))
 
 (defun telega-chat-brackets (chat)
   "Return CHAT's brackets from `telega-chat-button-brackets'."
@@ -888,8 +888,8 @@ STATUS is one of: "
            (me-contact
             (list :@type "Contact"
                   :phone_number (concat "+" (plist-get me :phone_number))
-                  :first_name (plist-get me :first_name)
-                  :last_name (plist-get me :last_name)
+                  :first_name (telega-tl-str me :first_name)
+                  :last_name (telega-tl-str me :last_name)
                   :vcard ""
                   :user_id (plist-get me :id))))
       (telega--sendMessage chat (list :@type "inputMessageContact"
@@ -920,7 +920,7 @@ STATUS is one of: "
     (when (telega-chat-public-p chat)
       (let ((link (concat (or (plist-get telega--options :t_me_url)
                               "https://t.me/")
-                          (plist-get (telega-chat--supergroup chat) :username))))
+                          (telega-tl-str (telega-chat--supergroup chat) :username))))
         (insert "Link: ")
         (apply 'insert-text-button link (telega-link-props 'url link 'link))
         (insert "\n")))
@@ -1523,11 +1523,10 @@ If TITLE is specified, use it instead of chat's title."
   (let ((brackets (telega-chat-brackets chat)))
     (concat telega-symbol-telegram
             (or (car brackets) "[")
-            (telega--desurrogate-apply
-             (or title (telega-chat-title chat)))
-            (when-let ((un (plist-get (telega-chat--info chat) :username)))
+            (or title (telega-chat-title chat))
+            (when-let ((un (telega-tl-str (telega-chat--info chat) :username)))
               (unless (string-empty-p un)
-                (concat "@" (telega--desurrogate-apply un))))
+                (concat "@" un)))
             (or (cadr brackets) "]"))))
 
 (defun telega-chatbuf--join (chat)
@@ -2505,8 +2504,8 @@ IMC might be a plain string or attachement specification."
        (list
         (list :@type "Contact"
               :phone_number (concat "+" (plist-get user :phone_number))
-              :first_name (plist-get user :first_name)
-              :last_name (plist-get user :last_name)
+              :first_name (telega-tl-str user :first_name)
+              :last_name (telega-tl-str user :last_name)
               :vcard ""
               :user_id (plist-get user :id))))))
 
@@ -2757,7 +2756,7 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
              (bot-user (and uchat (eq (telega-chat--type uchat) 'bot)
                             (telega-chat--user uchat)))
              (bot (plist-get bot-user :type))
-             (inline-help (plist-get bot :inline_query_placeholder)))
+             (inline-help (telega-tl-str bot :inline_query_placeholder)))
         (when (plist-get bot :is_inline)
           ;; Start querying the bot
           (unless (and (string-empty-p query) no-empty-search)

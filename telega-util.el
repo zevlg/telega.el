@@ -338,32 +338,33 @@ N can't be 0."
       )))
 
 ;; https://core.telegram.org/bots/api#markdown-style
-(defun telega--entity-to-markdown (entity text)
+(defsubst telega--entity-to-markdown (entity-text)
   "Convert ENTITY back to markdown syntax applied to TEXT.
+ENTITY-TEXT is cons cell where car is the ENTITY and cdr is the TEXT.
 Return now text with markdown syntax."
   ;; NOTE: text might have surrogated pairs, for example when editing
   ;; message with emojis
-  (telega--desurrogate-apply
-   (let ((ent-type (plist-get entity :type)))
-     (cl-case (and ent-type (telega--tl-type ent-type))
-       (textEntityTypeBold (concat "*" text "*"))
-       (textEntityTypeItalic (concat "_" text "_"))
-       (textEntityTypeCode (concat "`" text "`"))
-       ((textEntityTypePreCode textEntityTypePre)
-        (concat "```" (plist-get ent-type :language) "\n" text "```"))
-       (textEntityTypeMentionName
-        (format "[%s](tg://user?id=%d)"
-                text (plist-get ent-type :user_id)))
-       (textEntityTypeUrl
-        ;; Hexify only spaces and tabs, removing `telega-display'
-        ;; property, which is used in `telega--desurrogate-apply'
-        (replace-regexp-in-string
-         (regexp-quote "\t") "%09"
-         (replace-regexp-in-string (regexp-quote " ") "%20"
-                                   (substring-no-properties text))))
-       (textEntityTypeTextUrl
-        (format "[%s](%s)" text (plist-get ent-type :url)))
-       (t text)))))
+  (let ((ent-type (plist-get (car entity-text) :type))
+        (text (cdr entity-text)))
+    (cl-case (and ent-type (telega--tl-type ent-type))
+      (textEntityTypeBold (concat "*" text "*"))
+      (textEntityTypeItalic (concat "_" text "_"))
+      (textEntityTypeCode (concat "`" text "`"))
+      ((textEntityTypePreCode textEntityTypePre)
+       (concat "```" (plist-get ent-type :language) "\n" text "```"))
+      (textEntityTypeMentionName
+       (format "[%s](tg://user?id=%d)"
+               text (plist-get ent-type :user_id)))
+      (textEntityTypeUrl
+       ;; Hexify only spaces and tabs, removing `telega-display'
+       ;; property, which is used in `telega--desurrogate-apply'
+       (replace-regexp-in-string
+        (regexp-quote "\t") "%09"
+        (replace-regexp-in-string (regexp-quote " ") "%20"
+                                  (substring-no-properties text))))
+      (textEntityTypeTextUrl
+       (format "[%s](%s)" text (plist-get ent-type :url)))
+      (t text))))
 
 (defun telega--entities-as-markdown (entities text)
   "Convert propertiezed TEXT to markdown syntax text.
@@ -374,18 +375,21 @@ Use `telega-entity-type-XXX' faces as triggers."
             (ent-len (plist-get ent :length)))
         ;; Part without attached entity
         (when (> ent-off offset)
-          (push (list nil (substring text offset ent-off)) strings))
+          (push (cons nil (substring text offset ent-off)) strings))
 
         (setq offset (+ ent-off ent-len))
-        (push (list ent (substring text ent-off offset)) strings)))
+        (push (cons ent (substring text ent-off offset)) strings)))
     ;; Trailing part, may be empty
-    (push (list nil (substring text offset)) strings)
+    (push (cons nil (substring text offset)) strings)
 
-    (mapconcat 'substring-no-properties
-               (mapcar (lambda (et)
-                         (apply 'telega--entity-to-markdown et))
-                       (nreverse strings))
-               "")))
+    ;; NOTE: remove any 'face properties from the string, so they
+    ;; won't intermix with markdown syntax.
+    ;; But keep 'display property, so emojis are still displayed as
+    ;; images (if `telega-emoji-use-images' is set)
+    (let ((ret-text (apply 'concat (mapcar 'telega--entity-to-markdown
+                                           (nreverse strings)))))
+      (remove-text-properties 0 (length ret-text) (list 'face) ret-text)
+      ret-text)))
 
 (defun telega--entities-as-faces (entities text)
   "Apply telegram ENTITIES to TEXT.

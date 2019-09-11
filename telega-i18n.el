@@ -37,8 +37,8 @@
                       :language_pack_id lang-pack-id
                       :keys (or keys [])))))
     (mapcar (lambda (str)
-              (cons (plist-get str :key)
-                    (plist-get str :value)))
+              (cons (telega-tl-str str :key)
+                    (telega-tl-str str :value)))
             (plist-get reply :strings))))
 
 (defun telega-i18n-init ()
@@ -58,7 +58,7 @@
     (assert val nil (format "KEY=%s not found in strings" key))
     (cl-ecase (telega--tl-type val)
       (languagePackStringValueOrdinary
-       (plist-get val :value))
+       (telega-tl-str val :value))
       (languagePackStringValuePluralized
        val)
       (languagePackStringValueDeleted
