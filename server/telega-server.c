@@ -42,7 +42,7 @@ void pngext_main(int ac, char** av);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.4.4";
+const char* version = "0.5.0";
 
 /* true when tdlib_loop is running */
 volatile bool tdlib_running;

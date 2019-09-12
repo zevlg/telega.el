@@ -1,4 +1,4 @@
-# ![logo](etc/telega-logo64.png) telega.el [![Join the chat at https://t.me/emacs_telega](etc/chat_emacs_telega.svg)](https://t.me/emacs_telega)
+# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.5.0-%2335ADE1)](https://github.com/tdlib/td)
 
 `telega.el` is full featured unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
@@ -77,7 +77,7 @@ automatically installs if you install telega from MELPA.  Otherwise
 you need to install this package by hand.
 
 `telega.el` is built on top of the official library provided by
-Telegram [TDLib 1.4.0](https://core.telegram.org/tdlib "tdlib"). Most
+Telegram [TDLib 1.5.0](https://core.telegram.org/tdlib "tdlib"). Most
 of the distributions do not package this libary, so it has to be build
 from source.
 
@@ -120,7 +120,7 @@ Arch-based).
 
 [TDLib](https://core.telegram.org/tdlib "tdlib") is the library for
 building Telegram clients. It requires a large amount of memory to be
-built.  Make sure you are using 1.4.0 TDLib version.
+built.  Make sure you are using 1.5.0 TDLib version.
 
 On MacOS you can install pre-build `tdlib` package using homebrew from
 [brew.sh](https://brew.sh).  Just run:

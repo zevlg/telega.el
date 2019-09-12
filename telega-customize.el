@@ -302,7 +302,7 @@ Set it to nil to disable telega-server logging."
   :type 'string
   :group 'telega-server)
 
-(defcustom telega-server-verbosity 3
+(defcustom telega-server-verbosity (if telega-debug 5 3)
   "*Verbosity level for server process.
 Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'number
