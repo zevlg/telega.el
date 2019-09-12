@@ -62,6 +62,7 @@ voip_b64_decode(std::string src, u_char *target, int targsize)
 }
 
 
+static int telega_voip_config(json11::Json config);
 static int telega_voip_start(json11::Json start);
 static int telega_voip_stop(json11::Json stop);
 
@@ -99,7 +100,9 @@ telega_voip_cmd(const char* json)
 
         assert(cmdjson["@command"].is_string());
         std::string cmd = cmdjson["@command"].string_value();
-        if (cmd == "start")
+        if (cmd == "config")
+                return telega_voip_config(cmdjson);
+        else if (cmd == "start") 
                 return telega_voip_start(cmdjson);
         else if (cmd == "stop")
                 return telega_voip_stop(cmdjson);
@@ -112,6 +115,17 @@ telega_voip_cmd(const char* json)
 
         assert(false);
         /* NOT REACHED */
+        return 0;
+}
+
+/*
+ * Change voip_config
+ */
+static int
+telega_voip_config(json11::Json config)
+{
+        if (config["log-file-path"].is_string())
+                voip_config.logFilePath = config["log-file-path"].string_value();
         return 0;
 }
 

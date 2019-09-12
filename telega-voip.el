@@ -53,7 +53,10 @@
 
 (defun telega-voip--call-emojis (call)
   "Return emojis string for the CALL."
-  (mapconcat 'identity (telega--tl-get call :state :emojis) ""))
+  (telega--desurrogate-apply
+   ;; Use `mapconcat' instead of direct `concat', because :emojis is a
+   ;; vector
+   (mapconcat 'identity (telega--tl-get call :state :emojis) "")))
 
 (defun telega-voip--incoming-call ()
   "Return first incoming call that can be accepted."
@@ -150,6 +153,11 @@
                     :allow_p2p (or telega-voip-allow-p2p :false)
                     :max_layer (telega--tl-get state :protocol :max_layer)
                     :endpoints (plist-get state :connections))))
+         (when telega-voip-logfile
+           (telega-server--send
+            (list :@command "config"
+                  :log-file-path telega-voip-logfile) "voip"))
+
          (telega-server--send start "voip"))
 
        (when telega-voip-help-echo

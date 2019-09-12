@@ -573,6 +573,13 @@ See `mode-line-buffer-identification'."
   "VOIP settings."
   :group 'telega)
 
+(defcustom telega-voip-logfile 
+  (expand-file-name "telega-voip.log" telega-directory)
+  "*Write VoIP logs to this file.
+Set it to nil to disable VoIP logging."
+  :type 'string
+  :group 'telega-voip)
+
 (defcustom telega-voip-allow-p2p nil
   "*Non-nil to allow P2P connections for calls."
   :type 'boolean
