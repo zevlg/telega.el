@@ -170,7 +170,7 @@ pngext_main(int ac, char** av)
         }
 
         int pipe_fds[2];
-        int err = pipe2(pipe_fds, 0);
+        int err = pipe(pipe_fds);
         assert(!err);
 
         cmd_pid = fork();
