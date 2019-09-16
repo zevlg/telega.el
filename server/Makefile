@@ -12,12 +12,16 @@ LDFLAGS+=-ltgvoip
 SOURCES+=telega-voip.cpp
 endif
 
+ifndef INSTALL_PREFIX
+INSTALL_PREFIX=$(HOME)/.telega
+endif
+
 $(PROG): $(SOURCES)
 	$(CC) $(CFLAGS) -o $(PROG) $(SOURCES) $(LDFLAGS)
 
 install: $(PROG)
-	@install -v -d $(HOME)/.telega
-	@install -v $(PROG) $(HOME)/.telega
+	@install -v -d $(INSTALL_PREFIX)
+	@install -v $(PROG) $(INSTALL_PREFIX)
 
 test:
 	@python3 run_tests.py

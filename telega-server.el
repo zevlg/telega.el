@@ -107,7 +107,9 @@ Raise error if compilation/test fails."
                          (y-or-n-p "Build `telega-server' with VOIP support? "))))
       (unless (zerop
                (shell-command
-                (concat "make " (when with-voip-p "WITH_VOIP=t ") "install")))
+                (concat "make " (when with-voip-p "WITH_VOIP=t ")
+                        "INSTALL_PREFIX=" (expand-file-name telega-directory) " "
+                        "install")))
         (error "`telega-server' installation failed")))))
 
 (defun telega-server--find-bin ()
