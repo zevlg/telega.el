@@ -530,7 +530,7 @@ Specify INCOMING-P to filter by incoming link relationship."
                     (private 'Users)
                     (bot 'Bots)
                     ((basicgroup supergroup) 'Groups)
-                    (channel 'Channel))))
+                    (channel 'Channels))))
     (memq chat (telega-chats-top category))))
 
 (defun telega-filter-by-top ()
