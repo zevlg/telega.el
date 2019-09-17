@@ -222,7 +222,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
       (telega-webpage-rticon--image rt telega-photo-maxsize)))
     (richTextPlain
      (telega-ins (funcall (if strip-nl 'telega-strip-newlines 'identity)
-                          (plist-get rt :text))))
+                          (telega-tl-str rt :text))))
     (richTexts
      (mapc (lambda (richtext)
              (telega-webpage--ins-rt richtext strip-nl))
