@@ -454,6 +454,16 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                              prompt choices nil t)
                     choices nil nil 'string=))))
 
+(defun telega-custom-labels (&optional no-properties)
+  "Return list with all custom labels used in `telega'."
+  (let* ((labels (mapcar (lambda (chat)
+                           (telega-chat-uaprop chat :label))
+                         telega--ordered-chats))
+         (uniq-labels (seq-uniq (cl-remove-if-not 'stringp labels))))
+    (if no-properties
+        (mapcar 'substring-no-properties uniq-labels)
+      uniq-labels)))
+  
 (defun telega-completing-titles ()
   "Return list of titles ready for completing.
 KIND is one of `chats', `users' or nil."

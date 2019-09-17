@@ -192,7 +192,7 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
   (cl-find username telega--ordered-chats
            :test 'string=
            :key (lambda (chat)
-                  (plist-get (telega-chat--info chat) :username))))
+                  (telega-tl-str (telega-chat--info chat) :username))))
 
 (defun telega--joinChatByInviteLink (invite-link)
   "Return new chat by its INVITE-LINK.
@@ -839,10 +839,17 @@ CHAT must be supergroup or channel."
 
 (defun telega-chat-custom-label (chat label)
   "For CHAT (un)set custom LABEL."
-  (interactive (let ((chat (telega-chat-at-point)))
+  (interactive (let* ((chat (telega-chat-at-point))
+                      (chat-label (telega-chat-uaprop chat :label)))
+                 ;; NOTE: If chat already has label, then use
+                 ;; `read-string' to change label, so empty name can
+                 ;; be used to unset the label
                  (list chat
-                       (read-string "Custom label [empty to unset]: "
-                                    (telega-chat-uaprop chat :label)))))
+                       (if chat-label
+                           (read-string "Custom label [empty to unset]: "
+                                        chat-label)
+                       (funcall telega-completing-read-function
+                                "Custom label: " (telega-custom-labels))))))
   (when (string-empty-p label)
     (setq label nil))
 
