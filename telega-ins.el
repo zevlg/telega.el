@@ -52,7 +52,7 @@ If custom face is specified in PROPS, then
     (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
                                         :line-width)
                              0)))
-           (space `(space (,(- (frame-char-width) box-width)))))
+           (space `(space (,(- (telega-chars-xwidth 1) box-width)))))
       (setq label (concat (propertize "\u00A0" 'display space)
                           label
                           (propertize "\u00A0" 'display space))))
@@ -82,7 +82,7 @@ If SLICE-NUM is specified, then insert N's."
        (or (telega-image--telega-text img slice-num)
            ;; Otherwise use slow `image-size' to get correct
            ;; `:telega-text'
-           (make-string (ceiling (car (image-size img))) ?X))))))
+           (make-string (telega-chars-in-width (car (image-size img t))) ?X))))))
 
 (defun telega-ins--image-slices (image &optional props)
   "Insert sliced IMAGE at current column.

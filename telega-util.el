@@ -90,19 +90,19 @@ Selected frame and frame displaying root buffer are examined first."
 
 (defun telega-chars-xwidth (n)
   "Return pixel width for N characters"
-  (* (frame-char-width (telega-x-frame)) n))
+  (* (window-font-width (get-buffer-window nil (telega-x-frame))) n))
 
 (defun telega-chars-xheight (n)
   "Return pixel height for N characters"
-  (* (frame-char-height (telega-x-frame)) n))
+  (* (window-font-height (get-buffer-window nil (telega-x-frame))) n))
 
 (defun telega-chars-in-height (pixels)
   "Return how many lines needed to cover PIXELS height."
-  (ceiling (/ pixels (float (frame-char-height (telega-x-frame))))))
+  (ceiling (/ pixels (float (telega-chars-xheight 1)))))
 
 (defun telega-chars-in-width (pixels)
   "Return how many characters needed to cover PIXELS width."
-  (ceiling (/ pixels (float (frame-char-width (telega-x-frame))))))
+  (ceiling (/ pixels (float (telega-chars-xwidth 1)))))
 
 (defun telega-strip-newlines (string)
   "Strip STRING newlines from end and beginning."

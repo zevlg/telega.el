@@ -369,7 +369,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                :height (telega-chars-xheight (car telega-sticker-size))
                ;; NOTE: do not use max-width setting, it will slow
                ;; down displaying stickers
-;               :max-width (* (frame-char-width) (cdr telega-sticker-size))
+;               :max-width (* (telega-chars-xwidth 1) (cdr telega-sticker-size))
                :scale 1.0
                :ascent 'center
                :margin (cons (cdr cwidth-xmargin) 0)

@@ -2524,10 +2524,10 @@ IMC might be a plain string or attachement specification."
   "Generate InputFile using FILENAME.
 If PREVIEW-P is non-nil, then generate preview image."
   (setq filename (expand-file-name filename))
-  (let ((preview (when (and preview-p (> (frame-char-height) 1))
+  (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
                    (create-image filename 'imagemagick nil
                                  :scale 1.0 :ascent 'center
-                                 :height (frame-char-height))))
+                                 :height (telega-chars-xheight 1))))
         (ifile (if telega-chat-upload-attaches-ahead
                    (let ((ufile (telega-file--upload filename file-type 16)))
                      (list "inputFileId" :id (plist-get ufile :id)))

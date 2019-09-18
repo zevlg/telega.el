@@ -227,7 +227,7 @@ See `telega-avatar--create-img' for more info."
 (defcustom telega-vvnote-waves-height-factor 0.75
   "*Factor for waves svg height.
 There is a restriction to its value:
-`(* (frame-char-height) telega-vvnote-waves-height-factor)' must be > 8."
+`(* (telega-chars-xheight 1) telega-vvnote-waves-height-factor)' must be > 8."
   :type 'float
   :group 'telega)
 

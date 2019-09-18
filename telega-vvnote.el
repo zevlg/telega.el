@@ -129,7 +129,8 @@ PROGRESS might be nil."
   (let* ((img-type (image-type-from-file-name framefile))
          (size (telega-chars-xheight telega-video-note-height))
          (h size)
-         (w (telega-chars-xwidth (telega-chars-in-width size)))
+         (aw-chars (telega-chars-in-width size))
+         (w (telega-chars-xwidth aw-chars))
          (xoff (/ (- w size) 2))
          (yoff (/ (- h size) 2))
          (svg (svg-create w h))
@@ -168,7 +169,8 @@ PROGRESS might be nil."
 
     (svg-image svg :scale 1.0
                :width w :height h
-               :ascent 'center)))
+               :ascent 'center
+               :telega-text (make-string aw-chars ?#))))
 
 (defun telega-vvnote-video--create-image (thumb &optional _file)
   "Create image for video note frame THUMB."

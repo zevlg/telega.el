@@ -148,7 +148,7 @@
                         (create-image (telega--tl-get thumb-file :local :path)
                                       'imagemagick nil
                                       :scale 1.0 :ascent 'center
-                                      :height (frame-char-height)))))
+                                      :height (telega-chars-xheight 1)))))
       (with-telega-chatbuf chat
         (telega-chatbuf--input-delete)
         (telega-chatbuf-input-insert
