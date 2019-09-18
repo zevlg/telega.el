@@ -295,6 +295,13 @@ In range [1..3]"
   :type 'string
   :group 'telega-server)
 
+(defcustom telega-server-libs-prefix "/usr/local"
+  "*Prefix where tdlib and tgvoip libraries are installed.
+TELEGA-SERVER-LIBS-PREFIX/include is used for headers files.
+TELEGA-SERVER-LIBS-PREFIX/lib is used for library files."
+  :type 'string
+  :group 'telega-server)
+
 (defcustom telega-server-logfile
   (expand-file-name "telega-server.log" telega-directory)
   "*Write server logs to this file.

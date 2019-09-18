@@ -108,6 +108,7 @@ Raise error if compilation/test fails."
       (unless (zerop
                (shell-command
                 (concat "make " (when with-voip-p "WITH_VOIP=t ")
+                        "LIBS_PREFIX=" (expand-file-name telega-server-libs-prefix) " "
                         "INSTALL_PREFIX=" (expand-file-name telega-directory) " "
                         "install")))
         (error "`telega-server' installation failed")))))
