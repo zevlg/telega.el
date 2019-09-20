@@ -27,6 +27,7 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-tdlib)
 (require 'telega-util)
 (require 'telega-user)
 

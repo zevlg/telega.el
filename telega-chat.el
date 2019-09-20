@@ -31,7 +31,7 @@
 (require 'seq)
 
 (require 'telega-core)
-(require 'telega-server)
+(require 'telega-tdlib)
 (require 'telega-msg)
 (require 'telega-ins)
 (require 'telega-voip)                  ;telega-voip-call
