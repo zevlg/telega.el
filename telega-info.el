@@ -248,7 +248,7 @@ Default FILTER is \"supergroupMembersFilterRecent\"."
       (telega-ins "\n"))
 
     ;; Bot info
-    (let* ((bot-info (telega-tl-str full-info :bot_info))
+    (let* ((bot-info (plist-get full-info :bot_info))
            (bot-descr (telega-tl-str bot-info :description))
            (bot-cmds (append (plist-get bot-info :commands) nil)))
       (when bot-info
@@ -364,6 +364,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
 (defun telega-info--insert-basicgroup (basicgroup chat)
   (let* ((full-info (telega--full-info basicgroup))
+         (descr (plist-get full-info :description))
          (members (plist-get full-info :members))
          (creator-id (plist-get full-info :creator_user_id))
          (creator (unless (zerop creator-id)
@@ -382,6 +383,10 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     ;; For basic groups only creator can generate invite link
     (telega-info--insert-invite-link
      chat invite-link (string= member-status-name "chatMemberStatusCreator"))
+
+    (unless (string-empty-p descr)
+      (telega-ins--labeled "Desc: " nil
+        (telega-ins descr "\n")))
 
     (telega-ins-fmt "Members: %d users (%d online)\n"
       (plist-get basicgroup :member_count)
