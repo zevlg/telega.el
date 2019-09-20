@@ -1491,17 +1491,10 @@ Return t."
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
-                          (cl-case chat-type
-                            (basicgroup
-                             (telega-ins telega-symbol-contact
-                                         (number-to-string
-                                          (plist-get chat-info :member_count))))
-                            (supergroup
-                             (telega-ins telega-symbol-contact
-                                         (number-to-string
-                                          (plist-get
-                                           (telega--full-info chat-info)
-                                           :member_count)))))))
+                          (when (memq chat-type '(basicgroup supergroup))
+                            (telega-ins telega-symbol-contact
+                                        (number-to-string
+                                         (plist-get chat-info :member_count))))))
                       ))
            (title-width (- telega-chat-button-width (string-width umstring))))
       (telega-ins--with-attrs (list :min title-width

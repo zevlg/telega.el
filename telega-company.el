@@ -61,6 +61,22 @@ Matches only if CHAR does not apper in the middle of the word."
                           (- (point) telega-emoji-max-length))))
     (when cg (cons cg company-minimum-prefix-length))))
 
+(defun telega-company-emoji-annotation (emoji)
+  "Generate annotation for the EMOJI."
+  ;; NOTE: if `telega-emoji-use-images' is used, use "EE" as
+  ;; corresponding string for better formatting.
+  ;; Flag, Fitzpatrick's emojis and emojis with ZWJ char has `1'
+  ;; width, though occupies 2 or more chars
+  (concat "  "
+          (if telega-emoji-use-images
+              (let ((single-char-p (or (telega-emoji-fitz-p emoji)
+                                       (telega-emoji-flag-p emoji)
+                                       (telega-emoji-has-zero-joiner-p emoji))))
+                (propertize "EE" 'display
+                            (telega-emoji-create-svg
+                             emoji 1 (if single-char-p 1 nil))))
+            emoji)))
+
 ;;;###autoload
 (defun telega-company-emoji (command &optional arg &rest ignored)
   "Backend for `company' to complete emojis."
@@ -83,22 +99,43 @@ Matches only if CHAR does not apper in the middle of the word."
                   (regexp-quote (concat "-" (substring arg 1))) en))))
       telega-emoji-candidates))
     (annotation
-     ;; NOTE: if `telega-emoji-use-images' is used, use "EE" as
-     ;; corresponding string for better formatting
-     ;; :flag-XX: has `1' width, though occupies 2 chars
-     (let* ((emoji (cdr (assoc arg telega-emoji-alist)))
-            (flag-p (string-prefix-p ":flag-" arg)))
-       (concat "  "
-               (if telega-emoji-use-images
-                   (propertize "EE" 'display
-                               (telega-emoji-create-svg
-                                emoji 1 (if flag-p 1 nil)))
-                 emoji))))
+     (telega-company-emoji-annotation
+      (cdr (assoc arg telega-emoji-alist))))
     (post-completion
      (delete-region (- (point) (length arg)) (point))
      (let ((emoji (cdr (assoc arg telega-emoji-alist))))
-       (when telega-emoji-use-images
-         (telega-symbol-emojify emoji))
+       (insert emoji)))
+    ))
+
+(defun telega-company-telegram-emoji-gen-candidates (text)
+  "Generate callback to asynchronously fetch emoji candidates for TEXT."
+  ;; Replace `-' with spaces before the search, so one could use `:i-love-you'
+  (cons :async
+        (lambda (callback)
+          (telega--searchEmojis
+           (replace-regexp-in-string (regexp-quote "-") " " (substring text 1)) nil
+           (lambda (emojis)
+             (funcall callback
+                      (mapcar (lambda (emoji)
+                                (propertize text 'emoji emoji))
+                              emojis)))))))
+
+;;;###autoload
+(defun telega-company-telegram-emoji (command &optional arg &rest ignored)
+  "Backend for `company' to complete emojis using `searchEmojis' TDLib method."
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'telega-company-telegram-emoji))
+    (require-match 'never)
+    (sorted t)
+    ;; Always match if having `:'
+    (prefix (telega-company-grab-emoji))
+    (candidates (telega-company-telegram-emoji-gen-candidates arg))
+    (annotation
+     (telega-company-emoji-annotation (get-text-property 0 'emoji arg)))
+    (post-completion
+     (let ((emoji (get-text-property 0 'emoji arg)))
+       (delete-region (- (point) (length arg)) (point))
        (insert emoji)))
     ))
 

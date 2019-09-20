@@ -632,6 +632,23 @@ instead of auto width calculation."
               (cons (cons emoji image) telega-emoji-svg-images))))
     image))
 
+(defun telega-emoji-has-zero-joiner-p (emoji)
+  "Return non-nil if EMOJI has ZWJ char inside."
+  (string-match-p (regexp-quote "\U0000200D") emoji))
+
+(defun telega-emoji-fitz-p (emoji)
+  "Return non-nil if EMOJI uses Fitzpatrick's modifier."
+  (and (= (length emoji) 2)
+       (memq (aref emoji 1) '(?\🏻 ?\🏼 ?\🏽 ?\🏾 ?\🏿))))
+
+(defun telega-emoji-flag-p (emoji)
+  "Return non-nil if EMOJI is a flag."
+  (and (= (length emoji) 2)
+       (>= (aref emoji 0) ?\🇦)
+       (>= (aref emoji 1) ?\🇦)
+       (<= (aref emoji 0) ?\🇿)
+       (<= (aref emoji 1) ?\🇿)))
+
 
 (defun telega-diff-wordwise (str1 str2 &optional colorize)
   "Compare two strings STR1 and STR2 wordwise.

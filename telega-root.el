@@ -506,9 +506,6 @@ If LAST-MSG is specified, then continue searching."
     (telega-save-cursor
       (telega-ewoc--set-footer telega-search--ewoc "")
       (dolist (chat chats)
-        ;; XXX fetch full-info before inserting, so chat update events
-        ;; won't be triggered inside chat inserter
-        (telega--full-info (telega-chat--info chat))
         (ewoc-enter-last telega-search--ewoc chat))
 
       (telega-filters-apply 'no-root-redisplay))))

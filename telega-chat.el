@@ -1134,6 +1134,14 @@ Leaving chat does not removes chat from chat list."
      (telega-chat--pop-to-buffer
       (telega-chat-get (plist-get newchat :id))))))
 
+(defun telega-chat-description (chat descr)
+  "Update CHAT's description."
+  (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at-point)))
+                      (full-info (telega--full-info (telega-chat--info chat))))
+                 (list chat
+                       (read-string "Description: " (telega-tl-str full-info :description)))))
+  (telega--setChatDescription chat descr))
+
 (defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
@@ -3038,7 +3046,7 @@ With prefix arg delete only for yourself."
                (company-complete-common)
                t)
               ((telega-company-grab-emoji)
-               (company-begin-backend 'telega-company-emoji)
+               (company-begin-backend telega-emoji-company-backend)
                (company-complete-common)
                t)
               ((telega-company-grab-hashtag)

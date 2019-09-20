@@ -146,6 +146,12 @@ See docstring for `display-buffer' for the values."
   :type 'cons
   :group 'telega)
 
+(defcustom telega-emoji-company-backend 'telega-company-emoji
+  "Company backend to use for emoji completions."
+  :type 'symbol
+  :group 'telega
+  :options '(telega-company-telegram-emoji))
+
 (defcustom telega-emoji-fuzzy-match t
   "*Non-nil to use fuzzy prefix matching.
 For example without fuzzy matches, prefix `:jo' will match only

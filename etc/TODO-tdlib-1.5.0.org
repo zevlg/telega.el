@@ -28,12 +28,12 @@ Changes in 1.5.0:
   - Renamed the field `anyone_can_invite` to `can_invite_users` in the class `chatEventInvitesToggled`.
   - The permissions `can_send_other_messages` and `can_add_web_page_previews` now imply only `can_send_messages`
     instead of `can_send_media_messages`.
-  - Allowed administrators in basic groups to use the method `generateChatInviteLink`.
+  - [DONE] Allowed administrators in basic groups to use the method `generateChatInviteLink`.
 * Added out of the box `OpenBSD` and `NetBSD` operating systems support.
 * Added possibility to use `LibreSSL` instead of `OpenSSL` to build TDLib.
 * Added instructions for building TDLib on `Debian 10`, `OpenBSD` and `NetBSD` to
   the [TDLib build instructions generator](https://tdlib.github.io/td/build.html).
-* Added support for Backgrounds 2.0:
+* [WON'T DO] Added support for Backgrounds 2.0:
   - Added the classes `BackgroundType`, `background`, `backgrounds` and `InputBackground`.
   - Added the method `getBackground` returning the list of backgrounds installed by the user.
   - Added the method `setBackground` for changing the background selected by the user.
@@ -46,10 +46,10 @@ Changes in 1.5.0:
   - Removed the `getWallpapers` method.
   - Removed the `wallpaper` and the `wallpapers` classes.
   - The class `fileTypeWallpaper` can be used for remote file identifiers of both old wallpapers and new backgrounds.
-* Added support for descriptions in basic groups:
+* [DONE] Added support for descriptions in basic groups:
   - Added the field `description` to the class `basicGroupFullInfo`.
   - Replaced the method `setSupergroupDescription` with `setChatDescription` which can be used for any chat type.
-* Added support for emoji suggestions:
+* [DONE] Added support for emoji suggestions:
   - Added the method `searchEmojis` for searching emojis by keywords.
   - Added the method `getEmojiSuggestionsUrl`, which can be used to automatically log in to the translation platform
     and suggest new emoji replacements.

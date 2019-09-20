@@ -446,9 +446,10 @@ Attach `display' text property to surrogated regions."
            (if keep-properties
                ;; keep all properties except for `telega-display'
                ;; Apply `telega-emoji-p' property as well
-               (let* ((part-props (telega-plist-del
-                                   (text-properties-at 0 part) 'telega-display))
-                      (emoji-p (plist-get part-props 'telega-emoji-p))
+               (let* ((part-props0 (telega-plist-del
+                                    (text-properties-at 0 part) 'telega-display))
+                      (emoji-p (plist-get part-props0 'telega-emoji-p))
+                      (part-props1 (telega-plist-del part-props0 'telega-emoji-p))
                       ;; NOTE: we always create new cell for 'display
                       ;; property as in `image-insert', see comment
                       ;; about this in `image-insert' sources
@@ -457,7 +458,7 @@ Attach `display' text property to surrogated regions."
                                               telega-emoji-use-images)
                                      (list 'rear-nonsticky '(display)
                                            'display (cons 'image (cdr (telega-emoji-create-svg part-display)))))))
-                 (apply 'propertize part-display (nconc part-props addon-props)))
+                 (apply 'propertize part-display (nconc part-props1 addon-props)))
              part-display))
           (keep-properties part)
           (t (substring-no-properties part)))))
