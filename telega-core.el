@@ -35,10 +35,7 @@
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
 
-(defconst telega--lib-directory
-  (or (and load-file-name
-           (file-name-directory load-file-name))
-      default-directory)
+(defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
 
 (defconst telega-chat-types
@@ -908,5 +905,13 @@ Return what BODY returns."
            (telega-ins ,prefix))))))
 
 (provide 'telega-core)
+
+
+;; Need update the value on every load, because value might change,
+;; MELPA might change the directory
+(setq telega--lib-directory
+      (or (and load-file-name
+               (file-name-directory load-file-name))
+          default-directory))
 
 ;;; telega-core.el ends here

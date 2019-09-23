@@ -283,7 +283,7 @@ them to bots or channels."
 If INCLUDE-BOTS-P is non-nil, then return non-nil also for bots."
   (eq (telega-chat--type chat include-bots-p) 'private))
 
-(defun telega-chat--secret-p (chat)
+(defun telega-chat-secret-p (chat)
   "Return non-nil if CHAT is secret."
   (eq (telega-chat--type chat 'no-interpret) 'secret))
 
@@ -598,21 +598,6 @@ Return newly created chat."
      (list :@type "createPrivateChat"
            :user_id (plist-get user :id))) :id)))
 
-(defun telega--createNewSecretChat (user)
-  "Create secret chat with USER.
-Return newly created chat."
-  (telega-chat-get
-   (plist-get
-    (telega-server--call
-     (list :@type "createNewSecretChat"
-           :user_id (plist-get user :id))) :id)))
-
-(defun telega--closeSecretChat (secretchat)
-  "Close SECRETCHAT."
-  (telega-server--call
-   (list :@type "closeSecretChat"
-         :secret_chat_id (plist-get secretchat :id))))
-
 (defun telega--viewMessages (chat messages &optional force)
   "Mark CHAT's MESSAGES as read.
 Use non-nil value for FORCE, if messages in closed chats should
@@ -871,7 +856,7 @@ STATUS is one of: "
 
   ;; NOTE: If calling to secret chat, then use ordinary private chat
   ;; for calling
-  (when (telega-chat--secret-p chat)
+  (when (telega-chat-secret-p chat)
     (setq chat (telega-chat-get
                 (plist-get (telega-chat--info chat) :user_id))))
 
@@ -3180,25 +3165,6 @@ FILTERS are:
 `:setting_changes'."
   (apply 'nconc (list :@type "chatEventLogFilters")
          (mapcar (lambda (filter) (list filter t)) filters)))
-
-(defun telega--getChatEventLog (chat &optional query from-event-id
-                                     limit filters users)
-  "Return event log for the CHAT.
-FILTERS are created with `telega-chatevent-log-filter'."
-  ;; NOTE: use explicit extra value to check for the error
-  (let ((reply (telega-server--call
-                (nconc (list :@type "getChatEventLog"
-                             :chat_id (plist-get chat :id)
-                             :from_event_id (or from-event-id 0)
-                             :limit (or limit 100))
-                       (when query
-                         (list :query query))
-                       (when filters
-                         (list :filters filters))
-                       (when users
-                         (list :user_ids
-                               (cl-map 'vector (telega--tl-prop :id) users)))))))
-    (append (plist-get reply :events) nil)))
 
 (provide 'telega-chat)
 

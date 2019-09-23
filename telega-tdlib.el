@@ -26,6 +26,7 @@
 ;;; Code:
 (require 'telega-server)
 
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 
 (defmacro with-telega-server-reply (reply post-form call-sexp &optional callback)
   "Do sync or async call to telega-server, processing REPLY by POST-FORM.
@@ -62,6 +63,42 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
    (list :@type "setChatDescription"
          :chat_id (plist-get chat :id)
          :description (or descr ""))))
+
+(defun telega--createNewSecretChat (user)
+  "Create secret chat with USER.
+Return newly created chat."
+  (telega-chat-get
+   (plist-get
+    (telega-server--call
+     (list :@type "createNewSecretChat"
+           :user_id (plist-get user :id))) :id)))
+
+(defun telega--closeSecretChat (secretchat)
+  "Close SECRETCHAT."
+  (telega-server--send
+   (list :@type "closeSecretChat"
+         :secret_chat_id (plist-get secretchat :id))))
+
+(defun telega--getChatEventLog (chat &optional query from-event-id
+                                     limit filters users callback)
+  "Return event log for the CHAT.
+FILTERS are created with `telega-chatevent-log-filter'."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :events) nil)
+
+    (telega-server--call
+     (nconc (list :@type "getChatEventLog"
+                  :chat_id (plist-get chat :id)
+                  :from_event_id (or from-event-id 0)
+                  :limit (or limit 100))
+            (when query
+              (list :query query))
+            (when filters
+              (list :filters filters))
+            (when users
+              (list :user_ids
+                    (cl-map 'vector (telega--tl-prop :id) users)))))
+    callback))
 
 (provide 'telega-tdlib)
 

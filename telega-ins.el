@@ -1406,7 +1406,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
     ;;  - Special messages
     (unless (or (eq (plist-get msg :sender_user_id)
                     (plist-get chat :id))
-                (telega-chat--secret-p chat)
+                (telega-chat-secret-p chat)
                 (telega-msg-special-p msg))
       (when (telega-ins--username (plist-get msg :sender_user_id))
         (telega-ins ": ")))
@@ -1446,7 +1446,7 @@ Return t."
         (chat-ava (plist-get chat :telega-avatar-1)))
     (when (plist-get chat-info :is_verified)
       (setq title (concat title telega-symbol-verified)))
-    (when (telega-chat--secret-p chat)
+    (when (telega-chat-secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
     ;; Check for custom label
     (when telega-chat-label-format
@@ -1516,7 +1516,7 @@ Return t."
               (string-to-number (plist-get chat :order)))
            (car telega-symbol-custom-order)
          (cdr telega-symbol-custom-order))))
-    (when (telega-chat--secret-p chat)
+    (when (telega-chat-secret-p chat)
       (telega-ins telega-symbol-lock))
     t))
 
@@ -1527,7 +1527,7 @@ Return t."
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message))
         (chat-info (telega-chat--info chat)))
-    (cond ((and (telega-chat--secret-p chat)
+    (cond ((and (telega-chat-secret-p chat)
                 (memq (telega--tl-type (plist-get chat-info :state))
                       '(secretChatStatePending secretChatStateClosed)))
            ;; Status of the secret chat
@@ -1568,7 +1568,7 @@ Return t."
           (last-msg
            (telega-ins--chat-msg-one-line chat last-msg max-width))
 
-          ((and (telega-chat--secret-p chat)
+          ((and (telega-chat-secret-p chat)
                 (eq (telega--tl-type (plist-get chat-info :state))
                     'secretChatStateReady))
            ;; Status of the secret chat

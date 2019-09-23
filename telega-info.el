@@ -24,9 +24,8 @@
 ;;
 
 ;;; Code:
-(require 'telega-core)
+(require 'telega-tdlib)
 (require 'telega-util)
-(require 'telega-server)
 
 ;; Info
 (defmacro telega--info-update (tlobj)

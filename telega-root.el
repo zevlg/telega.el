@@ -651,8 +651,9 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
       (add-function :after after-focus-change-function
                     'telega-check-focus-change)
 
-    (add-hook 'focus-in-hook 'telega-handle-focus-in)
-    (add-hook 'focus-out-hook 'telega-handle-focus-out)))
+    (with-no-warnings
+      (add-hook 'focus-in-hook 'telega-handle-focus-in)
+      (add-hook 'focus-out-hook 'telega-handle-focus-out))))
 
 (defun telega-runtime-teardown ()
   "Teardown telega runtime Emacs environment."
@@ -662,8 +663,9 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
       (remove-function after-focus-change-function
                        'telega-check-focus-change)
 
-    (remove-hook 'focus-in-hook 'telega-handle-focus-in)
-    (remove-hook 'focus-out-hook 'telega-handle-focus-out)))
+    (with-no-warnings
+      (remove-hook 'focus-in-hook 'telega-handle-focus-in)
+      (remove-hook 'focus-out-hook 'telega-handle-focus-out))))
 
 (provide 'telega-root)
 

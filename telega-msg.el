@@ -27,6 +27,7 @@
 (require 'format-spec)
 
 (require 'telega-core)
+(require 'telega-tdlib)
 (require 'telega-customize)
 (require 'telega-media)
 (require 'telega-ffplay)                ; telega-ffplay-run
