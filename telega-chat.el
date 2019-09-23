@@ -1150,7 +1150,9 @@ end of the buffer."
   "Interactive switch to chat BUFFER."
   (interactive (list (funcall telega-completing-read-function
                               "Telega chat: "
-                               (mapcar 'buffer-name telega--chat-buffers)
+                              
+                               (mapcar 'buffer-name (cl-sort telega--chat-buffers '>
+                                                             :key 'buffer-modified-tick))
                                nil t)))
   (switch-to-buffer buffer))
 
@@ -2150,10 +2152,10 @@ CALLBACK is called after history has been loaded."
                ;; The callback
                (lambda (history)
                  (with-telega-chatbuf chat
-                   (setq telega-chatbuf--history-loading nil)
                    (telega-save-excursion
                      (telega-chatbuf--prepend-messages
                       (nreverse (plist-get history :messages))))
+                   (setq telega-chatbuf--history-loading nil)
                    (telega-chatbuf--footer-redisplay)
                    (when callback
                      (funcall callback))))))
@@ -2184,9 +2186,9 @@ CALLBACK is called after history has been loaded."
                                (<= (plist-get (car rmsgs) :id) from-msg-id))
                      (setq rmsgs (cdr rmsgs)))
                    (with-telega-chatbuf chat
-                     (setq telega-chatbuf--history-loading nil)
                      (telega-save-cursor
                        (telega-chatbuf--append-messages rmsgs)
+                       (setq telega-chatbuf--history-loading nil)
                        (telega-chatbuf--footer-redisplay)))))))
         (telega-chatbuf--footer-redisplay)
         ))))
