@@ -1150,9 +1150,9 @@ end of the buffer."
   "Interactive switch to chat BUFFER."
   (interactive (list (funcall telega-completing-read-function
                               "Telega chat: "
-                              
-                               (mapcar 'buffer-name (cl-sort telega--chat-buffers '>
-                                                             :key 'buffer-modified-tick))
+                               (mapcar 'buffer-name
+                                       (cl-sort (copy-seq telega--chat-buffers) '>
+                                                :key 'buffer-modified-tick))
                                nil t)))
   (switch-to-buffer buffer))
 
