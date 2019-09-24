@@ -1081,19 +1081,23 @@ argument - MSG to insert additional information after header."
   "Insert forward info FWD-INFO as one liner."
   (when fwd-info
     (telega-ins--with-props
-        ;; When pressen, then jump to original message
+        ;; When pressed, then jump to original message or show info
+        ;; about original sender
         (list 'action
               (lambda (_button)
                 (let* ((origin-chat-id (telega--tl-get fwd-info :origin :chat_id))
                        (origin-msg-id (telega--tl-get fwd-info :origin :message_id))
+                       (origin-sender-id (telega--tl-get fwd-info :origin :sender_user_id))
                        (chat-id (if (and origin-chat-id (not (zerop origin-chat-id)))
                                     origin-chat-id
                                   (plist-get fwd-info :from_chat_id)))
                        (msg-id (if (and origin-msg-id (not (zerop origin-msg-id)))
                                    origin-msg-id
                                  (plist-get fwd-info :from_message_id))))
-                  (when (and chat-id msg-id (not (zerop chat-id)) (not (zerop msg-id)))
-                    (telega-chat--goto-msg (telega-chat-get chat-id) msg-id t))))
+                  (cond ((and chat-id msg-id (not (zerop chat-id)) (not (zerop msg-id)))
+                         (telega-chat--goto-msg (telega-chat-get chat-id) msg-id t))
+                        ((and origin-sender-id (not (zerop origin-sender-id)))
+                         (telega-describe-user (telega-user--get origin-sender-id))))))
               'help-echo "RET to goto original message")
       (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
                                              (telega-current-column))
