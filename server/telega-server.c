@@ -9,6 +9,9 @@
 
 #include <td/telegram/td_json_client.h>
 #include <td/telegram/td_log.h>
+#ifdef WITH_TON
+#include <tonlib/tonlib_client_json.h>
+#endif  /* WITH_TON */
 
 #include "telega-dat.h"
 #ifdef WITH_VOIP
@@ -44,8 +47,8 @@ char* logfile = NULL;
 int verbosity = 5;
 const char* version = "0.5.0";
 
-/* true when tdlib_loop is running */
-volatile bool tdlib_running;
+/* true when stdin_loop() is running */
+volatile bool server_running;
 
 int parse_mode = 0;
 #define PARSE_MODE_JSON 1
@@ -114,13 +117,26 @@ on_error_cb(const char* errmsg)
 static void*
 tdlib_loop(void* cln)
 {
-        while (tdlib_running) {
+        while (server_running) {
                 const char *res = td_json_client_receive(cln, 0.5);
                 if (res)
                         telega_output_json("event", res);
         }
         return NULL;
 }
+
+#ifdef WITH_TON
+static void*
+tonlib_loop(void* cln)
+{
+        while (server_running) {
+                const char *res = tonlib_client_json_receive(cln, 0.5);
+                if (res)
+                        telega_output_json("ton-event", res);
+        }
+        return NULL;
+}
+#endif /* WITH_TON */
 
 /*
  * NOTE: Emacs sends HUP when associated buffer is killed
@@ -133,7 +149,7 @@ on_sighup(int sig)
 }
 
 static void
-stdin_loop(void* cln)
+stdin_loop(void* td_cln, void* ton_cln)
 {
         struct telega_dat plist_src = TDAT_INIT;
         struct telega_dat json_dst = TDAT_INIT;
@@ -170,11 +186,15 @@ stdin_loop(void* cln)
                                 "INPUT: %s\n", json_dst.data);
 
                 if (!strcmp(cmd, "send"))
-                        td_json_client_send(cln, json_dst.data);
+                        td_json_client_send(td_cln, json_dst.data);
 #ifdef WITH_VOIP
                 else if (!strcmp(cmd, "voip"))
                         telega_voip_cmd(json_dst.data);
 #endif /* WITH_VOIP */
+#ifdef WITH_TON
+                else if (!strcmp(cmd, "ton"))
+                         tonlib_client_json_send(ton_cln, json_dst.data);
+#endif /* WITH_TON */
                 else {
                         char error[128];
                         snprintf(error, 128, "\"Unknown cmd `%s'\"", cmd);
@@ -279,23 +299,38 @@ main(int ac, char** av)
                 /* NOT REACHED */
         }
 
+        server_running = true;
+
         td_set_log_fatal_error_callback(on_error_cb);
-
-        void *client = td_json_client_create();
-
+        void* tdlib_cln = td_json_client_create();
+        assert(tdlib_cln != NULL);
         pthread_t td_thread;
-        tdlib_running = true;
-        int rc = pthread_create(&td_thread, NULL, tdlib_loop, client);
+        int rc = pthread_create(&td_thread, NULL, tdlib_loop, tdlib_cln);
         assert(rc == 0);
 
-        stdin_loop(client);
+        void* tonlib_cln = NULL;
+#ifdef WITH_TON
+        tonlib_cln = tonlib_client_json_create();
+        assert(tonlib_cln != NULL);
+        tonlib_client_json_send(tonlib_cln, "{\"@type\":\"init\",\"options\":{\"@type\":\"options\",\"config\":\"\",\"keystore_directory\":\".\",\"use_callbacks_for_network\":false}}");
+        pthread_t ton_thread;
+        rc = pthread_create(&ton_thread, NULL, tonlib_loop, tonlib_cln);
+        assert(rc == 0);
+#endif  /* WITH_TON */
 
-        /* Gracefully stop the tdlib_loop */
-        tdlib_running = false;
+        stdin_loop(tdlib_cln, tonlib_cln);
+        /* Gracefully stop the tdlib_loop & tonlib_loop */
+        server_running = false;
+
         rc = pthread_join(td_thread, NULL);
         assert(rc == 0);
+        td_json_client_destroy(tdlib_cln);
 
-        td_json_client_destroy(client);
+#ifdef WITH_TON
+        rc = pthread_join(ton_thread, NULL);
+        assert(rc == 0);
+        tonlib_client_json_destroy(tonlib_cln);
+#endif  /* WITH_TON */
 
         return 0;
 }

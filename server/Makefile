@@ -17,6 +17,11 @@ LDFLAGS+=-ltgvoip
 SOURCES+=telega-voip.cpp
 endif
 
+ifdef WITH_TON
+CFLAGS+=-DWITH_TON
+LDFLAGS+=-ltonlibjson
+endif
+
 ifndef INSTALL_PREFIX
 INSTALL_PREFIX=$(HOME)/.telega
 endif

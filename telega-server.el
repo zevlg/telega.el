@@ -151,7 +151,7 @@ If version does not match then query user to rebuild telega-server."
 (defsubst telega-server--parse-cmd ()
   "Parse single reply from telega-server.
 Return parsed command."
-  (when (re-search-forward "^\\([a-z]+\\) \\([0-9]+\\)\n" nil t)
+  (when (re-search-forward "^\\([a-z-]+\\) \\([0-9]+\\)\n" nil t)
     ;; New command always start at the beginning, no garbage inbetween
     ;; commands
     (cl-assert (= (match-beginning 0) 1))
@@ -200,7 +200,9 @@ Return parsed command."
         ((string= cmd "error")
          (telega--on-error value))
 
-        (t (error "Unknown cmd from telega-server: %s" cmd))))
+        (t
+         (telega-debug "%s %s: %S" (propertize "IN" 'face 'bold) cmd value)
+         (error "Unknown cmd from telega-server: %s" cmd))))
 
 (defun telega-server--parse-commands ()
   "Parse all available events from telega-server."
