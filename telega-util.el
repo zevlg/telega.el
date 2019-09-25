@@ -90,11 +90,21 @@ Selected frame and frame displaying root buffer are examined first."
 
 (defun telega-chars-xwidth (n)
   "Return pixel width for N characters"
-  (* (window-font-width (get-buffer-window nil (telega-x-frame))) n))
+  ;; NOTE: Same (* n (window-font-width (get-buffer-window nil (telega-x-frame))))
+  ;; but without tweaking on window configuration, which breaks inserters
+  (* n (if-let ((tframe (telega-x-frame)))
+           (let* ((info (font-info (face-font 'default tframe) tframe))
+                  (width (aref info 11)))
+             (if (> width 0)
+                 width
+               (aref info 10)))
+         (frame-char-width))))
 
 (defun telega-chars-xheight (n)
   "Return pixel height for N characters"
-  (* (window-font-height (get-buffer-window nil (telega-x-frame))) n))
+  (* n (if-let ((tframe (telega-x-frame)))
+           (aref (font-info (face-font 'default tframe) tframe) 3)
+         (frame-char-height))))
 
 (defun telega-chars-in-height (pixels)
   "Return how many lines needed to cover PIXELS height."
@@ -463,7 +473,7 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
     (if no-properties
         (mapcar 'substring-no-properties uniq-labels)
       uniq-labels)))
-  
+
 (defun telega-completing-titles ()
   "Return list of titles ready for completing.
 KIND is one of `chats', `users' or nil."
