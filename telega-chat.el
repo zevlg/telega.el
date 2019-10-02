@@ -44,7 +44,7 @@
   (require 'pcase))                     ;`pcase-let*' and `rx'
 (eval-when-compile (require 'cl))       ;defsetf
 
-;shutup compiler
+;; shutup compiler
 (declare-function company-complete-common "company")
 (declare-function company-begin-backend "company" (backend &optional callback))
 
