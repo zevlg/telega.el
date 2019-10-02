@@ -42,7 +42,6 @@
 (eval-when-compile
   (require 'rx)
   (require 'pcase))                     ;`pcase-let*' and `rx'
-(eval-when-compile (require 'cl))       ;defsetf
 
 ;; shutup compiler
 (declare-function company-complete-common "company")
@@ -1385,7 +1384,7 @@ Global chat bindings:
                   'telega-chatbuf--check-focus-change))
 
   (setq telega--chat-buffers
-        (pushnew (current-buffer) telega--chat-buffers)))
+        (cl-pushnew (current-buffer) telega--chat-buffers)))
 
 (defun telega-describe-chatbuf ()
   "Show info about chat."
@@ -3172,6 +3171,6 @@ FILTERS are:
 
 ;; Install DND dispatcher for telega at load time
 (let ((re (rx bol (or "file" "https" "http" "ftp"))))
-  (pushnew (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))
+  (cl-pushnew (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))
 
 ;;; telega-chat.el ends here
