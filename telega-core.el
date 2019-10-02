@@ -28,7 +28,6 @@
 (require 'subr-x)
 (require 'ring)
 (require 'cursor-sensor)
-(eval-when-compile (require 'cl))       ;defsetf
 
 (require 'telega-customize)
 
@@ -768,7 +767,7 @@ If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
   "Return value for CHAT's custom property with name UAPROP-NAME."
   `(plist-get (plist-get ,chat :uaprops) ,uaprop-name))
 
-(defsetf telega-chat-uaprop (chat uaprop-name) (value)
+(gv-define-setter telega-chat-uaprop (value chat uaprop-name)
   "Set CHAT's user property UAPROP-NAME to VALUE.
 Return VALUE."
   (let ((valsym (gensym "value")))
