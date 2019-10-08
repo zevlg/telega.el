@@ -153,8 +153,8 @@ remove the callback as well."
           ((telega-file--can-download-p dfile)
            (telega--downloadFile file-id priority
              (lambda (downfile)
-               (assert (or (telega-file--downloaded-p downfile)
-                           (telega-file--downloading-p downfile)))
+               (cl-assert (or (telega-file--downloaded-p downfile)
+                              (telega-file--downloading-p downfile)))
                (telega-file--update downfile)
                (when cbwrap
                  (telega-file--download downfile priority callback))))))

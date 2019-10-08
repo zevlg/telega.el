@@ -1149,10 +1149,10 @@ end of the buffer."
   "Interactive switch to chat BUFFER."
   (interactive (list (funcall telega-completing-read-function
                               "Telega chat: "
-                               (mapcar 'buffer-name
-                                       (cl-sort (copy-seq telega--chat-buffers) '>
-                                                :key 'buffer-modified-tick))
-                               nil t)))
+                              (mapcar 'buffer-name
+                                      (cl-sort (copy-sequence telega--chat-buffers) '>
+                                               :key 'buffer-modified-tick))
+                              nil t)))
   (switch-to-buffer buffer))
 
 
@@ -1775,7 +1775,7 @@ If ICONS-P is non-nil, then use icons for members count."
         (while (and (telega-chatbuf--input-idx-valid-p idx)
                     (not (string-match
                           regexp (ring-ref telega-chatbuf--input-ring idx))))
-          (incf idx step))
+          (cl-incf idx step))
         (when (telega-chatbuf--input-idx-valid-p idx)
           (telega-chatbuf-input-goto idx)
           (when forward-p
@@ -2501,7 +2501,7 @@ IMC might be a plain string or attachement specification."
             (name (funcall telega-completing-read-function
                            "Contact: " (mapcar 'car names-alist) nil t))
             (user (cdr (assoc name names-alist))))
-       (assert user)
+       (cl-assert user)
        (list
         (list :@type "Contact"
               :phone_number (concat "+" (plist-get user :phone_number))
@@ -2814,7 +2814,7 @@ Prefix argument is available for next attachements:
          nil))
   (let ((cmd (symbol-function
               (intern (concat "telega-chatbuf-attach-" attach-type)))))
-    (assert (commandp cmd))
+    (cl-assert (commandp cmd))
     (if attach-value
         (funcall cmd attach-value)
       (call-interactively cmd))))
