@@ -314,7 +314,9 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
          (xw (telega-chars-xwidth w-chars))
          (svg (svg-create xw xh))
          (font-size (/ xh 2)))
-    (svg-text svg (substring emoji 0 1)
+    (svg-text svg (if (string-empty-p emoji)
+                      "?"
+                    (substring emoji 0 1))
                 :font-size font-size
                 :font-weight "bold"
                 :fill "white"

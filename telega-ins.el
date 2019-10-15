@@ -1176,7 +1176,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            (avatar (if sender
                        (telega-user-avatar-image sender)
                      (telega-chat-avatar-image chat)))
-           (awidth (string-width (telega-image--telega-text avatar 0)))
+           (awidth (length (telega-image--telega-text avatar 0)))
            ccol)
       (if (and no-header
                (zerop (plist-get msg :edit_date))
