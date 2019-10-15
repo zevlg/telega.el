@@ -55,14 +55,14 @@
               (eq (telega--tl-type val) 'languagePackStringValueDeleted))
       ;; fallback to english strings
       (setq val (cdr (assoc key telega-i18n--en-strings))))
-    (assert val nil (format "KEY=%s not found in strings" key))
+    (cl-assert val nil (format "KEY=%s not found in strings" key))
     (cl-ecase (telega--tl-type val)
       (languagePackStringValueOrdinary
        (telega-tl-str val :value))
       (languagePackStringValuePluralized
        val)
       (languagePackStringValueDeleted
-       (assert nil nil (format "KEY=%s is deleted from strings" key))))))
+       (cl-assert nil nil (format "KEY=%s is deleted from strings" key))))))
 
 (defun telega-i18n-plural (key &rest args)
   (let ((val (telega-i18n key)))

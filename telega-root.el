@@ -641,9 +641,9 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
   (let ((cheight (car telega-location-size))
         (cwidth (cdr telega-location-size)))
     (while (> (telega-chars-xheight cheight) 1024)
-      (decf cheight))
+      (cl-decf cheight))
     (while (> (telega-chars-xwidth cwidth) 1024)
-      (decf cwidth))
+      (cl-decf cwidth))
     (setq telega-location-size (cons cheight cwidth)))
 
   (add-hook 'post-command-hook 'telega-check-buffer-switch)
