@@ -558,7 +558,6 @@ File is specified with FILE-SPEC."
          (aw-chars (telega-chars-in-width cfull))
          (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
          (xw (telega-chars-xwidth aw-chars))
-         (svg (svg-create xw xh))
          (name (if (eq (telega--tl-type chat-or-user) 'user)
                    (telega-user--name chat-or-user)
                  (telega-chat-title chat-or-user)))
@@ -573,7 +572,7 @@ File is specified with FILE-SPEC."
                                    (make-string (+ 3 aw-chars-3) ?\u00A0)))))
 
     (if (display-graphic-p)
-        (progn
+        (let ((svg (svg-create xw xh)))
           (if (telega-file-exists-p photofile)
               (let ((img-type (image-type-from-file-name photofile))
                     (clip (telega-svg-clip-path svg "clip")))
