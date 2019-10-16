@@ -561,7 +561,16 @@ File is specified with FILE-SPEC."
          (svg (svg-create xw xh))
          (name (if (eq (telega--tl-type chat-or-user) 'user)
                    (telega-user--name chat-or-user)
-                 (telega-chat-title chat-or-user))))
+                 (telega-chat-title chat-or-user)))
+         (image-properties
+          (list :scale 1.0
+                :width xw :height xh
+                :ascent 'center
+                :mask 'heuristic
+                ;; Correct text for tty-only avatar display
+                :telega-text (list (concat "(" (substring name 0 1) ")"
+                                           (make-string aw-chars-3 ?\u00A0))
+                                   (make-string (+ 3 aw-chars-3) ?\u00A0)))))
 
     (if (display-graphic-p)
         (progn
@@ -593,23 +602,8 @@ File is specified with FILE-SPEC."
                         :x (- (/ xw 2) (/ fsz 3))
                         :y (+ (/ fsz 3) (/ cfull 2)))))
           
-          (svg-image svg :scale 1.0
-                     :width xw :height xh
-                     :ascent 'center
-                     :mask 'heuristic
-                     ;; Correct text for tty-only avatar display
-                     :telega-text (list (concat "(" (substring name 0 1) ")"
-                                                (make-string aw-chars-3 ?\u00A0))
-                                        (make-string (+ 3 aw-chars-3) ?\u00A0))))
-      (list 'dummy-image
-            :scale 1.0
-            :width xw :height xh
-            :ascent 'center
-            :mask 'heuristic
-            ;; Correct text for tty-only avatar display
-            :telega-text (list (concat "(" (substring name 0 1) ")"
-                                       (make-string aw-chars-3 ?\u00A0))
-                               (make-string (+ 3 aw-chars-3) ?\u00A0))))))
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 (defun telega-symbol-emojify (emoji)
   "Attach `display' property with emoji svg to EMOJI string.
