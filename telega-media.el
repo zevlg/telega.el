@@ -583,7 +583,7 @@ File is specified with FILE-SPEC."
                                    (make-string (+ 3 aw-chars-3) ?\u00A0)))))
 
     (if (display-graphic-p)
-        (progn
+        (let ((svg (svg-create xw xh)))
           (if (telega-file-exists-p photofile)
               (let ((img-type (image-type-from-file-name photofile))
                     (clip (telega-svg-clip-path svg "clip")))
