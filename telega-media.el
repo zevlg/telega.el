@@ -415,15 +415,19 @@ Return cons cell, where car is width in char and cdr is margin value."
                           (if (zerop height) xh height) cheight))
          (w-chars (car cwidth-xmargin))
          (xw (telega-chars-xwidth w-chars))
-         (svg (svg-create xw xh))
-         (progress (telega-file--downloading-progress file)))
-    (telega-svg-progress svg progress)
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text (make-string w-chars ?X))))
+         (image-properties
+          (list :scale 1.0
+                :width xw :height xh
+                :ascent 'center
+                :mask 'heuristic
+                ;; text of correct width
+                :telega-text (make-string w-chars ?X))))
+    (if (display-graphic-p)
+        (let ((svg (svg-create xw xh))
+              (progress (telega-file--downloading-progress file)))
+          (telega-svg-progress svg progress)
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 (defsubst telega-photo--progress-svg (photo cheight)
   "Generate svg for the PHOTO."
@@ -440,22 +444,29 @@ CHEIGHT is the height in chars to use (default=1)."
   (unless cheight
     (setq cheight 1))
   (if (telega-file--downloaded-p file)
-      (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight)))
-        (create-image (telega--tl-get file :local :path)
-                      'imagemagick nil
-                      :height (telega-chars-xheight cheight)
-                      :scale 1.0
-                      :ascent 'center
-                      :margin (cons (cdr cwidth-xmargin) 0)
-                      :telega-text (make-string (car cwidth-xmargin) ?X)))
+      (let* ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight))
+             (image-properties
+              (list :height (telega-chars-xheight cheight)
+                    :scale 1.0
+                    :ascent 'center
+                    :margin (cons (cdr cwidth-xmargin) 0)
+                    :telega-text (make-string (car cwidth-xmargin) ?X))))
+        (if (display-graphic-p)
+            (apply #'create-image
+                   (telega--tl-get file :local :path)
+                   'imagemagick nil
+                   image-properties)
+          (cons 'dummy-image image-properties)))
 
     (telega-media--progress-svg file width height cheight)))
 
 (defun telega-minithumb--create-image (minithumb &rest props)
   "Create image and use MINITHUMB minithumbnail as data."
-  (apply 'create-image (base64-decode-string (plist-get minithumb :data))
-         'imagemagick t :scale 1.0
-         props))
+  (if (display-graphic-p)
+      (apply 'create-image (base64-decode-string (plist-get minithumb :data))
+             'imagemagick t :scale 1.0
+             props)
+    (cons 'dummy-image props)))
 
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.
