@@ -572,43 +572,45 @@ File is specified with FILE-SPEC."
          (name (if (eq (telega--tl-type chat-or-user) 'user)
                    (telega-user--name chat-or-user)
                  (telega-chat-title chat-or-user))))
-    (if (telega-file-exists-p photofile)
-        (let ((img-type (image-type-from-file-name photofile))
-              (clip (telega-svg-clip-path svg "clip")))
-          (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))
-          (svg-embed svg photofile
-                     (format "image/%S" img-type)
-                     nil
-                     :x (/ (- xw ch) 2) :y (/ margin 2)
-                     :width ch :height ch
-                     :clip-path "url(#clip)"))
-
-      ;; Draw initials
-      (let ((fsz (/ ch 2))
-            (color (if (eq (telega--tl-type chat-or-user) 'user)
-                       (telega-user-color chat-or-user)
-                     (telega-chat-color chat-or-user))))
-        (svg-gradient svg "cgrad" 'linear
-                      (list (cons 0 (cadr color)) (cons ch (caddr color))))
-        (svg-circle svg (/ xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
-        (svg-text svg (substring name 0 1)
-                  :font-size (/ ch 2)
-                  :font-weight "bold"
-                  :fill "white"
-                  :font-family "monospace"
-                  ;; XXX insane X/Y calculation
-                  :x (- (/ xw 2) (/ fsz 3))
-                  :y (+ (/ fsz 3) (/ cfull 2)))))
 
     (if (display-graphic-p)
-        (svg-image svg :scale 1.0
-                   :width xw :height xh
-                   :ascent 'center
-                   :mask 'heuristic
-                   ;; Correct text for tty-only avatar display
-                   :telega-text (list (concat "(" (substring name 0 1) ")"
-                                              (make-string aw-chars-3 ?\u00A0))
-                                      (make-string (+ 3 aw-chars-3) ?\u00A0)))
+        (progn
+          (if (telega-file-exists-p photofile)
+              (let ((img-type (image-type-from-file-name photofile))
+                    (clip (telega-svg-clip-path svg "clip")))
+                (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))
+                (svg-embed svg photofile
+                           (format "image/%S" img-type)
+                           nil
+                           :x (/ (- xw ch) 2) :y (/ margin 2)
+                           :width ch :height ch
+                           :clip-path "url(#clip)"))
+
+            ;; Draw initials
+            (let ((fsz (/ ch 2))
+                  (color (if (eq (telega--tl-type chat-or-user) 'user)
+                             (telega-user-color chat-or-user)
+                           (telega-chat-color chat-or-user))))
+              (svg-gradient svg "cgrad" 'linear
+                            (list (cons 0 (cadr color)) (cons ch (caddr color))))
+              (svg-circle svg (/ xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
+              (svg-text svg (substring name 0 1)
+                        :font-size (/ ch 2)
+                        :font-weight "bold"
+                        :fill "white"
+                        :font-family "monospace"
+                        ;; XXX insane X/Y calculation
+                        :x (- (/ xw 2) (/ fsz 3))
+                        :y (+ (/ fsz 3) (/ cfull 2)))))
+          
+          (svg-image svg :scale 1.0
+                     :width xw :height xh
+                     :ascent 'center
+                     :mask 'heuristic
+                     ;; Correct text for tty-only avatar display
+                     :telega-text (list (concat "(" (substring name 0 1) ")"
+                                                (make-string aw-chars-3 ?\u00A0))
+                                        (make-string (+ 3 aw-chars-3) ?\u00A0))))
       (list 'dummy-image
             :scale 1.0
             :width xw :height xh
