@@ -312,30 +312,33 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
          (xh (telega-chars-xheight (car telega-sticker-size)))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
-         (svg (svg-create xw xh))
-         (font-size (/ xh 2)))
-    (svg-text svg (if (string-empty-p emoji)
-                      "?"
-                    (substring emoji 0 1))
-                :font-size font-size
-                :font-weight "bold"
-                :fill "white"
-                :font-family "monospace"
-                :x (/ font-size 2)
-                :y (+ font-size (/ font-size 3)))
-    (telega-svg-progress svg (telega-file--downloading-progress
-                              (telega-sticker--file sticker)))
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text
-               (make-string
-                (or (car (plist-get sticker :telega-image-cwidth-xmargin))
-                    w-chars)
-                ?X))
-    ))
+         (image-properties
+          (list :scale 1.0
+                :width xw :height xh
+                :ascent 'center
+                :mask 'heuristic
+                ;; text of correct width
+                :telega-text
+                (make-string
+                 (or (car (plist-get sticker :telega-image-cwidth-xmargin))
+                     w-chars)
+                 ?X))))
+    (if (display-graphic-p)
+        (let ((svg (svg-create xw xh)))
+          (let ((font-size (/ xh 2)))
+            (svg-text svg (if (string-empty-p emoji)
+                              "?"
+                            (substring emoji 0 1))
+                      :font-size font-size
+                      :font-weight "bold"
+                      :fill "white"
+                      :font-family "monospace"
+                      :x (/ font-size 2)
+                      :y (+ font-size (/ font-size 3))))
+          (telega-svg-progress svg (telega-file--downloading-progress
+                                    (telega-sticker--file sticker)))
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 (defun telega-sticker--create-image (sticker &optional _ignoredfile)
   "Return image for the STICKER."
@@ -720,20 +723,23 @@ Return sticker set."
   (let* ((xh (telega-chars-xheight telega-animation-height))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
-         (svg (svg-create xw xh)))
-    (telega-svg-progress svg (telega-file--downloading-progress
-                              (telega-animation--file animation)))
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text
-               (make-string
-                (or (car (plist-get animation :telega-image-cwidth-xmargin))
-                    w-chars)
-                ?X))
-    ))
+         (image-properties
+          (list :scale 1.0
+                :width xw :height xh
+                :ascent 'center
+                :mask 'heuristic
+                ;; text of correct width
+                :telega-text
+                (make-string
+                 (or (car (plist-get animation :telega-image-cwidth-xmargin))
+                     w-chars)
+                 ?X))))
+    (if (display-graphic-p)
+        (let ((svg (svg-create xw xh)))
+          (telega-svg-progress svg (telega-file--downloading-progress
+                                    (telega-animation--file animation)))
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 (defun telega-animation--create-image (animation &optional _fileignored)
   "Return image for the ANIMATION."
@@ -764,22 +770,26 @@ Return sticker set."
                  :ascent 'center
                  :margin (cons (cdr cwidth-xmargin) 0)
                  :telega-text (make-string (car cwidth-xmargin) ?X))))
-    (cond (anim-frame-filename
-           ;; Remove this prop, because file is about to be deleted
-           (plist-put animation :telega-ffplay-frame-filename nil)
-           (apply 'create-image
-                  (with-temp-buffer
-                    (set-buffer-multibyte nil)
-                    (insert-file-contents-literally anim-frame-filename)
-                    (buffer-string))
-                  'imagemagick t img-props))
+      (cond (anim-frame-filename
+             ;; Remove this prop, because file is about to be deleted
+             (plist-put animation :telega-ffplay-frame-filename nil)
+             (if (display-graphic-p)
+                 (apply 'create-image
+                        (with-temp-buffer
+                          (set-buffer-multibyte nil)
+                          (insert-file-contents-literally anim-frame-filename)
+                          (buffer-string))
+                        'imagemagick t img-props)
+               (cons 'dummy-image image-props)))
 
-          ((telega-file--downloaded-p tfile)
-           (apply 'create-image
-                  (telega--tl-get tfile :local :path)
-                  'imagemagick nil img-props))
+            ((telega-file--downloaded-p tfile)
+             (if (display-graphic-p)
+                 (apply 'create-image
+                        (telega--tl-get tfile :local :path)
+                        'imagemagick nil img-props)
+               (cons 'dummy-image image-properties)))
 
-          (t (telega-animation--progress-svg animation))))))
+            (t (telega-animation--progress-svg animation))))))
 
 (defun telega-ins--animation-image (animation &optional slices-p)
   "Inserter for the ANIMATION.

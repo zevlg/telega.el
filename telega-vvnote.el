@@ -73,27 +73,31 @@
          (w (* (+ wv-width space-width) (length waves)))
          (aw-chars (telega-chars-in-width w))
          (cw (telega-chars-xwidth aw-chars))
-         (svg (svg-create cw height)))
-    ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
-    ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
-    (dolist (wv waves)
-      (let ((xoff (+ wv-width (* (+ wv-width space-width) w-idx)))
-            (played-p (< (/ (float w-idx) (length waves))
-                         (/ (or played 0) (if (zerop duration) 0.1 duration)))))
-        (svg-line svg xoff (- height 3 (if played-p 0.5 0)) xoff
-                  (- height 3 (if played-p 0.5 0) (* wv wv-height))
-                  :stroke-color (if played-p
-                                    (car telega-vvnote-waves-colors)
-                                  (cdr telega-vvnote-waves-colors))
-                  :stroke-width (if played-p (1+ wv-width) wv-width)
-                  :stroke-linecap "round")
-        (cl-incf w-idx)))
-    (svg-image svg :scale 1
-               :width cw :height height
-               :mask 'heuristic
-               :ascent 'center
-               ;; text of correct width
-               :telega-text (make-string aw-chars ?#))))
+         (image-properties
+          (list :scale 1
+                :width cw :height height
+                :mask 'heuristic
+                :ascent 'center
+                ;; text of correct width
+                :telega-text (make-string aw-chars ?#))))
+    (if (display-graphic-p)
+        (let ((svg (svg-create cw height)))
+          ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
+          ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
+          (dolist (wv waves)
+            (let ((xoff (+ wv-width (* (+ wv-width space-width) w-idx)))
+                  (played-p (< (/ (float w-idx) (length waves))
+                               (/ (or played 0) (if (zerop duration) 0.1 duration)))))
+              (svg-line svg xoff (- height 3 (if played-p 0.5 0)) xoff
+                        (- height 3 (if played-p 0.5 0) (* wv wv-height))
+                        :stroke-color (if played-p
+                                          (car telega-vvnote-waves-colors)
+                                        (cdr telega-vvnote-waves-colors))
+                        :stroke-width (if played-p (1+ wv-width) wv-width)
+                        :stroke-linecap "round")
+              (cl-incf w-idx)))
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 (defun telega-vvnote--waveform-decode (waveform)
   "Decode WAVEFORM returning list of heights.
@@ -131,46 +135,50 @@ PROGRESS might be nil."
          (h size)
          (aw-chars (telega-chars-in-width size))
          (w (telega-chars-xwidth aw-chars))
-         (xoff (/ (- w size) 2))
-         (yoff (/ (- h size) 2))
-         (svg (svg-create w h))
-         (clip (telega-svg-clip-path svg "clip"))
-         (clip1 (telega-svg-clip-path svg "clip1")))
-    (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
-    (svg-embed svg framefile
-               (format "image/%S" img-type) nil
-               :x xoff :y yoff
-               :width size :height size
-               :clip-path "url(#clip)")
+         (image-properties
+          (list :scale 1.0
+                :width w :height h
+                :ascent 'center
+                :telega-text (make-string aw-chars ?#))))
+    (if (display-graphic-p)
+        (let* ((xoff (/ (- w size) 2))
+               (yoff (/ (- h size) 2))
+               (svg (svg-create w h))
+               (clip (telega-svg-clip-path svg "clip"))
+               (clip1 (telega-svg-clip-path svg "clip1")))
+          (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
+          (svg-embed svg framefile
+                     (format "image/%S" img-type) nil
+                     :x xoff :y yoff
+                     :width size :height size
+                     :clip-path "url(#clip)")
 
-    (when progress
-      (let* ((angle-o (* 2 pi progress))
-             (angle (+ (* 2 pi (- progress)) pi))
-             (dx (+ (* (/ size 2) (sin angle)) (/ size 2)))
-             (dy (+ (* (/ size 2) (cos angle)) (/ size 2))))
-        ;; clip mask for the progress circle
-        (let ((cp (format "M %d %d L %d %d L %d 0" (/ w 2) (/ h 2) (/ w 2) 0 w)))
-          (when (> angle-o (/ pi 2))
-            (setq cp (concat cp (format " L %d %d" w h))))
-          (when (> angle-o pi)
-            (setq cp (concat cp (format " L 0 %d" h))))
-          (when (> angle-o (/ (* 3 pi) 2))
-            (setq cp (concat cp (format " L 0 0"))))
-          (setq cp (concat cp (format " L %d %d" (+ dx xoff) (+ dy yoff))))
-          (setq cp (concat cp " Z"))
-          (telega-svg-path clip1 cp))
-        ;; Progress circle itself
-        (svg-circle svg (/ w 2) (/ h 2) (- (/ size 2) 4)
-                    :fill "none"
-                    :stroke-width (/ size 30)
-                    :stroke-opacity "0.35"
-                    :stroke-color "white"
-                    :clip-path "url(#clip1)")))
+          (when progress
+            (let* ((angle-o (* 2 pi progress))
+                   (angle (+ (* 2 pi (- progress)) pi))
+                   (dx (+ (* (/ size 2) (sin angle)) (/ size 2)))
+                   (dy (+ (* (/ size 2) (cos angle)) (/ size 2))))
+              ;; clip mask for the progress circle
+              (let ((cp (format "M %d %d L %d %d L %d 0" (/ w 2) (/ h 2) (/ w 2) 0 w)))
+                (when (> angle-o (/ pi 2))
+                  (setq cp (concat cp (format " L %d %d" w h))))
+                (when (> angle-o pi)
+                  (setq cp (concat cp (format " L 0 %d" h))))
+                (when (> angle-o (/ (* 3 pi) 2))
+                  (setq cp (concat cp (format " L 0 0"))))
+                (setq cp (concat cp (format " L %d %d" (+ dx xoff) (+ dy yoff))))
+                (setq cp (concat cp " Z"))
+                (telega-svg-path clip1 cp))
+              ;; Progress circle itself
+              (svg-circle svg (/ w 2) (/ h 2) (- (/ size 2) 4)
+                          :fill "none"
+                          :stroke-width (/ size 30)
+                          :stroke-opacity "0.35"
+                          :stroke-color "white"
+                          :clip-path "url(#clip1)")))
 
-    (svg-image svg :scale 1.0
-               :width w :height h
-               :ascent 'center
-               :telega-text (make-string aw-chars ?#))))
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 (defun telega-vvnote-video--create-image (thumb &optional _file)
   "Create image for video note frame THUMB."

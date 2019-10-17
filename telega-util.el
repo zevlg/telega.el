@@ -201,20 +201,25 @@ Specify EXT with leading `.'."
                        'face (or face 'bold)))
          (xheight (telega-chars-xheight 1))
          (xwidth (telega-chars-xwidth (string-width telega-text)))
-         (stroke-xwidth (/ xheight 10))
-         (dashes-xwidth (* (- (telega-chars-xwidth cwidth) (* 2 stroke-xwidth))
-                           (/ percents 100.0)))
-         (svg (svg-create xwidth xheight)))
-    (svg-line svg stroke-xwidth (/ xheight 2)
-              (+ stroke-xwidth dashes-xwidth) (/ xheight 2)
-              :stroke-color telega-poll-result-color
-              :stroke-width stroke-xwidth
-              :stroke-linecap "round")
-    (svg-image svg :scale 1
-               :width xwidth :height xheight
-               :mask 'heuristic
-               :ascent 'center
-               :telega-text telega-text)))
+         (image-properties
+          (list :scale 1
+                :width xwidth :height xheight
+                :mask 'heuristic
+                :ascent 'center
+                :telega-text telega-text)))
+    (if (display-graphic-p)
+        (let ((stroke-xwidth (/ xheight 10))
+              (dashes-xwidth (* (- (telega-chars-xwidth cwidth)
+                                   (* 2 stroke-xwidth))
+                                (/ percents 100.0)))
+              (svg (svg-create xwidth xheight)))
+          (svg-line svg stroke-xwidth (/ xheight 2)
+                    (+ stroke-xwidth dashes-xwidth) (/ xheight 2)
+                    :stroke-color telega-poll-result-color
+                    :stroke-width stroke-xwidth
+                    :stroke-linecap "round")
+          (apply #'svg-image svg image-properties))
+      (cons 'dummy-image image-properties))))
 
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
@@ -622,21 +627,26 @@ instead of auto width calculation."
              (aw-chars (* (or force-cwidth (length emoji))
                           (telega-chars-in-width (- xh (/ xh 8)))))
              (xw (telega-chars-xwidth aw-chars))
-             (svg (svg-create xw xh))
              ;; NOTE: if EMOJI width matches final width, then use
              ;; EMOJI itself as telega-text
              (telega-text (if (= (string-width emoji) aw-chars)
                               emoji
                             (make-string aw-chars ?E))))
-        (svg-text svg emoji
-                  :font-family telega-emoji-font-family
-                  :font-size font-size
-                  :x 0 :y font-size)
-        (setq image (svg-image svg :scale 1.0
-                               :width xw :height xh
-                               :ascent 'center
-                               :mask 'heuristic
-                               :telega-text telega-text)))
+        (setq image
+              (let ((image-properties
+                     (list :scale 1.0
+                           :width xw :height xh
+                           :ascent 'center
+                           :mask 'heuristic
+                           :telega-text telega-text)))
+                (if (display-graphic-p)
+                    (let ((svg (svg-create xw xh)))
+                      (svg-text svg emoji
+                                :font-family telega-emoji-font-family
+                                :font-size font-size
+                                :x 0 :y font-size)
+                      (apply #'svg-image svg image-properties))
+                  (cons 'dummy-image image-properties)))))
       (when use-cache-p
         (setq telega-emoji-svg-images
               (cons (cons emoji image) telega-emoji-svg-images))))
