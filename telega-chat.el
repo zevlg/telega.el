@@ -2545,8 +2545,11 @@ If PREVIEW-P is non-nil, then generate preview image."
   "Attach FILENAME as photo to the current input."
   (interactive (list (read-file-name "Photo: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t))
-        (img-size (image-size
-                   (create-image filename 'imagemagick nil :scale 1.0) t)))
+        (img-size
+         (if (display-graphic-p)
+             (image-size
+              (create-image filename 'imagemagick nil :scale 1.0) t)
+           (cons 0 0))))
     (telega-chatbuf-input-insert
      (list :@type "inputMessagePhoto"
            :photo ifile
