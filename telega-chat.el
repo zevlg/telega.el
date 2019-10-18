@@ -157,7 +157,10 @@ Return chat from `telega--chats'."
 
           ;; parse :client_data as plist, we use it to store
           ;; additional chat properties (user application properties)
-          (let ((client-data (plist-get chat :client_data)))
+          ;; NOTE: plist might contain strings with surropagated
+          ;; pairs, so `telega-tl-str' is used, see
+          ;; https://github.com/zevlg/telega.el/issues/94
+          (let ((client-data (telega-tl-str chat :client_data)))
             (unless (string-empty-p client-data)
               (ignore-errors
                 (plist-put chat :uaprops (car (read-from-string client-data))))))
