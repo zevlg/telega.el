@@ -337,7 +337,8 @@ If CALLBACK is specified return `:@extra' value used for the call."
                           proc-args)))
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-server--sentinel)
-        (set-process-filter proc #'telega-server--filter))))
+        (set-process-filter proc #'telega-server--filter)
+        (set-process-coding-system proc 'utf-8 'utf-8))))
   (current-buffer))
 
 (defun telega-server-kill ()
