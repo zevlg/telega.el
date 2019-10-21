@@ -901,12 +901,14 @@ Special messages are determined with `telega-msg-special-p'."
        ;; `telega-emoji-large-height'.
        ;; TEXT has only emoji chars only if resulting desurrogated
        ;; string is exactly half the size
+       ;; Or if resulting text has trailing VARIATION-SELECTOR-16 symbol
        (let* ((text (telega--tl-get content :text :text))
               (real-text (when (and telega-emoji-use-images
                                     telega-emoji-large-height
                                     (not (telega--tl-get msg :content :web_page)))
                            (telega--desurrogate-apply text))))
-         (if (and real-text (= (length real-text) (/ (length text) 2)))
+         (if (and real-text (or (= (length real-text) (/ (length text) 2))
+                                (telega-emoji-var-16-p real-text)))
              (let ((emojis-image (telega-emoji-create-svg
                                   real-text telega-emoji-large-height)))
                (telega-ins--image-slices emojis-image))

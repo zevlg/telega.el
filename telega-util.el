@@ -642,6 +642,10 @@ instead of auto width calculation."
               (cons (cons emoji image) telega-emoji-svg-images))))
     image))
 
+(defun telega-emoji-var-16-p (emoji)
+  "Return non-nil if EMOJI has trailing Variation Selector-16."
+  (and (= (length emoji) 2) (eq (aref emoji 1) 65039)))
+
 (defun telega-emoji-has-zero-joiner-p (emoji)
   "Return non-nil if EMOJI has ZWJ char inside."
   (string-match-p (regexp-quote "\U0000200D") emoji))
