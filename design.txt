@@ -532,8 +532,14 @@ TODO
   installed stickersets
 
 * [TODO] Сделать настройку, чтобы в chat input не использовались emoji
-         icon, проблема если cut&pase картинку, то она схлопывается в
-         одну
+  icon, проблема если cut&paste картинку, то она схлопывается в одну
+
+* [TODO] Весь chatbuf делать read-only и только область с chatbuf
+  inputом помечать как inhibit-read-only
+
+* [TODO] undo list сделать, чтобы только измениня в chatbuf input
+  попадали в undo list
+
 
 Fonts
 -----

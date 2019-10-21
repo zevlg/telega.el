@@ -2738,12 +2738,19 @@ Otherwise choose sticker from some installed sticker set."
       (select-window
        (temp-buffer-window-show tss-buffer)))))
 
-(defun telega-chatbuf-attach-animation ()
+(defun telega-chatbuf-attach-animation (&optional from-file-p)
   "Attach the animation.
-If prefix argument is specified, then attach recent or favorite sticker.
-Otherwise choose sticker from some installed sticker set."
-  (interactive)
-  (telega-animation-choose-saved telega-chatbuf--chat))
+If prefix argument is specified, then attach animation from file.
+Otherwise choose animation from list of saved animations."
+  (interactive "P")
+  (if from-file-p
+      (let* ((afilename (read-file-name "Animation File: "))
+             (ifile (telega-chatbuf--gen-input-file afilename 'Animation)))
+        (telega-chatbuf-input-insert
+         (list :@type "inputMessageAnimation"
+               :animation ifile)))
+
+    (telega-animation-choose-saved telega-chatbuf--chat)))
 
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.
@@ -2798,7 +2805,8 @@ Prefix argument is available for next attachements:
                sticker.
   clipboard  - Available only if image is in the clipboard.
                Takes C-u prefix argument to attach clipboard as
-               document."
+               document.
+  animation  - Takes C-u prefix ta attach file as animation."
   (interactive
    (list (funcall telega-completing-read-function
                   "Attach type: "

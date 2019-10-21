@@ -850,7 +850,7 @@ PROPS are additional properties to the animation button."
       (mapc 'telega-ins--animation animations))))
 
 (defun telega-animation-choose-saved (for-chat)
-  "Choose recent sticker FOR-CHAT."
+  "Choose saved animation FOR-CHAT."
   (interactive (list telega-chatbuf--chat))
   (telega-animation-choose for-chat (telega--getSavedAnimations) t))
 
