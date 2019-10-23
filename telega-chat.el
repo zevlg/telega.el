@@ -329,7 +329,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
 (defun telega-chat-brackets (chat)
   "Return CHAT's brackets from `telega-chat-button-brackets'."
   (cdr (seq-find (lambda (bspec)
-                   (telega-filter-chats (car bspec) (list chat)))
+                   (telega-filter--test chat (car bspec)))
                  telega-chat-button-brackets)))
 
 (defun telega-chat--reorder (chat order)
