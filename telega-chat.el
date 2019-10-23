@@ -1525,13 +1525,14 @@ Recover previous active action after BODY execution."
   "Return name for the CHAT buffer.
 If TITLE is specified, use it instead of chat's title."
   (let ((brackets (telega-chat-brackets chat)))
-    (concat telega-symbol-telegram
-            (or (car brackets) "[")
-            (or title (telega-chat-title chat))
-            (when-let ((un (telega-tl-str (telega-chat--info chat) :username)))
-              (unless (string-empty-p un)
-                (concat "@" un)))
-            (or (cadr brackets) "]"))))
+    (substring-no-properties
+     (concat telega-symbol-telegram
+             (or (car brackets) "[")
+             (or title (telega-chat-title chat))
+             (when-let ((un (telega-tl-str (telega-chat--info chat) :username)))
+               (unless (string-empty-p un)
+                 (concat "@" un)))
+             (or (cadr brackets) "]")))))
 
 (defun telega-chatbuf--join (chat)
   "[JOIN] button has been pressed."
