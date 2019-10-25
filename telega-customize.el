@@ -140,7 +140,8 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'list
   :group 'telega)
 
-(defcustom telega-chat--display-buffer-action display-buffer--same-window-action
+(defcustom telega-chat--display-buffer-action
+  '((display-buffer-reuse-window display-buffer-same-window))
   "Action value when poping to chatbuffer.
 See docstring for `display-buffer' for the values."
   :type 'cons
