@@ -59,6 +59,7 @@
 (defvar telega-filters--inhibit-redisplay)
 (defvar telega-filters--inhibit-list)
 (declare-function telega-filters--redisplay "telega-filter")
+(declare-function telega-filter--test "telega-filter" (chat fspec))
 (declare-function telega-filter-chats "telega-filter" (filter-spec chats-list))
 (declare-function telega-filter-default-p "telega-filter" (&optional filter))
 
@@ -765,7 +766,8 @@ LIMIT - number of chats to get (default=100)"
       (telega-chat--pp chat))))
 
 (defun telega-chat--pop-to-buffer (chat)
-  "Pop to CHAT's buffer."
+  "Pop to CHAT's buffer.
+Uses `telega-chat--display-buffer-action' as action in `pop-to-buffer.'"
   (pop-to-buffer (telega-chatbuf--get-create chat)
                  telega-chat--display-buffer-action))
 

@@ -137,6 +137,8 @@ Have Stoploss 690 Satoshi. í ½í»‘
                    "tg:resolve?domain=itshit&post=23423"))
   (should (string= (telega-tme-open "https://t.me/socks?server=my&port=1234" t)
                    "tg:socks?server=my&port=1234"))
+  (should (string= (telega-tme-open "https://t.me/c/101110111/286125" t)
+                   "tg:privatepost?channel=101110111&post=286125"))
   )
 
 (ert-deftest telega-formatting ()

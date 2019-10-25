@@ -389,11 +389,12 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
       (telega-ins " "))
     t))
 
-(defun telega-ins--video (msg &optional video)
-  "Insert video message MSG."
+(defun telega-ins--video (msg &optional video no-thumbnail-p)
+  "Insert video message MSG.
+If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
   (unless video
     (setq video (telega--tl-get msg :content :video)))
-  (let ((thumb (plist-get video :thumbnail))
+  (let ((thumb (unless no-thumbnail-p (plist-get video :thumbnail)))
         (video-name (plist-get video :file_name))
         (video-file (telega-file--renew video :video)))
     (telega-ins telega-symbol-video " ")
@@ -563,7 +564,9 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (video
           (let ((video (plist-get web-page :video)))
             (when video
-              (telega-ins "<TODO: webPage:video>"))))))
+              (telega-ins--video msg video (when photo 'no-thumbnail))
+;              (telega-ins "<TODO: webPage:video>")
+              )))))
 
        (unless (zerop iv-version)
          (telega-ins--button

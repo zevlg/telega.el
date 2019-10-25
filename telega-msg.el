@@ -176,9 +176,9 @@ If CALLBACK is specified, then get reply message asynchronously."
      (telega-stickerset-get sset-id) (telega-msg-chat msg))))
 
 ;; TODO: revise the code, too much similar stuff
-(defun telega-msg-open-video (msg)
+(defun telega-msg-open-video (msg &optional video)
   "Open content for video message MSG."
-  (let* ((video (telega--tl-get msg :content :video))
+  (let* ((video (or video (telega--tl-get msg :content :video)))
          (video-file (telega-file--renew video :video)))
     ;; NOTE: `telega-file--download' triggers callback in case file is
     ;; already downloaded
@@ -326,9 +326,9 @@ If CALLBACK is specified, then get reply message asynchronously."
                                   'telega-msg-animation--callback msg))
                    (telega-ffplay-run filename nil "-loop" "0"))))))))))
 
-(defun telega-msg-open-document (msg)
+(defun telega-msg-open-document (msg &optional document)
   "Open content for document message MSG."
-  (let* ((doc (telega--tl-get msg :content :document))
+  (let* ((doc (or document (telega--tl-get msg :content :document)))
          (doc-file (telega-file--renew doc :document)))
     (telega-file--download doc-file 32
       (lambda (file)
@@ -349,6 +349,19 @@ If CALLBACK is specified, then get reply message asynchronously."
   "Open content for contact message MSG."
   (telega-describe-contact
    (telega--tl-get msg :content :contact)))
+
+(defun telega-msg-open-webpage (msg &optional web-page)
+  "Open content for message with webpage message MSG."
+  (unless web-page
+    (setq web-page (telega--tl-get msg :content :web_page)))
+  (cl-case (intern (plist-get web-page :type))
+    (video
+     (telega-msg-open-video msg (plist-get web-page :video)))
+    (document
+     (telega-msg-open-document msg (plist-get web-page :document)))
+
+    (t (when-let ((url (plist-get web-page :url)))
+         (telega-browse-url url)))))
 
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
@@ -376,10 +389,8 @@ If CALLBACK is specified, then get reply message asynchronously."
     (messageContact
      (telega-msg-open-contact msg))
     (messageText
-     (let* ((web-page (telega--tl-get msg :content :web_page))
-            (url (plist-get web-page :url)))
-       (when url
-         (telega-browse-url url))))
+     (when-let ((web-page (telega--tl-get msg :content :web_page)))
+       (telega-msg-open-webpage msg web-page)))
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 
@@ -390,21 +401,6 @@ If CALLBACK is specified, then get reply message asynchronously."
       (telega-file--upload-internal msg-file
         (lambda (_filenotused)
           (telega-msg-redisplay msg))))))
-
-(defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
-  "Get https link to public message."
-  (telega-server--call
-   (list :@type "getPublicMessageLink"
-         :chat_id chat-id
-         :message_id msg-id
-         :for_album (or for-album :false))))
-
-(defun telega-msg-public-link (msg &optional for-album)
-  "Return public http link for the message MSG."
-  (plist-get
-   (telega--getPublicMessageLink
-    (plist-get (telega-msg-chat msg) :id) (plist-get msg :id) for-album)
-   :link))
 
 (defun telega--deleteMessages (chat-id message-ids &optional revoke)
   "Delete messages by its MESSAGES-IDS list.
@@ -561,8 +557,14 @@ blocked users."
           (insert-text-button (telega-user--name (telega-user--get sender-uid))
                               :telega-link (cons 'user sender-uid))
           (telega-ins "\n")))
-      (when (telega-chat-public-p (telega-chat-get chat-id) 'supergroup)
-        (let ((link (telega-msg-public-link msg)))
+      ;; Link to the message
+      (let* ((chat (telega-chat-get chat-id))
+             (link (cond ((telega-chat-public-p chat 'supergroup)
+                          (telega--getPublicMessageLink chat-id msg-id))
+                         ((eq (telega-chat--type chat 'no-interpret) 'supergroup)
+                          ;; Only for supergroups and channels
+                          (telega--getMessageLink chat-id msg-id)))))
+        (when link
           (telega-ins "Link: ")
           (telega-ins--raw-button (telega-link-props 'url link)
             (telega-ins link))

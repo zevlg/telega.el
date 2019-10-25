@@ -39,6 +39,15 @@
 (declare-function telega--joinChatByInviteLink "telega-chat" (invite-link))
 
 
+(defun telega-tme-open-privatepost (supergroup post)
+  "Open POST in private SUPERGROUP."
+  (when-let ((chat (telega-chat-get
+                    (string-to-number (concat "-100" supergroup))
+                    'offline)))
+    ;; msg-id = post * 1048576
+    (telega-chat--goto-msg
+     chat (* (string-to-number post) 1048576) 'highlight)))
+
 (defun telega-tme-open-username (username &rest bot-params)
   "Open chat by its USERNAME.
 BOT-PARAMS are additional params."
@@ -96,6 +105,9 @@ BOT-PARAMS are additional params."
       (user-error "No such sticker set: %s" setname))
     (telega-describe-stickerset sset)))
 
+(defun telega-tme-open-theme (_slug)
+  (user-error "`telega-tme-open-theme' not yet implemented"))
+
 (defun telega-tme-parse-query-string (query-string)
   "Parse QUERY-STRING and return it as plist.
 Multiple params with same name in QUERY-STRING is disallowed."
@@ -122,6 +134,11 @@ Return non-nil, meaning URL has been handled."
            (telega-tme-open-group (plist-get query :invite)))
           ((string= path "addstickers")
            (telega-tme-open-stickerset (plist-get query :set)))
+          ((string= path "addtheme")
+           (telega-tme-open-theme (plist-get query :slug)))
+          ((string= path "privatepost")
+           (telega-tme-open-privatepost
+            (plist-get query :channel) (plist-get query :post)))
           ((or (string= path "msg") (string= path "share"))
            )
           ((string= path "msg_url")
@@ -156,6 +173,14 @@ Return non-nil if url has been handled."
                     (concat "tg:msg_url?" query))
                    ((string-match "^/\\(socks\\|proxy\\)$" path)
                     (concat "tg:" (match-string 1 path) "?" query))
+                   ((string-match
+                     (rx (and line-start "/c/"
+                              (group (? "-") (1+ digit))
+                              "/"
+                              (group (1+ digit))))
+                     path)
+                    (concat "tg:privatepost?channel=" (match-string 1 path)
+                            "&post=" (match-string 2 path)))
                    ((string-match
                      (rx (and line-start "/"
                               (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))

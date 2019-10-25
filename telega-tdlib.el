@@ -79,6 +79,25 @@ Return newly created chat."
    (list :@type "closeSecretChat"
          :secret_chat_id (plist-get secretchat :id))))
 
+(defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
+  "Get https link to public message."
+  (plist-get
+   (telega-server--call
+    (list :@type "getPublicMessageLink"
+          :chat_id chat-id
+          :message_id msg-id
+          :for_album (or for-album :false)))
+   :link))
+
+(defun telega--getMessageLink (chat-id msg-id)
+  "Get https link for message in private supergroup/channel."
+  (plist-get
+   (telega-server--call
+    (list :@type "getMessageLink"
+          :chat_id chat-id
+          :message_id msg-id))
+   :url))
+
 (defun telega--getChatEventLog (chat &optional query from-event-id
                                      limit filters users callback)
   "Return event log for the CHAT.

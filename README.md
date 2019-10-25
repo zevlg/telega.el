@@ -42,11 +42,12 @@ In some random order:
 - [x] InstantView for web pages
 - [x] Blocking/Unblocking users, listing blocked users
 - [x] Inline bots requests, via "@bot query<TAB>"
-- [ ] Delayed messages
 - [ ] Searching for messages in chat
 - [ ] Shared media
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [ ] [TranslationsPlatform](https://translations.telegram.org) support
+- [ ] Delayed messages, see [TDLib#695](https://github.com/tdlib/td/issues/695)
+- [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 
 ## Unique features
 
