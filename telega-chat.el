@@ -2630,15 +2630,10 @@ Multiple `C-u' increases delay before taking screenshot of the area."
 
     ;; Make a screenshot
     (message nil)
-    (let* ((import-bin (or (executable-find "import")
-                           (error "Utility `import' (imagemagick) not found")))
-           (temporary-file-directory telega-temp-dir)
-           (tmpfile (telega-temp-name "screenshot" ".png"))
-           (import-args (nconc (unless (floatp n) (list "-window" "root"))
-                               (list tmpfile))))
-      (apply 'call-process import-bin nil nil nil
-             "-silent"                  ;no beep
-             import-args)
+    (let* ((temporary-file-directory telega-temp-dir)
+           (tmpfile (telega-temp-name "screenshot" ".png")))
+      (funcall telega-screenshot-function tmpfile (floatp n))
+
       ;; Switch back to chat buffer in case it has been changed
       (telega-chat--pop-to-buffer chat)
       (telega-chatbuf--attach-tmp-photo tmpfile))))

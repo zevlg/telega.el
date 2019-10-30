@@ -734,6 +734,28 @@ Same as `momentary-string-display', but keeps the point."
       (when (eq dir 'entered)
         (telega-button--help-echo button)))))
 
+(defun telega-screenshot-with-import (tofile &optional region-p)
+  "Make a screenshot into TOFILE using imagemagick's import utility.
+If REGION-P is non-nil, then make a screenshot of region."
+  (let* ((import-bin (or (executable-find "import")
+                         (error "Utility `import' (imagemagick) not found")))
+         (import-args (nconc (unless region-p (list "-window" "root"))
+                             (list tofile))))
+    (apply 'call-process import-bin nil nil nil
+           "-silent"                    ;no beep
+           import-args)))
+
+(defun telega-screenshot-with-flameshot (tofile &optional region-p)
+  "Make a screenshot into TOFILE using `flameshot' utility.
+If REGION-P is non-nil, then make a screenshot of region."
+  (let ((flameshot-cmd (concat (or (executable-find "flameshot")
+                                   (error "Utility `flameshot' not found"))
+                               " " (if region-p "gui" "full")
+                               " -r")))
+    (let ((coding-system-for-write 'binary))
+      (write-region (shell-command-to-string flameshot-cmd)
+                    nil tofile nil 'quiet))))
+
 (provide 'telega-util)
 
 ;;; telega-util.el ends here

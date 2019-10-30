@@ -735,6 +735,15 @@ Message is ignored if its `:ignore' option is set to non-nil."
   :type 'function
   :group 'telega)
 
+(defcustom telega-screenshot-function
+  (if (executable-find "flameshot")
+      'telega-screenshot-with-flameshot
+    'telega-screenshot-with-import)
+  "*Function to use to make screenshot.
+Function should take two arguments - TOFILE and REGION-P."
+  :type 'function
+  :group 'telega)
+
 ;; special symbols
 (defgroup telega-symbol nil
   "Group to customize special symbols used by telega."
