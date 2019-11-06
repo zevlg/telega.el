@@ -48,11 +48,14 @@
         ;; Popup message from the bot
         (with-telega-help-win "*Callback Alert*"
           (telega-ins text)
-          (when link
+          (unless (string-empty-p link)
             (telega-ins "\n")
             (telega-ins--raw-button (telega-link-props 'url link)
               (telega-ins link))))
-      (message text))))
+
+      (message text)
+      (unless (string-empty-p link)
+        (telega-browse-url link)))))
 
 (defun telega--getCallbackQueryAnswer (msg payload)
   "Async send callback to bot."

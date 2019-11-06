@@ -542,7 +542,7 @@ If used with PREFIX-ARG, then cancel current search."
   (if cancel-p
       (telega-search-cancel)
 
-    (let ((query (read-string "Search for: " nil 'telega-search-history)))
+    (let ((query (read-string "Global search: " nil 'telega-search-history)))
       ;; Always move cursor to the search title
       (goto-char (telega-ewoc--location telega-root--ewoc))
 
