@@ -515,9 +515,12 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
             (not (cond ((string-prefix-p "tg:" url)
                         (telega-tme-open-tg url))
                        ((or (string-prefix-p "https://t.me/" url)
+                            (string-prefix-p "http://t.me/" url)
                             (string-prefix-p "https://telegram.me/" url)
                             (string-prefix-p "https://telegram.dog/" url))
                         (telega-tme-open url))
+                       ((string-prefix-p "t.me/" url)
+                        (telega-tme-open (concat "https://" url)))
                        (t
                         ;; Try instant view
                         (let ((iv (telega--getWebPageInstantView url)))

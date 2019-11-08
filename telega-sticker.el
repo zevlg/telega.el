@@ -479,7 +479,9 @@ SSET can be either `sticker' or `stickerSetInfo'."
         (telega-ins-fmt "Get: (telega-stickerset-get \"%s\")\n"
           (plist-get sset :id)))
       (telega-ins-fmt "%s: %d\n"
-        (if (plist-get sset :is_masks) "Masks" "Stickers")
+        (cond ((plist-get sset :is_animated) "Animated Stickers")
+              ((plist-get sset :is_masks) "Masks")
+              (t "Stickers"))
         (length stickers))
       (redisplay)
       (telega-ins--sticker-list stickers

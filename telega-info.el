@@ -363,7 +363,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
 (defun telega-info--insert-basicgroup (basicgroup chat)
   (let* ((full-info (telega--full-info basicgroup))
-         (descr (plist-get full-info :description))
+         (descr (telega-tl-str full-info :description))
          (members (plist-get full-info :members))
          (creator-id (plist-get full-info :creator_user_id))
          (creator (unless (zerop creator-id)
@@ -395,7 +395,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
 (defun telega-info--insert-supergroup (supergroup chat)
   (let* ((full-info (telega--full-info supergroup))
-         (descr (plist-get full-info :description))
+         (descr (telega-tl-str full-info :description))
          (restr-reason (telega-tl-str supergroup :restriction_reason))
          (pin-msg-id (plist-get chat :pinned_message_id))
          (member-status (plist-get supergroup :status))
