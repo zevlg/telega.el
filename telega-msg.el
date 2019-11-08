@@ -354,14 +354,15 @@ If CALLBACK is specified, then get reply message asynchronously."
   "Open content for message with webpage message MSG."
   (unless web-page
     (setq web-page (telega--tl-get msg :content :web_page)))
-  (cl-case (intern (plist-get web-page :type))
-    (video
-     (telega-msg-open-video msg (plist-get web-page :video)))
-    (document
-     (telega-msg-open-document msg (plist-get web-page :document)))
 
-    (t (when-let ((url (plist-get web-page :url)))
-         (telega-browse-url url)))))
+  (cond ((and (string= "video" (plist-get web-page :type))
+              (plist-get web-page :video))
+         (telega-msg-open-video msg (plist-get web-page :video)))
+        ((and (string= "document" (plist-get web-page :type))
+              (plist-get web-page :document))
+         (telega-msg-open-document msg (plist-get web-page :document)))
+        (t (when-let ((url (plist-get web-page :url)))
+             (telega-browse-url url)))))
 
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
