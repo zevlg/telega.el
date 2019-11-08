@@ -1624,8 +1624,6 @@ otherwise set draft only if current input is also draft."
                         "JOIN")
                     :value chat :action 'telega-chatbuf--join)))))
 
-          (telega--openChat chat)
-
           ;; Show the draft message if any, see
           ;; https://github.com/zevlg/telega.el/issues/80
           (when-let ((draft-msg (plist-get chat :draft_message)))
@@ -2886,6 +2884,10 @@ If DRAFT-MSG is ommited, then clear draft message."
 
 (defun telega-chatbuf--switch-out ()
   "Called when switching from chat buffer."
+  (telega-debug "Switch %s: %s" (propertize "OUT" 'face 'bold)
+                (buffer-name))
+  (telega--closeChat telega-chatbuf--chat)
+
   (when (telega-chatbuf-has-input-p)
     (when telega-chatbuf--my-action
       (telega-chatbuf--set-action "Cancel"))
@@ -2905,18 +2907,17 @@ If DRAFT-MSG is ommited, then clear draft message."
 
 (defun telega-chatbuf--switch-in ()
   "Called when switching to chat buffer."
-  )
+  (telega-debug "Switch %s: %s" (propertize "IN" 'face 'bold)
+                (buffer-name))
+  (telega--openChat telega-chatbuf--chat))
 
 (defun telega-chatbuf--killed ()
   "Called when chat buffer is killed."
   ;; Cancel any active action and actualizes the draft
   ;; see https://t.me/emacs_telega/6708
+  ;; Also closes chat
   (ignore-errors
     (telega-chatbuf--switch-out))
-
-  (ignore-errors
-    ;; See https://github.com/zevlg/telega.el/issues/12
-    (telega--closeChat telega-chatbuf--chat))
 
   ;; Stop any voice notes, see
   ;; https://github.com/zevlg/telega.el/issues/49

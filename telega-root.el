@@ -588,7 +588,14 @@ If used with PREFIX-ARG, then cancel current search."
                 (telega-chatbuf--switch-out))))
         (error
          (message "telega: error in `telega-chatbuf--switch-out': %S" err)))
-      (setq telega--last-buffer cbuf))))
+
+      (setq telega--last-buffer cbuf)
+      (condition-case err
+          ;; NOTE: trigger switch in only if buffer gets visibility
+          (when telega-chatbuf--chat
+            (telega-chatbuf--switch-in))
+        (error
+         (message "telega: error in `telega-chatbuf--switch-in': %S" err))))))
 
 (defun telega-online-status-timer-function ()
   "Timer function for online status change."
