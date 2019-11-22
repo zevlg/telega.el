@@ -1844,16 +1844,13 @@ If ICONS-P is non-nil, then use icons for members count."
 (defsubst telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
-  (let* ((msg-button (button-at (point)))
-         (point-off (and msg-button
-                         (eq (button-get msg-button :value)
-                             (ewoc--node-data node))
-                         (- (point) (button-start msg-button)))))
-    (save-excursion
-      (with-telega-deferred-events
-        (ewoc-invalidate telega-chatbuf--ewoc node)))
-    (when point-off
-      (forward-char point-off))))
+  (let* ((chat-win (get-buffer-window))
+         (wstart (and chat-win (window-start chat-win))))
+    (unwind-protect
+        (telega-save-cursor
+          (ewoc-invalidate telega-chatbuf--ewoc node))
+      (when chat-win
+        (set-window-start chat-win wstart 'noforce)))))
 
 (defun telega-chatbuf--prepend-messages (messages)
   "Insert MESSAGES at the beginning of the chat buffer.

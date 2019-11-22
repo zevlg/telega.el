@@ -122,11 +122,14 @@ heights are normalized to [0-1] values."
           (setq leftbits 8))))
     (mapcar (lambda (v) (/ v 31.0)) (nreverse result))))
 
-(defun telega-vvnote-video--svg (framefile &optional progress)
+(defun telega-vvnote-video--svg (framefile &optional progress
+                                           data-p frame-img-type)
   "Generate svg image for the video note FRAMEFILE.
 PROGRESS is value from 0 to 1 indicating played content.
-PROGRESS might be nil."
-  (let* ((img-type (image-type-from-file-name framefile))
+PROGRESS might be nil.
+If DATA-P is non-nil then FRAMEFILE is actually an image data.
+If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
+  (let* ((img-type (or frame-img-type (image-type-from-file-name framefile)))
          (size (telega-chars-xheight telega-video-note-height))
          (h size)
          (aw-chars (telega-chars-in-width size))
@@ -138,7 +141,7 @@ PROGRESS might be nil."
          (clip1 (telega-svg-clip-path svg "clip1")))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
     (svg-embed svg framefile
-               (format "image/%S" img-type) nil
+               (format "image/%S" img-type) data-p
                :x xoff :y yoff
                :width size :height size
                :clip-path "url(#clip)")
@@ -172,16 +175,22 @@ PROGRESS might be nil."
                :ascent 'center
                :telega-text (make-string aw-chars ?#))))
 
-(defun telega-vvnote-video--create-image (thumb &optional _file)
-  "Create image for video note frame THUMB."
-  (let ((file (telega-file--renew thumb :photo)))
-    (if (telega-file--downloaded-p file)
-        (telega-vvnote-video--svg
-         (telega--tl-get file :local :path))
-
-      (let* ((cheight telega-video-note-height)
-             (x-size (telega-chars-xheight cheight)))
-        (telega-media--progress-svg file x-size x-size cheight)))))
+(defun telega-vvnote-video--create-image (note &optional _file)
+  "Create image for video NOTE frame."
+  (let* ((thumb (plist-get note :thumbnail))
+         (thumb-file (telega-file--renew thumb :photo))
+         (minithumb (plist-get note :minithumbnail)))
+    (cond ((telega-file--downloaded-p thumb-file)
+           (telega-vvnote-video--svg
+            (telega--tl-get thumb-file :local :path)))
+          (minithumb
+           (telega-vvnote-video--svg
+            (base64-decode-string (plist-get minithumb :data))
+            nil t 'jpeg))
+          (t
+           (let* ((cheight telega-video-note-height)
+                  (x-size (telega-chars-xheight cheight)))
+             (telega-media--progress-svg thumb-file x-size x-size cheight))))))
 
 (provide 'telega-vvnote)
 

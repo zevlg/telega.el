@@ -745,10 +745,14 @@ Return sticker set."
   ;;      Show thumbnail (caching temporary), waiting for animation to
   ;;      be downloaded
   ;;
+  ;;   2.5) Animation/thumbnail is downloading, minithumbnail is
+  ;;        available - display it
+  ;;
   ;;   3) Thumbnail and animation downloading
   ;;      Fallback to svg loading image
   (let* ((anim-frame-filename
           (plist-get animation :telega-ffplay-frame-filename))
+         (minithumb (plist-get animation :minithumbnail))
          (tfile (telega-animation--thumb-file animation))
          (cwidth-xmargin (plist-get animation :telega-image-cwidth-xmargin)))
     (unless cwidth-xmargin
@@ -779,6 +783,9 @@ Return sticker set."
                   (telega--tl-get tfile :local :path)
                   'imagemagick nil img-props))
 
+          (minithumb
+           (telega-minithumb--create-image minithumb telega-animation-height))
+
           (t (telega-animation--progress-svg animation))))))
 
 (defun telega-ins--animation-image (animation &optional slices-p)
@@ -786,8 +793,7 @@ Return sticker set."
 If SLICES-P is non-nil, then insert ANIMATION using slices."
   (let ((aimage (telega-media--image
                  (cons animation 'telega-animation--create-image)
-                 (cons (plist-get animation :thumbnail) :photo)
-                 'force-update)))
+                 (cons (plist-get animation :thumbnail) :photo))))
     (if slices-p
         (telega-ins--image-slices aimage)
       (telega-ins--image aimage))))

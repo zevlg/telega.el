@@ -329,8 +329,6 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
                            (process-status proc)))
          (played (and proc-status
                       (plist-get (process-plist proc) :progress)))
-
-         (thumb (plist-get audio :album_cover_thumbnail))
          (audio-name (plist-get audio :file_name))
          (audio-file (telega-file--renew audio :audio))
          (title (telega-tl-str audio :title))
@@ -380,13 +378,15 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
                   (telega-ffplay-stop))))
 
     ;; Album cover
-    (when thumb
-      (telega-ins "\n")
-      (let ((timg (telega-media--image
-                   (cons thumb 'telega-thumb--create-image-as-is)
-                   (cons thumb :photo))))
-        (telega-ins--image-slices timg))
-      (telega-ins " "))
+    (let ((thumb (plist-get audio :album_cover_thumbnail))
+          (minithumb (plist-get audio :album_cover_minithumbnail)))
+      (when (or minithumb thumb)
+        (telega-ins "\n")
+        (let ((timg (telega-media--image
+                     (cons audio 'telega-audio--create-image)
+                     (cons thumb :photo))))
+          (telega-ins--image-slices timg))
+        (telega-ins " ")))
     t))
 
 (defun telega-ins--video (msg &optional video no-thumbnail-p)
@@ -394,8 +394,7 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
 If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
   (unless video
     (setq video (telega--tl-get msg :content :video)))
-  (let ((thumb (unless no-thumbnail-p (plist-get video :thumbnail)))
-        (video-name (telega-tl-str video :file_name))
+  (let ((video-name (telega-tl-str video :file_name))
         (video-file (telega-file--renew video :video)))
     (telega-ins telega-symbol-video " ")
     (if (telega-file--downloaded-p video-file)
@@ -412,13 +411,17 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins-prefix " "
       (telega-ins--file-progress msg video-file))
 
-    (when thumb
-      (telega-ins "\n")
-      (let ((timg (telega-media--image
-                   (cons thumb 'telega-thumb--create-image-as-is)
-                   (cons thumb :photo))))
-        (telega-ins--image-slices timg))
-      (telega-ins " "))
+    ;; Video's thumbnail, if any
+    (unless no-thumbnail-p
+      (let ((thumb (plist-get video :thumbnail))
+            (minithumb (plist-get video :minithumbnail)))
+        (when (or thumb minithumb)
+          (telega-ins "\n")
+          (telega-ins--image-slices
+           (telega-media--image
+            (cons video 'telega-thumb-or-minithumb--create-image)
+            (cons thumb :photo)))
+          (telega-ins " "))))
     t))
 
 (defun telega-ins--voice-note (msg &optional note)
@@ -469,14 +472,11 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (telega-ins--file-progress msg note-file))
     ))
 
-(defun telega-ins--video-note (msg &optional note)
-  "Insert message with videoNote content."
-  (unless note
-    (setq note (telega--tl-get msg :content :video_note)))
-  (let ((thumb (plist-get note :thumbnail))
-        (note-file (telega-file--renew note :video))
-        (viewed-p (telega--tl-get msg :content :is_viewed)))
-
+(defun telega-ins--video-note (msg &optional video-note)
+  "Insert message MSG with VIDEO-NOTE content."
+  (let* ((note (or video-note (telega--tl-get msg :content :video_note)))
+         (note-file (telega-file--renew note :video))
+         (viewed-p (telega--tl-get msg :content :is_viewed)))
     (telega-ins (propertize "NOTE" 'face 'shadow))
     (telega-ins-fmt " (%dx%d %s %s)"
       (plist-get note :length) (plist-get note :length)
@@ -487,14 +487,16 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins-prefix " "
       (telega-ins--file-progress msg note-file))
 
-    (telega-ins "\n")
-    (when-let ((img (or (plist-get msg :telega-ffplay-frame)
-                        (when thumb
-                          (telega-media--image
-                           (cons thumb 'telega-vvnote-video--create-image)
-                           (cons thumb :photo))))))
-      (telega-ins--image-slices img)
-      (telega-ins " "))))
+    (let ((thumb (plist-get note :thumbnail))
+          (minithumb (plist-get note :minithumbnail)))
+      (when-let ((img (or (plist-get msg :telega-ffplay-frame)
+                          (when (or minithumb thumb)
+                            (telega-media--image
+                             (cons note 'telega-vvnote-video--create-image)
+                             (cons thumb :photo))))))
+        (telega-ins "\n")
+        (telega-ins--image-slices img)
+        (telega-ins " ")))))
 
 (defun telega-ins--document-header (doc &optional no-attach-symbol)
   "Attach header for the document DOC.
@@ -519,14 +521,16 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
   (telega-ins--document-header doc)
   (telega-ins--file-progress msg (telega-file--renew doc :document))
 
-  ;; documents thumbnail preview (if any)
-  (when-let ((thumb (plist-get doc :thumbnail)))
+  ;; document's thumbnail preview (if any)
+  (let ((thumb (plist-get doc :thumbnail))
+        (minithumb (plist-get doc :minithumbnail)))
+    (when (or thumb minithumb)
     (telega-ins "\n")
-    (let ((timg (telega-media--image
-                 (cons thumb 'telega-thumb--create-image-as-is)
-                 (cons thumb :photo))))
-      (telega-ins--image-slices timg))
-    (telega-ins " ")))
+    (telega-ins--image-slices
+     (telega-media--image
+      (cons doc 'telega-thumb-or-minithumb--create-image)
+      (cons thumb :photo)))
+    (telega-ins " "))))
 
 (defun telega-ins--webpage (msg &optional web-page)
   "Insert WEB-PAGE.

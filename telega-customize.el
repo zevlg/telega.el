@@ -259,6 +259,12 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'list
   :group 'telega)
 
+(defcustom telega-thumbnail-height 8
+  "*Height of thumbnail for various type of messages.
+Used for such messages as audio/document/etc."
+  :type 'integer
+  :group 'telega)
+
 ;; Locations
 (defcustom telega-location-url-format
   "http://maps.google.com/?q=%N,%E&ll=%N,%E&z=15"

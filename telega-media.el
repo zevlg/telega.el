@@ -451,11 +451,18 @@ CHEIGHT is the height in chars to use (default=1)."
 
     (telega-media--progress-svg file width height cheight)))
 
-(defun telega-minithumb--create-image (minithumb &rest props)
+(defun telega-minithumb--create-image (minithumb cheight)
   "Create image and use MINITHUMB minithumbnail as data."
-  (apply 'create-image (base64-decode-string (plist-get minithumb :data))
-         'imagemagick t :scale 1.0
-         props))
+  (let* ((xwidth (plist-get minithumb :width))
+         (xheight (plist-get minithumb :height))
+         (cwidth-xmargin (telega-media--cwidth-xmargin xwidth xheight cheight)))
+    (create-image (base64-decode-string (plist-get minithumb :data))
+                  (if (image-transforms-p) 'jpeg 'imagemagick) t
+                  :height (telega-chars-xheight cheight)
+                  :scale 1.0
+                  :ascent 'center
+                  :margin (cons (cdr cwidth-xmargin) 0)
+                  :telega-text (make-string (car cwidth-xmargin) ?X))))
 
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.
@@ -479,6 +486,30 @@ CHEIGHT is the height in chars (default=1)."
   "Create image for thumbnail THUMB (photoSize) with size as is."
   (telega-thumb--create-image
    thumb file (telega-chars-in-height (plist-get thumb :height))))
+
+(defun telega-thumb-or-minithumb--create-image (tl-obj &optional _file
+                                                       custom-thumb
+                                                       custom-minithumb)
+  "Create image fol TL-OBJ that has :thumbnail and/or :minithumbnail prop."
+  (let* ((thumb (or custom-thumb (plist-get tl-obj :thumbnail)))
+         (thumb-file (or custom-minithumb (telega-file--renew thumb :photo)))
+         (minithumb (plist-get tl-obj :minithumbnail)))
+    (cond ((telega-file--downloaded-p thumb-file)
+           (telega-thumb--create-image
+            thumb thumb-file telega-thumbnail-height))
+          (minithumb
+           (telega-minithumb--create-image
+            minithumb telega-thumbnail-height))
+          (t
+           (telega-thumb--create-image
+            thumb thumb-file telega-thumbnail-height)))))
+
+(defun telega-audio--create-image (audio &optional _file)
+  "Function to create image for AUDIO album cover."
+  (telega-thumb-or-minithumb--create-image
+   audio _file
+   (plist-get audio :album_cover_thumbnail)
+   (plist-get audio :album_cover_minithumbnail)))
 
 (defun telega-media--image-update (obj-spec file)
   "Called to update the image contents for the OBJ-SPEC.
@@ -538,9 +569,10 @@ File is specified with FILE-SPEC."
                          (thumb-file (telega-file--renew thumb :photo)))
                     (if (telega-file--downloaded-p thumb-file)
                         (telega-thumb--create-image thumb thumb-file cheight)
-                      (telega-photo--progress-svg best cheight)))))))))
+                      (if-let ((minithumb (plist-get photo :minithumbnail)))
+                          (telega-minithumb--create-image minithumb cheight)
+                        (telega-photo--progress-svg best cheight))))))))))
 
-;    (telega-photo--progress-svg best cheight)))
     (telega-media--image
      (cons photo create-image-fun)
      (cons best :photo)
