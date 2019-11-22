@@ -457,7 +457,10 @@ CHEIGHT is the height in chars to use (default=1)."
          (xheight (plist-get minithumb :height))
          (cwidth-xmargin (telega-media--cwidth-xmargin xwidth xheight cheight)))
     (create-image (base64-decode-string (plist-get minithumb :data))
-                  (if (image-transforms-p) 'jpeg 'imagemagick) t
+                  (if (and (fboundp 'image-transforms-p)
+                           (funcall 'image-transforms-p))
+                      'jpeg 'imagemagick)
+                  t
                   :height (telega-chars-xheight cheight)
                   :scale 1.0
                   :ascent 'center
