@@ -105,9 +105,12 @@ Arch-based).
    [Emacs-mac](https://bitbucket.org/mituharu/emacs-mac/), or you
    installed Emacs by running `brew install emacs-mac` or `brew cask
    install emacs-mac`, your Emacs has bug dealing with complex svg,
-   which leads to Emacs hangup.  Until the bug is fixed, consider
-   switching to
-   [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus)
+   which leads to Emacs hangup.  Compiling Emacs with rsvg support by running
+   `brew install emacs-mac --with-rsvg` will fix the hangup problem.
+
+   Telega cannot display stickers correctly with emacs-mac, even when emacs-mac
+   is compiled with rsvg support.  If you want stickers, please consider
+   switching to emacs-plus.
 
 3. [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus) is
    the best choice to run telega.
