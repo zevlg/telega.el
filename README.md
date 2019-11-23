@@ -59,9 +59,9 @@ In some random order:
 
 # Screenshots
 
-Channels only chats filtered in root buffer:
+Root buffer screen:
 
-![screen10](https://zevlg.github.io/telega/screen-10.png)
+![screen14](https://zevlg.github.io/telega/screen-14.png)
 
 Chat in [@emacs_en](https://t.me/emacs_en "emacs_en") group:
 
