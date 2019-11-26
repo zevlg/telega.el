@@ -7,8 +7,9 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.5.0
-(defconst telega-version "0.5.0")
+;; Version: 0.5.1
+(defconst telega-version "0.5.1")
+(defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.5.0")
 
 ;; telega is free software: you can redistribute it and/or modify
@@ -91,7 +92,7 @@ If prefix ARG is given, then will not pop to telega root buffer."
     (with-current-buffer (get-buffer-create telega-root-buffer-name)
       (telega-root-mode))
 
-    (telega-server--check-version telega-version)
+    (telega-server--check-version telega-server-min-version)
     (telega-server--start))
 
   (unless arg

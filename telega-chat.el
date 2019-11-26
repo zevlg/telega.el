@@ -1790,7 +1790,7 @@ If ICONS-P is non-nil, then use icons for members count."
   (when-let ((pinned-msg (telega-chat-pinned-msg telega-chatbuf--chat 'locally)))
     (telega-ins--as-string
      (telega-ins " [")
-     (telega-ins--with-attrs (list :min 3 :max 15 :align 'left :elide t)
+     (telega-ins--with-attrs (list :max 15 :align 'left :elide t)
        (telega-ins--with-props
            (list 'local-map
                  (eval-when-compile
@@ -1799,7 +1799,11 @@ If ICONS-P is non-nil, then use icons for members count."
                  'mouse-face 'mode-line-highlight
                  'help-echo "mouse-1: Goto pinned message")
          (telega-ins telega-symbol-pin)
-         (telega-ins--content-one-line pinned-msg)))
+         (let ((telega-emoji-use-images nil))
+           ;; NOTE: avoid using images for emojis, because modeline
+           ;; height might differ from default height, and modeline
+           ;; will increase its height
+           (telega-ins--content-one-line pinned-msg))))
      (telega-ins "]"))))
 
 (defun telega-chatbuf-mode-line-update ()

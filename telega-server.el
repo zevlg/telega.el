@@ -133,15 +133,15 @@ Raise error if not found."
     (when (string-match "^Version \\([0-9.]+\\)" ts-usage)
       (match-string 1 ts-usage))))
 
-(defun telega-server--check-version (required-version)
-  "Check telega-server version against REQUIRED-VERSION.
+(defun telega-server--check-version (min-required-version)
+  "Check telega-server version against MIN-REQUIRED-VERSION.
 If does not match, then query user to rebuild telega-server.
 If version does not match then query user to rebuild telega-server."
-  (let ((ts-version (telega-server-version)))
-    (unless (equal ts-version required-version)
+  (let ((ts-version (or (telega-server-version) "0.0.0 [unknown]")))
+    (when (string< ts-version min-required-version)
       (when (y-or-n-p
-             (format "Installed `telega-server' version %s≠%s, rebuild? "
-                     ts-version required-version))
+             (format "Installed `telega-server' version %s<%s, rebuild? "
+                     ts-version min-required-version))
         (telega-server-build 'no-query)))))
 
 (defsubst telega-server--proc ()

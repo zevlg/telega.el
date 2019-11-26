@@ -902,8 +902,7 @@ Special messages are determined with `telega-msg-special-p'."
        (when-let ((pin-msg (telega-msg--get (plist-get msg :chat_id)
                                             (plist-get content :message_id)
                                             'locally)))
-         (telega-ins--with-attrs (list :min 20 :max 20
-                                       :align 'left :elide t)
+         (telega-ins--with-attrs (list :max 20 :align 'left :elide t)
          (telega-ins--content-one-line pin-msg)))
        (telega-ins "\""))
       (t (telega-ins-fmt "<unsupported special message: %S>"
