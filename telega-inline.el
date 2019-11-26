@@ -288,8 +288,8 @@
                  :inserter 'telega-ins--inline-audio
                  :action 'telega-inline-bot--action
                  'cursor-sensor-functions
-                 '(telega-button-highlight--sensor-func)
-                 (telega-ins--inline-delim)))
+                 '(telega-button-highlight--sensor-func))
+               (telega-ins--inline-delim))
 
               (inlineQueryResultArticle
                (telega-button--insert 'telega qr
