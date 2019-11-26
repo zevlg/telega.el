@@ -186,7 +186,7 @@ Used only if `telega-emoji-use-images' is non-nil."
   :type 'integer
   :group 'telega)
 
-(defcustom telega-sticker-size '(3 . 24)
+(defcustom telega-sticker-size '(4 . 24)
   "*Size for the sticker.
 car is height in chars to use.
 cdr is maximum width in chars to use."
@@ -579,9 +579,15 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :type 'list
   :group 'telega-chat)
 
+(defcustom telega-chat-footer-show-pinned-message t
+  "*Non-nil to show pinned message in the chatbuffer footer."
+  :type 'boolean
+  :group 'telega-chat)
+
 (defcustom telega-chat-mode-line-format
   '((:eval (telega-chatbuf-mode-line-unread))
-    (:eval (telega-chatbuf-mode-line-members 'use-icons)))
+    (:eval (telega-chatbuf-mode-line-members 'use-icons))
+    (:eval (telega-chatbuf-mode-line-pinned-msg)))
   "Additional mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
   :type 'sexp

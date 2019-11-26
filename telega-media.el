@@ -153,10 +153,13 @@ remove the callback as well."
           ((telega-file--can-download-p dfile)
            (telega--downloadFile file-id priority
              (lambda (downfile)
-               (cl-assert (or (telega-file--downloaded-p downfile)
-                              (telega-file--downloading-p downfile)))
+               ;; NOTE: updateFile may arrive without setting
+               ;; telega-file--downloaded-p or telega-file--downloading-p
+               ;; to non-nil
                (telega-file--update downfile)
-               (when cbwrap
+               (when (and cbwrap
+                          (or (telega-file--downloaded-p downfile)
+                              (telega-file--downloading-p downfile)))
                  (telega-file--download downfile priority callback))))))
     ))
 
@@ -507,10 +510,10 @@ CHEIGHT is the height in chars (default=1)."
            (telega-thumb--create-image
             thumb thumb-file telega-thumbnail-height)))))
 
-(defun telega-audio--create-image (audio &optional _file)
+(defun telega-audio--create-image (audio &optional file)
   "Function to create image for AUDIO album cover."
   (telega-thumb-or-minithumb--create-image
-   audio _file
+   audio file
    (plist-get audio :album_cover_thumbnail)
    (plist-get audio :album_cover_minithumbnail)))
 

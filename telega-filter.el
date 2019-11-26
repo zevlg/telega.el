@@ -392,6 +392,15 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive)
   (telega-filter-add 'pin))
 
+(define-telega-filter pinned-message (chat)
+  "Matches if CHAT has pinned message."
+  (not (zerop (plist-get chat :pinned_message_id))))
+
+(defun telega-filter-by-pinned-message ()
+  "Filter only chats with pinned message."
+  (interactive)
+  (telega-filter-add 'pinned-message))
+
 (define-telega-filter unread (chat &optional n)
   "Matches CHAT with at least N unread messages.
 By default N is 1.

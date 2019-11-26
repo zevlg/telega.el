@@ -392,10 +392,10 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-webpage--ins-pb (plist-get pb :cover)))
     (pageBlockEmbedded
      (telega-button--insert 'telega pb
-       :inserter (lambda (pb-embedd)
-                   (let ((url (plist-get pb :url))
-                         (html (plist-get pb :html))
-                         (poster-photo (plist-get pb :poster_photo)))
+       :inserter (lambda (pb-embedded)
+                   (let ((url (plist-get pb-embedded :url))
+                         (html (plist-get pb-embedded :html))
+                         (poster-photo (plist-get pb-embedded :poster_photo)))
                      (when (telega-ins--with-face '(bold telega-link)
                              (telega-ins url))
                        (telega-ins "\n"))
@@ -407,10 +407,11 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
                        (telega-ins--photo
                         poster-photo nil telega-webpage-photo-maxsize))
                      (telega-ins-prefix "\n"
-                       (telega-webpage--ins-pb (plist-get pb :caption)))
+                       (telega-webpage--ins-pb
+                        (plist-get pb-embedded :caption)))
                      ))
-       :action (lambda (pb-embedd)
-                 (let ((url (plist-get pb-embedd :url)))
+       :action (lambda (pb-embedded)
+                 (let ((url (plist-get pb-embedded :url)))
                    (unless (string-empty-p url)
                      (telega-browse-url url))))))
     (pageBlockEmbeddedPost

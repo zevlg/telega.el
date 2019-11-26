@@ -225,26 +225,6 @@ LIMIT - limit number of photos (default=100)."
   (telega-chat--pop-to-buffer
    (telega--createPrivateChat user)))
 
-(defun telega--blockUser (user)
-  "Add USER to the blacklist."
-  (telega-server--call
-   (list :@type "blockUser"
-         :user_id (plist-get user :id))))
-
-(defun telega--unblockUser (user)
-  "Remove USER from the blacklist."
-  (telega-server--call
-   (list :@type "unblockUser"
-         :user_id (plist-get user :id))))
-
-(defun telega--getBlockedUsers (&optional offset)
-  "Get list of blocked users."
-  (let ((reply (telega-server--call
-                (list :@type "getBlockedUsers"
-                      :offset (or offset 0)
-                      :limit 100))))
-    (mapcar 'telega-user--get (plist-get reply :user_ids))))
-
 (defun telega-user-block (user &optional unblock-p)
   "Toggle block state of the USER.
 If UNBLOCK-P is specified, then unblock USER."

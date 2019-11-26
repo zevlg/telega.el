@@ -86,7 +86,11 @@
 (defun telega--on-updateUserFullInfo (event)
   (let ((ufi (cdr (assq 'user telega--full-info))))
     (puthash (plist-get event :user_id)
-             (plist-get event :user_full_info) ufi)))
+             (plist-get event :user_full_info) ufi)
+
+    ;; Might affect root's buffer view
+    ;; because for example `:is_blocked' might be used
+    ))
 
 (defun telega--on-updateBasicGroupFullInfo (event)
   (let ((ufi (cdr (assq 'basicGroup telega--full-info))))
@@ -102,7 +106,7 @@
     ;; pinned message might change
     ))
 
-(defun telega--full-info (tlobj)
+(defun telega--full-info (tlobj &optional _offline _callback)
   "Get FullInfo for the TLOBJ.
 TLOBJ could be one of: user, basicgroup or supergroup."
   (let* ((tlobj-type (telega--tl-type tlobj))
@@ -125,18 +129,6 @@ TLOBJ could be one of: user, basicgroup or supergroup."
     full-info))
 
 
-
-(defun telega--getSupergroupMembers (supergroup &optional filter callback)
-  "Get SUPERGRUOP members.
-Default FILTER is \"supergroupMembersFilterRecent\"."
-  (declare (indent 2))
-  (telega-server--call
-   (list :@type "getSupergroupMembers"
-         :supergroup_id (plist-get supergroup :id)
-         :filter (list :@type (or filter "supergroupMembersFilterRecent"))
-         :offset 0
-         :limit 200)
-   callback))
 
 (defun telega-info--insert-user (user &optional chat redisplay)
   "Insert USER info into current buffer."
@@ -448,16 +440,16 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
       (or (plist-get chat :x-online-count) 0))
     (when (plist-get full-info :can_get_members)
       ;; Asynchronously fetch/insert supergroup members
-      (telega--getSupergroupMembers supergroup nil
+      (telega--getSupergroupMembers supergroup nil nil nil
         (let ((buffer (current-buffer))
               (at-point (point)))
-          (lambda (reply)
+          (lambda (members)
             (when (buffer-live-p buffer)
               (with-current-buffer buffer
                 (let ((inhibit-read-only t))
                   (save-excursion
                     (goto-char at-point)
-                    (telega-ins--chat-members (plist-get reply :members)))))))
+                    (telega-ins--chat-members members))))))
           )))
 
     (when telega-debug
@@ -474,12 +466,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     (if (not sessions)
         (progn
           (telega-ins "Loading...")
-          ;; Async sessions loading
-          (telega-server--call
-           (list :@type "getActiveSessions")
-           (lambda (reply)
-             (telega-describe-active-sessions
-              (append (plist-get reply :sessions) nil)))))
+          (telega--getActiveSessions 'telega-describe-active-sessions))
 
       (dolist (session sessions)
         (let ((app-name (plist-get session :application_name))
@@ -512,11 +499,6 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
 
 
 ;; Proxies code
-(defun telega--getProxies ()
-  "Return list of currently registered proxies."
-  (let ((reply (telega-server--call (list :@type "getProxies"))))
-    (mapcar #'identity (plist-get reply :proxies))))
-
 (defun telega--pingProxies (proxies &optional callback)
   "Update ping stats for the PROXIES.
 Call CALLBACK on updates."

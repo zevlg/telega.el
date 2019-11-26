@@ -1,7 +1,7 @@
 Codestyle
 =========
 
-Version: 0.3.X,0.4.X
+Version: 0.3.X,0.4.X,0.5.X
 
 * Something that acts on chat buffer or any function that uses any
   chat buffer local variables should be named with `telega-chatbuf-`
@@ -20,6 +20,10 @@ Version: 0.3.X,0.4.X
 * Do NOT create hook with default value, because its value will be
   shadowed if telega is not yet loaded and user added some hook.
   Add hooks you want in load time, i.e. after (provide 'telega-FEATURE)
+
+Version: 0.6.X
+
+* Put API related functions to telega-tdlib.el
 
 Идеи
 ====
@@ -554,6 +558,20 @@ TODO
    - Если канал и в сообщении есть кнопка с t.me/joinchat/xxx - то
      расцениваем как рекламу и игнорим
 
+* [TODO] Ввести custom variable - telega-media-size
+  '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)
+
+  И при показе любой картинки делать её, чтобы она была в пределах
+  этих размерах, не меньше и не больше.  Если картинка не помещается
+  (меньше или больше по ширине или высоте), то скейлим.  После
+  применения скейлинга нужно посчитать как x-margin так и y-margin
+  (задаётся как cons в :margin)
+
+* [TODO] Перед ">>>" показывать иконку чата, чтобы меньше было
+  возможности отправить сообщение "не туда".
+
+  Одночарактерная иконка чата также может быть использована в rootbuf.
+      
 Fonts
 -----
 

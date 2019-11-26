@@ -668,10 +668,11 @@ Optional DECODED-TS is the result of already applied `decode-time'."
 (put 'telega 'button-category-symbol 'telega-button)
 
 (defun telega-button--action (button)
-  "Run BUTTON's `:action' function on its `:value'."
-  (let ((telega-action (button-get button :action)))
-    (when telega-action
-      (funcall telega-action (button-get button :value)))))
+  "Run BUTTON's `:action' function on its `:value'.
+Return t if `:action' has been called."
+  (when-let ((telega-action (button-get button :action)))
+    (funcall telega-action (button-get button :value))
+    t))
 
 (defun telega-button--sensor-func (_window oldpos dir)
   "Function to be used in `cursor-sensor-functions' text property.

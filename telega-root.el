@@ -43,6 +43,7 @@
 (declare-function telega--searchPublicChats "telega-chat" (query &optional callback))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega--searchChats "telega-chat" (query &optional limit))
+(declare-function telega-chatbuf--switch-in "telega-chat")
 (declare-function telega-chatbuf--switch-out "telega-chat")
 (declare-function telega-chatbuf--check-focus-change "telega-chat")
 

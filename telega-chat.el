@@ -205,12 +205,6 @@ Return nil if can't join the chat."
                      :invite_link invite-link))))
     (telega-chat-get (plist-get chat :id))))
 
-(defun telega--checkChatInviteLink (invite-link)
-  "Check invitation link INVITE-LINK."
-  (telega-server--call
-   (list :@type "checkChatInviteLink"
-         :invite_link invite-link)))
-
 (defun telega--joinChat (chat)
   "Adds a new member to a CHAT."
   (telega-server--send
@@ -357,7 +351,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
         (photo (plist-get event :photo)))
     (plist-put chat :photo photo)
 
-    ;; TODO: update chat's :telega-image
+    (plist-put chat :telega-image nil)
+    ;; TODO:
+    ;;  - redisplay chat in rootbuf
+    ;;  - redisplay chat's input in case icon is used in input
+    ;;  - redisplay *Telegram Chat Info* in case it is shown for the
+    ;;    CHAT
     ))
 
 (defun telega--setChatNotificationSettings (chat &rest settings)
@@ -458,7 +457,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (cl-assert chat)
     (plist-put chat :reply_markup_message_id
                (plist-get event :reply_markup_message_id))
-    (telega-root--chat-update chat)))
+    (telega-root--chat-update chat)
+
+    ;; Also update reply-markup in chat's footer
+    (with-telega-chatbuf chat
+      (telega-chatbuf--footer-redisplay))
+    ))
 
 (defun telega--on-updateChatLastMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -499,8 +503,12 @@ NOTE: we store the number as custom chat property, to use it later."
     (plist-put chat :pinned_message_id
                (plist-get event :pinned_message_id))
 
-    ;; TODO: update chatbuf's view of the pinned message
-    ))
+    ;; Modeline/footer are affected by pinned message
+    (with-telega-chatbuf chat
+      (telega-chatbuf-mode-line-update)
+      (telega-chatbuf--footer-redisplay))
+
+    (telega-root--chat-update chat)))
 
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
@@ -609,16 +617,15 @@ be marked as read."
    (list :@type "viewMessages"
          :chat_id (plist-get chat :id)
          :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
-         :force_read (or force :false))))
+         :force_read (if force t :false))))
 
-(defun telega-chatbuf--view-visible-messages (window &optional display-start)
+(defun telega-chatbuf--view-visible-messages (window &optional display-start force)
   "View all visible messages in chatbuf's window."
   (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
             (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
                (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
-    (telega--viewMessages
-     telega-chatbuf--chat
-     (telega-chatbuf--visible-messages window display-start))))
+    (when-let ((visible-messages (telega-chatbuf--visible-messages window display-start)))
+      (telega--viewMessages telega-chatbuf--chat visible-messages force))))
 
 (defun telega--toggleChatIsPinned (chat)
   "Toggle pin state of the CHAT."
@@ -791,16 +798,17 @@ CHAT must be supergroup or channel."
          :user_ids (cl-map 'vector (telega--tl-prop :id) users))))
 
 (defun telega-chat-add-member (chat user &optional forward-limit)
-  "Add MEMBER to the CHAT."
+  "Add USER to the CHAT."
   (interactive (list (or telega-chatbuf--chat
+                         telega--chat
                          (telega-chat-at-point))
-                     (telega-completing-read-user "User: ")))
+                     (telega-completing-read-user "Add member: ")))
   (cl-assert user)
   (telega-server--send
    (list :@type "addChatMember"
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
-         :forward_limit (or forward-limit 300))))
+         :forward_limit (or forward-limit 100))))
 
 (defun telega-chat-set-title (chat title)
   "Set CHAT's title to TITLE."
@@ -910,6 +918,12 @@ STATUS is one of: "
       (telega-ins--button "Open"
         :value chat
         :action 'telega-chat--pop-to-buffer)
+      (when (telega--tl-get chat :permissions :can_invite_users)
+        (telega-ins " ")
+        (telega-ins--button "Add Member"
+          'action (lambda (_ignored)
+                    (telega-chat-add-member
+                     chat (telega-completing-read-user "Add member: ")))))
       (telega-ins "\n"))
 
     (telega-ins-fmt "Id: %d\n" (plist-get chat :id))
@@ -1074,10 +1088,15 @@ Leaving chat does not removes chat from chat list."
 
       ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
       ;; and public supergroups
-      (unless (or (eq (telega-chat--type chat) 'channel)
+      (unless (or (eq chat-type 'channel)
                   (telega-chat-public-p chat 'supergroup)
                   leave-p)
-        (telega--deleteChatHistory chat t)))
+        (telega--deleteChatHistory chat t))
+
+      (when-let ((chat-user (telega-chat-user chat 'include-bots)))
+        (when (yes-or-no-p
+               (format "Block \"%s\" user as well? " (telega-user--name chat-user)))
+          (telega--blockUser chat-user))))
 
     ;; Kill corresponding chat buffer
     (with-telega-chatbuf chat
@@ -1159,6 +1178,23 @@ end of the buffer."
                                                :key 'buffer-modified-tick))
                               nil t)))
   (switch-to-buffer buffer))
+
+(defun telega-chat-reply-markup-msg (chat &optional locally-p callback)
+  "Return reply markup for the CHAT.
+If LOCALLY-P is non-nil, then do not perform any requests to telega-server.
+If CALLBACK is specified, then get reply markup asynchronously."
+  (declare (indent 2))
+  (let ((reply-markup-msg-id (plist-get chat :reply_markup_message_id)))
+    (unless (zerop reply-markup-msg-id)
+      (telega-msg--get
+       (plist-get chat :id) reply-markup-msg-id locally-p callback))))
+
+(defun telega-chat-pinned-msg (chat &optional locally-p callback)
+  "Return pinned message for the CHAT."
+  (declare (indent 2))
+  (let ((pin-msg-id (plist-get chat :pinned_message_id)))
+    (unless (zerop pin-msg-id)
+      (telega-msg--get (plist-get chat :id) pin-msg-id locally-p callback))))
 
 
 ;;; Chat Buffer
@@ -1271,6 +1307,9 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
   ;; --(actions part)---------------[additional status]--
   ;;                        ^
   ;;                     middle
+  ;; 📌 Pinned Message
+  ;; Then REPLY-MARKUP buttons follows, denoted by
+  ;; `:reply_markup_message_id' property of the chat
   (let* ((column (+ telega-chat-fill-column 10 1))
          (column1 (/ column 2))
          (column2 (- column column1))
@@ -1282,6 +1321,7 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
          ;; prepare everything we need before
          (actions (gethash (plist-get telega-chatbuf--chat :id)
                            telega--actions))
+         (chat telega-chatbuf--chat)
          (history-loading-p telega-chatbuf--history-loading)
          (voice-msg telega-chatbuf--voice-msg))
 
@@ -1315,7 +1355,48 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
                 (telega-ins--voice-msg-status voice-msg))
                ))
        (telega-ins fill-symbol)
-       (telega-ins "\n")))))
+       (telega-ins "\n")
+
+       ;; Pinned message
+       (when (and telega-chat-footer-show-pinned-message
+                  (not (eq 0 (plist-get chat :pinned_message_id))))
+         (if-let ((pin-msg (telega-chat-pinned-msg chat 'locally)))
+             ;; NOTE: Using 'telega-msg button makes point behave
+             ;; strange, so drop to `telega' button type
+             (telega-button--insert 'telega pin-msg
+               :inserter (lambda (msg)
+                           (telega-ins telega-symbol-pin " ")
+                           (telega-ins--chat-msg-one-line
+                            chat msg (+ 8 telega-chat-fill-column)))
+               :action 'telega-msg-goto-highlight)
+
+           ;; Asynchronously load pinned message, cache it and
+           ;; redisplay footer
+           (telega-chat-pinned-msg chat nil
+             (lambda (pinned-message)
+               (when pinned-message
+                 (telega-msg--cache-in-chatbuf pinned-message))
+               (with-telega-chatbuf chat
+                 (telega-chatbuf-mode-line-update)
+                 (telega-chatbuf--footer-redisplay))))
+           (telega-ins telega-symbol-pin " Loading..."))
+         (telega-ins "\n"))
+
+       ;; Reply markup
+       (unless (eq 0 (plist-get chat :reply_markup_message_id))
+         (if-let ((markup-msg (telega-chat-reply-markup-msg chat 'locally)))
+             (telega-ins--reply-markup markup-msg 'force)
+
+           ;; Asynchronously load markup message, cache it and redisplay footer
+           (telega-chat-reply-markup-msg chat nil
+             (lambda (markup-message)
+               (when markup-message
+                 (telega-msg--cache-in-chatbuf markup-message))
+               (with-telega-chatbuf chat
+                 (telega-chatbuf--footer-redisplay))))
+           (telega-ins "REPLY-MARKUP Loading..."))
+         (telega-ins "\n"))
+       ))))
 
 (defun telega-chatbuf--footer-redisplay ()
   "Redisplay chatbuf's footer.
@@ -1414,7 +1495,8 @@ Also mark messages as read with `viewMessages'."
       (telega-chatbuf--load-newer-history))
 
     ;; Mark some messages as read
-    (telega-chatbuf--view-visible-messages window display-start)
+    ;; Scroll might be triggered in closed chat, so force viewMessages
+    (telega-chatbuf--view-visible-messages window display-start 'force)
     ))
 
 (defun telega-chatbuf--set-action (action)
@@ -1701,6 +1783,25 @@ If ICONS-P is non-nil, then use icons for members count."
                           " online")))
               "]"))))
 
+(defun telega-chatbuf-mode-line-pinned-msg ()
+  "Format pinned message string for chat buffer modeline."
+  ;; NOTE: wait for asynchronous pinned message load in footer
+  ;; redisplay
+  (when-let ((pinned-msg (telega-chat-pinned-msg telega-chatbuf--chat 'locally)))
+    (telega-ins--as-string
+     (telega-ins " [")
+     (telega-ins--with-attrs (list :min 3 :max 15 :align 'left :elide t)
+       (telega-ins--with-props
+           (list 'local-map
+                 (eval-when-compile
+                   (make-mode-line-mouse-map
+                    'mouse-1 'telega-chatbuf-goto-pin-message))
+                 'mouse-face 'mode-line-highlight
+                 'help-echo "mouse-1: Goto pinned message")
+         (telega-ins telega-symbol-pin)
+         (telega-ins--content-one-line pinned-msg)))
+     (telega-ins "]"))))
+
 (defun telega-chatbuf-mode-line-update ()
   "Update `mode-line-buffer-identification' for the CHAT buffer."
   (setq mode-line-buffer-identification
@@ -1841,14 +1942,27 @@ If ICONS-P is non-nil, then use icons for members count."
       (telega-chatbuf-input-goto saved-input-idx))
     ))
 
-(defsubst telega-chatbuf--redisplay-node (node)
+(defun telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
   (let* ((chat-win (get-buffer-window))
-         (wstart (and chat-win (window-start chat-win))))
+         (wstart (and chat-win (window-start chat-win)))
+         (pos (point))
+         (msg-button (button-at pos)))
     (unwind-protect
-        (telega-save-cursor
-          (ewoc-invalidate telega-chatbuf--ewoc node))
+        ;; NOTE: we save cursor position only if point is currently
+        ;; inside the message we are redisplaying, otherwise simple
+        ;; `telega-save-excursion' will work
+        (if (and msg-button
+                 (eq (button-get msg-button :value)
+                     (ewoc--node-data node))
+                 (>= pos (button-start msg-button))
+                 (<= pos (button-end msg-button)))
+            (telega-save-cursor
+              (ewoc-invalidate telega-chatbuf--ewoc node))
+          (telega-save-excursion
+            (ewoc-invalidate telega-chatbuf--ewoc node)))
+
       (when chat-win
         (set-window-start chat-win wstart 'noforce)))))
 
@@ -2475,6 +2589,13 @@ IMC might be a plain string or attachement specification."
   (user-error "`telega-chatbuf-next-mention' not yet implemented")
   )
 
+(defun telega-chatbuf-goto-pin-message ()
+  "Goto pinned message for the chatbuffer."
+  (interactive)
+  (let ((pinned-msg-id (plist-get telega-chatbuf--chat :pinned_message_id)))
+    (unless (zerop pinned-msg-id)
+      (telega-chat--goto-msg telega-chatbuf--chat pinned-msg-id 'highlight))))
+
 ;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location)
   "Attach location to the current input."
@@ -2635,7 +2756,7 @@ Multiple `C-u' increases delay before taking screenshot of the area."
 
 (defun telega-chatbuf-attach-member (user)
   "Add USER to the chat members."
-  (interactive (list (telega-completing-read-user "Add user: ")))
+  (interactive (list (telega-completing-read-user "Add member: ")))
   (cl-assert user)
   (telega-chat-add-member telega-chatbuf--chat user))
 
@@ -2745,6 +2866,11 @@ Otherwise choose animation from list of saved animations."
 
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
+(defun telega-chatbuf-attach-gif ()
+  "Attach animation from file."
+  (interactive)
+  (telega-chatbuf-attach-animation 'from-file))
+
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.
 Intended to be added to `post-command-hook' in chat buffer.
@@ -2803,7 +2929,7 @@ Prefix argument is available for next attachements:
   (interactive
    (list (funcall telega-completing-read-function
                   "Attach type: "
-                  (nconc (list "photo" "audio" "video"
+                  (nconc (list "photo" "audio" "video" "gif"
                                "note-video" "note-voice"
                                "file" "location"
                                "poll" "contact"

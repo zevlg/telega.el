@@ -27,6 +27,7 @@
 (require 'seq)                          ;seq-doseq
 
 (require 'telega-core)
+(require 'telega-tdlib)
 (require 'telega-util)
 (require 'telega-media)
 
@@ -99,12 +100,6 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   "Ensure sticker set SSET data is downloaded."
   (mapc 'telega-sticker--download (plist-get sset :stickers)))
 
-(defun telega--getStickerSet (set-id &optional callback)
-  (telega-server--call
-   (list :@type "getStickerSet"
-         :set_id set-id)
-   callback))
-
 (defun telega-stickerset--ensure (sset)
   "Ensure sticker set SSET is put into `telega--stickersets'."
   (setf (alist-get (plist-get sset :id) telega--stickersets nil nil 'equal)
@@ -113,15 +108,17 @@ Thumbnail is a smaller (and faster) version of sticker image.")
     (telega-stickerset--download sset))
   sset)
 
-(defun telega-stickerset-get (set-id &optional async-p)
+(defun telega-stickerset-get (set-id &optional locally-p callback)
+  "Get stickerset by SET-ID.
+If LOCALLY-P is non-nil, then do not perform request to telega-server.
+If CALLBACK is specified and stickerset is not yet fetched, then
+fetch stickerset asynchronously and call the CALLBACK function
+with one argument - stickerset."
+  (declare (indent 2))
   (let ((sset (cdr (assoc set-id telega--stickersets))))
-    (unless sset
-      (if async-p
-          (telega--getStickerSet set-id 'telega-stickerset--ensure)
-
-        (setq sset (telega--getStickerSet set-id))
-        (telega-stickerset--ensure sset)))
-    sset))
+    (if (or locally-p sset)
+        sset
+      (telega--getStickerSet set-id callback))))
 
 (defun telega-stickerset-installed-p (sset)
   "Return non-nil if sticker set SSET is installed."
@@ -179,26 +176,6 @@ either to CALLBACK or returned."
     (if callback
         reply
       (append (plist-get reply :stickers) nil))))
-  
-(defun telega--getStickers (emoji &optional limit callback)
-  "Return installed stickers that correspond to a given EMOJI.
-LIMIT defaults to 20."
-  (declare (indent 2))
-  (telega-stickers--async-call
-   (list :@type "getStickers"
-         :emoji emoji
-         :limit (or limit 20))
-   callback))
-
-(defun telega--searchStickers (emoji &optional limit callback)
-  "Search for the public stickers that correspond to a given EMOJI.
-LIMIT defaults to 20."
-  (declare (indent 2))
-  (telega-stickers--async-call
-   (list :@type "searchStickers"
-         :emoji emoji
-         :limit (or limit 20))
-   callback))
 
 (defun telega--getInstalledStickerSets (&optional masks-p)
   "Returns a list of installed sticker sets."
@@ -229,12 +206,6 @@ Photo and Video files have attached sticker sets."
   (telega-server--call
    (list :@type "getAttachedStickerSets"
          :file_id file-id)))
-
-(defun telega--searchStickerSet (name)
-  "Search for sticker set by NAME."
-  (telega-server--call
-   (list :@type "searchStickerSet"
-         :name name)))
 
 (defun telega--searchInstalledStickerSets (query &optional masks-p limit)
   "Searches for installed sticker sets by QUERY."

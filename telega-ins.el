@@ -190,7 +190,8 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
               (symbol-name status)))))))
 
 (defun telega-ins--user (user &optional member)
-  "Insert USER, aligning multiple lines at current column."
+  "Insert USER, aligning multiple lines at current column.
+MEMBER specifies corresponding \"ChatMember\" object."
   (let ((avatar (telega-user-avatar-image user))
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0)
@@ -205,10 +206,10 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
     (telega-ins--image avatar 1)
     (telega-ins--user-status user)
 
-    ;; TODO: for member insert join date
-    ;; (let ((joined (plist-get member :joined_chat_date)))
-    ;;  (unless (zerop joined)
-    ;;    (concat " joined at " (telega-fmt-timestamp joined))))
+    (when-let ((join-date (plist-get member :joined_chat_date)))
+      (unless (zerop join-date)
+        (telega-ins ", joined ")
+        (telega-ins--date join-date)))
     ))
 
 (defun telega-ins--chat-member (member)
@@ -219,22 +220,19 @@ Return COLUMN at which user name is inserted."
 
 (defun telega-ins--chat-members (members)
   "Insert chat MEMBERS list."
-  (let ((last-member (unless (zerop (length members))
-                       (aref members (1- (length members)))))
-        (delim-col 5))
-    (seq-doseq (member members)
-      (telega-ins " ")
-      (telega-button--insert 'telega-member member)
+  (while members
+    (telega-ins " ")
+    (telega-button--insert 'telega-member (car members))
 
-      ;; Insert the delimiter
-      (unless (eq member last-member)
-        (telega-ins "\n")
-        ;; NOTE: to apply `height' property \n must be included
-        (telega-ins--with-props
-            '(face default display ((space-width 2) (height 0.5)))
-          (telega-ins--column delim-col nil
-            (telega-ins (make-string 30 ?─) "\n")))))
-    (telega-ins "\n")))
+    (setq members (cdr members))
+    (when members
+      (telega-ins "\n")
+      ;; NOTE: to apply `height' property \n must be included
+      (telega-ins--with-props
+          '(face default display ((space-width 2) (height 0.5)))
+        (telega-ins--column 4 nil
+          (telega-ins (make-string 30 ?─) "\n")))))
+  (telega-ins "\n"))
 
 (defun telega-ins--file-progress (msg file)
   "Insert Upload/Download status for the document."
@@ -557,31 +555,44 @@ Return `non-nil' if WEB-PAGE has been inserted."
         (when (telega-ins desc)
           (telega-ins "\n"))
 
-        (when photo
+        ;; NOTE: animation uses it's own thumbnails
+        (when (and photo (not (plist-get web-page :animation)))
           (telega-ins--photo photo msg)
           (telega-ins "\n"))
-       (cl-case (intern (plist-get web-page :type))
-         (document
-          (let ((doc (plist-get web-page :document)))
-            (when doc
-              (telega-ins--document msg doc))))
-         (video
-          (let ((video (plist-get web-page :video)))
-            (when video
-              (telega-ins--video msg video (when photo 'no-thumbnail))
-;              (telega-ins "<TODO: webPage:video>")
-              )))))
 
-       (unless (zerop iv-version)
-         (telega-ins--button
-             (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
-           'action 'telega-msg-button--iv-action)
-         (telega-ins "\n"))
+        ;; See `telega-msg-open-webpage'
+        (cond ((plist-get web-page :video)
+               (telega-ins--video
+                msg (plist-get web-page :video) (when photo 'no-thumbnail))
+               (telega-ins "\n"))
+              ((plist-get web-page :animation)
+               (telega-ins--animation-msg msg (plist-get web-page :animation))
+               (telega-ins "\n"))
+              ((plist-get web-page :document)
+               (telega-ins--document msg (plist-get web-page :document))
+               (telega-ins "\n"))))
 
-       ;; Remove trailing newline, if any
-       (when (= (char-before) ?\n)
-         (delete-char -1))
-       t)))
+      ;; Additional View button
+      (if (zerop iv-version)
+          (when-let ((title (pcase (plist-get web-page :type)
+                              ("telegram_channel" "VIEW CHANNEL")
+                              ((or "telegram_chat"
+                                   "telegram_megagroup") "VIEW GROUP")
+                              ("telegram_message" "VIEW MESSAGE")
+                              ("telegram_background" "VIEW BACKGROUND")
+                              ("telegram_user" "VIEW CHAT")
+                              ("telegram_theme" "VIEW THEME"))))
+            (telega-ins--button (concat "   " title "   ")
+              'action 'telega-msg-button--action))
+
+        (telega-ins--button
+            (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
+          'action 'telega-msg-button--iv-action))
+
+      ;; Remove trailing newline, if any
+      (when (= (char-before) ?\n)
+        (delete-char -1))
+      t)))
 
 (defun telega-ins--location (location)
   "Inserter for the LOCATION."
@@ -727,7 +738,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
         ))))
 
 (defun telega-ins--animation-msg (msg &optional animation)
-  "Inserter for animation message MSG."
+  "Inserter for animation message MSG.
+If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
   (unless animation
     (setq animation (telega--tl-get msg :content :animation)))
   (let ((anim-file (telega-file--renew animation :animation)))
@@ -962,30 +974,70 @@ Special messages are determined with `telega-msg-special-p'."
       (telega-ins--text (plist-get content :caption))))
   )
 
-(defun telega-ins--inline-kbd (kbd-button msg)
-  "Insert inline KBD-BUTTON for the MSG."
-  (cl-case (telega--tl-type kbd-button)
-    (inlineKeyboardButton
-     (telega-ins--button (telega-tl-str kbd-button :text)
-       'action (lambda (ignored)
-                 (telega-inline--callback kbd-button msg))
-       :help-echo (telega-inline--help-echo kbd-button msg)))
-    (t (telega-ins-fmt "<TODO: %S>" kbd-button))))
+(defun telega-ins--keyboard-button (kbd-button msg &optional
+                                               forced-width one-time-p)
+  "Insert inline KBD-BUTTON for the MSG.
+If FORCED-WIDTH is used, then enlarge/shrink button to FORCED-WIDTH chars.
+If ONE-TIME-P is non-nil then hide keyboard once button is pressed."
+  (let ((kbdb-text (if forced-width
+                       (telega-ins--as-string
+                        (telega-ins--with-attrs (list :min forced-width
+                                                      :align 'center
+                                                      :max forced-width)
+                          (telega-ins (telega-tl-str kbd-button :text))))
+                     (telega-tl-str kbd-button :text))))
+    (telega-ins--button kbdb-text
+      'action (lambda (_ignored)
+                (cl-case (telega--tl-type kbd-button)
+                  (inlineKeyboardButton
+                   (telega-inline--callback kbd-button msg))
+                  (keyboardButton
+                   (cl-ecase (telega--tl-type (plist-get kbd-button :type))
+                     (keyboardButtonTypeText
+                      ;; A simple button, with text that should be sent
+                      ;; when the button is pressed
+                      (telega--sendMessage
+                       (telega-msg-chat msg)
+                       (list :@type "inputMessageText"
+                             :text (telega--formattedText
+                                    (telega-tl-str kbd-button :text)))))
+                     )))
+                (when one-time-p
+                  (telega--deleteChatReplyMarkup
+                   (plist-get msg :chat_id) (plist-get msg :id))))
+      :help-echo (cl-case (telega--tl-type kbd-button)
+                   (inlineKeyboardButton
+                    (telega-inline--help-echo kbd-button msg))
+                   (keyboardButton
+                    (substring (telega--tl-get kbd-button :type :@type) 18))))
+    ))
 
-(defun telega-ins--reply-markup (msg)
-  "Insert reply markup."
-  (let ((reply-markup (plist-get msg :reply_markup)))
-    (when reply-markup
-      (cl-case (telega--tl-type reply-markup)
-        (replyMarkupInlineKeyboard
-         (let ((rows (plist-get reply-markup :rows)))
-           (dotimes (ridx (length rows))
-             (seq-doseq (but (aref rows ridx))
-               (telega-ins--inline-kbd but msg)
-               (telega-ins " "))
-             (unless (= ridx (1- (length rows)))
-               (telega-ins "\n")))))
-        (t (telega-ins-fmt "<TODO reply-markup: %S>" reply-markup)))
+(defun telega-ins--reply-markup (msg &optional force-keyboard)
+  "Insert reply markup.
+If FORCE-KEYBOARD is non-nil, then show reply markup even if it
+has `replyMarkupShowKeyboard' type."
+  (when-let ((reply-markup (plist-get msg :reply_markup))
+             (reply-markup-type (telega--tl-type reply-markup)))
+    (cl-assert (memq reply-markup-type '(replyMarkupInlineKeyboard
+                                         replyMarkupShowKeyboard)))
+    (when (or (eq reply-markup-type 'replyMarkupInlineKeyboard)
+              (and force-keyboard
+                   (eq reply-markup-type 'replyMarkupShowKeyboard)))
+      (let* ((rows (plist-get reply-markup :rows))
+             ;; replyMarkupShowKeyboard
+             (one-time-p (plist-get reply-markup :one_time))
+             (resize-p (plist-get reply-markup :resize_keyboard)))
+        (dotimes (ridx (length rows))
+          (let* ((buttons-row (aref rows ridx))
+                 (forced-width (when resize-p
+                                 (/ (- telega-chat-fill-column 10
+                                       (- (length buttons-row) 1))
+                                    (length buttons-row)))))
+            (seq-doseq (but buttons-row)
+              (telega-ins--keyboard-button but msg forced-width one-time-p)
+              (telega-ins " ")))
+          (unless (= ridx (1- (length rows)))
+            (telega-ins "\n"))))
       t)))
 
 (defmacro telega-ins--aux-inline (title face &rest body)
@@ -1062,10 +1114,12 @@ argument - MSG to insert additional information after header."
                         (telega-user--get via-bot-user-id))))
         (when via-bot
           (telega-ins " via ")
-          ;; NOTE: `:via-bot' property is examined in `telega-ins--message'
-          (let ((via-bot (telega-user--get via-bot-user-id)))
-            (telega-ins--with-props (list :via-bot via-bot 'face 'telega-link)
-              (telega-ins (telega-user--name via-bot 'short))))))
+          ;; Use custom :action for clickable @bot link
+          (telega-ins--button (telega-user--name via-bot 'short)
+            'face 'telega-link          ;no button outline please
+            :action (lambda (_msg_ignored)
+                      (telega-describe-user via-bot)))))
+
       ;; Number of views
       (let ((views (plist-get msg :views)))
         (unless (zerop views)
@@ -1076,6 +1130,20 @@ argument - MSG to insert additional information after header."
           (telega-ins--date (plist-get msg :edit_date))))
       (when telega-debug
         (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
+
+      ;; Resend button in case message sent failed
+      ;; Use custom :action to resend message
+      (when-let ((send-state (plist-get msg :sending_state)))
+        (when (and (eq (telega--tl-type send-state) 'messageSendingStateFailed)
+                   (plist-get send-state :can_retry))
+          (telega-ins " ")
+          (telega-ins--button "RESEND"
+            :action 'telega--resendMessage)))
+
+      ;; Maybe pinned message?
+      (when (eq (plist-get msg :id)
+                (plist-get chat :pinned_message_id))
+        (telega-ins " " telega-symbol-pin))
 
       (when addon-inserter
         (cl-assert (functionp addon-inserter))
@@ -1161,9 +1229,9 @@ argument - MSG to insert additional information after header."
           (telega-msg-reply-msg msg nil
             (lambda (reply-msg)
               (let ((telega-msg--reply-to-msg-deleted (not reply-msg)))
-              (when reply-msg
-                (telega-msg--cache-in-chatbuf reply-msg))
-              (telega-msg-redisplay msg))))
+                (when reply-msg
+                  (telega-msg--cache-in-chatbuf reply-msg))
+                (telega-msg-redisplay msg))))
           (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
             (telega-ins "Loading...")))))))
 
@@ -1195,11 +1263,13 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
         ;; Show user profile when clicked on avatar, header
         (telega-ins--with-props
             (list 'action (lambda (button)
-                            (let ((user (or (button-get button :via-bot)
-                                            sender)))
-                              (if user
-                                  (telega-describe-user user)
-                                (telega-describe-chat chat)))))
+                            ;; NOTE: check for custom message :action first
+                            ;; - [RESEND] button uses :action
+                            ;; - via @bot link uses :action
+                            (or (telega-button--action button)
+                                (if sender
+                                    (telega-describe-user sender)
+                                  (telega-describe-chat chat)))))
           (telega-ins--image avatar 0)
           (telega-ins--message-header msg addon-header-inserter)
           (telega-ins--image avatar 1)))

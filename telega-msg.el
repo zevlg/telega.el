@@ -107,22 +107,7 @@ function with one argument - message."
                       (telega-chatbuf--msg msg-id))))
     (if (or locally-p cached-msg)
         cached-msg
-
-      ;; Perform request to the telega-server
-      (let ((ret (telega-server--call
-                  (list :@type "getMessage"
-                        :chat_id chat-id
-                        :message_id msg-id)
-                  (when callback
-                    (lambda (reply)
-                      (funcall callback
-                               (unless (telega--tl-error-p reply)
-                                 reply)))))))
-        ;; Probably message already deleted
-        (if callback
-            ret
-          (unless (telega--tl-error-p ret)
-            ret))))))
+      (telega--getMessage chat-id msg-id callback))))
 
 (defun telega-msg--cache-in-chatbuf (msg)
   "Cache message MSG in corresponding chatbuf messages cache."
@@ -172,8 +157,18 @@ If CALLBACK is specified, then get reply message asynchronously."
 (defun telega-msg-open-sticker (msg)
   "Open content for sticker message MSG."
   (let ((sset-id (telega--tl-get msg :content :sticker :set_id)))
-    (telega-describe-stickerset
-     (telega-stickerset-get sset-id) (telega-msg-chat msg))))
+    (if (string= "0" sset-id)
+        (message "Sticker has no associated stickerset")
+
+      (if-let ((sset (telega-stickerset-get sset-id 'locally)))
+          (telega-describe-stickerset sset (telega-msg-chat msg))
+
+        (with-telega-help-win "*Telegram Sticker Set*"
+          (telega-ins "Loading stickerset..."))
+        (telega-stickerset-get sset-id nil
+          (lambda (stickerset)
+            (telega-describe-stickerset
+             stickerset (telega-msg-chat msg))))))))
 
 ;; TODO: revise the code, too much similar stuff
 (defun telega-msg-open-video (msg &optional video)
@@ -290,26 +285,22 @@ If CALLBACK is specified, then get reply message asynchronously."
                                   'telega-msg-video-note--callback msg))
                    (telega-ffplay-run filepath nil))))))))))
 
-(defun telega-msg-open-photo (msg)
+(defun telega-msg-open-photo (msg &optional photo)
   "Open content for photo message MSG."
-  (telega-photo--open (telega--tl-get msg :content :photo) msg))
+  (telega-photo--open (or photo (telega--tl-get msg :content :photo)) msg))
 
-(defun telega-msg-animation--callback (_proc filename msg)
+(defun telega-animation--ffplay-callback (_proc filename anim)
   "Callback for inline animation playback."
-  (let ((anim (telega--tl-get msg :content :animation)))
-    (plist-put anim :telega-ffplay-frame-filename filename)
-    ;; NOTE: just redisplay the image, not redisplaying full message
-    (telega-media--image-update
-     (cons anim 'telega-animation--create-image) nil)
-    (force-window-update)
-    ;; (unless filename
-    ;;   (telega-msg-open-animation msg))
-;    (telega-msg-redisplay msg)
-    ))
+  (plist-put anim :telega-ffplay-frame-filename filename)
+  ;; NOTE: just redisplay the image, not redisplaying full message
+  (telega-media--image-update
+   (cons anim 'telega-animation--create-image) nil)
+  (force-window-update)
+  )
 
-(defun telega-msg-open-animation (msg)
+(defun telega-msg-open-animation (msg &optional animation)
   "Open content for animation message MSG."
-  (let* ((anim (telega--tl-get msg :content :animation))
+  (let* ((anim (or animation (telega--tl-get msg :content :animation)))
          (anim-file (telega-file--renew anim :animation))
          (proc (plist-get msg :telega-ffplay-proc)))
     (cl-case (and (process-live-p proc) (process-status proc))
@@ -323,7 +314,7 @@ If CALLBACK is specified, then get reply message asynchronously."
                  (if telega-animation-play-inline
                      (plist-put msg :telega-ffplay-proc
                                 (telega-ffplay-to-png filename nil
-                                  'telega-msg-animation--callback msg))
+                                  'telega-animation--ffplay-callback anim))
                    (telega-ffplay-run filename nil "-loop" "0"))))))))))
 
 (defun telega-msg-open-document (msg &optional document)
@@ -355,12 +346,17 @@ If CALLBACK is specified, then get reply message asynchronously."
   (unless web-page
     (setq web-page (telega--tl-get msg :content :web_page)))
 
-  (cond ((and (string= "video" (plist-get web-page :type))
-              (plist-get web-page :video))
+  ;; NOTE: "document" webpage might contain :video instead of :document
+  ;; see https://t.me/c/1347510619/43
+  (cond ((plist-get web-page :video)
          (telega-msg-open-video msg (plist-get web-page :video)))
-        ((and (string= "document" (plist-get web-page :type))
-              (plist-get web-page :document))
+        ((plist-get web-page :animation)
+         (telega-msg-open-animation msg (plist-get web-page :animation)))
+        ((plist-get web-page :document)
          (telega-msg-open-document msg (plist-get web-page :document)))
+        ((and (string= "photo" (plist-get web-page :type))
+              (plist-get web-page :photo))
+         (telega-msg-open-photo msg (plist-get web-page :photo)))
         (t (when-let ((url (plist-get web-page :url)))
              (telega-browse-url url)))))
 
@@ -535,6 +531,11 @@ blocked users."
       (telega-msg-ignore msg))))
 
 
+(defun telega-msg-pin (msg)
+  "Pin message MSG."
+  (interactive (list (telega-msg-at (point))))
+  (telega--pinChatMessage msg))
+
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."
   (interactive (list (telega-msg-at (point))))

@@ -29,13 +29,13 @@
 (require 'url-parse)
 (require 'url-util)
 
+(require 'telega-tdlib)
 (require 'telega-sticker)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 (declare-function telega--searchPublicChat "telega-chat" (username))
-(declare-function telega--checkChatInviteLink "telega-chat" (invite-link))
 (declare-function telega--joinChatByInviteLink "telega-chat" (invite-link))
 
 
@@ -54,9 +54,9 @@ BOT-PARAMS are additional params."
   (cond ((string= username "telegrampassport")
          ;; TODO: passport
          (message "telega TODO: handle `telegrampassport'"))
-        ((plist-get bot-params :start)
-         ;; :start :startgroup :game :post
-         (message "telega TODO: handle bot start"))
+        ;; ((plist-get bot-params :start)
+        ;;  ;; :start :startgroup :game :post
+        ;;  (message "telega TODO: handle bot start"))
 
         (t
          ;; Ordinary user/channel/group, :post
@@ -83,7 +83,7 @@ BOT-PARAMS are additional params."
                  (if (zerop chat-id)
                      ;; Can only join by link
                      (when (y-or-n-p (format "Join \"%s\"? "
-                                             (plist-get link-check :title)))
+                                             (telega-tl-str link-check :title)))
                        (telega--joinChatByInviteLink url))
 
                    ;; Can preview messages before deciding to join
