@@ -1439,6 +1439,9 @@ Global chat bindings:
         telega-chatbuf--voice-msg nil
         telega-chatbuf--my-action nil)
 
+  ;; Make usernames with "_" be completable
+  (modify-syntax-entry ?\_ "w" telega-chat-mode-syntax-table)
+
   (erase-buffer)
   (setq-local window-point-insertion-type t)
   (setq-local next-line-add-newlines nil)
