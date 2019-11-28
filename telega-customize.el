@@ -129,7 +129,8 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega
   :set (lambda (option value)
-         (if (or (fboundp 'imagemagick-types) (version< "27.0.49" emacs-version))
+         (if (or (fboundp 'imagemagick-types)
+                 (and (fboundp 'image-transforms-p) (funcall 'image-transforms-p)))
              (set-default option value)
            (set-default option nil)
            (when value
