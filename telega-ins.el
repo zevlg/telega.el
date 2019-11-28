@@ -201,6 +201,35 @@ MEMBER specifies corresponding \"ChatMember\" object."
                  (telega-ins--chat-member-status
                   (plist-get member :status))))
       (telega-ins ")"))
+
+    ;; Insert (him)in<-->out(me) relationship
+    (when (and telega-user-show-relationship
+               (not (telega-me-p user)))
+      (let ((in-link-p (not (eq (telega--tl-type
+                                 (plist-get user :incoming_link))
+                                'linkStateNone )))
+            (out-link-p (not (eq (telega--tl-type
+                                  (plist-get user :outgoing_link))
+                                 'linkStateNone))))
+        (when (or in-link-p out-link-p)
+          (telega-ins--with-face 'shadow
+            (telega-ins " ")
+            (when in-link-p
+              (telega-ins "🚹"))
+            (telega-ins (cond ((and in-link-p out-link-p) "↔")
+                              (in-link-p "←")
+                              (out-link-p "→")
+                              (t (cl-assert nil))))
+            (when out-link-p
+              (telega-ins (propertize "🚹" 'face 'bold)))))))
+    ;; Block/scam mark, without requesting
+    ;; TODO: rewrite when `telega-user-full-info 'locally' will be
+    ;; available
+    (when (plist-get (gethash (plist-get user :id)
+                              (cdr (assq 'user telega--full-info)))
+                     :is_blocked)
+      (telega-ins " " telega-symbol-blocked))
+
     (telega-ins "\n")
     (telega-ins (make-string off-column ?\s))
     (telega-ins--image avatar 1)
@@ -1530,6 +1559,15 @@ Return t."
       (setq title (concat title telega-symbol-verified)))
     (when (telega-chat-secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
+
+    ;; Block/scam mark, without requesting
+    ;; TODO: rewrite when `telega-user-full-info 'locally' will be
+    ;; available
+    (when (plist-get (gethash (plist-get chat :id)
+                              (cdr (assq 'user telega--full-info)))
+                     :is_blocked)
+      (setq title (concat title telega-symbol-blocked)))
+
     ;; Check for custom label
     (when telega-chat-label-format
       (when-let ((label (telega-chat-uaprop chat :label)))

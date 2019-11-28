@@ -60,10 +60,12 @@
 
 (defun telega-user-at (pos)
   "Return user at position POS."
-  (let ((member-or-user (button-get (button-at pos) :value)))
-    (if (eq (telega--tl-type member-or-user) 'chatMember)
-        (telega-user--get (plist-get member-or-user :user_id))
-      member-or-user)))
+  (let ((member-or-user-or-chat (button-get (button-at pos) :value)))
+    (cl-ecase (telega--tl-type member-or-user-or-chat)
+      (chatMember
+       (telega-user--get (plist-get member-or-user-or-chat :user_id)))
+      (chat (telega-chat-user member-or-user-or-chat 'include-bots))
+      (user member-or-user-or-chat))))
 
 (defun telega-user-button--action (button)
   "Action to take when user BUTTON is pressed.

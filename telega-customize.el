@@ -513,6 +513,12 @@ See `telega-ins--message' for NO-HEADER argument."
   :type 'boolean
   :group 'telega-user)
 
+(defcustom telega-user-show-relationship t
+  "*Non-nil to show user relationship with me.
+Used when showing chat members list."
+  :type 'boolean
+  :group 'telega-user)
+
 (defcustom telega-user-photo-maxsize '(10 . 10)
   "*Limit displayed profile photos size to this (WIDTH . HEIGHT) characters."
   :type '(cons integer integer)
