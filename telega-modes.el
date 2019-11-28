@@ -61,7 +61,8 @@
   (or telega-mode-line--logo-image-cache
       (setq telega-mode-line--logo-image-cache
             (find-image
-             (list (list :type 'imagemagick :file "etc/telega-logo.png"
+             (list (list :type (when (fboundp 'imagemagick-types) 'imagemagick)
+                         :file "etc/telega-logo.png"
                          :ascent 'center :mask 'heuristic
                          :height (window-mode-line-height))
                    (list :type 'svg :file "etc/telega-logo.svg"

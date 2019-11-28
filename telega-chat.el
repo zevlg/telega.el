@@ -2648,7 +2648,9 @@ IMC might be a plain string or attachement specification."
 If PREVIEW-P is non-nil, then generate preview image."
   (setq filename (expand-file-name filename))
   (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
-                   (create-image filename 'imagemagick nil
+                   (create-image filename
+                                 (when (fboundp 'imagemagick-types) 'imagemagick)
+                                 nil
                                  :scale 1.0 :ascent 'center
                                  :height (telega-chars-xheight 1))))
         (ifile (if telega-chat-upload-attaches-ahead
@@ -2671,7 +2673,7 @@ If PREVIEW-P is non-nil, then generate preview image."
   (interactive (list (read-file-name "Photo: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t))
         (img-size (image-size
-                   (create-image filename 'imagemagick nil :scale 1.0) t)))
+                   (create-image filename (when (fboundp 'imagemagick-types) 'imagemagick) nil :scale 1.0) t)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessagePhoto"
            :photo ifile
