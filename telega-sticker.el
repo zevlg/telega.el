@@ -338,7 +338,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 
     (if filename
         (apply 'create-image (telega--tl-get filename :local :path)
-               'imagemagick nil
+               (when (fboundp 'imagemagick-types) 'imagemagick) nil
                :height (telega-chars-xheight (car telega-sticker-size))
                ;; NOTE: do not use max-width setting, it will slow
                ;; down displaying stickers
@@ -747,12 +747,12 @@ Return sticker set."
                     (set-buffer-multibyte nil)
                     (insert-file-contents-literally anim-frame-filename)
                     (buffer-string))
-                  'imagemagick t img-props))
+                  (when (fboundp 'imagemagick-types) 'imagemagick) t img-props))
 
           ((telega-file--downloaded-p tfile)
            (apply 'create-image
                   (telega--tl-get tfile :local :path)
-                  'imagemagick nil img-props))
+                  (when (fboundp 'imagemagick-types) 'imagemagick) nil img-props))
 
           (minithumb
            (telega-minithumb--create-image minithumb telega-animation-height))

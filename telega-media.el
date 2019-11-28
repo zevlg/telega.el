@@ -445,7 +445,7 @@ CHEIGHT is the height in chars to use (default=1)."
   (if (telega-file--downloaded-p file)
       (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight)))
         (create-image (telega--tl-get file :local :path)
-                      'imagemagick nil
+                      (when (fboundp 'imagemagick-types) 'imagemagick) nil
                       :height (telega-chars-xheight cheight)
                       :scale 1.0
                       :ascent 'center
@@ -462,7 +462,7 @@ CHEIGHT is the height in chars to use (default=1)."
     (create-image (base64-decode-string (plist-get minithumb :data))
                   (if (and (fboundp 'image-transforms-p)
                            (funcall 'image-transforms-p))
-                      'jpeg 'imagemagick)
+                      'jpeg (when (fboundp 'imagemagick-types) 'imagemagick))
                   t
                   :height (telega-chars-xheight cheight)
                   :scale 1.0

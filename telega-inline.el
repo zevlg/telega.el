@@ -149,7 +149,7 @@
            (thumb-file (when thumb (telega-file--renew thumb :photo)))
            (thumb-img (when (telega-file--downloaded-p thumb-file)
                         (create-image (telega--tl-get thumb-file :local :path)
-                                      'imagemagick nil
+                                      (when (fboundp 'imagemagick-types) 'imagemagick) nil
                                       :scale 1.0 :ascent 'center
                                       :height (telega-chars-xheight 1)))))
       (with-telega-chatbuf chat
