@@ -281,20 +281,20 @@ By default LIMITS is `telega-photo-maxsize'."
   (unless limits
     (setq limits telega-photo-maxsize))
 
-  ;; NOTE: `reverse' is used to start from highes sizes
   (let ((lim-xwidth (telega-chars-xwidth (car limits)))
         (lim-xheight (telega-chars-xheight (cdr limits)))
-        (photo-sizes (reverse (plist-get photo :sizes)))
         ret)
-    (setq ret (aref photo-sizes 0))
-    (dotimes (idx (length photo-sizes))
-      (let* ((thumb (aref photo-sizes idx))
-             (thumb-file (telega-file--renew thumb :photo))
+    ;; NOTE: `reverse' is used to start from highes sizes
+    (seq-doseq (thumb (reverse (plist-get photo :sizes)))
+      (let* ((thumb-file (telega-file--renew thumb :photo))
              (tw (plist-get thumb :width))
              (th (plist-get thumb :height)))
+        ;; NOTE: By default (not ret) use any downloadable file, even
+        ;; if size does not fits
         (when (and (or (telega-file--downloaded-p thumb-file)
                        (telega-file--can-download-p thumb-file))
-                   (or (and (>= tw lim-xwidth)
+                   (or (not ret)
+                       (and (>= tw lim-xwidth)
                             (<= (* th (/ lim-xwidth tw 1.0)) lim-xheight))
                        (and (>= th lim-xheight)
                             (<= (* tw (/ lim-xheight th 1.0)) lim-xwidth))))
