@@ -31,6 +31,7 @@
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
+(declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
 (defvar telega--inline-bot nil
   "BOT value for the inline results help buffer.")
@@ -80,13 +81,22 @@
       (inlineKeyboardButtonTypeSwitchInline
        ;; Generate another inline query to the bot
        (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
-              (via-bot (unless (zerop via-bot-user-id)
-                         (telega-user--get via-bot-user-id)))
+              (sender-user-id (plist-get msg :sender_user_id))
+              (bot-user-id (if (zerop via-bot-user-id)
+                               sender-user-id
+                             via-bot-user-id))
+              (bot (unless (zerop bot-user-id)
+                     (telega-user--get bot-user-id)))
               (new-query (telega-tl-str kbd-type :query)))
-         (when (and via-bot (not (string-empty-p new-query)))
+         (when (and bot (telega-user-bot-p bot)
+                    (not (string-empty-p new-query)))
+           (unless (plist-get kbd-type :in_current_chat)
+             (telega-chat--pop-to-buffer
+              (telega-completing-read-chat "To chat: ")))
+
            (telega-chatbuf--input-delete)
            (telega-chatbuf-input-insert
-            (concat "@" (telega-tl-str via-bot :username) " " new-query))
+            (concat "@" (telega-tl-str bot :username) " " new-query))
            (telega-chatbuf-attach-inline-bot-query 'no-search))))
 
       ;; TODO: other types
@@ -168,6 +178,13 @@
   "Inserter for `inlineQueryResultAudio' QR."
   (let ((audio (plist-get qr :audio)))
     (telega-ins--audio nil audio telega-symbol-audio)
+    (telega-ins "\n")))
+
+(defun telega-ins--inline-voice-note (qr)
+  "Inserter for `inlineQueryResultVoiceNote' QR."
+  (let ((voice-note (plist-get qr :voice_note)))
+    (telega-ins (plist-get qr :title) "\n")
+    (telega-ins--voice-note nil voice-note)
     (telega-ins "\n")))
 
 (defun telega-ins--inline-sticker (qr)
@@ -286,6 +303,14 @@
               (inlineQueryResultAudio
                (telega-button--insert 'telega qr
                  :inserter 'telega-ins--inline-audio
+                 :action 'telega-inline-bot--action
+                 'cursor-sensor-functions
+                 '(telega-button-highlight--sensor-func))
+               (telega-ins--inline-delim))
+
+              (inlineQueryResultVoiceNote
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-voice-note
                  :action 'telega-inline-bot--action
                  'cursor-sensor-functions
                  '(telega-button-highlight--sensor-func))

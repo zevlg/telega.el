@@ -113,6 +113,11 @@ where PROXY-TYPE is one of:
   :type 'list
   :group 'telega)
 
+(defcustom telega-help-messages t
+  "*Non-nil to show sometime UI related messages."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-use-short-filenames t
   "*Non-nil to cut /home/user/.telega/cache from filenames."
   :type 'boolean
@@ -586,7 +591,12 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :type 'list
   :group 'telega-chat)
 
-(defcustom telega-chat-footer-show-pinned-message t
+(defcustom telega-chat-show-deleted-messages nil
+  "*Non-nil to show deleted messages in chatbuffer."
+  :type 'boolean
+  :group 'telega-chat)
+
+(defcustom telega-chat-show-pinned-message nil
   "*Non-nil to show pinned message in the chatbuffer footer."
   :type 'boolean
   :group 'telega-chat)
@@ -594,7 +604,7 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
 (defcustom telega-chat-mode-line-format
   '((:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
-    (:eval (telega-chatbuf-mode-line-pinned-msg)))
+    (:eval (telega-chatbuf-mode-line-pinned-msg 20)))
   "Additional mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
   :type 'sexp

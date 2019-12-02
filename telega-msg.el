@@ -76,17 +76,22 @@
   "Pretty printer for MSG button."
   ;; NOTE: check that we can group messages by sender
   ;; see `telega-chat-group-messages-for'
-  (if (and (telega-filter--test
-            (telega-msg-chat msg) telega-chat-group-messages-for)
-           (> (point) 3)
-           (let ((prev-msg (telega-msg-at (- (point) 2))))
-             (and (not (telega-msg-special-p prev-msg))
-                  (eq (plist-get msg :sender_user_id)
-                      (plist-get prev-msg :sender_user_id)))))
-      (telega-button--insert 'telega-msg msg
-        :inserter 'telega-ins--message-no-header)
-    (telega-button--insert 'telega-msg msg))
-  (telega-ins "\n"))
+  (let ((msg-inserter
+         (cond ((and telega-chat-show-deleted-messages
+                     (plist-get msg :telega-is-deleted-message))
+                'telega-ins--message-deleted)
+               ((and (telega-filter--test
+                      (telega-msg-chat msg) telega-chat-group-messages-for)
+                     (> (point) 3)
+                     (let ((prev-msg (telega-msg-at (- (point) 2))))
+                       (and (not (telega-msg-special-p prev-msg))
+                            (eq (plist-get msg :sender_user_id)
+                                (plist-get prev-msg :sender_user_id)))))
+                'telega-ins--message-no-header)
+               (t 'telega-ins--message))))
+    (telega-button--insert 'telega-msg msg
+      :inserter msg-inserter)
+    (telega-ins "\n")))
 
 (defun telega-msg-root--pp (msg)
   "Pretty printer for MSG button shown in root buffer."
@@ -103,16 +108,12 @@ If LOCALLY-P is non-nil, then do not perform request to telega-server.
 If CALLBACK is specified and message is not available at the
 moment, then fetch message asynchronously and call the CALLBACK
 function with one argument - message."
+  (declare (indent 3))
   (let ((cached-msg (with-telega-chatbuf (telega-chat-get chat-id)
                       (telega-chatbuf--msg msg-id))))
     (if (or locally-p cached-msg)
         cached-msg
       (telega--getMessage chat-id msg-id callback))))
-
-(defun telega-msg--cache-in-chatbuf (msg)
-  "Cache message MSG in corresponding chatbuf messages cache."
-  (with-telega-chatbuf (telega-msg-chat msg)
-    (telega-chatbuf--cache-msg msg)))
 
 (defsubst telega-msg-list-get (tl-obj-Messages)
   "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
@@ -124,9 +125,9 @@ function with one argument - message."
     (when (and button (eq (button-type button) 'telega-msg))
       (button-get button :value))))
 
-(defsubst telega-msg-chat (msg)
+(defsubst telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG."
-  (telega-chat-get (plist-get msg :chat_id)))
+  (telega-chat-get (plist-get msg :chat_id) offline-p))
 
 (defun telega-msg-reply-msg (msg &optional locally-p callback)
   "Return message MSG replying to.
@@ -135,8 +136,8 @@ If CALLBACK is specified, then get reply message asynchronously."
   (declare (indent 2))
   (let ((reply-to-msg-id (plist-get msg :reply_to_message_id)))
     (unless (zerop reply-to-msg-id)
-      (telega-msg--get
-       (plist-get msg :chat_id) reply-to-msg-id locally-p callback))))
+      (telega-msg--get (plist-get msg :chat_id) reply-to-msg-id locally-p
+        callback))))
 
 (defsubst telega-msg-goto (msg &optional highlight)
   "Goto message MSG."

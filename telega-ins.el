@@ -35,8 +35,6 @@
 (require 'telega-customize)
 
 (defvar telega-filters--inhibit-list)
-(defvar telega-msg--reply-to-msg-deleted nil
-  "Bind to non-nil if reply-to-msg has been deleted.")
 
 (defun telega-ins--button (label &rest props)
   "Insert pressable button labeled with LABEL.
@@ -263,6 +261,18 @@ Return COLUMN at which user name is inserted."
           (telega-ins (make-string 30 ?─) "\n")))))
   (telega-ins "\n"))
 
+(defun telega-ins-progress-bar (progress duration nbars &optional p-char e-char)
+  "Insert progress bar for PROGRESS at overall DURATION.
+Use NBARS characters for progress bar.
+P-CHAR - progress char, default is \".\"
+E-CHAR - empty char, default is space."
+  (let ((pbars (ceiling
+                (* nbars (/ (or progress 0)
+                            (if (zerop duration) 0.1 duration))))))
+    (when (> pbars nbars) (setq pbars nbars)) ; check for overflows
+    (telega-ins (make-string pbars (or p-char ?\.))
+                (make-string (- nbars pbars) (or e-char ?\s)))))
+
 (defun telega-ins--file-progress (msg file)
   "Insert Upload/Download status for the document."
   ;; Downloading status:
@@ -270,19 +280,21 @@ Return COLUMN at which user name is inserted."
   ;;   [Download]            if no local copy
   ;;   [...   20%] [Cancel]  if download in progress
   (cond ((telega-file--uploading-p file)
-         (let ((progress (telega-file--uploading-progress file)))
-           (telega-ins-fmt "[%-10s%d%%] "
-             (make-string (round (* progress 10)) ?\.)
-             (round (* progress 100)))
+         (let ((progress (telega-file--uploading-progress file))
+               (nbsp-char 160))
+           (telega-ins "[")
+           (telega-ins-progress-bar progress 1.0 10 ?\+ nbsp-char)
+           (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char)
            (telega-ins--button "Cancel"
              'action (lambda (_ignored)
                        (telega-msg-delete msg)))))
 
         ((telega-file--downloading-p file)
-         (let ((progress (telega-file--downloading-progress file)))
-           (telega-ins-fmt "[%-10s%d%%] "
-             (make-string (round (* progress 10)) ?\.)
-             (round (* progress 100)))
+         (let ((progress (telega-file--downloading-progress file))
+               (nbsp-char 160))
+           (telega-ins "[")
+           (telega-ins-progress-bar progress 1.0 10 ?\. nbsp-char)
+           (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char)
            (telega-ins--button "Cancel"
              'action (lambda (_ignored)
                        (telega--cancelDownloadFile
@@ -361,7 +373,7 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
          (title (telega-tl-str audio :title))
          (performer (telega-tl-str audio :performer)))
 
-    ;; play/pause
+    ;; Play/pause and downloading status
     (if (eq proc-status 'run)
         (telega-ins (or music-symbol telega-symbol-pause))
       (telega-ins (or music-symbol telega-symbol-play)))
@@ -383,6 +395,18 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
       (telega-ins-prefix " "
         (telega-ins--file-progress msg audio-file)))
 
+    ;; Progress and [Stop] button
+    (when played
+      (telega-ins "\n")
+      (unless (zerop dur)
+        (telega-ins "[")
+        (telega-ins-progress-bar
+         played dur (/ telega-chat-fill-column 2) ?\. ?\s)
+        (telega-ins "] "))
+      (telega-ins--button "Stop"
+        'action (lambda (_ignored)
+                  (telega-ffplay-stop))))
+
     ;; Title --Performer
     (when title
       (telega-ins "\n")
@@ -390,19 +414,6 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
         (telega-ins title))
       (telega-ins-prefix " --"
         (telega-ins performer)))
-
-    ;; Progress and [Stop] button
-    (when played
-      (telega-ins "\n")
-      (unless (zerop dur)
-        (let* ((pcol (/ telega-chat-fill-column 2))
-               (progress (/ played dur))
-               (ps (make-string (round (* progress pcol)) ?\.))
-               (pl (make-string (- pcol (string-width ps)) ?\s)))
-          (telega-ins "[" ps pl "] ")))
-      (telega-ins--button "Stop"
-        'action (lambda (_ignored)
-                  (telega-ffplay-stop))))
 
     ;; Album cover
     (let ((thumb (plist-get audio :album_cover_thumbnail))
@@ -451,11 +462,10 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
           (telega-ins " "))))
     t))
 
-(defun telega-ins--voice-note (msg &optional note)
-  "Insert message with voiceNote content."
-  (unless note
-    (setq note (telega--tl-get msg :content :voice_note)))
-  (let* ((dur (plist-get note :duration))
+(defun telega-ins--voice-note (msg &optional voice-note)
+  "Insert message MSG with VOICE-NOTE content."
+  (let* ((note (or voice-note (telega--tl-get msg :content :voice_note)))
+         (dur (plist-get note :duration))
          (proc (plist-get msg :telega-ffplay-proc))
          (proc-status (and (process-live-p proc)
                            (process-status proc)))
@@ -463,14 +473,14 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                       (plist-get (process-plist proc) :progress)))
          (note-file (telega-file--renew note :voice))
          (waveform (plist-get note :waveform))
-         (waves (telega-vvnote--waveform-decode waveform))
-         (listened-p (telega--tl-get msg :content :is_listened)))
+         (waves (telega-vvnote--waveform-decode waveform)))
 
-    ;; play/pause
-    (if (eq proc-status 'run)
-        (telega-ins telega-symbol-pause)
-      (telega-ins telega-symbol-play))
-    (telega-ins " ")
+    ;; play/pause only for messages
+    (when msg
+      (if (eq proc-status 'run)
+          (telega-ins telega-symbol-pause)
+        (telega-ins telega-symbol-play))
+      (telega-ins " "))
 
     ;; waveform image
     (if telega-use-images
@@ -480,23 +490,19 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
           dur played))
 
       ;; tty version
-      (let* ((progress-len 15)
-             (played-len (ceiling
-                          (* progress-len
-                             (/ (or played 0) (if (zerop dur) 0.1 dur))))))
-        (when (> played-len progress-len)
-          ;; NOTE: workaround overflows
-          (setq played-len progress-len))
-        (telega-ins-fmt "[%s%s]"
-          (make-string played-len ?\#)
-          (make-string (- progress-len played-len) ?\.))))
+      (telega-ins "[")
+      (telega-ins-progress-bar played dur 15 ?\# ?\.)
+      (telega-ins "]"))
 
-    ;; duration and download status
+    ;; Duration
     (telega-ins " (" (telega-duration-human-readable dur) ")")
-    (when listened-p
-      (telega-ins telega-symbol-eye))
-    (telega-ins-prefix " "
-      (telega-ins--file-progress msg note-file))
+
+    ;; Show download status/button only if inserted for message
+    (when msg
+      (when (telega--tl-get msg :content :is_listened)
+        (telega-ins telega-symbol-eye))
+      (telega-ins-prefix " "
+        (telega-ins--file-progress msg note-file)))
     ))
 
 (defun telega-ins--video-note (msg &optional video-note)
@@ -874,7 +880,8 @@ Special messages are determined with `telega-msg-special-p'."
        (let ((user-ids (plist-get content :member_user_ids)))
          (if (and (= 1 (length user-ids))
                   (= (plist-get sender :id) (aref user-ids 0)))
-             (telega-ins (telega-user--name sender 'name) " joined the group")
+             (telega-ins (propertize (telega-user--name sender) 'face 'bold)
+                         " joined the group")
            (telega-ins (telega-user--name sender 'name) " invited "
                        (mapconcat 'telega-user--name
                                   (mapcar 'telega-user--get user-ids)
@@ -1002,11 +1009,13 @@ Special messages are determined with `telega-msg-special-p'."
       (telega-ins--text (plist-get content :caption))))
   )
 
-(defun telega-ins--keyboard-button (kbd-button msg &optional
-                                               forced-width one-time-p)
+(defun telega-ins--keyboard-button (kbd-button msg &optional forced-width
+                                               additional-action)
   "Insert inline KBD-BUTTON for the MSG.
 If FORCED-WIDTH is used, then enlarge/shrink button to FORCED-WIDTH chars.
-If ONE-TIME-P is non-nil then hide keyboard once button is pressed."
+ADDITIONAL-ACTION function is called when button is pressed.
+ADDITIONAL-ACTION is called with two args kbd-button and message."
+  (declare (indent 3))
   (let ((kbdb-text (if forced-width
                        (telega-ins--as-string
                         (telega-ins--with-attrs (list :min forced-width
@@ -1017,22 +1026,22 @@ If ONE-TIME-P is non-nil then hide keyboard once button is pressed."
     (telega-ins--button kbdb-text
       'action (lambda (_ignored)
                 (cl-case (telega--tl-type kbd-button)
-                  (inlineKeyboardButton
-                   (telega-inline--callback kbd-button msg))
                   (keyboardButton
                    (cl-ecase (telega--tl-type (plist-get kbd-button :type))
                      (keyboardButtonTypeText
                       ;; A simple button, with text that should be sent
                       ;; when the button is pressed
+                      ;; TODO: Check chat is the private chat with the bot
                       (telega--sendMessage
                        (telega-msg-chat msg)
                        (list :@type "inputMessageText"
                              :text (telega--formattedText
-                                    (telega-tl-str kbd-button :text)))))
-                     )))
-                (when one-time-p
-                  (telega--deleteChatReplyMarkup
-                   (plist-get msg :chat_id) (plist-get msg :id))))
+                                    (telega-tl-str kbd-button :text)))))))
+
+                  ;; Otherwise some inline button
+                  (t (telega-inline--callback kbd-button msg)))
+                (when additional-action
+                  (funcall additional-action kbd-button msg)))
       :help-echo (cl-case (telega--tl-type kbd-button)
                    (inlineKeyboardButton
                     (telega-inline--help-echo kbd-button msg))
@@ -1051,20 +1060,21 @@ has `replyMarkupShowKeyboard' type."
     (when (or (eq reply-markup-type 'replyMarkupInlineKeyboard)
               (and force-keyboard
                    (eq reply-markup-type 'replyMarkupShowKeyboard)))
-      (let* ((rows (plist-get reply-markup :rows))
-             ;; replyMarkupShowKeyboard
-             (one-time-p (plist-get reply-markup :one_time))
-             (resize-p (plist-get reply-markup :resize_keyboard)))
-        (dotimes (ridx (length rows))
-          (let* ((buttons-row (aref rows ridx))
-                 (forced-width (when resize-p
+      (let ((rows (append (plist-get reply-markup :rows) nil)))
+        (while rows
+          (let* ((buttons-row (car rows))
+                 (forced-width (when (plist-get reply-markup :resize_keyboard)
                                  (/ (- telega-chat-fill-column 10
                                        (- (length buttons-row) 1))
                                     (length buttons-row)))))
-            (seq-doseq (but buttons-row)
-              (telega-ins--keyboard-button but msg forced-width one-time-p)
+            (seq-doseq (kbd-button buttons-row)
+              (telega-ins--keyboard-button kbd-button msg forced-width
+                (when (plist-get reply-markup :one_time)
+                  (lambda (_kbdbutton _kbdmsg)
+                    (telega--deleteChatReplyMarkup
+                     (plist-get msg :chat_id) (plist-get msg :id)))))
               (telega-ins " ")))
-          (unless (= ridx (1- (length rows)))
+          (when (setq rows (cdr rows))
             (telega-ins "\n"))))
       t)))
 
@@ -1239,35 +1249,38 @@ argument - MSG to insert additional information after header."
     ;; NOTE: If reply msg is not instantly available, then fetch it
     ;; asynchronously, cache it and then redisplay original message
     (let ((reply-to-msg (telega-msg-reply-msg msg 'locally)))
-      (if reply-to-msg
-          (telega-ins--with-props
-              ;; When pressen, then jump to the REPLY-TO-MSG message
-              (list 'action
-                    (lambda (_button)
-                      (telega-msg-goto-highlight reply-to-msg)))
-            (telega-ins--aux-reply-inline reply-to-msg 'telega-msg-inline-reply))
-
-        ;; NOTE: if `telega-msg--reply-to-msg-deleted' is non-nil,
-        ;; then reply-to-msg has been deleted
-        (if telega-msg--reply-to-msg-deleted
-            (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
-              (telega-ins "<DELETED MESSAGE>"))
-
-          ;; Asynchronously load reply-to-msg and redisplay msg
-          (telega-msg-reply-msg msg nil
-            (lambda (reply-msg)
-              (let ((telega-msg--reply-to-msg-deleted (not reply-msg)))
-                (when reply-msg
-                  (telega-msg--cache-in-chatbuf reply-msg))
-                (telega-msg-redisplay msg))))
-          (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
-            (telega-ins "Loading...")))))))
+      (cond ((plist-get reply-to-msg :telega-is-deleted-message)
+             (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
+               (telega-ins "<DELETED MESSAGE>")))
+            (reply-to-msg
+             (telega-ins--with-props
+                 ;; When pressed, then jump to the REPLY-TO-MSG message
+                 (list 'action
+                       (lambda (_button)
+                         (telega-msg-goto-highlight reply-to-msg)))
+               (telega-ins--aux-reply-inline
+                reply-to-msg 'telega-msg-inline-reply)))
+            (t
+             ;; Need async request
+             (telega-msg-reply-msg msg nil
+               (lambda (reply-msg)
+                 (with-telega-chatbuf (telega-msg-chat msg)
+                   (telega-chatbuf--cache-msg
+                    (or reply-msg
+                        ;; NOTE: cache specially crafted
+                        ;; pseudo-message denoting deleted message
+                        (list :id (plist-get msg :reply_to_message_id)
+                              :telega-is-deleted-message t)))
+                   (telega-msg-redisplay msg))))
+             (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
+               (telega-ins "Loading...")))))))
 
 (defun telega-ins--message (msg &optional no-header addon-header-inserter)
   "Insert message MSG.
 If NO-HEADER is non-nil, then do not display message header
 unless message is edited.
 ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
+  (declare (indent 2))
   (if (telega-msg-special-p msg)
       (telega-ins--with-attrs (list :min (- telega-chat-fill-column
                                             (telega-current-column))
@@ -1329,6 +1342,15 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                                  (telega-ins " --> ")
                                  (telega-ins--chat (telega-msg-chat msg))))
   (telega-ins "\n"))
+
+(defun telega-ins--message-deleted (msg)
+  "Inserter for deleted message MSG."
+  (telega-ins--with-props (list 'face 'custom-invalid)
+    (telega-ins--message msg nil
+      (lambda (_ignoredmsg)
+        (telega-ins " ")
+        (telega-ins--with-face 'error
+          (telega-ins "DELETED"))))))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."
@@ -1528,6 +1550,12 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
     (telega-ins--date (plist-get msg :date)))
   (telega-ins--outgoing-status msg)
   )
+
+(defun telega-ins--chat-pin-msg-one-line (pin-msg)
+  "Inserter for pinned message PIN-MSG."
+  (telega-ins telega-symbol-pin " ")
+  (telega-ins--chat-msg-one-line
+   (telega-msg-chat pin-msg) pin-msg (+ 8 telega-chat-fill-column)))
 
 (defun telega-ins--chat-online-status (chat)
   "Insert user online status for corresponding private CHAT."

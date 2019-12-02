@@ -452,17 +452,32 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   ;; TODO: might be some action needed on `:message_id' as well
   )
 
+(defun telega-chat--update-reply-markup-message (chat &optional offline-p)
+  "Asynchronously load reply markup message for CHAT.
+Pass non-nil OFFLINE-P argument to avoid any async requests."
+  (let ((reply-markup-msg-id (plist-get chat :reply_markup_message_id))
+        (reply-markup-msg (telega-chat-reply-markup-msg chat 'offline)))
+    (if (or (zerop reply-markup-msg-id) reply-markup-msg offline-p)
+        (with-telega-chatbuf chat
+          (telega-chatbuf--footer-redisplay))
+
+      ;; Async load reply markup message
+      (telega-chat-reply-markup-msg chat nil
+        (lambda (rm-message)
+          (with-telega-chatbuf chat
+            (telega-chatbuf--cache-msg
+             (or rm-message
+                 (list :id reply-markup-msg-id
+                       :telega-is-deleted-message t))))
+          (telega-chat--update-reply-markup-message chat 'offline))))))
+
 (defun telega--on-updateChatReplyMarkup (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :reply_markup_message_id
                (plist-get event :reply_markup_message_id))
-    (telega-root--chat-update chat)
 
-    ;; Also update reply-markup in chat's footer
-    (with-telega-chatbuf chat
-      (telega-chatbuf--footer-redisplay))
-    ))
+    (telega-chat--update-reply-markup-message chat)))
 
 (defun telega--on-updateChatLastMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -496,19 +511,47 @@ NOTE: we store the number as custom chat property, to use it later."
     ; (telega-root--chat-update chat)
     ))
 
+(defun telega-chat--update-pinned-message (chat &optional offline-p
+                                                old-pin-msg-id)
+  "Asynchronously load pinned message for CHAT.
+Pass non-nil OFFLINE-P argument to avoid any async requests.
+OLD-PIN-MSG-ID is the id of the previously pinned message."
+  (let ((pin-msg-id (plist-get chat :pinned_message_id))
+        (pin-msg (telega-chat-pinned-msg chat 'locally)))
+    (if (or (zerop pin-msg-id) pin-msg offline-p)
+        (progn
+          (with-telega-chatbuf chat
+            (when-let ((old-pin (and old-pin-msg-id
+                                     (not (zerop old-pin-msg-id))
+                                     (telega-chatbuf--msg
+                                      old-pin-msg-id 'with-node))))
+              (apply 'telega-msg-redisplay old-pin))
+            (when pin-msg
+              (telega-msg-redisplay pin-msg))
+
+            (telega-chatbuf-mode-line-update)
+            (telega-chatbuf--footer-redisplay))
+          (telega-root--chat-update chat))
+
+      ;; Async load pinned message
+      (telega-chat-pinned-msg chat nil
+        (lambda (pinned-message)
+          (with-telega-chatbuf chat
+            (telega-chatbuf--cache-msg
+             (or pinned-message
+                 (list :id pin-msg-id
+                       :telega-is-deleted-message t))))
+          (telega-chat--update-pinned-message chat 'offline))))))
+
 (defun telega--on-updateChatPinnedMessage (event)
   "The chat pinned message was changed."
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+  (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+         (old-pinned-message-id (plist-get chat :pinned_message_id)))
     (cl-assert chat)
     (plist-put chat :pinned_message_id
                (plist-get event :pinned_message_id))
 
-    ;; Modeline/footer are affected by pinned message
-    (with-telega-chatbuf chat
-      (telega-chatbuf-mode-line-update)
-      (telega-chatbuf--footer-redisplay))
-
-    (telega-root--chat-update chat)))
+    (telega-chat--update-pinned-message chat nil old-pinned-message-id)))
 
 (defun telega-chat--on-getChats (result)
   "Ensure chats from RESULT exists, and continue fetching chats."
@@ -1179,22 +1222,23 @@ end of the buffer."
                               nil t)))
   (switch-to-buffer buffer))
 
-(defun telega-chat-reply-markup-msg (chat &optional locally-p callback)
+(defun telega-chat-reply-markup-msg (chat &optional offline-p callback)
   "Return reply markup for the CHAT.
-If LOCALLY-P is non-nil, then do not perform any requests to telega-server.
+If OFFLINE-P is non-nil, then do not perform any requests to telega-server.
 If CALLBACK is specified, then get reply markup asynchronously."
   (declare (indent 2))
   (let ((reply-markup-msg-id (plist-get chat :reply_markup_message_id)))
     (unless (zerop reply-markup-msg-id)
-      (telega-msg--get
-       (plist-get chat :id) reply-markup-msg-id locally-p callback))))
+      (telega-msg--get (plist-get chat :id) reply-markup-msg-id offline-p
+        callback))))
 
-(defun telega-chat-pinned-msg (chat &optional locally-p callback)
-  "Return pinned message for the CHAT."
+(defun telega-chat-pinned-msg (chat &optional offline-p callback)
+  "Return pinned message for the CHAT.
+If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
   (declare (indent 2))
   (let ((pin-msg-id (plist-get chat :pinned_message_id)))
     (unless (zerop pin-msg-id)
-      (telega-msg--get (plist-get chat :id) pin-msg-id locally-p callback))))
+      (telega-msg--get (plist-get chat :id) pin-msg-id offline-p callback))))
 
 
 ;;; Chat Buffer
@@ -1303,13 +1347,10 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
 
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
-  ;; Two parts
   ;; --(actions part)---------------[additional status]--
-  ;;                        ^
-  ;;                     middle
   ;; 📌 Pinned Message
-  ;; Then REPLY-MARKUP buttons follows, denoted by
-  ;; `:reply_markup_message_id' property of the chat
+  ;; [ REPLY-MARKUP] [ BUTTONS ]
+  ;; >>>
   (let* ((column (+ telega-chat-fill-column 10 1))
          (column1 (/ column 2))
          (column2 (- column column1))
@@ -1324,7 +1365,6 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
          (chat telega-chatbuf--chat)
          (history-loading-p telega-chatbuf--history-loading)
          (voice-msg telega-chatbuf--voice-msg))
-
     (telega-ins--as-string
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        ;; Chat action part
@@ -1358,44 +1398,25 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
        (telega-ins "\n")
 
        ;; Pinned message
-       (when (and telega-chat-footer-show-pinned-message
-                  (not (eq 0 (plist-get chat :pinned_message_id))))
-         (if-let ((pin-msg (telega-chat-pinned-msg chat 'locally)))
-             ;; NOTE: Using 'telega-msg button makes point behave
-             ;; strange, so drop to `telega' button type
-             (telega-button--insert 'telega pin-msg
-               :inserter (lambda (msg)
-                           (telega-ins telega-symbol-pin " ")
-                           (telega-ins--chat-msg-one-line
-                            chat msg (+ 8 telega-chat-fill-column)))
-               :action 'telega-msg-goto-highlight)
-
-           ;; Asynchronously load pinned message, cache it and
-           ;; redisplay footer
-           (telega-chat-pinned-msg chat nil
-             (lambda (pinned-message)
-               (when pinned-message
-                 (telega-msg--cache-in-chatbuf pinned-message))
-               (with-telega-chatbuf chat
-                 (telega-chatbuf-mode-line-update)
-                 (telega-chatbuf--footer-redisplay))))
-           (telega-ins telega-symbol-pin " Loading..."))
-         (telega-ins "\n"))
+       (when-let ((pin-msg
+                   (and telega-chat-show-pinned-message
+                        (not (zerop (plist-get chat :pinned_message_id)))
+                        (telega-chat-pinned-msg chat 'offline))))
+         (unless (plist-get pin-msg :telega-is-deleted-message)
+           ;; NOTE: Using 'telega-msg button makes point behave
+           ;; strange, so drop to `telega' button type
+           (telega-button--insert 'telega pin-msg
+             :inserter 'telega-ins--chat-pin-msg-one-line
+             :action 'telega-msg-goto-highlight)
+           (telega-ins "\n")))
 
        ;; Reply markup
-       (unless (eq 0 (plist-get chat :reply_markup_message_id))
-         (if-let ((markup-msg (telega-chat-reply-markup-msg chat 'locally)))
-             (telega-ins--reply-markup markup-msg 'force)
-
-           ;; Asynchronously load markup message, cache it and redisplay footer
-           (telega-chat-reply-markup-msg chat nil
-             (lambda (markup-message)
-               (when markup-message
-                 (telega-msg--cache-in-chatbuf markup-message))
-               (with-telega-chatbuf chat
-                 (telega-chatbuf--footer-redisplay))))
-           (telega-ins "REPLY-MARKUP Loading..."))
-         (telega-ins "\n"))
+       (when-let ((markup-msg
+                   (and (not (zerop (plist-get chat :reply_markup_message_id)))
+                        (telega-chat-reply-markup-msg chat 'offline))))
+         (unless (plist-get markup-msg :telega-is-deleted-message)
+           (telega-ins--reply-markup markup-msg 'force)
+           (telega-ins "\n")))
        ))))
 
 (defun telega-chatbuf--footer-redisplay ()
@@ -1452,7 +1473,7 @@ Global chat bindings:
         (ewoc-create (if telega-debug
                          'telega-msg--pp
                        (telega-ewoc--gen-pp 'telega-msg--pp))
-                     nil (telega-chatbuf--footer) t))
+                     nil nil t))
   (goto-char (point-max))
 
   ;; Use punctuation as "no-value" button content
@@ -1689,7 +1710,15 @@ otherwise set draft only if current input is also draft."
         (with-current-buffer (generate-new-buffer bufname)
           (let ((telega-chat--preparing-buffer-for chat))
             (telega-chat-mode))
+          (telega-chatbuf--footer-redisplay)
           (telega-chatbuf-mode-line-update)
+
+          ;; Asynchronously update pinned message, if any
+          (unless (zerop (plist-get chat :pinned_message_id))
+            (telega-chat--update-pinned-message chat))
+          ;; Asynchronously update reply markup message
+          (unless (zerop (plist-get chat :reply_markup_message_id))
+            (telega-chat--update-reply-markup-message chat))
 
           ;; If me is not member of this chat, then show [JOIN/START]
           ;; button instead of the prompt
@@ -1703,10 +1732,7 @@ otherwise set draft only if current input is also draft."
                 (button-put telega-chatbuf--prompt-button 'invisible t)
                 (goto-char telega-chatbuf--prompt-button)
                 (save-excursion
-                  (telega-ins--button
-                      (if (eq chat-type 'bot)
-                          "START"
-                        "JOIN")
+                  (telega-ins--button (if (eq chat-type 'bot) "START" "JOIN")
                     :value chat :action 'telega-chatbuf--join)))))
 
           ;; Show the draft message if any, see
@@ -1786,28 +1812,27 @@ If ICONS-P is non-nil, then use icons for members count."
                           " online")))
               "]"))))
 
-(defun telega-chatbuf-mode-line-pinned-msg ()
+(defun telega-chatbuf-mode-line-pinned-msg (&optional max-width)
   "Format pinned message string for chat buffer modeline."
-  ;; NOTE: wait for asynchronous pinned message load in footer
-  ;; redisplay
-  (when-let ((pinned-msg (telega-chat-pinned-msg telega-chatbuf--chat 'locally)))
-    (telega-ins--as-string
-     (telega-ins " [")
-     (telega-ins--with-attrs (list :max 15 :align 'left :elide t)
-       (telega-ins--with-props
-           (list 'local-map
-                 (eval-when-compile
-                   (make-mode-line-mouse-map
-                    'mouse-1 'telega-chatbuf-goto-pin-message))
-                 'mouse-face 'mode-line-highlight
-                 'help-echo "mouse-1: Goto pinned message")
-         (telega-ins telega-symbol-pin)
-         (let ((telega-emoji-use-images nil))
-           ;; NOTE: avoid using images for emojis, because modeline
-           ;; height might differ from default height, and modeline
-           ;; will increase its height
-           (telega-ins--content-one-line pinned-msg))))
-     (telega-ins "]"))))
+  (when-let ((pin-msg (telega-chat-pinned-msg telega-chatbuf--chat 'locally)))
+    (unless (plist-get pin-msg :telega-is-deleted-message)
+      (telega-ins--as-string
+       (telega-ins " [")
+       (telega-ins--with-attrs
+           (list :max (or max-width 15) :align 'left :elide t)
+         (telega-ins--with-props
+             (list 'local-map (eval-when-compile
+                                (make-mode-line-mouse-map
+                                 'mouse-1 'telega-chatbuf-goto-pin-message))
+                   'mouse-face 'mode-line-highlight
+                   'help-echo "mouse-1: Goto pinned message")
+           (telega-ins telega-symbol-pin)
+           (let ((telega-emoji-use-images nil))
+             ;; NOTE: avoid using images for emojis, because modeline
+             ;; height might differ from default height, and modeline
+             ;; will increase its height
+             (telega-ins--content-one-line pin-msg))))
+       (telega-ins "]")))))
 
 (defun telega-chatbuf-mode-line-update ()
   "Update `mode-line-buffer-identification' for the CHAT buffer."
@@ -2197,9 +2222,15 @@ messages."
         (when from-cache-p
           (remhash msg-id telega-chatbuf--messages))
         (when permanent-p
-          (let ((node (telega-chatbuf--node-by-msg-id msg-id)))
-            (when node
-              (ewoc-delete telega-chatbuf--ewoc node))))
+          (remhash msg-id telega-chatbuf--messages)
+          (when-let ((node (telega-chatbuf--node-by-msg-id msg-id))
+                     (msg (ewoc--node-data node)))
+            (plist-put msg :telega-is-deleted-message t)
+            (if telega-chat-show-deleted-messages
+                (telega-msg-redisplay msg node)
+              (ewoc-delete telega-chatbuf--ewoc node)))
+          (when (eq msg-id (plist-get telega-chatbuf--chat :pinned_message_id))
+            (telega-chat--update-pinned-message telega-chatbuf--chat 'offline)))
         ))))
 
 (defun telega--on-updateUserChatAction (event)
@@ -3160,9 +3191,27 @@ With prefix arg delete only for yourself."
   (interactive (list (button-get (button-at (point)) :value)
                      (not current-prefix-arg)))
 
-  (when (y-or-n-p (concat (if revoke "Revoke" "Kill") " the message? "))
-    (telega--deleteMessages
-     (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)))
+  (cl-assert (eq (telega--tl-type msg) 'message))
+  (if (plist-get msg :telega-is-deleted-message)
+      ;; NOTE: `d' is pressed on deleted message
+      ;; (`telega-chat-show-deleted-messages' is non-nil)
+      ;; Generate pseudo-event to delete the message
+      (let ((telega-chat-show-deleted-messages nil))
+        (telega--on-updateDeleteMessages
+         (list :chat_id (plist-get msg :chat_id)
+               :is_permanent t
+               :message_ids (vector (plist-get msg :id)))))
+
+    (when (y-or-n-p (concat (if revoke "Revoke" "Kill") " the message? "))
+      (telega--deleteMessages
+       (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)
+
+      (if telega-chat-show-deleted-messages
+          (telega-help-message 'telega-chat-show-deleted-messages 'double-delete
+            "Press %s once again to hide deleted message"
+            (substitute-command-keys (format "\\[%S]" this-command)))
+        (telega-help-message 'telega-chat-show-deleted-messages 'show-deleted
+          "JFYI see `telega-chat-show-deleted-messages'")))))
 
 (defun telega-chat-complete ()
   "Complete thing at chat input."

@@ -756,6 +756,18 @@ If REGION-P is non-nil, then make a screenshot of region."
       (write-region (shell-command-to-string flameshot-cmd)
                     nil tofile nil 'quiet))))
 
+(defun telega-help-message (sym prop fmt &rest fmt-args)
+  "Show once help message formatted with FMT and FMT-ARGS.
+Show message only if `telega-help-messages' is non-nil.
+Store PROP property in symbol SYM once message is shown.
+If SYM is nil then show message unconditionally."
+  (declare (indent 2))
+  (when (and telega-help-messages
+             (not (and sym (get sym prop))))
+    (when sym
+      (put sym prop t))
+    (apply 'message (concat "Telega: " fmt) fmt-args)))
+
 (provide 'telega-util)
 
 ;;; telega-util.el ends here
