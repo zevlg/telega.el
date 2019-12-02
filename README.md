@@ -208,7 +208,7 @@ Or you could use git repository or this melpa-style recipe:
  :files (:defaults "etc" "server" "Makefile"))
 ```
 
-## Installing telega.el and tdlib from GNU Guix
+## Installing telega.el and tdlib from [GNU Guix](https://guix.gnu.org/)
 
 `telega.el` and `tdlib` are both available in GNU Guix. If you have a resource
 constrained machine or would simply prefer to bypass compiling `tdlib` from
