@@ -208,6 +208,38 @@ Or you could use git repository or this melpa-style recipe:
  :files (:defaults "etc" "server" "Makefile"))
 ```
 
+## Installing telega.el and tdlib from GNU Guix
+
+`telega.el` and `tdlib` are both available in GNU Guix. If you have a resource
+constrained machine or would simply prefer to bypass compiling `tdlib` from
+source, this is a good option!
+
+On Guix System:
+```console
+$ guix package -i emacs-telega
+```
+
+On "Foreign" Distributions:
+- Use the shell installer script, or install GNU Guix manually on-top of your
+current distribution. [Installation Documentation](https://guix.gnu.org/manual/en/html_node/Installation.html#Installation)
+
+- Enable fetching substitutes from the build server cache if you do not
+wish to build from source. [Substitute Server Authorization](https://guix.gnu.org/manual/en/html_node/Substitute-Server-Authorization.html#Substitute-Server-Authorization)
+
+- And finally, run:
+```console
+$ guix package -i emacs emacs-telega
+```
+
+You will need a version of emacs installed from GNU Guix because it is
+modified with an autoloader to identify and automatically use emacs
+packages installed from Guix.
+
+Consult the official GNU Guix documentation for further questions. Or create
+an issue in the issue tracker tagging @brettgilio for questions. Do note that
+naturally `telega` installed from Guix will lag behind master, but regular
+attempts to keep it updated will occur.
+
 ## Building telega-server
 
 Now that the `TDLib` library is set-up, it is time to install
