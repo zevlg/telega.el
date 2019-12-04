@@ -389,6 +389,9 @@ If CALLBACK is specified, then get reply message asynchronously."
     (messageText
      (when-let ((web-page (telega--tl-get msg :content :web_page)))
        (telega-msg-open-webpage msg web-page)))
+    (messagePoll
+     ;; no-op
+     )
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 
@@ -500,14 +503,15 @@ If MARKDOWN is non-nil then format TEXT as markdown."
          :chat_id (plist-get (telega-msg-chat msg) :id)
          :message_id (plist-get msg :id))))
 
-(defun telega--setPollAnswer (msg option-id)
+(defun telega--setPollAnswer (msg &rest option-ids)
   "Changes user answer to a poll.
-OPTION-ID - 0-based identifiers of option, chosen by the user."
+OPTION-IDS - 0-based identifiers of option, chosen by the user.
+If OPTION-IDS is not specified, then retract the voice."
   (telega-server--send
    (list :@type "setPollAnswer"
          :chat_id (plist-get (telega-msg-chat msg) :id)
          :message_id (plist-get msg :id)
-         :option_ids (vector option-id))))
+         :option_ids (apply 'vector option-ids))))
 
 ;;; Ignoring messages
 (defmacro telega-msg-ignored-p (msg)

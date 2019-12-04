@@ -610,6 +610,11 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
+(defcustom telega-chat-switch-buffer-sort-by '(> . telega-chat--order)
+  "Functions used to sort chats when switching with `telega-switch-buffer'."
+  :type 'cons
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil

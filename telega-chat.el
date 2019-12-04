@@ -96,6 +96,11 @@ Real value is the pending input string.")
 Actual value is `:@extra` value of the call to load history.")
 (make-variable-buffer-local 'telega-chatbuf--history-loading)
 
+(defvar telega-chatbuf--history-state nil
+  "State of the history loading.
+Could be `basicgroup', `loaded' or `nil'.")
+(make-variable-buffer-local 'telega-chatbuf--history-state)
+
 (defvar telega-chatbuf--voice-msg nil
   "Active (playing/paused) voice note message for the current chat.")
 (make-variable-buffer-local 'telega-chatbuf--voice-msg)
@@ -1190,7 +1195,8 @@ Leaving chat does not removes chat from chat list."
   (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at-point)))
                       (full-info (telega--full-info (telega-chat--info chat))))
                  (list chat
-                       (read-string "Description: " (telega-tl-str full-info :description)))))
+                       (read-string "Description: "
+                                    (telega-tl-str full-info :description)))))
   (telega--setChatDescription chat descr))
 
 (defun telega-chats-filtered-delete (&optional force)
@@ -1214,12 +1220,15 @@ end of the buffer."
 
 (defun telega-switch-buffer (buffer)
   "Interactive switch to chat BUFFER."
-  (interactive (list (funcall telega-completing-read-function
-                              "Telega chat: "
-                              (mapcar 'buffer-name
-                                      (cl-sort (copy-sequence telega--chat-buffers) '>
-                                               :key 'buffer-modified-tick))
-                              nil t)))
+  (interactive
+   (list (funcall telega-completing-read-function
+                  "Telega chat: "
+                  (mapcar 'telega-chatbuf--name
+                          (cl-sort
+                           (mapcar 'telega-chatbuf--chat telega--chat-buffers)
+                           (car telega-chat-switch-buffer-sort-by)
+                           :key (cdr telega-chat-switch-buffer-sort-by)))
+                  nil t)))
   (switch-to-buffer buffer))
 
 (defun telega-chat-reply-markup-msg (chat &optional offline-p callback)

@@ -161,6 +161,11 @@ display the list.")
   "Telega chat for the current chat buffer.")
 (make-variable-buffer-local 'telega-chatbuf--chat)
 
+(defun telega-chatbuf--chat (buffer)
+  "Return chat corresponding chat BUFFER."
+  (with-current-buffer buffer
+    telega-chatbuf--chat))
+
 (defvar telega-chatbuf--messages nil
   "Local cache for the messages.")
 (make-variable-buffer-local 'telega-chatbuf--messages)

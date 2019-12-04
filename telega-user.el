@@ -32,6 +32,7 @@
 (declare-function telega--getGroupsInCommon "telega-chat" (with-user))
 (declare-function telega--createPrivateChat "telega-chat" (user))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 (declare-function telega-chatbuf-mode-line-update "telega-chat")
