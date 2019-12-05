@@ -235,10 +235,14 @@ You will need a version of emacs installed from GNU Guix because it is
 modified with an autoloader to identify and automatically use emacs
 packages installed from Guix.
 
-Consult the official GNU Guix documentation for further questions. Or create
-an issue in the issue tracker tagging @brettgilio for questions. Do note that
-naturally `telega` installed from Guix will lag behind master, but regular
-attempts to keep it updated will occur.
+Consult the official GNU Guix documentation for further questions. Issues related
+to the GUIX package must be accompanied by the [GUIX label](https://github.com/zevlg/telega.el/labels/guix)
+in the issue tracker.
+
+Do note that since `telega` is actively maintained installations from Guix might
+at times lag behind master, but regular attempts to keep it updated will occur.
+If the version in Guix is too outdated or is missing a feature, please use the
+protocol for the issue tracker.
 
 ## Building telega-server
 
