@@ -40,7 +40,7 @@
 	     (srfi srfi-1)
 	     (srfi srfi-26))
 
-(define %source-dir (dirname (current-filename)))
+(define %source-dir (dirname (dirname (current-filename))))
 
 (define git-file?
   (let* ((pipe (with-directory-excursion %source-dir
