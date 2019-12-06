@@ -82,6 +82,11 @@ Telegram [TDLib 1.5.0](https://core.telegram.org/tdlib "tdlib"). Most
 of the distributions do not package this libary, so it has to be build
 from source.
 
+[GNU Guix](https://guix.gnu.org/), however, does have both `telega.el`
+and `TDLib` packaged.  If you use GNU Guix you can skip directly to
+[Installing from GNU Guix](GNU Guix#installing-telegael-and-tdlib-from-gnu-guix)
+section.
+
 ## Dependences
 
    * `GNU Emacs` (at least 26.1 is required)
@@ -208,42 +213,6 @@ Or you could use git repository or this melpa-style recipe:
  :files (:defaults "etc" "server" "Makefile"))
 ```
 
-## Installing telega.el and tdlib from [GNU Guix](https://guix.gnu.org/)
-
-`telega.el` and `tdlib` are both available in GNU Guix. If you have a resource
-constrained machine or would simply prefer to bypass compiling `tdlib` from
-source, this is a good option!
-
-On Guix System:
-```console
-$ guix package -i emacs-telega
-```
-
-On "Foreign" Distributions:
-- Use the shell installer script, or install GNU Guix manually on-top of your
-current distribution. [Installation Documentation](https://guix.gnu.org/manual/en/html_node/Installation.html#Installation)
-
-- Enable fetching substitutes from the build server cache if you do not
-wish to build from source. [Substitute Server Authorization](https://guix.gnu.org/manual/en/html_node/Substitute-Server-Authorization.html#Substitute-Server-Authorization)
-
-- And finally, run:
-```console
-$ guix package -i emacs emacs-telega
-```
-
-You will need a version of emacs installed from GNU Guix because it is
-modified with an autoloader to identify and automatically use emacs
-packages installed from Guix.
-
-Consult the official GNU Guix documentation for further questions. Issues related
-to the GUIX package must be accompanied by the [GUIX label](https://github.com/zevlg/telega.el/labels/guix)
-in the issue tracker.
-
-Do note that since `telega` is actively maintained installations from Guix might
-at times lag behind master, but regular attempts to keep it updated will occur.
-If the version in Guix is too outdated or is missing a feature, please use the
-protocol for the issue tracker.
-
 ## Building telega-server
 
 Now that the `TDLib` library is set-up, it is time to install
@@ -294,6 +263,42 @@ Or with:
 
 The code should be put in the configuration file for Emacs, which
 usually is `init.el`, or `emacs.el`.
+
+## Installing telega.el and tdlib from [GNU Guix](https://guix.gnu.org/)
+
+`telega.el` and `tdlib` are both available in GNU Guix. If you have a resource
+constrained machine or would simply prefer to bypass compiling `tdlib` from
+source, this is a good option!
+
+On Guix System:
+```console
+$ guix package -i emacs-telega
+```
+
+On "Foreign" Distributions:
+- Use the shell installer script, or install GNU Guix manually on-top of your
+current distribution. [Installation Documentation](https://guix.gnu.org/manual/en/html_node/Installation.html#Installation)
+
+- Enable fetching substitutes from the build server cache if you do not
+wish to build from source. [Substitute Server Authorization](https://guix.gnu.org/manual/en/html_node/Substitute-Server-Authorization.html#Substitute-Server-Authorization)
+
+- And finally, run:
+```console
+$ guix package -i emacs emacs-telega
+```
+
+You will need a version of emacs installed from GNU Guix because it is
+modified with an autoloader to identify and automatically use emacs
+packages installed from Guix.
+
+Consult the official GNU Guix documentation for further questions. Issues related
+to the GUIX package must be accompanied by the [GUIX label](https://github.com/zevlg/telega.el/labels/guix)
+in the issue tracker.
+
+Do note that since `telega` is actively maintained installations from Guix might
+at times lag behind master, but regular attempts to keep it updated will occur.
+If the version in Guix is too outdated or is missing a feature, please use the
+protocol for the issue tracker.
 
 ## Fire up `telega.el`
 
