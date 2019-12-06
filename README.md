@@ -84,7 +84,7 @@ from source.
 
 [GNU Guix](https://guix.gnu.org/), however, does have both `telega.el`
 and `TDLib` packaged.  If you use GNU Guix you can skip directly to
-[Installing from GNU Guix](GNU Guix#installing-telegael-and-tdlib-from-gnu-guix)
+[Installing from GNU Guix](#installing-telegael-and-tdlib-from-gnu-guix)
 section.
 
 ## Dependences
