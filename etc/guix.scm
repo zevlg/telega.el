@@ -88,6 +88,16 @@
 	       (("python3 run_tests.py")
 		""))
 	     #t))
+	 ;; Modify telega-util to reflect unique dir name in
+	 ;; `telega-install-data' phase.
+	 (add-after 'unpack 'telega-data-patch
+	   (lambda _
+	     (substitute* "telega-util.el"
+	       (("\\(concat \"etc/\" filename\\) telega--lib-directory")
+		"(concat \"telega-data/\" filename)
+                    (locate-dominating-file telega--lib-directory
+                                            \"telega-data\")"))
+	     #t))
 	 ;; The telega test suite checks for a version of Emacs
 	 ;; compiled with imagemagick and svg support. Since we
 	 ;; are using `emacs-minimal`, this step will fail.
@@ -120,19 +130,16 @@
 	   (assoc-ref emacs:%standard-phases 'add-source-to-load-path))
 	 (add-after 'emacs-add-source-to-load-path 'emacs-install
 	   (assoc-ref emacs:%standard-phases 'install))
-	 ;; This step adds subdir /etc to the site-lisp dir
-	 ;; which is needed for images, notification sounds,
-	 ;; and various alists.
-	 ;; TODO: Replace with `#:include' method used by
-	 ;; emacs-build-system.
-	 (add-after 'emacs-install 'emacs-install-etc
+	 ;; This step installs subdir /etc, which contains images, sounds and
+	 ;; various other data, next to the site-lisp dir.
+	 (add-after 'emacs-install 'telega-install-data
 	   (lambda* (#:key outputs #:allow-other-keys)
-	     (with-directory-excursion "."
-	       (invoke "cp" "-r" "etc/"
-		       (string-append (assoc-ref outputs "out")
-				      "/share/emacs/site-lisp/")))
+	     (copy-recursively
+	      "etc"
+	      (string-append (assoc-ref outputs "out")
+			     "/share/emacs/telega-data/"))
 	     #t))
-	 (add-after 'emacs-install-etc 'emacs-build
+	 (add-after 'telega-install-data 'emacs-build
 	   (assoc-ref emacs:%standard-phases 'build))
 	 (add-after 'emacs-build 'emacs-make-autoloads
 	   (assoc-ref emacs:%standard-phases 'make-autoloads)))))
