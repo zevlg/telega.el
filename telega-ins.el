@@ -565,6 +565,27 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
       (cons thumb :photo)))
     (telega-ins " "))))
 
+(defun telega-ins--game (msg &optional game-value)
+  "Insert GAME."
+  (let ((game (or game-value (telega--tl-get msg :content :game)))
+        (width (- telega-chat-fill-column 10)))
+    (telega-ins telega-symbol-game " "
+                (propertize "GAME" 'face 'shadow)
+                "\n")
+    (telega-ins telega-symbol-vertical-bar)
+    (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
+                                  :fill-column width
+                                  :fill 'left)
+      (when-let ((photo (plist-get game :photo)))
+        (telega-ins--photo photo msg)
+        (telega-ins "\n"))
+      (telega-ins--with-face 'telega-webpage-sitename
+        (telega-ins (telega-tl-str game :title)))
+      (telega-ins "\n")
+      (unless (telega-ins--text (plist-get game :text))
+        (telega-ins (telega-tl-str game :description)))
+      t)))
+
 (defun telega-ins--webpage (msg &optional web-page)
   "Insert WEB-PAGE.
 Return `non-nil' if WEB-PAGE has been inserted."
@@ -867,7 +888,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageChatSetTtl 'messageExpiredPhoto
               'messageChatChangePhoto
               'messageChatUpgradeTo 'messageChatUpgradeFrom
-              'messagePinMessage 'messageScreenshotTaken)))
+              'messagePinMessage 'messageScreenshotTaken
+              'messageGameScore)))
 
 (defun telega-ins--special (msg)
   "Insert special message MSG.
@@ -945,6 +967,18 @@ Special messages are determined with `telega-msg-special-p'."
          (telega-ins--with-attrs (list :max 20 :align 'left :elide t)
          (telega-ins--content-one-line pin-msg)))
        (telega-ins "\""))
+      (messageGameScore
+       (let ((game-msg (telega-msg--get
+                           (plist-get msg :chat_id)
+                           (plist-get content :game_message_id)
+                           'offline)))
+         (telega-ins-fmt "You scored %d in " (plist-get content :score))
+         (telega-ins--with-face 'bold
+           (telega-ins
+            (if game-msg
+                (telega-tl-str (telega--tl-get game-msg :content :game)
+                               :title)
+              "unknown")))))
       (t (telega-ins-fmt "<unsupported special message: %S>"
            (telega--tl-type content)))))
   (telega-ins ")--"))
@@ -975,6 +1009,8 @@ Special messages are determined with `telega-msg-special-p'."
          (telega-ins--webpage msg)))
       ('messageDocument
        (telega-ins--document msg))
+      ('messageGame
+       (telega-ins--game msg))
       ('messagePhoto
        (telega-ins--photo (plist-get content :photo) msg))
       ('messageSticker

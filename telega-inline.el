@@ -88,8 +88,7 @@
               (bot (unless (zerop bot-user-id)
                      (telega-user--get bot-user-id)))
               (new-query (telega-tl-str kbd-type :query)))
-         (when (and bot (telega-user-bot-p bot)
-                    (not (string-empty-p new-query)))
+         (when (and bot (telega-user-bot-p bot))
            (unless (plist-get kbd-type :in_current_chat)
              (telega-chat--pop-to-buffer
               (telega-completing-read-chat "To chat: ")))
@@ -99,6 +98,11 @@
             (concat "@" (telega-tl-str bot :username) " " new-query))
            (telega-chatbuf-attach-inline-bot-query 'no-search))))
 
+      (inlineKeyboardButtonTypeCallbackGame
+       (telega--getCallbackQueryAnswer
+        msg (list :@type "callbackQueryPayloadGame"
+                  :game_short_name
+                  (telega--tl-get msg :content :game :short_name))))
       ;; TODO: other types
       )))
 
@@ -154,6 +158,8 @@
                      (plist-get qr :thumbnail))
                     (inlineQueryResultPhoto
                      (telega-photo--thumb (plist-get qr :photo)))
+                    (inlineQueryResultGame
+                     (telega-photo--thumb (telega--tl-get qr :game :photo)))
                     (inlineQueryResultVideo
                      (telega--tl-get qr :video :thumbnail))))
            (thumb-file (when thumb (telega-file--renew thumb :photo)))
@@ -238,7 +244,7 @@
     ))
 
 (defun telega-ins--inline-video (qr)
-  "Inserter for `inlineQueryResultVideo` QR."
+  "Inserter for `inlineQueryResultVideo' QR."
   (let* ((video (plist-get qr :video))
          (thumb (plist-get video :thumbnail))
          (thumb-img (when thumb
@@ -259,6 +265,24 @@
       (telega-duration-human-readable (plist-get video :duration)))
     (telega-ins "\n")))
 
+(defun telega-ins--inline-game (qr)
+  "Inserter for `inlineQueryResultGame' QR."
+  (let* ((game (plist-get qr :game))
+         (photo (plist-get game :photo))
+         (photo-img (when photo
+                      (telega-photo--image photo (cons 4 2)))))
+    (when photo-img
+      (telega-ins--image photo-img 0)
+      (telega-ins " "))
+    (telega-ins--with-face 'bold
+      (telega-ins (telega-tl-str game :title)))
+    (telega-ins "\n")
+    (when photo-img
+      (telega-ins--image photo-img 1)
+      (telega-ins " "))
+    (telega-ins (telega-tl-str game :description))
+    (telega-ins "\n")))
+
 (defun telega-inline-bot--gen-callback (bot query &optional for-chat)
   "Generate callback for the BOT's QUERY result handling in FOR-CHAT."
   (lambda (reply)
@@ -277,7 +301,8 @@
                         '(inlineQueryResultVideo
                           inlineQueryResultAudio
                           inlineQueryResultArticle
-                          inlineQueryResultDocument))
+                          inlineQueryResultDocument
+                          inlineQueryResultGame))
               (unless (or (= (point) (point-at-bol))
                           (= (point) 1))
                 (telega-ins "\n")
@@ -345,6 +370,12 @@
                  :inserter 'telega-ins--inline-sticker
                  :action 'telega-inline-bot--action))
 
+              (inlineQueryResultGame
+               (telega-button--insert 'telega qr
+                 :inserter 'telega-ins--inline-game
+                 :action 'telega-inline-bot--action)
+               (telega-ins--inline-delim))
+
               (t
                (telega-ins-fmt "* %S\n" qr)))))
 
@@ -364,7 +395,7 @@
     (message "telega: @%s Searching for %s..."
              (telega-tl-str bot :username) (propertize query 'face 'bold))
     (setq telega-chatbuf--inline-query
-          (telega--getInlineQueryResults bot query nil nil nil
+          (telega--getInlineQueryResults bot query for-chat nil nil
             (telega-inline-bot--gen-callback bot query for-chat)))))
 
 (provide 'telega-inline)

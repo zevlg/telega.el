@@ -361,6 +361,12 @@ If CALLBACK is specified, then get reply message asynchronously."
         (t (when-let ((url (plist-get web-page :url)))
              (telega-browse-url url)))))
 
+(defun telega-msg-open-game (msg)
+  "Open content for the game message MSG."
+  (telega--getCallbackQueryAnswer
+   msg (list :@type "callbackQueryPayloadGame"
+             :game_short_name (telega--tl-get msg :content :game :short_name))))
+
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
   (telega--openMessageContent msg)
@@ -392,6 +398,8 @@ If CALLBACK is specified, then get reply message asynchronously."
     (messagePoll
      ;; no-op
      )
+    (messageGame
+     (telega-msg-open-game msg))
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 
