@@ -299,6 +299,26 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; no-op
   )
 
+(defun telega--on-updateServiceNotification (event)
+  "Handle service notification EVENT from the server."
+  (let ((help-window-select t))
+    (with-telega-help-win "*Telega Service Notification*"
+      ;; NOTE: use `telega-ins--content' in hope that only `:content'
+      ;; property is used
+      (telega-ins--with-attrs (list :fill 'center
+                                    :fill-column telega-chat-fill-column)
+        (telega-ins--content event))
+      (when (string-prefix-p "AUTH_KEY_DROP_" (plist-get event :type))
+        (telega-ins "\n")
+        (telega-ins--button "Cancel"
+          'action (lambda (_ignored)
+                    (quit-window)))
+        (telega-ins " ")
+        (telega-ins--button "Logout"
+          'action (lambda (_ignored)
+                    (when (yes-or-no-p "Destroy all local data? ")
+                      (telega-server--send (list :@type "destroy")))))))))
+
 (defun telega-version (&optional print-p)
   "Return telega (and TDLib) version.
 If prefix arg PRINT-P is non-nil, then print version into echo

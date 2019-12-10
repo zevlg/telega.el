@@ -41,17 +41,8 @@
       (telega-debug "TODO: define `%S'" event-sym))))
 
 (defun telega--on-error (err)
-  (telega-debug "IN error: %s" err)
-
-  (cond ((and (eq (plist-get err :code) 406)
-              (string= (plist-get err :message)
-                       "FRESH_RESET_AUTHORISATION_FORBIDDEN"))
-         (message
-          (concat "Telega: For security reasons, you can't terminate "
-                  "older sessions from a device that you've just connected. "
-                  "Please use an earlier connection or wait for a few hours.")))
-
-        (t (message "Telega error: %s" err))))
+  (message "Telega error %d: %s"
+           (plist-get err :code) (plist-get err :message)))
 
 ;; Server runtime vars
 (defvar telega-server--buffer nil)
