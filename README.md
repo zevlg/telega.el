@@ -1,4 +1,4 @@
-# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.5.0-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega)
+# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.5.0-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega)
 
 `telega.el` is full featured unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
