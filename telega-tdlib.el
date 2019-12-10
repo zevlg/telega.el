@@ -258,6 +258,19 @@ Return list of \"ChatMember\" objects."
     (list :@type "getActiveSessions")
     callback))
 
+(defun telega--terminateSession (session-id)
+  "Terminate a session of the current user by SESSION-ID."
+  (telega-server--send
+   (list :@type "terminateSession"
+         :session_id session-id)))
+
+(defun telega--terminateAllOtherSessions ()
+  "Terminate all other sessions of the current user."
+  ;; NOTE: Dangerous call, avoid using it! so XXXX added
+  ;; see https://github.com/tdlib/td/issues/830
+  (telega-server--send
+   (list :@type "XXXXterminateAllOtherSessions")))
+
 (defun telega--getProxies (&optional callback)
   "Return list of currently registered proxies."
   (with-telega-server-reply (reply)
@@ -279,6 +292,36 @@ Return list of \"ChatMember\" objects."
   (telega-server--send
    (list :type "unpinChatMessage"
          :chat_id (plist-get chat :id))))
+
+
+(defun telega--setAuthenticationPhoneNumber (phone-number)
+  "Set user's phone number to PHONE-NUMBER."
+  (telega-server--send
+   (list :@type "setAuthenticationPhoneNumber"
+         :phone_number phone-number
+         :settings (list :@type "phoneNumberAuthenticationSettings"
+                         :allow_flash_call :false
+                         :is_current_phone_number :false))))
+
+(defun telega--checkAuthenticationPassword (password)
+  "Check the PASSWORD for the 2-factor authentification."
+  (telega-server--send
+   (list :@type "checkAuthenticationPassword"
+         :password password)))
+
+(defun telega--checkAuthenticationCode (code)
+  "Checks the authentication CODE."
+  (telega-server--send
+   (list :@type "checkAuthenticationCode"
+         :code code)))
+
+(defun telega--registerUser (first-name &optional last-name)
+  "Finish new user registration."
+  (telega-server--send
+   (list :@type "registerUser"
+         :first_name first-name
+         :last_name (or last-name ""))))
+
 
 (provide 'telega-tdlib)
 

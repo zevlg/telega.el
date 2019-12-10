@@ -1,6 +1,11 @@
+#-*- mode: org -*-
+#+TODO: TODO WIP DONE
+#+STARTUP: showall
+
 Changes in 1.5.0:
 
-* Changed authorization workflow:
+* DONE Changed authorization workflow:
+  CLOSED: [2019-12-10 Вт 15:44]
   - Added the state `authorizationStateWaitRegistration`, which will be received after `authorizationStateWaitCode` for users who are not registered yet.
   - Added the method `registerUser`, which must be used in the `authorizationStateWaitRegistration` state to finish registration of the user.
   - Removed the fields `is_registered` and `terms_of_service` from the class `authorizationStateWaitCode`.
@@ -33,7 +38,7 @@ Changes in 1.5.0:
 * Added possibility to use `LibreSSL` instead of `OpenSSL` to build TDLib.
 * Added instructions for building TDLib on `Debian 10`, `OpenBSD` and `NetBSD` to
   the [TDLib build instructions generator](https://tdlib.github.io/td/build.html).
-* [WON'T DO] Added support for Backgrounds 2.0:
+* **WON'T DO** Added support for Backgrounds 2.0:
   - Added the classes `BackgroundType`, `background`, `backgrounds` and `InputBackground`.
   - Added the method `getBackground` returning the list of backgrounds installed by the user.
   - Added the method `setBackground` for changing the background selected by the user.
@@ -46,10 +51,12 @@ Changes in 1.5.0:
   - Removed the `getWallpapers` method.
   - Removed the `wallpaper` and the `wallpapers` classes.
   - The class `fileTypeWallpaper` can be used for remote file identifiers of both old wallpapers and new backgrounds.
-* [DONE] Added support for descriptions in basic groups:
+* DONE Added support for descriptions in basic groups:
+  CLOSED: [2019-12-10 Вт 16:26]
   - Added the field `description` to the class `basicGroupFullInfo`.
   - Replaced the method `setSupergroupDescription` with `setChatDescription` which can be used for any chat type.
-* [DONE] Added support for emoji suggestions:
+* DONE Added support for emoji suggestions:
+  CLOSED: [2019-12-10 Вт 16:26]
   - Added the method `searchEmojis` for searching emojis by keywords.
   - Added the method `getEmojiSuggestionsUrl`, which can be used to automatically log in to the translation platform
     and suggest new emoji replacements.
@@ -57,26 +64,30 @@ Changes in 1.5.0:
 * Changed type of the fields `old_photo` and `new_photo` in the class `chatEventPhotoChanged` from `chatPhoto` to
   `photo`.
 * Changed recommended size for `inputThumbnail` from 90x90 to 320x320.
-* Combined all supported settings for phone number authentication:
+* DONE Combined all supported settings for phone number authentication:
+  CLOSED: [2019-12-10 Вт 16:23]
   - Added the class `phoneNumberAuthenticationSettings` which contains all the settings.
   - Replaced the parameters `is_current_phone_number` and `allow_flash_call` in the methods
     `setAuthenticationPhoneNumber`, `sendPhoneNumberConfirmationCode`, `sendPhoneNumberVerificationCode` and
     `changePhoneNumber` with the parameter `settings` of the type `phoneNumberAuthenticationSettings`.
   - Added support for automatic SMS code verification for official applications via the new field `allow_app_hash` in
     the class `phoneNumberAuthenticationSettings`.
-* Added support for auto-download settings presets.
+* TODO Added support for auto-download settings presets.
   - Added the classes `autoDownloadSettings` and `autoDownloadSettingsPresets`.
   - Added the method `getAutoDownloadSettingsPresets` for getting the settings.
   - Added the method `setAutoDownloadSettings`, which needs to be called whenever the user changes the settings.
-* Added support for minithumbnails - thumbnail images of a very poor quality and low resolution:
+* DONE Added support for minithumbnails - thumbnail images of a very poor quality and low resolution:
+  CLOSED: [2019-12-10 Вт 16:24]
   - Added the class `minithumbnail`.
   - Added the field `minithumbnail` to `animation`, `document`, `photo`, `video` and `videoNote` classes.
   - Added the field `audio_cover_minithumbnail` to the class `audio`.
-* Added support for resending messages which failed to send:
+* DONE Added support for resending messages which failed to send:
+  CLOSED: [2019-12-10 Вт 16:24]
   - Added the fields `error_code`, `error_message`, `can_retry` and `retry_after` to
     the `messageSendingStateFailed` object.
   - Added the method `resendMessages`.
-* Added the field `is_animated` to the `sticker`, `stickerSet` and `stickerSetInfo` classes.
+* DONE Added the field `is_animated` to the `sticker`, `stickerSet` and `stickerSetInfo` classes.
+  CLOSED: [2019-12-10 Вт 16:24]
   Animated stickers can be received anywhere where non-animated stickers can appear.
 * Added the parameters `send_copy` and `remove_caption` to the `forwardMessages` method to allow forwarding of
   messages without links to the originals.
@@ -86,9 +97,11 @@ Changes in 1.5.0:
 * Added the class `userPrivacySettingShowProfilePhoto` for managing visibility of the user's profile photo.
 * Added the class `userPrivacySettingShowLinkInForwardedMessages` for managing whether a link to the user's account is
   included with forwarded messages.
-* Added the field `thumbnail` to the classes `stickerSet` and `stickerSetInfo`, containing a thumbnail for
+* DONE Added the field `thumbnail` to the classes `stickerSet` and `stickerSetInfo`, containing a thumbnail for
+  CLOSED: [2019-12-10 Вт 16:28]
   the sticker set.
-* [DONE] Added the field `is_scam` to the classes `user` and `supergroup`.
+* DONE Added the field `is_scam` to the classes `user` and `supergroup`.
+  CLOSED: [2019-12-10 Вт 16:27]
 * Added a new kind of inline keyboard button `inlineKeyboardButtonTypeLoginUrl`, which for the moment must be processed
   in the same way as an `inlineKeyboardButtonTypeUrl`.
 * Added the new class `supergroupMembersFilterContacts`, allowing to only search for contacts

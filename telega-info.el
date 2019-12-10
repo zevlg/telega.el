@@ -485,9 +485,29 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
           (if official-p
               (telega-ins "(official)")
             (telega-ins-fmt "(ID:%s)" api-id ))
-          (when current-p
-            (telega-ins (propertize " (current)" 'face 'bold)))
+
+          ;; Logout/Terminate button
+          ;; see https://github.com/zevlg/telega.el/issues/113
+          (if current-p
+              (progn
+                (telega-ins (propertize " (current)" 'face 'bold))
+                (telega-ins " ")
+                (telega-ins--button "Logout"
+                  'action (lambda (_ignore)
+                            (when (yes-or-no-p "Really Logout? ")
+                              (telega-logout)))))
+
+            (telega-ins " ")
+            (telega-ins--button "Terminate"
+              :value session
+              :action (lambda (sess)
+                        (when (yes-or-no-p "Terminate? ")
+                          (telega--terminateSession (plist-get sess :id))
+                          (telega-save-cursor
+                            (telega-describe-active-sessions
+                             (delq sess sessions)))))))
           (telega-ins "\n")
+
           (telega-ins-fmt "%s, %s %s\n" device platform sys-ver)
           (telega-ins-fmt "%s %s\n" ip country)
           (telega-ins "Login: ")
@@ -495,7 +515,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
           (telega-ins ", Last: ")
           (telega-ins--date last-ts)
           (telega-ins "\n")
-          (insert "\n"))))))
+          (telega-ins "\n"))))))
 
 
 ;; Proxies code

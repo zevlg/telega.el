@@ -152,49 +152,12 @@ With prefix arg FORCE quit without confirmation."
     (telega-server--send
      `(:@type "addProxy" ,@proxy))))
 
-(defun telega--setAuthenticationPhoneNumber (&optional phone-number)
-  "Set user's phone number to PHONE-NUMBER."
-  (let ((phone (or phone-number (read-string "Telega phone number: " "+"))))
-    (telega-server--send
-     (list :@type "setAuthenticationPhoneNumber"
-           :phone_number phone
-           :allow_flash_call :false
-           :is_current_phone_number :false))))
-
 (defun telega-resend-auth-code ()
   "Resend auth code.
 Works only if current state is `authorizationStateWaitCode'."
   (interactive)
   (telega-server--send
    (list :@type "resendAuthenticationCode")))
-
-(defun telega--checkAuthenticationCode (registered-p &optional auth-code)
-  "Send login AUTH-CODE.
-Specify non-nil REGISTERED-P for already registered user."
-  (let ((code (or auth-code (read-string "Telega login code: ")))
-        ;; NOTE: first_name is required for newly registered accounts
-        (first-name (or (and registered-p "")
-                        (read-from-minibuffer "First Name: "))))
-    (telega-server--send
-     (list :@type "checkAuthenticationCode"
-           :code code
-           :first_name first-name
-           :last_name ""))))
-
-(defun telega--checkAuthenticationPassword (auth-state &optional password)
-  "Check the PASSWORD for the 2-factor authentification.
-AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
-  (let* ((hint (plist-get auth-state :password_hint))
-         (pswd (or password
-                   (password-read
-                    (concat "Telegram password"
-                            (if (string-empty-p hint)
-                                ""
-                              (format "(hint='%s')" hint))
-                            ": ")))))
-    (telega-server--send
-     (list :@type "checkAuthenticationPassword"
-           :password pswd))))
 
 (defun telega--setOption (prop-kw val)
   "Set option, defined by keyword PROP-KW to VAL."
@@ -294,13 +257,29 @@ AUTH-STATE is TDLib state taken from `updateAuthorizationState' event."
        (telega--checkDatabaseEncryptionKey))
 
       (authorizationStateWaitPhoneNumber
-       (telega--setAuthenticationPhoneNumber))
+       (let ((phone (read-string "Telega phone number: " "+")))
+         (telega--setAuthenticationPhoneNumber phone)))
 
       (authorizationStateWaitCode
-       (telega--checkAuthenticationCode (plist-get state :is_registered)))
+       (let ((code (read-string "Telega login code: ")))
+         (telega--checkAuthenticationCode code)))
+
+      (authorizationStateWaitRegistration
+       (let* ((names (split-string (read-from-minibuffer "Your Name: ") " "))
+              (first-name (car names))
+              (last-name (mapconcat 'identity (cdr names) " ")))
+         (telega--registerUser first-name last-name)))
 
       (authorizationStateWaitPassword
-       (telega--checkAuthenticationPassword state))
+       (let* ((hint (plist-get state :password_hint))
+              (pass (password-read
+                     (concat "Telegram password"
+                             (if (string-empty-p hint)
+                                 ""
+                               (format "(hint='%s')" hint))
+                             ": "))))
+         (telega--checkAuthenticationPassword pass)))
+
 
       (authorizationStateReady
        ;; TDLib is now ready to answer queries
