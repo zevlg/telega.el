@@ -126,7 +126,8 @@ function with one argument - message."
       (button-get button :value))))
 
 (defsubst telega-msg-chat (msg &optional offline-p)
-  "Return chat for the MSG."
+  "Return chat for the MSG.
+Return nil for deleted messages."
   (telega-chat-get (plist-get msg :chat_id) offline-p))
 
 (defun telega-msg-reply-msg (msg &optional locally-p callback)

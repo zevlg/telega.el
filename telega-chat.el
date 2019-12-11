@@ -188,6 +188,7 @@ Return chat from `telega--chats'."
 If OFFLINE-P is non-nil then do not request the telegram-server."
   (let ((chat (gethash chat-id telega--chats)))
     (when (and (not chat) (not offline-p))
+      (cl-assert chat-id)
       (setq chat (telega-server--call
                   (list :@type "getChat"
                         :chat_id chat-id)))
@@ -473,6 +474,7 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
             (telega-chatbuf--cache-msg
              (or rm-message
                  (list :id reply-markup-msg-id
+                       :chat_id (plist-get chat :id)
                        :telega-is-deleted-message t))))
           (telega-chat--update-reply-markup-message chat 'offline))))))
 
@@ -545,6 +547,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
             (telega-chatbuf--cache-msg
              (or pinned-message
                  (list :id pin-msg-id
+                       :chat_id (plist-get chat :id)
                        :telega-is-deleted-message t))))
           (telega-chat--update-pinned-message chat 'offline))))))
 

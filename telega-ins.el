@@ -1310,6 +1310,7 @@ argument - MSG to insert additional information after header."
                         ;; NOTE: cache specially crafted
                         ;; pseudo-message denoting deleted message
                         (list :id (plist-get msg :reply_to_message_id)
+                              :chat_id (plist-get telega-chatbuf--chat :id)
                               :telega-is-deleted-message t)))
                    (telega-msg-redisplay msg))))
              (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
