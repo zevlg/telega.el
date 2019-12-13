@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.5.2
-(defconst telega-version "0.5.2")
+;; Version: 0.5.3
+(defconst telega-version "0.5.3 (i18n)")
 (defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.5.0")
 
@@ -50,6 +50,7 @@
 (require 'telega-webpage)
 (require 'telega-notifications)
 (require 'telega-modes)
+(require 'telega-i18n)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
@@ -93,7 +94,8 @@ If prefix ARG is given, then will not pop to telega root buffer."
       (telega-root-mode))
 
     (telega-server--check-version telega-server-min-version)
-    (telega-server--start))
+    (telega-server--start)
+    (telega-i18n-init))
 
   (unless arg
     (pop-to-buffer-same-window telega-root-buffer-name)))

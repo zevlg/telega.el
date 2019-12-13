@@ -163,10 +163,9 @@ Matches only if CHAR does not apper in the middle of the word."
                      telega-chatbuf--chat (substring arg 1))))
        (nconc (delq nil
                     (mapcar (lambda (member)
-                              (let ((username (telega-tl-str member :username)))
-                                (unless (string-empty-p username)
-                                  (propertize (concat "@" username)
-                                              'telega-member member))))
+                              (when-let ((un (telega-tl-str member :username)))
+                                (propertize
+                                 (concat "@" un) 'telega-member member)))
                             members))
                (cl-remove-if-not (lambda (botname)
                                    (string-prefix-p arg botname))

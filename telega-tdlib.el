@@ -322,6 +322,35 @@ Return list of \"ChatMember\" objects."
          :first_name first-name
          :last_name (or last-name ""))))
 
+
+;; I18N
+(defun telega--getLocalizationTargetInfo (&optional offline callback)
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :language_packs) nil)
+
+    (list :@type "getLocalizationTargetInfo"
+          :only_local (if offline t :false))
+    callback))
+
+(defun telega--getLanguagePackInfo (lang-pack-id &optional callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getLanguagePackInfo"
+         :language_pack_id lang-pack-id)
+   callback))
+
+(defun telega--getLanguagePackStrings (lang-pack-id &optional keys callback)
+  (declare (indent 2))
+  (with-telega-server-reply (reply)
+      (mapcar (lambda (str)
+                (cons (telega-tl-str str :key)
+                      (cddr (plist-get str :value))))
+              (plist-get reply :strings))
+
+    (list :@type "getLanguagePackStrings"
+          :language_pack_id lang-pack-id
+          :keys (apply 'vector keys))
+    callback))
 
 (provide 'telega-tdlib)
 

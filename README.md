@@ -38,15 +38,15 @@ In some random order:
       messages, contacts, etc (PARTLY)
 - [x] Poll messages, Poll creation
 - [x] Games, Game Scores 
-- [x] Handling local links, such as "tg:" or "https://t.me/xxx" (PARTLY)
-- [x] ReplyMarkup (inline keyboard buttons) in the messages (PARTLY)
+- [x] Handling local links, such as "tg:" or "https://t.me/xxx"
+- [x] ReplyMarkup (inline keyboard buttons) in the messages
 - [x] InstantView for web pages
 - [x] Blocking/Unblocking users, listing blocked users
 - [x] Inline bots requests, via "@bot query<TAB>"
 - [ ] Searching for messages in chat
 - [ ] Shared media
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
-- [ ] [TranslationsPlatform](https://translations.telegram.org) support
+- [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
 - [ ] Delayed messages, see [TDLib#695](https://github.com/tdlib/td/issues/695)
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 

@@ -95,7 +95,7 @@
 
            (telega-chatbuf--input-delete)
            (telega-chatbuf-input-insert
-            (concat "@" (telega-tl-str bot :username) " " new-query))
+            (concat "@" (telega-tl-str bot :username) " " (or new-query "")))
            (telega-chatbuf-attach-inline-bot-query 'no-search))))
 
       (inlineKeyboardButtonTypeCallbackGame
@@ -287,97 +287,97 @@
   "Generate callback for the BOT's QUERY result handling in FOR-CHAT."
   (lambda (reply)
     (if-let ((qr-results (append (plist-get reply :results) nil)))
-        (with-telega-help-win "*Telegram Inline Results*"
-          (visual-line-mode 1)
-          (setq telega--inline-bot bot)
-          (setq telega--inline-query query)
-          (setq telega--inline-results reply)
-          (setq telega--chat for-chat)
+        (let ((help-window-select telega-inline-query-window-select))
+          (with-telega-help-win "*Telegram Inline Results*"
+            (visual-line-mode 1)
+            (setq telega--inline-bot bot)
+            (setq telega--inline-query query)
+            (setq telega--inline-results reply)
+            (setq telega--chat for-chat)
 
-          (dolist (qr qr-results)
-            ;; NOTE: possible insert the delimiter, so mixing for
-            ;; example Articles and Animations is possible
-            (when (memq (telega--tl-type qr)
-                        '(inlineQueryResultVideo
-                          inlineQueryResultAudio
-                          inlineQueryResultArticle
-                          inlineQueryResultDocument
-                          inlineQueryResultGame))
-              (unless (or (= (point) (point-at-bol))
-                          (= (point) 1))
-                (telega-ins "\n")
-                (telega-ins--inline-delim)))
+            (dolist (qr qr-results)
+              ;; NOTE: possible insert the delimiter, so mixing for
+              ;; example Articles and Animations is possible
+              (when (memq (telega--tl-type qr)
+                          '(inlineQueryResultVideo
+                            inlineQueryResultAudio
+                            inlineQueryResultArticle
+                            inlineQueryResultDocument
+                            inlineQueryResultGame))
+                (unless (or (= (point) (point-at-bol))
+                            (= (point) 1))
+                  (telega-ins "\n")
+                  (telega-ins--inline-delim)))
 
-            (cl-case (telega--tl-type qr)
-              (inlineQueryResultDocument
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-document
-                 :action 'telega-inline-bot--action
-                 'cursor-sensor-functions
-                 '(telega-button-highlight--sensor-func))
-               (telega-ins--inline-delim))
+              (cl-case (telega--tl-type qr)
+                (inlineQueryResultDocument
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-document
+                   :action 'telega-inline-bot--action
+                   'cursor-sensor-functions
+                   '(telega-button-highlight--sensor-func))
+                 (telega-ins--inline-delim))
 
-              (inlineQueryResultVideo
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-video
-                 :action 'telega-inline-bot--action
-                 'cursor-sensor-functions
-                 '(telega-button-highlight--sensor-func))
-               (telega-ins--inline-delim))
+                (inlineQueryResultVideo
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-video
+                   :action 'telega-inline-bot--action
+                   'cursor-sensor-functions
+                   '(telega-button-highlight--sensor-func))
+                 (telega-ins--inline-delim))
 
-              (inlineQueryResultAudio
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-audio
-                 :action 'telega-inline-bot--action
-                 'cursor-sensor-functions
-                 '(telega-button-highlight--sensor-func))
-               (telega-ins--inline-delim))
+                (inlineQueryResultAudio
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-audio
+                   :action 'telega-inline-bot--action
+                   'cursor-sensor-functions
+                   '(telega-button-highlight--sensor-func))
+                 (telega-ins--inline-delim))
 
-              (inlineQueryResultVoiceNote
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-voice-note
-                 :action 'telega-inline-bot--action
-                 'cursor-sensor-functions
-                 '(telega-button-highlight--sensor-func))
-               (telega-ins--inline-delim))
+                (inlineQueryResultVoiceNote
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-voice-note
+                   :action 'telega-inline-bot--action
+                   'cursor-sensor-functions
+                   '(telega-button-highlight--sensor-func))
+                 (telega-ins--inline-delim))
 
-              (inlineQueryResultArticle
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-article
-                 :action 'telega-inline-bot--action
-                 'cursor-sensor-functions
-                 '(telega-button-highlight--sensor-func))
-               (telega-ins--inline-delim))
+                (inlineQueryResultArticle
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-article
+                   :action 'telega-inline-bot--action
+                   'cursor-sensor-functions
+                   '(telega-button-highlight--sensor-func))
+                 (telega-ins--inline-delim))
 
-              (inlineQueryResultAnimation
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-animation
-                 :action 'telega-inline-bot--action
-                 'cursor-sensor-functions
-                 (list (telega-animation--gen-sensor-func
-                        (plist-get qr :animation)))
-                 'help-echo (when-let ((title (telega-tl-str qr :title)))
-                              (unless (string-empty-p title)
-                                (format "GIF title: %s" title)))))
+                (inlineQueryResultAnimation
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-animation
+                   :action 'telega-inline-bot--action
+                   'cursor-sensor-functions
+                   (list (telega-animation--gen-sensor-func
+                          (plist-get qr :animation)))
+                   'help-echo (when-let ((title (telega-tl-str qr :title)))
+                                (format "GIF title: %s" title))))
 
-              (inlineQueryResultPhoto
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-photo
-                 :action 'telega-inline-bot--action))
+                (inlineQueryResultPhoto
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-photo
+                   :action 'telega-inline-bot--action))
 
-              (inlineQueryResultSticker
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-sticker
-                 :action 'telega-inline-bot--action))
+                (inlineQueryResultSticker
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-sticker
+                   :action 'telega-inline-bot--action))
 
-              (inlineQueryResultGame
-               (telega-button--insert 'telega qr
-                 :inserter 'telega-ins--inline-game
-                 :action 'telega-inline-bot--action)
-               (telega-ins--inline-delim))
+                (inlineQueryResultGame
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-game
+                   :action 'telega-inline-bot--action)
+                 (telega-ins--inline-delim))
 
-              (t
-               (telega-ins-fmt "* %S\n" qr)))))
+                (t
+                 (telega-ins-fmt "* %S\n" qr))))))
 
       ;; Not found
       (unless (string-empty-p query)

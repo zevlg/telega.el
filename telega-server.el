@@ -304,7 +304,9 @@ If CALLBACK is specified return `:@extra' value used for the call."
 
         (when (and (not ret) telega-server--last-error)
           (user-error
-           "telega: %s" (plist-get telega-server--last-error :message)))
+           "telega error=%d: %s"
+           (plist-get telega-server--last-error :code)
+           (plist-get telega-server--last-error :message)))
         ret))))
 
 (defun telega-server--start ()

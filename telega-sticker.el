@@ -96,6 +96,10 @@ Thumbnail is a smaller (and faster) version of sticker image.")
         (telega-file--download sticker-file 2)))
     ))
 
+(defsubst telega-sticker-emoji (sticker &optional no-properties)
+  "Return STICKER's emoji or empty string."
+  (telega-tl-str sticker :emoji no-properties))
+
 (defun telega-stickerset--download (sset)
   "Ensure sticker set SSET data is downloaded."
   (mapc 'telega-sticker--download (plist-get sset :stickers)))
@@ -279,7 +283,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
-  (let* ((emoji (telega-tl-str sticker :emoji 'no-props))
+  (let* ((emoji (telega-sticker-emoji sticker 'no-props))
          (xh (telega-chars-xheight (car telega-sticker-size)))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
@@ -358,7 +362,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
 If SLICES-P is non-nil, then insert STICKER using slices."
   (if (or (not telega-use-images)
           (not (display-graphic-p)))
-      (telega-ins "<STICKER " (telega-tl-str sticker :emoji) ">")
+      (telega-ins "<STICKER " (telega-sticker-emoji sticker) ">")
 
     (let ((simage (telega-media--image
                    (cons sticker 'telega-sticker--create-image)
@@ -416,7 +420,7 @@ If SLICES-P is non-nil, then insert STICKER using slices."
     ;; (when (> (telega-current-column) (- telega-chat-fill-column 10))
     ;;   (telega-ins "\n"))
     (telega-button--insert 'telega-sticker sticker
-      'help-echo (let ((emoji (telega-tl-str sticker :emoji 'no-props)))
+      'help-echo (let ((emoji (telega-sticker-emoji sticker 'no-props)))
                    (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
       'action 'telega-sticker--choosen-action)
     (when addon-inserter
@@ -458,7 +462,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (telega-ins--sticker-list stickers
         (when telega-sticker-set-show-emoji
           (lambda (sticker)          
-            (telega-ins (telega-tl-str sticker :emoji) "  ")))))))
+            (telega-ins (telega-sticker-emoji sticker) "  ")))))))
 
 (defun telega-sticker-help (sticker)
   "Describe sticker set for STICKER."

@@ -30,6 +30,7 @@
 (require 'url-util)
 
 (require 'telega-tdlib)
+(require 'telega-i18n)
 (require 'telega-sticker)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -108,6 +109,18 @@ BOT-PARAMS are additional params."
 (defun telega-tme-open-theme (_slug)
   (user-error "`telega-tme-open-theme' not yet implemented"))
 
+(defun telega-tme-open-lang (lang)
+  "Open setlanguage tg link to change language to LANG."
+  (when (equal lang telega-language)
+    (user-error (concat "Language is already " lang)))
+
+  (let ((lang-pack (telega--getLanguagePackInfo lang)))
+    (when (yes-or-no-p (concat "Telega: change UI language to "
+                               (plist-get lang-pack :native_name)
+                               "? "))
+      (setq telega-language lang)
+      (telega-i18n-init))))
+
 (defun telega-tme-parse-query-string (query-string)
   "Parse QUERY-STRING and return it as plist.
 Multiple params with same name in QUERY-STRING is disallowed."
@@ -136,6 +149,8 @@ Return non-nil, meaning URL has been handled."
            (telega-tme-open-stickerset (plist-get query :set)))
           ((string= path "addtheme")
            (telega-tme-open-theme (plist-get query :slug)))
+          ((string= path "setlanguage")
+           (telega-tme-open-lang (plist-get query :lang)))
           ((string= path "privatepost")
            (telega-tme-open-privatepost
             (plist-get query :channel) (plist-get query :post)))
@@ -169,6 +184,10 @@ Return non-nil if url has been handled."
                     (concat "tg:join?invite=" (match-string 1 path)))
                    ((string-match "^/addstickers/\\([a-zA-Z0-9._]+\\)$" path)
                     (concat "tg:addstickers?set=" (match-string 1 path)))
+                   ((string-match "^/addtheme/\\([a-zA-Z0-9._]+\\)$" path)
+                    (concat "tg:addtheme?slug=" (match-string 1 path)))
+                   ((string-match "^/setlanguage/\\([a-zA-Z0-9._]+\\)$" path)
+                    (concat "tg:setlanguage?lang=" (match-string 1 path)))
                    ((string-match "^/share/url$" path)
                     (concat "tg:msg_url?" query))
                    ((string-match "^/\\(socks\\|proxy\\)$" path)

@@ -491,7 +491,7 @@ PARSE-MODE is one of: \"textParseModeMarkdown\" or \"textParseModeHTML\"."
                    (list :@type "parseTextEntities"
                          :text text
                          :parse_mode (list :@type parse-mode)))))
-    (plist-put fmt-text :text (telega-tl-str fmt-text :text 'no-props))))
+    (plist-put fmt-text :text (or (telega-tl-str fmt-text :text 'no-props) ""))))
 
 (defun telega--formattedText (text &optional markdown)
   "Convert TEXT to `formattedTex' type.

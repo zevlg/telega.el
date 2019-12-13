@@ -146,6 +146,11 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'list
   :group 'telega)
 
+(defcustom telega-inline-query-window-select t
+  "*Non-nil to select window with inline query results."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-chat--display-buffer-action
   '((display-buffer-reuse-window display-buffer-same-window))
   "Action value when poping to chatbuffer.
@@ -380,11 +385,19 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'list
   :group 'telega-root)
 
-(defcustom telega-chat-me-custom-title (propertize "Saved Messages" 'face 'bold)
+(defcustom telega-chat-me-custom-title (lambda (title)
+                                         (propertize title 'face 'bold))
   "*Custom title for the chat with myself.
-Set it to nil to use your user name instead of default \"Saved Messages\"."
-  :type 'string
+Could be a function accepting title and returning new title.
+If nil, then \"saved_messages\" name from `telega-i18n' is used."
+  :type '(or string function)
   :group 'telega-root)
+
+(defcustom telega-chat-title-emoji-use-images nil
+  "*Non-nil to use images for emojis in chat's title.
+Otherwise use simple chars."
+  :type 'boolean
+  :group 'telega-chat)
 
 (defcustom telega-chat-label-format "%L | "
   "*Non-nil to prefix chat's title with custom label.
@@ -433,7 +446,8 @@ For example:
     ("Unmuted" . unmuted)
     ("Unread" . unread))
   "*Alist of custom filters for chats.
-In form (NAME . FILTER-SPEC)."
+In form (NAME . FILTER-SPEC).
+TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
   :type 'alist
   :group 'telega-filter)
 

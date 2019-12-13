@@ -502,12 +502,12 @@ Suffix can be one of:
   -wp       - Windows?
 
 If suffixes not specified, then match any restriction reason."
-  (let ((reason (telega-tl-str (telega-chat--info chat) :restriction_reason)))
-    (unless (string-empty-p reason)
-      (or (not suffixes)
-          (cl-find reason suffixes
-                   :test (lambda (string regexp)
-                           (string-match-p regexp string)))))))
+  (when-let ((reason (telega-tl-str
+                      (telega-chat--info chat) :restriction_reason)))
+    (or (not suffixes)
+        (cl-find reason suffixes
+                 :test (lambda (string regexp)
+                         (string-match-p regexp string))))))
 
 (defun telega-filter-by-restriction ()
   "Filter chats by restriction reason.

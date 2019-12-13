@@ -467,7 +467,7 @@ Attach `display' text property to surrogated regions."
 (defsubst telega--desurrogate-apply-part-keep-properties (part)
   (telega--desurrogate-apply-part part 'keep-props))
 
-(defun telega--desurrogate-apply (str &optional no-properties)
+(defsubst telega--desurrogate-apply (str &optional no-properties)
   "Apply `telega-display' properties to STR.
 Resulting in new string with no surrogate pairs.
 If NO-PROPERTIES is specified, then do not keep text properties."
@@ -491,14 +491,13 @@ If NO-PROPERTIES is specified, then do not keep text properties."
         ((listp obj) (mapcar 'telega--tl-pack obj))
         (t obj)))
 
-(defmacro telega-tl-str (obj prop &optional no-properties)
+(defsubst telega-tl-str (obj prop &optional no-properties)
   "Get property PROP from OBJ, desurrogating resulting string.
-NO-PROPERTIES is passed directly to `telega--desurrogate-apply'."
-  `(telega--desurrogate-apply (plist-get ,obj ,prop) ,no-properties))
-  ;;TODO: Return nil if resulting string is empty."
-  ;; (let ((ret (telega--desurrogate-apply (plist-get obj prop) no-properties)))
-  ;;   (unless (string-empty-p ret)
-  ;;     ret)))
+NO-PROPERTIES is passed directly to `telega--desurrogate-apply'.
+Return nil for empty strings."
+  (let ((ret (telega--desurrogate-apply (plist-get obj prop) no-properties)))
+    (unless (string-empty-p ret)
+      ret)))
 
 (defsubst telega-me-p (chat-or-user)
   "Return non-nil if CHAT-OR-USER is me."
@@ -785,9 +784,7 @@ Return VALUE."
 (defsubst telega-chat-username (chat)
   "Return CHAT's username.
 Return nil if no username is assigned to CHAT."
-  (let ((username (plist-get (telega-chat--info chat) :username)))
-    (unless (or (null username) (string-empty-p username))
-      username)))
+  (telega-tl-str (telega-chat--info chat) :username))
 
 (defsubst telega-chat--order (chat &optional as-string)
   "Return CHAT's order.
@@ -822,7 +819,7 @@ Draft input is the input that have `:draft-input-p' property on both sides."
 (defun telega-ins (&rest args)
   "Insert all strings in ARGS.
 Return non-nil if something has been inserted."
-  (< (prog1 (point) (apply 'insert args)) (point)))
+  (< (prog1 (point) (apply 'insert (cl-remove-if 'null args))) (point)))
 
 (defmacro telega-ins-fmt (fmt &rest args)
   "Insert string formatted by FMT and ARGS.

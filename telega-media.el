@@ -79,8 +79,9 @@ Return FILE."
          (left-cbs (cl-loop for cb in callbacks
                             when (funcall cb file)
                             collect cb)))
-    (telega-debug "%s %S callbacks: %S -> %S" (propertize "FILE-UPDATE" 'face 'bold)
-                  (plist-get file :id) callbacks left-cbs)
+    (telega-debug "%s %S started with %d callbacks, left %d callbacks"
+                  (propertize "FILE-UPDATE" 'face 'bold)
+                  (plist-get file :id) (length callbacks) (length left-cbs))
     (puthash (plist-get file :id) left-cbs telega--files-updates)))
 
 (defun telega--on-updateFile (event)

@@ -38,6 +38,7 @@
 (require 'telega-notifications)
 (require 'telega-sticker)
 (require 'telega-company)
+(require 'telega-i18n)
 
 (eval-when-compile
   (require 'rx)
@@ -166,10 +167,9 @@ Return chat from `telega--chats'."
           ;; NOTE: plist might contain strings with surropagated
           ;; pairs, so `telega-tl-str' is used, see
           ;; https://github.com/zevlg/telega.el/issues/94
-          (let ((client-data (telega-tl-str chat :client_data)))
-            (unless (string-empty-p client-data)
-              (ignore-errors
-                (plist-put chat :uaprops (car (read-from-string client-data))))))
+          (when-let ((client-data (telega-tl-str chat :client_data)))
+            (ignore-errors
+              (plist-put chat :uaprops (car (read-from-string client-data)))))
 
           ;; Assign the chat some color (used to draw avatars and
           ;; highlight users in chat)
@@ -314,18 +314,24 @@ If INCLUDE-BOTS-P is non-nil, return corresponding bot user."
 (defun telega-chat-title (chat &optional with-username)
   "Return title for the CHAT.
 If WITH-USERNAME is specified, append trailing username for this chat."
-  (let ((title (telega-tl-str chat :title)))
-    (when (string-empty-p title)
-      (setq title (cl-ecase (telega-chat--type chat)
-                    (private
-                     (telega-user--name (telega-chat--user chat) 'name)))))
-    (when (and (eq chat (telega-chat-me)) telega-chat-me-custom-title)
-      (setq title telega-chat-me-custom-title))
+  (let* ((telega-emoji-use-images telega-chat-title-emoji-use-images)
+         (chat-me-p (telega-me-p chat))
+         (title (or (when chat-me-p
+                      (if (stringp telega-chat-me-custom-title)
+                          telega-chat-me-custom-title
+                        ;; I18N: saved_messages -> Saved Messages
+                        (telega-i18n "saved_messages")))
+                    (telega-tl-str chat :title)
+                    (progn
+                      (cl-assert (telega-chat-private-p chat))
+                      (telega-user--name (telega-chat--user chat) 'name)))))
     (when with-username
-      (let ((username (telega-chat-username chat)))
-        (when username
-          (setq title (concat title " @" username)))))
-    title))
+      (when-let ((username (telega-chat-username chat)))
+        (setq title (concat title " @" username))))
+
+    (if (and chat-me-p (functionp telega-chat-me-custom-title))
+        (funcall telega-chat-me-custom-title title)
+      title)))
 
 (defun telega-chat-brackets (chat)
   "Return CHAT's brackets from `telega-chat-button-brackets'."
@@ -981,7 +987,7 @@ STATUS is one of: "
     (when (telega-chat-public-p chat)
       (let ((link (concat (or (plist-get telega--options :t_me_url)
                               "https://t.me/")
-                          (telega-tl-str (telega-chat--supergroup chat) :username))))
+                          (telega-chat-username chat))))
         (insert "Link: ")
         (apply 'insert-text-button link (telega-link-props 'url link 'link))
         (insert "\n")))
@@ -1649,9 +1655,8 @@ If TITLE is specified, use it instead of chat's title."
      (concat telega-symbol-telegram
              (or (car brackets) "[")
              (or title (telega-chat-title chat))
-             (when-let ((un (telega-tl-str (telega-chat--info chat) :username)))
-               (unless (string-empty-p un)
-                 (concat "@" un)))
+             (when-let ((username (telega-chat-username chat)))
+               (concat "@" username))
              (or (cadr brackets) "]")))))
 
 (defun telega-chatbuf--join (chat)
@@ -2409,8 +2414,7 @@ message uppon message is created."
     (telega-server--call tsm (or callback 'ignore))))
 
 (defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
-                                                  disable-notify from-background
-                                                  )
+                                                  disable-notify from-background)
   "Send IMC as inline query result from bot.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."

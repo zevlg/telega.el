@@ -115,24 +115,24 @@ Format name using FMT-TYPE, one of:
   `full' - Uses all available namings
 Default is: `full'"
   (if (eq (telega-user--type user) 'deleted)
-      (format "DeletedUser-%d" (plist-get user :id))
+      ;; I18N: deleted -> Deleted Account
+      (format "%s-%d" (telega-i18n "deleted") (plist-get user :id))
 
     (let ((fmt-type (or fmt-type 'full))
           (name ""))
       (when (memq fmt-type '(full short))
-        (let ((un (telega-tl-str user :username)))
-          (if (string-empty-p un)
-              (when (eq fmt-type 'short)
-                (setq fmt-type 'name))
-            (setq name (concat "@" un)))))
+        (if-let ((un (telega-tl-str user :username)))
+            (setq name (concat "@" un))
+
+          ;; Change format in case `:username' is unavailable
+          (when (eq fmt-type 'short)
+            (setq fmt-type 'name))))
       (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (let ((ln (telega-tl-str user :last_name)))
-          (unless (string-empty-p ln)
-            (setq name (concat ln (if (string-empty-p name) "" " ") name)))))
+        (when-let ((ln (telega-tl-str user :last_name)))
+          (setq name (concat ln (if (string-empty-p name) "" " ") name))))
       (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (let ((fn (telega-tl-str user :first_name)))
-          (unless (string-empty-p fn)
-            (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
+        (when-let ((fn (telega-tl-str user :first_name)))
+          (setq name (concat fn (if (string-empty-p name) "" " ") name))))
       name)))
 
 (defun telega-user--seen (user)
@@ -215,8 +215,8 @@ LIMIT - limit number of photos (default=100)."
   (interactive (list (telega-user-at (point))))
   (with-telega-help-win "*Telega User*"
     (telega-ins "Name: ")
-    (when (telega-ins (telega-tl-str user :first_name))
-      (telega-ins " "))
+    (when-let ((fn (telega-tl-str user :first_name)))
+      (telega-ins fn " "))
     (telega-ins (telega-tl-str user :last_name))
     (telega-ins "\n")
     (telega-info--insert-user
@@ -242,14 +242,9 @@ If UNBLOCK-P is specified, then unblock USER."
 ;;; Contacts
 (defun telega-ins--root-contact (contact)
   "Inserter for CONTACT user."
-  (telega-ins telega-symbol-contact " ")
-  (when (telega-ins (telega-tl-str contact :first_name))
-    (telega-ins " "))
-  (when (telega-ins (telega-tl-str contact :last_name))
-    (telega-ins " "))
-  (telega-ins-prefix "@"
-    (when (telega-ins (telega-tl-str contact :username))
-      (telega-ins " ")))
+  (telega-ins--contact contact 'no-phone)
+  (when-let ((username (telega-tl-str contact :username)))
+    (telega-ins "@" username " "))
   (telega-ins-prefix "+"
     (telega-ins (plist-get contact :phone_number))))
 
@@ -309,11 +304,9 @@ CONTACT is some user you have exchanged contacs with."
 (defun telega-describe-contact (contact)
   "Show CONTACT information."
   (with-telega-help-win "*Telega Contact*"
+    (telega-ins--contact contact)
+    (telega-ins "\n")
     (let ((user (telega-user--get (plist-get contact :user_id))))
-      (when (telega-ins (telega-tl-str contact :first_name))
-        (telega-ins " "))
-      (telega-ins (telega-tl-str contact :last_name) "\n")
-      (telega-ins-fmt "Phone: %s\n" (plist-get contact :phone_number))
       (if (eq (telega--tl-type (plist-get user :outgoing_link))
               'linkStateIsContact)
           (telega-ins--button "RemoveContact"

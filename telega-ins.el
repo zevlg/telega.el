@@ -369,9 +369,7 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
          (played (and proc-status
                       (plist-get (process-plist proc) :progress)))
          (audio-name (plist-get audio :file_name))
-         (audio-file (telega-file--renew audio :audio))
-         (title (telega-tl-str audio :title))
-         (performer (telega-tl-str audio :performer)))
+         (audio-file (telega-file--renew audio :audio)))
 
     ;; Play/pause and downloading status
     (if (eq proc-status 'run)
@@ -408,12 +406,12 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
                   (telega-ffplay-stop))))
 
     ;; Title --Performer
-    (when title
+    (when-let ((title (telega-tl-str audio :title)))
       (telega-ins "\n")
       (telega-ins--with-face 'bold
         (telega-ins title))
-      (telega-ins-prefix " --"
-        (telega-ins performer)))
+      (when-let ((performer (telega-tl-str audio :performer)))
+        (telega-ins " --" performer)))
 
     ;; Album cover
     (let ((thumb (plist-get audio :album_cover_thumbnail))
@@ -440,7 +438,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
           (telega-ins--with-props
               (telega-link-props 'file local-path)
             (telega-ins (telega-short-filename local-path))))
-      (telega-ins video-name))
+      (telega-ins (or video-name "")))
     (telega-ins-fmt " (%dx%d %s %s)"
       (plist-get video :width)
       (plist-get video :height)
@@ -582,8 +580,8 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
       (telega-ins--with-face 'telega-webpage-sitename
         (telega-ins (telega-tl-str game :title)))
       (telega-ins "\n")
-      (unless (telega-ins--text (plist-get game :text))
-        (telega-ins (telega-tl-str game :description)))
+      (telega-ins (or (telega-tl-str game :text)
+                      (telega-tl-str game :description)))
       t)))
 
 (defun telega-ins--webpage (msg &optional web-page)
@@ -591,27 +589,25 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
 Return `non-nil' if WEB-PAGE has been inserted."
   (unless web-page
     (setq web-page (telega--tl-get msg :content :web_page)))
-  (let ((sitename (telega-tl-str web-page :site_name))
-        (title (telega-tl-str web-page :title))
-        (desc (telega-tl-str web-page :description))
-        (iv-version (plist-get web-page :instant_view_version))
-        (photo (plist-get web-page :photo))
-        (width (- telega-chat-fill-column 10)))
-    (when web-page
-      (telega-ins telega-symbol-vertical-bar)
-      (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
-                                    :fill-column width
-                                    :fill 'left)
-        (when (telega-ins--with-face 'telega-webpage-sitename
-                (telega-ins sitename))
-          (telega-ins "\n"))
-        (when (telega-ins--with-face 'telega-webpage-title
-                (telega-ins title))
-          (telega-ins "\n"))
-        (when (telega-ins desc)
-          (telega-ins "\n"))
+  (when web-page
+    (telega-ins telega-symbol-vertical-bar)
+    (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
+                                  :fill-column (- telega-chat-fill-column 10)
+                                  :fill 'left)
+      (when-let ((sitename (telega-tl-str web-page :site_name)))
+        (telega-ins--with-face 'telega-webpage-sitename
+          (telega-ins sitename))
+        (telega-ins "\n"))
+      (when-let ((title (telega-tl-str web-page :title)))
+        (telega-ins--with-face 'telega-webpage-title
+          (telega-ins title))
+        (telega-ins "\n"))
+      (when-let ((desc (telega-tl-str web-page :description)))
+        (telega-ins desc)
+        (telega-ins "\n"))
 
-        ;; NOTE: animation uses it's own thumbnails
+      ;; NOTE: animation uses it's own thumbnails
+      (let ((photo (plist-get web-page :photo)))
         (when (and photo (not (plist-get web-page :animation)))
           (telega-ins--photo photo msg)
           (telega-ins "\n"))
@@ -626,29 +622,29 @@ Return `non-nil' if WEB-PAGE has been inserted."
                (telega-ins "\n"))
               ((plist-get web-page :document)
                (telega-ins--document msg (plist-get web-page :document))
-               (telega-ins "\n"))))
+               (telega-ins "\n")))))
 
-      ;; Additional View button
-      (if (zerop iv-version)
-          (when-let ((title (pcase (plist-get web-page :type)
-                              ("telegram_channel" "VIEW CHANNEL")
-                              ((or "telegram_chat"
-                                   "telegram_megagroup") "VIEW GROUP")
-                              ("telegram_message" "VIEW MESSAGE")
-                              ("telegram_background" "VIEW BACKGROUND")
-                              ("telegram_user" "VIEW CHAT")
-                              ("telegram_theme" "VIEW THEME"))))
-            (telega-ins--button (concat "   " title "   ")
-              'action 'telega-msg-button--action))
+    ;; Additional View button
+    (if (zerop (plist-get web-page :instant_view_version))
+        (when-let ((title (pcase (plist-get web-page :type)
+                            ("telegram_channel" "VIEW CHANNEL")
+                            ((or "telegram_chat"
+                                 "telegram_megagroup") "VIEW GROUP")
+                            ("telegram_message" "VIEW MESSAGE")
+                            ("telegram_background" "VIEW BACKGROUND")
+                            ("telegram_user" "VIEW CHAT")
+                            ("telegram_theme" "VIEW THEME"))))
+          (telega-ins--button (concat "   " title "   ")
+            'action 'telega-msg-button--action))
 
-        (telega-ins--button
-            (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
-          'action 'telega-msg-button--iv-action))
+      (telega-ins--button
+          (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
+        'action 'telega-msg-button--iv-action))
 
-      ;; Remove trailing newline, if any
-      (when (= (char-before) ?\n)
-        (delete-char -1))
-      t)))
+    ;; Remove trailing newline, if any
+    (when (= (char-before) ?\n)
+      (delete-char -1))
+    t))
 
 (defun telega-ins--location (location)
   "Inserter for the LOCATION."
@@ -677,14 +673,15 @@ Return `non-nil' if WEB-PAGE has been inserted."
             (telega-duration-human-readable
              (- current-ts since) 1)))))))
 
-(defun telega-ins--contact (contact)
+(defun telega-ins--contact (contact &optional no-phone)
   "One line variant inserter for CONTACT."
   (telega-ins telega-symbol-contact " ")
-  (when (telega-ins (telega-tl-str contact :first_name))
-    (telega-ins " "))
-  (when (telega-ins (telega-tl-str contact :last_name))
-    (telega-ins " "))
-  (telega-ins "(" (plist-get contact :phone_number) ")"))
+  (when-let ((first-name (telega-tl-str contact :first_name)))
+    (telega-ins first-name " "))
+  (when-let ((last-name (telega-tl-str contact :last_name)))
+    (telega-ins last-name " "))
+  (unless no-phone
+    (telega-ins "(" (plist-get contact :phone_number) ")")))
 
 (defun telega-ins--contact-msg (msg)
   "Inserter for contact message MSG."
@@ -747,8 +744,6 @@ Return `non-nil' if WEB-PAGE has been inserted."
   "Insert poll message MSG."
   (let* ((content (plist-get msg :content))
          (poll (plist-get content :poll))
-         (question (telega-tl-str poll :question))
-         (nvotes (plist-get poll :total_voter_count))
          (closed-p (plist-get poll :is_closed))
          (options (plist-get poll :options))
          (has-choice-p (cl-some (telega--tl-prop :is_chosen) options))
@@ -760,17 +755,23 @@ Return `non-nil' if WEB-PAGE has been inserted."
     ;; in future See https://telegram.org/blog/polls
     (telega-ins telega-symbol-poll " ")
     (telega-ins--with-face 'shadow
-      (telega-ins "Anonymous Poll"))
-    (telega-ins-fmt ", %d votes" nvotes)
+      ;; I18N: polls_anonymous -> Anonymous Poll
+      (telega-ins (telega-i18n "polls_anonymous")))
+    ;; I18N: polls_votes_count -> {count} votes
+    (telega-ins ", " (telega-i18n "polls_votes_count"
+                                  :count (plist-get poll :total_voter_count)))
     (when closed-p
         (telega-ins ", " (propertize "closed" 'face 'error)))
     (when (and (not closed-p) (plist-get msg :can_be_edited))
       (telega-ins " ")
       (telega-ins--button "Close Poll"
-        'action (lambda (_ignored) (telega--stopPoll msg))))
+        'action (lambda (_ignored)
+                  (when (yes-or-no-p (telega-i18n "polls_stop_warning"))
+                    (telega--stopPoll msg)))))
+    (telega-ins "\n")
 
     ;; Question and options
-    (telega-ins "\n" question)
+    (telega-ins (telega-tl-str poll :question))
     (dotimes (opt-id (length options))
       (let ((popt (aref options opt-id)))
         (telega-ins "\n")
@@ -968,17 +969,15 @@ Special messages are determined with `telega-msg-special-p'."
          (telega-ins--content-one-line pin-msg)))
        (telega-ins "\""))
       (messageGameScore
-       (let ((game-msg (telega-msg--get
-                           (plist-get msg :chat_id)
-                           (plist-get content :game_message_id)
-                           'offline)))
+       (let* ((game-msg (telega-msg--get
+                            (plist-get msg :chat_id)
+                            (plist-get content :game_message_id)
+                            'offline))
+              (game-title
+               (telega-tl-str (telega--tl-get game-msg :content :game) :title)))
          (telega-ins-fmt "You scored %d in " (plist-get content :score))
          (telega-ins--with-face 'bold
-           (telega-ins
-            (if game-msg
-                (telega-tl-str (telega--tl-get game-msg :content :game)
-                               :title)
-              "unknown")))))
+           (telega-ins (or game-title "unknown")))))
       (t (telega-ins-fmt "<unsupported special message: %S>"
            (telega--tl-type content)))))
   (telega-ins ")--"))
@@ -1183,8 +1182,8 @@ argument - MSG to insert additional information after header."
         (if sender
             (telega-ins (telega-user--name sender))
           (telega-ins (telega-chat-title chat 'with-username))
-          (telega-ins-prefix " --"
-            (telega-ins (telega-tl-str msg :author_signature)))))
+          (when-let ((signature (telega-tl-str msg :author_signature)))
+            (telega-ins " --" signature))))
 
       ;; via <bot>
       (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
@@ -1267,11 +1266,10 @@ argument - MSG to insert additional information after header."
             (messageForwardOriginHiddenUser
              (telega-ins (telega-tl-str origin :sender_name)))
             (messageForwardOriginChannel
-             (let ((chat (telega-chat-get (plist-get origin :chat_id)))
-                   (signature (telega-tl-str origin :author_signature)))
-               (telega-ins (telega-chat-title chat 'with-username))
-               (telega-ins-prefix " --"
-                 (telega-ins signature))))))
+             (let ((chat (telega-chat-get (plist-get origin :chat_id))))
+               (telega-ins (telega-chat-title chat 'with-username)))
+             (when-let ((signature (telega-tl-str origin :author_signature)))
+               (telega-ins " --" signature)))))
 
         (let ((date (plist-get fwd-info :date)))
           (unless (zerop date)
@@ -1291,7 +1289,8 @@ argument - MSG to insert additional information after header."
     (let ((reply-to-msg (telega-msg-reply-msg msg 'locally)))
       (cond ((plist-get reply-to-msg :telega-is-deleted-message)
              (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
-               (telega-ins "<DELETED MESSAGE>")))
+               (telega-ins--with-face 'shadow
+                 (telega-ins (telega-i18n "deleted_message")))))
             (reply-to-msg
              (telega-ins--with-props
                  ;; When pressed, then jump to the REPLY-TO-MSG message
@@ -1391,7 +1390,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (lambda (_ignoredmsg)
         (telega-ins " ")
         (telega-ins--with-face 'error
-          (telega-ins "DELETED"))))))
+          (telega-ins (telega-i18n "deleted_message")))))))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."
@@ -1492,11 +1491,11 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
        (messageGame
         (telega-ins telega-symbol-game " ")
         (let ((game (plist-get content :game)))
-          (or (telega-ins (telega-tl-str game :title))
-              (telega-ins (telega-tl-str game :short_name))
-              (telega-ins (propertize "Game" 'face 'shadow)))))
+          (telega-ins (or (telega-tl-str game :title)
+                          (telega-tl-str game :short_name)
+                          (propertize "Game" 'face 'shadow)))))
        (messageSticker
-        (telega-ins (telega-tl-str (plist-get content :sticker) :emoji))
+        (telega-ins (telega-sticker-emoji (plist-get content :sticker)))
         (telega-ins " " (propertize "Sticker" 'face 'shadow)))
        (messageVoiceNote
         ;; I18N: lng_in_dlg_audio
@@ -1519,13 +1518,16 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
           (telega--tl-get content :contact :last_name)))
        (messageInvoice
         (telega-ins (propertize "Invoice" 'face 'shadow))
-        (telega-ins-prefix " "
-          (telega-ins (telega-tl-str content :title))))
+        (when-let ((title (telega-tl-str content :title)))
+          (telega-ins " " title)))
        (messagePoll
         (telega-ins telega-symbol-poll " ")
         (let ((poll (plist-get content :poll)))
           (telega-ins (telega-tl-str poll :question))
-          (telega-ins-fmt " (%d votes)" (plist-get poll :total_voter_count))))
+          ;; I18N: polls_votes_count -> {count} votes
+          (telega-ins " (" (telega-i18n "polls_votes_count"
+                             :count (plist-get poll :total_voter_count))
+                      ")")))
        (t (telega-ins--content msg))))))
 
 
