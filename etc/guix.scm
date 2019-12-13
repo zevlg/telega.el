@@ -146,6 +146,7 @@
 	   (assoc-ref emacs:%standard-phases 'make-autoloads)))))
     (propagated-inputs
      `(("emacs-visual-fill-column" ,emacs-visual-fill-column)
+       ("ffmpeg" ,ffmpeg) ; mp4/gif support.
        ("libwebp" ,libwebp))) ; sticker support.
     (native-inputs
      `(("tdlib" ,tdlib)
