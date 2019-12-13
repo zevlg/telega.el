@@ -91,14 +91,20 @@
 	     #t))
 	 (add-after 'unpack 'telega-paths-patch
 	   (lambda* (#:key inputs #:allow-other-keys)
-	     ;; Hard-code path to `ffplay`.
+	     ;; Hard-code paths to `ffplay` and `ffmpeg`.
 	     (let ((ffplay-bin (string-append (assoc-ref inputs "ffmpeg")
-					      "/bin/ffplay")))
+					      "/bin/ffplay"))
+		   (ffmpeg-bin (string-append (assoc-ref inputs "ffmpeg")
+					      "/bin/ffmpeg")))
 	       (substitute* "telega-ffplay.el"
 		 (("\\(executable-find \"ffplay\"\\)")
 		  (string-append
 		   "(and (file-executable-p \"" ffplay-bin "\")"
-		   "\"" ffplay-bin "\")"))))
+		   "\"" ffplay-bin "\")"))
+		 (("\\(executable-find \"ffmpeg\"\\)")
+		  (string-append
+		   "(and (file-executable-p \"" ffmpeg-bin "\")"
+		   "\"" ffmpeg-bin "\")"))))
 	     ;; Modify telega-util to reflect unique dir name in
 	     ;; `telega-install-data' phase.
 	     (substitute* "telega-util.el"
