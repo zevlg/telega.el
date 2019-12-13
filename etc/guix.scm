@@ -27,6 +27,7 @@
 
 (use-modules (gnu packages emacs)
 	     (gnu packages emacs-xyz)
+	     (gnu packages image)
 	     (gnu packages messaging)
 	     (gnu packages python)
 	     (guix build utils)
@@ -144,15 +145,16 @@
 	 (add-after 'emacs-build 'emacs-make-autoloads
 	   (assoc-ref emacs:%standard-phases 'make-autoloads)))))
     (propagated-inputs
-     `(("emacs-visual-fill-column" ,emacs-visual-fill-column)))
+     `(("emacs-visual-fill-column" ,emacs-visual-fill-column)
+       ("libwebp" ,libwebp))) ; sticker support.
     (native-inputs
      `(("tdlib" ,tdlib)
        ("emacs" ,emacs-minimal)
        ("python" ,python)))
     (synopsis "GNU Emacs client for the Telegram messenger")
     (description
-     "Telega is full-featured, unofficial client for the Telegram messaging
-platform for GNU Emacs.")
+     "Telega is a full-featured, unofficial GNU Emacs-based client for the
+Telegram messaging platform.")
     (home-page "https://github.com/zevlg/telega.el")
     (license license:gpl3+)))
 
