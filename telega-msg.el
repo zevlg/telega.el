@@ -387,7 +387,7 @@ If CALLBACK is specified, then get reply message asynchronously."
      (telega-msg-open-voice-note msg))
     (messageVideoNote
      (telega-msg-open-video-note msg))
-    (messagePhoto
+    ((messagePhoto messageChatChangePhoto)
      (telega-msg-open-photo msg))
     (messageLocation
      (telega-msg-open-location msg))

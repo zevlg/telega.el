@@ -919,15 +919,26 @@ Special messages are determined with `telega-msg-special-p'."
       (messageChatDeleteMember
        (let ((user (telega-user--get (plist-get content :user_id))))
          (if (eq sender user)
-             (telega-ins (telega-user--name user 'name) " left the group")
-           (telega-ins (telega-user--name sender 'name)
+             (telega-ins (propertize (telega-user--name user 'name)
+                                     'face 'bold)
+                         " left the group")
+           (telega-ins (propertize (telega-user--name sender 'name)
+                                   'face 'bold)
                        " removed "
-                       (telega-user--name user 'name)))))
+                       (propertize (telega-user--name user 'name)
+                                   'face 'bold)))))
 
       (messageChatChangeTitle
-       (telega-ins "Renamed to \"" (telega-tl-str content :title) "\"")
-       (when sender
-         (telega-ins " by " (telega-user--name sender 'short))))
+       ;; I18N:
+       ;; action_changed_title_channel -> Channel renamed to "{title}"
+       ;; action_changed_title         -> {from} renamed group to "{title}"
+       (if (plist-get msg :is_channel_post)
+           (telega-ins (telega-i18n "action_changed_title_channel"
+                         :title (telega-tl-str content :title)))
+         (telega-ins (telega-i18n "action_changed_title"
+                       :from (propertize
+                              (telega-user--name sender 'name) 'face 'bold)
+                       :title (telega-tl-str content :title)))))
 
       (messageSupergroupChatCreate
        (telega-ins (if (plist-get msg :is_channel_post)

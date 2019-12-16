@@ -2,6 +2,9 @@
 (require 'telega)
 
 ;; Setup
+(setq telega-language "en")
+(telega-i18n-init)
+
 (telega--init-vars)
 (telega--info-update
  `(:@type "supergroup" :id 11110 :username "noname"
@@ -163,6 +166,12 @@ Have Stoploss 690 Satoshi. í ½í»‘
                            (round (* e 31)))
                          (telega-vvnote--waveform-decode "AQQAgDjruQZjZM7BttxqjqV0AgghhAAAAMAc5aCcETrGGmPPJSQAAAAMIUIAwqQGn3OOhABCAAEMEQIAQoQA"))
                  '(0 4 2 0 1 0 1 24 29 14 28 16 12 24 27 4 25 27 0 27 13 23 3 10 17 26 18 23 8 0 16 8 4 6 2 0 0 0 0 0 24 0 14 14 11 8 4 28 2 4 29 12 12 6 19 3 25 28 18 18 8 0 0 0 0 0 6 2 2 16 16 0 24 10 18 0 13 7 27 19 17 26 2 0 0 16 16 0 0 4 6 1 2 0 16 0 8 10 2 0)))
+  )
+
+(ert-deftest telega-internationalization ()
+  "Test i18n code."
+  (should (equal (telega-i18n "polls_votes_count" :count 102)
+                 "102 votes"))
   )
 
 ;;; test.el ends here

@@ -67,6 +67,9 @@
     ("lng_settings_privacy_title" :value "Privacy")
     ("lng_blocked_list_title" :value "Blocked Users")
     ("lng_settings_section_privacy" :value "Privacy and Security")
+
+    ("lng_action_changed_title" :value "{from} renamed group to «{title}»")
+    ("lng_action_changed_title_channel" :value "Channel renamed to «{title}»")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil
@@ -136,8 +139,8 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                   (let ((count (plist-get args :count)))
                     (unless count
                       (error "\"%s\" is plural, `:count' is required" key))
-                    (telega-tl-str str (or (telega-i18n-plural-rule count)
-                                           :other_value))))))
+                    (telega-tl-str str (telega-i18n-plural-rule count)))
+                  (telega-tl-str str :other_value))))
     (while args
       (setq val (replace-regexp-in-string
                  (regexp-quote
