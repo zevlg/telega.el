@@ -268,6 +268,7 @@ Play in muted mode."
           (setq patterns (cdr patterns)))))
     result))
 
+;;;###autoload
 (define-minor-mode telega-url-shorten-mode
   "Toggle URLs shortening mode."
   :init-value nil :global t :group 'telega
