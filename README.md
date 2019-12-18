@@ -316,6 +316,25 @@ Minor mode to display telega status in modeline.  To enable it use
 (telega-mode-line-mode 1)
 ```
 
+## telega-url-shorten-mode
+
+Minor mode to shorten some URLs, such as links like:
+
+    https://github.com/zevlg/telega.el/issues/105
+    https://gitlab.com/jessieh/mood-line/issues/6
+    https://www.youtube.com/watch?v=0m2jR6_eMkU
+    https://ru.wikipedia.org/wiki/Душ
+
+will look like:
+
+![url-shorten](https://zevlg.github.io/telega/telega-url-shorten.png)
+
+To enable this mode run:
+
+```elisp
+(telega-url-shorten-mode 1)
+```
+
 ## telega-notifications-mode
 
 `telega.el` ships with support for D-Bus notifications, but they are

@@ -23,8 +23,10 @@
 
 ;; - To display unread chats/chats with mentions in modeline:
 ;;   (telega-mode-line-mode 1)
-
 ;;
+;; - To enable url shortening:
+;;   (telega-url-shorten-mode 1)
+
 ;;; Code:
 
 (require 'telega-customize)
@@ -193,7 +195,7 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
   (force-mode-line-update))
 
 
-;; Animation autoplay mode
+;;; Animation autoplay mode
 (defcustom telega-autoplay-messages '(messageAnimation)
   "Message types to automatically play when received."
   :type 'list
@@ -214,6 +216,66 @@ Play in muted mode."
   (if telega-autoplay-mode
       (add-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)
     (remove-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)))
+
+
+;;; URLs shortening
+(defcustom telega-url-shorten-patterns
+  (list
+   '("https?://github.com/\\(.+\\)/issues/\\([0-9]+\\)" "\\1#\\2"
+     :symbol "" :svg-icon "fa-brands/github-octocat.svg" :scale 0.72)
+   '("https?://gitlab.com/\\(.+\\)/issues/\\([0-9]+\\)" "\\1#\\2"
+     :symbol "" :svg-icon "fa-brands/gitlab-rgb.svg" :scale 0.75)
+   '("https?://www.youtube.com/watch.*[?&]v=\\([^&]+\\).+" "YouTube#\\1"
+     :symbol "▶" :svg-icon "fa-brands/youtube-rgb.svg" :scale 0.6)
+   '("https?://\\([^.]+.\\)?wikipedia.org/wiki/\\(.+\\)" "wiki#\\2"
+     :symbol "" :svg-icon "fa-brands/wikipedia.svg" :scale 0.85)
+   )
+  "List of patterns for URL shortening."
+  :type 'list
+  :group 'telega)
+
+(defun telega-url-shorten--gen-icon (pattern)
+  "Generate icon for the PATTERN."
+  (let* ((pattern-trail (cddr pattern))
+         (sym (plist-get pattern-trail :symbol))
+         (icon-spec (memq :svg-icon pattern-trail))
+         (icon-name (cadr icon-spec))
+         (icon-props (cddr icon-spec)))
+    (when sym
+      (propertize sym 'display
+                  `(image :type svg :file ,(telega-etc-file icon-name)
+                          :ascent center :height ,(telega-chars-xheight 1)
+                          ,@icon-props
+                          :scale 1.0)))))
+
+(defun telega-url-shorten--e-t-p (old-e-t-p entity text)
+  (let* ((result (funcall old-e-t-p entity text))
+         (result-td (when (eq 'telega-display (car result))
+                      (cadr result))))
+    (when (eq 'textEntityTypeUrl (telega--tl-type (plist-get entity :type)))
+      (let ((patterns telega-url-shorten-patterns)
+            tus-pat)
+        (while (setq tus-pat (car patterns))
+          (when (string-match (car tus-pat) result-td)
+            ;; Done
+            (setq result
+                  (nconc (list 'telega-display
+                               (concat (telega-url-shorten--gen-icon tus-pat)
+                                       (replace-match
+                                        (cadr tus-pat) t nil result-td)))
+                         (cddr result))
+                  patterns nil))
+          (setq patterns (cdr patterns)))))
+    result))
+
+(define-minor-mode telega-url-shorten-mode
+  "Toggle URLs shortening mode."
+  :init-value nil :global t :group 'telega
+  (if telega-url-shorten-mode
+      (advice-add 'telega--entity-to-properties
+                  :around 'telega-url-shorten--e-t-p)
+    (advice-remove 'telega--entity-to-properties
+                   'telega-url-shorten--e-t-p)))
 
 (provide 'telega-modes)
 
