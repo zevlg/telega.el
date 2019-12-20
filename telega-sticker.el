@@ -98,7 +98,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (defsubst telega-sticker-emoji (sticker &optional no-properties)
   "Return STICKER's emoji or empty string."
-  (telega-tl-str sticker :emoji no-properties))
+  (or (telega-tl-str sticker :emoji no-properties) ""))
 
 (defun telega-stickerset--download (sset)
   "Ensure sticker set SSET data is downloaded."
