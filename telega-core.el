@@ -827,6 +827,10 @@ Return t."
   (declare (indent 1))
   `(telega-ins (format ,fmt ,@args)))
 
+(defmacro telega-ins-i18n (key &rest args)
+  (declare (indent 1))
+  `(telega-ins (telega-i18n ,key ,@args)))
+
 (defmacro telega-ins--as-string (&rest body)
   "Execute BODY inserters and return result as a string."
   `(with-temp-buffer

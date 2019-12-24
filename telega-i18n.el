@@ -68,8 +68,17 @@
     ("lng_blocked_list_title" :value "Blocked Users")
     ("lng_settings_section_privacy" :value "Privacy and Security")
 
+    ("lng_action_created_chat" :value "{from} created the group «{title}»")
+    ("lng_action_created_channel" :value "Channel created")
     ("lng_action_changed_title" :value "{from} renamed group to «{title}»")
     ("lng_action_changed_title_channel" :value "Channel renamed to «{title}»")
+    ("lng_action_pinned_message" :value "{from} pinned «{text}»")
+
+    ("lng_action_user_registered" :value "{from} joined Telegram")
+    ("lng_action_user_joined" :value "{from} joined the group")
+    ("lng_action_user_joined_by_link" :value "{from} joined the group via invite link")
+    ("lng_action_user_left" :value "{from} left the group")
+    ("lng_action_kick_user" :value "{from} removed {user}")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil

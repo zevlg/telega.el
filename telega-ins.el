@@ -756,7 +756,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (telega-ins telega-symbol-poll " ")
     (telega-ins--with-face 'shadow
       ;; I18N: polls_anonymous -> Anonymous Poll
-      (telega-ins (telega-i18n "polls_anonymous")))
+      (telega-ins-i18n "polls_anonymous"))
     ;; I18N: polls_votes_count -> {count} votes
     (telega-ins ", " (telega-i18n "polls_votes_count"
                                   :count (plist-get poll :total_voter_count)))
@@ -898,56 +898,54 @@ Special messages are determined with `telega-msg-special-p'."
   (telega-ins "--(")
   (let* ((content (plist-get msg :content))
          (sender-id (plist-get msg :sender_user_id))
-         (sender (unless (zerop sender-id) (telega-user--get sender-id))))
+         (sender (unless (zerop sender-id) (telega-user--get sender-id)))
+         (sender-name (when sender
+                        (propertize
+                         (telega-user--name sender 'name) 'face 'bold))))
     (cl-case (telega--tl-type content)
       (messageContactRegistered
-       (telega-ins (telega-user--name sender) " joined the Telegram"))
+       ;; I18N: action_user_registered -> joined Telegram
+       (telega-ins-i18n "action_user_registered" :from sender-name))
       (messageChatAddMembers
        ;; If sender matches
        (let ((user-ids (plist-get content :member_user_ids)))
          (if (and (= 1 (length user-ids))
                   (= (plist-get sender :id) (aref user-ids 0)))
-             (telega-ins (propertize (telega-user--name sender) 'face 'bold)
-                         " joined the group")
+             (telega-ins-i18n "action_user_joined" :from sender-name)
            (telega-ins (telega-user--name sender 'name) " invited "
                        (mapconcat 'telega-user--name
                                   (mapcar 'telega-user--get user-ids)
                                   ", ")))))
       (messageChatJoinByLink
-       (telega-ins (telega-user--name sender)
-                   " joined the group via invite link"))
+       (telega-ins-i18n "action_user_joined_by_link" :from sender-name))
       (messageChatDeleteMember
-       (let ((user (telega-user--get (plist-get content :user_id))))
+       (let* ((user (telega-user--get (plist-get content :user_id)))
+              (user-name (propertize (telega-user--name sender 'name)
+                                     'face 'bold)))
          (if (eq sender user)
-             (telega-ins (propertize (telega-user--name user 'name)
-                                     'face 'bold)
-                         " left the group")
-           (telega-ins (propertize (telega-user--name sender 'name)
-                                   'face 'bold)
-                       " removed "
-                       (propertize (telega-user--name user 'name)
-                                   'face 'bold)))))
+             (telega-ins-i18n "action_user_left" :from sender-name)
+           (telega-ins-i18n "action_kick_user"
+             :from sender-name :user user-name))))
 
       (messageChatChangeTitle
        ;; I18N:
        ;; action_changed_title_channel -> Channel renamed to "{title}"
        ;; action_changed_title         -> {from} renamed group to "{title}"
        (if (plist-get msg :is_channel_post)
-           (telega-ins (telega-i18n "action_changed_title_channel"
-                         :title (telega-tl-str content :title)))
-         (telega-ins (telega-i18n "action_changed_title"
-                       :from (propertize
-                              (telega-user--name sender 'name) 'face 'bold)
-                       :title (telega-tl-str content :title)))))
+           (telega-ins-i18n "action_changed_title_channel"
+             :title (telega-tl-str content :title))
+         (telega-ins-i18n "action_changed_title"
+           :from sender-name
+           :title (telega-tl-str content :title))))
 
       (messageSupergroupChatCreate
+       ;; TODO: I18N
        (telega-ins (if (plist-get msg :is_channel_post)
                        "Channel" "Supergroup"))
        (telega-ins " \"" (telega-tl-str content :title) "\" created"))
       (messageBasicGroupChatCreate
-       (telega-ins--with-face 'bold
-         (telega-ins (telega-user--name sender)))
-       (telega-ins " created group \"" (telega-tl-str content :title) "\""))
+       (telega-ins-i18n "action_created_chat"
+         :from sender-name :title (telega-tl-str content :title)))
       (messageCustomServiceAction
        (telega-ins (telega-tl-str content :text)))
       (messageChatSetTtl
@@ -968,17 +966,16 @@ Special messages are determined with `telega-msg-special-p'."
        (cl-assert sender)
        (telega-ins (telega-user--name sender) " took a screenshot!"))
       (messagePinMessage
-       (if sender
-           (telega-ins (telega-user--name sender 'short))
-         (telega-ins "Message"))
-       (telega-ins " pinned \"")
-       ;; TODO: asynchronously fetch pinned message
-       (when-let ((pin-msg (telega-msg--get (plist-get msg :chat_id)
-                                            (plist-get content :message_id)
-                                            'locally)))
-         (telega-ins--with-attrs (list :max 20 :align 'left :elide t)
-         (telega-ins--content-one-line pin-msg)))
-       (telega-ins "\""))
+       ;; TODO: asynchronously load pinned message and redisplay
+       (let ((pin-msg (telega-chat-pinned-msg (telega-msg-chat msg) 'locally)))
+         (telega-ins-i18n "action_pinned_message"
+           :from (or sender-name "Message")
+           :text (if pin-msg
+                     (telega-ins--as-string
+                      (telega-ins--with-attrs
+                          (list :max 20 :align 'left :elide t)
+                        (telega-ins--content-one-line pin-msg)))
+                   "..."))))
       (messageGameScore
        (let* ((game-msg (telega-msg--get
                             (plist-get msg :chat_id)
