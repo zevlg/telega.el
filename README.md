@@ -514,3 +514,18 @@ notifications.
 emacs-nox)?
 
 **A**: Yes, set `telega-use-images` to `nil`, before start.
+
+**Q**: Is it possible to use markup in outgoing messages?
+
+**A**: Yes, use `C-u RET` to send message with markup, also see
+`telega-chat-use-markdown-formatting`.  Supported markup:
+
+    1. *bold text*
+    2. _italic text_
+    3. `inlined code`
+    4. ```<language-name-not-displayed>
+       first line of multiline preformatted code
+       second line
+       last line```
+    5. [link text](http://actual.url)
+    6. [username](tg://user?id=<USER-ID>)"

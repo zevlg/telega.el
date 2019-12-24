@@ -129,7 +129,9 @@ Make sure you have tracking.el loaded if this option is enabled."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-use-images (fboundp 'imagemagick-types)
+(defcustom telega-use-images (or (and (fboundp 'image-transforms-p)
+                                      (funcall 'image-transforms-p))
+                                 (fboundp 'imagemagick-types))
   "Non-nil to show images."
   :type 'boolean
   :group 'telega
@@ -590,7 +592,18 @@ NOT YET IMPLEMENTED"
   :group 'telega-chat)
 
 (defcustom telega-chat-use-markdown-formatting nil
-    "*Non-nil to use markdown formatting for outgoing messages."
+    "*Non-nil to use markdown formatting for outgoing messages.
+Supported markup:
+  1) *bold text*
+  2) _italic text_
+  3) `inlined code`
+  4) ```<language-name-not-displayed>
+     first line of multiline preformatted code
+     second line
+     last line```
+  5) [link text](http://actual.url)
+  6) [username](tg://user?id=<USER-ID>)
+"
   :type 'boolean
   :group 'telega-chat)
 

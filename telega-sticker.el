@@ -361,7 +361,9 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
   (if (or (not telega-use-images)
-          (not (display-graphic-p)))
+          (not (display-graphic-p))
+          ;; NOTE: graphical stickers only in `imagemagick' setup
+          (not (fboundp 'imagemagick-types)))
       (telega-ins "<STICKER " (telega-sticker-emoji sticker) ">")
 
     (let ((simage (telega-media--image

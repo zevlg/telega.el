@@ -84,7 +84,8 @@
                       (telega-msg-chat msg) telega-chat-group-messages-for)
                      (> (point) 3)
                      (let ((prev-msg (telega-msg-at (- (point) 2))))
-                       (and (not (telega-msg-special-p prev-msg))
+                       (and prev-msg
+                            (not (telega-msg-special-p prev-msg))
                             (eq (plist-get msg :sender_user_id)
                                 (plist-get prev-msg :sender_user_id)))))
                 'telega-ins--message-no-header)
