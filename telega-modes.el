@@ -229,6 +229,8 @@ Play in muted mode."
      :symbol "▶" :svg-icon "fa-brands/youtube-rgb.svg" :scale 0.6)
    '("https?://\\([^.]+.\\)?wikipedia.org/wiki/\\(.+\\)" "wiki#\\2"
      :symbol "" :svg-icon "fa-brands/wikipedia.svg" :scale 0.85)
+   '("https?://\\(www\\.\\)?instagram.com/\\(.+\\)" "Instagram#\\2"
+     :symbol "" :svg-icon "fa-brands/instagram-rgb.svg" :scale 0.85)
    )
   "List of patterns for URL shortening."
   :type 'list
