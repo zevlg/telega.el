@@ -824,11 +824,6 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   "Cache MSG in chatbuf's messages cache."
   (puthash (plist-get msg :id) msg telega-chatbuf--messages))
 
-(defsubst telega-msg-marked-p (msg)
-  "Return non-nil if message MSG is marked."
-  (with-telega-chatbuf (telega-msg-chat msg)
-    (memq msg telega-chatbuf--marked-messages)))
-
 
 ;;; Inserters part
 (defun telega-ins (&rest args)

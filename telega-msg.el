@@ -483,6 +483,11 @@ with list of chats received."
   (unless chat (setq chat (telega-msg-chat msg)))
   (<= (plist-get msg :id) (plist-get chat :last_read_inbox_message_id)))
 
+(defsubst telega-msg-marked-p (msg)
+  "Return non-nil if message MSG is marked."
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (memq msg telega-chatbuf--marked-messages)))
+
 (defun telega-msg-observable-p (msg &optional chat node)
   "Return non-nil if MSG is observable in chatbuffer.
 CHAT - chat to search message for.
