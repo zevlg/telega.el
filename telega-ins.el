@@ -864,11 +864,6 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                   :user-id (plist-get msg :sender_user_id)))
       (plist-put msg :telega-map map))
 
-    ;; Map photo downloading progress
-    (when-let ((map-photo (telega-file--renew map :photo)))
-      (when (telega-file--downloading-p map-photo)
-        (telega-ins--file-progress msg map-photo)))
-
     (unless (equal loc (plist-get map :user-location))
       ;; NOTE: user location has been changed (or initial request),
       ;; request for new map thumbnail.
