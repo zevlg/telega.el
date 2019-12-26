@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.5.3
-(defconst telega-version "0.5.3 (i18n)")
+;; Version: 0.5.4
+(defconst telega-version "0.5.4")
 (defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.5.0")
 
@@ -111,33 +111,6 @@ With prefix arg FORCE quit without confirmation."
                        (t (format " (and all %d chat buffers)" chat-count)))))
     (when (or force (y-or-n-p (concat "Kill telega" suffix "? ")))
       (kill-buffer telega-root-buffer-name))))
-
-(defun telega-logout ()
-  "Switch to another telegram account."
-  (interactive)
-  (telega-server--send `(:@type "logOut")))
-
-(defun telega--setTdlibParameters ()
-  "Set the parameters for TDLib initialization."
-  (telega-server--send
-   (list :@type "setTdlibParameters"
-         :parameters (list :@type "tdlibParameters"
-                           :use_test_dc (or telega-use-test-dc :false)
-                           :database_directory telega-directory
-                           :files_directory telega-cache-dir
-                           :use_file_database telega-use-file-database
-                           :use_chat_info_database telega-use-chat-info-database
-                           :use_message_database telega-use-message-database
-                           :use_secret_chats t
-                           :api_id (car telega-app)
-                           :api_hash (cdr telega-app)
-                           :system_language_code telega-language
-                           :device_model "Emacs"
-                           :system_version emacs-version
-                           :application_version telega-version
-                           :enable_storage_optimizer t
-                           :ignore_file_names :false
-                           ))))
 
 (defun telega--checkDatabaseEncryptionKey ()
   "Set database encryption key, if any."

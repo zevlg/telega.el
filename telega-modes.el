@@ -227,6 +227,8 @@ Play in muted mode."
      :symbol "" :svg-icon "fa-brands/gitlab-rgb.svg" :scale 0.75)
    '("https?://www.youtube.com/watch.*[?&]v=\\([^&]+\\).+" "YouTube#\\1"
      :symbol "▶" :svg-icon "fa-brands/youtube-rgb.svg" :scale 0.6)
+   '("https?://youtu.be/\\(.+\\).+" "YouTube#\\1"
+     :symbol "▶" :svg-icon "fa-brands/youtube-rgb.svg" :scale 0.6)
    '("https?://\\([^.]+.\\)?wikipedia.org/wiki/\\(.+\\)" "wiki#\\2"
      :symbol "" :svg-icon "fa-brands/wikipedia.svg" :scale 0.85)
    '("https?://\\(www\\.\\)?instagram.com/\\(.+\\)" "Instagram#\\2"
@@ -244,11 +246,13 @@ Play in muted mode."
          (icon-name (cadr icon-spec))
          (icon-props (cddr icon-spec)))
     (when sym
-      (propertize sym 'display
-                  `(image :type svg :file ,(telega-etc-file icon-name)
-                          :ascent center :height ,(telega-chars-xheight 1)
-                          ,@icon-props
-                          :scale 1.0)))))
+      (if telega-use-images
+          (propertize sym 'display
+                      `(image :type svg :file ,(telega-etc-file icon-name)
+                              :ascent center :height ,(telega-chars-xheight 1)
+                              ,@icon-props
+                              :scale 1.0))
+        sym))))
 
 (defun telega-url-shorten--e-t-p (old-e-t-p entity text)
   (let* ((result (funcall old-e-t-p entity text))

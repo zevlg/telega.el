@@ -170,6 +170,10 @@ display the list.")
   "Local cache for the messages.")
 (make-variable-buffer-local 'telega-chatbuf--messages)
 
+(defvar telega-chatbuf--marked-messages nil
+  "List of marked messages.")
+(make-variable-buffer-local 'telega-chatbuf--marked-messages)
+
 (defvar telega-chatbuf--inline-query nil
   "Non-nil if some inline bot has been requested.
 Actual value is `:@extra` value of the call to inline bot.")
@@ -378,6 +382,12 @@ Uses `telega--tl-get' to obtain the property."
   (let ((tl-obj-sym (cl-gensym "tl-obj")))
     `(lambda (,tl-obj-sym)
        (telega--tl-get ,tl-obj-sym ,prop1 ,@props))))
+
+(defsubst telega-file--ensure (file)
+  "Ensure FILE is in `telega--files'.
+Return FILE."
+  (puthash (plist-get file :id) file telega--files)
+  file)
 
 (defsubst telega-file--size (file)
   "Return FILE size."
@@ -814,6 +824,11 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   "Cache MSG in chatbuf's messages cache."
   (puthash (plist-get msg :id) msg telega-chatbuf--messages))
 
+(defsubst telega-msg-marked-p (msg)
+  "Return non-nil if message MSG is marked."
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (memq msg telega-chatbuf--marked-messages)))
+
 
 ;;; Inserters part
 (defun telega-ins (&rest args)
@@ -909,6 +924,13 @@ Return what BODY returns."
          (save-excursion
            (goto-char ,spnt-sym)
            (telega-ins ,prefix))))))
+
+(defun telega-ins--move-to-column (column)
+  "Insert space aligned to COLUMN.
+Uses `:align-to' display property."
+  (let ((nwidth (- column (telega-current-column))))
+    (telega-ins (propertize (make-string (if (> nwidth 0) nwidth 1) ?\s)
+                            'display (list 'space :align-to column)))))
 
 (provide 'telega-core)
 

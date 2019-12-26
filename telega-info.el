@@ -24,9 +24,22 @@
 ;;
 
 ;;; Code:
+(require 'telega-core)
 (require 'telega-tdlib)
 (require 'telega-util)
 
+(declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
+
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+(declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
+(declare-function telega-describe-chat "telega-chat" (chat))
+(declare-function telega-chat-generate-invite-link "telega-chat" (chat-id))
+
+(declare-function telega-filter-chats "telega-filter"(filter-spec chats-list))
+
+
 ;; Info
 (defmacro telega--info-update (tlobj)
   `(puthash (plist-get ,tlobj :id) ,tlobj

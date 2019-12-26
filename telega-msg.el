@@ -34,6 +34,22 @@
 (require 'telega-vvnote)
 (require 'telega-util)
 
+(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chatbuf--msg "telega-chat" (msg-id &optional with-node))
+(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
+(declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
+(declare-function telega-msg-activate-voice-note "telega-chat" (msg &optional for-chat))
+(declare-function telega-chatbuf--next-voice-msg "telega-chat" (msg))
+(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
+(declare-function telega-chatbuf-mode-line-update "telega-chat" ())
+(declare-function telega-chat-public-p "telega-chat" (chat &optional chat-type))
+(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chatevent-log-filter "telega-chat" (&rest filters))
+
+(declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
+
+
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
@@ -41,17 +57,23 @@
     (define-key map (kbd "n") 'telega-button-forward)
     (define-key map (kbd "p") 'telega-button-backward)
 
+    ;; Marking, `telega-msg-forward' and `telega-msg-delete' can work
+    ;; on list of marked messages
+    (define-key map (kbd "m") 'telega-msg-mark-toggle)
+    (define-key map (kbd "U") 'telega-chatbuf-unmark-all)
+
     (define-key map (kbd "i") 'telega-describe-message)
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "e") 'telega-msg-edit)
-    (define-key map (kbd "f") 'telega-msg-forward)
-    (define-key map (kbd "d") 'telega-msg-delete)
-    (define-key map (kbd "k") 'telega-msg-delete)
+    (define-key map (kbd "f") 'telega-msg-forward-marked-or-at-point)
+    (define-key map (kbd "d") 'telega-msg-delete-marked-or-at-point)
+    (define-key map (kbd "k") 'telega-msg-delete-marked-or-at-point)
     (define-key map (kbd "l") 'telega-msg-redisplay)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "S") 'telega-msg-save)
-    (define-key map (kbd "DEL") 'telega-msg-delete)
+
+    (define-key map (kbd "DEL") 'telega-msg-delete-marked-or-at-point)
     map))
 
 (define-button-type 'telega-msg
@@ -76,12 +98,13 @@
   "Pretty printer for MSG button."
   ;; NOTE: check that we can group messages by sender
   ;; see `telega-chat-group-messages-for'
-  (let ((msg-inserter
-         (cond ((and telega-chat-show-deleted-messages
+  (let* ((chat (telega-msg-chat msg))
+         (msg-inserter
+         (cond ((and (telega-filter--test
+                      chat telega-chat-show-deleted-messages-for)
                      (plist-get msg :telega-is-deleted-message))
                 'telega-ins--message-deleted)
-               ((and (telega-filter--test
-                      (telega-msg-chat msg) telega-chat-group-messages-for)
+               ((and (telega-filter--test chat telega-chat-group-messages-for)
                      (> (point) 3)
                      (let ((prev-msg (telega-msg-at (- (point) 2))))
                        (and prev-msg
@@ -546,6 +569,29 @@ blocked users."
       (telega-msg-ignore msg))))
 
 
+(defun telega-msg-unmark (msg)
+  "Unmark message MSG."
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (when (telega-msg-marked-p msg)
+      (setq telega-chatbuf--marked-messages
+            (delq msg telega-chatbuf--marked-messages))
+    (telega-chatbuf-mode-line-update)
+    (telega-msg-redisplay msg))))
+
+(defun telega-msg-mark-toggle (msg)
+  "Toggle mark of the message MSG."
+  (interactive (list (telega-msg-at (point))))
+  (with-telega-chatbuf (telega-msg-chat msg)
+    (if (memq msg telega-chatbuf--marked-messages)
+        (setq telega-chatbuf--marked-messages
+              (delq msg telega-chatbuf--marked-messages))
+      (setq telega-chatbuf--marked-messages
+            (push msg telega-chatbuf--marked-messages)))
+    (telega-chatbuf-mode-line-update)
+
+    (telega-msg-redisplay msg)
+    (telega-button-forward 1 'telega-msg)))
+
 (defun telega-msg-pin (msg)
   "Pin message MSG."
   (interactive (list (telega-msg-at (point))))

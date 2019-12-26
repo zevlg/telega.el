@@ -618,18 +618,15 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :type 'list
   :group 'telega-chat)
 
-(defcustom telega-chat-show-deleted-messages nil
-  "*Non-nil to show deleted messages in chatbuffer."
-  :type 'boolean
-  :group 'telega-chat)
-
-(defcustom telega-chat-show-pinned-message nil
-  "*Non-nil to show pinned message in the chatbuffer footer."
-  :type 'boolean
+(defcustom telega-chat-show-deleted-messages-for nil
+  "*If this filter returns non-nil for chat, then show deleted messages in this chat."
+  :type 'list
+  :options '((not saved-messages))
   :group 'telega-chat)
 
 (defcustom telega-chat-mode-line-format
   '((:eval (telega-chatbuf-mode-line-unread))
+    (:eval (telega-chatbuf-mode-line-marked))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
     (:eval (telega-chatbuf-mode-line-pinned-msg 20)))
   "Additional mode line format for chat buffer identification.
@@ -781,7 +778,7 @@ Also applies to `telega-msg-inline-reply' face."
 To denote for which chats to automatically download media content.
 KIND is one of `photo', `video', `file', `voice-message',
 `video-message', `web-page', `instant-view'.
-Used by `telega-msg-autodownload-media'."
+NOT USED"
   :type 'boolean
   :group 'telega)
 
@@ -1009,6 +1006,15 @@ If nil, then user's online status is not displayed."
 
 (defcustom telega-symbol-inline "⮍"
   "Symbol used to mark attachements with inline result from bot."
+  :type 'string
+  :group 'telega-symbol)
+
+(define-fringe-bitmap 'telega-mark
+  (vector #b11111111) nil nil '(top periodic))
+
+(defcustom telega-symbol-mark
+  (propertize "*" 'display  '(left-fringe telega-mark error))
+  "*Symbol used to denote marked messages/chats."
   :type 'string
   :group 'telega-symbol)
 
@@ -1368,14 +1374,12 @@ You can customize its `:height' to fit width of the default face."
 (defcustom telega-user-update-hook nil
   "Hook called with single argument USER, when USER's info is updated."
   :type 'hook
-  :options '(telega-media--autodownload-on-user)
   :group 'telega-hooks)
 
 (defcustom telega-chat-created-hook nil
   "Hook called when new chat has been loaded/created.
 Called with one argument - chat."
   :type 'hook
-  :options '(telega-media--autodownload-on-chat)
   :group 'telega-hooks)
 
 (defcustom telega-chat-pre-message-hook nil
@@ -1385,7 +1389,6 @@ Always called, even if corresponding chat is closed at the moment.
 This hook can be used to ignore message, see
 https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
   :type 'hook
-  :options '(telega-media--autodownload-on-msg)
   :group 'telega-hooks)
 
 (defcustom telega-chat-post-message-hook nil

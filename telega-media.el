@@ -50,12 +50,6 @@
          :file_id file-id)
    callback))
 
-(defsubst telega-file--ensure (file)
-  "Ensure FILE is in `telega--files'.
-Return FILE."
-  (puthash (plist-get file :id) file telega--files)
-  file)
-
 (defun telega-file-get (file-id)
   "Return file associated with FILE-ID."
   (or (gethash file-id telega--files)
@@ -313,73 +307,6 @@ If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
           (telega-msg-redisplay for-msg))
         (when (telega-file--downloaded-p file)
           (find-file (telega--tl-get file :local :path)))))))
-
-
-;;; Auto-downloading media
-(defun telega-media--autodownload-on-chat (chat)
-  "Autodownload CHAT's avatar."
-  (let* ((photo (plist-get chat :photo))
-         (photo-file (telega-file--renew photo :small)))
-    (when (and (telega-file--need-download-p photo-file)
-               (not (telega-file--downloading-p photo-file)))
-      (telega-file--download photo-file 32))))
-
-(defun telega-media--autodownload-on-user (user)
-  "Autodownload USER's profile avatar."
-  (let* ((photo (plist-get user :profile_photo))
-         (photo-file (telega-file--renew photo :small)))
-    (when (and (telega-file--need-download-p photo-file)
-               (not (telega-file--downloading-p photo-file)))
-      (telega-file--download photo-file 32))))
-
-(defun telega-media--autodownload-on-msg (msg _disable-notification)
-  "Autodownload media in MSG according to `telega-auto-download'.
-Always download \"s\" type (for one-line reply/edit formatting).
-Downloads highres photos according to `telega-auto-download'."
-  (let ((chat (telega-chat-get (plist-get msg :chat_id)))
-        (content (plist-get msg :content)))
-    (cl-case (telega--tl-type content)
-      (messagePhoto
-       (let* ((photo (plist-get content :photo))
-              (lowres (telega-photo--thumb photo))
-              (lowres-file (plist-get lowres :photo))
-              (highres (telega-photo--highres photo))
-              (highres-file (plist-get highres :photo)))
-
-         ;; Always download lowres files
-         (cl-assert lowres-file)
-         (when (telega-file--need-download-p lowres-file)
-           (telega-debug "Autodownload LOWRES: %S" lowres-file)
-           (telega-file--download lowres-file 32))
-
-         (cl-assert highres-file)
-         (when (and (telega-file--need-download-p highres-file)
-                    (telega-filter-chats
-                     (alist-get 'photos telega-auto-download) (list chat)))
-           (telega-debug "Autodownload HIGH-RES: %S" highres-file)
-           (telega-file--download highres-file 5))))
-      ;; TODO
-      (messageVideo
-       )
-      (messageDocument
-       )
-      )))
-
-;;;###autoload
-(defun telega-media-auto-download-mode (&optional arg)
-  "Toggle automatic media download for incoming messages.
-With positive ARG - enables automatic downloads, otherwise disables.
-To customize automatic downloads, use `telega-auto-download'."
-  (interactive "p")
-  (if (> arg 0)
-      (progn
-        (add-hook 'telega-user-update-hook 'telega-media--autodownload-on-user)
-        (add-hook 'telega-chat-created-hook 'telega-media--autodownload-on-chat)
-        (add-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg))
-
-    (remove-hook 'telega-chat-pre-message-hook 'telega-media--autodownload-on-msg)
-    (remove-hook 'telega-chat-created-hook 'telega-media--autodownload-on-chat)
-    (remove-hook 'telega-user-update-hook 'telega-media--autodownload-on-user)))
 
 
 (defun telega-image--telega-text (img &optional slice-num)
@@ -650,23 +577,91 @@ Like (telega-symbol-emojify telega-symbol-pin)."
 
 
 ;; Location
-(defun telega--getMapThumbnailFile (loc &optional zoom width height scale chat callback)
-  "Get file with the map showing LOC.
-ZOOM - zoom level in [13-20], default=13
-WIDTH/HEIGHT - in [16-1024]
-SCALE - in [1-3]"
-  (declare (indent 6))
-  (telega-server--call
-   (list :@type "getMapThumbnailFile"
-         :location loc
-         :zoom (or zoom 13)
-         :width (or width 300)
-         :height (or height 200)
-         :scale (or scale 1)
-         :chat_id (if chat
-                      (plist-get chat :id)
-                    0))
-   callback))
+(defun telega-map--create-image (map &optional _file)
+  "Create map image for location MAP."
+  (let* ((map-photo (telega-file--renew map :photo))
+         (map-photofile (when map-photo
+                          (telega--tl-get map-photo :local :path)))
+         (_map-loc (plist-get map :map-location))
+         (_user-loc (plist-get map :user-location))
+         (width (plist-get map :width))
+         (height (plist-get map :height))
+         (svg (svg-create width height)))
+    (if (and (telega-file--downloaded-p map-photo)
+             (telega-file-exists-p map-photofile))
+        (svg-embed svg map-photofile "image/png" nil
+                   :x 0 :y 0 :width width :height height)
+      (svg-rectangle svg 0 0 width height
+                     :fill-color (apply 'color-rgb-to-hex
+                                        (color-name-to-rgb
+                                         (face-foreground 'shadow)))))
+
+    ;; Show user's avatar
+    ;; TODO: calculate avatar possition according to
+    ;;       map-loc/user-loc, they can differ
+    ;; 
+    ;; TODO: show other users close enough to `:user-id'
+    (let* ((user (telega-user--get (plist-get map :user-id)))
+           (user-photo (telega--tl-get user :profile_photo :small)))
+      (when (telega-file--downloaded-p user-photo)
+        (let* ((photofile (telega--tl-get user-photo :local :path))
+               (img-type (image-type-from-file-name photofile))
+               (clip (telega-svg-clip-path svg "user-clip"))
+               (sz (/ (plist-get map :height) 8))
+               (sz2 (/ sz 2)))
+          (svg-circle clip (+ (/ width 2) sz2) (- (/ height 2) sz2) sz2)
+          (svg-polygon clip (list (cons (/ width 2) (/ height 2))
+                                  (cons (+ (/ width 2) (/ sz2 4))
+                                        (- (/ height 2) sz2))
+                                  (cons (+ (/ width 2) sz2)
+                                        (- (/ height 2) (/ sz2 4)))))
+          (svg-embed svg photofile (format "image/%S" img-type) nil
+                     :x (/ width 2) :y (- (/ height 2) sz)
+                     :width sz :height sz
+                     :clip-path "url(#user-clip)"))))
+
+    (svg-circle svg (/ width 2) (/ height 2) 8
+                :stroke-width 4
+                :stroke-color "white"
+                :fill-color (face-foreground 'telega-blue))
+
+    (svg-image svg :scale 1.0
+               :width width :height height
+               :ascent 'center)))
+
+(defun telega-map--get-thumbnail-file (map loc &optional msg)
+  "Request MAP image at LOC location for MSG.
+Update `:svg-image' when new image is received."
+  (telega--getMapThumbnailFile
+      loc (plist-get map :zoom)
+      (plist-get map :width) (plist-get map :height)
+      (plist-get map :scale) (when msg (telega-msg-chat msg))
+    (lambda (map-file)
+      (plist-put map :map-location loc)
+      (plist-put map :photo map-file)
+
+      (telega-file--download map-file 32
+        (lambda (mfile)
+          (when (telega-file--downloaded-p mfile)
+            (let ((svg-image (plist-get map :svg-image))
+                  (new-image (telega-map--create-image map mfile)))
+              (setcdr svg-image (cdr new-image))
+              (force-window-update)))
+          (when msg
+            (telega-msg-redisplay msg))
+          )))))
+
+(defun telega-map--zoom (map step)
+  "Change zoom for the MAP by STEP.
+Return non-nil if zoom has been changed."
+  (let* ((old-zoom (plist-get map :zoom))
+         (new-zoom (+ old-zoom step)))
+    (cond ((< new-zoom 13)
+           (setq new-zoom 13))
+          ((> new-zoom 20)
+           (setq new-zoom 20)))
+    (plist-put map :zoom new-zoom)
+    (not (= old-zoom new-zoom))))
 
 (provide 'telega-media)
 

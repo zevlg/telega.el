@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;;
+;; See https://translations.telegram.org
 
 ;;; Code:
 (require 'telega-core)
@@ -36,49 +36,109 @@
   :group 'telega)
 
 (defconst telega-i18n--en-strings
-  '(("lng_saved_messages" :value "Saved Messages")
-    ("lng_profile_send_message" :value "Send Message")
-    ("lng_profile_share_contact" :value "Share Contact")
-    ("lng_profile_unblock_user" :value "Unblock User")
-    ("lng_profile_block_user" :value "Block User")
-    ("lng_profile_username" :value "Username:")
-    ("lng_profile_mobile_number" :value "Phone:")
-    ("lng_profile_bio" :value "Bio:")
+  '(("lng_saved_messages"
+     :value "Saved Messages")
+    ("lng_profile_send_message"
+     :value "Send Message")
+    ("lng_profile_share_contact"
+     :value "Share Contact")
+    ("lng_profile_unblock_user"
+     :value "Unblock User")
+    ("lng_profile_block_user"
+     :value "Block User")
+    ("lng_profile_username"
+     :value "Username:")
+    ("lng_profile_mobile_number"
+     :value "Phone:")
+    ("lng_profile_bio"
+     :value "Bio:")
     ("lng_profile_common_groups"
-     :zero_value ""
+     :zero_value "No groups in common"
      :one_value "{count} group in common"
-     :two_value ""
-     :few_value ""
-     :many_value ""
      :other_value "{count} groups in common")
-    ("lng_scam_badge" :value "SCAM")
-    ("lng_polls_anonymous" :value "Anonymous Poll")
+    ("lng_scam_badge"
+     :value "SCAM")
+    ("lng_polls_anonymous"
+     :value "Anonymous Poll")
     ("lng_polls_votes_count"
-     :zero_value ""
+     :zero_value "No votes"
      :one_value "{count} vote"
-     :two_value ""
-     :few_value ""
-     :many_value ""
      :other_value "{count} votes")
-    ("lng_polls_stop_warning" :value "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.")
-    ("lng_deleted" :value "Deleted Account")
-    ("lng_deleted_message" :value "Deleted Message")
+    ("lng_polls_stop_warning"
+     :value "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.")
+    ("lng_deleted"
+     :value "Deleted Account")
+    ("lng_deleted_message"
+     :value "Deleted Message")
 
-    ("lng_settings_privacy_title" :value "Privacy")
-    ("lng_blocked_list_title" :value "Blocked Users")
-    ("lng_settings_section_privacy" :value "Privacy and Security")
+    ("lng_settings_privacy_title"
+     :value "Privacy")
+    ("lng_blocked_list_title"
+     :value "Blocked Users")
+    ("lng_settings_section_privacy"
+     :value "Privacy and Security")
 
-    ("lng_action_created_chat" :value "{from} created the group «{title}»")
-    ("lng_action_created_channel" :value "Channel created")
-    ("lng_action_changed_title" :value "{from} renamed group to «{title}»")
-    ("lng_action_changed_title_channel" :value "Channel renamed to «{title}»")
-    ("lng_action_pinned_message" :value "{from} pinned «{text}»")
+    ("lng_action_created_chat"
+     :value "{from} created the group «{title}»")
+    ("lng_action_created_channel"
+     :value "Channel created")
+    ("lng_action_changed_title"
+     :value "{from} renamed group to «{title}»")
+    ("lng_action_changed_title_channel"
+     :value "Channel renamed to «{title}»")
+    ("lng_action_pinned_message"
+     :value "{from} pinned «{text}»")
 
-    ("lng_action_user_registered" :value "{from} joined Telegram")
-    ("lng_action_user_joined" :value "{from} joined the group")
-    ("lng_action_user_joined_by_link" :value "{from} joined the group via invite link")
-    ("lng_action_user_left" :value "{from} left the group")
-    ("lng_action_kick_user" :value "{from} removed {user}")
+    ("lng_action_user_registered"
+     :value "{from} joined Telegram")
+    ("lng_action_user_joined"
+     :value "{from} joined the group")
+    ("lng_action_user_joined_by_link"
+     :value "{from} joined the group via invite link")
+    ("lng_action_user_left"
+     :value "{from} left the group")
+    ("lng_action_kick_user"
+     :value "{from} removed {user}")
+
+    ;; chatbuf modeline
+    ("lng_chat_modeline_unread"
+     :value "unread:{unread_count}")
+    ("lng_chat_modeline_unread_help"
+     :value "{mouse}: Read all messages")
+    ("lng_chat_modeline_marked"
+     :value "marked:{marked_count}")
+    ("lng_chat_modeline_marked_help"
+     :value "{mouse}: Unmark all messages")
+    ("lng_chat_modeline_mention_help"
+     :value "{mouse}: Goto next mention")
+    ("lng_chat_modeline_pinned_msg_help"
+     :value "{mouse}: Goto pinned message")
+    ("lng_chat_modeline_members"
+     :zero_value "{member_count} members"
+     :other_value "{member_count} members, {count} online")
+
+    ;; queries to user
+    ("lng_action_cant_undone"
+     :value "This action cannot be undone")
+    ("lng_query_delete_chat"
+     :value "Delete «{title}» chat? ")
+    ("lng_query_read_chats"
+     :one_value "Toggle read for {count} chat? "
+     :other_value "Toggle read for {count} chats? ")
+    ("lng_query_read_anyway"
+     :value "No filtering applied, toggle anyway? ")
+    ("lng_query_revoke_message"
+     :value "Revoke the message? ")
+    ("lng_query_kill_message"
+     :value "Kill the message? ")
+    ("lng_query_revoke_marked_messages"
+     :one_value "Revoke {count} marked message? "
+     :other_value "Revoke {count} marked messages? ")
+    ("lng_query_kill_marked_messages"
+     :one_value "Kill {count} marked message? "
+     :other_value "Kill {count} marked messages? ")
+    ("lng_query_dnd_photo_as_file"
+     :value "Send this photo as a file? ")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil

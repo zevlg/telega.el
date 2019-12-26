@@ -392,13 +392,14 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatTitle (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-        (new-title (plist-get event :title)))
+  "EVENT arrives when title of a chat was changed."
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat new-title)))
 
-    (plist-put chat :title new-title)
+    (plist-put chat :title (plist-get event :title))
+    (with-telega-chatbuf chat
+      (rename-buffer (telega-chatbuf--name chat)))
+
     (telega-root--chat-update chat)))
 
 (defun telega--on-updateChatOrder (event)
@@ -619,12 +620,6 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
 (defsubst telega-chats-list-get (tl-obj-chats)
   "Return chats list of TL-OBJ-CHATS represeting `Chats' object."
   (mapcar #'telega-chat-get (plist-get tl-obj-chats :chat_ids)))
-
-(defun telega--getCreatedPublicChats ()
-  "Return list of public chats created by the user."
-  (telega-chats-list-get
-   (telega-server--call
-    (list :@type "getCreatedPublicChats"))))
 
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
@@ -869,10 +864,9 @@ CHAT must be supergroup or channel."
 
 (defun telega-chat-set-title (chat title)
   "Set CHAT's title to TITLE."
-  (interactive (let ((chat (or telega-chatbuf--chat
-                               (telega-chat-at-point))))
-                 (list chat
-                       (read-string "New title: " (telega-chat-title chat)))))
+  (interactive
+   (let ((chat (or telega-chatbuf--chat (telega-chat-at-point))))
+     (list chat (read-string "New title: " (telega-chat-title chat)))))
   (telega--setChatTitle chat title))
 
 (defun telega-chat-custom-order (chat order)
@@ -1121,11 +1115,11 @@ STATUS is one of: "
 (defun telega-chats-filtered-toggle-read (&optional _force)
   "Apply `telega-chat-toggle-read' to all currently filtered chats."
   (interactive
-   (list (y-or-n-p (format "Toggle read for %d chats? "
-                           (length telega--filtered-chats)))))
+   (list (y-or-n-p (telega-i18n "query_read_chats"
+                     :count (length telega--filtered-chats)))))
   ;; NOTE: If no filter is applied, ask once more time
   (when (or (not (telega-filter-default-p))
-            (y-or-n-p "No filtering applied, toggle anyway? "))
+            (y-or-n-p (telega-i18n "query_read_anyway")))
     (mapc 'telega-chat-toggle-read telega--filtered-chats)))
 
 (defun telega-chat-delete (chat &optional leave-p)
@@ -1135,8 +1129,9 @@ Leaving chat does not removes chat from chat list."
   (interactive (list (telega-chat-at-point) nil))
   (when (and chat
              (yes-or-no-p
-              (format "This action cannot be undone. Delete \"%s\" chat? "
-                      (telega-chat-title chat))))
+              (concat (telega-i18n "action_cant_undone") ". "
+                      (telega-i18n "query_delete_chat"
+                        :title (telega-chat-title chat)))))
     (let ((chat-type (telega-chat--type chat)))
       (cl-case chat-type
         (secret (telega--closeSecretChat (telega-chat--info chat)))
@@ -1290,6 +1285,7 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "M-g >") 'telega-chatbuf-read-all)
     (define-key map (kbd "M-g r") 'telega-chatbuf-read-all)
     (define-key map (kbd "M-g m") 'telega-chatbuf-next-mention)
+    (define-key map (kbd "M-g @") 'telega-chatbuf-next-mention)
 
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chat-complete-or-next-link)
@@ -1415,19 +1411,6 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
        (telega-ins fill-symbol)
        (telega-ins "\n")
 
-       ;; Pinned message
-       (when-let ((pin-msg
-                   (and telega-chat-show-pinned-message
-                        (not (zerop (plist-get chat :pinned_message_id)))
-                        (telega-chat-pinned-msg chat 'offline))))
-         (unless (plist-get pin-msg :telega-is-deleted-message)
-           ;; NOTE: Using 'telega-msg button makes point behave
-           ;; strange, so drop to `telega' button type
-           (telega-button--insert 'telega pin-msg
-             :inserter 'telega-ins--chat-pin-msg-one-line
-             :action 'telega-msg-goto-highlight)
-           (telega-ins "\n")))
-
        ;; Reply markup
        (when-let ((markup-msg
                    (and (not (zerop (plist-get chat :reply_markup_message_id)))
@@ -1470,6 +1453,7 @@ Global chat bindings:
   :group 'telega-chat
   (setq telega-chatbuf--chat telega-chat--preparing-buffer-for
         telega-chatbuf--messages (make-hash-table :test 'eq)
+        telega-chatbuf--marked-messages nil
         telega-chatbuf--input-ring (make-ring telega-chat-input-ring-size)
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending nil
@@ -1581,12 +1565,6 @@ Recover previous active action after BODY execution."
            'telega-ins--aux-edit-inline)
        (button-get telega-chatbuf--aux-button :value)))
 
-(defun telega-chatbuf--forwarding-msg ()
-  "Return message currently forwarding."
-  (and (eq (button-get telega-chatbuf--aux-button :inserter)
-           'telega-ins--aux-fwd-inline)
-       (button-get telega-chatbuf--aux-button :value)))
-
 (defun telega-chatbuf--replying-msg ()
   "Return message currently replying."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
@@ -1627,7 +1605,7 @@ Recover previous active action after BODY execution."
 
   ;; - If at the bottom of the chatbuf and newer history is not yet
   ;;   loaded, then load it.  Same as in `telega-chatbuf-scroll'
-  ;;   Do not load newer history if prompt is active (reply, or forward)
+  ;;   Do not load newer history if prompt is active (reply or edit)
   (when (and (= (point) (point-max))
              (telega-chatbuf--need-newer-history-p))
     (telega-chatbuf--load-newer-history))
@@ -1792,24 +1770,44 @@ otherwise set draft only if current input is also draft."
     (concat
      (when brackets " (")
      (when (> unread-count 0)
-       (propertize (concat "unread:" (number-to-string unread-count))
+       (propertize (telega-i18n "chat_modeline_unread"
+                     :unread_count unread-count)
                    'face 'bold
-                   'local-map
-                   (eval-when-compile
-                     (make-mode-line-mouse-map 'mouse-1 'telega-chatbuf-read-all))
+                   'local-map (eval-when-compile
+                                (make-mode-line-mouse-map
+                                 'mouse-1 'telega-chatbuf-read-all))
                    'mouse-face 'mode-line-highlight
-                   'help-echo "mouse-1: Read all messages"))
+                   'help-echo (telega-i18n "chat_modeline_unread_help"
+                                :mouse "mouse-1")))
      (when (> mention-count 0)
        (concat
         (when (> unread-count 0) " ")
         (propertize (concat "@" (number-to-string mention-count))
                     'face 'telega-mention-count
-                    'local-map
-                    (eval-when-compile
-                      (make-mode-line-mouse-map 'mouse-1 'telega-chatbuf-next-mention))
+                    'local-map (eval-when-compile
+                                 (make-mode-line-mouse-map
+                                  'mouse-1 'telega-chatbuf-next-mention))
                     'mouse-face 'mode-line-highlight
-                    'help-echo "mouse-1: Goto next mention")))
+                    'help-echo (telega-i18n "chat_modeline_mention_help"
+                                 :mouse "mouse-1"))))
      (when brackets ")"))))
+
+(defun telega-chatbuf-mode-line-marked ()
+  "Format string for marked messages in chatbuffer."
+  (let ((marked-count (length telega-chatbuf--marked-messages)))
+    (unless (zerop marked-count)
+      (concat
+       " ("
+       (propertize (telega-i18n "chat_modeline_marked"
+                     :marked_count marked-count)
+                   'face 'error
+                   'local-map (eval-when-compile
+                                (make-mode-line-mouse-map
+                                 'mouse-1 'telega-chatbuf-unmark-all))
+                   'mouse-face 'mode-line-highlight
+                   'help-echo (telega-i18n "chat_modeline_marked_help"
+                                :mouse "mouse-1"))
+       ")"))))
 
 (defun telega-chatbuf-mode-line-members (&optional use-icons-p)
   "Format members string for chat buffer modeline.
@@ -1818,15 +1816,17 @@ If ICONS-P is non-nil, then use icons for members count."
          (or (plist-get (telega-chat--info telega-chatbuf--chat) :member_count) 0))
         (online-count (or (plist-get telega-chatbuf--chat :x-online-count) 0)))
     (unless (zerop member-count)
-      (concat " [" (number-to-string member-count)
-              (if use-icons-p
-                  (propertize telega-symbol-contact 'face 'shadow)
-                " members")
-              (unless (zerop online-count)
-                (concat ", " (number-to-string online-count)
-                        (if use-icons-p
-                            telega-symbol-online-status
-                          " online")))
+      (concat " ["
+              (if (not use-icons-p)
+                  (telega-i18n "chat_modeline_members"
+                    :member_count member-count :count online-count)
+
+                (concat
+                 (number-to-string member-count)
+                 (propertize telega-symbol-contact 'face 'shadow)
+                 (unless (zerop online-count)
+                   (concat ", " (number-to-string online-count)
+                           telega-symbol-online-status))))
               "]"))))
 
 (defun telega-chatbuf-mode-line-pinned-msg (&optional max-width)
@@ -1842,9 +1842,11 @@ If ICONS-P is non-nil, then use icons for members count."
                                 (make-mode-line-mouse-map
                                  'mouse-1 'telega-chatbuf-goto-pin-message))
                    'mouse-face 'mode-line-highlight
-                   'help-echo "mouse-1: Goto pinned message")
+                   'help-echo (telega-i18n "chat_modeline_pinned_msg_help"
+                                :mouse "mouse-1"))
            (telega-ins telega-symbol-pin)
-           (let ((telega-emoji-use-images nil))
+           (let ((telega-use-images nil)
+                 (telega-emoji-use-images nil))
              ;; NOTE: avoid using images for emojis, because modeline
              ;; height might differ from default height, and modeline
              ;; will increase its height
@@ -2191,10 +2193,9 @@ Message id could be updated on this update."
       ;; In case user has active aux-button with message from EVENT,
       ;; then redisplay aux as well, see
       ;; https://t.me/emacs_telega/7243
-      (when-let ((aux-msg (or (telega-chatbuf--replying-msg)
-                              (telega-chatbuf--editing-msg)
-                              (telega-chatbuf--forwarding-msg))))
-        (when (eq (plist-get msg :id) (plist-get aux-msg :id))
+      (let ((aux-msg (or (telega-chatbuf--replying-msg)
+                         (telega-chatbuf--editing-msg))))
+        (when (and aux-msg (eq (plist-get msg :id) (plist-get aux-msg :id)))
           (cl-assert (not (button-get telega-chatbuf--aux-button 'invisible)))
           (telega-save-excursion
             (telega-button--update-value
@@ -2243,7 +2244,8 @@ messages."
           (when-let ((node (telega-chatbuf--node-by-msg-id msg-id))
                      (msg (ewoc--node-data node)))
             (plist-put msg :telega-is-deleted-message t)
-            (if telega-chat-show-deleted-messages
+            (if (telega-filter--test (telega-msg-chat msg)
+                                     telega-chat-show-deleted-messages-for)
                 (telega-msg-redisplay msg node)
               (ewoc-delete telega-chatbuf--ewoc node)))
           (when (eq msg-id (plist-get telega-chatbuf--chat :pinned_message_id))
@@ -2370,110 +2372,17 @@ If prefix ARG is giver, also delete input."
   (when arg
     (telega-chatbuf--input-delete)))
 
-(defun telega-chatbuf--help-cancel-keys (what)
-  "Show help about canceling reply/edit/fwd in echo area."
+(defun telega-help-message--cancel-aux (what)
+  "Show help about canceling reply/edit in echo area."
   (let ((cancel-keys (where-is-internal
                       'telega-chatbuf-cancel-aux telega-chat-mode-map)))
-    (message "%s to cancel %s"
-             (mapconcat #'key-description cancel-keys ", ") what)))
+    (telega-help-message 'telega-chatbuf-cancel-aux 'what
+      "%s to cancel %S" (mapconcat #'key-description cancel-keys ", ") what)))
 
-(defun telega--sendMessage (chat imc &optional reply-to-msg disable-notify
-                                 from-background reply-markup callback)
-  "Send the message content represented by IMC to CHAT.
-If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
-  ;; We catch new message with `telega--on-updateNewMessage', so
-  ;; ignore result returned from `sendMessage'
-  (telega-server--call
-   (nconc (list :@type "sendMessage"
-                :chat_id (plist-get chat :id)
-                :disable_notification (or disable-notify :false)
-                :input_message_content imc)
-          (when reply-to-msg
-            (list :reply_to_message_id (plist-get reply-to-msg :id)))
-          (when from-background
-            (list :from_background t))
-          (when reply-markup
-            (list :reply_markup reply-markup)))
-   (or callback 'ignore)))
-
-(defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg disable-notify
-                                      from-background callback)
-  "Send IMCS as media album.
-If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
-  (let ((tsm (list :@type "sendMessageAlbum"
-                   :chat_id (plist-get chat :id)
-                   :disable_notification (or disable-notify :false)
-                   :input_message_contents (apply 'vector imcs))))
-    (when reply-to-msg
-      (setq tsm (plist-put tsm :reply_to_message_id
-                           (plist-get reply-to-msg :id))))
-    (when from-background
-      (setq tsm (plist-put tsm :from_background t)))
-    (telega-server--call tsm (or callback 'ignore))))
-
-(defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
-                                                  disable-notify from-background)
-  "Send IMC as inline query result from bot.
-If CALLBACK is specified, then call it with one argument - new
-message uppon message is created."
-  (telega-server--send
-   (nconc (list :@type "sendInlineQueryResultMessage"
-                :chat_id (plist-get chat :id)
-                :disable_notification (or disable-notify :false)
-                :query_id (plist-get imc :query-id)
-                :result_id (plist-get imc :result-id))
-          (when reply-to-msg
-            (list :reply_to_message_id (plist-get reply-to-msg :id)))
-          (when from-background
-            (list :from_background t))
-          (when (plist-get imc :hide-via-bot)
-            (list :hide_via_bot t)))))
-
-(defun telega--forwardMessages (chat from-chat messages &optional disable-notify
-                                     from-background as-album)
-  "Forward MESSAGES FROM-CHAT into CHAT."
-  (telega-server--send
-   (list :@type "forwardMessages"
-         :chat_id (plist-get chat :id)
-         :from_chat_id (plist-get from-chat :id)
-         :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
-         :disable_notification (or disable-notify :false)
-         :from_background (or from-background :false)
-         :as_album (or as-album :false))))
-
-(defun telega--forwardMessage (chat msg &optional disable-notify from-background)
-  "Forward single message MSG to CHAT."
-  (telega--forwardMessages
-   chat (telega-msg-chat msg) (list msg) disable-notify from-background))
-
-(defun telega--editMessageText (chat msg imc &optional reply-markup)
-  (telega-server--send
-   (nconc (list :@type "editMessageText"
-                :chat_id (plist-get chat :id)
-                :message_id (plist-get msg :id)
-                :input_message_content imc)
-          (when reply-markup
-            (list :reply_markup reply-markup)))))
-
-(defun telega--editMessageMedia (chat msg imc &optional reply-markup)
-  (telega-server--send
-   (nconc (list :@type "editMessageMedia"
-                :chat_id (plist-get chat :id)
-                :message_id (plist-get msg :id)
-                :input_message_content imc)
-          (when reply-markup
-            (list :reply_markup reply-markup)))))
-
-(defun telega--editMessageCaption (chat msg caption &optional reply-markup)
-  (telega-server--send
-   (nconc (list :@type "editMessageCaption"
-                :chat_id (plist-get chat :id)
-                :message_id (plist-get msg :id)
-                :caption caption)
-          (when reply-markup
-            (list :reply_markup reply-markup)))))
+(defsubst telega--forwardMessage (chat msg &rest args)
+  "Forward single message MSG to CHAT.
+ARGS are passed directly to `telega--forwardMessages'."
+  (apply 'telega--forwardMessages chat (telega-msg-chat msg) (list msg) args))
 
 (defun telega-chatbuf--input-imcs (markdown)
   "Convert input to input message contents list."
@@ -2533,43 +2442,74 @@ Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
                    (not arg)
                  arg)))
         (replying-msg (telega-chatbuf--replying-msg))
-        (editing-msg (telega-chatbuf--editing-msg))
-        (forwarding-msg (telega-chatbuf--forwarding-msg)))
-    (if editing-msg
-        (let ((edit-mc (plist-get editing-msg :content))
-              (imc (car imcs)))
-          (when (> (length imcs) 1)
-            (error "Multiple input messages while edit"))
-          (cond ((and (eq (telega--tl-type imc) 'inputMessageText)
-                      (eq (telega--tl-type edit-mc) 'messageText))
-                 (telega--editMessageText
-                  telega-chatbuf--chat editing-msg imc))
+        (editing-msg (telega-chatbuf--editing-msg)))
+    (cond
+     (editing-msg
+      (let ((edit-mc (plist-get editing-msg :content))
+            (imc (car imcs)))
+        (when (> (length imcs) 1)
+          (error "Multiple input messages while edit"))
+        (cond ((and ;(eq (telega--tl-type imc) 'inputMessageLocation)
+                    (eq (telega--tl-type edit-mc) 'messageLocation))
+               (telega--editMessageLiveLocation
+                telega-chatbuf--chat editing-msg (plist-get imc :location)))
 
-                ((eq (telega--tl-type imc) 'inputMessageText)
-                 (telega--editMessageCaption
-                  telega-chatbuf--chat editing-msg (plist-get imc :text)))
+              ((and (eq (telega--tl-type imc) 'inputMessageText)
+                    (eq (telega--tl-type edit-mc) 'messageText))
+               (telega--editMessageText
+                telega-chatbuf--chat editing-msg imc))
 
-                (t
-                 (telega--editMessageMedia
-                  telega-chatbuf--chat editing-msg imc))))
+              ((eq (telega--tl-type imc) 'inputMessageText)
+               (telega--editMessageCaption
+                telega-chatbuf--chat editing-msg (plist-get imc :text)))
 
-      ;; If all IMCS are photos and videos then send them as album
-      ;; otherwise send IMCS as separate messages
-      ;; NOTE: cl-every returns `t' on empty list
-      (if (and (> (length imcs) 1)
-               (cl-every (lambda (imc)
-                           (memq (telega--tl-type imc)
-                                 '(inputMessagePhoto inputMessageVideo)))
-                         imcs))
-          (telega--sendMessageAlbum telega-chatbuf--chat imcs replying-msg)
-        (dolist (imc imcs)
-          (if (eq (telega--tl-type imc) 'telegaInlineQuery)
-              (telega--sendInlineQueryResultMessage
-               telega-chatbuf--chat imc replying-msg)
-            (telega--sendMessage telega-chatbuf--chat imc replying-msg)))))
+              (t
+               (telega--editMessageMedia
+                telega-chatbuf--chat editing-msg imc)))))
 
-    (when forwarding-msg
-      (telega--forwardMessage telega-chatbuf--chat forwarding-msg))
+     ;; If all IMCS are photos and videos then send them as album
+     ;; otherwise send IMCS as separate messages
+     ;; NOTE: cl-every returns `t' on empty list
+     ((and (> (length imcs) 1)
+           (cl-every (lambda (imc)
+                       (memq (telega--tl-type imc)
+                             '(inputMessagePhoto inputMessageVideo)))
+                     imcs))
+      (telega--sendMessageAlbum telega-chatbuf--chat imcs replying-msg))
+
+     ;; NOTE: If forwarding <= 10 messages with photos/videos
+     ;; then combine them into album
+     ((and (> (length imcs) 1) (<= (length imcs) 10)
+           (cl-every
+            (lambda (imc)
+              (and (eq (telega--tl-type imc) 'telegaForwardMessage)
+                   (memq (telega--tl-type
+                          (telega--tl-get imc :message :content))
+                         '(messagePhoto messageVideo))))
+            imcs)
+           ;; TODO
+           nil
+           )
+      ;; TODO: forward as album
+      )
+
+     (t (dolist (imc imcs)
+          (cl-case (telega--tl-type imc)
+            (telegaInlineQuery
+             (telega--sendInlineQueryResultMessage
+              telega-chatbuf--chat imc replying-msg))
+
+            (telegaForwardMessage
+             (let ((msg (plist-get imc :message)))
+               (telega--forwardMessage
+                telega-chatbuf--chat msg nil nil nil
+                (plist-get imc :send_copy)
+                (plist-get imc :remove_caption))
+               (when (plist-get imc :unmark-after-sent)
+                 (telega-msg-unmark msg))))
+
+            (t (telega--sendMessage
+                telega-chatbuf--chat imc replying-msg))))))
 
     ;; Recover prompt to initial state
     (telega-chatbuf--input-delete)
@@ -2633,6 +2573,16 @@ IMC might be a plain string or attachement specification."
 
   (goto-char (point-max)))
 
+(defun telega-chatbuf-unmark-all ()
+  "Unmark all marked messages in chatbuf."
+  (interactive)
+  (let ((marked-messages telega-chatbuf--marked-messages))
+    (setq telega-chatbuf--marked-messages nil)
+
+    (dolist (msg marked-messages)
+      (telega-msg-redisplay msg))
+    (telega-chatbuf-mode-line-update)))
+
 (defun telega-chatbuf-next-mention ()
   "Goto next mention in chat buffer."
   (interactive)
@@ -2651,19 +2601,34 @@ IMC might be a plain string or attachement specification."
       (telega-chat--goto-msg telega-chatbuf--chat pinned-msg-id 'highlight))))
 
 ;;; Attaching stuff to the input
-(defun telega-chatbuf-attach-location (location)
-  "Attach location to the current input."
+(defun telega-chatbuf-attach-location (location &optional live-secs)
+  "Attach location to the current input.
+If prefix arg is supplied, attach live location."
   (interactive (list (with-telega-chatbuf-action "ChoosingLocation"
-                       (read-string "Location: "))))
+                       (if current-prefix-arg
+                           (read-string "Live Location: ")
+                         (read-string "Location: ")))
+                     (when current-prefix-arg
+                       (let* ((choices `(("1 min" . 60)
+                                         ("15 min" . ,(* 15 60))
+                                         ("1 hour" . ,(* 60 60))
+                                         ("8 hours" . ,(* 8 60 60))))
+                              (live-for (funcall telega-completing-read-function
+                                                 "Live for: "
+                                                 (mapcar 'car choices) nil t)))
+                         (cdr (assoc live-for choices))))))
+
   (let ((loc (mapcar 'string-to-number (split-string location ","))))
     (unless (and (numberp (car loc)) (numberp (cadr loc)))
       (error "Invalid location `%s', use: <LAT>,<LONG> format" location))
 
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageLocation"
-           :location (list :@type "Location"
-                           :latitude (car loc)
-                           :longitude (cadr loc))))))
+     (nconc (list :@type "inputMessageLocation"
+                  :location (list :@type "Location"
+                                  :latitude (car loc)
+                                  :longitude (cadr loc)))
+            (when live-secs
+              (list :live_period live-secs))))))
 
 (defun telega-chatbuf-attach-contact (contact)
   "Attach USER contact to the current input."
@@ -2981,7 +2946,9 @@ Prefix argument is available for next attachements:
   clipboard  - Available only if image is in the clipboard.
                Takes C-u prefix argument to attach clipboard as
                document.
-  animation  - Takes C-u prefix ta attach file as animation."
+  animation  - Takes C-u prefix to attach file as animation.
+               (Same as attching \"gif\")
+  location   - Takes C-u prefix to attach live location."
   (interactive
    (list (funcall telega-completing-read-function
                   "Attach type: "
@@ -3147,7 +3114,7 @@ MSG can be nil in case there is no active voice message."
      telega-chatbuf--prompt-button telega-chat-reply-prompt)
     (goto-char (point-max))
 
-    (telega-chatbuf--help-cancel-keys "reply")))
+    (telega-help-message--cancel-aux 'reply)))
 
 (defun telega-msg-edit (msg)
   "Start editing the MSG."
@@ -3175,59 +3142,96 @@ MSG can be nil in case there is no active voice message."
                             (plist-get content :caption))
                         'as-markdown))
 
-    (telega-chatbuf--help-cancel-keys "edit")))
+    (telega-help-message--cancel-aux 'edit)))
 
-(defun telega-msg-forward (msg chat)
-  "Forward message to chat."
-  (interactive (list (telega-msg-at (point))
-                     (telega-completing-read-chat "Forward to chat: ")))
+(defun telega-chatbuf-attach-fwd-msg (msg &optional send-copy-p rm-cap-p)
+  "Attach MSG as foward message into chatbuf's input."
+  (telega-chatbuf-input-insert
+   (list :@type "telegaForwardMessage"
+         :message msg
+         :send_copy send-copy-p
+         :remove_caption rm-cap-p
+         :unmark-after-sent (telega-msg-marked-p msg))))
 
-  (cl-assert chat)
-  (unless (plist-get msg :can_be_forwarded)
-    (error "Message can't be forwarded"))
+(defun telega-msg-forward-marked-or-at-point (&optional send-copy-p rm-cap-p)
+  "Forward marked messages or message at point.
+If C-u is given, then forward message copy.
+If C-u C-u is given, then forward message copy without caption."
+  (interactive (list current-prefix-arg
+                     (> (prefix-numeric-value current-prefix-arg) 4)))
+  (when-let ((messages (or (reverse telega-chatbuf--marked-messages)
+                           (when-let ((msg-at-point (telega-msg-at (point))))
+                             (list msg-at-point)))))
+    (let ((chat (telega-completing-read-chat
+                 (concat "Forward"
+                         (when send-copy-p " Copy")
+                         (when rm-cap-p " NoCap")
+                         (when (> (length messages) 1)
+                           (format " (%d marked)" (length messages)))
+                         " to: "))))
+      (telega-chat--pop-to-buffer chat)
+      (with-telega-chatbuf chat
+        (goto-char (point-max))
+        (dolist (msg messages)
+          (telega-chatbuf-attach-fwd-msg msg send-copy-p rm-cap-p))))))
 
-  (with-current-buffer (telega-chat--pop-to-buffer chat)
-    (let ((inhibit-read-only t)
-          (buffer-undo-list t))
-      (telega-button--update-value
-       telega-chatbuf--aux-button msg
-       :inserter 'telega-ins--aux-fwd-inline
-       'invisible nil)
-
-      (goto-char (point-max))
-      (telega-button--update-value
-       telega-chatbuf--prompt-button telega-chat-fwd-prompt)
-
-      (telega-chatbuf--help-cancel-keys "forward"))
-  ))
-
-(defun telega-msg-delete (msg &optional revoke)
-  "Delete message MSG.
-With prefix arg delete only for yourself."
-  (interactive (list (button-get (button-at (point)) :value)
-                     (not current-prefix-arg)))
-
+(defun telega-msg-delete0 (msg &optional revoke)
   (cl-assert (eq (telega--tl-type msg) 'message))
   (if (plist-get msg :telega-is-deleted-message)
       ;; NOTE: `d' is pressed on deleted message
-      ;; (`telega-chat-show-deleted-messages' is non-nil)
+      ;; (`telega-chat-show-deleted-messages-for' is non-nil)
       ;; Generate pseudo-event to delete the message
-      (let ((telega-chat-show-deleted-messages nil))
+      (let ((telega-chat-show-deleted-messages-for nil))
         (telega--on-updateDeleteMessages
          (list :chat_id (plist-get msg :chat_id)
                :is_permanent t
                :message_ids (vector (plist-get msg :id)))))
 
-    (when (y-or-n-p (concat (if revoke "Revoke" "Kill") " the message? "))
-      (telega--deleteMessages
-       (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)
+    (telega--deleteMessages
+     (plist-get msg :chat_id) (list (plist-get msg :id)) revoke)))
 
-      (if telega-chat-show-deleted-messages
-          (telega-help-message 'telega-chat-show-deleted-messages 'double-delete
-            "Press %s once again to hide deleted message"
-            (substitute-command-keys (format "\\[%S]" this-command)))
-        (telega-help-message 'telega-chat-show-deleted-messages 'show-deleted
-          "JFYI see `telega-chat-show-deleted-messages'")))))
+(defun telega-chatbuf-marked-messages-delete (revoke)
+  "Delete marked messages in chatbuf."
+  (interactive (not current-prefix-arg))
+  (when-let ((marked-messages telega-chatbuf--marked-messages))
+    (when (yes-or-no-p (telega-i18n (if revoke
+                                        "query_revoke_marked_messages"
+                                      "query_kill_marked_messages")
+                         :count (length marked-messages)))
+      (setq telega-chatbuf--marked-messages nil)
+      (dolist (msg marked-messages)
+        (telega-msg-delete0 msg revoke))
+      (telega-chatbuf-mode-line-update))))
+
+(defun telega-msg-delete-marked-or-at-point (revoke)
+  "Deletes some messages.
+If some messages are marked, then delete them.
+Otherwise delete message at point.
+With prefix arg delete only for yourself."
+  (interactive (list (not current-prefix-arg)))
+
+  (if telega-chatbuf--marked-messages
+      (telega-chatbuf-marked-messages-delete revoke)
+
+    (when-let ((msg (telega-msg-at (point))))
+      (if (plist-get msg :telega-is-deleted-message)
+          ;; Purge already deleted message
+          (telega-msg-delete0 msg)
+
+        (when (y-or-n-p (telega-i18n (if revoke
+                                         "query_revoke_message"
+                                       "query_kill_message")))
+          (telega-msg-delete0 msg revoke)
+
+          (if (telega-filter--test telega-chatbuf--chat
+                                   telega-chat-show-deleted-messages-for)
+              (telega-help-message
+                  'telega-chat-show-deleted-messages-for 'double-delete
+                "Press %s once again to hide deleted message"
+                (substitute-command-keys (format "\\[%S]" this-command)))
+            (telega-help-message
+                'telega-chat-show-deleted-messages-for 'show-deleted
+              "JFYI see `telega-chat-show-deleted-messages-for'")))))))
 
 (defun telega-chat-complete ()
   "Complete thing at chat input."
@@ -3329,12 +3333,9 @@ If called outside chat buffer, then fallback to default DND behaviour."
                               (decode-coding-string 'utf-8))))
       (pcase proto
         ("file"
-         (let ((doc-p (if (image-type-from-file-name real-name)
-                          (y-or-n-p "Send this as a file?")
-                        t)))
-           (if doc-p
-               (telega-chatbuf-attach-file real-name)
-             (telega-chatbuf-attach-photo real-name))))
+         (let ((doc-p (or (not (image-type-from-file-name real-name))
+                          (y-or-n-p (telega-i18n "query_dnd_photo_as_file")))))
+           (telega-chatbuf--attach-tmp-photo real-name doc-p)))
         (_
          (goto-char (point-max))
          (insert (concat proto "://" real-name)))))))
