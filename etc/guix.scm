@@ -113,18 +113,6 @@
                     (locate-dominating-file telega--lib-directory
                                             \"telega-data\")"))
 	     #t))
-	 ;; The telega test suite checks for a version of Emacs
-	 ;; compiled with imagemagick and svg support. Since we
-	 ;; are using `emacs-minimal`, this step will fail.
-	 ;; Grok the failing test, and remove problematic assertions.
-	 (add-after 'unpack 'ert-suite-patch
-	   (lambda _
-	     (substitute* "telega-core.el"
-	       (("\\(image-type-available-p 'imagemagick\\) nil")
-		"t")
-	       (("\\(image-type-available-p 'svg\\) nil")
-		"t"))
-	     #t))
 	 ;; The server test suite has a hardcoded path.
 	 ;; Reset this behavior to use the proper path.
 	 (add-after 'unpack 'server-suite-patch
@@ -164,7 +152,7 @@
        ("libwebp" ,libwebp))) ; sticker support.
     (native-inputs
      `(("tdlib" ,tdlib)
-       ("emacs" ,emacs-minimal)
+       ("emacs" ,emacs)
        ("python" ,python)))
     (synopsis "GNU Emacs client for the Telegram messenger")
     (description
