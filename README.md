@@ -75,18 +75,17 @@ Attaching funny cat sticker:
 # Installation
 
 `telega.el` depends on `visual-fill-column` package.  This dependency
-automatically installs if you install telega from MELPA.  Otherwise
-you need to install this package by hand.
+automatically installs if you install telega from MELPA or GNU Guix.  
+Otherwise will you need to install this package by hand.
 
 `telega.el` is built on top of the official library provided by
 Telegram [TDLib 1.5.0](https://core.telegram.org/tdlib "tdlib"). Most
-of the distributions do not package this libary, so it has to be build
-from source.
+of the distributions do not package this libary, in which case it must
+be built manually.
 
 [GNU Guix](https://guix.gnu.org/), however, does have both `telega.el`
 and `TDLib` packaged.  If you use GNU Guix you can skip directly to
-[Installing from GNU Guix](#installing-telegael-and-tdlib-from-gnu-guix)
-section.
+[Installing from GNU Guix](#installing-telegael-and-tdlib-from-gnu-guix).
 
 ## Dependences
 
@@ -94,6 +93,7 @@ section.
    * `GNU make`
    * `GNU gperf`
    * `CMake`
+   * `Python` (for testing the server)
 
 `make` is found in most of the modern machines. The other packages can
 be download with the system package manager (such as `apt` for
@@ -105,18 +105,18 @@ Arch-based).
 1. If you are using [Emacs For Mac OS X](https://emacsformacosx.com/),
    or you installed Emacs by running `brew cask install emacs`, your
    Emacs lacks svg support, so you cannot use telega. Please switch to
-   [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus)
+   [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus).
 
 2. If you are using
    [Emacs-mac](https://bitbucket.org/mituharu/emacs-mac/), or you
    installed Emacs by running `brew install emacs-mac` or `brew cask
    install emacs-mac`, your Emacs has bug dealing with complex svg,
-   which leads to Emacs hangup.  Compiling Emacs with rsvg support by running
-   `brew install emacs-mac --with-rsvg` will fix the hangup problem.
+   which leads to Emacs hangups.  Compiling Emacs with rsvg support by running
+   `brew install emacs-mac --with-rsvg` will fix this problem.
 
-   Telega cannot display stickers correctly with emacs-mac, even when emacs-mac
-   is compiled with rsvg support.  If you want stickers, please consider
-   switching to emacs-plus.
+   NOTE: Telega cannot display stickers correctly with emacs-mac, even when 
+   emacs-mac is compiled with rsvg support.  If you want sticker support, please 
+   consider switching to emacs-plus.
 
 3. [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus) is
    the best choice to run telega.
@@ -124,28 +124,30 @@ Arch-based).
 ### Linux users
 
 `telega.el` requires at least GNU Emacs 26.1 with `imagemagick` and
-`svg` support.
+`svg` support. Most distributions provide GNU Emacs compiled with these
+dependencies when installing GNU Emacs with GTK+ support (graphical).
 
 ### Building tdlib
 
 [TDLib](https://core.telegram.org/tdlib "tdlib") is the library for
 building Telegram clients. It requires a large amount of memory to be
-built.  Make sure you are using 1.5.0 TDLib version.
+built.  Make sure you are using TDLib version 1.5.0.
 
-On MacOS you can install pre-build `tdlib` package using homebrew from
+On MacOS you can install a pre-built `tdlib` package using homebrew from
 [brew.sh](https://brew.sh).  Just run:
 ```console
 $ brew install tdlib
 ```
 
-On Linux you need build `tdlib` from sources.
+On Linux, you will need to build `tdlib` from source.
 
 To get the source:
 ```console
 $ git clone https://github.com/tdlib/td.git
 ```
 
-Move into the folder with `cd td`
+Move into the folder with `cd ./td` or wherever you
+checked out `td`.
 
 Prepare a folder for building the library:
 ```console
@@ -183,7 +185,8 @@ To get the source:
 $ git clone https://github.com/zevlg/libtgvoip.git
 ```
 
-Move into the folder with `cd libtgvoip`
+Move into the folder with `cd ./libtgvoip` or wherever
+you checked out `libtgvoip`.
 
 Prepare a folder for building the library:
 ```console
@@ -200,12 +203,12 @@ It will also install headers to `/usr/local/include` and library into
 
 ## Installing telega.el from MELPA
 
-`telega.el` already in [MELPA](https://melpa.org), so you can install
-it from there as usual package.  This method is preferable, because it
-will handle all dependencies.  After installing `telega.el` from MELPA
-you can skip to [Fire up `telega.el`](#fire-up-telegael) section.
+`telega.el` is available from [MELPA](https://melpa.org), so you can install
+it from there as usual package.  This is a preferable method, because it
+will automatically handle all dependencies.  After installing `telega.el` from 
+MELPA you can skip to [Fire up `telega.el`](#fire-up-telegael) section.
 
-Or you could use git repository or this melpa-style recipe:
+Or you could use git repository with this melpa-style recipe:
 
 ```lisp
 (:fetcher github
@@ -219,7 +222,8 @@ Or you could use git repository or this melpa-style recipe:
 Now that the `TDLib` library is set-up, it is time to install
 `telega.el`. The first step consists in building `telega-server`,
 which is a C interface to the `TDLib`, or just let `telega` ask you at
-the first start and do the job.
+the first start and do the job (dependencies for compilation will need
+to be installed ahead-of-time).
 
 To get the source:
 
@@ -304,7 +308,8 @@ protocol for the issue tracker.
 ## Fire up `telega.el`
 
 `telega.el` can now be started with `M-x telega RET`. The first time
-it ask for the phone number to login to the Telegram network.
+it will ask for the phone number you have associated with the Telegram
+network. 
 
 # Minor modes
 
