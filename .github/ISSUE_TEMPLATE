@@ -1,0 +1,23 @@
+<!--- Provide a general summary of the issue in the Title above -->
+
+## Operating System / Distribution
+<!--- `uname -a` -->
+
+## GNU Emacs Details
+<!--- M-x emacs-version -->
+
+## TDLib/Telega Installation Method
+<!--- MELPA / GNU Guix / Git / Other. -->
+
+## Current Behavior
+<!--- Tell us what happens instead of the expected behavior. -->
+
+## Possible Solution
+<!--- Not obligatory, but suggest a fix/reason for the issue. -->
+
+## Steps to Reproduce
+<!--- Provide an unambiguous set of steps to reproduce this issue. -->
+<!--- Include code to reproduce, if relevant. -->
+1.
+2.
+3.
