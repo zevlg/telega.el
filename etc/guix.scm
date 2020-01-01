@@ -30,6 +30,7 @@
 	     (gnu packages image)
 	     (gnu packages messaging)
 	     (gnu packages python)
+	     (gnu packages video)
 	     (guix build utils)
 	     (guix build-system gnu)
 	     (guix gexp)
