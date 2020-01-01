@@ -30,6 +30,7 @@
 	     (gnu packages image)
 	     (gnu packages messaging)
 	     (gnu packages python)
+	     (gnu packages telephony)
 	     (gnu packages video)
 	     (guix build utils)
 	     (guix build-system gnu)
@@ -64,18 +65,19 @@
 (define-public emacs-telega
   (package
     (name "emacs-telega")
-    (version "0.0.0") ; since this is a checkout
+    (version "git") ; since this is a checkout
     (source (local-file %source-dir #:recursive? #t #:select? git-file?))
     (build-system gnu-build-system)
     (arguments
-     `(#:test-target "test"
-       #:modules ((guix build gnu-build-system)
+     `(#:modules ((guix build gnu-build-system)
 		  ((guix build emacs-build-system) #:prefix emacs:)
 		  (guix build utils)
 		  (guix build emacs-utils))
        #:imported-modules (,@%gnu-build-system-modules
 			   (guix build emacs-build-system)
 			   (guix build emacs-utils))
+       #:test-target "test"
+       #:make-flags (list "WITH_VOIP=t")
        #:phases
        (modify-phases %standard-phases
 	 (add-after 'unpack 'prefix-patch
@@ -153,6 +155,7 @@
        ("libwebp" ,libwebp))) ; sticker support.
     (native-inputs
      `(("tdlib" ,tdlib)
+       ("libtgvoip" ,libtgvoip) ; VoIP support.
        ("emacs" ,emacs)
        ("python" ,python)))
     (synopsis "GNU Emacs client for the Telegram messenger")
