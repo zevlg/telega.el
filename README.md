@@ -87,7 +87,7 @@ be built manually.
 and `TDLib` packaged.  If you use GNU Guix you can skip directly to
 [Installing from GNU Guix](#installing-telegael-and-tdlib-from-gnu-guix).
 
-## Dependences
+## Dependencies
 
    * `GNU Emacs` (at least 26.1 is required)
    * `GNU make`
