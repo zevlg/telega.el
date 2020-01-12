@@ -879,7 +879,7 @@ CHAT must be supergroup or channel."
       (setq order nil)
 
     (unless (numberp (read order))
-      (error "Invalid order, must contain only digits")))
+      (error "Error: Invalid order, must contain only digits.")))
 
   (setf (telega-chat-uaprop chat :order) order)
   (telega-chat--reorder chat nil)
@@ -1207,7 +1207,7 @@ Leaving chat does not removes chat from chat list."
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
   (interactive
-   (list (yes-or-no-p (format "This action cannot be undone. Delete %d chats? "
+   (list (yes-or-no-p (format "Warning: This action cannot be undone. Delete %d chats? "
                               (length telega--filtered-chats)))))
   (when force
     (mapc 'telega-chat-delete telega--filtered-chats)))
@@ -2951,7 +2951,7 @@ Prefix argument is available for next attachements:
   location   - Takes C-u prefix to attach live location."
   (interactive
    (list (funcall telega-completing-read-function
-                  "Attach type: "
+                  "Attachment type: "
                   (nconc (list "photo" "audio" "video" "gif"
                                "note-video" "note-voice"
                                "file" "location"
