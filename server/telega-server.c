@@ -45,7 +45,7 @@ void pngext_main(int ac, char** av);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.5.0";
+const char* version = "0.5.1";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -61,6 +61,9 @@ usage(char* prog)
 #ifdef WITH_VOIP
         printf(", with VOIP tgvoip v%s", telega_voip_version());
 #endif /* WITH_VOIP */
+#ifdef WITH_TON
+        printf(", with TON libton v%s", "0");
+#endif /* WITH_TON */
         printf("\n");
         printf("usage: %s [-jp] [-l FILE] [-v LVL] [-h]\n", prog);
         printf("\t-l FILE    Log to FILE (default=stderr)\n");

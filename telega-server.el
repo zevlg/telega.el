@@ -93,27 +93,29 @@ If already deferring, then just executes the BODY."
 (defmacro telega-server--callback-get (extra)
   `(gethash ,extra telega-server--callbacks))
 
-(defun telega-server-build (&optional no-query-p no-voip-query-p)
+(defun telega-server-build (&optional build-flags)
   "Build and install `telega-server' binary.
-If NO-QUERY-P is non-nil, then install `telega-server' without
-asking first.
-If NO-VOIP-QUERY-P is non-nil, then build `telega-server' without
-VOIP support, otherwise ask user.
-Raise error if compilation/test fails."
+If BUILD-FLAGS is specified, then rebuild server without any
+queries using this flags for building, could be empty string.
+Otherwise query user about building flags."
   (interactive)
   (telega-test-env 'quiet)
-  (when (or no-query-p
+  (when (or build-flags
             (y-or-n-p "Build `telega-server'? "))
-
-    (let ((default-directory telega--lib-directory)
-          (with-voip-p (unless no-voip-query-p
-                         (y-or-n-p "Build `telega-server' with VOIP support? "))))
+    (let ((default-directory telega--lib-directory))
+      (unless build-flags
+        (setq build-flags
+              (concat
+               (when (y-or-n-p "Build `telega-server' with VOIP support? ")
+                 " WITH_VOIP=t")
+               (when (y-or-n-p "Build `telega-server' with TON support? ")
+                 " WITH_TON=t"))))
       (unless (zerop
                (shell-command
-                (concat "make " (when with-voip-p "WITH_VOIP=t ")
+                (concat "make " build-flags " "
                         "LIBS_PREFIX=" (expand-file-name telega-server-libs-prefix) " "
                         "INSTALL_PREFIX=" (expand-file-name telega-directory) " "
-                        "install")))
+                        "server-reinstall")))
         (error "`telega-server' installation failed")))))
 
 (defun telega-server--find-bin ()
@@ -141,7 +143,14 @@ If version does not match then query user to rebuild telega-server."
       (when (y-or-n-p
              (format "Installed `telega-server' version %s<%s, rebuild? "
                      ts-version min-required-version))
-        (telega-server-build 'no-query)))))
+        ;; NOTE: remove old telega-server binary before rebuilding
+        (let* ((sv-ver (car (split-string
+                             (shell-command-to-string
+                              (concat (telega-server--find-bin) " -h")) "\n")))
+               (with-voip-p (string-match-p (regexp-quote "with VOIP") sv-ver))
+               (with-ton-p (string-match-p (regexp-quote "with TON") sv-ver)))
+          (telega-server-build (concat (when with-voip-p " WITH_VOIP=t")
+                                       (when with-ton-p " WITH_TON=t"))))))))
 
 (defsubst telega-server--proc ()
   "Return telega-server process."
@@ -202,6 +211,9 @@ Return parsed command."
 
         ((string= cmd "error")
          (telega--on-error value))
+
+        ((string= cmd "ton-event")
+         (message "TODO: `ton-event'"))
 
         (t
          (telega-debug "%s %s: %S" (propertize "IN" 'face 'bold) cmd value)

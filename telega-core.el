@@ -267,9 +267,11 @@ Return non-nil if all tests are passed."
              (format "At least Emacs 26.0 is required, but you have %s"
                      emacs-version))
 
-  ;; imagemagick for images, no fallback yet
-  ;; however newer Emacs implements image properties needed by telega
-  (cl-assert (image-type-available-p 'imagemagick) nil
+  ;; imagemagick for images NOT required, we have now fallback in case
+  ;; native image transforms available (newer Emacs)
+  (cl-assert (or (image-type-available-p 'imagemagick)
+                 (and (fboundp 'image-transforms-p)
+                      (funcall 'image-transforms-p)))
              (concat "Emacs with `imagemagick' support is required."
                      " (libmagickcore, libmagickwand, --with-imagemagick)"))
   (cl-assert (image-type-available-p 'svg) nil

@@ -519,12 +519,12 @@ To specify suffixes use `/ e' command and edit filter string directly."
   "Filter private chats that has RELATIONSHIP contact.
 RELATIONSHIP is one of `in' or `out'."
   (and (eq (telega-chat--type chat) 'private)
-       (eq 'linkStateIsContact
-           (telega--tl-type
-            (plist-get (telega-chat--user chat)
-                       (cl-ecase relationship
-                         (in :incoming_link)
-                         (out :outgoing_link)))))))
+       (equal "linkStateIsContact"
+              (telega--tl-get (telega-chat--user chat)
+                              (cl-ecase relationship
+                                (in :incoming_link)
+                                (out :outgoing_link))
+                              :@type))))
 
 (defun telega-filter-by-contact (&optional incoming-p)
   "Filter chats with users that are in contacts.
