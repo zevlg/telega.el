@@ -619,9 +619,49 @@ blocked users."
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."
   (interactive (list (telega-msg-at (point))))
-  (let ((content (plist-get msg :content)))
-    (cl-case (telega--tl-type content)
-      (t (error "TODO: `telega-msg-save'")))))
+  (let* ((content (plist-get msg :content))
+         (file (cl-case (telega--tl-type content)
+                 (messageDocument
+                  (let ((doc (telega--tl-get msg :content :document)))
+                    (telega-file--renew doc :document)))
+                 (messagePhoto
+                  (let ((hr (telega-photo--highres (plist-get content :photo))))
+                    (telega-file--renew hr :photo)))
+                 (messageAudio
+                  (let ((audio (telega--tl-get msg :content :audio)))
+                    (telega-file--renew audio :audio)))
+                 (messageVideo
+                  (let ((video (telega--tl-get msg :content :video)))
+                    (telega-file--renew video :video)))
+                 (messageVoiceNote
+                  (let ((note (telega--tl-get msg :content :voice_note)))
+                    (telega-file--renew note :voice)))
+                 (messageVideoNote
+                  (let ((note (telega--tl-get msg :content :video_note)))
+                    (telega-file--renew note :video)))
+                 (messageAnimation
+                  (let ((anim (telega--tl-get msg :content :animation)))
+                    (telega-file--renew anim :animation)))
+                 (t (let ((web-page (plist-get content :web_page)))
+                      (if web-page
+                          (error "TODO: Save web-page")
+                        (user-error "No file associated with message")))))))
+    (cl-assert file)
+    (telega-file--download file 32
+      (lambda (dfile)
+        (telega-msg-redisplay msg)
+        (when (telega-file--downloaded-p dfile)
+          ;; TODO: This might be executed in process filter, so
+          ;; pressing C-g will trigger "error in process filter: Quit"
+          ;; Need to execute this outside of process filter
+          (let* ((fpath (telega--tl-get dfile :local :path))
+                 (fname (file-name-nondirectory fpath))
+                 (new-fpath (read-file-name "Save to file: " default-directory
+                                            nil nil fname nil)))
+            ;; See https://github.com/tdlib/td/issues/379
+            (copy-file fpath new-fpath)
+            (message (format "Wrote %s" new-fpath))))))
+    ))
 
 (defun telega-describe-message (msg)
   "Show info about message at point."
