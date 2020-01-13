@@ -86,7 +86,7 @@
   (interactive "p")
   (let ((idx (- telega-webpage-history--index n)))
     (unless (>= idx 0)
-      (error "No next webpage history"))
+      (error "No next webpage in history"))
     (telega-webpage--history-show idx)))
 
 (defun telega-webpage-history-prev (&optional n)
