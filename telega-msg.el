@@ -515,11 +515,14 @@ NODE - ewoc node, if known."
 
 (defun telega--parseTextEntities (text parse-mode)
   "Parse TEXT using PARSE-MODE.
-PARSE-MODE is one of: \"textParseModeMarkdown\" or \"textParseModeHTML\"."
+PARSE-MODE is one of:
+  (list :@type \"textParseModeMarkdown\" :version 0|1|2)
+or
+  (list :@type \"textParseModeHTML\")"
   (let ((fmt-text (telega-server--call
                    (list :@type "parseTextEntities"
                          :text text
-                         :parse_mode (list :@type parse-mode)))))
+                         :parse_mode parse-mode))))
     (plist-put fmt-text :text (or (telega-tl-str fmt-text :text 'no-props) ""))))
 
 (defun telega--formattedText (text &optional markdown)
@@ -529,7 +532,8 @@ If MARKDOWN is non-nil then format TEXT as markdown."
       ;; For markdown mode, escape underscores in urls
       ;; See https://github.com/tdlib/td/issues/672
       (telega--parseTextEntities
-       (telega-escape-underscores-in-urls text) "textParseModeMarkdown")
+       (telega-escape-underscores-in-urls text)
+       (list :@type "textParseModeMarkdown" :version 2))
 
     (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))
@@ -642,7 +646,8 @@ blocked users."
         (telega-ins-fmt "MsgSexp: (telega-msg--get %d %d)\n" chat-id msg-id))
 
       (when telega-debug
-        (telega-ins-fmt "\nMessage: %S\n" msg))
+        (let ((print-length nil))
+          (telega-ins-fmt "\nMessage: %S\n" msg)))
       )))
 
 (defun telega-ignored-messages ()

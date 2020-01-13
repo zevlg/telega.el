@@ -596,6 +596,8 @@ NOT YET IMPLEMENTED"
 Supported markup:
   1) *bold text*
   2) _italic text_
+  2.1) __underline text__
+  2.2) ~strike-through-text~
   3) `inlined code`
   4) ```<language-name-not-displayed>
      first line of multiline preformatted code
@@ -1018,6 +1020,11 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-alarm "⏲"
+  "*Symbol used for scheduled messages."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -1038,6 +1045,7 @@ If nil, then user's online status is not displayed."
          (car telega-symbol-poll-options)
          (cdr telega-symbol-poll-options)
          telega-symbol-blocked
+         telega-symbol-alarm
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.
@@ -1210,6 +1218,16 @@ Install all symbol widths inside `telega-load-hook'."
 (defface telega-entity-type-italic
   '((t :inherit italic))
   "Face to display italic text."
+  :group 'telega-faces)
+
+(defface telega-entity-type-underline
+  '((t :inherit underline))
+  "Face to display underline text."
+  :group 'telega-faces)
+
+(defface telega-entity-type-strikethrough
+  '((t :strike-through t))
+  "Face to display strikethrough text."
   :group 'telega-faces)
 
 (defface telega-entity-type-code

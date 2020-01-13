@@ -50,7 +50,7 @@ Changes in 1.6.0:
   - Added the method `sharePhoneNumber`, allowing to share the phone number of the current user with a mutual contact.
   - Added the new reason `chatReportReasonUnrelatedLocation` for reporting location-based groups unrelated to
     their stated location.
-* Improved support for text entities:
+* TODO Improved support for text entities:
   - Added the new types of text entities `textEntityTypeUnderline` and `textEntityTypeStrikethrough`.
   - Added support for nested entities. Entities can be nested, but must not mutually intersect with each other.
     Pre, Code and PreCode entities can't contain other entities. Bold, Italic, Underline and Strikethrough entities can

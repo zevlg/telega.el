@@ -330,6 +330,10 @@ N can't be 0."
        (list 'face 'telega-entity-type-bold))
       (textEntityTypeItalic
        (list 'face 'telega-entity-type-italic))
+      (textEntityTypeUnderline
+       (list 'face 'telega-entity-type-underline))
+      (textEntityTypeStrikethrough
+       (list 'face 'telega-entity-type-strikethrough))
       (textEntityTypeCode
        (list 'face 'telega-entity-type-code))
       (textEntityTypePre
@@ -359,6 +363,8 @@ Return now text with markdown syntax."
     (cl-case (and ent-type (telega--tl-type ent-type))
       (textEntityTypeBold (concat "*" text "*"))
       (textEntityTypeItalic (concat "_" text "_"))
+      (textEntityTypeUnderline (concat "__" text "__"))
+      (textEntityTypeStrikethrough (concat "~" text "~"))
       (textEntityTypeCode (concat "`" text "`"))
       ((textEntityTypePreCode textEntityTypePre)
        (concat "```" (plist-get ent-type :language) "\n" text "```"))
@@ -379,6 +385,7 @@ Return now text with markdown syntax."
 (defun telega--entities-as-markdown (entities text)
   "Convert propertiezed TEXT to markdown syntax text.
 Use `telega-entity-type-XXX' faces as triggers."
+  ;; TODO: support nested markdown
   (let ((offset 0) (strings nil))
     (seq-doseq (ent entities)
       (let ((ent-off (plist-get ent :offset))
@@ -408,10 +415,14 @@ If AS-MARKDOWN is non-nil, then apply markdown syntax, instead of faces."
           (let* ((beg (plist-get ent :offset))
                  (end (+ (plist-get ent :offset) (plist-get ent :length)))
                  (props (telega--entity-to-properties
-                         ent (substring-no-properties text beg end))))
+                         ent (substring-no-properties text beg end)))
+                 (face (plist-get props 'face)))
             (when props
               (add-text-properties
-               beg end (nconc (list 'rear-nonsticky t) props) text))))
+               beg end (nconc (list 'rear-nonsticky t)
+                              (telega-plist-del props 'face)) text))
+            (when face
+              (add-face-text-property beg end face 'append text))))
         entities)
   text)
 
