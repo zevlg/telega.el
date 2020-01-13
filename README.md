@@ -1,4 +1,4 @@
-# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.5.0-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.5.4-blue)](https://guix.gnu.org/packages/emacs-telega-0.5.4-2.9bfb637/)
+# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.5.4-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.5.4-blue)](https://guix.gnu.org/packages/emacs-telega-0.5.4-2.9bfb637/)
 
 `telega.el` is full featured unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
@@ -79,7 +79,7 @@ automatically installs if you install telega from MELPA or GNU Guix.
 Otherwise will you need to install this package by hand.
 
 `telega.el` is built on top of the official library provided by
-Telegram [TDLib 1.5.0](https://core.telegram.org/tdlib "tdlib"). Most
+Telegram [TDLib 1.5.4](https://core.telegram.org/tdlib "tdlib"). Most
 of the distributions do not package this libary, in which case it must
 be built manually.
 
@@ -131,7 +131,7 @@ dependencies when installing GNU Emacs with GTK+ support (graphical).
 
 [TDLib](https://core.telegram.org/tdlib "tdlib") is the library for
 building Telegram clients. It requires a large amount of memory to be
-built.  Make sure you are using TDLib version 1.5.0.
+built.  Make sure you are using TDLib version 1.5.4.
 
 On MacOS you can install a pre-built `tdlib` package using homebrew from
 [brew.sh](https://brew.sh).  Just run:
