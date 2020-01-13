@@ -62,7 +62,7 @@ In some random order:
 
 Root buffer screen:
 
-![screen14](https://zevlg.github.io/telega/screen-14.png)
+![screen15](https://zevlg.github.io/telega/screen-15.png)
 
 Chat in [@emacs_en](https://t.me/emacs_en "emacs_en") group:
 

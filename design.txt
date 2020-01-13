@@ -593,6 +593,7 @@ Fonts
 * fonts-emojione  (colored emojis, for `telega-symbol-emojify')
 * fonts-noto      (quite bad)
 * Symbola from https://fonts2u.com/symbola.font (for unicode emojis with good vertical spacing)
+* Symbola from https://github.com/ONLYOFFICE/core-fonts/blob/master/ancient-scripts/Symbola_hint.ttf (good vertical spacing)
 
 * http://users.teilar.gr/~g1951d/  (Symbola Author: George Dourosg 1951d@teilar.gr)
 
