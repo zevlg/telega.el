@@ -515,23 +515,22 @@ To specify suffixes use `/ e' command and edit filter string directly."
   (interactive)
   (telega-filter-add 'restriction))
 
-(define-telega-filter contact (chat relationship)
-  "Filter private chats that has RELATIONSHIP contact.
-RELATIONSHIP is one of `in' or `out'."
+(define-telega-filter contact (chat &optional mutual-p)
+  "Filter private chats that corresponding user is our contact.
+If MUTUAL-P is non-nil, then filter only for mutual contact."
   (and (eq (telega-chat--type chat) 'private)
-       (equal "linkStateIsContact"
-              (telega--tl-get (telega-chat--user chat)
-                              (cl-ecase relationship
-                                (in :incoming_link)
-                                (out :outgoing_link))
-                              :@type))))
+       (plist-get (telega-chat--user chat)
+                  (if mutual-p
+                      :is_mutual_contact
+                    :is_contact))))
 
-(defun telega-filter-by-contact (&optional incoming-p)
+(defun telega-filter-by-contact (&optional mutual-p)
   "Filter chats with users that are in contacts.
-By default filter contacts by outgoing link relationship.
-Specify INCOMING-P to filter by incoming link relationship."
+Specify MUTUAL-P to filter only mutual contacts."
   (interactive "P")
-  (telega-filter-add (list 'contact (if incoming-p 'in 'out))))
+  (telega-filter-add (if mutual-p
+                         (list 'contact 'mutual)
+                       'contact)))
 
 (define-telega-filter top (chat)
   "Filter if CHAT is in top usage."

@@ -307,19 +307,17 @@ CONTACT is some user you have exchanged contacs with."
     (telega-ins--contact contact)
     (telega-ins "\n")
     (let ((user (telega-user--get (plist-get contact :user_id))))
-      (if (eq (telega--tl-type (plist-get user :outgoing_link))
-              'linkStateIsContact)
+      (if (plist-get user :is_contact)
           (telega-ins--button "RemoveContact"
             :value contact
             :action (lambda (contact)
                       (telega--removeContacts (plist-get contact :user_id))
                       (telega-save-cursor
                         (telega-describe-contact contact))))
-
-        (telega-ins--button "ImportContact"
+        (telega-ins--button "AddContact"
           :value contact
           :action (lambda (contact)
-                    (telega--importContacts contact)
+                    (telega--addContact contact)
                     (telega-save-cursor
                       (telega-describe-contact contact)))))
       (telega-ins "\n")

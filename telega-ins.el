@@ -212,6 +212,17 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
               ;; TODO: other cases
               (symbol-name status)))))))
 
+(defun telega-ins--user-relationship (user)
+  "Insert relationship with USER.
+🚹←🚹 - if user is contact.
+🚹↔🚹 - if user is mutual contact."
+  (let ((contact-p (plist-get user :is_contact))
+        (mutual-contact-p (plist-get user :is_mutual_contact)))
+    (when (or contact-p mutual-contact-p)
+      (telega-ins (propertize "🚹" 'face 'shadow)
+                  (if mutual-contact-p "↔" "←")
+                  (propertize "🚹" 'face 'bold)))))
+
 (defun telega-ins--user (user &optional member)
   "Insert USER, aligning multiple lines at current column.
 MEMBER specifies corresponding \"ChatMember\" object."
@@ -228,23 +239,7 @@ MEMBER specifies corresponding \"ChatMember\" object."
     ;; Insert (him)in<-->out(me) relationship
     (when (and telega-user-show-relationship
                (not (telega-me-p user)))
-      (let ((in-link-p (not (eq (telega--tl-type
-                                 (plist-get user :incoming_link))
-                                'linkStateNone )))
-            (out-link-p (not (eq (telega--tl-type
-                                  (plist-get user :outgoing_link))
-                                 'linkStateNone))))
-        (when (or in-link-p out-link-p)
-          (telega-ins--with-face 'shadow
-            (telega-ins " ")
-            (when in-link-p
-              (telega-ins "🚹"))
-            (telega-ins (cond ((and in-link-p out-link-p) "↔")
-                              (in-link-p "←")
-                              (out-link-p "→")
-                              (t (cl-assert nil))))
-            (when out-link-p
-              (telega-ins (propertize "🚹" 'face 'bold)))))))
+      (telega-ins--user-relationship user))
     ;; Block/scam mark, without requesting
     ;; TODO: rewrite when `telega-user-full-info 'locally' will be
     ;; available
@@ -1434,13 +1429,6 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   "Insert message MSG without header."
   (funcall telega-inserter-for-msg-button msg :no-header))
 
-(defun telega-ins--message-ignored (msg)
-  "Inserter for ignored message MSG."
-  (telega-ins--message msg nil (lambda (_ignoredmsg)
-                                 (telega-ins " --> ")
-                                 (telega-ins--chat (telega-msg-chat msg))))
-  (telega-ins "\n"))
-
 (defun telega-ins--message-deleted (msg)
   "Inserter for deleted message MSG."
   (telega-ins--with-props (list 'face 'custom-invalid)
@@ -1449,6 +1437,17 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
         (telega-ins " ")
         (telega-ins--with-face 'error
           (telega-ins (telega-i18n "deleted_message")))))))
+
+(defun telega-ins--message-ignored (_msg)
+  "Inserter for ignored message MSG in chatbuf."
+  (telega-ins (propertize "<IGNORED MESSAGE>" 'face 'shadow)))
+
+(defun telega-ins--message-ignored-list (msg)
+  "Inserter for ignored message MSG in ignored messages list."
+  (telega-ins--message msg nil (lambda (_ignoredmsg)
+                                 (telega-ins " --> ")
+                                 (telega-ins--chat (telega-msg-chat msg))))
+  (telega-ins "\n"))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."
@@ -1836,7 +1835,9 @@ Return t."
                 (telega-ins--text (plist-get inmsg :text))))))
 
           (last-msg
-           (telega-ins--chat-msg-one-line chat last-msg max-width))
+           (if (telega-msg-ignored-p last-msg)
+               (telega-ins (propertize "<IGNORED MESSAGE>" 'face 'shadow))
+             (telega-ins--chat-msg-one-line chat last-msg max-width)))
 
           ((and (telega-chat-secret-p chat)
                 (eq (telega--tl-type (plist-get chat-info :state))

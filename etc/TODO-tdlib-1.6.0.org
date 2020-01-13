@@ -34,10 +34,11 @@ Changes in 1.6.0:
     changes in a chat.
   - Added support for reminders in Saved Messages and notifications about other sent scheduled messages in
     the [Notification API](https://core.telegram.org/tdlib/notification-api/).
-* Added support for adding users without a known phone number to the list of contacts:
+* DONE Added support for adding users without a known phone number to the list of contacts:
+  CLOSED: [2020-01-13 Пн 11:44]
   - Added the method `addContact` for adding or renaming contacts without a known phone number.
   - Added the field `need_phone_number_privacy_exception` to the class `userFullInfo`, containing the default value for
-    the second parameter of the method `addContact`.
+    the second parameter of the method `addContact`. (NOT DONE)
   - Added the fields `is_contact` and `is_mutual_contact` to the class `user`.
   - Removed the class `LinkState` and the fields `outgoing_link` and `incoming_link` from the class `user`.
 * Improved support for the top chat action bar:
@@ -50,7 +51,7 @@ Changes in 1.6.0:
   - Added the method `sharePhoneNumber`, allowing to share the phone number of the current user with a mutual contact.
   - Added the new reason `chatReportReasonUnrelatedLocation` for reporting location-based groups unrelated to
     their stated location.
-* TODO Improved support for text entities:
+* WIP Improved support for text entities:
   - Added the new types of text entities `textEntityTypeUnderline` and `textEntityTypeStrikethrough`.
   - Added support for nested entities. Entities can be nested, but must not mutually intersect with each other.
     Pre, Code and PreCode entities can't contain other entities. Bold, Italic, Underline and Strikethrough entities can

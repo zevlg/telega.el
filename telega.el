@@ -8,9 +8,9 @@
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
 ;; Version: 0.5.4
-(defconst telega-version "0.5.4")
+(defconst telega-version "0.5.5")
 (defconst telega-server-min-version "0.5.0")
-(defconst telega-tdlib-min-version "1.5.0")
+(defconst telega-tdlib-min-version "1.5.4")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by

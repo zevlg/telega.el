@@ -444,7 +444,7 @@ For example:
     ("Groups" . (type basicgroup supergroup))
     ("Private" . (type private))
     ("Channels" . (type channel))
-    ("Contacts" . (contact out))
+    ("Contacts" . contact)
     ("Unmuted" . unmuted)
     ("Unread" . unread))
   "*Alist of custom filters for chats.

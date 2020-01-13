@@ -502,6 +502,14 @@ SCALE - in [1-3]"
           :chat_id (or (plist-get chat :id) 0))
     callback))
 
+(defun telega--addContact (contact &optional share-phone-p)
+  "Add CONTACT to contacts list.
+If SHARE-PHONE-P is specified, then allow CONTACT to see my phone number."
+  (telega-server--send
+   (list :@type "addContact"
+         :contact contact
+         :share_phone_number (if share-phone-p t :false))))
+
 
 ;; I18N
 (defun telega--getLocalizationTargetInfo (&optional offline callback)

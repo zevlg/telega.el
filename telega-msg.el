@@ -104,6 +104,8 @@
                       chat telega-chat-show-deleted-messages-for)
                      (plist-get msg :telega-is-deleted-message))
                 'telega-ins--message-deleted)
+               ((telega-msg-ignored-p msg)
+                'telega-ins--message-ignored)
                ((and (telega-filter--test chat telega-chat-group-messages-for)
                      (> (point) 3)
                      (let ((prev-msg (telega-msg-at (- (point) 2))))
@@ -556,8 +558,16 @@ If OPTION-IDS is not specified, then retract the voice."
          :option_ids (apply 'vector option-ids))))
 
 ;;; Ignoring messages
-(defmacro telega-msg-ignored-p (msg)
-  `(plist-get ,msg :ignored-p))
+(defun telega-msg-ignored-p (msg)
+  "Return non-nil if MSG is ignored."
+  (or (plist-get msg :ignored-p)
+      ;; Search message with same ID in ignored ring
+      (catch 'found
+        (dotimes (ind (ring-length telega--ignored-messages-ring))
+          (when (eq (plist-get msg :id)
+                    (plist-get (ring-ref telega--ignored-messages-ring ind) :id))
+            (throw 'found ind))))))
+
 (defun telega-msg-ignore (msg)
   "Mark message MSG to be ignored (not viewed, notified about) in chats.
 By side effect adds MSG into `telega--ignored-messages-ring' to be viewed
@@ -657,9 +667,7 @@ blocked users."
     (set-buffer standard-output)
     (dolist (msg (ring-elements telega--ignored-messages-ring))
       (telega-button--insert 'telega-msg msg
-        :inserter 'telega-ins--message-ignored)
-      (telega-ins "\n")
-      )))
+        :inserter 'telega-ins--message-ignored-list))))
 
 
 ;; Viewing messages diffs

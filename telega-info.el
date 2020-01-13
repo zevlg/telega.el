@@ -147,10 +147,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
 
 (defun telega-info--insert-user (user &optional chat redisplay)
   "Insert USER info into current buffer."
-  (let ((full-info (telega--full-info user))
-        (out-link (plist-get user :outgoing_link))
-        (in-link (plist-get user :incoming_link)))
-
+  (let ((full-info (telega--full-info user)))
     ;; Scam&Blacklist status
     (when (or (plist-get user :is_scam) (plist-get full-info :is_blocked))
       (telega-ins--with-face 'error
@@ -167,7 +164,7 @@ TLOBJ could be one of: user, basicgroup or supergroup."
       :action 'telega-user-chat-with)
     (telega-ins " ")
     (unless (or (telega-user-bot-p user)
-                (eq (telega--tl-type in-link) 'linkStateIsContact))
+                (plist-get user :is_contact))
       ;; I18N: profile_share_contact -> Share My Contact
       (telega-ins--button (telega-i18n "profile_share_contact")
         :value chat :action 'telega-chat-share-my-contact)
@@ -225,9 +222,10 @@ TLOBJ could be one of: user, basicgroup or supergroup."
         (plist-get (telega-server--call
                     (list :@type "getAccountTtl")) :days)))
 
-    (telega-ins-fmt "Relationship: %s <-in---out-> %s\n"
-      (substring (plist-get in-link :@type) 9)
-      (substring (plist-get out-link :@type) 9))
+    (telega-ins "Relationship: ")
+    (telega-ins--user-relationship user)
+    (telega-ins "\n")
+
     (when-let ((username (telega-tl-str user :username)))
       ;; I18N: profile_username -> Username:
       (telega-ins (telega-i18n "profile_username")

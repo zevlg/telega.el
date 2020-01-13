@@ -2023,25 +2023,22 @@ First message in MESSAGE will be first message at the beginning."
   (with-telega-deferred-events
     (let ((node (ewoc--header telega-chatbuf--ewoc)))
       (seq-doseq (msg messages)
-        (unless (telega-msg-ignored-p msg)
-          (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg)))))))
+        (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg))))))
 
 (defun telega-chatbuf--append-messages (messages)
   "Insert MESSAGES at the end of the chat buffer."
   (with-telega-deferred-events
     (seq-doseq (msg messages)
-      (unless (telega-msg-ignored-p msg)
-        (ewoc-enter-last telega-chatbuf--ewoc msg)))))
+      (ewoc-enter-last telega-chatbuf--ewoc msg))))
 
 (defun telega-chatbuf--append-message (msg)
   "Insert message MSG as last in chat buffer.
 Return newly created ewoc node."
-  (unless (telega-msg-ignored-p msg)
-    (with-telega-deferred-events
-      ;; Track the uploading progress
-      ;; see: https://github.com/zevlg/telega.el/issues/60
-      (telega-msg--track-file-uploading-progress msg)
-      (ewoc-enter-last telega-chatbuf--ewoc msg))))
+  (with-telega-deferred-events
+    ;; Track the uploading progress
+    ;; see: https://github.com/zevlg/telega.el/issues/60
+    (telega-msg--track-file-uploading-progress msg)
+    (ewoc-enter-last telega-chatbuf--ewoc msg)))
 
 (defun telega-chatbuf--node-by-msg-id (msg-id)
   "In current chatbuffer find message button with MSG-ID."

@@ -12,8 +12,8 @@
 (telega--info-update
  `(:@type "user" :id 22220 :first_name "Vasya" :last_name "Pupkin" :username "vpupkin"
           :phone_number "71112233" :status (:@type "userStatusOnline" :expires 1527776835)
-          :outgoing_link (:@type "linkStateIsContact")
-          :incoming_link (:@type "linkStateIsContact")
+          :is_contact t
+          :is_mutual_contact t
           :is_verified nil
           :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
@@ -21,8 +21,8 @@
 (telega--info-update
  `(:@type "user" :id 22221 :first_name "Petya" :last_name "Siskin" :username ""
           :phone_number "71112234" :status (:@type "userStatusOnline" :expires 1527776836)
-          :outgoing_link (:@type "linkStateIsContact")
-          :incoming_link (:@type "linkStateIsContact")
+          :is_contact t
+          :is_mutual_contact t
           :is_verified nil
           :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
