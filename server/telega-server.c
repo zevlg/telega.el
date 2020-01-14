@@ -45,7 +45,7 @@ void pngext_main(int ac, char** av);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.5.1";
+const char* version = "0.5.3";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -315,7 +315,7 @@ main(int ac, char** av)
 #ifdef WITH_TON
         tonlib_cln = tonlib_client_json_create();
         assert(tonlib_cln != NULL);
-        tonlib_client_json_send(tonlib_cln, "{\"@type\":\"init\",\"options\":{\"@type\":\"options\",\"config\":\"\",\"keystore_directory\":\".\",\"use_callbacks_for_network\":false}}");
+        tonlib_client_json_execute(tonlib_cln, "{\"@type\":\"init\",\"options\":{\"@type\":\"options\",\"config\":\"\",\"keystore_directory\":\".\",\"use_callbacks_for_network\":false}}");
         pthread_t ton_thread;
         rc = pthread_create(&ton_thread, NULL, tonlib_loop, tonlib_cln);
         assert(rc == 0);
