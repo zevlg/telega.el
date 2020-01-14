@@ -879,7 +879,7 @@ CHAT must be supergroup or channel."
       (setq order nil)
 
     (unless (numberp (read order))
-      (error "Error: Invalid order, must contain only digits.")))
+      (error "Invalid order, must contain only digits")))
 
   (setf (telega-chat-uaprop chat :order) order)
   (telega-chat--reorder chat nil)
