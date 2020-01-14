@@ -340,6 +340,23 @@ Return list of \"ChatMember\" objects."
   (telega-server--send
    (list :@type "logOut")))
 
+(defun telega--setAccountTtl (days)
+  "Change the period of account inactivity to DAYS.
+After that period the account of the current user will
+automatically be deleted."
+  (telega-server--send
+   (list :@type "setAccountTtl"
+         :ttl (list :@type "accountTtl"
+                    :days days))))
+
+(defun telega--getAccountTtl (&optional callback)
+  "Return number of days as account inactivity before account is deleted."
+  (with-telega-server-reply (reply)
+      (plist-get reply :days)
+
+    (list :@type "getAccountTtl")
+    callback))
+
 (defun telega--setTdlibParameters ()
   "Set the parameters for TDLib initialization."
   (telega-server--send

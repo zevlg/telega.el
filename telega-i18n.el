@@ -139,6 +139,21 @@
      :other_value "Kill {count} marked messages? ")
     ("lng_query_dnd_photo_as_file"
      :value "Send this photo as a file? ")
+
+    ("lng_settings_self_destruct"
+     :value "Account self-destruct settings")
+    ("lng_self_destruct_title"
+     :value "Account self-destruction")
+    ("lng_self_destruct_description"
+     :value "If you don't come online at least once within this period, your account will be deleted along with all groups, messages and contacts.")
+    ("lng_settings_destroy_if"
+     :value "If away for...")
+    ("lng_self_destruct_months"
+     :one_value "{count} month"
+     :other_value "{count} months")
+    ("lng_self_destruct_years"
+     :one_value "{count} year"
+     :other_value "{count} years")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil

@@ -144,9 +144,37 @@ TLOBJ could be one of: user, basicgroup or supergroup."
     full-info))
 
 
+(defun telega-ins--account-ttl (&optional redisplay-func)
+  "Insert account TTL settings.
+REDISPLAY-FUNC is called if TTL setting is changed."
+  (telega-ins (telega-i18n "self_destruct_title") ": "
+              (telega-i18n "settings_destroy_if") " ")
+  (telega-ins--button (telega-i18n "self_destruct_months"
+                        :count (round (/ (telega--getAccountTtl) 30.4)))
+    'action (lambda (_ignored)
+              (let* ((choices
+                      (mapcar (lambda (nmonth)
+                                (cons (telega-i18n "self_destruct_months"
+                                        :count nmonth)
+                                      (round (* nmonth 30.4))))
+                              '(1 3 6 12)))
+                     (nmonth (funcall telega-completing-read-function
+                                      (concat (telega-i18n "settings_destroy_if")
+                                              " ")
+                                      (mapcar 'car choices) nil t))
+                     (days (cdr (assoc nmonth choices))))
+                (telega--setAccountTtl days)
+                (when redisplay-func
+                  (telega-save-cursor
+                    (funcall redisplay-func))))))
+  (telega-ins "\n")
+  (telega-ins--labeled "  " nil
+    (telega-ins--with-face 'shadow
+      (telega-ins-i18n "self_destruct_description"))))
 
-(defun telega-info--insert-user (user &optional chat redisplay)
-  "Insert USER info into current buffer."
+(defun telega-info--insert-user (user &optional chat redisplay-func)
+  "Insert USER info into current buffer.
+REDISPLAY-FUNC - function to call if something changes in user info."
   (let ((full-info (telega--full-info user)))
     ;; Scam&Blacklist status
     (when (or (plist-get user :is_scam) (plist-get full-info :is_blocked))
@@ -196,9 +224,9 @@ TLOBJ could be one of: user, basicgroup or supergroup."
                       (telega-i18n "profile_block_user")))
           'action (lambda (_ignored)
                     (telega-user-block user user-blocked-p)
-                    (when redisplay
+                    (when redisplay-func
                       (telega-save-cursor
-                        (funcall redisplay)))))))
+                        (funcall redisplay-func)))))))
     (telega-ins "\n")
 
     ;; Clickable user's profile photos
@@ -218,9 +246,8 @@ TLOBJ could be one of: user, basicgroup or supergroup."
       (telega-ins "Logged in: ")
       (telega-ins--date-full (plist-get telega--options :authorization_date))
       (telega-ins "\n")
-      (telega-ins-fmt "Account TTL: %d days\n"
-        (plist-get (telega-server--call
-                    (list :@type "getAccountTtl")) :days)))
+      (telega-ins--account-ttl redisplay-func)
+      (telega-ins "\n"))
 
     (telega-ins "Relationship: ")
     (telega-ins--user-relationship user)
@@ -729,9 +756,9 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
   (interactive)
   (with-telega-help-win "*Telega Privacy Settings*"
     ;; I18N: settings_privacy_title -> Privacy
-    (let ((priv-title (telega-i18n "settings_privacy_title")))
-      (telega-ins priv-title "\n")
-      (telega-ins (make-string (length priv-title) ?\-) "\n"))
+    (telega-ins--with-face '(telega-webpage-header underline)
+      (telega-ins-i18n "settings_privacy_title"))
+    (telega-ins "\n")
     (when-let ((blocked-users (telega--getBlockedUsers)))
       ;; I18N: blocked_list_title -> Blocked Users
       (telega-ins (telega-i18n "blocked_list_title") ":" "\n")
@@ -753,10 +780,17 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
       (telega-ins "\n"))
 
     (telega-ins "\n")
-    (let ((security-title (telega-i18n "settings_section_privacy")))
-      (telega-ins security-title "\n")
-      (telega-ins (make-string (length security-title) ?\-) "\n"))
+    (telega-ins--with-face '(telega-webpage-header underline)
+      (telega-ins-i18n "settings_section_privacy"))
+    (telega-ins "\n")
     (telega-ins "TODO")
+    (telega-ins "\n")
+
+    (telega-ins "\n")
+    (telega-ins--with-face '(telega-webpage-header underline)
+      (telega-ins-i18n "settings_self_destruct"))
+    (telega-ins "\n")
+    (telega-ins--account-ttl 'telega-describe-privacy-settings)
     ))
 
 (defun telega-describe ()
