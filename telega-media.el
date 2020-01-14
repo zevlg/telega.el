@@ -556,15 +556,16 @@ File is specified with FILE-SPEC."
                   :x (- (/ xw 2) (/ fsz 3))
                   :y (+ (/ fsz 3) (/ cfull 2)))))
 
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; Correct text for tty-only avatar display
-               :telega-text (list (concat "(" (substring name 0 1) ")"
-                                          (make-string aw-chars-3 ?\u00A0))
-                                  (make-string (+ 3 aw-chars-3) ?\u00A0))
-               )))
+    (telega-svg-image svg :scale 1.0
+                      :width xw :height xh
+                      :ascent 'center
+                      :mask 'heuristic
+                      ;; Correct text for tty-only avatar display
+                      :telega-text
+                      (list (concat "(" (substring name 0 1) ")"
+                                    (make-string aw-chars-3 ?\u00A0))
+                            (make-string (+ 3 aw-chars-3) ?\u00A0))
+     )))
 
 (defun telega-symbol-emojify (emoji)
   "Attach `display' property with emoji svg to EMOJI string.

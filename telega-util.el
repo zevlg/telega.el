@@ -192,6 +192,19 @@ Specify EXT with leading `.'."
                 :clip-path "url(#pclip)")
     svg))
 
+(defun telega-svg-image (svg &rest props)
+  "Return an image object from SVG.
+PROPS is passed on to `create-image' as its PROPS list."
+  ;; NOTE: work around's problem displaying unicode characters in some
+  ;; librsvg versions (in my case 2.40.13).  Encoded (in &#xxxx format)
+  ;; text is only displayed corretly if <xml ..?> node is specified
+  (apply #'create-image
+         (with-temp-buffer
+           (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+           (svg-print svg)
+           (buffer-string))
+         'svg t props))
+
 (defun telega-poll-create-svg (cwidth percents &optional face)
   "Create SVG for use in poll options inserter."
   (cl-assert (<= percents 100))
@@ -643,11 +656,11 @@ instead of auto width calculation."
                   :font-family telega-emoji-font-family
                   :font-size font-size
                   :x 0 :y font-size)
-        (setq image (svg-image svg :scale 1.0
-                               :width xw :height xh
-                               :ascent 'center
-                               :mask 'heuristic
-                               :telega-text telega-text)))
+        (setq image (telega-svg-image svg :scale 1.0
+                                      :width xw :height xh
+                                      :ascent 'center
+                                      :mask 'heuristic
+                                      :telega-text telega-text)))
       (when use-cache-p
         (setq telega-emoji-svg-images
               (cons (cons emoji image) telega-emoji-svg-images))))

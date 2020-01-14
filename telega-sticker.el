@@ -300,16 +300,16 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                 :y (+ font-size (/ font-size 3)))
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-sticker--file sticker)))
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text
-               (make-string
-                (or (car (plist-get sticker :telega-image-cwidth-xmargin))
-                    w-chars)
-                ?X))
+    (telega-svg-image svg :scale 1.0
+                      :width xw :height xh
+                      :ascent 'center
+                      :mask 'heuristic
+                      ;; text of correct width
+                      :telega-text
+                      (make-string
+                       (or (car (plist-get sticker :telega-image-cwidth-xmargin))
+                           w-chars)
+                       ?X))
     ))
 
 (defun telega-sticker--create-image (sticker &optional _ignoredfile)
