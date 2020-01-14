@@ -904,6 +904,20 @@ CHAT must be supergroup or channel."
   (setf (telega-chat-uaprop chat :label) label)
   (telega-root--chat-update chat))
 
+(defun telega-custom-labels-export ()
+  "Export custom labels as alist suitable for `telega-custom-labels-import'."
+  (cl-remove-if 'null
+                (mapcar (lambda (chat)
+                          (when-let ((label (telega-chat-uaprop chat :label)))
+                            (cons (plist-get chat :id) label)))
+                        telega--ordered-chats)))
+
+(defun telega-custom-labels-import (labels-alist)
+  "Import LABELS-ALIST as custom labels."
+  (dolist (chat-label labels-alist)
+    (telega-chat-custom-label
+     (telega-chat-get (car chat-label)) (cdr chat-label))))
+
 (defun telega--setChatMemberStatus (chat user status)
   "Change the STATUS of a CHAT USER, needs appropriate privileges.
 STATUS is one of: "
@@ -969,12 +983,30 @@ STATUS is one of: "
       (telega-ins--button "Open"
         :value chat
         :action 'telega-chat--pop-to-buffer)
+      (when (telega-me-p chat)
+        (telega-ins " ")
+        (telega-ins--button "Set Profile Photo"
+          'action (lambda (_ignored)
+                    (let ((photo (read-file-name "Profile Photo: " nil nil t)))
+                      (telega--setProfilePhoto photo
+                        (lambda (_ignored)
+                          (telega-save-excursion
+                            (telega-describe-chat chat))))))))
       (when (telega--tl-get chat :permissions :can_invite_users)
         (telega-ins " ")
         (telega-ins--button "Add Member"
           'action (lambda (_ignored)
                     (telega-chat-add-member
                      chat (telega-completing-read-user "Add member: ")))))
+      (when (telega--tl-get chat :permissions :can_change_info)
+        (telega-ins " ")
+        (telega-ins--button "Set Chat Photo"
+          'action (lambda (_ignored)
+                    (let ((photo (read-file-name "Chat Photo: " nil nil t)))
+                      (telega--setChatPhoto chat photo
+                        (lambda (_ignored)
+                          (telega-save-excursion
+                            (telega-describe-chat chat))))))))
       (telega-ins "\n"))
 
     (telega-ins-fmt "Id: %d\n" (plist-get chat :id))

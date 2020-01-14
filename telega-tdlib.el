@@ -357,6 +357,46 @@ automatically be deleted."
     (list :@type "getAccountTtl")
     callback))
 
+(defun telega--getUserProfilePhotos (user &optional offset limit callback)
+  "Return the profile photos (`UserProfilePhotos') of a USER.
+OFFSET - number of photos to skip (default=0)
+LIMIT - limit number of photos (default=100)."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :photos) nil)
+
+    (list :@type "getUserProfilePhotos"
+          :user_id (plist-get user :id)
+          :offset (or offset 0)
+          :limit (or limit 100))
+    callback))
+
+(defun telega--setProfilePhoto (filename &optional callback)
+  "Upload a new profile photo for the current user."
+  (telega-server--call
+   (list :@type "setProfilePhoto"
+         :photo (list :@type "inputFileLocal"
+                      :path (expand-file-name filename)))
+   (or callback 'ignore)))
+
+(defun telega--deleteProfilePhoto (profile-photo-id &optional callback)
+  "Delete profile photo by PROFILE-PHOTO-ID."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "deleteProfilePhoto"
+         :profile_photo_id profile-photo-id)
+   (or callback 'ignore)))
+
+(defun telega--setChatPhoto (chat filename &optional callback)
+  "Changes the photo of a CHAT.
+Requires `:can_change_info' rights."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "setChatPhoto"
+         :chat_id (plist-get chat :id)
+         :photo (list :@type "inputFileLocal"
+                      :path (expand-file-name filename)))
+   (or callback 'ignore)))
+
 (defun telega--setTdlibParameters ()
   "Set the parameters for TDLib initialization."
   (telega-server--send

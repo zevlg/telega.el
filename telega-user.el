@@ -199,17 +199,6 @@ LIMIT by default is 50."
               (telega-user--get (plist-get member :user_id)))
             (plist-get reply :members))))
 
-(defun telega--getUserProfilePhotos (user &optional offset limit _callback)
-  "Return the profile photos (`UserProfilePhotos') of a USER.
-OFFSET - number of photos to skip (default=0)
-LIMIT - limit number of photos (default=100)."
-  (let ((reply (telega-server--call
-                (list :@type "getUserProfilePhotos"
-                      :user_id (plist-get user :id)
-                      :offset (or offset 0)
-                      :limit (or limit 100)))))
-    (append (plist-get reply :photos) nil)))
-
 (defun telega-describe-user (user)
   "Show info about USER."
   (interactive (list (telega-user-at (point))))

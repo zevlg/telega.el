@@ -237,7 +237,24 @@ REDISPLAY-FUNC - function to call if something changes in user info."
                       (telega-ins--image
                        (telega-photo--image
                         photo-val telega-user-photo-maxsize)))
-          :action 'telega-photo--open)
+          :action 'telega-photo--open
+          'keymap
+          (when (telega-me-p user)
+            (let ((pp-del (lambda (profile-photo)
+                            (interactive (list (button-get
+                                                (button-at (point)) :value)))
+                            (telega--deleteProfilePhoto
+                                (plist-get profile-photo :id)
+                              (when redisplay-func
+                                (lambda (_ignored)
+                                  (telega-save-cursor
+                                    (funcall redisplay-func)))))))
+                  (map (make-sparse-keymap)))
+              (define-key map (kbd "DEL") pp-del)
+              (define-key map (kbd "d") pp-del)
+              map))
+          'help-echo (when (telega-me-p user)
+                       "Press `d' to delete profile photo"))
         (telega-ins " "))
       (telega-ins "\n"))
 
