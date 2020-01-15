@@ -152,6 +152,7 @@
      `(("ffmpeg" ,ffmpeg))) ; mp4/gif support.
     (propagated-inputs
      `(("emacs-visual-fill-column" ,emacs-visual-fill-column)
+       ("emacs-company" ,emacs-company)
        ("libwebp" ,libwebp))) ; sticker support.
     (native-inputs
      `(("tdlib" ,tdlib)
