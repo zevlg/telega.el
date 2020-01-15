@@ -270,8 +270,11 @@ Return non-nil if all tests are passed."
   ;; imagemagick for images NOT required, we have now fallback in case
   ;; native image transforms available (newer Emacs)
   (cl-assert (or (image-type-available-p 'imagemagick)
-                 (and (fboundp 'image-transforms-p)
-                      (funcall 'image-transforms-p)))
+                 (if (telega-x-frame)
+                     (and (fboundp 'image-transforms-p)
+                          (funcall 'image-transforms-p))
+                   ;; For TTY-only emacs, images are not required
+                   t))
              (concat "Emacs with `imagemagick' support is required."
                      " (libmagickcore, libmagickwand, --with-imagemagick)"))
   (cl-assert (image-type-available-p 'svg) nil
