@@ -527,15 +527,16 @@ or
                          :parse_mode parse-mode))))
     (plist-put fmt-text :text (or (telega-tl-str fmt-text :text 'no-props) ""))))
 
-(defun telega--formattedText (text &optional markdown)
+(defun telega--formattedText (text &optional markdown-version)
   "Convert TEXT to `formattedTex' type.
 If MARKDOWN is non-nil then format TEXT as markdown."
-  (if markdown
+  (if markdown-version
       ;; For markdown mode, escape underscores in urls
       ;; See https://github.com/tdlib/td/issues/672
       (telega--parseTextEntities
        (telega-escape-underscores-in-urls text)
-       (list :@type "textParseModeMarkdown" :version 2))
+       (list :@type "textParseModeMarkdown"
+             :version markdown-version))
 
     (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))

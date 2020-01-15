@@ -629,7 +629,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
 (defun telega-chats-top (category)
   "Return list of top chats used by CATEGORY.
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
-`InlineBots', `Calls'"
+`InlineBots', `Calls', `ForwardChats'."
   (let ((top (assq category telega--top-chats))
         (currts (time-to-seconds (current-time))))
     (when (> currts (+ (or (cadr top) 0) 60))
@@ -2413,8 +2413,11 @@ If prefix ARG is giver, also delete input."
 ARGS are passed directly to `telega--forwardMessages'."
   (apply 'telega--forwardMessages chat (telega-msg-chat msg) (list msg) args))
 
-(defun telega-chatbuf--input-imcs (markdown)
-  "Convert input to input message contents list."
+(defun telega-chatbuf--input-imcs (markdown-version)
+  "Convert input to input message contents list.
+If MARKDOWN-VERSION is specified, then format input as markdown
+markup of MARKDOWN-VERSION."
+  (cl-assert (memq markdown-version '(nil 0 1 2)))
   (let ((attaches (telega--split-by-text-prop
                    (telega-chatbuf-input-string) 'telega-attach))
         result)
@@ -2431,7 +2434,7 @@ ARGS are passed directly to `telega--forwardMessages'."
                        (plist-get telega--options :message_text_length_max)))
 
               (push (list :@type "inputMessageText"
-                          :text (telega--formattedText text markdown)
+                          :text (telega--formattedText text markdown-version)
                           :clear_draft t)
                     result))
 
@@ -2452,7 +2455,7 @@ ARGS are passed directly to `telega--forwardMessages'."
               (error "Caption exceedes %d limit"
                      (plist-get telega--options :message_caption_length_max)))
 
-            (let ((cap (telega--formattedText (cadr attaches) markdown)))
+            (let ((cap (telega--formattedText (cadr attaches) markdown-version)))
               (setq attach (plist-put attach :caption cap)))
             (setq attaches (cdr attaches)))
           (push attach result)))
@@ -2460,16 +2463,25 @@ ARGS are passed directly to `telega--forwardMessages'."
       (setq attaches (cdr attaches)))
     (nreverse result)))
 
-(defun telega-chatbuf-input-send (arg)
+(defun telega-chatbuf-input-send (&optional markdown-version)
   "Send current input to the chat.
-Prefix ARG, inverses `telega-chat-use-markdown-formatting' setting."
-  (interactive "P")
+MARKDOWN-VERSION - version for markdown formatting, by default
+`telega-chat-use-markdown-version' is used as MARKDOWN-VERSION.
+
+If called interactively, then `\\[universal-argument]' inverses
+value of the `telega-chat-use-markdown-version'.
+In case `telega-chat-use-markdown-version' is nil, number of
+`\\[universal-argument]' is used as MARKDOWN-VERSION.
+In case `telega-chat-use-markdown-version' is no-nil, and `\\[universal-argument]' is specified, then nil MARKDOWN-VERSION is used."
+  (interactive (list (if current-prefix-arg
+                         (unless telega-chat-use-markdown-version
+                           (cond ((equal current-prefix-arg '(4)) 1)
+                                 ((equal current-prefix-arg '(16)) 2)
+                                 (t 0)))
+                       telega-chat-use-markdown-version)))
   ;; Send the input
   (let ((input (telega-chatbuf-input-string))
-        (imcs (telega-chatbuf--input-imcs
-               (if telega-chat-use-markdown-formatting
-                   (not arg)
-                 arg)))
+        (imcs (telega-chatbuf--input-imcs markdown-version))
         (replying-msg (telega-chatbuf--replying-msg))
         (editing-msg (telega-chatbuf--editing-msg)))
     (cond

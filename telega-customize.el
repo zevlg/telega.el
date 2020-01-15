@@ -591,13 +591,19 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
-(defcustom telega-chat-use-markdown-formatting nil
+(make-obsolete-variable 'telega-chat-use-markdown-formatting
+                        'telega-chat-use-markdown-version "0.5.6")
+(defcustom telega-chat-use-markdown-version nil
     "*Non-nil to use markdown formatting for outgoing messages.
-Supported markup:
+Used as default value for MARKDOWN-VERSION in
+`telega-chatbuf-input-send' command.
+
+Supported versions are: 0, 1 and 2
+Supported Markup:
   1) *bold text*
   2) _italic text_
-  2.1) __underline text__
-  2.2) ~strike-through-text~
+  2.1) __underline text__    (only for v2)
+  2.2) ~strike through text~ (only for v2)
   3) `inlined code`
   4) ```<language-name-not-displayed>
      first line of multiline preformatted code
@@ -606,7 +612,10 @@ Supported markup:
   5) [link text](http://actual.url)
   6) [username](tg://user?id=<USER-ID>)
 "
-  :type 'boolean
+  :type '(choice (const :tag "Disable markdown" nil)
+                 (const :tag "Markdown v0" 0)
+                 (const :tag "Markdown v1" 1)
+                 (const :tag "Markdown v2" 2))
   :group 'telega-chat)
 
 (defcustom telega-chat-upload-attaches-ahead t
