@@ -293,7 +293,10 @@ If CALLBACK is specified, then get reply message asynchronously."
     (telega-msg-redisplay msg)))
 
 (defun telega-msg-open-video-note (msg)
-  "Open content for videoNote message MSG."
+  "Open content for videoNote message MSG.
+If called with `\\[universal-argument]' prefix, then open with
+external player even if `telega-video-note-play-inline' is
+non-nil."
   (let* ((note (telega--tl-get msg :content :video_note))
          (note-file (telega-file--renew note :video))
          (proc (plist-get msg :telega-ffplay-proc)))
@@ -305,7 +308,8 @@ If CALLBACK is specified, then get reply message asynchronously."
              (telega-msg-redisplay msg)
              (when (telega-file--downloaded-p file)
                (let ((filepath (telega--tl-get file :local :path)))
-                 (if telega-video-note-play-inline
+                 (if (and telega-video-note-play-inline
+                          (not current-prefix-arg))
                      (plist-put msg :telega-ffplay-proc
                                 (telega-ffplay-to-png filepath
                                     (list "-vf" "scale=120:120"
@@ -327,7 +331,10 @@ If CALLBACK is specified, then get reply message asynchronously."
   )
 
 (defun telega-msg-open-animation (msg &optional animation)
-  "Open content for animation message MSG."
+  "Open content for animation message MSG.
+If called with `\\[universal-argument]' prefix, then open with
+external player even if `telega-animation-play-inline' is
+non-nil."
   (let* ((anim (or animation (telega--tl-get msg :content :animation)))
          (anim-file (telega-file--renew anim :animation))
          (proc (plist-get msg :telega-ffplay-proc)))
@@ -339,7 +346,8 @@ If CALLBACK is specified, then get reply message asynchronously."
              (telega-msg-redisplay msg)
              (when (telega-file--downloaded-p file)
                (let ((filename (telega--tl-get file :local :path)))
-                 (if telega-animation-play-inline
+                 (if (and telega-animation-play-inline
+                          (not current-prefix-arg))
                      (plist-put msg :telega-ffplay-proc
                                 (telega-ffplay-to-png filename nil
                                   'telega-animation--ffplay-callback anim))
