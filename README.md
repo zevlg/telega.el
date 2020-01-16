@@ -523,10 +523,12 @@ emacs-nox)?
 **Q**: Is it possible to use markup in outgoing messages?
 
 **A**: Yes, use `C-u RET` to send message with markup, also see
-`telega-chat-use-markdown-formatting`.  Supported markup:
+`telega-chat-use-markdown-version`.  Supported markup:
 
     1. *bold text*
     2. _italic text_
+    2.1) __underline text__    (only for v2)
+    2.2) ~strike through text~ (only for v2)
     3. `inlined code`
     4. ```<language-name-not-displayed>
        first line of multiline preformatted code
