@@ -50,7 +50,8 @@
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-pinned-msg "telega-chat" (chat &optional offline-p callback))
-(declare-function telega-filter-chats "telega-filter"(filter-spec chats-list))
+
+(declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
 (defvar telega-filters--inhibit-list)
 
@@ -1614,7 +1615,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   "Inserter for the CUSTOM filter button in root buffer."
   (let* ((name (car custom))
          (telega-filters--inhibit-list '(has-order))
-         (chats (telega-filter-chats (cdr custom) telega--filtered-chats))
+         (chats (telega-filter-chats telega--filtered-chats (cdr custom)))
          (active-p (not (null chats)))
          (nchats (length chats))
          (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))

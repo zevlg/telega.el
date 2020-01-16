@@ -99,16 +99,16 @@ Have Stoploss 690 Satoshi. í ½í»‘
 (ert-deftest telega-filters ()
   "Test `telega-filter' functionality."
   (should (not (null telega--ordered-chats)))
-  (should (null (telega-filter--test 10 '(not all))))
+  (should (null (telega-chat-match-p 10 '(not all))))
   ;; NOTE: one chat (id=-1001263892563) has "0" order
-  (should (= (length (telega-filter-chats 'all telega--ordered-chats))
+  (should (= (length (telega-filter-chats telega--ordered-chats 'all))
              (1- (length telega--ordered-chats))))
-  (should (telega-filter--test 10 '(not any)))
-  (should (telega-filter--test (car telega--ordered-chats) '(type channel)))
-  (should (telega-filter--test
+  (should (telega-chat-match-p 10 '(not any)))
+  (should (telega-chat-match-p (car telega--ordered-chats) '(type channel)))
+  (should (telega-chat-match-p
            (car telega--ordered-chats) '(all (type channel) (name "chan"))))
   (should-not
-   (telega-filter--test
+   (telega-chat-match-p
     (car telega--ordered-chats) '(name "notmatching")))
   ;; TODO: add more filter tests
   )

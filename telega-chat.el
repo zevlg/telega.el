@@ -60,8 +60,8 @@
 (defvar telega-filters--inhibit-redisplay)
 (defvar telega-filters--inhibit-list)
 (declare-function telega-filters--redisplay "telega-filter")
-(declare-function telega-filter--test "telega-filter" (chat fspec))
-(declare-function telega-filter-chats "telega-filter" (filter-spec chats-list))
+(declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
+(declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 (declare-function telega-filter-default-p "telega-filter" (&optional filter))
 
 ;;; Chatbuf vars
@@ -336,7 +336,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
 (defun telega-chat-brackets (chat)
   "Return CHAT's brackets from `telega-chat-button-brackets'."
   (cdr (seq-find (lambda (bspec)
-                   (telega-filter--test chat (car bspec)))
+                   (telega-chat-match-p chat (car bspec)))
                  telega-chat-button-brackets)))
 
 (defun telega-chat--reorder (chat order)
@@ -429,7 +429,8 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (with-telega-chatbuf chat
       ;; NOTE: if all messages are read (in another telegram client) and
       ;; tracking is enabled, then remove the buffer from tracking
-      (when (and telega-use-tracking (zerop unread-count))
+      (when (and (zerop unread-count)
+                 (telega-chat-match-p chat telega-use-tracking-for))
         (tracking-remove-buffer (current-buffer)))
 
       (telega-chatbuf-mode-line-update)
@@ -808,7 +809,7 @@ LIMIT - number of chats to get (default=100)"
   "Pretty printer for known CHAT button."
   ;; Insert only visible chat buttons
   ;; See https://github.com/zevlg/telega.el/issues/3
-  (let ((visible-p (and (telega-filter-chats nil (list chat))
+  (let ((visible-p (and (telega-filter-chats (list chat))
                         (if telega-search-query
                             (memq chat telega--search-chats)
                           t))))
@@ -820,7 +821,7 @@ LIMIT - number of chats to get (default=100)"
   (let* ((telega-chat-button-width (+ telega-chat-button-width
                                      (/ telega-chat-button-width 2)))
          (telega-filters--inhibit-list '(has-order))
-         (visible-p (telega-filter-chats nil (list chat))))
+         (visible-p (telega-filter-chats (list chat))))
     (when visible-p
       (telega-chat--pp chat))))
 
@@ -1751,7 +1752,7 @@ otherwise set draft only if current input is also draft."
           ;; button instead of the prompt
           ;;  - For channels/groups show JOIN button
           ;;  - For bots show START button
-          (unless (telega-filter-chats 'me-is-member (list chat))
+          (unless (telega-chat-match-p chat 'me-is-member)
             (let ((inhibit-read-only t)
                   (buffer-undo-list t)
                   (chat-type (telega-chat--type chat)))
@@ -2144,17 +2145,17 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
       (telega-chatbuf--cache-msg new-msg)
 
       (when (telega-chatbuf--last-msg-loaded-p new-msg)
-        (let ((node (telega-chatbuf--append-message new-msg)))
-          (when node
-            (when (and telega-use-tracking
-                       (not (plist-get new-msg :is_outgoing))
-                       (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
-              (tracking-add-buffer (current-buffer)))
+        (when-let ((node (telega-chatbuf--append-message new-msg)))
+          (when (and (telega-chat-match-p
+                      telega-chatbuf--chat telega-use-tracking-for)
+                     (not (plist-get new-msg :is_outgoing))
+                     (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
+            (tracking-add-buffer (current-buffer)))
 
-            ;; If message is visibible in some window, then mark it as read
-            ;; see https://github.com/zevlg/telega.el/issues/4
-            (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
-              (telega--viewMessages telega-chatbuf--chat (list new-msg)))))))
+          ;; If message is visibible in some window, then mark it as read
+          ;; see https://github.com/zevlg/telega.el/issues/4
+          (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
+            (telega--viewMessages telega-chatbuf--chat (list new-msg))))))
 
     (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
 
@@ -2273,7 +2274,7 @@ messages."
           (when-let ((node (telega-chatbuf--node-by-msg-id msg-id))
                      (msg (ewoc--node-data node)))
             (plist-put msg :telega-is-deleted-message t)
-            (if (telega-filter--test (telega-msg-chat msg)
+            (if (telega-chat-match-p (telega-msg-chat msg)
                                      telega-chat-show-deleted-messages-for)
                 (telega-msg-redisplay msg node)
               (ewoc-delete telega-chatbuf--ewoc node)))
@@ -3264,7 +3265,7 @@ With prefix arg delete only for yourself."
                                        "query_kill_message")))
           (telega-msg-delete0 msg revoke)
 
-          (if (telega-filter--test telega-chatbuf--chat
+          (if (telega-chat-match-p telega-chatbuf--chat
                                    telega-chat-show-deleted-messages-for)
               (telega-help-message
                   'telega-chat-show-deleted-messages-for 'double-delete

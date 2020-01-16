@@ -123,10 +123,13 @@ where PROXY-TYPE is one of:
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-use-tracking nil
-  "*Non-nil to enable builtin tracking.el support.
-Make sure you have tracking.el loaded if this option is enabled."
-  :type 'boolean
+(make-obsolete-variable 'telega-use-tracking
+                        'telega-use-tracking-for "0.5.7")
+(defcustom telega-use-tracking-for nil
+  "*Specifies chat filter to add chats to tracking.el.
+Make sure you have tracking.el loaded if this option is used."
+  :type 'list
+  :options '(not (or saved-messages (type channel bot)))
   :group 'telega)
 
 (defcustom telega-use-images (or (and (fboundp 'image-transforms-p)
@@ -383,7 +386,9 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
     ((type supergroup) "[" "]")
     ((type channel)    "<" ">")
     (all               "[" "]"))
-  "Brackets to use for chat button."
+  "Brackets to use for chat button.
+Each element is in form:
+  (<CHAT-FILTER> <OPEN-BRACKET> <CLOSE-BRACKET>)"
   :type 'list
   :group 'telega-root)
 

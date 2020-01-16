@@ -21,6 +21,28 @@
 
 ;;; Commentary:
 
+;; Chat Filters are used to match chats, same as regexps are used to
+;; match strings.  Chat Filters uses S-exp notation similar to `rx'
+;; package for regexps.
+;;
+;; Primitive Chat Filter is a specifier to match some property of the
+;; chat.  Each primitive Chat Filter has name (elisp symbol) and
+;; corresponding function named `telega--filter-<FILTER-NAME>'.
+;; You can specify primitive Chat Filter in either way:
+;;   1) <FILTER-NAME>
+;;   2) ( <FILTER-NAME> <ARG1> [<ARG2> ...] )
+;;
+;; Primitive Chat Filters are combined using `and', `or' and `not'
+;; filters, forming final Chat Filter, so Chat Filter is a logical
+;; combination of other Chat Filters, down to primitive Chat Filters.
+;;
+;; Chat Filter examples:
+;;   - (or saved-messages (type channel bot))
+;;       Matches bots/channels chats or "Saved Messages" chat
+;;
+;;   - (and unmuted (unread 10) (mention 1))
+;;       Matches unmuted chats with at least 10 unread messages and at
+;;       least one message with unread mention
 ;;
 
 ;;; Code:
@@ -172,13 +194,13 @@ filters buttons.
 Used on search results updates."
   (if telega-search-query
       (setq telega--filtered-chats
-            (nconc (telega-filter-chats nil telega--search-chats)
-;                   (telega-filter-chats nil (telega-root--messages-chats))
+            (nconc (telega-filter-chats telega--search-chats)
+;                   (telega-filter-chats (telega-root--messages-chats))
                    (let ((telega-filters--inhibit-list '(has-order)))
-                     (telega-filter-chats nil (telega-root--global-chats)))))
+                     (telega-filter-chats (telega-root--global-chats)))))
 
     (setq telega--filtered-chats
-          (telega-filter-chats nil telega--ordered-chats)))
+          (telega-filter-chats telega--ordered-chats)))
 
   (if no-root-redisplay
       (telega-filters--redisplay)
@@ -192,7 +214,7 @@ Used on search results updates."
     ;; Fast version of what is done in `telega-filters-apply'
     (setq telega--filtered-chats
           (delq chat telega--filtered-chats))
-    (when (telega-filter-chats nil (list chat))
+    (when (telega-filter-chats (list chat))
       (setq telega--filtered-chats
             (push chat telega--filtered-chats)))
     (telega-filters--redisplay)))
@@ -232,17 +254,22 @@ Do not add FSPEC if it is already in the list."
     (telega-filters-push
      (append (telega-filter-active) (list fspec)))))
 
-(defun telega-filter-chats (filter-spec chats-list)
-  "Filter CHATS-LIST matching filter specification FILTER-SPEC.
-If FILTER-SPEC is nil, then currently active filters are used."
-  (let ((fspec (or filter-spec (telega-filters--prepare))))
-    (cl-remove-if-not
-     (lambda (chat)
-       ;; Filter out chats we are not member of
-       ;; See https://github.com/zevlg/telega.el/issues/10
-       (and (telega-filter--test chat fspec)
-            (telega-filter--test chat 'has-order)))
-     chats-list)))
+(defun telega-filter-chats (chat-list &optional chat-filter)
+  "Match chats in CHAT-LIST against CHAT-FILTER.
+Return list of chats that matches CHAT-FILTER.
+Return only chats with non-0 order.
+If CHAT-FILTER is ommited, then active filters from
+`telega--filters' is used as CHAT-FILTER."
+  (unless chat-filter
+    (setq chat-filter (telega-filters--prepare)))
+
+  (cl-remove-if-not
+   (lambda (chat)
+     ;; Filter out chats we are not member of
+     ;; See https://github.com/zevlg/telega.el/issues/10
+     (and (telega-chat-match-p chat chat-filter)
+          (telega-chat-match-p chat 'has-order)))
+   chat-list))
 
 (defun telega-filters-reset ()
   "Reset all active filters to default."
@@ -300,40 +327,41 @@ ARGS specifies arguments to operation, first must always be chat."
     `(defun ,fsym ,args
        ,@body)))
 
-(defun telega-filter--get (fname)
-  (if (memq fname telega-filters--inhibit-list)
-    (lambda (&rest _ignored) t)
+(defun telega-filter--get (filter-name)
+  "Return function corresponding to primitive Chat Filter named FILTER-NAME."
+  (if (memq filter-name telega-filters--inhibit-list)
+      (lambda (&rest _ignored) t)
 
-    (let ((fsym (intern (format "telega--filter-%S" fname))))
+    (let ((fsym (intern (format "telega--filter-%S" filter-name))))
       (unless (fboundp fsym)
         (error (concat "Filter function `%S' for filter \"%s\" is undefined.\n"
                        "Use `define-telega-filter' to define new filters.")
-               fsym fname))
+               fsym filter-name))
       (symbol-function fsym))))
 
-(defun telega-filter--test (chat fspec)
-  "Return non-nil if CHAT matches filters specified by FSPEC."
-  (cond ((null fspec) nil)
-        ((symbolp fspec)
-         (funcall (telega-filter--get fspec) chat))
-        ((consp fspec)
-         (apply (telega-filter--get (car fspec)) chat (cdr fspec)))
-        (t (error "Invalid filter spec: %s" fspec))))
+(defun telega-chat-match-p (chat chat-filter)
+  "Return non-nil if CHAT-FILTER matches CHAT."
+  (cond ((null chat-filter) nil)
+        ((symbolp chat-filter)
+         (funcall (telega-filter--get chat-filter) chat))
+        ((consp chat-filter)
+         (apply (telega-filter--get (car chat-filter)) chat (cdr chat-filter)))
+        (t (error "Invalid Chat Filter: %S" chat-filter))))
 
 (define-telega-filter any (chat &rest flist)
-  "Return non-nil if CHAT matches any of filter in FLIST."
-  (cl-find chat flist :test #'telega-filter--test))
+  "Return non-nil if any of the chat filter in FLIST matches CHAT."
+  (cl-find chat flist :test #'telega-chat-match-p))
 (defalias 'telega--filter-or 'telega--filter-any)
 
 (define-telega-filter all (chat &rest flist)
-  "Return non-nil if CHAT matches all filters in FLIST.
+  "Return non-nil if all chat filters in FLIST matches CHAT.
 If FLIST is empty then return t."
-  (not (cl-find chat flist :test-not #'telega-filter--test)))
+  (not (cl-find chat flist :test-not #'telega-chat-match-p)))
 (defalias 'telega--filter-and 'telega--filter-all)
 
-(define-telega-filter not (chat fspec)
-  "Negage filter FSPEC."
-  (not (telega-filter--test chat fspec)))
+(define-telega-filter not (chat chat-filter)
+  "Negage effect of the CHAT-FILTER."
+  (not (telega-chat-match-p chat chat-filter)))
 
 (defun telega-filters-negate ()
   "Negate active filters."
@@ -369,10 +397,10 @@ Use `telega-filter-by-name' for fuzzy searching."
 
 (define-telega-filter custom (chat name)
   "Matches CHAT if custom filter with NAME matches."
-  (let ((fspec (cdr (assoc name telega-filters-custom))))
-    (unless fspec
-      (error "No such custom filter \"%s\"" name))
-    (telega-filter--test chat fspec)))
+  (let ((chat-filter (cdr (assoc name telega-filters-custom))))
+    (unless chat-filter
+      (error "No such custom chat filter \"%s\"" name))
+    (telega-chat-match-p chat chat-filter)))
 
 (defun telega-filter-by-custom (name)
   "Filter by custom filter."

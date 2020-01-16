@@ -41,7 +41,7 @@
 
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
-    (:eval (when telega-use-tracking
+    (:eval (when telega-use-tracking-for
              (telega-mode-line-tracking)))
     (:eval (telega-mode-line-unread-unmuted))
     (:eval (telega-mode-line-mentions 'messages)))
@@ -127,7 +127,7 @@ If MESSAGES-P is non-nil then use number of unread unmuted messages."
 (defun telega-mode-line-mentions (&optional messages-p)
   "Format number of chats/messages with mentions.
 If MESSAGES-P is non-nil then use number of messages with mentions."
-  (let* ((m-chats (telega-filter-chats '(mention) telega--ordered-chats))
+  (let* ((m-chats (telega-filter-chats telega--ordered-chats '(mention)))
          (m-count (if messages-p
                       (apply '+ (mapcar (telega--tl-prop :unread_mention_count) m-chats))
                     (length m-chats))))

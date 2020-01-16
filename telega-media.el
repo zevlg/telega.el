@@ -39,8 +39,6 @@
 
 (declare-function telega-msg-redisplay "telega-msg" (msg))
 
-(declare-function telega-filter-chats "telega-filter" (filter-spec chats-list))
-
 
 ;;; Files downloading/uploading
 (defun telega--getFile (file-id &optional callback)

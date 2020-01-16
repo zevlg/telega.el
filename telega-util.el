@@ -472,8 +472,8 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
   (let ((choices (mapcar (lambda (chat)
                            (list (telega-chat-title chat 'with-username)
                                  chat))
-                         (telega-filter-chats (and (not only-filtered) 'all)
-                                              telega--ordered-chats))))
+                         (telega-filter-chats
+                          telega--ordered-chats (and (not only-filtered) 'all)))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))
@@ -502,7 +502,7 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
   "Return list of titles ready for completing.
 KIND is one of `chats', `users' or nil."
   (let ((result))
-    (dolist (chat (telega-filter-chats 'all telega--ordered-chats))
+    (dolist (chat (telega-filter-chats telega--ordered-chats 'all))
       (setq result (cl-pushnew (telega-chat-title chat 'with-username) result
                                :test #'string=)))
     (dolist (user (hash-table-values (alist-get 'user telega--info)))

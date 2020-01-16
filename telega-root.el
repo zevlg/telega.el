@@ -180,7 +180,7 @@ Global root bindings:
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t)
 
   (cursor-sensor-mode 1)
-  (when telega-use-tracking
+  (when telega-use-tracking-for
     (tracking-mode 1)))
 
 (defun telega-root--killed ()
@@ -561,8 +561,8 @@ If used with PREFIX-ARG, then cancel current search."
       ;; (setq telega--search-contacts
       ;;       (cl-remove-if (lambda (contact)
       ;;                       (telega-filter-chats
-      ;;                        (list 'ids (plist-get contact :id))
-      ;;                        telega--search-chats))
+      ;;                        telega--search-chats
+      ;;                        (list 'ids (plist-get contact :id))))
       ;;                     (telega--searchContacts query)))
       (dolist (contact telega--search-contacts)
         (ewoc-enter-last telega-contacts--ewoc contact))

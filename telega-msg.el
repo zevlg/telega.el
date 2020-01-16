@@ -100,13 +100,12 @@
   ;; see `telega-chat-group-messages-for'
   (let* ((chat (telega-msg-chat msg))
          (msg-inserter
-         (cond ((and (telega-filter--test
-                      chat telega-chat-show-deleted-messages-for)
+         (cond ((and (telega-chat-match-p chat telega-chat-show-deleted-messages-for)
                      (plist-get msg :telega-is-deleted-message))
                 'telega-ins--message-deleted)
                ((telega-msg-ignored-p msg)
                 'telega-ins--message-ignored)
-               ((and (telega-filter--test chat telega-chat-group-messages-for)
+               ((and (telega-chat-match-p chat telega-chat-group-messages-for)
                      (> (point) 3)
                      (let ((prev-msg (telega-msg-at (- (point) 2))))
                        (and prev-msg
@@ -121,12 +120,11 @@
 
 (defun telega-msg-root--pp (msg)
   "Pretty printer for MSG button shown in root buffer."
-  (let ((visible-p (telega-filter-chats nil (list (telega-msg-chat msg)))))
-    (when visible-p
-      (telega-button--insert 'telega-msg msg
-        :inserter 'telega-ins--root-msg
-        :action 'telega-msg-goto-highlight)
-      (telega-ins "\n"))))
+  (when (telega-filter-chats (list (telega-msg-chat msg))) ; visible-p
+    (telega-button--insert 'telega-msg msg
+      :inserter 'telega-ins--root-msg
+      :action 'telega-msg-goto-highlight)
+    (telega-ins "\n")))
 
 (defun telega-msg--get (chat-id msg-id &optional locally-p callback)
   "Get message by CHAT-ID and MSG-ID pair.

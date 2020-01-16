@@ -37,7 +37,7 @@
 (declare-function telega-describe-chat "telega-chat" (chat))
 (declare-function telega-chat-generate-invite-link "telega-chat" (chat-id))
 
-(declare-function telega-filter-chats "telega-filter"(filter-spec chats-list))
+(declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
 
 ;; Info
@@ -89,11 +89,11 @@
     (telega--info-update secretchat)
 
     ;; update corresponding secret chat button
-    (let ((chat (cl-find secretchat
-                         (telega-filter-chats '(type secret) telega--ordered-chats)
-                         :test 'eq :key #'telega-chat--info)))
-      (when chat
-        (telega-root--chat-update chat)))))
+    (when-let ((chat (cl-find secretchat
+                              (telega-filter-chats
+                               telega--ordered-chats '(type secret))
+                              :test 'eq :key #'telega-chat--info)))
+      (telega-root--chat-update chat))))
 
 ;; FullInfo
 (defun telega--on-updateUserFullInfo (event)
