@@ -1460,7 +1460,7 @@ PROMPT is one of: `input', `reply', `edit'."
   ;; `telega-ins--as-string', so save it before
   (let ((chat telega-chatbuf--chat))
     (telega-ins--as-string
-     (when (telega-chat-match-p chat telega-chat-input-show-avatar-for)
+     (when (telega-chat-match-p chat telega-chat-prompt-show-avatar-for)
        (telega-ins--image
         (telega-chat-avatar-image-one-line chat)))
      (telega-ins (cl-ecase prompt

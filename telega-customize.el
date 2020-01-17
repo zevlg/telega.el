@@ -45,6 +45,11 @@
   :type 'string
   :group 'telega)
 
+(defcustom telega-ton-keystore-dir (expand-file-name "ton_keys" telega-directory)
+  "*Keystore directory for TON."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-language "en"
   "*IETF language tag of the user's language."
   :type 'string
@@ -579,11 +584,11 @@ Used when showing chat members list."
   :type 'string
   :group 'telega)
 
-(defcustom telega-chat-input-show-avatar-for
+(defcustom telega-chat-prompt-show-avatar-for
   (when telega-use-images
     '(and has-avatar
           (permission :can_send_messages)))
-  "*Chat Filter for which chats to show avator nearby the input prompt."
+  "*Chat Filter for which chats to show avator nearby the prompt."
   :type 'list
   :group 'telega-chat)
 
