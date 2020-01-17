@@ -128,11 +128,10 @@ where PROXY-TYPE is one of:
   :type 'boolean
   :group 'telega)
 
-(make-obsolete-variable 'telega-use-tracking
-                        'telega-use-tracking-for "0.5.7")
 (defcustom telega-use-tracking-for nil
   "*Specifies chat filter to add chats to tracking.el.
 Make sure you have tracking.el loaded if this option is used."
+  :package-version '(telega . "0.5.7")
   :type 'list
   :options '(not (or saved-messages (type channel bot)))
   :group 'telega)
@@ -244,8 +243,6 @@ cdr is maximum width in chars to use."
   :type 'boolean
   :group 'telega)
 
-(make-obsolete-variable 'telega-avatar-factors
-                        'telega-avatar-factors-alist "0.5.8")
 (defcustom telega-avatar-factors-alist
   '((1 . (0.8 . 0.1))
     (2 . (0.6 . 0.1)))
@@ -253,6 +250,7 @@ cdr is maximum width in chars to use."
 Each element is in form:
   (CHEIGHT CIRCLE-FACTOR . MARGIN-FACTOR)
 See `telega-avatar--create-img' for more info."
+  :package-version '(telega . "0.5.8")
   :type 'alist
   :group 'telega)
 
@@ -613,10 +611,8 @@ NOT YET IMPLEMENTED"
   :type 'boolean
   :group 'telega-chat)
 
-(make-obsolete-variable 'telega-chat-use-markdown-formatting
-                        'telega-chat-use-markdown-version "0.5.6")
 (defcustom telega-chat-use-markdown-version nil
-    "*Non-nil to use markdown formatting for outgoing messages.
+  "*Non-nil to use markdown formatting for outgoing messages.
 Used as default value for MARKDOWN-VERSION in
 `telega-chatbuf-input-send' command.
 
@@ -634,6 +630,7 @@ Supported Markup:
   5) [link text](http://actual.url)
   6) [username](tg://user?id=<USER-ID>)
 "
+  :package-version '(telega . "0.5.6")
   :type '(choice (const :tag "Disable markdown" nil)
                  (const :tag "Markdown v0" 0)
                  (const :tag "Markdown v1" 1)

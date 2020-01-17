@@ -117,7 +117,7 @@ Search: [here is something to search]
 
 Recent Chats
 ------------
-                           
+
 [Saved Messages                  4]p
     14:15V some photo here
 [Pig's Thursday               32@2]p
@@ -168,7 +168,7 @@ Users
 PIC Vasya Pupkin @vpupkin     2    last seen recently
    14:15V some photo here
 PIC Evgeny Zajcev @zevlg           last seen long ago
-   FriW message from me        
+   FriW message from me
 
 Channels
 --------
@@ -224,13 +224,13 @@ Filters:
 Вариант как может ещё выглядеть:   (самый нормальный и мощный)
 
     Status: Auth Closed
-    
+
     [276  All          1940@1] [191  Groups&Users    568@1]
     [80   Groups        568@1] [27   Bots                 ]
     [58   Channels       1372]
-    
+
     -------------------------((custom "Groups"))-------------------------
-    
+
     [Saved Messages                  4]p
         14:15V some photo here
     [Pig's Thursday               32@2]p
@@ -395,7 +395,7 @@ Prompts
 
 Normal:
     __________________________
-    >>> [] 
+    >>> []
 
 Edit:
     __________________________
@@ -426,7 +426,7 @@ continue message message                   12:20w
 
 with reply markup
 ~~~~~~~~~~~~~~~~~
-   
+
 [AH] @vpupkin
 [AL] | Reply: @user> msagsac
      messgasaoenth
@@ -477,7 +477,7 @@ ____(@zevlg is typing...)_______________________
 
 - [TODO] Labeled chats.  Чату можно назначить label и он показывается
   как префикс у имени чата.  По label можно фильтровать чаты.
- 
+
     [*ITV* | chat1     ]
     [*Emacs* | chat2   ]           - [DONE]
 

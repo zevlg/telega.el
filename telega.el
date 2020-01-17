@@ -320,5 +320,6 @@ area."
 ;; `telega-symbol-widths'
 (run-hooks 'telega-load-hook)
 (telega-symbol-widths-install telega-symbol-widths)
+(require 'telega-obsolete)
 
 ;;; telega.el ends here
