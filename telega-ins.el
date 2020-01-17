@@ -42,6 +42,7 @@
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-chat-avatar-image "telega-chat" (chat))
+(declare-function telega-chat-avatar-image-one-line "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
 (declare-function telega-chat-secret-p "telega-chat" (chat))
 (declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
@@ -1703,8 +1704,7 @@ Return t."
         (custom-order (telega-chat-uaprop chat :order))
         (muted-p (telega-chat-muted-p chat))
         (chat-type (telega-chat--type chat 'no-interpret))
-        (chat-info (telega-chat--info chat))
-        (chat-ava (plist-get chat :telega-avatar-1)))
+        (chat-info (telega-chat--info chat)))
     (when (plist-get chat-info :is_verified)
       (setq title (concat title telega-symbol-verified)))
     (when (telega-chat-secret-p chat)
@@ -1727,6 +1727,8 @@ Return t."
                              (list :face 'telega-chat-label))
                             title))))
 
+    (when telega-root-show-avatars
+      (telega-ins--image (telega-chat-avatar-image-one-line chat)))
     (telega-ins (or (car brackets) "["))
 
     ;; 1) First we format unread@mentions as string to find out its
@@ -1771,8 +1773,6 @@ Return t."
                                     :max title-width
                                     :align 'left
                                     :elide t)
-        (when chat-ava
-          (telega-ins--image chat-ava))
         (telega-ins title)
         (telega-ins--chat-online-status chat))
       (telega-ins umstring))

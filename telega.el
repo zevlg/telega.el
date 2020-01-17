@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.5.7
-(defconst telega-version "0.5.7")
+;; Version: 0.5.8
+(defconst telega-version "0.5.8")
 (defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.5.4")
 
@@ -73,6 +73,8 @@
     (mkdir telega-cache-dir))
   (ignore-errors
     (mkdir telega-temp-dir))
+  (ignore-errors
+    (mkdir telega-ton-keystore-dir))
   )
 
 ;;;###autoload

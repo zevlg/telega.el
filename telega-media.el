@@ -443,38 +443,43 @@ CHEIGHT is the height in chars (default=1)."
    (plist-get audio :album_cover_thumbnail)
    (plist-get audio :album_cover_minithumbnail)))
 
-(defun telega-media--image-update (obj-spec file)
+(defun telega-media--image-update (obj-spec file &optional cache-prop)
   "Called to update the image contents for the OBJ-SPEC.
 OBJ-SPEC is cons of object and create image function.
 Create image function accepts two arguments - object and FILE.
-Return updated image, cached or created with create image function."
-  (let ((cached-image (plist-get (car obj-spec) :telega-image))
+Return updated image, cached or created with create image function.
+
+CACHE-PROP specifies property name to cache image at OBJ-SPEC.
+Default is `:telega-image'."
+  (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image)))
         (simage (funcall (cdr obj-spec) (car obj-spec) file)))
     (unless (equal cached-image simage)
       ;; Update the image
       (if cached-image
           (setcdr cached-image (cdr simage))
         (setq cached-image simage))
-      (plist-put (car obj-spec) :telega-image cached-image))
+      (plist-put (car obj-spec) (or cache-prop :telega-image) cached-image))
     cached-image))
 
-(defun telega-media--image (obj-spec file-spec &optional force-update)
+(defun telega-media--image (obj-spec file-spec &optional force-update cache-prop)
   "Return image for media object specified by OBJ-SPEC.
-File is specified with FILE-SPEC."
-  (let ((cached-image (plist-get (car obj-spec) :telega-image)))
+File is specified with FILE-SPEC.
+CACHE-PROP specifies property name to cache image at OBJ-SPEC.
+Default is `:telega-image'."
+  (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image))))
     (when (or force-update (not cached-image))
       (let ((media-file (telega-file--renew (car file-spec) (cdr file-spec))))
         ;; First time image is created or update is forced
         (setq cached-image
-              (telega-media--image-update obj-spec media-file))
+              (telega-media--image-update obj-spec media-file cache-prop))
 
         ;; Possible initiate file downloading
         (when (or (telega-file--need-download-p media-file)
                   (telega-file--downloading-p media-file))
           (telega-file--download media-file nil
             (lambda (dfile)
-              (cl-assert (plist-get (car obj-spec) :telega-image))
-              (telega-media--image-update obj-spec dfile)
+              (cl-assert (plist-get (car obj-spec) (or cache-prop :telega-image)))
+              (telega-media--image-update obj-spec dfile cache-prop)
               (force-window-update))))))
     cached-image))
 
@@ -510,16 +515,21 @@ File is specified with FILE-SPEC."
      (cons best :photo)
      'force-update)))
 
-(defun telega-avatar--create-image (chat-or-user file)
-  "Create image for CHAT-OR-USER avatar."
+(defun telega-avatar--create-image (chat-or-user file &optional cheight)
+  "Create image for CHAT-OR-USER avatar.
+CHEIGHT specifies avatar height in chars, default is 2."
+  ;; NOTE: for CHEIGHT==1 align avatar at vertical center, otherwise
+  ;; stick to the top
+  (unless cheight (setq cheight 2))
   (let* ((photofile (telega--tl-get file :local :path))
-         (cfactor (or (car telega-avatar-factors) 0.9))
-         (mfactor (or (cdr telega-avatar-factors) 0.1))
-         (xh (telega-chars-xheight 2))
+         (factors (alist-get cheight telega-avatar-factors-alist))
+         (cfactor (or (car factors) 0.9))
+         (mfactor (or (cdr factors) 0.1))
+         (xh (telega-chars-xheight cheight))
          (margin (* mfactor xh))
          (ch (* cfactor xh))
          (cfull (+ ch margin))
-         (aw-chars (telega-chars-in-width cfull))
+         (aw-chars (telega-chars-in-width ch))
          (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
          (xw (telega-chars-xwidth aw-chars))
          (svg (svg-create xw xh))
@@ -560,10 +570,16 @@ File is specified with FILE-SPEC."
                       :mask 'heuristic
                       ;; Correct text for tty-only avatar display
                       :telega-text
-                      (list (concat "(" (substring name 0 1) ")"
+                      (cons (concat "(" (substring name 0 1) ")"
                                     (make-string aw-chars-3 ?\u00A0))
-                            (make-string (+ 3 aw-chars-3) ?\u00A0))
-     )))
+                            (mapcar (lambda (_ignore)
+                                      (make-string (+ 3 aw-chars-3) ?\u00A0))
+                                    (make-list (1- cheight) 'not-used))))
+    ))
+
+(defun telega-avatar--create-image-one-line (chat-or-user file)
+  "Avatar creator for one line use."
+  (telega-avatar--create-image chat-or-user file 1))
 
 (defun telega-symbol-emojify (emoji)
   "Attach `display' property with emoji svg to EMOJI string.

@@ -510,6 +510,10 @@ Also matches chats marked as unread."
   "Filter chats which non-0 order."
   (not (string= "0" (plist-get chat :order))))
 
+(define-telega-filter has-avatar (chat)
+  "Filter chats which has avatar photo."
+  (plist-get chat :photo))
+
 (define-telega-filter opened (chat)
   "Filter chats that are opened, i.e. has corresponding chat buffer."
   (with-telega-chatbuf chat
@@ -519,6 +523,31 @@ Also matches chats marked as unread."
   "Filter chats that are opened."
   (interactive)
   (telega-filter-add 'opened))
+
+(define-telega-filter permission (chat perm)
+  "Matches CHAT if it has PERM set in chat permissions.
+PERM could be one of:
+`:can_send_messages',`:can_send_media_messages', `:can_send_polls',
+`:can_send_other_messages', `:can_add_web_page_previews',
+`:can_change_info', `:can_invite_users', `:can_pin_messages'"
+  (plist-get (plist-get chat :permissions) perm))
+
+(defun telega-filter-by-permission (perm)
+  "Filter chats by allowed permission PERM."
+  (interactive
+   (let ((str-perm (funcall telega-completing-read-function
+                            "Chat permission: "
+                            '("can_send_messages"
+                              "can_send_media_messages"
+                              "can_send_polls"
+                              "can_send_other_messages"
+                              "can_add_web_page_previews"
+                              "can_change_info"
+                              "can_invite_users"
+                              "can_pin_messages")
+                            nil t)))
+     (list (intern (concat ":" str-perm)))))
+  (telega-filter-add (list 'permission perm)))
 
 (define-telega-filter restriction (chat &rest suffixes)
   "Filter restricted chats.

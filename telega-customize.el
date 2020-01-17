@@ -239,12 +239,16 @@ cdr is maximum width in chars to use."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-avatar-factors '(0.6 . 0.1)
-  "*Factors for avatar generation.
-car is factor for circle
-cdr is factor for margin.
+(make-obsolete-variable 'telega-avatar-factors
+                        'telega-avatar-factors-alist "0.5.8")
+(defcustom telega-avatar-factors-alist
+  '((1 . (0.8 . 0.1))
+    (2 . (0.6 . 0.1)))
+  "*Alist of size coefficients used in avatar creation.
+Each element is in form:
+  (CHEIGHT CIRCLE-FACTOR . MARGIN-FACTOR)
 See `telega-avatar--create-img' for more info."
-  :type 'cons
+  :type 'alist
   :group 'telega)
 
 (defcustom telega-vvnote-waves-height-factor 0.75
@@ -362,6 +366,11 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
 
 (defcustom telega-root-keep-cursor t
   "*Non-nil to keep cursor at current chat even if chat's order changes."
+  :type 'boolean
+  :group 'telega-root)
+
+(defcustom telega-root-show-avatars telega-use-images
+  "*Non-nil to show chat avatars in root buffer."
   :type 'boolean
   :group 'telega-root)
 
@@ -570,10 +579,13 @@ Used when showing chat members list."
   :type 'string
   :group 'telega)
 
-(defcustom telega-chat-fwd-prompt telega-chat-input-prompt
-  "*Prompt to use when forwarding message."
-  :type 'string
-  :group 'telega)
+(defcustom telega-chat-input-show-avatar-for
+  (when telega-use-images
+    '(and has-avatar
+          (permission :can_send_messages)))
+  "*Chat Filter for which chats to show avator nearby the input prompt."
+  :type 'list
+  :group 'telega-chat)
 
 (defcustom telega-chat-input-ring-size 50
   "*Size of the chat input history."

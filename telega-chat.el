@@ -1453,6 +1453,21 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
            (telega-ins "\n")))
        ))))
 
+(defun telega-chatbuf--prompt (prompt)
+  "Generate string to be used as chatbuf's input prompt.
+PROMPT is one of: `input', `reply', `edit'."
+  ;; NOTE: `telega-chatbuf--chat' will be overwritten in
+  ;; `telega-ins--as-string', so save it before
+  (let ((chat telega-chatbuf--chat))
+    (telega-ins--as-string
+     (when (telega-chat-match-p chat telega-chat-input-show-avatar-for)
+       (telega-ins--image
+        (telega-chat-avatar-image-one-line chat)))
+     (telega-ins (cl-ecase prompt
+                   (input telega-chat-input-prompt)
+                   (reply telega-chat-reply-prompt)
+                   (edit telega-chat-edit-prompt))))))
+
 (defun telega-chatbuf--footer-redisplay ()
   "Redisplay chatbuf's footer.
 Update modeline as well."
@@ -1517,7 +1532,8 @@ Global chat bindings:
         (telega-button--insert 'telega-prompt-aux "!aa!"
           'invisible t))
   (setq telega-chatbuf--prompt-button
-        (telega-button--insert 'telega-prompt telega-chat-input-prompt))
+        (telega-button--insert 'telega-prompt
+            (telega-chatbuf--prompt 'input)))
 
   (setq telega-chatbuf--input-marker (point-marker))
 
@@ -1704,7 +1720,7 @@ If TITLE is specified, use it instead of chat's title."
          'invisible t))
 
       (telega-button--update-value
-       telega-chatbuf--prompt-button telega-chat-input-prompt
+       telega-chatbuf--prompt-button (telega-chatbuf--prompt 'input)
        'invisible prompt-invisible-p))))
 
 (defun telega-chatbuf--input-draft (draft-msg &optional force)
@@ -3153,7 +3169,7 @@ MSG can be nil in case there is no active voice message."
      'invisible nil)
 
     (telega-button--update-value
-     telega-chatbuf--prompt-button telega-chat-reply-prompt)
+     telega-chatbuf--prompt-button (telega-chatbuf--prompt 'reply))
     (goto-char (point-max))
 
     (telega-help-message--cancel-aux 'reply)))
@@ -3172,7 +3188,7 @@ MSG can be nil in case there is no active voice message."
      'invisible nil)
 
     (telega-button--update-value
-     telega-chatbuf--prompt-button telega-chat-edit-prompt)
+     telega-chatbuf--prompt-button (telega-chatbuf--prompt 'edit))
 
     ;; Replace any input text with edited message
     (delete-region telega-chatbuf--input-marker (point-max))
@@ -3358,11 +3374,19 @@ If HIGHLIGHT is non-nil then highlight with fading background color."
           (telega-chat--goto-msg0 chat msg-id highlight))))))
 
 (defun telega-chat-avatar-image (chat)
-  "Return avatar for the USER."
+  "Return avatar for the CHAT."
   (let ((photo (plist-get chat :photo)))
     (telega-media--image
      (cons chat 'telega-avatar--create-image)
      (cons photo :small))))
+
+(defun telega-chat-avatar-image-one-line (chat)
+  "Return avatar for the CHAT for one line use."
+  (let ((photo (plist-get chat :photo)))
+    (telega-media--image
+     (cons chat 'telega-avatar--create-image-one-line)
+     (cons photo :small)
+     nil :telega-avatar-1)))
 
 (defun telega-chat-dnd-dispatcher (uri action)
   "DND open function for telega.
