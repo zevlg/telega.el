@@ -780,6 +780,11 @@ If REGION-P is non-nil, then make a screenshot of region."
       (write-region (shell-command-to-string flameshot-cmd)
                     nil tofile nil 'quiet))))
 
+(defun telega-screenshot-with-pngpaste (tofile &optional region-p)
+  "Make a screenshot into TOFILE using `pngpaste' utility.
+If REGION-P is non-nil, then make a screenshot of region."
+  (error "TODO: `telega-screenshot-with-pngpaste' not yet implemented"))
+
 (defun telega-help-message (sym prop fmt &rest fmt-args)
   "Show once help message formatted with FMT and FMT-ARGS.
 Show message only if `telega-help-messages' is non-nil.
