@@ -183,17 +183,19 @@ Return parsed command."
 (defvar telega-server--last-error)
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
-  (cond ((string= cmd "event")
+  (cond ((or (string= cmd "event")
+             (string= cmd "ton-event"))
          (let* ((extra (plist-get value :@extra))
                 (call-cb (telega-server--callback-get extra)))
            (if call-cb
                (telega-server--callback-rm extra)
              (setq call-cb telega-server--on-event-func))
 
-           (telega-debug "%s event: %S" (propertize "IN" 'face 'bold) value)
+           (telega-debug "%s %s: %S" cmd (propertize "IN" 'face 'bold) value)
 
            ;; Function call may return errors
            (if (or (not (telega--tl-error-p value))
+                   (string= cmd "ton-event")
                    ;; If the error code is 406, the error message must
                    ;; not be processed in any way and must not be
                    ;; displayed to the user
@@ -211,9 +213,6 @@ Return parsed command."
 
         ((string= cmd "error")
          (telega--on-error value))
-
-        ((string= cmd "ton-event")
-         (message "TODO: `ton-event'"))
 
         (t
          (telega-debug "%s %s: %S" (propertize "IN" 'face 'bold) cmd value)
@@ -283,14 +282,15 @@ Return parsed command."
     (process-send-string proc value)
     (process-send-string proc "\n")))
 
-(defun telega-server--call (sexp &optional callback)
+(defun telega-server--call (sexp &optional callback command)
   "Same as `telega-server--send', but waits for answer from telega-server.
 If CALLBACK is specified, then make async call and call CALLBACK
 when result is received.
-If CALLBACK is specified return `:@extra' value used for the call."
+If CALLBACK is specified return `:@extra' value used for the call.
+COMMAND is passed directly to `telega-server--send'."
   (unless (plist-get sexp :@extra)
     (setq sexp (plist-put sexp :@extra (cl-incf telega-server--extra))))
-  (telega-server--send sexp)
+  (telega-server--send sexp command)
 
   (if callback
       (progn
