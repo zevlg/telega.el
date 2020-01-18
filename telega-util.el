@@ -783,7 +783,10 @@ If REGION-P is non-nil, then make a screenshot of region."
 (defun telega-screenshot-with-pngpaste (tofile &optional region-p)
   "Make a screenshot into TOFILE using `pngpaste' utility.
 If REGION-P is non-nil, then make a screenshot of region."
-  (error "TODO: `telega-screenshot-with-pngpaste' not yet implemented"))
+  (let ((pngpaste-cmd (concat (or (executable-find "pngpaste")
+                                   (error "Utility `pngpaste' not found"))
+                              " " tofile)))
+    (call-process-shell-command pngpaste-cmd)))
 
 (defun telega-help-message (sym prop fmt &rest fmt-args)
   "Show once help message formatted with FMT and FMT-ARGS.

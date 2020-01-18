@@ -2818,7 +2818,10 @@ Multiple `C-u' increases delay before taking screenshot of the area."
   (when (listp n)
     (setq n (log (car n) 4)))
 
-  (if (> n 0)
+  (if (and (> n 0)
+           ;; NO delays for "pngpaste"
+           (not (eq telega-screenshot-function
+                    'telega-screenshot-with-pngpaste)))
       (progn
         (message "Telega: taking screenshot in %d seconds" n)
         (run-with-timer 1 nil 'telega-chatbuf-attach-screenshot (1- n) chat))
@@ -3014,8 +3017,9 @@ Prefix argument is available for next attachements:
                                "note-video" "note-voice"
                                "file" "location"
                                "poll" "contact"
-                               "screenshot" "member"
-                               "sticker" "animation")
+                               "member" "sticker" "animation")
+                         (when telega-screenshot-function
+                           (list "screenshot"))
                          ;; Avoid any "Selection owner couldn't convert"
                          ;; errors
                          (when (ignore-errors

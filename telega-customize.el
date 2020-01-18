@@ -824,9 +824,12 @@ Message is ignored if its `:ignore' option is set to non-nil."
   :group 'telega)
 
 (defcustom telega-screenshot-function
-  (if (executable-find "flameshot")
-      'telega-screenshot-with-flameshot
-    'telega-screenshot-with-import)
+  (cond ((executable-find "flameshot")
+         'telega-screenshot-with-flameshot)
+        ((executable-find "pngpaste")
+         'telega-screenshot-with-pngpaste)
+        ((executable-find "import")
+         'telega-screenshot-with-import))
   "*Function to use to make screenshot.
 Function should take two arguments - TOFILE and REGION-P."
   :type 'function
