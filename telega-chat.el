@@ -2798,12 +2798,16 @@ If DOC-P is non-nil, then attach it as document."
 If DOC-P prefix arg as given, then send it as document."
   (interactive "P")
   (let* ((selection-coding-system 'no-conversion) ;for rawdata
-         (imgdata (or (gui-get-selection 'CLIPBOARD 'image/png)
-                      (error "No image in CLIPBOARD")))
          (temporary-file-directory telega-temp-dir)
          (tmpfile (telega-temp-name "clipboard" ".png"))
          (coding-system-for-write 'binary))
-    (write-region imgdata nil tmpfile nil 'quiet)
+    (if (eq telega-screenshot-function 'telega-screenshot-with-pngpaste)
+        ;; NOTE: On MacOS, try extracting clipboard using pngpaste
+        (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
+          (error "No image in CLIPBOARD"))
+      (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
+                        (error "No image in CLIPBOARD"))
+                    nil tmpfile nil 'quiet))
     (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
