@@ -1,0 +1,115 @@
+#-*- mode: org -*-
+#+TODO: TODO WIP DONE
+#+STARTUP: showall
+
+* telega.el Major Features
+
+** Multiple Accounts
+** Searching Messages in chat
+   - Shared Media
+   - Importing/Exporting files using "Saved Messages"
+** Full integration for Transalation Platform
+** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
+
+* telega-server as a module
+
+Implement telega-server as Emacs module to improve overall performance.
+
+* TON
+
+** DONE tonlib integration
+   CLOSED: [2020-01-20 Пн 14:24]
+   VERSION: 0.5.8
+** Wallet, with list of transactions, etc (see [[https://t.me/designers/134]])
+** TON Browser for TON services and smart contracts (see [[https://test.ton.org/ton.pdf]])
+
+* Random Ideas
+
+Random list of ideas for telega.el
+
+** Grouping chats by custom label, similar to ~gnus-topic.el~
+#+begin_example
+    *OOS*
+      [chat1      ]
+      [chat2      ]
+    *Emacs*
+      [chat1      ]
+      [chat2      ]
+#+end_example
+
+** Global searchable history of the inputs you've sent to any chat
+
+** Filters for chat messages
+   - Message thread as in https://t.me/designers/44
+     #+begin_example
+     MSG1
+     MSG2
+     _______________________________[related messages]__
+     >>> []
+     #+end_example
+   - Shared Media
+     #+begin_example
+     MSG1
+     MSG2
+     _______________________________[shared photos]__
+     >>> []
+     #+end_example
+   - Searching in chat
+     #+begin_example
+     MSG1
+     MSG2
+     _____________________________[search "hello"]__
+     >>> []
+     #+end_example
+
+** Client Side filtering for advert messages in channels
+
+   Mark message with `telega-msg-ignore' if it contains keyboard
+   button with some link such as t.me/joinchat/xxx.  Much like this
+   message is advert
+
+** Do not show input prompt for chats you can't write into
+
+   see https://t.me/emacs_telega/3775
+
+** Annotations for chats/users
+
+   Sometimes it is very useful to have some notes about user or chat.
+   We can specially mark users with annotations, so you can see you
+   have some notes about given person.
+
+   Store this annotation in chat's ~:client_data~
+
+** Animated text messages
+
+   Text message icrementally appears.  This uses simple timer and just
+   updates message content by adding chars one after another.  So it
+   looks like you are typing this message.
+
+** Favorite Messages
+
+   Ability to mark some message as favorite.  Emphasize favorite
+   message with some symbol like ★ (see [[https://github.com/zevlg/telega.el/issues/139][telega#139]])
+
+   We create special message in "Saved Message" and keep list of links
+   to the all favorite messages.  ~ID~ of this message we store in
+   custom telegram option, such as ~X-favorites-msg-id~
+
+** Mark all chatbuf as readonly, keeping input area as ~inhit-read-only~
+
+** Only changes in chatbuf input goes to undo list, making undo/redo commands usable
+
+** Heavy background jobs
+
+   When focus switches off the Emacs and Emacs goes to idle we can
+   execute heavy tasks, such as fetching installed stickersets.
+
+** Ввести custom variable - telega-media-size
+
+   '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)
+
+   И при показе любой картинки делать её, чтобы она была в пределах
+   этих размерах, не меньше и не больше.  Если картинка не помещается
+   (меньше или больше по ширине или высоте), то скейлим.  После
+   применения скейлинга нужно посчитать как x-margin так и y-margin
+   (задаётся как cons в :margin)
