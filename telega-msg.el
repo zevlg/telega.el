@@ -616,7 +616,7 @@ blocked users."
     (telega-chatbuf-mode-line-update)
 
     (telega-msg-redisplay msg)
-    (telega-button-forward 1 'telega-msg)))
+    (telega-button-forward 1 'telega-msg-at)))
 
 (defun telega-msg-pin (msg)
   "Pin message MSG."

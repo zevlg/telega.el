@@ -49,6 +49,28 @@ CALL-SEXP and CALLBACK are passed directly to `telega-server--call'."
            ,reply-var
          ,post-form))))
 
+(defun telega--setOption (prop-kw val)
+  "Set option, defined by keyword PROP-KW to VAL."
+  (declare (indent 1))
+  (telega-server--send
+   (list :@type "setOption"
+         :name (substring (symbol-name prop-kw) 1) ; strip `:'
+         :value (list :@type (cond ((memq val '(t nil :false))
+                                    "optionValueBoolean")
+                                   ((integerp val)
+                                    "optionValueInteger")
+                                   ((stringp val)
+                                    "optionValueString")
+                                   (t (error "Unknown value type: %S"
+                                             (type-of val))))
+                      :value (or val :false)))))
+
+(defun telega--setOptions (options-plist)
+  "Send custom OPTIONS-PLIST to server."
+  (cl-loop for (prop-name value) on options-plist
+           by 'cddr
+           do (telega--setOption prop-name value)))
+
 (defun telega--searchEmojis (text &optional exact-match-p callback)
   "Search for emojis by TEXT keywords.
 Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
@@ -566,6 +588,77 @@ If SHARE-PHONE-P is specified, then allow CONTACT to see my phone number."
    (list :@type "addContact"
          :contact contact
          :share_phone_number (if share-phone-p t :false))))
+
+(defun telega--searchPublicChat (username &optional callback)
+  "Search public chat with USERNAME.
+If CALLBACK is specified, call it with one argument - CHAT."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (when reply
+        (telega-chat-get (plist-get reply :id)))
+
+    (list :@type "searchPublicChat"
+          :username username)
+    callback))
+
+(defun telega--searchPublicChats (query &optional callback)
+  "Search public chats by looking for specified QUERY.
+Return nil if QUERY is less then 5 chars.
+If CALLBACK is specified, then do async call and run CALLBACK
+with list of chats received."
+  (unless (< (length query) 5)
+    (with-telega-server-reply (reply)
+        (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+      (list :@type "searchPublicChats"
+            :query query)
+      callback)))
+
+(defun telega--searchChats (query &optional limit callback)
+  "Search already known chats by QUERY."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "searchChats"
+          :query query
+          :limit (or limit 200))
+    callback))
+
+(defun telega--searchChatsOnServer (query &optional limit callback)
+  "Search already known chats on server by QUERY."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "searchChatsOnServer"
+          :query query
+          :limit (or limit 200))
+    callback))
+
+(defun telega--getGroupsInCommon (with-user &optional limit callback)
+  "Return list of common chats WITH-USER.
+LIMIT - number of chats to get (default=100)"
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "getGroupsInCommon"
+          :user_id (plist-get with-user :id)
+          :offset_chat_id 0
+          :limit (or limit 100))
+    callback))
+
+(defun telega--getTopChats (category &optional limit callback)
+  "CATEGORY is string denoting category for the top chats.
+CATEGORY is one of: \"Users\", \"Bots\", \"Groups\",
+\"Channels\", \"InlineBots\", \"Calls\", \"ForwardChats\".
+Default LIMIT is 30."
+  (declare (indent 2))
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "getTopChats"
+          :category (list :@type (concat "topChatCategory" category))
+          :limit (or limit 30))
+    callback))
 
 
 ;; I18N

@@ -95,6 +95,10 @@ Random list of ideas for telega.el
    to the all favorite messages.  ~ID~ of this message we store in
    custom telegram option, such as ~X-favorites-msg-id~
 
+   NOTE: Option won't work, because custom options are cleared after
+   logout.  Might have ~#favorite-messages~ tag as first line of the
+   message with list of links to favorite messages
+
 ** Mark all chatbuf as readonly, keeping input area as ~inhit-read-only~
 
 ** Only changes in chatbuf input goes to undo list, making undo/redo commands usable

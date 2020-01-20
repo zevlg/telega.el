@@ -780,7 +780,7 @@ If REGION-P is non-nil, then make a screenshot of region."
       (write-region (shell-command-to-string flameshot-cmd)
                     nil tofile nil 'quiet))))
 
-(defun telega-screenshot-with-pngpaste (tofile &optional region-p)
+(defun telega-screenshot-with-pngpaste (tofile &optional _region-p)
   "Make a screenshot into TOFILE using `pngpaste' utility.
 If REGION-P is non-nil, then make a screenshot of region."
   (let ((pngpaste-cmd (concat (or (executable-find "pngpaste")

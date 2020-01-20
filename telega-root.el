@@ -36,13 +36,11 @@
 
 (declare-function tracking-mode "tracking" (&optional arg))
 
-(declare-function telega--setOption "telega" (prop-kw val))
 (declare-function telega-chats--kill-em-all "telega-chat")
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega--searchPublicChats "telega-chat" (query &optional callback))
+(declare-function telega-chat-at "telega-chat" (&optional pos))
 (declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega--searchChats "telega-chat" (query &optional limit))
 (declare-function telega-chatbuf--switch-in "telega-chat")
 (declare-function telega-chatbuf--switch-out "telega-chat")
 (declare-function telega-chatbuf--check-focus-change "telega-chat")
@@ -106,6 +104,11 @@
     (define-key map (kbd "Q") 'telega-kill)
 
     (define-key map (kbd "m") 'telega-chat-with)
+
+    ;; Fast navigation
+    (define-key map (kbd "M-g u") 'telega-root-next-unread)
+    (define-key map (kbd "M-g y") 'telega-root-next-unread-unmuted)
+    (define-key map (kbd "M-g m") 'telega-root-next-mention)
     map)
   "The key map for telega root buffer.")
 
@@ -407,6 +410,35 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
 (defun telega--on-updateUnreadChatCount (event)
   "Number of unread/unmuted chats has been changed."
   (setq telega--unread-chat-count (cddr event)))
+
+
+;;; Fast navigation
+(defun telega-root-next-match-p (chat-filter &optional n)
+  "Goto N's chat matching CHAT-FILTER."
+  (goto-char
+   (save-excursion
+     (or (telega-button-forward
+          (or n 1)
+          (lambda (button)
+            (when-let ((chat (telega-chat-at button)))
+              (telega-chat-match-p chat chat-filter)))
+          'no-error)
+         (user-error "No more chats matching: %S" chat-filter)))))
+
+(defun telega-root-next-unread (n)
+  "Move point to the next N's chat unread messages."
+  (interactive "p")
+  (telega-root-next-match-p 'unread n))
+
+(defun telega-root-next-unread-unmuted (n)
+  "Move point to the next N's chat unread unmuted messages."
+  (interactive "p")
+  (telega-root-next-match-p '(and unread unmuted) n))
+
+(defun telega-root-next-mention (n)
+  "Move point to the next N's chat with mention."
+  (interactive "p")
+  (telega-root-next-match-p 'mention n))
 
 
 ;;; Searching global public chats and messages

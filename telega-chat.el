@@ -618,10 +618,6 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
            :chat_id (plist-get chat :id))
      callback)))
 
-(defsubst telega-chats-list-get (tl-obj-chats)
-  "Return chats list of TL-OBJ-CHATS represeting `Chats' object."
-  (mapcar #'telega-chat-get (plist-get tl-obj-chats :chat_ids)))
-
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
   (dolist (cbuf telega--chat-buffers)
@@ -635,15 +631,9 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
         (currts (time-to-seconds (current-time))))
     (when (> currts (+ (or (cadr top) 0) 60))
       ;; XXX update only if last fetch is older then 60 seconds
-      (let* ((cattype (list :@type (concat "topChatCategory"
-                                           (symbol-name category))))
-             (cl (telega-server--call
-                  (list :@type "getTopChats"
-                        :category cattype
-                        :limit 30))))
-        (setq top (list (time-to-seconds (current-time))
-                        (telega-chats-list-get cl)))
-        (setf (alist-get category telega--top-chats) top)))
+      (setq top (list (time-to-seconds (current-time))
+                      (telega--getTopChats (symbol-name category))))
+      (setf (alist-get category telega--top-chats) top))
     (caddr top)))
 
 (defun telega--sendChatAction (chat action)
@@ -712,65 +702,6 @@ be marked as read."
    (list :@type "closeChat"
          :chat_id (plist-get chat :id))))
 
-(defun telega--searchPublicChat (username &optional callback)
-  "Search public chat with USERNAME.
-If CALLBACK is specified, call it with one argument - CHAT."
-  (declare (indent 1))
-  (let ((ret (telega-server--call
-              (list :@type "searchPublicChat"
-                    :username username)
-              (when callback
-                (lambda (reply)
-                  (when reply
-                    (funcall
-                     callback (telega-chat-get (plist-get reply :id)))))))))
-    (if callback
-        ret
-      (when ret
-        (telega-chat-get (plist-get ret :id))))))
-
-(defun telega--searchPublicChats (query &optional callback)
-  "Search public chats by looking for specified QUERY.
-Return nil if QUERY is less then 5 chars.
-If CALLBACK is specified, then do async call and run CALLBACK
-with list of chats received."
-  (unless (< (length query) 5)
-    (let ((ret (telega-server--call
-                (list :@type "searchPublicChats"
-                      :query query)
-                (and callback
-                     `(lambda (reply)
-                        (funcall ',callback (telega-chats-list-get reply)))))))
-      (if callback
-          ret
-        (telega-chats-list-get ret)))))
-
-(defun telega--searchChats (query &optional limit)
-  "Search already known chats by QUERY."
-  (telega-chats-list-get
-   (telega-server--call
-    (list :@type "searchChats"
-          :query query
-          :limit (or limit 200)))))
-
-(defun telega--searchChatsOnServer (query &optional limit)
-  "Search already known chats on server by QUERY."
-  (telega-chats-list-get
-   (telega-server--call
-    (list :@type "searchChatsOnServer"
-          :query query
-          :limit (or limit 200)))))
-
-(defun telega--getGroupsInCommon (with-user &optional limit)
-  "Return list of common chats WITH-USER.
-LIMIT - number of chats to get (default=100)"
-  (telega-chats-list-get
-   (telega-server--call
-    (list :@type "getGroupsInCommon"
-          :user_id (plist-get with-user :id)
-          :offset_chat_id 0
-          :limit (or limit 100)))))
-
 
 ;;; Chat buttons in root buffer
 (defvar telega-chat-button-map
@@ -831,15 +762,15 @@ Uses `telega-chat--display-buffer-action' as action in `pop-to-buffer.'"
   (pop-to-buffer (telega-chatbuf--get-create chat)
                  telega-chat--display-buffer-action))
 
-(defun telega-chat-at-point ()
+(defun telega-chat-at (&optional pos)
   "Return current chat at point."
-  (let ((button (button-at (point))))
+  (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-chat))
       (button-get button :value))))
 
 (defun telega-chat-pin (chat)
   "Toggle chat's pin state at point."
-  (interactive (list (telega-chat-at-point)))
+  (interactive (list (telega-chat-at (point))))
   (telega--toggleChatIsPinned chat))
 
 (defun telega--addChatMembers (chat users)
@@ -854,7 +785,7 @@ CHAT must be supergroup or channel."
   "Add USER to the CHAT."
   (interactive (list (or telega-chatbuf--chat
                          telega--chat
-                         (telega-chat-at-point))
+                         (telega-chat-at (point)))
                      (telega-completing-read-user "Add member: ")))
   (cl-assert user)
   (telega-server--send
@@ -866,13 +797,13 @@ CHAT must be supergroup or channel."
 (defun telega-chat-set-title (chat title)
   "Set CHAT's title to TITLE."
   (interactive
-   (let ((chat (or telega-chatbuf--chat (telega-chat-at-point))))
+   (let ((chat (or telega-chatbuf--chat (telega-chat-at (point)))))
      (list chat (read-string "New title: " (telega-chat-title chat)))))
   (telega--setChatTitle chat title))
 
 (defun telega-chat-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
-  (interactive (let ((chat (telega-chat-at-point)))
+  (interactive (let ((chat (telega-chat-at (point))))
                  (list chat
                        (read-string "Custom Order [empty to unset]: "
                                     (telega-chat--order chat 'as-str)))))
@@ -888,7 +819,7 @@ CHAT must be supergroup or channel."
 
 (defun telega-chat-custom-label (chat label)
   "For CHAT (un)set custom LABEL."
-  (interactive (let* ((chat (telega-chat-at-point))
+  (interactive (let* ((chat (telega-chat-at (point)))
                       (chat-label (telega-chat-uaprop chat :label)))
                  ;; NOTE: If chat already has label, then use
                  ;; `read-string' to change label, so empty name can
@@ -930,7 +861,7 @@ STATUS is one of: "
 
 (defun telega-chat-call (chat)
   "Call to the user associated with the given private CHAT."
-  (interactive (list (telega-chat-at-point)))
+  (interactive (list (telega-chat-at (point))))
 
   ;; NOTE: If calling to secret chat, then use ordinary private chat
   ;; for calling
@@ -967,7 +898,7 @@ STATUS is one of: "
 
 (defun telega-describe-chat (chat)
   "Show info about chat at point."
-  (interactive (list (telega-chat-at-point)))
+  (interactive (list (telega-chat-at (point))))
   (with-telega-help-win "*Telegram Chat Info*"
     (setq telega--chat chat)
 
@@ -1124,7 +1055,7 @@ STATUS is one of: "
 
 (defun telega-chat-toggle-read (chat)
   "Toggle chat as read/unread."
-  (interactive (list (telega-chat-at-point)))
+  (interactive (list (telega-chat-at (point))))
   (let ((unread-count (plist-get chat :unread_count))
         (unread-mentions-count (plist-get chat :unread_mention_count))
         (marked-unread-p (plist-get chat :is_marked_as_unread)))
@@ -1159,7 +1090,7 @@ STATUS is one of: "
   "Delete CHAT.
 If LEAVE-P is non-nil, then just leave the chat.
 Leaving chat does not removes chat from chat list."
-  (interactive (list (telega-chat-at-point) nil))
+  (interactive (list (telega-chat-at (point)) nil))
   (when (and chat
              (yes-or-no-p
               (concat (telega-i18n "action_cant_undone") ". "
@@ -1217,7 +1148,7 @@ Leaving chat does not removes chat from chat list."
 (defun telega-chat-upgrade-to-supergroup (chat)
   "Upgrade basic group CHAT from basicgroup to supergroup."
   (interactive (list (or telega-chatbuf--chat
-                         (telega-chat-at-point))))
+                         (telega-chat-at (point)))))
   (telega-server--call
    (list :@type "upgradeBasicGroupChatToSupergroupChat"
          :chat_id (plist-get chat :id))
@@ -1229,7 +1160,7 @@ Leaving chat does not removes chat from chat list."
 
 (defun telega-chat-description (chat descr)
   "Update CHAT's description."
-  (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at-point)))
+  (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
                       (full-info (telega--full-info (telega-chat--info chat))))
                  (list chat
                        (read-string "Description: "
@@ -1792,7 +1723,7 @@ otherwise set draft only if current input is also draft."
               (lambda ()
                 (telega-chat--goto-msg0 chat last-read-msg-id)
                 (condition-case nil
-                    (telega-button-forward 1 'telega-msg)
+                    (telega-button-forward 1 'telega-msg-at)
                   (user-error
                    ;; No more buttons, jump to input
                    (goto-char (point-max))))
@@ -2138,7 +2069,7 @@ Otherwise start from WINDOW's `window-start'."
       (while (and (setq msg (telega-msg-at (point)))
                   (pos-visible-in-window-p (point) window))
         (push msg messages)
-        (telega-button-forward 1))
+        (telega-button-forward 1 'telega-msg-at))
       messages)))
 
 (defun telega-chatbuf--read-outbox (old-last-read-outbox-msgid)

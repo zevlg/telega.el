@@ -756,25 +756,29 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
            (telega-focus-state (window-frame bwin))
            (pos-visible-in-window-p button bwin)))))
 
-(defun telega-button-forward (n &optional button-type)
+(defun telega-button-forward (n &optional predicate no-error)
   "Move forward to N visible/active button.
-If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
+If PREDICATE is specified, then forward only buttons for which
+PREDICATE returns non-nil.  PREDICATE is called with single arg -
+button.
+NO-ERROR is passed directly to `forward-button'."
   (interactive "p")
   (let (button)
     (dotimes (_ (abs n))
-      (while (and (setq button (forward-button (cl-signum n)))
-                  (or (and button-type
-                           (not (eq (button-type button) button-type)))
+      (while (and (setq button (forward-button (cl-signum n) nil nil no-error))
+                  (or (and predicate
+                           (not (funcall predicate button)))
                       (button-get button 'invisible)
                       (button-get button 'inactive)))))
-    (telega-button--help-echo button)
+    (when button
+      (telega-button--help-echo button))
     button))
 
-(defun telega-button-backward (n &optional button-type)
+(defun telega-button-backward (n &optional predicate no-error)
   "Move backward to N visible/active button.
-If BUTTON-TYPE is specified, then forward only buttons of BUTTON-TYPE."
+PREDICATE and NO-ERROR are passed to `telega-button-forward'."
   (interactive "p")
-  (telega-button-forward (- n) button-type))
+  (telega-button-forward (- n) predicate no-error))
 
 
 ;;; Chats part

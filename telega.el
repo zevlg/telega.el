@@ -136,28 +136,6 @@ Works only if current state is `authorizationStateWaitCode'."
   (telega-server--send
    (list :@type "resendAuthenticationCode")))
 
-(defun telega--setOption (prop-kw val)
-  "Set option, defined by keyword PROP-KW to VAL."
-  (declare (indent 1))
-  (telega-server--send
-   (list :@type "setOption"
-         :name (substring (symbol-name prop-kw) 1) ; strip `:'
-         :value (list :@type (cond ((memq val '(t nil :false))
-                                    "optionValueBoolean")
-                                   ((integerp val)
-                                    "optionValueInteger")
-                                   ((stringp val)
-                                    "optionValueString")
-                                   (t (error "Unknown value type: %S"
-                                             (type-of val))))
-                      :value (or val :false)))))
-
-(defun telega--setOptions (options-plist)
-  "Send custom OPTIONS-PLIST to server."
-  (cl-loop for (prop-name value) on options-plist
-           by 'cddr
-           do (telega--setOption prop-name value)))
-
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   ;; Validate tdlib version
