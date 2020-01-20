@@ -181,15 +181,6 @@ either to CALLBACK or returned."
         reply
       (append (plist-get reply :stickers) nil))))
 
-(defun telega--getInstalledStickerSets (&optional masks-p)
-  "Returns a list of installed sticker sets."
-  (cl-assert (not masks-p) t "installed masks not yet supported")
-
-  (let ((reply (telega-server--call
-                (list :@type "getInstalledStickerSets"
-                      :is_masks (or masks-p :false)))))
-    (append (plist-get reply :sets) nil)))
-
 (defun telega--changeStickerSet (stickerset install-p &optional archive-p)
   "Install/Uninstall STICKERSET."
   (telega-server--call
@@ -197,12 +188,6 @@ either to CALLBACK or returned."
          :set_id (plist-get stickerset :id)
          :is_installed (or install-p :false)
          :is_archived (or archive-p :false))))
-
-(defun telega--getTrendingStickerSets ()
-  "Returns a list of trending sticker sets."
-  (let ((reply (telega-server--call
-                (list :@type "getTrendingStickerSets"))))
-    (append (plist-get reply :sets) nil)))
 
 (defun telega--getAttachedStickerSets (file-id)
   "Return sticker sets attached to the FILE-ID.
@@ -463,7 +448,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (redisplay)
       (telega-ins--sticker-list stickers
         (when telega-sticker-set-show-emoji
-          (lambda (sticker)          
+          (lambda (sticker)
             (telega-ins (telega-sticker-emoji sticker) "  ")))))))
 
 (defun telega-sticker-help (sticker)
@@ -531,6 +516,7 @@ Functions to be used with:
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."
   (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+
   ;; NOTE:
   ;;  - Avoid help window selection by binding `help-window-select'
   ;;  - Avoid smart packages (such as shackle) to handle help window by
@@ -548,7 +534,8 @@ Functions to be used with:
                      (nth ivy--index ivy--old-cands))
                     (t (buffer-substring start end))))
          (comp (car (all-completions str telega-minibuffer--choices)))
-         (sset (cadr (assoc comp telega-minibuffer--choices)))
+         (sset-id (plist-get (cadr (assoc comp telega-minibuffer--choices)) :id))
+         (sset (telega-stickerset-get sset-id))
          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
 
     (when (and sset
@@ -575,8 +562,10 @@ Return sticker set."
   (message "Loading stickers, please wait...")
   (let* ((completion-ignore-case t)
          (ssets (or sticker-sets
-                    (mapcar 'telega-stickerset-get
-                            telega--stickersets-installed-ids)))
+                    ;; (mapcar 'telega-stickerset-get
+                    ;;         telega--stickersets-installed-ids)
+                    (telega--getInstalledStickerSets)
+                    (user-error "No installed sticker sets")))
          ;; Bindings used in `telega-stickerset-completing-read'
          (telega-minibuffer--chat telega-chatbuf--chat)
          (telega-minibuffer--choices

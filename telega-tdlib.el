@@ -210,6 +210,14 @@ LIMIT defaults to 20."
           :is_masks (or masks-p :false))
     callback))
 
+(defun telega--getTrendingStickerSets (&optional callback)
+  "Return a list of trending sticker sets."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :sets) nil)
+
+    (list :@type "getTrendingStickerSets")
+    callback))
+
 (defun telega--getStickerSet (set-id &optional callback)
   "Get information about a sticker set by its identifier SET-ID."
   (declare (indent 1))
