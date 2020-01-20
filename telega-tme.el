@@ -36,10 +36,25 @@
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
-(declare-function telega--searchPublicChat "telega-chat" (username))
-(declare-function telega--joinChatByInviteLink "telega-chat" (invite-link))
 
 
+(defun telega-tme-internal-link-to (chat-or-msg)
+  "Return internal tme link to CHAT-OR-MSG."
+  (cl-case (and chat-or-msg (telega--tl-type chat-or-msg))
+    (chat (format "tg:telega:%d"
+                  (plist-get chat-or-msg :id)))
+    (message (format "tg:telega:%d#%d"
+                     (plist-get chat-or-msg :chat_id)
+                     (plist-get chat-or-msg :id)))))
+
+(defun telega-tme-open-internal (chat-id msg-id)
+  "Open internal link to any chat or message."
+  (let ((chat (or (telega-chat-get chat-id 'offline)
+                  (user-error "No chat with id=%S" chat-id))))
+    (telega-chat--pop-to-buffer chat)
+    (when msg-id
+      (telega-chat--goto-msg chat msg-id 'highlight))))
+
 (defun telega-tme-open-privatepost (supergroup post)
   "Open POST in private SUPERGROUP."
   (when-let ((chat (telega-chat-get
@@ -124,7 +139,8 @@ BOT-PARAMS are additional params."
 (defun telega-tme-parse-query-string (query-string)
   "Parse QUERY-STRING and return it as plist.
 Multiple params with same name in QUERY-STRING is disallowed."
-  (let ((query (url-parse-query-string query-string 'downcase)))
+  (let ((query (ignore-errors
+                 (url-parse-query-string query-string 'downcase))))
     (cl-loop for (name val) in query
              nconc (list (intern (concat ":" name)) val))))
 
@@ -135,8 +151,8 @@ Return non-nil, meaning URL has been handled."
     ;; Convert it to `tg:' form
     (setq url (concat "tg:" (substring url 5))))
 
-  (let* ((path-query (url-path-and-query
-                      (url-generic-parse-url url)))
+  (let* ((urlobj (url-generic-parse-url url))
+         (path-query (url-path-and-query urlobj))
          (path (car path-query))
          (query (telega-tme-parse-query-string (cdr path-query))))
     (cond ((string= path "resolve")
@@ -166,6 +182,14 @@ Return non-nil, meaning URL has been handled."
            (telega-tme-open-proxy path query))
           ((string= path "login")
            )
+          ;; Internal links to any chat or message
+          ;; See: https://github.com/zevlg/telega.el/issues/139
+          ;; Internal links are in form tg:telega:<CHAT-ID>[#<MSG-ID>]
+          ((string-match "^telega:\\([0-9]+\\)" path)
+           (telega-tme-open-internal
+            (string-to-number (match-string 1 path))
+            (when-let ((str-msg-id (url-target urlobj)))
+              (string-to-number str-msg-id))))
           (t
            (message "telega: Unsupported tg url: %s" url))))
   t)

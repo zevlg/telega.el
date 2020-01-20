@@ -145,6 +145,16 @@ If message is not found, then return `nil'."
          :invite_link invite-link)
    callback))
 
+(defun telega--joinChatByInviteLink (invite-link &optional callback)
+  "Return new chat by its INVITE-LINK.
+Return nil if can't join the chat."
+  (with-telega-server-reply (reply)
+      (telega-chat-get (plist-get reply :id))
+
+    (list :@type "joinChatByInviteLink"
+          :invite_link invite-link)
+    callback))
+
 (defun telega--getChatEventLog (chat &optional query from-event-id
                                      limit filters users callback)
   "Return event log for the CHAT.

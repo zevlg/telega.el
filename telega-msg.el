@@ -33,6 +33,7 @@
 (require 'telega-ffplay)                ; telega-ffplay-run
 (require 'telega-vvnote)
 (require 'telega-util)
+(require 'telega-tme)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chatbuf--msg "telega-chat" (msg-id &optional with-node))
@@ -698,6 +699,12 @@ blocked users."
           (telega-ins--raw-button (telega-link-props 'url link)
             (telega-ins link))
           (telega-ins "\n")))
+
+      (telega-ins "Internal Link: ")
+      (let ((internal-link (telega-tme-internal-link-to msg)))
+        (apply 'insert-text-button internal-link
+               (telega-link-props 'url internal-link 'link)))
+      (telega-ins "\n")
 
       (when telega-debug
         (telega-ins-fmt "MsgSexp: (telega-msg--get %d %d)\n" chat-id msg-id))

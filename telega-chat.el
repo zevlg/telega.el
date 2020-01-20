@@ -39,6 +39,7 @@
 (require 'telega-sticker)
 (require 'telega-company)
 (require 'telega-i18n)
+(require 'telega-tme)
 
 (eval-when-compile
   (require 'rx)
@@ -203,21 +204,13 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
            :key (lambda (chat)
                   (telega-tl-str (telega-chat--info chat) :username))))
 
-(defun telega--joinChatByInviteLink (invite-link)
-  "Return new chat by its INVITE-LINK.
-Return nil if can't join the chat."
-  (let ((chat (telega-server--call
-               (list :@type "joinChatByInviteLink"
-                     :invite_link invite-link))))
-    (telega-chat-get (plist-get chat :id))))
-
 (defun telega--joinChat (chat)
-  "Adds a new member to a CHAT."
+  "Add current user as a new member to a CHAT."
   (telega-server--send
    (list :@type "joinChat" :chat_id (plist-get chat :id))))
 
 (defun telega--leaveChat (chat)
-  "Removes current user from CHAT members."
+  "Remove current user from CHAT members."
   (telega-server--send
    (list :@type "leaveChat" :chat_id (plist-get chat :id))))
 
@@ -949,6 +942,12 @@ STATUS is one of: "
         (insert "Link: ")
         (apply 'insert-text-button link (telega-link-props 'url link 'link))
         (insert "\n")))
+    (telega-ins "Internal Link: ")
+    (let ((internal-link (telega-tme-internal-link-to chat)))
+      (apply 'insert-text-button internal-link
+             (telega-link-props 'url internal-link 'link)))
+    (telega-ins "\n")
+
     (telega-ins "Order")
     (when (telega-chat-uaprop chat :order)
       (telega-ins " (" (propertize "custom" 'face 'shadow) ")"))
