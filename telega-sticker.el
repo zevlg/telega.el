@@ -126,21 +126,19 @@ with one argument - stickerset."
 
 (defun telega-stickerset-installed-p (sset)
   "Return non-nil if sticker set SSET is installed."
-  (member (plist-get sset :id) telega--stickersets-installed-ids))
+  (cl-find (plist-get sset :id) telega--stickersets-installed
+           :test 'equal
+           :key (telega--tl-prop :id)))
 
 (defun telega--on-updateInstalledStickerSets (event)
   "The list of installed sticker sets was updated."
   (if (plist-get event :is_masks)
       (telega-debug "TODO: `telega--on-updateInstalledStickerSets' is_mask=True")
 
-    (setq telega--stickersets-installed-ids
-          (append (plist-get event :sticker_set_ids) nil))
-    ;; Asynchronously fetch sticker sets
-    ;; NOTE: this is too heavy, when `telega-emoji-use-images' is
-    ;; enabled, avoid doing so at start time
-    ;; (dolist (set-id telega--stickersets-installed-ids)
-    ;;   (telega-stickerset-get set-id 'async))
-    ))
+    ;; Asynchronously update value for `telega--stickersets-installed'
+    (telega--getInstalledStickerSets nil
+      (lambda (ssets)
+        (setq telega--stickersets-installed ssets)))))
 
 (defun telega--on-updateTrendingStickerSets (event)
   "The list of trending sticker sets was updated or some of them were viewed."
@@ -349,7 +347,7 @@ If SLICES-P is non-nil, then insert STICKER using slices."
           (not (display-graphic-p))
           ;; NOTE: graphical stickers only in `imagemagick' setup
           (not (fboundp 'imagemagick-types)))
-      (telega-ins "<STICKER " (telega-sticker-emoji sticker) ">")
+      (telega-ins "<STICKER\u00A0" (telega-sticker-emoji sticker) ">")
 
     (let ((simage (telega-media--image
                    (cons sticker 'telega-sticker--create-image)
@@ -534,7 +532,7 @@ Functions to be used with:
                      (nth ivy--index ivy--old-cands))
                     (t (buffer-substring start end))))
          (comp (car (all-completions str telega-minibuffer--choices)))
-         (sset-id (plist-get (cadr (assoc comp telega-minibuffer--choices)) :id))
+         (sset-id (cadr (assoc comp telega-minibuffer--choices)))
          (sset (telega-stickerset-get sset-id))
          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
 
@@ -562,15 +560,22 @@ Return sticker set."
   (message "Loading stickers, please wait...")
   (let* ((completion-ignore-case t)
          (ssets (or sticker-sets
-                    ;; (mapcar 'telega-stickerset-get
-                    ;;         telega--stickersets-installed-ids)
-                    (telega--getInstalledStickerSets)
+                    telega--stickersets-installed
+                    ;; NOTE: "getInstalledStickerSets" could generate
+                    ;; "updateInstalledStickerSets" event, we don't
+                    ;; want to handle it, since we are already getting
+                    ;; list of installed stickersets
+                    (let ((telega-server--inhibit-events
+                           (cons "updateInstalledStickerSets"
+                                 telega-server--inhibit-events)))
+                      (setq telega--stickersets-installed
+                            (telega--getInstalledStickerSets)))
                     (user-error "No installed sticker sets")))
          ;; Bindings used in `telega-stickerset-completing-read'
          (telega-minibuffer--chat telega-chatbuf--chat)
          (telega-minibuffer--choices
           (mapcar (lambda (sset)
-                    (list (plist-get sset :name) sset))
+                    (list (plist-get sset :name) (plist-get sset :id)))
                   ssets))
          (sset-name
           (minibuffer-with-setup-hook
