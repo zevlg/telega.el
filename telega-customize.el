@@ -422,9 +422,18 @@ Otherwise use simple chars."
 (defcustom telega-chat-label-format "%L | "
   "*Non-nil to prefix chat's title with custom label.
 %L - replaced with chat's label.
-See `telega-chat-custom-label' for details.
+See `telega-chat-set-custom-label' for details.
 `telega-chat-label' face is added to formatted string."
   :type 'string
+  :group 'telega-root)
+
+(defcustom telega-chat-label-alist nil
+  "*Alist of custom labels for the chats.
+Each element in the list has form:
+  (CHAT-FILTER . CUSTOM-LABEL)
+If CHAT-FILTER matches chat, that chat gets CUSTOM-LABEL."
+  :type 'list
+  :options '(((archive . "Archive")))
   :group 'telega-root)
 
 (defcustom telega-status-animate-interval 0.5

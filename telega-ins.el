@@ -51,6 +51,7 @@
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-pinned-msg "telega-chat" (chat &optional offline-p callback))
+(declare-function telega-chat-label "telega-chat" (chat))
 
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
@@ -1722,7 +1723,7 @@ Return t."
 
     ;; Check for custom label
     (when telega-chat-label-format
-      (when-let ((label (telega-chat-uaprop chat :label)))
+      (when-let ((label (telega-chat-label chat)))
         (setq title (concat (telega-fmt-eval-face
                              (format-spec telega-chat-label-format
                                           (format-spec-make ?L label))

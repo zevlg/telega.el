@@ -442,7 +442,6 @@ Requires `:can_change_info' rights."
 (defun telega--setChatChatList (chat list-name &optional callback)
   "Move CHAT to a different chat list named LIST-NAME.
 LIST-NAME is one of: \"Main\" or \"Archive\"."
-  (declare (indent 2))
   (telega-server--call
    (list :@type "setChatChatList"
          :chat_id (plist-get chat :id)

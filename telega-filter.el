@@ -57,9 +57,9 @@
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-label "telega-chat" (chat))
 (declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-chat--user "telega-chat" (user))
-(declare-function telega--getCreatedPublicChats "telega-chat")
+(declare-function telega-chat--user "telega-chat" (chat))
 (declare-function telega-chats-top "telega-chat" (category))
 
 (declare-function telega-root--buffer "telega-root")
@@ -623,21 +623,16 @@ Specify MUTUAL-P to filter only mutual contacts."
 
 (defun telega-filter-by-label (label)
   "Filter chats by custom chat LABEL.
-See `telega-chat-custom-label'."
-  (interactive
-   (list (funcall telega-completing-read-function
-                  "Custom label: "
-                  (let ((labels (mapcar (lambda (chat)
-                                          (telega-chat-uaprop chat :label))
-                                        telega--ordered-chats)))
-                    (mapcar 'substring-no-properties
-                            (seq-uniq (cl-remove-if-not 'stringp labels))))
-                  nil t)))
+See `telega-chat-set-custom-label'."
+  (interactive (list (funcall telega-completing-read-function
+                              "Custom label: "
+                              (telega-custom-labels 'no-props)
+                              nil t)))
   (telega-filter-add (list 'label label)))
 
 (define-telega-filter label (chat label)
   "Matches CHAT if it is custom label is LABEL."
-  (equal (telega-chat-uaprop chat :label) label))
+  (equal (telega-chat-label chat) label))
 
 (defun telega-filter-by-tracking ()
   "Filter chats currently tracking."

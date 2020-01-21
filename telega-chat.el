@@ -684,10 +684,10 @@ be marked as read."
     (define-key map (kbd "i") 'telega-describe-chat)
     (define-key map (kbd "h") 'telega-describe-chat)
     (define-key map (kbd "a") 'telega-chat-add-member)
-    (define-key map (kbd "o") 'telega-chat-custom-order)
+    (define-key map (kbd "o") 'telega-chat-set-custom-order)
     (define-key map (kbd "r") 'telega-chat-toggle-read)
     (define-key map (kbd "d") 'telega-chat-delete)
-    (define-key map (kbd "L") 'telega-chat-custom-label)
+    (define-key map (kbd "L") 'telega-chat-set-custom-label)
     (define-key map (kbd "P") 'telega-chat-pin)
     (define-key map (kbd "C") 'telega-chat-call)
     (define-key map (kbd "DEL") 'telega-chat-delete)
@@ -775,7 +775,7 @@ CHAT must be supergroup or channel."
      (list chat (read-string "New title: " (telega-chat-title chat)))))
   (telega--setChatTitle chat title))
 
-(defun telega-chat-custom-order (chat order)
+(defun telega-chat-set-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
   (interactive (let ((chat (telega-chat-at (point))))
                  (list chat
@@ -791,7 +791,15 @@ CHAT must be supergroup or channel."
   (telega-chat--reorder chat nil)
   (telega-root--chat-update chat))
 
-(defun telega-chat-custom-label (chat label)
+(defun telega-chat-label (chat)
+  "Return custom label for the CHAT.
+Examines `telega-chat-label-alist'."
+  (or (telega-chat-uaprop chat :label)
+      (cdr (cl-find chat telega-chat-label-alist
+                    :test 'telega-chat-match-p
+                    :key 'car))))
+
+(defun telega-chat-set-custom-label (chat label)
   "For CHAT (un)set custom LABEL."
   (interactive (let* ((chat (telega-chat-at (point)))
                       (chat-label (telega-chat-uaprop chat :label)))
@@ -821,7 +829,7 @@ CHAT must be supergroup or channel."
 (defun telega-custom-labels-import (labels-alist)
   "Import LABELS-ALIST as custom labels."
   (dolist (chat-label labels-alist)
-    (telega-chat-custom-label
+    (telega-chat-set-custom-label
      (telega-chat-get (car chat-label)) (cdr chat-label))))
 
 (defun telega--setChatMemberStatus (chat user status)
@@ -922,18 +930,21 @@ STATUS is one of: "
                (telega-ins " ")
                (telega-ins--button (telega-i18n "archived_add")
                  'action (lambda (_ignored)
-                           (telega--setChatChatList chat "Archive" redisplay-func)))
-               (telega-ins "\n"))
+                           (telega--setChatChatList
+                             chat "Archive" redisplay-func))))
               ((string= list-name "Archive")
                (telega-ins " ")
                (telega-ins--button (telega-i18n "archived_remove")
                  'action (lambda (_ignored)
-                           (telega--setChatChatList chat "Main" redisplay-func)))
-               (telega-ins "\n"))))
+                           (telega--setChatChatList
+                             chat "Main" redisplay-func))))))
 
       (telega-ins "\n"))
 
-    (telega-ins-fmt "Id: %d\n" (plist-get chat :id))
+    (telega-ins-fmt "Id: %s\n"
+      (if telega-debug
+          (format "(telega-chat-get %d)" (plist-get chat :id))
+        (format "%d" (plist-get chat :id))))
     (when (telega-chat-public-p chat)
       (let ((link (concat (or (plist-get telega--options :t_me_url)
                               "https://t.me/")

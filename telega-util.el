@@ -490,9 +490,10 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
 
 (defun telega-custom-labels (&optional no-properties)
   "Return list with all custom labels used in `telega'."
-  (let* ((labels (mapcar (lambda (chat)
-                           (telega-chat-uaprop chat :label))
-                         telega--ordered-chats))
+  (let* ((labels (nconc (mapcar (lambda (chat)
+                                  (telega-chat-uaprop chat :label))
+                                telega--ordered-chats)
+                        (mapcar 'cdr telega-chat-label-alist)))
          (uniq-labels (seq-uniq (cl-remove-if-not 'stringp labels))))
     (if no-properties
         (mapcar 'substring-no-properties uniq-labels)
