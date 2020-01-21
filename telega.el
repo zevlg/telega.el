@@ -177,7 +177,7 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; NOTE: We hope `telega--getChats' will return all chats in the
   ;; Archive, in general this is not true, we need special callback to
   ;; continue fetching, as with "Main" list
-  (telega--getChats "Archive")
+  (telega--getChats "Archive" 'ignore)
 
   (run-hooks 'telega-ready-hook))
 
