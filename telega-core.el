@@ -81,8 +81,8 @@ So we can run the code when switching from chat buffer.")
   "Alist of seen sticker sets.
 ID -> sticker set.
 Take into account that ID is the string.")
-(defvar telega--stickersets-installed-ids nil
-  "List of installed sticker sets.")
+(defvar telega--stickersets-installed nil
+  "List of `stickerSetInfo' for installed sticker sets.")
 (defvar telega--stickersets-trending nil
   "List of trending sticker sets info.")
 (defvar telega--stickers-favorite nil
@@ -144,7 +144,8 @@ alist where key is one of `private', `group' or `channel'.")
 
 ;; Minibuffer stuff used by chatbuf and stickers
 (defvar telega-minibuffer--choices nil
-  "Bind to list of choices.")
+  "Bind to list of choices.
+Each element in form: (NAME SSET-ID)")
 (defvar telega-minibuffer--chat nil
   "Bind to chat currently active.")
 (defvar telega-minibuffer--string nil
@@ -236,7 +237,7 @@ Done when telega server is ready to receive queries."
   (setq telega--scope-notification-alist nil)
 
   (setq telega--stickersets nil)
-  (setq telega--stickersets-installed-ids nil)
+  (setq telega--stickersets-installed nil)
   (setq telega--stickersets-trending nil)
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)

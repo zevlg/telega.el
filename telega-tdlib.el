@@ -234,12 +234,21 @@ LIMIT defaults to 20."
 
 (defun telega--getInstalledStickerSets (&optional masks-p callback)
   "Return a list of installed sticker sets."
+  (declare (indent 1))
   (cl-assert (not masks-p) t "installed masks not yet supported")
   (with-telega-server-reply (reply)
       (append (plist-get reply :sets) nil)
 
     (list :@type "getInstalledStickerSets"
           :is_masks (or masks-p :false))
+    callback))
+
+(defun telega--getTrendingStickerSets (&optional callback)
+  "Return a list of trending sticker sets."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :sets) nil)
+
+    (list :@type "getTrendingStickerSets")
     callback))
 
 (defun telega--getStickerSet (set-id &optional callback)

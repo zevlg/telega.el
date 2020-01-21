@@ -133,7 +133,8 @@ where PROXY-TYPE is one of:
 Make sure you have tracking.el loaded if this option is used."
   :package-version '(telega . "0.5.7")
   :type 'list
-  :options '(not (or saved-messages (type channel bot)))
+  :options '((not (or saved-messages (type channel bot)))
+             (or unmuted mention))
   :group 'telega)
 
 (defcustom telega-use-images (or (and (fboundp 'image-transforms-p)

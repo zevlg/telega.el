@@ -32,7 +32,7 @@ In some random order:
       hashtags, bot commands completions
 - [x] Secret chats
 - [x] Online global searching chats/contacts/messages
-- [X] Avatars, Photos, Stickers
+- [x] Avatars, Photos, Stickers
 - [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
       messages, contacts, etc (PARTLY)

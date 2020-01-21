@@ -37,6 +37,8 @@
 ;; combination of other Chat Filters, down to primitive Chat Filters.
 ;;
 ;; Chat Filter examples:
+;;   - all
+;;       Matches all chats
 ;;   - (or saved-messages (type channel bot))
 ;;       Matches bots/channels chats or "Saved Messages" chat
 ;;

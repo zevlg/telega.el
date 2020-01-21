@@ -34,11 +34,16 @@
 
 
 (defun telega--on-event (event)
-  (let ((event-sym (intern (format "telega--on-%s" (plist-get event :@type)))))
-    (if (symbol-function event-sym)
-        (funcall (symbol-function event-sym) event)
+  (let ((event-name (plist-get event :@type)))
+    (if (member event-name telega-server--inhibit-events)
+        (telega-debug "event %s: %S" (propertize "IGNORED" 'face 'bold)
+                      event)
 
-      (telega-debug "TODO: define `%S'" event-sym))))
+      (let ((event-sym (intern (concat "telega--on-" event-name))))
+        (if (symbol-function event-sym)
+            (funcall (symbol-function event-sym) event)
+
+          (telega-debug "TODO: define `%S'" event-sym))))))
 
 (defun telega--on-error (err)
   (message "Telega error %d: %s"
@@ -53,6 +58,9 @@
   "Func used to trigger on event.
 Used to make deferred calls.")
 (defvar telega-server--deferred-events nil)
+(defvar telega-server--inhibit-events nil
+  "List of events to ignore.
+Bind this to avoid processing some events, while executing something.")
 
 (defun telega--on-deferred-event (event)
   (setq telega-server--deferred-events
@@ -339,6 +347,7 @@ COMMAND is passed directly to `telega-server--send'."
     (with-current-buffer (generate-new-buffer " *telega-server*")
       (setq telega-server--on-event-func 'telega--on-event)
       (setq telega-server--deferred-events nil)
+      (setq telega-server--inhibit-events nil)
       (setq telega-server--extra 0)
       (setq telega-server--callbacks (make-hash-table :test 'eq))
       (setq telega-server--results (make-hash-table :test 'eq))
