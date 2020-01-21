@@ -762,11 +762,17 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
 If PREDICATE is specified, then forward only buttons for which
 PREDICATE returns non-nil.  PREDICATE is called with single arg -
 button.
-NO-ERROR is passed directly to `forward-button'."
+If NO-ERROR, do not signal error if no further buttons could be
+found."
   (interactive "p")
   (let (button)
     (dotimes (_ (abs n))
-      (while (and (setq button (forward-button (cl-signum n) nil nil no-error))
+      ;; NOTE: In Emacs64, there is no `no-error' argument for
+      ;; `forward-button', so we use `ignore-errors' instead
+      ;; See: https://t.me/emacs_telega/11931
+      (while (and (setq button (if no-error
+                                   (ignore-errors (forward-button (cl-signum n)))
+                                 (forward-button (cl-signum n))))
                   (or (and predicate
                            (not (funcall predicate button)))
                       (button-get button 'invisible)
