@@ -457,10 +457,7 @@ For example:
 
 (defcustom telega-filters-custom
   '(("All" . all)
-    ("Secrets" . (type secret))
-    ("Bots" . (type bot))
     ("Groups" . (type basicgroup supergroup))
-    ("Private" . (type private))
     ("Channels" . (type channel))
     ("Contacts" . contact)
     ("Unmuted" . unmuted)
