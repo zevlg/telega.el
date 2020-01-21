@@ -1721,11 +1721,9 @@ otherwise set draft only if current input is also draft."
                 chat last-read-msg-id (- (/ telega-chat-history-limit 2)) nil
               (lambda ()
                 (telega-chat--goto-msg0 chat last-read-msg-id)
-                (condition-case nil
-                    (telega-button-forward 1 'telega-msg-at)
-                  (user-error
-                   ;; No more buttons, jump to input
-                   (goto-char (point-max))))
+                (unless (telega-button-forward 1 'telega-msg-at 'no-error)
+                  ;; No more buttons, jump to input
+                  (goto-char (point-max)))
                 ;; NOTE: view all visible messages, see
                 ;; https://t.me/emacs_telega/4731
                 (when-let ((chat-win (get-buffer-window (current-buffer))))
@@ -2068,7 +2066,7 @@ Otherwise start from WINDOW's `window-start'."
       (while (and (setq msg (telega-msg-at (point)))
                   (pos-visible-in-window-p (point) window))
         (push msg messages)
-        (telega-button-forward 1 'telega-msg-at))
+        (telega-button-forward 1 'telega-msg-at 'no-error))
       messages)))
 
 (defun telega-chatbuf--read-outbox (old-last-read-outbox-msgid)
