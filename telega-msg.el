@@ -140,10 +140,6 @@ function with one argument - message."
         cached-msg
       (telega--getMessage chat-id msg-id callback))))
 
-(defsubst telega-msg-list-get (tl-obj-Messages)
-  "Return messages list of TL-OBJ-MESSAGES represeting `Messages' object."
-  (mapcar #'identity (plist-get tl-obj-Messages :messages)))
-
 (defun telega-msg-at (&optional pos)
   "Return current message at point."
   (let ((button (button-at (or pos (point)))))
@@ -444,34 +440,6 @@ non-nil."
       (telega-file--upload-internal msg-file
         (lambda (_filenotused)
           (telega-msg-redisplay msg))))))
-
-(defun telega--deleteMessages (chat-id message-ids &optional revoke)
-  "Delete messages by its MESSAGES-IDS list.
-If REVOKE is non-nil then delete message for all users."
-  (telega-server--send
-   (list :@type "deleteMessages"
-         :chat_id chat-id
-         :message_ids (apply 'vector message-ids)
-         :revoke (or revoke :false))))
-
-(defun telega--searchMessages (query last-msg &optional callback)
-  "Search messages by QUERY.
-Specify LAST-MSG to continue searching from LAST-MSG searched.
-If CALLBACK is specified, then do async call and run CALLBACK
-with list of chats received."
-  (let ((ret (telega-server--call
-              (list :@type "searchMessages"
-                    :query query
-                    :offset_date (or (plist-get last-msg :date) 0)
-                    :offset_chat_id (or (plist-get last-msg :chat_id) 0)
-                    :offset_message_id (or (plist-get last-msg :id) 0)
-                    :limit 100)
-              (and callback
-                   `(lambda (reply)
-                      (funcall ',callback (telega-msg-list-get reply)))))))
-      (if callback
-          ret
-        (telega-msg-list-get ret))))
 
 (defun telega-msg-chat-title (msg)
   "Title of the message's chat."

@@ -151,7 +151,7 @@ If there is no CHAT color, then generate new and assign it to CHAT."
       (setcdr place (cons chat (cdr place))))
     telega--ordered-chats))
 
-(defsubst telega-chat--ensure (chat)
+(defun telega-chat--ensure (chat)
   "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'.
 Return chat from `telega--chats'."
   (let ((chat-id (plist-get chat :id)))
@@ -562,46 +562,27 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
 
     (telega-chat--update-pinned-message chat nil old-pinned-message-id)))
 
-(defun telega-chat--on-getChats (result)
+(defun telega-chat--on-getChats (chats)
   "Ensure chats from RESULT exists, and continue fetching chats."
-  (let ((chat-ids (plist-get result :chat_ids)))
-    (telega-debug "on-getChats: %s" chat-ids)
-    (mapc #'telega-chat--ensure (mapcar #'telega-chat-get chat-ids))
+  (if (> (length chats) 0)
+      ;; Redisplay the root's custom filters and then
+      ;; Continue fetching chats
+      (let ((telega-filters--inhibit-redisplay nil))
+        (telega-filters--redisplay)
+        (telega--getChats "Main" 'telega-chat--on-getChats))
 
-    (if (> (length chat-ids) 0)
-        ;; Redisplay the root's custom filters and then
-        ;; Continue fetching chats
-        (let ((telega-filters--inhibit-redisplay nil))
-          (telega-filters--redisplay)
-          (telega--getChats))
+    ;; All chats has been fetched
 
-      ;; All chats has been fetched
+    ;; TODO: some chats remains with order="0", i.e. known chats, do
+    ;; not proceed with chats that once was used, such as basic
+    ;; groups upgraded to supergroups, closed secret chats, etc.  We
+    ;; might want to remove them from `telega--ordered-chats' list
+    ;; for faster processing, but keep it in chats hash
+    (setq telega-filters--inhibit-redisplay nil)
+    (telega-filters--redisplay)
+    (telega-status--set nil "")       ;reset aux status
 
-      ;; TODO: some chats remains with order="0", i.e. known chats, do
-      ;; not proceed with chats that once was used, such as basic
-      ;; groups upgraded to supergroups, closed secret chats, etc.  We
-      ;; might want to remove them from `telega--ordered-chats' list
-      ;; for faster processing, but keep it in chats hash
-      (setq telega-filters--inhibit-redisplay nil)
-      (telega-filters--redisplay)
-      (telega-status--set nil "")       ;reset aux status
-
-      (run-hooks 'telega-chats-fetched-hook))))
-
-(defun telega--getChats ()
-  "Retreive all chats from the server in async manner."
-  ;; Do not update filters on every chat fetched, update them at the end
-  (setq telega-filters--inhibit-redisplay t)
-
-  (let* ((last-chat (car (last telega--ordered-chats)))
-         (offset-order (or (plist-get last-chat :order) "9223372036854775807"))
-         (offset-chatid (or (plist-get last-chat :id) 0)))
-    (telega-server--call
-     (list :@type "getChats"
-           :offset_order offset-order
-           :offset_chat_id offset-chatid
-           :limit 1000)
-     #'telega-chat--on-getChats)))
+    (run-hooks 'telega-chats-fetched-hook)))
 
 (defun telega--getChatPinnedMessage (chat &optional callback)
   "Get pinned message for the CHAT, if any."
@@ -744,7 +725,7 @@ be marked as read."
   "Display CHAT found in global public chats search."
   (let* ((telega-chat-button-width (+ telega-chat-button-width
                                      (/ telega-chat-button-width 2)))
-         (telega-filters--inhibit-list '(has-order))
+         (telega-filters--inhibit-list '(has-order chat-list main archive))
          (visible-p (telega-filter-chats (list chat))))
     (when visible-p
       (telega-chat--pp chat))))
@@ -889,13 +870,19 @@ STATUS is one of: "
       (telega--sendMessage chat (list :@type "inputMessageContact"
                                       :contact me-contact)))))
 
+(defun telega-describe-chat--redisplay-func (chat)
+  (lambda (&rest _ignored-args)
+    (telega-save-cursor
+      (telega-describe-chat chat))))
+
 (defun telega-describe-chat (chat)
   "Show info about chat at point."
   (interactive (list (telega-chat-at (point))))
   (with-telega-help-win "*Telegram Chat Info*"
     (setq telega--chat chat)
 
-    (let ((chat-ava (telega-chat-avatar-image chat)))
+    (let ((redisplay-func (telega-describe-chat--redisplay-func chat))
+          (chat-ava (telega-chat-avatar-image chat)))
       (telega-ins--image chat-ava 0)
       (telega-ins--with-face
           (let ((color (telega-chat-color chat))
@@ -913,10 +900,7 @@ STATUS is one of: "
         (telega-ins--button "Set Profile Photo"
           'action (lambda (_ignored)
                     (let ((photo (read-file-name "Profile Photo: " nil nil t)))
-                      (telega--setProfilePhoto photo
-                        (lambda (_ignored)
-                          (telega-save-excursion
-                            (telega-describe-chat chat))))))))
+                      (telega--setProfilePhoto photo redisplay-func)))))
       (when (telega--tl-get chat :permissions :can_invite_users)
         (telega-ins " ")
         (telega-ins--button "Add Member"
@@ -928,10 +912,25 @@ STATUS is one of: "
         (telega-ins--button "Set Chat Photo"
           'action (lambda (_ignored)
                     (let ((photo (read-file-name "Chat Photo: " nil nil t)))
-                      (telega--setChatPhoto chat photo
-                        (lambda (_ignored)
-                          (telega-save-excursion
-                            (telega-describe-chat chat))))))))
+                      (telega--setChatPhoto chat photo redisplay-func)))))
+
+      ;; Archive/Unarchive
+      (let* ((chat-list (plist-get chat :chat_list))
+             (list-name (when chat-list
+                          (substring (plist-get chat-list :@type) 8))))
+        (cond ((string= list-name "Main")
+               (telega-ins " ")
+               (telega-ins--button (telega-i18n "archived_add")
+                 'action (lambda (_ignored)
+                           (telega--setChatChatList chat "Archive" redisplay-func)))
+               (telega-ins "\n"))
+              ((string= list-name "Archive")
+               (telega-ins " ")
+               (telega-ins--button (telega-i18n "archived_remove")
+                 'action (lambda (_ignored)
+                           (telega--setChatChatList chat "Main" redisplay-func)))
+               (telega-ins "\n"))))
+
       (telega-ins "\n"))
 
     (telega-ins-fmt "Id: %d\n" (plist-get chat :id))
@@ -3021,6 +3020,28 @@ If DRAFT-MSG is ommited, then clear draft message."
                 :chat_id (plist-get chat :id))
           (when draft-msg
             (list :draft_message draft-msg)))))
+
+(defun telega--on-updateChatChatList (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+        (chat-list (plist-get event :chat_list)))
+    (cl-assert chat)
+    (plist-put chat :chat_list chat-list)
+    (telega-root--chat-update chat)))
+
+(defun telega--on-updateChatHasScheduledMessages (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :has_scheduled_messages (plist-get event :has_scheduled_messages))
+    (telega-root--chat-update chat)))
+
+(defun telega--on-updateChatActionBar (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :action_bar (plist-get event :action_bar))
+    (telega-root--chat-update chat)
+
+    ;; TODO: affects view of chatbuf
+    ))
 
 (defun telega-chatbuf--switch-out ()
   "Called when switching from chat buffer."

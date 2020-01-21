@@ -27,6 +27,7 @@
 (require 'telega-server)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat--ensure "telega-chat" (chat))
 (declare-function telega-stickerset--ensure "telega-sticker" (sset))
 (declare-function telega-user--get "telega-user" (user-id))
 
@@ -438,6 +439,16 @@ Requires `:can_change_info' rights."
                       :path (expand-file-name filename)))
    (or callback 'ignore)))
 
+(defun telega--setChatChatList (chat list-name &optional callback)
+  "Move CHAT to a different chat list named LIST-NAME.
+LIST-NAME is one of: \"Main\" or \"Archive\"."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "setChatChatList"
+         :chat_id (plist-get chat :id)
+         :chat_list (list :@type (concat "chatList" (capitalize list-name))))
+   (or callback 'ignore)))
+
 (defun telega--setTdlibParameters ()
   "Set the parameters for TDLib initialization."
   (telega-server--send
@@ -579,6 +590,35 @@ Media content is an animation, an audio, a document, a photo or a video."
     (list :@type "getActiveLiveLocationMessages")
     callback))
 
+(defun telega--deleteMessages (chat-id message-ids &optional revoke)
+  "Delete messages by its MESSAGES-IDS list.
+If REVOKE is non-nil then delete message for all users."
+  (telega-server--send
+   (list :@type "deleteMessages"
+         :chat_id chat-id
+         :message_ids (apply 'vector message-ids)
+         :revoke (or revoke :false))))
+
+(defun telega--searchMessages (query last-msg &optional list-name callback)
+  "Search messages by QUERY.
+Specify LAST-MSG to continue searching from LAST-MSG searched.
+If LIST-NAME is given, then fetch chats from chat list named LIST-NAME.
+LIST-NAME is one of: \"Main\" or \"Archive\".
+If CALLBACK is specified, then do async call and run CALLBACK
+with list of chats received."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "searchMessages"
+          :chat_list (list :@type (concat "chatList"
+                                          (capitalize (or list-name "Main"))))
+          :query query
+          :offset_date (or (plist-get last-msg :date) 0)
+          :offset_chat_id (or (plist-get last-msg :chat_id) 0)
+          :offset_message_id (or (plist-get last-msg :id) 0)
+          :limit 100)
+    callback))
+
 (defun telega--getMapThumbnailFile (loc &optional zoom width height scale
                                         chat callback)
   "Get file with the map showing LOC.
@@ -677,6 +717,28 @@ Default LIMIT is 30."
     (list :@type "getTopChats"
           :category (list :@type (concat "topChatCategory" category))
           :limit (or limit 30))
+    callback))
+
+(defun telega--getChats (&optional list-name callback)
+  "Retreive all chats from the server in async manner.
+If LIST-NAME is given, then fetch chats from chat list named LIST-NAME.
+LIST-NAME is one of: \"Main\" or \"Archive\"."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat--ensure
+              (mapcar #'telega-chat-get (plist-get reply :chat_ids)))
+
+    (let* ((chat-list (if list-name
+                          (capitalize list-name)
+                        "Main"))
+           (last-chat (when (string= chat-list "Main")
+                        (car (last telega--ordered-chats))))
+           (offset-order (or (plist-get last-chat :order) "9223372036854775807"))
+           (offset-chatid (or (plist-get last-chat :id) 0)))
+      (list :@type "getChats"
+            :offset_order offset-order
+            :offset_chat_id offset-chatid
+            :limit 1000
+            :chat_list (list :@type (concat "chatList" chat-list))))
     callback))
 
 

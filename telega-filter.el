@@ -119,7 +119,8 @@ otherwise add to existing active filters."
          (fspec (if telega-filter-custom-expand
                     (cdr custom)
                   (list 'custom (car custom)))))
-    (if current-prefix-arg
+    (if (or current-prefix-arg
+            (member (car custom) telega-filter-custom-push-list))
         (telega-filters-push (list fspec))
       (telega-filter-add fspec))))
 
@@ -136,6 +137,17 @@ otherwise add to existing active filters."
 If FILTER is nil, then active filter is used."
   (equal (or filter (telega-filter-active)) (list telega-filter-default)))
 
+(defun telega-filter-active-chat-list-name ()
+  "Return name of the chat list according to active filter.
+Return one of \"Main\" or \"Archive\"."
+  (let ((ff (car (telega-filter-active))))
+    (cond ((or (eq ff 'archive)
+               (equal ff '(chat-list "Archive")))
+           "Archive")
+          ((or (eq ff 'main)
+               (equal ff '(chat-list "Main")))
+           "Main")
+          (t "Main"))))
 
 ;; ewoc stuff
 (defun telega-filter--pp (custom)
@@ -198,7 +210,7 @@ Used on search results updates."
       (setq telega--filtered-chats
             (nconc (telega-filter-chats telega--search-chats)
 ;                   (telega-filter-chats (telega-root--messages-chats))
-                   (let ((telega-filters--inhibit-list '(has-order)))
+                   (let ((telega-filters--inhibit-list '(has-order chat-list main archive)))
                      (telega-filter-chats (telega-root--global-chats)))))
 
     (setq telega--filtered-chats
@@ -636,6 +648,24 @@ See `telega-chat-custom-label'."
   "Matches CHAT if it is in tracking buffers list."
   (with-telega-chatbuf chat
     (member (buffer-name) tracking-buffers)))
+
+(define-telega-filter chat-list (chat list-name)
+  "Matches CHAT if it is in chat list named LIST-NAME.
+Only \"Main\" and \"Archive\" names are supported."
+  (equal (plist-get (plist-get chat :chat_list) :@type)
+         (concat "chatList" (capitalize list-name))))
+
+(define-telega-filter main (chat)
+  "Matches CHAT from \"Main\" chat-list."
+  (telega-chat-match-p chat '(chat-list "Main")))
+
+(define-telega-filter archive (chat)
+  "Matches CHAT from \"Archive\" chat-list."
+  (telega-chat-match-p chat '(chat-list "Archive")))
+
+(define-telega-filter has-scheduled-messages (chat)
+  "Matches CHAT if CHAT has scheduled messages."
+  (plist-get chat :has_scheduled_messages))
 
 (provide 'telega-filter)
 

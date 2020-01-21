@@ -448,7 +448,7 @@ See `telega-chat-custom-label' for details.
   :prefix "telega-filter-"
   :group 'telega)
 
-(defcustom telega-filter-default 'all
+(defcustom telega-filter-default 'main
   "*Default chats filter to apply.
 For example:
   `(any pin unread)'  - to show pinned or chats with unread messages."
@@ -456,12 +456,12 @@ For example:
   :group 'telega-filter)
 
 (defcustom telega-filters-custom
-  '(("All" . all)
+  '(("📑Main" . main)
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
     ("Contacts" . contact)
-    ("Unmuted" . unmuted)
-    ("Unread" . unread))
+    ("Important" . (and unread unmuted))
+    ("📑Archive" . archive))
   "*Alist of custom filters for chats.
 In form (NAME . FILTER-SPEC).
 TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
@@ -471,6 +471,15 @@ TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
 (defcustom telega-filter-custom-expand t
   "*Non-nil to expand custom filter when adding to active filters."
   :type 'boolean
+  :group 'telega-filter)
+
+(defcustom telega-filter-custom-push-list '("📑Archive")
+  "*List of custom filters to use `telega-filters-push' instead of `telega-filter-add'.
+By default if button with custom filter is pressed, this filter
+is added to the list of active filters.  Custom filters from this
+list always substitutes active filter list.
+Mostly used by `chat-list' chat filters."
+  :type 'list
   :group 'telega-filter)
 
 (defcustom telega-filter-button-width 20

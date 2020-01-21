@@ -169,7 +169,15 @@ Works only if current state is `authorizationStateWaitCode'."
 
   ;; All OK, request for chats/users/etc
   (telega-status--set nil "Fetching chats...")
-  (telega--getChats)
+
+  ;; Do not update filters on every chat fetched, update them at the end
+  (setq telega-filters--inhibit-redisplay t)
+  (telega--getChats "Main" 'telega-chat--on-getChats)
+  ;; Also fetch chats from Archive
+  ;; NOTE: We hope `telega--getChats' will return all chats in the
+  ;; Archive, in general this is not true, we need special callback to
+  ;; continue fetching, as with "Main" list
+  (telega--getChats "Archive")
 
   (run-hooks 'telega-ready-hook))
 

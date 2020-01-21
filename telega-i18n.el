@@ -154,6 +154,11 @@
     ("lng_self_destruct_years"
      :one_value "{count} year"
      :other_value "{count} years")
+
+    ("lng_archived_add"
+     :value "Archive chat")
+    ("lng_archived_remove"
+     :value "Unarchive chat")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil

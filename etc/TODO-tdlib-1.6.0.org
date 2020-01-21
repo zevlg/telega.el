@@ -4,7 +4,8 @@
 
 Changes in 1.6.0:
 
-* Added support for multiple chat lists. Currently, only two chat lists Main and Archive are supported:
+* DONE Added support for multiple chat lists. Currently, only two chat lists Main and Archive are supported:
+  CLOSED: [2020-01-21 Вт 17:59]
   - Added the class `ChatList`, which represents a chat list and could be `chatListMain` or `chatListArchive`.
   - Added the field `chat_list` to the class `chat`, denoting the chat list to which the chat belongs.
   - Added the parameter `chat_list` to the methods `getChats`, `searchMessages` and `setPinnedChats`.
@@ -32,6 +33,7 @@ Changes in 1.6.0:
   - Added the field `has_scheduled_messages` to the class `chat`.
   - Added the update `updateChatHasScheduledMessages`, which is sent whenever the field `has_scheduled_messages`
     changes in a chat.
+    DONE: [2020-01-21]
   - Added support for reminders in Saved Messages and notifications about other sent scheduled messages in
     the [Notification API](https://core.telegram.org/tdlib/notification-api/).
 * DONE Added support for adding users without a known phone number to the list of contacts:
@@ -47,6 +49,7 @@ Changes in 1.6.0:
   - Removed the legacy class `chatReportSpamState`.
   - Removed the legacy methods `getChatReportSpamState` and `changeChatReportSpamState`.
   - Added the update `updateChatActionBar`.
+    DONE: [2020-01-21]
   - Added the method `removeChatActionBar`, which allows to dismiss the action bar.
   - Added the method `sharePhoneNumber`, allowing to share the phone number of the current user with a mutual contact.
   - Added the new reason `chatReportReasonUnrelatedLocation` for reporting location-based groups unrelated to

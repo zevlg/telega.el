@@ -107,7 +107,7 @@
 
     ;; Fast navigation
     (define-key map (kbd "M-g u") 'telega-root-next-unread)
-    (define-key map (kbd "M-g y") 'telega-root-next-unread-unmuted)
+    (define-key map (kbd "M-g i") 'telega-root-next-important)
     (define-key map (kbd "M-g m") 'telega-root-next-mention)
     map)
   "The key map for telega root buffer.")
@@ -405,11 +405,17 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
 
 (defun telega--on-updateUnreadMessageCount (event)
   "Number of unread messages has changed."
-  (setq telega--unread-message-count (cddr event)))
+  (let ((chat-list (plist-get event :chat_list)))
+    (when (or (null chat-list)
+              (equal chat-list (list :@type "chatListMain")))
+      (setq telega--unread-message-count (cddr event)))))
 
 (defun telega--on-updateUnreadChatCount (event)
   "Number of unread/unmuted chats has been changed."
-  (setq telega--unread-chat-count (cddr event)))
+  (let ((chat-list (plist-get event :chat_list)))
+    (when (or (null chat-list)
+              (equal chat-list (list :@type "chatListMain")))
+      (setq telega--unread-chat-count (cddr event)))))
 
 
 ;;; Fast navigation
@@ -426,12 +432,12 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
          (user-error "No more chats matching: %S" chat-filter)))))
 
 (defun telega-root-next-unread (n)
-  "Move point to the next N's chat unread messages."
+  "Move point to the next N's chat with unread message."
   (interactive "p")
   (telega-root-next-match-p 'unread n))
 
-(defun telega-root-next-unread-unmuted (n)
-  "Move point to the next N's chat unread unmuted messages."
+(defun telega-root-next-important (n)
+  "Move point to the next N's chat with important messages."
   (interactive "p")
   (telega-root-next-match-p '(and unread unmuted) n))
 
@@ -476,9 +482,9 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
 If LAST-MSG is specified, then continue searching."
   (cl-assert (not telega--search-messages-loading))
   (setq telega--search-messages-loading
-        (telega--searchMessages
-         telega-search-query last-msg
-         'telega-root--messages-add))
+        (telega--searchMessages telega-search-query last-msg
+                                (telega-filter-active-chat-list-name)
+                                'telega-root--messages-add))
 
   (with-telega-root-buffer
     (telega-save-cursor
