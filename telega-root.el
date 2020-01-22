@@ -594,7 +594,7 @@ If used with PREFIX-ARG, then cancel current search."
             (telega--searchChats query))
 
       (setq telega--search-contacts
-            (telega--searchContacts query))
+            (sort (telega--searchContacts query) 'telega-user-cmp-by-status))
       ;; NOTE: filter out contacts, that are already in `telega--search-chats'
       ;; (setq telega--search-contacts
       ;;       (cl-remove-if (lambda (contact)

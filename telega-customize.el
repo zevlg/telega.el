@@ -369,7 +369,7 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :group 'telega-root)
 
 (defcustom telega-root-keep-cursor t
-  "*Non-nil to keep cursor at current chat even if chat's order changes."
+  "*Non-nil to keep cursor at current chat, even if chat's order changes."
   :type 'boolean
   :group 'telega-root)
 
@@ -510,6 +510,7 @@ Mostly used by `chat-list' chat filters."
 (defcustom telega-inserter-for-chat-button 'telega-ins--chat-full
   "Inserter for the chat button in root buffer."
   :type 'function
+  :options '(telega-ins--chat-full-2lines)
   :group 'telega-inserters)
 
 (defcustom telega-inserter-for-msg-button 'telega-ins--message
@@ -522,6 +523,12 @@ See `telega-ins--message' for NO-HEADER argument."
 (defcustom telega-inserter-for-msg-notification 'telega-ins--msg-notification
   "*Inserter used to form body for notification bubble."
   :type 'function
+  :group 'telega-inserter)
+
+(defcustom telega-inserter-for-root-contact-button 'telega-ins--root-contact
+  "*Inserter for buttons in CONTACTS ewoc in rootbuf."
+  :type 'function
+  :options '(telega-ins--root-contact-2lines)
   :group 'telega-inserter)
 
 

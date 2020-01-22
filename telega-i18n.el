@@ -159,6 +159,9 @@
      :value "Archive chat")
     ("lng_archived_remove"
      :value "Unarchive chat")
+
+    ("lng_status_online"
+     :value "online")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil

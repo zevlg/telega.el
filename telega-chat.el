@@ -1847,9 +1847,8 @@ If ICONS-P is non-nil, then use icons for members count."
               ;; Online status
               (when (and (eq (telega-chat--type telega-chatbuf--chat) 'private)
                          (not (telega-me-p telega-chatbuf--chat))
-                         (string= "Online"
-                                  (telega-user--seen
-                                   (telega-chat--user telega-chatbuf--chat))))
+                         (telega-user-online-p
+                          (telega-chat--user telega-chatbuf--chat)))
                 telega-symbol-online-status)
               (format-mode-line telega-chat-mode-line-format nil nil
                                 (current-buffer))))

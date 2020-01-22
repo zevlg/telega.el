@@ -97,7 +97,7 @@ user is fetched from server."
 
 (defsubst telega-user-online-p (user)
   "Return non-nil if USER is online."
-  (string= (telega-user--seen user) "Online"))
+  (equal (telega-user--seen user) "Online"))
 
 (defun telega-user--type (user)
   "Return USER type."
@@ -183,6 +183,14 @@ Default is: `full'"
      (cons user 'telega-avatar--create-image)
      (cons photo :small))))
 
+(defun telega-user-avatar-image-one-line (user)
+  "Return avatar for the USER for one line use."
+  (let ((photo (plist-get user :profile_photo)))
+    (telega-media--image
+     (cons user 'telega-avatar--create-image-one-line)
+     (cons photo :small)
+     nil :telega-avatar-1)))
+
 (defun telega--searchChatMembers (chat query &optional filter limit)
   "Search CHAT members by QUERY.
 FILTER is one \"Administrators\", \"Members\", \"Restricted\",
@@ -227,21 +235,20 @@ If UNBLOCK-P is specified, then unblock USER."
            (format "Really block user %s? " (telega-user--name user)))
       (telega--blockUser user))))
 
+(defun telega-user-cmp-by-status (user1 user2)
+  "Function to sort users by their online status."
+  (cond ((telega-user-online-p user1) t)
+        ((telega-user-online-p user2) nil)
+        (t (> (or (plist-get user1 :telega-last-online) 0)
+              (or (plist-get user2 :telega-last-online) 0)))))
+
 
 ;;; Contacts
-(defun telega-ins--root-contact (contact)
-  "Inserter for CONTACT user."
-  (telega-ins--contact contact 'no-phone)
-  (when-let ((username (telega-tl-str contact :username)))
-    (telega-ins "@" username " "))
-  (telega-ins-prefix "+"
-    (telega-ins (plist-get contact :phone_number))))
-
 (defun telega-contact-root--pp (contact)
   "Pretty printer for CONTACT button shown in root buffer.
 CONTACT is some user you have exchanged contacs with."
   (telega-button--insert 'telega-user contact
-    :inserter 'telega-ins--root-contact
+    :inserter telega-inserter-for-root-contact-button
     :action 'telega-user-chat-with)
   (telega-ins "\n"))
 

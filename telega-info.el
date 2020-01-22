@@ -258,6 +258,10 @@ REDISPLAY-FUNC - function to call if something changes in user info."
         (telega-ins " "))
       (telega-ins "\n"))
 
+    (telega-ins-fmt "Id: %s\n"
+      (if telega-debug
+          (format "(telega-user--get %d)" (plist-get user :id))
+        (format "%d" (plist-get user :id))))
     (when (telega-me-p user)
       ;; Saved Messages
       (telega-ins "Logged in: ")
@@ -279,16 +283,16 @@ REDISPLAY-FUNC - function to call if something changes in user info."
       (telega-ins (telega-i18n "profile_mobile_number")
                   " +" phone "\n"))
     ;; Online status
-    (let ((last-online (plist-get user :telega-last-online))
-          (seen (telega-user--seen user)))
-      (telega-ins "Last seen: ")
-      (cond ((string= "Online" seen)
-             (telega-ins seen))
-            (last-online
-             (telega-ins "in " (telega-duration-human-readable
-                                (- (telega-time-seconds) last-online) 1)))
-            (t (telega-ins seen)))
-      (telega-ins "\n"))
+    (telega-ins "Last seen: ")
+    (cond ((telega-user-online-p user)
+           (telega-ins-i18n "status_online"))
+          ((plist-get user :telega-last-online)
+           (telega-ins "in " (telega-duration-human-readable
+                              (- (telega-time-seconds)
+                                 (plist-get user :telega-last-online)) 1)))
+          (t (telega-ins (telega-user--seen user))))
+    (telega-ins "\n")
+
     (when-let ((bio (telega-tl-str user :bio)))
       ;; I18N: profile_bio -> Bio:
       (telega-ins--labeled (concat (telega-i18n "profile_bio") " ") nil

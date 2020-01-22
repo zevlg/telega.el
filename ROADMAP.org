@@ -108,6 +108,23 @@ Random list of ideas for telega.el
    When focus switches off the Emacs and Emacs goes to idle we can
    execute heavy tasks, such as fetching installed stickersets.
 
+** Mode to track switch-in chats and move cursor to corresponding chat in rootbuf
+   So if side-by-side window setup used, then switching chats reflects
+   in the rootbuf.
+
+   Side-by-side window setup:
+   #+begin_src elisp
+   (setq telega-chat--display-buffer-action
+         '((display-buffer-reuse-window display-buffer-use-some-window)))
+   (setq telega-inserter-for-chat-button 'telega-ins--chat-full-2lines)
+
+   (setq telega-chat-button-width 15)
+   (setq telega-root-fill-column (+ 7 telega-chat-button-width))
+   #+end_src
+
+   This should be executed *before* loading telega, because changing
+   ~telega-inserter-for-chat-button~ in runtime won't have any effect.
+
 ** Ввести custom variable - telega-media-size
 
    '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)

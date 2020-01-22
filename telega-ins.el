@@ -226,9 +226,10 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
                   (if mutual-contact-p "↔" "←")
                   (propertize "🚹" 'face 'bold)))))
 
-(defun telega-ins--user (user &optional member)
+(defun telega-ins--user (user &optional member show-phone-p)
   "Insert USER, aligning multiple lines at current column.
-MEMBER specifies corresponding \"ChatMember\" object."
+MEMBER specifies corresponding \"ChatMember\" object.
+If SHOW-PHONE-P is non-nil, then show USER's phone number."
   (let ((avatar (telega-user-avatar-image user))
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0)
@@ -239,9 +240,14 @@ MEMBER specifies corresponding \"ChatMember\" object."
                   (plist-get member :status))))
       (telega-ins ")"))
 
+    (when show-phone-p
+      (telega-ins-prefix " +"
+        (telega-ins (plist-get user :phone_number))))
+
     ;; Insert (him)in<-->out(me) relationship
     (when (and telega-user-show-relationship
                (not (telega-me-p user)))
+      (telega-ins " ")
       (telega-ins--user-relationship user))
     ;; Block/scam mark, without requesting
     ;; TODO: rewrite when `telega-user-full-info 'locally' will be
@@ -699,12 +705,11 @@ Return `non-nil' if WEB-PAGE has been inserted."
 (defun telega-ins--contact (contact &optional no-phone)
   "One line variant inserter for CONTACT."
   (telega-ins telega-symbol-contact " ")
-  (when-let ((first-name (telega-tl-str contact :first_name)))
-    (telega-ins first-name " "))
-  (when-let ((last-name (telega-tl-str contact :last_name)))
-    (telega-ins last-name " "))
+  (telega-ins (telega-user--name contact 'name))
+  (telega-ins--user-online-status contact)
+
   (unless no-phone
-    (telega-ins "(" (plist-get contact :phone_number) ")")))
+    (telega-ins " (" (plist-get contact :phone_number) ")")))
 
 (defun telega-ins--contact-msg (msg)
   "Inserter for contact message MSG."
@@ -1651,6 +1656,27 @@ If REMOVE-CAPTION is specified, then do not insert caption."
       (telega-ins "]"))))
 
 
+;;; Inserters for CONTACTS ewoc buttons
+(defun telega-ins--root-contact (user)
+  "Inserter for USER, used for contacts ewoc in rootbuf."
+  (if telega-root-show-avatars
+    (progn
+      (telega-ins--image (telega-user-avatar-image-one-line user))
+      (telega-ins (telega-user--name user 'name)))
+
+    (telega-ins--contact user 'no-phone))
+
+  (telega-ins-prefix " @"
+    (telega-ins (telega-tl-str user :username)))
+  (telega-ins-prefix " +"
+    (telega-ins (plist-get user :phone_number))))
+
+(defun telega-ins--root-contact-2lines (user)
+  "Two lines inserter for USER, used for contacts ewoc in rootbuf."
+  (let ((telega-user-show-relationship nil))
+    (telega-ins--user user nil 'show-phone)))
+
+
 (defun telega-ins--chat-msg-one-line (chat msg max-width)
   "Insert message for the chat button usage."
   (cl-assert (> max-width 11))
@@ -1683,13 +1709,13 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   (telega-ins--chat-msg-one-line
    (telega-msg-chat pin-msg) pin-msg (+ 8 telega-chat-fill-column)))
 
-(defun telega-ins--chat-online-status (chat)
-  "Insert user online status for corresponding private CHAT."
-  (when-let ((user (telega-chat-user chat)))
-    (when (and (not (telega-user-bot-p user))
-               (not (telega-me-p user))
-               (equal (telega-user--seen user) "Online"))
-      (telega-ins telega-symbol-online-status))))
+(defun telega-ins--user-online-status (user)
+  "Insert USER's online status."
+  (when (and user
+             (not (telega-user-bot-p user))
+             (not (telega-me-p user))
+             (telega-user-online-p user))
+    (telega-ins telega-symbol-online-status)))
 
 (defun telega-ins--chat (chat &optional brackets)
   "Inserter for CHAT button in root buffer.
@@ -1777,7 +1803,7 @@ Return t."
                                     :align 'left
                                     :elide t)
         (telega-ins title)
-        (telega-ins--chat-online-status chat))
+        (telega-ins--user-online-status (telega-chat-user chat)))
       (telega-ins umstring))
 
     (telega-ins (or (cadr brackets) "]"))
@@ -1858,6 +1884,21 @@ Return t."
   (telega-ins "  ")
   (telega-ins--chat-status
    chat (- telega-root-fill-column (current-column)))
+  t)
+
+(defun telega-ins--chat-full-2lines (chat)
+  "Two lines inserter for the CHAT button in rootbuf."
+  (let ((avatar (telega-chat-avatar-image chat)))
+    (telega-ins--image avatar 0)
+    (let ((telega-root-show-avatars nil))
+      (telega-ins--chat chat))
+    (telega-ins "\n")
+    (telega-ins--image avatar 1))
+
+    (telega-ins " ")
+    (telega-ins--chat-status
+     chat (- telega-root-fill-column (current-column)))
+    (telega-ins "\n")
   t)
 
 (defun telega-ins--root-msg (msg)
