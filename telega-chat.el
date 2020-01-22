@@ -1241,6 +1241,7 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     ;; C-M-[ - cancels edit/reply
     (define-key map (kbd "\e\e") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
+    (define-key map (kbd "C-M-a") 'telega-chatbuf-beginning-of-thing)
 
     (define-key map (kbd "C-c C-a") 'telega-chatbuf-attach)
     (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
@@ -1978,6 +1979,16 @@ If ICONS-P is non-nil, then use icons for members count."
       ;; Restore input if canceled
       (telega-chatbuf-input-goto saved-input-idx))
     ))
+
+(defun telega-chatbuf-beginning-of-thing (&optional arg)
+  "Move backward to the beginning of the chat input or message."
+  (interactive "p")
+  (when (> (point) telega-chatbuf--input-marker)
+    (goto-char telega-chatbuf--input-marker)
+    (cl-decf arg))
+
+  (when (> arg 0)
+    (beginning-of-defun arg)))
 
 (defun telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
