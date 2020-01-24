@@ -10,6 +10,17 @@
    - Importing/Exporting files using "Saved Messages"
 ** Full integration for Transalation Platform
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
+** Chat sorting
+
+   By default chats are ordered by date of the last message in chat.
+
+   But =telega= might sort chats by some other criteria.  Criteria might be:
+   - Number of unread messages
+   - Number of mentions
+   - Number of chat members
+   - Number of online chat members
+   - Chat creation date
+   - Date of last message sent by ~telega-user-me~
 
 * telega-server as a module
 
