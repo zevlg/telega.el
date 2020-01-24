@@ -15,12 +15,14 @@
    By default chats are ordered by date of the last message in chat.
 
    But =telega= might sort chats by some other criteria.  Criteria might be:
+   - Title of the chat in alphabetical order (thanks to https://t.me/Kurvivor)
    - Number of unread messages
    - Number of mentions
    - Number of chat members
    - Number of online chat members
    - Chat creation date
    - Date of last message sent by ~telega-user-me~
+   - Date of last mention (thanks to https://t.me/lainposter)
 
 * telega-server as a module
 
