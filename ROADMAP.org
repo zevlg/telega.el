@@ -136,6 +136,16 @@ Random list of ideas for telega.el
    This should be executed *before* loading telega, because changing
    ~telega-inserter-for-chat-button~ in runtime won't have any effect.
 
+** Messages squashing mode ~telega-squash-message-mode~ 
+
+   If last message in group is sent by you, and not yet seen by any
+   chat participant, and you send next message within
+   ~telega-squash-message-period~ seconds, then instead of sending new
+   message to chat, last message is edited (adding new text to the end
+   of the message).
+
+   Works only for messages of ~messageText~.
+
 ** Ввести custom variable - telega-media-size
 
    '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)
