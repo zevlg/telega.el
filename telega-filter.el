@@ -87,11 +87,15 @@ Bind it to temporary disable some filters.")
     (define-key map (kbd "n") 'telega-filter-by-name)
     (define-key map (kbd "t") 'telega-filter-by-type)
     (define-key map (kbd "c") 'telega-filter-by-contact)
-    (define-key map (kbd "f") 'telega-filter-by-custom)
+    (define-key map (kbd "C") 'telega-filter-by-custom)
+    (define-key map (kbd "f") 'telega-filter-by-filter)
+    ;; `a' mnemominc is to "add" some filter
+    (define-key map (kbd "a") 'telega-filter-by-filter)
     (define-key map (kbd "u") 'telega-filter-by-unread)
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "p") 'telega-filter-by-pin)
     (define-key map (kbd "y") 'telega-filter-by-unmuted)
+    (define-key map (kbd "i") 'telega-filter-by-important)
     (define-key map (kbd "v") 'telega-filter-by-verified)
     (define-key map (kbd "o") 'telega-filter-by-opened)
     (define-key map (kbd "r") 'telega-filter-by-restriction)
@@ -168,7 +172,7 @@ Return one of \"Main\" or \"Archive\"."
      (telega-ins "\n")
      (unless telega-root-compact-view
        (telega-ins "\n"))
-     (telega-ins "----")
+     (telega-ins "-/--")
      (telega-ins--with-attrs (list :min filters-width
                                    :align 'center
                                    :align-symbol "-"
@@ -367,6 +371,36 @@ ARGS specifies arguments to operation, first must always be chat."
          (apply (telega-filter--get (car chat-filter)) chat (cdr chat-filter)))
         (t (error "Invalid Chat Filter: %S" chat-filter))))
 
+(defun telega-filter-by-filter (filter-name)
+  "Filter by some filter."
+  ;; Query user for filter with corresponding interactive function, or
+  ;; filter without argument
+  (interactive
+   (list
+    (let* ((filter-funs
+            (cl-remove-if
+             (lambda (funsym)
+               (> (length (help-function-arglist funsym)) 1))
+             (apropos-internal "^telega--filter-[a-z-]+" 'functionp)))
+           (filter-names
+            (mapcar (lambda (funame)
+                      (substring funame (length "telega--filter-")))
+                    (mapcar 'symbol-name filter-funs)))
+           (i-filter-names
+            (mapcar (lambda (funsym)
+                      (substring (symbol-name funsym)
+                                 (length "telega-filter-by-")))
+                    (apropos-internal "^telega-filter-by-[a-z-]+" 'functionp))))
+      (funcall telega-completing-read-function
+               "Chat Filter: "
+               (seq-uniq (nconc filter-names i-filter-names)) nil t))))
+
+  (let ((i-filter-fun-sym (intern (concat "telega-filter-by-" filter-name))))
+    (if (fboundp i-filter-fun-sym)
+        (call-interactively i-filter-fun-sym)
+
+      (telega-filter-add (intern filter-name)))))
+
 ;; - (any ~FILTER-LIST~...) ::
 ;;   {{{fundoc(telega--filter-any)}}}
 (define-telega-filter any (chat &rest filter-list)
@@ -510,6 +544,12 @@ By default N is 1."
   (interactive)
   (telega-filter-add 'unmuted))
 
+(defun telega-filter-by-important ()
+  "Filter important chats.
+Important chat is the chat with unread messages and enabled notifications."
+  (interactive)
+  (telega-filter-add '(and unread unmuted)))
+
 ;; - (user-status ~STATUS-LIST~...) ::
 ;;   {{{fundoc(telega--filter-user-status)}}}
 ;; 
@@ -557,7 +597,7 @@ By default N is 1."
 ;; - me-is-member ::
 ;;   {{{fundoc(telega--filter-me-is-member)}}}
 (define-telega-filter me-is-member (chat)
-  "Matches if `telega-user-me' is member of the chat."
+  "Matches if me is member of the chat."
   (not (and (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
             (memq (telega--tl-type (plist-get (telega-chat--info chat) :status))
                   '(chatMemberStatusLeft chatMemberStatusBanned)))))
@@ -722,6 +762,13 @@ See `telega-chat-set-custom-label'."
   "Matches if chat is in tracking buffers list."
   (interactive)
   (telega-filter-add (list 'tracking)))
+
+;; - last-message-by-me ::
+;;   {{{fundoc1(telega--filter-last-message-by-me)}}}
+(define-telega-filter last-message-by-me (chat)
+  "Matches if chat's last message sent by me."
+  (when-let ((last-msg (plist-get chat :last_message)))
+    (eq (plist-get last-msg :sender_user_id) telega--me-id)))
 
 ;; - (chat-list ~LIST-NAME~) ::
 ;;   {{{fundoc(telega--filter-chat-list)}}}

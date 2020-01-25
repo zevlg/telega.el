@@ -20,12 +20,12 @@ new terms specific to =telega=.  All of them are used in the manual.
   button, executes button action.  There are many buttons of different
   kind in =telega=
 
-- Root Buffer aka rootbuf ::
+- Root Buffer a.k.a. rootbuf ::
   Buffer with list of chats, you see it just after {{{kbd(M-x telega RET)}}}.
   Most of the time rootbuf term is used in the manual.
   See [[#root-buffer][Root Buffer]]
 
-- Chat Buffer aka chatbuf ::
+- Chat Buffer a.k.a. chatbuf ::
   Buffer with chat contents.
   See [[#chat-buffer][Chat Buffer]]
 
@@ -41,6 +41,11 @@ new terms specific to =telega=.  All of them are used in the manual.
 
 - Active Chat Filter ::
   Chat filter applied to the chat list in rootbuf.
+
+- Me user a.k.a. me ::
+  User currently logged in, ~(telega-user-me)~ returns me.
+
+  me means you, not me.
 
 {{{ellit-el(../telega-root.el)}}}
 {{{ellit-el(../telega-filter.el)}}}

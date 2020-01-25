@@ -698,7 +698,7 @@ See `mode-line-buffer-identification'."
   "VOIP settings."
   :group 'telega)
 
-(defcustom telega-voip-logfile 
+(defcustom telega-voip-logfile
   (expand-file-name "telega-voip.log" telega-directory)
   "*Write VoIP logs to this file.
 Set it to nil to disable VoIP logging."
