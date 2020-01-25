@@ -98,17 +98,16 @@ Chat Filter examples:
 
 ** List of chat filters
 
-- (any ~FILTER-LIST~..) ::
+- (any ~FILTER-LIST~...) ::
   Matches if any filter in ~FILTER-LIST~ matches.
 
-- (or ~FILTER-LIST~..) ::
+- (or ~FILTER-LIST~...) ::
   Same as ~any~
 
-- (all ~FILTER-LIST~..) ::
-  Matches if all filters in ~FILTER-LIST~ matches.
-If FLIST is empty then return t.
+- (all ~FILTER-LIST~...) ::
+  Matches if all filters in ~FILTER-LIST~ matches. Also matches if ~FILTER-LIST~ is empty.
 
-- (and ~FILTER-LIST~..) ::
+- (and ~FILTER-LIST~...) ::
   Same as ~all~
 
 - (not ~FILTER~) ::
@@ -120,7 +119,7 @@ If FLIST is empty then return t.
   See [[#chat-types][Chat types]]
 
 - (name ~REGEXP~) ::
-  Matches if chat’s title matches ~REGEXP~.
+  Matches if chat's title matches ~REGEXP~.
 
 - (custom ~NAME~) ::
   Matches if custom filter with ~NAME~ matches.
@@ -132,18 +131,15 @@ If FLIST is empty then return t.
   Matches if chat has pinned message.
 
 - (unread [ ~N~ ]) ::
-  Matches if chat has least ~N~ unread messages.
-By default ~N~ is 1.
-Also matches chats marked as unread.
+  Matches if chat has least ~N~ unread messages. By default ~N~ is 1. Also matches chats marked as unread.
 
 - (mention [ ~N~ ]) ::
-  Matches if chat has least ~N~ unread mentions.
-By default ~N~ is 1.
+  Matches if chat has least ~N~ unread mentions. By default ~N~ is 1.
 
 - unmuted ::
   Matches if chat has enabled notifications.
 
-- (user-status ~STATUS-LIST~..) ::
+- (user-status ~STATUS-LIST~...) ::
   Matches private chat where user status is one of ~STATUS-LIST~.
 
   Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
@@ -152,11 +148,11 @@ By default ~N~ is 1.
 - verified ::
   Matches if chat is verified.
 
-- (ids ~ID-LIST~..)
-  Matches if chat’s id is one of in ~ID-LIST~.
+- (ids ~ID-LIST~...) ::
+  Matches if chat's id is one of in ~ID-LIST~.
 
 - me-is-member ::
-  Matches if ‘telega-user-me’ is member of the chat.
+  Matches if ~telega-user-me~ is member of the chat.
 
 - has-last-message ::
   Matches if chat has last message.
@@ -174,11 +170,7 @@ By default ~N~ is 1.
   Matches if chat has corresponding chatbuf.
 
 - (permission ~PERM~) ::
-  Matches if chat has ~PERM~ set in chat permissions.
-~PERM~ could be one of:
-‘:can_send_messages’,‘:can_send_media_messages’, ‘:can_send_polls’,
-‘:can_send_other_messages’, ‘:can_add_web_page_previews’,
-‘:can_change_info’, ‘:can_invite_users’, ‘:can_pin_messages’
+  Matches if chat has ~PERM~ set in chat permissions. ~PERM~ could be one of: ~:can_send_messages~,~:can_send_media_messages~, ~:can_send_polls~, ~:can_send_other_messages~, ~:can_add_web_page_previews~, ~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
 
 - (restriction ~SUFFIX-LIST~..) ::
   Matches restricted chats.
@@ -192,8 +184,7 @@ By default ~N~ is 1.
   If ~SUFFIX-LIST~ is ommited, then match any reason.
 
 - (contact [ ~MUTUAL-P~ ]) ::
-  Matches private chats if corresponding user is a contact.
-If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
+  Matches private chats if corresponding user is a contact. If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
 - top ::
   Matches if chat is in top usage.
@@ -208,8 +199,7 @@ If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
   Matches if chat is in tracking buffers list.
 
 - (chat-list ~LIST-NAME~) ::
-  Matches if chat is in chat list named ~LIST-NAME~.
-Only "Main" and "Archive" names are supported.
+  Matches if chat is in chat list named ~LIST-NAME~. Only "Main" and "Archive" names are supported.
 
 - main ::
   Matches if chat from "Main" chat list.

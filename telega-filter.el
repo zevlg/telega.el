@@ -62,6 +62,7 @@
 (declare-function telega-chat-label "telega-chat" (chat))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat--user "telega-chat" (chat))
+(declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
 (declare-function telega-chats-top "telega-chat" (category))
 
 (declare-function telega-root--buffer "telega-root")
@@ -366,22 +367,23 @@ ARGS specifies arguments to operation, first must always be chat."
          (apply (telega-filter--get (car chat-filter)) chat (cdr chat-filter)))
         (t (error "Invalid Chat Filter: %S" chat-filter))))
 
-;; - (any ~FILTER-LIST~..) ::
+;; - (any ~FILTER-LIST~...) ::
 ;;   {{{fundoc(telega--filter-any)}}}
 (define-telega-filter any (chat &rest filter-list)
   "Matches if any filter in FILTER-LIST matches."
   (cl-find chat filter-list :test #'telega-chat-match-p))
-;; - (or ~FILTER-LIST~..) ::
+;; - (or ~FILTER-LIST~...) ::
 ;;   Same as ~any~
 (defalias 'telega--filter-or 'telega--filter-any)
 
-;; - (all ~FILTER-LIST~..) ::
+;; - (all ~FILTER-LIST~...) ::
 ;;   {{{fundoc(telega--filter-all)}}}
 (define-telega-filter all (chat &rest filter-list)
   "Matches if all filters in FILTER-LIST matches.
-If FLIST is empty then return t."
+Also matches if FILTER-LIST is empty."
   (not (cl-find chat filter-list :test-not #'telega-chat-match-p)))
-;; - (and ~FILTER-LIST~..) ::
+
+;; - (and ~FILTER-LIST~...) ::
 ;;   Same as ~all~
 (defalias 'telega--filter-and 'telega--filter-all)
 
@@ -389,7 +391,7 @@ If FLIST is empty then return t."
 ;;   {{{fundoc(telega--filter-not)}}}
 (define-telega-filter not (chat filter)
   "Matches if FILTER not maches."
-  (not (telega-chat-match-p chat chat-filter)))
+  (not (telega-chat-match-p chat filter)))
 
 (defun telega-filters-negate ()
   "Negate active filters."
@@ -508,7 +510,7 @@ By default N is 1."
   (interactive)
   (telega-filter-add 'unmuted))
 
-;; - (user-status ~STATUS-LIST~..) ::
+;; - (user-status ~STATUS-LIST~...) ::
 ;;   {{{fundoc(telega--filter-user-status)}}}
 ;; 
 ;;   Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
@@ -539,7 +541,7 @@ By default N is 1."
   (interactive)
   (telega-filter-add 'verified))
 
-;; - (ids ~ID-LIST~..)
+;; - (ids ~ID-LIST~...) ::
 ;;   {{{fundoc(telega--filter-ids)}}}
 (define-telega-filter ids (chat &rest id-list)
   "Matches if chat's id is one of in ID-LIST."
@@ -642,8 +644,8 @@ Suffix can be one of:
 If SUFFIX-LIST is not specified, then match any restriction reason."
   (when-let ((reason (telega-tl-str
                       (telega-chat--info chat) :restriction_reason)))
-    (or (not suffixes)
-        (cl-find reason suffixes
+    (or (not suffix-list)
+        (cl-find reason suffix-list
                  :test (lambda (string regexp)
                          (string-match-p regexp string))))))
 
