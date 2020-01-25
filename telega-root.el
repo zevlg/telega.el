@@ -21,7 +21,11 @@
 
 ;;; Commentary:
 
-;;
+;; * Root Buffer
+;; 
+;; rootbuf is the heart of =telega=.
+;; 
+;; *TODO*: describe parts of the rootbuf
 
 ;;; Code:
 (require 'ewoc)
@@ -105,10 +109,25 @@
 
     (define-key map (kbd "m") 'telega-chat-with)
 
-    ;; Fast navigation
+    ;; ** Fast navigation
+    ;; 
+    ;; {{{kbd(M-g)}}} prefix in rootbuf is used to jump across chat buttons.
+    ;; 
+    ;; - Key: {{{where-is(telega-root-next-unread,telega-root-mode-map)}}}
+    ;; 
+    ;;   {{{fundoc(telega-root-next-unread)}}}
     (define-key map (kbd "M-g u") 'telega-root-next-unread)
+
+    ;; - Key: {{{where-is(telega-root-next-important,telega-root-mode-map)}}}
+    ;; 
+    ;;   {{{fundoc(telega-root-next-important)}}}
     (define-key map (kbd "M-g i") 'telega-root-next-important)
+
+    ;; - Key: {{{where-is(telega-root-next-mention,telega-root-mode-map)}}}
+    ;; 
+    ;;   {{{fundoc(telega-root-next-mention)}}}
     (define-key map (kbd "M-g m") 'telega-root-next-mention)
+    (define-key map (kbd "M-g @") 'telega-root-next-mention)
     map)
   "The key map for telega root buffer.")
 
@@ -432,17 +451,20 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
          (user-error "No more chats matching: %S" chat-filter)))))
 
 (defun telega-root-next-unread (n)
-  "Move point to the next N's chat with unread message."
+  "Move point to the next chat with unread message.
+Numeric prefix arg N can be specified to move to N's next chat."
   (interactive "p")
   (telega-root-next-match-p 'unread n))
 
 (defun telega-root-next-important (n)
-  "Move point to the next N's chat with important messages."
+  "Move point to the next chat with important messages.
+Numeric prefix arg N can be specified to move to N's next chat."
   (interactive "p")
   (telega-root-next-match-p '(and unread unmuted) n))
 
 (defun telega-root-next-mention (n)
-  "Move point to the next N's chat with mention."
+  "Move point to the next chat with mention.
+Numeric prefix arg N can be specified to move to N's next chat."
   (interactive "p")
   (telega-root-next-match-p 'mention n))
 

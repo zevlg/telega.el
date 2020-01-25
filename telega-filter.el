@@ -21,31 +21,33 @@
 
 ;;; Commentary:
 
+;; * Chat Filters
+;; 
 ;; Chat Filters are used to match chats, same as regexps are used to
-;; match strings.  Chat Filters uses S-exp notation similar to `rx'
+;; match strings.  Chat Filters uses S-exp notation similar to ~rx~
 ;; package for regexps.
 ;;
 ;; Primitive Chat Filter is a specifier to match some property of the
 ;; chat.  Each primitive Chat Filter has name (elisp symbol) and
-;; corresponding function named `telega--filter-<FILTER-NAME>'.
+;; corresponding function named ~telega--filter-<FILTER-NAME>~.
 ;; You can specify primitive Chat Filter in either way:
-;;   1) <FILTER-NAME>
-;;   2) ( <FILTER-NAME> <ARG1> [<ARG2> ...] )
+;;   1. ~<FILTER-NAME>~
+;;   2. ~( <FILTER-NAME> <ARG1> [<ARG2> ...] )~
 ;;
-;; Primitive Chat Filters are combined using `and', `or' and `not'
-;; filters, forming final Chat Filter, so Chat Filter is a logical
+;; Primitive Chat Filters are combined using ~and~, ~or~ and ~not~
+;; filters, forming final Chat Filter.  So Chat Filter is a logical
 ;; combination of other Chat Filters, down to primitive Chat Filters.
 ;;
 ;; Chat Filter examples:
-;;   - all
-;;       Matches all chats
-;;   - (or saved-messages (type channel bot))
-;;       Matches bots/channels chats or "Saved Messages" chat
+;;   - all ::
+;;     Matches all chats
+;; 
+;;   - (or saved-messages (type channel bot)) ::
+;;     Matches bots/channels chats or "Saved Messages" chat
 ;;
-;;   - (and unmuted (unread 10) (mention 1))
-;;       Matches unmuted chats with at least 10 unread messages and at
-;;       least one message with unread mention
-;;
+;;   - (and unmuted (unread 10) (mention 1)) ::
+;;     Matches unmuted chats with at least 10 unread messages and at
+;;     least one message with unread mention
 
 ;;; Code:
 (require 'telega-core)
@@ -334,6 +336,8 @@ If CHAT-FILTER is ommited, then active filters from
 
 
 ;;; Filters definitions
+
+;; ** List of chat filters
 (defmacro define-telega-filter (name args &rest body)
   "Define new filter for telega chats.
 ARGS specifies arguments to operation, first must always be chat."
@@ -362,19 +366,29 @@ ARGS specifies arguments to operation, first must always be chat."
          (apply (telega-filter--get (car chat-filter)) chat (cdr chat-filter)))
         (t (error "Invalid Chat Filter: %S" chat-filter))))
 
-(define-telega-filter any (chat &rest flist)
-  "Return non-nil if any of the chat filter in FLIST matches CHAT."
-  (cl-find chat flist :test #'telega-chat-match-p))
+;; - (any ~FILTER-LIST~..) ::
+;;   {{{fundoc(telega--filter-any)}}}
+(define-telega-filter any (chat &rest filter-list)
+  "Matches if any filter in FILTER-LIST matches."
+  (cl-find chat filter-list :test #'telega-chat-match-p))
+;; - (or ~FILTER-LIST~..) ::
+;;   Same as ~any~
 (defalias 'telega--filter-or 'telega--filter-any)
 
-(define-telega-filter all (chat &rest flist)
-  "Return non-nil if all chat filters in FLIST matches CHAT.
+;; - (all ~FILTER-LIST~..) ::
+;;   {{{fundoc(telega--filter-all)}}}
+(define-telega-filter all (chat &rest filter-list)
+  "Matches if all filters in FILTER-LIST matches.
 If FLIST is empty then return t."
-  (not (cl-find chat flist :test-not #'telega-chat-match-p)))
+  (not (cl-find chat filter-list :test-not #'telega-chat-match-p)))
+;; - (and ~FILTER-LIST~..) ::
+;;   Same as ~all~
 (defalias 'telega--filter-and 'telega--filter-all)
 
-(define-telega-filter not (chat chat-filter)
-  "Negage effect of the CHAT-FILTER."
+;; - (not ~FILTER~) ::
+;;   {{{fundoc(telega--filter-not)}}}
+(define-telega-filter not (chat filter)
+  "Matches if FILTER not maches."
   (not (telega-chat-match-p chat chat-filter)))
 
 (defun telega-filters-negate ()
@@ -382,9 +396,13 @@ If FLIST is empty then return t."
   (interactive)
   (telega-filters-push (list `(not ,(telega-filters--prepare)))))
 
-(define-telega-filter type (chat &rest ctypes)
-  "Matches CHAT by its type."
-  (memq (telega-chat--type chat) ctypes))
+;; - (type ~CHAT-TYPE-LIST~) ::
+;;   {{{fundoc(telega--filter-type)}}}
+;; 
+;;   See [[** Chat types]]
+(define-telega-filter type (chat &rest chat-type-list)
+  "Matches if chat type is one of CHAT-TYPE-LIST."
+  (memq (telega-chat--type chat) chat-type-list))
 
 (defun telega-filter-by-type (ctype)
   "Filter chats by its type."
@@ -395,8 +413,10 @@ If FLIST is empty then return t."
           nil t)))
   (telega-filter-add `(type ,(intern ctype))))
 
+;; - (name ~REGEXP~) ::
+;;   {{{fundoc(telega--filter-name)}}}
 (define-telega-filter name (chat regexp)
-  "Matches CHAT if its title matches REGEXP."
+  "Matches if chat's title matches REGEXP."
   (or (string-match regexp (telega-chat-title chat))
       (let ((info (telega-chat--info chat)))
         (or (string-match regexp (or (telega-tl-str info :first_name) ""))
@@ -409,8 +429,10 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive (list (read-regexp "Chat name regexp: ")))
   (telega-filter-add `(name ,regexp)))
 
+;; - (custom ~NAME~) ::
+;;   {{{fundoc(telega--filter-custom)}}}
 (define-telega-filter custom (chat name)
-  "Matches CHAT if custom filter with NAME matches."
+  "Matches if custom filter with NAME matches."
   (let ((chat-filter (cdr (assoc name telega-filters-custom))))
     (unless chat-filter
       (error "No such custom chat filter \"%s\"" name))
@@ -425,8 +447,10 @@ Use `telega-filter-by-name' for fuzzy searching."
                         nil t))))
   (telega-filter-add `(custom ,name)))
 
+;; - pin ::
+;;   {{{fundoc(telega--filter-pin)}}}
 (define-telega-filter pin (chat)
-  "Matches if CHAT is pinned."
+  "Matches if chat is pinned."
   (plist-get chat :is_pinned))
 
 (defun telega-filter-by-pin ()
@@ -434,17 +458,21 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive)
   (telega-filter-add 'pin))
 
-(define-telega-filter pinned-message (chat)
-  "Matches if CHAT has pinned message."
+;; - has-pinned-message ::
+;;   {{{fundoc(telega--filter-has-pinned-message)}}}
+(define-telega-filter has-pinned-message (chat)
+  "Matches if chat has pinned message."
   (not (zerop (plist-get chat :pinned_message_id))))
 
 (defun telega-filter-by-pinned-message ()
   "Filter only chats with pinned message."
   (interactive)
-  (telega-filter-add 'pinned-message))
+  (telega-filter-add 'has-pinned-message))
 
+;; - (unread [~N~]) ::
+;;   {{{fundoc(telega--filter-unread)}}}
 (define-telega-filter unread (chat &optional n)
-  "Matches CHAT with at least N unread messages.
+  "Matches if chat has least N unread messages.
 By default N is 1.
 Also matches chats marked as unread."
   (or (>= (plist-get chat :unread_count) (or n 1))
@@ -457,8 +485,11 @@ Also matches chats marked as unread."
       (telega-filter-add 'unread)
     (telega-filter-add `(unread ,n))))
 
+;; - (mention [~N~]) ::
+;;   {{{fundoc(telega--filter-mention)}}}
 (define-telega-filter mention (chat &optional n)
-  "Matches CHAT with at least N unread mentions."
+  "Matches if chat has least N unread mentions.
+By default N is 1."
   (>= (plist-get chat :unread_mention_count) (or n 1)))
 
 (defun telega-filter-by-mention (n)
@@ -466,8 +497,10 @@ Also matches chats marked as unread."
   (interactive "p")
   (telega-filter-add `(mention ,n)))
 
+;; - unmuted ::
+;;   {{{fundoc(telega--filter-unmuted)}}}
 (define-telega-filter unmuted (chat)
-  "Matches CHAT with enabled notifications."
+  "Matches if chat has enabled notifications."
   (not (telega-chat-muted-p chat)))
 
 (defun telega-filter-by-unmuted ()
@@ -475,10 +508,15 @@ Also matches chats marked as unread."
   (interactive)
   (telega-filter-add 'unmuted))
 
-(define-telega-filter user-status (chat &rest valid-statuses)
-  "Matches private CHATs with user status in VALID-STATUSES."
-  (and (eq (telega-chat--type chat) 'private)
-       (member (telega-user--seen (telega-chat--user chat)) valid-statuses)))
+;; - (user-status ~STATUS-LIST~..) ::
+;;   {{{fundoc(telega--filter-user-status)}}}
+;; 
+;;   Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
+;;   "Recently", "LastWeek", "LastMonth" or "Empty"
+(define-telega-filter user-status (chat &rest status-list)
+  "Matches private chat where user status is one of STATUS-LIST."
+  (when-let ((user (telega-chat-user chat)))
+    (member (telega-user--seen user) status-list)))
 
 (defun telega-filter-by-user-status (status)
   "Filter private chats by its user STATUS."
@@ -490,8 +528,10 @@ Also matches chats marked as unread."
                         nil t))))
   (telega-filter-add `(user-status ,status)))
 
+;; - verified
+;;   {{{fundoc(telega--filter-verified)}}}
 (define-telega-filter verified (chat)
-  "Matches only verified chats."
+  "Matches if chat is verified."
   (plist-get (telega-chat--info chat) :is_verified))
 
 (defun telega-filter-by-verified ()
@@ -499,9 +539,11 @@ Also matches chats marked as unread."
   (interactive)
   (telega-filter-add 'verified))
 
-(define-telega-filter ids (chat &rest ids)
-  "Matches only chats which :id is in IDS."
-  (memq (plist-get chat :id) ids))
+;; - (ids ~ID-LIST~..)
+;;   {{{fundoc(telega--filter-ids)}}}
+(define-telega-filter ids (chat &rest id-list)
+  "Matches if chat's id is one of in ID-LIST."
+  (memq (plist-get chat :id) id-list))
 
 (defun telega-filter-by-created-by-me ()
   "Filter public chats created by me."
@@ -510,26 +552,39 @@ Also matches chats marked as unread."
    (cons 'ids (mapcar (telega--tl-prop :id)
                       (telega--getCreatedPublicChats)))))
 
+;; - me-is-member ::
+;;   {{{fundoc(telega--filter-me-is-member)}}}
 (define-telega-filter me-is-member (chat)
-  "Filter chats where me is valid member."
+  "Matches if `telega-user-me' is member of the chat."
   (not (and (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
             (memq (telega--tl-type (plist-get (telega-chat--info chat) :status))
                   '(chatMemberStatusLeft chatMemberStatusBanned)))))
 
+;; - has-last-message ::
+;;   {{{fundoc(telega--filter-has-last-message)}}}
 (define-telega-filter has-last-message (chat)
-  "Filter chats which has last message."
+  "Matches if chat has last message."
   (plist-get chat :last_message))
 
+;; - has-order ::
+;;   {{{fundoc(telega--filter-has-order)}}}
+;; 
+;;   Only chats with non-0 order are listed in rootbuf.  I.e. this
+;;   filter is implicitly applied along with active chat filter.
 (define-telega-filter has-order (chat)
-  "Filter chats which non-0 order."
+  "Matches if chat has non-0 order."
   (not (string= "0" (plist-get chat :order))))
 
+;; - has-avatar ::
+;;   {{{fundoc(telega--filter-has-avatar)}}}
 (define-telega-filter has-avatar (chat)
-  "Filter chats which has avatar photo."
+  "Matches if chat has chat photo."
   (plist-get chat :photo))
 
+;; - opened ::
+;;   {{{fundoc(telega--filter-opened)}}}
 (define-telega-filter opened (chat)
-  "Filter chats that are opened, i.e. has corresponding chat buffer."
+  "Matches if chat has corresponding chatbuf."
   (with-telega-chatbuf chat
     t))
 
@@ -538,8 +593,10 @@ Also matches chats marked as unread."
   (interactive)
   (telega-filter-add 'opened))
 
+;; - (permission ~PERM~) ::
+;;   {{{fundoc(telega--filter-permission)}}}
 (define-telega-filter permission (chat perm)
-  "Matches CHAT if it has PERM set in chat permissions.
+  "Matches if chat has PERM set in chat permissions.
 PERM could be one of:
 `:can_send_messages',`:can_send_media_messages', `:can_send_polls',
 `:can_send_other_messages', `:can_add_web_page_previews',
@@ -563,16 +620,26 @@ PERM could be one of:
      (list (intern (concat ":" str-perm)))))
   (telega-filter-add (list 'permission perm)))
 
-(define-telega-filter restriction (chat &rest suffixes)
-  "Filter restricted chats.
-Suffixes is a list of suffixes to filter on.
+;; - (restriction ~SUFFIX-LIST~..) ::
+;;   {{{fundoc1(telega--filter-restriction)}}}
+;; 
+;;   Each element in ~SUFFIX-LIST~ is one of:
+;;   + "-all" - Restricted on all platforms
+;;   + "-ios" - Restricted for iOS devices
+;;   + "-android" - Restricted for Android devices
+;;   + "-wp" - Restricted on Windows
+;; 
+;;   If ~SUFFIX-LIST~ is ommited, then match any reason.
+(define-telega-filter restriction (chat &rest suffix-list)
+  "Matches restricted chats.
+SUFFIX-LIST is a list of suffixes to filter on.
 Suffix can be one of:
   -all      - All platforms
   -ios      - For iOS devices
   -android  - For Android devices
   -wp       - Windows?
 
-If suffixes not specified, then match any restriction reason."
+If SUFFIX-LIST is not specified, then match any restriction reason."
   (when-let ((reason (telega-tl-str
                       (telega-chat--info chat) :restriction_reason)))
     (or (not suffixes)
@@ -586,9 +653,11 @@ To specify suffixes use `/ e' command and edit filter string directly."
   (interactive)
   (telega-filter-add 'restriction))
 
+;; - (contact [~MUTUAL-P~]) ::
+;;   {{{fundoc(telega--filter-contact)}}}
 (define-telega-filter contact (chat &optional mutual-p)
-  "Filter private chats that corresponding user is our contact.
-If MUTUAL-P is non-nil, then filter only for mutual contact."
+  "Matches private chats if corresponding user is a contact.
+If MUTUAL-P is non-nil, then mach only if contact is mutual."
   (and (eq (telega-chat--type chat) 'private)
        (plist-get (telega-chat--user chat)
                   (if mutual-p
@@ -603,8 +672,10 @@ Specify MUTUAL-P to filter only mutual contacts."
                          (list 'contact 'mutual)
                        'contact)))
 
+;; - top ::
+;;   {{{fundoc(telega--filter-top)}}}
 (define-telega-filter top (chat)
-  "Filter if CHAT is in top usage."
+  "Matches if chat is in top usage."
   (let ((category (cl-case (telega-chat--type chat)
                     (private 'Users)
                     (bot 'Bots)
@@ -617,8 +688,10 @@ Specify MUTUAL-P to filter only mutual contacts."
   (interactive)
   (telega-filter-add 'top))
 
+;; - saved-messages ::
+;;   {{{fundoc(telega--filter-saved-messages)}}}
 (define-telega-filter saved-messages (chat)
-  "Matches CHAT if it is SavedMessages chat."
+  "Matches only SavedMessages chat."
   (telega-me-p chat))
 
 (defun telega-filter-by-label (label)
@@ -630,36 +703,48 @@ See `telega-chat-set-custom-label'."
                               nil t)))
   (telega-filter-add (list 'label label)))
 
+;; - (label ~LABEL~) ::
+;;   {{{fundoc1(telega--filter-label)}}}
 (define-telega-filter label (chat label)
-  "Matches CHAT if it is custom label is LABEL."
+  "Matches chat with custom LABEL."
   (equal (telega-chat-label chat) label))
 
-(defun telega-filter-by-tracking ()
-  "Filter chats currently tracking."
-  (interactive)
-  (telega-filter-add (list 'tracking)))
-
+;; - tracking ::
+;;   {{{fundoc1(telega--filter-tracking)}}}
 (define-telega-filter tracking (chat)
-  "Matches CHAT if it is in tracking buffers list."
+  "Matches if chat is in tracking buffers list."
   (with-telega-chatbuf chat
     (member (buffer-name) tracking-buffers)))
 
+(defun telega-filter-by-tracking ()
+  "Matches if chat is in tracking buffers list."
+  (interactive)
+  (telega-filter-add (list 'tracking)))
+
+;; - (chat-list ~LIST-NAME~) ::
+;;   {{{fundoc(telega--filter-chat-list)}}}
 (define-telega-filter chat-list (chat list-name)
-  "Matches CHAT if it is in chat list named LIST-NAME.
+  "Matches if chat is in chat list named LIST-NAME.
 Only \"Main\" and \"Archive\" names are supported."
   (equal (plist-get (plist-get chat :chat_list) :@type)
          (concat "chatList" (capitalize list-name))))
 
+;; - main ::
+;;   {{{fundoc(telega--filter-main)}}}
 (define-telega-filter main (chat)
-  "Matches CHAT from \"Main\" chat-list."
+  "Matches if chat from \"Main\" chat list."
   (telega-chat-match-p chat '(chat-list "Main")))
 
+;; - archive ::
+;;   {{{fundoc(telega--filter-archive)}}}
 (define-telega-filter archive (chat)
-  "Matches CHAT from \"Archive\" chat-list."
+  "Matchis if chat is archived, i.e. in \"Archive\" chat list."
   (telega-chat-match-p chat '(chat-list "Archive")))
 
+;; - has-scheduled-messages ::
+;;   {{{fundoc(telega--filter-has-scheduled-messages)}}}
 (define-telega-filter has-scheduled-messages (chat)
-  "Matches CHAT if CHAT has scheduled messages."
+  "Matches if chat has scheduled messages."
   (plist-get chat :has_scheduled_messages))
 
 (provide 'telega-filter)

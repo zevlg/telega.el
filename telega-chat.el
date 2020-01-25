@@ -21,7 +21,9 @@
 
 ;;; Commentary:
 
-;;
+;; * Chat buffer
+;; 
+;; *TODO*: describe chatbuf functionality
 
 ;;; Code:
 (require 'cl-lib)
@@ -252,6 +254,15 @@ It could be user, secretChat, basicGroup or supergroup."
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
+;; ** Chat types
+;; 
+;; Every chat has a type.  Type is one of:
+;; - private :: Private chat with telegram user
+;; - secret :: Secret chat with telegram user
+;; - bot :: Chat with telegram bot
+;; - basicgroup :: Small chat group, could be upgraded to supergroup
+;; - supergroup :: Chat group with all the chat possibilities
+;; - channel :: Supergroup with unlimited members, where only admins can post messags
 (defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
 Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'.
@@ -791,6 +802,15 @@ CHAT must be supergroup or channel."
   (telega-chat--reorder chat nil)
   (telega-root--chat-update chat))
 
+;; ** Custom chat label
+;;
+;; Chat can be assigned with custom label using
+;; {{{where-is(telega-chat-set-custom-label,telega-chat-button-map)}}}
+;; pressed on chat button.
+;; 
+;; Custom chat labels is one of the ways to group chats together.
+;; Labeled chats can be easily filtered using ~label~ chat filter.
+;; See [[* Chat Filters]]
 (defun telega-chat-label (chat)
   "Return custom label for the CHAT.
 Examines `telega-chat-label-alist'."
