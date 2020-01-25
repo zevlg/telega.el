@@ -528,7 +528,7 @@ By default N is 1."
                         nil t))))
   (telega-filter-add `(user-status ,status)))
 
-;; - verified
+;; - verified ::
 ;;   {{{fundoc(telega--filter-verified)}}}
 (define-telega-filter verified (chat)
   "Matches if chat is verified."

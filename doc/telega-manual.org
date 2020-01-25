@@ -241,27 +241,5 @@ pressed on chat button.
 
 Custom chat labels is one of the ways to group chats together.
 Labeled chats can be easily filtered using ~label~ chat filter.
- See [[* Chat Filters]]
-
-
-- Check that all atachements are valid (starting/ending chars are
-  ok) and remove invalid attachements
-
-- If point moves inside prompt, move it at the beginning of
-  input.  However inhibit this behaviour in case main prompt is
-  invisible, prompt is invisible if we are not member of the
-  group and [JOIN] button is shown
-
-- If at the beginning of chatbuf then request for the history
-  same as in telega-chatbuf-scroll
-
-- If at the bottom of the chatbuf and newer history is not yet
-  loaded, then load it.  Same as in `telega-chatbuf-scroll'
-  Do not load newer history if prompt is active (reply or edit)
-
-- Finally, when input is probably changed by above operations,
-  update chat's action after command execution.
-
-- If there is active draft_message and input is empty then
-  clear the draf
+See [[* Chat Filters]]
 

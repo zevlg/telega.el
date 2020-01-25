@@ -1583,8 +1583,8 @@ Recover previous active action after BODY execution."
 
 (defun telega-chatbuf--post-command ()
   "Chabuf `post-command-hook' function."
-  ;; - Check that all atachements are valid (starting/ending chars are
-  ;;   ok) and remove invalid attachements
+  ;; Check that all atachements are valid (starting/ending chars are
+  ;; ok) and remove invalid attachements
   (let ((attach (telega--region-by-text-prop
                  telega-chatbuf--input-marker 'telega-attach)))
     (while attach
@@ -1599,37 +1599,37 @@ Recover previous active action after BODY execution."
         (setq attach (telega--region-by-text-prop
                       (car attach) 'telega-attach)))))
 
-  ;; - If point moves inside prompt, move it at the beginning of
-  ;;   input.  However inhibit this behaviour in case main prompt is
-  ;;   invisible, prompt is invisible if we are not member of the
-  ;;   group and [JOIN] button is shown
+  ;; If point moves inside prompt, move it at the beginning of
+  ;; input.  However inhibit this behaviour in case main prompt is
+  ;; invisible, prompt is invisible if we are not member of the
+  ;; group and [JOIN] button is shown
   (when (and (not (button-get telega-chatbuf--prompt-button 'invisible))
              (>= (point) telega-chatbuf--prompt-button)
              (< (point) telega-chatbuf--input-marker))
     (goto-char telega-chatbuf--input-marker))
 
-  ;; - If at the beginning of chatbuf then request for the history
-  ;;   same as in telega-chatbuf-scroll
+  ;; If at the beginning of chatbuf then request for the history same
+  ;; as in `telega-chatbuf-scroll'
   (when (= (point) (point-min))
     (telega-chatbuf--load-older-history))
 
-  ;; - If at the bottom of the chatbuf and newer history is not yet
-  ;;   loaded, then load it.  Same as in `telega-chatbuf-scroll'
-  ;;   Do not load newer history if prompt is active (reply or edit)
+  ;; If at the bottom of the chatbuf and newer history is not yet
+  ;; loaded, then load it.  Same as in `telega-chatbuf-scroll' Do not
+  ;; load newer history if prompt is active (reply or edit)
   (when (and (= (point) (point-max))
              (telega-chatbuf--need-newer-history-p))
     (telega-chatbuf--load-newer-history))
 
-  ;; - Finally, when input is probably changed by above operations,
-  ;;   update chat's action after command execution.
+  ;; Finally, when input is probably changed by above operations,
+  ;; update chat's action after command execution.
   (let ((input-p (telega-chatbuf-has-input-p)))
     (cond ((and (not telega-chatbuf--my-action) input-p)
            (telega-chatbuf--set-action "Typing"))
           ((and telega-chatbuf--my-action (not input-p))
            (telega-chatbuf--set-action "Cancel")))
 
-    ;; - If there is active draft_message and input is empty then
-    ;;   clear the draf
+    ;; If there is active draft_message and input is empty then clear
+    ;; the draf
     (when (and (plist-get telega-chatbuf--chat :draft_message)
                (not input-p))
       (telega--setChatDraftMessage telega-chatbuf--chat)))
