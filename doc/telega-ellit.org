@@ -23,11 +23,11 @@ new terms specific to =telega=.  All of them are used in the manual.
 - Root Buffer aka rootbuf ::
   Buffer with list of chats, you see it just after {{{kbd(M-x telega RET)}}}.
   Most of the time rootbuf term is used in the manual.
-  See [[Root Buffer]]
+  See [[#root-buffer][Root Buffer]]
 
 - Chat Buffer aka chatbuf ::
   Buffer with chat contents.
-  See [[Chat Buffer]]
+  See [[#chat-buffer][Chat Buffer]]
 
 - Chat Button ::
   Button referring to some chat.  Action for such button is to open
@@ -37,7 +37,7 @@ new terms specific to =telega=.  All of them are used in the manual.
 
 - Chat Filter ::
   S-exp expression used to match chats.
-  See [[Chat Filters]] for the details.
+  See [[#chat-filters][Chat Filters]] for the details.
 
 - Active Chat Filter ::
   Chat filter applied to the chat list in rootbuf.

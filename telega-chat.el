@@ -810,7 +810,7 @@ CHAT must be supergroup or channel."
 ;; 
 ;; Custom chat labels is one of the ways to group chats together.
 ;; Labeled chats can be easily filtered using ~label~ chat filter.
-;; See [[Chat Filters]]
+;; See [[#chat-filters][Chat Filters]]
 (defun telega-chat-label (chat)
   "Return custom label for the CHAT.
 Examines `telega-chat-label-alist'."

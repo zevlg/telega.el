@@ -399,7 +399,7 @@ If FLIST is empty then return t."
 ;; - (type ~CHAT-TYPE-LIST~) ::
 ;;   {{{fundoc(telega--filter-type)}}}
 ;; 
-;;   See [[Chat types]]
+;;   See [[#chat-types][Chat types]]
 (define-telega-filter type (chat &rest chat-type-list)
   "Matches if chat type is one of CHAT-TYPE-LIST."
   (memq (telega-chat--type chat) chat-type-list))

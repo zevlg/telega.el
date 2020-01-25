@@ -124,7 +124,7 @@
     ;; 
     ;;   Important message is unseen message in chat with enabled
     ;;   notifications. i.e. matching ~(and unread unmuted)~
-    ;;   [[Chat Filters][chat filter]].
+    ;;   [[#chat-filters][chat filter]].
     (define-key map (kbd "M-g i") 'telega-root-next-important)
 
     ;; - Key: {{{where-is(telega-root-next-mention,telega-root-mode-map)}}}
