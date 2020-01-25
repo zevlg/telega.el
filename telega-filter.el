@@ -662,7 +662,7 @@ PERM could be one of:
      (list (intern (concat ":" str-perm)))))
   (telega-filter-add (list 'permission perm)))
 
-;; - (restriction ~SUFFIX-LIST~..) ::
+;; - (restriction ~SUFFIX-LIST~...) ::
 ;;   {{{fundoc1(telega--filter-restriction)}}}
 ;; 
 ;;   Each element in ~SUFFIX-LIST~ is one of:

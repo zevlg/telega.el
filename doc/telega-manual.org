@@ -103,8 +103,6 @@ Chat Filter examples:
 
 ** List of chat filters
 
-** TODO telega-filter-by-filter
-
 - (any ~FILTER-LIST~...) ::
   Matches if any filter in ~FILTER-LIST~ matches.
 
@@ -179,7 +177,7 @@ Chat Filter examples:
 - (permission ~PERM~) ::
   Matches if chat has ~PERM~ set in chat permissions. ~PERM~ could be one of: ~:can_send_messages~,~:can_send_media_messages~, ~:can_send_polls~, ~:can_send_other_messages~, ~:can_add_web_page_previews~, ~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
 
-- (restriction ~SUFFIX-LIST~..) ::
+- (restriction ~SUFFIX-LIST~...) ::
   Matches restricted chats.
 
   Each element in ~SUFFIX-LIST~ is one of:
