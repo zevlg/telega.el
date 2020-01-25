@@ -399,7 +399,7 @@ If FLIST is empty then return t."
 ;; - (type ~CHAT-TYPE-LIST~) ::
 ;;   {{{fundoc(telega--filter-type)}}}
 ;; 
-;;   See [[** Chat types]]
+;;   See [[Chat types]]
 (define-telega-filter type (chat &rest chat-type-list)
   "Matches if chat type is one of CHAT-TYPE-LIST."
   (memq (telega-chat--type chat) chat-type-list))
@@ -469,7 +469,7 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive)
   (telega-filter-add 'has-pinned-message))
 
-;; - (unread [~N~]) ::
+;; - (unread [ ~N~ ]) ::
 ;;   {{{fundoc(telega--filter-unread)}}}
 (define-telega-filter unread (chat &optional n)
   "Matches if chat has least N unread messages.
@@ -485,7 +485,7 @@ Also matches chats marked as unread."
       (telega-filter-add 'unread)
     (telega-filter-add `(unread ,n))))
 
-;; - (mention [~N~]) ::
+;; - (mention [ ~N~ ]) ::
 ;;   {{{fundoc(telega--filter-mention)}}}
 (define-telega-filter mention (chat &optional n)
   "Matches if chat has least N unread mentions.
@@ -653,7 +653,7 @@ To specify suffixes use `/ e' command and edit filter string directly."
   (interactive)
   (telega-filter-add 'restriction))
 
-;; - (contact [~MUTUAL-P~]) ::
+;; - (contact [ ~MUTUAL-P~ ]) ::
 ;;   {{{fundoc(telega--filter-contact)}}}
 (define-telega-filter contact (chat &optional mutual-p)
   "Matches private chats if corresponding user is a contact.

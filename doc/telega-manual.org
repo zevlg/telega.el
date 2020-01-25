@@ -23,11 +23,11 @@ new terms specific to =telega=.  All of them are used in the manual.
 - Root Buffer aka rootbuf ::
   Buffer with list of chats, you see it just after @@html:<kbd>@@M-x telega RET@@html:</kbd>@@.
   Most of the time rootbuf term is used in the manual.
-  See [[* Root Buffer]]
+  See [[Root Buffer]]
 
 - Chat Buffer aka chatbuf ::
   Buffer with chat contents.
-  See [[* Chat Buffer]]
+  See [[Chat Buffer]]
 
 - Chat Button ::
   Button referring to some chat.  Action for such button is to open
@@ -37,7 +37,7 @@ new terms specific to =telega=.  All of them are used in the manual.
 
 - Chat Filter ::
   S-exp expression used to match chats.
-  See [[* Chat Filters]] for the details.
+  See [[Chat Filters]] for the details.
 
 - Active Chat Filter ::
   Chat filter applied to the chat list in rootbuf.
@@ -55,17 +55,18 @@ rootbuf is the heart of =telega=.
 - Key: @@html:<kbd>@@M-g u@@html:</kbd>@@ (~telega-root-next-unread~)
 
   Move point to the next chat with unread message.
-Numeric prefix arg ~N~ can be specified to move to ~N~’s next chat.
 
 - Key: @@html:<kbd>@@M-g i@@html:</kbd>@@ (~telega-root-next-important~)
 
   Move point to the next chat with important messages.
-Numeric prefix arg ~N~ can be specified to move to ~N~’s next chat.
+
+  Important message is unseen message in chat with enabled
+  notifications. i.e. matching ~(and unread unmuted)~
+  [[Chat Filters][chat filter]].
 
 - Key: @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-root-next-mention~)
 
   Move point to the next chat with mention.
-Numeric prefix arg ~N~ can be specified to move to ~N~’s next chat.
 
 * Chat Filters
 
@@ -116,7 +117,7 @@ If FLIST is empty then return t.
 - (type ~CHAT-TYPE-LIST~) ::
   Matches if chat type is one of ~CHAT-TYPE-LIST~.
 
-  See [[** Chat types]]
+  See [[Chat types]]
 
 - (name ~REGEXP~) ::
   Matches if chat’s title matches ~REGEXP~.
@@ -130,12 +131,12 @@ If FLIST is empty then return t.
 - has-pinned-message ::
   Matches if chat has pinned message.
 
-- (unread [~N~]) ::
+- (unread [ ~N~ ]) ::
   Matches if chat has least ~N~ unread messages.
 By default ~N~ is 1.
 Also matches chats marked as unread.
 
-- (mention [~N~]) ::
+- (mention [ ~N~ ]) ::
   Matches if chat has least ~N~ unread mentions.
 By default ~N~ is 1.
 
@@ -148,7 +149,7 @@ By default ~N~ is 1.
   Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
   "Recently", "LastWeek", "LastMonth" or "Empty"
 
-- verified
+- verified ::
   Matches if chat is verified.
 
 - (ids ~ID-LIST~..)
@@ -190,7 +191,7 @@ By default ~N~ is 1.
 
   If ~SUFFIX-LIST~ is ommited, then match any reason.
 
-- (contact [~MUTUAL-P~]) ::
+- (contact [ ~MUTUAL-P~ ]) ::
   Matches private chats if corresponding user is a contact.
 If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
@@ -241,5 +242,5 @@ pressed on chat button.
 
 Custom chat labels is one of the ways to group chats together.
 Labeled chats can be easily filtered using ~label~ chat filter.
-See [[* Chat Filters]]
+See [[Chat Filters]]
 
