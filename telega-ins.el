@@ -52,6 +52,7 @@
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-pinned-msg "telega-chat" (chat &optional offline-p callback))
 (declare-function telega-chat-label "telega-chat" (chat))
+(declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
 
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
@@ -706,7 +707,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
   "One line variant inserter for CONTACT."
   (telega-ins telega-symbol-contact " ")
   (telega-ins (telega-user--name contact 'name))
-  (telega-ins--user-online-status contact)
+  (when (eq (telega--tl-type contact) 'user)
+    (telega-ins--user-online-status contact))
 
   (unless no-phone
     (telega-ins " (" (plist-get contact :phone_number) ")")))
@@ -1468,7 +1470,12 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                     (telega-duration-human-readable
                      (plist-get imc :live_period)))))
      (inputMessageContact
-      (telega-ins--contact (plist-get imc :contact)))
+      (let* ((contact (plist-get imc :contact))
+             (user-id (plist-get contact :user_id))
+             (user (when user-id (telega-user--get user-id))))
+        (when user
+          (telega-ins--image (telega-user-avatar-image-one-line user)))
+        (telega-ins--contact contact)))
      (inputMessageDocument
       (telega-ins--input-file (plist-get imc :document)))
      (inputMessagePhoto
@@ -1909,6 +1916,68 @@ Return t."
     (telega-ins "  ")
     (let ((max-width (- telega-root-fill-column (current-column))))
       (telega-ins--chat-msg-one-line chat msg max-width))))
+
+(defun telega-ins--chat-action-bar-button (chat kind)
+  "Insert CHAT action bar button specified by KIND.
+KIND is one of: `spam', `location', `add', `block', `share' and `remove-bar'"
+  (cl-ecase kind
+    (spam
+     (telega-ins--button (telega-i18n "report_spam")
+       'action (lambda (_ignore)
+                 (telega--reportChat chat "Spam")
+                 (telega-chat-delete chat))))
+    (location
+     (telega-ins--button (telega-i18n "report_location")
+       'action (lambda (_ignore)
+                 (telega--reportChat chat "UnrelatedLocation"))))
+    (add
+     (let ((user (telega-chat-user chat)))
+       (telega-ins--button (telega-i18n "new_contact_add")
+         'action (lambda (_ignore)
+                   (telega--addContact (telega-user-as-contact user))))))
+    (block
+     (let ((user (telega-chat-user chat)))
+       (telega-ins--button (telega-i18n "new_contact_block")
+         'action (lambda (_ignore)
+                   (telega--blockUser user 'ignore)))))
+    (share
+     (let ((user (telega-chat-user chat)))
+       (telega-ins--button (telega-i18n "new_contact_share")
+         'action (lambda (_ignore)
+                   (telega--sharePhoneNumber user)))))
+    (remove-bar
+     (telega-ins--button "x"
+       'action (lambda (_ignored)
+                 (telega--removeChatActionBar chat)
+                 (with-telega-chatbuf chat
+                   (goto-char (point-max))))))
+    ))
+
+(defun telega-ins--chat-action-bar (chat)
+  "Inserter for CHAT's action bar."
+  (when-let ((action-bar (plist-get chat :action_bar)))
+    (telega-ins--chat-action-bar-button chat 'remove-bar)
+    (telega-ins " ActionBar: ")
+    (cl-ecase (telega--tl-type action-bar)
+      (publicChatTypeIsLocationBased
+       (telega-ins--chat-action-bar-button chat 'location))
+
+      (chatActionBarReportSpam
+       (telega-ins--chat-action-bar-button chat 'spam))
+
+      (chatActionBarAddContact
+       (telega-ins--chat-action-bar-button chat 'add))
+
+      (chatActionBarReportAddBlock
+       (telega-ins--chat-action-bar-button chat 'spam)
+       (telega-ins " ")
+       (telega-ins--chat-action-bar-button chat 'add)
+       (telega-ins " ")
+       (telega-ins--chat-action-bar-button chat 'block))
+
+      (chatActionBarSharePhoneNumber
+       (telega-ins--chat-action-bar-button chat 'share)))
+    t))
 
 (provide 'telega-ins)
 

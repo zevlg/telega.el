@@ -887,16 +887,9 @@ STATUS is one of: "
   "Share my contact info with CHAT."
   (interactive (list telega-chatbuf--chat))
   (when chat
-    (let* ((me (telega-user-me))
-           (me-contact
-            (list :@type "Contact"
-                  :phone_number (concat "+" (plist-get me :phone_number))
-                  :first_name (telega-tl-str me :first_name)
-                  :last_name (telega-tl-str me :last_name)
-                  :vcard ""
-                  :user_id (plist-get me :id))))
-      (telega--sendMessage chat (list :@type "inputMessageContact"
-                                      :contact me-contact)))))
+    (telega--sendMessage chat (list :@type "inputMessageContact"
+                                    :contact (telega-user-as-contact
+                                              (telega-user-me))))))
 
 (defun telega-describe-chat--redisplay-func (chat)
   (lambda (&rest _ignored-args)
@@ -1356,7 +1349,7 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
   ;; --(actions part)---------------[additional status]--
-  ;; 📌 Pinned Message
+  ;; [x] Action Bar: [ action ] [ bar ] [ buttons ]
   ;; [ REPLY-MARKUP] [ BUTTONS ]
   ;; >>>
   (let* ((column (+ telega-chat-fill-column 10 1))
@@ -1404,6 +1397,10 @@ FOR-MSG can be optionally specified, and used instead of yongest message."
                ))
        (telega-ins fill-symbol)
        (telega-ins "\n")
+
+       ;; Action Bar
+       (when (telega-ins--chat-action-bar chat)
+         (telega-ins "\n"))
 
        ;; Reply markup
        (when-let ((markup-msg
@@ -2669,13 +2666,7 @@ If prefix arg is supplied, attach live location."
                            "Contact: " (mapcar 'car names-alist) nil t))
             (user (cdr (assoc name names-alist))))
        (cl-assert user)
-       (list
-        (list :@type "Contact"
-              :phone_number (concat "+" (plist-get user :phone_number))
-              :first_name (telega-tl-str user :first_name)
-              :last_name (telega-tl-str user :last_name)
-              :vcard ""
-              :user_id (plist-get user :id))))))
+       (list (telega-user-as-contact user)))))
 
     (telega-chatbuf-input-insert
      (list :@type "inputMessageContact"
@@ -3081,7 +3072,8 @@ If DRAFT-MSG is ommited, then clear draft message."
     (plist-put chat :action_bar (plist-get event :action_bar))
     (telega-root--chat-update chat)
 
-    ;; TODO: affects view of chatbuf
+    (with-telega-chatbuf chat
+      (telega-chatbuf--footer-redisplay))
     ))
 
 (defun telega-chatbuf--switch-out ()

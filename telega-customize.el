@@ -458,10 +458,9 @@ If CHAT-FILTER matches chat, that chat gets CUSTOM-LABEL."
   :group 'telega)
 
 (defcustom telega-filter-default 'main
-  "*Default chats filter to apply.
-For example:
-  `(any pin unread)'  - to show pinned or chats with unread messages."
+  "*Default chat filter to apply."
   :type 'list
+  :options '(all (or saved-messages pin unread))
   :group 'telega-filter)
 
 (defcustom telega-filters-custom

@@ -647,6 +647,12 @@ If SHARE-PHONE-P is specified, then allow CONTACT to see my phone number."
          :contact contact
          :share_phone_number (if share-phone-p t :false))))
 
+(defun telega--sharePhoneNumber (user)
+  "Share the phone number of the current user with a mutual contact USER."
+  (telega-server--send
+   (list :@type "sharePhoneNumber"
+         :user_id (plist-get user :id))))
+
 (defun telega--searchPublicChat (username &optional callback)
   "Search public chat with USERNAME.
 If CALLBACK is specified, call it with one argument - CHAT."
@@ -739,6 +745,22 @@ LIST-NAME is one of: \"Main\" or \"Archive\"."
             :limit 1000
             :chat_list (list :@type (concat "chatList" chat-list))))
     callback))
+
+(defun telega--reportChat (chat reason &optional messages)
+  "Report a CHAT to the Telegram moderators.
+REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
+\"ChildAbuse\", \"Copyright\" or \"UnrelatedLocation\"."
+  (telega-server--send
+   (list :@type "reportChat"
+         :chat_id (plist-get chat :id)
+         :reason (list :@type (concat "chatReportReason" reason))
+         :message_ids (cl-map 'vector (telega--tl-prop :id) messages))))
+
+(defun telega--removeChatActionBar (chat)
+  "Remove CHAT's action bar without any other action."
+  (telega-server--send
+   (list :@type "removeChatActionBar"
+         :chat_id (plist-get chat :id))))
 
 
 ;; I18N

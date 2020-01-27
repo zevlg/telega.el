@@ -114,7 +114,9 @@ Format name using FMT-TYPE, one of:
   `short' - Uses username if set, name otherwise
   `full' - Uses all available namings
 Default is: `full'"
-  (if (eq (telega-user--type user) 'deleted)
+  ;; NOTE: USER might be of "contact" type
+  (if (and (eq (telega--tl-type user) 'user)
+           (eq (telega-user--type user) 'deleted))
       ;; I18N: deleted -> Deleted Account
       (format "%s-%d" (telega-i18n "deleted") (plist-get user :id))
 
@@ -241,6 +243,15 @@ If UNBLOCK-P is specified, then unblock USER."
         ((telega-user-online-p user2) nil)
         (t (> (or (plist-get user1 :telega-last-online) 0)
               (or (plist-get user2 :telega-last-online) 0)))))
+
+(defun telega-user-as-contact (user)
+  "Return USER as \"contact\"."
+  (list :@type "contact"
+        :phone_number (when-let ((phone (telega-tl-str user :phone_number)))
+                        (concat "+" phone))
+        :first_name (telega-tl-str user :first_name)
+        :last_name (telega-tl-str user :last_name)
+        :user_id (plist-get user :id)))
 
 
 ;;; Contacts

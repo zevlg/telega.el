@@ -796,6 +796,10 @@ Only \"Main\" and \"Archive\" names are supported."
   "Matches if chat has scheduled messages."
   (plist-get chat :has_scheduled_messages))
 
+(define-telega-filter has-action-bar (chat)
+  "Matches CHAT with active action bar."
+  (plist-get chat :action_bar))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here

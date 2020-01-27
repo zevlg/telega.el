@@ -43,7 +43,8 @@ Changes in 1.6.0:
     the second parameter of the method `addContact`. (NOT DONE)
   - Added the fields `is_contact` and `is_mutual_contact` to the class `user`.
   - Removed the class `LinkState` and the fields `outgoing_link` and `incoming_link` from the class `user`.
-* Improved support for the top chat action bar:
+* DONE Improved support for the top chat action bar:
+  CLOSED: [2020-01-27 Пн 14:29]
   - Added the class `ChatActionBar`, representing all possible types of the action bar.
   - Added the field `action_bar` to the class `chat`.
   - Removed the legacy class `chatReportSpamState`.

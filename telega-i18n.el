@@ -162,6 +162,20 @@
 
     ("lng_status_online"
      :value "online")
+
+    ("lng_report_spam"
+     :value "Report Spam")
+    ("lng_report_location"
+     ;; To report chat with "UnrelatedLocation" reason 
+     :value "Report Location")
+    ("lng_new_contact_add"
+     :value "Add contact")
+    ("lng_new_contact_add_name"
+     :value "Add {user} to contacts")
+    ("lng_new_contact_block"
+     :value "Block user")
+    ("lng_new_contact_share"
+     :value "Share my phone number")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil
