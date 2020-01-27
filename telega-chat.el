@@ -3097,13 +3097,24 @@ If DRAFT-MSG is ommited, then clear draft message."
              :input_message_text
              (list :@type "inputMessageText"
                    :text (telega--formattedText
-                          (telega-chatbuf-input-string))))))))
+                          (telega-chatbuf-input-string)))))))
+
+  ;; NOTE: temporary move point out of prompt, so newly incoming
+  ;; messages won't get automatically read
+  (when (>= (point) telega-chatbuf--input-marker)
+    (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
+  )
 
 (defun telega-chatbuf--switch-in ()
   "Called when switching to chat buffer."
   (telega-debug "Switch %s: %s" (propertize "IN" 'face 'bold)
                 (buffer-name))
-  (telega--openChat telega-chatbuf--chat))
+  (telega--openChat telega-chatbuf--chat)
+
+  ;; Recover point position, saved in 
+  (when (= (point) (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
+    (goto-char (point-max)))
+  )
 
 (defun telega-chatbuf--killed ()
   "Called when chat buffer is killed."
