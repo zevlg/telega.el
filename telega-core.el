@@ -778,6 +778,15 @@ found."
                       (button-get button 'invisible)
                       (button-get button 'inactive)))))
     (when button
+      (unless (and (pos-visible-in-window-p (button-start button))
+                   (pos-visible-in-window-p (button-end button)))
+        ;; NOTE: Button is not fully visible, recenter to make it
+        ;; visible
+        (let ((nlines (count-lines (button-start button) (button-end button))))
+          (if (>= nlines (/ (window-height) 2))
+              (recenter (- nlines))
+            (recenter))))
+
       (telega-button--help-echo button))
     button))
 
