@@ -5,6 +5,7 @@
 * telega.el Major Features
 
 ** Multiple Accounts
+** AppIndicator in telega-server
 ** Searching Messages in chat
    - Shared Media
    - Importing/Exporting files using "Saved Messages"
