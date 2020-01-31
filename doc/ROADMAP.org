@@ -148,6 +148,11 @@ Random list of ideas for telega.el
 
    Works only for messages of ~messageText~.
 
+** Forwarding as link to message
+
+   Have custom option ~telega-forward-public-message-as-link~ to
+   forward messages in public chats (i.e. having public link) as URL.
+
 ** Ввести custom variable - telega-media-size
 
    '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)
