@@ -609,8 +609,13 @@ with list of chats received."
       (append (plist-get reply :messages) nil)
 
     (list :@type "searchMessages"
-          :chat_list (list :@type (concat "chatList"
-                                          (capitalize (or list-name "Main"))))
+          ;; DO NOT specify chatlist, some chat's in TDLib 1.5.4 does
+          ;; not have :chat_list property and `searchMessages' won't
+          ;; search for messages in them.  So we just search in all
+          ;; chats and then filter messages
+
+          ;; :chat_list (list :@type (concat "chatList"
+          ;;                                 (capitalize (or list-name "Main"))))
           :query query
           :offset_date (or (plist-get last-msg :date) 0)
           :offset_chat_id (or (plist-get last-msg :chat_id) 0)
