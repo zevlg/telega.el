@@ -172,6 +172,8 @@ Have Stoploss 690 Satoshi. ������
   "Test i18n code."
   (should (equal (telega-i18n "polls_votes_count" :count 102)
                  "102 votes"))
+  (should (equal (telega-i18n "action_user_joined" :from #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\"" 0 35 (face bold)))
+                 #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\" joined the group" 0 35 (face bold))))
   )
 
 ;;; test.el ends here

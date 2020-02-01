@@ -252,7 +252,7 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                  (regexp-quote
                   (concat "{" (substring (symbol-name (car args)) 1) "}"))
                  (format "%s" (cadr args))
-                 val))
+                 val nil 'literal))
       (setq args (cddr args)))
     val))
 
