@@ -54,11 +54,12 @@ In some random order:
 ## Unique features
 
 - [x] Expressive `ibuffer`-like chats filtering
-- [x] Powerful chats sorting
+- [x] Powerful [chats sorting](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#sorting-chats)
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
 - [x] Labeled chats, you can assign custom label to chat
 - [x] Client side messages filtering
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
+- [x] [Messages squashing](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#telega-squash-message-mode) minor mode.
 
 # Screenshots
 
@@ -315,32 +316,7 @@ network.
 
 # Minor modes
 
-## telega-mode-line-mode
-
-Minor mode to display telega status in modeline.  To enable it use
-
-```elisp
-(telega-mode-line-mode 1)
-```
-
-## telega-url-shorten-mode
-
-Minor mode to shorten some URLs, such as links like:
-
-    https://github.com/zevlg/telega.el/issues/105
-    https://gitlab.com/jessieh/mood-line/issues/6
-    https://www.youtube.com/watch?v=0m2jR6_eMkU
-    https://ru.wikipedia.org/wiki/Душ
-
-will look like:
-
-![url-shorten](https://zevlg.github.io/telega/telega-url-shorten.png)
-
-To enable this mode run:
-
-```elisp
-(telega-url-shorten-mode 1)
-```
+See [Minor Modes](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#minor-modes) section in [telega manual](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org).
 
 ## telega-notifications-mode
 

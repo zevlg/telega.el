@@ -664,7 +664,7 @@ Important chat is the chat with unread messages and enabled notifications."
 (define-telega-filter permission (chat perm)
   "Matches if chat has PERM set in chat permissions.
 PERM could be one of:
-`:can_send_messages',`:can_send_media_messages', `:can_send_polls',
+`:can_send_messages', `:can_send_media_messages', `:can_send_polls',
 `:can_send_other_messages', `:can_add_web_page_previews',
 `:can_change_info', `:can_invite_users', `:can_pin_messages'"
   (plist-get (plist-get chat :permissions) perm))

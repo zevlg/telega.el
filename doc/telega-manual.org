@@ -1,4 +1,4 @@
-# Created 2020-02-01 Сб 04:56
+#+OPTIONS: timestamp:nil \n:t
 #+TITLE: Telega Manual
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
@@ -246,7 +246,7 @@ Chat Filter examples:
      Matches if chat has corresponding chatbuf.
 
 - (permission ~PERM~) :: 
-     Matches if chat has ~PERM~ set in chat permissions. ~PERM~ could be one of: ~:can_send_messages~,~:can_send_media_messages~, ~:can_send_polls~, ~:can_send_other_messages~, ~:can_add_web_page_previews~, ~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
+     Matches if chat has ~PERM~ set in chat permissions. ~PERM~ could be one of: ~:can_send_messages~, ~:can_send_media_messages~, ~:can_send_polls~, ~:can_send_other_messages~, ~:can_add_web_page_previews~, ~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
 
 - (restriction ~SUFFIX-LIST~...) :: 
      Matches restricted chats.
@@ -352,3 +352,78 @@ pressed on chat button.
 Custom chat labels is one of the ways to group chats together.
 Labeled chats can be easily filtered using ~label~ chat filter.
 See [[#chat-filters][Chat Filters]]
+* Minor Modes
+
+=telega= ships with various minor modes you might consider to use.
+
+** telega-mode-line-mode
+
+Global minor mode to display =telega= status in modeline.
+
+Enable with ~(telega-mode-line-mode 1)~, or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-mode-line-mode)
+#+end_src
+
+Customizable options:
+
+- User Option: ~telega-mode-line-string-format~
+
+  Format in mode-line-format for ~telega-mode-line-string~.
+
+** telega-url-shorten-mode
+
+Minor mode for chatbuf to show shorter version for some URLs.  For
+example, with ~telega-url-shorten-mode~ enabled in chatbuf, urls
+like:
+
+#+begin_example
+  https://github.com/zevlg/telega.el/issues/105
+  https://gitlab.com/jessieh/mood-line/issues/6
+  https://www.youtube.com/watch?v=0m2jR6_eMkU
+  https://ru.wikipedia.org/wiki/Душ
+#+end_example
+
+Will look like:
+[[https://zevlg.github.io/telega/telega-url-shorten.png]]
+
+Can be enabled globally in all chats matching
+~telega-url-shorten-mode-for~ (see below) chat filter with
+~(global-telega-url-shorten-mode 1)~ or by adding:
+
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
+#+end_src
+
+Also consider installing =font-awesome= to display icons for
+shorten URLs even in tty.
+
+- User Option: ~telega-url-shorten-mode-for~, default=all
+
+  Chat filter for ~global-telega-url-shorten-mode~.
+~global-telega-url-shorten-mode~ enables urls shortening only for
+chats matching this chat filter.
+
+** telega-squash-message-mode
+
+Minor mode for chatbuf to squash messages into single one while
+nobody see this.
+
+Squashing mean adding contents of the new message to the previous
+message by editing contents of the previous message.
+
+New message in chat is squahed into your previous message only if
+all the conditions are met:
+
+1. Last message in chat is sent by you
+2. Nobody seen your last message
+3. Last and new message are both text messages
+4. Last and new messages are *not* replying to any message
+
+Can be enabled globally in all chats matching
+~telega-squash-message-mode-for~ (see below) chat filter with
+~(global-telega-squash-message-mode 1)~ or by adding:
+
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
+#+end_src

@@ -1,3 +1,4 @@
+#+OPTIONS: timestamp:nil \n:t
 #+TITLE: Telega Manual
 #+STARTUP: showall
 
@@ -115,3 +116,6 @@ new terms specific to =telega=.  All of them are used in the manual.
 #+ELLIT-INCLUDE: ../telega-filter.el
 #+ELLIT-INCLUDE: ../telega-sort.el
 #+ELLIT-INCLUDE: ../telega-chat.el
+
+# * Minor Modes
+#+ELLIT-INCLUDE: ../telega-modes.el

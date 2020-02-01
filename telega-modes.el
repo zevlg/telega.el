@@ -21,11 +21,7 @@
 
 ;;; Commentary:
 
-;; - To display unread chats/chats with mentions in modeline:
-;;   (telega-mode-line-mode 1)
-;;
-;; - To enable url shortening:
-;;   (telega-url-shorten-mode 1)
+;; See https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#minor-modes
 
 ;;; Code:
 
@@ -36,9 +32,29 @@
 (defvar tracking-buffers)
 (declare-function telega "telega" (arg))
 
-(defvar telega-mode-line-string ""
-  "Used to cache formatted modeline string.")
+(defgroup telega-modes nil
+  "Customization for telega minor modes."
+  :prefix "telega-"
+  :group 'telega)
 
+;; * Minor Modes
+;; 
+;; =telega= ships with various minor modes you might consider to use.
+
+;; ** telega-mode-line-mode
+;; 
+;; Global minor mode to display =telega= status in modeline.
+;; 
+;; Enable with ~(telega-mode-line-mode 1)~, or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-mode-line-mode)
+;; #+end_src
+;; 
+;; Customizable options:
+
+;; - User Option: ~telega-mode-line-string-format~
+;;
+;;   {{{vardoc1(telega-mode-line-string-format)}}}
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
     (:eval (when telega-use-tracking-for
@@ -47,14 +63,17 @@
     (:eval (telega-mode-line-mentions 'messages)))
   "Format in mode-line-format for `telega-mode-line-string'."
   :type 'list
-  :group 'telega)
+  :group 'telega-modes)
+
+(defvar telega-mode-line-string ""
+  "Used to cache formatted modeline string.")
 
 (defcustom telega-mode-line-format
   (list '(:eval (when (telega-server-live-p)
                   telega-mode-line-string)))
   "Format in mode-line-format to be used as part of `global-mode-string'."
   :type 'sexp
-  :group 'telega
+  :group 'telega-modes
   :risky t)
 
 (defvar telega-mode-line--logo-image-cache nil "Cached loaded logo image.")
@@ -143,10 +162,17 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
                    'mouse-face 'mode-line-highlight
                    'help-echo "Click to filter chats with mentions")))))
 
+(defun telega-mode-line-update (&rest _ignored)
+  "Update value for `telega-mode-line-string'."
+  (setq telega-mode-line-string
+        (when (telega-server-live-p)
+          (format-mode-line telega-mode-line-string-format)))
+  (force-mode-line-update))
+
 ;;;###autoload
 (define-minor-mode telega-mode-line-mode
   "Toggle display of the unread chats/mentions in the modeline."
-  :init-value nil :global t :group 'telega
+  :init-value nil :global t :group 'telega-modes
   (setq telega-mode-line-string "")
   (unless global-mode-string
     (setq global-mode-string '("")))
@@ -187,19 +213,12 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
     (advice-remove 'tracking-remove-buffer 'telega-mode-line-update)
     ))
 
-(defun telega-mode-line-update (&rest _ignored)
-  "Update value for `telega-mode-line-string'."
-  (setq telega-mode-line-string
-        (when (telega-server-live-p)
-          (format-mode-line telega-mode-line-string-format)))
-  (force-mode-line-update))
-
 
 ;;; Animation autoplay mode
 (defcustom telega-autoplay-messages '(messageAnimation)
   "Message types to automatically play when received."
   :type 'list
-  :group 'telega)
+  :group 'telega-modes)
 
 (defun telega-autoplay-on-msg (msg)
   "Automatically play contents of the message MSG.
@@ -212,13 +231,44 @@ Play in muted mode."
 ;;;###autoload
 (define-minor-mode telega-autoplay-mode
   "Automatically play animation messages."
-  :init-value nil :global t :group 'telega
+  :init-value nil :global t :group 'telega-modes
   (if telega-autoplay-mode
       (add-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)
     (remove-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)))
 
 
-;;; URLs shortening
+;; ** telega-url-shorten-mode
+;; 
+;; Minor mode for chatbuf to show shorter version for some URLs.  For
+;; example, with ~telega-url-shorten-mode~ enabled in chatbuf, urls
+;; like:
+;; 
+;; #+begin_example
+;; https://github.com/zevlg/telega.el/issues/105
+;; https://gitlab.com/jessieh/mood-line/issues/6
+;; https://www.youtube.com/watch?v=0m2jR6_eMkU
+;; https://ru.wikipedia.org/wiki/Душ
+;; #+end_example
+;; 
+;; Will look like:
+;; [[https://zevlg.github.io/telega/telega-url-shorten.png]]
+;;
+;; Can be enabled globally in all chats matching
+;; ~telega-url-shorten-mode-for~ (see below) chat filter with
+;; ~(global-telega-url-shorten-mode 1)~ or by adding:
+;; 
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
+;; #+end_src
+;; 
+;; Also consider installing =font-awesome= to display icons for
+;; shorten URLs even in tty.
+
+;; Customizable options:
+;; 
+;; - User Option: ~telega-url-shorten-patterns~
+;; 
+;;   {{{vardoc1(telega-url-shorten-patterns)}}}
 (defcustom telega-url-shorten-patterns
   (list
    '("https?://github.com/\\(.+\\)/issues/\\([0-9]+\\)" "\\1#\\2"
@@ -236,7 +286,17 @@ Play in muted mode."
    )
   "List of patterns for URL shortening."
   :type 'list
-  :group 'telega)
+  :group 'telega-modes)
+
+;; - User Option: ~telega-url-shorten-mode-for~, default={{{eval(telega-url-shorten-mode-for)}}}
+;; 
+;;   {{{vardoc(telega-url-shorten-mode-for)}}}
+(defcustom telega-url-shorten-mode-for 'all
+  "*Chat filter for `global-telega-url-shorten-mode'.
+`global-telega-url-shorten-mode' enables urls shortening only for
+chats matching this chat filter."
+  :type 'list
+  :group 'telega-modes)
 
 (defun telega-url-shorten--gen-icon (pattern)
   "Generate icon for the PATTERN."
@@ -277,12 +337,155 @@ Play in muted mode."
 ;;;###autoload
 (define-minor-mode telega-url-shorten-mode
   "Toggle URLs shortening mode."
-  :init-value nil :global t :group 'telega
+  :init-value nil :group 'telega-modes
   (if telega-url-shorten-mode
       (advice-add 'telega--entity-to-properties
                   :around 'telega-url-shorten--e-t-p)
     (advice-remove 'telega--entity-to-properties
                    'telega-url-shorten--e-t-p)))
+
+(defun telega-url-shorten-mode--maybe (&optional arg)
+  (when (telega-chat-match-p telega-chatbuf--chat telega-url-shorten-mode-for)
+    (telega-url-shorten-mode arg)))
+
+;;;###autoload
+(define-minor-mode global-telega-url-shorten-mode
+  "Global mode to shorten the URLs."
+  :init-value nil :global t :group 'telega-modes
+  (if global-telega-url-shorten-mode
+      (progn
+        (add-hook 'telega-chat-mode-hook 'telega-url-shorten-mode--maybe)
+        (dolist (buf telega--chat-buffers)
+          (with-current-buffer buf
+            (telega-url-shorten-mode--maybe 1))))
+
+    (remove-hook 'telega-chat-mode-hook 'telega-url-shorten-mode--maybe)
+    (dolist (buf telega--chat-buffers)
+      (with-current-buffer buf
+        (telega-url-shorten-mode -1)))))
+
+
+;; ** telega-squash-message-mode
+;; 
+;; Minor mode for chatbuf to squash messages into single one while
+;; nobody see this.
+;; 
+;; Squashing mean adding contents of the new message to the previous
+;; message by editing contents of the previous message.
+;; 
+;; New message in chat is squahed into your previous message only if
+;; all the conditions are met:
+;; 
+;; 1. Last message in chat is sent by you
+;; 2. Nobody seen your last message
+;; 3. Last and new message are both text messages
+;; 4. Last and new messages are *not* replying to any message
+;; 
+;; Can be enabled globally in all chats matching
+;; ~telega-squash-message-mode-for~ (see below) chat filter with
+;; ~(global-telega-squash-message-mode 1)~ or by adding:
+;; 
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
+;; #+end_src
+
+;; Customizable options:
+;; 
+;; - User Option: ~telega-squash-message-mode-for~
+;;
+;;   {{{vardoc(telega-squash-message-mode-for)}}}
+;; 
+;;   By default messages are not squashed in "Saved Messages" and in
+;;   your channels.
+(defcustom telega-squash-message-mode-for
+  '(not (or saved-messages (type channel)))
+  "*Chat filter for `global-telega-squash-message-mode'.
+Global squash message mode enables message squashing only in
+chats matching this chat filter."
+  :type 'list
+  :group 'telega-modes)
+
+;;;###autoload
+(define-minor-mode telega-squash-message-mode
+  "Toggle message squashing minor mode."
+  :init-value nil
+  :lighter " ◁Squash"
+  :group 'telega-modes
+  (if telega-squash-message-mode
+      (advice-add 'telega--sendMessage
+                  :around 'telega-squash-message--send-message)
+    (advice-remove 'telega--sendMessage
+                   'telega-squash-message--send-message)))
+
+(defun telega-squash-message-mode--maybe (&optional arg)
+  (when (telega-chat-match-p telega-chatbuf--chat telega-squash-message-mode-for)
+    (telega-squash-message-mode arg)))
+
+;;;###autoload
+(define-minor-mode global-telega-squash-message-mode
+  "Global mode to squashing messages."
+  :init-value nil :global t :group 'telega-modes
+  (if global-telega-squash-message-mode
+      (progn
+        (add-hook 'telega-chat-mode-hook 'telega-squash-message-mode--maybe)
+        (dolist (buf telega--chat-buffers)
+          (with-current-buffer buf
+            (telega-squash-message-mode--maybe 1))))
+
+    (remove-hook 'telega-chat-mode-hook 'telega-squash-message-mode--maybe)
+    (dolist (buf telega--chat-buffers)
+      (with-current-buffer buf
+        (telega-squash-message-mode -1)))))
+
+(defun telega-squash-message--concat-text (fmt-text1 fmt-text2 &optional sep)
+  "Concat two formatted texts FMT-TEXT1 and FMT-TEXT2 into one."
+  (let* ((txt1 (concat (plist-get fmt-text1 :text) (or sep "")))
+         (ent2-off (length txt1)))
+    (list :@type "formattedTex"
+          :text (concat txt1 (plist-get fmt-text2 :text))
+          :entities (seq-concatenate
+                     'vector (plist-get fmt-text1 :entities)
+                     (mapcar (lambda (ent)
+                               (list :@type "textEntity"
+                                     :offset (+ ent2-off (plist-get ent :offset))
+                                     :length (plist-get ent :length)
+                                     :type (plist-get ent :type)))
+                             (plist-get fmt-text2 :entities))))))
+
+(defsubst telega-squash-message--squash (chat imc reply-to-msg)
+  "Return non-nil if message has been squashed."
+  ;; Squash only of all conditions are ment:
+  ;;  1. Last message in chat is sent by you
+  ;;  2. Nobody seen your last message
+  ;;  3. Last and new message are both text messages
+  ;;  4. Last and new messages are *not* replying to some message
+  (with-telega-chatbuf chat
+    (when (and telega-squash-message-mode
+               ;; Check 3. and 4. for new message
+               (not reply-to-msg)
+               (eq (telega--tl-type imc) 'inputMessageText))
+      (let ((last-msg (plist-get chat :last_message))
+            (last-read-id (plist-get chat :last_read_outbox_message_id)))
+        (when (and last-msg
+                   ;; Checking for 1. 2. 3. and 4.
+                   (telega-msg-by-me-p last-msg)
+                   (< last-read-id (plist-get last-msg :id))
+                   (eq (telega--tl-type (plist-get last-msg :content))
+                       'messageText)
+                   (zerop (plist-get last-msg :reply_to_message_id)))
+
+          ;; Squashing IMC with `last-msg' by modifying IMC
+          (plist-put imc :text (telega-squash-message--concat-text
+                                (telega--tl-get last-msg :content :text)
+                                (plist-get imc :text)
+                                "\n"))
+          (telega--editMessageText telega-chatbuf--chat last-msg imc)
+          t)))))
+
+(defun telega-squash-message--send-message (send-msg-fun chat imc reply-to-msg)
+  "Advice for `telega--sendMessage' used to squash messages."
+  (unless (telega-squash-message--squash chat imc reply-to-msg)
+    (funcall send-msg-fun chat imc reply-to-msg)))
 
 (provide 'telega-modes)
 
