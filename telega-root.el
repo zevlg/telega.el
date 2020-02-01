@@ -138,7 +138,7 @@
     map)
   "The key map for telega root buffer.")
 
-(define-derived-mode telega-root-mode nil "Telega-Root"
+(define-derived-mode telega-root-mode nil "◁Root"
   "The mode for telega root buffer.
 
 Chat bindings (cursor on chat):

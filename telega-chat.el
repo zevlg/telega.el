@@ -1469,7 +1469,7 @@ Update modeline as well."
     (when-let ((chat-win (get-buffer-window (current-buffer))))
       (telega-chatbuf--view-visible-messages chat-win))))
 
-(define-derived-mode telega-chat-mode nil "Telega-Chat"
+(define-derived-mode telega-chat-mode nil "◁Chat"
   "The mode for telega chat buffer.
 
 Message bindings (cursor on message):
