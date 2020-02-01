@@ -11,19 +11,21 @@
    - Importing/Exporting files using "Saved Messages"
 ** Full integration for Transalation Platform
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
-** Chat sorting
+
+** DONE Chat sorting
+   CLOSED: [2020-02-01 Сб 12:13]
 
    By default chats are ordered by date of the last message in chat.
 
    But =telega= might sort chats by some other criteria.  Criteria might be:
    - Title of the chat in alphabetical order (thanks to https://t.me/Kurvivor)
    - Number of unread messages
-   - Number of mentions
+   - (WON'T DO) Number of mentions
    - Number of chat members
    - Number of online chat members
    - Chat join date
-   - Date of last message sent by ~telega-user-me~
-   - Date of last mention (thanks to https://t.me/lainposter)
+   - (NOT YET) Date of last message sent by ~telega-user-me~
+   - (NOT YET) Date of last mention (thanks to https://t.me/lainposter)
 
 * telega-server as a module
 
@@ -78,7 +80,7 @@ Random list of ideas for telega.el
 
 ** Client Side filtering for advert messages in channels
 
-   Mark message with `telega-msg-ignore' if it contains keyboard
+   Mark message with ~telega-msg-ignore~ if it contains keyboard
    button with some link such as t.me/joinchat/xxx.  Much like this
    message is advert
 
@@ -96,7 +98,7 @@ Random list of ideas for telega.el
 
 ** Animated text messages
 
-   Text message icrementally appears.  This uses simple timer and just
+   Text message incrementally appears.  This uses simple timer and just
    updates message content by adding chars one after another.  So it
    looks like you are typing this message.
 

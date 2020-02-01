@@ -97,24 +97,30 @@
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
-  ;; NOTE: check that we can group messages by sender
-  ;; see `telega-chat-group-messages-for'
   (let* ((chat (telega-msg-chat msg))
          (msg-inserter
-         (cond ((and (telega-chat-match-p chat telega-chat-show-deleted-messages-for)
-                     (plist-get msg :telega-is-deleted-message))
-                'telega-ins--message-deleted)
-               ((telega-msg-ignored-p msg)
-                'telega-ins--message-ignored)
-               ((and (telega-chat-match-p chat telega-chat-group-messages-for)
-                     (> (point) 3)
-                     (let ((prev-msg (telega-msg-at (- (point) 2))))
-                       (and prev-msg
-                            (not (telega-msg-special-p prev-msg))
-                            (eq (plist-get msg :sender_user_id)
-                                (plist-get prev-msg :sender_user_id)))))
-                'telega-ins--message-no-header)
-               (t 'telega-ins--message))))
+          (cond ((and (telega-chat-match-p
+                       chat telega-chat-show-deleted-messages-for)
+                      (plist-get msg :telega-is-deleted-message))
+                 'telega-ins--message-deleted)
+
+                ((telega-msg-ignored-p msg)
+                 'telega-ins--message-ignored)
+
+                ;; NOTE: check for messages grouping by sender
+                ((and (telega-chat-match-p chat telega-chat-group-messages-for)
+                      (> (point) 3)
+                      (let ((prev-msg (telega-msg-at (- (point) 2))))
+                        (and prev-msg
+                             (not (telega-msg-special-p prev-msg))
+                             (eq (plist-get msg :sender_user_id)
+                                 (plist-get prev-msg :sender_user_id))
+                             (< (- (plist-get msg :date)
+                                   (plist-get prev-msg :date))
+                                telega-chat-group-messages-timespan))))
+                 'telega-ins--message-no-header)
+
+                (t 'telega-ins--message))))
     (telega-button--insert 'telega-msg msg
       :inserter msg-inserter)
     (telega-ins "\n")))

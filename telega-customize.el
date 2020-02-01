@@ -664,6 +664,14 @@ Having this non-nil \"speedups\" uploading, its like files uploads instantly."
   :type 'boolean
   :group 'telega-chat)
 
+;; See https://t.me/emacs_telega/11981
+(defcustom telega-chat-group-messages-timespan 120
+  "*Maximum timespan between two messages in order to group them.
+If difference between message's dates is greater than this
+timespan, then do not group messages."
+  :type 'integer
+  :group 'telega-chat)
+
 (defcustom telega-chat-group-messages-for '(not (or saved-messages (type channel bot)))
   "*If this filter returns non-nil for chat, then messages are grouped by sender."
   :type 'list
