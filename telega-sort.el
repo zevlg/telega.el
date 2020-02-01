@@ -29,7 +29,8 @@
 ;; directly into ~telega-sort-criteria-alist~, use
 ;; ~define-telega-sorter~ instead.
 ;; 
-;; - {{{kbd(\\)}}}, rootbuf prefix map for sorting commands
+;; - {{{kbd(\)}}} ::
+;;   rootbuf prefix map for sorting commands
 ;;
 ;; - {{{where-is(telega-sort-reset,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega-sort-reset)}}}
@@ -198,8 +199,7 @@ Return non-nil if CHAT has been reordered."
 ;; - ~title~, {{{where-is(telega-sort-by-title,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-title)}}} (thanks to https://t.me/Kurvivor)
 (define-telega-sorter title ("updateChatTitle") (chat)
-  "Sort chats by number of online members.
-Thanks to https://t.me/Kurvivor for this sorter."
+  "Sort chats by number of online members."
   (telega-chat-title chat))
 
 ;; - ~member-count~, {{{where-is(telega-sort-by-member-count,telega-root-mode-map)}}} ::

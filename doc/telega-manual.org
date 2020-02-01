@@ -1,4 +1,4 @@
-# Created 2020-02-01 Сб 04:37
+# Created 2020-02-01 Сб 04:56
 #+TITLE: Telega Manual
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
@@ -296,7 +296,8 @@ are in ~telega-sort-criteria-alist~.  Do not insert criterias
 directly into ~telega-sort-criteria-alist~, use
 ~define-telega-sorter~ instead.
 
-- @@html:<kbd>@@\\@@html:</kbd>@@, rootbuf prefix map for sorting commands
+- @@html:<kbd>@@\@@html:</kbd>@@ :: 
+     rootbuf prefix map for sorting commands
 
 - @@html:<kbd>@@\ \@@html:</kbd>@@ (~telega-sort-reset~) :: 
      Reset active sorter.
@@ -315,15 +316,15 @@ directly into ~telega-sort-criteria-alist~, use
 
 
 - ~title~, @@html:<kbd>@@\ t@@html:</kbd>@@ (~telega-sort-by-title~) :: 
-     Sort chats by number of online members. Thanks to https://t.me/Kurvivor for this sorter. (thanks to https://t.me/Kurvivor)
+     Sort chats by number of online members. (thanks to https://t.me/Kurvivor)
 
-- ~member-count~,  (~telega-sort-by-member-count~) :: 
+- ~member-count~, @@html:<kbd>@@\ m@@html:</kbd>@@ (~telega-sort-by-member-count~) :: 
      Sort chats by number of members in the chat.
 
-- ~online-members~,  (~telega-sort-by-online-members~) :: 
+- ~online-members~, @@html:<kbd>@@\ o@@html:</kbd>@@ (~telega-sort-by-online-members~) :: 
      Sort chats by number of online members.
 
-- ~join-date~,  (~telega-sort-by-join-date~) :: 
+- ~join-date~, @@html:<kbd>@@\ j@@html:</kbd>@@ (~telega-sort-by-join-date~) :: 
      Sort chats by join date.  Last joined chats goes first.
 
 - TODO Date of last message sent by ~telega-user-me~
