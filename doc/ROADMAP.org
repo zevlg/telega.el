@@ -21,7 +21,7 @@
    - Number of mentions
    - Number of chat members
    - Number of online chat members
-   - Chat creation date
+   - Chat join date
    - Date of last message sent by ~telega-user-me~
    - Date of last mention (thanks to https://t.me/lainposter)
 

@@ -33,6 +33,7 @@
 
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
+(declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
 
 (defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
@@ -66,6 +67,8 @@ Used in help buffers to refer chat.")
 Used to calculate numbers displayed in custom filter buttons.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
+(defvar telega--sort-criteria nil "Active sorting criteria list.")
+(defvar telega--sort-inverted nil "Non-nil if sorting is inverted.")
 
 (defvar telega--info nil "Alist of (TYPE . INFO-TABLE).")
 (defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE).")
@@ -212,6 +215,8 @@ Done when telega server is ready to receive queries."
   (setq telega--actions (make-hash-table :test 'eq))
   (setq telega--filters nil)
   (setq telega--undo-filters nil)
+  (setq telega--sort-criteria nil)
+  (setq telega--sort-inverted nil)
   (setq telega--info
         (list (cons 'user (make-hash-table :test 'eq))
               (cons 'secretChat (make-hash-table :test 'eq))
@@ -826,6 +831,13 @@ Return nil if no username is assigned to CHAT."
 If AS-STRING is non-nil, then return it as string."
   (funcall (if as-string 'identity 'string-to-number)
            (or (telega-chat-uaprop chat :order) (plist-get chat :order))))
+
+(defsubst telega-chat> (chat1 chat2)
+  "Compare CHAT1 with CHAT2 according to `telega--sort-criteria'.
+Return if CHAT1 is greater than CHAT2."
+  (telega-chats-compare telega--sort-criteria
+                        (if telega--sort-inverted chat2 chat1)
+                        (if telega--sort-inverted chat1 chat2)))
 
 (defsubst telega-chatbuf-has-input-p ()
   "Return non-nil if chatbuf has some input."

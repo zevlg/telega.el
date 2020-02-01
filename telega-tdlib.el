@@ -598,7 +598,7 @@ If REVOKE is non-nil then delete message for all users."
          :message_ids (apply 'vector message-ids)
          :revoke (or revoke :false))))
 
-(defun telega--searchMessages (query last-msg &optional list-name callback)
+(defun telega--searchMessages (query last-msg &optional _list-name callback)
   "Search messages by QUERY.
 Specify LAST-MSG to continue searching from LAST-MSG searched.
 If LIST-NAME is given, then fetch chats from chat list named LIST-NAME.

@@ -470,8 +470,7 @@ If CHAT-FILTER matches chat, that chat gets CUSTOM-LABEL."
     ("Contacts" . contact)
     ("Important" . (and unread unmuted))
     ("📑Archive" . archive))
-  "*Alist of custom filters for chats.
-In form (NAME . FILTER-SPEC).
+  "*Alist of custom filters in form (NAME . FILTER).
 TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
   :type 'alist
   :group 'telega-filter)
@@ -686,9 +685,9 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
-(defcustom telega-chat-switch-buffer-sort-by '(> . telega-chat--order)
-  "Functions used to sort chats when switching with `telega-switch-buffer'."
-  :type 'cons
+(defcustom telega-chat-switch-buffer-sort-criteria nil
+  "Criteria to sort open chats when switching with `telega-switch-buffer'."
+  :type 'symbol
   :group 'telega-chat)
 
 

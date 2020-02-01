@@ -39,6 +39,8 @@
 
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
+(declare-function telega-sort-maybe-reorder "telega-sort" (chat event))
+
 
 ;; Info
 (defmacro telega--info-update (tlobj)
@@ -70,19 +72,33 @@
 
     ;; Update corresponding private chat button
     (when-let ((chat (telega-chat-get (plist-get user :id) 'offline)))
-      (telega-root--chat-update chat))
+      (telega-root--chat-update
+       chat (telega-sort-maybe-reorder chat event)))
 
     (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega--on-updateBasicGroup (event)
-  (telega--info-update (plist-get event :basic_group))
+  (let ((basicgroup (plist-get event :basic_group)))
+    (telega--info-update basicgroup)
 
-  ;; TODO: chatbuf might need to be updated, status might be changed
-  ;; due to someone removed me from basic group
-  )
+    (when telega--sort-criteria
+      (when-let ((chat (cl-find basicgroup telega--ordered-chats
+                                :test 'eq :key #'telega-chat--info)))
+        (telega-sort-maybe-reorder chat event))
+
+      ;; TODO: chatbuf might need to be updated, status might be
+      ;; changed due to someone removed me from basic group
+      )))
 
 (defun telega--on-updateSupergroup (event)
-  (telega--info-update (plist-get event :supergroup)))
+  (let ((supergroup (plist-get event :supergroup)))
+    (telega--info-update supergroup)
+
+    (when telega--sort-criteria
+      (when-let ((chat (cl-find supergroup telega--ordered-chats
+                                :test 'eq :key 'telega-chat--info)))
+        (telega-sort-maybe-reorder chat event))
+      )))
 
 (defun telega--on-updateSecretChat (event)
   (let ((secretchat (plist-get event :secret_chat)))
@@ -104,7 +120,8 @@
     ;; Might affect root's buffer view
     ;; because for example `:is_blocked' might be used
     (when-let ((chat (telega-chat-get user-id 'offline)))
-      (telega-root--chat-update chat))
+      (telega-root--chat-update
+       chat (telega-sort-maybe-reorder chat event)))
     ))
 
 (defun telega--on-updateBasicGroupFullInfo (event)

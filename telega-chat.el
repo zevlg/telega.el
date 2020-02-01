@@ -42,6 +42,7 @@
 (require 'telega-company)
 (require 'telega-i18n)
 (require 'telega-tme)
+(require 'telega-sort)
 
 (eval-when-compile
   (require 'rx)
@@ -136,18 +137,15 @@ If there is no CHAT color, then generate new and assign it to CHAT."
             (telega-color-tripple (telega-color-random)))))
 
 (defsubst telega--ordered-chats-insert (chat)
-  "Insert CHAT into `telega--ordered-chats' according to CHAT's order."
+  "Insert CHAT into `telega--ordered-chats' according active sorter."
   (let ((place telega--ordered-chats))
     (if (or (null place)
-            (> (telega-chat--order chat)
-               (telega-chat--order (car place))))
+            (telega-chat> chat (car place)))
         (setq telega--ordered-chats (push chat telega--ordered-chats))
 
-      (while (and (not (< (telega-chat--order (car place))
-                          (telega-chat--order chat)))
+      (while (and (telega-chat> (car place) chat)
                   (cdr place)
-                  (not (< (telega-chat--order (cadr place))
-                          (telega-chat--order chat))))
+                  (telega-chat> (cadr place) chat))
         (setq place (cdr place)))
       (cl-assert place)
       (setcdr place (cons chat (cdr place))))
@@ -345,7 +343,8 @@ If WITH-USERNAME is specified, append trailing username for this chat."
 
 (defun telega-chat--reorder (chat order)
   "Reorder CHAT in `telega--ordered-chats' according to ORDER."
-  ;; NOTE: order=nil if reordering with custom ORDER
+  ;; NOTE: order=nil if reordering with custom order or with enabled
+  ;; active sorter
   (when order
     (plist-put chat :order order))
   ;; Reorder CHAT by removing and then adding it again at correct place
@@ -393,33 +392,40 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   (let ((chat (telega-chat-get (plist-get event :chat_id))))
     (plist-put chat :notification_settings
                (plist-get event :notification_settings))
-    (telega-root--chat-update chat)))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatTitle (event)
   "EVENT arrives when title of a chat was changed."
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-
     (plist-put chat :title (plist-get event :title))
-    (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat)))
 
-    (telega-root--chat-update chat)))
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))
+
+    (with-telega-chatbuf chat
+      (rename-buffer (telega-chatbuf--name chat)))))
 
 (defun telega--on-updateChatOrder (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (telega-chat--reorder chat (plist-get event :order))
-    ;; NOTE: reorder might affect `telega--filtered-chats' and custom
-    ;; filters, so update the chat
-    (telega-root--chat-update chat 'for-reorder)))
+
+    ;; NOTE:
+    ;;  1) `telega-sort-maybe-reorder' always reorders for "updateChatOrder"
+    ;;  2) Reordering might affect `telega--filtered-chats' and custom
+    ;;     filters, so root chat update is essential
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatIsPinned (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :is_pinned (plist-get event :is_pinned))
-    (telega-chat--reorder chat (plist-get event :order))
-    (telega-root--chat-update chat)))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatReadInbox (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
@@ -428,6 +434,9 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (plist-put chat :last_read_inbox_message_id
                (plist-get event :last_read_inbox_message_id))
     (plist-put chat :unread_count unread-count)
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))
 
     ;; NOTE: unread_count affects modeline and footer
     (with-telega-chatbuf chat
@@ -438,9 +447,7 @@ If WITH-USERNAME is specified, append trailing username for this chat."
         (tracking-remove-buffer (current-buffer)))
 
       (telega-chatbuf-mode-line-update)
-      (telega-chatbuf--footer-redisplay))
-
-    (telega-root--chat-update chat)))
+      (telega-chatbuf--footer-redisplay))))
 
 (defun telega--on-updateChatReadOutbox (event)
   (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
@@ -448,9 +455,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (cl-assert chat)
     (plist-put chat :last_read_outbox_message_id
                (plist-get event :last_read_outbox_message_id))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))
+
     (with-telega-chatbuf chat
-      (telega-chatbuf--read-outbox old-read-outbox-msgid))
-    (telega-root--chat-update chat)))
+      (telega-chatbuf--read-outbox old-read-outbox-msgid))))
 
 (defun telega--on-updateChatUnreadMentionCount (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -458,12 +468,13 @@ If WITH-USERNAME is specified, append trailing username for this chat."
     (plist-put chat :unread_mention_count
                (plist-get event :unread_mention_count))
 
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))
+
     ;; NOTE: unread_mention_count affects modeline and footer
     (with-telega-chatbuf chat
       (telega-chatbuf-mode-line-update)
-      (telega-chatbuf--footer-redisplay))
-
-    (telega-root--chat-update chat)))
+      (telega-chatbuf--footer-redisplay))))
 
 (defun telega--on-updateMessageMentionRead (event)
   (telega--on-updateChatUnreadMentionCount event)
@@ -503,16 +514,18 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
     (cl-assert chat)
     (plist-put chat :last_message
                (plist-get event :last_message))
-    (unless (string= (plist-get event :order) (plist-get chat :order))
-      (telega-chat--reorder chat (plist-get event :order)))
-    (telega-root--chat-update chat)))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :is_marked_as_unread
                (plist-get event :is_marked_as_unread))
-    (telega-root--chat-update chat)))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatOnlineMemberCount (event)
   "The number of online group members has changed.
@@ -522,12 +535,14 @@ NOTE: we store the number as custom chat property, to use it later."
     (plist-put chat :x-online-count
                (plist-get event :online_member_count))
 
+    ;; ARGUABLE: root buffer chat inserter might use the counter
+    ;;   (telega-root--chat-update
+    ;;    chat (telega-sort-maybe-reorder chat event))
+    (telega-sort-maybe-reorder chat event)
+
     ;; NOTE: this affects the modeline
     (with-telega-chatbuf chat
       (telega-chatbuf-mode-line-update))
-
-    ;; ARGUABLE: root buffer chat inserter might use the counter
-    ; (telega-root--chat-update chat)
     ))
 
 (defun telega-chat--update-pinned-message (chat &optional offline-p
@@ -571,6 +586,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
     (plist-put chat :pinned_message_id
                (plist-get event :pinned_message_id))
 
+    (telega-sort-maybe-reorder chat event)
     (telega-chat--update-pinned-message chat nil old-pinned-message-id)))
 
 (defun telega-chat--on-getChats (chats)
@@ -1211,14 +1227,18 @@ end of the buffer."
 (defun telega-switch-buffer (buffer)
   "Interactive switch to chat BUFFER."
   (interactive
-   (list (funcall telega-completing-read-function
-                  "Telega chat: "
-                  (mapcar 'telega-chatbuf--name
-                          (cl-sort
-                           (mapcar 'telega-chatbuf--chat telega--chat-buffers)
-                           (car telega-chat-switch-buffer-sort-by)
-                           :key (cdr telega-chat-switch-buffer-sort-by)))
-                  nil t)))
+   (list (progn
+           (unless telega--chat-buffers
+             (user-error "No chatbufs to switch"))
+           (funcall
+            telega-completing-read-function
+            "Telega chat: "
+            (mapcar 'telega-chatbuf--name
+                    (let ((telega-sort--inhibit-order t))
+                      (telega-sort-chats
+                       telega-chat-switch-buffer-sort-criteria
+                       (mapcar 'telega-chatbuf--chat telega--chat-buffers))))
+            nil t))))
   (switch-to-buffer buffer))
 
 (defun telega-chat-reply-markup-msg (chat &optional offline-p callback)
@@ -3035,9 +3055,9 @@ Otherwise for `image-mode' major-mode, send file as photo."
         (draft-msg (plist-get event :draft_message)))
     (cl-assert chat)
     (plist-put chat :draft_message draft-msg)
-    (unless (string= (plist-get event :order) (plist-get chat :order))
-      (telega-chat--reorder chat (plist-get event :order)))
-    (telega-root--chat-update chat)
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))
 
     ;; Update chat's input to the text in DRAFT-MSG
     (with-telega-chatbuf chat
@@ -3058,19 +3078,26 @@ If DRAFT-MSG is ommited, then clear draft message."
         (chat-list (plist-get event :chat_list)))
     (cl-assert chat)
     (plist-put chat :chat_list chat-list)
-    (telega-root--chat-update chat)))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatHasScheduledMessages (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (plist-put chat :has_scheduled_messages (plist-get event :has_scheduled_messages))
-    (telega-root--chat-update chat)))
+    (plist-put chat :has_scheduled_messages
+               (plist-get event :has_scheduled_messages))
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))))
 
 (defun telega--on-updateChatActionBar (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :action_bar (plist-get event :action_bar))
-    (telega-root--chat-update chat)
+
+    (telega-root--chat-update
+     chat (telega-sort-maybe-reorder chat event))
 
     (with-telega-chatbuf chat
       (telega-chatbuf--footer-redisplay))
@@ -3415,6 +3442,7 @@ If called outside chat buffer, then fallback to default DND behaviour."
           (copy-alist dnd-protocol-alist))))
     (dnd-handle-one-url nil action uri)))
 
+
 ;;; Filtering messages in chat buffer
 (defun telega-chatbuf-filter-related ()
   "Show only related (to message at point) messages.

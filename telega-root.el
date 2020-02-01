@@ -33,6 +33,7 @@
 (require 'telega-util)
 (require 'telega-server)
 (require 'telega-filter)
+(require 'telega-sort)
 (require 'telega-info)
 (require 'telega-voip)
 (require 'telega-ins)
@@ -73,6 +74,8 @@
     (define-key map [?\t] 'telega-button-forward)
     (define-key map "\e\t" 'telega-button-backward)
     (define-key map [backtab] 'telega-button-backward)
+
+    (define-key map (kbd "\\") telega-sort-map)
 
     (define-key map (kbd "/") telega-filter-map)
     (define-key map (kbd "C-/") 'telega-filter-undo)
@@ -635,8 +638,9 @@ If used with PREFIX-ARG, then cancel current search."
 
 
 ;;; Emacs runtime environment for telega
-(defun telega-check-buffer-switch ()
-  "Check if chat buffer is switched."
+(defun telega--check-buffer-switch ()
+  "Check if chat buffer is switched.
+And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
   (let ((cbuf (current-buffer)))
     (unless (eq cbuf telega--last-buffer)
       (condition-case err
@@ -715,7 +719,7 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
       (cl-decf cwidth))
     (setq telega-location-size (cons cheight cwidth)))
 
-  (add-hook 'post-command-hook 'telega-check-buffer-switch)
+  (add-hook 'post-command-hook 'telega--check-buffer-switch)
   (if (boundp 'after-focus-change-function)
       (add-function :after after-focus-change-function
                     'telega-check-focus-change)
@@ -726,7 +730,7 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
 (defun telega-runtime-teardown ()
   "Teardown telega runtime Emacs environment."
-  (remove-hook 'post-command-hook 'telega-check-buffer-switch)
+  (remove-hook 'post-command-hook 'telega--check-buffer-switch)
 
   (if (boundp 'after-focus-change-function)
       (remove-function after-focus-change-function

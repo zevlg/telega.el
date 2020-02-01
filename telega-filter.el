@@ -184,7 +184,25 @@ Return one of \"Main\" or \"Archive\"."
          (unless (telega-filter-default-p active-filter)
            (setq af-str (propertize af-str 'face 'telega-filter-active)))
          (telega-ins af-str)))
-     (telega-ins "----"))))
+     (telega-ins "----")
+
+     (when telega--sort-criteria
+       (telega-ins "\n")
+       (telega-ins "-\\--")
+       (telega-ins--with-attrs (list :min filters-width
+                                     :align 'center
+                                     :align-symbol "-"
+                                     :max filters-width
+                                     :elide t
+                                     :elide-trail (/ filters-width 2))
+         (telega-ins--with-face 'bold
+           (when telega--sort-inverted
+             (telega-ins "(inverted "))
+           (telega-ins-fmt "%S" telega--sort-criteria)
+           (when telega--sort-inverted
+             (telega-ins ")"))))
+       (telega-ins "----"))
+     )))
 
 (defun telega-filters--create ()
   "Create ewoc for custom filters."
@@ -423,6 +441,9 @@ Also matches if FILTER-LIST is empty."
 
 ;; - (not ~FILTER~) ::
 ;;   {{{fundoc(telega--filter-not)}}}
+;; 
+;;   + Key (rootbuf): {{{where-is(telega-filters-negate,telega-root-mode-map)}}}
+;;     {{{fundoc(telega-filters-negate)}}}
 (define-telega-filter not (chat filter)
   "Matches if FILTER not maches."
   (not (telega-chat-match-p chat filter)))
@@ -436,6 +457,9 @@ Also matches if FILTER-LIST is empty."
 ;;   {{{fundoc(telega--filter-type)}}}
 ;; 
 ;;   See [[#chat-types][Chat types]]
+;; 
+;;   + Key (rootbuf): {{{where-is(telega-filter-by-type,telega-root-mode-map)}}}
+;;     {{{fundoc(telega-filter-by-type)}}}
 (define-telega-filter type (chat &rest chat-type-list)
   "Matches if chat type is one of CHAT-TYPE-LIST."
   (memq (telega-chat--type chat) chat-type-list))
