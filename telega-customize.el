@@ -468,7 +468,7 @@ If CHAT-FILTER matches chat, that chat gets CUSTOM-LABEL."
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
     ("Contacts" . contact)
-    ("Important" . (and unread unmuted))
+    ("Important" . (or mention (and unread unmuted)))
     ("📑Archive" . archive))
   "*Alist of custom filters in form (NAME . FILTER).
 TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."

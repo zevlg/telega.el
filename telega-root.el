@@ -125,9 +125,10 @@
     ;; 
     ;;   {{{fundoc(telega-root-next-important)}}}
     ;; 
-    ;;   Important message is unseen message in chat with enabled
-    ;;   notifications. i.e. matching ~(and unread unmuted)~
-    ;;   [[#chat-filters][chat filter]].
+    ;;   Important message is the messages matching "Important" custom
+    ;;   [[#chat-filters][chat filter]].  If there is no "Important"
+    ;;   custom chat filter, then ~(or mention (and unread unmuted))~
+    ;;   chat filter is used.
     (define-key map (kbd "M-g i") 'telega-root-next-important)
 
     ;; - Key: {{{where-is(telega-root-next-mention,telega-root-mode-map)}}}
@@ -465,7 +466,9 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
 (defun telega-root-next-important (n)
   "Move point to the next chat with important messages."
   (interactive "p")
-  (telega-root-next-match-p '(and unread unmuted) n))
+  (let ((important-filter (or (cdr (assoc "Important" telega-filters-custom))
+                              '(or mention (and unread unmuted)))))
+    (telega-root-next-match-p important-filter n)))
 
 (defun telega-root-next-mention (n)
   "Move point to the next chat with mention."
