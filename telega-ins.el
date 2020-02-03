@@ -962,15 +962,18 @@ Special messages are determined with `telega-msg-special-p'."
          (if (and (= 1 (length user-ids))
                   (= (plist-get sender :id) (aref user-ids 0)))
              (telega-ins-i18n "action_user_joined" :from sender-name)
-           (telega-ins (telega-user--name sender 'name) " invited "
-                       (mapconcat 'telega-user--name
+
+           (telega-ins sender-name " invited "
+                       (mapconcat (lambda (user)
+                                    (propertize (telega-user--name user 'name)
+                                                'face 'bold))
                                   (mapcar 'telega-user--get user-ids)
                                   ", ")))))
       (messageChatJoinByLink
        (telega-ins-i18n "action_user_joined_by_link" :from sender-name))
       (messageChatDeleteMember
        (let* ((user (telega-user--get (plist-get content :user_id)))
-              (user-name (propertize (telega-user--name sender 'name)
+              (user-name (propertize (telega-user--name user 'name)
                                      'face 'bold)))
          (if (eq sender user)
              (telega-ins-i18n "action_user_left" :from sender-name)
