@@ -315,16 +315,19 @@ N can't be 0."
       (file (find-file (cdr link)))
       )))
 
-(defun telega-escape-underscores-in-urls (text)
-  "Replace underscores in TEXT's urls."
-  (let ((url-rx (rx (and word-start
-                         (group (or (and "http" (? "s") "://") "www\.")
-                                (1+ (not (in " \t\n"))))
+(defun telega-escape-underscores (text)
+  "Replace underscores in TEXT's urls and mentions."
+  ;; NOTE: replace _ also in mentions
+  ;; see https://github.com/zevlg/telega.el/issues/143
+  (let ((rep-rx (rx (and (or (and word-start
+                                  (or (and "http" (? "s") "://") "www\."))
+                             (and "@" word-start))
+                         (1+ (not (in " \t\n")))
                          word-end))))
     (replace-regexp-in-string
-     url-rx
-     (lambda (url-text)
-       (replace-regexp-in-string "_" "\\_" url-text nil t))
+     rep-rx
+     (lambda (word-text)
+       (replace-regexp-in-string "_" "\\_" word-text nil t))
      text nil t)))
 
 (defun telega--entity-to-properties (entity text)
