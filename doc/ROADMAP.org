@@ -5,12 +5,23 @@
 * telega.el Major Features
 
 ** Multiple Accounts
+   - Personal rootbuf per account
+   - Make all vars used by telega buffer-local in corresponding rootbuf
+   - Account and "engine" saved in rootbuf
+   - All calls/callbacks to have "engine" param, explicitly or
+     implicitly (from rootbuf's "engine")
+   - Set "engine" on every chat/msg/user to be implicitly used in TDLib calls
+   - How chatbuf should be shown per account?
+   - How notifications should be shown per account?
+     Maybe "--> <ACCOUNT>" as in official clients?
+
 ** AppIndicator in telega-server
 ** Searching Messages in chat
    - Shared Media
    - Importing/Exporting files using "Saved Messages"
 ** Full integration for Transalation Platform
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
+** Stickers support in non-imagemagick Emacs
 
 ** DONE Chat sorting
    CLOSED: [2020-02-01 Сб 12:13]
@@ -30,6 +41,10 @@
 * telega-server as a module
 
 Implement telega-server as Emacs module to improve overall performance.
+
+   - Engine abstration to distinguish TDLib/TON/VoIP clients.
+   - Save "engine" value inside rootbuf
+   - "engine" as telega-server and telega-server as "engine"
 
 * TON
 
