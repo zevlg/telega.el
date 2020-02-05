@@ -514,8 +514,9 @@ If MARKDOWN is non-nil then format TEXT as markdown."
   (if markdown-version
       ;; For markdown mode, escape underscores in urls
       ;; See https://github.com/tdlib/td/issues/672
+      ;; See https://github.com/zevlg/telega.el/issues/143
       (telega--parseTextEntities
-       (telega-escape-underscores-in-urls text)
+       (telega-escape-underscores text)
        (list :@type "textParseModeMarkdown"
              :version markdown-version))
 

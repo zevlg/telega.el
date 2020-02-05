@@ -146,14 +146,19 @@ Have Stoploss 690 Satoshi. í ½í»‘
 
 (ert-deftest telega-formatting ()
   "Test some formatting related functions."
-  (should (string= (telega-escape-underscores-in-urls "www.ru/here_url\n_lala_")
+  (should (string= (telega-escape-underscores "www.ru/here_url\n_lala_")
                    "www.ru/here\\_url\n_lala_"))
-  (should (string= (telega-escape-underscores-in-urls " _lala_ www.ru/here_url www.me/lala_url")
+  (should (string= (telega-escape-underscores " _lala_ www.ru/here_url www.me/lala_url")
                    " _lala_ www.ru/here\\_url www.me/lala\\_url"))
-  (should (string= (telega-escape-underscores-in-urls " _lala_ https://ya.ru/here_url")
+  (should (string= (telega-escape-underscores " _lala_ https://ya.ru/here_url")
                    " _lala_ https://ya.ru/here\\_url"))
-  (should (string= (telega-escape-underscores-in-urls "www.org/me_here _lala_ https://ya.ru/here_url http://www.ru/menounder")
+  (should (string= (telega-escape-underscores "www.org/me_here _lala_ https://ya.ru/here_url http://www.ru/menounder")
                    "www.org/me\\_here _lala_ https://ya.ru/here\\_url http://www.ru/menounder"))
+
+  (should (string= (telega-escape-underscores "@mention_starting_line here_notescaped_")
+                   "@mention\\_starting\\_line here_notescaped_"))
+  (should (string= (telega-escape-underscores "Mention in_the_ @middle_of sentence")
+                   "Mention in_the_ @middle\\_of sentence"))
   )
 
 (ert-deftest telega-waveform ()
