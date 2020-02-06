@@ -782,15 +782,20 @@ found."
                            (not (funcall predicate button)))
                       (button-get button 'invisible)
                       (button-get button 'inactive)))))
-    (when button
+
+    ;; NOTE: Non-nil `no-error' is normally given on non-interactive
+    ;; calls, so recenter only on interactive calls
+    (when (and button (not no-error))
       (unless (and (pos-visible-in-window-p (button-start button))
                    (pos-visible-in-window-p (button-end button)))
-        ;; NOTE: Button is not fully visible, recenter to make it
-        ;; visible
+        ;; NOTE:
+        ;; - Button is not fully visible, recenter to make it
+        ;;   visible
+        ;; - `recenter' might signal error
         (let ((nlines (count-lines (button-start button) (button-end button))))
           (if (>= nlines (/ (window-height) 2))
-              (recenter (- nlines))
-            (recenter))))
+              (ignore-errors (recenter (- nlines)))
+            (ignore-errors (recenter)))))
 
       (telega-button--help-echo button))
     button))
