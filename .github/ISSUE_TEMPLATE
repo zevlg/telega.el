@@ -1,19 +1,16 @@
+<!--- Use M-x telega-report-bug RET or fill this by hand -->
+
 <!--- Provide a general summary of the issue in the Title above -->
 
-## Operating System / Distribution
-<!--- `uname -a` -->
+## Telega Setup
+*OS*: <!--- `uname -a` -->
+*Emacs*: <!--- M-x emacs-version -->
+*Telega*: <!--- M-x telega-version -->
 
-## GNU Emacs Details
-<!--- M-x emacs-version -->
-
-## TDLib/Telega Installation Method
-<!--- MELPA / GNU Guix / Git / Other. -->
+<!--- Specify installation method as MELPA / GNU Guix / git / Other -->
 
 ## Current Behavior
 <!--- Tell us what happens instead of the expected behavior. -->
-
-## Possible Solution
-<!--- Not obligatory, but suggest a fix/reason for the issue. -->
 
 ## Steps to Reproduce
 <!--- Provide an unambiguous set of steps to reproduce this issue. -->
@@ -21,3 +18,7 @@
 1.
 2.
 3.
+
+## Possible Solution
+<!--- Not obligatory, but suggest a fix/reason for the issue. -->
+<!--- Delete this section if you have no idea. -->

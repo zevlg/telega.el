@@ -299,6 +299,43 @@ area."
         (message version)
       version)))
 
+;;;###autoload
+(defun telega-report-bug ()
+  "Create bug report for https://github.com/zevlg/telega.el/issues."
+  (interactive)
+  
+  (let ((help-window-select t))
+    (with-telega-help-win "*Telega Bug Report*"
+      (insert "<!--- Provide a general summary of the issue in the Title above -->"
+              "\n\n")
+
+      (insert "## Telega Setup\n")
+      (insert "*OS*: " (or (ignore-errors (report-emacs-bug--os-description))
+                           "unknown")
+              "\n")
+      (insert "*Emacs*: " emacs-version " (" system-configuration ")" "\n")
+      (insert "*Telega*: " (telega-version) "\n")
+      (when-let ((melpa-pkg (ignore-errors
+                              (read (find-file-noselect
+                                     (find-library-name "telega-pkg"))))))
+        (insert "*MELPA*: " (caddr melpa-pkg) "\n"))
+      (insert "\n")
+
+      (insert "## Current Behavior\n")
+      (insert "<!--- Tell us what happens instead of the expected behavior. -->\n")
+      (insert "\n")
+
+      (insert "## Steps to Reproduce\n")
+      (insert "<!--- Provide an unambiguous set of steps to reproduce this issue. -->\n")
+      (insert "<!--- Include code to reproduce, if relevant. -->\n")
+      (insert "1.\n")
+      (insert "2.\n")
+      (insert "3.\n")
+      (insert "\n")
+
+      (insert "## Possible Solution\n")
+      (insert "<!--- Not obligatory, but suggest a fix/reason for the issue. -->\n")
+      (insert "<!--- Delete this section if you have no idea. -->\n"))))
 
 (provide 'telega)
 
