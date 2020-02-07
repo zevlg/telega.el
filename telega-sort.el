@@ -103,7 +103,7 @@ CRITERIA could be a lit of sort criterias."
 
   (if (null criteria)
       (unless telega-sort--inhibit-order
-        (> (telega-chat--order chat1) (telega-chat--order chat2)))
+        (string> (telega-chat-order chat1) (telega-chat-order chat2)))
 
     (let* ((cmpfun (alist-get (car criteria) telega-sort-criteria-alist))
            (c1-val (funcall cmpfun chat1))
@@ -189,7 +189,7 @@ Return non-nil if CHAT has been reordered."
 
 ;; ** Sorting criteria
 (define-telega-sorter order () (chat)
-  (telega-chat--order chat))
+  (telega-chat-order chat))
 
 ;; - ~unread-count~, {{{where-is(telega-sort-by-unread-count,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-unread-count)}}}

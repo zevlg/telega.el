@@ -831,11 +831,10 @@ Return VALUE."
 Return nil if no username is assigned to CHAT."
   (telega-tl-str (telega-chat--info chat) :username))
 
-(defsubst telega-chat--order (chat &optional as-string)
-  "Return CHAT's order.
-If AS-STRING is non-nil, then return it as string."
-  (funcall (if as-string 'identity 'string-to-number)
-           (or (telega-chat-uaprop chat :order) (plist-get chat :order))))
+(defsubst telega-chat-order (chat)
+  "Return CHAT's order as string.
+If CHAT has custom order, then return its custom order."
+  (or (telega-chat-uaprop chat :order) (plist-get chat :order)))
 
 (defsubst telega-chat> (chat1 chat2)
   "Compare CHAT1 with CHAT2 according to `telega--sort-criteria'.

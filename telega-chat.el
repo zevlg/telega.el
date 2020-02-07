@@ -807,7 +807,7 @@ CHAT must be supergroup or channel."
   (interactive (let ((chat (telega-chat-at (point))))
                  (list chat
                        (read-string "Custom Order [empty to unset]: "
-                                    (telega-chat--order chat 'as-str)))))
+                                    (telega-chat-order chat)))))
   (if (string-empty-p order)
       (setq order nil)
 
@@ -990,7 +990,7 @@ STATUS is one of: "
     (telega-ins "Order")
     (when (telega-chat-uaprop chat :order)
       (telega-ins " (" (propertize "custom" 'face 'shadow) ")"))
-    (telega-ins ": " (telega-chat--order chat 'as-str) "\n")
+    (telega-ins ": " (telega-chat-order chat) "\n")
 
     (let* (;; (default-mute-for
            ;;   (telega-chat-notification-setting chat :mute_for 'default))
