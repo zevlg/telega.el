@@ -595,14 +595,13 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
 
 (defun telega-ins--game (msg &optional game-value)
   "Insert GAME."
-  (let ((game (or game-value (telega--tl-get msg :content :game)))
-        (width (- telega-chat-fill-column 10)))
+  (let ((game (or game-value (telega--tl-get msg :content :game))))
     (telega-ins telega-symbol-game " "
                 (propertize "GAME" 'face 'shadow)
                 "\n")
     (telega-ins telega-symbol-vertical-bar)
     (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
-                                  :fill-column width
+                                  :fill-column telega-chat-fill-column
                                   :fill 'left)
       (when-let ((photo (plist-get game :photo)))
         (telega-ins--photo photo msg)
@@ -622,7 +621,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (when web-page
     (telega-ins telega-symbol-vertical-bar)
     (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
-                                  :fill-column (- telega-chat-fill-column 10)
+                                  :fill-column telega-chat-fill-column
                                   :fill 'left)
       (when-let ((sitename (telega-tl-str web-page :site_name)))
         (telega-ins--with-face 'telega-webpage-sitename
