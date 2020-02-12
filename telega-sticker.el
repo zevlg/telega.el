@@ -295,6 +295,30 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                        ?X))
     ))
 
+(defvar telega-sticker--convert-cmd '("dwebp" "-nofilter -nofancy -mt -o %p %w")
+  "Command to convert WEBP file to PNG file.
+%p - png filename
+%w - webp filename.")
+
+(defun telega-sticker--webp-to-png (webp-filename)
+  "Convert FILENAME in webp format to png.
+Return path to png file."
+  (let ((png-filename (concat (file-name-sans-extension webp-filename)
+                              "_telega.png")))
+    (unless (file-exists-p png-filename)
+      (if (executable-find (car telega-sticker--convert-cmd))
+          (shell-command-to-string
+           (format-spec (mapconcat #'identity telega-sticker--convert-cmd " ")
+                        (format-spec-make ?p png-filename
+                                          ?w webp-filename)))
+
+        (telega-help-message 'telega-sticker--webp-to-png 'no-dwebp-binary
+          "Can't find `%s' binary.  `webp' system package not installed?"
+          (car telega-sticker--convert-cmd))))
+
+    (when (file-exists-p png-filename)
+      png-filename)))
+
 (defun telega-sticker--create-image (sticker &optional _ignoredfile)
   "Return image for the STICKER."
   ;; Three cases:
@@ -315,6 +339,12 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                             (telega-file--downloaded-p tfile) tfile)
                        (and (telega-file--downloaded-p sfile) sfile)
                        (and (telega-file--downloaded-p tfile) tfile)))
+         (img-type (when (fboundp 'imagemagick-types) 'imagemagick))
+         (img-file (when-let ((local-path (telega--tl-get filename :local :path)))
+                     (if (or (eq img-type 'imagemagick)
+                             (not (equal (file-name-extension local-path) "webp")))
+                         local-path
+                       (telega-sticker--webp-to-png local-path))))
          (cwidth-xmargin (plist-get sticker :telega-image-cwidth-xmargin)))
     (unless cwidth-xmargin
       (setq cwidth-xmargin (telega-media--cwidth-xmargin
@@ -323,15 +353,16 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
                             (car telega-sticker-size)))
       (plist-put sticker :telega-image-cwidth-xmargin cwidth-xmargin))
 
-    (if filename
-        (apply 'create-image (telega--tl-get filename :local :path)
-               (when (fboundp 'imagemagick-types) 'imagemagick) nil
+    (when (and img-file (not img-type))
+      (setq img-type (image-type-from-file-name img-file)))
+
+    (if (and img-file img-type)
+        (apply #'create-image img-file img-type nil
                :height (telega-chars-xheight (car telega-sticker-size))
                ;; NOTE: do not use max-width setting, it will slow
                ;; down displaying stickers
 ;               :max-width (* (telega-chars-xwidth 1) (cdr telega-sticker-size))
-               :scale 1.0
-               :ascent 'center
+               :scale 1.0 :ascent 'center
                :margin (cons (cdr cwidth-xmargin) 0)
                :telega-text (make-string (car cwidth-xmargin) ?X)
                (when (telega-sticker-favorite-p sticker)
@@ -344,14 +375,13 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
   (if (or (not telega-use-images)
-          (not (display-graphic-p))
-          ;; NOTE: graphical stickers only in `imagemagick' setup
-          (not (fboundp 'imagemagick-types)))
+          (not (display-graphic-p)))
       (telega-ins "<STICKER\u00A0" (telega-sticker-emoji sticker) ">")
 
     (let ((simage (telega-media--image
                    (cons sticker 'telega-sticker--create-image)
-                   (if (or telega-sticker--use-thumbnail
+                   (if (or (and telega-sticker--use-thumbnail
+                                (plist-get sticker :thumbnail))
                            (plist-get sticker :is_animated))
                        (cons (plist-get sticker :thumbnail) :photo)
                      (cons sticker :sticker)))))

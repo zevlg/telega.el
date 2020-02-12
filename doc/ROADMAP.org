@@ -21,7 +21,9 @@
    - Importing/Exporting files using "Saved Messages"
 ** Full integration for Transalation Platform
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
-** Stickers support in non-imagemagick Emacs
+
+** DONE Stickers support in non-imagemagick Emacs
+   CLOSED: [2020-02-12 Ср 18:02]
 
 ** DONE Chat sorting
    CLOSED: [2020-02-01 Сб 12:13]
