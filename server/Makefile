@@ -8,7 +8,7 @@ CFLAGS=-I$(LIBS_PREFIX)/include -Wall -g -pthread
 LDFLAGS=-L$(LIBS_PREFIX)/lib -ltdjson
 
 PROG=telega-server
-SOURCES=telega-server.c telega-dat.c telega-pngext.c
+SOURCES=telega-engine.c telega-server.c telega-dat.c telega-pngext.c
 
 ifdef WITH_VOIP
 CC=c++
@@ -35,6 +35,13 @@ install: $(PROG)
 
 test:
 	@python3 run_tests.py
+
+EMACS_SRCDIR = ~/dev/emacs
+
+telega-module.so: telega-module.c $(SOURCES)
+	$(CC) $(CFLAGS) -finline-small-functions -shared -fPIC -I$(EMACS_SRCDIR)/src/ -I$(EMACS_SRCDIR)/lib/ -o telega-module.so telega-module.c $(SOURCES) $(LDFLAGS)
+
+module: telega-module.so
 
 clean:
 	@rm -vf $(PROG)

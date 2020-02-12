@@ -30,6 +30,9 @@ void tdat_append(struct telega_dat* dst, const char* data, size_t len);
 #define tdat_move1(src, dst) tdat_move(src, dst, 1)
 #define tdat_append1(dst, str) tdat_append(dst, str, 1)
 
+/* Append string escaping double quote with backslash */
+void tdat_append_str_esc_2quote(struct telega_dat* dst, const char* str);
+
 /* Rebase data to the beginning of the alocation */
 void tdat_rebase(struct telega_dat* tdat);
 

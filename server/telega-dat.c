@@ -112,6 +112,23 @@ tdat_rebase(struct telega_dat* tdat)
         tdat->end = clen;
 }
 
+void
+tdat_append_str_esc_2quote(struct telega_dat* dst, const char* str)
+{
+        const char* start = str;
+        char* qc;
+
+        while ((qc = strchr(start, '"'))) {
+                tdat_append(dst, start, qc - start);
+                tdat_append(dst, "\\\"", 2);
+
+                start = qc + 1;
+        }
+
+        /* Append rest of the STR after last " */
+        tdat_append(dst, start, str + strlen(str) - start);
+}
+
 
 /* JSON */
 static void
