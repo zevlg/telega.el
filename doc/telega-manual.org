@@ -131,9 +131,10 @@ rootbuf is the heart of =telega=.
 
   Move point to the next chat with important messages.
 
-  Important message is unseen message in chat with enabled
-  notifications. i.e. matching ~(and unread unmuted)~
-  [[#chat-filters][chat filter]].
+  Important message is the messages matching "Important" custom
+  [[#chat-filters][chat filter]].  If there is no "Important"
+  custom chat filter, then ~(or mention (and unread unmuted))~
+  chat filter is used.
 
 - Key: @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-root-next-mention~)
 
@@ -197,6 +198,9 @@ Chat Filter examples:
 - (name ~REGEXP~) :: 
      Matches if chat's title matches ~REGEXP~.
 
+- (search ~QUERY~) :: 
+     Matches if chat maches search QUERY.
+
 - (custom ~NAME~) :: 
      Matches if custom filter with ~NAME~ matches.
 
@@ -215,7 +219,7 @@ Chat Filter examples:
 - unmuted :: 
      Matches if chat has enabled notifications.
 
-- (user-status ~STATUS-LIST~...) :: 
+- (online-status ~STATUS-LIST~...) :: 
      Matches private chat where user status is one of ~STATUS-LIST~.
 
      Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
@@ -242,7 +246,7 @@ Chat Filter examples:
 - has-avatar :: 
      Matches if chat has chat photo.
 
-- opened :: 
+- has-chatbuf :: 
      Matches if chat has corresponding chatbuf.
 
 - (permission ~PERM~) :: 

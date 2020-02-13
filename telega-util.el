@@ -425,8 +425,8 @@ Use `telega-entity-type-XXX' faces as triggers."
       ret-text)))
 
 (defun telega--entities-as-faces (entities text)
-  "Apply telegram ENTITIES to TEXT.
-If AS-MARKDOWN is non-nil, then apply markdown syntax, instead of faces."
+  "Apply telegram ENTITIES to TEXT, emphasizing it.
+`telega-entity-type-XXX' faces are used to emphasize TEXT."
   (mapc (lambda (ent)
           (let* ((beg (plist-get ent :offset))
                  (end (+ (plist-get ent :offset) (plist-get ent :length)))
@@ -441,6 +441,10 @@ If AS-MARKDOWN is non-nil, then apply markdown syntax, instead of faces."
               (add-face-text-property beg end face 'append text))))
         entities)
   text)
+
+(defun telega--entities-from-faces (text)
+  "Extract TEXT entities using `telega-entity-type-XXX' as triggers."
+  )
 
 (defun telega--region-by-text-prop (beg prop)
   "Return region after BEG point with text property PROP set."

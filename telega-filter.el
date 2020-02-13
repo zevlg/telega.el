@@ -82,31 +82,32 @@ Bind it to temporary disable some filters.")
 
 (defvar telega-filter-map
   (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "/") 'telega-filters-reset)
     (define-key map (kbd ":") 'telega-filters-edit)
-    (define-key map (kbd "e") 'telega-filters-edit)
-    (define-key map (kbd "n") 'telega-filter-by-name)
-    (define-key map (kbd "t") 'telega-filter-by-type)
-    (define-key map (kbd "c") 'telega-filter-by-contact)
-    (define-key map (kbd "C") 'telega-filter-by-custom)
-    (define-key map (kbd "f") 'telega-filter-by-filter)
+    (define-key map (kbd "!") 'telega-filters-negate)
+    (define-key map (kbd "SPC") 'telega-filter-by-tracking)
     ;; `a' mnemominc is to "add" some filter
     (define-key map (kbd "a") 'telega-filter-by-filter)
-    (define-key map (kbd "u") 'telega-filter-by-unread)
-    (define-key map (kbd "m") 'telega-filter-by-mention)
-    (define-key map (kbd "p") 'telega-filter-by-pin)
-    (define-key map (kbd "y") 'telega-filter-by-unmuted)
-    (define-key map (kbd "i") 'telega-filter-by-important)
-    (define-key map (kbd "v") 'telega-filter-by-verified)
-    (define-key map (kbd "o") 'telega-filter-by-opened)
-    (define-key map (kbd "r") 'telega-filter-by-restriction)
-    (define-key map (kbd "s") 'telega-filter-by-user-status)
-    (define-key map (kbd "l") 'telega-filter-by-label)
-    (define-key map (kbd "T") 'telega-filter-by-top)
-    (define-key map (kbd "SPC") 'telega-filter-by-tracking)
-    (define-key map (kbd "!") 'telega-filters-negate)
-    (define-key map (kbd "/") 'telega-filters-reset)
+    (define-key map (kbd "b") 'telega-filter-by-has-chatbuf)
+    (define-key map (kbd "c") 'telega-filter-by-contact)
+    (define-key map (kbd "C") 'telega-filter-by-custom)
     (define-key map (kbd "d") 'telega-filters-pop-last)
     (define-key map (kbd "DEL") 'telega-filters-pop-last)
+    (define-key map (kbd "e") 'telega-filters-edit)
+    (define-key map (kbd "f") 'telega-filter-by-filter)
+    (define-key map (kbd "i") 'telega-filter-by-important)
+    (define-key map (kbd "n") 'telega-filter-by-search)
+    (define-key map (kbd "l") 'telega-filter-by-label)
+    (define-key map (kbd "m") 'telega-filter-by-mention)
+    (define-key map (kbd "o") 'telega-filter-by-online-status)
+    (define-key map (kbd "p") 'telega-filter-by-pin)
+    (define-key map (kbd "r") 'telega-filter-by-restriction)
+    (define-key map (kbd "s") 'telega-filter-by-search)
+    (define-key map (kbd "t") 'telega-filter-by-type)
+    (define-key map (kbd "T") 'telega-filter-by-top)
+    (define-key map (kbd "u") 'telega-filter-by-unread)
+    (define-key map (kbd "v") 'telega-filter-by-verified)
+    (define-key map (kbd "y") 'telega-filter-by-unmuted)
     map)
   "Keymap for filtering commands.")
 
@@ -489,6 +490,18 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive (list (read-regexp "Chat name regexp: ")))
   (telega-filter-add `(name ,regexp)))
 
+;; - (search ~QUERY~) ::
+;;   {{{fundoc(telega--filter-search)}}}
+(define-telega-filter search (chat _query)
+  "Matches if chat maches search QUERY."
+  (memq chat telega--search-chats))
+
+(defun telega-filter-by-search (query)
+  "Filter chats by QUERY."
+  (interactive (list (read-string "Chat search query: ")))
+  (setq telega--search-chats (telega--searchChats query))
+  (telega-filter-add `(search ,query)))
+
 ;; - (custom ~NAME~) ::
 ;;   {{{fundoc(telega--filter-custom)}}}
 (define-telega-filter custom (chat name)
@@ -574,25 +587,25 @@ Important chat is the chat with unread messages and enabled notifications."
   (interactive)
   (telega-filter-add '(and unread unmuted)))
 
-;; - (user-status ~STATUS-LIST~...) ::
-;;   {{{fundoc(telega--filter-user-status)}}}
+;; - (online-status ~STATUS-LIST~...) ::
+;;   {{{fundoc(telega--filter-online-status)}}}
 ;; 
 ;;   Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
 ;;   "Recently", "LastWeek", "LastMonth" or "Empty"
-(define-telega-filter user-status (chat &rest status-list)
+(define-telega-filter online-status (chat &rest status-list)
   "Matches private chat where user status is one of STATUS-LIST."
   (when-let ((user (telega-chat-user chat)))
     (member (telega-user--seen user) status-list)))
 
-(defun telega-filter-by-user-status (status)
-  "Filter private chats by its user STATUS."
+(defun telega-filter-by-online-status (status)
+  "Filter private chats by its user online STATUS."
   (interactive (let ((completion-ignore-case t))
                  (list (funcall telega-completing-read-function
                         "Member status: "
                         '("Recently" "Online" "Offline"
                           "LastWeek" "LastMonth" "Empty")
                         nil t))))
-  (telega-filter-add `(user-status ,status)))
+  (telega-filter-add `(online-status ,status)))
 
 ;; - verified ::
 ;;   {{{fundoc(telega--filter-verified)}}}
@@ -647,17 +660,17 @@ Important chat is the chat with unread messages and enabled notifications."
   "Matches if chat has chat photo."
   (plist-get chat :photo))
 
-;; - opened ::
-;;   {{{fundoc(telega--filter-opened)}}}
-(define-telega-filter opened (chat)
+;; - has-chatbuf ::
+;;   {{{fundoc(telega--filter-has-chatbuf)}}}
+(define-telega-filter has-chatbuf (chat)
   "Matches if chat has corresponding chatbuf."
   (with-telega-chatbuf chat
     t))
 
-(defun telega-filter-by-opened ()
-  "Filter chats that are opened."
+(defun telega-filter-by-has-chatbuf ()
+  "Filter chats that has corresponding chat buffer."
   (interactive)
-  (telega-filter-add 'opened))
+  (telega-filter-add 'has-chatbuf))
 
 ;; - (permission ~PERM~) ::
 ;;   {{{fundoc(telega--filter-permission)}}}
