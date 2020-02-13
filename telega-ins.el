@@ -1009,10 +1009,10 @@ Special messages are determined with `telega-msg-special-p'."
       (messageChatChangePhoto
        (telega-ins "Group photo updated"))
       (messageChatUpgradeTo
-       (telega-ins (telega-user--name sender 'short)
+       (telega-ins sender-name
                    " upgraded the group to supergroup"))
       (messageChatUpgradeFrom
-       (telega-ins (telega-user--name sender 'short)
+       (telega-ins sender-name
                    " created supergroup from the group"))
       (messageScreenshotTaken
        (cl-assert sender)

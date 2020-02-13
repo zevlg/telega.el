@@ -22,7 +22,7 @@
 ;;; Commentary:
 
 ;; * Chat buffer
-;; 
+;;
 ;; *TODO*: describe chatbuf functionality
 
 ;;; Code:
@@ -103,7 +103,7 @@ Actual value is `:@extra` value of the call to load history.")
 
 (defvar telega-chatbuf--history-state nil
   "State of the history loading.
-Could be `basicgroup', `loaded' or `nil'.")
+Could be `loaded' or `nil'.")
 (make-variable-buffer-local 'telega-chatbuf--history-state)
 
 (defvar telega-chatbuf--voice-msg nil
@@ -253,7 +253,7 @@ It could be user, secretChat, basicGroup or supergroup."
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
 ;; ** Chat types
-;; 
+;;
 ;; Every chat has a type.  Type is one of:
 ;; - private :: Private chat with telegram user
 ;; - secret :: Secret chat with telegram user
@@ -823,7 +823,7 @@ CHAT must be supergroup or channel."
 ;; Chat can be assigned with custom label using
 ;; {{{where-is(telega-chat-set-custom-label,telega-chat-button-map)}}}
 ;; pressed on chat button.
-;; 
+;;
 ;; Custom chat labels is one of the ways to group chats together.
 ;; Labeled chats can be easily filtered using ~label~ chat filter.
 ;; See [[#chat-filters][Chat Filters]]
@@ -1515,7 +1515,7 @@ Global chat bindings:
 
   (setq telega-chatbuf--input-marker (point-marker))
 
-  (add-hook 'window-scroll-functions 'telega-chatbuf-scroll nil t)
+  (add-hook 'window-scroll-functions 'telega-chatbuf--window-scroll nil t)
   (add-hook 'post-command-hook 'telega-chatbuf--post-command nil t)
   (add-hook 'kill-buffer-hook 'telega-chatbuf--killed nil t)
   (when (boundp 'after-focus-change-function)
@@ -1529,28 +1529,6 @@ Global chat bindings:
   "Show info about chat."
   (interactive)
   (telega-describe-chat telega-chatbuf--chat))
-
-(defun telega-chatbuf-scroll (window display-start)
-  "If at the beginning then request for history messages.
-Also mark messages as read with `viewMessages'."
-  (with-current-buffer (window-buffer window)
-    ;; If point moves near the beginning of chatbuf, then
-    ;; request for the previous history
-    ;; In case if there is less then 1000 chars, then wait while point
-    ;; moves to the beginning of the buffer
-    (when (and (< display-start 1000) (> (point-max) 1000))
-      (telega-chatbuf--load-older-history))
-
-    ;; If point moves near the end of the chatbuf, then request for
-    ;; newer history
-    (when (and (> display-start (- (point-max) 2000))
-               (telega-chatbuf--need-newer-history-p))
-      (telega-chatbuf--load-newer-history))
-
-    ;; Mark some messages as read
-    ;; Scroll might be triggered in closed chat, so force viewMessages
-    (telega-chatbuf--view-visible-messages window display-start 'force)
-    ))
 
 (defun telega-chatbuf--set-action (action)
   "Set my chatbuf action to ACTION"
@@ -1598,6 +1576,14 @@ Recover previous active action after BODY execution."
            'telega-ins--aux-reply-inline)
        (button-get telega-chatbuf--aux-button :value)))
 
+(defun telega-chatbuf--window-scroll (window display-start)
+  "Mark some messages as read while scrolling."
+  (with-current-buffer (window-buffer window)
+    ;; Mark some messages as read
+    ;; Scroll might be triggered in closed chat, so force viewMessages
+    (telega-chatbuf--view-visible-messages window display-start 'force)
+    ))
+
 (defun telega-chatbuf--post-command ()
   "Chabuf `post-command-hook' function."
   ;; Check that all atachements are valid (starting/ending chars are
@@ -1625,15 +1611,17 @@ Recover previous active action after BODY execution."
              (< (point) telega-chatbuf--input-marker))
     (goto-char telega-chatbuf--input-marker))
 
-  ;; If at the beginning of chatbuf then request for the history same
-  ;; as in `telega-chatbuf-scroll'
-  (when (= (point) (point-min))
+  ;; If point moves near the beginning of chatbuf, then request for
+  ;; the older history
+  (when (and (< (point) 2000)
+             (telega-chatbuf--need-older-history-p))
     (telega-chatbuf--load-older-history))
 
-  ;; If at the bottom of the chatbuf and newer history is not yet
-  ;; loaded, then load it.  Same as in `telega-chatbuf-scroll' Do not
-  ;; load newer history if prompt is active (reply or edit)
-  (when (and (= (point) (point-max))
+  ;; If point moves near the end of the chatbuf, then request for
+  ;; newer history
+  ;; NOTE: Do not load newer history if prompt is active (reply or
+  ;; edit)
+  (when (and (> (point) (- (point-max) 2000))
              (telega-chatbuf--need-newer-history-p))
     (telega-chatbuf--load-newer-history))
 
@@ -1766,21 +1754,30 @@ otherwise set draft only if current input is also draft."
           ;; see https://github.com/zevlg/telega.el/issues/48
           (let ((last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
             (telega-chat--load-history
-                chat last-read-msg-id (- (/ telega-chat-history-limit 2)) nil
+                chat last-read-msg-id (- telega-chat-history-limit) nil
               (lambda ()
-                (telega-chat--goto-msg0 chat last-read-msg-id)
+                (telega-chatbuf--goto-msg last-read-msg-id)
                 (unless (telega-button-forward 1 'telega-msg-at 'no-error)
                   ;; No more buttons, jump to input
                   (goto-char (point-max)))
                 ;; NOTE: view all visible messages, see
                 ;; https://t.me/emacs_telega/4731
                 (when-let ((chat-win (get-buffer-window (current-buffer))))
-                  (telega-chatbuf--view-visible-messages chat-win)))))
+                  (telega-chatbuf--view-visible-messages chat-win))
+                ;; Possible load more history
+                (when (and (< (point) 2000)
+                           (telega-chatbuf--need-older-history-p))
+                  (telega-chatbuf--load-older-history))
+                )))
 
           ;; Openning chat may affect filtering, see `opened' filter
           (telega-root--chat-update chat)
 
           (current-buffer)))))
+
+(defun telega-chatbuf--need-older-history-p ()
+  "Return non-nil if older history can be loaded."
+  (not (eq telega-chatbuf--history-state 'loaded)))
 
 (defun telega-chatbuf--need-newer-history-p ()
   "Return non-nil if newer history can be loaded."
@@ -2358,6 +2355,8 @@ CALLBACK is called after history has been loaded."
                      (telega-chatbuf--prepend-messages
                       (nreverse (plist-get history :messages))))
                    (setq telega-chatbuf--history-loading nil)
+                   (when (zerop (plist-get history :total_count))
+                     (setq telega-chatbuf--history-state 'loaded))
                    (telega-chatbuf--footer-redisplay)
                    (when callback
                      (funcall callback))))))
@@ -2597,21 +2596,31 @@ IMC might be a plain string or attachement specification."
     (not (and (= (length attaches) 1)
               (not (get-text-property 0 'telega-attach (car attaches)))))))
 
+(defun telega-chatbuf--clean ()
+  "Remove all messages displayed in chatbuf."
+  (telega-ewoc--clean telega-chatbuf--ewoc)
+  (setq telega-chatbuf--history-state nil))
+
 (defun telega-chatbuf-history-beginning ()
   "Jump to the chat creation beginning."
   ;; See https://github.com/tdlib/td/issues/195
   (interactive)
-  (telega-ewoc--clean telega-chatbuf--ewoc)
-  (telega-chat--load-history
-      telega-chatbuf--chat 10 (- telega-chat-history-limit))
-  (goto-char (point-min)))
+  (if (eq telega-chatbuf--history-state 'loaded)
+      (goto-char (point-min))
+
+    (telega-chatbuf--clean)
+    (telega-chat--load-history
+        telega-chatbuf--chat 10 (- telega-chat-history-limit) nil
+      (lambda ()
+        (setq telega-chatbuf--history-state 'loaded)
+        (goto-char (point-min))))))
 
 (defun telega-chatbuf-read-all ()
   "Read all messages in chat buffer."
   (interactive)
   (unless (telega-chatbuf--last-msg-loaded-p)
     ;; Need to load most recent history
-    (telega-ewoc--clean telega-chatbuf--ewoc)
+    (telega-chatbuf--clean)
     (telega-chatbuf--load-older-history))
 
   (goto-char (point-max)))
@@ -3138,7 +3147,7 @@ If DRAFT-MSG is ommited, then clear draft message."
                 (buffer-name))
   (telega--openChat telega-chatbuf--chat)
 
-  ;; Recover point position, saved in 
+  ;; Recover point position, saved in
   (when (= (point) (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
     (goto-char (point-max)))
   )
@@ -3375,6 +3384,20 @@ If called interactively then copy generated link into the kill ring."
                (plist-get link :invite_link)))
     link))
 
+(defun telega-chatbuf--goto-msg (msg-id &optional highlight)
+  "In chatbuf goto message denoted by MSG-ID.
+If HIGHLIGHT is non-nil, then momentary highlight the message.
+Return non-nil on success."
+  (when-let ((node (telega-chatbuf--node-by-msg-id msg-id)))
+    (ewoc-goto-node telega-chatbuf--ewoc node)
+    (when highlight
+      (let ((msg-button (button-at (point))))
+        (cl-assert (eq (button-type msg-button) 'telega-msg))
+        (with-no-warnings
+          (pulse-momentary-highlight-region
+           (button-start msg-button) (button-end msg-button)))))
+    t))
+
 (defun telega-chat--goto-msg0 (chat msg-id &optional highlight)
   "In chat denoted by CHAT-ID goto message denoted by MSG-ID.
 Return non-nil on success."
@@ -3393,13 +3416,13 @@ Return non-nil on success."
   "In CHAT goto message denoted by MSG-ID.
 If HIGHLIGHT is non-nil then highlight with fading background color."
   (with-current-buffer (telega-chat--pop-to-buffer chat)
-    (unless (telega-chat--goto-msg0 chat msg-id highlight)
+    (unless (telega-chatbuf--goto-msg msg-id highlight)
       ;; Not found, need to fetch history
-      (telega-ewoc--clean telega-chatbuf--ewoc)
+      (telega-chatbuf--clean)
       (telega-chat--load-history
           chat msg-id (- (/ telega-chat-history-limit 2)) nil
         (lambda ()
-          (telega-chat--goto-msg0 chat msg-id highlight))))))
+          (telega-chatbuf--goto-msg msg-id highlight))))))
 
 (defun telega-chat-avatar-image (chat)
   "Return avatar for the CHAT."

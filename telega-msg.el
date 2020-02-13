@@ -47,6 +47,7 @@
 (declare-function telega-chat-public-p "telega-chat" (chat &optional chat-type))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chatevent-log-filter "telega-chat" (&rest filters))
+(declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
@@ -436,6 +437,17 @@ non-nil."
      )
     (messageGame
      (telega-msg-open-game msg))
+
+    (messageChatUpgradeTo
+     (let* ((sg-id (telega--tl-get msg :content :supergroup_id))
+            (sg-chat (telega--createSupergroupChat sg-id 'force)))
+       (telega-chat--pop-to-buffer sg-chat)))
+    (messageChatUpgradeFrom
+     ;; Open corresponding basicgroup chat
+     (let* ((bg-id (telega--tl-get msg :content :basic_group_id))
+            (bg-chat (telega--createBasicGroupChat bg-id 'force)))
+       (telega-chat--pop-to-buffer bg-chat)))
+
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 

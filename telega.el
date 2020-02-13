@@ -34,6 +34,8 @@
 ;;; Code:
 (require 'password-cache)               ; `password-read'
 (require 'cl-lib)
+(require 'find-func)                    ; `find-library-name'
+(require 'emacsbug)                     ; `report-emacs-bug--os-description'
 
 (require 'telega-customize)
 (require 'telega-server)

@@ -101,6 +101,26 @@ Return newly created chat."
      (list :@type "createNewSecretChat"
            :user_id (plist-get user :id))) :id)))
 
+(defun telega--createBasicGroupChat (basic-group-id &optional force)
+  "Create chat for BASIC-GROUP-ID."
+  (telega-chat-get
+   (plist-get
+    (telega-server--call
+     (list :@type "createBasicGroupChat"
+           :basic_group_id basic-group-id
+           :force (if force t :false)))
+    :id)))
+
+(defun telega--createSupergroupChat (supergroup-id &optional force)
+  "Create chat for SUPERGROUP-ID."
+  (telega-chat-get
+   (plist-get
+    (telega-server--call
+     (list :@type "createSupergroupChat"
+           :supergroup_id supergroup-id
+           :force (if force t :false)))
+    :id)))
+
 (defun telega--closeSecretChat (secretchat)
   "Close SECRETCHAT."
   (telega-server--send
