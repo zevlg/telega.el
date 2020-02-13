@@ -368,9 +368,16 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'boolean
   :group 'telega-root)
 
-(defcustom telega-root-keep-cursor t
-  "*Non-nil to keep cursor at current chat, even if chat's order changes."
-  :type 'boolean
+(defcustom telega-root-keep-cursor 'track
+  "*Non-nil to keep cursor at current chat, even if chat's order changes.
+Set to `track', to move cursor to corresponding chat button, when
+chat buffers are switched, useful in side-by-side window setup
+for rootbuf and chatbuf.
+
+Consider setting `switch-to-buffer-preserve-window-point' to nil,
+to make `telega-root-keep-cursor' always work as expected."
+  :type '(choice (const :tag "Track chat buffers" track)
+                 (const :tag "Stick to chat at point" t))
   :group 'telega-root)
 
 (defcustom telega-root-show-avatars telega-use-images

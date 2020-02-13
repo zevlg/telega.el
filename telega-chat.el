@@ -1492,6 +1492,7 @@ Global chat bindings:
   (modify-syntax-entry ?\_ "w" telega-chat-mode-syntax-table)
 
   (erase-buffer)
+  (setq-local switch-to-buffer-preserve-window-point nil)
   (setq-local window-point-insertion-type t)
   (setq-local next-line-add-newlines nil)
   (cursor-sensor-mode 1)
@@ -3147,9 +3148,24 @@ If DRAFT-MSG is ommited, then clear draft message."
                 (buffer-name))
   (telega--openChat telega-chatbuf--chat)
 
-  ;; Recover point position, saved in
+  ;; Recover point position, saved in `telega-chatbuf--switch-out'
   (when (= (point) (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
     (goto-char (point-max)))
+
+  ;; See docstring for `telega-root-keep-cursor'
+  (when (eq telega-root-keep-cursor 'track)
+    (let ((chat telega-chatbuf--chat))
+      (with-telega-root-buffer
+        (when-let ((node (telega-ewoc--find-by-data telega-root--ewoc chat)))
+          (goto-char (ewoc-location node))
+
+          ;; NOTE: if rootbuf window is shown, also update window's point
+          (dolist (win (get-buffer-window-list))
+            (set-window-point win (ewoc-location node))))))
+
+    ;; NOTE: Treat point move as chat update to allow user do things
+    ;; as if chat's order was updated
+    (run-hook-with-args 'telega-chat-update-hook telega-chatbuf--chat))
   )
 
 (defun telega-chatbuf--killed ()

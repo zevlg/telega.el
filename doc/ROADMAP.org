@@ -141,7 +141,11 @@ Random list of ideas for telega.el
    When focus switches off the Emacs and Emacs goes to idle we can
    execute heavy tasks, such as fetching installed stickersets.
 
-** Mode to track switch-in chats and move cursor to corresponding chat in rootbuf
+** DONE Mode to track switch-in chats and move cursor to corresponding chat in rootbuf
+   CLOSED: [2020-02-13 Чт 21:39]
+
+   Done by ~track~ value for ~telega-root-keep-cursor~.
+
    So if side-by-side window setup used, then switching chats reflects
    in the rootbuf.
 

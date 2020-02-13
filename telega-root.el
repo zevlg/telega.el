@@ -150,6 +150,9 @@ Global root bindings:
   (telega-runtime-setup)
   (telega-filters--reset telega-filter-default)
 
+  ;; NOTE: make `telega-root-keep-cursor' working as expected
+  (setq-local switch-to-buffer-preserve-window-point nil)
+
   (setq buffer-read-only nil)
   (erase-buffer)
 
@@ -417,7 +420,11 @@ NEW-CHAT-P is used for optimization, to omit ewoc's node search."
       (cl-assert node)
       (when point-off
         (goto-char (ewoc-location node))
-        (forward-char point-off)))))
+        (forward-char point-off)
+        ;; NOTE: If rootbuf window is visible, also update window's positions
+        (dolist (win (get-buffer-window-list))
+          (set-window-point win (point)))
+        ))))
 
 (defun telega-root--chat-new (chat)
   "New CHAT has been created. Display it in root's ewoc."
