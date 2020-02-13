@@ -431,3 +431,17 @@ Can be enabled globally in all chats matching
 #+begin_src emacs-lisp
   (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
 #+end_src
+
+** telega-image-mode
+
+Major mode to view images in chatbuf.  Same as ~image-mode~,
+however has special bindings:
+
+- @@html:<kbd>@@n@@html:</kbd>@@ (~telega-image-next~) :: 
+     Show next image in chat.
+
+- @@html:<kbd>@@p@@html:</kbd>@@ (~telega-image-prev~) :: 
+     Show previous image in chat.
+
+To view highres image in chatbuf with ~telega-image-mode~ press
+@@html:<kbd>@@RET@@html:</kbd>@@ on the message with photo.

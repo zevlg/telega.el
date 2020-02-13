@@ -548,29 +548,38 @@ Do not trap errors if `debug-on-error' is enabled."
   "Return EWOC's start location."
   (ewoc-location (ewoc--header ewoc)))
 
-(defun telega-ewoc--find (ewoc item test &optional key start-node)
+(defun telega-ewoc--find (ewoc item test &optional key start-node iter-func)
   "Find EWOC's node by item and TEST funcion.
 TEST function is run with two arguments - ITEM and NODE-VALUE.
 Optionally KEY can be specified to get KEY from node value.
-START-NODE is node to start from, default is first node."
+START-NODE is node to start from, default is first node.
+ITER-FUNC is one of `ewoc--node-next' or `ewoc--node-prev'.
+Default is `ewoc--node-next'."
+  (unless iter-func
+    (setq iter-func #'ewoc--node-next))
+  (cl-assert (memq iter-func '(ewoc--node-next ewoc--node-prev)))
+
   (ewoc--set-buffer-bind-dll-let* ewoc
       ((node (or start-node (ewoc--node-nth dll 1)))
-       (footer (ewoc--footer ewoc))
+       (stop (if (eq iter-func #'ewoc--node-next)
+                 (ewoc--footer ewoc)
+               (ewoc--header ewoc)))
        (inhibit-read-only t))
     (cl-block 'ewoc-node-found
-      (while (not (eq node footer))
+      (while (not (eq node stop))
         (when (funcall test item (if key
                                      (funcall key (ewoc--node-data node))
                                    (ewoc--node-data node)))
           (cl-return-from 'ewoc-node-found node))
-        (setq node (ewoc--node-next dll node))))))
+        (setq node (funcall iter-func dll node))))))
 
-(defun telega-ewoc--find-if (ewoc predicate &optional key start-node)
-  "Find EWOC's node by PREDICATE run on node's data."
+(defun telega-ewoc--find-if (ewoc predicate &optional key start-node iter-func)
+  "Find EWOC's node by PREDICATE run on node's data.
+KEY, START-NODE and ITER-FUNC are passed directly to `telega-ewoc--find'."
   (telega-ewoc--find
    ewoc nil (lambda (_ignored node-value)
               (funcall predicate node-value))
-   key start-node))
+   key start-node iter-func))
 
 (defmacro telega-ewoc--find-by-data (ewoc data)
   `(telega-ewoc--find ,ewoc ,data 'eq))

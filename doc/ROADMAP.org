@@ -179,6 +179,15 @@ Random list of ideas for telega.el
    forward messages from public chats (i.e. messages having public
    link) as text URL.
 
+** DONE Special mode to view images
+   CLOSED: [2020-02-14 Пт 02:30]
+
+   Mode to view images from chatbuf.
+
+   - Save chat and current image message in image-view buffer
+   - `n' next image in chat
+   - `p' prev image in chat
+
 ** Ввести custom variable - telega-media-size
 
    '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)

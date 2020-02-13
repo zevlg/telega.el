@@ -38,18 +38,18 @@
   :group 'telega)
 
 ;; * Minor Modes
-;; 
+;;
 ;; =telega= ships with various minor modes you might consider to use.
 
 ;; ** telega-mode-line-mode
-;; 
+;;
 ;; Global minor mode to display =telega= status in modeline.
-;; 
+;;
 ;; Enable with ~(telega-mode-line-mode 1)~, or at =telega= load time:
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'telega-mode-line-mode)
 ;; #+end_src
-;; 
+;;
 ;; Customizable options:
 
 ;; - User Option: ~telega-mode-line-string-format~
@@ -238,36 +238,36 @@ Play in muted mode."
 
 
 ;; ** telega-url-shorten-mode
-;; 
+;;
 ;; Minor mode for chatbuf to show shorter version for some URLs.  For
 ;; example, with ~telega-url-shorten-mode~ enabled in chatbuf, urls
 ;; like:
-;; 
+;;
 ;; #+begin_example
 ;; https://github.com/zevlg/telega.el/issues/105
 ;; https://gitlab.com/jessieh/mood-line/issues/6
 ;; https://www.youtube.com/watch?v=0m2jR6_eMkU
 ;; https://ru.wikipedia.org/wiki/Душ
 ;; #+end_example
-;; 
+;;
 ;; Will look like:
 ;; [[https://zevlg.github.io/telega/telega-url-shorten.png]]
 ;;
 ;; Can be enabled globally in all chats matching
 ;; ~telega-url-shorten-mode-for~ (see below) chat filter with
 ;; ~(global-telega-url-shorten-mode 1)~ or by adding:
-;; 
+;;
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
 ;; #+end_src
-;; 
+;;
 ;; Also consider installing =font-awesome= to display icons for
 ;; shorten URLs even in tty.
 
 ;; Customizable options:
-;; 
+;;
 ;; - User Option: ~telega-url-shorten-patterns~
-;; 
+;;
 ;;   {{{vardoc1(telega-url-shorten-patterns)}}}
 (defcustom telega-url-shorten-patterns
   (list
@@ -289,7 +289,7 @@ Play in muted mode."
   :group 'telega-modes)
 
 ;; - User Option: ~telega-url-shorten-mode-for~, default={{{eval(telega-url-shorten-mode-for)}}}
-;; 
+;;
 ;;   {{{vardoc(telega-url-shorten-mode-for)}}}
 (defcustom telega-url-shorten-mode-for 'all
   "*Chat filter for `global-telega-url-shorten-mode'.
@@ -366,35 +366,35 @@ chats matching this chat filter."
 
 
 ;; ** telega-squash-message-mode
-;; 
+;;
 ;; Minor mode for chatbuf to squash messages into single one while
 ;; nobody see this.
-;; 
+;;
 ;; Squashing mean adding contents of the new message to the previous
 ;; message by editing contents of the previous message.
-;; 
+;;
 ;; New message in chat is squahed into your previous message only if
 ;; all the conditions are met:
-;; 
+;;
 ;; 1. Last message in chat is sent by you
 ;; 2. Nobody seen your last message
 ;; 3. Last and new message are both text messages
 ;; 4. Last and new messages are *not* replying to any message
-;; 
+;;
 ;; Can be enabled globally in all chats matching
 ;; ~telega-squash-message-mode-for~ (see below) chat filter with
 ;; ~(global-telega-squash-message-mode 1)~ or by adding:
-;; 
+;;
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
 ;; #+end_src
 
 ;; Customizable options:
-;; 
+;;
 ;; - User Option: ~telega-squash-message-mode-for~
 ;;
 ;;   {{{vardoc(telega-squash-message-mode-for)}}}
-;; 
+;;
 ;;   By default messages are not squashed in "Saved Messages" and in
 ;;   your channels.
 (defcustom telega-squash-message-mode-for
@@ -486,6 +486,95 @@ chats matching this chat filter."
   "Advice for `telega--sendMessage' used to squash messages."
   (unless (telega-squash-message--squash chat imc reply-to-msg)
     (funcall send-msg-fun chat imc reply-to-msg)))
+
+
+;; ** telega-image-mode
+;;
+;; Major mode to view images in chatbuf.  Same as ~image-mode~,
+;; however has special bindings:
+;; 
+;; - {{{where-is(telega-image-next,telega-image-mode-map)}}} ::
+;;   {{{fundoc(telega-image-next)}}}
+;; 
+;; - {{{where-is(telega-image-prev,telega-image-mode-map)}}} ::
+;;   {{{fundoc(telega-image-prev)}}}
+;; 
+;; To view highres image in chatbuf with ~telega-image-mode~ press
+;; {{{kbd(RET)}}} on the message with photo.
+(require 'image-mode)
+
+(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-brackets "telega-chat" (chat))
+(declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
+(declare-function telega-msg-type-p "telega-msg" (msg-type msg))
+
+(defvar telega-image--message nil
+  "Message corresponding to image currently viewed.")
+(make-variable-buffer-local 'telega-image--message)
+
+(defvar telega-image-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map image-mode-map)
+    (define-key map "n" 'telega-image-next)
+    (define-key map "p" 'telega-image-prev)
+    map))
+
+(define-derived-mode telega-image-mode image-mode nil
+  "Major mode to view images from chat buffer."
+  (setq mode-name
+        (concat "◁Image" (when image-type (format "[%s]" image-type))))
+  )
+
+(defun telega-image-view-file (tl-file &optional for-msg)
+  "View image in telegram TL-FILE from message FOR-MSG."
+  (cl-assert (telega-file--downloaded-p tl-file))
+  (find-file-literally (telega--tl-get tl-file :local :path))
+  (telega-image-mode)
+  (setq telega-image--message for-msg))
+
+(defun telega-image-next (&optional backward)
+  "Show next image in chat."
+  (interactive "P")
+  (unless telega-image--message
+    (user-error "No telega message associated with the image"))
+
+  (if-let ((next-image-msg (telega-chatbuf--next-msg
+                            telega-image--message
+                            (apply-partially #'telega-msg-type-p 'messagePhoto)
+                            backward)))
+      ;; Download highres photo
+      (let* ((photo (telega--tl-get next-image-msg :content :photo))
+             (hr (telega-photo--highres photo))
+             (hr-file (telega-file--renew hr :photo))
+             (oldbuffer (current-buffer)))
+        (telega-file--download hr-file 32
+          (lambda (tl-file)
+            (if (not (telega-file--downloaded-p tl-file))
+                ;; Show downloading progress in modeline
+                (let ((progress (telega-file--downloading-progress tl-file)))
+                  (message "Downloading.. %d%%" (* progress 100)))
+
+              ;; TL-FILE Downloaded
+              (telega-image-view-file tl-file next-image-msg)
+              (ignore-errors
+                (kill-buffer oldbuffer))))))
+
+    ;; `next-image-msg' is nil (not found)
+    ;; TODO: Probably need to fetch older/newer messages from the history
+    (unless next-image-msg
+      (let* ((chat (telega-msg-chat telega-image--message))
+             (brackets (telega-chat-brackets chat)))
+        (user-error "No %s image in %s%s%s"
+                    (if backward "previous" "next")
+                    (or (car brackets) "[")
+                    (telega-chat-title chat)
+                    (or (cadr brackets) "]"))))
+    ))
+
+(defun telega-image-prev ()
+  "Show previous image in chat."
+  (interactive)
+  (telega-image-next 'previous))
 
 (provide 'telega-modes)
 

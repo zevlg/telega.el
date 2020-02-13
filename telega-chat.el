@@ -55,6 +55,7 @@
 (declare-function tracking-add-buffer "tracking" (buffer &optional faces))
 (declare-function tracking-remove-buffer "tracking" (buffer))
 
+(declare-function telega-root--keep-cursor-at "telega-root" (chat))
 (declare-function telega-root--chat-update "telega-root"
                   (chat &optional for-reorder))
 (declare-function telega-root--chat-reorder "telega-root" (chat))
@@ -2095,19 +2096,19 @@ ewoc node if WITH-NODE is non-nil."
         (list msg node)
       msg)))
 
-(defun telega-chatbuf--next-voice-msg (msg)
-  "Search for voice message next to MSG.
-Return `nil' if there is no such message."
+(defun telega-chatbuf--next-msg (msg predicate &optional backward)
+  "Return message next to MSG matching PREDICATE.
+If BACKWARD is non-nil, then return previous message.
+Return nil, if not found."
   (with-telega-chatbuf (telega-msg-chat msg)
     (let* ((mnode (telega-chatbuf--node-by-msg-id (plist-get msg :id)))
-           (mnode1 (ewoc-next telega-chatbuf--ewoc mnode))
+           (mnode1 (if backward
+                       (ewoc-prev telega-chatbuf--ewoc mnode)
+                     (ewoc-next telega-chatbuf--ewoc mnode)))
            (nnode (and mnode1
                        (telega-ewoc--find-if
-                        telega-chatbuf--ewoc
-                        (lambda (content)
-                          (eq (telega--tl-type content) 'messageVoiceNote))
-                        (telega--tl-prop :content)
-                        mnode1))))
+                        telega-chatbuf--ewoc predicate nil mnode1
+                        (if backward #'ewoc--node-prev #'ewoc--node-next)))))
       (when nnode
         (ewoc--node-data nnode)))))
 
@@ -3154,19 +3155,7 @@ If DRAFT-MSG is ommited, then clear draft message."
 
   ;; See docstring for `telega-root-keep-cursor'
   (when (eq telega-root-keep-cursor 'track)
-    (let ((chat telega-chatbuf--chat))
-      (with-telega-root-buffer
-        (when-let ((node (telega-ewoc--find-by-data telega-root--ewoc chat)))
-          (goto-char (ewoc-location node))
-
-          ;; NOTE: if rootbuf window is shown, also update window's point
-          (dolist (win (get-buffer-window-list))
-            (set-window-point win (ewoc-location node))))))
-
-    ;; NOTE: Treat point move as chat update to allow user do things
-    ;; as if chat's order was updated
-    (run-hook-with-args 'telega-chat-update-hook telega-chatbuf--chat))
-  )
+    (telega-root--keep-cursor-at telega-chatbuf--chat)))
 
 (defun telega-chatbuf--killed ()
   "Called when chat buffer is killed."

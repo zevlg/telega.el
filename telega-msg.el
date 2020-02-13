@@ -40,7 +40,7 @@
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
 (declare-function telega-msg-activate-voice-note "telega-chat" (msg &optional for-chat))
-(declare-function telega-chatbuf--next-voice-msg "telega-chat" (msg))
+(declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf-mode-line-update "telega-chat" ())
@@ -153,6 +153,10 @@ function with one argument - message."
     (when (and button (eq (button-type button) 'telega-msg))
       (button-get button :value))))
 
+(defun telega-msg-type-p (msg-type msg)
+  "Return non-nil if MSG is of MSG-TYPE."
+  (eq (telega--tl-type (plist-get msg :content)) msg-type))
+
 (defsubst telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG.
 Return nil for deleted messages."
@@ -254,9 +258,10 @@ If CALLBACK is specified, then get reply message asynchronously."
 
       ;; ffplay exited normally (finished playing), try to play next
       ;; voice message if any
-      (let ((next-voice-msg (telega-chatbuf--next-voice-msg msg)))
-        (when next-voice-msg
-          (telega-msg-open-content next-voice-msg))))))
+      (when-let ((next-voice-msg
+                  (telega-chatbuf--next-msg
+                   msg (apply-partially #'telega-msg-type-p 'messageVoiceNote))))
+        (telega-msg-open-content next-voice-msg)))))
 
 (defun telega-msg-open-voice-note (msg)
   "Open content for voiceNote message MSG."

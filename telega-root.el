@@ -234,6 +234,20 @@ Terminate telega-server and kill all chat buffers."
   "Return telega root buffer."
   (get-buffer telega-root-buffer-name))
 
+(defun telega-root--keep-cursor-at (chat)
+  "Keep cursor position at CHAT."
+  (with-telega-root-buffer
+    (when-let ((node (telega-ewoc--find-by-data telega-root--ewoc chat)))
+      (goto-char (ewoc-location node))
+
+      ;; NOTE: if rootbuf window is shown, also update window's point
+      (dolist (win (get-buffer-window-list))
+        (set-window-point win (ewoc-location node)))))
+
+  ;; NOTE: Treat point move as chat update to allow user do things as
+  ;; if chat's order was updated
+  (run-hook-with-args 'telega-chat-update-hook chat))
+
 
 ;;; Auth/Connection Status
 (define-button-type 'telega-status

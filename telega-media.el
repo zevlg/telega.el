@@ -39,6 +39,8 @@
 
 (declare-function telega-msg-redisplay "telega-msg" (msg))
 
+(declare-function telega-image-view-file "telega-modes" (tl-file &optional for-msg))
+
 
 ;;; Files downloading/uploading
 (defun telega--getFile (file-id &optional callback)
@@ -300,11 +302,11 @@ If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
   (let* ((hr (telega-photo--highres photo))
          (hr-file (telega-file--renew hr :photo)))
     (telega-file--download hr-file 32
-      (lambda (file)
+      (lambda (tl-file)
         (when for-msg
           (telega-msg-redisplay for-msg))
-        (when (telega-file--downloaded-p file)
-          (find-file (telega--tl-get file :local :path)))))))
+        (when (telega-file--downloaded-p tl-file)
+          (telega-image-view-file tl-file for-msg))))))
 
 
 (defun telega-image--telega-text (img &optional slice-num)
