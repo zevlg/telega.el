@@ -1286,8 +1286,8 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "C-c C-c") 'telega-chatbuf-filter-cancel)
 
     (define-key map (kbd "RET") 'telega-chatbuf-input-send)
-    (define-key map (kbd "M-p") 'telega-chatbuf-input-prev)
-    (define-key map (kbd "M-n") 'telega-chatbuf-input-next)
+    (define-key map (kbd "M-p") 'telega-chatbuf-edit-prev)
+    (define-key map (kbd "M-n") 'telega-chatbuf-edit-next)
     (define-key map (kbd "M-r") 'telega-chatbuf-input-search)
     (define-key map (kbd "M-g <") 'telega-chatbuf-history-beginning)
     (define-key map (kbd "M-g >") 'telega-chatbuf-read-all)
@@ -2015,6 +2015,31 @@ If ICONS-P is non-nil, then use icons for members count."
       ;; Restore input if canceled
       (telega-chatbuf-input-goto saved-input-idx))
     ))
+
+(defun telega-chatbuf-edit-next (&optional backward)
+  "Edit message sent next to currently editing."
+  (interactive)
+  (let* ((edit-msg (telega-chatbuf--editing-msg))
+         (last-msg (telega-chatbuf--last-msg))
+         (last-sent-msg
+          (if (and backward (not edit-msg) (telega-msg-by-me-p last-msg))
+              last-msg
+            (telega-chatbuf--next-msg (or edit-msg last-msg)
+                                      (lambda (msg)
+                                        (and (telega-msg-by-me-p msg)
+                                             (plist-get msg :can_be_edited)))
+                                      backward))))
+    (if last-sent-msg
+        (telega-msg-edit last-sent-msg)
+
+      (if (and edit-msg (not backward))
+          (telega-chatbuf-cancel-aux 'delete-input)
+        (user-error "Nothing to edit")))))
+
+(defun telega-chatbuf-edit-prev ()
+  "Edit previously sent message."
+  (interactive)
+  (telega-chatbuf-edit-next 'backward))
 
 (defun telega-chatbuf-beginning-of-thing (&optional arg)
   "Move backward to the beginning of the chat input or message."
