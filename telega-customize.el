@@ -151,6 +151,15 @@ Make sure you have tracking.el loaded if this option is used."
            (when value
              (warn "No ImageMagick support, so images can't be displayed in telega")))))
 
+;; See https://t.me/emacs_telega/12459
+(defcustom telega-button-endings #'telega-button--endings-func
+  "*Characters to use as beginning/ending of the button.
+Set to (\"[\" . \"]\") in nox-emacs setup.
+Could be a function of one argument - LABEL, should return cons
+cell of endings for the button with LABEL."
+  :type '(choice function cons)
+  :group 'telega)
+
 (defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")
   "List of known bots for everyday use."
   :type 'list

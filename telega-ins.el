@@ -58,12 +58,11 @@
 
 (defvar telega-filters--inhibit-list)
 
-(defun telega-ins--button (label &rest props)
-  "Insert pressable button labeled with LABEL.
-If custom face is specified in PROPS, then
-`telega-button--sensor-func' is not set as sensor function."
-  (declare (indent 1))
-  (unless (plist-get props 'face)
+(defun telega-button--endings-func (label)
+  "Function to generate endings for the button with LABEL."
+  (if (member label (list "  " telega-symbol-heavy-checkmark))
+      (cons "" "")
+
     ;; XXX inclose LABEL with shrink version of spaces, so button
     ;; width will be char aligned
 
@@ -72,13 +71,26 @@ If custom face is specified in PROPS, then
     (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
                                         :line-width)
                              0)))
-           (space `(space (,(- (telega-chars-xwidth 1) box-width)))))
-      (setq label (concat (propertize "\u00A0" 'display space)
+           (space `(space (,(- (telega-chars-xwidth 1) box-width))))
+           (end (propertize "\u00A0" 'display space)))
+      (cons end end))))
+
+(defun telega-ins--button (label &rest props)
+  "Insert pressable button labeled with LABEL.
+If custom face is specified in PROPS, then
+`telega-button--sensor-func' is not set as sensor function."
+  (declare (indent 1))
+  (unless (plist-get props 'face)
+    (let ((ends (if (functionp telega-button-endings)
+                    (funcall telega-button-endings label)
+                  telega-button-endings)))
+      (setq label (concat (or (car ends) "[")
                           label
-                          (propertize "\u00A0" 'display space))))
+                          (or (cdr ends) "]"))))
     (setq props (plist-put props 'face 'telega-button))
     (setq props (plist-put props 'cursor-sensor-functions
                            '(telega-button--sensor-func))))
+
   (unless (plist-get props 'action)
     (setq props (plist-put props 'action 'telega-button--action)))
   (button-at (apply 'insert-text-button label props)))
