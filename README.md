@@ -389,7 +389,7 @@ exceptionally helpful.
 
 # FAQ
 
-**Q**: I got the error after `M-x telega RET`
+**Q**: I have this error after `M-x telega RET`
 
 ```console
 
@@ -405,7 +405,7 @@ libtdjson.so: cannot open shared object file: No such file or directory
 # ldconfig
 ```
 
-**Q**: I've got the error installing telega
+**Q**: I have this error while installing telega
 
 ```console
 Cannot open load file: No such file or directory, visual-fill-column
@@ -415,7 +415,7 @@ Cannot open load file: No such file or directory, visual-fill-column
 install it first.  This package is available from
 [MELPA](https://melpa.org)
 
-**Q**: I've got error, while running telega
+**Q**: I have this error while running telega
 
 ```elisp
 (error "Invalid image type ‘svg’")
@@ -440,7 +440,7 @@ Telega won't depend on `imagemagick` in future, since required image
 features has been added to newer Emacs, see
 https://lists.gnu.org/r/emacs-devel/2019-06/msg00242.html
 
-**Q**: I'm from Russia, does `telega.el` has proxy support?
+**Q**: Does telega have proxy support?
 
 **A**: Yes, use `telega-proxies` custom variable, for example:
 
@@ -461,11 +461,11 @@ See `C-h v telega-proxies RET` for full range of proxy types.
 
 **A**: Make sure you have `imagemagick` support and please install `webp` package
 
-**Q**: No glyphs for some unicode characters.
+**Q**: There are no glyphs for some unicode characters.
 
 **A**: Please install `fonts-symbola` package
 
-**Q**: There is some formatting issues when some unicode characters are used.  Is there way to fix it up?
+**Q**: There is some formatting issues when some unicode characters are used.
 
 **A**: Yes, partly.  If character has full width of multiple ordinary chars you can tweak `char-width-table`.  Add code like this to your init.el:
 
@@ -493,7 +493,7 @@ to modify it.
 Take into account that telega tracks only opened chats with enabled
 notifications.
 
-**Q**: Is it possible to use `telega.el` in tty-only Emacs (aka
+**Q**: Is it possible to use telega in tty-only Emacs (aka
 emacs-nox)?
 
 **A**: Yes, set `telega-use-images` to `nil`, before start.
