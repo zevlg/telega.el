@@ -1296,8 +1296,8 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "M-g @") 'telega-chatbuf-next-mention)
 
     ;; jumping around links
-    (define-key map (kbd "TAB") 'telega-chat-complete-or-next-link)
-    (define-key map (kbd "<backtab>") 'telega-chat-prev-link)
+    (define-key map (kbd "TAB") 'telega-chatbuf-complete-or-next-link)
+    (define-key map (kbd "<backtab>") 'telega-chatbuf-prev-link)
     map))
 
 (define-button-type 'telega-prompt
@@ -2016,9 +2016,11 @@ If ICONS-P is non-nil, then use icons for members count."
       (telega-chatbuf-input-goto saved-input-idx))
     ))
 
-(defun telega-chatbuf-edit-next (&optional backward)
-  "Edit message sent next to currently editing."
-  (interactive)
+(defun telega-chatbuf-edit-next (without-aux &optional backward)
+  "Edit message sent next to currently editing.
+If WITHOUT-AUX is specified with `\\[universal-argument]', then
+instead of editing, just pop previously sent message as input."
+  (interactive "P")
   (let* ((edit-msg (telega-chatbuf--editing-msg))
          (last-msg (telega-chatbuf--last-msg))
          (last-sent-msg
@@ -2030,16 +2032,19 @@ If ICONS-P is non-nil, then use icons for members count."
                                              (plist-get msg :can_be_edited)))
                                       backward))))
     (if last-sent-msg
-        (telega-msg-edit last-sent-msg)
+        (progn
+          (telega-msg-edit last-sent-msg)
+          (when without-aux
+            (telega-chatbuf-cancel-aux)))
 
       (if (and edit-msg (not backward))
           (telega-chatbuf-cancel-aux 'delete-input)
         (user-error "Nothing to edit")))))
 
-(defun telega-chatbuf-edit-prev ()
+(defun telega-chatbuf-edit-prev (without-aux)
   "Edit previously sent message."
-  (interactive)
-  (telega-chatbuf-edit-next 'backward))
+  (interactive "P")
+  (telega-chatbuf-edit-next without-aux 'backward))
 
 (defun telega-chatbuf-beginning-of-thing (&optional arg)
   "Move backward to the beginning of the chat input or message."
@@ -3071,7 +3076,7 @@ If prefix argument is used, then always send as a file.
 Otherwise for `image-mode' major-mode, send file as photo."
   (interactive
    (let ((send-photo-p (and (not current-prefix-arg)
-                            (eq major-mode 'image-mode))))
+                            (derived-mode-p 'image-mode))))
      (list (buffer-file-name)
            (telega-completing-read-chat
             (format "Send %s to chat: " (if send-photo-p "PHOTO" "FILE")))
@@ -3358,8 +3363,8 @@ With prefix arg delete only for yourself."
                 'telega-chat-show-deleted-messages-for 'show-deleted
               "JFYI see `telega-chat-show-deleted-messages-for'")))))))
 
-(defun telega-chat-complete ()
-  "Complete thing at chat input."
+(defun telega-chatbuf-complete ()
+  "Complete thing at chatbuf input."
   (interactive)
   (or (call-interactively 'telega-chatbuf-attach-sticker-by-emoji)
       (when (and (boundp 'company-mode) company-mode)
@@ -3384,21 +3389,23 @@ With prefix arg delete only for yourself."
       ;; TODO: add other completions
       ))
 
-(defun telega-chat-next-link (n)
+(defun telega-chatbuf-next-link (n)
   (interactive "p")
   ;; TODO: maybe be more smarter about links
   (telega-button-forward n))
 
-(defun telega-chat-prev-link (n)
+(defun telega-chatbuf-prev-link (n)
   (interactive "p")
-  (telega-chat-next-link (- n)))
+  (when (<= telega-chatbuf--input-marker (point))
+    (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
+  (telega-chatbuf-next-link (- n)))
 
-(defun telega-chat-complete-or-next-link ()
+(defun telega-chatbuf-complete-or-next-link ()
   "Complete username at point, or jump to next link."
   (interactive)
   (if (<= telega-chatbuf--input-marker (point))
-      (call-interactively 'telega-chat-complete)
-    (call-interactively 'telega-chat-next-link)))
+      (call-interactively 'telega-chatbuf-complete)
+    (call-interactively 'telega-chatbuf-next-link)))
 
 (defun telega-chat-generate-invite-link (chat-id)
   "Generate invite link for chat with CHAT-ID.
