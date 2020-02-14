@@ -389,7 +389,7 @@ exceptionally helpful.
 
 # FAQ
 
-**Q**: I got this error after `M-x telega RET`
+**Q**: I have this error after `M-x telega RET`
 
 ```console
 
@@ -405,7 +405,7 @@ libtdjson.so: cannot open shared object file: No such file or directory
 # ldconfig
 ```
 
-**Q**: I got this error while installing telega
+**Q**: I have this error while installing telega
 
 ```console
 Cannot open load file: No such file or directory, visual-fill-column
@@ -415,7 +415,7 @@ Cannot open load file: No such file or directory, visual-fill-column
 install it first.  This package is available from
 [MELPA](https://melpa.org)
 
-**Q**: I got this error while running telega
+**Q**: I have this error while running telega
 
 ```elisp
 (error "Invalid image type ‘svg’")
