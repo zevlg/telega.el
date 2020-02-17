@@ -87,9 +87,6 @@
 Real value is the pending input string.")
 (make-variable-buffer-local 'telega-chatbuf--input-pending)
 
-(defvar telega-chatbuf--output-marker nil)
-(make-variable-buffer-local 'telega-chatbuf--output-marker)
-
 (defvar telega-chatbuf--aux-button nil
   "Button that display reply/edit/fwd message above input.")
 (make-variable-buffer-local 'telega-chatbuf--aux-button)
@@ -114,6 +111,10 @@ Could be `loaded' or `nil'.")
 (defvar telega-chatbuf--my-action nil
   "My current action in chat buffer.")
 (make-variable-buffer-local 'telega-chatbuf--my-action)
+
+(defvar telega-chatbuf--need-point-refresh nil
+  "Non-nil if point needs refreshing on buffer switch in.")
+(make-variable-buffer-local 'telega-chatbuf--need-point-refresh)
 
 ;; Special variable used to set `telega-chatbuf--chat'
 ;; inside `telega-chat-mode'
@@ -658,19 +659,23 @@ Return newly created chat."
   "Mark CHAT's MESSAGES as read.
 Use non-nil value for FORCE, if messages in closed chats should
 be marked as read."
-  (telega-server--send
-   (list :@type "viewMessages"
-         :chat_id (plist-get chat :id)
-         :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
-         :force_read (if force t :false))))
+  (when messages
+    (telega-server--send
+     (list :@type "viewMessages"
+           :chat_id (plist-get chat :id)
+           :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
+           :force_read (if force t :false)))))
 
-(defun telega-chatbuf--view-visible-messages (window &optional display-start force)
+(defun telega-chatbuf--view-visible-messages (&optional window display-start force)
   "View all visible messages in chatbuf's window."
-  (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
-            (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
-               (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
-    (when-let ((visible-messages (telega-chatbuf--visible-messages window display-start)))
-      (telega--viewMessages telega-chatbuf--chat visible-messages force))))
+  (when-let ((chatbuf-win (or window (get-buffer-window (current-buffer)))))
+    (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
+              (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
+                 (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
+      (telega--viewMessages
+       telega-chatbuf--chat
+       (telega-chatbuf--visible-messages chatbuf-win display-start)
+       force))))
 
 (defun telega--toggleChatIsPinned (chat)
   "Toggle pin state of the CHAT."
@@ -1467,8 +1472,7 @@ Update modeline as well."
   (when (telega-focus-state)
     ;; NOTE: on focus-in view all visible messages, see
     ;; https://github.com/zevlg/telega.el/issues/81
-    (when-let ((chat-win (get-buffer-window (current-buffer))))
-      (telega-chatbuf--view-visible-messages chat-win))))
+    (telega-chatbuf--view-visible-messages)))
 
 (define-derived-mode telega-chat-mode nil "◁Chat"
   "The mode for telega chat buffer.
@@ -1714,6 +1718,28 @@ otherwise set draft only if current input is also draft."
           (telega-ins--text
            (telega--tl-get draft-msg :input_message_text :text)))))))
 
+(defun telega-chatbuf--point-refresh ()
+  "Refresh point in the chatbuf.
+Move to the last unseen message.  If all messages are seen, then
+move to the input.
+Also marks some messages as read in chatbuf."
+  (let* ((lrm-node (telega-chatbuf--node-by-msg-id
+                    (plist-get telega-chatbuf--chat :last_read_inbox_message_id)))
+         (msg-node (ewoc-next telega-chatbuf--ewoc lrm-node)))
+    ;; If MSG-NODE is last message and is visible, then goto chatbuf
+    ;; input as well
+    (if (or (not msg-node)
+            (and (telega-chatbuf--last-msg-loaded-p)
+                 (eq msg-node (ewoc-nth telega-chatbuf--ewoc -1))
+                 (telega-button--observable-p (ewoc-location msg-node))))
+        (goto-char (point-max))
+      (goto-char (ewoc-location msg-node)))
+
+    ;; NOTE: view all visible messages, see
+    ;; https://t.me/emacs_telega/4731
+    (telega-chatbuf--view-visible-messages)
+    ))
+
 (defun telega-chatbuf--get-create (chat)
   "Get or create chat buffer for the CHAT."
   (let ((bufname (telega-chatbuf--name chat)))
@@ -1754,23 +1780,16 @@ otherwise set draft only if current input is also draft."
 
           ;; Start from last read message
           ;; see https://github.com/zevlg/telega.el/issues/48
-          (let ((last-read-msg-id (plist-get chat :last_read_inbox_message_id)))
-            (telega-chat--load-history
-                chat last-read-msg-id (- telega-chat-history-limit) nil
-              (lambda ()
-                (telega-chatbuf--goto-msg last-read-msg-id)
-                (unless (telega-button-forward 1 'telega-msg-at 'no-error)
-                  ;; No more buttons, jump to input
-                  (goto-char (point-max)))
-                ;; NOTE: view all visible messages, see
-                ;; https://t.me/emacs_telega/4731
-                (when-let ((chat-win (get-buffer-window (current-buffer))))
-                  (telega-chatbuf--view-visible-messages chat-win))
-                ;; Possible load more history
-                (when (and (< (point) 2000)
-                           (telega-chatbuf--need-older-history-p))
-                  (telega-chatbuf--load-older-history))
-                )))
+          (telega-chat--load-history
+              chat (plist-get chat :last_read_inbox_message_id)
+              (- (/ telega-chat-history-limit 2)) telega-chat-history-limit
+            (lambda ()
+              (telega-chatbuf--point-refresh)
+
+              ;; Possible load more history
+              (when (and (< (point) 2000)
+                         (telega-chatbuf--need-older-history-p))
+                (telega-chatbuf--load-older-history))))
 
           ;; Openning chat may affect filtering, see `opened' filter
           (telega-root--chat-update chat)
@@ -2395,9 +2414,9 @@ CALLBACK is called after history has been loaded."
         (telega-chatbuf--footer-redisplay)
         ))))
 
-(defun telega-chatbuf--load-older-history ()
+(defun telega-chatbuf--load-older-history (&optional callback)
   "In chat buffer load older messages."
-  (telega-chat--load-history telega-chatbuf--chat))
+  (telega-chat--load-history telega-chatbuf--chat nil nil nil callback))
 
 (defun telega-chatbuf--load-newer-history ()
   "In chat buffer load newer messages."
@@ -2653,7 +2672,8 @@ IMC might be a plain string or attachement specification."
   (unless (telega-chatbuf--last-msg-loaded-p)
     ;; Need to load most recent history
     (telega-chatbuf--clean)
-    (telega-chatbuf--load-older-history))
+    (telega-chatbuf--load-older-history
+     #'telega-chatbuf--view-visible-messages))
 
   (goto-char (point-max)))
 
@@ -3170,6 +3190,7 @@ If DRAFT-MSG is ommited, then clear draft message."
   ;; NOTE: temporary move point out of prompt, so newly incoming
   ;; messages won't get automatically read
   (when (>= (point) telega-chatbuf--input-marker)
+    (setq telega-chatbuf--need-point-refresh t)
     (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
   )
 
@@ -3180,8 +3201,11 @@ If DRAFT-MSG is ommited, then clear draft message."
   (telega--openChat telega-chatbuf--chat)
 
   ;; Recover point position, saved in `telega-chatbuf--switch-out'
-  (when (= (point) (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
-    (goto-char (point-max)))
+  ;; In case point was saved, then jump to last non-viewed message,
+  ;; just as if chat was freshly opened
+  (when telega-chatbuf--need-point-refresh
+    (setq telega-chatbuf--need-point-refresh nil)
+    (telega-chatbuf--point-refresh))
 
   ;; See docstring for `telega-root-keep-cursor'
   (when (eq telega-root-keep-cursor 'track)
