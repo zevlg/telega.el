@@ -157,7 +157,7 @@ function with one argument - message."
   "Return non-nil if MSG is of MSG-TYPE."
   (eq (telega--tl-type (plist-get msg :content)) msg-type))
 
-(defsubst telega-msg-chat (msg &optional offline-p)
+(defun telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG.
 Return nil for deleted messages."
   (telega-chat-get (plist-get msg :chat_id) offline-p))
