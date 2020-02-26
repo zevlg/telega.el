@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual
+#+TITLE: Telega Manual (v{{{eval(telega-version,t)}}})
 #+STARTUP: showall
 
 #+BEGIN_QUOTE
@@ -69,8 +69,8 @@ new terms specific to =telega=.  All of them are used in the manual.
   Custom chat filters are displayed as buttons above the chat list in
   the rootbuf, such as:
   #+begin_example
-  [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]  
-  [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]  
+  [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
+  [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
   #+end_example
 
   Action for such buttons is to add corresponding chat filter to
@@ -83,7 +83,7 @@ new terms specific to =telega=.  All of them are used in the manual.
 
   + User Option: ~telega-filters-custom~
     {{{vardoc1(telega-filters-custom)}}}
-  
+
   + User Option: ~telega-filter-custom-push-list~
     {{{vardoc1(telega-filter-custom-push-list)}}}
 

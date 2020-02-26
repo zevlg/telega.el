@@ -368,18 +368,20 @@ chats matching this chat filter."
 ;; ** telega-squash-message-mode
 ;;
 ;; Minor mode for chatbuf to squash messages into single one while
-;; nobody see this.
+;; nobody saw this.
 ;;
 ;; Squashing mean adding contents of the new message to the previous
 ;; message by editing contents of the previous message.
 ;;
-;; New message in chat is squahed into your previous message only if
+;; New message in chat is squashed into your previous message only if
 ;; all the conditions are met:
 ;;
 ;; 1. Last message in chat is sent by you
 ;; 2. Nobody seen your last message
 ;; 3. Last and new message are both text messages
-;; 4. Last and new messages are *not* replying to any message
+;; 4. Last message can be edited
+;; 5. Last and new messages are *not* replying to any message
+;; 6. Last message has no associated web-page
 ;;
 ;; Can be enabled globally in all chats matching
 ;; ~telega-squash-message-mode-for~ (see below) chat filter with
@@ -454,25 +456,23 @@ chats matching this chat filter."
 
 (defsubst telega-squash-message--squash (chat imc reply-to-msg)
   "Return non-nil if message has been squashed."
-  ;; Squash only of all conditions are ment:
-  ;;  1. Last message in chat is sent by you
-  ;;  2. Nobody seen your last message
-  ;;  3. Last and new message are both text messages
-  ;;  4. Last and new messages are *not* replying to some message
   (with-telega-chatbuf chat
     (when (and telega-squash-message-mode
-               ;; Check 3. and 4. for new message
+               ;; Check 3. and 5. for new message
                (not reply-to-msg)
                (eq (telega--tl-type imc) 'inputMessageText))
       (let ((last-msg (plist-get chat :last_message))
             (last-read-id (plist-get chat :last_read_outbox_message_id)))
         (when (and last-msg
-                   ;; Checking for 1. 2. 3. and 4.
+                   ;; Checking for 1. 2. 3. 4. and 5.
                    (telega-msg-by-me-p last-msg)
                    (< last-read-id (plist-get last-msg :id))
+                   (plist-get last-msg :can_be_edited)
                    (eq (telega--tl-type (plist-get last-msg :content))
                        'messageText)
-                   (zerop (plist-get last-msg :reply_to_message_id)))
+                   (zerop (plist-get last-msg :reply_to_message_id))
+                   ;; Check for 6.
+                   (not (telega--tl-get last-msg :content :web_page)))
 
           ;; Squashing IMC with `last-msg' by modifying IMC
           (plist-put imc :text (telega-squash-message--concat-text

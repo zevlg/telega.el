@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual
+#+TITLE: Telega Manual (v0.6.0)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -70,8 +70,8 @@ new terms specific to =telega=.  All of them are used in the manual.
      Custom chat filters are displayed as buttons above the chat list in
      the rootbuf, such as:
      #+begin_example
-       [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]  
-       [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]  
+       [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
+       [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
      #+end_example
 
      Action for such buttons is to add corresponding chat filter to
@@ -411,18 +411,20 @@ chats matching this chat filter.
 ** telega-squash-message-mode
 
 Minor mode for chatbuf to squash messages into single one while
-nobody see this.
+nobody saw this.
 
 Squashing mean adding contents of the new message to the previous
 message by editing contents of the previous message.
 
-New message in chat is squahed into your previous message only if
+New message in chat is squashed into your previous message only if
 all the conditions are met:
 
 1. Last message in chat is sent by you
 2. Nobody seen your last message
 3. Last and new message are both text messages
-4. Last and new messages are *not* replying to any message
+4. Last message can be edited
+5. Last and new messages are *not* replying to any message
+6. Last message has no associated web-page
 
 Can be enabled globally in all chats matching
 ~telega-squash-message-mode-for~ (see below) chat filter with
