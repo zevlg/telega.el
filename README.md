@@ -82,7 +82,7 @@ automatically installs if you install telega from MELPA or GNU Guix.
 Otherwise will you need to install this package by hand.
 
 `telega.el` is built on top of the official library provided by
-Telegram [TDLib 1.5.4](https://core.telegram.org/tdlib "tdlib"). Most
+Telegram [TDLib 1.6.0](https://core.telegram.org/tdlib "tdlib"). Most
 of the distributions do not package this libary, in which case it must
 be built manually.
 
@@ -134,7 +134,7 @@ dependencies when installing GNU Emacs with GTK+ support (graphical).
 
 [TDLib](https://core.telegram.org/tdlib "tdlib") is the library for
 building Telegram clients. It requires a large amount of memory to be
-built.  Make sure you are using TDLib version 1.5.4.
+built.  Make sure you are using TDLib version 1.6.0.
 
 On MacOS you can install a pre-built `tdlib` package using homebrew from
 [brew.sh](https://brew.sh).  Just run:

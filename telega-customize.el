@@ -1055,10 +1055,28 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-poll-options (cons "○" "●")
-  "Symbols used to display poll options.
-car is for non-selected option, cdr is for selected option."
-  :type 'cons
+(defcustom telega-symbol-poll-options (list "○" "●")
+  "Symbols used to display poll options with single choice.
+First - for non-selected option.
+Second - for selected option."
+  :type 'list
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-poll-multiple-options (list "☐" "☑")
+  "Symbols used to display poll options with multiple answers allowed.
+First - for non-selected option.
+Second - for selected option."
+  :type 'list
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-quiz-options (list (compose-chars ?○ ?✓)
+                                            "○"
+                                            (compose-chars ?○ ?✗))
+  "Symbols used to display quiz options.
+First - for correct option.
+Second - for non-selected incorrect option.
+Third - for selected incorrect option."
+  :type 'list
   :group 'telega-symbol)
 
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
@@ -1118,8 +1136,8 @@ If nil, then user's online status is not displayed."
          telega-symbol-ballout-check
 
          telega-symbol-play
-         (car telega-symbol-poll-options)
-         (cdr telega-symbol-poll-options)
+         (nth 0 telega-symbol-poll-options)
+         (nth 1 telega-symbol-poll-options)
          telega-symbol-blocked
          telega-symbol-alarm
          ))

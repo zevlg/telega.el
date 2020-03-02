@@ -785,50 +785,86 @@ Return `non-nil' if WEB-PAGE has been inserted."
   "Insert poll message MSG."
   (let* ((content (plist-get msg :content))
          (poll (plist-get content :poll))
+         (poll-type (plist-get poll :type))
          (closed-p (plist-get poll :is_closed))
-         (options (plist-get poll :options))
-         (has-choice-p (cl-some (telega--tl-prop :is_chosen) options))
-         (max-opt-len (apply 'max (mapcar 'length (mapcar (telega--tl-prop :text) options))))
-         (opt-sym-len (max (string-width (car telega-symbol-poll-options))
-                           (string-width (cdr telega-symbol-poll-options)))))
+         (anonymous-p (plist-get poll :is_anonymous))
+         (options (append (plist-get poll :options) nil))
+         (choices (cl-loop for popt in options
+                           for popt-id from 0
+                           if (plist-get popt :is_chosen)
+                           collect popt-id))
+         (quiz-p (eq (telega--tl-type poll-type) 'pollTypeQuiz))
+         (quiz-popt-id (when quiz-p
+                         (plist-get poll-type :correct_option_id)))
+         (multiple-answers-p (unless quiz-p
+                               (plist-get poll-type :allow_multiple_answers)))
+         (max-opt-len (apply #'max
+                             (mapcar #'length
+                                     (mapcar (telega--tl-prop :text)
+                                             options))))
+         (option-symbols (if quiz-p
+                             telega-symbol-quiz-options
+                           (if multiple-answers-p
+                               telega-symbol-poll-multiple-options
+                             telega-symbol-poll-options)))
+         (opt-sym-len (apply #'max (mapcar #'string-width option-symbols))))
     ;; Poll header
     ;; NOTE: Currently all polls are anonymous, this might be changed
     ;; in future See https://telegram.org/blog/polls
     (telega-ins telega-symbol-poll " ")
     (telega-ins--with-face 'shadow
-      ;; I18N: polls_anonymous -> Anonymous Poll
-      (telega-ins-i18n "polls_anonymous"))
+      (telega-ins-i18n (cond ((and anonymous-p quiz-p) "polls_anonymous_quiz")
+                             (anonymous-p "polls_anonymous")
+                             (quiz-p "polls_public_quiz")
+                             (t "polls_public"))))
     ;; I18N: polls_votes_count -> {count} votes
-    (telega-ins ", " (telega-i18n "polls_votes_count"
+    (telega-ins ", " (telega-i18n (if quiz-p
+                                      "polls_answers_count"
+                                    "polls_votes_count")
                                   :count (plist-get poll :total_voter_count)))
     (when closed-p
         (telega-ins ", " (propertize "closed" 'face 'error)))
     (when (and (not closed-p) (plist-get msg :can_be_edited))
       (telega-ins " ")
-      (telega-ins--button "Close Poll"
+      (telega-ins--button (concat "Close " (if quiz-p "Quiz" "Poll"))
         'action (lambda (_ignored)
                   (when (yes-or-no-p (telega-i18n "polls_stop_warning"))
                     (telega--stopPoll msg)))))
     (telega-ins "\n")
 
     ;; Question and options
-    (telega-ins (telega-tl-str poll :question))
-    (dotimes (opt-id (length options))
-      (let ((popt (aref options opt-id)))
+    (telega-ins--with-face 'bold
+      (telega-ins (telega-tl-str poll :question)))
+    (dotimes (popt-id (length options))
+      (let ((popt (nth popt-id options)))
         (telega-ins "\n")
         (telega-ins--raw-button
             (list 'action (lambda (_ignore)
-                            (if (or (plist-get popt :is_chosen)
-                                    (plist-get popt :is_being_chosen))
-                                (telega--setPollAnswer msg)
-                              (telega--setPollAnswer msg opt-id))))
+                            (if (plist-get popt :is_chosen)
+                                (apply #'telega--setPollAnswer msg
+                                       (delete popt-id choices))
+                              (if multiple-answers-p
+                                  (apply #'telega--setPollAnswer msg
+                                         (cons popt-id choices))
+                                (telega--setPollAnswer msg popt-id)))))
           (telega-ins--with-face 'telega-link
-            (telega-ins (if (or (plist-get popt :is_chosen)
-                                (plist-get popt :is_being_chosen))
-                            (cdr telega-symbol-poll-options)
-                          (car telega-symbol-poll-options))))
+            (telega-ins
+             (if quiz-p
+                 (cond ((eq quiz-popt-id popt-id)
+                        (if (plist-get popt :is_chosen)
+                            (propertize (nth 0 option-symbols) 'face 'bold)
+                          (nth 0 option-symbols)))
+                       ((plist-get popt :is_chosen)
+                        (propertize (nth 2 option-symbols) 'face 'error))
+                       (t
+                        (nth 1 option-symbols)))
+
+               (if (plist-get popt :is_chosen)
+                   (propertize (nth 1 option-symbols) 'face 'bold)
+                 (nth 0 option-symbols)))))
+
           (telega-ins " " (telega-tl-str popt :text)))
-        (when (or has-choice-p closed-p)
+        (when (or choices closed-p)
           (telega-ins "\n")
           (telega-ins (make-string opt-sym-len ?\s) " ")
           (telega-ins-fmt "%2d%% " (plist-get popt :vote_percentage))
@@ -836,8 +872,13 @@ Return `non-nil' if WEB-PAGE has been inserted."
            (telega-poll-create-svg
             max-opt-len (plist-get popt :vote_percentage)))
           (telega-ins--with-face 'shadow
-            (telega-ins-fmt " %d votes" (plist-get popt :voter_count))))
-        ))))
+            (telega-ins " ")
+            (telega-ins-i18n (if quiz-p
+                                 "polls_answers_count"
+                               "polls_votes_count")
+              :count (plist-get popt :voter_count))))
+        ))
+    ))
 
 (defun telega-ins--animation-msg (msg &optional animation)
   "Inserter for animation message MSG.

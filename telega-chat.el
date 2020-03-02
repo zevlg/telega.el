@@ -2251,13 +2251,22 @@ Message id could be updated on this update."
 
 (defun telega--on-updateMessageContent (event)
   "Content of the message has been changed."
-  (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (cl-destructuring-bind (msg node)
-        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-      (when msg
-        (plist-put msg :content (plist-get event :new_content))
-        (when node
-          (telega-chatbuf--redisplay-node node))))))
+  (let ((new-content (plist-get event :new_content)))
+    ;; NOTE: for "messagePoll" update check if there any option with
+    ;; `:is_being_chosen' set to non-nil.
+    ;; If so, then just ignore this update, waiting for real update
+    ;; chosing some poll option may fail with "REVOTE_NOT_ALLOWED" error
+    (unless (and (eq (telega--tl-type new-content) 'messagePoll)
+                 (cl-some (telega--tl-prop :is_being_chosen)
+                          (telega--tl-get new-content :poll :options)))
+
+      (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
+        (cl-destructuring-bind (msg node)
+            (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
+          (when msg
+            (plist-put msg :content new-content)
+            (when node
+              (telega-chatbuf--redisplay-node node))))))))
 
 (defun telega--on-updateMessageEdited (event)
   "Edited date of the message specified by EVENT has been changed."
@@ -3024,21 +3033,31 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
              (propertize inline-help 'face 'shadow)))
           t)))))
 
-(defun telega-chatbuf-attach-poll (question &rest options)
+(defun telega-chatbuf-attach-poll (question non-anonymous allow-multiple-answers
+                                            &rest options)
   "Attach poll to the input.
 QUESTION - Title of the poll.
+NON-ANONYMOUS - Non-nil to create non-anonymous poll, specified
+by `\\[universal-argument]' if interactively called.
+ALLOW-MULTIPLE-ANSWERS - Non-nil to allow multiple answers.
 OPTIONS - List of strings representing poll options."
-  (interactive (let ((ilist (list (read-string "Poll title: ")))
-                     (optidx 1) opt)
+  (interactive (let ((poll-q (read-string "Poll Question: "))
+                     (optidx 1) opt poll-opts)
                  (while (not (string-empty-p
                               (setq opt (read-string
                                          (format "Option %d): " optidx)))))
-                   (setq ilist (nconc ilist (list opt)))
+                   (setq poll-opts (append poll-opts (list opt)))
                    (cl-incf optidx))
-                 ilist))
+                 (nconc (list poll-q
+                              current-prefix-arg
+                              (y-or-n-p "Allow multiple answers: "))
+                        poll-opts)))
   (telega-chatbuf-input-insert
    (list :@type "inputMessagePoll"
          :question question
+         :is_anonymous (if non-anonymous :false t)
+         :type (list :@type "pollTypeRegular"
+                     :allow_multiple_answers allow-multiple-answers)
          :options (apply 'vector options))))
 
 (defun telega-chatbuf-attach (attach-type attach-value)
@@ -3053,7 +3072,8 @@ Prefix argument is available for next attachements:
                document.
   animation  - Takes C-u prefix to attach file as animation.
                (Same as attching \"gif\")
-  location   - Takes C-u prefix to attach live location."
+  location   - Takes C-u prefix to attach live location.
+  poll       - Takes C-u prefix to create non-anonymous poll."
   (interactive
    (list (funcall telega-completing-read-function
                   "Attachment type: "

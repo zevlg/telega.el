@@ -60,10 +60,20 @@
      :value "SCAM")
     ("lng_polls_anonymous"
      :value "Anonymous Poll")
+    ("lng_polls_anonymous_quiz"
+     :value "Anonymous Quiz")
+    ("lng_polls_public"
+     :value "Poll")
+    ("lng_polls_public_quiz"
+     :value "Quiz")
     ("lng_polls_votes_count"
      :zero_value "No votes"
      :one_value "{count} vote"
      :other_value "{count} votes")
+    ("lng_polls_answers_count"
+     :zero_value "No answers"
+     :one_value "{count} answer"
+     :other_value "{count} answers")
     ("lng_polls_stop_warning"
      :value "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.")
     ("lng_deleted"
@@ -244,8 +254,12 @@ Return one of: `:zero_value', `:one_value', `:two_value',
          (val (or (telega-tl-str str :value)
                   (let ((count (plist-get args :count)))
                     (unless count
-                      (error "\"%s\" is plural, `:count' is required" key))
-                    (telega-tl-str str (telega-i18n-plural-rule count)))
+                      (if str
+                          (error "\"%s\" is plural, `:count' is required" key)
+                        (error "\"%s\" is unknown for i18n" key)))
+                    (or (and (eq count 0)
+                             (telega-tl-str str :zero_value))
+                        (telega-tl-str str (telega-i18n-plural-rule count))))
                   (telega-tl-str str :other_value))))
     (while args
       (setq val (replace-regexp-in-string

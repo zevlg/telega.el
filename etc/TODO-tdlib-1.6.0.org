@@ -55,7 +55,7 @@ Changes in 1.6.0:
   - Added the method `sharePhoneNumber`, allowing to share the phone number of the current user with a mutual contact.
   - Added the new reason `chatReportReasonUnrelatedLocation` for reporting location-based groups unrelated to
     their stated location.
-* WIP Improved support for text entities:
+* Improved support for text entities:
   - Added the new types of text entities `textEntityTypeUnderline` and `textEntityTypeStrikethrough`.
   - Added support for nested entities. Entities can be nested, but must not mutually intersect with each other.
     Pre, Code and PreCode entities can't contain other entities. Bold, Italic, Underline and Strikethrough entities can
@@ -63,6 +63,21 @@ Changes in 1.6.0:
   - Added the field `version` to the method `textParseModeMarkdown`. Versions 0 and 1 correspond to Bot API Markdown
     parse mode, version 2 to Bot API MarkdownV2 parse mode with underline, strikethrough and nested entities support.
   - The new entity types and nested entities are supported in secret chats also if its layer is at least 101.
+* DONE Added support for native non-anonymous, multiple answer, and quiz-style polls:
+  CLOSED: [2020-03-02 Пн 18:26]
+  - Added support for quiz-style polls, which has exactly one correct answer option and can be answered only once.
+  - Added support for regular polls, which allows multiple answers.
+  - Added the classes `pollTypeRegular` and `pollTypeQuiz`, representing the possible types of a poll.
+  - Added the field `type` to the classes `poll` and `inputMessagePoll`.
+  - Added support for non-anonymous polls with visible votes by adding the field `is_anonymous` to the classes `poll`
+    and `inputMessagePoll`.
+  - Added the method `getPollVoters`, returning users that voted for the specified option in a non-anonymous poll.
+    [NOT YET]
+  - Added the new reply markup keyboard button `keyboardButtonTypeRequestPoll`.
+    [NOT YET, need example]
+  - Added the field `is_regular` to the class `pushMessageContentPoll`.
+  - Added the update `updatePollAnswer` for bots only.
+  - Added the field `is_closed` to the class `inputMessagePoll`, which can be used by bots to send a closed poll.
 * Clarified in the documentation that file remote ID is guaranteed to be usable only if the corresponding file is
   still accessible to the user and is known to TDLib. For example, if the file is from a message, then the message
   must be not deleted and accessible to the user. If the file database is disabled, then the corresponding object with
@@ -165,15 +180,4 @@ Changes in 1.6.0:
   the appropriate mark.
 * Added the field `video_upload_bitrate` to the class `autoDownloadSettings`.
 * Disallowed to call `setChatNotificationSettings` method on the chat with self, which never worked.
-* Added support for integration with TON Blockchain. For a complete integration use `tonlib` from
-  https://github.com/ton-blockchain/ton:
-  - Added the option `default_ton_blockchain_config`, containing the default TON Blockchain config. If empty,
-    TON integration is disabled, otherwise the config needs to be passed to tonlib.
-  - Added the option `default_ton_blockchain_name`, containing the default TON Blockchain name.
-    The blockchain name needs to be passed to tonlib.
-  - Added the class `tonLiteServerResponse` and the method `sendTonLiteServerRequest`, which allows to send requests to
-    a TON Blockchain Lite Server through Telegram servers.
-  - Added the class `tonWalletPasswordSalt` and the method `getTonWalletPasswordSalt`, which can be used
-    to harden protection of the locally stored TON Blockchain private key.
-  - Added support for `ton://` URLs in messages and inline keyboard buttons.
-
+* Added support for `ton://` URLs in messages and inline keyboard buttons.
