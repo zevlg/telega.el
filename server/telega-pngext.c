@@ -11,7 +11,6 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
@@ -97,7 +96,10 @@ pngext_loop(const char* prefix, size_t rdsize)
         struct telega_dat png_data = TDAT_INIT;
 
         /* Non-blocking read from stdin */
-        fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+        if (fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK)) {
+                perror("fcntl()");
+                return;
+        }
 
         fd_set rfds;
         FD_ZERO(&rfds);

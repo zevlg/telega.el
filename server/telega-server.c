@@ -163,7 +163,7 @@ stdin_loop(void* td_cln, void* ton_cln)
                 cmdline[32] = '\0';
 
                 char cmd[33];
-                size_t cmdsz;
+                size_t cmdsz = 0;
                 if (2 != sscanf(cmdline, "%s %zu\n", cmd, &cmdsz)) {
                         fprintf(stderr, "[telega-server] "
                                 "Unexpected cmdline format: %s\n", cmdline);
