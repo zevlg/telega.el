@@ -88,8 +88,6 @@ pngext_loop(const char* prefix, size_t rdsize)
 {
         assert(prefix != NULL);
         assert(strlen(prefix) < 500);
-        char* png_filename = (char*)malloc(strlen(prefix) + 32);
-        assert(png_filename != NULL);
 
         int frame_num = 0;
         struct telega_dat input = TDAT_INIT;

@@ -169,6 +169,11 @@ stdin_loop(void* td_cln, void* ton_cln)
                                 "Unexpected cmdline format: %s\n", cmdline);
                         continue;
                 }
+                if (cmdsz > 10 * 1024 * 1024) {
+                        fprintf(stderr, "[telega-server] cmd size = %zu is too large",
+                                cmdsz);
+                        continue;
+                }
 
                 tdat_ensure(&plist_src, cmdsz);
 
