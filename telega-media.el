@@ -520,8 +520,10 @@ Default is `:telega-image'."
 (defun telega-avatar--create-image (chat-or-user file &optional cheight)
   "Create image for CHAT-OR-USER avatar.
 CHEIGHT specifies avatar height in chars, default is 2."
-  ;; NOTE: for CHEIGHT==1 align avatar at vertical center, otherwise
-  ;; stick to the top
+  ;; NOTE:
+  ;; - For CHEIGHT==1 align avatar at vertical center
+  ;; - For CHEIGHT==2 make svg height to be 3 chars, so if font size
+  ;;   is increased, there will be no gap between two slices
   (unless cheight (setq cheight 2))
   (let* ((photofile (telega--tl-get file :local :path))
          (factors (alist-get cheight telega-avatar-factors-alist))
@@ -533,19 +535,22 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (cfull (+ ch margin))
          (aw-chars (telega-chars-in-width ch))
          (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
-         (xw (telega-chars-xwidth aw-chars))
-         (svg (svg-create xw xh))
+         (svg-xw (telega-chars-xwidth aw-chars))
+         (svg-xh (cond ((= cheight 1) cfull)
+                       ((= cheight 2) (+ cfull (telega-chars-xheight 1)))
+                       (t xh)))
+         (svg (svg-create svg-xw svg-xh))
          (name (if (eq (telega--tl-type chat-or-user) 'user)
                    (telega-user--name chat-or-user)
                  (telega-chat-title chat-or-user))))
     (if (telega-file-exists-p photofile)
         (let ((img-type (image-type-from-file-name photofile))
               (clip (telega-svg-clip-path svg "clip")))
-          (svg-circle clip (/ xw 2) (/ cfull 2) (/ ch 2))
+          (svg-circle clip (/ svg-xw 2) (/ cfull 2) (/ ch 2))
           (svg-embed svg photofile
                      (format "image/%S" img-type)
                      nil
-                     :x (/ (- xw ch) 2) :y (/ margin 2)
+                     :x (/ (- svg-xw ch) 2) :y (/ margin 2)
                      :width ch :height ch
                      :clip-path "url(#clip)"))
 
@@ -556,18 +561,18 @@ CHEIGHT specifies avatar height in chars, default is 2."
                      (telega-chat-color chat-or-user))))
         (svg-gradient svg "cgrad" 'linear
                       (list (cons 0 (cadr color)) (cons ch (caddr color))))
-        (svg-circle svg (/ xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
+        (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
         (svg-text svg (substring name 0 1)
                   :font-size (/ ch 2)
                   :font-weight "bold"
                   :fill "white"
                   :font-family "monospace"
                   ;; XXX insane X/Y calculation
-                  :x (- (/ xw 2) (/ fsz 3))
+                  :x (- (/ svg-xw 2) (/ fsz 3))
                   :y (+ (/ fsz 3) (/ cfull 2)))))
 
     (telega-svg-image svg :scale 1.0
-                      :width xw :height xh
+                      :width svg-xw :height svg-xh
                       :ascent 'center
                       :mask 'heuristic
                       ;; Correct text for tty-only avatar display

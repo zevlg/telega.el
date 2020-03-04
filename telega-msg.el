@@ -121,7 +121,8 @@
                                 telega-chat-group-messages-timespan))))
                  'telega-ins--message-no-header)
 
-                (t 'telega-ins--message))))
+                (t 'telega-ins--message)))
+         (telega--current-buffer (current-buffer)))
     (telega-button--insert 'telega-msg msg
       :inserter msg-inserter)
     (telega-ins "\n")))

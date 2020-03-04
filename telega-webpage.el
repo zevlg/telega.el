@@ -488,7 +488,8 @@ instant view for the URL."
         telega-webpage--anchors nil)
   (telega-webpage--history-push)
 
-  (let ((buffer-read-only nil))
+  (let ((buffer-read-only nil)
+        (telega--current-buffer (current-buffer)))
     (erase-buffer)
     (mapc 'telega-webpage--ins-pb
           (plist-get telega-webpage--iv :page_blocks))

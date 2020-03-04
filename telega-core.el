@@ -43,6 +43,11 @@
   "All types of chats supported by telega.")
 
 ;;; Runtime variables
+(defvar telega--current-buffer nil
+  "Buffer currently inserting into.
+Bind this to make `telega-chars-xxx' family functions to work correctly.
+Becase `telega-ins--as-string' uses temporary buffer.")
+
 (defvar telega--chat nil
   "Telega chat for the current buffer.
 Used in help buffers to refer chat.")

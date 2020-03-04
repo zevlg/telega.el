@@ -74,9 +74,9 @@ Also return `nil' if FILENAME is `nil'."
 Selected frame and frame displaying root buffer are examined first."
   (cl-find-if (lambda (frame)
                 (frame-parameter frame 'window-system))
-              (nconc (list (selected-frame)
-                           (window-frame
-                            (get-buffer-window (telega-root--buffer))))
+              (nconc (list (window-frame
+                            (get-buffer-window (or telega--current-buffer
+                                                   (telega-root--buffer)))))
                      (frame-list))))
 
 (defun telega-focus-state (&optional frame)
@@ -93,17 +93,19 @@ Selected frame and frame displaying root buffer are examined first."
   ;; NOTE: Same (* n (window-font-width (get-buffer-window nil (telega-x-frame))))
   ;; but without tweaking on window configuration, which breaks inserters
   (* n (if-let ((tframe (telega-x-frame)))
-           (let* ((info (font-info (face-font 'default tframe) tframe))
-                  (width (aref info 11)))
-             (if (> width 0)
-                 width
-               (aref info 10)))
+           (with-current-buffer (or telega--current-buffer (current-buffer))
+             (let* ((info (font-info (face-font 'default tframe) tframe))
+                    (width (aref info 11)))
+               (if (> width 0)
+                   width
+                 (aref info 10))))
          (frame-char-width))))
 
 (defun telega-chars-xheight (n)
   "Return pixel height for N characters"
   (* n (if-let ((tframe (telega-x-frame)))
-           (aref (font-info (face-font 'default tframe) tframe) 3)
+           (with-current-buffer (or telega--current-buffer (current-buffer))
+             (aref (font-info (face-font 'default tframe) tframe) 3))
          (frame-char-height))))
 
 (defun telega-chars-in-height (pixels)
@@ -685,6 +687,7 @@ instead of auto width calculation."
 
 (defun telega-emoji-var-16-p (emoji)
   "Return non-nil if EMOJI has trailing Variation Selector-16."
+  ;; FE0F = 65039
   (and (= (length emoji) 2) (eq (aref emoji 1) 65039)))
 
 (defun telega-emoji-has-zero-joiner-p (emoji)
@@ -703,6 +706,23 @@ instead of auto width calculation."
        (>= (aref emoji 1) ?\🇦)
        (<= (aref emoji 0) ?\🇿)
        (<= (aref emoji 1) ?\🇿)))
+
+(defun telega-emoji-basic-p (emoji)
+  (memq (aref 0 emoji)
+        '(#x231A #x231B #x23E9 #x23EC #x23F0 #x23F3 #x25FD #x25FE
+                 #x2614 #x2615 #x2648 #x2649 #x2650 #x2651 #x2652 #x2653
+                 #x267F #x2693 #x26A1 #x26AA #x26AB #x26BD #x26BE #x26C4
+                 #x26C5 #x26CE #x26D4 #x26EA #x26F2 #x26F3 #x26F5 #x26FA
+                 #x26FD #x2705 #x270A #x270B #x2728 #x274C #x274E #x2753
+                 #x2754 #x2755 #x2757 #x2795 #x2796 #x2797 #x27B0 #x27BF
+                 #x2B1B #x2B1C #x2B50 #x2B55)))
+
+(defun telega-emoji-keycap-p (emoji)
+  (member emoji
+          '("\u0023\uFE0F\u20E3" "\u002A\uFE0F\u20E3" "\u0030\uFE0F\u20E3"
+            "\u0031\uFE0F\u20E3" "\u0032\uFE0F\u20E3" "\u0033\uFE0F\u20E3"
+            "\u0034\uFE0F\u20E3" "\u0035\uFE0F\u20E3" "\u0036\uFE0F\u20E3"
+            "\u0037\uFE0F\u20E3" "\u0038\uFE0F\u20E3" "\u0039\uFE0F\u20E3")))
 
 
 (defun telega-diff-wordwise (str1 str2 &optional colorize)
