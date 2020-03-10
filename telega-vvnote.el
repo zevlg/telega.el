@@ -73,7 +73,7 @@
          (w (* (+ wv-width space-width) (length waves)))
          (aw-chars (telega-chars-in-width w))
          (cw (telega-chars-xwidth aw-chars))
-         (svg (svg-create cw height)))
+         (svg (telega-svg-create cw height)))
     ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
     ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
     (dolist (wv waves)
@@ -136,7 +136,7 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
          (w (telega-chars-xwidth aw-chars))
          (xoff (/ (- w size) 2))
          (yoff (/ (- h size) 2))
-         (svg (svg-create w h))
+         (svg (telega-svg-create w h))
          (clip (telega-svg-clip-path svg "clip"))
          (clip1 (telega-svg-clip-path svg "clip1")))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))

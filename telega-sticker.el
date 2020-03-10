@@ -270,7 +270,7 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
          (xh (telega-chars-xheight (car telega-sticker-size)))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
-         (svg (svg-create xw xh))
+         (svg (telega-svg-create xw xh))
          (font-size (/ xh 2)))
     (svg-text svg (if (string-empty-p emoji)
                       "?"
@@ -721,7 +721,7 @@ Return sticker set."
   (let* ((xh (telega-chars-xheight telega-animation-height))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
-         (svg (svg-create xw xh)))
+         (svg (telega-svg-create xw xh)))
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-animation--file animation)))
     (svg-image svg :scale 1.0

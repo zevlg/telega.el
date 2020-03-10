@@ -194,10 +194,14 @@ Specify EXT with leading `.'."
                 :clip-path "url(#pclip)")
     svg))
 
+(defmacro telega-svg-create (&rest args)
+  ;; See https://t.me/emacs_telega/13764
+  `(svg-create ,@args :xmlns:xlink "http://www.w3.org/1999/xlink"))
+
 (defun telega-svg-image (svg &rest props)
   "Return an image object from SVG.
 PROPS is passed on to `create-image' as its PROPS list."
-  ;; NOTE: work around's problem displaying unicode characters in some
+  ;; NOTE: work around problem displaying unicode characters in some
   ;; librsvg versions (in my case 2.40.13).  Encoded (in &#xxxx format)
   ;; text is only displayed corretly if <xml ..?> node is specified
   (apply #'create-image
@@ -219,7 +223,7 @@ PROPS is passed on to `create-image' as its PROPS list."
          (stroke-xwidth (/ xheight 10))
          (dashes-xwidth (* (- (telega-chars-xwidth cwidth) (* 2 stroke-xwidth))
                            (/ percents 100.0)))
-         (svg (svg-create xwidth xheight)))
+         (svg (telega-svg-create xwidth xheight)))
     (svg-line svg stroke-xwidth (/ xheight 2)
               (+ stroke-xwidth dashes-xwidth) (/ xheight 2)
               :stroke-color telega-poll-result-color
@@ -665,7 +669,7 @@ instead of auto width calculation."
              (aw-chars (* (or force-cwidth (length emoji))
                           (telega-chars-in-width (- xh (/ xh 8)))))
              (xw (telega-chars-xwidth aw-chars))
-             (svg (svg-create xw xh))
+             (svg (telega-svg-create xw xh))
              ;; NOTE: if EMOJI width matches final width, then use
              ;; EMOJI itself as telega-text
              (telega-text (if (= (string-width emoji) aw-chars)

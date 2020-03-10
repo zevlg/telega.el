@@ -346,7 +346,7 @@ Return cons cell, where car is width in char and cdr is margin value."
                           (if (zerop height) xh height) cheight))
          (w-chars (car cwidth-xmargin))
          (xw (telega-chars-xwidth w-chars))
-         (svg (svg-create xw xh))
+         (svg (telega-svg-create xw xh))
          (progress (telega-file--downloading-progress file)))
     (telega-svg-progress svg progress)
     (svg-image svg :scale 1.0
@@ -539,7 +539,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (svg-xh (cond ((= cheight 1) cfull)
                        ((= cheight 2) (+ cfull (telega-chars-xheight 1)))
                        (t xh)))
-         (svg (svg-create svg-xw svg-xh))
+         (svg (telega-svg-create svg-xw svg-xh))
          (name (if (eq (telega--tl-type chat-or-user) 'user)
                    (telega-user--name chat-or-user)
                  (telega-chat-title chat-or-user))))
@@ -608,7 +608,7 @@ Like (telega-symbol-emojify telega-symbol-pin)."
          (_user-loc (plist-get map :user-location))
          (width (plist-get map :width))
          (height (plist-get map :height))
-         (svg (svg-create width height)))
+         (svg (telega-svg-create width height)))
     (if (and (telega-file--downloaded-p map-photo)
              (telega-file-exists-p map-photofile))
         (svg-embed svg map-photofile "image/png" nil
