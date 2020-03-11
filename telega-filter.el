@@ -22,7 +22,7 @@
 ;;; Commentary:
 
 ;; * Chat Filters
-;; 
+;;
 ;; Chat Filters are used to match chats, same as regexps are used to
 ;; match strings.  Chat Filters uses S-exp notation similar to ~rx~
 ;; package for regexps.
@@ -41,13 +41,15 @@
 ;; Chat Filter examples:
 ;;   - all ::
 ;;     Matches all chats
-;; 
+;;
 ;;   - (or saved-messages (type channel bot)) ::
 ;;     Matches bots/channels chats or "Saved Messages" chat
 ;;
 ;;   - (and unmuted (unread 10) (mention 1)) ::
 ;;     Matches unmuted chats with at least 10 unread messages and at
 ;;     least one message with unread mention
+;;
+;; Matching is done using ~telega-chat-match-p~ function.
 
 ;;; Code:
 (require 'telega-core)
@@ -71,6 +73,8 @@
 
 
 (defvar telega-filters--ewoc nil "ewoc for custom filters.")
+(defvar telega-filters--dirty
+  nil "Non-nil if filter's ewoc is dirty and need to be redisplayed.")
 
 (defvar telega-filters--inhibit-redisplay nil
   "Non-nil to do nothing on `telega-filters--redisplay'.
@@ -223,7 +227,8 @@ Return one of \"Main\" or \"Archive\"."
       (telega-save-cursor
         (telega-ewoc--set-footer
          telega-filters--ewoc (telega-filters--footer))
-        (ewoc-refresh telega-filters--ewoc)))))
+        (ewoc-refresh telega-filters--ewoc)))
+    (setq telega-filters--dirty nil)))
 
 
 ;;; Filtering routines
@@ -257,7 +262,10 @@ Used on search results updates."
     (when (telega-filter-chats (list chat))
       (setq telega--filtered-chats
             (push chat telega--filtered-chats)))
-    (telega-filters--redisplay)))
+
+    (setq telega-filters--dirty t)
+;    (telega-filters--redisplay)
+    ))
 
 (defun telega-filters--reset (&optional default)
   "Reset all filters.
@@ -442,7 +450,7 @@ Also matches if FILTER-LIST is empty."
 
 ;; - (not ~FILTER~) ::
 ;;   {{{fundoc(telega--filter-not)}}}
-;; 
+;;
 ;;   + Key (rootbuf): {{{where-is(telega-filters-negate,telega-root-mode-map)}}}
 ;;     {{{fundoc(telega-filters-negate)}}}
 (define-telega-filter not (chat filter)
@@ -456,9 +464,9 @@ Also matches if FILTER-LIST is empty."
 
 ;; - (type ~CHAT-TYPE-LIST~) ::
 ;;   {{{fundoc(telega--filter-type)}}}
-;; 
+;;
 ;;   See [[#chat-types][Chat types]]
-;; 
+;;
 ;;   + Key (rootbuf): {{{where-is(telega-filter-by-type,telega-root-mode-map)}}}
 ;;     {{{fundoc(telega-filter-by-type)}}}
 (define-telega-filter type (chat &rest chat-type-list)
@@ -589,7 +597,7 @@ Important chat is the chat with unread messages and enabled notifications."
 
 ;; - (online-status ~STATUS-LIST~...) ::
 ;;   {{{fundoc(telega--filter-online-status)}}}
-;; 
+;;
 ;;   Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
 ;;   "Recently", "LastWeek", "LastMonth" or "Empty"
 (define-telega-filter online-status (chat &rest status-list)
@@ -647,7 +655,7 @@ Important chat is the chat with unread messages and enabled notifications."
 
 ;; - has-order ::
 ;;   {{{fundoc(telega--filter-has-order)}}}
-;; 
+;;
 ;;   Only chats with non-0 order are listed in rootbuf.  I.e. this
 ;;   filter is implicitly applied along with active chat filter.
 (define-telega-filter has-order (chat)
@@ -701,13 +709,13 @@ PERM could be one of:
 
 ;; - (restriction ~SUFFIX-LIST~...) ::
 ;;   {{{fundoc1(telega--filter-restriction)}}}
-;; 
+;;
 ;;   Each element in ~SUFFIX-LIST~ is one of:
 ;;   + "-all" - Restricted on all platforms
 ;;   + "-ios" - Restricted for iOS devices
 ;;   + "-android" - Restricted for Android devices
 ;;   + "-wp" - Restricted on Windows
-;; 
+;;
 ;;   If ~SUFFIX-LIST~ is ommited, then match any reason.
 (define-telega-filter restriction (chat &rest suffix-list)
   "Matches restricted chats.

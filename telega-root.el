@@ -65,6 +65,8 @@
   "Timer used to animate Loading.. status of global/messages search.")
 (defvar telega-online--timer nil
   "Timer used to change online status.")
+(defvar telega-idle--timer nil
+  "Runs when Emacs gets idle.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
@@ -732,6 +734,12 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 (defun telega-handle-focus-in ()
   (telega-handle-focus-change t))
 
+(defun telega-handle-emacs-idle ()
+  "Timer function for `telega-idle--timer'."
+  (when telega-filters--dirty
+    (telega-filters--redisplay))
+  )
+
 (defun telega-runtime-setup ()
   "Setup Emacs environment for telega runtime."
   ;; Adjust `telega-location-size' in case it exceeds 1024x1024
@@ -750,7 +758,12 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
     (with-no-warnings
       (add-hook 'focus-in-hook 'telega-handle-focus-in)
-      (add-hook 'focus-out-hook 'telega-handle-focus-out))))
+      (add-hook 'focus-out-hook 'telega-handle-focus-out)))
+
+  (setq telega-idle--timer
+        (run-with-idle-timer telega-idle-delay
+                             :repeat #'telega-handle-emacs-idle))
+  )
 
 (defun telega-runtime-teardown ()
   "Teardown telega runtime Emacs environment."
@@ -762,7 +775,10 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
     (with-no-warnings
       (remove-hook 'focus-in-hook 'telega-handle-focus-in)
-      (remove-hook 'focus-out-hook 'telega-handle-focus-out))))
+      (remove-hook 'focus-out-hook 'telega-handle-focus-out)))
+
+  (cancel-timer telega-idle--timer)
+  )
 
 (provide 'telega-root)
 

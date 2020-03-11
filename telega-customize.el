@@ -106,6 +106,11 @@ where PROXY-TYPE is one of:
   :type 'list
   :group 'telega)
 
+(defcustom telega-idle-delay 0.5
+  "*Delay before taking actions when Emacs gets idle."
+  :type 'number
+  :group 'telega)
+
 (defcustom telega-week-start-day 1
   "*The day of the week on which a week in the calendar begins.
 0 means Sunday, 1 means Monday (default), and so on."
@@ -712,6 +717,11 @@ See `mode-line-buffer-identification'."
 (defcustom telega-chat-switch-buffer-sort-criteria nil
   "Criteria to sort open chats when switching with `telega-switch-buffer'."
   :type 'symbol
+  :group 'telega-chat)
+
+(defcustom telega-chat-delete-moves-to-archive t
+  "*Non-nil to move chat to Archive on deletion."
+  :type 'boolean
   :group 'telega-chat)
 
 

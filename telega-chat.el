@@ -1130,8 +1130,25 @@ STATUS is one of: "
             (y-or-n-p (telega-i18n "query_read_anyway")))
     (mapc 'telega-chat-toggle-read telega--filtered-chats)))
 
-(defun telega-chat-delete (chat &optional leave-p)
+(defun telega-chat-leave (chat)
+  "Leave the CHAT.
+Leaving chat does not removes chat from chat list."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+
+  (let ((chat-type (telega-chat--type chat)))
+    (cl-case chat-type
+      (secret (telega--closeSecretChat (telega-chat--info chat)))
+      ((private bot) 'no-op)
+      (t (telega--leaveChat chat)))
+
+    ;; Kill corresponding chat buffer
+    (with-telega-chatbuf chat
+      (kill-buffer (current-buffer)))))
+
+(defun telega-chat-delete (chat &optional delete-history)
   "Delete CHAT.
+If DELETE-HISTORY is specified, then delete CHAT's history.
+
 If LEAVE-P is non-nil, then just leave the chat.
 Leaving chat does not removes chat from chat list."
   (interactive (list (telega-chat-at (point)) nil))
