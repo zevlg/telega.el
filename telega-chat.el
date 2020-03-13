@@ -249,10 +249,16 @@ It could be user, secretChat, basicGroup or supergroup."
        (telega--info 'basicGroup (plist-get chat-type :basic_group_id)))
       (chatTypeSupergroup
        (telega--info 'supergroup (plist-get chat-type :supergroup_id))))))
-(defalias 'telega-chat--user 'telega-chat--info)
 (defalias 'telega-chat--secretchat 'telega-chat--info)
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
+
+(defun telega-chat--user (chat)
+  "Return user associated with private or secret CHAT.
+Return nil if CHAT is not private or secret."
+  (let ((chat-type (plist-get chat :type)))
+    (when (memq (telega--tl-type chat-type) '(chatTypePrivate chatTypeSecret))
+      (telega--info 'user (plist-get chat-type :user_id)))))
 
 ;; ** Chat types
 ;;
@@ -807,6 +813,13 @@ CHAT must be supergroup or channel."
    (let ((chat (or telega-chatbuf--chat (telega-chat-at (point)))))
      (list chat (read-string "New title: " (telega-chat-title chat)))))
   (telega--setChatTitle chat title))
+
+(defun telega-chat-set-ttl (chat ttl-seconds)
+  "Set TTL setting for secret CHAT to TTL-SECONDS."
+  (interactive
+   (let ((chat (or telega-chatbuf--chat (telega-chat-at (point)))))
+     (list chat (ceiling (read-number "TTL (seconds): ")))))
+  (telega--sendChatSetTtlMessage chat ttl-seconds))
 
 (defun telega-chat-set-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
@@ -1685,6 +1698,8 @@ If TITLE is specified, use it instead of chat's title."
   (let ((brackets (telega-chat-brackets chat)))
     (substring-no-properties
      (concat telega-symbol-telegram
+             (when (telega-chat-secret-p chat)
+               telega-symbol-lock)
              (or (car brackets) "[")
              (or title (telega-chat-title chat))
              (when-let ((username (telega-chat-username chat)))
@@ -1934,11 +1949,28 @@ If ICONS-P is non-nil, then use icons for members count."
   (setq mode-line-buffer-identification
         (list (propertized-buffer-identification "%b")
               ;; Online status
-              (when (and (eq (telega-chat--type telega-chatbuf--chat) 'private)
+              (when (and (telega-chat-private-p telega-chatbuf--chat)
                          (not (telega-me-p telega-chatbuf--chat))
                          (telega-user-online-p
                           (telega-chat--user telega-chatbuf--chat)))
                 telega-symbol-online-status)
+              ;; TTL for secret chats
+              (when (telega-chat-secret-p telega-chatbuf--chat)
+                (let* ((secret (telega-chat--secretchat telega-chatbuf--chat))
+                       (ttl (plist-get secret :ttl)))
+                  (concat " ("
+                          (propertize
+                           (concat telega-symbol-lock "TTL: "
+                                   (if (zerop ttl)
+                                       "Off"
+                                     (telega-duration-human-readable ttl 2)))
+                           'local-map (eval-when-compile
+                                        (make-mode-line-mouse-map
+                                         'mouse-1 'telega-chat-set-ttl))
+                           'mouse-face 'mode-line-highlight
+                           'help-echo "Change Time-To-Live for messages")
+                          ")")))
+
               (format-mode-line telega-chat-mode-line-format nil nil
                                 (current-buffer))))
   (force-mode-line-update))

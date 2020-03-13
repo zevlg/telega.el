@@ -127,6 +127,14 @@ Return newly created chat."
    (list :@type "closeSecretChat"
          :secret_chat_id (plist-get secretchat :id))))
 
+(defun telega--sendChatSetTtlMessage (chat ttl-seconds)
+  "Changes the current TTL setting for the CHAT.
+Sends corresponding message."
+  (telega-server--send
+   (list :@type "sendChatSetTtlMessage"
+         :chat_id (plist-get chat :id)
+         :ttl ttl-seconds)))
+
 (defun telega--getPublicMessageLink (chat-id msg-id &optional for-album)
   "Get https link to public message."
   (plist-get
