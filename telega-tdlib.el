@@ -324,6 +324,21 @@ Return list of \"ChatMember\" objects."
           :limit (or limit 200))
     callback))
 
+(defun telega--canTransferOwnership (&optional callback)
+  (telega-server--call
+   (list :@type "canTransferOwnership")
+   callback))
+
+(defun telega--transferChatOwnership (chat to-user password &optional callback)
+  "Transfer ownership of the CHAT supergroup TO-USER."
+  (declare (indent 3))
+  (telega-server--call
+   (list :@type "transferChatOwnership"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get to-user :id)
+         :password password)
+   (or callback 'ignore)))
+
 (defun telega--getActiveSessions (&optional callback)
   "Get and return list of active sessions."
   (with-telega-server-reply (reply)

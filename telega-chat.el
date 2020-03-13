@@ -1219,6 +1219,22 @@ Leaving chat does not removes chat from chat list."
      (telega-chat--pop-to-buffer
       (telega-chat-get (plist-get newchat :id))))))
 
+(defun telega-chat-transfer-ownership (chat to-user password)
+  "Transfer CHAT's ownership TO-USER."
+  (interactive
+   (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
+          (user (telega-completing-read-user "To User: "
+                  (mapcar (lambda (member)
+                            (telega-user--get (plist-get member :user_id)))
+                          (telega--getSupergroupMembers
+                              (telega-chat--supergroup chat))))))
+     (list chat user (password-read "Telegram Password: "))))
+
+  (telega--transferChatOwnership chat to-user password
+    (lambda (_result)
+      (message "\"%s\" ownership transfered to \"%s\""
+               (telega-chat-title chat) (telega-user--name to-user)))))
+
 (defun telega-chat-description (chat descr)
   "Update CHAT's description."
   (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))

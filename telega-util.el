@@ -491,12 +491,14 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                              prompt choices nil t)
                     choices nil nil 'string=))))
 
-(defun telega-completing-read-user (prompt)
-  "Read user by his name."
+(defun telega-completing-read-user (prompt &optional users)
+  "Read user by his name from USERS list."
+  (declare (indent 1))
   (let ((choices (mapcar (lambda (user)
                            (list (telega-user--name user)
                                  user))
-                         (hash-table-values (alist-get 'user telega--info)))))
+                         (or users (hash-table-values
+                                    (alist-get 'user telega--info))))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))

@@ -89,9 +89,11 @@ Changes in 1.5.0:
 * DONE Added the field `is_animated` to the `sticker`, `stickerSet` and `stickerSetInfo` classes.
   CLOSED: [2019-12-10 Вт 16:24]
   Animated stickers can be received anywhere where non-animated stickers can appear.
-* Added the parameters `send_copy` and `remove_caption` to the `forwardMessages` method to allow forwarding of
+* DONE Added the parameters `send_copy` and `remove_caption` to the `forwardMessages` method to allow forwarding of
+  CLOSED: [2020-03-07 Сб 01:52]
   messages without links to the originals.
-* Added the fields `send_copy` and `remove_caption` to `inputMessageForwarded` method to allow forwarding of
+* DONE Added the fields `send_copy` and `remove_caption` to `inputMessageForwarded` method to allow forwarding of
+  CLOSED: [2020-03-07 Сб 01:51]
   a message without link to the original message.
 * Added the method `getMessageLinkInfo` for getting information about a link to a message in a chat.
 * Added the class `userPrivacySettingShowProfilePhoto` for managing visibility of the user's profile photo.
