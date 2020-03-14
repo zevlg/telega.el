@@ -321,9 +321,10 @@ If INCLUDE-BOTS-P is non-nil, return corresponding bot user."
   (when (telega-chat-private-p chat include-bots-p)
     (telega-user--get (telega--tl-get chat :type :user_id))))
 
-(defun telega-chat-title (chat &optional with-username)
+(defun telega-chat-title (chat &optional with-username-delim)
   "Return title for the CHAT.
-If WITH-USERNAME is specified, append trailing username for this chat."
+If WITH-USERNAME-DELIM is specified, append username to the title
+delimiting with WITH-USERNAME-DELIM."
   (let* ((telega-emoji-use-images telega-chat-title-emoji-use-images)
          (chat-me-p (telega-me-p chat))
          (title (or (when chat-me-p
@@ -335,9 +336,12 @@ If WITH-USERNAME is specified, append trailing username for this chat."
                     (progn
                       (cl-assert (telega-chat-private-p chat))
                       (telega-user--name (telega-chat--user chat) 'name)))))
-    (when with-username
+    (when with-username-delim
       (when-let ((username (telega-chat-username chat)))
-        (setq title (concat title " @" username))))
+        (setq title (concat title (if (stringp with-username-delim)
+                                      with-username-delim
+                                    " ")
+                            "@" username))))
 
     (if (and chat-me-p (functionp telega-chat-me-custom-title))
         (funcall telega-chat-me-custom-title title)
@@ -348,6 +352,13 @@ If WITH-USERNAME is specified, append trailing username for this chat."
   (cdr (seq-find (lambda (bspec)
                    (telega-chat-match-p chat (car bspec)))
                  telega-chat-button-brackets)))
+
+(defun telega-chat-title-with-brackets (chat &optional with-username-delim)
+  "Return CHAT title surrounded with chat brackets."
+  (let ((brackets (telega-chat-brackets chat)))
+    (concat (or (car brackets) "[")
+            (telega-chat-title chat with-username-delim)
+            (or (cadr brackets) "]"))))
 
 (defun telega-chat--reorder (chat order)
   "Reorder CHAT in `telega--ordered-chats' according to ORDER."
@@ -769,10 +780,11 @@ be marked as read."
     (when visible-p
       (telega-chat--pp chat))))
 
-(defun telega-chat--pop-to-buffer (chat)
+(defun telega-chat--pop-to-buffer (chat &optional no-history-load)
   "Pop to CHAT's buffer.
+NO-HISTORY-LOAD passed directly to `telega-chatbuf--get-create'.
 Uses `telega-chat--display-buffer-action' as action in `pop-to-buffer.'"
-  (pop-to-buffer (telega-chatbuf--get-create chat)
+  (pop-to-buffer (telega-chatbuf--get-create chat no-history-load)
                  telega-chat--display-buffer-action))
 
 (defun telega-chat-at (&optional pos)
@@ -939,14 +951,14 @@ STATUS is one of: "
 
     (let ((redisplay-func (telega-describe-chat--redisplay-func chat))
           (chat-ava (telega-chat-avatar-image chat)))
-      (telega-ins--image chat-ava 0)
+      (telega-ins--image chat-ava 0 :no-display-if (not telega-chat-show-avatars))
       (telega-ins--with-face
           (let ((color (telega-chat-color chat))
                 (lightp (eq (frame-parameter nil 'background-mode) 'light)))
             (list :foreground (nth (if lightp 2 0) color)))
         (telega-ins (telega-chat-title chat 'with-username)))
       (telega-ins "\n")
-      (telega-ins--image chat-ava 1)
+      (telega-ins--image chat-ava 1 :no-display-if (not telega-chat-show-avatars))
       (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
       (telega-ins--button "Open"
         :value chat
@@ -1143,50 +1155,50 @@ STATUS is one of: "
             (y-or-n-p (telega-i18n "query_read_anyway")))
     (mapc 'telega-chat-toggle-read telega--filtered-chats)))
 
-(defun telega-chat-leave (chat)
+(defun telega-chat-leave (chat &optional keep-chatbuf)
   "Leave the CHAT.
 Leaving chat does not removes chat from chat list."
-  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+  (interactive
+   (list (or telega-chatbuf--chat (telega-chat-at (point))) nil))
 
-  (let ((chat-type (telega-chat--type chat)))
-    (cl-case chat-type
-      (secret (telega--closeSecretChat (telega-chat--info chat)))
-      ((private bot) 'no-op)
-      (t (telega--leaveChat chat)))
+  (cl-case (telega-chat--type chat)
+    (secret (telega--closeSecretChat (telega-chat--info chat)))
+    ((private bot) 'no-op)
+    (t (telega--leaveChat chat)))
 
-    ;; Kill corresponding chat buffer
+  ;; Kill corresponding chat buffer
+  (unless keep-chatbuf
     (with-telega-chatbuf chat
       (kill-buffer (current-buffer)))))
 
-(defun telega-chat-delete (chat &optional delete-history)
+(defun telega-chat-delete (chat)
   "Delete CHAT.
-If DELETE-HISTORY is specified, then delete CHAT's history.
-
-If LEAVE-P is non-nil, then just leave the chat.
-Leaving chat does not removes chat from chat list."
+Query about everything.  Leaving CHAT, blocking corresponding
+user and delete all the chat history.
+Use `telega-chat-leave' to just leave the CHAT."
   (interactive (list (telega-chat-at (point)) nil))
   (when (and chat
              (yes-or-no-p
               (concat (telega-i18n "action_cant_undone") ". "
                       (telega-i18n "query_delete_chat"
                         :title (telega-chat-title chat)))))
-    (let ((chat-type (telega-chat--type chat)))
-      (cl-case chat-type
-        (secret (telega--closeSecretChat (telega-chat--info chat)))
-        ((private bot) 'no-op)
-        (t (telega--leaveChat chat)))
+    (telega-chat-leave chat 'keep-chatbuf)
 
-      ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
-      ;; and public supergroups
-      (unless (or (eq chat-type 'channel)
-                  (telega-chat-public-p chat 'supergroup)
-                  leave-p)
-        (telega--deleteChatHistory chat t))
+    ;; Block corresponding user, so he could not initiate any incoming
+    ;; messages
+    (when-let ((chat-user (telega-chat-user chat 'include-bots)))
+      (when (yes-or-no-p
+             (format "Block \"%s\" user as well? "
+                     (telega-user--name chat-user)))
+        (telega--blockUser chat-user)))
 
-      (when-let ((chat-user (telega-chat-user chat 'include-bots)))
-        (when (yes-or-no-p
-               (format "Block \"%s\" user as well? " (telega-user--name chat-user)))
-          (telega--blockUser chat-user))))
+    ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
+    ;; and public supergroups
+    (unless (or (eq (telega-chat--type chat) 'channel)
+                (telega-chat-public-p chat 'supergroup))
+      (when (yes-or-no-p (telega-i18n "query_delete_chat_history"
+                           :title (telega-chat-title chat)))
+        (telega--deleteChatHistory chat t)))
 
     ;; Kill corresponding chat buffer
     (with-telega-chatbuf chat
@@ -1260,11 +1272,12 @@ Leaving chat does not removes chat from chat list."
 (defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
-  (interactive
-   (list (yes-or-no-p (format "Warning: This action cannot be undone. Delete %d chats? "
+  (interactive (list (yes-or-no-p
+                      (format "%s. Delete %d chats? "
+                              (telega-i18n "action_cant_undone")
                               (length telega--filtered-chats)))))
   (when force
-    (mapc 'telega-chat-delete telega--filtered-chats)))
+    (mapc #'telega-chat-delete telega--filtered-chats)))
 
 (defun telega-saved-messages (arg)
   "Switch to SavedMessages chat buffer.
@@ -1285,11 +1298,11 @@ end of the buffer."
            (funcall
             telega-completing-read-function
             "Telega chat: "
-            (mapcar 'telega-chatbuf--name
+            (mapcar #'telega-chatbuf--name
                     (let ((telega-sort--inhibit-order t))
                       (telega-sort-chats
                        telega-chat-switch-buffer-sort-criteria
-                       (mapcar 'telega-chatbuf--chat telega--chat-buffers))))
+                       (mapcar #'telega-chatbuf--chat telega--chat-buffers))))
             nil t))))
   (switch-to-buffer buffer))
 
@@ -1666,6 +1679,7 @@ Recover previous active action after BODY execution."
   ;; If point moves near the beginning of chatbuf, then request for
   ;; the older history
   (when (and (< (point) 2000)
+             (not telega-chatbuf--history-loading)
              (telega-chatbuf--need-older-history-p))
     (telega-chatbuf--load-older-history))
 
@@ -1674,6 +1688,7 @@ Recover previous active action after BODY execution."
   ;; NOTE: Do not load newer history if prompt is active (reply or
   ;; edit)
   (when (and (> (point) (- (point-max) 2000))
+             (not telega-chatbuf--history-loading)
              (telega-chatbuf--need-newer-history-p))
     (telega-chatbuf--load-newer-history))
 
@@ -1692,19 +1707,13 @@ Recover previous active action after BODY execution."
       (telega--setChatDraftMessage telega-chatbuf--chat)))
   )
 
-(defun telega-chatbuf--name (chat &optional title)
-  "Return name for the CHAT buffer.
-If TITLE is specified, use it instead of chat's title."
-  (let ((brackets (telega-chat-brackets chat)))
-    (substring-no-properties
-     (concat telega-symbol-telegram
-             (when (telega-chat-secret-p chat)
-               telega-symbol-lock)
-             (or (car brackets) "[")
-             (or title (telega-chat-title chat))
-             (when-let ((username (telega-chat-username chat)))
-               (concat "@" username))
-             (or (cadr brackets) "]")))))
+(defun telega-chatbuf--name (chat)
+  "Return name for the CHAT buffer."
+  (substring-no-properties
+   (concat telega-symbol-telegram
+           (when (telega-chat-secret-p chat)
+             telega-symbol-lock)
+           (telega-chat-title-with-brackets chat ""))))
 
 (defun telega-chatbuf--join (chat)
   "[JOIN] button has been pressed."
@@ -1788,8 +1797,9 @@ Also marks some messages as read in chatbuf."
     (telega-chatbuf--view-visible-messages)
     ))
 
-(defun telega-chatbuf--get-create (chat)
-  "Get or create chat buffer for the CHAT."
+(defun telega-chatbuf--get-create (chat &optional no-history-load)
+  "Get or create chat buffer for the CHAT.
+If NO-HISTORY-LOAD is specified, do not try to load history."
   (let ((bufname (telega-chatbuf--name chat)))
     (or (get-buffer bufname)
 
@@ -1828,16 +1838,17 @@ Also marks some messages as read in chatbuf."
 
           ;; Start from last read message
           ;; see https://github.com/zevlg/telega.el/issues/48
-          (telega-chat--load-history
-              chat (plist-get chat :last_read_inbox_message_id)
-              (- (/ telega-chat-history-limit 2)) telega-chat-history-limit
-            (lambda ()
-              (telega-chatbuf--point-refresh)
+          (unless no-history-load
+            (telega-chat--load-history
+                chat (plist-get chat :last_read_inbox_message_id)
+                (- (/ telega-chat-history-limit 2)) telega-chat-history-limit
+              (lambda ()
+                (telega-chatbuf--point-refresh)
 
-              ;; Possible load more history
-              (when (and (< (point) 2000)
-                         (telega-chatbuf--need-older-history-p))
-                (telega-chatbuf--load-older-history))))
+                ;; Possible load more history
+                (when (and (< (point) 2000)
+                           (telega-chatbuf--need-older-history-p))
+                  (telega-chatbuf--load-older-history)))))
 
           ;; Openning chat may affect filtering, see `opened' filter
           (telega-root--chat-update chat)
@@ -3561,7 +3572,7 @@ Return non-nil on success."
 (defun telega-chat--goto-msg (chat msg-id &optional highlight)
   "In CHAT goto message denoted by MSG-ID.
 If HIGHLIGHT is non-nil then highlight with fading background color."
-  (with-current-buffer (telega-chat--pop-to-buffer chat)
+  (with-current-buffer (telega-chat--pop-to-buffer chat :no-history)
     (unless (telega-chatbuf--goto-msg msg-id highlight)
       ;; Not found, need to fetch history
       (telega-chatbuf--clean)

@@ -588,8 +588,8 @@ See `telega-ins--message' for NO-HEADER argument."
   "Customization for users."
   :group 'telega)
 
-(defcustom telega-user-use-avatars (image-type-available-p 'svg)
-  "Non-nil to use avatars for the users."
+(defcustom telega-user-show-avatars telega-use-images
+  "Non-nil to show avatars for the users."
   :type 'boolean
   :group 'telega-user)
 
@@ -608,6 +608,11 @@ Used when showing chat members list."
 (defgroup telega-chat nil
   "Customization for chat buffer."
   :group 'telega)
+
+(defcustom telega-chat-show-avatars telega-use-images
+  "*Non-nil to show user avatars in chat buffer."
+  :type 'boolean
+  :group 'telega-chat)
 
 (defcustom telega-chat-input-prompt ">>> "
   "*Prompt for the chat buffers."

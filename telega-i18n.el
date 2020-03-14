@@ -132,6 +132,8 @@
      :value "This action cannot be undone")
     ("lng_query_delete_chat"
      :value "Delete «{title}» chat? ")
+    ("lng_query_delete_chat_history"
+     :value "Delete all message history in «{title}» chat? ")
     ("lng_query_read_chats"
      :one_value "Toggle read for {count} chat? "
      :other_value "Toggle read for {count} chats? ")
@@ -186,6 +188,9 @@
      :value "Block user")
     ("lng_new_contact_share"
      :value "Share my phone number")
+
+    ("lng_channel_not_accessible"
+     :value "Sorry, this channel is not accessible.")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil

@@ -39,6 +39,7 @@
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-title "telega-chat")
+(declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
@@ -483,7 +484,7 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
 (defun telega-completing-read-chat (prompt &optional only-filtered)
   "Read chat by title."
   (let ((choices (mapcar (lambda (chat)
-                           (list (telega-chat-title chat 'with-username)
+                           (list (telega-chatbuf--name chat)
                                  chat))
                          (telega-filter-chats
                           telega--ordered-chats (and (not only-filtered) 'all)))))
