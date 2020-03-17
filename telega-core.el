@@ -534,7 +534,7 @@ Attach `display' text property to surrogated regions."
   "Apply `telega-display' properties to STR.
 Resulting in new string with no surrogate pairs.
 If NO-PROPERTIES is specified, then do not keep text properties."
-  (unless (get-text-property 0 'telega-desurrogated-string str)
+  (when (and str (not (get-text-property 0 'telega-desurrogated-string str)))
     (setq str (telega--tl-desurrogate str)))
   (mapconcat (if no-properties
                  #'telega--desurrogate-apply-part
