@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.0)
+#+TITLE: Telega Manual (v0.6.1)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -167,6 +167,8 @@ Chat Filter examples:
      Matches unmuted chats with at least 10 unread messages and at
      least one message with unread mention
 
+Matching is done using ~telega-chat-match-p~ function.
+
 ** List of chat filters
 
 - (any ~FILTER-LIST~...) :: 
@@ -230,6 +232,9 @@ Chat Filter examples:
 
 - (ids ~ID-LIST~...) :: 
      Matches if chat's id is one of in ~ID-LIST~.
+
+- me-is-owner :: 
+     Matches if me is the owner of the chat. Only basicgroup, supergroup and channel can be owned.
 
 - me-is-member :: 
      Matches if me is member of the chat.
