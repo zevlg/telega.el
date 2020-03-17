@@ -282,7 +282,7 @@ REDISPLAY-FUNC - function to call if something changes in user info."
                        (telega-photo--image
                         photo-val telega-user-photo-maxsize)))
           :action 'telega-photo--open
-          'keymap
+          'local-keymap
           (when (telega-me-p user)
             (let ((pp-del (lambda (profile-photo)
                             (interactive (list (button-get
