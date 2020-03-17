@@ -482,10 +482,10 @@ chats matching this chat filter."
           (telega--editMessageText telega-chatbuf--chat last-msg imc)
           t)))))
 
-(defun telega-squash-message--send-message (send-msg-fun chat imc &optional reply-to-msg)
+(defun telega-squash-message--send-message (send-msg-fun chat imc &optional reply-to-msg &rest args)
   "Advice for `telega--sendMessage' used to squash messages."
   (unless (telega-squash-message--squash chat imc reply-to-msg)
-    (funcall send-msg-fun chat imc reply-to-msg)))
+    (apply send-msg-fun chat imc reply-to-msg args)))
 
 
 ;; ** telega-image-mode

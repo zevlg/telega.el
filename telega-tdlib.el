@@ -459,6 +459,31 @@ STATUS is one of: "
    (list :type "unpinChatMessage"
          :chat_id (plist-get chat :id))))
 
+
+(defun telega--getChatHistory (chat from-msg-id offset
+                                    &optional limit only-local callback)
+  "Returns messages in a chat.
+The messages are returned in a reverse chronological order."
+  (declare (indent 5))
+  (telega-server--call
+   (list :@type "getChatHistory"
+         :chat_id (plist-get chat :id)
+         :from_message_id from-msg-id
+         :offset offset
+         :limit (or limit telega-chat-history-limit)
+         :only_local (or only-local :false))
+   callback))
+
+(defun telega--getChatScheduledMessages (chat &optional callback)
+  "Return all scheduled messages in a CHAT."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "getChatScheduledMessages"
+          :chat_id (plist-get chat :id))
+    callback))
+  
 
 (defun telega--setAuthenticationPhoneNumber (phone-number)
   "Set user's phone number to PHONE-NUMBER."
@@ -582,8 +607,8 @@ LIST-NAME is one of: \"Main\" or \"Archive\"."
                            :ignore_file_names :false
                            ))))
 
-(defun telega--sendMessage (chat imc &optional reply-to-msg disable-notify
-                                 from-background reply-markup callback)
+(defun telega--sendMessage (chat imc &optional reply-to-msg
+                                 options reply-markup callback)
   "Send the message content represented by IMC to CHAT.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."
@@ -592,64 +617,62 @@ message uppon message is created."
   (telega-server--call
    (nconc (list :@type "sendMessage"
                 :chat_id (plist-get chat :id)
-                :disable_notification (or disable-notify :false)
                 :input_message_content imc)
           (when reply-to-msg
             (list :reply_to_message_id (plist-get reply-to-msg :id)))
-          (when from-background
-            (list :from_background t))
+          (when options
+            (list :options options))
           (when reply-markup
             (list :reply_markup reply-markup)))
    (or callback 'ignore)))
 
-(defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg disable-notify
-                                      from-background callback)
+(defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg
+                                      options callback)
   "Send IMCS as media album.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."
-  (let ((tsm (list :@type "sendMessageAlbum"
-                   :chat_id (plist-get chat :id)
-                   :disable_notification (or disable-notify :false)
-                   :input_message_contents (apply 'vector imcs))))
-    (when reply-to-msg
-      (setq tsm (plist-put tsm :reply_to_message_id
-                           (plist-get reply-to-msg :id))))
-    (when from-background
-      (setq tsm (plist-put tsm :from_background t)))
-    (telega-server--call tsm (or callback 'ignore))))
+  (telega-server--call
+   (nconc (list :@type "sendMessageAlbum"
+                :chat_id (plist-get chat :id)
+                :input_message_contents (apply 'vector imcs))
+          (when reply-to-msg
+            (list :reply_to_message_id (plist-get reply-to-msg :id)))
+          (when options
+            (list :options options)))
+   (or callback 'ignore)))
 
 (defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
-                                                  disable-notify from-background)
+                                                  options callback)
   "Send IMC as inline query result from bot.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."
-  (telega-server--send
+  (telega-server--call
    (nconc (list :@type "sendInlineQueryResultMessage"
                 :chat_id (plist-get chat :id)
-                :disable_notification (or disable-notify :false)
                 :query_id (plist-get imc :query-id)
                 :result_id (plist-get imc :result-id))
           (when reply-to-msg
             (list :reply_to_message_id (plist-get reply-to-msg :id)))
-          (when from-background
-            (list :from_background t))
+          (when options
+            (list :options options))          
           (when (plist-get imc :hide-via-bot)
-            (list :hide_via_bot t)))))
+            (list :hide_via_bot t)))
+   (or callback 'ignore)))
 
-(defun telega--forwardMessages (chat from-chat messages &optional disable-notify
-                                     from-background as-album
+(defun telega--forwardMessages (chat from-chat messages &optional
+                                     options as-album
                                      send-copy remove-caption)
   "Forward MESSAGES FROM-CHAT into CHAT."
   (telega-server--send
-   (list :@type "forwardMessages"
-         :chat_id (plist-get chat :id)
-         :from_chat_id (plist-get from-chat :id)
-         :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
-         :disable_notification (or disable-notify :false)
-         :from_background (or from-background :false)
-         :as_album (or as-album :false)
-         :send_copy (if send-copy t :false)
-         :remove_caption (if remove-caption t :false))))
+   (nconc (list :@type "forwardMessages"
+                :chat_id (plist-get chat :id)
+                :from_chat_id (plist-get from-chat :id)
+                :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
+                :as_album (or as-album :false)
+                :send_copy (if send-copy t :false)
+                :remove_caption (if remove-caption t :false))
+          (when options
+            (list :options options)))))
 
 (defun telega--editMessageText (chat msg imc &optional reply-markup)
   "Edit the text of a message, or a text of a game message."

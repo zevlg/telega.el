@@ -541,6 +541,26 @@ If MARKDOWN is non-nil then format TEXT as markdown."
     (list :@type "formattedText"
           :text (substring-no-properties text) :entities [])))
 
+(defun telega-formattedText-substring (text from &optional to)
+  "Return substring of the TEXT.
+FROM and TO are passed directly to `substring'."
+  (unless to (setq to (length (plist-get text :text))))
+
+  (let ((ents (mapcar (lambda (ent)
+                        (let* ((ent-start (plist-get ent :offset))
+                               (ent-end (+ ent-start (plist-get ent :length))))
+                          (cond ((> from ent-end) nil)
+                                ((> ent-start to) nil)
+                                (t (list :@type (plist-get ent :@type)
+                                         :type (plist-get ent :type)
+                                         :offset (max from ent-start)
+                                         :length (- (min ent-end to)
+                                                    (max from ent-start)))))))
+                      (plist-get text :entities))))
+    (list :@type "formattedText"
+          :text (substring (plist-get text :text) from to)
+          :entities (apply 'vector (cl-remove-if 'null ents)))))
+
 (defun telega--stopPoll (msg)
   "Stops a poll."
   (telega-server--send
@@ -683,11 +703,17 @@ If prefix arg is specified, then do not notify all the users about pin."
           (telega-ins "\n")))
       ;; Link to the message
       (let* ((chat (telega-chat-get chat-id))
-             (link (cond ((telega-chat-public-p chat 'supergroup)
-                          (telega--getPublicMessageLink chat-id msg-id))
-                         ((eq (telega-chat--type chat 'no-interpret) 'supergroup)
-                          ;; Only for supergroups and channels
-                          (telega--getMessageLink chat-id msg-id)))))
+             (link (ignore-errors
+                     ;; NOTE: we ignore any errors such as
+                     ;;   - error=6: Public message links are available
+                     ;;              only for messages in supergroups
+                     ;;   - error=6: Message is scheduled
+                     ;;   ...
+                     (cond ((telega-chat-public-p chat 'supergroup)
+                            (telega--getPublicMessageLink chat-id msg-id))
+                           ((eq (telega-chat--type chat 'no-interpret) 'supergroup)
+                            ;; Only for supergroups and channels
+                            (telega--getMessageLink chat-id msg-id))))))
         (when link
           (telega-ins "Link: ")
           (telega-ins--raw-button (telega-link-props 'url link)

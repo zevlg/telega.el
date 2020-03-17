@@ -31,8 +31,9 @@
 (require 'rx)                           ; `rx'
 (require 'svg)
 (require 'color)                        ; `color-XXX'
-(require 'ansi-color)                   ; ansi-color-apply
-(require 'url-util)                     ; url-unhex-string
+(require 'ansi-color)                   ; `ansi-color-apply'
+(require 'url-util)                     ; `url-unhex-string'
+(require 'org)                          ; `org-read-date'
 
 (require 'telega-customize)
 
@@ -863,6 +864,13 @@ If SYM is nil then show message unconditionally."
     (when sym
       (put sym prop t))
     (apply 'message (concat "Telega: " fmt) fmt-args)))
+
+(defun telega-read-timestamp (prompt)
+  "Interactively read timestamp in the future.
+Return timestamp as unix time."
+  (interactive)
+  (let ((date-time (org-read-date 'with-time t nil prompt)))
+    (round (time-to-seconds (encode-time (decode-time date-time))))))
 
 (provide 'telega-util)
 

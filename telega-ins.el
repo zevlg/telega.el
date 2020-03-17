@@ -167,7 +167,7 @@ single argument - slice number, starting from 0."
   (telega-ins (file-size-human-readable filesize)))
 
 (defun telega-ins--date (timestamp)
-  "Insert DATE.
+  "Insert TIMESTAMP.
 Format is:
 - HH:MM      if today
 - Mon/Tue/.. if on this week
@@ -176,7 +176,8 @@ Format is:
          (current-ts (time-to-seconds (current-time)))
          (ctime (decode-time current-ts))
          (today00 (telega--time-at00 current-ts ctime)))
-    (if (> timestamp today00)
+    (if (and (> timestamp today00)
+             (< timestamp (+ today00 (* 24 60 60))))
         (telega-ins-fmt "%02d:%02d" (nth 2 dtime) (nth 1 dtime))
 
       (let* ((week-day (nth 6 ctime))
@@ -185,7 +186,8 @@ Format is:
                           telega-week-start-day)))
              (week-start00 (telega--time-at00
                             (- current-ts (* mdays 24 3600)))))
-        (if (> timestamp week-start00)
+        (if (and (> timestamp week-start00)
+                 (< timestamp (+ week-start00 (* 7 24 60 60))))
             (telega-ins (nth (nth 6 dtime) telega-week-day-names))
 
           (telega-ins-fmt "%02d.%02d.%02d"
@@ -368,7 +370,9 @@ E-CHAR - empty char, default is space."
           (chat (telega-chat-get (plist-get msg :chat_id))))
       (telega-ins--with-face 'telega-msg-outgoing-status
         (telega-ins
-         (cond ((and (stringp sending-state)
+         (cond ((plist-get msg :scheduling_state)
+                telega-symbol-alarm)
+               ((and (stringp sending-state)
                      (string= sending-state "messageSendingStatePending"))
                 telega-symbol-pending)
                ((and (stringp sending-state)
@@ -1109,6 +1113,17 @@ Special messages are determined with `telega-msg-special-p'."
 
 (defun telega-ins--content (msg)
   "Insert message's MSG content."
+  (when-let ((scheduled (plist-get msg :scheduling_state)))
+    (telega-ins telega-symbol-alarm " ")
+    (telega-ins--with-face 'shadow
+      (telega-ins-i18n "telega_scheduled"))
+    (telega-ins " ")
+    (if-let ((send-date (plist-get scheduled :send_date)))
+        (telega-ins-i18n "telega_scheduled_at_date"
+          :date (telega-ins--as-string (telega-ins--date-iso8601 send-date)))
+      (telega-ins-i18n "telega_scheduled_when_online"))
+    (telega-ins "\n"))
+
   (let ((content (plist-get msg :content)))
     (pcase (telega--tl-type content)
       ('messageText
@@ -1515,7 +1530,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   ;; Date/status starts at `telega-chat-fill-column' column
   (telega-ins--move-to-column telega-chat-fill-column)
   (telega-ins--with-attrs (list :align 'right :min 10)
-    (telega-ins--date (plist-get msg :date)))
+    (telega-ins--date (or (telega--tl-get msg :scheduling_state :send_date)
+                          (plist-get msg :date))))
   (telega-ins--outgoing-status msg)
   t)
 
@@ -1624,6 +1640,12 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                                     :elide t)
         (telega-ins--content-one-line
          (plist-get imc :message) (plist-get imc :remove_caption))))
+     (telegaScheduledMessage
+      (telega-ins telega-symbol-alarm " " (telega-i18n "telega_scheduled") " ")
+      (if-let ((timestamp (plist-get imc :timestamp)))
+          (telega-ins-i18n "telega_scheduled_at_date"
+            :date (telega-ins--as-string (telega-ins--date timestamp)))
+        (telega-ins-i18n "telega_scheduled_when_online")))
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      )))
@@ -1829,7 +1851,6 @@ Return t."
   (let ((title (telega-chat-title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
-        (pinned-p (plist-get chat :is_pinned))
         (custom-order (telega-chat-uaprop chat :order))
         (muted-p (telega-chat-muted-p chat))
         (chat-type (telega-chat--type chat 'no-interpret))
@@ -1907,8 +1928,10 @@ Return t."
       (telega-ins umstring))
 
     (telega-ins (or (cadr brackets) "]"))
-    (when pinned-p
+    (when (plist-get chat :is_pinned)
       (telega-ins telega-symbol-pin))
+    (when (plist-get chat :has_scheduled_messages)
+      (telega-ins telega-symbol-alarm))
     (when custom-order
       (telega-ins
        (if (< (string-to-number custom-order)

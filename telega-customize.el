@@ -697,6 +697,39 @@ Supported Markup:
                  (const :tag "Markdown v2" 2))
   :group 'telega-chat)
 
+(defcustom telega-chat-attach-commands
+  (list (list "photo" nil 'telega-chatbuf-attach-photo)
+        (list "video" nil 'telega-chatbuf-attach-video)
+        (list "note-video" nil 'telega-chatbuf-attach-note-video)
+        (list "audio" nil 'telega-chatbuf-attach-audio)
+        (list "note-voice" nil 'telega-chatbuf-attach-note-voice)
+        (list "file" nil 'telega-chatbuf-attach-file)
+        (list "gif" nil 'telega-chatbuf-attach-gif)
+        (list "location" nil 'telega-chatbuf-attach-location)
+        (list "poll" nil 'telega-chatbuf-attach-poll)
+        (list "contact" nil 'telega-chatbuf-attach-contact)
+        (list "member" nil 'telega-chatbuf-attach-member)
+        (list "sticker" nil 'telega-chatbuf-attach-sticker)
+        (list "animation" nil 'telega-chatbuf-attach-animation)
+        (list "scheduled" nil 'telega-chatbuf-attach-scheduled)
+        (list "screenshot" (lambda () telega-screenshot-function)
+              'telega-chatbuf-attach-screenshot)
+        (list "clipboard" (lambda ()
+                            ;; Avoid "Selection owner couldn't convert" error
+                            (ignore-errors
+                              (gui-get-selection 'CLIPBOARD 'image/png)))
+              'telega-chatbuf-attach-clipboard)
+        )
+  "*List of the attachements available for `C-c C-a' in chatbuf.
+Each element is a list of three elements:
+  \\(ATTACH-NAME AVAILABILITY-FUNC COMMAND-FUNC\\)
+
+AVAILABILITY-FUNC nil, if COMMAND-FUNC is always available,
+otherwise function returning non-nil if COMMAND is available.
+COMMAND-FUNC - Command function to execute."
+  :type 'list
+  :group 'telega-chat)
+
 (defcustom telega-chat-upload-attaches-ahead t
   "*Non-nil to upload attachements ahead, before message actually sent.
 Having this non-nil \"speedups\" uploading, its like files uploads instantly."

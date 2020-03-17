@@ -15,7 +15,8 @@ Changes in 1.6.0:
   - Added the update `updateChatChatList`, which is sent after a chat is moved to or from a chat list.
   - Added the method `setChatChatList`, which can be used to move a chat between chat lists.
   - Added the option `pinned_archived_chat_count_max` for the maximum number of pinned chats in the Archive chat list.
-* Added support for scheduled messages:
+* DONE Added support for scheduled messages:
+  CLOSED: [2020-03-17]
   - Added the classes `messageSchedulingStateSendAtDate` and `messageSchedulingStateSendWhenOnline`,
     representing the scheduling state of a message.
   - Added the field `scheduling_state` to the class `message`, which allows to distinguish between scheduled and
@@ -28,9 +29,12 @@ Changes in 1.6.0:
   - Replaced the parameters `disable_notification` and `from_background` in the methods `sendMessage`,
     `sendMessageAlbum`, `sendInlineQueryResultMessage`, and `forwardMessages` with the new field `options` of
     the type `sendMessageOptions`.
+    DONE: [2020-02-03]
   - Added the method `editMessageSchedulingState`, which can be used to reschedule a message or send it immediately.
+    [NOT YET]
   - Added the method `getChatScheduledMessages`, which returns all scheduled messages in a chat.
   - Added the field `has_scheduled_messages` to the class `chat`.
+    DONE: [2020-02-03]
   - Added the update `updateChatHasScheduledMessages`, which is sent whenever the field `has_scheduled_messages`
     changes in a chat.
     DONE: [2020-01-21]
