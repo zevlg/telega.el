@@ -259,6 +259,7 @@ Return parsed command."
         (err (if (buffer-live-p (process-buffer proc))
                  (with-current-buffer (process-buffer proc) (buffer-string))
                "")))
+    (telega-debug "SENTINEL: %S -> %S" proc status)
     (telega-status--set
      (concat "telega-server: " status (unless (string-empty-p err) "\n") err)
      ""
@@ -372,7 +373,6 @@ COMMAND is passed directly to `telega-server--send'."
   (interactive)
   (when (buffer-live-p telega-server--buffer)
     (kill-buffer telega-server--buffer)
-    (setq telega-server--buffer nil)
     (run-hooks 'telega-kill-hook)))
 
 

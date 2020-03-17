@@ -1,16 +1,16 @@
 ;;; telega.el --- Telegram client (unofficial)  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2016-2019 by Zajcev Evgeny
+;; Copyright (C) 2016-2020 by Zajcev Evgeny
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.0
-(defconst telega-version "0.6.0")
+;; Version: 0.6.1
+(defconst telega-version "0.6.1")
 (defconst telega-server-min-version "0.5.0")
-(defconst telega-tdlib-min-version "1.5.4")
+(defconst telega-tdlib-min-version "1.6.0")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@
     (define-key map (kbd "b") 'telega-switch-buffer)
     (define-key map (kbd "f") 'telega-file-send)
     (define-key map (kbd "w") 'telega-save-buffer)
+    (define-key map (kbd "a") 'telega-account-switch)
     map)
   "Keymap for the telega commands.")
 
@@ -78,6 +79,38 @@
   (ignore-errors
     (mkdir telega-ton-keystore-dir))
   )
+
+(defun telega-account-current ()
+  "Return current account."
+  (cl-find-if #'telega-account--current-p telega-accounts))
+
+(defun telega-account--current-p (account)
+  "Return non-nil if the ACCOUNT is current."
+  (equal (plist-get (cdr account) 'telega-database-dir)
+         telega-database-dir))
+
+(defun telega-account-switch (account-name)
+  "Switch to the ACCOUNT-NAME."
+  (interactive
+   (list (funcall telega-completing-read-function
+                  "Telegram Account: "
+                  (mapcar #'car telega-accounts)
+                  nil 'require-match)))
+
+  (let ((account (assoc account-name telega-accounts)))
+    (cl-assert account)
+    (unless (telega-account--current-p account)
+      (setq account (cdr account))
+      (while account
+        (set (car account) (cadr account))
+        (setq account (cddr account)))
+
+      (telega-server-kill)
+      ;; Wait for server to die
+      (while (telega-server-live-p)
+        (sit-for 0.1)))
+
+    (telega nil)))
 
 ;;;###autoload
 (defun telega (arg)

@@ -612,10 +612,11 @@ blocked users."
     (telega-msg-redisplay msg)
     (telega-button-forward 1 'telega-msg-at)))
 
-(defun telega-msg-pin (msg)
-  "Pin message MSG."
-  (interactive (list (telega-msg-at (point))))
-  (telega--pinChatMessage msg))
+(defun telega-msg-pin (msg &optional disable-notifications)
+  "Pin message MSG.
+If prefix arg is specified, then do not notify all the users about pin."
+  (interactive (list (telega-msg-at (point)) current-prefix-arg))
+  (telega--pinChatMessage msg disable-notifications))
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."

@@ -216,13 +216,15 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
   (telega-server--send
    (list :@type "leaveChat" :chat_id (plist-get chat :id))))
 
-(defun telega--deleteChatHistory (chat &optional remove-from-list)
+(defun telega--deleteChatHistory (chat &optional remove-from-list revoke)
   "Deletes all messages in the CHAT only for the user.
-Cannot be used in channels and public supergroups."
+Cannot be used in channels and public supergroups.
+Pass REVOKE to try to delete chat history for all users."
   (telega-server--send
    (list :@type "deleteChatHistory"
          :chat_id (plist-get chat :id)
-         :remove_from_chat_list (or remove-from-list :false))))
+         :remove_from_chat_list (or remove-from-list :false)
+         :revoke (if revoke t :false))))
 
 (defun telega--setChatTitle (chat title)
   "Changes the CHAT title to TITLE."
@@ -386,11 +388,11 @@ delimiting with WITH-USERNAME-DELIM."
     (plist-put chat :photo photo)
 
     (plist-put chat :telega-image nil)
+
     ;; TODO:
     ;;  - redisplay chat in rootbuf
     ;;  - redisplay chat's input in case icon is used in input
-    ;;  - redisplay *Telegram Chat Info* in case it is shown for the
-    ;;    CHAT
+    (telega-describe-chat--maybe-redisplay chat)
     ))
 
 (defun telega--setChatNotificationSettings (chat &rest settings)
@@ -413,7 +415,9 @@ delimiting with WITH-USERNAME-DELIM."
                (plist-get event :notification_settings))
 
     (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))))
+     chat (telega-sort-maybe-reorder chat event))
+
+    (telega-describe-chat--maybe-redisplay chat)))
 
 (defun telega--on-updateChatTitle (event)
   "EVENT arrives when title of a chat was changed."
@@ -425,7 +429,9 @@ delimiting with WITH-USERNAME-DELIM."
      chat (telega-sort-maybe-reorder chat event))
 
     (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat)))))
+      (rename-buffer (telega-chatbuf--name chat)))
+
+    (telega-describe-chat--maybe-redisplay chat)))
 
 (defun telega--on-updateChatOrder (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -436,7 +442,10 @@ delimiting with WITH-USERNAME-DELIM."
     ;;  2) Reordering might affect `telega--filtered-chats' and custom
     ;;     filters, so root chat update is essential
     (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))))
+     chat (telega-sort-maybe-reorder chat event))
+
+    (telega-describe-chat--maybe-redisplay chat)
+    ))
 
 (defun telega--on-updateChatIsPinned (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -535,7 +544,10 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
                (plist-get event :last_message))
 
     (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))))
+     chat (telega-sort-maybe-reorder chat event))
+
+    (telega-describe-chat--maybe-redisplay chat)
+    ))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -606,7 +618,9 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
                (plist-get event :pinned_message_id))
 
     (telega-sort-maybe-reorder chat event)
-    (telega-chat--update-pinned-message chat nil old-pinned-message-id)))
+    (telega-chat--update-pinned-message chat nil old-pinned-message-id)
+
+    (telega-describe-chat--maybe-redisplay chat)))
 
 (defun telega-chat--on-getChats (chats)
   "Ensure chats from RESULT exists, and continue fetching chats."
@@ -629,14 +643,6 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
     (telega-status--set nil "")       ;reset aux status
 
     (run-hooks 'telega-chats-fetched-hook)))
-
-(defun telega--getChatPinnedMessage (chat &optional callback)
-  "Get pinned message for the CHAT, if any."
-  (unless (zerop (plist-get chat :pinned_message_id))
-    (telega-server--call
-     (list :@type "getChatPinnedMessage"
-           :chat_id (plist-get chat :id))
-     callback)))
 
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
@@ -899,15 +905,6 @@ Examines `telega-chat-label-alist'."
     (telega-chat-set-custom-label
      (telega-chat-get (car chat-label)) (cdr chat-label))))
 
-(defun telega--setChatMemberStatus (chat user status)
-  "Change the STATUS of a CHAT USER, needs appropriate privileges.
-STATUS is one of: "
-  (telega-server--send
-   (list :@type "setChatMemberStatus"
-         :chat_id (plist-get chat :id)
-         :user_id (plist-get user :id)
-         :status status)))
-
 (defun telega-chat-call (chat)
   "Call to the user associated with the given private CHAT."
   (interactive (list (telega-chat-at (point))))
@@ -938,165 +935,164 @@ STATUS is one of: "
                                     :contact (telega-user-as-contact
                                               (telega-user-me))))))
 
-(defun telega-describe-chat--redisplay-func (chat)
-  (lambda (&rest _ignored-args)
-    (telega-save-cursor
-      (telega-describe-chat chat))))
+(defun telega-describe-chat--inserter (chat)
+  "Inserter for the CHAT description."
+  (let ((chat-ava (telega-chat-avatar-image chat)))
+    (telega-ins--image chat-ava 0
+                       :no-display-if (not telega-chat-show-avatars))
+    (telega-ins--with-face
+        (let ((color (telega-chat-color chat))
+              (lightp (eq (frame-parameter nil 'background-mode) 'light)))
+          (list :foreground (nth (if lightp 2 0) color)))
+      (telega-ins (telega-chat-title chat 'with-username)))
+    (telega-ins "\n")
+    (telega-ins--image chat-ava 1
+                       :no-display-if (not telega-chat-show-avatars))
+
+    (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
+    (telega-ins--button "Open"
+      :value chat
+      :action 'telega-chat--pop-to-buffer)
+    (when (telega-me-p chat)
+      (telega-ins " ")
+      (telega-ins--button "Set Profile Photo"
+        'action (lambda (_ignored)
+                  (let ((photo (read-file-name "Profile Photo: " nil nil t)))
+                    (telega--setProfilePhoto photo)))))
+    (when (telega--tl-get chat :permissions :can_invite_users)
+      (telega-ins " ")
+      (telega-ins--button "Add Member"
+        'action (lambda (_ignored)
+                  (telega-chat-add-member
+                   chat (telega-completing-read-user "Add member: ")))))
+    (when (telega--tl-get chat :permissions :can_change_info)
+      (telega-ins " ")
+      (telega-ins--button "Set Chat Photo"
+        'action (lambda (_ignored)
+                  (let ((photo (read-file-name "Chat Photo: " nil nil t)))
+                    (telega--setChatPhoto chat photo)))))
+
+    ;; Archive/Unarchive
+    (let* ((chat-list (plist-get chat :chat_list))
+           (list-name (when chat-list
+                        (substring (plist-get chat-list :@type) 8))))
+      (cond ((string= list-name "Main")
+             (telega-ins " ")
+             (telega-ins--button (telega-i18n "archived_add")
+               'action (lambda (_ignored)
+                         (telega--setChatChatList chat "Archive"))))
+            ((string= list-name "Archive")
+             (telega-ins " ")
+             (telega-ins--button (telega-i18n "archived_remove")
+               'action (lambda (_ignored)
+                         (telega--setChatChatList chat "Main"))))))
+    (telega-ins "\n"))
+
+  (telega-ins-fmt "Id: %s\n"
+    (if telega-debug
+        (format "(telega-chat-get %d)" (plist-get chat :id))
+      (format "%d" (plist-get chat :id))))
+  (when (telega-chat-public-p chat)
+    (let ((link (concat (or (plist-get telega--options :t_me_url)
+                            "https://t.me/")
+                        (telega-chat-username chat))))
+      (insert "Link: ")
+      (apply 'insert-text-button link (telega-link-props 'url link 'link))
+      (insert "\n")))
+  (telega-ins "Internal Link: ")
+  (let ((internal-link (telega-tme-internal-link-to chat)))
+    (apply 'insert-text-button internal-link
+           (telega-link-props 'url internal-link 'link)))
+  (telega-ins "\n")
+
+  (telega-ins "Order")
+  (when (telega-chat-uaprop chat :order)
+    (telega-ins " (" (propertize "custom" 'face 'shadow) ")"))
+  (telega-ins ": " (telega-chat-order chat) "\n")
+
+  (let* (;; (default-mute-for
+         ;;   (telega-chat-notification-setting chat :mute_for 'default))
+         ;; (default-show-preview
+         ;;   (telega-chat-notification-setting chat :show_preview 'default))
+         (not-cfg (plist-get chat :notification_settings))
+         (unmuted-p (not (telega-chat-muted-p chat)))
+         (show-preview (telega-chat-notification-setting chat :show_preview)))
+    (telega-ins "Notifications ("
+                (propertize (if (plist-get not-cfg :use_default_mute_for)
+                                "default" "custom")
+                            'face 'shadow)
+                "): ")
+
+    (telega-ins--button (if unmuted-p
+                            telega-symbol-heavy-checkmark
+                          "  ")
+      :value chat
+      :action (lambda (chat)
+                (telega--setChatNotificationSettings chat
+                  :use_default_mute_for nil
+                  :mute_for (if unmuted-p 599634793 0))))
+    (when unmuted-p
+      (telega-ins ", Preview ("
+                  (propertize (if (plist-get not-cfg :use_default_show_preview)
+                                  "default" "custom")
+                              'face 'shadow)
+                  "): ")
+      (telega-ins--with-face 'telega-box
+        (telega-ins (if show-preview
+                        telega-symbol-heavy-checkmark
+                      "  "))))
+    ;; Reseting custom notification settings
+    (unless (and (plist-get not-cfg :use_default_mute_for)
+                 (plist-get not-cfg :use_default_show_preview))
+      (telega-ins " ")
+      (telega-ins--button "Reset"
+        :value chat
+        :action (lambda (chat)
+                  (telega--setChatNotificationSettings chat
+                    :use_default_mute_for t
+                    :use_default_show_preview t))))
+    (telega-ins "\n"))
+
+  (telega-ins "\n")
+  (cl-ecase (telega-chat--type chat 'no-interpret)
+    (private
+     (telega-ins "--- User Info ---\n")
+     (telega-info--insert-user
+      (telega-chat--info chat) chat
+      (lambda () (telega-describe-chat chat))))
+    (secret
+     (telega-ins "--- SecretChat Info ---\n")
+     (telega-info--insert-secretchat
+      (telega-chat--info chat) chat))
+    (basicgroup
+     (telega-ins "--- BasicGroup Info ---\n")
+     (telega-info--insert-basicgroup
+      (telega-chat--info chat) chat))
+    (supergroup
+     (telega-ins "--- SuperGroup Info ---\n")
+     (telega-info--insert-supergroup
+      (telega-chat--info chat) chat)))
+
+  (when telega-debug
+    (telega-ins "\n---DEBUG---\n")
+    (telega-ins (propertize "Chat: " 'face 'bold)
+                (format "%S" chat) "\n")
+    (telega-ins (propertize "Info: " 'face 'bold)
+                (format "%S" (telega-chat--info chat))))
+  )
 
 (defun telega-describe-chat (chat)
   "Show info about chat at point."
   (interactive (list (telega-chat-at (point))))
   (with-telega-help-win "*Telegram Chat Info*"
     (setq telega--chat chat)
+    (setq telega--help-win-param chat)
+    (setq telega--help-win-inserter #'telega-describe-chat--inserter)
+    (telega-describe-chat--inserter chat)))
 
-    (let ((redisplay-func (telega-describe-chat--redisplay-func chat))
-          (chat-ava (telega-chat-avatar-image chat)))
-      (telega-ins--image chat-ava 0 :no-display-if (not telega-chat-show-avatars))
-      (telega-ins--with-face
-          (let ((color (telega-chat-color chat))
-                (lightp (eq (frame-parameter nil 'background-mode) 'light)))
-            (list :foreground (nth (if lightp 2 0) color)))
-        (telega-ins (telega-chat-title chat 'with-username)))
-      (telega-ins "\n")
-      (telega-ins--image chat-ava 1 :no-display-if (not telega-chat-show-avatars))
-      (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
-      (telega-ins--button "Open"
-        :value chat
-        :action 'telega-chat--pop-to-buffer)
-      (when (telega-me-p chat)
-        (telega-ins " ")
-        (telega-ins--button "Set Profile Photo"
-          'action (lambda (_ignored)
-                    (let ((photo (read-file-name "Profile Photo: " nil nil t)))
-                      (telega--setProfilePhoto photo redisplay-func)))))
-      (when (telega--tl-get chat :permissions :can_invite_users)
-        (telega-ins " ")
-        (telega-ins--button "Add Member"
-          'action (lambda (_ignored)
-                    (telega-chat-add-member
-                     chat (telega-completing-read-user "Add member: ")))))
-      (when (telega--tl-get chat :permissions :can_change_info)
-        (telega-ins " ")
-        (telega-ins--button "Set Chat Photo"
-          'action (lambda (_ignored)
-                    (let ((photo (read-file-name "Chat Photo: " nil nil t)))
-                      (telega--setChatPhoto chat photo redisplay-func)))))
-
-      ;; Archive/Unarchive
-      (let* ((chat-list (plist-get chat :chat_list))
-             (list-name (when chat-list
-                          (substring (plist-get chat-list :@type) 8))))
-        (cond ((string= list-name "Main")
-               (telega-ins " ")
-               (telega-ins--button (telega-i18n "archived_add")
-                 'action (lambda (_ignored)
-                           (telega--setChatChatList
-                             chat "Archive" redisplay-func))))
-              ((string= list-name "Archive")
-               (telega-ins " ")
-               (telega-ins--button (telega-i18n "archived_remove")
-                 'action (lambda (_ignored)
-                           (telega--setChatChatList
-                             chat "Main" redisplay-func))))))
-
-      (telega-ins "\n"))
-
-    (telega-ins-fmt "Id: %s\n"
-      (if telega-debug
-          (format "(telega-chat-get %d)" (plist-get chat :id))
-        (format "%d" (plist-get chat :id))))
-    (when (telega-chat-public-p chat)
-      (let ((link (concat (or (plist-get telega--options :t_me_url)
-                              "https://t.me/")
-                          (telega-chat-username chat))))
-        (insert "Link: ")
-        (apply 'insert-text-button link (telega-link-props 'url link 'link))
-        (insert "\n")))
-    (telega-ins "Internal Link: ")
-    (let ((internal-link (telega-tme-internal-link-to chat)))
-      (apply 'insert-text-button internal-link
-             (telega-link-props 'url internal-link 'link)))
-    (telega-ins "\n")
-
-    (telega-ins "Order")
-    (when (telega-chat-uaprop chat :order)
-      (telega-ins " (" (propertize "custom" 'face 'shadow) ")"))
-    (telega-ins ": " (telega-chat-order chat) "\n")
-
-    (let* (;; (default-mute-for
-           ;;   (telega-chat-notification-setting chat :mute_for 'default))
-           ;; (default-show-preview
-           ;;   (telega-chat-notification-setting chat :show_preview 'default))
-           (not-cfg (plist-get chat :notification_settings))
-           (unmuted-p (not (telega-chat-muted-p chat)))
-           (show-preview (telega-chat-notification-setting chat :show_preview)))
-      (telega-ins "Notifications ("
-                  (propertize (if (plist-get not-cfg :use_default_mute_for)
-                                  "default" "custom")
-                              'face 'shadow)
-                  "): ")
-
-      (telega-ins--button (if unmuted-p
-                              telega-symbol-heavy-checkmark
-                            "  ")
-        :value chat
-        :action (lambda (chat)
-                  (telega--setChatNotificationSettings chat
-                    :use_default_mute_for nil
-                    :mute_for (if unmuted-p 599634793 0))
-                  (telega-save-cursor
-                    (telega-describe-chat chat))))
-      (when unmuted-p
-        (telega-ins ", Preview ("
-                    (propertize (if (plist-get not-cfg :use_default_show_preview)
-                                    "default" "custom")
-                                'face 'shadow)
-                    "): ")
-        (telega-ins--with-face 'telega-box
-          (telega-ins (if show-preview
-                          telega-symbol-heavy-checkmark
-                        "  "))))
-      ;; Reseting custom notification settings
-      (unless (and (plist-get not-cfg :use_default_mute_for)
-                   (plist-get not-cfg :use_default_show_preview))
-        (telega-ins " ")
-        (telega-ins--button "Reset"
-          :value chat
-          :action (lambda (chat)
-                    (telega--setChatNotificationSettings chat
-                      :use_default_mute_for t
-                      :use_default_show_preview t)
-                    (telega-save-cursor
-                      (telega-describe-chat chat)))))
-      (telega-ins "\n"))
-
-    (telega-ins "\n")
-    (cl-ecase (telega-chat--type chat 'no-interpret)
-      (private
-       (telega-ins "--- User Info ---\n")
-       (telega-info--insert-user
-        (telega-chat--info chat) chat
-        (lambda () (telega-describe-chat chat))))
-      (secret
-       (telega-ins "--- SecretChat Info ---\n")
-       (telega-info--insert-secretchat
-        (telega-chat--info chat) chat))
-      (basicgroup
-       (telega-ins "--- BasicGroup Info ---\n")
-       (telega-info--insert-basicgroup
-        (telega-chat--info chat) chat))
-      (supergroup
-       (telega-ins "--- SuperGroup Info ---\n")
-       (telega-info--insert-supergroup
-        (telega-chat--info chat) chat)))
-
-    (when telega-debug
-      (telega-ins "\n---DEBUG---\n")
-      (telega-ins (propertize "Chat: " 'face 'bold)
-                  (format "%S" chat) "\n")
-      (telega-ins (propertize "Info: " 'face 'bold)
-                  (format "%S" (telega-chat--info chat))))
-    ))
+(defun telega-describe-chat--maybe-redisplay (chat)
+  "If CHAT info buffer exists and visible, then redisplay it."
+  (telega-help-win--maybe-redisplay "*Telegram Chat Info*" chat))
 
 (defun telega-chat-with (name)
   "Start chatting with peer matching NAME."
@@ -1176,10 +1172,10 @@ Leaving chat does not removes chat from chat list."
 Query about everything.  Leaving CHAT, blocking corresponding
 user and delete all the chat history.
 Use `telega-chat-leave' to just leave the CHAT."
-  (interactive (list (telega-chat-at (point)) nil))
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (when (and chat
              (yes-or-no-p
-              (concat (telega-i18n "action_cant_undone") ". "
+              (concat (telega-i18n "action_cant_undone") ".\n"
                       (telega-i18n "query_delete_chat"
                         :title (telega-chat-title chat)))))
     (telega-chat-leave chat 'keep-chatbuf)
@@ -1188,48 +1184,71 @@ Use `telega-chat-leave' to just leave the CHAT."
     ;; messages
     (when-let ((chat-user (telega-chat-user chat 'include-bots)))
       (when (yes-or-no-p
-             (format "Block \"%s\" user as well? "
-                     (telega-user--name chat-user)))
+             (concat (telega-i18n "blocked_list_confirm_text"
+                       :name (telega-user--name chat-user)) " "))
         (telega--blockUser chat-user)))
 
-    ;; NOTE: `telega--deleteChatHistory' Cannot be used in channels
+    ;; NOTE: `telega--deletechathistory' cannot be used in channels
     ;; and public supergroups
     (unless (or (eq (telega-chat--type chat) 'channel)
                 (telega-chat-public-p chat 'supergroup))
-      (when (yes-or-no-p (telega-i18n "query_delete_chat_history"
-                           :title (telega-chat-title chat)))
+      (when (telega-read-im-sure-p
+             (telega-i18n "query_delete_chat_history"
+               :title (telega-chat-title chat)))
         (telega--deleteChatHistory chat t)))
 
     ;; Kill corresponding chat buffer
     (with-telega-chatbuf chat
       (kill-buffer (current-buffer)))))
 
-(defun telega-chat-create (title &rest users)
-  "Create new chat with TITLE and USERS."
-  (interactive
-   (cons (read-string "Chat title: ")
-         (let ((users nil) (done nil))
-           (while (not done)
-             (condition-case nil
-                 (setq users
-                       (cons (telega-completing-read-user
+(defun telega--chat-create-callback (newchat)
+  "Callback used in `telega-chat-create'."
+  ;; NOTE: Chat might change while created, so renew its value using
+  ;; `telega-chat-get'
+  (telega-chat--pop-to-buffer
+   (telega-chat-get (plist-get newchat :id))))
+
+(defun telega-chat-create (chat-type title)
+  "Interactively create new chat of CHAT-TYPE with TITLE."
+  (interactive (list (funcall telega-completing-read-function
+                              "Chat Type: "
+                              (list "basicgroup" "supergroup" "channel"
+                                    "location-supergroup" "location-channel")
+                              nil t)
+                     (read-string "Chat Title: ")))
+
+  (if (string= chat-type "basicgroup")
+      ;; Basicgroup
+      (let ((users nil) (done nil))
+        (while (not done)
+          (condition-case nil
+              (setq users
+                    (cons (telega-completing-read-user
                               (format "Add user (C-g when done)%s: "
                                       (if users
-                                          (concat " [" (mapconcat 'telega-user--name users ",") "]")
+                                          (concat " [" (mapconcat #'telega-user--name users ",") "]")
                                         "")))
-                              users))
-               (quit (setq done t))))
-           users)))
+                          users))
+            (quit (setq done t))))
+        (telega--createNewBasicGroupChat
+         title users #'telega--chat-create-callback))
 
-  (telega-server--call
-   (list :@type "createNewBasicGroupChat"
-         :user_ids (cl-map 'vector (telega--tl-prop :id) users)
-         :title title)
-   (lambda (newchat)
-     ;; NOTE: Chat might change while created, so renew its value
-     ;; using `telega-chat-get'
-     (telega-chat--pop-to-buffer
-      (telega-chat-get (plist-get newchat :id))))))
+    ;; Supergroup
+    (let ((desc (read-string "Chat Description: "))
+          (loc (when (or (string= chat-type "location-supergroup")
+                         (string= chat-type "location-channel"))
+                 (let ((chat-loc (telega-read-location "Chat Location: "))
+                       (chat-address (read-string "Chat Address: ")))
+                   (list :@type "chatLocation"
+                         :location (list :@type "Location"
+                                         :latitude (car chat-loc)
+                                         :longitude (cadr chat-loc))
+                         :address chat-address)))))
+
+    (telega--createNewSupergroupChat
+     title (or (string= chat-type "channel")
+               (string= chat-type "location-channel"))
+     desc loc #'telega--chat-create-callback))))
 
 (defun telega-chat-upgrade-to-supergroup (chat)
   "Upgrade basic group CHAT from basicgroup to supergroup."
@@ -1244,21 +1263,49 @@ Use `telega-chat-leave' to just leave the CHAT."
      (telega-chat--pop-to-buffer
       (telega-chat-get (plist-get newchat :id))))))
 
-(defun telega-chat-transfer-ownership (chat to-user password)
+(defun telega-chat-transfer-ownership (chat)
   "Transfer CHAT's ownership TO-USER."
+  (declare (indent 1))
   (interactive
-   (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
-          (user (telega-completing-read-user "To User: "
-                  (mapcar (lambda (member)
-                            (telega-user--get (plist-get member :user_id)))
-                          (telega--getSupergroupMembers
-                              (telega-chat--supergroup chat))))))
-     (list chat user (password-read "Telegram Password: "))))
+   (list (or telega-chatbuf--chat (telega-chat-at (point))) nil))
 
-  (telega--transferChatOwnership chat to-user password
-    (lambda (_result)
-      (message "\"%s\" ownership transfered to \"%s\""
-               (telega-chat-title chat) (telega-user--name to-user)))))
+  (let ((to-user (telega-completing-read-user "To User: "
+                   (mapcar (lambda (member)
+                             (telega-user--get (plist-get member :user_id)))
+                           (telega--getSupergroupMembers
+                               (telega-chat--supergroup chat)
+                               "supergroupMembersFilterAdministrators")))))
+
+    ;; NOTE: check chat ownership can be transferred
+    (unless (eq (telega--tl-type (telega--canTransferOwnership))
+                'canTransferOwnershipResultOk)
+      (user-error (concat
+                   (telega-i18n "rights_transfer_check_about"
+                     :user (telega-user--name to-user)) "\n"
+                     (telega-i18n "rights_transfer_check_session") "\n"
+                     (telega-i18n "rights_transfer_check_password") "\n"
+                     (telega-i18n "rights_transfer_check_later"))))
+
+    (unless (telega-read-im-sure-p
+             (concat (telega-i18n "rights_transfer_about"
+                       :group (telega-chat-title chat)
+                       :user (telega-user--name to-user))
+                     "\n"
+                     (telega-i18n "rights_transfer_sure") "?"))
+      (user-error "Ownership transfer canceled"))
+
+    (let ((pass (password-read
+                 (concat (telega-i18n "rights_transfer_password_description")
+                         "\n" "Telegram Password: "))))
+      (telega--transferChatOwnership chat to-user pass
+        (lambda (result)
+          (when (eq (telega--tl-type result) 'ok)
+            (message
+             (telega-i18n (if (eq (telega-chat--type chat) 'channel)
+                              "rights_transfer_done_channel"
+                            "rights_transfer_done_group")
+               :user (telega-user--name to-user)))))))
+    ))
 
 (defun telega-chat-description (chat descr)
   "Update CHAT's description."
@@ -1273,7 +1320,7 @@ Use `telega-chat-leave' to just leave the CHAT."
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
   (interactive (list (yes-or-no-p
-                      (format "%s. Delete %d chats? "
+                      (format "%s.\nDelete %d chats? "
                               (telega-i18n "action_cant_undone")
                               (length telega--filtered-chats)))))
   (when force
@@ -2794,9 +2841,9 @@ IMC might be a plain string or attachement specification."
   "Attach location to the current input.
 If prefix arg is supplied, attach live location."
   (interactive (list (with-telega-chatbuf-action "ChoosingLocation"
-                       (if current-prefix-arg
-                           (read-string "Live Location: ")
-                         (read-string "Location: ")))
+                       (telega-read-location (if current-prefix-arg
+                                                 "Live Location: "
+                                               "Location: ")))
                      (when current-prefix-arg
                        (let* ((choices `(("1 min" . 60)
                                          ("15 min" . ,(* 15 60))
@@ -2807,17 +2854,13 @@ If prefix arg is supplied, attach live location."
                                                  (mapcar 'car choices) nil t)))
                          (cdr (assoc live-for choices))))))
 
-  (let ((loc (mapcar 'string-to-number (split-string location ","))))
-    (unless (and (numberp (car loc)) (numberp (cadr loc)))
-      (error "Invalid location `%s', use: <LAT>,<LONG> format" location))
-
-    (telega-chatbuf-input-insert
-     (nconc (list :@type "inputMessageLocation"
-                  :location (list :@type "Location"
-                                  :latitude (car loc)
-                                  :longitude (cadr loc)))
-            (when live-secs
-              (list :live_period live-secs))))))
+  (telega-chatbuf-input-insert
+   (nconc (list :@type "inputMessageLocation"
+                :location (list :@type "Location"
+                                :latitude (car location)
+                                :longitude (cadr location)))
+          (when live-secs
+            (list :live_period live-secs)))))
 
 (defun telega-chatbuf-attach-contact (contact)
   "Attach USER contact to the current input."
@@ -3237,7 +3280,10 @@ If DRAFT-MSG is ommited, then clear draft message."
     (plist-put chat :chat_list chat-list)
 
     (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))))
+     chat (telega-sort-maybe-reorder chat event))
+
+    (telega-describe-chat--maybe-redisplay chat)
+    ))
 
 (defun telega--on-updateChatHasScheduledMessages (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))

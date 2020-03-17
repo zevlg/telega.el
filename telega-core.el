@@ -53,6 +53,21 @@ Becase `telega-ins--as-string' uses temporary buffer.")
 Used in help buffers to refer chat.")
 (make-variable-buffer-local 'telega--chat)
 
+(defvar telega--help-win-param nil
+  "Parameter for the `telega--help-win-redisplay-func'.
+Used in help buffers to store some additional data.")
+(make-variable-buffer-local 'telega--help-win-param)
+
+(defvar telega--help-win-inserter nil
+  "Inserter function for the help win.
+This function accepts exactly one argument - `telega--help-win-param'.")
+(make-variable-buffer-local 'telega--help-win-inserter)
+
+(defvar telega--help-win-dirty-p nil
+  "Non-nil if help win need redisplay.
+Used for optimisations.")
+(make-variable-buffer-local 'telega--help-win-dirty-p)
+
 (defvar telega--me-id nil "User id of myself.")
 (defvar telega--gifbot-id nil "Bot used to search for animations.")
 (defvar telega--imgbot-id nil "Bot used to search for photos.")
@@ -368,6 +383,26 @@ Inhibits read-only flag."
        (cursor-sensor-mode 1)
        ,@body)))
 
+(defun telega-help-win--maybe-redisplay (buffer-or-name for-param)
+  "Possible redisplay help win with BUFFER-OR-NAME.
+If BUFFER-OR-NAME exists and visible then redisplay it."
+  (when-let ((help-buf (get-buffer buffer-or-name)))
+    (with-current-buffer help-buf
+      (when (and (eq for-param telega--help-win-param)
+                 telega--help-win-inserter)
+        (if (get-buffer-window help-buf)
+            ;; Buffer is visible in some window
+            (telega-save-cursor
+              (let ((inhibit-read-only t))
+                (setq telega--help-win-dirty-p nil)
+                (erase-buffer)
+                (funcall telega--help-win-inserter
+                         telega--help-win-param)))
+
+          ;; Buffer is not visible, mark it as dirty, so it will be
+          ;; redisplayed when switched in
+          (setq telega--help-win-dirty-p t))))))
+
 (defsubst telega-debug (fmt &rest args)
   "Insert formatted string into debug buffer.
 FMT and ARGS are passed directly to `format'."
@@ -464,6 +499,8 @@ Attach `display' text property to surrogated regions."
                                'telega-emoji-p t
                                'telega-display unicode-str) str)
           ))))
+  ;; Mark string as already desurrogated
+  (add-text-properties 0 (length str) '(telega-desurrogated-string t) str)
   str)
 
 (defsubst telega--desurrogate-apply-part (part &optional keep-properties)
@@ -497,24 +534,27 @@ Attach `display' text property to surrogated regions."
   "Apply `telega-display' properties to STR.
 Resulting in new string with no surrogate pairs.
 If NO-PROPERTIES is specified, then do not keep text properties."
+  (unless (get-text-property 0 'telega-desurrogated-string str)
+    (setq str (telega--tl-desurrogate str)))
   (mapconcat (if no-properties
-                 'telega--desurrogate-apply-part
-               'telega--desurrogate-apply-part-keep-properties)
+                 #'telega--desurrogate-apply-part
+               #'telega--desurrogate-apply-part-keep-properties)
              (telega--split-by-text-prop str 'telega-display) ""))
 
 (defsubst telega--tl-unpack (obj)
   "Unpack (i.e. desurrogate strings) object OBJ."
-  (cond ((stringp obj) (telega--tl-desurrogate obj))
-        ((vectorp obj) (cl-map 'vector 'telega--tl-unpack obj))
-        ((listp obj) (mapcar 'telega--tl-unpack obj))
-        (t obj)))
+  obj)
+  ;; (cond ((stringp obj) (telega--tl-desurrogate obj))
+  ;;       ((vectorp obj) (cl-map 'vector #'telega--tl-unpack obj))
+  ;;       ((listp obj) (mapcar #'telega--tl-unpack obj))
+  ;;       (t obj)))
 
 (defsubst telega--tl-pack (obj)
   "Pack object OBJ."
   ;; Remove text props from strings, etc
   (cond ((stringp obj) (substring-no-properties obj))
-        ((vectorp obj) (cl-map 'vector 'telega--tl-pack obj))
-        ((listp obj) (mapcar 'telega--tl-pack obj))
+        ((vectorp obj) (cl-map 'vector #'telega--tl-pack obj))
+        ((listp obj) (mapcar #'telega--tl-pack obj))
         (t obj)))
 
 (defsubst telega-tl-str (obj prop &optional no-properties)

@@ -639,10 +639,20 @@ Important chat is the chat with unread messages and enabled notifications."
    (cons 'ids (mapcar (telega--tl-prop :id)
                       (telega--getCreatedPublicChats)))))
 
+;; - me-is-owner ::
+;;   {{{fundoc(telega--filter-me-is-owner)}}}
+(define-telega-filter me-is-owner (chat)
+  "Matches if me is the owner of the CHAT.
+Only basicgroup, supergroup and channel can be owned."
+  (when (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
+    (let ((chat-info (telega-chat--info chat)))
+      (eq (telega--tl-type (plist-get chat-info :status))
+          'chatMemberStatusCreator))))
+
 ;; - me-is-member ::
 ;;   {{{fundoc(telega--filter-me-is-member)}}}
 (define-telega-filter me-is-member (chat)
-  "Matches if me is member of the chat."
+  "Matches if me is member of the CHAT."
   (not (and (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
             (memq (telega--tl-type (plist-get (telega-chat--info chat) :status))
                   '(chatMemberStatusLeft chatMemberStatusBanned)))))

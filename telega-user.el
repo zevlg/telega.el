@@ -209,17 +209,27 @@ LIMIT by default is 50."
               (telega-user--get (plist-get member :user_id)))
             (plist-get reply :members))))
 
-(defun telega-describe-user (user)
-  "Show info about USER."
-  (interactive (list (telega-user-at (point))))
-  (with-telega-help-win "*Telega User*"
+(defun telega-describe-user--inserter (user-id)
+  "Inserter for the user info buffer."
+  (let ((user (telega-user--get user-id)))
     (telega-ins "Name: ")
     (when-let ((fn (telega-tl-str user :first_name)))
       (telega-ins fn " "))
     (telega-ins (telega-tl-str user :last_name))
     (telega-ins "\n")
-    (telega-info--insert-user
-     user nil (lambda () (telega-describe-user user)))))
+    (telega-info--insert-user user nil)))
+
+(defun telega-describe-user (user)
+  "Show info about USER."
+  (interactive (list (telega-user-at (point))))
+  (with-telega-help-win "*Telega User*"
+    (setq telega--help-win-param (plist-get user :id))
+    (setq telega--help-win-inserter #'telega-describe-user--inserter)
+    (telega-describe-user--inserter (plist-get user :id))))
+
+(defun telega-describe-user--maybe-redisplay (user-id)
+  "Possible redisplay \\*Telega User\\* buffer for the USER-ID."
+  (telega-help-win--maybe-redisplay "*Telega User*" user-id))
 
 (defun telega-user-chat-with (user)
   "Start private chat with USER."

@@ -92,6 +92,29 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
          :chat_id (plist-get chat :id)
          :description (or descr ""))))
 
+(defun telega--createNewBasicGroupChat (title users &optional callback)
+  "Create new basicgroup with TITLE and USERS."
+  (telega-server--call
+   (list :@type "createNewBasicGroupChat"
+         :user_ids (cl-map #'vector (telega--tl-prop :id) users)
+         :title title)
+   callback))
+
+(defun telega--createNewSupergroupChat (title &optional channel-p description
+                                              location callback)
+  "Create new supergroup with TITLE.
+Specify non-nil CHANNEL-P to create new channel.
+Specify LOCATION to create location-based supergroup."
+  (telega-server--call
+   (nconc (list :@type "createNewSupergroupChat"
+                :title title
+                :is_channel (if channel-p t :false))
+          (when description
+            (list :description description))
+          (when location
+            (list :location location)))
+   callback))
+
 (defun telega--createNewSecretChat (user)
   "Create secret chat with USER.
 Return newly created chat."
@@ -102,7 +125,8 @@ Return newly created chat."
            :user_id (plist-get user :id))) :id)))
 
 (defun telega--createBasicGroupChat (basic-group-id &optional force)
-  "Create chat for BASIC-GROUP-ID."
+  "Return an existing chat corresponding to a known basicgroup.
+BASIC-GROUP-ID is the id of the basicgroup."
   (telega-chat-get
    (plist-get
     (telega-server--call
@@ -119,6 +143,24 @@ Return newly created chat."
      (list :@type "createSupergroupChat"
            :supergroup_id supergroup-id
            :force (if force t :false)))
+    :id)))
+
+(defun telega--deleteSupergroup (supergroup)
+  "Delete a SUPERGROUP or channel.
+All messagess will be deleted as well.
+Only owner can delete supergroup.
+Chats with more than 1000 members can't be deleted using this method."
+  (telega-server--send
+   (list :@type "deleteSupergroup"
+         :supergroup_id (plist-get supergroup :id))))
+
+(defun telega--createSecretChat (secret-chat-id)
+  "Return existing secret chat with id equal to SECRET-CHAT-ID."
+  (telega-chat-get
+   (plist-get
+    (telega-server--call
+     (list :@type "createSecretChat"
+           :secret_chat_id secret-chat-id))
     :id)))
 
 (defun telega--closeSecretChat (secretchat)
@@ -183,6 +225,24 @@ Return nil if can't join the chat."
     (list :@type "joinChatByInviteLink"
           :invite_link invite-link)
     callback))
+
+(defun telega--getChatPinnedMessage (chat &optional callback)
+  "Get pinned message for the CHAT, if any."
+  (unless (zerop (plist-get chat :pinned_message_id))
+    (telega-server--call
+     (list :@type "getChatPinnedMessage"
+           :chat_id (plist-get chat :id))
+     callback)))
+
+(defun telega--getChatMessageCount (chat filter &optional local-p callback)
+  "Return approximate number of messages of FILTER type in the CHAT.
+Specify non-nil LOCAL-P to avoid network requests."
+  (telega-server--call
+   (list :@type "getChatMessageCount"
+         :chat_id (plist-get chat :id)
+         :filter (list :@type filter)
+         :return_local (if local-p t :false))
+   callback))
 
 (defun telega--getChatEventLog (chat &optional query from-event-id
                                      limit filters users callback)
@@ -331,6 +391,15 @@ Return list of \"ChatMember\" objects."
           :offset (or offset 0)
           :limit (or limit 200))
     callback))
+
+(defun telega--setChatMemberStatus (chat user status)
+  "Change the STATUS of a CHAT USER, needs appropriate privileges.
+STATUS is one of: "
+  (telega-server--send
+   (list :@type "setChatMemberStatus"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id)
+         :status status)))
 
 (defun telega--canTransferOwnership (&optional callback)
   (telega-server--call
@@ -497,7 +566,7 @@ LIST-NAME is one of: \"Main\" or \"Archive\"."
    (list :@type "setTdlibParameters"
          :parameters (list :@type "tdlibParameters"
                            :use_test_dc (or telega-use-test-dc :false)
-                           :database_directory telega-directory
+                           :database_directory telega-database-dir
                            :files_directory telega-cache-dir
                            :use_file_database telega-use-file-database
                            :use_chat_info_database telega-use-chat-info-database

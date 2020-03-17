@@ -134,6 +134,14 @@
      :value "Delete «{title}» chat? ")
     ("lng_query_delete_chat_history"
      :value "Delete all message history in «{title}» chat? ")
+    ("lng_profile_delete_channel"
+     :value "Delete channel")
+    ("lng_profile_delete_group"
+     :value "Delete group")
+    ("lng_sure_delete_channel"
+     :value "Are you sure you want to delete this channel? All members will be removed and all messages will be lost.")
+    ("lng_sure_delete_group"
+     :value "Are you sure you want to delete this group? All members will be removed, and all messages will be lost.")
     ("lng_query_read_chats"
      :one_value "Toggle read for {count} chat? "
      :other_value "Toggle read for {count} chats? ")
@@ -178,7 +186,7 @@
     ("lng_report_spam"
      :value "Report Spam")
     ("lng_report_location"
-     ;; To report chat with "UnrelatedLocation" reason 
+     ;; To report chat with "UnrelatedLocation" reason
      :value "Report Location")
     ("lng_new_contact_add"
      :value "Add contact")
@@ -188,9 +196,35 @@
      :value "Block user")
     ("lng_new_contact_share"
      :value "Share my phone number")
+    ("lng_blocked_list_confirm_text"
+     :value "Do you want to block {name} from messaging and calling you on Telegram?")
 
     ("lng_channel_not_accessible"
      :value "Sorry, this channel is not accessible.")
+
+    ;; Group owenership transfering
+    ("lng_rights_transfer_about"
+     :value "This will transfer the full **owner rights** for {group} to {user}.")
+    ("lng_rights_transfer_password_description"
+     :value "Please enter your password to complete the transfer.")
+    ("lng_rights_transfer_sure"
+     :value "Change owner")
+    ("lng_rights_transfer_group"
+     :value "Transfer group ownership")
+    ("lng_rights_transfer_channel"
+     :value "Transfer channel ownership")
+    ("lng_rights_transfer_check_about"
+     :value "You can transfer this group to {user} only if you have:")
+    ("lng_rights_transfer_check_session"
+     :value "• Logged in on this device more than **24 hours** ago.")
+    ("lng_rights_transfer_check_password"
+     :value "• Enabled **2-Step Verification** more than **7 days** ago.")
+    ("lng_rights_transfer_check_later"
+     :value "Please come back later.")
+    ("lng_rights_transfer_done_channel"
+     :value "{user} is now the owner of the channel.")
+    ("lng_rights_transfer_done_group"
+     :value "{user} is now the owner of the group.")
     )
   "English language strings.")
 (defvar telega-i18n--strings nil
@@ -266,6 +300,14 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                              (telega-tl-str str :zero_value))
                         (telega-tl-str str (telega-i18n-plural-rule count))))
                   (telega-tl-str str :other_value))))
+
+    ;; NOTE: **text** means bold
+    (setq val (replace-regexp-in-string
+               "\\*\\*\\([^*]+\\)\\*\\*"
+               (lambda (match)
+                 (propertize (match-string 1 match) 'face 'bold))
+               val nil 'literal))
+
     (while args
       (setq val (replace-regexp-in-string
                  (regexp-quote

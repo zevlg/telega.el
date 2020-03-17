@@ -35,6 +35,11 @@
   :type 'string
   :group 'telega)
 
+(defcustom telega-database-dir telega-directory
+  "*Directory for the TDLib's persistent database."
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-cache-dir (expand-file-name "cache" telega-directory)
   "*Directory for telegram downloads."
   :type 'string
@@ -48,6 +53,14 @@
 (defcustom telega-ton-keystore-dir (expand-file-name "ton_keys" telega-directory)
   "*Keystore directory for TON."
   :type 'string
+  :group 'telega)
+
+(defcustom telega-accounts nil
+  "*List of the accounts to be used by telega.
+Each element is a list in form
+\\(ACCOUNT-NAME CUSTOM-VAR1 VAL1 CUSTOM-VAR2 VAL2 ...\\)
+At least `telega-database-dir' should be customized for each account."
+  :type 'list
   :group 'telega)
 
 (defcustom telega-language "en"

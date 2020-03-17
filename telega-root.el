@@ -50,6 +50,9 @@
 (declare-function telega-chatbuf--switch-out "telega-chat")
 (declare-function telega-chatbuf--check-focus-change "telega-chat")
 
+(declare-function telega-account-current "telega")
+(declare-function telega-account-switch "telega" (account))
+
 
 (defvar telega-root--ewoc nil)
 (defvar telega-contacts--ewoc nil
@@ -262,7 +265,16 @@ Terminate telega-server and kill all chat buffers."
 STATUS is cons with connection status as car and aux status as cdr."
   (let ((conn-status (car status))
         (aux-status (cdr status)))
-    (telega-ins "Status: " conn-status)
+    (telega-ins "Status")
+    (when-let (account (telega-account-current))
+      (telega-ins " (")
+      (telega-ins--button (car account)
+        'face 'bold
+        'action (lambda (_ignored)
+                  (call-interactively #'telega-account-switch))
+        'help "Switch to another account")
+      (telega-ins ")"))
+    (telega-ins ": " conn-status)
     (unless (string-empty-p aux-status)
       (if (< (current-column) 28)
           (telega-ins (make-string (- 30 (current-column)) ?\s))
@@ -682,6 +694,10 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
          (message "telega: error in `telega-chatbuf--switch-out': %S" err)))
 
       (setq telega--last-buffer cbuf)
+
+      (when telega--help-win-dirty-p
+        (telega-help-win--maybe-redisplay cbuf telega--help-win-param))
+
       (condition-case err
           ;; NOTE: trigger switch in only if buffer gets visibility
           (when telega-chatbuf--chat

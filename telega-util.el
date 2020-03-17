@@ -504,6 +504,26 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
                              prompt choices nil t)
                     choices nil nil 'string=))))
 
+(defun telega-read-location (prompt)
+  "Read location with PROMPT."
+  (let ((location nil))
+    (while (let ((locstr (read-string prompt)))
+             (setq location
+                   (mapcar #'string-to-number (split-string locstr ",")))
+             (unless (and (numberp (car location)) (numberp (cadr location)))
+               (message "Invalid location `%s', use: <LAT>,<LONG> format"
+                        locstr)
+               (sit-for 1)
+               t)))
+    location))
+
+(defun telega-read-im-sure-p (prompt)
+  "Ask user he sure about some action.
+Return non-nil only if \"i'm sure\" is typed in."
+  (let ((input (read-string
+                (concat prompt " (type \"i'm sure\" to confirm): "))))
+    (string-equal input "i'm sure")))
+
 (defun telega-custom-labels (&optional no-properties)
   "Return list with all custom labels used in `telega'."
   (let* ((labels (nconc (mapcar (lambda (chat)

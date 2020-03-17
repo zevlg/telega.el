@@ -30,13 +30,18 @@
 
 (declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
 
+(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 (declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
 (declare-function telega-describe-chat "telega-chat" (chat))
+(declare-function telega-describe-chat--maybe-redisplay "telega-chat" (chat))
+(declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username-delim))
 (declare-function telega-chat-generate-invite-link "telega-chat" (chat-id))
+(declare-function telega-chat-transfer-ownership "telega-chat" (chat))
 
+(declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
 (declare-function telega-sort-maybe-reorder "telega-sort" (chat event))
@@ -47,23 +52,24 @@
   `(puthash (plist-get ,tlobj :id) ,tlobj
             (cdr (assq (telega--tl-type ,tlobj) telega--info))))
 
-(defun telega--info (tlobj-type tlobj-id)
+(defun telega--info (tlobj-type tlobj-id &optional locally-p)
   (let* ((info-hash (alist-get tlobj-type telega--info))
          (info (gethash tlobj-id info-hash)))
     (unless info
-      (setq info (telega-server--call
-                  (cl-ecase tlobj-type
-                    (user
-                     `(:@type "getUser" :user_id ,tlobj-id))
-                    (secretChat
-                     `(:@type "getSecretChat" :secret_chat_id ,tlobj-id))
-                    (basicGroup
-                     `(:@type "getBasicGroup" :basic_group_id ,tlobj-id))
-                    (supergroup
-                     `(:@type "getSupergroup" :supergroup_id ,tlobj-id)))))
-      (cl-assert info nil "getting info for %S(id=%S) timeout"
-                 tlobj-type tlobj-id)
-      (puthash tlobj-id info info-hash))
+      (unless locally-p
+        (setq info (telega-server--call
+                    (cl-ecase tlobj-type
+                      (user
+                       `(:@type "getUser" :user_id ,tlobj-id))
+                      (secretChat
+                       `(:@type "getSecretChat" :secret_chat_id ,tlobj-id))
+                      (basicGroup
+                       `(:@type "getBasicGroup" :basic_group_id ,tlobj-id))
+                      (supergroup
+                       `(:@type "getSupergroup" :supergroup_id ,tlobj-id)))))
+        (cl-assert info nil "getting info for %S(id=%S) timeout"
+                   tlobj-type tlobj-id)
+        (puthash tlobj-id info info-hash)))
     info))
 
 (defun telega--on-updateUser (event)
@@ -73,7 +79,10 @@
     ;; Update corresponding private chat button
     (when-let ((chat (telega-chat-get (plist-get user :id) 'offline)))
       (telega-root--chat-update
-       chat (telega-sort-maybe-reorder chat event)))
+       chat (telega-sort-maybe-reorder chat event))
+      (telega-describe-chat--maybe-redisplay chat))
+
+    (telega-describe-user--maybe-redisplay (plist-get user :id))
 
     (run-hook-with-args 'telega-user-update-hook user)))
 
@@ -91,14 +100,28 @@
       )))
 
 (defun telega--on-updateSupergroup (event)
-  (let ((supergroup (plist-get event :supergroup)))
+  "Handle supergroup update EVENT."
+  (let* ((supergroup (plist-get event :supergroup))
+         (old-my-status
+          (plist-get (telega--info 'supergroup (plist-get supergroup :id)
+                                   'locally) :status))
+         (me-was-owner (and old-my-status (telega--tl-type old-my-status)
+                            'chatMemberStatusCreator)))
     (telega--info-update supergroup)
 
-    (when telega--sort-criteria
-      (when-let ((chat (cl-find supergroup telega--ordered-chats
-                                :test 'eq :key 'telega-chat--info)))
+    (when-let ((chat (cl-find supergroup telega--ordered-chats
+                              :test 'eq :key 'telega-chat--supergroup)))
+      ;; NOTE: notify if someone transferred ownership to me
+      (when (and (not me-was-owner)
+                 (telega-chat-match-p chat 'me-is-owner))
+        (message "telega: me is now owner of the %s"
+                 (telega-chat-title-with-brackets chat " ")))
+
+      (when telega--sort-criteria
         (telega-sort-maybe-reorder chat event))
-      )))
+
+      (telega-describe-chat--maybe-redisplay chat))
+    ))
 
 (defun telega--on-updateSecretChat (event)
   (let ((secretchat (plist-get event :secret_chat)))
@@ -109,7 +132,8 @@
                               (telega-filter-chats
                                telega--ordered-chats '(type secret))
                               :test 'eq :key #'telega-chat--info)))
-      (telega-root--chat-update chat))))
+      (telega-root--chat-update chat)
+      (telega-describe-chat--maybe-redisplay chat))))
 
 ;; FullInfo
 (defun telega--on-updateUserFullInfo (event)
@@ -121,7 +145,10 @@
     ;; because for example `:is_blocked' might be used
     (when-let ((chat (telega-chat-get user-id 'offline)))
       (telega-root--chat-update
-       chat (telega-sort-maybe-reorder chat event)))
+       chat (telega-sort-maybe-reorder chat event))
+      (telega-describe-chat--maybe-redisplay chat))
+
+    (telega-describe-user--maybe-redisplay user-id)
     ))
 
 (defun telega--on-updateBasicGroupFullInfo (event)
@@ -478,7 +505,33 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         (telega-ins (telega-i18n "scam_badge")))
       (telega-ins "\n"))
 
-    (telega-ins "Status: " (substring member-status-name 16) "\n")
+    (telega-ins "Status: " (substring member-status-name 16))
+    ;; Buttons for the owner of the group
+    (when (telega-chat-match-p chat 'me-is-owner)
+      (let ((channel-p (eq (telega-chat--type chat) 'channel)))
+        ;; Delete supergroup/channel for everyone
+        (telega-ins " ")
+        (telega-ins--button
+            (telega-i18n (if channel-p
+                             "profile_delete_channel"
+                           "profile_delete_group"))
+          'action (lambda (_ignored)
+                    (when (telega-read-im-sure-p
+                           (telega-i18n (if channel-p
+                                            "sure_delete_channel"
+                                          "sure_delete_group")))
+                      (telega--deleteSupergroup supergroup))))
+
+        (telega-ins " ")
+        (telega-ins--button
+            (telega-i18n (if channel-p
+                             "rights_transfer_channel"
+                           "rights_transfer_group"))
+          'action (lambda (_ignored)
+                    (telega-chat-transfer-ownership chat)))
+        ))
+    (telega-ins "\n")
+
     (telega-ins (if (or (string= member-status-name "chatMemberStatusMember")
                         (and (member member-status-name
                                      '("chatMemberStatusCreator"
