@@ -398,7 +398,8 @@ markdown syntax to the TEXT."
 (defun telega-ins--photo (photo &optional msg limits)
   "Inserter for the PHOTO."
   (let* ((hr (telega-photo--highres photo))
-         (hr-file (telega-file--renew hr :photo)))
+         (hr-file (telega-file--renew hr :photo))
+         (ttl-in (plist-get msg :ttl_expires_in)))
     ;; Show downloading status of highres thumbnail
     (when (and (telega-file--downloading-p hr-file) msg)
       ;; Monitor downloading progress for the HR-FILE
@@ -411,9 +412,17 @@ markdown syntax to the TEXT."
       (telega-ins--file-progress msg hr-file)
       (telega-ins "\n"))
 
-    (telega-ins--image-slices
-     (telega-photo--image photo (or limits telega-photo-maxsize)))
-    ))
+    (if (and ttl-in (> ttl-in 0.0))
+        (progn
+          (telega-ins (propertize "Self-descruct in" 'face 'shadow) " "
+                      (telega-duration-human-readable ttl-in) "\n")
+          (telega-ins--image-slices
+           (telega-self-desruct-create-svg
+            (plist-get photo :minithumbnail))))
+
+      (telega-ins--image-slices
+       (telega-photo--image photo (or limits telega-photo-maxsize)))
+      )))
 
 (defun telega-ins--audio (msg &optional audio music-symbol)
   "Insert audio message MSG.
@@ -977,7 +986,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                             (telega-msg-redisplay msg))))))))
     ))
 
-(defun telega-ins--input-file (document &optional attach-symbol)
+(defun telega-ins--input-file (document &optional attach-symbol trailing-text)
   "Insert input file."
   (telega-ins (or attach-symbol telega-symbol-attachment) " ")
   (cl-ecase (telega--tl-type document)
@@ -995,7 +1004,10 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
      ;; TODO: getRemoteFile
      (telega-ins-fmt "Remote: %s" (plist-get document :id))
      )
-    ))
+    )
+  (when trailing-text
+    (telega-ins trailing-text))
+  )
 
 (defun telega-msg-special-p (msg)
   "Return non-nil if MSG is special."
@@ -1588,11 +1600,21 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
      (inputMessageDocument
       (telega-ins--input-file (plist-get imc :document)))
      (inputMessagePhoto
-      (telega-ins--input-file (plist-get imc :photo) telega-symbol-photo))
+      (let ((ttl-text (when (plist-get imc :ttl)
+                        (format ", self-destruct in: %s"
+                                (telega-duration-human-readable
+                                 (plist-get imc :ttl))))))
+        (telega-ins--input-file (plist-get imc :photo) telega-symbol-photo
+                                ttl-text)))
      (inputMessageAudio
       (telega-ins--input-file (plist-get imc :audio) telega-symbol-audio))
      (inputMessageVideo
-      (telega-ins--input-file (plist-get imc :video) telega-symbol-video))
+      (let ((ttl-text (when (plist-get imc :ttl)
+                        (format ", self-destruct in: %s"
+                                (telega-duration-human-readable
+                                 (plist-get imc :ttl))))))
+        (telega-ins--input-file (plist-get imc :video) telega-symbol-video
+                                ttl-text)))
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
      (inputMessageAnimation

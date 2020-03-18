@@ -35,7 +35,7 @@ In some random order:
 - [x] Avatars, Photos, Stickers
 - [x] Animated GIF, via ffplay
 - [x] Special messages such as location/live location, voice/video
-      messages, contacts, etc (PARTLY)
+      messages, contacts, self-destruct photo/video, etc
 - [x] Poll messages, Poll creation
 - [x] Games, Game Scores 
 - [x] Handling local links, such as "tg:" or "https://t.me/xxx"

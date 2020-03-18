@@ -2913,25 +2913,42 @@ If PREVIEW-P is non-nil, then generate preview image."
      (list :@type "inputMessageDocument"
            :document ifile))))
 
-(defun telega-chatbuf-attach-photo (filename)
+(defun telega-chatbuf-attach-photo (filename &optional ttl)
   "Attach FILENAME as photo to the current input."
   (interactive (list (read-file-name "Photo: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t))
         (img-size (image-size
-                   (create-image filename (when (fboundp 'imagemagick-types) 'imagemagick) nil :scale 1.0) t)))
+                   (create-image filename (when (fboundp 'imagemagick-types)
+                                            'imagemagick) nil :scale 1.0) t)))
     (telega-chatbuf-input-insert
-     (list :@type "inputMessagePhoto"
-           :photo ifile
-           :width (car img-size)
-           :height (cdr img-size)))))
+     (nconc (list :@type "inputMessagePhoto"
+                  :photo ifile
+                  :width (car img-size)
+                  :height (cdr img-size))
+            (when ttl
+              (list :ttl ttl))))))
 
-(defun telega-chatbuf-attach-video (filename)
+(defun telega-chatbuf-attach-ttl-photo (filename ttl)
+  "Attach self destructing photo."
+  (interactive (list (read-file-name "Photo: ")
+                     (read-number "Self desctruct in seconds (0-60): ")))
+  (telega-chatbuf-attach-photo filename ttl))
+
+(defun telega-chatbuf-attach-video (filename &optional ttl)
   "Attach FILENAME as video to the current input."
   (interactive (list (read-file-name "Video: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Video)))
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageVideo"
-           :video ifile))))
+     (nconc (list :@type "inputMessageVideo"
+                  :video ifile)
+            (when ttl
+              (list :ttl ttl))))))
+
+(defun telega-chatbuf-attach-ttl-video (filename ttl)
+  "Attach self destructing video."
+  (interactive (list (read-file-name "Video: ")
+                     (read-number "Self desctruct in seconds (0-60): ")))
+  (telega-chatbuf-attach-video filename ttl))
 
 (defun telega-chatbuf-attach-audio (filename)
   "Attach FILENAME as audio to the current input."

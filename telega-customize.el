@@ -697,9 +697,17 @@ Supported Markup:
                  (const :tag "Markdown v2" 2))
   :group 'telega-chat)
 
+(declare-function telega-chat-private-p "telega-chat" (chat &optional include-bots-p))
+
 (defcustom telega-chat-attach-commands
   (list (list "photo" nil 'telega-chatbuf-attach-photo)
+        (list "self-destruct-photo" (lambda ()
+                                      (telega-chat-private-p telega-chatbuf--chat))
+              'telega-chatbuf-attach-ttl-photo)
         (list "video" nil 'telega-chatbuf-attach-video)
+        (list "self-destruct-video" (lambda ()
+                                      (telega-chat-private-p telega-chatbuf--chat))
+              'telega-chatbuf-attach-ttl-video)
         (list "note-video" nil 'telega-chatbuf-attach-note-video)
         (list "audio" nil 'telega-chatbuf-attach-audio)
         (list "note-voice" nil 'telega-chatbuf-attach-note-voice)

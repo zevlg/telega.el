@@ -237,6 +237,33 @@ PROPS is passed on to `create-image' as its PROPS list."
                :ascent 'center
                :telega-text telega-text)))
 
+(defun telega-self-desruct-create-svg (minithumb)
+  "Create svg image for the self desructing image with minithumbnail MINITHUMB."
+  (let* ((xh (* (ceiling (/ (cdr telega-photo-maxsize) 1.5))
+                (telega-chars-xheight 1)))
+         (xw xh)
+         (svg (telega-svg-create xw xh)))
+
+    (when minithumb
+      (svg-embed svg (base64-decode-string (plist-get minithumb :data)) "image/jpeg" t
+                 :x 0 :y 0 :width xw :height xh))
+
+    (svg-circle svg (/ xw 2) (/ xh 2) (/ xh 4)
+                :fill-color "white"
+                :fill-opacity "0.75")
+
+    (when telega-emoji-font-family
+      (let ((font-size (/ xw 4)))
+        (svg-text svg "🔥"
+                  :font-family telega-emoji-font-family
+                  :font-size font-size
+                  :x (- (/ xw 2) (/ font-size 1.75))
+                  :y (+ (/ font-size 3) (/ xh 2)))))
+
+    (telega-svg-image svg :scale 1.0
+                      :width xw :height xh
+                      :ascent 'center)))
+
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
 (defun telega-symbol-widths-install (symbol-widths-alist)
