@@ -4,7 +4,27 @@
 
 * telega.el Major Features
 
-** Multiple Accounts
+** Root Views, different views for the rootbuf
+   CREATED: [2020-03-17]
+
+   - [X] Searching
+   - [ ] Nearby users/chats
+   - [ ] Chats, grouped by custom labels
+         #+begin_example
+         *OOS*
+           [chat1      ]
+           [chat2      ]
+         *Emacs*
+           [chat1      ]
+           [chat2      ]
+         #+end_example
+   - [ ] Last messages in the chats (idea by @mrkiko)
+
+** WIP Multiple Accounts
+   - DONE initially, accounts can be switched with
+     ~M-x telega-switch-account RET~.  Done by specifying different
+     database directories for different accounts.
+
    - Personal rootbuf per account
    - Make all vars used by telega buffer-local in corresponding rootbuf
    - Account and "engine" saved in rootbuf
@@ -16,10 +36,13 @@
      Maybe "--> <ACCOUNT>" as in official clients?
 
 ** AppIndicator in telega-server
+
 ** Searching Messages in chat
-   - Shared Media
-   - Importing/Exporting files using "Saved Messages"
+   - [ ] Shared Media
+   - [ ] Importing/Exporting files using "Saved Messages"
+
 ** Full integration for Transalation Platform
+
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
 
 ** DONE Stickers support in non-imagemagick Emacs
@@ -70,28 +93,44 @@ Random list of ideas for telega.el
       [chat2      ]
 #+end_example
 
+   WON'T DO.  See [[Root Views, different views for the rootbuf]]
+
 ** Global searchable history of the inputs you've sent to any chat
 
 ** Filters for chat messages
-   - Message thread as in https://t.me/designers/44
+   - [ ] Scheduled messages
      #+begin_example
      MSG1
      MSG2
-     _______________________________[related messages]__
+     ______________________________________[scheduled]__
+     Filter: scheduled
      >>> []
      #+end_example
-   - Shared Media
+
+   - [ ] Message thread as in https://t.me/designers/44
      #+begin_example
      MSG1
      MSG2
-     _______________________________[shared photos]__
+     ________________________________________[related]__
+     [x] Filter: related
      >>> []
      #+end_example
-   - Searching in chat
+
+   - [ ] Shared Media
      #+begin_example
      MSG1
      MSG2
-     _____________________________[search "hello"]__
+     _________________________________________[photos]__
+     [x] Filter: photos
+     >>> []
+     #+end_example
+
+   - [ ] Searching in chat
+     #+begin_example
+     MSG1
+     MSG2
+     _________________________________[search "hello"]__
+     [x] Filter: searching for "hello"
      >>> []
      #+end_example
 

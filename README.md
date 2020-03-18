@@ -48,7 +48,7 @@ In some random order:
 - [ ] Shared media
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
-- [ ] Message scheduling, see [TDLib#695](https://github.com/tdlib/td/issues/695)
+- [x] Message scheduling, reminders [PARTLY]
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 
 ## Unique features
