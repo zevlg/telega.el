@@ -897,7 +897,9 @@ If SYM is nil then show message unconditionally."
 Return timestamp as unix time."
   (interactive)
   (let ((date-time (org-read-date 'with-time t nil prompt)))
-    (round (time-to-seconds (encode-time (decode-time date-time))))))
+    ;; NOTE: we use `apply' to support Emacs 26
+    ;; see https://t.me/emacs_telega/14017
+    (round (time-to-seconds (apply #'encode-time (decode-time date-time))))))
 
 (provide 'telega-util)
 
