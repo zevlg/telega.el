@@ -483,7 +483,23 @@ The messages are returned in a reverse chronological order."
     (list :@type "getChatScheduledMessages"
           :chat_id (plist-get chat :id))
     callback))
-  
+
+(defun telega--searchChatMessages (chat filter query from-msg-id offset &optional
+                                        limit sender-user callback)
+  "Search messages in CHAT by QUERY."
+  (declare (indent 7))
+  (telega-server--call
+    (nconc (list :@type "searchChatMessages"
+                 :chat_id (plist-get chat :id)
+                 :filter (list :@type filter)
+                 :query query
+                 :from_message_id from-msg-id
+                 :offset offset
+                 :limit (or limit telega-chat-history-limit))
+           (when sender-user
+             (list :sender_user_id (plist-get sender-user :id))))
+    callback))
+
 
 (defun telega--setAuthenticationPhoneNumber (phone-number)
   "Set user's phone number to PHONE-NUMBER."

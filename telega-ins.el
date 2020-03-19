@@ -62,7 +62,7 @@
 
 (defun telega-button--endings-func (label)
   "Function to generate endings for the button with LABEL."
-  (if (member label (list "  " telega-symbol-heavy-checkmark))
+  (if (member label (list "  " "✕" telega-symbol-heavy-checkmark))
       (cons "" "")
 
     ;; XXX inclose LABEL with shrink version of spaces, so button
@@ -2086,7 +2086,7 @@ KIND is one of: `spam', `location', `add', `block', `share' and `remove-bar'"
          'action (lambda (_ignore)
                    (telega--sharePhoneNumber user)))))
     (remove-bar
-     (telega-ins--button "x"
+     (telega-ins--button "✕"
        'action (lambda (_ignored)
                  (telega--removeChatActionBar chat)
                  (with-telega-chatbuf chat

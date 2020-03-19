@@ -38,7 +38,7 @@
 ** AppIndicator in telega-server
 
 ** Searching Messages in chat
-   - [ ] Shared Media
+   - [X] Shared Media
    - [ ] Importing/Exporting files using "Saved Messages"
 
 ** Full integration for Transalation Platform
@@ -98,7 +98,7 @@ Random list of ideas for telega.el
 ** Global searchable history of the inputs you've sent to any chat
 
 ** Filters for chat messages
-   - [ ] Scheduled messages
+   - [X] Scheduled messages
      #+begin_example
      MSG1
      MSG2
@@ -116,7 +116,7 @@ Random list of ideas for telega.el
      >>> []
      #+end_example
 
-   - [ ] Shared Media
+   - [X] Shared Media
      #+begin_example
      MSG1
      MSG2
@@ -125,7 +125,7 @@ Random list of ideas for telega.el
      >>> []
      #+end_example
 
-   - [ ] Searching in chat
+   - [X] Searching in chat
      #+begin_example
      MSG1
      MSG2

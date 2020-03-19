@@ -44,8 +44,8 @@ In some random order:
 - [x] Blocking/Unblocking users, listing blocked users
 - [x] Inline bots requests, via "@bot query<TAB>"
 - [x] Chat Lists, "Archived Chats", see [telega#100](https://github.com/zevlg/telega.el/issues/100)
-- [ ] Searching for messages in chat
-- [ ] Shared media
+- [x] Searching for messages in chat (PARTLY)
+- [x] Shared media
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
 - [x] Message scheduling, reminders [PARTLY]

@@ -1045,6 +1045,14 @@ cdr is used if custom order is greater then real chat's order."
   "Symbol used to draw underline bar.
 \"\uFF3F\" is also good candidate for underline bar."
   :type 'string
+  :options (list "⎼"
+                 (propertize " " 'face 'underline))
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-underline-bar-partial "."
+  "Symbol used to draw underline bar in chatbuf with partial history."
+  :type 'string
+  :options '("🢑" "🢓")
   :group 'telega-symbol)
 
 (defcustom telega-symbol-draft (propertize "Draft" 'face 'error)
