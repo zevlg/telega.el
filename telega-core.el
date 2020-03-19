@@ -720,7 +720,7 @@ NIL yields empty string for the convenience."
   "Return time at 00:00:001 at TIMESTAMP's day.
 Optional DECODED-TS is the result of already applied `decode-time'."
   (let ((dt (or decoded-ts (decode-time timestamp))))
-    (1+ (- timestamp (* 3600 (nth 2 dt)) (* 60 (nth 1 dt)) (nth 0 dt)))))
+    (1+ (- (floor timestamp) (* 3600 (nth 2 dt)) (* 60 (nth 1 dt)) (nth 0 dt)))))
 
 ;;; Buttons for telega
 (defun telega-button--ins-error (_val)
