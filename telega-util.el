@@ -196,10 +196,6 @@ Specify EXT with leading `.'."
                 :clip-path "url(#pclip)")
     svg))
 
-(defmacro telega-svg-create (&rest args)
-  ;; See https://t.me/emacs_telega/13764
-  `(svg-create ,@args :xmlns:xlink "http://www.w3.org/1999/xlink"))
-
 (defun telega-svg-image (svg &rest props)
   "Return an image object from SVG.
 PROPS is passed on to `create-image' as its PROPS list."

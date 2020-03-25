@@ -569,6 +569,10 @@ Return nil for empty strings."
   "Return non-nil if CHAT-OR-USER is me."
   (eq telega--me-id (plist-get chat-or-user :id)))
 
+(defmacro telega-svg-create (&rest args)
+  ;; See https://t.me/emacs_telega/13764
+  `(svg-create ,@args :xmlns:xlink "http://www.w3.org/1999/xlink"))
+
 
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)
