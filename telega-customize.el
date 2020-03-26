@@ -894,9 +894,15 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
-(defcustom telega-msg-photo-types '("w" "d" "y" "c" "x" "b" "m" "s" "a")
-  "*Size types to use for full size photos."
+(defcustom telega-photo-types '("w" "d" "y" "c" "x" "b" "m" "s" "a")
+  "*Size types to use for full size photos.
+NOT USED."
   :type 'list
+  :group 'telega-msg)
+
+(defcustom telega-photo-show-details t
+  "*Non-nil to show photo details for photo messages."
+  :type 'boolean
   :group 'telega-msg)
 
 (defcustom telega-photo-maxsize '(40 . 10)
@@ -987,6 +993,11 @@ cdr is used if custom order is greater then real chat's order."
 
 (defcustom telega-symbol-lock "🔒"      ;\U0001F512
   "*String to use as lock symbol."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-flames "🔥"
+  "*Symbol used in self-destruct photos/videos."
   :type 'string
   :group 'telega-symbol)
 

@@ -21,6 +21,7 @@
    - [ ] Last messages in the chats (idea by @mrkiko)
 
 ** WIP Multiple Accounts
+   - See https://github.com/tdlib/td/issues/959
    - DONE initially, accounts can be switched with
      ~M-x telega-switch-account RET~.  Done by specifying different
      database directories for different accounts.
@@ -170,6 +171,17 @@ Random list of ideas for telega.el
    NOTE: Option won't work, because custom options are cleared after
    logout.  Might have ~#favorite-messages~ tag as first line of the
    message with list of links to favorite messages
+
+   Above approach is bad. WHY?
+
+   To mark message as favorite, just post internal telega link to the
+   message into "Saved Messages" with ~#favorite~ hashtag at the end.
+   Then simple ~searchChatMessages~ for ~#favorite~ hashtag.
+
+   However this approach will make listing favorite messages more
+   complex.  And making functionality such as outlining message as
+   favorite much much more complex.  So maybe former approach is not
+   so bad.
 
 ** Mark all chatbuf as readonly, keeping input area as ~inhit-read-only~
 

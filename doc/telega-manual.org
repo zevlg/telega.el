@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.1)
+#+TITLE: Telega Manual (v0.6.4)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -361,6 +361,13 @@ pressed on chat button.
 Custom chat labels is one of the ways to group chats together.
 Labeled chats can be easily filtered using ~label~ chat filter.
 See [[#chat-filters][Chat Filters]]
+
+** Sending ordinary messages
+** Sending special messages
+** Sending messages via bots
+** Scheduling messages and self reminders
+
+** Filtering messages in chatbuf
 * Minor Modes
 
 =telega= ships with various minor modes you might consider to use.

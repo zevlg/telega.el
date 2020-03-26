@@ -195,4 +195,7 @@
   :value "{user} is now the owner of the channel.")
  ("lng_rights_transfer_done_group"
   :value "{user} is now the owner of the group.")
+
+ ("telega_scheduled_help"
+  :value "Next input will be scheduled")
  )

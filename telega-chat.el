@@ -1865,7 +1865,7 @@ otherwise set draft only if current input is also draft."
           (telega-ins--text
            (telega--tl-get draft-msg :input_message_text :text)))))))
 
-(defun telega-chatbuf--point-refresh ()
+(defun telega-chatbuf--point-refresh (&optional ignore-visibility)
   "Refresh point in the chatbuf.
 Move to the last unseen message.  If all messages are seen, then
 move to the input.
@@ -1878,7 +1878,8 @@ Also marks some messages as read in chatbuf."
     (if (or (not msg-node)
             (and (telega-chatbuf--last-msg-loaded-p)
                  (eq msg-node (ewoc-nth telega-chatbuf--ewoc -1))
-                 (telega-button--observable-p (ewoc-location msg-node))))
+                 (or ignore-visibility
+                     (telega-button--observable-p (ewoc-location msg-node)))))
         (goto-char (point-max))
       (goto-char (ewoc-location msg-node)))
 
@@ -1895,7 +1896,7 @@ Also marks some messages as read in chatbuf."
       (- (/ telega-chat-history-limit 2))
       telega-chat-history-limit
     (lambda (total-messages)
-      (telega-chatbuf--point-refresh)
+      (telega-chatbuf--point-refresh 'force)
       (unless (zerop total-messages)
         ;; Possible load more history
         (when (and (< (point) 2000)
@@ -2701,6 +2702,23 @@ markup of MARKDOWN-VERSION."
       (setq attaches (cdr attaches)))
     (nreverse result)))
 
+(defun telega-chatbuf--input-options (imc)
+  "Convert IMC to send options.
+Return valid \"sendMessageOptions\"."
+  (cl-ecase (telega--tl-type imc)
+    (telegaScheduledMessage
+     (let ((timestamp (plist-get imc :timestamp)))
+       (list :@type "sendMessageOptions"
+             :scheduling_state
+             (if timestamp
+                 (list :@type "messageSchedulingStateSendAtDate"
+                       :send_date timestamp)
+               (list :@type "messageSchedulingStateSendWhenOnline")))))))
+
+;; ** Sending ordinary messages
+;; ** Sending special messages
+;; ** Sending messages via bots
+;; ** Scheduling messages and self reminders
 (defun telega-chatbuf-input-send (&optional markdown-version)
   "Send current input to the chat.
 MARKDOWN-VERSION - version for markdown formatting, by default
@@ -2726,14 +2744,7 @@ In case `telega-chat-use-markdown-version' is no-nil, and `\\[universal-argument
     ;; NOTE: if first IMC is telegaScheduledMessage, then schedule all
     ;; the IMCs
     (when (and imcs (eq (telega--tl-type (car imcs)) 'telegaScheduledMessage))
-      (let ((timestamp (plist-get (car imcs) :timestamp)))
-        (setq options
-              (list :@type "sendMessageOptions"
-                    :scheduling_state
-                    (if timestamp
-                        (list :@type "messageSchedulingStateSendAtDate"
-                              :send_date timestamp)
-                      (list :@type "messageSchedulingStateSendWhenOnline")))))
+      (setq options (telega-chatbuf--input-options (car imcs)))
       (setq imcs (cdr imcs)))
 
     (cond
@@ -2801,6 +2812,9 @@ In case `telega-chat-use-markdown-version' is no-nil, and `\\[universal-argument
                (when (plist-get imc :unmark-after-sent)
                  (telega-msg-unmark msg))))
 
+            (telegaScheduledMessage
+             (setq options (telega-chatbuf--input-options imc)))
+
             (t (telega--sendMessage
                 telega-chatbuf--chat imc replying-msg options))))))
 
@@ -2821,7 +2835,8 @@ IMC might be a plain string or attachement specification."
   (when (< (point) telega-chatbuf--input-marker)
     (goto-char (point-max)))
 
-  (when (get-text-property (point) 'telega-attach)
+  (when (and (> (point) telega-chatbuf--input-marker)
+             (get-text-property (point) 'telega-attach))
     (telega-ins " "))
   (if (stringp imc)
       (telega-ins imc)
@@ -3282,7 +3297,9 @@ message when user gets online."
 
   (telega-chatbuf-input-insert
    (list :@type "telegaScheduledMessage"
-         :timestamp timestamp)))
+         :timestamp timestamp))
+  (telega-momentary-display
+   (propertize (telega-i18n "telega_scheduled_help") 'face 'shadow)))
 
 (defun telega-chatbuf-attach (attach-type)
   "Attach something into message.
@@ -3781,7 +3798,7 @@ If called outside chat buffer, then fallback to default DND behaviour."
     (dnd-handle-one-url nil action uri)))
 
 
-;;; Filtering messages in chat buffer
+;; ** Filtering messages in chatbuf
 (defconst telega-chat--filters
   (list (list "scheduled" #'telega-chatbuf-filter-scheduled)
         (list "search" "searchMessagesFilterEmpty")
@@ -3816,7 +3833,14 @@ Not all filters can filter by sender."
 
   (let ((msg-filter (assoc filter-name telega-chat--filters)))
     (cond ((null msg-filter)
-           (telega-chatbuf--load-initial-history))
+           ;; NOTE: if point is at some message, then keep this
+           ;; message visible, otherwise load initial history
+           (if-let ((msg-at-point (telega-msg-at (point))))
+               (progn
+                 (telega-chatbuf--clean)
+                 (telega-chat--goto-msg
+                  telega-chatbuf--chat (plist-get msg-at-point :id)))
+             (telega-chatbuf--load-initial-history)))
 
           ((functionp (cadr msg-filter))
            (call-interactively (cadr msg-filter)))
@@ -3883,7 +3907,8 @@ then also search by sender."
   (telega-chatbuf-filter "search" by-sender-p))
 
 (defun telega-chatbuf-filter-cancel (&rest _ignored)
-  "Cancel any message filtering."
+  "Cancel any message filtering.
+If point is at some message, then keep point on this message after reseting."
   (interactive)
   (when telega-chatbuf--filter
     (telega-chatbuf-filter nil)))

@@ -233,8 +233,9 @@ PROPS is passed on to `create-image' as its PROPS list."
                :ascent 'center
                :telega-text telega-text)))
 
-(defun telega-self-desruct-create-svg (minithumb)
-  "Create svg image for the self desructing image with minithumbnail MINITHUMB."
+(defun telega-self-destruct-create-svg (minithumb &optional emoji-symbol)
+  "Create svg image for the self destructing image with minithumbnail MINITHUMB.
+EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')"
   (let* ((xh (* (ceiling (/ (cdr telega-photo-maxsize) 1.5))
                 (telega-chars-xheight 1)))
          (xw xh)
@@ -250,7 +251,7 @@ PROPS is passed on to `create-image' as its PROPS list."
 
     (when telega-emoji-font-family
       (let ((font-size (/ xw 4)))
-        (svg-text svg "🔥"
+        (svg-text svg (or emoji-symbol telega-symbol-flames)
                   :font-family telega-emoji-font-family
                   :font-size font-size
                   :x (- (/ xw 2) (/ font-size 1.75))

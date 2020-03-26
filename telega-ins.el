@@ -395,30 +395,39 @@ markdown syntax to the TEXT."
                  'telega--entities-as-faces)
                (plist-get text :entities) (plist-get text :text))))))
 
-(defun telega-ins--photo (photo &optional msg limits)
-  "Inserter for the PHOTO."
+(defun telega-ins--photo (photo &optional msg limits show-details)
+  "Inserter for the PHOTO.
+SHOW-DETAILS - non-nil to show photo details."
   (let* ((hr (telega-photo--highres photo))
          (hr-file (telega-file--renew hr :photo))
-         (ttl-in (plist-get msg :ttl_expires_in)))
-    ;; Show downloading status of highres thumbnail
-    (when (and (telega-file--downloading-p hr-file) msg)
+         (show-progress
+          (and (telega-file--downloading-p hr-file) msg)))
+    ;; Show photo details and download progress for highres thumbnail
+    (when (or show-details show-progress)
       ;; Monitor downloading progress for the HR-FILE
-      (telega-file--download hr-file 32
-        (lambda (_fileignored)
-          (telega-msg-redisplay msg)))
+      (when show-progress
+        (telega-file--download hr-file 32
+          (lambda (_fileignored)
+            (telega-msg-redisplay msg))))
 
-      (telega-ins telega-symbol-photo)
-      (telega-ins-fmt " (%dx%d) " (plist-get hr :width) (plist-get hr :height))
-      (telega-ins--file-progress msg hr-file)
+      (telega-ins telega-symbol-photo " ")
+      (telega-ins-fmt "(%dx%d %s)"
+        (plist-get hr :width) (plist-get hr :height)
+        (file-size-human-readable (telega-file--size hr-file)))
+      (when show-progress
+        (telega-ins " ")
+        (telega-ins--file-progress msg hr-file))
       (telega-ins "\n"))
 
-    (if (and ttl-in (> ttl-in 0.0))
-        (progn
-          (telega-ins (propertize "Self-descruct in" 'face 'shadow) " "
-                      (telega-duration-human-readable ttl-in) "\n")
+    (if (telega--tl-get msg :content :is_secret)
+        (let ((ttl-in (or (plist-get msg :ttl_expires_in) 0)))
+          (when (> ttl-in 0)
+            (telega-ins (propertize "Self-descruct in" 'face 'shadow) " "
+                        (telega-duration-human-readable ttl-in) "\n"))
           (telega-ins--image-slices
-           (telega-self-desruct-create-svg
-            (plist-get photo :minithumbnail))))
+           (telega-self-destruct-create-svg
+            (plist-get photo :minithumbnail)
+            (if (> ttl-in 0) telega-symbol-flames telega-symbol-lock))))
 
       (telega-ins--image-slices
        (telega-photo--image photo (or limits telega-photo-maxsize)))
@@ -516,15 +525,28 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 
     ;; Video's thumbnail, if any
     (unless no-thumbnail-p
-      (let ((thumb (plist-get video :thumbnail))
-            (minithumb (plist-get video :minithumbnail)))
-        (when (or thumb minithumb)
-          (telega-ins "\n")
-          (telega-ins--image-slices
-           (telega-media--image
-            (cons video 'telega-thumb-or-minithumb--create-image)
-            (cons thumb :photo)))
-          (telega-ins " "))))
+      (if (telega--tl-get msg :content :is_secret)
+          ;; Secret video
+          (let ((ttl-in (or (plist-get msg :ttl_expires_in) 0)))
+            (when (> ttl-in 0)
+              (telega-ins "\n"
+                          (propertize "Self-descruct in" 'face 'shadow) " "
+                          (telega-duration-human-readable ttl-in)
+                          "\n"))
+            (telega-ins--image-slices
+             (telega-self-destruct-create-svg
+              (plist-get video :minithumbnail)
+              (if (> ttl-in 0) telega-symbol-flames telega-symbol-lock))))
+
+        (let ((thumb (plist-get video :thumbnail))
+              (minithumb (plist-get video :minithumbnail)))
+          (when (or thumb minithumb)
+            (telega-ins "\n")
+            (telega-ins--image-slices
+             (telega-media--image
+              (cons video 'telega-thumb-or-minithumb--create-image)
+              (cons thumb :photo)))
+            (telega-ins " ")))))
     t))
 
 (defun telega-ins--voice-note (msg &optional voice-note)
@@ -1163,7 +1185,8 @@ Special messages are determined with `telega-msg-special-p'."
       ('messageGame
        (telega-ins--game msg))
       ('messagePhoto
-       (telega-ins--photo (plist-get content :photo) msg))
+       (telega-ins--photo (plist-get content :photo)
+                          msg nil telega-photo-show-details))
       ('messageSticker
        (let ((sticker (plist-get content :sticker)))
          (when (plist-get sticker :is_animated)
