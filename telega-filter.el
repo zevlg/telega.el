@@ -395,7 +395,11 @@ ARGS specifies arguments to operation, first must always be chat."
         ((symbolp chat-filter)
          (funcall (telega-filter--get chat-filter) chat))
         ((consp chat-filter)
-         (apply (telega-filter--get (car chat-filter)) chat (cdr chat-filter)))
+         ;; NOTE: support for lambda function as chat-filter
+         (if (functionp chat-filter)
+             (funcall chat-filter chat)
+           (apply (telega-filter--get (car chat-filter))
+                  chat (cdr chat-filter))))
         (t (error "Invalid Chat Filter: %S" chat-filter))))
 
 (defun telega-filter-by-filter (filter-name)

@@ -23,8 +23,9 @@
 ** WIP Multiple Accounts
    - See https://github.com/tdlib/td/issues/959
    - DONE initially, accounts can be switched with
-     ~M-x telega-switch-account RET~.  Done by specifying different
-     database directories for different accounts.
+     ~M-x telega-account-switch RET~.  Done by specifying different
+     database directories for different accounts using
+     ~telega-accounts~ custom variable.
 
    - Personal rootbuf per account
    - Make all vars used by telega buffer-local in corresponding rootbuf

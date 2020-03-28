@@ -39,21 +39,31 @@
 
 
 (defun telega-tme-internal-link-to (chat-or-msg)
-  "Return internal tme link to CHAT-OR-MSG."
-  (cl-case (and chat-or-msg (telega--tl-type chat-or-msg))
-    (chat (format "tg:telega:%d"
-                  (plist-get chat-or-msg :id)))
-    (message (format "tg:telega:%d#%d"
-                     (plist-get chat-or-msg :chat_id)
-                     (plist-get chat-or-msg :id)))))
+  "Return internal tme link to CHAT-OR-MSG.
+Return nil if link can't be created."
+  (when chat-or-msg
+    (let* ((chat-p (eq 'chat (telega--tl-type chat-or-msg)))
+           (chat (if chat-p
+                     chat-or-msg
+                   (telega-chat-get (plist-get chat-or-msg :chat_id) 'offline))))
+      (concat "tg:telega:"
+              (if-let ((chat-username (telega-chat-username chat)))
+                  (concat "@" chat-username)
+                (number-to-string (plist-get chat :id)))
+              (when-let ((msg (unless chat-p chat-or-msg)))
+                (concat "#" (number-to-string (plist-get msg :id))))))))
 
-(defun telega-tme-open-internal (chat-id msg-id)
-  "Open internal link to any chat or message."
-  (let ((chat (or (telega-chat-get chat-id 'offline)
-                  (user-error "No chat with id=%S" chat-id))))
+(defun telega-tme-open-internal (chat-spec &optional msg-spec)
+  "Open internal link to any chat or message.
+CHAT-SPEC = @<username> | <chat-id>
+MSG-SPEC = <message-id>"
+  (let ((chat (or (if (string-prefix-p "@" chat-spec)
+                      (telega-chat-by-username (substring chat-spec 1))
+                    (telega-chat-get (string-to-number chat-spec) 'offline))
+                  (user-error "No chat with CHAT-SPEC=%S" chat-spec))))
     (telega-chat--pop-to-buffer chat)
-    (when msg-id
-      (telega-chat--goto-msg chat msg-id 'highlight))))
+    (when msg-spec
+      (telega-chat--goto-msg chat (string-to-number msg-spec) 'highlight))))
 
 (defun telega-tme-open-privatepost (supergroup post)
   "Open POST in private SUPERGROUP."
@@ -184,12 +194,10 @@ Return non-nil, meaning URL has been handled."
            )
           ;; Internal links to any chat or message
           ;; See: https://github.com/zevlg/telega.el/issues/139
-          ;; Internal links are in form tg:telega:<CHAT-ID>[#<MSG-ID>]
-          ((string-match "^telega:\\([0-9]+\\)" path)
-           (telega-tme-open-internal
-            (string-to-number (match-string 1 path))
-            (when-let ((str-msg-id (url-target urlobj)))
-              (string-to-number str-msg-id))))
+          ;; Internal links are in form tg:telega:<CHAT-SPEC>[#<MSG-ID>]
+          ;;   CHAT-SPEC =  @USERNAME | CHAT-ID
+          ((string-match "^telega:\\([^#]+\\)" path)
+           (telega-tme-open-internal (match-string 1 path) (url-target urlobj)))
           (t
            (message "telega: Unsupported tg url: %s" url))))
   t)
