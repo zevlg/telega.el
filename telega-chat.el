@@ -2968,7 +2968,8 @@ If prefix arg is supplied, attach live location."
      (list :@type "inputMessageContact"
            :contact contact)))
 
-(defun telega-chatbuf--gen-input-file (filename &optional file-type preview-p)
+(defun telega-chatbuf--gen-input-file (filename &optional file-type
+                                                preview-p upload-callback)
   "Generate InputFile using FILENAME.
 If PREVIEW-P is non-nil, then generate preview image."
   (setq filename (expand-file-name filename))
@@ -2979,7 +2980,8 @@ If PREVIEW-P is non-nil, then generate preview image."
                                  :scale 1.0 :ascent 'center
                                  :height (telega-chars-xheight 1))))
         (ifile (if telega-chat-upload-attaches-ahead
-                   (let ((ufile (telega-file--upload filename file-type 16)))
+                   (let ((ufile (telega-file--upload
+                                    filename file-type 16 upload-callback)))
                      (list "inputFileId" :id (plist-get ufile :id)))
                  (list "inputFileLocal" :path filename))))
     (nconc (list :@type (propertize (car ifile) 'telega-preview preview))

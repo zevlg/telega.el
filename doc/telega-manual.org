@@ -459,3 +459,14 @@ however has special bindings:
 
 To view highres image in chatbuf with ~telega-image-mode~ press
 @@html:<kbd>@@RET@@html:</kbd>@@ on the message with photo.
+
+** telega-edit-file-mode
+
+Minor mode to edit files from Telegram messages.
+In this mode @@html:<kbd>@@C-x C-s@@html:</kbd>@@ will save file to telegram cloud.
+To enable ~telega-edit-file-mode~ for files opened from message
+with @@html:<kbd>@@RET@@html:</kbd>@@, use:
+
+#+begin_src emacs-lisp
+  (add-hook 'telega-find-file-hook 'telega-edit-file-mode)
+#+end_src

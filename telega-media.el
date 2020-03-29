@@ -174,10 +174,6 @@ PRIORITY is same as for `telega-file--download'."
    (list :@type "cancelUploadFile"
          :file_id file-id)))
 
-(defsubst telega-file--uploaded-p (file)
-  "Return non-nil if FILE has been uploaded."
-  (telega--tl-get file :remote :is_uploading_completed))
-
 (defun telega-file--upload-internal (file &optional callback)
   "Monitor FILE uploading progress by installing CALLBACK."
   (declare (indent 1))

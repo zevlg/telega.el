@@ -1627,6 +1627,11 @@ To find out call state examine the `:state' value."
   :type 'hook
   :group 'telega-hooks)
 
+(defcustom telega-find-file-hook nil
+  "Hook called when `telega-find-file' is called."
+  :type 'hook
+  :group 'telega-hooks)
+
 (provide 'telega-customize)
 
 ;;; telega-customize.el ends here

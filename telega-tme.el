@@ -34,6 +34,7 @@
 (require 'telega-sticker)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
+(declare-function telega-chat-by-username "telega-chat" (username))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 

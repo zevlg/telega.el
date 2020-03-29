@@ -492,13 +492,13 @@ chats matching this chat filter."
 ;;
 ;; Major mode to view images in chatbuf.  Same as ~image-mode~,
 ;; however has special bindings:
-;; 
+;;
 ;; - {{{where-is(telega-image-next,telega-image-mode-map)}}} ::
 ;;   {{{fundoc(telega-image-next)}}}
-;; 
+;;
 ;; - {{{where-is(telega-image-prev,telega-image-mode-map)}}} ::
 ;;   {{{fundoc(telega-image-prev)}}}
-;; 
+;;
 ;; To view highres image in chatbuf with ~telega-image-mode~ press
 ;; {{{kbd(RET)}}} on the message with photo.
 (require 'image-mode)
@@ -577,6 +577,103 @@ chats matching this chat filter."
   "Show previous image in chat."
   (interactive)
   (telega-image-next 'previous))
+
+
+;; ** telega-edit-file-mode
+;;
+;; {{{fundoc1(telega-edit-file-mode)}}}
+;; In this mode {{{kbd(C-x C-s)}}} will save file to Telegram cloud.
+;; To enable ~telega-edit-file-mode~ for files opened from message
+;; with {{{kbd(RET)}}}, use:
+;;
+;; #+BEGIN_SRC emacs-lisp
+;;   (add-hook 'telega-find-file-hook 'telega-edit-file-mode)
+;; #+END_SRC
+(declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username-delim))
+(declare-function telega-chatbuf--gen-input-file "telega-chat" (filename &optional file-type preview-p upload-callback))
+
+(defvar telega-edit-file-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [remap save-buffer] 'telega-edit-file-save-buffer)
+
+    (define-key map [menu-bar goto-message]
+      '("Goto Telegram Message" . telega-edit-file-goto-message))
+    (define-key map [menu-bar turn-off]
+      '("Turn off minor mode" . telega-edit-file-mode))
+    map))
+
+;;;###autoload
+(define-minor-mode telega-edit-file-mode
+  "Minor mode to edit files from Telegram messages."
+  :lighter " ◁Edit"
+  :map 'telega-edit-file-mode-map
+
+  (if telega-edit-file-mode
+    (let* ((msg telega--help-win-param)
+           (chat (and msg (telega-msg-chat msg))))
+      (unless msg
+        (telega-edit-file-mode -1)
+        (user-error "Telega: No message associated with the file"))
+      (unless (plist-get msg :can_be_edited)
+        (telega-edit-file-mode -1)
+        (user-error "Telega: message can't be edited"))
+
+      (setq mode-line-buffer-identification
+            (list (propertized-buffer-identification "%b")
+                  (propertize
+                   (concat "◁" (telega-chat-title-with-brackets chat))
+                   'face 'mode-line-buffer-id
+                   'help-echo "mouse-1: To goto telegram message"
+                   'mouse-face 'mode-line-highlight
+                   'local-map (eval-when-compile
+                                (make-mode-line-mouse-map
+                                 'mouse-1 #'telega-edit-file-goto-message))))))
+
+    (setq mode-line-buffer-identification
+          (propertized-buffer-identification "%12b"))))
+
+(defun telega-edit-file-goto-message ()
+  "Goto corresponding message."
+  (interactive)
+  (let ((msg telega--help-win-param))
+    (unless msg
+      (user-error "No Telegram message associated with the buffer"))
+    (telega-msg-goto-highlight msg)))
+
+(defun telega-edit-file--upload-callback (ufile)
+  "Callback for the file uploading progress.
+UFILE specifies Telegram file being uploading."
+  (cond ((telega-file--uploaded-p ufile)
+         (message "Uploaded %s" (telega--tl-get ufile :local :path)))
+
+        ((telega-file--uploading-p ufile)
+         (message
+          "%s"
+          (telega-ins--as-string
+           (telega-ins "Uploading [")
+           (let ((progress (telega-file--uploading-progress ufile)))
+             (telega-ins-progress-bar progress 1.0 30 ?\+ ?\s)
+             (telega-ins-fmt "] %d%%" (round (* progress 100)))))))
+        ))
+
+(defun telega-edit-file-save-buffer ()
+  "Save buffer associated with message."
+  (interactive)
+
+  (let ((save-silently t))
+    (save-buffer))
+
+  (when-let ((msg telega--help-win-param))
+    (unless (plist-get msg :can_be_edited)
+      (user-error "Telega: message can't be edited"))
+
+    (telega--editMessageMedia
+     (telega-msg-chat msg 'offline) msg
+     (list :@type "inputMessageDocument"
+           :document (let ((telega-chat-upload-attaches-ahead t))
+                       (telega-chatbuf--gen-input-file
+                        (buffer-file-name) 'Document nil
+                        #'telega-edit-file--upload-callback))))))
 
 (provide 'telega-modes)
 

@@ -50,7 +50,7 @@ Becase `telega-ins--as-string' uses temporary buffer.")
 
 (defvar telega--chat nil
   "Telega chat for the current buffer.
-Used in help buffers to refer chat.")
+Used in some buffers to refer chat.")
 (make-variable-buffer-local 'telega--chat)
 
 (defvar telega--help-win-param nil
@@ -469,6 +469,10 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   "Return progress of FILE downloading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
                   (telega-file--size file))))
+
+(defsubst telega-file--uploaded-p (file)
+  "Return non-nil if FILE has been uploaded."
+  (telega--tl-get file :remote :is_uploading_completed))
 
 (defsubst telega-file--uploading-p (file)
   "Return non-nil if FILE is uploading right now."

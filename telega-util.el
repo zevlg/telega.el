@@ -344,7 +344,8 @@ N can't be 0."
        (message "TODO: `hashtag' button action: tag=%s" (cdr link)))
       (url
        (telega-browse-url (cdr link)))
-      (file (find-file (cdr link)))
+      (file
+       (telega-find-file (cdr link)))
       )))
 
 (defun telega-escape-underscores (text)
@@ -897,6 +898,13 @@ Return timestamp as unix time."
     ;; NOTE: we use `apply' to support Emacs 26
     ;; see https://t.me/emacs_telega/14017
     (round (time-to-seconds (apply #'encode-time (decode-time date-time))))))
+
+(defun telega-find-file (filename &optional msg)
+  "Find file for telega use."
+  (find-file filename)
+  ;; NOTE: we use `telega--help-win-param' as backref to the message
+  (setq telega--help-win-param msg)
+  (run-hooks 'telega-find-file-hook))
 
 (provide 'telega-util)
 

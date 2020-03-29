@@ -627,9 +627,9 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
       (telega-ins telega-symbol-attachment " "))
 
     (if (telega-file--downloaded-p doc-file)
-        (let ((local-path (telega--tl-get doc-file :local :path)))
-          (telega-ins--with-props (telega-link-props 'file local-path)
-            (telega-ins (telega-short-filename local-path))))
+        (telega-ins--with-face 'telega-link
+          (telega-ins (telega-short-filename
+                       (telega--tl-get doc-file :local :path))))
       (telega-ins fname))
     (telega-ins " (" (file-size-human-readable
                       (telega-file--size doc-file)) ") ")))
