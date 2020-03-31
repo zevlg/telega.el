@@ -301,20 +301,26 @@ Return COLUMN at which user name is inserted."
   (telega-ins--user
    (telega-user--get (plist-get member :user_id)) member))
 
-(defun telega-ins--chat-members (members)
-  "Insert chat MEMBERS list."
-  (while members
+(defun telega-ins--user-list (users &optional button-type)
+  "Insert list of the USERS using BUTTON-TYPE.
+By default BUTTON-TYPE is `telega-user'."
+  (while users
     (telega-ins " ")
-    (telega-button--insert 'telega-member (car members))
+    (telega-button--insert (or button-type 'telega-user) (car users))
 
-    (setq members (cdr members))
-    (when members
+    (setq users (cdr users))
+    (when users
       (telega-ins "\n")
       ;; NOTE: to apply `height' property \n must be included
       (telega-ins--with-props
           '(face default display ((space-width 2) (height 0.5)))
         (telega-ins--column 4 nil
-          (telega-ins (make-string 30 ?─) "\n")))))
+          (telega-ins (make-string 30 ?─) "\n"))))
+    t))
+
+(defun telega-ins--chat-members (members)
+  "Insert chat MEMBERS list."
+  (telega-ins--user-list members 'telega-member)
   (telega-ins "\n"))
 
 (defun telega-ins-progress-bar (progress duration nbars &optional p-char e-char)
@@ -925,6 +931,12 @@ Return `non-nil' if WEB-PAGE has been inserted."
                                "polls_votes_count")
               :count (plist-get popt :voter_count))))
         ))
+
+    (unless anonymous-p
+      (telega-ins "\n")
+      (telega-ins--button "  VIEW RESULTS  "
+        :value msg
+        :action #'telega-msg-open-poll))
     ))
 
 (defun telega-ins--animation-msg (msg &optional animation)

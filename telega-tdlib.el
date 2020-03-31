@@ -960,6 +960,36 @@ REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
                                             "languagePackStringValuePluralized"))
                              str-val)))))
 
+
+(defun telega--getPollVoters (msg option-id &optional offset limit callback)
+  "Return users voted for the specified OPTION-ID in a non-anonymous poll."
+  (telega-server--call
+   (list :@type "getPollVoters"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :option_id option-id
+         :offset (or offset 0)
+         :limit (or limit 50))
+   callback))
+
+(defun telega--stopPoll (msg)
+  "Stops a poll."
+  (telega-server--send
+   (list :@type "stopPoll"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))))
+
+(defun telega--setPollAnswer (msg &rest option-ids)
+  "Changes user answer to a poll.
+OPTION-IDS - 0-based identifiers of option, chosen by the user.
+If OPTION-IDS is not specified, then retract the voice."
+  (telega-server--send
+   (list :@type "setPollAnswer"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :option_ids (apply 'vector option-ids))))
+
+
 (provide 'telega-tdlib)
 
 ;;; telega-tdlib.el ends here

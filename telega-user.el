@@ -51,13 +51,14 @@
 
 (define-button-type 'telega-user
   :supertype 'telega
+  :inserter #'telega-ins--user
   'read-only t
   'keymap telega-user-button-map
   'action #'telega-user-button--action)
 
 (define-button-type 'telega-member
   :supertype 'telega-user
-  :inserter 'telega-ins--chat-member)
+  :inserter #'telega-ins--chat-member)
 
 (defun telega-user-at (pos)
   "Return user at position POS."

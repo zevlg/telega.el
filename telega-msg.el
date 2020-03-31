@@ -173,12 +173,12 @@ If CALLBACK is specified, then get reply message asynchronously."
       (telega-msg--get (plist-get msg :chat_id) reply-to-msg-id locally-p
         callback))))
 
-(defsubst telega-msg-goto (msg &optional highlight)
+(defun telega-msg-goto (msg &optional highlight)
   "Goto message MSG."
   (telega-chat--goto-msg
    (telega-msg-chat msg) (plist-get msg :id) highlight))
 
-(defsubst telega-msg-goto-highlight (msg)
+(defun telega-msg-goto-highlight (msg)
   "Goto message MSG and hightlight it."
   (telega-msg-goto msg 'hightlight))
 
@@ -410,6 +410,35 @@ non-nil."
    msg (list :@type "callbackQueryPayloadGame"
              :game_short_name (telega--tl-get msg :content :game :short_name))))
 
+(defun telega-msg-open-poll (msg)
+  "Open content for the poll MSG."
+  (let ((poll (telega--tl-get msg :content :poll)))
+    (unless (plist-get poll :is_anonymous)
+      (with-telega-help-win "*Telega Poll Results*"
+        (telega-ins--with-face 'bold
+          (telega-ins (plist-get poll :question))
+          (telega-ins " (" (telega-i18n "polls_votes_count"
+                             :count (plist-get poll :total_voter_count))
+                      ")"))
+        (telega-ins "\n\n")
+
+        (let ((options (append (plist-get poll :options) nil)))
+          (dotimes (popt-id (length options))
+            (let ((popt (nth popt-id options)))
+              (telega-ins-fmt "%s — %d%% (%s)\n"
+                (upcase (telega-tl-str popt :text))
+                (plist-get popt :vote_percentage)
+                (telega-i18n "polls_votes_count"
+                  :count (plist-get popt :voter_count)))
+              (when-let* ((voters-reply (telega--getPollVoters msg popt-id))
+                          (voters (mapcar #'telega-user--get
+                                          (plist-get voters-reply :user_ids))))
+                (telega-ins--user-list voters)
+                (telega-ins "\n"))
+              (telega-ins "\n")
+            )))
+    ))))
+
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
   (telega--openMessageContent msg)
@@ -439,8 +468,7 @@ non-nil."
      (when-let ((web-page (telega--tl-get msg :content :web_page)))
        (telega-msg-open-webpage msg web-page)))
     (messagePoll
-     ;; no-op
-     )
+     (telega-msg-open-poll msg))
     (messageGame
      (telega-msg-open-game msg))
 
@@ -560,23 +588,6 @@ FROM and TO are passed directly to `substring'."
     (list :@type "formattedText"
           :text (substring (plist-get text :text) from to)
           :entities (apply 'vector (cl-remove-if 'null ents)))))
-
-(defun telega--stopPoll (msg)
-  "Stops a poll."
-  (telega-server--send
-   (list :@type "stopPoll"
-         :chat_id (plist-get (telega-msg-chat msg) :id)
-         :message_id (plist-get msg :id))))
-
-(defun telega--setPollAnswer (msg &rest option-ids)
-  "Changes user answer to a poll.
-OPTION-IDS - 0-based identifiers of option, chosen by the user.
-If OPTION-IDS is not specified, then retract the voice."
-  (telega-server--send
-   (list :@type "setPollAnswer"
-         :chat_id (plist-get (telega-msg-chat msg) :id)
-         :message_id (plist-get msg :id)
-         :option_ids (apply 'vector option-ids))))
 
 ;;; Ignoring messages
 (defun telega-msg-ignored-p (msg)

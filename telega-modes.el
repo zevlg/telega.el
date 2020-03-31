@@ -507,9 +507,6 @@ chats matching this chat filter."
 (declare-function telega-chat-brackets "telega-chat" (chat))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
 
-(declare-function telega-msg-type-p "telega-msg" (msg-type msg))
-(declare-function telega-msg-chat "telega-msg" (msg &optional offline-p))
-
 (defvar telega-image--message nil
   "Message corresponding to image currently viewed.")
 (make-variable-buffer-local 'telega-image--message)

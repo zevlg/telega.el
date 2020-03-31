@@ -273,7 +273,7 @@ cdr is maximum width in chars to use."
 
 (defcustom telega-avatar-factors-alist
   '((1 . (0.8 . 0.1))
-    (2 . (0.6 . 0.1)))
+    (2 . (0.8 . 0.1)))
   "*Alist of size coefficients used in avatar creation.
 Each element is in form:
   (CHEIGHT CIRCLE-FACTOR . MARGIN-FACTOR)
