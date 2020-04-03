@@ -375,6 +375,30 @@ markup has been used."
          :chat_id chat-id
          :message_id msg-id)))
 
+(defun telega--searchChatMembers (chat query &optional filter limit)
+  "Search CHAT members by QUERY.
+FILTER is one \"Administrators\", \"Members\", \"Restricted\",
+\"Banned\", \"Bots\", default is \"Members\".
+LIMIT by default is 50."
+  (let ((reply (telega-server--call
+                (list :@type "searchChatMembers"
+                      :chat_id (plist-get chat :id)
+                      :query query
+                      :limit (or limit 50)
+                      :filter (list :@type (concat "chatMembersFilter"
+                                                   (or filter "Members")))))))
+    (mapcar (lambda (member)
+              (telega-user--get (plist-get member :user_id)))
+            (plist-get reply :members))))
+
+(defun telega--getChatAdministrators (chat &optional callback)
+  "Return a list of administrators for the CHAT."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :administrators) nil)
+    (list :@type "getChatAdministrators"
+          :chat_id (plist-get chat :id))
+    callback))
+
 (defun telega--getSupergroupMembers (supergroup &optional filter offset limit callback)
   "Get SUPERGROUP members.
 Default FILTER is \"supergroupMembersFilterRecent\".
@@ -400,6 +424,22 @@ STATUS is one of: "
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
          :status status)))
+
+(defun telega--addChatMember (chat user &optional forward-limit)
+  "Add new member USER to the CHAT."
+  (telega-server--send
+   (list :@type "addChatMember"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id)
+         :forward_limit (or forward-limit 100))))
+
+(defun telega--addChatMembers (chat users)
+  "Add new members to the CHAT.
+CHAT must be supergroup or channel."
+  (telega-server--send
+   (list :@type "addChatMembers"
+         :chat_id (plist-get chat :id)
+         :user_ids (cl-map #'vector (telega--tl-prop :id) users))))
 
 (defun telega--canTransferOwnership (&optional callback)
   (telega-server--call

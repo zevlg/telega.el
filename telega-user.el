@@ -194,22 +194,6 @@ Default is: `full'"
      (cons photo :small)
      nil :telega-avatar-1)))
 
-(defun telega--searchChatMembers (chat query &optional filter limit)
-  "Search CHAT members by QUERY.
-FILTER is one \"Administrators\", \"Members\", \"Restricted\",
-\"Banned\", \"Bots\", default is \"Members\".
-LIMIT by default is 50."
-  (let ((reply (telega-server--call
-                (list :@type "searchChatMembers"
-                      :chat_id (plist-get chat :id)
-                      :query query
-                      :limit (or limit 50)
-                      :filter (list :@type (concat "chatMembersFilter"
-                                                   (or filter "Members")))))))
-    (mapcar (lambda (member)
-              (telega-user--get (plist-get member :user_id)))
-            (plist-get reply :members))))
-
 (defun telega-describe-user--inserter (user-id)
   "Inserter for the user info buffer."
   (let ((user (telega-user--get user-id)))

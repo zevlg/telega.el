@@ -813,14 +813,6 @@ Uses `telega-chat--display-buffer-action' as action in `pop-to-buffer.'"
   (interactive (list (telega-chat-at (point))))
   (telega--toggleChatIsPinned chat))
 
-(defun telega--addChatMembers (chat users)
-  "Add new members to the CHAT.
-CHAT must be supergroup or channel."
-  (telega-server--send
-   (list :@type "addChatMembers"
-         :chat_id (plist-get chat :id)
-         :user_ids (cl-map 'vector (telega--tl-prop :id) users))))
-
 (defun telega-chat-add-member (chat user &optional forward-limit)
   "Add USER to the CHAT."
   (interactive (list (or telega-chatbuf--chat
@@ -828,11 +820,24 @@ CHAT must be supergroup or channel."
                          (telega-chat-at (point)))
                      (telega-completing-read-user "Add member: ")))
   (cl-assert user)
-  (telega-server--send
-   (list :@type "addChatMember"
-         :chat_id (plist-get chat :id)
-         :user_id (plist-get user :id)
-         :forward_limit (or forward-limit 100))))
+  (telega--addChatMember chat user forward-limit))
+
+(defun telega-chat-remove-member (chat user &optional _ban)
+  "Remove USER from the CHAT.
+Specify non-nil BAN to ban this user in this CHAT."
+  (interactive
+   (let ((chat (or telega-chatbuf--chat
+                   telega--chat
+                   (telega-chat-at (point)))))
+     (list chat
+           (telega-completing-read-user
+               "Remove member: "
+             (telega--searchChatMembers chat ""))
+           current-prefix-arg)))
+
+  ;; TODO: ban (chatMemberStatusBanned :banned_until_date)
+  (telega--setChatMemberStatus
+   chat user (list :@type "chatMemberStatusLeft")))
 
 (defun telega-chat-set-title (chat title)
   "Set CHAT's title to TITLE."
@@ -1275,15 +1280,13 @@ Use `telega-chat-leave' to just leave the CHAT."
 (defun telega-chat-transfer-ownership (chat)
   "Transfer CHAT's ownership TO-USER."
   (declare (indent 1))
-  (interactive
-   (list (or telega-chatbuf--chat (telega-chat-at (point))) nil))
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
 
-  (let ((to-user (telega-completing-read-user "To User: "
-                   (mapcar (lambda (member)
-                             (telega-user--get (plist-get member :user_id)))
-                           (telega--getSupergroupMembers
-                               (telega-chat--supergroup chat)
-                               "supergroupMembersFilterAdministrators")))))
+  (let* ((admins (mapcar #'telega-user--get
+                         (mapcar (telega--tl-prop :user_id)
+                                 (telega--getChatAdministrators chat))))
+        (to-user (telega-completing-read-user "To Admin: "
+                   (cl-remove-if #'telega-me-p admins))))
 
     ;; NOTE: check chat ownership can be transferred
     (unless (eq (telega--tl-type (telega--canTransferOwnership))

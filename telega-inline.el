@@ -32,6 +32,7 @@
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+(declare-function telega-chat-private-p "telega-chat" (chat &optional include-bots-p))
 
 (defvar telega--inline-bot nil
   "BOT value for the inline results help buffer.")
@@ -67,9 +68,24 @@
          :payload payload)))
 
 (defun telega-inline--callback (kbd-button msg)
-  "Generate callback function for KBD-BUTTON."
+  "Action to take when KBD-BUTTON is pressed."
   (let ((kbd-type (plist-get kbd-button :type)))
     (cl-ecase (telega--tl-type kbd-type)
+      (keyboardButtonTypeText
+       ;; A simple button, with text that should be sent
+       ;; when the button is pressed
+       ;; NOTE: (see https://t.me/emacs_telega/14354)
+       ;;  - Send as reply to the message for group chats
+       ;;  - Send as ordinary message for private chats
+       (let ((chat (telega-msg-chat msg))
+             (imc (list :@type "inputMessageText"
+                        :text (telega--formattedText
+                               (telega-tl-str kbd-button :text))))
+             (reply-msg (unless (telega-chat-private-p
+                                 (telega-msg-chat msg) 'bots)
+                          msg)))
+         (telega--sendMessage chat imc reply-msg)))
+
       (inlineKeyboardButtonTypeUrl
        (telega-browse-url (plist-get kbd-type :url)))
 

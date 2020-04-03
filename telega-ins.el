@@ -1251,21 +1251,7 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                      (telega-tl-str kbd-button :text))))
     (telega-ins--button kbdb-text
       'action (lambda (_ignored)
-                (cl-case (telega--tl-type kbd-button)
-                  (keyboardButton
-                   (cl-ecase (telega--tl-type (plist-get kbd-button :type))
-                     (keyboardButtonTypeText
-                      ;; A simple button, with text that should be sent
-                      ;; when the button is pressed
-                      ;; TODO: Check chat is the private chat with the bot
-                      (telega--sendMessage
-                       (telega-msg-chat msg)
-                       (list :@type "inputMessageText"
-                             :text (telega--formattedText
-                                    (telega-tl-str kbd-button :text)))))))
-
-                  ;; Otherwise some inline button
-                  (t (telega-inline--callback kbd-button msg)))
+                (telega-inline--callback kbd-button msg)
                 (when additional-action
                   (funcall additional-action kbd-button msg)))
       :help-echo (cl-case (telega--tl-type kbd-button)
@@ -1281,7 +1267,8 @@ If FORCE-KEYBOARD is non-nil, then show reply markup even if it
 has `replyMarkupShowKeyboard' type."
   (when-let ((reply-markup (plist-get msg :reply_markup))
              (reply-markup-type (telega--tl-type reply-markup)))
-    (cl-assert (memq reply-markup-type '(replyMarkupInlineKeyboard
+    (cl-assert (memq reply-markup-type '(replyMarkupForceReply
+                                         replyMarkupInlineKeyboard
                                          replyMarkupShowKeyboard)))
     (when (or (eq reply-markup-type 'replyMarkupInlineKeyboard)
               (and force-keyboard
