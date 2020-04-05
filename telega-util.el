@@ -124,7 +124,7 @@ Selected frame and frame displaying root buffer are examined first."
    (rx (or (: string-start (* (any ?\r ?\n)))
            (: (* (any ?\r ?\n)) string-end)))
    ""
-   string))
+   (or string "")))
 
 (defun telega-current-column ()
   "Same as `current-column', but take into account width of the characters."

@@ -198,4 +198,6 @@
 
  ("telega_scheduled_help"
   :value "Next input will be scheduled")
+ ("telega_random_dice"
+  :value "Random Dice")
  )

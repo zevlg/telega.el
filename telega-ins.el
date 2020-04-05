@@ -397,8 +397,8 @@ markdown syntax to the TEXT."
     (telega-ins
      (telega--desurrogate-apply
       (funcall (if as-markdown
-                   'telega--entities-as-markdown
-                 'telega--entities-as-faces)
+                   #'telega--entities-as-markdown
+                 #'telega--entities-as-faces)
                (plist-get text :entities) (plist-get text :text))))))
 
 (defun telega-ins--photo (photo &optional msg limits show-details)
@@ -815,6 +815,29 @@ Return `non-nil' if WEB-PAGE has been inserted."
       (telega-duration-human-readable
        (plist-get content :duration)))))
 
+(defun telega-ins--dice-msg (msg)
+  "Inserter for the \"messageDice\" MSG."
+  (let ((dice-value (telega--tl-get msg :content :value)))
+    (telega-ins--with-face 'shadow
+      (telega-ins-i18n "telega_random_dice"))
+    (telega-ins " " (number-to-string dice-value) "\n")
+
+    ;; TODO: Animated sticker as dice roll
+    ;; (if-let ((dice-sticker (telega-sticker--dice-get dice-value 'locally)))
+    ;;     (telega-ins--sticker-image dice-sticker 'slices)
+
+    ;;   ;; Possible fetch the sticker
+    ;;   (telega-sticker--dice-get dice-value nil
+    ;;     (lambda (_ignore)
+    ;;       (telega-msg-redisplay msg)))
+
+      (let ((dice-symbol (nth dice-value telega-symbol-dice-list)))
+      (if telega-emoji-use-images
+          (telega-ins--image-slices
+           (telega-emoji-create-svg dice-symbol (car telega-sticker-size)))
+        (telega-ins dice-symbol))
+      )))
+
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
   (let ((title (plist-get invoice :title))
@@ -1225,6 +1248,8 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins--contact-msg msg))
       ('messageCall
        (telega-ins--call-msg msg))
+      ('messageDice
+       (telega-ins--dice-msg msg))
       ;; special message
       ((guard (telega-msg-special-p msg))
        (telega-ins--special msg))
@@ -1646,6 +1671,9 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (telega-ins (telega-tl-str imc :question))
       (telega-ins--with-face 'shadow
         (telega-ins-fmt " (%d options)" (length (plist-get imc :options)))))
+     (inputMessageDice
+      (telega-ins "🎲" " ")
+      (telega-ins-i18n "telega_random_dice"))
 
      ;; Special IMC for inline query results
      (telegaInlineQuery

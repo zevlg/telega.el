@@ -130,6 +130,32 @@ with one argument - stickerset."
            :test 'equal
            :key (telega--tl-prop :id)))
 
+(defun telega-sticker--dice-get (dice-value &optional locally-p callback)
+  "Return sticker for the DICE-VALUE.
+Return nil, if sticker is not found.
+CALLBACK is called without arguments"
+  (declare (indent 2))
+  (when-let ((dice-sset-name
+              (plist-get telega--options :animated_dice_sticker_set_name)))
+    (let ((sset (cl-find dice-sset-name
+                         telega--stickersets-system
+                         :key (telega--tl-prop :name)
+                         :test #'equal)))
+      (if (or locally-p sset)
+          (cl-find (format "%d\uFE0F⃣" dice-value)
+                   (plist-get sset :stickers)
+                   :key #'telega-sticker-emoji
+                   :test #'equal)
+
+        (telega--searchStickerSet dice-sset-name
+          (lambda (dice-sset)
+            (cl-assert (equal (plist-get dice-sset :name) dice-sset-name))
+            (setq telega--stickersets-system
+                  (push dice-sset telega--stickersets-system))
+            (when callback
+              (funcall callback))))
+        ))))
+
 (defun telega--on-updateInstalledStickerSets (event)
   "The list of installed sticker sets was updated."
   (if (plist-get event :is_masks)
@@ -164,21 +190,6 @@ with one argument - stickerset."
 ;  (mapc 'telega--downloadFile telega--stickers-favorite)
   )
 
-;; TODO: generalize this on telega-server level
-(defun telega-stickers--async-call (call-params &optional callback)
-  "Perform call to telega-server with CALL-PARAMS.
-Then `:stickers' property is extracted from the reply and passed
-either to CALLBACK or returned."
-  (let ((reply (telega-server--call
-                call-params
-                (when callback
-                  (lambda (server-reply)
-                    (funcall callback
-                             (append (plist-get server-reply :stickers) nil)))))))
-    (if callback
-        reply
-      (append (plist-get reply :stickers) nil))))
-
 (defun telega--changeStickerSet (stickerset install-p &optional archive-p)
   "Install/Uninstall STICKERSET."
   (telega-server--call
@@ -202,53 +213,12 @@ Photo and Video files have attached sticker sets."
          :query query
          :limit (or limit 20))))
 
-(defun telega--searchStickerSets (query)
-  "Searches for ordinary sticker sets by looking for specified QUERY."
-  (let ((reply (telega-server--call
-                (list :@type "searchStickerSets"
-                      :query query))))
-    (append (plist-get reply :sets) nil)))
-
-(defun telega--viewTrendingStickerSets (set-id &rest other-ids)
-  (telega-server--call
-   (list :@type "viewTrendingStickerSets"
-         :sticker_set_ids (apply 'vector set-id other-ids))))
-
-(defun telega--getRecentStickers (&optional attached-p callback)
-  "Returns a list of recently used stickers.
-Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
-  (declare (indent 1))
-  (telega-stickers--async-call
-   (list :@type "getRecentStickers"
-         :is_attached (or attached-p :false))
-   callback))
-
-(defun telega--getFavoriteStickers (&optional callback)
-  "Return favorite stickers."
-  (declare (indent 0))
-  (telega-stickers--async-call
-   (list :@type "getFavoriteStickers")
-   callback))
-
-(defun telega--addFavoriteSticker (sticker-input-file &optional callback)
-  "Add STICKER-INPUT-FILE on top of favorite stickers."
-  (telega-server--call
-   (list :@type "addFavoriteSticker"
-         :sticker sticker-input-file)
-   callback))
-
-(defun telega--removeFavoriteSticker (sticker-input-file &optional callback)
-  (telega-server--call
-   (list :@type "removeFavoriteSticker"
-         :sticker sticker-input-file)
-   callback))
-
 (defun telega-sticker-toggle-favorite (sticker)
   "Toggle sticker as favorite."
   (interactive (list (telega-sticker-at)))
   (funcall (if (telega-sticker-favorite-p sticker)
-               'telega--removeFavoriteSticker
-             'telega--addFavoriteSticker)
+               #'telega--removeFavoriteSticker
+             #'telega--addFavoriteSticker)
            (list :@type "inputFileId"
                  :id (telega--tl-get sticker :sticker :id))
 
@@ -258,11 +228,6 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
               (cons sticker 'telega-sticker--create-image)
               (cons sticker :sticker))
              (force-window-update))))
-
-(defun telega--getStickerEmojis (sticker-input-file)
-  (telega-server--call
-   (list :@type "getStickerEmojis"
-         :sticker sticker-input-file)))
 
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."

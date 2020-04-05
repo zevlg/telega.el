@@ -108,6 +108,8 @@ Take into account that ID is the string.")
   "List of `stickerSetInfo' for installed sticker sets.")
 (defvar telega--stickersets-trending nil
   "List of trending sticker sets info.")
+(defvar telega--stickersets-system nil
+  "List of system sticker sets, such as animated dices, animated emojis.")
 (defvar telega--stickers-favorite nil
   "List of favorite stickers.")
 (defvar telega--stickers-recent nil
@@ -264,6 +266,7 @@ Done when telega server is ready to receive queries."
   (setq telega--stickersets nil)
   (setq telega--stickersets-installed nil)
   (setq telega--stickersets-trending nil)
+  (setq telega--stickersets-system nil)
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
@@ -561,11 +564,19 @@ If NO-PROPERTIES is specified, then do not keep text properties."
         ((listp obj) (mapcar #'telega--tl-pack obj))
         (t obj)))
 
-(defsubst telega-tl-str (obj prop &optional no-properties)
+(defun telega-tl-str (obj prop &optional no-properties)
   "Get property PROP from OBJ, desurrogating resulting string.
 NO-PROPERTIES is passed directly to `telega--desurrogate-apply'.
-Return nil for empty strings."
-  (let ((ret (telega--desurrogate-apply (plist-get obj prop) no-properties)))
+Return nil for empty strings.
+Also supports \"formattedText\" a value of the OBJ's PROP."
+  (let* ((prop-val (plist-get obj prop))
+         (text (if (and (listp prop-val)
+                        (equal (plist-get prop-val :@type) "formattedText"))
+                   (funcall #'telega--entities-as-faces
+                            (plist-get prop-val :entities)
+                            (plist-get prop-val :text))
+                 prop-val))
+         (ret (telega--desurrogate-apply text no-properties)))
     (unless (string-empty-p ret)
       ret)))
 

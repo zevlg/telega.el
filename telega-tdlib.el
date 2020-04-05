@@ -352,12 +352,66 @@ LIMIT defaults to 20."
 
 (defun telega--searchStickerSet (name &optional callback)
   "Search for sticker set by NAME."
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (telega-stickerset--ensure reply)
 
     (list :@type "searchStickerSet"
           :name name)
     callback))
+
+(defun telega--searchStickerSets (query &optional callback)
+  "Searches for ordinary sticker sets by looking for specified QUERY."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :sets) nil)
+
+    (list :@type "searchStickerSets"
+          :query query)
+    callback))
+
+(defun telega--viewTrendingStickerSets (set-id &rest other-ids)
+  (telega-server--call
+   (list :@type "viewTrendingStickerSets"
+         :sticker_set_ids (apply 'vector set-id other-ids))))
+
+(defun telega--getRecentStickers (&optional attached-p callback)
+  "Returns a list of recently used stickers.
+Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :stickers) nil)
+
+    (list :@type "getRecentStickers"
+          :is_attached (if attached-p t :false))
+    callback))
+
+(defun telega--getFavoriteStickers (&optional callback)
+  "Return favorite stickers."
+  (declare (indent 0))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :stickers) nil)
+    (list :@type "getFavoriteStickers")
+    callback))
+
+(defun telega--addFavoriteSticker (sticker-input-file &optional callback)
+  "Add STICKER-INPUT-FILE on top of favorite stickers."
+  (telega-server--call
+   (list :@type "addFavoriteSticker"
+         :sticker sticker-input-file)
+   callback))
+
+(defun telega--removeFavoriteSticker (sticker-input-file &optional callback)
+  (telega-server--call
+   (list :@type "removeFavoriteSticker"
+         :sticker sticker-input-file)
+   callback))
+
+(defun telega--getStickerEmojis (sticker-input-file &optional callback)
+  (telega-server--call
+   (list :@type "getStickerEmojis"
+         :sticker sticker-input-file)
+   callback))
 
 (defun telega--resendMessage (message)
   "Resend MESSAGE."

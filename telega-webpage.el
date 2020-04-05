@@ -43,6 +43,8 @@
   "Nth element in `telega-webpage-history' we currently active.")
 (defvar telega-webpage-history--ignore nil
   "Bind this to non-nil to ignore pushing to the history.")
+(defvar telega-webpage-strip-nl nil
+  "Bind to non-nil to strip trailing newlines.")
 
 (defvar telega-webpage--url nil
   "URL for the instant view webpage currently viewing.")
@@ -151,8 +153,9 @@ Keymap:
 (defun telega-webpage-goto-anchor (name)
   "Goto at anchor NAME position."
   (let ((anchor (cdr (assoc name telega-webpage--anchors))))
-    (when anchor
-      (goto-char anchor))))
+    (unless anchor
+      (error (format "Anchor \"#%s\" not found" name)))
+    (goto-char anchor)))
 
 (defun telega-webpage-details-toggle (button)
   "Toggle open/close state of the details block."
@@ -165,9 +168,10 @@ Keymap:
      :help-echo "Toggle details")
     (goto-char button)))
 
-(defun telega-webpage--ins-details (pb)
+(defun telega-webpage--ins-pb-details (pb)
   "Inserter for `pageBlockDetails' page block PB."
-  (let ((open-p (plist-get pb :is_open)))
+  (let ((open-p (or t (plist-get pb :is_open))) ;XXX always open
+        (telega--current-buffer (current-buffer)))
     (telega-ins (funcall (if open-p 'cdr 'car)
                          telega-symbol-webpage-details) " ")
     (telega-webpage--ins-rt (plist-get pb :header))
@@ -211,70 +215,88 @@ Keymap:
      (cons doc :document)
      'force-update)))
 
-(defun telega-webpage--ins-rt (rt &optional strip-nl)
-  "Insert RichText RT.
-If STRIP-NL is non-nil then strip leading/trailing newlines."
+(defun telega-webpage--add-anchor (name)
+  "Add anchor with the NAME to point at POS position."
+  (setf (alist-get name telega-webpage--anchors nil nil 'equal)
+        (with-current-buffer telega--current-buffer
+          (point-marker))))
+
+(defun telega-webpage--ins-rt (rt)
+  "Insert RichText RT."
   (cl-ecase (telega--tl-type rt)
     (richTextAnchor
-     (telega-webpage--ins-rt (plist-get rt :text) strip-nl))
+     (telega-webpage--add-anchor (plist-get rt :name))
+     (when-let ((anchor-rt (plist-get rt :text)))
+       ;; NOTE: compatibility with TDLib 1.6.0
+       (telega-webpage--ins-rt anchor-rt)))
+    (richTextReference
+     ;; TDLib 1.6.2
+     (let ((ref-url (plist-get rt :url)))
+       (telega-ins--raw-button
+           (list 'face 'telega-link
+                 'action #'telega-button--action
+                 :help-echo (concat "Reference: " ref-url)
+                 :value ref-url
+                 :action #'telega-browse-url)
+         (telega-webpage--ins-rt (plist-get rt :text)))))
+    (richTextAnchorLink
+     ;; TDLib 1.6.2
+     (let ((anchor (plist-get rt :name)))
+       (telega-ins--raw-button
+           (list 'face 'telega-link
+                 'action #'telega-button--action
+                 :help-echo (concat "Anchor: #" anchor)
+                 :value anchor
+                 :action #'telega-webpage-goto-anchor)
+       (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextIcon
      (telega-ins--image-slices
       (telega-webpage-rticon--image rt telega-photo-maxsize)))
     (richTextPlain
-     (telega-ins (funcall (if strip-nl 'telega-strip-newlines 'identity)
+     (telega-ins (funcall (if telega-webpage-strip-nl
+                              #'telega-strip-newlines
+                            #'identity)
                           (telega-tl-str rt :text))))
     (richTexts
-     (mapc (lambda (richtext)
-             (telega-webpage--ins-rt richtext strip-nl))
-           (plist-get rt :texts)))
+     (mapc #'telega-webpage--ins-rt (plist-get rt :texts)))
     (richTextBold
      (telega-ins--with-attrs (list :face 'bold)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextItalic
      (telega-ins--with-attrs (list :face 'italic)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextUnderline
      (telega-ins--with-attrs (list :face 'underline)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextStrikethrough
      (telega-ins--with-attrs (list :face 'telega-webpage-strike-through)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextFixed
      (telega-ins--with-attrs (list :face 'telega-webpage-fixed)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextUrl
-     (let* ((url (plist-get rt :url))
-            (anchor-prefix (concat telega-webpage--url "#"))
-            (anchor (when (string-prefix-p anchor-prefix url)
-                      (substring url (length anchor-prefix))))
-            (link (telega-ins--as-string
-                   (telega-webpage--ins-rt (plist-get rt :text) strip-nl))))
-       (telega-debug
-        "web page url: url=%s, anchor-prefix=%s, anchor=%s"
-        url anchor-prefix anchor)
-       ;; NOTE: links to same page jumps to anchor location
-       (if anchor
-           (telega-ins--button link
-             'face 'telega-link
-             :value anchor
-             :action 'telega-webpage-goto-anchor)
-         (telega-ins--button link
-           'face 'link
-           :help-echo (concat "URL: " url)
-           :value url
-           :action 'telega-browse-url))))
+     (let ((url (plist-get rt :url)))
+       (telega-ins--raw-button
+           (list 'face 'telega-link
+                 'action #'telega-button--action
+                 :help-echo (concat "URL: " url)
+                 :value url
+                 :action #'telega-browse-url)
+         (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextEmailAddress
      (telega-ins--with-attrs (list :face 'link)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextSubscript
-     (telega-ins--with-props '(display (raise -0.5))
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+     (telega-ins--with-props '(display (raise -0.25))
+       (telega-ins--with-face '(:height 0.5)
+         (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextSuperscript
-     (telega-ins--with-props '(display (raise 0.5))
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+     (telega-ins--with-props '(display (raise 0.75))
+       (telega-ins--with-face '(:height 0.5)
+         (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextMarked
      (telega-ins--with-attrs (list :face 'region)
-       (telega-webpage--ins-rt (plist-get rt :text) strip-nl)))
+       (telega-webpage--ins-rt (plist-get rt :text))))
     ))
 
 (defun telega-webpage--ins-related-article (pageblock)
@@ -316,7 +338,7 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
   (cl-ecase (telega--tl-type pb)
     (pageBlockTitle
      (telega-ins--with-face 'telega-webpage-title
-       (telega-webpage--ins-rt (plist-get pb :title) 'strip-newlines)))
+       (telega-webpage--ins-rt (plist-get pb :title))))
     (pageBlockSubtitle
      (telega-webpage--ins-rt (plist-get pb :subtitle)))
     (pageBlockAuthorDate
@@ -352,14 +374,14 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-ins--with-face 'telega-webpage-strike-through
        (telega-ins (make-string telega-webpage-fill-column ?\s))))
     (pageBlockAnchor
-     (setf (alist-get (plist-get pb :name) telega-webpage--anchors nil nil 'equal)
-           (point-marker)))
+     (telega-webpage--add-anchor (plist-get pb :name)))
     (pageBlockListItem
      (telega-ins--labeled (concat " " (plist-get pb :label) " ") nil
-         telega-webpage-fill-column
+       telega-webpage-fill-column
        (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks))))
     (pageBlockList
-     (mapc 'telega-webpage--ins-pb (plist-get pb :items)))
+     (let ((telega-webpage-strip-nl t))
+       (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
     (pageBlockBlockQuote
      (let ((vbar-prefix (propertize telega-symbol-vertical-bar 'face 'bold)))
        (telega-ins vbar-prefix)
@@ -376,18 +398,19 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))
     (pageBlockAnimation
-     (telega-ins "<TODO: pageBlockAnimation>"))
+     (telega-ins "<TODO: pageBlockAnimation>\n"))
     (pageBlockAudio
-     (telega-ins "<TODO: pageBlockAudio>"))
+     (telega-ins "<TODO: pageBlockAudio>\n"))
     (pageBlockPhoto
      (telega-button--insert 'telega (plist-get pb :photo)
        :inserter (lambda (photo)
                    (telega-ins--photo photo nil telega-webpage-photo-maxsize))
        :action 'telega-photo--open)
-     (telega-ins-prefix "\n"
+     (telega-ins "\n")
+     (let ((telega-webpage-strip-nl t))
        (telega-webpage--ins-pb (plist-get pb :caption))))
     (pageBlockVideo
-     (telega-ins "<TODO: pageBlockVideo>"))
+     (telega-ins "<TODO: pageBlockVideo>\n"))
     (pageBlockCover
      (telega-webpage--ins-pb (plist-get pb :cover)))
     (pageBlockEmbedded
@@ -415,12 +438,12 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
                    (unless (string-empty-p url)
                      (telega-browse-url url))))))
     (pageBlockEmbeddedPost
-     (telega-ins "<TODO: pageBlockEmbeddedPost>"))
+     (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
     (pageBlockCollage
      (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks))
      (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockSlideshow
-     (telega-ins "<TODO: pageBlockSlideshow>"))
+     (telega-ins "<TODO: pageBlockSlideshow>\n"))
     (pageBlockChatLink
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
        (telega-ins (telega-tl-str pb :title) " "
@@ -434,20 +457,22 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
        (telega-ins-prefix " --"
          (telega-webpage--ins-rt (plist-get pb :credit)))))
     (pageBlockDetails
-     (telega-button--insert 'telega pb
-       'action 'telega-webpage-details-toggle
-       :inserter 'telega-webpage--ins-details
-       :help-echo "Toggle details"))
+     (telega-webpage--ins-pb-details pb))
+    ;; (telega-button--insert 'telega pb
+    ;;   'action 'telega-webpage-details-toggle
+    ;;   :inserter 'telega-webpage--ins-pb-details
+    ;;   :help-echo "Toggle details"))
     (pageBlockTable
-     (telega-webpage--ins-rt (plist-get pb :caption))
-     (telega-ins "<TODO: pageBlockTable>"))
+     (let ((telega-webpage-strip-nl t))
+       (telega-webpage--ins-rt (plist-get pb :caption)))
+     (telega-ins "\n")
+     (telega-ins "<TODO: pageBlockTable>\n"))
     (pageBlockRelatedArticle
      (telega-button--insert 'telega pb
        :inserter 'telega-webpage--ins-related-article
        :action (lambda (_pbignored)
                  (telega-browse-url (plist-get pb :url)))
-       :help-echo (concat "URL: " (plist-get pb :url)))
-     (telega-ins "\n"))
+       :help-echo (concat "URL: " (plist-get pb :url))))
     (pageBlockRelatedArticles
      (telega-ins--with-face '(telega-msg-heading bold)
        (when (telega-webpage--ins-rt (plist-get pb :header))
@@ -457,9 +482,12 @@ If STRIP-NL is non-nil then strip leading/trailing newlines."
      (telega-webpage--ins-rt (plist-get pb :kicker)))
     )
 
-  (unless (memq (telega--tl-type pb)
-                '(pageBlockAnchor pageBlockCover pageBlockListItem))
-    (telega-ins "\n")))
+  (unless telega-webpage-strip-nl
+    (unless (memq (telega--tl-type pb)
+                  '(pageBlockAnchor pageBlockCover pageBlockListItem
+                                    pageBlockDetails))
+      (telega-ins "\n")))
+  t)
 
 (defun telega-webpage--ins-pb-nl (pb)
   "Same as `telega-webpage--ins-PageBlock', but also inserts newline at the end."
@@ -477,14 +505,16 @@ instant view for the URL."
   (when (< telega-webpage-history--index (length telega-webpage-history))
     (setcar (nth telega-webpage-history--index telega-webpage-history) (point)))
 
-  (setq telega-webpage--url url
-        telega-webpage--sitename (or sitename
+  (setq telega-webpage--sitename (or sitename
                                      (capitalize
                                       (url-host
                                        (url-generic-parse-url url))))
         telega-webpage--iv (or instant-view
                                (telega--getWebPageInstantView url)
                                (error "Can't instant view the URL: %s" url))
+        ;; IV.url can differ from URL, we use IV.url for the correct
+        ;; anchors handling. See docs for "td-api.tl:webPageInstantView"
+        telega-webpage--url (or (plist-get telega-webpage--iv :url) url)
         telega-webpage--anchors nil)
   (telega-webpage--history-push)
 
@@ -505,8 +535,18 @@ instant view for the URL."
     (setq visual-fill-column-width telega-webpage-fill-column)
     (visual-fill-column-mode 1))
 
+  (let ((anchor (string-trim-left url "[^#]*#?")))
+    (unless (string-empty-p anchor)
+      (telega-webpage-goto-anchor anchor)))
+
   (message "Press `%s' to open in web browser"
            (substitute-command-keys "\\[telega-webpage-browse-url]")))
+
+(defun telega-webpage-anchor-url-p (url)
+  "Return non-nil if URL is pointing to anchor for current webpage."
+  (string-prefix-p
+   (concat (string-trim-right telega-webpage--url "#.*") "#")
+   url))
 
 (defun telega-browse-url (url &optional in-web-browser)
   "Open the URL.
@@ -523,6 +563,14 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
                         (telega-tme-open url))
                        ((string-prefix-p "t.me/" url)
                         (telega-tme-open (concat "https://" url)))
+
+                       ((and (derived-mode-p 'telega-webpage-mode)
+                             (telega-webpage-anchor-url-p url))
+                        ;; Link to local anchor on current webpage
+                        (telega-webpage-goto-anchor
+                         (string-trim-left url "[^#]+#"))
+                        t)
+
                        (t
                         ;; Try instant view
                         (let ((iv (telega--getWebPageInstantView url)))

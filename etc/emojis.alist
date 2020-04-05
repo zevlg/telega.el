@@ -1315,6 +1315,7 @@
  (":flag-si:" . "🇸🇮")
  (":white-medium-square:" . "◻")
  (":game-die:" . "🎲")
+ (":dice:" . "🎲")
  (":ok:" . "🆗")
  (":regional-indicator-y:" . "🇾")
  (":stadium:" . "🏟")

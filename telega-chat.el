@@ -3306,6 +3306,12 @@ message when user gets online."
   (telega-momentary-display
    (propertize (telega-i18n "telega_scheduled_help") 'face 'shadow)))
 
+(defun telega-chatbuf-attach-dice ()
+  "Attach random dice roll message."
+  (interactive)
+  (telega-chatbuf-input-insert
+   (list :@type "inputMessageDice")))
+
 (defun telega-chatbuf-attach (attach-type)
   "Attach something into message.
 Prefix argument is available for next attachements:

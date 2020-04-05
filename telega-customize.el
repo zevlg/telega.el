@@ -720,6 +720,7 @@ Supported Markup:
         (list "sticker" nil 'telega-chatbuf-attach-sticker)
         (list "animation" nil 'telega-chatbuf-attach-animation)
         (list "scheduled" nil 'telega-chatbuf-attach-scheduled)
+        (list "dice" nil 'telega-chatbuf-attach-dice)
         (list "screenshot" (lambda () telega-screenshot-function)
               'telega-chatbuf-attach-screenshot)
         (list "clipboard" (lambda ()
@@ -1205,6 +1206,11 @@ If nil, then user's online status is not displayed."
 (defcustom telega-symbol-alarm "⏲"
   "*Symbol used for scheduled messages."
   :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-dice-list (list "🎲" "⚀" "⚁" "⚂" "⚃" "⚄" "⚅")
+  "List of dices to show for \"messageDice\"."
+  :type 'list
   :group 'telega-symbol)
 
 (defcustom telega-symbol-widths
