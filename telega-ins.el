@@ -815,13 +815,16 @@ Return `non-nil' if WEB-PAGE has been inserted."
       (telega-duration-human-readable
        (plist-get content :duration)))))
 
-(defun telega-ins--dice-msg (msg)
+(defun telega-ins--dice-msg (msg &optional one-line-p)
   "Inserter for the \"messageDice\" MSG."
   (let ((dice-value (telega--tl-get msg :content :value)))
+    (telega-ins (car telega-symbol-dice-list) " ")
     (telega-ins--with-face 'shadow
       (telega-ins-i18n "telega_random_dice"))
-    (telega-ins " " (number-to-string dice-value) "\n")
+    (telega-ins " " (number-to-string dice-value))
 
+    (unless one-line-p
+      (telega-ins "\n")
     ;; TODO: Animated sticker as dice roll
     ;; (if-let ((dice-sticker (telega-sticker--dice-get dice-value 'locally)))
     ;;     (telega-ins--sticker-image dice-sticker 'slices)
@@ -836,7 +839,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (telega-ins--image-slices
            (telega-emoji-create-svg dice-symbol (car telega-sticker-size)))
         (telega-ins dice-symbol))
-      )))
+      ))))
 
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
@@ -1672,8 +1675,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (telega-ins--with-face 'shadow
         (telega-ins-fmt " (%d options)" (length (plist-get imc :options)))))
      (inputMessageDice
-      (telega-ins "🎲" " ")
-      (telega-ins-i18n "telega_random_dice"))
+      (telega-ins (car telega-symbol-dice-list)
+                  " " (telega-i18n "telega_random_dice")))
 
      ;; Special IMC for inline query results
      (telegaInlineQuery
@@ -1808,6 +1811,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           (telega-ins " (" (telega-i18n "polls_votes_count"
                              :count (plist-get poll :total_voter_count))
                       ")")))
+       (messageDice
+        (telega-ins--dice-msg msg 'one-line))
        (t (telega-ins--content msg))))))
 
 
