@@ -481,6 +481,9 @@ non-nil."
      (let* ((bg-id (telega--tl-get msg :content :basic_group_id))
             (bg-chat (telega--createBasicGroupChat bg-id 'force)))
        (telega-chat--pop-to-buffer bg-chat)))
+    (messagePinMessage
+     (let ((pin-msg-id (telega--tl-get msg :content :message_id)))
+       (telega-chat--goto-msg (telega-msg-chat msg) pin-msg-id 'hightlight)))
 
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
