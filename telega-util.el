@@ -872,12 +872,13 @@ If REGION-P is non-nil, then make a screenshot of region."
       (write-region (shell-command-to-string flameshot-cmd)
                     nil tofile nil 'quiet))))
 
-(defun telega-screenshot-with-screencapture (tofile &optional _region-p)
+(defun telega-screenshot-with-screencapture (tofile &optional region-p)
   "Make a screenshot into TOFILE using `screencapture' utility.
 If REGION-P is non-nil, then make a screenshot of region."
   (let ((screencapture-cmd (concat (or (executable-find "screencapture")
                                        (error "Utility `screencapture' not found"))
-                                   " " tofile)))
+                                   (if region-p  " -i "  " ")
+                                   tofile)))
     (call-process-shell-command screencapture-cmd)))
 
 (defun telega-screenshot-with-pngpaste (tofile &optional _region-p)
