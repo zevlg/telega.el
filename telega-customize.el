@@ -948,6 +948,8 @@ Message is ignored if its `:ignore' option is set to non-nil."
 (defcustom telega-screenshot-function
   (cond ((executable-find "flameshot")
          'telega-screenshot-with-flameshot)
+        ((executable-find "screencapture")
+         'telega-screenshot-with-screencapture)
         ((executable-find "pngpaste")
          'telega-screenshot-with-pngpaste)
         ((executable-find "import")
