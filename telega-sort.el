@@ -67,6 +67,7 @@
     (define-key map (kbd "j") 'telega-sort-by-join-date)
     (define-key map (kbd "o") 'telega-sort-by-online-members)
     (define-key map (kbd "m") 'telega-sort-by-member-count)
+    (define-key map (kbd "v") 'telega-sort-by-chatbuf-recency)
     (define-key map (kbd "!") 'telega-sort-invert)
 
     (define-key map (kbd "d") 'telega-sort-pop-last)
@@ -219,6 +220,14 @@ Return non-nil if CHAT has been reordered."
 (define-telega-sorter join-date () (chat)
   "Sort chats by join date.  Last joined chats goes first."
   (plist-get (telega-chat--info chat) :date))
+
+;; - ~chatbuf-recency~, {{{where-is(telega-sort-by-chatbuf-recency,telega-root-mode-map)}}} ::
+;;   {{{fundoc(telega--sort-chatbuf-recency)}}}
+(define-telega-sorter chatbuf-recency () (chat)
+  "Sort chats by chatbuf recency.  Recently used chats goes first."
+  (or (with-telega-chatbuf chat
+        (length (memq (current-buffer) (buffer-list))))
+      -1))
 
 ;; - TODO Date of last message sent by ~telega-user-me~
 ;; - TODO Date of last mention (thanks to https://t.me/lainposter)

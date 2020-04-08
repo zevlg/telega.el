@@ -774,13 +774,14 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
-(defcustom telega-chat-switch-buffer-sort-criteria nil
+(defcustom telega-chat-switch-buffer-sort-criteria 'chatbuf-recency
   "Criteria to sort open chats when switching with `telega-switch-buffer'."
   :type 'symbol
   :group 'telega-chat)
 
 (defcustom telega-chat-delete-moves-to-archive t
-  "*Non-nil to move chat to Archive on deletion."
+  "*Non-nil to move chat to Archive on deletion.
+NOT YET USED."
   :type 'boolean
   :group 'telega-chat)
 

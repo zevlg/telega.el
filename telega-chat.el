@@ -3477,9 +3477,14 @@ If DRAFT-MSG is ommited, then clear draft message."
     (setq telega-chatbuf--need-point-refresh nil)
     (telega-chatbuf--point-refresh))
 
+  ;; May affect rootbuf sorting if `chatbuf-recency' criteria is used
+  (when (memq 'chatbuf-recency telega--sort-criteria)
+    (telega-chat--reorder telega-chatbuf--chat nil))
+
   ;; See docstring for `telega-root-keep-cursor'
   (when (eq telega-root-keep-cursor 'track)
-    (telega-root--keep-cursor-at telega-chatbuf--chat)))
+    (telega-root--keep-cursor-at telega-chatbuf--chat))
+  )
 
 (defun telega-chatbuf--killed ()
   "Called when chat buffer is killed."

@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.4)
+#+TITLE: Telega Manual (v0.6.7)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -178,7 +178,8 @@ Matching is done using ~telega-chat-match-p~ function.
      Same as ~any~
 
 - (all ~FILTER-LIST~...) :: 
-     Matches if all filters in ~FILTER-LIST~ matches. Also matches if ~FILTER-LIST~ is empty.
+     Matches if all filters in ~FILTER-LIST~ matches.
+Also matches if ~FILTER-LIST~ is empty.
 
 - (and ~FILTER-LIST~...) :: 
      Same as ~all~
@@ -213,10 +214,13 @@ Matching is done using ~telega-chat-match-p~ function.
      Matches if chat has pinned message.
 
 - (unread [ ~N~ ]) :: 
-     Matches if chat has least ~N~ unread messages. By default ~N~ is 1. Also matches chats marked as unread.
+     Matches if chat has least ~N~ unread messages.
+By default ~N~ is 1.
+Also matches chats marked as unread.
 
 - (mention [ ~N~ ]) :: 
-     Matches if chat has least ~N~ unread mentions. By default ~N~ is 1.
+     Matches if chat has least ~N~ unread mentions.
+By default ~N~ is 1.
 
 - unmuted :: 
      Matches if chat has enabled notifications.
@@ -234,7 +238,8 @@ Matching is done using ~telega-chat-match-p~ function.
      Matches if chat's id is one of in ~ID-LIST~.
 
 - me-is-owner :: 
-     Matches if me is the owner of the chat. Only basicgroup, supergroup and channel can be owned.
+     Matches if me is the owner of the chat.
+Only basicgroup, supergroup and channel can be owned.
 
 - me-is-member :: 
      Matches if me is member of the chat.
@@ -255,7 +260,11 @@ Matching is done using ~telega-chat-match-p~ function.
      Matches if chat has corresponding chatbuf.
 
 - (permission ~PERM~) :: 
-     Matches if chat has ~PERM~ set in chat permissions. ~PERM~ could be one of: ~:can_send_messages~, ~:can_send_media_messages~, ~:can_send_polls~, ~:can_send_other_messages~, ~:can_add_web_page_previews~, ~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
+     Matches if chat has ~PERM~ set in chat permissions.
+~PERM~ could be one of:
+~:can_send_messages~, ~:can_send_media_messages~, ~:can_send_polls~,
+~:can_send_other_messages~, ~:can_add_web_page_previews~,
+~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
 
 - (restriction ~SUFFIX-LIST~...) :: 
      Matches restricted chats.
@@ -269,7 +278,8 @@ Matching is done using ~telega-chat-match-p~ function.
   If ~SUFFIX-LIST~ is ommited, then match any reason.
 
 - (contact [ ~MUTUAL-P~ ]) :: 
-     Matches private chats if corresponding user is a contact. If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
+     Matches private chats if corresponding user is a contact.
+If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
 - top :: 
      Matches if chat is in top usage.
@@ -287,7 +297,8 @@ Matching is done using ~telega-chat-match-p~ function.
      Matches if chat's last message sent by me.
 
 - (chat-list ~LIST-NAME~) :: 
-     Matches if chat is in chat list named ~LIST-NAME~. Only "Main" and "Archive" names are supported.
+     Matches if chat is in chat list named ~LIST-NAME~.
+Only "Main" and "Archive" names are supported.
 
 - main :: 
      Matches if chat from "Main" chat list.
@@ -315,9 +326,11 @@ directly into ~telega-sort-criteria-alist~, use
      with prefix argument @@html:<kbd>@@C-u@@html:</kbd>@@.
 
 - @@html:<kbd>@@\ s@@html:</kbd>@@, @@html:<kbd>@@\ a@@html:</kbd>@@ (~telega-sort-by-sorter~) :: 
-     Interactively add ~CRITERIA~ to active sorter. If prefix ~ARG~ is used, then add sort criteria, instead of overwritting currently active one.
+     Interactively add ~CRITERIA~ to active sorter.
+If prefix ~ARG~ is used, then add sort criteria, instead of
+overwritting currently active one.
 
-     Use this command to reset active sorter.
+Use this command to reset active sorter.
 
 ** Sorting criteria
 
@@ -335,6 +348,9 @@ directly into ~telega-sort-criteria-alist~, use
 
 - ~join-date~, @@html:<kbd>@@\ j@@html:</kbd>@@ (~telega-sort-by-join-date~) :: 
      Sort chats by join date.  Last joined chats goes first.
+
+- ~chatbuf-recency~, @@html:<kbd>@@\ v@@html:</kbd>@@ (~telega-sort-by-chatbuf-recency~) :: 
+     Sort chats by chatbuf recency.  Recently used chats goes first.
 
 - TODO Date of last message sent by ~telega-user-me~
 - TODO Date of last mention (thanks to https://t.me/lainposter)
@@ -387,39 +403,6 @@ Customizable options:
 
   Format in mode-line-format for ~telega-mode-line-string~.
 
-** telega-url-shorten-mode
-
-Minor mode for chatbuf to show shorter version for some URLs.  For
-example, with ~telega-url-shorten-mode~ enabled in chatbuf, urls
-like:
-
-#+begin_example
-  https://github.com/zevlg/telega.el/issues/105
-  https://gitlab.com/jessieh/mood-line/issues/6
-  https://www.youtube.com/watch?v=0m2jR6_eMkU
-  https://ru.wikipedia.org/wiki/Душ
-#+end_example
-
-Will look like:
-[[https://zevlg.github.io/telega/telega-url-shorten.png]]
-
-Can be enabled globally in all chats matching
-~telega-url-shorten-mode-for~ (see below) chat filter with
-~(global-telega-url-shorten-mode 1)~ or by adding:
-
-#+begin_src emacs-lisp
-  (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
-#+end_src
-
-Also consider installing =font-awesome= to display icons for
-shorten URLs even in tty.
-
-- User Option: ~telega-url-shorten-mode-for~, default=all
-
-  Chat filter for ~global-telega-url-shorten-mode~.
-~global-telega-url-shorten-mode~ enables urls shortening only for
-chats matching this chat filter.
-
 ** telega-squash-message-mode
 
 Minor mode for chatbuf to squash messages into single one while
@@ -463,10 +446,73 @@ To view highres image in chatbuf with ~telega-image-mode~ press
 ** telega-edit-file-mode
 
 Minor mode to edit files from Telegram messages.
-In this mode @@html:<kbd>@@C-x C-s@@html:</kbd>@@ will save file to telegram cloud.
+In this mode @@html:<kbd>@@C-x C-s@@html:</kbd>@@ will save file to Telegram cloud.
 To enable ~telega-edit-file-mode~ for files opened from message
 with @@html:<kbd>@@RET@@html:</kbd>@@, use:
 
 #+begin_src emacs-lisp
   (add-hook 'telega-find-file-hook 'telega-edit-file-mode)
 #+end_src
+
+* Contributed packages
+
+=contrib/= directory contains packages contributed to telega.el
+project.
+
+** /ol-telega.el/ -- Org mode links to telegram chats and messages
+
+Installs "telegram" links to Org mode.
+
+** /telega-status-history.el/ -- Global minore mode to save user's online status history
+
+Saves online status history into ~telega-status-history-logs-dir~ directory.
+
+** /telega-url-shorten.el/
+
+Minor mode for chatbuf to show shorter version for some URLs.  For
+example, with ~telega-url-shorten-mode~ enabled in chatbuf, urls
+like:
+
+#+begin_example
+  https://github.com/zevlg/telega.el/issues/105
+  https://gitlab.com/jessieh/mood-line/issues/6
+  https://www.youtube.com/watch?v=0m2jR6_eMkU
+  https://ru.wikipedia.org/wiki/Душ
+#+end_example
+
+Will look like:
+[[https://zevlg.github.io/telega/telega-url-shorten.png]]
+
+Can be enabled globally in all chats matching
+~telega-url-shorten-mode-for~ (see below) [[#chat-filters][chat
+filter]] with ~(global-telega-url-shorten-mode 1)~ or by adding:
+
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
+#+end_src
+
+Depends on
+[[https://github.com/domtronn/all-the-icons.el][all-the-icons]]
+Emacs package.
+
+*** Customizable options:
+
+- User Option: ~telega-url-shorten-use-images~
+  Non-nil to use images on graphics display.
+
+- User Option: ~telega-url-shorten-regexps~
+
+  Alist of patterns for URL shortening.
+
+  To change ~:symbol~ or ~:svg-icon~ property for existing url
+  shortening pattern use something like:
+  #+begin_src
+    (plist-put (cdr (assq '<LABEL> telega-url-shorten-regexps))
+    	   :<PROP> <VALUE>)
+  #+end_src
+
+- User Option: ~telega-url-shorten-mode-for~, default=all
+
+  Chat filter for ~global-telega-url-shorten-mode~.
+  ~global-telega-url-shorten-mode~ enables urls shortening only for
+  chats matching this chat filter.

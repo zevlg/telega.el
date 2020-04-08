@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Thu Mar 19 14:59:25 2020
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,9 @@
 
 ;;; Commentary:
 
-;; 
+;; ** /telega-status-history.el/ -- Global minore mode to save user's online status history
+;;
+;; Saves online status history into ~telega-status-history-logs-dir~ directory.
 
 ;;; Code:
 (require 'telega)

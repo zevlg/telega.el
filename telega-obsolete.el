@@ -53,6 +53,8 @@
                            'telega-use-tracking-for "0.5.7")
 (telega-obsolete--variable 'telega-avatar-factors
                            'telega-avatar-factors-alist "0.5.8")
+(telega-obsolete--variable 'telega-url-shorten-patterns
+                           'telega-url-shorten-regexps "0.6.7")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

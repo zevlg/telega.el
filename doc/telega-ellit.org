@@ -119,3 +119,14 @@ new terms specific to =telega=.  All of them are used in the manual.
 
 # * Minor Modes
 #+ELLIT-INCLUDE: ../telega-modes.el
+
+* Contributed packages
+
+=contrib/= directory contains packages contributed to telega.el
+project.
+
+#+ELLIT-INCLUDE: ../contrib/ol-telega.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-status-history.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-url-shorten.el

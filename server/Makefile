@@ -12,7 +12,7 @@ SOURCES=telega-server.c telega-dat.c telega-pngext.c
 
 ifdef WITH_VOIP
 CC=c++
-CFLAGS+=-std=c++11 -DWITH_VOIP
+CFLAGS+=-std=c++11 -DWITH_VOIP -DTGVOIP_NO_STDOUT_LOGS
 LDFLAGS+=-ltgvoip
 SOURCES+=telega-voip.cpp
 endif

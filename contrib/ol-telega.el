@@ -21,7 +21,9 @@
 
 ;;; Commentary:
 
-;;
+;; ** /ol-telega.el/ -- Org mode links to telegram chats and messages
+;; 
+;; Installs "telegram" links to Org mode.
 
 ;;; Code:
 (require 'telega-tme)

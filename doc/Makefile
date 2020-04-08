@@ -1,6 +1,6 @@
 EMACS=emacs
 
-DOC_EL_SOURCES=../telega.el ../telega-root.el ../telega-filter.el ../telega-sort.el ../telega-chat.el ../telega-modes.el
+DOC_EL_SOURCES=../telega.el ../telega-root.el ../telega-filter.el ../telega-sort.el ../telega-chat.el ../telega-modes.el ../contrib/ol-telega.el ../contrib/telega-status-history.el ../contrib/telega-url-shorten.el
 
 all: telega-manual.org
 

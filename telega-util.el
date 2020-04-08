@@ -507,8 +507,10 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
 
 ;; NOTE: ivy returns copy of the string given in choices, thats why we
 ;; need to use 'string= as testfun in `alist-get'
-(defun telega-completing-read-chat (prompt &optional only-filtered)
-  "Read chat by title."
+(defun telega-completing-read-chat (prompt &optional only-filtered sort-criteria)
+  "Read chat by title.
+If ONLY-FILTERED is specified, then read only chats matching active chat filter.
+SORT-CRITERIA is a chat sort criteria to apply."
   (let ((choices (mapcar (lambda (chat)
                            (list (telega-chatbuf--name chat)
                                  chat))
