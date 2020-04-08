@@ -393,14 +393,18 @@ If BUFFER-OR-NAME exists and visible then redisplay it."
     (with-current-buffer help-buf
       (when (and (eq for-param telega--help-win-param)
                  telega--help-win-inserter)
-        (if (get-buffer-window help-buf)
-            ;; Buffer is visible in some window
-            (telega-save-cursor
-              (let ((inhibit-read-only t))
-                (setq telega--help-win-dirty-p nil)
-                (erase-buffer)
-                (funcall telega--help-win-inserter
-                         telega--help-win-param)))
+        (if-let ((help-win (get-buffer-window help-buf)))
+            ;; Buffer is visible in some HELP-WIN
+            (let ((w-start (window-start help-win))
+                  (w-point (window-point help-win)))
+              (telega-save-excursion
+                (let ((inhibit-read-only t))
+                  (setq telega--help-win-dirty-p nil)
+                  (erase-buffer)
+                  (funcall telega--help-win-inserter
+                           telega--help-win-param)))
+              (set-window-start help-win w-start)
+              (set-window-point help-win w-point))
 
           ;; Buffer is not visible, mark it as dirty, so it will be
           ;; redisplayed when switched in
