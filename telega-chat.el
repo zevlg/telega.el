@@ -2423,7 +2423,12 @@ Message id could be updated on this update."
             (ewoc-delete telega-chatbuf--ewoc node)
             (with-telega-deferred-events
               (if before-node
-                  (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
+                  ;; NOTE: need to redisplay next to newly created
+                  ;; node, in case `telega-chat-group-messages-for' is
+                  ;; used, see https://github.com/zevlg/telega.el/issues/159
+                  (progn
+                    (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
+                    (ewoc-invalidate telega-chatbuf--ewoc before-node))
                 (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))))
 
 (defun telega--on-updateMessageSendFailed (event)
@@ -2524,7 +2529,14 @@ messages."
             (if (telega-chat-match-p (telega-msg-chat msg)
                                      telega-chat-show-deleted-messages-for)
                 (telega-msg-redisplay msg node)
-              (ewoc-delete telega-chatbuf--ewoc node)))
+
+              ;; NOTE: need to redisplay next to deleted node, in case
+              ;; `telega-chat-group-messages-for' is used
+              ;; See https://github.com/zevlg/telega.el/issues/159
+              (let ((next-node (ewoc-next telega-chatbuf--ewoc node)))
+                (ewoc-delete telega-chatbuf--ewoc node)
+                (when next-node
+                  (ewoc-invalidate telega-chatbuf--ewoc next-node)))))
           (when (eq msg-id (plist-get telega-chatbuf--chat :pinned_message_id))
             (telega-chat--update-pinned-message telega-chatbuf--chat 'offline)))
         ))))
