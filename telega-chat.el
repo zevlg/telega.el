@@ -3137,10 +3137,10 @@ Multiple `C-u' increases delay before taking screenshot of the area."
     (let* ((temporary-file-directory telega-temp-dir)
            (tmpfile (telega-temp-name "screenshot" ".png")))
       (funcall telega-screenshot-function tmpfile (floatp n))
-
-      ;; Switch back to chat buffer in case it has been changed
-      (telega-chat--pop-to-buffer chat)
-      (telega-chatbuf--attach-tmp-photo tmpfile))))
+      (when (file-exists-p tmpfile)
+        ;; NOTE: Screenshot successfully taken
+        (telega-chat--pop-to-buffer chat)
+        (telega-chatbuf--attach-tmp-photo tmpfile)))))
 
 (defun telega-chatbuf-attach-member (user)
   "Add USER to the chat members."
@@ -3379,14 +3379,18 @@ Prefix argument is available for next attachements:
       (goto-char (point-max))
       (telega-chatbuf-attach-photo file))))
 
-(defun telega-file-send (file chat &optional as-photo-p)
+(defun telega-buffer-file-send (file chat &optional as-photo-p)
   "Prepare FILE to be sent as document or photo to CHAT.
 If prefix argument is used, then always send as a file.
-Otherwise for `image-mode' major-mode, send file as photo."
+Otherwise for `image-mode' major-mode, send file as photo.
+If called interactively, then file associated with current buffer
+is used as FILE."
   (interactive
    (let ((send-photo-p (and (not current-prefix-arg)
                             (derived-mode-p 'image-mode))))
-     (list (buffer-file-name)
+     (list (or (buffer-file-name)
+               (user-error (concat "Can't send current buffer, "
+                                   "it does not have corresponding file")))
            (telega-completing-read-chat
             (format "Send %s to chat: " (if send-photo-p "PHOTO" "FILE")))
            send-photo-p)))

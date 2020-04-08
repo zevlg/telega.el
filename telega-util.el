@@ -507,10 +507,10 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
 
 ;; NOTE: ivy returns copy of the string given in choices, thats why we
 ;; need to use 'string= as testfun in `alist-get'
-(defun telega-completing-read-chat (prompt &optional only-filtered sort-criteria)
+(defun telega-completing-read-chat (prompt &optional only-filtered _sort-criteria)
   "Read chat by title.
 If ONLY-FILTERED is specified, then read only chats matching active chat filter.
-SORT-CRITERIA is a chat sort criteria to apply."
+SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (let ((choices (mapcar (lambda (chat)
                            (list (telega-chatbuf--name chat)
                                  chat))
@@ -853,24 +853,34 @@ Same as `momentary-string-display', but keeps the point."
 (defun telega-screenshot-with-import (tofile &optional region-p)
   "Make a screenshot into TOFILE using imagemagick's import utility.
 If REGION-P is non-nil, then make a screenshot of region."
-  (let* ((import-bin (or (executable-find "import")
-                         (error "Utility `import' (imagemagick) not found")))
-         (import-args (nconc (unless region-p (list "-window" "root"))
-                             (list tofile))))
-    (apply 'call-process import-bin nil nil nil
-           "-silent"                    ;no beep
-           import-args)))
+  (let ((import-cmd
+         (concat (or (executable-find "import")
+                     (error "Utility `import' (imagemagick) not found"))
+                 " -silent"             ;no beep
+                 (unless region-p " -window root")
+                 " " tofile)))
+    (call-process-shell-command import-cmd)))
 
 (defun telega-screenshot-with-flameshot (tofile &optional region-p)
   "Make a screenshot into TOFILE using `flameshot' utility.
 If REGION-P is non-nil, then make a screenshot of region."
-  (let ((flameshot-cmd (concat (or (executable-find "flameshot")
-                                   (error "Utility `flameshot' not found"))
-                               " " (if region-p "gui" "full")
-                               " -r")))
-    (let ((coding-system-for-write 'binary))
-      (write-region (shell-command-to-string flameshot-cmd)
-                    nil tofile nil 'quiet))))
+  (let* ((flameshot-cmd (concat (or (executable-find "flameshot")
+                                    (error "Utility `flameshot' not found"))
+                                " " (if region-p "gui" "full")
+                                " -r"))
+         (coding-system-for-write 'binary)
+         (png-output (shell-command-to-string flameshot-cmd)))
+    (unless (string-empty-p png-output)
+      (write-region png-output nil tofile nil 'quiet))))
+
+(defun telega-screenshot-with-gnome-screenshot (tofile &optional region-p)
+  "Make a screenshot into TOFILE using `gnome-screenshot' utility.
+If REGION-P is non-nil, then make a screenshot of region."
+  (let ((gs-cmd (concat (or (executable-find "gnome-screenshot")
+                            (error "Utility `gnome-screenshot' not found"))
+                        " " (when region-p "-a")
+                        " -f " tofile)))
+    (call-process-shell-command gs-cmd)))
 
 (defun telega-screenshot-with-screencapture (tofile &optional region-p)
   "Make a screenshot into TOFILE using `screencapture' utility.

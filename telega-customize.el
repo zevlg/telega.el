@@ -952,6 +952,8 @@ Message is ignored if its `:ignore' option is set to non-nil."
          'telega-screenshot-with-screencapture)
         ((executable-find "pngpaste")
          'telega-screenshot-with-pngpaste)
+        ((executable-find "gnome-screenshot")
+         'telega-screenshot-with-gnome-screenshot)
         ((executable-find "import")
          'telega-screenshot-with-import))
   "*Function to use to make screenshot.

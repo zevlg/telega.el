@@ -62,7 +62,7 @@
     (define-key map (kbd "t") 'telega)
     (define-key map (kbd "s") 'telega-saved-messages)
     (define-key map (kbd "b") 'telega-switch-buffer)
-    (define-key map (kbd "f") 'telega-file-send)
+    (define-key map (kbd "f") 'telega-buffer-file-send)
     (define-key map (kbd "w") 'telega-save-buffer)
     (define-key map (kbd "a") 'telega-account-switch)
     map)
