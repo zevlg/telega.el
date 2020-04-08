@@ -208,9 +208,8 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
 (defun telega-chat-by-username (username)
   "Find chat by its USERNAME."
   (cl-find username telega--ordered-chats
-           :test 'string=
-           :key (lambda (chat)
-                  (telega-tl-str (telega-chat--info chat) :username))))
+           :test #'string=
+           :key #'telega-chat-username))
 
 (defun telega--joinChat (chat)
   "Add current user as a new member to a CHAT."
@@ -461,6 +460,8 @@ delimiting with WITH-USERNAME-DELIM."
     (telega-root--chat-update
      chat (telega-sort-maybe-reorder chat event))
 
+    ;; NOTE: `telega-chatbuf--name' uses `:is_pinned' so rename the
+    ;; buffer
     (with-telega-chatbuf chat
       (rename-buffer (telega-chatbuf--name chat)))))
 
@@ -1797,16 +1798,28 @@ Recover previous active action after BODY execution."
   )
 
 (defun telega-chatbuf--name (chat)
-  "Return name for the CHAT buffer."
-  (substring-no-properties
-   (concat telega-symbol-telegram
-           (when (telega-chat-secret-p chat)
-             telega-symbol-lock)
-           (telega-chat-title-with-brackets chat "")
-           (when (plist-get chat :is_pinned)
-             telega-symbol-pin)
-           (when (plist-get chat :has_scheduled_messages)
-             telega-symbol-alarm))))
+  "Return uniquified name for the CHAT buffer."
+  (let* ((bufname (substring-no-properties
+                   (concat telega-symbol-telegram
+                           (when (telega-chat-secret-p chat)
+                             telega-symbol-lock)
+                           (telega-chat-title-with-brackets chat "")
+                           (when (plist-get chat :is_pinned)
+                             telega-symbol-pin)
+                           (when (plist-get chat :has_scheduled_messages)
+                             telega-symbol-alarm))))
+         (buf (get-buffer bufname)))
+    ;; NOTE: Multiple chats could have same BUFNAME, uniquify it by
+    ;; adding unique suffix, in case other chat occupies BUFNAME
+    ;; See https://github.com/zevlg/telega.el/issues/158
+    (if (and (buffer-live-p buf)
+             (not (eq chat (buffer-local-value 'telega-chatbuf--chat buf))))
+        (concat bufname
+                "<"
+                (or (telega-chat-username chat)
+                    (number-to-string (plist-get chat :id)))
+                ">")
+      bufname)))
 
 (defun telega-chatbuf--join (chat)
   "[JOIN] button has been pressed."
@@ -3419,6 +3432,8 @@ If DRAFT-MSG is ommited, then clear draft message."
     (telega-root--chat-update
      chat (telega-sort-maybe-reorder chat event))
 
+    ;; NOTE: `telega-chatbuf--name' uses `:has_scheduled_messages', so
+    ;; rename the buffer
     (with-telega-chatbuf chat
       (rename-buffer (telega-chatbuf--name chat)))))
 
