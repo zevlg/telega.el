@@ -3851,34 +3851,40 @@ If called outside chat buffer, then fallback to default DND behaviour."
 (defconst telega-chat--filters
   (list (list "scheduled" #'telega-chatbuf-filter-scheduled)
         (list "search" "searchMessagesFilterEmpty")
-        (list "gif" "searchMessagesFilterAnimation")
-        (list "audio" "searchMessagesFilterAudio")
-        (list "doc" "searchMessagesFilterDocument")
-        (list "file" "searchMessagesFilterDocument")
+        (list "hashtag" #'telega-chatbuf-filter-hashtag)
         (list "photo" "searchMessagesFilterPhoto")
-        (list "video" "searchMessagesFilterVideo")
-        (list "voice-note" "searchMessagesFilterVoiceNote")
         (list "photo-video" "searchMessagesFilterPhotoAndVideo")
         (list "url" "searchMessagesFilterUrl")
+        (list "doc" "searchMessagesFilterDocument")
+        (list "file" "searchMessagesFilterDocument")
+        (list "gif" "searchMessagesFilterAnimation")
+        (list "audio" "searchMessagesFilterAudio")
+        (list "video" "searchMessagesFilterVideo")
+        (list "voice-note" "searchMessagesFilterVoiceNote")
+        (list "video-note" "searchMessagesFilterVideoNote")
+        (list "voice-video-note" "searchMessagesFilterVoiceAndVideoNote")
         (list "chat-photo" "searchMessagesFilterChatPhoto")
         (list "call" "searchMessagesFilterCall")
         (list "missed-call" "searchMessagesFilterMissedCall")
-        (list "video-note" "searchMessagesFilterVideoNote")
-        (list "voice-video-note" "searchMessagesFilterVoiceAndVideoNote")
         (list "mention" "searchMessagesFilterMention")
         (list "unread-mention" "searchMessagesFilterUnreadMention")
         ))
 
-(defun telega-chatbuf-filter (filter-name &optional by-sender-p)
+(defun telega-chatbuf-filter (filter-name &optional query by-sender-p)
   "Enable chat messages filtering.
+Enables FILTER-NAME filter.
+QUERY is only used by \"search\" chatbuf filter.
 If `\\[universal-argument]' is specified, then filter by sender
 of the message at point.
 Not all filters can filter by sender."
-  (interactive (list (funcall telega-completing-read-function
-                              "Chat Messages Filter: "
-                              (mapcar #'car telega-chat--filters)
-                              nil t)
-                     current-prefix-arg))
+  (interactive (let ((fname (funcall telega-completing-read-function
+                                     "Chat Messages Filter: "
+                                     (mapcar #'car telega-chat--filters)
+                                     nil t)))
+                 (list fname (if (string= fname "search") ;XXX
+                                 (read-string "Search Query: ")
+                               "")
+                       current-prefix-arg)))
 
   (let ((msg-filter (assoc filter-name telega-chat--filters)))
     (cond ((null msg-filter)
@@ -3911,11 +3917,7 @@ Not all filters can filter by sender."
                                 "searchMessagesFilterVoiceAndVideoNote"
                                 "searchMessagesFilterMention"
                                 "searchMessagesFilterUnreadMention")))
-           (let ((query (if (string= (cadr msg-filter)
-                                     "searchMessagesFilterEmpty")
-                            (read-string "Search Query: ")
-                          ""))
-                 (sender (when (and by-sender-p
+           (let ((sender (when (and by-sender-p
                                     (not (telega-me-p telega-chatbuf--chat))
                                     (not (telega-chat-secret-p
                                           telega-chatbuf--chat)))
@@ -3934,9 +3936,16 @@ Not all filters can filter by sender."
                   (setf (nth 4 telega-chatbuf--filter) total-messages)
                   (telega-chatbuf--footer-redisplay))))
              ))
-           ))
+          ))
 
   (telega-chatbuf--footer-redisplay))
+
+(defun telega-chatbuf-filter-hashtag (hashtag &optional by-sender-p)
+  "Show only scheduled messages."
+  (interactive (list (funcall telega-completing-read-function
+                              "Hashtag: " (telega--searchHashtags ""))
+                     current-prefix-arg))
+  (telega-chatbuf-filter "search" (concat "#" hashtag) by-sender-p))
 
 (defun telega-chatbuf-filter-scheduled ()
   "Show only scheduled messages."
