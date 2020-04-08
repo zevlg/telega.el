@@ -1606,7 +1606,7 @@ Update modeline as well."
 
   ;; NOTE: This keeps point where it is
   (if (< (ewoc-location (ewoc--footer telega-chatbuf--ewoc))
-         (point) 
+         (point)
          telega-chatbuf--input-marker)
       (telega-save-cursor
         (telega-ewoc--set-footer
@@ -3125,9 +3125,7 @@ Multiple `C-u' increases delay before taking screenshot of the area."
     (setq n (log (car n) 4)))
 
   (if (and (> n 0)
-           ;; NO delays for "screencapture" or "pngpaste"
-           (not (eq telega-screenshot-function
-                    'telega-screenshot-with-screencapture))
+           ;; NO delays for "pngpaste"
            (not (eq telega-screenshot-function
                     'telega-screenshot-with-pngpaste)))
       (progn
