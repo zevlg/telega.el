@@ -3103,7 +3103,7 @@ If DOC-P prefix arg as given, then send it as document."
          (temporary-file-directory telega-temp-dir)
          (tmpfile (telega-temp-name "clipboard" ".png"))
          (coding-system-for-write 'binary))
-    (if (eq telega-screenshot-function 'telega-screenshot-with-pngpaste)
+    (if (executable-find "pngpaste")
         ;; NOTE: On MacOS, try extracting clipboard using pngpaste
         (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
           (error "No image in CLIPBOARD"))
@@ -3125,7 +3125,9 @@ Multiple `C-u' increases delay before taking screenshot of the area."
     (setq n (log (car n) 4)))
 
   (if (and (> n 0)
-           ;; NO delays for "pngpaste"
+           ;; NO delays for "screencapture" or "pngpaste"
+           (not (eq telega-screenshot-function
+                    'telega-screenshot-with-screencapture))
            (not (eq telega-screenshot-function
                     'telega-screenshot-with-pngpaste)))
       (progn
