@@ -132,9 +132,11 @@ chats matching this chat filter."
 
 (defun telega-url-shorten--e-t-p (old-e-t-p entity text)
   "Change resulting `telega-display' property by shortening URL."
-  (when-let* ((result (funcall old-e-t-p entity text))
-              (result-td (plist-get result 'telega-display)))
-    (when (eq 'textEntityTypeUrl (telega--tl-type (plist-get entity :type)))
+  (let* ((result (funcall old-e-t-p entity text))
+         (result-td (plist-get result 'telega-display)))
+    (when (and result-td
+               (eq 'textEntityTypeUrl
+                   (telega--tl-type (plist-get entity :type))))
       (when-let ((pmatch (cdr (cl-find result-td telega-url-shorten-regexps
                                        :test (lambda (res pattern)
                                                (string-match
