@@ -926,8 +926,9 @@ Return if CHAT1 is greater than CHAT2."
 (defsubst telega-chatbuf--input-draft-p ()
   "Return non-nil if chatbuf input is the draft.
 Draft input is the input that have `:draft-input-p' property on both sides."
-  (and (get-text-property telega-chatbuf--input-marker :draft-input-p)
-       (get-text-property (point-max) :draft-input-p)))
+  (and (telega-chatbuf-has-input-p)
+       (get-text-property telega-chatbuf--input-marker :draft-input-p)
+       (get-text-property (1- (point-max)) :draft-input-p)))
 
 (defsubst telega-chatbuf--cache-msg (msg)
   "Cache MSG in chatbuf's messages cache."

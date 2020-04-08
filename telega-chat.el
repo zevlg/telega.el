@@ -1872,8 +1872,10 @@ otherwise set draft only if current input is also draft."
         (telega-chatbuf--prompt-reset)))
 
     ;; NOTE: update draft only if current chatbuf input is marked as
-    ;; draft, otherwise draft update may change current input
-    (when (or force (telega-chatbuf--input-draft-p))
+    ;; draft (or empty), otherwise draft update may change current
+    ;; input
+    (when (or force (not (telega-chatbuf-has-input-p))
+              (telega-chatbuf--input-draft-p))
       (telega-save-cursor
         (telega-chatbuf--input-delete)
         (goto-char telega-chatbuf--input-marker)
