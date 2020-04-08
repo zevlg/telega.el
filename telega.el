@@ -94,7 +94,9 @@
   (interactive
    (list (funcall telega-completing-read-function
                   "Telegram Account: "
-                  (mapcar #'car telega-accounts)
+                  (mapcar #'car
+                          (cl-remove-if #'telega-account--current-p
+                                        telega-accounts))
                   nil 'require-match)))
 
   (let ((account (assoc account-name telega-accounts)))

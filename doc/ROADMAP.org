@@ -27,6 +27,7 @@
      database directories for different accounts using
      ~telega-accounts~ custom variable.
 
+   **WON'T DO THESE**
    - Personal rootbuf per account
    - Make all vars used by telega buffer-local in corresponding rootbuf
    - Account and "engine" saved in rootbuf
@@ -159,6 +160,8 @@ Random list of ideas for telega.el
    Text message incrementally appears.  This uses simple timer and just
    updates message content by adding chars one after another.  So it
    looks like you are typing this message.
+
+   **DANGEROUS** might cause account blocks, won't publish the code
 
 ** Favorite Messages
 

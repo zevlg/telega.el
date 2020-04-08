@@ -3935,11 +3935,13 @@ Not all filters can filter by sender."
 (defun telega-chatbuf-filter-scheduled ()
   "Show only scheduled messages."
   (interactive)
-  (telega-chatbuf--clean)
-  (setq telega-chatbuf--filter (list "scheduled"))
 
   (let ((scheduled-messages
          (telega--getChatScheduledMessages telega-chatbuf--chat)))
+    (telega-chatbuf--clean)
+    (setq telega-chatbuf--filter
+          (list "scheduled" nil nil nil (length scheduled-messages)))
+
     (telega-chatbuf--append-messages (nreverse scheduled-messages))))
 
 (defun telega-chatbuf-filter-search (&optional by-sender-p)
