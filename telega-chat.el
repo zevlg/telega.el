@@ -699,16 +699,19 @@ be marked as read."
            :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
            :force_read (if force t :false)))))
 
-(defun telega-chatbuf--view-visible-messages (&optional window display-start force)
-  "View all visible messages in chatbuf's window."
-  (when-let ((chatbuf-win (or window (get-buffer-window (current-buffer)))))
-    (when (or (> (plist-get telega-chatbuf--chat :unread_count) 0)
-              (< (plist-get telega-chatbuf--chat :last_read_inbox_message_id)
-                 (or (telega--tl-get telega-chatbuf--chat :last_message :id) 0)))
-      (telega--viewMessages
-       telega-chatbuf--chat
-       (telega-chatbuf--visible-messages chatbuf-win display-start)
-       force))))
+(defun telega-chatbuf--view-visible-messages (&optional display-start force)
+  "View all visible unread messages in chatbuf's window.
+View only unread messages.
+DISPLAY-START is passed directly to `telega-chatbuf--visible-messages'.
+FORCE - non-nil to force viewing messages in closed chat."
+  (when (> (plist-get telega-chatbuf--chat :unread_count) 0)
+    (let* ((last-read-msg-id
+            (plist-get telega-chatbuf--chat :last_read_inbox_message_id))
+           (messages (cl-remove-if-not
+                      (lambda (msg) (> (plist-get msg :id) last-read-msg-id))
+                      (telega-chatbuf--visible-messages display-start))))
+      (when messages
+        (telega--viewMessages telega-chatbuf--chat messages force)))))
 
 (defun telega--toggleChatIsPinned (chat)
   "Toggle pin state of the CHAT."
@@ -1420,6 +1423,7 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "M-g r") 'telega-chatbuf-read-all)
     (define-key map (kbd "M-g m") 'telega-chatbuf-next-mention)
     (define-key map (kbd "M-g @") 'telega-chatbuf-next-mention)
+    (define-key map (kbd "M-g u") 'telega-chatbuf-next-unread)
 
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chatbuf-complete-or-next-link)
@@ -1736,11 +1740,24 @@ Recover previous active action after BODY execution."
   (with-current-buffer (window-buffer window)
     ;; Mark some messages as read
     ;; Scroll might be triggered in closed chat, so force viewMessages
-    (telega-chatbuf--view-visible-messages window display-start 'force)
+    (telega-chatbuf--view-visible-messages display-start 'force)
+
+    ;; If scrolling in inactive window (with C-M-v) we might need to
+    ;; fetch new history if point near the buffer bottom
+    (when (and (not (eq window (selected-window)))
+               (> display-start (- (point-max) 2000))
+               (not telega-chatbuf--history-loading)
+               (telega-chatbuf--need-newer-history-p))
+      (telega-chatbuf--load-newer-history))
     ))
 
 (defun telega-chatbuf--post-command ()
   "Chabuf `post-command-hook' function."
+  ;; If `telega-chat-mark-observable-messages-as-read' is nil, we
+  ;; can't rely on window-scroll hook to mark messages as read
+  (unless telega-chat-mark-observable-messages-as-read
+    (telega-chatbuf--view-visible-messages (point)))
+
   ;; Check that all atachements are valid (starting/ending chars are
   ;; ok) and remove invalid attachements
   (let ((attach (telega--region-by-text-prop
@@ -2352,17 +2369,28 @@ Return nil, if not found."
       (when nnode
         (ewoc--node-data nnode)))))
 
-(defun telega-chatbuf--visible-messages (window &optional start-point)
-  "Return list of messages visible in chat buffer WINDOW.
+(defun telega-chatbuf--visible-messages (&optional start-point)
+  "Return list of messages visible in chat buffer window.
 If START-POINT is specified, then start from this point.
-Otherwise start from WINDOW's `window-start'."
-  (save-excursion
-    (goto-char (or start-point (window-start window)))
-    (let (msg messages)
-      (while (and (setq msg (telega-msg-at (point)))
-                  (pos-visible-in-window-p (point) window))
+Otherwise start from `window-start'.
+If `telega-chat-mark-observable-messages-as-read' is nil, then
+look only before `window-point', otherwise look for all visible messages."
+  (let* ((chatbuf-win (get-buffer-window (current-buffer)))
+         (chatbuf-point (window-point chatbuf-win))
+         done msg messages)
+    (save-excursion
+      (goto-char (or (when telega-chat-mark-observable-messages-as-read
+                       start-point)
+                     (window-start chatbuf-win)))
+      (while (and (not done)
+                  (setq msg (telega-msg-at (point)))
+                  (pos-visible-in-window-p (point) chatbuf-win))
         (push msg messages)
-        (telega-button-forward 1 'telega-msg-at 'no-error))
+        (telega-button-forward 1 'telega-msg-at 'no-error)
+
+        (when (and (not telega-chat-mark-observable-messages-as-read)
+                   (> (point) chatbuf-point))
+          (setq done t)))
       messages)))
 
 (defun telega-chatbuf--read-outbox (old-last-read-outbox-msgid)
@@ -2935,6 +2963,27 @@ Also reset `telega-chatbuf--filter'."
     (dolist (msg marked-messages)
       (telega-msg-redisplay msg))
     (telega-chatbuf-mode-line-update)))
+
+(defun telega-chatbuf-next-message (&optional n)
+  "Move point to the next message."
+  (interactive "p")
+  (telega-button-forward (or n 1)))
+
+(defun telega-chatbuf-next-unread ()
+  "Goto next uneard message in chat."
+  (interactive)
+  (when (zerop (plist-get telega-chatbuf--chat :unread_count))
+    (user-error "No unread messages in chat"))
+
+  (telega-chat--goto-msg telega-chatbuf--chat
+      (plist-get telega-chatbuf--chat :last_read_inbox_message_id) nil
+    (lambda ()
+      ;; NOTE: deleted messages can't be marked as read, so point will
+      ;; stuck at deleted messag, so we just skip such messages
+      (telega-button-forward
+       1 (lambda (button)
+           (when-let ((msg (telega-msg-at button)))
+             (not (plist-get msg :telega-is-deleted-message))))))))
 
 (defun telega-chatbuf-next-mention ()
   "Goto next mention in chat buffer."
@@ -3793,17 +3842,25 @@ Return non-nil on success."
                (button-start msgb) (button-end msgb)))))
         t))))
 
-(defun telega-chat--goto-msg (chat msg-id &optional highlight)
+(defun telega-chat--goto-msg (chat msg-id &optional highlight callback)
   "In CHAT goto message denoted by MSG-ID.
-If HIGHLIGHT is non-nil then highlight with fading background color."
+If HIGHLIGHT is non-nil then highlight with fading background color.
+This call is asynchronous, and might require history fetching.
+CALLBACK is called after point is moved to the message with MSG-ID."
+  (declare (indent 3))
   (with-current-buffer (telega-chat--pop-to-buffer chat :no-history)
-    (unless (telega-chatbuf--goto-msg msg-id highlight)
+    (if (telega-chatbuf--goto-msg msg-id highlight)
+        (when callback
+          (funcall callback))
+
       ;; Not found, need to fetch history
       (telega-chatbuf--clean)
       (telega-chat--load-history
           chat msg-id (- (/ telega-chat-history-limit 2)) nil
         (lambda (_ignored)
-          (telega-chatbuf--goto-msg msg-id highlight))))))
+          (telega-chatbuf--goto-msg msg-id highlight)
+          (when callback
+            (funcall callback)))))))
 
 (defun telega-chat-avatar-image (chat)
   "Return avatar for the CHAT."

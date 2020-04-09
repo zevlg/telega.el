@@ -764,6 +764,12 @@ timespan, then do not group messages."
   :options '((not saved-messages))
   :group 'telega-chat)
 
+(defcustom telega-chat-mark-observable-messages-as-read nil
+  "*Non-nil to mark all observable (visible) messages as read.
+Otherwise mark as read only messages before the point."
+  :type 'boolean
+  :group 'telega-chat)
+
 (defcustom telega-chat-mode-line-format
   '((:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
