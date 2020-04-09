@@ -46,6 +46,7 @@ In some random order:
 - [x] Chat Lists, "Archived Chats", see [telega#100](https://github.com/zevlg/telega.el/issues/100)
 - [x] Searching for messages in chat (PARTLY)
 - [x] Shared media
+- [x] Multiple accounts
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
 - [x] Message scheduling, reminders [PARTLY]
@@ -460,6 +461,12 @@ See `C-h v telega-proxies RET` for full range of proxy types.
 **Q**: Stickers are not shown.
 
 **A**: Make sure you have `imagemagick` support and please install `webp` package
+
+**Q**: `telega.el` is unbearable slow.
+
+**A**: You might be hitting into Emacs bug, described here https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-01/msg00548.html
+
+Also see https://github.com/zevlg/telega.el/issues/161
 
 **Q**: There are no glyphs for some unicode characters.
 

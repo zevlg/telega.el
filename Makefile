@@ -23,7 +23,7 @@ doc:
 	$(MAKE) -C doc
 
 clean:
-	@rm -vf *.elc
+	@rm -vf *.elc contrib/*.elc
 	$(MAKE) -C server $@
 
 .PHONY: $(SERVER) clean test doc
