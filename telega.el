@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.7
-(defconst telega-version "0.6.7")
+;; Version: 0.6.8
+(defconst telega-version "0.6.8")
 (defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.6.0")
 
@@ -375,6 +375,8 @@ area."
       (insert "<!--- Delete this section if you have no idea. -->\n"))))
 
 (provide 'telega)
+
+(push (expand-file-name "contrib" telega--lib-directory) load-path)
 
 ;; Load hook might install new symbols into
 ;; `telega-symbol-widths'

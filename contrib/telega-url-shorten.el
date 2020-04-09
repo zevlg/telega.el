@@ -78,6 +78,11 @@
 ;;   #+end_src
 (defcustom telega-url-shorten-regexps
   (list
+   `(github-repo
+     :regexp "https?://github.com/\\(.+\\)/\\(.*\\)"
+     :symbol ,(all-the-icons-faicon "github")
+     :replace "\\1/\\2"
+     :svg-icon ("fa-brands/github-octocat.svg" :scale 0.72))
    `(github-issue
      :regexp "https?://github.com/\\(.+\\)/issues/\\([0-9]+\\)"
      :symbol ,(all-the-icons-faicon "github")
