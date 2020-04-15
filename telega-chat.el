@@ -3954,7 +3954,7 @@ Not all filters can filter by sender."
                   telega-chatbuf--chat (plist-get msg-at-point :id)))
              (telega-chatbuf--load-initial-history)))
 
-          ((functionp (cadr msg-filter))
+          ((commandp (cadr msg-filter) 'for-interactive)
            (call-interactively (cadr msg-filter)))
           (t
            (cl-assert (member (cadr msg-filter)
@@ -4016,12 +4016,12 @@ Not all filters can filter by sender."
 
     (telega-chatbuf--append-messages (nreverse scheduled-messages))))
 
-(defun telega-chatbuf-filter-search (&optional by-sender-p)
+(defun telega-chatbuf-filter-search (&optional query by-sender-p)
   "Interactively search for messages in chatbuf.
 If non-nil BY-SENDER-P is specified by `\\[universal-argument]',
 then also search by sender."
-  (interactive "P")
-  (telega-chatbuf-filter "search" by-sender-p))
+  (interactive "sSearch Query: \nP")
+  (telega-chatbuf-filter "search" query by-sender-p))
 
 (defun telega-chatbuf-filter-cancel (&rest _ignored)
   "Cancel any message filtering.
