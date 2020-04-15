@@ -3191,6 +3191,7 @@ Multiple `C-u' increases delay before taking screenshot of the area."
       (when (file-exists-p tmpfile)
         ;; NOTE: Screenshot successfully taken
         (telega-chat--pop-to-buffer chat)
+        (x-focus-frame (window-frame (get-buffer-window)))
         (telega-chatbuf--attach-tmp-photo tmpfile)))))
 
 (defun telega-chatbuf-attach-member (user)
