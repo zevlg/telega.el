@@ -639,7 +639,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
       ;; Continue fetching chats
       (let ((telega-filters--inhibit-redisplay nil))
         (telega-filters--redisplay)
-        (telega--getChats "Main" 'telega-chat--on-getChats))
+        (telega--getChats "Main" (car (last chats)) #'telega-chat--on-getChats))
 
     ;; All chats has been fetched
 

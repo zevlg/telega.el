@@ -174,7 +174,12 @@ Return parsed command."
   (when (re-search-forward "^\\([a-z-]+\\) \\([0-9]+\\)\n" nil t)
     ;; New command always start at the beginning, no garbage inbetween
     ;; commands
-    (cl-assert (= (match-beginning 0) 1))
+    (unless (= (match-beginning 0) 1)
+      ;; Kill the garbage at the beginning
+      (telega-debug "!!!GARBAGE!!! in telega-server buffer: %s"
+                    (buffer-substring (point-min) (match-beginning 0)))
+      (message "Telega: !GARBAGE! in the telega-server buffer")
+      (delete-region (point-min) (match-beginning 0)))
 
     (let ((cmd (match-string 1))
           (sexpsz (string-to-number (match-string 2))))

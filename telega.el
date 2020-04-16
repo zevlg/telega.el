@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.9
-(defconst telega-version "0.6.9")
+;; Version: 0.6.10
+(defconst telega-version "0.6.10")
 (defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.6.0")
 
@@ -209,12 +209,12 @@ Works only if current state is `authorizationStateWaitCode'."
 
   ;; Do not update filters on every chat fetched, update them at the end
   (setq telega-filters--inhibit-redisplay t)
-  (telega--getChats "Main" 'telega-chat--on-getChats)
+  (telega--getChats "Main" nil #'telega-chat--on-getChats)
   ;; Also fetch chats from Archive
   ;; NOTE: We hope `telega--getChats' will return all chats in the
   ;; Archive, in general this is not true, we need special callback to
   ;; continue fetching, as with "Main" list
-  (telega--getChats "Archive" 'ignore)
+  (telega--getChats "Archive" nil #'ignore)
 
   (run-hooks 'telega-ready-hook))
 

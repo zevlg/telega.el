@@ -974,21 +974,19 @@ Default LIMIT is 30."
           :limit (or limit 30))
     callback))
 
-(defun telega--getChats (&optional list-name callback)
+(defun telega--getChats (&optional list-name offset-chat callback)
   "Retreive all chats from the server in async manner.
 If LIST-NAME is given, then fetch chats from chat list named LIST-NAME.
-LIST-NAME is one of: \"Main\" or \"Archive\"."
+LIST-NAME is one of: \"Main\" or \"Archive\".
+OFFSET-CHAT is the chat to start getting chats from."
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat--ensure
               (mapcar #'telega-chat-get (plist-get reply :chat_ids)))
 
-    (let* ((chat-list (if list-name
-                          (capitalize list-name)
-                        "Main"))
-           (last-chat (when (string= chat-list "Main")
-                        (car (last telega--ordered-chats))))
-           (offset-order (or (plist-get last-chat :order) "9223372036854775807"))
-           (offset-chatid (or (plist-get last-chat :id) 0)))
+    (let* ((chat-list (if list-name (capitalize list-name) "Main"))
+           (offset-order (or (plist-get offset-chat :order)
+                             "9223372036854775807"))
+           (offset-chatid (or (plist-get offset-chat :id) 0)))
       (list :@type "getChats"
             :offset_order offset-order
             :offset_chat_id offset-chatid
