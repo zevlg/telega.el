@@ -269,9 +269,8 @@ FILTERS are created with `telega-chatevent-log-filter'."
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat-get (append (plist-get reply :chat_ids) nil))
 
-  (telega-server--call
    (list :@type "getCreatedPublicChats")
-   callback)))
+   callback))
 
 (defun telega--blockUser (user &optional callback)
   "Block user by USER."
