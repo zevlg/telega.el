@@ -341,7 +341,7 @@ delimiting with WITH-USERNAME-DELIM."
                         (telega-i18n "saved_messages")))
                     (telega-tl-str chat :title)
                     (progn
-                      (cl-assert (telega-chat-private-p chat))
+                      (cl-assert (telega-chat--user chat))
                       (telega-user--name (telega-chat--user chat) 'name)))))
     (when with-username-delim
       (when-let ((username (telega-chat-username chat)))
