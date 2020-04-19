@@ -104,6 +104,9 @@ So we can run the code when switching from chat buffer.")
   "Alist of seen sticker sets.
 ID -> sticker set.
 Take into account that ID is the string.")
+(defvar telega--stickersets-installed-ids nil
+  "List of ids for installed sticker sets.
+Used by `telega-stickerset-installed-p'.")
 (defvar telega--stickersets-installed nil
   "List of `stickerSetInfo' for installed sticker sets.")
 (defvar telega--stickersets-trending nil
@@ -264,6 +267,7 @@ Done when telega server is ready to receive queries."
   (setq telega--scope-notification-alist nil)
 
   (setq telega--stickersets nil)
+  (setq telega--stickersets-installed-ids nil)
   (setq telega--stickersets-installed nil)
   (setq telega--stickersets-trending nil)
   (setq telega--stickersets-system nil)

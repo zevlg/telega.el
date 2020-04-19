@@ -306,6 +306,10 @@
         (let ((help-window-select telega-inline-query-window-select))
           (with-telega-help-win "*Telegram Inline Results*"
             (visual-line-mode 1)
+            ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
+            ;; of the buffer
+            (set (make-local-variable 'auto-window-vscroll) nil)
+
             (setq telega--inline-bot bot)
             (setq telega--inline-query query)
             (setq telega--inline-results reply)

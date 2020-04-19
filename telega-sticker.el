@@ -86,14 +86,16 @@ Thumbnail is a smaller (and faster) version of sticker image.")
   (memq (telega--tl-get sticker :sticker :id) telega--stickers-favorite))
 
 (defun telega-sticker--download (sticker)
-  "Ensure STICKER data is downloaded."
+  "Ensure STICKER data is downloaded.
+Download only if `telega-use-images' is non-nil."
   (let ((sticker-file (telega-sticker--file sticker))
         (thumb-file (telega-sticker--thumb-file sticker)))
-    (when (telega-file--need-download-p thumb-file)
-      (telega-file--download thumb-file 6))
-    (unless telega-sticker--use-thumbnail
-      (when (telega-file--need-download-p sticker-file)
-        (telega-file--download sticker-file 2)))
+    (when telega-use-images
+      (when (telega-file--need-download-p thumb-file)
+        (telega-file--download thumb-file 6))
+      (unless telega-sticker--use-thumbnail
+        (when (telega-file--need-download-p sticker-file)
+          (telega-file--download sticker-file 2))))
     ))
 
 (defsubst telega-sticker-emoji (sticker &optional no-properties)
@@ -102,7 +104,8 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (defun telega-stickerset--download (sset)
   "Ensure sticker set SSET data is downloaded."
-  (mapc 'telega-sticker--download (plist-get sset :stickers)))
+  (dolist (sticker (plist-get sset :stickers))
+    (telega-sticker--download sticker)))
 
 (defun telega-stickerset--ensure (sset)
   "Ensure sticker set SSET is put into `telega--stickersets'."
@@ -126,9 +129,7 @@ with one argument - stickerset."
 
 (defun telega-stickerset-installed-p (sset)
   "Return non-nil if sticker set SSET is installed."
-  (cl-find (plist-get sset :id) telega--stickersets-installed
-           :test 'equal
-           :key (telega--tl-prop :id)))
+  (member (plist-get sset :id) telega--stickersets-installed-ids))
 
 (defun telega-sticker--dice-get (dice-value &optional locally-p callback)
   "Return sticker for the DICE-VALUE.
@@ -161,10 +162,16 @@ CALLBACK is called without arguments"
   (if (plist-get event :is_masks)
       (telega-debug "TODO: `telega--on-updateInstalledStickerSets' is_mask=True")
 
+    (setq telega--stickersets-installed-ids
+          (append (plist-get event :sticker_set_ids) nil))
     ;; Asynchronously update value for `telega--stickersets-installed'
+    ;; and download covers for these sticker sets
     (telega--getInstalledStickerSets nil
       (lambda (ssets)
-        (setq telega--stickersets-installed ssets)))))
+        (setq telega--stickersets-installed ssets)
+        (dolist (sset ssets)
+          (mapc #'telega-sticker--download (plist-get sset :covers)))))
+    ))
 
 (defun telega--on-updateTrendingStickerSets (event)
   "The list of trending sticker sets was updated or some of them were viewed."
@@ -260,7 +267,7 @@ Photo and Video files have attached sticker sets."
                        ?X))
     ))
 
-(defvar telega-sticker--convert-cmd '("dwebp" "-nofilter -nofancy -mt -o %p %w")
+(defvar telega-sticker--convert-cmd '("dwebp" "-alpha_dither -nofancy -mt -o %p %w")
   "Command to convert WEBP file to PNG file.
 %p - png filename
 %w - webp filename.")
@@ -310,14 +317,10 @@ Return path to png file."
                              (not (equal (file-name-extension local-path) "webp")))
                          local-path
                        (telega-sticker--webp-to-png local-path))))
-         (cwidth-xmargin (plist-get sticker :telega-image-cwidth-xmargin)))
-    (unless cwidth-xmargin
-      (setq cwidth-xmargin (telega-media--cwidth-xmargin
-                            (plist-get sticker :width)
-                            (plist-get sticker :height)
-                            (car telega-sticker-size)))
-      (plist-put sticker :telega-image-cwidth-xmargin cwidth-xmargin))
-
+         (cwidth-xmargin (telega-media--cwidth-xmargin
+                          (plist-get sticker :width)
+                          (plist-get sticker :height)
+                          (car telega-sticker-size))))
     (when (and img-file (not img-type))
       (setq img-type (image-type-from-file-name img-file)))
 
@@ -328,6 +331,7 @@ Return path to png file."
                ;; down displaying stickers
 ;               :max-width (* (telega-chars-xwidth 1) (cdr telega-sticker-size))
                :scale 1.0 :ascent 'center
+;               :mask 'heuristic
                :margin (cons (cdr cwidth-xmargin) 0)
                :telega-text (make-string (car cwidth-xmargin) ?X)
                (when (telega-sticker-favorite-p sticker)
@@ -336,6 +340,22 @@ Return path to png file."
       ;; Fallback to svg
       (telega-sticker--progress-svg sticker))))
 
+(defun telega-sticker--create-image-one-line (sticker &optional file)
+  "Create image for one-line STICKER usage."
+  (let ((telega-sticker-size (cons 1 (cdr telega-sticker-size))))
+    (telega-sticker--create-image sticker file)))
+
+(defun telega-sticker--image (sticker &optional image-create-fun cache-prop)
+  "Return image for the STICKER."
+  (telega-media--image
+   (cons sticker (or image-create-fun #'telega-sticker--create-image))
+   (if (or (and telega-sticker--use-thumbnail
+                (plist-get sticker :thumbnail))
+           (plist-get sticker :is_animated))
+       (cons (plist-get sticker :thumbnail) :photo)
+     (cons sticker :sticker))
+   nil cache-prop))
+
 (defun telega-ins--sticker-image (sticker &optional slices-p)
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
@@ -343,16 +363,8 @@ If SLICES-P is non-nil, then insert STICKER using slices."
           (not (display-graphic-p)))
       (telega-ins "<STICKER\u00A0" (telega-sticker-emoji sticker) ">")
 
-    (let ((simage (telega-media--image
-                   (cons sticker 'telega-sticker--create-image)
-                   (if (or (and telega-sticker--use-thumbnail
-                                (plist-get sticker :thumbnail))
-                           (plist-get sticker :is_animated))
-                       (cons (plist-get sticker :thumbnail) :photo)
-                     (cons sticker :sticker)))))
-      (if slices-p
-          (telega-ins--image-slices simage)
-        (telega-ins--image simage)))))
+    (funcall (if slices-p #'telega-ins--image-slices #'telega-ins--image)
+             (telega-sticker--image sticker))))
 
 (defun telega-ins--stickerset-change-button (sset)
   (telega-ins--button (if (telega-stickerset-installed-p sset)
@@ -405,44 +417,62 @@ If SLICES-P is non-nil, then insert STICKER using slices."
       'action 'telega-sticker--choosen-action)
     (when addon-inserter
       (funcall addon-inserter sticker))
-    (redisplay)
+;    (redisplay)
     ))
 
 (defun telega-describe-stickerset (sset &optional for-chat)
   "Describe the sticker set.
 SSET can be either `sticker' or `stickerSetInfo'."
-  (let ((stickers (or (plist-get sset :stickers) (plist-get sset :covers))))
-    (with-telega-help-win "*Telegram Sticker Set*"
-      (visual-line-mode 1)
-      (setq telega--chat for-chat)
-      (setq telega-help-win--stickerset sset)
+  (with-telega-help-win "*Telegram Sticker Set*"
+    (visual-line-mode 1)
+    ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
+    ;; of the buffer
+    (set (make-local-variable 'auto-window-vscroll) nil)
 
-      (telega-ins "Title: " (telega-tl-str sset :title))
-      (when (plist-get sset :is_official)
-        (telega-ins telega-symbol-verified))
-      (telega-ins " ")
-      (telega-ins--stickerset-change-button sset)
-      (telega-ins "\n")
-      (telega-ins "Link:  ")
-      (let ((link (concat (or (plist-get telega--options :t_me_url)
-                              "https://t.me/")
-                          "addstickers/" (plist-get sset :name))))
-        (telega-ins--raw-button (telega-link-props 'url link)
-          (telega-ins link))
-        (telega-ins "\n"))
-      (when telega-debug
-        (telega-ins-fmt "Get: (telega-stickerset-get \"%s\")\n"
-          (plist-get sset :id)))
-      (telega-ins-fmt "%s: %d\n"
-        (cond ((plist-get sset :is_animated) "Animated Stickers")
-              ((plist-get sset :is_masks) "Masks")
-              (t "Stickers"))
-        (length stickers))
-      (redisplay)
-      (telega-ins--sticker-list stickers
-        (when telega-sticker-set-show-emoji
-          (lambda (sticker)
-            (telega-ins (telega-sticker-emoji sticker) "  ")))))))
+    (setq telega--chat for-chat)
+    (setq telega-help-win--stickerset sset)
+
+    (telega-ins "Title: " (telega-tl-str sset :title))
+    (when (plist-get sset :is_official)
+      (telega-ins telega-symbol-verified))
+    (telega-ins " ")
+    (telega-ins--stickerset-change-button sset)
+    (telega-ins "\n")
+    (telega-ins "Link:  ")
+    (let ((link (concat (or (plist-get telega--options :t_me_url)
+                            "https://t.me/")
+                        "addstickers/" (plist-get sset :name))))
+      (telega-ins--raw-button (telega-link-props 'url link)
+        (telega-ins link))
+      (telega-ins "\n"))
+    (when telega-debug
+      (telega-ins-fmt "Get: (telega-stickerset-get \"%s\")\n"
+        (plist-get sset :id)))
+
+    ;; NOTE: In case SSET is "stickerSetInfo" fetch real sticker set
+    ;; and insert all the stickers
+    (let ((sticker-list-ins
+           (lambda (sticker-set)
+             (let ((stickers (plist-get sticker-set :stickers)))
+               (telega-ins-fmt "%s: %d\n"
+                 (cond ((plist-get sset :is_animated) "Animated Stickers")
+                       ((plist-get sset :is_masks) "Masks")
+                       (t "Stickers"))
+                 (length stickers))
+               (telega-ins--sticker-list stickers
+                 (when telega-sticker-set-show-emoji
+                   (lambda (sticker)
+                     (telega-ins (telega-sticker-emoji sticker) "  "))))
+               )))
+          (sset-id (plist-get sset :id)))
+      (when (eq (telega--tl-type sset) 'stickerSetInfo)
+        (setq sset (telega-stickerset-get sset-id 'locally)))
+      ;; Now SSET is always "stickerSet"
+      (if sset
+          (funcall sticker-list-ins sset)
+        (telega-stickerset-get sset-id nil
+          (telega-sticker-list--gen-ins-callback 'loading
+            sticker-list-ins))))))
 
 (defun telega-sticker-help (sticker)
   "Describe sticker set for STICKER."
@@ -450,17 +480,19 @@ SSET can be either `sticker' or `stickerSetInfo'."
   (telega-describe-stickerset
    (telega-stickerset-get (plist-get sticker :set_id))))
 
-(defun telega-sticker-list--gen-ins-callback (show-loading-p)
+(defun telega-sticker-list--gen-ins-callback (show-loading-p
+                                              &optional insert-func)
   "Generate callback to be used as callback.
 Insert list of stickers at MARKER position.
 Functions to be used with:
 `telega--getStickers', `telega--getFavoriteStickers',
 `telega--getRecentStickers' or `telega--searchStickerSets'"
+  (declare (indent 1))
   (let ((marker (point-marker)))
     (when show-loading-p
       (telega-ins "Loading...\n"))
 
-    (lambda (stickers)
+    (lambda (&rest insert-args)
       (let ((marker-buf (marker-buffer marker)))
         (when (buffer-live-p marker-buf)
           (with-current-buffer marker-buf
@@ -469,7 +501,7 @@ Functions to be used with:
                 (goto-char marker)
                 (when show-loading-p
                   (delete-region marker (point-at-eol)))
-                (telega-ins--sticker-list stickers)))))))))
+                (apply insert-func insert-args)))))))))
 
 (defun telega-sticker-choose-favorite-or-recent (for-chat)
   "Choose recent sticker FOR-CHAT."
@@ -478,32 +510,44 @@ Functions to be used with:
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Stickers*"
       (visual-line-mode 1)
+      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
+      ;; of the buffer
+      (set (make-local-variable 'auto-window-vscroll) nil)
+
       (setq telega--chat for-chat)
 
       ;; NOTE: use callbacks for async stickers loading
       (telega-ins "Favorite:\n")
       (telega--getFavoriteStickers
-        (telega-sticker-list--gen-ins-callback 'loading))
+        (telega-sticker-list--gen-ins-callback 'loading
+          #'telega-ins--sticker-list))
       (telega-ins "\nRecent:\n")
       (telega--getRecentStickers nil
-        (telega-sticker-list--gen-ins-callback 'loading)))))
+        (telega-sticker-list--gen-ins-callback 'loading
+          #'telega-ins--sticker-list)))))
 
 (defun telega-sticker-choose-emoji (emoji for-chat)
   "Choose sticker by EMOJI FOR-CHAT."
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Stickers*"
       (visual-line-mode 1)
+      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
+      ;; of the buffer
+      (set (make-local-variable 'auto-window-vscroll) nil)
+
       (setq telega--chat for-chat)
       (setq telega-help-win--emoji emoji)
 
       ;; NOTE: use callbacks for async stickers loading
       (telega-ins "Installed:\n")
       (telega--getStickers emoji nil
-        (telega-sticker-list--gen-ins-callback 'loading))
+        (telega-sticker-list--gen-ins-callback 'loading
+          #'telega-ins--sticker-list))
 
       (telega-ins "\nPublic:\n")
       (telega--searchStickers emoji nil
-        (telega-sticker-list--gen-ins-callback 'loading))
+        (telega-sticker-list--gen-ins-callback 'loading
+          #'telega-ins--sticker-list))
     )))
 
 (defun telega-stickerset--minibuf-post-command ()
@@ -528,7 +572,10 @@ Functions to be used with:
                     (t (buffer-substring start end))))
          (comp (car (all-completions str telega-minibuffer--choices)))
          (sset-id (cadr (assoc comp telega-minibuffer--choices)))
-         (sset (telega-stickerset-get sset-id))
+         (sset (or (cl-find sset-id telega--stickersets-installed
+                            :test 'equal
+                            :key (telega--tl-prop :id))
+                   (telega-stickerset-get sset-id)))
          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
 
     (when (and sset
@@ -547,6 +594,23 @@ Functions to be used with:
       (temp-buffer-window-show tss-buffer))
     ))
 
+(defun telega-stickerset-name (sset)
+  "Return name for the sticker set SSET."
+  (concat (when telega-sticker-set-show-cover
+            (when-let ((cover (car (append (or (plist-get sset :covers)
+                                               (plist-get sset :stickers))
+                                           nil))))
+              ;; NOTE: helm uses 'display property of the first
+              ;; character and expects it to be string, so we add
+              ;; zero-width space in there
+              (concat "\u200B"
+                      (propertize
+                       (telega-sticker-emoji cover)
+                       'display (telega-sticker--image
+                                 cover #'telega-sticker--create-image-one-line
+                                 :telega-sticker-cover-1)))))
+          (plist-get sset :name)))
+
 (defun telega-stickerset-completing-read (prompt &optional sticker-sets)
   "Read stickerset completing their names.
 If STICKER-SETS is specified, then they are used,
@@ -564,13 +628,16 @@ Return sticker set."
                            (cons "updateInstalledStickerSets"
                                  telega-server--inhibit-events)))
                       (setq telega--stickersets-installed
-                            (telega--getInstalledStickerSets)))
+                            (telega--getInstalledStickerSets))
+                      (setq telega--stickersets-installed-ids
+                            (mapcar (telega--tl-prop :id)
+                                    telega--stickersets-installed)))
                     (user-error "No installed sticker sets")))
          ;; Bindings used in `telega-stickerset-completing-read'
          (telega-minibuffer--chat telega-chatbuf--chat)
          (telega-minibuffer--choices
           (mapcar (lambda (sset)
-                    (list (plist-get sset :name) (plist-get sset :id)))
+                    (list (telega-stickerset-name sset) (plist-get sset :id)))
                   ssets))
          (sset-name
           (minibuffer-with-setup-hook
@@ -579,8 +646,11 @@ Return sticker set."
                           'telega-stickerset--minibuf-post-command t t))
             (funcall telega-completing-read-function
                      prompt telega-minibuffer--choices nil t))))
-    (cadr (assoc sset-name telega-minibuffer--choices))
-  ))
+
+    (cl-find (cadr (assoc sset-name telega-minibuffer--choices)) ssets
+             :test #'equal
+             :key (telega--tl-prop :id))
+    ))
 
 (defun telega-stickerset-choose (sset)
   "Interactive choose stickerset."
@@ -819,6 +889,10 @@ PROPS are additional properties to the animation button."
   (let ((help-window-select window-select))
     (with-telega-help-win "*Telegram Animations*"
       (visual-line-mode 1)
+      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
+      ;; of the buffer
+      (set (make-local-variable 'auto-window-vscroll) nil)
+
       (setq telega--chat for-chat)
 
       (mapc 'telega-ins--animation animations))))

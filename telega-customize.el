@@ -251,6 +251,11 @@ cdr is maximum width in chars to use."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-sticker-set-show-cover telega-use-images
+  "*Non-nil to show sticker set cover when completing stickerset."
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-sticker-set-show-emoji nil
   "*Non-nil to show emoji along with sticker in sticker set help win."
   :type 'boolean
@@ -1503,7 +1508,7 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-webpage-header
-  '((t :family "Georgia" :height 1.2))
+  '((t :family "FreeSerif" :height 1.2))
   "Face to display header in webpage instant view."
   :group 'telega-faces)
 

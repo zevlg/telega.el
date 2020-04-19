@@ -3282,11 +3282,12 @@ Otherwise choose sticker from some installed sticker set."
 
     ;; Select some stickerset
     (let ((sset (telega-stickerset-completing-read "Sticker set: "))
+          (chat telega-chatbuf--chat)
           (tss-buffer (get-buffer "*Telegram Sticker Set*")))
-      (unless (or (buffer-live-p tss-buffer)
-                  (not (with-current-buffer tss-buffer
-                         (and (eq telega-help-win--stickerset sset)
-                              (eq telega--chat telega-chatbuf--chat)))))
+      (when (or (not (buffer-live-p tss-buffer))
+                (not (with-current-buffer tss-buffer
+                       (and (eq telega-help-win--stickerset sset)
+                            (eq telega--chat chat)))))
         (telega-describe-stickerset sset telega-chatbuf--chat))
 
       (select-window
