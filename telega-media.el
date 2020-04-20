@@ -302,6 +302,8 @@ If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
         (when for-msg
           (telega-msg-redisplay for-msg))
         (when (telega-file--downloaded-p tl-file)
+          (when (telega--tl-get for-msg :content :is_secret)
+            (telega--openMessageContent for-msg))
           (telega-image-view-file tl-file for-msg))))))
 
 

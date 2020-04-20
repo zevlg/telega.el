@@ -216,6 +216,8 @@ If CALLBACK is specified, then get reply message asynchronously."
       (lambda (file)
         (telega-msg-redisplay msg)
         (when (telega-file--downloaded-p file)
+          (when (telega--tl-get msg :content :is_secret)
+            (telega--openMessageContent msg))
           (apply 'telega-ffplay-run
                  (telega--tl-get file :local :path) nil
                  telega-video-ffplay-args))))))
@@ -441,7 +443,10 @@ non-nil."
 
 (defun telega-msg-open-content (msg)
   "Open message MSG content."
-  (telega--openMessageContent msg)
+  ;; NOTE: openMessageContent for is_secret content only after
+  ;; downloading completed
+  (unless (telega--tl-get msg :content :is_secret)
+    (telega--openMessageContent msg))
 
   (cl-case (telega--tl-type (plist-get msg :content))
     (messageDocument
@@ -648,9 +653,18 @@ blocked users."
 
 (defun telega-msg-pin (msg &optional disable-notifications)
   "Pin message MSG.
-If prefix arg is specified, then do not notify all the users about pin."
+If prefix arg is specified, then do not notify all the users about pin.
+If MSG is already pinned, then unpin it."
   (interactive (list (telega-msg-at (point)) current-prefix-arg))
-  (telega--pinChatMessage msg disable-notifications))
+  (let* ((chat (telega-msg-chat msg))
+         (chat-perms (plist-get chat :permissions)))
+    (unless (plist-get chat-perms :can_pin_messages)
+      (user-error "Can't pin messages in this chat"))
+
+    (if (eq (plist-get chat :pinned_message_id)
+            (plist-get msg :id))
+        (telega--unpinChatMessage chat)
+      (telega--pinChatMessage msg disable-notifications))))
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."

@@ -80,6 +80,7 @@ Used for optimisations.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
+(defvar telega--pinned-messages nil "Hash table (id -> msg) for all chats.")
 (defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions).")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
@@ -226,7 +227,8 @@ Done when telega server is ready to receive queries."
         ;; default limits
         (list :message_caption_length_max 1024
               :message_text_length_max 4096))
-  (setq telega--chats (make-hash-table :test 'eq))
+  (setq telega--chats (make-hash-table :test #'eq))
+  (setq telega--pinned-messages (make-hash-table :test #'eq))
   (setq telega--top-chats nil)
 
   (setq telega-search-query nil)
@@ -419,7 +421,8 @@ If BUFFER-OR-NAME exists and visible then redisplay it."
 FMT and ARGS are passed directly to `format'."
   (with-telega-debug-buffer
    (goto-char (point-max))
-   (insert (apply 'format (cons (concat fmt "\n") args)))))
+   (insert (apply 'format (cons (concat "%d: " fmt "\n")
+                                (cons (telega-time-seconds) args))))))
 
 (defmacro telega--tl-type (tl-obj)
   `(intern (plist-get ,tl-obj :@type)))
@@ -933,10 +936,6 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   (and (telega-chatbuf-has-input-p)
        (get-text-property telega-chatbuf--input-marker :draft-input-p)
        (get-text-property (1- (point-max)) :draft-input-p)))
-
-(defsubst telega-chatbuf--cache-msg (msg)
-  "Cache MSG in chatbuf's messages cache."
-  (puthash (plist-get msg :id) msg telega-chatbuf--messages))
 
 
 ;;; Inserters part

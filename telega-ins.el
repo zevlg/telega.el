@@ -53,6 +53,7 @@
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-pinned-msg "telega-chat" (chat &optional offline-p callback))
+(declare-function telega-chatbuf--cache-msg "telega-chat" (msg))
 (declare-function telega-chat-label "telega-chat" (chat))
 (declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
 

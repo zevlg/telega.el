@@ -600,7 +600,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
                                      (not (zerop old-pin-msg-id))
                                      (telega-chatbuf--msg
                                       old-pin-msg-id 'with-node))))
-              (apply 'telega-msg-redisplay old-pin))
+              (telega-msg-redisplay old-pin))
             (when pin-msg
               (telega-msg-redisplay pin-msg))
 
@@ -1738,17 +1738,17 @@ Recover previous active action after BODY execution."
 (defun telega-chatbuf--window-scroll (window display-start)
   "Mark some messages as read while scrolling."
   (with-current-buffer (window-buffer window)
-    ;; Mark some messages as read
-    ;; Scroll might be triggered in closed chat, so force viewMessages
-    (telega-chatbuf--view-visible-messages display-start 'force)
+    (when (not (eq window (selected-window)))
+      ;; Mark some messages as read
+      ;; Scroll might be triggered in closed chat, so force viewMessages
+      (telega-chatbuf--view-visible-messages display-start 'force)
 
-    ;; If scrolling in inactive window (with C-M-v) we might need to
-    ;; fetch new history if point near the buffer bottom
-    (when (and (not (eq window (selected-window)))
-               (> display-start (- (point-max) 2000))
-               (not telega-chatbuf--history-loading)
-               (telega-chatbuf--need-newer-history-p))
-      (telega-chatbuf--load-newer-history))
+      ;; If scrolling in inactive window (with C-M-v) we might need to
+      ;; fetch new history if point near the buffer bottom
+      (when (and (> display-start (- (point-max) 2000))
+                 (not telega-chatbuf--history-loading)
+                 (telega-chatbuf--need-newer-history-p))
+        (telega-chatbuf--load-newer-history)))
     ))
 
 (defun telega-chatbuf--post-command ()
@@ -2313,12 +2313,14 @@ First message in MESSAGE will be first message at the beginning."
   (with-telega-deferred-events
     (let ((node (ewoc--header telega-chatbuf--ewoc)))
       (seq-doseq (msg messages)
+        (remhash (plist-get msg :id) telega-chatbuf--messages)
         (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg))))))
 
 (defun telega-chatbuf--append-messages (messages)
   "Insert MESSAGES at the end of the chat buffer."
   (with-telega-deferred-events
     (seq-doseq (msg messages)
+      (remhash (plist-get msg :id) telega-chatbuf--messages)
       (ewoc-enter-last telega-chatbuf--ewoc msg))))
 
 (defun telega-chatbuf--append-message (msg)
@@ -2328,6 +2330,7 @@ Return newly created ewoc node."
     ;; Track the uploading progress
     ;; see: https://github.com/zevlg/telega.el/issues/60
     (telega-msg--track-file-uploading-progress msg)
+    (remhash (plist-get msg :id) telega-chatbuf--messages)
     (ewoc-enter-last telega-chatbuf--ewoc msg)))
 
 (defun telega-chatbuf--node-by-msg-id (msg-id)
@@ -2352,6 +2355,14 @@ ewoc node if WITH-NODE is non-nil."
     (if with-node
         (list msg node)
       msg)))
+
+(defun telega-chatbuf--cache-msg (msg)
+  "Cache MSG in chatbuf's messages cache."
+  ;; NOTE: if message with msg's id already in cache or has associated
+  ;; ewoc node, then do not override the value
+  ;; updateXXX events will upadet contents of the message
+  (unless (telega-chatbuf--msg (plist-get msg :id))
+    (puthash (plist-get msg :id) msg telega-chatbuf--messages)))
 
 (defun telega-chatbuf--next-msg (msg predicate &optional backward)
   "Return message next to MSG matching PREDICATE.
@@ -2423,7 +2434,8 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
           ;; If message is visibible in some window, then mark it as read
           ;; see https://github.com/zevlg/telega.el/issues/4
           (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
-            (telega--viewMessages telega-chatbuf--chat (list new-msg))))))
+            (telega--viewMessages telega-chatbuf--chat (list new-msg)))
+          )))
 
     (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
 
@@ -2483,7 +2495,6 @@ Message id could be updated on this update."
     (unless (and (eq (telega--tl-type new-content) 'messagePoll)
                  (cl-some (telega--tl-prop :is_being_chosen)
                           (telega--tl-get new-content :poll :options)))
-
       (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
         (cl-destructuring-bind (msg node)
             (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
@@ -3346,21 +3357,28 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
                                             &rest options)
   "Attach poll to the input.
 QUESTION - Title of the poll.
-NON-ANONYMOUS - Non-nil to create non-anonymous poll, specified
-by `\\[universal-argument]' if interactively called.
+NON-ANONYMOUS - Non-nil to create non-anonymous poll.
 ALLOW-MULTIPLE-ANSWERS - Non-nil to allow multiple answers.
 OPTIONS - List of strings representing poll options."
-  (interactive (let ((poll-q (read-string "Poll Question: "))
-                     (optidx 1) opt poll-opts)
-                 (while (not (string-empty-p
-                              (setq opt (read-string
-                                         (format "Option %d): " optidx)))))
-                   (setq poll-opts (append poll-opts (list opt)))
-                   (cl-incf optidx))
-                 (nconc (list poll-q
-                              current-prefix-arg
-                              (y-or-n-p "Allow multiple answers: "))
-                        poll-opts)))
+  (interactive
+   (let ((poll-q (read-string
+                  (concat (telega-i18n "polls_public")
+                          " "
+                          (telega-i18n "polls_create_question")
+                          ": ")))
+         (optidx 1) opt poll-opts)
+     (while (not (string-empty-p
+                  (setq opt (read-string
+                             (format "Option %d): " optidx)))))
+       (setq poll-opts (append poll-opts (list opt)))
+       (cl-incf optidx))
+     (nconc (list poll-q
+                  (y-or-n-p
+                   (concat (telega-i18n "polls_create_anonymous") "? "))
+                  (y-or-n-p
+                   (concat (telega-i18n "polls_create_multiple_choice") "? ")))
+            poll-opts)))
+
   (telega-chatbuf-input-insert
    (list :@type "inputMessagePoll"
          :question question
