@@ -20,6 +20,13 @@
   :other_value "{count} groups in common")
  ("lng_scam_badge"
   :value "SCAM")
+
+ ("lng_polls_create_multiple_choice"
+  :value "Multiple Answers")
+ ("lng_polls_create_anonymous"
+  :value "Anonymous Voting")
+ ("lng_polls_create_question"
+  :value "Question")
  ("lng_polls_anonymous"
   :value "Anonymous Poll")
  ("lng_polls_anonymous_quiz"

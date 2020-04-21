@@ -600,7 +600,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
                                      (not (zerop old-pin-msg-id))
                                      (telega-chatbuf--msg
                                       old-pin-msg-id 'with-node))))
-              (telega-msg-redisplay old-pin))
+              (apply #'telega-msg-redisplay old-pin))
             (when pin-msg
               (telega-msg-redisplay pin-msg))
 
