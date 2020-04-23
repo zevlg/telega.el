@@ -195,7 +195,7 @@ By default, all chats are unmuted, the sound is set to
                           ;; So we use timer to manually remove the popup
                           ;; Or newly arrived notifications also
                           ;; removes current popup
-                          :timeout 0
+                          :timeout -1
 ;                          :timeout (round (* 1000 telega-notifications-timeout))
                           :urgency "normal"))
          ;; DO NOT modify NOTIFY-SPEC

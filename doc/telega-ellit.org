@@ -130,3 +130,5 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-status-history.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-url-shorten.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-alert.el

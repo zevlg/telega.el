@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.7)
+#+TITLE: Telega Manual (v0.6.11)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -516,3 +516,14 @@ Emacs package.
   Chat filter for ~global-telega-url-shorten-mode~.
   ~global-telega-url-shorten-mode~ enables urls shortening only for
   chats matching this chat filter.
+
+** /telega-alert.el/ -- Notifications using =alert.el=
+
+To enable notifications using =alert.el= use:
+#+begin_src emacs-lisp
+  (telega-alert-mode 1)
+#+end_src
+
+Alerts for =telega.el= are fired with ~:mode 'telega-chat-mode~
+value.  You might use this to customize alert rules with
+~alert-add-rule~.

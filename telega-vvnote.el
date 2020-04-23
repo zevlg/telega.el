@@ -172,6 +172,7 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
 
     (svg-image svg :scale 1.0
                :width w :height h
+               :mask 'heuristic
                :ascent 'center
                :telega-text (make-string aw-chars ?#))))
 
