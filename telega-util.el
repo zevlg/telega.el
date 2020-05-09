@@ -133,12 +133,26 @@ Selected frame and frame displaying root buffer are examined first."
 (defsubst telega-color-to-hex (col)
   (color-rgb-to-hex (car col) (cadr col) (caddr col) 2))
 
-(defun telega-color-random (&optional lightness)
-  "Generates random color with lightness below LIGHTNESS.
-Default LIGHTNESS is 0.85."
-  (telega-color-to-hex
-   (color-hsl-to-rgb (cl-random 1.0) (cl-random 1.0)
-                     (cl-random (or lightness 0.85)))))
+(defsubst telega-random-from-range (start end)
+  (+ start (cl-random (- end start))))
+
+(defun telega-color-random (&optional H-offset S-min S-max L-min L-max)
+  "Generate random color.
+H-OFFSET means the hue offset from primary colors, it should be between 0 ~ 1/6.
+Default H-OFFSET is 0.02.
+Default S-MIN and L-MIN is 0.3.
+Default S-MAX and L-MAX is 0.8."
+  (let* ((H-offset-min (or H-offset 0.02))
+         (H-offset-max (- (/ 3.0) H-offset-min))
+         (S-min (or S-min 0.3))
+         (S-max (or S-max 0.8))
+         (L-min (or L-min 0.3))
+         (L-max (or L-max 0.8))
+         (H (+ (telega-random-from-range H-offset-min H-offset-max)
+               (nth (random 3) `(0 ,(/ 3.0) ,(/ 2.0 3.0)))))
+         (S (telega-random-from-range S-min S-max))
+         (L (telega-random-from-range L-min L-max)))
+    (telega-color-to-hex (color-hsl-to-rgb H S L))))
 
 (defun telega-color-gradient (color &optional light)
   "For given color return its darker version.
