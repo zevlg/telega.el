@@ -34,6 +34,7 @@
 (require 'ansi-color)                   ; `ansi-color-apply'
 (require 'url-util)                     ; `url-unhex-string'
 (require 'org)                          ; `org-read-date'
+(require 'rainbow-identifiers)
 
 (require 'telega-customize)
 
@@ -129,30 +130,6 @@ Selected frame and frame displaying root buffer are examined first."
 (defun telega-current-column ()
   "Same as `current-column', but take into account width of the characters."
   (string-width (buffer-substring (point-at-bol) (point))))
-
-(defsubst telega-color-to-hex (col)
-  (color-rgb-to-hex (car col) (cadr col) (caddr col) 2))
-
-(defun telega-color-random (&optional lightness)
-  "Generates random color with lightness below LIGHTNESS.
-Default LIGHTNESS is 0.85."
-  (telega-color-to-hex
-   (color-hsl-to-rgb (cl-random 1.0) (cl-random 1.0)
-                     (cl-random (or lightness 0.85)))))
-
-(defun telega-color-gradient (color &optional light)
-  "For given color return its darker version.
-Used to create gradients.
-If LIGHT is non-nil then return lighter version."
-  (telega-color-to-hex
-   (mapcar (lambda (c) (if light (color-clamp (* c 1.5)) (/ c 2)))
-           (color-name-to-rgb color))))
-
-(defun telega-color-tripple (col)
-  "Return color COL tripple in form (LIGHT-COL COL DARK-COL)."
-  (list (telega-color-gradient col 'light)
-        col
-        (telega-color-gradient col)))
 
 (defun telega-temp-name (prefix &optional ext)
   "Generate unique temporary file name with PREFIX and extension EXT.
@@ -524,13 +501,33 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   "Read user by his name from USERS list."
   (declare (indent 1))
   (let ((choices (mapcar (lambda (user)
-                           (list (telega-user--name user)
-                                 user))
+                           (list (telega-user--name user) user))
                          (or users (hash-table-values
                                     (alist-get 'user telega--info))))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))
+
+(defun telega-completing-read-user-list (prompt &optional users-list)
+  "Read multiple users from USERS-LIST."
+  (declare (indent 1))
+  (unless users-list
+    (setq users-list (hash-table-values (alist-get 'user telega--info))))
+  (let (users)
+    (while (condition-case nil
+               (setq users
+                     (cons (telega-completing-read-user
+                               (concat prompt " (C-g when done)"
+                                       (when users
+                                         (concat
+                                          " [" (mapconcat
+                                                #'telega-user--name users ",")
+                                          "]")) ": ")
+                             (cl-remove-if (lambda (rm-user) (memq rm-user users))
+                                           users-list))
+                           users))
+             (quit nil)))
+    users))
 
 (defun telega-read-location (prompt)
   "Read location with PROMPT."
@@ -926,6 +923,35 @@ Return timestamp as unix time."
   ;; NOTE: we use `telega--help-win-param' as backref to the message
   (setq telega--help-win-param msg)
   (run-hooks 'telega-find-file-hook))
+
+(defun telega-color-name-as-hex-2digits (color)
+  "Convert COLOR to #rrggbb form."
+  (apply #'color-rgb-to-hex (append (color-name-to-rgb color) '(2))))
+
+(defun telega-color-rainbow-identifier (identifier &optional background-mode)
+  "Return color for IDENTIFIER in BACKGROUND-MODE.
+BACKGROUND-MODE is one of `light' or `dark'."
+  (cl-assert (memq background-mode '(light dark)))
+  (let ((rainbow-identifiers-cie-l*a*b*-lightness
+         (if (eq background-mode 'dark)
+             (cdr telega-rainbow-lightness)
+           (car telega-rainbow-lightness)))
+        (rainbow-identifiers-cie-l*a*b*-saturation
+         (if (eq background-mode 'dark)
+             (cdr telega-rainbow-saturation)
+           (car telega-rainbow-saturation))))
+    (plist-get (car (rainbow-identifiers-cie-l*a*b*-choose-face
+                     (rainbow-identifiers--hash-function identifier)))
+               :foreground)))
+
+(defun telega-clear-assigned-colors ()
+  "Clears assigned colors for all chats and users.
+Use this if you planning to change `telega-rainbow-function'."
+  (interactive)
+  (dolist (user (hash-table-values (alist-get 'user telega--info)) )
+    (plist-put user :color nil))
+  (dolist (chat telega--ordered-chats)
+    (plist-put (plist-get chat :uaprops) :color nil)))
 
 (provide 'telega-util)
 

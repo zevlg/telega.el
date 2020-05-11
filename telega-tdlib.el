@@ -154,6 +154,26 @@ Chats with more than 1000 members can't be deleted using this method."
    (list :@type "deleteSupergroup"
          :supergroup_id (plist-get supergroup :id))))
 
+(defun telega--setSupergroupUsername (supergroup username)
+  "Change SUPERGROUP's username to USERNAME.
+Requires owner right."
+  (telega-server--send
+   (list :@type "setSupergroupUsername"
+         :supergroup_id (plist-get supergroup :id)
+         :username username)))
+
+(defun telega--toggleSupergroupSignMessages (supergroup sign-messages-p)
+  (telega-server--send
+   (list :@type "toggleSupergroupSignMessages"
+         :supergroup_id (plist-get supergroup :id)
+         :sign_messages (if sign-messages-p t :false))))
+
+(defun telega--toggleSupergroupIsAllHistoryAvailable (supergroup all-history-available-p)
+  (telega-server--send
+   (list :@type "toggleSupergroupIsAllHistoryAvailable"
+         :supergroup_id (plist-get supergroup :id)
+         :is_all_history_available (if all-history-available-p t :false))))
+
 (defun telega--createSecretChat (secret-chat-id)
   "Return existing secret chat with id equal to SECRET-CHAT-ID."
   (telega-chat-get
@@ -331,12 +351,14 @@ LIMIT defaults to 20."
           :is_masks (or masks-p :false))
     callback))
 
-(defun telega--getTrendingStickerSets (&optional callback)
+(defun telega--getTrendingStickerSets (&optional offset limit callback)
   "Return a list of trending sticker sets."
   (with-telega-server-reply (reply)
       (append (plist-get reply :sets) nil)
 
-    (list :@type "getTrendingStickerSets")
+    (list :@type "getTrendingStickerSets"
+          :offset (or offset 0)
+          :limit (or limit 200))
     callback))
 
 (defun telega--getStickerSet (set-id &optional callback)
@@ -446,6 +468,7 @@ LIMIT by default is 50."
 
 (defun telega--getChatAdministrators (chat &optional callback)
   "Return a list of administrators for the CHAT."
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (append (plist-get reply :administrators) nil)
     (list :@type "getChatAdministrators"
@@ -549,9 +572,8 @@ CHAT must be supergroup or channel."
 (defun telega--unpinChatMessage (chat)
   "In CHAT unpin message."
   (telega-server--send
-   (list :type "unpinChatMessage"
+   (list :@type "unpinChatMessage"
          :chat_id (plist-get chat :id))))
-
 
 (defun telega--getChatHistory (chat from-msg-id offset
                                     &optional limit only-local callback)

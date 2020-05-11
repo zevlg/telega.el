@@ -123,6 +123,9 @@ Used by `telega-stickerset-installed-p'.")
 (defvar telega--animations-saved nil
   "List of saved animations.")
 
+(defvar telega--dice-emojis nil
+  "List of supported emojis for random dice messages.")
+
 ;; Searching
 (defvar telega-search-query nil
   "Last search query done by `telega-search'.
@@ -212,6 +215,11 @@ Actual value is `:@extra` value of the call to inline bot.")
 (defvar telega-chatbuf--input-marker nil)
 (make-variable-buffer-local 'telega-chatbuf--input-marker)
 
+(defvar telega-chatbuf--administrators nil
+  "List of administrators in chatbuf chat.
+Asynchronously loaded when chatbuf is created.")
+(make-variable-buffer-local 'telega-chatbuf--administrators)
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -277,6 +285,7 @@ Done when telega server is ready to receive queries."
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
   (setq telega--animations-saved nil)
+  (setq telega--dice-emojis nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -837,13 +846,28 @@ I.e. shown in some window, see `pos-visible-in-window-p'."
            (telega-focus-state (window-frame bwin))
            (pos-visible-in-window-p button bwin)))))
 
+(defun telega-button--make-observable (button)
+  "Make BUTTON observable in window."
+  (unless (and (pos-visible-in-window-p (button-start button))
+               (pos-visible-in-window-p (button-end button)))
+    ;; NOTE:
+    ;; - Button is not fully visible, recenter to make it
+    ;;   visible
+    ;; - `recenter' might signal error
+    (let ((nlines (count-lines (button-start button) (button-end button))))
+      (if (>= nlines (/ (window-height) 2))
+          (ignore-errors (recenter (- nlines)))
+        (ignore-errors (recenter))))))
+
 (defun telega-button-forward (n &optional predicate no-error)
   "Move forward to N visible/active button.
 If PREDICATE is specified, then forward only buttons for which
 PREDICATE returns non-nil.  PREDICATE is called with single arg -
 button.
 If NO-ERROR, do not signal error if no further buttons could be
-found."
+found.
+If NO-ERROR is `recenter', then possible recenter, otherwise recenter only if NO-ERROR is nil."
+  (declare (indent 1))
   (interactive "p")
   (let (button)
     (dotimes (_ (abs n))
@@ -860,18 +884,8 @@ found."
 
     ;; NOTE: Non-nil `no-error' is normally given on non-interactive
     ;; calls, so recenter only on interactive calls
-    (when (and button (not no-error))
-      (unless (and (pos-visible-in-window-p (button-start button))
-                   (pos-visible-in-window-p (button-end button)))
-        ;; NOTE:
-        ;; - Button is not fully visible, recenter to make it
-        ;;   visible
-        ;; - `recenter' might signal error
-        (let ((nlines (count-lines (button-start button) (button-end button))))
-          (if (>= nlines (/ (window-height) 2))
-              (ignore-errors (recenter (- nlines)))
-            (ignore-errors (recenter)))))
-
+    (when (and button (or (not no-error) (eq no-error 'recenter)))
+      (telega-button--make-observable button)
       (telega-button--help-echo button))
     button))
 

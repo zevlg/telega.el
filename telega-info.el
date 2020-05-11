@@ -40,6 +40,7 @@
 (declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username-delim))
 (declare-function telega-chat-generate-invite-link "telega-chat" (chat-id))
 (declare-function telega-chat-transfer-ownership "telega-chat" (chat))
+(declare-function telega-chat--update-administrators "telega-chat" (chat))
 
 (declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
@@ -163,6 +164,17 @@
     ;; Might affect root's buffer view
     ;; TODO: chatbuf might need to be updated, since for example
     ;; pinned message might change
+
+    ;; Check number of the admins has been changed, it might be not up
+    ;; to date, see https://github.com/tdlib/td/issues/1040
+    (when-let ((chat (telega-chat-get
+                      (string-to-number
+                       (format "-100%d" (plist-get event :supergroup_id)))
+                      'offline)))
+      (with-telega-chatbuf chat
+        (unless (equal (plist-get ufi :administrator_count)
+                       (length telega-chatbuf--administrators))
+          (telega-chat--update-administrators chat))))
     ))
 
 (defun telega--full-info (tlobj &optional _offline _callback)

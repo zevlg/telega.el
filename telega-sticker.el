@@ -115,6 +115,10 @@ Download only if `telega-use-images' is non-nil."
     (telega-stickerset--download sset))
   sset)
 
+;; since TDLib 1.6.3
+(defun telega--on-updateStickerSet (event)
+  (telega-stickerset--ensure (plist-get event :sticker_set)))
+
 (defun telega-stickerset-get (set-id &optional locally-p callback)
   "Get stickerset by SET-ID.
 If LOCALLY-P is non-nil, then do not perform request to telega-server.

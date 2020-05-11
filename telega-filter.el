@@ -859,6 +859,12 @@ Only \"Main\" and \"Archive\" names are supported."
   "Matches CHAT with active action bar."
   (plist-get chat :action_bar))
 
+(define-telega-filter can-view-statistics (chat)
+  "Matches if CHAT's channel statistics is available."
+  (when (eq (telega-chat--type chat) 'channel)
+    (let ((full-info (telega--full-info (telega-chat--info chat))))
+      (plist-get full-info :can_view_statistics))))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here

@@ -56,6 +56,7 @@
 (declare-function telega-chatbuf--cache-msg "telega-chat" (msg))
 (declare-function telega-chat-label "telega-chat" (chat))
 (declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
+(declare-function telega-chat-admin-get "telega-chat" (chat user))
 
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
@@ -818,8 +819,10 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
 (defun telega-ins--dice-msg (msg &optional one-line-p)
   "Inserter for the \"messageDice\" MSG."
-  (let ((dice-value (telega--tl-get msg :content :value)))
-    (telega-ins (car telega-symbol-dice-list) " ")
+  (let* ((content (plist-get msg :content))
+         (dice-value (plist-get content :value))
+         (dice-emoji (telega-tl-str content :emoji)))
+    (telega-ins (or dice-emoji (car telega-symbol-dice-list)) " ")
     (telega-ins--with-face 'shadow
       (telega-ins-i18n "telega_random_dice"))
     (telega-ins " " (number-to-string dice-value))
@@ -1367,19 +1370,31 @@ argument - MSG to insert additional information after header."
          (tfaces (list (if (telega-msg-by-me-p msg)
                            'telega-msg-self-title
                          'telega-msg-user-title))))
+    ;; Maybe add some rainbow color to the message title
+    (when telega-msg-rainbow-title
+      (let* ((colors (if sender
+                         (telega-user-color sender)
+                       (telega-chat-color chat)))
+             (lightp (eq (frame-parameter nil 'background-mode) 'light))
+             (foreground (nth (if lightp 0 1) colors)))
+        (when foreground
+          (push (list :foreground foreground) tfaces))))
+
     (telega-ins--with-face 'telega-msg-heading
       (telega-ins--with-attrs (list :max twidth :align 'left :elide t)
-        ;; Maybe add some rainbow color to the message title
-        (when telega-msg-rainbow-title
-          (let ((color (if sender
-                           (telega-user-color sender)
-                         (telega-chat-color chat)))
-                (lightp (eq (frame-parameter nil 'background-mode) 'light)))
-            (push (list :foreground (nth (if lightp 2 0) color)) tfaces)))
         (telega-ins--with-attrs (list :face tfaces)
           ;; Message title itself
           (if sender
-              (telega-ins (telega-user--name sender))
+              (let ((admin (telega-chat-admin-get chat sender)))
+                (telega-ins (telega-user--name sender))
+                (when admin
+                  (telega-ins--with-face 'shadow
+                    (telega-ins " ("
+                                (or (telega-tl-str admin :custom_title)
+                                    (if (plist-get admin :is_owner)
+                                        (telega-i18n "owner_badge")
+                                      (telega-i18n "admin_badge")))
+                                ")"))))
             (telega-ins (telega-chat-title chat 'with-username))
             (when-let ((signature (telega-tl-str msg :author_signature)))
               (telega-ins " --" signature))))
@@ -1676,7 +1691,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (telega-ins--with-face 'shadow
         (telega-ins-fmt " (%d options)" (length (plist-get imc :options)))))
      (inputMessageDice
-      (telega-ins (car telega-symbol-dice-list)
+      (telega-ins (or (telega-tl-str imc :emoji)
+                      (car telega-symbol-dice-list))
                   " " (telega-i18n "telega_random_dice")))
 
      ;; Special IMC for inline query results

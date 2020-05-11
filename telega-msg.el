@@ -74,6 +74,8 @@
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "S") 'telega-msg-save)
+    (define-key map (kbd "P") 'telega-msg-pin-toggle)
+    (define-key map (kbd "^") 'telega-msg-pin-toggle)
 
     (define-key map (kbd "DEL") 'telega-msg-delete-marked-or-at-point)
     map))
@@ -110,6 +112,9 @@
 
                 ;; NOTE: check for messages grouping by sender
                 ((and (telega-chat-match-p chat telega-chat-group-messages-for)
+                      ;; Not pinned
+                      (not (eq (plist-get msg :id)
+                               (plist-get chat :pinned_message_id)))
                       (> (point) 3)
                       (let ((prev-msg (telega-msg-at (- (point) 2))))
                         (and prev-msg
@@ -540,16 +545,6 @@ NODE - ewoc node, if known."
   "Return non-nil if MSG has unread mention."
   (plist-get msg :contains_unread_mention))
 
-;; DEPRECATED ???
-(defun telega-msg-sender-admin-status (msg)
-  (let ((admins-tl (telega-server--call
-                    (list :@type "getChatAdministrators"
-                          :chat_id (plist-get msg :chat_id)))))
-    (when (cl-find (plist-get msg :sender_user_id)
-                   (plist-get admins-tl :user_ids)
-                   :test #'=)
-      " (admin)")))
-
 (defun telega--parseTextEntities (text parse-mode)
   "Parse TEXT using PARSE-MODE.
 PARSE-MODE is one of:
@@ -617,8 +612,8 @@ with `M-x telega-ignored-messages RET'."
   (telega-debug "IGNORED msg: %S" msg))
 
 (defun telega-msg-ignore-blocked-sender (msg &rest _ignore)
-  "Function to be used as `telega-chat-pre-message-hook'.
-Add it to `telega-chat-pre-message-hook' to ignore messages from
+  "Function to be used as `telega-chat-insert-message-hook'.
+Add it to `telega-chat-insert-message-hook' to ignore messages from
 blocked users."
   (let ((sender-uid (plist-get msg :sender_user_id)))
     (when (and (not (zerop sender-uid))
@@ -651,20 +646,16 @@ blocked users."
     (telega-msg-redisplay msg)
     (telega-button-forward 1 'telega-msg-at)))
 
-(defun telega-msg-pin (msg &optional disable-notifications)
-  "Pin message MSG.
-If prefix arg is specified, then do not notify all the users about pin.
-If MSG is already pinned, then unpin it."
-  (interactive (list (telega-msg-at (point)) current-prefix-arg))
-  (let* ((chat (telega-msg-chat msg))
-         (chat-perms (plist-get chat :permissions)))
-    (unless (plist-get chat-perms :can_pin_messages)
-      (user-error "Can't pin messages in this chat"))
-
+(defun telega-msg-pin-toggle (msg)
+  "Toggle pin state of the message MSG."
+  (interactive (list (telega-msg-at (point))))
+  (let ((chat (telega-msg-chat msg)))
     (if (eq (plist-get chat :pinned_message_id)
             (plist-get msg :id))
         (telega--unpinChatMessage chat)
-      (telega--pinChatMessage msg disable-notifications))))
+
+      (let ((notify (y-or-n-p (concat (telega-i18n "pinned_notify") "? "))))
+        (telega--pinChatMessage msg (not notify))))))
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."

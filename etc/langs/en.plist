@@ -18,8 +18,13 @@
   :zero_value "No groups in common"
   :one_value "{count} group in common"
   :other_value "{count} groups in common")
+
  ("lng_scam_badge"
   :value "SCAM")
+ ("lng_owner_badge"
+  :value "owner")
+ ("lng_admin_badge"
+  :value "admin")
 
  ("lng_polls_create_multiple_choice"
   :value "Multiple Answers")
@@ -67,6 +72,8 @@
   :value "Channel renamed to «{title}»")
  ("lng_action_pinned_message"
   :value "{from} pinned «{text}»")
+ ("lng_pinned_notify"
+  :value "Notify all members")
 
  ("lng_action_user_registered"
   :value "{from} joined Telegram")
@@ -202,6 +209,10 @@
   :value "{user} is now the owner of the channel.")
  ("lng_rights_transfer_done_group"
   :value "{user} is now the owner of the group.")
+ ("lng_rights_edit_admin_rank_name"
+  :value "Custom title")
+ ("lng_rights_edit_admin_rank_about"
+  :value "A custom title that will be shown to all members instead of '{title}'.")
 
  ("telega_scheduled_help"
   :value "Next input will be scheduled")

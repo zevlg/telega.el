@@ -554,11 +554,14 @@ CHEIGHT specifies avatar height in chars, default is 2."
 
       ;; Draw initials
       (let ((fsz (/ ch 2))
-            (color (if (eq (telega--tl-type chat-or-user) 'user)
-                       (telega-user-color chat-or-user)
-                     (telega-chat-color chat-or-user))))
+            (colors (if (eq (telega--tl-type chat-or-user) 'user)
+                        (telega-user-color chat-or-user)
+                      (telega-chat-color chat-or-user))))
         (svg-gradient svg "cgrad" 'linear
-                      (list (cons 0 (cadr color)) (cons ch (caddr color))))
+                      (list (cons 0 (telega-color-name-as-hex-2digits
+                                     (nth 1 colors)))
+                            (cons ch (telega-color-name-as-hex-2digits
+                                      (nth 0 colors)))))
         (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
         (svg-text svg (substring name 0 1)
                   :font-size (/ ch 2)

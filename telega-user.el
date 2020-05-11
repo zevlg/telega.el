@@ -148,7 +148,11 @@ Default is: `full'"
       (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
              (colors (if chat
                          (telega-chat-color chat)
-                       (telega-color-tripple (telega-color-random)))))
+                       (let ((user-title (telega-user--name user 'name)))
+                         (list (funcall telega-rainbow-color-function
+                                        user-title 'light)
+                               (funcall telega-rainbow-color-function
+                                        user-title 'dark))))))
         (plist-put user :color colors)
         colors)))
 

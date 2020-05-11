@@ -5,10 +5,10 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords: comm
-;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9"))
+;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.11
-(defconst telega-version "0.6.11")
+;; Version: 0.6.12
+(defconst telega-version "0.6.12")
 (defconst telega-server-min-version "0.5.0")
 (defconst telega-tdlib-min-version "1.6.0")
 
@@ -60,6 +60,7 @@
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map)
     (define-key map (kbd "t") 'telega)
+    (define-key map (kbd "c") 'telega-chat-with)
     (define-key map (kbd "s") 'telega-saved-messages)
     (define-key map (kbd "b") 'telega-switch-buffer)
     (define-key map (kbd "f") 'telega-buffer-file-send)
@@ -298,6 +299,11 @@ Works only if current state is `authorizationStateWaitCode'."
   "On ok result from command function call."
   ;; no-op
   )
+
+;; since TDLib 1.6.3
+(defun telega--on-updateDiceEmojis (event)
+  (setq telega--dice-emojis
+        (mapcar #'telega--desurrogate-apply (plist-get event :emojis))))
 
 (defun telega--on-updateServiceNotification (event)
   "Handle service notification EVENT from the server."

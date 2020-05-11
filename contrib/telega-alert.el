@@ -1,4 +1,4 @@
-;;; telega-alert.el --- Notifications with alert.el
+;;; telega-alert.el --- Notifications with alert.el  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2020 by Zajcev Evgeny.
 

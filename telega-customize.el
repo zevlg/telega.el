@@ -178,6 +178,36 @@ cell of endings for the button with LABEL."
   :type '(choice function cons)
   :group 'telega)
 
+(defcustom telega-rainbow-lightness '(35 . 65)
+  "Lightness value for colors.
+car value is for light scheme, cdr value is for dark scheme."
+  :package-version '(telega . "0.6.12")
+  :type 'cons
+  :group 'telega)
+
+(defcustom telega-rainbow-saturation '(50 . 50)
+  "Saturation value for colors.
+car value is for light scheme, cdr value is for dark scheme."
+  :package-version '(telega . "0.6.12")
+  :type 'cons
+  :group 'telega)
+
+(defcustom telega-rainbow-color-function #'telega-color-rainbow-identifier
+  "Function used to assign color to the users/chats.
+Should accept two arguments - IDENTIFICIER and BACKGROUND-MODE.
+Should return color or nil."
+  :package-version '(telega . "0.6.12")
+  :type 'function
+  :group 'telega)
+
+(defcustom telega-rainbow-color-custom-for
+  (list '(saved-messages . nil))
+  "List of custom colors for chats.
+Each element is cons cell, where car is Chat Filter, and cdr is color."
+  :package-version '(telega . "0.6.12")
+  :type 'list
+  :group 'telega)
+
 (defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")
   "List of known bots for everyday use."
   :type 'list
@@ -655,6 +685,12 @@ Used when showing chat members list."
   :type 'list
   :group 'telega-chat)
 
+(defcustom telega-chat-scroll-scroll-conservatively 101
+  "Value for `scroll-conservatively' in chatbuf."
+  :package-version '(telega . "0.6.12")
+  :type 'int
+  :group 'telega-chat)
+
 (defcustom telega-chat-input-ring-size 50
   "*Size of the chat input history."
   :type 'integer
@@ -771,12 +807,6 @@ timespan, then do not group messages."
   :options '((not saved-messages))
   :group 'telega-chat)
 
-(defcustom telega-chat-mark-observable-messages-as-read nil
-  "*Non-nil to mark all observable (visible) messages as read.
-Otherwise mark as read only messages before the point."
-  :type 'boolean
-  :group 'telega-chat)
-
 (defcustom telega-chat-mode-line-format
   '((:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
@@ -890,13 +920,6 @@ For example:
   "Customization for telega messages formatting."
   :prefix "telega-msg-"
   :group 'telega)
-
-(defcustom telega-msg-show-sender-status nil
-  "*Non-nil to show message sender status.
-Such as admin, creator, etc
-DO NOT USE.  TODO: sender statuses need to be cached."
-  :type 'boolean
-  :group 'telega-msg)
 
 (defcustom telega-msg-rainbow-title t
   "*Non-nil to display user names in chatbuf with their assigned color."
@@ -1606,12 +1629,18 @@ Called with one argument - chat."
   :type 'hook
   :group 'telega-hooks)
 
+(defcustom telega-chat-insert-message-hook nil
+  "Hook called before inserting message into chatbuf.
+Called with single argument - MESSAGE.
+This hook can be used to ignore message, see
+https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
+  :type 'hook
+  :group 'telega-hooks)
+
 (defcustom telega-chat-pre-message-hook nil
   "Hook called uppon new message arrival, before inserting into chatbuffer.
 Called with single argument - MESSAGE.
-Always called, even if corresponding chat is closed at the moment.
-This hook can be used to ignore message, see
-https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
+Always called, even if corresponding chat is closed at the moment."
   :type 'hook
   :group 'telega-hooks)
 

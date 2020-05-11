@@ -355,7 +355,7 @@ In official telegram clients all messages in group chats are displayed
 even if message has been sent by blocked user.  `telega.el` has client
 side message filtering feature implemented.  Ignoring messages can be
 done via installing special functions into
-`telega-chat-pre-message-hook` which could mark message as ignored,
+`telega-chat-insert-message-hook` which could mark message as ignored,
 for example, to ignore messages from particular user with id=12345 you
 could add next code:
 
@@ -364,13 +364,13 @@ could add next code:
   (when (= (plist-get msg :sender_user_id) 12345)
     (telega-msg-ignore msg)))
 
-(add-hook 'telega-chat-pre-message-hook 'my-telega-ignore-12345-user)
+(add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
 ```
 
 Or to ignore messages from blocked users, just add:
 
 ```elisp
-(add-hook 'telega-chat-pre-message-hook 'telega-msg-ignore-blocked-sender)
+(add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
 ```
 
 To view recent messages that has been ignored use
