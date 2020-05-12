@@ -1399,21 +1399,22 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-faces)
 
 (defface telega-unmuted-count
-  '((t :foreground "blue"))
+  '((((class color) (background dark))
+     :foreground "RoyalBlue1")
+    (((class color) (background light))
+     :foreground "blue"))
   "Face to display count messages in unmuted chats."
   :group 'telega-faces)
 
 (defface telega-mention-count
-  '((t :weight bold :foreground "blue"))
+  '((t :inherit telega-unmuted-count :weight bold))
   "Face to display count of the mentions."
   :group 'telega-faces)
 
 (defface telega-username
-  '((((class color)
-      (background dark))
+  '((((class color) (background dark))
      :foreground "DodgerBlue")
-    (((class color)
-      (background light))
+    (((class color) (background light))
      :foreground "RoyalBlue")
     (t :bold t))
   "Face to display username for chats/users."
@@ -1430,12 +1431,12 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-faces)
 
 (defface telega-entity-type-cashtag
-  '((t :foreground "blue"))
+  '((t :inherit telega-link))
   "Face to display $USD cashtags"
   :group 'telega-faces)
 
 (defface telega-entity-type-botcommand
-  '((t :foreground "blue"))
+  '((t :inherit telega-link))
   "Face to display /command if there is bot in chat."
   :group 'telega-faces)
 
@@ -1483,7 +1484,11 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-msg-heading
-  '((t :inherit widget-field))
+  '((((class color) (background light))
+     :background "gray85")
+    (((class color) (background dark))
+     :background "gray25")
+    (t :inherit widget-field))
   "Face to display messages header."
   :group 'telega-faces)
 
@@ -1553,11 +1558,9 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-user-online-status
-  '((((class color)
-      (background dark))
+  '((((class color) (background dark))
      :foreground "green")
-    (((class color)
-      (background light))
+    (((class color) (background light))
      :foreground "cornflower blue")
     (t :bold t))
   "Face to display user status if online."
