@@ -122,6 +122,11 @@ List in form:
 \\(NAME FUN-OR-TDLIB-FILTER-NAME QUERY SENDER TOTAL-COUNT\\)")
 (make-variable-buffer-local 'telega-chatbuf--filter)
 
+(defvar telega-chatbuf--marker-message nil
+  "Message marker saved here before jumping to some message.
+Used for `M-g x' command.")
+(make-variable-buffer-local 'telega-chatbuf--marker-message)
+
 ;; Special variable used to set `telega-chatbuf--chat'
 ;; inside `telega-chat-mode'
 (defvar telega-chat--preparing-buffer-for)
@@ -1442,6 +1447,7 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "M-g u") 'telega-chatbuf-next-unread)
     (define-key map (kbd "M-g P") 'telega-chatbuf-goto-pin-message)
     (define-key map (kbd "M-g ^") 'telega-chatbuf-goto-pin-message)
+    (define-key map (kbd "M-g x") 'telega-chatbuf-goto-marker-message)
 
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chatbuf-complete-or-next-link)
@@ -1519,15 +1525,14 @@ Used in chatbuf footer."
 If POINT is ommited, then current point is used.
 FORCE - non-nil to force viewing messages in closed chat.
 If POINT is not over some message, then view last message."
-  (when (> (plist-get telega-chatbuf--chat :unread_count) 0)
-    (let* ((last-read-msg-id
-            (plist-get telega-chatbuf--chat :last_read_inbox_message_id))
-           (message (or (telega-msg-at (or point (point)))
-                        (telega-chatbuf--last-msg))))
-      (when (and message
-                 (or (plist-get message :contains_unread_mention)
-                     (> (plist-get message :id) last-read-msg-id)))
-        (telega--viewMessages telega-chatbuf--chat (list message) force)))))
+  (let* ((last-read-msg-id
+          (plist-get telega-chatbuf--chat :last_read_inbox_message_id))
+         (message (or (telega-msg-at (or point (point)))
+                      (telega-chatbuf--last-msg))))
+    (when (and message
+               (or (plist-get message :contains_unread_mention)
+                   (> (plist-get message :id) last-read-msg-id)))
+      (telega--viewMessages telega-chatbuf--chat (list message) force))))
 
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
@@ -3043,6 +3048,13 @@ button."
     (unless (zerop pinned-msg-id)
       (telega-chat--goto-msg telega-chatbuf--chat pinned-msg-id 'highlight))))
 
+(defun telega-chatbuf-goto-marker-message ()
+  "Return to the message we was jumped from."
+  (interactive)
+  (unless telega-chatbuf--marker-message
+    (user-error "telega: No marker message"))
+  (telega-msg-goto-highlight telega-chatbuf--marker-message))
+
 ;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location &optional live-secs)
   "Attach location to the current input.
@@ -3898,6 +3910,8 @@ This call is asynchronous, and might require history fetching.
 CALLBACK is called after point is moved to the message with MSG-ID."
   (declare (indent 3))
   (with-current-buffer (telega-chat--pop-to-buffer chat :no-history)
+    (setq telega-chatbuf--marker-message (telega-msg-at (point)))
+
     (if (telega-chatbuf--goto-msg msg-id highlight)
         (when callback
           (funcall callback))
