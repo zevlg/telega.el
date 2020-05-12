@@ -495,10 +495,18 @@ to modify it.
 
 **Q**: Is there erc-like chats tracking functionality?
 
-**A**: Yes, set `telega-use-tracking` to non-nil.
+**A**: Yes, set `telega-use-tracking-for` to non-nil.
 
-Take into account that telega tracks only opened chats with enabled
-notifications.
+Tracking is done only for opened chats, i.e. chats having
+corresponding chat buffer.
+
+Its value is a (Chat Filter)[https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#chat-filters].
+
+For example, to enable tracking for chats with enabled notifications or for chats where you have unread mention, use:
+
+```elisp
+(setq telega-use-tracking-for '(or unmuted mention))
+```
 
 **Q**: Is it possible to use telega in tty-only Emacs (aka
 emacs-nox)?
