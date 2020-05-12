@@ -375,6 +375,8 @@ N can't be 0."
       (textEntityTypeTextUrl
        (telega-link-props 'url (plist-get ent-type :url)
                           'telega-entity-type-texturl))
+      (textEntityTypeBotCommand
+       (list 'face 'telega-entity-type-botcommand))
       )))
 
 ;; https://core.telegram.org/bots/api#markdown-style

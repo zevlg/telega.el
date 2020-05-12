@@ -450,11 +450,12 @@ markup has been used."
          :chat_id chat-id
          :message_id msg-id)))
 
-(defun telega--searchChatMembers (chat query &optional filter limit)
+(defun telega--searchChatMembers (chat query &optional filter limit as-member-p)
   "Search CHAT members by QUERY.
 FILTER is one \"Administrators\", \"Members\", \"Restricted\",
 \"Banned\", \"Bots\", default is \"Members\".
-LIMIT by default is 50."
+LIMIT by default is 50.
+If AS-MEMBER-P, then return \"chatMember\" structs instead of users."
   (let ((reply (telega-server--call
                 (list :@type "searchChatMembers"
                       :chat_id (plist-get chat :id)
@@ -462,8 +463,10 @@ LIMIT by default is 50."
                       :limit (or limit 50)
                       :filter (list :@type (concat "chatMembersFilter"
                                                    (or filter "Members")))))))
-    (mapcar (lambda (member)
-              (telega-user--get (plist-get member :user_id)))
+    (mapcar (if as-member-p
+                #'identity
+              (lambda (member)
+                (telega-user--get (plist-get member :user_id))))
             (plist-get reply :members))))
 
 (defun telega--getChatAdministrators (chat &optional callback)

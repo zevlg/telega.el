@@ -220,16 +220,38 @@ Matches only if CHAR does not apper in the middle of the word."
     (when (and cg (= telega-chatbuf--input-marker (match-beginning 0)))
       (cons cg company-minimum-prefix-length))))
 
-(defun telega-company--bot-commands-alist ()
+(defun telega-company--bot-commands-list (bot-info &optional suffix)
+  (mapcar (lambda (bot-cmd)
+            (propertize (concat "/" (telega-tl-str bot-cmd :command) suffix)
+                        'telega-annotation
+                        (telega-ins--as-string
+                         (telega-ins--with-attrs
+                             (list :max (/ telega-chat-fill-column 2) :elide t)
+                           (telega-ins (telega-tl-str bot-cmd :description))))))
+          (plist-get bot-info :commands)))
+
+(defun telega-company--bot-commands ()
   (cl-assert telega-chatbuf--chat)
-  (when (eq (telega-chat--type telega-chatbuf--chat) 'bot)
-    (let* ((info (telega-chat--info telega-chatbuf--chat))
-           (full-info (telega--full-info info))
-           (bot-info (plist-get full-info :bot_info)))
-      (mapcar (lambda (bot-cmd)
-                (cons (concat "/" (plist-get bot-cmd :command))
-                      (plist-get bot-cmd :description)))
-              (plist-get bot-info :commands)))))
+  (let ((chat-type (telega-chat--type telega-chatbuf--chat)))
+    (if (eq chat-type 'bot)
+        ;; Chat with bot
+        (let* ((info (telega-chat--info telega-chatbuf--chat))
+               (full-info (telega--full-info info))
+               (bot-info (plist-get full-info :bot_info)))
+          (telega-company--bot-commands-list bot-info))
+
+      ;; Ordinary chat
+      (let ((bots (telega--searchChatMembers
+                   telega-chatbuf--chat "" "Bots" nil t)))
+        (apply #'append
+               (mapcar (lambda (bot-member)
+                         (let ((bot-user (telega-user--get
+                                          (plist-get bot-member :user_id))))
+                           (telega-company--bot-commands-list
+                            (plist-get bot-member :bot_info)
+                            (concat "@" (telega-tl-str bot-user :username)))))
+                       bots))))
+    ))
 
 ;;;###autoload
 (defun telega-company-botcmd (command &optional arg &rest ignored)
@@ -241,11 +263,9 @@ Matches only if CHAR does not apper in the middle of the word."
     ;; Always match if having `/'
     (prefix (telega-company-grab-botcmd))
     (candidates
-     (let ((cmd-alist (telega-company--bot-commands-alist)))
-       (all-completions arg cmd-alist)))
+     (all-completions arg (telega-company--bot-commands)))
     (annotation
-     (let ((cmd-alist (telega-company--bot-commands-alist)))
-       (concat "  " (cdr (assoc arg cmd-alist)))))
+     (get-text-property 0 'telega-annotation arg))
     ))
 
 (provide 'telega-company)
