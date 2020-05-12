@@ -2952,13 +2952,13 @@ Also reset `telega-chatbuf--filter'."
         (setq telega-chatbuf--history-state 'loaded)
         (goto-char (point-min))))))
 
-(defun telega-chatbuf-recenter-1 (arg redisplay)
+(defun telega-chatbuf-recenter-1 (arg)
   "Recenter for chatbuf.
 Call `(recenter -1)' if point is at prompt, otherwise call recenter as-is."
-  (interactive "P\np")
+  (interactive "P")
   (if (and (not arg) (<= telega-chatbuf--input-marker (point)))
       (recenter -1)
-    (recenter arg redisplay)))
+    (call-interactively #'recenter)))
 
 (defun telega-chatbuf-read-all ()
   "Read all messages in chat buffer."
