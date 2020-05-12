@@ -174,6 +174,8 @@ $ sudo make install
 It will install headers to `/usr/local/include` and library itself
 into `/usr/local/lib`.  These paths are hardcoded in `telega.el`.
 
+For Linux users, make sure `/usr/local/lib` is in you ldconfig cache, otherwise telega server build will fail.
+
 ### Building libtgvoip
 
 VoIP support in `telega.el` is optional, if you don't need VoIP, just
