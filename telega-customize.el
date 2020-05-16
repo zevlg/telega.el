@@ -1247,11 +1247,13 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
-(define-fringe-bitmap 'telega-mark
-  (vector #b11111111) nil nil '(top periodic))
+(when (fboundp 'define-fringe-bitmap)
+  (define-fringe-bitmap 'telega-mark
+    (vector #b11111111) nil nil '(top periodic)))
 
-(defcustom telega-symbol-mark
-  (propertize "*" 'display  '(left-fringe telega-mark error))
+(defcustom telega-symbol-mark (if (fboundp 'define-fringe-bitmap)
+                                  (propertize "*" 'display  '(left-fringe telega-mark error))
+                                (propertize "*" 'face 'error))
   "*Symbol used to denote marked messages/chats."
   :type 'string
   :group 'telega-symbol)
