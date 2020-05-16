@@ -229,6 +229,21 @@ Return non-nil if CHAT has been reordered."
         (length (memq (current-buffer) (buffer-list))))
       -1))
 
+;; - ~chatbuf-visibility~
+;;   {{{fundoc(telega--sort-chatbuf-visibility)}}}
+(define-telega-sorter chatbuf-visibility () (chat)
+  "Sort chats by visibility in other window in DWIM style.
+See https://github.com/zevlg/telega.el/issues/165"
+  (let ((retn (length telega--chat-buffers)))
+    (if (get-window-with-predicate
+         (lambda (win)
+           (with-current-buffer (window-buffer win)
+             (when (derived-mode-p 'telega-chat-mode)
+               (cl-decf retn)
+               (eq telega-chatbuf--chat chat)))))
+        retn
+      -1)))
+
 ;; - TODO Date of last message sent by ~telega-user-me~
 ;; - TODO Date of last mention (thanks to https://t.me/lainposter)
 

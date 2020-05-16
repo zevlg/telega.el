@@ -3484,18 +3484,6 @@ Prefix argument is available for next attachements:
     (cl-assert (commandp cmd))
     (call-interactively cmd)))
 
-(defun telega-photo-send (file chat)
-  "Prepare FILE to be sent as photo to CHAT."
-  (interactive (list (buffer-file-name)
-                     (telega-completing-read-chat "Send photo to chat: ")))
-
-  (cl-assert chat)
-  (with-current-buffer (telega-chat--pop-to-buffer chat)
-    (let ((inhibit-read-only t)
-          (buffer-undo-list t))
-      (goto-char (point-max))
-      (telega-chatbuf-attach-photo file))))
-
 (defun telega-buffer-file-send (file chat &optional as-photo-p)
   "Prepare FILE to be sent as document or photo to CHAT.
 If prefix argument is used, then always send as a file.

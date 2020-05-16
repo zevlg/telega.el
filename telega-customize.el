@@ -829,6 +829,12 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
+(defcustom telega-chat-completing-sort-criteria 'chatbuf-visibility
+  "Criteria to sort chats in `telega-completing-read-chat'."
+  :package-version '(telega . "0.6.15")
+  :type 'symbol
+  :group 'telega-chat)
+
 (defcustom telega-chat-switch-buffer-sort-criteria 'chatbuf-recency
   "Criteria to sort open chats when switching with `telega-switch-buffer'."
   :type 'symbol

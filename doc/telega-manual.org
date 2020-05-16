@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.11)
+#+TITLE: Telega Manual (v0.6.15)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -351,6 +351,10 @@ Use this command to reset active sorter.
 
 - ~chatbuf-recency~, @@html:<kbd>@@\ v@@html:</kbd>@@ (~telega-sort-by-chatbuf-recency~) :: 
      Sort chats by chatbuf recency.  Recently used chats goes first.
+
+- ~chatbuf-visibility~
+  Sort chats by visibility in other window in DWIM style.
+See https://github.com/zevlg/telega.el/issues/165
 
 - TODO Date of last message sent by ~telega-user-me~
 - TODO Date of last mention (thanks to https://t.me/lainposter)
