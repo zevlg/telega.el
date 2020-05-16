@@ -139,11 +139,13 @@ rootbuf is the heart of =telega=.
 - Key: @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-root-next-mention~)
 
   Move point to the next chat with mention.
+
 * Chat Filters
 
 Chat Filters are used to match chats, same as regexps are used to
 match strings.  Chat Filters uses S-exp notation similar to ~rx~
-package for regexps.
+package for regexps.  Consider Chat Filters as extremely powerful
+"Folders" functionality in official client.
 
 Primitive Chat Filter is a specifier to match some property of the
 chat.  Each primitive Chat Filter has name (elisp symbol) and
@@ -169,6 +171,32 @@ Chat Filter examples:
 
 Matching is done using ~telega-chat-match-p~ function.
 
+Some useful Chat Filters are accessible using keyboard bindings:
+
+- @@html:<kbd>@@/@@html:</kbd>@@ :: 
+     rootbuf prefix map for chat filtering commands
+
+- @@html:<kbd>@@/ i@@html:</kbd>@@ (~telega-filter-by-important~) :: 
+     Filter important chats.
+Important chat is the chat with unread messages and enabled notifications.
+
+- @@html:<kbd>@@/ e@@html:</kbd>@@, @@html:<kbd>@@/ :@@html:</kbd>@@ (~telega-filters-edit~) :: 
+     Edit and reapply filters list.
+
+- @@html:<kbd>@@/ f@@html:</kbd>@@, @@html:<kbd>@@/ a@@html:</kbd>@@ (~telega-filter-by-filter~) :: 
+     Filter by some filter.
+
+- @@html:<kbd>@@/ DEL@@html:</kbd>@@, @@html:<kbd>@@/ d@@html:</kbd>@@ (~telega-filters-pop-last~) :: 
+     Pop last ~N~ filters.
+
+- @@html:<kbd>@@/ !@@html:</kbd>@@ (~telega-filters-negate~) :: 
+     Negate active filters.
+
+- @@html:<kbd>@@/ /@@html:</kbd>@@ (~telega-filters-reset~) :: 
+     Reset all active filters to default.
+
+For other Chat Filter bindings see below.
+
 ** List of chat filters
 
 - (any ~FILTER-LIST~...) :: 
@@ -190,48 +218,45 @@ Also matches if ~FILTER-LIST~ is empty.
   - Key (rootbuf): @@html:<kbd>@@/ !@@html:</kbd>@@ (~telega-filters-negate~)
     Negate active filters.
 
-- (type ~CHAT-TYPE-LIST~) :: 
+- (type ~CHAT-TYPE-LIST~), @@html:<kbd>@@/ t@@html:</kbd>@@ (~telega-filter-by-type~) :: 
      Matches if chat type is one of ~CHAT-TYPE-LIST~.
 
      See [[#chat-types][Chat types]]
 
-  - Key (rootbuf): @@html:<kbd>@@/ t@@html:</kbd>@@ (~telega-filter-by-type~)
-    Filter chats by its type.
-
 - (name ~REGEXP~) :: 
      Matches if chat's title matches ~REGEXP~.
 
-- (search ~QUERY~) :: 
+- (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@, @@html:<kbd>@@/ n@@html:</kbd>@@ (~telega-filter-by-search~) :: 
      Matches if chat maches search QUERY.
 
-- (custom ~NAME~) :: 
+- (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
      Matches if custom filter with ~NAME~ matches.
 
-- pin :: 
+- pin, @@html:<kbd>@@/ p@@html:</kbd>@@ (~telega-filter-by-pin~) :: 
      Matches if chat is pinned.
 
 - has-pinned-message :: 
      Matches if chat has pinned message.
 
-- (unread [ ~N~ ]) :: 
+- (unread [ ~N~ ]), @@html:<kbd>@@/ u@@html:</kbd>@@ (~telega-filter-by-unread~) :: 
      Matches if chat has least ~N~ unread messages.
 By default ~N~ is 1.
 Also matches chats marked as unread.
 
-- (mention [ ~N~ ]) :: 
+- (mention [ ~N~ ]), @@html:<kbd>@@/ m@@html:</kbd>@@ (~telega-filter-by-mention~) :: 
      Matches if chat has least ~N~ unread mentions.
 By default ~N~ is 1.
 
-- unmuted :: 
+- unmuted, @@html:<kbd>@@/ y@@html:</kbd>@@ (~telega-filter-by-unmuted~) :: 
      Matches if chat has enabled notifications.
 
-- (online-status ~STATUS-LIST~...) :: 
+- (online-status ~STATUS-LIST~...), @@html:<kbd>@@/ o@@html:</kbd>@@ (~telega-filter-by-online-status~) :: 
      Matches private chat where user status is one of ~STATUS-LIST~.
 
      Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
      "Recently", "LastWeek", "LastMonth" or "Empty"
 
-- verified :: 
+- verified, @@html:<kbd>@@/ v@@html:</kbd>@@ (~telega-filter-by-verified~) :: 
      Matches if chat is verified.
 
 - (ids ~ID-LIST~...) :: 
@@ -256,7 +281,7 @@ Only basicgroup, supergroup and channel can be owned.
 - has-avatar :: 
      Matches if chat has chat photo.
 
-- has-chatbuf :: 
+- has-chatbuf, @@html:<kbd>@@/ b@@html:</kbd>@@ (~telega-filter-by-has-chatbuf~) :: 
      Matches if chat has corresponding chatbuf.
 
 - (permission ~PERM~) :: 
@@ -266,7 +291,7 @@ Only basicgroup, supergroup and channel can be owned.
 ~:can_send_other_messages~, ~:can_add_web_page_previews~,
 ~:can_change_info~, ~:can_invite_users~, ~:can_pin_messages~
 
-- (restriction ~SUFFIX-LIST~...) :: 
+- (restriction ~SUFFIX-LIST~...), @@html:<kbd>@@/ r@@html:</kbd>@@ (~telega-filter-by-restriction~) :: 
      Matches restricted chats.
 
      Each element in ~SUFFIX-LIST~ is one of:
@@ -277,20 +302,20 @@ Only basicgroup, supergroup and channel can be owned.
 
   If ~SUFFIX-LIST~ is ommited, then match any reason.
 
-- (contact [ ~MUTUAL-P~ ]) :: 
+- (contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
      Matches private chats if corresponding user is a contact.
 If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
-- top :: 
+- top, @@html:<kbd>@@/ T@@html:</kbd>@@ (~telega-filter-by-top~) :: 
      Matches if chat is in top usage.
 
 - saved-messages :: 
      Matches only SavedMessages chat.
 
-- (label ~LABEL~) :: 
+- (label ~LABEL~), @@html:<kbd>@@/ l@@html:</kbd>@@ (~telega-filter-by-label~) :: 
      Matches chat with custom ~LABEL~.
 
-- tracking :: 
+- tracking, {{{where-is(telega-filter-by-tracking,telega-root-mode-map) :: 
      Matches if chat is in tracking buffers list.
 
 - last-message-by-me :: 
@@ -308,6 +333,7 @@ Only "Main" and "Archive" names are supported.
 
 - has-scheduled-messages :: 
      Matches if chat has scheduled messages.
+
 * Sorting Chats
 
 It is possible to sort chats in rootbuf out of Telega built-in
@@ -358,6 +384,7 @@ See https://github.com/zevlg/telega.el/issues/165
 
 - TODO Date of last message sent by ~telega-user-me~
 - TODO Date of last mention (thanks to https://t.me/lainposter)
+
 * Chat buffer
 
 *TODO*: describe chatbuf functionality
