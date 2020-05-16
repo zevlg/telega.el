@@ -559,9 +559,9 @@ CHEIGHT specifies avatar height in chars, default is 2."
                       (telega-chat-color chat-or-user))))
         (svg-gradient svg "cgrad" 'linear
                       (list (cons 0 (telega-color-name-as-hex-2digits
-                                     (nth 1 colors)))
+                                     (or (nth 1 colors) "gray75")))
                             (cons ch (telega-color-name-as-hex-2digits
-                                      (nth 0 colors)))))
+                                      (or (nth 0 colors) "gray25")))))
         (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
         (svg-text svg (substring name 0 1)
                   :font-size (/ ch 2)

@@ -194,7 +194,7 @@ car value is for light scheme, cdr value is for dark scheme."
 
 (defcustom telega-rainbow-color-function #'telega-color-rainbow-identifier
   "Function used to assign color to the users/chats.
-Should accept two arguments - IDENTIFICIER and BACKGROUND-MODE.
+Should accept two arguments - IDENTIFIER and BACKGROUND-MODE.
 Should return color or nil."
   :package-version '(telega . "0.6.12")
   :type 'function
