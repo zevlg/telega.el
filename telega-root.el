@@ -714,7 +714,7 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
   ;;    result in error "Unauthorized"
   (when (and (telega-server-live-p)
              (equal telega--auth-state "Ready"))
-    (let ((online-p (telega-focus-state))
+    (let ((online-p (funcall telega-online-status-function))
           (curr-online-p (telega-user-online-p (telega-user-me))))
       (unless (eq online-p curr-online-p)
         (telega--setOption :online (if online-p t :false))))))
@@ -722,7 +722,7 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
 (defun telega-check-focus-change ()
   "Function called when some emacs frame changes focus."
   ;; Make a decision about online status in `status-interval' seconds
-  (let ((status-interval (if (telega-focus-state)
+  (let ((status-interval (if (funcall telega-online-status-function)
                              telega-online-status-interval
                            telega-offline-status-interval)))
     (if telega-online--timer
@@ -754,6 +754,10 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
   "Timer function for `telega-idle--timer'."
   (when telega-filters--dirty
     (telega-filters--redisplay))
+
+  ;; For `telega-buffer-p' as `telega-online-status-function'
+  (unless telega-online--timer
+    (telega-check-focus-change))
   )
 
 (defun telega-runtime-setup ()

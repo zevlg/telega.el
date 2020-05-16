@@ -510,6 +510,18 @@ If CHAT-FILTER matches chat, that chat gets CUSTOM-LABEL."
   :type 'number
   :group 'telega-root)
 
+(defcustom telega-online-status-function (if (or (fboundp 'frame-focus-state)
+                                                 (display-graphic-p))
+                                             'telega-focus-state
+                                           'telega-buffer-p)
+  "Function used to determine if user is online.
+Function should return non-nil if user is online, and nil if offline.
+See https://github.com/zevlg/telega.el/issues/171"
+  :package-version '(telega . "0.6.14")
+  :options '(telega-buffer-p)
+  :type 'function
+  :group 'telega)
+
 (defcustom telega-offline-status-interval 3
   "Interval in seconds before going offline when emacs looses focus."
   :type 'number

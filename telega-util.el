@@ -83,13 +83,22 @@ Selected frame and frame displaying root buffer are examined first."
                      (frame-list))))
 
 (defun telega-focus-state (&optional frame)
-  "Return non-nil if FRAME has focus."
+  "Return non-nil if FRAME has focus.
+Can be used as value for `telega-online-status-function'."
   (if (fboundp 'frame-focus-state)
       (funcall 'frame-focus-state frame)
     ;; NOTE: For tty frame always return non-nil
     ;; see https://t.me/emacs_telega/7419
     (or (not (display-graphic-p frame))
         (frame-parameter frame 'x-has-focus))))
+
+(defun telega-buffer-p ()
+  "Return non-nil if current buffer is some telega buffer.
+Could be used as value for `telega-online-status-function'."
+  (when (or (derived-mode-p 'telega-root-mode)
+            (derived-mode-p 'telega-chat-mode)
+            (string-prefix-p "*Telega" (buffer-name)))
+    t))
 
 (defun telega-chars-xwidth (n)
   "Return pixel width for N characters"

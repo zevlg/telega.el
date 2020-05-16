@@ -57,6 +57,7 @@
 ;;   {{{vardoc1(telega-mode-line-string-format)}}}
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
+    (:eval (telega-mode-line-online-status))
     (:eval (when telega-use-tracking-for
              (telega-mode-line-tracking)))
     (:eval (telega-mode-line-unread-unmuted))
@@ -101,6 +102,16 @@
                            (make-mode-line-mouse-map 'mouse-1 'telega))
               'mouse-face 'mode-line-highlight
               'help-echo "Click to show telega root buffer"))
+
+(defun telega-mode-line-online-status ()
+  "Return online status symbol."
+  (if (telega-user-online-p (telega-user-me))
+      telega-symbol-online-status
+    (propertize telega-symbol-online-status 'face 'shadow)))
+
+(defun telega-mode-line--online-status-update (event)
+  (when (eq (plist-get event :user_id) telega--me-id)
+    (telega-mode-line-update)))
 
 (defmacro telega-mode-line-filter-gen (filter-spec)
   "Generate filtering command for `telega-mode-line-mode' using FILTER-SPEC."
@@ -167,7 +178,7 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
   (setq telega-mode-line-string
         (when (telega-server-live-p)
           (format-mode-line telega-mode-line-string-format)))
-  (force-mode-line-update))
+  (force-mode-line-update 'all))
 
 ;;;###autoload
 (define-minor-mode telega-mode-line-mode
@@ -188,6 +199,8 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
                     :after 'telega-mode-line-update)
         (advice-add 'telega--on-updateChatUnreadMentionCount
                     :after 'telega-mode-line-update)
+        (advice-add 'telega--on-updateUserStatus
+                    :after 'telega-mode-line--online-status-update)
         (add-hook 'telega-ready-hook 'telega-mode-line-update)
         (add-hook 'telega-chats-fetched-hook 'telega-mode-line-update)
         (add-hook 'telega-kill-hook 'telega-mode-line-update)
@@ -206,6 +219,8 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
                    'telega-mode-line-update)
     (advice-remove 'telega--on-updateChatUnreadMentionCount
                    'telega-mode-line-update)
+    (advice-remove 'telega--on-updateUserStatus
+                   'telega-mode-line--online-status-update)
     (remove-hook 'telega-ready-hook 'telega-mode-line-update)
     (remove-hook 'telega-chats-fetched-hook 'telega-mode-line-update)
     (remove-hook 'telega-kill-hook 'telega-mode-line-update)
