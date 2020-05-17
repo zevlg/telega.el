@@ -121,7 +121,7 @@ CRITERIA could be a lit of sort criterias."
 
 (defun telega-sort-chats (criteria chats)
   "Sort CHATS by criteria."
-  (sort chats (apply-partially 'telega-chats-compare criteria)))
+  (sort (copy-sequence chats) (apply-partially 'telega-chats-compare criteria)))
 
 (defun telega-sort-by-sorter (criteria &optional arg)
   "Interactively add CRITERIA to active sorter.
