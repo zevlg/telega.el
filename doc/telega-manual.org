@@ -229,7 +229,7 @@ For other Chat Filter bindings see below.
 - (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
      Matches if custom filter with ~NAME~ matches.
 
-- pin, @@html:<kbd>@@/ p@@html:</kbd>@@ (~telega-filter-by-pin~) :: 
+- pin, @@html:<kbd>@@/ P@@html:</kbd>@@, @@html:<kbd>@@/ ^@@html:</kbd>@@ (~telega-filter-by-pin~) :: 
      Matches if chat is pinned.
 
 - has-pinned-message :: 
