@@ -66,6 +66,8 @@
    - (NOT YET) Date of last message sent by ~telega-user-me~
    - (NOT YET) Date of last mention (thanks to https://t.me/lainposter)
 
+** Chat Actions
+
 * telega-server as a module
 
 Implement telega-server as Emacs module to improve overall performance.
@@ -75,6 +77,8 @@ Implement telega-server as Emacs module to improve overall performance.
    - "engine" as telega-server and telega-server as "engine"
 
 * TON
+
+Unfortunately TON is postponed, see https://t.me/durov/116
 
 ** DONE tonlib integration
    CLOSED: [2020-01-20 Пн 14:24]
