@@ -41,7 +41,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-status-historyel--global-minore-mode-to-save-users-online-status-history][/telega-status-history.el/ -- Global minore mode to save user's online status history]]
     - [[#telega-url-shortenel][/telega-url-shorten.el/]]
     - [[#telega-alertel--notifications-using-alertel][/telega-alert.el/ -- Notifications using =alert.el=]]
-    - [[#telega-dired-dwimel--attach-files-from-dired-to-chatbuf-in-dwim-style][/telega-dired-dwim.el/ -- Attach files from dired to chatbuf in DWIM style]]
+    - [[#telega-dired-dwimel--attach-files-from-dired-in-dwim-style][/telega-dired-dwim.el/ -- Attach files from dired in DWIM style]]
 
 * Telega glossary
 
@@ -677,10 +677,10 @@ Alerts for =telega.el= are fired with ~:mode 'telega-chat-mode~
 value.  You might use this to customize alert rules with
 ~alert-add-rule~.
 
-** /telega-dired-dwim.el/ -- Attach files from dired to chatbuf in DWIM style
+** /telega-dired-dwim.el/ -- Attach files from dired in DWIM style
 
-This package advices ~dired-do-copy~ to attach files into visible chatbuf.
+This package advises ~dired-do-copy~ to attach files into visible chatbuf.
 
 In dired, mark files you want to attach and press @@html:<kbd>@@C@@html:</kbd>@@.  If
-you have some chatbuf visibled, marked files will be attached in
+you have some chatbuf visible, marked files will be attached in
 that chatbuf.
