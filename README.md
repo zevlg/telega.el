@@ -529,3 +529,7 @@ emacs-nox)?
        last line```
     5. [link text](http://actual.url)
     6. [username](tg://user?id=<USER-ID>)"
+
+**Q**: Is there manual for `telega.el`?
+
+**A**: We started to write https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org
