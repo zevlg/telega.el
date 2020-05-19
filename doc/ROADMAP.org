@@ -8,6 +8,7 @@
    CREATED: [2020-03-17]
 
    - [X] Searching
+   - [ ] Contacts list (see https://t.me/emacs_telega/16001)
    - [ ] Nearby users/chats
    - [ ] Chats, grouped by custom labels
          #+begin_example
