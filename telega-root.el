@@ -22,9 +22,9 @@
 ;;; Commentary:
 
 ;; * Root Buffer
-;; 
+;;
 ;; rootbuf is the heart of =telega=.
-;; 
+;;
 ;; *TODO*: describe parts of the rootbuf
 
 ;;; Code:
@@ -117,28 +117,26 @@
 
     (define-key map (kbd "m") 'telega-chat-with)
 
-    ;; ** Fast navigation
-    ;; 
-    ;; {{{kbd(M-g)}}} prefix in rootbuf is used to jump across chat buttons.
-    ;; 
-    ;; - Key: {{{where-is(telega-root-next-unread,telega-root-mode-map)}}}
-    ;; 
-    ;;   {{{fundoc(telega-root-next-unread)}}}
+    ;; ** Rootbuf fast navigation
+    ;;
+    ;; {{{kbd(M-g)}}} prefix in rootbuf is used to jump across chat
+    ;; buttons.
+    ;;
+    ;; - {{{where-is(telega-root-next-unread,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-unread, 2)}}}
     (define-key map (kbd "M-g u") 'telega-root-next-unread)
 
-    ;; - Key: {{{where-is(telega-root-next-important,telega-root-mode-map)}}}
-    ;; 
-    ;;   {{{fundoc(telega-root-next-important)}}}
-    ;; 
+    ;; - {{{where-is(telega-root-next-important,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-important, 2)}}}
+    ;;
     ;;   Important message is the messages matching "Important" custom
     ;;   [[#chat-filters][chat filter]].  If there is no "Important"
     ;;   custom chat filter, then ~(or mention (and unread unmuted))~
     ;;   chat filter is used.
     (define-key map (kbd "M-g i") 'telega-root-next-important)
 
-    ;; - Key: {{{where-is(telega-root-next-mention,telega-root-mode-map)}}}
-    ;; 
-    ;;   {{{fundoc(telega-root-next-mention)}}}
+    ;; - {{{where-is(telega-root-next-mention,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-mention, 2)}}}
     (define-key map (kbd "M-g m") 'telega-root-next-mention)
     (define-key map (kbd "M-g @") 'telega-root-next-mention)
     map)

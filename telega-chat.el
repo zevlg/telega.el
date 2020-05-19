@@ -1438,15 +1438,31 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "M-n") 'telega-chatbuf-edit-next)
     (define-key map (kbd "M-r") 'telega-chatbuf-input-search)
 
-    ;; Goto commands
+    ;; ** Chatbuf fast navigation
+    ;;
+    ;; {{{kbd(M-g)}}} prefix in chatbuf is used to jump across chat
+    ;; messages.
+    ;;
+    ;; - {{{where-is(telega-chatbuf-history-beginning,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-history-beginning, 2)}}}
     (define-key map (kbd "M-g <") 'telega-chatbuf-history-beginning)
+    ;; - {{{where-is(telega-chatbuf-read-all,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-read-all, 2)}}}
     (define-key map (kbd "M-g >") 'telega-chatbuf-read-all)
     (define-key map (kbd "M-g r") 'telega-chatbuf-read-all)
+    ;; - {{{where-is(telega-chatbuf-next-unread-mention,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-unread-mention, 2)}}}
     (define-key map (kbd "M-g m") 'telega-chatbuf-next-unread-mention)
     (define-key map (kbd "M-g @") 'telega-chatbuf-next-unread-mention)
+    ;; - {{{where-is(telega-chatbuf-next-unread,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-unread, 2)}}}
     (define-key map (kbd "M-g u") 'telega-chatbuf-next-unread)
+    ;; - {{{where-is(telega-chatbuf-goto-pin-message,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-pin-message, 2)}}}
     (define-key map (kbd "M-g P") 'telega-chatbuf-goto-pin-message)
     (define-key map (kbd "M-g ^") 'telega-chatbuf-goto-pin-message)
+    ;; - {{{where-is(telega-chatbuf-goto-marker-message,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-marker-message, 2)}}}
     (define-key map (kbd "M-g x") 'telega-chatbuf-goto-marker-message)
 
     ;; jumping around links
@@ -1690,7 +1706,7 @@ Global chat bindings:
   (setq-local switch-to-buffer-preserve-window-point nil)
   (setq-local window-point-insertion-type t)
   (setq-local next-line-add-newlines nil)
-  (setq-local scroll-conservatively telega-chat-scroll-scroll-conservatively) 
+  (setq-local scroll-conservatively telega-chat-scroll-scroll-conservatively)
   (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
 
@@ -3023,7 +3039,7 @@ button."
 (defun telega-chatbuf-next-unread-mention ()
   "Goto next unread mention in chat buffer."
   (interactive)
-  
+
   ;; NOTE:
   ;; - check `:unread_mention_count' for zerop
   ;; - searchChatMessages with :filter searchMessagesFilterUnreadMention

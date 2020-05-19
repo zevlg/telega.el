@@ -59,15 +59,13 @@
 
 ;; *** Customizable options:
 ;;
-;; - User Option: ~telega-url-shorten-use-images~
-;;   {{{vardoc(telega-url-shorten-use-images,2)}}}
+;; - {{{user-option(telega-url-shorten-use-images, 2)}}}
 (defcustom telega-url-shorten-use-images telega-use-images
   "*Non-nil to use images on graphics display."
   :type 'boolean
   :group 'telega-url-shorten)
 
 ;; - User Option: ~telega-url-shorten-regexps~
-;;
 ;;   {{{vardoc1(telega-url-shorten-regexps)}}}
 ;;
 ;;   To change ~:symbol~ or ~:svg-icon~ property for existing url
@@ -118,9 +116,7 @@
   :type 'alist
   :group 'telega-url-shorten)
 
-;; - User Option: ~telega-url-shorten-mode-for~, default={{{eval(telega-url-shorten-mode-for)}}}
-;;
-;;   {{{vardoc(telega-url-shorten-mode-for,2)}}}
+;; - {{{user-option(telega-url-shorten-mode-for, 2)}}}
 (defcustom telega-url-shorten-mode-for 'all
   "*Chat filter for `global-telega-url-shorten-mode'.
 `global-telega-url-shorten-mode' enables urls shortening only for

@@ -2,7 +2,13 @@
 
 ;;; Commentary:
 
-;; ** /telega-dired-dwim.el/ -- Adds advice around dired-do-copy to support attaching files from dired to telega in DWIM style.
+;; ** /telega-dired-dwim.el/ -- Attach files from dired to chatbuf in DWIM style
+;;
+;; This package advices ~dired-do-copy~ to attach files into visible chatbuf.
+;; 
+;; In dired, mark files you want to attach and press {{{kbd(C)}}}.  If
+;; you have some chatbuf visibled, marked files will be attached in
+;; that chatbuf.
 
 ;;; Code:
 (require 'telega)

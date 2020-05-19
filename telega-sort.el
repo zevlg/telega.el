@@ -28,18 +28,17 @@
 ;; are in ~telega-sort-criteria-alist~.  Do not insert criterias
 ;; directly into ~telega-sort-criteria-alist~, use
 ;; ~define-telega-sorter~ instead.
-;; 
-;; - {{{kbd(\)}}} ::
-;;   rootbuf prefix map for sorting commands
+;;
+;; {{{kbd(\)}}} prefix in rootbuf is used for sorting commands.
 ;;
 ;; - {{{where-is(telega-sort-reset,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega-sort-reset)}}}
+;;   {{{fundoc(telega-sort-reset, 2)}}}
 ;;
 ;;   It is possible to add multiple criteria using ~telega-sort-reset~
 ;;   with prefix argument {{{kbd(C-u)}}}.
-;;   
+;;
 ;; - {{{where-is(telega-sort-by-sorter,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega-sort-by-sorter)}}}
+;;   {{{fundoc(telega-sort-by-sorter, 2)}}}
 ;;
 ;;   Use this command to reset active sorter.
 
@@ -193,44 +192,47 @@ Return non-nil if CHAT has been reordered."
   (telega-chat-order chat))
 
 ;; - ~unread-count~, {{{where-is(telega-sort-by-unread-count,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega--sort-unread-count)}}}
+;;   {{{fundoc(telega--sort-unread-count, 2)}}}
 (define-telega-sorter unread-count ("updateChatReadInbox") (chat)
+  "Sort chats by number of unread messages in chat."
   (plist-get chat :unread_count))
 
 ;; - ~title~, {{{where-is(telega-sort-by-title,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega--sort-title)}}} (thanks to https://t.me/Kurvivor)
+;;   {{{fundoc(telega--sort-title, 2)}}}
+;;
+;;   Thanks to https://t.me/Kurvivor
 (define-telega-sorter title ("updateChatTitle") (chat)
   "Sort chats by number of online members."
   (telega-chat-title chat))
 
 ;; - ~member-count~, {{{where-is(telega-sort-by-member-count,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega--sort-member-count)}}}
+;;   {{{fundoc(telega--sort-member-count, 2)}}}
 (define-telega-sorter member-count ("updateBasicGroup" "updateSupergroup") (chat)
   "Sort chats by number of members in the chat."
   (plist-get (telega-chat--info chat) :member_count))
- 
+
 ;; - ~online-members~, {{{where-is(telega-sort-by-online-members,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega--sort-online-members)}}}
+;;   {{{fundoc(telega--sort-online-members, 2)}}}
 (define-telega-sorter online-members ("updateChatOnlineMemberCount") (chat)
   "Sort chats by number of online members."
   (plist-get chat :x-online-count))
 
 ;; - ~join-date~, {{{where-is(telega-sort-by-join-date,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega--sort-join-date)}}}
+;;   {{{fundoc(telega--sort-join-date, 2)}}}
 (define-telega-sorter join-date () (chat)
   "Sort chats by join date.  Last joined chats goes first."
   (plist-get (telega-chat--info chat) :date))
 
 ;; - ~chatbuf-recency~, {{{where-is(telega-sort-by-chatbuf-recency,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega--sort-chatbuf-recency)}}}
+;;   {{{fundoc(telega--sort-chatbuf-recency, 2)}}}
 (define-telega-sorter chatbuf-recency () (chat)
   "Sort chats by chatbuf recency.  Recently used chats goes first."
   (or (with-telega-chatbuf chat
         (length (memq (current-buffer) (buffer-list))))
       -1))
 
-;; - ~chatbuf-visibility~
-;;   {{{fundoc(telega--sort-chatbuf-visibility)}}}
+;; - ~chatbuf-visibility~ ::
+;;   {{{fundoc(telega--sort-chatbuf-visibility, 2)}}}
 (define-telega-sorter chatbuf-visibility () (chat)
   "Sort chats by visibility in other window in DWIM style.
 See https://github.com/zevlg/telega.el/issues/165"

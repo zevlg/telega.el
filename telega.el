@@ -93,12 +93,14 @@
 (defun telega-account-switch (account-name)
   "Switch to the ACCOUNT-NAME."
   (interactive
-   (list (funcall telega-completing-read-function
-                  "Telegram Account: "
-                  (mapcar #'car
-                          (cl-remove-if #'telega-account--current-p
-                                        telega-accounts))
-                  nil 'require-match)))
+   (list (if (not telega-accounts)
+             (user-error "telega: Single account setup, see `telega-accounts'")
+           (funcall telega-completing-read-function
+                    "Telegram Account: "
+                    (mapcar #'car
+                            (cl-remove-if #'telega-account--current-p
+                                          telega-accounts))
+                    nil 'require-match))))
 
   (let ((account (assoc account-name telega-accounts)))
     (cl-assert account)

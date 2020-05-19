@@ -147,8 +147,9 @@ where PROXY-TYPE is one of:
   :group 'telega)
 
 (defcustom telega-use-tracking-for nil
-  "*Specifies chat filter to add chats to tracking.el.
-Make sure you have tracking.el loaded if this option is used."
+  "*Specifies Chat Filter for chats to be tracked with tracking.el.
+Make sure you have tracking.el loaded if this option is used.
+Only chats with corresponding opened chatbuf are tracked."
   :package-version '(telega . "0.5.7")
   :type 'list
   :options '((not (or saved-messages (type channel bot)))
@@ -551,7 +552,8 @@ See https://github.com/zevlg/telega.el/issues/171"
     ("Contacts" . contact)
     ("Important" . (or mention (and unread unmuted)))
     ("📑Archive" . archive))
-  "*Alist of custom filters in form (NAME . FILTER).
+  "*Alist of custom filters in form (NAME . CHAT-FILTER).
+This filters are displayed as filter buttons at the top of rootbuf.
 TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
   :type 'alist
   :group 'telega-filter)
@@ -693,7 +695,7 @@ Used when showing chat members list."
   (when telega-use-images
     '(and has-avatar
           (permission :can_send_messages)))
-  "*Chat Filter for which chats to show avator nearby the prompt."
+  "*Chat Filter for which chats to show avatar nearby the prompt."
   :type 'list
   :group 'telega-chat)
 
@@ -808,13 +810,14 @@ timespan, then do not group messages."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-group-messages-for '(not (or saved-messages (type channel bot)))
-  "*If this filter returns non-nil for chat, then messages are grouped by sender."
+(defcustom telega-chat-group-messages-for
+  '(not (or saved-messages (type channel bot)))
+  "*Chat Filter for chats where to group messages by sender."
   :type 'list
   :group 'telega-chat)
 
 (defcustom telega-chat-show-deleted-messages-for nil
-  "*If this filter returns non-nil for chat, then show deleted messages in this chat."
+  "*Chat Filter for chats where to show deleted messages in chatbuf."
   :type 'list
   :options '((not saved-messages))
   :group 'telega-chat)

@@ -40,22 +40,20 @@
 ;; combination of other Chat Filters, down to primitive Chat Filters.
 ;;
 ;; Chat Filter examples:
-;;   - all ::
+;;   - ~all~ ::
 ;;     Matches all chats
 ;;
-;;   - (or saved-messages (type channel bot)) ::
+;;   - ~(or saved-messages (type channel bot))~ ::
 ;;     Matches bots/channels chats or "Saved Messages" chat
 ;;
-;;   - (and unmuted (unread 10) (mention 1)) ::
+;;   - ~(and unmuted (unread 10) (mention 1))~ ::
 ;;     Matches unmuted chats with at least 10 unread messages and at
 ;;     least one message with unread mention
 ;;
 ;; Matching is done using ~telega-chat-match-p~ function.
 ;;
-;; Some useful Chat Filters are accessible using keyboard bindings:
-;;
-;; - {{{kbd(/)}}} ::
-;;   rootbuf prefix map for chat filtering commands
+;; {{{kbd(/)}}} prefix in rootbuf is used for some useful filtering
+;; commands.
 ;;
 ;; - {{{where-is(telega-filter-by-important,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega-filter-by-important, 2)}}}
@@ -743,23 +741,15 @@ PERM could be one of:
   (telega-filter-add (list 'permission perm)))
 
 ;; - (restriction ~SUFFIX-LIST~...), {{{where-is(telega-filter-by-restriction,telega-root-mode-map)}}} ::
-;;   {{{fundoc1(telega--filter-restriction)}}}
-;;
-;;   Each element in ~SUFFIX-LIST~ is one of:
-;;   + "-all" - Restricted on all platforms
-;;   + "-ios" - Restricted for iOS devices
-;;   + "-android" - Restricted for Android devices
-;;   + "-wp" - Restricted on Windows
-;;
-;;   If ~SUFFIX-LIST~ is ommited, then match any reason.
+;;   {{{fundoc(telega--filter-restriction, 2)}}}
 (define-telega-filter restriction (chat &rest suffix-list)
   "Matches restricted chats.
 SUFFIX-LIST is a list of suffixes to filter on.
 Suffix can be one of:
-  -all      - All platforms
-  -ios      - For iOS devices
-  -android  - For Android devices
-  -wp       - Windows?
+- \"-all\"      - All platforms
+- \"-ios\"      - For iOS devices
+- \"-android\"  - For Android devices
+- \"-wp\"       - Windows?
 
 If SUFFIX-LIST is not specified, then match any restriction reason."
   (when-let ((reason (telega-tl-str
@@ -831,7 +821,7 @@ See `telega-chat-set-custom-label'."
                               nil t)))
   (telega-filter-add (list 'label label)))
 
-;; - tracking, {{{where-is(telega-filter-by-tracking,telega-root-mode-map) ::
+;; - tracking, {{{where-is(telega-filter-by-tracking,telega-root-mode-map)}}} ::
 ;;   {{{fundoc1(telega--filter-tracking, 2)}}}
 (define-telega-filter tracking (chat)
   "Matches if chat is in tracking buffers list."

@@ -51,10 +51,8 @@
 ;; #+end_src
 ;;
 ;; Customizable options:
-
-;; - User Option: ~telega-mode-line-string-format~
-;;
-;;   {{{vardoc1(telega-mode-line-string-format)}}}
+;; 
+;; - {{{user-option(telega-mode-line-string-format, 2)}}}
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
     (:eval (telega-mode-line-online-status))
@@ -280,12 +278,7 @@ Play in muted mode."
 
 ;; Customizable options:
 ;;
-;; - User Option: ~telega-squash-message-mode-for~
-;;
-;;   {{{vardoc(telega-squash-message-mode-for)}}}
-;;
-;;   By default messages are not squashed in "Saved Messages" and in
-;;   your channels.
+;; - {{{user-option(telega-squash-message-mode-for, 2)}}}
 (defcustom telega-squash-message-mode-for
   '(not (or saved-messages (type channel)))
   "*Chat filter for `global-telega-squash-message-mode'.
