@@ -561,20 +561,14 @@ Attach `display' text property to surrogated regions."
   "Apply `telega-display' properties to STR.
 Resulting in new string with no surrogate pairs.
 If NO-PROPERTIES is specified, then do not keep text properties."
-  (when (and str (not (get-text-property 0 'telega-desurrogated-string str)))
-    (setq str (telega--tl-desurrogate str)))
   (mapconcat (if no-properties
                  #'telega--desurrogate-apply-part
                #'telega--desurrogate-apply-part-keep-properties)
              (telega--split-by-text-prop str 'telega-display) ""))
 
 (defsubst telega--tl-unpack (obj)
-  "Unpack (i.e. desurrogate strings) object OBJ."
+  "Unpack TL object OBJ."
   obj)
-  ;; (cond ((stringp obj) (telega--tl-desurrogate obj))
-  ;;       ((vectorp obj) (cl-map 'vector #'telega--tl-unpack obj))
-  ;;       ((listp obj) (mapcar #'telega--tl-unpack obj))
-  ;;       (t obj)))
 
 (defsubst telega--tl-pack (obj)
   "Pack object OBJ."

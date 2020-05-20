@@ -45,7 +45,7 @@ void pngext_main(int ac, char** av);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.5.4";
+const char* version = "0.6.1";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -264,7 +264,7 @@ telega_set_logfile(char* logfile)
         char req[1024];
         snprintf(req, 1024, "{\"@type\":\"setLogStream\","
                  "\"log_stream\":{\"@type\":\"logStreamFile\","
-                 "\"path\":\"%s\", \"max_file_size\":2097152}}", logfile);
+                 "\"path\":\"%s\", \"max_file_size\":4194304}}", logfile);
         td_json_client_execute(NULL, req);
 }
 

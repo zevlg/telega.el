@@ -70,12 +70,7 @@ Matches only if CHAR does not apper in the middle of the word."
   ;; width, though occupies 2 or more chars
   (concat "  "
           (if telega-emoji-use-images
-              (let ((single-char-p (or (telega-emoji-fitz-p emoji)
-                                       (telega-emoji-flag-p emoji)
-                                       (telega-emoji-has-zero-joiner-p emoji))))
-                (propertize "EE" 'display
-                            (telega-emoji-create-svg
-                             emoji 1 (if single-char-p 1 nil))))
+              (propertize "EE" 'display (telega-emoji-create-svg emoji))
             emoji)))
 
 ;;;###autoload

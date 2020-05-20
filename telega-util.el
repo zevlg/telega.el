@@ -714,11 +714,9 @@ Alist with elements in form (emoji . image)")
   (telega-emoji-init)
   (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
 
-(defun telega-emoji-create-svg (emoji &optional cheight force-cwidth)
+(defun telega-emoji-create-svg (emoji &optional cheight)
   "Create svg image for the EMOJI.
-CHEIGHT is height for the svg in characters, default=1.
-If FORCE-CWIDTH is specified, use this number of chars for width,
-instead of auto width calculation."
+CHEIGHT is height for the svg in characters, default=1."
   (let* ((emoji-cheight (or cheight 1))
          (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
          (image (when use-cache-p
@@ -726,7 +724,7 @@ instead of auto width calculation."
     (unless image
       (let* ((xh (telega-chars-xheight emoji-cheight))
              (font-size (- xh (/ xh 4)))
-             (aw-chars (* (or force-cwidth (length emoji))
+             (aw-chars (* (or (telega-emoji-svg-width emoji) (length emoji))
                           (telega-chars-in-width (- xh (/ xh 8)))))
              (xw (telega-chars-xwidth aw-chars))
              (svg (telega-svg-create xw xh))
@@ -749,11 +747,6 @@ instead of auto width calculation."
               (cons (cons emoji image) telega-emoji-svg-images))))
     image))
 
-(defun telega-emoji-var-16-p (emoji)
-  "Return non-nil if EMOJI has trailing Variation Selector-16."
-  ;; FE0F = 65039
-  (and (= (length emoji) 2) (eq (aref emoji 1) 65039)))
-
 (defun telega-emoji-has-zero-joiner-p (emoji)
   "Return non-nil if EMOJI has ZWJ char inside."
   (string-match-p (regexp-quote "\U0000200D") emoji))
@@ -770,6 +763,13 @@ instead of auto width calculation."
        (>= (aref emoji 1) ?\🇦)
        (<= (aref emoji 0) ?\🇿)
        (<= (aref emoji 1) ?\🇿)))
+
+(defun telega-emoji-svg-width (emoji)
+  (if (or (telega-emoji-fitz-p emoji)
+          (telega-emoji-flag-p emoji)
+          (telega-emoji-has-zero-joiner-p emoji))
+      1
+    nil))
 
 (defun telega-emoji-basic-p (emoji)
   (memq (aref 0 emoji)
