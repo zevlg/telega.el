@@ -573,6 +573,18 @@ tdat_move_emoji_sequence(struct telega_dat* src, struct telega_dat* dst,
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif /* MIN */
 
+static void
+tdat_emojify_append_property(struct telega_dat* props, size_t start,
+                             size_t end, struct telega_dat* disp)
+{
+        char prop_position[33];
+        snprintf(prop_position, 33, " %zu %zu", start, end);
+        tdat_append_str(props, prop_position);
+        tdat_append_str(props, " (telega-emoji-p t telega-display \"");
+        tdat_move(disp, props, tdat_len(disp));
+        tdat_append_str(props, "\")");
+}
+
 /**
  * Extract emojis from SRC and put corresponding properties into PROPS
  * Return non-false if any of the property has been extracted.
@@ -615,20 +627,18 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                         tables = emoji_other_tables; /* tags */
                 else if ((0x1F3FB <= ch) && (ch <= 0x1F3FF))
                         tables = emoji_other_tables; /* modifiers */
-                else if ((0x1F3FB <= ch) && (ch <= 0x1F3FF))
-                        tables = emoji_other_tables; /* modifiers */
                 else if (ch == 0x200D)
                         tables = emoji_other_tables; /* zwj */
                 else if ((0x1F004 <= ch) && (ch <= 0x1FAD6))
                         tables = emoji_basic2_tables;
                 else
-                        continue;
+                        tables = emoji_null_tables;
 
+                bool found = false;
                 for (; tables->match_trie; tables++) {
                         if ((ch < tables->min_match) || (ch > tables->max_match))
                                 continue;
 
-                        bool found = false;
                         size_t saved_start = src_view.start;
 
                         /** NOTE: Start backtracking from index
@@ -637,25 +647,23 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                         int bti_size = MIN(backtrack_size,
                                            tables->max_backtrack + 1);
                         for (int bti = 0; bti < bti_size; bti++) {
-                                src_view.start = backtrack[bti_size - bti - 1];
-                                size_t coff = backtrack_offsets[bti_size - bti - 1];
-                                size_t cn = tdat_move_emoji_sequence(&src_view, &disp, tables->match_trie);
+                                int btindex = bti_size - bti - 1;
+                                src_view.start = backtrack[btindex];
+                                size_t coff = backtrack_offsets[btindex];
+
+                                tdat_reset(&disp);
+                                size_t cn = tdat_move_emoji_sequence(
+                                        &src_view, &disp, tables->match_trie);
                                 if (cn) {
                                         /* MATCHED */
+                                        found = true;
                                         offset = coff + cn;
 
-                                        char prop_position[33];
-                                        snprintf(prop_position, 33, " %zu %zu", coff, offset);
-                                        tdat_append_str(props, prop_position);
-                                        tdat_append_str(props, " (telega-emoji-p t telega-display \"");
-                                        tdat_move(&disp, props, tdat_len(&disp));
-                                        tdat_append_str(props, "\")");
-
-                                        found = true;
+                                        tdat_emojify_append_property(
+                                                props, coff, offset, &disp);
                                         break;
                                         /* NOT REACHED */
                                 }
-                                tdat_reset(&disp);
                         }
 
                         if (found)
@@ -663,7 +671,20 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
 
                         src_view.start = saved_start;
                 }
-                tdat_reset(&disp);
+
+                /* NOTE: always mark surrogated pairs as emoji, even
+                 * if not found in emoji tables, so surrogated pairs
+                 * won't apper in strings ever
+                 */
+                if (!found && (utf16_clen(ch) == 2)) {
+                        src_view.start = backtrack[0];
+                        tdat_reset(&disp);
+                        tdat_move_utf16char(&src_view, &disp);
+
+                        assert(offset >= 2);
+                        tdat_emojify_append_property(
+                                props, offset - 2, offset, &disp);
+                }
         }
 
         tdat_drop(&disp);

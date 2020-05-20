@@ -41,7 +41,10 @@ JSON_TO_PLIST_TESTS = TESTS + [
      '(:city #("\\ud83c\\udf0f" 0 2 (telega-emoji-p t telega-display "\\U0001f30f")))'),
     # Last char begins emoji sequence
     (True, b'{"@type":"formattedText","text":"\u042f, \u043a\u0441\u0442\u0430\u0442\u0438, \u0442\u043e\u0436\u0435, \u0438 \u0434\u0430\u0436\u0435 \u043d\u0435 \u0437\u0430\u0434\u0443\u043c\u044b\u0432\u0430\u043b\u0441\u044f \ud83e\udd37\u200d\u2642","entities":[]}',
-     '(:@type "formattedText" :text #("\\u042f, \\u043a\\u0441\\u0442\\u0430\\u0442\\u0438, \\u0442\\u043e\\u0436\\u0435, \\u0438 \\u0434\\u0430\\u0436\\u0435 \\u043d\\u0435 \\u0437\\u0430\\u0434\\u0443\\u043c\\u044b\\u0432\\u0430\\u043b\\u0441\\u044f \\ud83e\\udd37\\u200d\\u2642" 39 41 (telega-emoji-p t telega-display "\\U0001f937")) :entities [])')
+     '(:@type "formattedText" :text #("\\u042f, \\u043a\\u0441\\u0442\\u0430\\u0442\\u0438, \\u0442\\u043e\\u0436\\u0435, \\u0438 \\u0434\\u0430\\u0436\\u0435 \\u043d\\u0435 \\u0437\\u0430\\u0434\\u0443\\u043c\\u044b\\u0432\\u0430\\u043b\\u0441\\u044f \\ud83e\\udd37\\u200d\\u2642" 39 41 (telega-emoji-p t telega-display "\\U0001f937")) :entities [])'),
+
+    # joystick
+    (True, b'"\ud83d\udd79"', '#("\\ud83d\\udd79" 0 2 (telega-emoji-p t telega-display "\\U0001f579"))')
 ]
 
 def run_telega(input, flag):

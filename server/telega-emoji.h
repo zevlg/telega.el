@@ -1604,3 +1604,8 @@ struct emoji_match_table emoji_other_tables[] =
 
          {0, 0, 0, NULL}
 };
+
+struct emoji_match_table emoji_null_tables[] =
+{
+         {0, 0, 0, NULL}
+};
