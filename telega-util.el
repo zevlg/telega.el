@@ -764,9 +764,15 @@ CHEIGHT is height for the svg in characters, default=1."
        (<= (aref emoji 0) ?\🇿)
        (<= (aref emoji 1) ?\🇿)))
 
+(defun telega-emoji-fe0f-p (emoji)
+  "Return non-nil if EMOJI ends with \ufe0f."
+  (and (= (length emoji) 2)
+       (= (aref emoji 1) (aref "\ufe0f" 0))))
+
 (defun telega-emoji-svg-width (emoji)
   (if (or (telega-emoji-fitz-p emoji)
           (telega-emoji-flag-p emoji)
+          (telega-emoji-fe0f-p emoji)
           (telega-emoji-has-zero-joiner-p emoji))
       1
     nil))
