@@ -9,7 +9,7 @@
 ;; URL: https://github.com/zevlg/telega.el
 ;; Version: 0.6.20
 (defconst telega-version "0.6.20")
-(defconst telega-server-min-version "0.5.0")
+(defconst telega-server-min-version "0.6.1")
 (defconst telega-tdlib-min-version "1.6.0")
 
 ;; telega is free software: you can redistribute it and/or modify
