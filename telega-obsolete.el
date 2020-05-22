@@ -57,6 +57,8 @@
                            'telega-url-shorten-regexps "0.6.7")
 (telega-obsolete--variable 'telega-chat-mark-observable-messages-as-read
                            nil "0.6.12")
+(telega-obsolete--variable 'telega-root-compact-view
+                           nil "0.6.21")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

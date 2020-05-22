@@ -30,6 +30,11 @@ new terms specific to =telega=.  All of them are used in the manual.
   Most of the time rootbuf term is used in the manual.
   See [[#root-buffer][Root Buffer]]
 
+- Root View ::
+  Root Buffer can be shown in different ways.  Way rootbuf is shown is
+  called root view.
+  See [[#root-buffer][Root Buffer]]
+
 - Chat Buffer a.k.a. chatbuf ::
   Buffer with chat contents.
   See [[#chat-buffer][Chat Buffer]]
@@ -155,3 +160,5 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-alert.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-dired-dwim.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-live-location.el

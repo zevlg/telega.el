@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.20
-(defconst telega-version "0.6.20")
+;; Version: 0.6.21
+(defconst telega-version "0.6.21")
 (defconst telega-server-min-version "0.6.1")
 (defconst telega-tdlib-min-version "1.6.0")
 
@@ -241,10 +241,17 @@ Works only if current state is `authorizationStateWaitCode'."
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server using EVENT."
-  (setq telega--options
-        (plist-put telega--options
-                   (intern (concat ":" (plist-get event :name)))
-                   (plist-get (plist-get event :value) :value))))
+  (let ((option (intern (concat ":" (plist-get event :name))))
+        (value (plist-get (plist-get event :value) :value)))
+    (setq telega--options
+          (plist-put telega--options option value))
+
+    (when (and (eq option :is_location_visible) value)
+      (if telega-my-location
+          (telega--setLocation telega-my-location)
+
+        (warn (concat "telega: Option `:is_location_visible' is set, "
+                      "but `telega-my-location' is nil"))))))
 
 (defun telega--on-updateAuthorizationState (event)
   "Proceed with user authorization state change using EVENT."

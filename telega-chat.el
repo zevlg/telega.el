@@ -784,32 +784,6 @@ be marked as read."
   "Action to take when chat BUTTON is pressed."
   (telega-chat--pop-to-buffer (button-get button :value)))
 
-(defsubst telega-chat--pp (chat)
-  "Pretty printer for CHAT button."
-  (telega-button--insert 'telega-chat chat)
-  (unless (= (char-before) ?\n)
-    (insert "\n")))
-
-(defun telega-chat-known--pp (chat)
-  "Pretty printer for known CHAT button."
-  ;; Insert only visible chat buttons
-  ;; See https://github.com/zevlg/telega.el/issues/3
-  (let ((visible-p (and (telega-filter-chats (list chat))
-                        (if telega-search-query
-                            (memq chat telega--search-chats)
-                          t))))
-    (when visible-p
-      (telega-chat--pp chat))))
-
-(defun telega-chat-global--pp (chat)
-  "Display CHAT found in global public chats search."
-  (let* ((telega-chat-button-width (+ telega-chat-button-width
-                                     (/ telega-chat-button-width 2)))
-         (telega-filters--inhibit-list '(has-order chat-list main archive))
-         (visible-p (telega-filter-chats (list chat))))
-    (when visible-p
-      (telega-chat--pp chat))))
-
 (defun telega-chat--pop-to-buffer (chat &optional no-history-load)
   "Pop to CHAT's buffer.
 NO-HISTORY-LOAD passed directly to `telega-chatbuf--get-create'.
@@ -1266,12 +1240,10 @@ CHAT-TYPE is one of \"basicgroup\", \"supergroup\", \"channel\",
                (desc (read-string "Chat Description: "))
                (loc (when (or (string= chat-type "location-supergroup")
                               (string= chat-type "location-channel"))
-                      (let ((chat-loc (telega-read-location "Chat Location: "))
+                      (let ((chat-loc (telega-read-location "Chat Location"))
                             (chat-address (read-string "Chat Address: ")))
                         (list :@type "chatLocation"
-                              :location (list :@type "Location"
-                                              :latitude (car chat-loc)
-                                              :longitude (cadr chat-loc))
+                              :location (cons :@type (cons "location" chat-loc))
                               :address chat-address)))))
 
            (telega--createNewSupergroupChat
@@ -1711,10 +1683,7 @@ Global chat bindings:
   (cursor-intangible-mode 1)
 
   (setq telega-chatbuf--ewoc
-        (ewoc-create (if telega-debug
-                         'telega-msg--pp
-                       (telega-ewoc--gen-pp 'telega-msg--pp))
-                     nil nil t))
+        (ewoc-create (telega-ewoc--gen-pp #'telega-msg--pp) nil nil t))
   (goto-char (point-max))
 
   ;; Use punctuation as "no-value" button content
@@ -3076,9 +3045,9 @@ button."
   "Attach location to the current input.
 If prefix arg is supplied, attach live location."
   (interactive (list (with-telega-chatbuf-action "ChoosingLocation"
-                       (telega-read-location (if current-prefix-arg
-                                                 "Live Location: "
-                                               "Location: ")))
+                       (if current-prefix-arg
+                           (telega-read-live-location "Live Location")
+                         (telega-read-location "Location")))
                      (when current-prefix-arg
                        (let* ((choices `(("1 min" . 60)
                                          ("15 min" . ,(* 15 60))
@@ -3091,9 +3060,7 @@ If prefix arg is supplied, attach live location."
 
   (telega-chatbuf-input-insert
    (nconc (list :@type "inputMessageLocation"
-                :location (list :@type "Location"
-                                :latitude (car location)
-                                :longitude (cadr location)))
+                :location (cons :@type (cons "location" location)))
           (when live-secs
             (list :live_period live-secs)))))
 

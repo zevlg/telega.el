@@ -541,18 +541,44 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
              (quit nil)))
     users))
 
-(defun telega-read-location (prompt)
-  "Read location with PROMPT."
-  (let ((location nil))
-    (while (let ((locstr (read-string prompt)))
-             (setq location
-                   (mapcar #'string-to-number (split-string locstr ",")))
-             (unless (and (numberp (car location)) (numberp (cadr location)))
-               (message "Invalid location `%s', use: <LAT>,<LONG> format"
-                        locstr)
+(defun telega-location-to-string (location)
+  "Convert LOCATION plist to string representation."
+  (concat (number-to-string
+           (plist-get location :latitude))
+          "N" ","
+          (number-to-string
+           (plist-get location :longitude))
+          "E"))
+
+(defun telega-read-location (prompt &optional initial-loc default-loc)
+  "Read location with PROMPT.
+INITIAL-LOC - location converted to INITIAL-INPUT argument to `read-string'.
+DEFAULT-LOC - location converted to DEFAULT-VALUE argument to `read-string'.
+Return location as plist."
+  (let* ((default-value (or (when default-loc
+                              (telega-location-to-string default-loc))
+                            (when telega-my-location
+                              (telega-location-to-string telega-my-location))))
+         (initial-input (when initial-loc
+                          (telega-location-to-string initial-loc)))
+         loc)
+    (while (let ((locstr (read-string
+                          (concat prompt
+                                  (when default-value
+                                    (concat " [" default-value "]")) ": ")
+                          initial-input nil default-value)))
+             (setq loc (mapcar #'string-to-number (split-string locstr ",")))
+             (unless (and (numberp (car loc)) (numberp (cadr loc)))
+               (message "Invalid location `%s', use: <LAT>,<LONG> format" locstr)
                (sit-for 1)
                t)))
-    location))
+    (list :latitude (car loc) :longitude (cadr loc))))
+
+(defun telega-read-live-location (prompt &rest args)
+  "Read live location with PROMPT.
+All args are passed directly to `telega-read-location'.
+Packages may advice this function to extend functionality."
+  (apply #'telega-read-location prompt args))
 
 (defun telega-read-im-sure-p (prompt)
   "Ask user he sure about some action.
@@ -597,18 +623,21 @@ Return `nil' if there is nothing to animate and new string otherwise."
 (defun telega-ewoc--gen-pp (pp-fun)
   "Wrap pretty printer function PP-FUN trapping all errors.
 Do not trap errors if `debug-on-error' is enabled."
-  (lambda (arg)
-    (condition-case-unless-debug pp-err
-        (funcall pp-fun arg)
-      (t
-       (telega-debug "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
-       (telega-debug "    %S\n" pp-err)
-       (telega-debug "--------\n")
+  (if telega-debug
+      pp-fun
 
-       (telega-ins "---[telega bug]\n")
-       (telega-ins-fmt "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
-       (telega-ins-fmt "  %S\n" pp-err)
-       (telega-ins "------\n")))))
+    (lambda (arg)
+      (condition-case-unless-debug pp-err
+          (funcall pp-fun arg)
+        (t
+         (telega-debug "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
+         (telega-debug "    %S\n" pp-err)
+         (telega-debug "--------\n")
+
+         (telega-ins "---[telega bug]\n")
+         (telega-ins-fmt "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
+         (telega-ins-fmt "  %S\n" pp-err)
+         (telega-ins "------\n"))))))
 
 (defun telega-ewoc--location (ewoc)
   "Return EWOC's start location."

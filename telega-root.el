@@ -54,6 +54,13 @@
 (declare-function telega-account-switch "telega" (account))
 
 
+(defvar telega-root--view nil
+  "Current view of the rootbuf.")
+(defvar telega-meta--ewoc nil
+  "Ewoc with list of other (named) ewocs.")
+(defvar telega-root--ewocs-alist nil
+  "Alist of named ewocs.")
+
 (defvar telega-root--ewoc nil)
 (defvar telega-contacts--ewoc nil
   "Ewoc for contacts list.")
@@ -88,6 +95,7 @@
     (define-key map (kbd "C-x C-/") 'telega-filter-redo)
     (define-key map (kbd "C-x C-_") 'telega-filter-redo)
 
+    ;; Getting help
     (define-key map (kbd "? w") 'telega-describe-connected-websites)
     (define-key map (kbd "? s") 'telega-describe-active-sessions)
     (define-key map (kbd "? n") 'telega-describe-network)
@@ -111,7 +119,6 @@
     (define-key map (kbd "c b") 'telega-voip-buffer-show)
     (define-key map (kbd "c l") 'telega-voip-list-calls)
 
-    (define-key map (kbd "s") 'telega-search)
     (define-key map (kbd "q") 'bury-buffer)
     (define-key map (kbd "Q") 'telega-kill)
 
@@ -139,6 +146,23 @@
     ;;   {{{fundoc(telega-root-next-mention, 2)}}}
     (define-key map (kbd "M-g m") 'telega-root-next-mention)
     (define-key map (kbd "M-g @") 'telega-root-next-mention)
+
+    ;; ** Rootbuf view switching
+    ;;
+    ;; View different parts of the rootbuf
+    ;; Special view used to search messages
+    (define-key map (kbd "s") 'telega-search)
+    (define-key map (kbd "v v") 'telega-view-reset)
+    (define-key map (kbd "v 0") 'telega-view-compact)
+    (define-key map (kbd "v 1") 'telega-view-one-lines)
+    (define-key map (kbd "v 2") 'telega-view-two-lines)
+    (define-key map (kbd "v t") 'telega-view-topics)
+    (define-key map (kbd "v s") 'telega-view-settings)
+    (define-key map (kbd "v u") 'telega-view-users)
+    (define-key map (kbd "v c") 'telega-view-contacts)
+    (define-key map (kbd "v C") 'telega-view-calls)
+    (define-key map (kbd "v n") 'telega-view-nearby)
+
     map)
   "The key map for telega root buffer.")
 
@@ -165,8 +189,6 @@ Global root bindings:
 
   ;; delim
   (insert "\n")
-  (unless telega-root-compact-view
-    (insert "\n"))
 
   ;; Custom filters
   (telega-filters--create)
@@ -177,40 +199,39 @@ Global root bindings:
     (goto-char (point-max))
     (insert "\n")
     (setq telega-root--ewoc
-          (ewoc-create (if telega-debug
-                           'telega-chat-known--pp
-                         (telega-ewoc--gen-pp 'telega-chat-known--pp))
-                       nil nil t))
+          (ewoc-create (telega-ewoc--gen-pp #'telega-chat-known--pp) nil nil t))
     (dolist (chat telega--ordered-chats)
       (ewoc-enter-last telega-root--ewoc chat))
+
+    ;; Meta Ewoc for root views
+    (goto-char (point-max))
+    (insert "\n")
+    (setq telega-meta--ewoc
+          (ewoc-create (telega-ewoc--gen-pp #'ignore) nil nil t))
 
     ;; Contacts
     (goto-char (point-max))
     (insert "\n")
     (setq telega-contacts--ewoc
-          (ewoc-create (if telega-debug
-                           'telega-contact-root--pp
-                         (telega-ewoc--gen-pp 'telega-contact-root--pp))
-                       "" "" t))
+          (ewoc-create (telega-ewoc--gen-pp #'telega-contact-root--pp) "" "" t))
 
     ;; Global search
     (goto-char (point-max))
     (insert "\n")
     (setq telega-search--ewoc
-          (ewoc-create (if telega-debug
-                           'telega-chat-global--pp
-                         (telega-ewoc--gen-pp 'telega-chat-global--pp))
-                       "" "" t))
+          (ewoc-create (telega-ewoc--gen-pp #'telega-chat-global--pp) "" "" t))
 
     ;; Messages
     (goto-char (point-max))
     (insert "\n")
     (setq telega-messages--ewoc
-          (ewoc-create (if telega-debug
-                           'telega-msg-root--pp
-                         (telega-ewoc--gen-pp 'telega-msg-root--pp))
-                       "" "" t))
+          (ewoc-create (telega-ewoc--gen-pp #'telega-msg-root--pp) "" "" t))
     )
+
+  ;; Apply default view of the rootbuf
+  (setq telega-root--view nil)
+  (when telega-root-default-view
+    (telega-root-view telega-root-default-view))
 
   (setq buffer-read-only t)
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t)
@@ -218,6 +239,40 @@ Global root bindings:
   (cursor-sensor-mode 1)
   (when telega-use-tracking-for
     (tracking-mode 1)))
+
+;;; Pretty Printers for chat buttons
+(defun telega-chat--pp (chat)
+  "Pretty printer for CHAT button."
+  (telega-button--insert 'telega-chat chat
+    :inserter (cond ((eq telega-root--view 'telega-view-compact)
+                     #'telega-ins--chat)
+                    ((eq telega-root--view 'telega-view-one-lines)
+                     #'telega-ins--chat-full)
+                    ((eq telega-root--view 'telega-view-two-lines)
+                     #'telega-ins--chat-full-2lines)
+                    (t telega-inserter-for-chat-button)))
+  (unless (= (char-before) ?\n)
+    (insert "\n")))
+
+(defun telega-chat-known--pp (chat)
+  "Pretty printer for known CHAT button."
+  ;; Insert only visible chat buttons
+  ;; See https://github.com/zevlg/telega.el/issues/3
+  (let ((visible-p (and (telega-filter-chats (list chat))
+                        (if telega-search-query
+                            (memq chat telega--search-chats)
+                          t))))
+    (when visible-p
+      (telega-chat--pp chat))))
+
+(defun telega-chat-global--pp (chat)
+  "Display CHAT found in global public chats search."
+  (let* ((telega-chat-button-width (+ telega-chat-button-width
+                                     (/ telega-chat-button-width 2)))
+         (telega-filters--inhibit-list '(has-order chat-list main archive))
+         (visible-p (telega-filter-chats (list chat))))
+    (when visible-p
+      (telega-chat--pp chat))))
 
 (defun telega-root--killed ()
   "Run when telega root buffer is killed.
@@ -797,6 +852,86 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
   (cancel-timer telega-idle--timer)
   )
+
+;;; RootView
+(defun telega-root-view (view-sym &rest view-args)
+  "Enable root view defined by VIEW-SYM."
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (setq telega-root--view view-sym)
+      (if view-sym
+          (telega-ewoc--set-header
+           telega-root--ewoc
+           (telega-ins--as-string
+            (telega-ins--with-attrs
+                (list :elide t
+                      :elide-trail (/ telega-root-fill-column 3)
+                      :min telega-root-fill-column
+                      :max telega-root-fill-column
+                      :align 'left
+                      :face 'telega-root-heading)
+              (telega-ins "View: ")
+              (telega-ins--with-face 'bold
+                (telega-ins (or (get view-sym 'telega-view-name)
+                                (symbol-name view-sym))))
+              (telega-ins " ")
+              (telega-ins--button "Reset" :action 'telega-view-reset)
+              (telega-ins " "))
+            (telega-ins "\n")))
+
+        (telega-ewoc--set-header telega-root--ewoc ""))
+      (ewoc-set-hf telega-meta--ewoc "" "")
+      (setq telega-view--filter nil)
+
+      ;; Call corresponding view function if any
+      (if-let ((view-func (symbol-function view-sym)))
+          (apply view-func view-args)
+
+        (ewoc-refresh telega-root--ewoc)
+        (ewoc-refresh telega-meta--ewoc)))))
+
+(defun telega-view-reset (&rest _ignored_args)
+  "Reset rootview to the default value."
+  (interactive)
+  (unless (eq telega-root-default-view telega-root--view)
+    (telega-root-view telega-root-default-view)))
+
+(put 'telega-view-compact 'telega-view-name "Compact")
+(defun telega-view-compact ()
+  "Compact view for the rootbuf."
+  (interactive)
+  (if (called-interactively-p 'interactive)
+      (telega-root-view 'telega-view-compact)
+
+    (ewoc-refresh telega-root--ewoc)))
+
+(put 'telega-view-one-lines 'telega-view-name "One Line")
+(defun telega-view-one-lines ()
+  "View chat list as one line."
+  (interactive)
+  (if (called-interactively-p 'interactive)
+      (telega-root-view 'telega-view-one-lines)
+
+    (ewoc-refresh telega-root--ewoc)))
+
+(put 'telega-view-two-lines 'telega-view-name "Two Lines")
+(defun telega-view-two-lines ()
+  "View chat list as 2 lines."
+  (interactive)
+  (if (called-interactively-p 'interactive)
+      (telega-root-view 'telega-view-two-lines)
+
+    (ewoc-refresh telega-root--ewoc)))
+
+(put 'telega-view-nearby 'telega-view-name "Nearby")
+(defun telega-view-nearby ()
+  "View nearby users."
+  (interactive)
+  (if (called-interactively-p 'interactive)
+      (telega-root-view 'telega-view-nearby)
+
+    (setq telega-view--filter 'none)
+    (ewoc-refresh telega-root--ewoc)))
 
 (provide 'telega-root)
 

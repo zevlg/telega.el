@@ -200,8 +200,6 @@ Return one of \"Main\" or \"Archive\"."
   (let ((filters-width (- telega-root-fill-column 8)))
     (telega-ins--as-string
      (telega-ins "\n")
-     (unless telega-root-compact-view
-       (telega-ins "\n"))
      (telega-ins "-/--")
      (telega-ins--with-attrs (list :min filters-width
                                    :align 'center

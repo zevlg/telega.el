@@ -788,7 +788,7 @@ message uppon message is created."
           (when reply-to-msg
             (list :reply_to_message_id (plist-get reply-to-msg :id)))
           (when options
-            (list :options options))          
+            (list :options options))
           (when (plist-get imc :hide-via-bot)
             (list :hide_via_bot t)))
    (or callback 'ignore)))
@@ -921,6 +921,17 @@ If SHARE-PHONE-P is specified, then allow CONTACT to see my phone number."
          :contact contact
          :share_phone_number (if share-phone-p t :false))))
 
+(defun telega--searchContacts (query &optional limit callback)
+  "Search contacts by QUERY.
+If QUERY is empty, then return all the contacts."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-user--get (plist-get reply :user_ids))
+
+    (list :@type "searchContacts"
+          :query query
+          :limit (or limit 200))
+    callback))
+
 (defun telega--sharePhoneNumber (user)
   "Share the phone number of the current user with a mutual contact USER."
   (telega-server--send
@@ -971,6 +982,22 @@ with list of chats received."
           :query query
           :limit (or limit 200))
     callback))
+
+(defun telega--setLocation (location)
+  "Changes the location of the current user.
+Needs to be called if `:is_location_visible' option from
+`telega--options' is non-nil."
+  (telega-server--send
+   (list :@type "setLocation"
+         :location (cons :@type (cons "location" location)))))
+
+(defun telega--searchChatsNearby (location &optional callback)
+  "Returns a list of users and location-based supergroups nearby."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "searchChatsNearby"
+         :location (cons :@type (cons "location" location)))
+   callback))
 
 (defun telega--getGroupsInCommon (with-user &optional limit callback)
   "Return list of common chats WITH-USER.

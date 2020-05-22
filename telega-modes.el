@@ -267,6 +267,7 @@ Play in muted mode."
 ;; 4. Last message can be edited
 ;; 5. Last and new messages are *not* replying to any message
 ;; 6. Last message has no associated web-page
+;; 7. Last message has no emojis, see https://github.com/zevlg/telega.el/issues/148
 ;;
 ;; Can be enabled globally in all chats matching
 ;; ~telega-squash-message-mode-for~ (see below) chat filter with
@@ -334,7 +335,11 @@ chats matching this chat filter."
                                      :type (plist-get ent :type)))
                              (plist-get fmt-text2 :entities))))))
 
-(defsubst telega-squash-message--squash (chat imc reply-to-msg)
+(defun telega-squash-message--has-surrogates-p (text)
+  "Return non-nil if TEXT has surrogated pairs."
+  (string-match-p "[\uD800-\uDBFF]" text))
+
+(defun telega-squash-message--squash (chat imc reply-to-msg)
   "Return non-nil if message has been squashed."
   (with-telega-chatbuf chat
     (when (and telega-squash-message-mode
@@ -352,7 +357,11 @@ chats matching this chat filter."
                        'messageText)
                    (zerop (plist-get last-msg :reply_to_message_id))
                    ;; Check for 6.
-                   (not (telega--tl-get last-msg :content :web_page)))
+                   (not (telega--tl-get last-msg :content :web_page))
+                   ;; Check for 7.
+                   (not (telega-squash-message--has-surrogates-p
+                         (telega--tl-get last-msg :content :text :text)))
+                   )
 
           ;; Squashing IMC with `last-msg' by modifying IMC
           (plist-put imc :text (telega-squash-message--concat-text

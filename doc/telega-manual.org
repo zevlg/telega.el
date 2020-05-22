@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.15)
+#+TITLE: Telega Manual (v0.6.21)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -17,6 +17,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
   - [[#telega-glossary][Telega glossary]]
   - [[#root-buffer][Root Buffer]]
     - [[#rootbuf-fast-navigation][Rootbuf fast navigation]]
+    - [[#rootbuf-view-switching][Rootbuf view switching]]
   - [[#chat-filters][Chat Filters]]
     - [[#list-of-chat-filters][List of chat filters]]
     - [[#customizable-options-making-use-of-chat-filters][Customizable options making use of Chat Filters]]
@@ -53,6 +54,11 @@ new terms specific to =telega=.  All of them are used in the manual.
 - Root Buffer a.k.a. rootbuf :: 
      Buffer with list of chats, you see it just after @@html:<kbd>@@M-x telega RET@@html:</kbd>@@.
      Most of the time rootbuf term is used in the manual.
+     See [[#root-buffer][Root Buffer]]
+
+- Root View :: 
+     Root Buffer can be shown in different ways.  Way rootbuf is shown is
+     called root view.
      See [[#root-buffer][Root Buffer]]
 
 - Chat Buffer a.k.a. chatbuf :: 
@@ -181,6 +187,11 @@ buttons.
 
 - @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-root-next-mention~) :: 
      Move point to the next chat with mention.
+
+** Rootbuf view switching
+
+View different parts of the rootbuf
+Special view used to search messages
 
 * Chat Filters
 
@@ -565,6 +576,7 @@ all the conditions are met:
 4. Last message can be edited
 5. Last and new messages are *not* replying to any message
 6. Last message has no associated web-page
+7. Last message has no emojis, see https://github.com/zevlg/telega.el/issues/148
 
 Can be enabled globally in all chats matching
 ~telega-squash-message-mode-for~ (see below) chat filter with

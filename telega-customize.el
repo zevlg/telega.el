@@ -361,6 +361,14 @@ Used for such messages as audio/document/etc."
   :type 'string
   :group 'telega)
 
+(defcustom telega-my-location nil
+  "Set to non-nil to use this as location of me.
+Plist in form (:latitude <LAT> :longitude <LONG>)
+To publically expose this location set `:is_location_visible' to
+non-nil in `telega-options-plist'."
+  :type 'plist
+  :group 'telega)
+
 (defcustom telega-location-size (cons 10 40)
   "*Size for location image in char height/width.
 In pixels height and width should be in range [16..1024]."
@@ -426,9 +434,10 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :prefix "telega-root-"
   :group 'telega)
 
-(defcustom telega-root-compact-view t
-  "*Non-nil for compact view (no newline delims) in root buffer."
-  :type 'boolean
+(defcustom telega-root-default-view nil
+  "*Default view for the rootbuf."
+  :package-version '(telega . "0.6.21")
+  :type 'symbol
   :group 'telega-root)
 
 (defcustom telega-root-keep-cursor 'track
