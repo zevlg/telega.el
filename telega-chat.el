@@ -122,10 +122,10 @@ List in form:
 \\(NAME FUN-OR-TDLIB-FILTER-NAME QUERY SENDER TOTAL-COUNT\\)")
 (make-variable-buffer-local 'telega-chatbuf--filter)
 
-(defvar telega-chatbuf--marker-message nil
-  "Message marker saved here before jumping to some message.
+(defvar telega-chatbuf--messages-ring nil
+  "History of messages jumps.
 Used for `M-g x' command.")
-(make-variable-buffer-local 'telega-chatbuf--marker-message)
+(make-variable-buffer-local 'telega-chatbuf--messages-ring)
 
 ;; Special variable used to set `telega-chatbuf--chat'
 ;; inside `telega-chat-mode'
@@ -1433,9 +1433,9 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     ;;   {{{fundoc(telega-chatbuf-goto-pin-message, 2)}}}
     (define-key map (kbd "M-g P") 'telega-chatbuf-goto-pin-message)
     (define-key map (kbd "M-g ^") 'telega-chatbuf-goto-pin-message)
-    ;; - {{{where-is(telega-chatbuf-goto-marker-message,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-goto-marker-message, 2)}}}
-    (define-key map (kbd "M-g x") 'telega-chatbuf-goto-marker-message)
+    ;; - {{{where-is(telega-chatbuf-goto-pop-message,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-pop-message, 2)}}}
+    (define-key map (kbd "M-g x") 'telega-chatbuf-goto-pop-message)
 
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chatbuf-complete-or-next-link)
@@ -1661,7 +1661,7 @@ Global chat bindings:
   :group 'telega-chat
   (setq telega-chatbuf--chat telega-chat--preparing-buffer-for
         telega-chatbuf--messages (make-hash-table :test 'eq)
-        telega-chatbuf--marked-messages nil
+        telega-chatbuf--messages-ring (make-ring telega-chat-messages-ring-size)
         telega-chatbuf--input-ring (make-ring telega-chat-input-ring-size)
         telega-chatbuf--input-idx nil
         telega-chatbuf--input-pending nil
@@ -2701,10 +2701,9 @@ If prefix ARG is giver, also delete input."
 
 (defun telega-help-message--cancel-aux (what)
   "Show help about canceling reply/edit in echo area."
-  (let ((cancel-keys (where-is-internal
-                      'telega-chatbuf-cancel-aux telega-chat-mode-map)))
-    (telega-help-message 'telega-chatbuf-cancel-aux 'what
-      "%s to cancel %S" (mapconcat #'key-description cancel-keys ", ") what)))
+  (telega-help-message what "%s to cancel %S"
+    (telega-keys-description 'telega-chatbuf-cancel-aux telega-chat-mode-map)
+    what))
 
 (defsubst telega--forwardMessage (chat msg &rest args)
   "Forward single message MSG to CHAT.
@@ -3033,12 +3032,20 @@ button."
     (unless (zerop pinned-msg-id)
       (telega-chat--goto-msg telega-chatbuf--chat pinned-msg-id 'highlight))))
 
-(defun telega-chatbuf-goto-marker-message ()
-  "Return to the message we was jumped from."
+(defun telega-chatbuf-goto-pop-message ()
+  "Pop message from `telega-chatbuf--messages-ring' and goto it."
   (interactive)
-  (unless telega-chatbuf--marker-message
-    (user-error "telega: No marker message"))
-  (telega-msg-goto-highlight telega-chatbuf--marker-message))
+  (when (ring-empty-p telega-chatbuf--messages-ring)
+    (user-error "telega: No messages to pop to"))
+
+  (let ((pop-to-msg (ring-remove telega-chatbuf--messages-ring 0)))
+    (message "telega: %d messages left in messages ring"
+             (ring-length telega-chatbuf--messages-ring))
+    ;; NOTE: by binding `telega-chatbuf--messages-ring' to nil, we
+    ;; avoid putting current message into
+    ;; `telega-chatbuf--messages-ring'
+    (let ((telega-chatbuf--messages-ring nil))
+      (telega-msg-goto-highlight pop-to-msg))))
 
 ;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location &optional live-secs)
@@ -3791,13 +3798,11 @@ With prefix arg delete only for yourself."
 
           (if (telega-chat-match-p telega-chatbuf--chat
                                    telega-chat-show-deleted-messages-for)
-              (telega-help-message
-                  'telega-chat-show-deleted-messages-for 'double-delete
-                "Press %s once again to hide deleted message"
+              (telega-help-message 'double-delete
+                  "Press %s once again to hide deleted message"
                 (substitute-command-keys (format "\\[%S]" this-command)))
-            (telega-help-message
-                'telega-chat-show-deleted-messages-for 'show-deleted
-              "JFYI see `telega-chat-show-deleted-messages-for'")))))))
+            (telega-help-message 'show-deleted
+                "JFYI see `telega-chat-show-deleted-messages-for'")))))))
 
 (defun telega-chatbuf-complete ()
   "Complete thing at chatbuf input."
@@ -3880,8 +3885,18 @@ If HIGHLIGHT is non-nil then highlight with fading background color.
 This call is asynchronous, and might require history fetching.
 CALLBACK is called after point is moved to the message with MSG-ID."
   (declare (indent 3))
+  ;; 1. Put message at point into messages ring
+  ;; 2. If message seen in chatbuf, jump to it
+  ;; 3. Otherwise, fetch history containing message and jump to it
   (with-current-buffer (telega-chat--pop-to-buffer chat :no-history)
-    (setq telega-chatbuf--marker-message (telega-msg-at (point)))
+    (when (ring-p telega-chatbuf--messages-ring)
+      (when-let ((msg-at-point (telega-msg-at (point))))
+        (ring-insert telega-chatbuf--messages-ring msg-at-point)
+
+        (telega-help-message 'msg-ring-pop "%s to jump back"
+          (telega-keys-description
+           'telega-chatbuf-goto-pop-message telega-chat-mode-map))
+        ))
 
     (if (telega-chatbuf--goto-msg msg-id highlight)
         (when callback

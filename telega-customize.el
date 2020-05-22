@@ -714,6 +714,12 @@ Used when showing chat members list."
   :type 'int
   :group 'telega-chat)
 
+(defcustom telega-chat-messages-ring-size 50
+  "*Size of the chat massages ring."
+  :package-version '(telega . "0.6.22")
+  :type 'integer
+  :group 'telega-chat)
+  
 (defcustom telega-chat-input-ring-size 50
   "*Size of the chat input history."
   :type 'integer

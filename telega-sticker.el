@@ -288,8 +288,8 @@ Return path to png file."
                         (format-spec-make ?p png-filename
                                           ?w webp-filename)))
 
-        (telega-help-message 'telega-sticker--webp-to-png 'no-dwebp-binary
-          "Can't find `%s' binary.  `webp' system package not installed?"
+        (telega-help-message 'no-dwebp-binary
+            "Can't find `%s' binary.  `webp' system package not installed?"
           (car telega-sticker--convert-cmd))))
 
     (when (file-exists-p png-filename)

@@ -425,6 +425,15 @@ If BUFFER-OR-NAME exists and visible then redisplay it."
           ;; redisplayed when switched in
           (setq telega--help-win-dirty-p t))))))
 
+(defmacro telega-help-message (help-name fmt &rest fmt-args)
+  "Show once help message formatted with FMT and FMT-ARGS.
+Show message only if `telega-help-messages' is non-nil."
+  (declare (indent 2))
+  `(when (and telega-help-messages
+              (not (get 'telega-help-messages ,help-name)))
+     (put 'telega-help-messages ,help-name t)
+     (message (concat "Telega: " ,fmt) ,@fmt-args)))
+
 (defsubst telega-debug (fmt &rest args)
   "Insert formatted string into debug buffer.
 FMT and ARGS are passed directly to `format'."
@@ -506,6 +515,7 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))
 
+;; DEPRECATED
 (defsubst telega--tl-desurrogate (str)
   "Decode surrogate pairs in STR string.
 Attach `display' text property to surrogated regions."

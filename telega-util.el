@@ -943,18 +943,6 @@ If REGION-P is non-nil, then make a screenshot of region."
                               " " tofile)))
     (call-process-shell-command pngpaste-cmd)))
 
-(defun telega-help-message (sym prop fmt &rest fmt-args)
-  "Show once help message formatted with FMT and FMT-ARGS.
-Show message only if `telega-help-messages' is non-nil.
-Store PROP property in symbol SYM once message is shown.
-If SYM is nil then show message unconditionally."
-  (declare (indent 2))
-  (when (and telega-help-messages
-             (not (and sym (get sym prop))))
-    (when sym
-      (put sym prop t))
-    (apply 'message (concat "Telega: " fmt) fmt-args)))
-
 (defun telega-read-timestamp (prompt)
   "Interactively read timestamp in the future.
 Return timestamp as unix time."
@@ -999,6 +987,10 @@ Use this if you planning to change `telega-rainbow-function'."
     (plist-put user :color nil))
   (dolist (chat telega--ordered-chats)
     (plist-put (plist-get chat :uaprops) :color nil)))
+
+(defun telega-keys-description (command modemap)
+  "Return string describing binding of the COMMAND in the MODEMAP"
+  (mapconcat #'key-description (where-is-internal command modemap) ", "))
 
 (provide 'telega-util)
 
