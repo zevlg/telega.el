@@ -45,7 +45,7 @@ void pngext_main(int ac, char** av);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.6.2";
+const char* version = "0.6.3";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -186,12 +186,14 @@ stdin_loop(void* td_cln, void* ton_cln)
                         break;
                 }
                 plist_src.end = cmdsz + 1;
+                tdat_append1(&plist_src, "\0");
+                if (verbosity > 4) {
+                        fprintf(stderr, "[telega-server] "
+                                "INPUT: %s\n", plist_src.data);
+                }
 
                 tdat_plist_value(&plist_src, &json_dst);
                 tdat_append1(&json_dst, "\0");
-                if (verbosity > 4)
-                        fprintf(stderr, "[telega-server] "
-                                "INPUT: %s\n", json_dst.data);
 
                 if (!strcmp(cmd, "send"))
                         td_json_client_send(td_cln, json_dst.data);

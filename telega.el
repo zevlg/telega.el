@@ -344,8 +344,11 @@ area."
                           telega-version
                           " ("
                           (if tdlib-version
-                              (concat "TDLib version " tdlib-version)
+                              (concat "TDLib v" tdlib-version)
                             "TDLib version unknown, server not running")
+                          ")"
+                          " (telega-server v"
+                          (telega-server-version)
                           ")")))
     (if print-p
         (message version)
