@@ -31,7 +31,7 @@
 
 ;;; Code:
 
-;(require 'geo)
+(require 'geo)
 
 (defun telega-live-location--geo-loc (geo-loc)
   "Covert geo location GEO-LOC into telega location plist."
