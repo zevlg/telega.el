@@ -3067,9 +3067,13 @@ button."
 (defun telega-chatbuf-goto-marker-message ()
   "Return to the message we was jumped from."
   (interactive)
-  (unless telega-chatbuf--marker-message
-    (user-error "telega: No marker message"))
-  (telega-msg-goto-highlight telega-chatbuf--marker-message))
+  (if-let ((msg (pop telega-chatbuf--marker-message)))
+      (telega-chat--goto-msg
+          (telega-msg-chat msg)
+          (plist-get msg :id)
+          'highlight
+        (lambda () (pop telega-chatbuf--marker-message)))
+    (user-error "telega: No marker message")))
 
 ;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location &optional live-secs)
@@ -3914,7 +3918,7 @@ This call is asynchronous, and might require history fetching.
 CALLBACK is called after point is moved to the message with MSG-ID."
   (declare (indent 3))
   (with-current-buffer (telega-chat--pop-to-buffer chat :no-history)
-    (setq telega-chatbuf--marker-message (telega-msg-at (point)))
+    (push (telega-msg-at (point)) telega-chatbuf--marker-message)
 
     (if (telega-chatbuf--goto-msg msg-id highlight)
         (when callback
