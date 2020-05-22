@@ -841,7 +841,8 @@ timespan, then do not group messages."
   '((:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
-    (:eval (telega-chatbuf-mode-line-pinned-msg 20)))
+    (:eval (telega-chatbuf-mode-line-pinned-msg 20))
+    (:eval (telega-chatbuf-mode-line-messages-filter)))
   "Additional mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
   :type 'sexp

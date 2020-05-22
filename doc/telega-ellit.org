@@ -161,4 +161,4 @@ project.
 
 #+ELLIT-INCLUDE: ../contrib/telega-dired-dwim.el
 
-#+ELLIT-INCLUDE: ../contrib/telega-live-location.el
+#+ELLIT-INCLUDE: ../contrib/telega-live-location.el :no-load:

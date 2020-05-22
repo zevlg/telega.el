@@ -1395,15 +1395,7 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-a") 'telega-chatbuf-beginning-of-thing)
 
-    (define-key map (kbd "C-c C-a") 'telega-chatbuf-attach)
-    (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
-    (define-key map (kbd "C-c C-v") 'telega-chatbuf-attach-clipboard)
     (define-key map (kbd "C-c ?") 'telega-describe-chatbuf)
-
-    ;; Chat messages filtering commands
-    (define-key map (kbd "C-c /") 'telega-chatbuf-filter)
-    (define-key map (kbd "C-c C-c") 'telega-chatbuf-filter-cancel)
-    (define-key map (kbd "C-c C-s") 'telega-chatbuf-filter-search)
 
     (define-key map (kbd "RET") 'telega-chatbuf-input-send)
     (define-key map (kbd "M-p") 'telega-chatbuf-edit-prev)
@@ -1436,6 +1428,44 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
     ;; - {{{where-is(telega-chatbuf-goto-pop-message,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-goto-pop-message, 2)}}}
     (define-key map (kbd "M-g x") 'telega-chatbuf-goto-pop-message)
+
+    ;; ** Chatbuf attaching media
+    ;;
+    ;; Attach types are defined in ~telega-chat-attach-commands~.  By
+    ;; default next attachement types are defined: {{{eval((mapconcat
+    ;; (lambda (ac) (concat "=" (car ac) "="))
+    ;; telega-chat-attach-commands "\, "),t)}}}
+    ;;
+    ;; Chatbuf bindings to attach something:
+    ;;
+    ;; - {{{where-is(telega-chatbuf-attach,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-attach,2)}}}
+    (define-key map (kbd "C-c C-a") 'telega-chatbuf-attach)
+    ;; - {{{where-is(telega-chatbuf-attach-file,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-attach-file,2)}}}
+    (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
+    ;; - {{{where-is(telega-chatbuf-attach-clipboard,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-attach-clipboard,2)}}}
+    (define-key map (kbd "C-c C-v") 'telega-chatbuf-attach-clipboard)
+
+    ;; ** Chatbuf messages filtering
+    ;;
+    ;; Messages filtering means to show only some messages matching
+    ;; filter.  Available messages filters are: {{{eval((mapconcat
+    ;; (lambda (mf) (concat "=" (car mf) "=")) telega-chat--filters
+    ;; "\, "),t)}}}
+    ;;
+    ;; Chatbuf uses next bindings for messages filtering:
+    ;;
+    ;; - {{{where-is(telega-chatbuf-filter,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-filter,2)}}}
+    (define-key map (kbd "C-c /") 'telega-chatbuf-filter)
+    ;; - {{{where-is(telega-chatbuf-filter-cancel,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-filter-cancel, 2)}}}
+    (define-key map (kbd "C-c C-c") 'telega-chatbuf-filter-cancel)
+    ;; - {{{where-is(telega-chatbuf-filter-search,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-filter-search, 2)}}}
+    (define-key map (kbd "C-c C-s") 'telega-chatbuf-filter-search)
 
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chatbuf-complete-or-next-link)
@@ -2092,6 +2122,17 @@ If ICONS-P is non-nil, then use icons for members count."
              ;; will increase its height
              (telega-ins--content-one-line pin-msg))))
        (telega-ins "]")))))
+
+(defun telega-chatbuf-mode-line-messages-filter ()
+  "Format currently applied messages filter."
+  (when-let ((chat-filter telega-chatbuf--filter))
+    (concat " ["
+            (propertize "Filter" 'face 'error)
+            ": "
+            (propertize (car chat-filter) 'face 'bold)
+            (when-let ((sender (nth 3 chat-filter)))
+              (concat " by " (telega-user--name sender 'name)))
+            "]")))
 
 (defun telega-chatbuf-mode-line-update ()
   "Update `mode-line-buffer-identification' for the CHAT buffer."
@@ -4001,7 +4042,8 @@ Not all filters can filter by sender."
                  (telega-chatbuf--clean)
                  (telega-chat--goto-msg
                   telega-chatbuf--chat (plist-get msg-at-point :id)))
-             (telega-chatbuf--load-initial-history)))
+             (telega-chatbuf--load-initial-history))
+           (telega-chatbuf-mode-line-update))
 
           ((commandp (cadr msg-filter) 'for-interactive)
            (call-interactively (cadr msg-filter)))
@@ -4035,12 +4077,18 @@ Not all filters can filter by sender."
                              (nth 0 msg-filter)
                            (concat (nth 0 msg-filter) " \"" query "\""))
                          (nth 1 msg-filter) query sender nil))
+             (telega-chatbuf-mode-line-update)
 
              (telega-chatbuf--load-older-history
               (lambda (total-messages)
                 (when telega-chatbuf--filter
                   (setf (nth 4 telega-chatbuf--filter) total-messages)
                   (telega-chatbuf--footer-redisplay))))
+
+             (telega-help-message 'msg-filter-cancel
+                 "%s to cancel messages filtering"
+               (telega-keys-description
+                'telega-chatbuf-filter-cancel telega-chat-mode-map))
              ))
           ))
 
@@ -4062,6 +4110,7 @@ Not all filters can filter by sender."
     (telega-chatbuf--clean)
     (setq telega-chatbuf--filter
           (list "scheduled" nil nil nil (length scheduled-messages)))
+    (telega-chatbuf-mode-line-update)
 
     (telega-chatbuf--append-messages (nreverse scheduled-messages))))
 

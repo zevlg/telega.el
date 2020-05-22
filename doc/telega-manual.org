@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.21)
+#+TITLE: Telega Manual (v0.6.22)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -27,6 +27,8 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#chat-types][Chat types]]
     - [[#custom-chat-label][Custom chat label]]
     - [[#chatbuf-fast-navigation][Chatbuf fast navigation]]
+    - [[#chatbuf-attaching-media][Chatbuf attaching media]]
+    - [[#chatbuf-messages-filtering][Chatbuf messages filtering]]
     - [[#sending-ordinary-messages][Sending ordinary messages]]
     - [[#sending-special-messages][Sending special messages]]
     - [[#sending-messages-via-bots][Sending messages via bots]]
@@ -530,13 +532,71 @@ messages.
 - @@html:<kbd>@@M-g ^@@html:</kbd>@@, @@html:<kbd>@@M-g P@@html:</kbd>@@ (~telega-chatbuf-goto-pin-message~) :: 
      Goto pinned message for the chatbuffer.
 
-- @@html:<kbd>@@M-g x@@html:</kbd>@@ (~telega-chatbuf-goto-marker-message~) :: 
-     Return to the message we was jumped from.
+- @@html:<kbd>@@M-g x@@html:</kbd>@@ (~telega-chatbuf-goto-pop-message~) :: 
+     Pop message from ~telega-chatbuf--messages-ring~ and goto it.
+
+** Chatbuf attaching media
+
+Attach types are defined in ~telega-chat-attach-commands~.  By
+default next attachement types are defined: =photo=, =self-destruct-photo=, =video=, =self-destruct-video=, =note-video=, =audio=, =note-voice=, =file=, =gif=, =location=, =poll=, =contact=, =member=, =sticker=, =animation=, =scheduled=, =dice=, =screenshot=, =clipboard=
+
+Chatbuf bindings to attach something:
+
+- @@html:<kbd>@@C-c C-a@@html:</kbd>@@ (~telega-chatbuf-attach~) :: 
+     Attach something into message.
+     Prefix argument is available for next attachements:
+       screenshot - Takes numeric prefix argument to delay taking
+     	       screenshot.
+       sticker    - Takes C-u prefix argument to attach favorite/recent
+     	       sticker.
+       clipboard  - Available only if image is in the clipboard.
+     	       Takes C-u prefix argument to attach clipboard as
+     	       document.
+       animation  - Takes C-u prefix to attach file as animation.
+     	       (Same as attching "gif")
+       location   - Takes C-u prefix to attach live location.
+       poll       - Takes C-u prefix to create non-anonymous poll.
+       scheduled  - Takes C-u prefix to send message when user gets online.
+
+- @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-file~) :: 
+     Attach FILE as document to the current input.
+
+- @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
+     Send clipboard image to the chat.
+     If ~DOC-P~ prefix arg as given, then send it as document.
+
+** Chatbuf messages filtering
+
+Messages filtering means to show only some messages matching
+filter.  Available messages filters are: =scheduled=, =search=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =call=, =missed-call=, =mention=, =unread-mention=
+
+Chatbuf uses next bindings for messages filtering:
+
+- @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 
+     Enable chat messages filtering.
+     Enables ~FILTER-NAME~ filter.
+     ~QUERY~ is only used by "search" chatbuf filter.
+     If ~\[universal-argument]~ is specified, then filter by sender
+     of the message at point.
+     Not all filters can filter by sender.
+
+- @@html:<kbd>@@C-c C-c@@html:</kbd>@@ (~telega-chatbuf-filter-cancel~) :: 
+     Cancel any message filtering.
+     If point is at some message, then keep point on this message after reseting.
+
+- @@html:<kbd>@@C-c C-s@@html:</kbd>@@ (~telega-chatbuf-filter-search~) :: 
+     Interactively search for messages in chatbuf.
+     If non-nil ~BY-SENDER-P~ is specified by ~\[universal-argument]~,
+     then also search by sender.
 
 ** Sending ordinary messages
 ** Sending special messages
 ** Sending messages via bots
 ** Scheduling messages and self reminders
+
+1. Put message at point into messages ring
+2. If message seen in chatbuf, jump to it
+3. Otherwise, fetch history containing message and jump to it
 
 ** Filtering messages in chatbuf
 * Minor Modes
