@@ -18,12 +18,12 @@
 ;; along with geo.el. If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;
+
 ;; ** /telega-live-location.el/ -- Manage live location in Telega using geo.el
 ;;
 ;; Enable this mode with {{{kbd(M-x global-telega-live-location-mode RET)}}}
 ;;
-;; This mode installs new "live-geo-location" chat attach type, use it
+;; This mode installs new ~live-geo-location~ chat attach type, use it
 ;; with {{{kbd(C-c C-a live-geo-location RET)}}} in the chatbuf.
 
 ;;; Code:

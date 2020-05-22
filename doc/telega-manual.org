@@ -43,6 +43,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-url-shortenel][/telega-url-shorten.el/]]
     - [[#telega-alertel--notifications-using-alertel][/telega-alert.el/ -- Notifications using =alert.el=]]
     - [[#telega-dired-dwimel--attach-files-from-dired-in-dwim-style][/telega-dired-dwim.el/ -- Attach files from dired in DWIM style]]
+    - [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][/telega-live-location.el/ -- Manage live location in Telega using geo.el]]
 
 * Telega glossary
 
@@ -696,3 +697,10 @@ This package advises ~dired-do-copy~ to attach files into visible chatbuf.
 In dired, mark files you want to attach and press @@html:<kbd>@@C@@html:</kbd>@@.  If
 you have some chatbuf visible, marked files will be attached in
 that chatbuf.
+
+** /telega-live-location.el/ -- Manage live location in Telega using geo.el
+
+Enable this mode with @@html:<kbd>@@M-x global-telega-live-location-mode RET@@html:</kbd>@@
+
+This mode installs new ~live-geo-location~ chat attach type, use it
+with @@html:<kbd>@@C-c C-a live-geo-location RET@@html:</kbd>@@ in the chatbuf.
