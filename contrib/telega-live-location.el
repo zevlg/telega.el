@@ -25,10 +25,13 @@
 ;;
 ;; This mode installs new ~live-geo-location~ chat attach type, use it
 ;; with {{{kbd(C-c C-a live-geo-location RET)}}} in the chatbuf.
+;; 
+;; This mode requires the =geo.el= library, available at
+;; https://git.sr.ht/~oldosfan/geo-xdg.el
 
 ;;; Code:
 
-(require 'geo)
+;(require 'geo)
 
 (defun telega-live-location--geo-loc (geo-loc)
   "Covert geo location GEO-LOC into telega location plist."
