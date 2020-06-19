@@ -55,16 +55,9 @@
 (declare-function tracking-add-buffer "tracking" (buffer &optional faces))
 (declare-function tracking-remove-buffer "tracking" (buffer))
 
-(declare-function telega-root--keep-cursor-at "telega-root" (chat))
-(declare-function telega-root--chat-update "telega-root"
-                  (chat &optional for-reorder))
-(declare-function telega-root--chat-reorder "telega-root" (chat))
-(declare-function telega-root--chat-new "telega-root" (chat))
-(declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
+(declare-function telega--on-updateDeleteMessages "telega-tdlib-events" (event))
+(declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 
-(defvar telega-filters--inhibit-redisplay)
-(defvar telega-filters--inhibit-list)
-(declare-function telega-filters--redisplay "telega-filter")
 (declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 (declare-function telega-filter-default-p "telega-filter" (&optional filter))
@@ -112,9 +105,11 @@ Could be `loaded' or `nil'.")
   "My current action in chat buffer.")
 (make-variable-buffer-local 'telega-chatbuf--my-action)
 
-(defvar telega-chatbuf--need-point-refresh nil
-  "Non-nil if point needs refreshing on buffer switch in.")
-(make-variable-buffer-local 'telega-chatbuf--need-point-refresh)
+(defvar telega-chatbuf--refresh-point nil
+  "Non-nil if point needs refreshing on buffer switch in.
+Could be either `t', then move point to next unread message.
+Or point value to move point to.")
+(make-variable-buffer-local 'telega-chatbuf--refresh-point)
 
 (defvar telega-chatbuf--filter nil
   "Active messages filter in the chatbuf.
@@ -203,10 +198,7 @@ Return chat from `telega--chats'."
 If OFFLINE-P is non-nil then do not request the telegram-server."
   (let ((chat (gethash chat-id telega--chats)))
     (when (and (not chat) (not offline-p))
-      (cl-assert chat-id)
-      (setq chat (telega-server--call
-                  (list :@type "getChat"
-                        :chat_id chat-id)))
+      (setq chat (telega--getChat chat-id))
       (cl-assert chat nil "getChat timed out chat_id=%d" chat-id)
       (telega-chat--ensure chat))
     chat))
@@ -216,33 +208,6 @@ If OFFLINE-P is non-nil then do not request the telegram-server."
   (cl-find username telega--ordered-chats
            :test #'string=
            :key #'telega-chat-username))
-
-(defun telega--joinChat (chat)
-  "Add current user as a new member to a CHAT."
-  (telega-server--send
-   (list :@type "joinChat" :chat_id (plist-get chat :id))))
-
-(defun telega--leaveChat (chat)
-  "Remove current user from CHAT members."
-  (telega-server--send
-   (list :@type "leaveChat" :chat_id (plist-get chat :id))))
-
-(defun telega--deleteChatHistory (chat &optional remove-from-list revoke)
-  "Deletes all messages in the CHAT only for the user.
-Cannot be used in channels and public supergroups.
-Pass REVOKE to try to delete chat history for all users."
-  (telega-server--send
-   (list :@type "deleteChatHistory"
-         :chat_id (plist-get chat :id)
-         :remove_from_chat_list (or remove-from-list :false)
-         :revoke (if revoke t :false))))
-
-(defun telega--setChatTitle (chat title)
-  "Changes the CHAT title to TITLE."
-  (telega-server--send
-   (list :@type "setChatTitle"
-         :chat_id (plist-get chat :id)
-         :title title)))
 
 (defun telega-chat-me ()
   "Chat with myself, a.k.a Saved Messages."
@@ -382,39 +347,6 @@ delimiting with WITH-USERNAME-DELIM."
             (telega-chat-title chat with-username-delim)
             (or (cadr brackets) "]"))))
 
-(defun telega-chat--reorder (chat order)
-  "Reorder CHAT in `telega--ordered-chats' according to ORDER."
-  ;; NOTE: order=nil if reordering with custom order or with enabled
-  ;; active sorter
-  (when order
-    (plist-put chat :order order))
-  ;; Reorder CHAT by removing and then adding it again at correct place
-  (setq telega--ordered-chats (delq chat telega--ordered-chats))
-  (telega--ordered-chats-insert chat)
-  (telega-root--chat-reorder chat))
-
-(defun telega--on-updateNewChat (event)
-  "New chat has been loaded or created."
-  (let ((chat (plist-get event :chat)))
-    (telega-chat--ensure chat)
-    (telega-root--chat-new chat)
-
-    (run-hook-with-args 'telega-chat-created-hook chat)))
-
-(defun telega--on-updateChatPhoto (event)
-  "Chat's photo has been updated."
-  (let ((chat (telega-chat-get (plist-get event :chat_id)))
-        (photo (plist-get event :photo)))
-    (plist-put chat :photo photo)
-
-    (plist-put chat :telega-image nil)
-
-    ;; TODO:
-    ;;  - redisplay chat in rootbuf
-    ;;  - redisplay chat's input in case icon is used in input
-    (telega-describe-chat--maybe-redisplay chat)
-    ))
-
 (defun telega--setChatNotificationSettings (chat &rest settings)
   "Set CHAT's notification settings to NOT-CFG."
   (declare (indent 1))
@@ -427,112 +359,6 @@ delimiting with WITH-USERNAME-DELIM."
      (list :@type "setChatNotificationSettings"
            :chat_id (plist-get chat :id)
            :notification_settings request))))
-
-(defun telega--on-updateChatNotificationSettings (event)
-  "Notification settings has been changed in chat."
-  (let ((chat (telega-chat-get (plist-get event :chat_id))))
-    (plist-put chat :notification_settings
-               (plist-get event :notification_settings))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (telega-describe-chat--maybe-redisplay chat)))
-
-(defun telega--on-updateChatTitle (event)
-  "EVENT arrives when title of a chat was changed."
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :title (plist-get event :title))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat)))
-
-    (telega-describe-chat--maybe-redisplay chat)))
-
-(defun telega--on-updateChatOrder (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-
-    ;; NOTE:
-    ;;  1) `telega-sort-maybe-reorder' always reorders for "updateChatOrder"
-    ;;  2) Reordering might affect `telega--filtered-chats' and custom
-    ;;     filters, so root chat update is essential
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (telega-describe-chat--maybe-redisplay chat)
-    ))
-
-(defun telega--on-updateChatIsPinned (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :is_pinned (plist-get event :is_pinned))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    ;; NOTE: `telega-chatbuf--name' uses `:is_pinned' so rename the
-    ;; buffer
-    (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat)))))
-
-(defun telega--on-updateChatReadInbox (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-        (unread-count (plist-get event :unread_count)))
-    (cl-assert chat)
-    (plist-put chat :last_read_inbox_message_id
-               (plist-get event :last_read_inbox_message_id))
-    (plist-put chat :unread_count unread-count)
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    ;; NOTE: unread_count affects modeline and footer
-    (with-telega-chatbuf chat
-      ;; NOTE: if all messages are read (in another telegram client) and
-      ;; tracking is enabled, then remove the buffer from tracking
-      (when (and (zerop unread-count)
-                 (telega-chat-match-p chat telega-use-tracking-for))
-        (tracking-remove-buffer (current-buffer)))
-
-      (telega-chatbuf-mode-line-update)
-      (telega-chatbuf--footer-redisplay))))
-
-(defun telega--on-updateChatReadOutbox (event)
-  (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-         (old-read-outbox-msgid (plist-get chat :last_read_outbox_message_id)))
-    (cl-assert chat)
-    (plist-put chat :last_read_outbox_message_id
-               (plist-get event :last_read_outbox_message_id))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (with-telega-chatbuf chat
-      (telega-chatbuf--read-outbox old-read-outbox-msgid))))
-
-(defun telega--on-updateChatUnreadMentionCount (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :unread_mention_count
-               (plist-get event :unread_mention_count))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    ;; NOTE: unread_mention_count affects modeline and footer
-    (with-telega-chatbuf chat
-      (telega-chatbuf-mode-line-update)
-      (telega-chatbuf--footer-redisplay))))
-
-(defun telega--on-updateMessageMentionRead (event)
-  (telega--on-updateChatUnreadMentionCount event)
-  ;; TODO: might be some action needed on `:message_id' as well
-  )
 
 (defun telega-chat--update-reply-markup-message (chat &optional offline-p)
   "Asynchronously load reply markup message for CHAT.
@@ -553,53 +379,6 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
                        :chat_id (plist-get chat :id)
                        :telega-is-deleted-message t))))
           (telega-chat--update-reply-markup-message chat 'offline))))))
-
-(defun telega--on-updateChatReplyMarkup (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :reply_markup_message_id
-               (plist-get event :reply_markup_message_id))
-
-    (telega-chat--update-reply-markup-message chat)))
-
-(defun telega--on-updateChatLastMessage (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :last_message
-               (plist-get event :last_message))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (telega-describe-chat--maybe-redisplay chat)
-    ))
-
-(defun telega--on-updateChatIsMarkedAsUnread (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :is_marked_as_unread
-               (plist-get event :is_marked_as_unread))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))))
-
-(defun telega--on-updateChatOnlineMemberCount (event)
-  "The number of online group members has changed.
-NOTE: we store the number as custom chat property, to use it later."
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :x-online-count
-               (plist-get event :online_member_count))
-
-    ;; ARGUABLE: root buffer chat inserter might use the counter
-    ;;   (telega-root--chat-update
-    ;;    chat (telega-sort-maybe-reorder chat event))
-    (telega-sort-maybe-reorder chat event)
-
-    ;; NOTE: this affects the modeline
-    (with-telega-chatbuf chat
-      (telega-chatbuf-mode-line-update))
-    ))
 
 (defun telega-chat--update-administrators (chat)
   "Asynchronously update CHAT's `telega-chatbuf--administrators'."
@@ -630,7 +409,7 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
 
             (telega-chatbuf-mode-line-update)
             (telega-chatbuf--footer-redisplay))
-          (telega-root--chat-update chat))
+          (telega-chat--update chat))
 
       ;; Async load pinned message
       (telega-chat-pinned-msg chat nil
@@ -642,41 +421,6 @@ OLD-PIN-MSG-ID is the id of the previously pinned message."
                        :chat_id (plist-get chat :id)
                        :telega-is-deleted-message t))))
           (telega-chat--update-pinned-message chat 'offline))))))
-
-(defun telega--on-updateChatPinnedMessage (event)
-  "The chat pinned message was changed."
-  (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-         (old-pinned-message-id (plist-get chat :pinned_message_id)))
-    (cl-assert chat)
-    (plist-put chat :pinned_message_id
-               (plist-get event :pinned_message_id))
-
-    (telega-sort-maybe-reorder chat event)
-    (telega-chat--update-pinned-message chat nil old-pinned-message-id)
-
-    (telega-describe-chat--maybe-redisplay chat)))
-
-(defun telega-chat--on-getChats (chats)
-  "Ensure chats from RESULT exists, and continue fetching chats."
-  (if (> (length chats) 0)
-      ;; Redisplay the root's custom filters and then
-      ;; Continue fetching chats
-      (let ((telega-filters--inhibit-redisplay nil))
-        (telega-filters--redisplay)
-        (telega--getChats "Main" (car (last chats)) #'telega-chat--on-getChats))
-
-    ;; All chats has been fetched
-
-    ;; TODO: some chats remains with order="0", i.e. known chats, do
-    ;; not proceed with chats that once was used, such as basic
-    ;; groups upgraded to supergroups, closed secret chats, etc.  We
-    ;; might want to remove them from `telega--ordered-chats' list
-    ;; for faster processing, but keep it in chats hash
-    (setq telega-filters--inhibit-redisplay nil)
-    (telega-filters--redisplay)
-    (telega-status--set nil "")       ;reset aux status
-
-    (run-hooks 'telega-chats-fetched-hook)))
 
 (defun telega-chats--kill-em-all ()
   "Kill all chat buffers."
@@ -695,13 +439,6 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
                       (telega--getTopChats (symbol-name category))))
       (setf (alist-get category telega--top-chats) top))
     (caddr top)))
-
-(defun telega--sendChatAction (chat action)
-  "Send ACTION on CHAT."
-  (telega-server--send
-   (list :@type "sendChatAction"
-         :chat_id (plist-get chat :id)
-         :action action)))
 
 (defun telega--createPrivateChat (user)
   "Create private chat with USER.
@@ -777,12 +514,8 @@ be marked as read."
 (define-button-type 'telega-chat
   :supertype 'telega
   :inserter telega-inserter-for-chat-button
-  'keymap telega-chat-button-map
-  'action #'telega-chat-button--action)
-
-(defun telega-chat-button--action (button)
-  "Action to take when chat BUTTON is pressed."
-  (telega-chat--pop-to-buffer (button-get button :value)))
+  :action #'telega-chat--pop-to-buffer
+  'keymap telega-chat-button-map)
 
 (defun telega-chat--pop-to-buffer (chat &optional no-history-load)
   "Pop to CHAT's buffer.
@@ -855,8 +588,8 @@ Specify non-nil BAN to ban this user in this CHAT."
       (error "Invalid order, must contain only digits")))
 
   (setf (telega-chat-uaprop chat :order) order)
-  (telega-chat--reorder chat nil)
-  (telega-root--chat-update chat))
+  ;; NOTE: Update chat with fake event causing chat reorder
+  (telega-chat--update chat (list :@type "telegaChatReorder")))
 
 ;; ** Custom chat label
 ;;
@@ -892,7 +625,7 @@ Examines `telega-chat-label-alist'."
     (setq label nil))
 
   (setf (telega-chat-uaprop chat :label) label)
-  (telega-root--chat-update chat))
+  (telega-chat--update chat))
 
 (defun telega-custom-labels-export ()
   "Export custom labels as alist suitable for `telega-custom-labels-import'."
@@ -1258,11 +991,7 @@ CHAT-TYPE is one of \"basicgroup\", \"supergroup\", \"channel\",
   (telega-server--call
    (list :@type "upgradeBasicGroupChatToSupergroupChat"
          :chat_id (plist-get chat :id))
-   (lambda (newchat)
-     ;; NOTE: Chat might change while upgrading, so renew its value
-     ;; using `telega-chat-get'
-     (telega-chat--pop-to-buffer
-      (telega-chat-get (plist-get newchat :id))))))
+   #'telega--chat-create-callback))
 
 (defun telega-chat-transfer-ownership (chat)
   "Transfer CHAT's ownership TO-USER."
@@ -1306,7 +1035,7 @@ CHAT-TYPE is one of \"basicgroup\", \"supergroup\", \"channel\",
                :user (telega-user--name to-user)))))))
     ))
 
-(defun telega-chat-description (chat descr)
+(defun telega-chat-set-description (chat descr)
   "Update CHAT's description."
   (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
                       (full-info (telega--full-info (telega-chat--info chat))))
@@ -2019,7 +1748,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
             (telega-chatbuf--load-initial-history))
 
           ;; Openning chat may affect filtering, see `opened' filter
-          (telega-root--chat-update chat)
+          (telega-chat--update chat)
 
           (current-buffer)))))
 
@@ -2333,14 +2062,12 @@ instead of editing, just pop previously sent message as input."
 (defun telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
-  (let* ((chat-win (get-buffer-window))
-         (wstart (when chat-win (copy-marker (window-start chat-win) t)))
-         (pos (point))
-         (msg-button (button-at pos)))
+  (let* ((pos (point))
+         (msg-button (button-at pos))
+         (chat-win (get-buffer-window))
+         (wstart-off (when chat-win
+                       (- (point) (window-start chat-win)))))
     (unwind-protect
-        ;; NOTE: we save cursor position only if point is currently
-        ;; inside the message we are redisplaying, otherwise simple
-        ;; `telega-save-excursion' will work
         (if (and msg-button
                  (eq (button-get msg-button :value)
                      (ewoc--node-data node))
@@ -2352,9 +2079,9 @@ Try to keep point at its position."
             (ewoc-invalidate telega-chatbuf--ewoc node)))
 
       ;; NOTE: we keep window position as is, node redisplay might
-      ;; change it.
+      ;; change it or shift.
       (when chat-win
-        (set-window-start chat-win wstart 'noforce))
+        (set-window-start chat-win (- (point) wstart-off) 'noforce))
       )))
 
 (defun telega-chatbuf--prepend-messages (messages)
@@ -2440,204 +2167,6 @@ OLD-LAST-READ-OUTBOX-MSGID is old value for chat's `:last_read_outbox_message_id
                 (< old-last-read-outbox-msgid
                    (plist-get (ewoc-data node) :id)))
       (telega-chatbuf--redisplay-node node))))
-
-(defalias 'telega--on-message 'ignore)
-
-(defun telega--on-updateNewMessage (event)
-  "A new message was received; can also be an outgoing message."
-  (let ((new-msg (plist-get event :message)))
-    (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
-
-    (with-telega-chatbuf (telega-msg-chat new-msg)
-      (telega-chatbuf--cache-msg new-msg)
-
-      ;; NOTE: `:last_message' could be already updated in the chat
-      ;; with the id of the NEW-MSG, so check for it
-      (when (or (telega-chatbuf--last-msg-loaded-p)
-                (eq (telega--tl-get telega-chatbuf--chat :last_message :id)
-                    (plist-get new-msg :id)))
-        (when-let ((node (telega-chatbuf--append-messages (list new-msg))))
-          (when (and (telega-chat-match-p
-                      telega-chatbuf--chat telega-use-tracking-for)
-                     (not (plist-get new-msg :is_outgoing))
-                     (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
-            (tracking-add-buffer (current-buffer)))
-
-          ;; If message is visibible in some window, then mark it as read
-          ;; see https://github.com/zevlg/telega.el/issues/4
-          (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
-            (telega--viewMessages telega-chatbuf--chat (list new-msg)))
-          )))
-    (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
-
-(defun telega--on-updateMessageSendSucceeded (event)
-  "Message has been successfully sent to server.
-Message id could be updated on this update."
-  (let* ((new-msg (plist-get event :message))
-         (new-id (plist-get new-msg :id))
-         (old-id (plist-get event :old_message_id)))
-    (with-telega-chatbuf (telega-msg-chat new-msg)
-      (remhash old-id telega-chatbuf--messages)
-      (puthash new-id new-msg telega-chatbuf--messages)
-
-      ;; NOTE: Actualize message position according to NEW-ID
-      ;; Optimization: search old message's node from last node
-      (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
-        (while (and node (not (= old-id (plist-get (ewoc-data node) :id))))
-          (setq node (ewoc-prev telega-chatbuf--ewoc node)))
-
-        (when node
-          (let ((before-node (ewoc-next telega-chatbuf--ewoc node)))
-            ;; Search the node to insert new message before
-            (while (and before-node
-                        (> new-id (plist-get (ewoc-data before-node) :id)))
-              (setq before-node (ewoc-next telega-chatbuf--ewoc before-node)))
-
-            (ewoc-delete telega-chatbuf--ewoc node)
-            (with-telega-deferred-events
-              (if before-node
-                  ;; NOTE: need to redisplay next to newly created
-                  ;; node, in case `telega-chat-group-messages-for' is
-                  ;; used, see https://github.com/zevlg/telega.el/issues/159
-                  (progn
-                    (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
-                    (ewoc-invalidate telega-chatbuf--ewoc before-node))
-                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))))
-
-(defun telega--on-updateMessageSendFailed (event)
-  "Message failed to send."
-  ;; NOTE: Triggered for example if trying to send bad picture.
-  ;; `telega--on-updateMessageSendSucceeded' updates the message
-  ;; content with new(failed) state
-  (telega--on-updateMessageSendSucceeded event)
-
-  (let ((err-code (plist-get event :error_code))
-        (err-msg (plist-get event :error_message)))
-    (message "telega: Failed to send message: %d %s" err-code err-msg)
-    ))
-
-(defun telega--on-updateMessageContent (event)
-  "Content of the message has been changed."
-  (let ((new-content (plist-get event :new_content)))
-    ;; NOTE: for "messagePoll" update check if there any option with
-    ;; `:is_being_chosen' set to non-nil.
-    ;; If so, then just ignore this update, waiting for real update
-    ;; chosing some poll option may fail with "REVOTE_NOT_ALLOWED" error
-    (unless (and (eq (telega--tl-type new-content) 'messagePoll)
-                 (cl-some (telega--tl-prop :is_being_chosen)
-                          (telega--tl-get new-content :poll :options)))
-      (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-        (cl-destructuring-bind (msg node)
-            (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-          (when msg
-            (plist-put msg :content new-content)
-            (when node
-              (telega-chatbuf--redisplay-node node))))))))
-
-(defun telega--on-updateMessageEdited (event)
-  "Edited date of the message specified by EVENT has been changed."
-  (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (cl-destructuring-bind (msg node)
-        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-      (plist-put msg :edit_date (plist-get event :edit_date))
-      (plist-put msg :reply_markup (plist-get event :reply_markup))
-      (when node
-        (telega-chatbuf--redisplay-node node))
-
-      ;; In case user has active aux-button with message from EVENT,
-      ;; then redisplay aux as well, see
-      ;; https://t.me/emacs_telega/7243
-      (let ((aux-msg (or (telega-chatbuf--replying-msg)
-                         (telega-chatbuf--editing-msg))))
-        (when (and aux-msg (eq (plist-get msg :id) (plist-get aux-msg :id)))
-          (cl-assert (not (button-get telega-chatbuf--aux-button 'invisible)))
-          (telega-save-excursion
-            (telega-button--update-value
-             telega-chatbuf--aux-button msg
-             :inserter (button-get telega-chatbuf--aux-button :inserter)))))
-      )))
-
-(defun telega--on-updateMessageViews (event)
-  "Number of message views has been updated."
-  (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (cl-destructuring-bind (msg node)
-        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-      (plist-put msg :views (plist-get event :views))
-      (when node
-        (telega-chatbuf--redisplay-node node)))))
-
-(defun telega--on-updateMessageContentOpened (event)
-  "The message content was opened.
-Updates voice note messages to \"listened\", video note messages
-to \"viewed\" and starts the TTL timer for self-destructing
-messages."
-  (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (cl-destructuring-bind (msg node)
-        (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-      (let ((content (plist-get msg :content)))
-        (cl-case (telega--tl-type content)
-          (messageVoiceNote
-           (plist-put content :is_listened t)
-           (when node
-             (telega-chatbuf--redisplay-node node)))
-          (messageVideoNote
-           (plist-put content :is_viewed t)
-           (when node
-             (telega-chatbuf--redisplay-node node))))))))
-
-(defun telega--on-updateDeleteMessages (event)
-  "Some messages has been deleted from chat."
-  (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
-    (let ((from-cache-p (plist-get event :from_cache))
-          (permanent-p (plist-get event :is_permanent)))
-      (seq-doseq (msg-id (plist-get event :message_ids))
-        (when from-cache-p
-          (remhash msg-id telega-chatbuf--messages))
-        (when permanent-p
-          (remhash msg-id telega-chatbuf--messages)
-          (when-let ((node (telega-chatbuf--node-by-msg-id msg-id))
-                     (msg (ewoc--node-data node)))
-            (plist-put msg :telega-is-deleted-message t)
-            (if (telega-chat-match-p (telega-msg-chat msg)
-                                     telega-chat-show-deleted-messages-for)
-                (telega-msg-redisplay msg node)
-
-              ;; NOTE: need to redisplay next to deleted node, in case
-              ;; `telega-chat-group-messages-for' is used
-              ;; See https://github.com/zevlg/telega.el/issues/159
-              (let ((next-node (ewoc-next telega-chatbuf--ewoc node)))
-                (ewoc-delete telega-chatbuf--ewoc node)
-                (when next-node
-                  (ewoc-invalidate telega-chatbuf--ewoc next-node)))))
-          (when (eq msg-id (plist-get telega-chatbuf--chat :pinned_message_id))
-            (telega-chat--update-pinned-message telega-chatbuf--chat 'offline)))
-        ))))
-
-(defun telega--on-updateUserChatAction (event)
-  "Some user has actions on chat."
-  (let* ((chat-id (plist-get event :chat_id))
-         (chat-actions (gethash chat-id telega--actions))
-         (user-id (plist-get event :user_id))
-         (user-action (assq user-id chat-actions))
-         (action (plist-get event :action))
-         (cancel-p (eq (telega--tl-type action) 'chatActionCancel)))
-    (cond (cancel-p
-           (puthash chat-id (assq-delete-all user-id chat-actions)
-                    telega--actions))
-          (user-action
-           (setcdr user-action action))
-          (t (puthash chat-id (cons (cons user-id action) chat-actions)
-                      telega--actions)))
-
-    (let ((chat (telega-chat-get chat-id)))
-      (telega-root--chat-update chat)
-      (with-telega-chatbuf chat
-        ;; If action by me, update `telega-chatbuf--my-action' as well
-        (when (eq user-id telega--me-id)
-          (setq telega-chatbuf--my-action (unless cancel-p action)))
-
-        (telega-chatbuf--footer-redisplay)))
-    ))
 
 (defun telega-chat--load-history (chat &optional from-msg-id offset limit
                                        callback)
@@ -3151,7 +2680,7 @@ If PREVIEW-P is non-nil, then generate preview image."
            (cdr ifile))))
 
 (defun telega-chatbuf-attach-file (filename &optional preview-p)
-  "Attach FILE as document to the current input."
+  "Attach FILENAME as document to the current input."
   (interactive (list (read-file-name "Attach file: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
     (telega-chatbuf-input-insert
@@ -3204,7 +2733,7 @@ If PREVIEW-P is non-nil, then generate preview image."
            :audio ifile))))
 
 (defun telega-chatbuf-attach-note-video (filename)
-  "Attach FILE as document to the current input."
+  "Attach FILENAME as video note to the current input."
   (interactive (list (read-file-name "Video Note: ")))
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
@@ -3214,7 +2743,7 @@ If PREVIEW-P is non-nil, then generate preview image."
            :video_note ifile))))
 
 (defun telega-chatbuf-attach-note-voice (filename)
-  "Attach FILE as document to the current input."
+  "Attach FILENAME as voice note to the current input."
   (interactive (list (read-file-name "Voice Note: ")))
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
@@ -3250,8 +2779,9 @@ If DOC-P prefix arg as given, then send it as document."
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the input.
 If numeric prefix arg is given, then take screenshot in N seconds.
-If `C-u' prefix arg is given, then take screenshot of the screen area.
-Multiple `C-u' increases delay before taking screenshot of the area."
+If `\\[universal-argument]' is given, then take screenshot of the screen area.
+Multiple `\\[universal-argument]' increases delay before taking
+screenshot of the area."
   (interactive (list (or current-prefix-arg 1) telega-chatbuf--chat))
 
   ;; NOTE: use float N value as special, to make screenshot of the
@@ -3540,67 +3070,6 @@ is used as FILE."
           (telega-chatbuf-attach-photo file)
         (telega-chatbuf-attach-file file)))))
 
-(defun telega--on-updateChatDraftMessage (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-        (draft-msg (plist-get event :draft_message)))
-    (cl-assert chat)
-    (plist-put chat :draft_message draft-msg)
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    ;; Update chat's input to the text in DRAFT-MSG
-    (with-telega-chatbuf chat
-      (telega-chatbuf--input-draft draft-msg))
-    ))
-
-(defun telega--setChatDraftMessage (chat &optional draft-msg)
-  "Set CHAT's draft message to DRAFT-MSG.
-If DRAFT-MSG is ommited, then clear draft message."
-  (telega-server--send
-   (nconc (list :@type "setChatDraftMessage"
-                :chat_id (plist-get chat :id))
-          (when draft-msg
-            (list :draft_message draft-msg)))))
-
-(defun telega--on-updateChatChatList (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-        (chat-list (plist-get event :chat_list)))
-    (cl-assert chat)
-    (plist-put chat :chat_list chat-list)
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (telega-describe-chat--maybe-redisplay chat)
-    ))
-
-(defun telega--on-updateChatHasScheduledMessages (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :has_scheduled_messages
-               (plist-get event :has_scheduled_messages))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    ;; NOTE: `telega-chatbuf--name' uses `:has_scheduled_messages', so
-    ;; rename the buffer
-    (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat)))))
-
-(defun telega--on-updateChatActionBar (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :action_bar (plist-get event :action_bar))
-
-    (telega-root--chat-update
-     chat (telega-sort-maybe-reorder chat event))
-
-    (with-telega-chatbuf chat
-      (telega-chatbuf--footer-redisplay))
-    ))
-
 (defun telega-chatbuf--switch-out ()
   "Called when switching from chat buffer."
   (telega-debug "Switch %s: %s" (propertize "OUT" 'face 'bold)
@@ -3627,9 +3096,8 @@ If DRAFT-MSG is ommited, then clear draft message."
   ;; NOTE: temporary move point out of prompt, so newly incoming
   ;; messages won't get automatically read
   (when (>= (point) telega-chatbuf--input-marker)
-    (setq telega-chatbuf--need-point-refresh t)
-    (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
-  )
+    (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
+    (setq telega-chatbuf--refresh-point t)))
 
 (defun telega-chatbuf--switch-in ()
   "Called when switching to chat buffer."
@@ -3641,22 +3109,22 @@ If DRAFT-MSG is ommited, then clear draft message."
   ;; case point was saved, then jump to last unread message, just as
   ;; if chat was freshly opened.  The only difference is that we jump
   ;; to the prompt only if last unread message is fully viewable
-  (when telega-chatbuf--need-point-refresh
-    (setq telega-chatbuf--need-point-refresh nil)
-    (telega-chatbuf-next-unread
-      (lambda (button)
-        (telega-chatbuf--view-msg-at button)
-        (when (and (eq (telega-msg-at button) (telega-chatbuf--last-msg))
-                   (telega-button--observable-p button))
-          (goto-char (point-max))))))
+  (when telega-chatbuf--refresh-point
+    (let ((rpoint telega-chatbuf--refresh-point))
+      (setq telega-chatbuf--refresh-point nil)
+      (if (eq rpoint t)
+          (telega-chatbuf-next-unread
+            (lambda (button)
+              (telega-chatbuf--view-msg-at button)
+              (when (and (eq (telega-msg-at button) (telega-chatbuf--last-msg))
+                         (telega-button--observable-p button))
+                (goto-char (point-max)))))
+        (goto-char rpoint))))
 
   ;; May affect rootbuf sorting if `chatbuf-recency' criteria is used
   (when (memq 'chatbuf-recency telega--sort-criteria)
-    (telega-chat--reorder telega-chatbuf--chat nil))
-
-  ;; See docstring for `telega-root-keep-cursor'
-  (when (eq telega-root-keep-cursor 'track)
-    (telega-root--keep-cursor-at telega-chatbuf--chat))
+    (telega-chat--update telega-chatbuf--chat
+                         (list :@type "telegaChatReorder")))
   )
 
 (defun telega-chatbuf--killed ()
@@ -3678,7 +3146,7 @@ If DRAFT-MSG is ommited, then clear draft message."
   ;; NOTE: chatbuffer might be left from other telega start, so it
   ;; will throw "Ewoc node not found" error - ignore it
   (ignore-errors
-    (telega-root--chat-update telega-chatbuf--chat)))
+    (telega-chat--update telega-chatbuf--chat)))
 
 ;;;###autoload
 (defun telega-chatbuf-input-as-region-advice (orig-region-func start end &rest args)
@@ -4015,15 +3483,16 @@ If called outside chat buffer, then fallback to default DND behaviour."
         (list "missed-call" "searchMessagesFilterMissedCall")
         (list "mention" "searchMessagesFilterMention")
         (list "unread-mention" "searchMessagesFilterUnreadMention")
+        (list "failed-to-send" "searchMessagesFilterFailedToSend")
         ))
 
 (defun telega-chatbuf-filter (filter-name &optional query by-sender-p)
   "Enable chat messages filtering.
 Enables FILTER-NAME filter.
-QUERY is only used by \"search\" chatbuf filter.
-If `\\[universal-argument]' is specified, then filter by sender
-of the message at point.
-Not all filters can filter by sender."
+QUERY is only used by \"search\" messages filter.
+If `\\[universal-argument]' is specified, then filter messages
+sent by sender of the message at point.
+Not all filters can filter messages by sender."
   (interactive (let ((fname (funcall telega-completing-read-function
                                      "Chat Messages Filter: "
                                      (mapcar #'car telega-chat--filters)
@@ -4064,7 +3533,8 @@ Not all filters can filter by sender."
                                 "searchMessagesFilterVideoNote"
                                 "searchMessagesFilterVoiceAndVideoNote"
                                 "searchMessagesFilterMention"
-                                "searchMessagesFilterUnreadMention")))
+                                "searchMessagesFilterUnreadMention"
+                                "searchMessagesFilterFailedToSend")))
            (let ((sender (when (and by-sender-p
                                     (not (telega-me-p telega-chatbuf--chat))
                                     (not (telega-chat-secret-p

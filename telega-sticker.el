@@ -115,10 +115,6 @@ Download only if `telega-use-images' is non-nil."
     (telega-stickerset--download sset))
   sset)
 
-;; since TDLib 1.6.3
-(defun telega--on-updateStickerSet (event)
-  (telega-stickerset--ensure (plist-get event :sticker_set)))
-
 (defun telega-stickerset-get (set-id &optional locally-p callback)
   "Get stickerset by SET-ID.
 If LOCALLY-P is non-nil, then do not perform request to telega-server.
@@ -160,69 +156,6 @@ CALLBACK is called without arguments"
             (when callback
               (funcall callback))))
         ))))
-
-(defun telega--on-updateInstalledStickerSets (event)
-  "The list of installed sticker sets was updated."
-  (if (plist-get event :is_masks)
-      (telega-debug "TODO: `telega--on-updateInstalledStickerSets' is_mask=True")
-
-    (setq telega--stickersets-installed-ids
-          (append (plist-get event :sticker_set_ids) nil))
-    ;; Asynchronously update value for `telega--stickersets-installed'
-    ;; and download covers for these sticker sets
-    (telega--getInstalledStickerSets nil
-      (lambda (ssets)
-        (setq telega--stickersets-installed ssets)
-        (dolist (sset ssets)
-          (mapc #'telega-sticker--download (plist-get sset :covers)))))
-    ))
-
-(defun telega--on-updateTrendingStickerSets (event)
-  "The list of trending sticker sets was updated or some of them were viewed."
-  (let ((ssets-info (telega--tl-get event :sticker_sets :sets)))
-    (setq telega--stickersets-trending
-          (append ssets-info nil))))
-
-(defun telega--on-updateRecentStickers (event)
-  "Recent stickers has been updated."
-  ;; NOTE: attached recent stickers are not supported
-  (unless (plist-get event :is_attached)
-    (setq telega--stickers-recent
-          (append (plist-get event :sticker_ids) nil))
-    ;; Asynchronously download corresponding files
-;    (mapc 'telega--downloadFile telega--stickers-recent)
-    ))
-
-(defun telega--on-updateFavoriteStickers (event)
-  "Favorite stickers has been updated."
-  (setq telega--stickers-favorite
-        (append (plist-get event :sticker_ids) nil))
-  ;; Asynchronously download corresponding files
-;  (mapc 'telega--downloadFile telega--stickers-favorite)
-  )
-
-(defun telega--changeStickerSet (stickerset install-p &optional archive-p)
-  "Install/Uninstall STICKERSET."
-  (telega-server--call
-   (list :@type "changeStickerSet"
-         :set_id (plist-get stickerset :id)
-         :is_installed (or install-p :false)
-         :is_archived (or archive-p :false))))
-
-(defun telega--getAttachedStickerSets (file-id)
-  "Return sticker sets attached to the FILE-ID.
-Photo and Video files have attached sticker sets."
-  (telega-server--call
-   (list :@type "getAttachedStickerSets"
-         :file_id file-id)))
-
-(defun telega--searchInstalledStickerSets (query &optional masks-p limit)
-  "Searches for installed sticker sets by QUERY."
-  (telega-server--call
-   (list :@type "searchInstalledStickerSets"
-         :is_masks (or masks-p :false)
-         :query query
-         :limit (or limit 20))))
 
 (defun telega-sticker-toggle-favorite (sticker)
   "Toggle sticker as favorite."
@@ -724,36 +657,6 @@ Return sticker set."
       (when (telega-file--need-download-p animation-file)
         (telega-file--download animation-file 1)))
     ))
-
-(defun telega--on-updateSavedAnimations (event)
-  "List of saved animations has been updated."
-  (setq telega--animations-saved
-        (append (plist-get event :animation_ids) nil))
-  ;; Asynchronously download corresponding files
-  (when telega-animation-download-saved
-    (mapc 'telega--downloadFile telega--animations-saved)))
-
-(defun telega--getSavedAnimations ()
-  "Return list of saved animations."
-  (let* ((reply (telega-server--call
-                 (list :@type "getSavedAnimations")))
-         (anims (append (plist-get reply :animations) nil)))
-    ;; Start downloading animations
-    (when telega-animation-download-saved
-      (mapc 'telega-animation--download anims))
-    anims))
-
-(defun telega--addSavedAnimation (input-file)
-  "Manually adds a new animation to the list of saved animations."
-  (telega-server--send
-   (list :@type "addSavedAnimation"
-         :animation input-file)))
-
-(defun telega--removeSavedAnimation (input-file)
-  "Removes an animation from the list of saved animations."
-  (telega-server--send
-   (list :@type "removeSavedAnimation"
-         :animation input-file)))
 
 (defun telega-animation--progress-svg (animation)
   "Generate svg for STICKER showing download progress."

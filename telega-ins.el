@@ -253,6 +253,13 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
                   (if mutual-contact-p "↔" "←")
                   (propertize "🚹" 'face 'bold)))))
 
+(defun telega-ins--user-nearby-distance (user)
+  "Insert distance to the USER nearby."
+  (when-let* ((user-chat (telega-chat-get (plist-get user :id) 'offline))
+              (distance (telega-chat-nearby-distance user-chat)))
+    (telega-ins--with-face 'shadow
+      (telega-ins (telega-distance-human-readable distance) " away"))))
+  
 (defun telega-ins--user (user &optional member show-phone-p)
   "Insert USER, aligning multiple lines at current column.
 MEMBER specifies corresponding \"ChatMember\" object.
@@ -261,7 +268,13 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
-    (telega-ins (telega-user--name user))
+    (telega-ins (telega-user--name user 'name))
+    (telega-ins--user-online-status user)
+    (when-let ((username (telega-tl-str user :username)))
+      (telega-ins " ")
+      (telega-ins--with-face 'telega-username
+        (telega-ins "@" username)))
+
     (when (and member
                (telega-ins-prefix " ("
                  (telega-ins--chat-member-status
@@ -295,7 +308,10 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (unless (zerop join-date)
         (telega-ins ", joined ")
         (telega-ins--date join-date)))
-    ))
+
+    (telega-ins-prefix ", "
+      (telega-ins--user-nearby-distance user))
+    t))
 
 (defun telega-ins--chat-member (member)
   "Formatting for the chat MEMBER.
@@ -799,7 +815,6 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
 (defun telega-ins--call-msg (msg)
   "Insert call message MSG."
-  (telega-ins telega-symbol-phone " ")
   (let* ((content (plist-get msg :content))
          (reason (telega--tl-type (plist-get content :discard_reason)))
          (label (cond ((plist-get msg :is_outgoing)
@@ -812,6 +827,13 @@ Return `non-nil' if WEB-PAGE has been inserted."
                        "Declined call") ;; I18N: lng_call_declined
                       (t
                        "Incoming call")))) ;; I18N: lng_call_incoming
+    (telega-ins (cond ((memq reason '(callDiscardReasonMissed
+                                      callDiscardReasonDeclined))
+                       telega-symbol-call-bad)
+                      ((plist-get msg :is_outgoing)
+                       telega-symbol-call-outgoing)
+                      (t
+                       telega-symbol-call-incoming)) " ")
     (telega-ins (propertize label 'face 'shadow))
     (telega-ins-fmt " (%s)"
       (telega-duration-human-readable
@@ -1091,8 +1113,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 Special messages are determined with `telega-msg-special-p'."
   (telega-ins "--(")
   (let* ((content (plist-get msg :content))
-         (sender-id (plist-get msg :sender_user_id))
-         (sender (unless (zerop sender-id) (telega-user--get sender-id)))
+         (sender (telega-msg-sender msg))
          (sender-name (when sender
                         (propertize
                          (telega-user--name sender 'name) 'face 'bold))))
@@ -1474,7 +1495,9 @@ argument - MSG to insert additional information after header."
   "Inserter for messageForwardOrigin ORIGIN."
   (cl-ecase (telega--tl-type origin)
     (messageForwardOriginUser
-     (let ((sender (telega-user--get (plist-get origin :sender_user_id))))
+     (let* ((sender-id (plist-get origin :sender_user_id))
+            (sender (unless (zerop sender-id)
+                      (telega-user--get sender-id))))
        (when telega-user-show-avatars
          (telega-ins--image (telega-user-avatar-image-one-line sender)))
        (telega-ins "{" (telega-user--name sender) "}")))
@@ -1554,7 +1577,8 @@ argument - MSG to insert additional information after header."
              (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
                (telega-ins "Loading...")))))))
 
-(defun telega-ins--message0 (msg &optional no-header addon-header-inserter)
+(defun telega-ins--message0 (msg &optional no-header
+                                 addon-header-inserter no-footer)
   "Insert message MSG.
 If NO-HEADER is non-nil, then do not display message header
 unless message is edited.
@@ -1604,22 +1628,24 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
         (telega-ins-prefix "\n"
           (telega-ins--reply-markup msg)))))
 
-  ;; Date/status starts at `telega-chat-fill-column' column
-  (telega-ins--move-to-column telega-chat-fill-column)
-  (telega-ins--with-attrs (list :align 'right :min 10)
-    (telega-ins--date (or (telega--tl-get msg :scheduling_state :send_date)
-                          (plist-get msg :date))))
-  (telega-ins--outgoing-status msg)
+  (unless no-footer
+    ;; Footer: Date/status starts at `telega-chat-fill-column' column
+    (telega-ins--move-to-column telega-chat-fill-column)
+    (telega-ins--with-attrs (list :align 'right :min 10)
+      (telega-ins--date (or (telega--tl-get msg :scheduling_state :send_date)
+                            (plist-get msg :date))))
+    (telega-ins--outgoing-status msg))
   t)
 
-(defun telega-ins--message (msg &optional no-header addon-header-inserter)
-  "Inserter for the message MSG."
+(defun telega-ins--message (msg &rest args)
+  "Inserter for the message MSG.
+Pass all ARGS directly to `telega-ins--message0'."
   (if (telega-msg-marked-p msg)
       (progn
         (telega-ins telega-symbol-mark)
         (telega-ins--with-attrs (list :fill-prefix telega-symbol-mark)
-          (telega-ins--message0 msg no-header addon-header-inserter)))
-    (telega-ins--message0 msg no-header addon-header-inserter)))
+          (apply #'telega-ins--message0 msg args)))
+    (apply #'telega-ins--message0 msg args)))
 
 (defun telega-ins--message-no-header (msg)
   "Insert message MSG without header."
@@ -1638,12 +1664,24 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   "Inserter for ignored message MSG in chatbuf."
   (telega-ins (propertize "<IGNORED MESSAGE>" 'face 'shadow)))
 
-(defun telega-ins--message-ignored-list (msg)
-  "Inserter for ignored message MSG in ignored messages list."
-  (telega-ins--message msg nil (lambda (_ignoredmsg)
-                                 (telega-ins " --> ")
-                                 (telega-ins--chat (telega-msg-chat msg))))
-  (telega-ins "\n"))
+(defun telega-ins--message-with-chat-header (msg)
+  "Inserter for messages show chat header."
+  (let ((telega-chat-fill-column (- telega-root-fill-column 10 1)))
+    (telega-ins--with-attrs (list :max telega-root-fill-column
+                                  :face 'telega-msg-heading
+                                  :align 'left)
+      (telega-ins--date (plist-get msg :date))
+      (telega-ins " ")
+      (telega-ins--chat (telega-msg-chat msg))
+      (if telega-msg-heading-whole-line
+          (telega-ins "\n")
+        (telega-ins--move-to-column telega-root-fill-column)))
+    (unless telega-msg-heading-whole-line
+      (telega-ins "\n"))
+
+    (let ((channel-p (eq (telega-chat--type (telega-msg-chat msg))
+                         'channel)))
+      (telega-ins--message msg channel-p nil :no-footer))))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."
@@ -1833,13 +1871,11 @@ If REMOVE-CAPTION is specified, then do not insert caption."
 
 
 ;; Inserter for custom filter button
-(defun telega-ins--filter (custom)
-  "Inserter for the CUSTOM filter button in root buffer."
-  (let* ((name (car custom))
-         (chats (telega-filter-chats (if (member name telega-filter-custom-push-list)
-                                         telega--ordered-chats
-                                       telega--filtered-chats)
-                                     (cdr custom)))
+(defun telega-ins--filter (custom-spec)
+  "Inserter for the custom filter button specified by CUSTOM-SPEC.
+See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
+  (let* ((name (nth 0 custom-spec))
+         (chats (nthcdr 2 custom-spec))
          (active-p (not (null chats)))
          (nchats (length chats))
          (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
@@ -1874,22 +1910,46 @@ If REMOVE-CAPTION is specified, then do not insert caption."
 ;;; Inserters for CONTACTS ewoc buttons
 (defun telega-ins--root-contact (user)
   "Inserter for USER, used for contacts ewoc in rootbuf."
-  (if telega-root-show-avatars
-    (progn
-      (telega-ins--image (telega-user-avatar-image-one-line user))
-      (telega-ins (telega-user--name user 'name)))
+  ;; Show `telegram' symbol if user ever has been chatted with
+  (when telega-root-show-avatars
+    (telega-ins--image (telega-user-avatar-image-one-line user)))
 
-    (telega-ins--contact user 'no-phone))
+  (if-let ((user-chat (telega-chat-get (plist-get user :id) 'offline)))
+      (telega-ins--with-face 'telega-blue
+        (telega-ins telega-symbol-contact))
+    (telega-ins telega-symbol-contact))
+  (telega-ins " ")
 
-  (telega-ins-prefix " @"
-    (telega-ins (telega-tl-str user :username)))
+  (telega-ins (telega-user--name user 'name))
+  (telega-ins--user-online-status user)
+
+  (when-let ((username (telega-tl-str user :username)))
+    (telega-ins " ")
+    (telega-ins--with-face 'telega-username
+      (telega-ins "@" username)))
+
   (telega-ins-prefix " +"
-    (telega-ins (plist-get user :phone_number))))
+    (telega-ins (plist-get user :phone_number)))
+  )
 
 (defun telega-ins--root-contact-2lines (user)
   "Two lines inserter for USER, used for contacts ewoc in rootbuf."
-  (let ((telega-user-show-relationship nil))
-    (telega-ins--user user nil 'show-phone)))
+  (let ((avatar (telega-user-avatar-image user)))
+    ;; first line
+    (telega-ins--image avatar 0
+                       :no-display-if (not telega-user-show-avatars))
+    (let ((telega-root-show-avatars nil))
+      (telega-ins--root-contact user))
+
+    ;; second line
+    (telega-ins "\n")
+    (telega-ins--image avatar 1
+                       :no-display-if (not telega-user-show-avatars))
+
+    (telega-ins--user-status user)
+    (telega-ins-prefix ", "
+      (telega-ins--user-nearby-distance user))
+    t))
 
 
 (defun telega-ins--chat-msg-one-line (chat msg max-width)
@@ -2119,6 +2179,32 @@ Return t."
   (telega-ins "\n")
   t)
 
+(defun telega-ins--chat-nearby-2lines (chat)
+  "Two lines inserter for the nearby CHAT in rootbuf."
+  (let ((avatar (telega-chat-avatar-image chat)))
+    (telega-ins--image avatar 0)
+    (let ((telega-root-show-avatars nil))
+      (telega-ins--chat chat))
+    (telega-ins "\n")
+    (telega-ins--image avatar 1))
+
+  (let ((distance (telega-chat-nearby-distance chat)))
+    (telega-ins--with-face 'shadow
+      (telega-ins (telega-distance-human-readable distance) " away")))
+
+  ;; Online status for private chats
+  (when-let ((user (telega-chat-user chat)))
+    (telega-ins ", ")
+    (telega-ins--user-status user))
+  (telega-ins "\n")
+  t)
+
+(defun telega-ins--chat-last-message (chat)
+  "Inserter for last message in CHAT."
+  (let ((last-msg (plist-get chat :last_message)))
+    (cl-assert last-msg)
+    (telega-ins--message-with-chat-header last-msg)))
+
 (defun telega-ins--root-msg (msg)
   "Inserter for message MSG shown in `telega-root-messages--ewoc'."
   (let ((chat (telega-msg-chat msg))
@@ -2127,6 +2213,19 @@ Return t."
     (telega-ins "  ")
     (let ((max-width (- telega-root-fill-column (current-column))))
       (telega-ins--chat-msg-one-line chat msg max-width))))
+
+(defun telega-ins--root-msg-call (msg)
+  "Inserter for call message MSG in rootbuf."
+  (let ((telega-chat-fill-column (- telega-root-fill-column 10 1)))
+    (telega-ins--message msg nil (lambda (msg)
+                                   (telega-ins--move-to-column
+                                    (/ telega-chat-fill-column 2))
+                                   (telega-ins " ")
+                                   (telega-ins--with-attrs
+                                       (list :align 'right :min 10)
+                                     (telega-ins--date (plist-get msg :date))))
+                         :no-footer)
+    ))
 
 (defun telega-ins--chat-action-bar-button (chat kind)
   "Insert CHAT action bar button specified by KIND.

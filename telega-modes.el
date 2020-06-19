@@ -30,7 +30,9 @@
 (require 'telega-filter)
 
 (defvar tracking-buffers)
+(defvar telega-chatbuf--refresh-point)
 (declare-function telega "telega" (arg))
+(declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight))
 
 (defgroup telega-modes nil
   "Customization for telega minor modes."
@@ -116,6 +118,7 @@
   `(lambda ()
      (interactive)
      (telega nil)
+     (telega-view-default)
      (telega-filters-push ,filter-spec)))
 
 (defun telega-mode-line-tracking ()
@@ -435,6 +438,13 @@ chats matching this chat filter."
              (hr (telega-photo--highres photo))
              (hr-file (telega-file--renew hr :photo))
              (oldbuffer (current-buffer)))
+        ;; Goto corresponding message in the chatbuf
+        (with-telega-chatbuf (telega-msg-chat next-image-msg)
+          (when (telega-chatbuf--goto-msg (plist-get next-image-msg :id))
+            (if-let ((chat-win (get-buffer-window (current-buffer))))
+                (set-window-point chat-win (point))
+              (setq telega-chatbuf--refresh-point (point)))))
+
         (telega-file--download hr-file 32
           (lambda (tl-file)
             (if (not (telega-file--downloaded-p tl-file))

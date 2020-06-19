@@ -28,8 +28,6 @@
 (require 'telega-tdlib)
 (require 'telega-util)
 
-(declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
-
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--info "telega-chat" (chat))
@@ -45,8 +43,6 @@
 (declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
 (declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 
-(declare-function telega-sort-maybe-reorder "telega-sort" (chat event))
-
 
 ;; Info
 (defmacro telega--info-update (tlobj)
@@ -54,6 +50,7 @@
             (cdr (assq (telega--tl-type ,tlobj) telega--info))))
 
 (defun telega--info (tlobj-type tlobj-id &optional locally-p)
+  (cl-assert (not (zerop tlobj-id)))
   (let* ((info-hash (alist-get tlobj-type telega--info))
          (info (gethash tlobj-id info-hash)))
     (unless info
@@ -73,110 +70,8 @@
         (puthash tlobj-id info info-hash)))
     info))
 
-(defun telega--on-updateUser (event)
-  (let ((user (plist-get event :user)))
-    (telega--info-update user)
-
-    ;; Update corresponding private chat button
-    (when-let ((chat (telega-chat-get (plist-get user :id) 'offline)))
-      (telega-root--chat-update
-       chat (telega-sort-maybe-reorder chat event))
-      (telega-describe-chat--maybe-redisplay chat))
-
-    (telega-describe-user--maybe-redisplay (plist-get user :id))
-
-    (run-hook-with-args 'telega-user-update-hook user)))
-
-(defun telega--on-updateBasicGroup (event)
-  (let ((basicgroup (plist-get event :basic_group)))
-    (telega--info-update basicgroup)
-
-    (when telega--sort-criteria
-      (when-let ((chat (cl-find basicgroup telega--ordered-chats
-                                :test 'eq :key #'telega-chat--info)))
-        (telega-sort-maybe-reorder chat event))
-
-      ;; TODO: chatbuf might need to be updated, status might be
-      ;; changed due to someone removed me from basic group
-      )))
-
-(defun telega--on-updateSupergroup (event)
-  "Handle supergroup update EVENT."
-  (let* ((supergroup (plist-get event :supergroup))
-         (old-my-status
-          (plist-get (telega--info 'supergroup (plist-get supergroup :id)
-                                   'locally) :status))
-         (me-was-owner (and old-my-status (telega--tl-type old-my-status)
-                            'chatMemberStatusCreator)))
-    (telega--info-update supergroup)
-
-    (when-let ((chat (cl-find supergroup telega--ordered-chats
-                              :test 'eq :key 'telega-chat--supergroup)))
-      ;; NOTE: notify if someone transferred ownership to me
-      (when (and (not me-was-owner)
-                 (telega-chat-match-p chat 'me-is-owner))
-        (message "telega: me is now owner of the %s"
-                 (telega-chat-title-with-brackets chat " ")))
-
-      (when telega--sort-criteria
-        (telega-sort-maybe-reorder chat event))
-
-      (telega-describe-chat--maybe-redisplay chat))
-    ))
-
-(defun telega--on-updateSecretChat (event)
-  (let ((secretchat (plist-get event :secret_chat)))
-    (telega--info-update secretchat)
-
-    ;; update corresponding secret chat button
-    (when-let ((chat (cl-find secretchat
-                              (telega-filter-chats
-                               telega--ordered-chats '(type secret))
-                              :test 'eq :key #'telega-chat--info)))
-      (telega-root--chat-update chat)
-      (telega-describe-chat--maybe-redisplay chat))))
 
 ;; FullInfo
-(defun telega--on-updateUserFullInfo (event)
-  (let ((user-id (plist-get event :user_id))
-        (ufi (cdr (assq 'user telega--full-info))))
-    (puthash user-id (plist-get event :user_full_info) ufi)
-
-    ;; Might affect root's buffer view
-    ;; because for example `:is_blocked' might be used
-    (when-let ((chat (telega-chat-get user-id 'offline)))
-      (telega-root--chat-update
-       chat (telega-sort-maybe-reorder chat event))
-      (telega-describe-chat--maybe-redisplay chat))
-
-    (telega-describe-user--maybe-redisplay user-id)
-    ))
-
-(defun telega--on-updateBasicGroupFullInfo (event)
-  (let ((ufi (cdr (assq 'basicGroup telega--full-info))))
-    (puthash (plist-get event :basic_group_id)
-             (plist-get event :basic_group_full_info) ufi)))
-
-(defun telega--on-updateSupergroupFullInfo (event)
-  (let ((ufi (cdr (assq 'supergroup telega--full-info))))
-    (puthash (plist-get event :supergroup_id)
-             (plist-get event :supergroup_full_info) ufi)
-    ;; Might affect root's buffer view
-    ;; TODO: chatbuf might need to be updated, since for example
-    ;; pinned message might change
-
-    ;; Check number of the admins has been changed, it might be not up
-    ;; to date, see https://github.com/tdlib/td/issues/1040
-    (when-let ((chat (telega-chat-get
-                      (string-to-number
-                       (format "-100%d" (plist-get event :supergroup_id)))
-                      'offline)))
-      (with-telega-chatbuf chat
-        (unless (equal (plist-get ufi :administrator_count)
-                       (length telega-chatbuf--administrators))
-          (telega-chat--update-administrators chat))))
-    ))
-
 (defun telega--full-info (tlobj &optional _offline _callback)
   "Get FullInfo for the TLOBJ.
 TLOBJ could be one of: user, basicgroup or supergroup."
@@ -384,7 +279,8 @@ REDISPLAY-FUNC - function to call if something changes in user info."
                   ":\n")
       (dolist (chat chats-in-common)
         (telega-ins "    ")
-        (telega-button--insert 'telega-chat chat)
+        (telega-button--insert 'telega-chat chat
+          :inserter telega-inserter-for-chat-button)
         (telega-ins "\n")))
 
     ;; TODO: view shared media as thumbnails
@@ -516,6 +412,23 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
         ;; I18N: scam_badge -> SCAM
         (telega-ins (telega-i18n "scam_badge")))
       (telega-ins "\n"))
+
+    ;; Linked chat
+    (when (plist-get supergroup :has_linked_chat)
+      (telega-ins "Linked Chat: ")
+      (telega-button--insert 'telega-chat
+          (telega-chat-get (plist-get full-info :linked_chat_id))
+        :inserter #'telega-ins--chat)
+      (telega-ins "\n"))
+
+    ;; Location based chats
+    (when (plist-get supergroup :has_location)
+      (let* ((chat-loc (plist-get full-info :location))
+             (loc (plist-get chat-loc :location))
+             (address (telega-tl-str chat-loc :address)))
+        (telega-ins "Location: " (telega-location-to-string loc) "\n")
+        (when address
+          (telega-ins "Address: " address "\n"))))
 
     (telega-ins "Status: " (substring member-status-name 16))
     ;; Buttons for the owner of the group

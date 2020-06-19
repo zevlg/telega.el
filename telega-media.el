@@ -31,9 +31,8 @@
 
 ;;; Code:
 (require 'telega-core)
-(require 'telega-server)
+(require 'telega-tdlib)
 
-(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 
@@ -43,13 +42,6 @@
 
 
 ;;; Files downloading/uploading
-(defun telega--getFile (file-id &optional callback)
-  (declare (indent 1))
-  (telega-server--call
-   (list :@type "getFile"
-         :file_id file-id)
-   callback))
-
 (defun telega-file-get (file-id)
   "Return file associated with FILE-ID."
   (or (gethash file-id telega--files)
@@ -77,39 +69,6 @@
                   (propertize "FILE-UPDATE" 'face 'bold)
                   (plist-get file :id) (length callbacks) (length left-cbs))
     (puthash (plist-get file :id) left-cbs telega--files-updates)))
-
-(defun telega--on-updateFile (event)
-  "File has been updated, call all the associated hooks."
-  (telega-file--update (plist-get event :file)))
-
-(defun telega--downloadFile (file-id &optional priority callback)
-  "Asynchronously downloads a file by its FILE-ID from the cloud.
-`telega--on-updateFile' will be called to notify about the
-download progress and successful completion of the download.
-PRIORITY is integer in range 1-32 (higher downloads faster), default is 1.
-CALLBACK is callback to call with single argument - file, by
-default `telega-file--update' is called."
-  (declare (indent 2))
-  (telega-server--call
-   (list :@type "downloadFile"
-         :file_id file-id
-         :priority (or priority 1))
-   (or callback 'telega-file--update)))
-
-(defun telega--cancelDownloadFile (file-id &optional only-if-pending)
-  "Stop downloading the file denoted by FILE-ID.
-If ONLY-IF-PENDING is non-nil then stop downloading only if it
-hasn't been started, i.e. request hasn't been sent to server."
-  (telega-server--send
-   (list :@type "cancelDownloadFile"
-         :file_id file-id
-         :only_if_pending (or only-if-pending :false))))
-
-(defun telega--deleteFile (file-id)
-  "Delete file from cache."
-  (telega-server--send
-   (list :@type "deleteFile"
-         :file_id file-id)))
 
 (defun telega-file--callback-wrap (callback check-fun)
   "Wrapper for CALLBACK.
@@ -157,22 +116,6 @@ remove the callback as well."
                               (telega-file--downloading-p downfile)))
                  (telega-file--download downfile priority callback))))))
     ))
-
-(defun telega--uploadFile (filename &optional file-type priority)
-  "Asynchronously upload file denoted by FILENAME.
-FILE-TYPE is one of `photo', `animation', etc
-PRIORITY is same as for `telega-file--download'."
-  (telega-server--call
-   (list :@type "uploadFile"
-         :file (list :@type "inputFileLocal" :path filename)
-         :file_type (list :@type (format "fileType%S" (or file-type 'Unknown)))
-         :priority (or priority 1))))
-
-(defun telega--cancelUploadFile (file-id)
-  "Stop uploading file denoted by FILE-ID."
-  (telega-server--send
-   (list :@type "cancelUploadFile"
-         :file_id file-id)))
 
 (defun telega-file--upload-internal (file &optional callback)
   "Monitor FILE uploading progress by installing CALLBACK."
@@ -369,8 +312,11 @@ CHEIGHT is the height in chars to use (default=1)."
   (unless cheight
     (setq cheight 1))
   (if (telega-file--downloaded-p file)
-      (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight)))
-        (create-image (telega--tl-get file :local :path)
+      (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight))
+            (image-filename (telega--tl-get file :local :path)))
+        (create-image (if (string-empty-p image-filename)
+                          (telega-etc-file "non-existing.jpg")
+                        image-filename)
                       (when (fboundp 'imagemagick-types) 'imagemagick) nil
                       :height (telega-chars-xheight cheight)
                       :scale 1.0
@@ -589,14 +535,22 @@ CHEIGHT specifies avatar height in chars, default is 2."
   "Avatar creator for one line use."
   (telega-avatar--create-image chat-or-user file 1))
 
-(defun telega-symbol-emojify (emoji)
+(defun telega-symbol-emojify (emoji &optional image-file)
   "Attach `display' property with emoji svg to EMOJI string.
 Typical usage is to emojify `telega-symbol-XXX' values.
-Like (telega-symbol-emojify telega-symbol-pin)."
-  (add-text-properties 0 (length emoji)
-                       (list 'rear-nonsticky '(display)
-                             'display (telega-emoji-create-svg emoji))
-                       emoji))
+Like (telega-symbol-emojify telega-symbol-pin).
+Optionally IMAGE-FILE could be used."
+  (let ((image (if image-file
+                   (create-image image-file nil nil
+                                 :scale 1.0 :ascent 'center
+                                 :mask 'heuristic
+                                 :width (telega-chars-xwidth
+                                         (string-width emoji)))
+                 (telega-emoji-create-svg emoji))))
+    (add-text-properties 0 (length emoji)
+                         (list 'rear-nonsticky '(display)
+                               'display image)
+                         emoji)))
 
 
 ;; Location
@@ -624,8 +578,11 @@ Like (telega-symbol-emojify telega-symbol-pin)."
     ;;       map-loc/user-loc, they can differ
     ;; 
     ;; TODO: show other users close enough to `:user-id'
-    (let* ((user (telega-user--get (plist-get map :user-id)))
-           (user-photo (telega--tl-get user :profile_photo :small)))
+    (when-let* ((user-id (plist-get map :user-id))
+                (user (unless (zerop user-id)
+                        (telega-user--get user-id)))
+                (user-photo (when user
+                              (telega--tl-get user :profile_photo :small))))
       (when (telega-file--downloaded-p user-photo)
         (let* ((photofile (telega--tl-get user-photo :local :path))
                (img-type (image-type-from-file-name photofile))

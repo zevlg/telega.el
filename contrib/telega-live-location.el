@@ -41,7 +41,14 @@
 (defun telega-live-location--on-geo-location-changed (loc)
   "Hook to be called when the location is changed.
 LOC should be the new location."
+  (setq telega-my-location (telega-live-location--geo-loc geo-loc))
+
   (when (telega-server-live-p)
+    ;; Share my location to Telegram in case `:is_location_visible'
+    ;; option is used
+    (when (plist-get telega--options :is_location_visible)
+      (telega--setLocation telega-my-location))
+
     (dolist (msg (telega--getActiveLiveLocationMessages))
       (telega--editMessageLiveLocation
        (telega-msg-chat msg) msg
@@ -80,14 +87,9 @@ Return live location from geo module, otherwise fallback to
                              #'telega-live-location-attach-live-geo-location)
                        'append))
 
-        ;; Share my location to Telegram in case
-        ;; `:is_location_visible' option is used
-        (when (plist-get telega--options :is_location_visible)
-          (when-let ((geo-loc (geo-last-location)))
-            (setq telega-my-location
-                  (telega-live-location--geo-loc geo-loc))
-            (telega--setLocation telega-my-location)
-            (message "Telega: `telega-my-location' -> %S" telega-my-location)))
+        ;; Update location on start
+        (when-let ((geo-loc (geo-last-location)))
+          (telega-live-location--on-geo-location-changed geo-loc))
         )
 
     (remove-hook 'geo-data-changed-hook

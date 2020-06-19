@@ -27,8 +27,6 @@
 (require 'telega-core)
 (require 'telega-info)
 
-(declare-function telega-root--chat-update "telega-root" (chat &optional for-reorder))
-
 (declare-function telega--getGroupsInCommon "telega-chat" (with-user))
 (declare-function telega--createPrivateChat "telega-chat" (user))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -138,9 +136,23 @@ Default is: `full'"
           (setq name (concat fn (if (string-empty-p name) "" " ") name))))
       name)))
 
-(defun telega-user--seen (user)
-  "Return last seen status for the USER."
-  (substring (plist-get (plist-get user :status) :@type) 10))
+(defun telega-user--seen (user &optional as-number)
+  "Return last seen status for the USER.
+If AS-NUMBER is specified, return online status as number:
+0 - Unknown
+1 - Empty
+2 - Offline
+3 - LastMonth
+4 - LastWeek
+5 - Recently
+6 - Online."
+  (let ((online-status
+         (substring (plist-get (plist-get user :status) :@type) 10)))
+    (if as-number
+        (length (member online-status
+                        '("Online" "Recently" "LastWeek"
+                          "LastMonth" "Offline" "Empty")))
+      online-status)))
 
 (defun telega-user-color (user)
   "Return color list associated with USER."
@@ -155,26 +167,6 @@ Default is: `full'"
                                         user-title 'dark))))))
         (plist-put user :color colors)
         colors)))
-
-(defun telega--on-updateUserStatus (event)
-  "User status has been changed."
-  (let* ((user-id (plist-get event :user_id))
-         (user (telega-user--get user-id))
-         (status (plist-get event :status)))
-    (plist-put user :status status)
-    ;; NOTE: For online status, set special USER property with value
-    ;; of time last seen online
-    (when (eq (telega--tl-type status) 'userStatusOnline)
-      (plist-put user :telega-last-online (telega-time-seconds)))
-
-    ;; Update chatbuf's modeline and root as well
-    (unless (telega-me-p user)
-      (when-let ((chat (telega-chat-get user-id 'offline)))
-        (with-telega-chatbuf chat
-          (telega-chatbuf-mode-line-update))
-        (telega-root--chat-update chat)))
-
-    (run-hook-with-args 'telega-user-update-hook user)))
 
 (defun telega-user--chats-in-common (with-user)
   "Return CHATS in common WITH-USER."
@@ -236,12 +228,27 @@ If UNBLOCK-P is specified, then unblock USER."
            (format "Really block user %s? " (telega-user--name user)))
       (telega--blockUser user))))
 
+(defun telega-user> (user1 user2)
+  "Compare users using active sort criteria.
+If both users has corresponding chats, then use `telega-chat>'.
+Otherwise fallback to `telega-user-cmp-by-status'."
+  (let ((chat1 (telega-chat-get (plist-get user1 :id) 'offline))
+        (chat2 (telega-chat-get (plist-get user2 :id) 'offline)))
+    (if (and chat1 chat2)
+        (telega-chat> chat1 chat2)
+      (telega-user-cmp-by-status user1 user2))))
+  
 (defun telega-user-cmp-by-status (user1 user2)
-  "Function to sort users by their online status."
+  "Function to sort users by their online status.
+Return non-nil if USER1 > USER2."
   (cond ((telega-user-online-p user1) t)
         ((telega-user-online-p user2) nil)
-        (t (> (or (plist-get user1 :telega-last-online) 0)
-              (or (plist-get user2 :telega-last-online) 0)))))
+        (t (let ((u1-last-online (plist-get user1 :telega-last-online))
+                 (u2-last-online (plist-get user2 :telega-last-online)))
+             (cond (u1-last-online (>= u1-last-online (or u2-last-online 0)))
+                   (u2-last-online nil)
+                   (t (>= (telega-user--seen user1 'as-number)
+                          (telega-user--seen user2 'as-number))))))))
 
 (defun telega-user-as-contact (user)
   "Return USER as \"contact\"."
@@ -254,42 +261,6 @@ If UNBLOCK-P is specified, then unblock USER."
 
 
 ;;; Contacts
-(defun telega-contact-root--pp (contact)
-  "Pretty printer for CONTACT button shown in root buffer.
-CONTACT is some user you have exchanged contacs with."
-  (telega-button--insert 'telega-user contact
-    :inserter telega-inserter-for-root-contact-button
-    :action 'telega-user-chat-with)
-  (telega-ins "\n"))
-
-(defun telega--getContacts ()
-  "Return users that are in contact list."
-  (mapcar 'telega-user--get
-          (plist-get (telega-server--call
-                      (list :@type "getContacts"))
-                     :user_ids)))
-
-(defun telega--removeContacts (&rest user-ids)
-  "Remove users determined by USER-IDS from contacts."
-  (telega-server--call
-   (list :@type "removeContacts"
-         :user_ids (apply 'vector user-ids))))
-
-(defun telega--searchContacts (query &optional limit)
-  "Search contacts for already chats by QUERY."
-  (mapcar 'telega-user--get
-          (plist-get (telega-server--call
-                      (list :@type "searchContacts"
-                            :query query
-                            :limit (or limit 200)))
-                     :user_ids)))
-
-(defun telega--importContacts (&rest contacts)
-  "Import CONTACTS into contacts list."
-  (telega-server--call
-   (list :@type "importContacts"
-         :contacts (apply 'vector contacts))))
-
 (defun telega-contact-add (phone &optional name)
   "Add user by PHONE to contact list."
   (interactive (list (read-string "Phone number: ")

@@ -1476,7 +1476,7 @@
  (":sun-with-small-cloud:" . "🌤")
  (":lion-face:" . "🦁")
  (":tongue:" . "👅")
- (":arrow-down:" . "⬇")
+ (":arrow-down:" . "⬇\ufe0f")
  (":crescent-moon:" . "🌙")
  (":shallow-pan-of-food:" . "🥘")
  (":tomato:" . "🍅")

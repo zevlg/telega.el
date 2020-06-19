@@ -275,6 +275,13 @@ SYMBOL could be a cons cell of codepoints, specifying the range."
   "Return current time as unix timestamp."
   (floor (time-to-seconds)))
 
+(defun telega-distance-human-readable (meters)
+  "Convert METERS to human readable string."
+  (cond ((not (integerp meters)) "unknown")
+        ((> meters 10000) (format "%d km" (/ meters 1000)))
+        ((>= meters 1000) (format "%.1f km" (/ meters 1000.0)))
+        (t (format "%d m" meters))))
+
 (defun telega-duration-human-readable (seconds &optional n)
   "Convert SECONDS to human readable string.
 If N is given, then use only N significant components.
@@ -463,7 +470,7 @@ Use `telega-entity-type-XXX' faces as triggers."
         entities)
   text)
 
-(defun telega--entities-from-faces (text)
+(defun telega--entities-from-faces (_text)
   "Extract TEXT entities using `telega-entity-type-XXX' as triggers."
   )
 
@@ -550,7 +557,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
            (plist-get location :longitude))
           "E"))
 
-(defun telega-read-location (prompt &optional initial-loc default-loc)
+(defun telega-read-location (prompt &optional initial-loc default-loc history)
   "Read location with PROMPT.
 INITIAL-LOC - location converted to INITIAL-INPUT argument to `read-string'.
 DEFAULT-LOC - location converted to DEFAULT-VALUE argument to `read-string'.
@@ -566,7 +573,7 @@ Return location as plist."
                           (concat prompt
                                   (when default-value
                                     (concat " [" default-value "]")) ": ")
-                          initial-input nil default-value)))
+                          initial-input history default-value)))
              (setq loc (mapcar #'string-to-number (split-string locstr ",")))
              (unless (and (numberp (car loc)) (numberp (cadr loc)))
                (message "Invalid location `%s', use: <LAT>,<LONG> format" locstr)
@@ -649,7 +656,8 @@ TEST function is run with two arguments - ITEM and NODE-VALUE.
 Optionally KEY can be specified to get KEY from node value.
 START-NODE is node to start from, default is first node.
 ITER-FUNC is one of `ewoc--node-next' or `ewoc--node-prev'.
-Default is `ewoc--node-next'."
+Default is `ewoc--node-next'.
+Return EWOC node, nil if not found."
   (unless iter-func
     (setq iter-func #'ewoc--node-next))
   (cl-assert (memq iter-func '(ewoc--node-next ewoc--node-prev)))
@@ -668,9 +676,26 @@ Default is `ewoc--node-next'."
           (cl-return-from 'ewoc-node-found node))
         (setq node (funcall iter-func dll node))))))
 
+(defun telega-ewoc-map-refresh (ewoc map-function &rest args)
+  "Refresh nodes if MAP-FUNCTION return non-nil.
+If MAP-FUNCTION returns `stop' then stop refreshing."
+  (declare (indent 1))
+  (ewoc--set-buffer-bind-dll-let* ewoc
+      ((footer (ewoc--footer ewoc))
+       (pp (ewoc--pretty-printer ewoc))
+       (node (ewoc--node-nth dll 1)))
+    (save-excursion
+      (while (not (eq node footer))
+        (when-let ((refresh-p (apply map-function (ewoc--node-data node) args)))
+          (ewoc--refresh-node pp node dll)
+          (when (eq refresh-p 'stop)
+            (setq node (ewoc--node-prev dll footer))))
+        (setq node (ewoc--node-next dll node))))))
+
 (defun telega-ewoc--find-if (ewoc predicate &optional key start-node iter-func)
   "Find EWOC's node by PREDICATE run on node's data.
 KEY, START-NODE and ITER-FUNC are passed directly to `telega-ewoc--find'."
+  (declare (indent 1))
   (telega-ewoc--find
    ewoc nil (lambda (_ignored node-value)
               (funcall predicate node-value))
@@ -716,6 +741,32 @@ Header and Footer are not deleted."
         (= (ewoc-location (ewoc-nth ewoc 0))
            (ewoc-location (ewoc--footer ewoc))))))
 
+(defun telega-ewoc--move-node (ewoc node before-node
+                                    &optional save-point-p)
+  "Move EWOC's NODE before BEFORE-NODE node, saving point at NODE position.
+If NODE and BEFORE-NODE are the same, then just invalidate the node.
+If BEFORE-NODE is nil, then move NODE to the bottom.
+Save point only if SAVE-POINT is non-nil."
+  (let* ((node-value (ewoc--node-data node))
+         (button (button-at (point)))
+         (point-off (and button save-point-p
+                         (eq (button-get button :value) node-value)
+                         (- (point) (button-start button)))))
+    (telega-save-excursion
+      (if (eq node before-node)
+          (ewoc-invalidate ewoc node)
+
+        (ewoc-delete ewoc node)
+        (setq node
+              (if before-node
+                  (ewoc-enter-before ewoc before-node node-value)
+                (ewoc-enter-last ewoc node-value)))))
+
+    (when point-off
+      (goto-char (+ (ewoc-location node) point-off))
+      (dolist (win (get-buffer-window-list))
+        (set-window-point win (point))))))
+  
 
 ;; Emoji
 (defvar telega-emoji-alist nil)

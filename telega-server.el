@@ -29,6 +29,8 @@
 (require 'telega-core)
 (require 'telega-customize)
 
+(declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
+
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
 
@@ -61,6 +63,11 @@ Used to make deferred calls.")
 (defvar telega-server--inhibit-events nil
   "List of events to ignore.
 Bind this to avoid processing some events, while executing something.")
+
+(defvar telega-server--idle-timer nil
+  "Timer to run `telega-handle-emacs-idle' after some data is received.")
+(defvar telega-server-idle-delay 0.1
+  "Idle delay to pross dirtiness.")
 
 (defun telega--on-deferred-event (event)
   (setq telega-server--deferred-events
@@ -116,8 +123,9 @@ Otherwise query user about building flags."
               (concat
                (when (y-or-n-p "Build `telega-server' with VOIP support? ")
                  " WITH_VOIP=t")
-               (when (y-or-n-p "Build `telega-server' with TON support? ")
-                 " WITH_TON=t"))))
+               ;; NOTE: TON is postponed, see https://t.me/durov/116
+               ;; So do not ask for TON support
+               )))
       (unless (zerop
                (shell-command
                 (concat "make " build-flags " "
@@ -231,12 +239,33 @@ Return parsed command."
          (telega-debug "%s %s: %S" (propertize "IN" 'face 'bold) cmd value)
          (error "Unknown cmd from telega-server: %s" cmd))))
 
+(defun telega-server--idle-timer-function ()
+  "Function to be called when telega-server gets idle."
+  (setq telega-server--idle-timer nil)
+
+  ;; Redisplay dirty stuff
+  ;; - Redisplaying chats may cause filters became dirty, so redisplay
+  ;;   chats first before filters
+  (dolist (dirty-chat (prog1 telega--dirty-chats
+                        (setq telega--dirty-chats nil)))
+    (apply #'telega-chat--update dirty-chat))
+
+  (telega-filters--redisplay))
+
 (defun telega-server--parse-commands ()
   "Parse all available events from telega-server."
   (goto-char (point-min))
   (let (cmd-val)
     (while (setq cmd-val (telega-server--parse-cmd))
-      (apply 'telega-server--dispatch-cmd cmd-val))))
+      (apply 'telega-server--dispatch-cmd cmd-val))
+
+    (if telega-server--idle-timer
+        (timer-set-time telega-server--idle-timer
+                        (time-add nil (/ telega-server-idle-delay 2)))
+      (setq telega-server--idle-timer
+            (run-with-timer telega-server-idle-delay nil
+                            #'telega-server--idle-timer-function)))
+    ))
 
 (defun telega-server--filter (proc output)
   "Filter for the telega-server process."
@@ -376,6 +405,10 @@ COMMAND is passed directly to `telega-server--send'."
 (defun telega-server-kill ()
   "Kill the telega-server process."
   (interactive)
+  (when telega-server--idle-timer
+    (cancel-timer telega-server--idle-timer)
+    (setq telega-server--idle-timer nil))
+
   (when (buffer-live-p telega-server--buffer)
     (kill-buffer telega-server--buffer)
     (run-hooks 'telega-kill-hook)))
