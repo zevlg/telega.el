@@ -44,9 +44,9 @@
 
 ;;; Code:
 
-(defvar telega-root--ewoc)
-
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
+
+(declare-function telega-root-view--resort "telega-root")
 
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
@@ -159,6 +159,7 @@ overwritting currently active one."
     (setq telega--ordered-chats
           (sort telega--ordered-chats #'telega-chat>))
 
+    (telega-filters--redisplay-footer)
     (telega-root-view--resort)
     ))
 

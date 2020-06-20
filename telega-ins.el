@@ -133,6 +133,7 @@ ommit image display if value is for this property is non-nil."
 PROPS - additional image properties.
 SLICE-FUNC - function called after inserting slice. Called with
 single argument - slice number, starting from 0."
+  (declare (indent 2))
   (if (or (not telega-use-images)
           (not (display-graphic-p)))
       (telega-ins "<IMAGE>")

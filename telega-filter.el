@@ -272,7 +272,15 @@ Return one of \"Main\" or \"Archive\"."
   (when (listp telega-filters--dirty)
     (setq telega-filters--dirty
           (cl-pushnew (car custom-spec) telega-filters--dirty :test #'equal))))
-    
+
+(defun telega-filters--redisplay-footer ()
+  "Redisplay custom filters footer.
+Used when active sort criteria changes."
+  (with-telega-root-buffer
+    (save-excursion
+      (telega-ewoc--set-footer
+       telega-filters--ewoc (telega-filters--footer)))))
+  
 (defun telega-filters--redisplay ()
   "Redisplay custom filters buttons."
   (when telega-filters--dirty
@@ -577,14 +585,14 @@ Use `telega-filter-by-name' for fuzzy searching."
 ;;   {{{fundoc(telega--filter-nearby, 2)}}}
 (define-telega-filter nearby (chat)
   "Matches if chat is nearby `telega-my-location'."
-  (memq chat telega--search-chats))
+  (telega-chat-nearby-find (plist-get chat :id)))
 
 (defun telega-filter-by-nearby ()
   "Filter chats nearby `telega-my-location'."
   (interactive)
   (unless telega-my-location
     (user-error "`telega-my-location' is unset, can't search nearby chats"))
-  (setq telega--search-chats (telega--searchChatsNearby telega-my-location))
+  (telega--searchChatsNearby telega-my-location)
   (telega-filter-add 'nearby))
 
 ;; - (custom ~NAME~), {{{where-is(telega-filter-by-custom,telega-root-mode-map)}}} ::

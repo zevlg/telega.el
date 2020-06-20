@@ -810,6 +810,26 @@ LIMIT - limit number of photos (default=100)."
          :profile_photo_id profile-photo-id)
    (or callback 'ignore)))
 
+(defun telega--setName (first-name last-name)
+  "Set me name to FIRST-NAME and LAST-NAME."
+  (telega-server--send
+   (list :@type "setName"
+         :first_name (or first-name "")
+         :last_name (or last-name ""))))
+
+(defun telega--setBio (bio)
+  "Set me bio to BIO."
+  (telega-server--send
+   (list :@type "setBio"
+         :bio (or bio ""))))
+
+(defun telega--setUsername (username)
+  "Set me username to USERNAME.
+Empty string to unset username."
+  (telega-server--send
+   (list :@type "setUsername"
+         :username (or username ""))))
+
 (defun telega--setChatPhoto (chat filename &optional callback)
   "Changes the photo of a CHAT.
 Requires `:can_change_info' rights."

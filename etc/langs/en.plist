@@ -14,6 +14,9 @@
   :value "Phone:")
  ("lng_profile_bio"
   :value "Bio:")
+ ("lng_settings_about_bio"
+  :value "Any details such as age, occupation or city.
+Example: 23 y.o. designer from San Francisco")
  ("lng_profile_common_groups"
   :zero_value "No groups in common"
   :one_value "{count} group in common"
@@ -218,4 +221,9 @@
   :value "Next input will be scheduled")
  ("telega_random_dice"
   :value "Random Dice")
+
+ ("lng_settings_faq"
+  :value "Telegram FAQ")
+ ("lng_settings_ask_question"
+  :value "Ask a Question")
  )

@@ -802,7 +802,8 @@ Activates button if cursor enter, deactivates if leaves."
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)
   "Show help message for BUTTON defined by `:help-echo' property."
-  (let ((help-echo (button-get button :help-echo)))
+  (let ((help-echo (or (button-get button :help-echo)
+                       (button-get button 'help-echo))))
     (when (functionp help-echo)
       (setq help-echo (funcall help-echo (button-get button :value))))
     (when help-echo

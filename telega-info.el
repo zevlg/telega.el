@@ -123,6 +123,37 @@ REDISPLAY-FUNC is called if TTL setting is changed."
     (telega-ins--with-face 'shadow
       (telega-ins-i18n "self_destruct_description"))))
 
+(defun telega-ins--user-profile-photos (user &optional redisplay-func)
+  "Insert USER's profile photos."
+  (declare (indent 1))
+  (when-let ((profile-photos (telega--getUserProfilePhotos user)))
+    (dolist (photo profile-photos)
+      (telega-button--insert 'telega photo
+        :inserter (lambda (photo-val)
+                    (telega-ins--image
+                     (telega-photo--image
+                      photo-val telega-user-photo-maxsize)))
+        :action 'telega-photo--open
+        'keymap
+        (when (telega-me-p user)
+          (let ((pp-del (lambda (profile-photo)
+                          (interactive (list (button-get
+                                              (button-at (point)) :value)))
+                          (telega--deleteProfilePhoto
+                              (plist-get profile-photo :id)
+                            (when redisplay-func
+                              (lambda (_ignored)
+                                (telega-save-cursor
+                                  (funcall redisplay-func)))))))
+                (map (make-sparse-keymap)))
+            (define-key map (kbd "DEL") pp-del)
+            (define-key map (kbd "d") pp-del)
+            map))
+        'help-echo (when (telega-me-p user)
+                     "Press `d' to delete profile photo"))
+      (telega-ins " "))
+    (telega-ins "\n")))
+
 (defun telega-info--insert-user (user &optional chat redisplay-func)
   "Insert USER info into current buffer.
 REDISPLAY-FUNC - function to call if something changes in user info."
@@ -181,33 +212,7 @@ REDISPLAY-FUNC - function to call if something changes in user info."
     (telega-ins "\n")
 
     ;; Clickable user's profile photos
-    (when-let ((profile-photos (telega--getUserProfilePhotos user)))
-      (dolist (photo profile-photos)
-        (telega-button--insert 'telega photo
-          :inserter (lambda (photo-val)
-                      (telega-ins--image
-                       (telega-photo--image
-                        photo-val telega-user-photo-maxsize)))
-          :action 'telega-photo--open
-          'local-keymap
-          (when (telega-me-p user)
-            (let ((pp-del (lambda (profile-photo)
-                            (interactive (list (button-get
-                                                (button-at (point)) :value)))
-                            (telega--deleteProfilePhoto
-                                (plist-get profile-photo :id)
-                              (when redisplay-func
-                                (lambda (_ignored)
-                                  (telega-save-cursor
-                                    (funcall redisplay-func)))))))
-                  (map (make-sparse-keymap)))
-              (define-key map (kbd "DEL") pp-del)
-              (define-key map (kbd "d") pp-del)
-              map))
-          'help-echo (when (telega-me-p user)
-                       "Press `d' to delete profile photo"))
-        (telega-ins " "))
-      (telega-ins "\n"))
+    (telega-ins--user-profile-photos user redisplay-func)
 
     (telega-ins-fmt "Id: %s\n"
       (if telega-debug
@@ -244,7 +249,7 @@ REDISPLAY-FUNC - function to call if something changes in user info."
           (t (telega-ins (telega-user--seen user))))
     (telega-ins "\n")
 
-    (when-let ((bio (telega-tl-str user :bio)))
+    (when-let ((bio (telega-tl-str full-info :bio)))
       ;; I18N: profile_bio -> Bio:
       (telega-ins--labeled (concat (telega-i18n "profile_bio") " ") nil
         (telega-ins bio))

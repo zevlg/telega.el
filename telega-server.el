@@ -29,7 +29,7 @@
 (require 'telega-core)
 (require 'telega-customize)
 
-(declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
+(declare-function telega-chats-dirty--update "telega-tdlib-events")
 
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
@@ -243,13 +243,10 @@ Return parsed command."
   "Function to be called when telega-server gets idle."
   (setq telega-server--idle-timer nil)
 
-  ;; Redisplay dirty stuff
-  ;; - Redisplaying chats may cause filters became dirty, so redisplay
-  ;;   chats first before filters
-  (dolist (dirty-chat (prog1 telega--dirty-chats
-                        (setq telega--dirty-chats nil)))
-    (apply #'telega-chat--update dirty-chat))
-
+  ;; Update dirty stuff
+  ;; - Updating chats may cause filters became dirty, so update chats
+  ;;   first before redisplaying filters
+  (telega-chats-dirty--update)
   (telega-filters--redisplay))
 
 (defun telega-server--parse-commands ()

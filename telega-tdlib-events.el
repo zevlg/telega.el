@@ -78,6 +78,12 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
       (setq telega--dirty-chats
             (cons (cons chat events) telega--dirty-chats)))))
 
+(defun telega-chats-dirty--update ()
+  "Update dirty chats."
+  (dolist (dirty-chat (prog1 telega--dirty-chats
+                        (setq telega--dirty-chats nil)))
+    (apply #'telega-chat--update dirty-chat)))
+
 
 (defun telega--on-ok (_event)
   "On ok result from command function call."
@@ -393,7 +399,6 @@ NOTE: we store the number as custom chat property, to use it later."
     ;; might want to remove them from `telega--ordered-chats' list
     ;; for faster processing, but keep it in chats hash
     (telega-status--set nil "")       ;reset aux status
-    (message "Fetched all chats DONE: %S" (float-time))
 
     (run-hooks 'telega-chats-fetched-hook)))
 
@@ -408,6 +413,8 @@ NOTE: we store the number as custom chat property, to use it later."
 
 ;; Messages updates
 (defun telega-message--update (msg)
+  "Message MSG has been updated."
+  (telega-root-view--update :on-message-update msg)
   )
 
 (defalias 'telega--on-message 'ignore)

@@ -225,13 +225,14 @@ By default LIMITS is `telega-photo-maxsize'."
              (th (plist-get thumb :height)))
         ;; NOTE: By default (not ret) use any downloadable file, even
         ;; if size does not fits
+        ;; Select sizes larger then limits, because downscaling works
+        ;; betten then upscaling
         (when (and (or (telega-file--downloaded-p thumb-file)
                        (telega-file--can-download-p thumb-file))
                    (or (not ret)
                        (and (>= tw lim-xwidth)
-                            (<= (* th (/ lim-xwidth tw 1.0)) lim-xheight))
-                       (and (>= th lim-xheight)
-                            (<= (* tw (/ lim-xheight th 1.0)) lim-xwidth))))
+                            (>= th lim-xheight))
+                       ))
           (setq ret thumb))))
     ret))
 

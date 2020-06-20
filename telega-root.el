@@ -42,6 +42,8 @@
 (declare-function tracking-mode "tracking" (&optional arg))
 
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
+(declare-function telega-chats-dirty--update "telega-tdlib-events")
+(declare-function telega-chat--mark-dirty "telega-tdlib-events" (chat &rest events))
 
 (declare-function telega-chats--kill-em-all "telega-chat")
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
@@ -163,7 +165,6 @@ Rest elements are ewoc specs.")
     (define-key map (kbd "v t") 'telega-view-topics)
     (define-key map (kbd "v T") 'telega-view-top)
     (define-key map (kbd "v S") 'telega-view-settings)
-    (define-key map (kbd "v u") 'telega-view-users)
     (define-key map (kbd "v c") 'telega-view-contacts)
     (define-key map (kbd "v C") 'telega-view-calls)
     (define-key map (kbd "v l") 'telega-view-last-messages)
@@ -234,17 +235,6 @@ Terminate telega-server and kill all chat buffers."
 (defun telega-root--buffer ()
   "Return telega root buffer."
   (get-buffer telega-root-buffer-name))
-
-(defun telega-root--keep-cursor-at-chat (chat)
-  "Keep cursor position at CHAT.
-Keep cursor position only if CHAT is visible."
-  (when (telega-filter-chats (list chat)) ;visible-p
-    (with-telega-root-view-ewoc "root" root-ewoc
-      (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
-        (goto-char (ewoc-location node))
-        (dolist (win (get-buffer-window-list))
-          (set-window-point win (point)))
-        (run-hooks 'telega-root-update-hook)))))
 
 
 ;; Utility functions for root view ewocs
@@ -326,6 +316,17 @@ ITEMS is a list of loaded items to be added into ewoc."
           (ewoc-enter-last ewoc item)))
 
       (run-hooks 'telega-root-update-hook))))
+
+(defun telega-root--keep-cursor-at-chat (chat)
+  "Keep cursor position at CHAT.
+Keep cursor position only if CHAT is visible."
+  (when (telega-filter-chats (list chat)) ;visible-p
+    (with-telega-root-view-ewoc "root" root-ewoc
+      (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
+        (goto-char (ewoc-location node))
+        (dolist (win (get-buffer-window-list))
+          (set-window-point win (point)))
+        (run-hooks 'telega-root-update-hook)))))
 
 
 ;;; Pretty Printers for root view ewocs
@@ -842,7 +843,8 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
             (let ((items (ewoc-collect ewoc #'identity)))
               (telega-ewoc--clean ewoc)
               (dolist (item (sort items (telega-root-view--ewoc-sorter ewoc-name)))
-                (ewoc-enter-last ewoc item)))))))
+                (ewoc-enter-last ewoc item))
+              )))))
 
     (run-hooks 'telega-root-update-hook)))
 
@@ -913,6 +915,7 @@ VIEW-FILTER is additional chat filter for this root view."
                             (lambda (chat)
                               (telega-root--chat-known-pp chat custom-inserter))
                           #'telega-root--chat-known-pp)
+        :sorter #'telega-chat>
         :items telega--ordered-chats
         :on-chat-update #'telega-root--any-on-chat-update))
 
@@ -949,10 +952,25 @@ VIEW-FILTER is additional chat filter for this root view."
   (telega-view-default
    'telega-view-two-lines "Two Lines" #'telega-ins--chat-full-2lines))
 
-(defun telega-root--on-message-update (ewoc-name ewoc msg events)
+(defun telega-root--on-message-update (_ewoc-name _ewoc _msg)
   "Handle message update."
   ;; TODO
   )
+
+(defun telega-root--messages-sorter (msg1 msg2)
+  "Sorter for searched messages."
+  (if (or telega--sort-criteria telega--sort-inverted)
+      ;; Active sort criteria is used
+      (let ((telega-sort--inhibit-order t))
+        (telega-chat> (telega-msg-chat msg1) (telega-msg-chat msg2)))
+
+    ;; Sort by message date
+    (> (if (zerop (plist-get msg1 :edit_date))
+           (plist-get msg1 :date)
+         (plist-get msg1 :edit_date))
+       (if (zerop (plist-get msg2 :edit_date))
+           (plist-get msg2 :date)
+         (plist-get msg2 :edit_date)))))
 
 (defun telega-view-search (query)
   "View QUERY search results."
@@ -996,7 +1014,8 @@ VIEW-FILTER is additional chat filter for this root view."
                :pretty-printer #'telega-root--message-pp
                :header "MESSAGES"
                :search-query query
-               :on-chat-update #'telega-root--on-message-update)
+               :sorter #'telega-root--messages-sorter
+               :on-message-update #'telega-root--on-message-update)
          ))
 
   (telega-root--messages-search)
@@ -1035,6 +1054,15 @@ If QUERY is empty string, then show all contacts."
          (append telega--sort-criteria '(nearby-distance))))
     (telega-chat> chat1 chat2)))
 
+(defun telega-root--nearby-chats-add (chats)
+  "Mark all nearby chats as dirty and update them."
+  (telega-root-view--ewoc-loading-done "global")
+  (dolist (chat chats)
+    (telega-chat--mark-dirty chat))
+
+  (telega-chats-dirty--update)
+  (telega-filters--redisplay))
+
 (defun telega-view-nearby ()
   "View contacts and chats nearby `telega-my-location'."
   (interactive)
@@ -1063,12 +1091,7 @@ If QUERY is empty string, then show all contacts."
                :header "CHATS NEARBY"
                :sorter #'telega-root--nearby-sorter
                :loading (telega--searchChatsNearby telega-my-location
-                          (lambda (chats)
-                            (telega-root-view--ewoc-loading-done "global")
-                            (dolist (chat chats)
-                              (telega-chat--mark-dirty chat))))
-                          ;; (apply-partially
-                          ;;  #'telega-root-view--ewoc-loading-done "global"))
+                          #'telega-root--nearby-chats-add)
                :on-chat-update #'telega-root--nearby-on-chat-update)
          )))
 
@@ -1092,6 +1115,7 @@ If QUERY is empty string, then show all contacts."
          (if arg "Missed Calls" "All Calls")
          (list :name "messages"
                :pretty-printer #'telega-root--message-call-pp
+               :sorter #'telega-root--messages-sorter
                :only-missed-p arg)))
 
   (telega-root--call-messages-search))
@@ -1173,6 +1197,118 @@ If QUERY is empty string, then show all contacts."
    (nconc (list 'telega-view-top "Top Chats")
           (mapcar #'telega-view-top--ewoc-spec
                   telega-root-view-top-categories)))
+  )
+
+(defun telega-view-settings--me-pp (me-id)
+  "Pretty printer for me in settings root view."  
+  (let* ((me-user (telega-user--get me-id))
+         (photo (plist-get me-user :profile_photo))
+         (avatar (telega-media--image
+                  (cons me-user (lambda (user file)
+                                  (telega-avatar--create-image user file 3)))
+                  (cons photo :small)
+                  nil :telega-avatar-3)))
+    (telega-ins--image-slices avatar nil 
+      (lambda (slice-num)
+        (telega-ins " ")
+        (cond ((= slice-num 0)
+               (telega-ins--with-face 'bold
+                 (telega-ins (telega-user--name me-user 'name)))
+               (telega-ins " ")
+               (telega-ins--button "Change"
+                 'action (lambda (_button)
+                           (let* ((names (split-string (read-from-minibuffer "Your Name: ") " "))
+                                  (first-name (car names))
+                                  (last-name (mapconcat #'identity (cdr names) " ")))
+                             (telega--setName first-name last-name)))))
+              ((= slice-num 1)
+               (telega-ins "+" (telega-tl-str me-user :phone_number)))
+              ((= slice-num 2)
+               (if-let ((username (telega-tl-str me-user :username)))
+                   (progn
+                     (telega-ins "@" username)
+                     (telega-ins " ")
+                     (telega-ins--button "Change"
+                       'action (lambda (_button)
+                                 (telega--setUsername
+                                  (read-string
+                                   "Set username [empty to delete]: ")))))
+                 (telega-ins--button "Set Username"
+                   'action (lambda (_button)
+                             (telega--setUsername
+                              (read-string
+                               "Set username [empty to delete]: ")))))))
+       ))
+
+    (telega-ins "\n")
+    (telega-ins "Profile Photos: ")
+    (telega-ins--button "Set Profile Photo"
+      'action (lambda (_ignored)
+                (let ((photo (read-file-name "Profile Photo: " nil nil t)))
+                  (telega--setProfilePhoto photo))))
+    (telega-ins "\n")
+    (telega-ins--user-profile-photos me-user
+      (lambda ()
+        (with-telega-root-view-ewoc "me" ewoc
+          (ewoc-refresh ewoc))))
+
+    (telega-ins--labeled (concat (telega-i18n "profile_bio") " ") nil
+      (if-let ((bio (telega-tl-str (telega--full-info me-user) :bio)))
+          (progn
+            (telega-ins bio)
+            (telega-ins " ")
+            (telega-ins--button "Change Bio"
+              'action (lambda (_button)
+                        (telega--setBio
+                         (read-string
+                          "Change bio [empty to delete]: " bio)))))
+        (telega-ins--button "Set Bio"
+          'action (lambda (_button)
+                    (telega--setBio
+                     (read-string
+                      "Set bio [empty to delete]: "))))))
+    (telega-ins "\n")
+    (telega-ins--labeled "  " nil
+      (telega-ins--with-face 'shadow
+        (telega-ins-i18n "settings_about_bio")))
+    (telega-ins "\n")
+    (telega-ins--account-ttl
+     (lambda ()
+       (with-telega-root-view-ewoc "me" ewoc
+         (ewoc-refresh ewoc))))
+  ))
+
+(defun telega-root--me-on-user-update (_ewoc-name ewoc user)
+  "Update USER in EWOC."
+  (when (telega-me-p user)
+    (telega-save-cursor
+      (ewoc-refresh ewoc))))
+
+(defun telega-view-settings--link-pp (link)
+  "Pretty printer for link in \"settings\" root view.
+LINK is cons, where car is the link description, and cdr is the url."
+  (telega-ins (car link) ": ")
+  (telega-ins--raw-button (telega-link-props 'url (cdr link))
+    (telega-ins (cdr link)))
+  (telega-ins "\n"))
+
+(defun telega-view-settings ()
+  "View top chats in all categories."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-settings "Settings"
+         (list :name "me"
+               :pretty-printer #'telega-view-settings--me-pp
+               :items (list telega--me-id)
+               :on-user-update #'telega-root--me-on-user-update)
+         (list :name "links"
+               :pretty-printer #'telega-view-settings--link-pp
+               :header "LINKS"
+               :items (list (cons (telega-i18n "settings_faq")
+                                  "https://telegram.org/faq")
+                            (cons (telega-i18n "settings_ask_question")
+                                  "https://t.me/emacs_telega")))
+         ))
   )
 
 (provide 'telega-root)
