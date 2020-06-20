@@ -50,11 +50,6 @@
   :type 'string
   :group 'telega)
 
-(defcustom telega-ton-keystore-dir (expand-file-name "ton_keys" telega-directory)
-  "*Keystore directory for TON."
-  :type 'string
-  :group 'telega)
-
 (defcustom telega-accounts nil
   "*List of the accounts to be used by telega.
 Each element is a list in form

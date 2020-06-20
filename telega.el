@@ -80,8 +80,6 @@
     (mkdir telega-cache-dir))
   (ignore-errors
     (mkdir telega-temp-dir))
-  (ignore-errors
-    (mkdir telega-ton-keystore-dir))
   )
 
 (defun telega-account-current ()
