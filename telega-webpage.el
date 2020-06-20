@@ -553,6 +553,8 @@ instant view for the URL."
 If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
 If IN-WEB-BROWSER is non-nil then force opening in web browser."
+  (interactive (list (browse-url-url-at-point)
+                     current-prefix-arg))
   (when (or in-web-browser
             (not (cond ((string-prefix-p "tg:" url)
                         (telega-tme-open-tg url))

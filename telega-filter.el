@@ -81,6 +81,7 @@
 (require 'telega-customize)
 
 (defvar tracking-buffers)
+(defvar telega-root--view-filter)
 
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
@@ -92,18 +93,15 @@
 (declare-function telega-chats-top "telega-chat" (category))
 
 (declare-function telega-root--buffer "telega-root")
-(declare-function telega-root--global-chats "telega-root")
 (declare-function telega-root--redisplay "telega-root")
 
 
 (defvar telega-filters--ewoc nil "ewoc for custom filters.")
-(defvar telega-filters--dirty
-  nil "Non-nil if filter's ewoc is dirty and need to be redisplayed.")
+(defvar telega-filters--dirty nil
+  "Non-nil if filter's ewoc is dirty and need to be redisplayed.
+Could be a list of custom filters marked dirty.
+If t, then all custom filters are dirty.")
 
-(defvar telega-filters--inhibit-redisplay nil
-  "Non-nil to do nothing on `telega-filters--redisplay'.
-Used for optimization, when initially fetching chats, to speed things up.
-Also used when TDLib updates connection state after waking up.")
 (defvar telega-filters--inhibit-list nil
   "List of filters to inhibit.
 Bind it to temporary disable some filters.")
@@ -124,7 +122,7 @@ Bind it to temporary disable some filters.")
     (define-key map (kbd "e") 'telega-filters-edit)
     (define-key map (kbd "f") 'telega-filter-by-filter)
     (define-key map (kbd "i") 'telega-filter-by-important)
-    (define-key map (kbd "n") 'telega-filter-by-search)
+    (define-key map (kbd "n") 'telega-filter-by-nearby)
     (define-key map (kbd "l") 'telega-filter-by-label)
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "o") 'telega-filter-by-online-status)
@@ -145,7 +143,7 @@ Bind it to temporary disable some filters.")
   :inserter telega-inserter-for-filter-button
   :help-echo (lambda (custom)
                (format "Filter (custom \"%s\") expands to: %s"
-                       (car custom) (cdr custom)))
+                       (nth 0 custom) (nth 1 custom)))
   'action #'telega-filter-button--action)
 
 (defun telega-filter-button--action (button)
@@ -154,16 +152,33 @@ If prefix ARG is specified then set custom filter as active,
 otherwise add to existing active filters."
   (let* ((custom (button-get button :value))
          (fspec (if telega-filter-custom-expand
-                    (cdr custom)
-                  (list 'custom (car custom)))))
+                    (nth 1 custom)
+                  (list 'custom (nth 0 custom)))))
     (if (or current-prefix-arg
             (member (car custom) telega-filter-custom-push-list))
         (telega-filters-push (list fspec))
       (telega-filter-add fspec))))
 
-(defmacro telega-filter-active ()
-  "Return active filter."
-  `(car telega--filters))
+(defun telega-filter-active (&optional with-root-view-filter)
+  "Return active filter.
+If WITH-ROOT-VIEW-FILTER is non-nil, then add root view filter."
+  (let ((filter (car telega--filters)))
+    (when (and with-root-view-filter telega-root--view-filter)
+      (setq filter (list 'and filter telega-root--view-filter)))
+    filter))
+
+(defun telega-filter-active-prepare (&optional with-root-view-filter)
+  "Prepare `telega--filters' for the application.
+WITH-ROOT-VIEW-FILTER is passed directly to `telega-filter-active'.
+Return chat filter prepared for the application."
+  (let ((active-filters (telega-filter-active with-root-view-filter)))
+    (cond ((null active-filters) 'all)
+          ((= (length active-filters) 1) (car active-filters))
+          ((eq 'all (car active-filters))
+           (if (= 1 (length (cdr active-filters)))
+               (cadr active-filters)
+             active-filters))
+          (t (cons 'all active-filters)))))
 
 (defun telega-filter-active-p (filter)
   "Return non-nil if FILTER is active filter."
@@ -232,62 +247,98 @@ Return one of \"Main\" or \"Archive\"."
        (telega-ins "----"))
      )))
 
+(defun telega-filter--custom-chats (custom)
+  "Return chats matching CUSTOM filter."
+  (telega-filter-chats
+   (if (member (car custom) telega-filter-custom-push-list)
+       telega--ordered-chats
+     telega--filtered-chats)
+   (cdr custom)))
+
 (defun telega-filters--create ()
   "Create ewoc for custom filters."
-  (setq telega-filters--inhibit-redisplay nil)
-
   ;; Footer of the `telega-filters--ewoc' is active filter at the
   ;; moment
   (setq telega-filters--ewoc
         (ewoc-create #'telega-filter--pp nil (telega-filters--footer) t))
   (dolist (custom telega-filters-custom)
-    (ewoc-enter-last telega-filters--ewoc custom)))
+    (ewoc-enter-last telega-filters--ewoc
+                     (cons (car custom)
+                           (cons (cdr custom)
+                                 (telega-filter--custom-chats custom))))))
 
+(defun telega-filters--mark-dirty (custom-spec)
+  "Mark CUSTOM filter button as dirty."
+  (when (listp telega-filters--dirty)
+    (setq telega-filters--dirty
+          (cl-pushnew (car custom-spec) telega-filters--dirty :test #'equal))))
+
+(defun telega-filters--redisplay-footer ()
+  "Redisplay custom filters footer.
+Used when active sort criteria changes."
+  (with-telega-root-buffer
+    (save-excursion
+      (telega-ewoc--set-footer
+       telega-filters--ewoc (telega-filters--footer)))))
+  
 (defun telega-filters--redisplay ()
   "Redisplay custom filters buttons."
-  (unless telega-filters--inhibit-redisplay
+  (when telega-filters--dirty
     (with-telega-root-buffer
       (telega-save-cursor
-        (telega-ewoc--set-footer
-         telega-filters--ewoc (telega-filters--footer))
-        (ewoc-refresh telega-filters--ewoc)))
+        ;; Redisplay footer only on full redisplay
+        (when (eq telega-filters--dirty t)
+          (telega-ewoc--set-footer telega-filters--ewoc
+                                   (telega-filters--footer)))
+
+        ;; Refresh only dirty nodes
+        (telega-ewoc-map-refresh telega-filters--ewoc
+          (lambda (custom)
+            (or (eq telega-filters--dirty t)
+                (member (car custom) telega-filters--dirty))))))
+
     (setq telega-filters--dirty nil)))
 
 
 ;;; Filtering routines
-(defun telega-filters-apply (&optional no-root-redisplay)
-  "Apply current filers.
-If NO-ROOT-REDISPLAY is specified, then redisplay only custom
-filters buttons.
-Used on search results updates."
-  (if telega-search-query
-      (setq telega--filtered-chats
-            (nconc (telega-filter-chats telega--search-chats)
-;                   (telega-filter-chats (telega-root--messages-chats))
-                   (let ((telega-filters--inhibit-list '(has-order chat-list main archive)))
-                     (telega-filter-chats (telega-root--global-chats)))))
+(defun telega-filters--update ()
+  "Update `telega--filtered-chats'."
+  (setq telega--filtered-chats
+        (telega-filter-chats telega--ordered-chats))
 
-    (setq telega--filtered-chats
-          (telega-filter-chats telega--ordered-chats)))
+  (dolist (ewoc-spec (ewoc-collect telega-filters--ewoc #'identity))
+    (setcdr (cdr ewoc-spec)
+            (telega-filter--custom-chats
+             (cons (car ewoc-spec) (cadr ewoc-spec)))))
 
-  (if no-root-redisplay
-      (telega-filters--redisplay)
-    (telega-root--redisplay)))
+  (setq telega-filters--dirty t))
 
 (defun telega-filters--chat-update (chat)
   "CHAT has been updated, it might affect custom filters."
-  (if telega-search-query
-      (telega-filters-apply 'no-root-redisplay)
-
-    ;; Fast version of what is done in `telega-filters-apply'
+  ;; Fast version of what is done in `telega-filters--update'
+  (let ((chat-matches-p nil))
     (setq telega--filtered-chats
           (delq chat telega--filtered-chats))
     (when (telega-filter-chats (list chat))
+      (setq chat-matches-p t)
       (setq telega--filtered-chats
             (push chat telega--filtered-chats)))
 
-    (setq telega-filters--dirty t)
-;    (telega-filters--redisplay)
+    ;; Remove/Add chat in ewoc specs for custom filters
+    (dolist (ewoc-spec (ewoc-collect telega-filters--ewoc #'identity))
+      (let* ((match-p (and (or (member (car ewoc-spec)
+                                       telega-filter-custom-push-list)
+                               chat-matches-p)
+                           (telega-filter-chats (list chat) (nth 1 ewoc-spec))))
+             (chats (nthcdr 2 ewoc-spec))
+             (has-chat-p (memq chat chats)))
+        (when (or has-chat-p match-p)
+          (telega-filters--mark-dirty ewoc-spec))
+        (if match-p
+            (unless has-chat-p
+              (setcdr (cdr ewoc-spec) (cons chat chats)))
+          (when has-chat-p
+            (setcdr (cdr ewoc-spec) (delq chat chats))))))
     ))
 
 (defun telega-filters--reset (&optional default)
@@ -299,29 +350,21 @@ Set active filter to DEFAULT."
                             (list (list default))))
         telega--undo-filters nil))
 
-(defun telega-filters--prepare ()
-  "Prepare `telega--filters' for the application."
-  (let ((active-filters (telega-filter-active)))
-    (cond ((null active-filters) 'all)
-          ((= (length active-filters) 1) (car active-filters))
-          ((eq 'all (car active-filters))
-           (if (= 1 (length (cdr active-filters)))
-               (cadr active-filters)
-             active-filters))
-          (t (cons 'all active-filters)))))
-
 (defun telega-filters-push (flist)
   "Set active filters list to FLIST."
   (unless (telega-filter-active-p flist)
     (setq telega--undo-filters nil)
     (setq telega--filters (push flist telega--filters)))
-  (telega-filters-apply))
+  (telega-filters--update)
+  (telega-root--redisplay))
 
 (defun telega-filter-add (fspec)
   "Add filter specified by FSPEC.
 This filter can be undone with `telega-filter-undo'.
 Do not add FSPEC if it is already in the list."
   (unless (member fspec (telega-filter-active))
+    ;; TODO: can do it faster, just by filtering
+    ;; `telega--filtered-chats' with new filter spec
     (telega-filters-push
      (append (telega-filter-active) (list fspec)))))
 
@@ -329,10 +372,10 @@ Do not add FSPEC if it is already in the list."
   "Match chats in CHAT-LIST against CHAT-FILTER.
 Return list of chats that matches CHAT-FILTER.
 Return only chats with non-0 order.
-If CHAT-FILTER is ommited, then active filters from
+If CHAT-FILTER is ommited, then active filter from
 `telega--filters' is used as CHAT-FILTER."
   (unless chat-filter
-    (setq chat-filter (telega-filters--prepare)))
+    (setq chat-filter (telega-filter-active-prepare)))
 
   (cl-remove-if-not
    (lambda (chat)
@@ -357,7 +400,8 @@ If CHAT-FILTER is ommited, then active filters from
     (when (cdr telega--filters)
       (push (car telega--filters) telega--undo-filters)
       (setq telega--filters (cdr telega--filters))))
-  (telega-filters-apply)
+  (telega-filters--update)
+  (telega-root--redisplay)
   (message "Undo last filter!"))
 
 (defun telega-filter-redo (&optional arg)
@@ -368,7 +412,8 @@ If CHAT-FILTER is ommited, then active filters from
   (dotimes (_ arg)
     (when telega--undo-filters
       (push (pop telega--undo-filters) telega--filters)))
-  (telega-filters-apply)
+  (telega-filters--update)
+  (telega-root--redisplay)
   (message "Redo last filter!"))
 
 (defun telega-filters-edit (flist)
@@ -481,10 +526,15 @@ Also matches if FILTER-LIST is empty."
   "Matches if FILTER not maches."
   (not (telega-chat-match-p chat filter)))
 
-(defun telega-filters-negate ()
-  "Negate active filters."
-  (interactive)
-  (telega-filters-push (list `(not ,(telega-filters--prepare)))))
+(defun telega-filters-negate (arg)
+  "Negate last filter.
+If `\\[universal-argument]' is specified, then negate whole active filter."
+  (interactive "P")
+  (telega-filters-push
+   (if arg
+       (list `(not ,(telega-filter-active-prepare)))
+     (append (butlast (telega-filter-active))
+             (list `(not ,(car (last (telega-filter-active)))))))))
 
 ;; - (type ~CHAT-TYPE-LIST~), {{{where-is(telega-filter-by-type,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--filter-type, 2)}}}
@@ -530,6 +580,20 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive (list (read-string "Chat search query: ")))
   (setq telega--search-chats (telega--searchChats query))
   (telega-filter-add `(search ,query)))
+
+;; - nearby, {{{where-is(telega-filter-by-nearby,telega-root-mode-map)}}} ::
+;;   {{{fundoc(telega--filter-nearby, 2)}}}
+(define-telega-filter nearby (chat)
+  "Matches if chat is nearby `telega-my-location'."
+  (telega-chat-nearby-find (plist-get chat :id)))
+
+(defun telega-filter-by-nearby ()
+  "Filter chats nearby `telega-my-location'."
+  (interactive)
+  (unless telega-my-location
+    (user-error "`telega-my-location' is unset, can't search nearby chats"))
+  (telega--searchChatsNearby telega-my-location)
+  (telega-filter-add 'nearby))
 
 ;; - (custom ~NAME~), {{{where-is(telega-filter-by-custom,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--filter-custom, 2)}}}
@@ -631,8 +695,8 @@ Important chat is the chat with unread messages and enabled notifications."
   (interactive (let ((completion-ignore-case t))
                  (list (funcall telega-completing-read-function
                         "Member status: "
-                        '("Recently" "Online" "Offline"
-                          "LastWeek" "LastMonth" "Empty")
+                        '("Online" "Recently" "LastWeek" "LastMonth"
+                          "Offline" "Empty")
                         nil t))))
   (telega-filter-add `(online-status ,status)))
 
@@ -807,8 +871,11 @@ Specify MUTUAL-P to filter only mutual contacts."
 ;; - (label ~LABEL~), {{{where-is(telega-filter-by-label,telega-root-mode-map)}}} ::
 ;;   {{{fundoc1(telega--filter-label, 2)}}}
 (define-telega-filter label (chat label)
-  "Matches chat with custom LABEL."
-  (equal (telega-chat-label chat) label))
+  "Matches chat with custom LABEL.
+Special label `any' matches any chat with custom label."
+  (if (eq label 'any)
+      (telega-chat-label chat)
+    (equal (telega-chat-label chat) label)))
 
 (defun telega-filter-by-label (label)
   "Filter chats by custom chat LABEL.
@@ -843,8 +910,12 @@ See `telega-chat-set-custom-label'."
 (define-telega-filter chat-list (chat list-name)
   "Matches if chat is in chat list named LIST-NAME.
 Only \"Main\" and \"Archive\" names are supported."
-  (equal (plist-get (plist-get chat :chat_list) :@type)
-         (concat "chatList" (capitalize list-name))))
+  ;; Chat's with unset `:chat_list' belongs to "Main"
+  ;; Those just usually has "0" order
+  (let ((chats-chat-list (plist-get chat :chat_list)))
+    (or (not chats-chat-list)
+        (equal (plist-get chats-chat-list :@type)
+               (concat "chatList" (capitalize list-name))))))
 
 ;; - main ::
 ;;   {{{fundoc(telega--filter-main, 2)}}}
@@ -873,6 +944,26 @@ Only \"Main\" and \"Archive\" names are supported."
   (when (eq (telega-chat--type chat) 'channel)
     (let ((full-info (telega--full-info (telega-chat--info chat))))
       (plist-get full-info :can_view_statistics))))
+
+(define-telega-filter has-linked-chat (chat)
+  "Matches if CHAT is supergroup and has linked chat."
+  (plist-get (telega-chat--info chat) :has_linked_chat))
+
+(define-telega-filter has-location (chat)
+  "Matches if CHAT is supergroup and has linked chat."
+  (plist-get (telega-chat--info chat) :has_location))
+
+(define-telega-filter inactive-supergroups (chat)
+  "Matches if CHAT is inactive supergroup."
+  (memq chat telega--search-chats))
+
+(defun telega-filter-by-inactive-supergroups ()
+  "Filter inactive supergroups.
+Can be used when user reaches limit on the number of joined
+supergroups and channels and receives CHANNELS_TOO_MUCH error."
+  (interactive)
+  (setq telega--search-chats (telega--getInactiveSupergroupChats))
+  (telega-filter-add 'inactive-supergroups))
 
 (provide 'telega-filter)
 

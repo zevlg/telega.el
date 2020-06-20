@@ -597,7 +597,7 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
 
         /* value for src_view->start for backtracking */
         size_t backtrack[3];
-        int backtrack_size = 0;
+        size_t backtrack_size = 0;
 
         /* Offsets in SRC_VIEW in utf16 chars */
         size_t backtrack_offsets[3];

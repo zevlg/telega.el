@@ -86,6 +86,14 @@ Used for optimisations.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
 Used to calculate numbers displayed in custom filter buttons.")
+(defvar telega--filtered-chats-addon nil
+  "Addon list to `telega--filered-chats'.
+User by some root views, such as global search, nearby chats, etc.")
+
+(defvar telega--dirty-chats nil
+  "Chats need to be resorted and updated.
+Each element is a list, where first element is chat, and rest
+is events causing chat to be dirty.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
 (defvar telega--sort-criteria nil "Active sorting criteria list.")
@@ -127,22 +135,12 @@ Used by `telega-stickerset-installed-p'.")
   "List of supported emojis for random dice messages.")
 
 ;; Searching
-(defvar telega-search-query nil
-  "Last search query done by `telega-search'.
-Used to continue searching messages.")
 (defvar telega-search-history nil
   "List of recent search queries.")
-
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
-(defvar telega--search-contacts nil
-  "Result of last `telega--searchContacts'.")
-(defvar telega--search-global-loading nil
-  "Non-nil if globally searching public chats asynchronously.
-Actualy value is `:@extra' of the call.")
-(defvar telega--search-messages-loading nil
-  "Non-nil if searching messages asynchronously.
-Actualy value is `:@extra' of the call.")
+(defvar telega--nearby-chats nil
+  "List of nearby chats returned from `telega--searchChatsNearby'.")
 
 (defvar telega--unread-message-count nil
   "Plist with counts for unread/unmuted messages.
@@ -239,14 +237,13 @@ Done when telega server is ready to receive queries."
   (setq telega--pinned-messages (make-hash-table :test #'eq))
   (setq telega--top-chats nil)
 
-  (setq telega-search-query nil)
   (setq telega--search-chats nil)
-  (setq telega--search-contacts nil)
-  (setq telega--search-global-loading nil)
-  (setq telega--search-messages-loading nil)
+  (setq telega--nearby-chats nil)
 
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
+  (setq telega--filtered-chats-addon nil)
+  (setq telega--dirty-chats nil)
   (setq telega--actions (make-hash-table :test 'eq))
   (setq telega--filters nil)
   (setq telega--undo-filters nil)
@@ -805,7 +802,8 @@ Activates button if cursor enter, deactivates if leaves."
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)
   "Show help message for BUTTON defined by `:help-echo' property."
-  (let ((help-echo (button-get button :help-echo)))
+  (let ((help-echo (or (button-get button :help-echo)
+                       (button-get button 'help-echo))))
     (when (functionp help-echo)
       (setq help-echo (funcall help-echo (button-get button :value))))
     (when help-echo
@@ -875,7 +873,7 @@ If NO-ERROR is `recenter', then possible recenter, otherwise recenter only if NO
   (interactive "p")
   (let (button)
     (dotimes (_ (abs n))
-      ;; NOTE: In Emacs64, there is no `no-error' argument for
+      ;; NOTE: In Emacs26, there is no `no-error' argument for
       ;; `forward-button', so we use `ignore-errors' instead
       ;; See: https://t.me/emacs_telega/11931
       (while (and (setq button (if no-error
@@ -954,6 +952,24 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   (and (telega-chatbuf-has-input-p)
        (get-text-property telega-chatbuf--input-marker :draft-input-p)
        (get-text-property (1- (point-max)) :draft-input-p)))
+
+(defmacro telega-chat-nearby-find (chat-id)
+  "Find nearby chat in `telega--nearby-chats' by CHAT-ID."
+  `(cl-find ,chat-id telega--nearby-chats :key (telega--tl-prop :chat_id)))
+
+(defun telega-chat-nearby--ensure (nearby-chat)
+  "Ensure NEARBY-CHAT is in `telega--nearby-chats'."
+  (let ((nb-chat (telega-chat-nearby-find (plist-get nearby-chat :chat_id))))
+    (if nb-chat
+        (plist-put nb-chat :distance (plist-get nearby-chat :distance))
+      (setq nb-chat nearby-chat)
+      (setq telega--nearby-chats (cons nearby-chat telega--nearby-chats)))
+    nb-chat))
+
+(defun telega-chat-nearby-distance (chat)
+  "Return distance in meters to the CHAT.
+Return non-nil only if CHAT is nearby."
+  (plist-get (telega-chat-nearby-find (plist-get chat :id)) :distance))
 
 
 ;;; Inserters part

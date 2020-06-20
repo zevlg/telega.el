@@ -143,6 +143,8 @@ struct emoji_trie fe0f1[] = {{0xa9, false, fe0f2},
 {0x2734, false, fe0f2},
 {0x2744, false, fe0f2},
 {0x2747, false, fe0f2},
+{0x2753, false, fe0f2},         /* from emoji v12.1 */
+{0x2757, false, fe0f2},         /* from emoji v12.1 */
 {0x2763, false, fe0f2},
 {0x2764, false, fe0f2},
 {0x27a1, false, fe0f2},

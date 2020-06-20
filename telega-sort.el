@@ -44,10 +44,10 @@
 
 ;;; Code:
 
-(defvar telega-root--ewoc)
-(declare-function telega-root--redisplay "telega-root")
+(declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 
-(declare-function telega-chat--reorder "telega-chat" (chat order))
+(declare-function telega-root-view--resort "telega-root")
+
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 
@@ -67,6 +67,7 @@
     (define-key map (kbd "o") 'telega-sort-by-online-members)
     (define-key map (kbd "m") 'telega-sort-by-member-count)
     (define-key map (kbd "v") 'telega-sort-by-chatbuf-recency)
+    (define-key map (kbd "n") 'telega-sort-by-nearby-distance)
     (define-key map (kbd "!") 'telega-sort-invert)
 
     (define-key map (kbd "d") 'telega-sort-pop-last)
@@ -156,35 +157,16 @@ overwritting currently active one."
     (setq telega--sort-inverted inverted)
 
     (setq telega--ordered-chats
-          (sort telega--ordered-chats 'telega-chat>))
+          (sort telega--ordered-chats #'telega-chat>))
 
-    (telega-save-cursor
-      (telega-ewoc--clean telega-root--ewoc)
-      (dolist (chat telega--ordered-chats)
-        (ewoc-enter-last telega-root--ewoc chat)))
-    (telega-filters--redisplay)
-  ))
+    (telega-filters--redisplay-footer)
+    (telega-root-view--resort)
+    ))
 
 (defconst telega-sort--order-events
   '("updateChatOrder" "updateChatIsPinned" "updateChatLastMessage"
     "updateChatIsSponsored" "updateChatDraftMessage")
   "List of events with `:order' property.")
-
-(defun telega-sort-maybe-reorder (chat event)
-  "React on CHAT's related telegram EVENT.
-Some events might require chat reordering.
-Return non-nil if CHAT has been reordered."
-  (let ((event-type (plist-get event :@type)))
-    (cond ((member event-type telega-sort--order-events)
-           (telega-chat--reorder chat (plist-get event :order))
-           t)
-          ((and telega--sort-criteria
-                (cl-some (lambda (criteria-sym)
-                           (member event-type
-                                   (get criteria-sym :telega-order-events)))
-                         telega--sort-criteria))
-           (telega-chat--reorder chat nil)
-           t))))
 
 
 ;; ** Sorting criteria
@@ -245,6 +227,16 @@ See https://github.com/zevlg/telega.el/issues/165"
                (eq telega-chatbuf--chat chat)))))
         retn
       -1)))
+
+;; - ~chatbuf-visibility~ ::
+;;   {{{fundoc(telega--sort-nearby-distance, 2)}}}
+(define-telega-sorter nearby-distance ("updateUsersNearby") (chat)
+  "Sort chats by nearby distance to me.
+See https://github.com/zevlg/telega.el/issues/165"
+  ;; NOTE: assuming 1000000 is max distance
+  (if-let ((distance (telega-chat-nearby-distance chat)))
+      (- 1000000 distance)
+    -1000000))
 
 ;; - TODO Date of last message sent by ~telega-user-me~
 ;; - TODO Date of last mention (thanks to https://t.me/lainposter)

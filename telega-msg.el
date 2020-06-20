@@ -132,14 +132,6 @@
       :inserter msg-inserter)
     (telega-ins "\n")))
 
-(defun telega-msg-root--pp (msg)
-  "Pretty printer for MSG button shown in root buffer."
-  (when (telega-filter-chats (list (telega-msg-chat msg))) ; visible-p
-    (telega-button--insert 'telega-msg msg
-      :inserter 'telega-ins--root-msg
-      :action 'telega-msg-goto-highlight)
-    (telega-ins "\n")))
-
 (defun telega-msg--get (chat-id msg-id &optional locally-p callback)
   "Get message by CHAT-ID and MSG-ID pair.
 If LOCALLY-P is non-nil, then do not perform request to telega-server.
@@ -608,6 +600,18 @@ FROM and TO are passed directly to `substring'."
 By side effect adds MSG into `telega--ignored-messages-ring' to be viewed
 with `M-x telega-ignored-messages RET'."
   (plist-put msg :ignored-p t)
+
+  ;; Remove message with same
+  (catch 'found
+    (dotimes (ind (ring-length telega--ignored-messages-ring))
+      (let ((ign-msg (ring-ref telega--ignored-messages-ring ind)))
+        (when (equal (cons (plist-get ign-msg :chat_id)
+                           (plist-get ign-msg :id))
+                     (cons (plist-get msg :chat_id)
+                           (plist-get msg :id)))
+          (ring-remove telega--ignored-messages-ring ind)
+        (throw 'found ind)))))
+
   (ring-insert telega--ignored-messages-ring msg)
   (telega-debug "IGNORED msg: %S" msg))
 
@@ -760,7 +764,8 @@ blocked users."
     (set-buffer standard-output)
     (dolist (msg (ring-elements telega--ignored-messages-ring))
       (telega-button--insert 'telega-msg msg
-        :inserter 'telega-ins--message-ignored-list))))
+        :inserter #'telega-ins--message-with-chat-header)
+      (telega-ins "\n"))))
 
 
 ;; Viewing messages diffs

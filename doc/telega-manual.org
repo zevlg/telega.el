@@ -559,7 +559,7 @@ Chatbuf bindings to attach something:
        scheduled  - Takes C-u prefix to send message when user gets online.
 
 - @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-file~) :: 
-     Attach FILE as document to the current input.
+     Attach ~FILENAME~ as document to the current input.
 
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Send clipboard image to the chat.
@@ -576,7 +576,7 @@ Chatbuf uses next bindings for messages filtering:
      Enable chat messages filtering.
      Enables ~FILTER-NAME~ filter.
      ~QUERY~ is only used by "search" chatbuf filter.
-     If ~\[universal-argument]~ is specified, then filter by sender
+     If ~@@html:<kbd>@@C-u@@html:</kbd>@@~ is specified, then filter by sender
      of the message at point.
      Not all filters can filter by sender.
 
@@ -586,7 +586,7 @@ Chatbuf uses next bindings for messages filtering:
 
 - @@html:<kbd>@@C-c C-s@@html:</kbd>@@ (~telega-chatbuf-filter-search~) :: 
      Interactively search for messages in chatbuf.
-     If non-nil ~BY-SENDER-P~ is specified by ~\[universal-argument]~,
+     If non-nil ~BY-SENDER-P~ is specified by ~@@html:<kbd>@@C-u@@html:</kbd>@@~,
      then also search by sender.
 
 ** Sending ordinary messages

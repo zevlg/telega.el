@@ -434,10 +434,53 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :prefix "telega-root-"
   :group 'telega)
 
-(defcustom telega-root-default-view nil
+(defcustom telega-root-default-view-function 'telega-view-default
   "*Default view for the rootbuf."
-  :package-version '(telega . "0.6.21")
-  :type 'symbol
+  :package-version '(telega . "0.6.23")
+  :type 'function
+  :group 'telega-root)
+
+(defcustom telega-root-view-ewocs-delim
+  (propertize "\n" 'display '((height 0.25)))
+  "Delimiter for the root view ewocs."
+  :package-version '(telega . "0.6.23")
+  :type 'string
+  :group 'telega-root)
+
+(defcustom telega-root-view-topics
+  '(("Important" . (or mention (and unread unmuted))))
+  "Alist of topics for \"topics\" root view.
+Car is name of the topic, cdr is chat filter to match chats."
+  :package-version '(telega . "0.6.23")
+  :type 'alist
+  :group 'telega-root)
+
+(defcustom telega-root-view-topics-custom-labels 'append
+  "*Non-nil to add custom labels to the list of topics.
+Could be one of `prepend', `append' or nil."
+  :package-version '(telega . "0.6.23")
+  :type '(choice (const :tag "Prepend custom labels to the topics" prepend)
+                 (const :tag "Append custom labels to the topics" append)
+                 (const :tag "Do not use custom labels in the topics" nil))
+  :group 'telega-root)
+
+(defcustom telega-root-view-top-categories
+  '(("Users" . 10)
+    ("Groups" . 10)
+    ("Channels" . 10)
+    ("Bots" . 10)
+    ("InlineBots" . 10)
+    ("Calls" . 10)
+    ("ForwardChats" . 10))
+  "List of top categories with limits."
+  :package-version '(telega . "0.6.23")
+  :type 'alist
+  :group 'telega-root)
+
+(defcustom telega-root-view-show-other-chats t
+  "*Non-nil to show other chats in the \"topics\" root view."
+  :package-version '(telega . "0.6.23")
+  :type 'boolean
   :group 'telega-root)
 
 (defcustom telega-root-keep-cursor 'track
@@ -492,7 +535,7 @@ If nil, then \"saved_messages\" name from `telega-i18n' is used."
   :type '(or string function)
   :group 'telega-root)
 
-(defcustom telega-chat-title-emoji-use-images nil
+(defcustom telega-chat-title-emoji-use-images telega-emoji-use-images
   "*Non-nil to use images for emojis in chat's title.
 Otherwise use simple chars."
   :type 'boolean
@@ -558,12 +601,13 @@ See https://github.com/zevlg/telega.el/issues/171"
   '(("📑Main" . main)
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
-    ("Contacts" . contact)
+    ("Online" . (online-status "Online"))
     ("Important" . (or mention (and unread unmuted)))
     ("📑Archive" . archive))
   "*Alist of custom filters in form (NAME . CHAT-FILTER).
 This filters are displayed as filter buttons at the top of rootbuf.
 TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
+  :package-version '(telega . "0.6.23")
   :type 'alist
   :group 'telega-filter)
 
@@ -603,6 +647,12 @@ Mostly used by `chat-list' chat filters."
   :options '(telega-ins--chat-full-2lines)
   :group 'telega-inserters)
 
+(defcustom telega-inserter-for-nearby-chat-button 'telega-ins--chat-nearby-2lines
+  "Inserter for nearby chat button in rootbuf."
+  :package-version '(telega . "0.6.23")
+  :type 'function
+  :group 'telega-inserters)
+
 (defcustom telega-inserter-for-msg-button 'telega-ins--message
   "Inserter for message button in chat buffer.
 Accepts at least two arguments - MSG and NO-HEADER-P.
@@ -615,10 +665,11 @@ See `telega-ins--message' for NO-HEADER argument."
   :type 'function
   :group 'telega-inserter)
 
-(defcustom telega-inserter-for-root-contact-button 'telega-ins--root-contact
+(defcustom telega-inserter-for-root-contact-button 'telega-ins--root-contact-2lines
   "*Inserter for buttons in CONTACTS ewoc in rootbuf."
+  :package-version '(telega . "0.6.23")
   :type 'function
-  :options '(telega-ins--root-contact-2lines)
+  :options '(telega-ins--root-contact)
   :group 'telega-inserter)
 
 
@@ -1121,7 +1172,7 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-failed "⛔"    ;\u26D4
+(defcustom telega-symbol-failed (propertize "⛔" 'face 'error)
   "Mark messages that have sending state failed."
   :type 'string
   :group 'telega-symbol)
@@ -1179,6 +1230,21 @@ Good candidates also are 🄌 or ⬤."
 
 (defcustom telega-symbol-phone "📞"
   "Symbol used as phone."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-call-outgoing (concat telega-symbol-phone "🠺")
+  "Symbol used for outging calls."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-call-incoming (concat telega-symbol-phone "🠸")
+  "Symbol used for incoming calls."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-call-bad (propertize telega-symbol-phone 'face 'error)
+  "Symbol used for discarded or missed calls."
   :type 'string
   :group 'telega-symbol)
 
@@ -1632,6 +1698,13 @@ You can customize its `:height' to fit width of the default face."
 
 (defcustom telega-root-mode-hook nil
   "Hook run when telega root buffer is created."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-root-update-hook nil
+  "Hook to run on rootbuf updateds.
+This hook is run with rootbuf being current."
+  :package-version '(telega . "0.6.23")
   :type 'hook
   :group 'telega-hooks)
 

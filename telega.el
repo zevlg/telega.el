@@ -7,8 +7,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.22
-(defconst telega-version "0.6.22")
+;; Version: 0.6.23
+(defconst telega-version "0.6.23")
 (defconst telega-server-min-version "0.6.1")
 (defconst telega-tdlib-min-version "1.6.0")
 
@@ -53,9 +53,12 @@
 (require 'telega-notifications)
 (require 'telega-modes)
 (require 'telega-i18n)
+(require 'telega-tdlib)
+(require 'telega-tdlib-events)
 
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
+;;;###autoload
 (defvar telega-prefix-map
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map)
@@ -64,7 +67,7 @@
     (define-key map (kbd "s") 'telega-saved-messages)
     (define-key map (kbd "b") 'telega-switch-buffer)
     (define-key map (kbd "f") 'telega-buffer-file-send)
-    (define-key map (kbd "w") 'telega-save-buffer)
+    (define-key map (kbd "w") 'telega-browse-url)
     (define-key map (kbd "a") 'telega-account-switch)
     map)
   "Keymap for the telega commands.")
@@ -154,21 +157,6 @@ With prefix arg FORCE quit without confirmation."
     (when (or force (y-or-n-p (concat "Kill telega" suffix "? ")))
       (kill-buffer telega-root-buffer-name))))
 
-(defun telega--checkDatabaseEncryptionKey ()
-  "Set database encryption key, if any."
-  ;; NOTE: database encryption is disabled
-  ;;   consider encryption as todo in future
-  (telega-server--send
-   (list :@type "checkDatabaseEncryptionKey"
-         :encryption_key ""))
-
-  ;; List of proxies, since tdlib 1.3.0
-  ;; Do it after checkDatabaseEncryptionKey,
-  ;; See https://github.com/tdlib/td/issues/456
-  (dolist (proxy telega-proxies)
-    (telega-server--send
-     `(:@type "addProxy" ,@proxy))))
-
 (defun telega-resend-auth-code ()
   "Resend auth code.
 Works only if current state is `authorizationStateWaitCode'."
@@ -211,8 +199,7 @@ Works only if current state is `authorizationStateWaitCode'."
   (telega-status--set nil "Fetching chats...")
 
   ;; Do not update filters on every chat fetched, update them at the end
-  (setq telega-filters--inhibit-redisplay t)
-  (telega--getChats "Main" nil #'telega-chat--on-getChats)
+  (telega--getChats "Main" nil #'telega--on-main-getChats)
   ;; Also fetch chats from Archive
   ;; NOTE: We hope `telega--getChats' will return all chats in the
   ;; Archive, in general this is not true, we need special callback to
@@ -220,119 +207,6 @@ Works only if current state is `authorizationStateWaitCode'."
   (telega--getChats "Archive" nil #'ignore)
 
   (run-hooks 'telega-ready-hook))
-
-(defun telega--on-updateConnectionState (event)
-  "Update telega connection state using EVENT."
-  (let* ((conn-state (telega--tl-get event :state :@type))
-         (status (substring conn-state 15)))
-    (setq telega--conn-state (intern status))
-    (telega-status--set status)
-
-    ;; NOTE: Optimisation: for Updating state, inhibit redisplaying
-    ;; filters, will speedup updating after TDLib wake up
-    (cl-case telega--conn-state
-      (connectionStateUpdating
-       (setq telega-filters--inhibit-redisplay t))
-      (connectionStateReady
-       (setq telega-filters--inhibit-redisplay nil)
-       (telega-filters--redisplay)))
-
-    (run-hooks 'telega-connection-state-hook)))
-
-(defun telega--on-updateOption (event)
-  "Proceed with option update from telega server using EVENT."
-  (let ((option (intern (concat ":" (plist-get event :name))))
-        (value (plist-get (plist-get event :value) :value)))
-    (setq telega--options
-          (plist-put telega--options option value))
-
-    (when (and (eq option :is_location_visible) value)
-      (if telega-my-location
-          (telega--setLocation telega-my-location)
-
-        (warn (concat "telega: Option `:is_location_visible' is set, "
-                      "but `telega-my-location' is nil"))))))
-
-(defun telega--on-updateAuthorizationState (event)
-  "Proceed with user authorization state change using EVENT."
-  (let* ((state (plist-get event :authorization_state))
-         (stype (plist-get state :@type)))
-    (setq telega--auth-state (substring stype 18))
-    (telega-status--set (concat "Auth " telega--auth-state))
-    (cl-ecase (intern stype)
-      (authorizationStateWaitTdlibParameters
-       (telega--setTdlibParameters))
-
-      (authorizationStateWaitEncryptionKey
-       (telega--checkDatabaseEncryptionKey))
-
-      (authorizationStateWaitPhoneNumber
-       (let ((phone (read-string "Telega phone number: " "+")))
-         (telega--setAuthenticationPhoneNumber phone)))
-
-      (authorizationStateWaitCode
-       (let ((code (read-string "Telega login code: ")))
-         (telega--checkAuthenticationCode code)))
-
-      (authorizationStateWaitRegistration
-       (let* ((names (split-string (read-from-minibuffer "Your Name: ") " "))
-              (first-name (car names))
-              (last-name (mapconcat 'identity (cdr names) " ")))
-         (telega--registerUser first-name last-name)))
-
-      (authorizationStateWaitPassword
-       (let* ((hint (plist-get state :password_hint))
-              (pass (password-read
-                     (concat "Telegram password"
-                             (if (string-empty-p hint)
-                                 ""
-                               (format "(hint='%s')" hint))
-                             ": "))))
-         (telega--checkAuthenticationPassword pass)))
-
-
-      (authorizationStateReady
-       ;; TDLib is now ready to answer queries
-       (telega--authorization-ready))
-
-      (authorizationStateLoggingOut
-       )
-
-      (authorizationStateClosing
-       )
-
-      (authorizationStateClosed
-       (telega-server-kill)))))
-
-(defun telega--on-ok (_event)
-  "On ok result from command function call."
-  ;; no-op
-  )
-
-;; since TDLib 1.6.3
-(defun telega--on-updateDiceEmojis (event)
-  (setq telega--dice-emojis
-        (mapcar #'telega--desurrogate-apply (plist-get event :emojis))))
-
-(defun telega--on-updateServiceNotification (event)
-  "Handle service notification EVENT from the server."
-  (let ((help-window-select t))
-    (with-telega-help-win "*Telega Service Notification*"
-      ;; NOTE: use `telega-ins--content' in hope that only `:content'
-      ;; property is used
-      (telega-ins--with-attrs (list :fill 'center
-                                    :fill-column telega-chat-fill-column)
-        (telega-ins--content event))
-      (when (string-prefix-p "AUTH_KEY_DROP_" (plist-get event :type))
-        (telega-ins "\n")
-        (telega-ins--button "Cancel"
-          'action (lambda (_ignored)
-                    (quit-window)))
-        (telega-ins " ")
-        (telega-ins--button "Logout"
-          'action (lambda (_ignored)
-                    (when (yes-or-no-p "Destroy all local data? ")
-                      (telega-server--send (list :@type "destroy")))))))))
 
 (defun telega-version (&optional print-p)
   "Return telega (and TDLib) version.

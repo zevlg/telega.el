@@ -8,8 +8,8 @@
    CREATED: [2020-03-17]
 
    - [X] Searching
-   - [ ] Contacts list (see https://t.me/emacs_telega/16001)
-   - [ ] Nearby users/chats
+   - [X] Contacts list (see https://t.me/emacs_telega/16001)
+   - [X] Nearby users/chats
    - [ ] Chats, grouped by custom labels
          #+begin_example
          *OOS*
@@ -19,7 +19,7 @@
            [chat1      ]
            [chat2      ]
          #+end_example
-   - [ ] Last messages in the chats (idea by @mrkiko)
+   - [X] Last messages in the chats (idea by @mrkiko)
 
 ** WIP Multiple Accounts
    - See https://github.com/tdlib/td/issues/959
@@ -90,6 +90,18 @@ Unfortunately TON is postponed, see https://t.me/durov/116
 * Random Ideas
 
 Random list of ideas for telega.el
+
+** Saving chatbuf into file
+
+Save chatbuf into the file, that can be openned afterwards.  Save as
+plist like:
+
+#+begin_example
+(:files (list-of-aux-files-to-use-such-as-thumbnails)
+ :avatars (list-of-avatars)
+ :aux-messages (list-of-aux-messages-such-as-reply-to)
+ :messages (list-of-messages-follows))
+#+end_example
 
 ** Grouping chats by custom label, similar to ~gnus-topic.el~
 #+begin_example

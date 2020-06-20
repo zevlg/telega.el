@@ -84,16 +84,6 @@ By default, all chats are unmuted, the sound is set to
   (telega-server--call
    (list :@type "resetAllNotificationSettings")))
 
-(defun telega--on-updateScopeNotificationSettings (event)
-  "Handle `updateScopeNotificationSettings' EVENT."
-  (let* ((scope (plist-get event :scope))
-         (scope-key (cl-ecase (telega--tl-type scope)
-                      (notificationSettingsScopePrivateChats 'private)
-                      (notificationSettingsScopeGroupChats 'group)
-                      (notificationSettingsScopeChannelChats 'channel))))
-    (setf (alist-get scope-key telega--scope-notification-alist)
-          (plist-get event :notification_settings))))
-
 (defun telega-ins--msg-notification (msg)
   "Inserter to format MSG to notify about."
   ;; Limit length of the message
