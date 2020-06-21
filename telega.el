@@ -11,6 +11,7 @@
 (defconst telega-version "0.6.23")
 (defconst telega-server-min-version "0.6.1")
 (defconst telega-tdlib-min-version "1.6.0")
+(defconst telega-tdlib-max-version "1.6.4")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -167,10 +168,17 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; Validate tdlib version
   (when (string< (plist-get telega--options :version)
                  telega-tdlib-min-version)
-    (error (concat "TDLib version=%s < %s (min required), "
+    (warn (concat "TDLib version=%s < %s (min required), "
                    "please upgrade TDLib and recompile `telega-server'")
-           (plist-get telega--options :version)
-           telega-tdlib-min-version))
+          (plist-get telega--options :version)
+          telega-tdlib-min-version))
+  (when (and telega-tdlib-max-version
+             (string< telega-tdlib-max-version
+                      (plist-get telega--options :version)))
+    (warn (concat "TDLib version=%s > %s (max required), "
+                  "please downgrade TDLib and recompile `telega-server'")
+          (plist-get telega--options :version)
+          telega-tdlib-max-version))
 
   (setq telega--me-id (plist-get telega--options :my_id))
   (cl-assert telega--me-id)
