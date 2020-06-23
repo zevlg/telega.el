@@ -7,10 +7,11 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.23
-(defconst telega-version "0.6.23")
+;; Version: 0.6.24
+(defconst telega-version "0.6.24")
 (defconst telega-server-min-version "0.6.1")
-(defconst telega-tdlib-min-version "1.6.0")
+(defconst telega-tdlib-min-version "1.6.6")
+(defconst telega-tdlib-max-version nil)
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -167,10 +168,17 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; Validate tdlib version
   (when (string< (plist-get telega--options :version)
                  telega-tdlib-min-version)
-    (error (concat "TDLib version=%s < %s (min required), "
-                   "please upgrade TDLib and recompile `telega-server'")
-           (plist-get telega--options :version)
-           telega-tdlib-min-version))
+    (warn (concat "TDLib version=%s < %s (min required), "
+                  "please upgrade TDLib and recompile `telega-server'")
+          (plist-get telega--options :version)
+          telega-tdlib-min-version))
+  (when (and telega-tdlib-max-version
+             (string< telega-tdlib-max-version
+                      (plist-get telega--options :version)))
+    (warn (concat "TDLib version=%s > %s (max required), "
+                  "please downgrade TDLib and recompile `telega-server'")
+          (plist-get telega--options :version)
+          telega-tdlib-max-version))
 
   (setq telega--me-id (plist-get telega--options :my_id))
   (cl-assert telega--me-id)
@@ -196,13 +204,13 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; All OK, request for chats/users/etc
   (telega-status--set nil "Fetching chats...")
 
-  ;; Do not update filters on every chat fetched, update them at the end
-  (telega--getChats "Main" nil #'telega--on-main-getChats)
-  ;; Also fetch chats from Archive
+  (telega--getChats nil (list :@type "chatListMain")
+    #'telega--on-initial-chats-fetch)
   ;; NOTE: We hope `telega--getChats' will return all chats in the
   ;; Archive, in general this is not true, we need special callback to
-  ;; continue fetching, as with "Main" list
-  (telega--getChats "Archive" nil #'ignore)
+  ;; continue fetching, as with "chatListMain" list
+  (telega--getChats nil (list :@type "chatListArchive")
+    #'ignore)
 
   (run-hooks 'telega-ready-hook))
 

@@ -596,7 +596,7 @@ See https://github.com/zevlg/telega.el/issues/171"
   '(("📑Main" . main)
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
-    ("Online" . (online-status "Online"))
+    ("Online" . (and (not saved-messages) (online-status "Online")))
     ("Important" . (or mention (and unread unmuted)))
     ("📑Archive" . archive))
   "*Alist of custom filters in form (NAME . CHAT-FILTER).
@@ -611,13 +611,19 @@ TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
   :type 'boolean
   :group 'telega-filter)
 
-(defcustom telega-filter-custom-push-list '("📑Archive")
-  "*List of custom filters to use `telega-filters-push' instead of `telega-filter-add'.
-By default if button with custom filter is pressed, this filter
-is added to the list of active filters.  Custom filters from this
-list always substitutes active filter list.
-Mostly used by `chat-list' chat filters."
-  :type 'list
+(defcustom telega-filter-custom-folders
+  (list (cons "📑Main" (list :@type "chatListMain"))
+        (cons "📑Archive" (list :@type "chatListArchive")))
+  "*Alist of custom folders.
+Where car is custom filter name, and cdr is tdlib chat list for this filter."
+  :package-version '(telega . "0.6.24")
+  :type 'alist
+  :group 'telega-filter)
+
+(defcustom telega-filter-custotm-show-folders t
+  "Non-nil to show telegram folders along with custom filters."
+  :package-version '(telega . "0.6.24")
+  :type 'boolean
   :group 'telega-filter)
 
 (defcustom telega-filter-button-width 20
@@ -1354,6 +1360,11 @@ If nil, then user's online status is not displayed."
   :type 'list
   :group 'telega-symbol)
 
+(defcustom telega-symbol-folder "🖿"
+  "Symbol used for Telegram folders."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -1375,6 +1386,7 @@ If nil, then user's online status is not displayed."
          (nth 1 telega-symbol-poll-options)
          telega-symbol-blocked
          telega-symbol-alarm
+         telega-symbol-folder
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.

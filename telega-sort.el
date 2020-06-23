@@ -46,7 +46,7 @@
 
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 
-(declare-function telega-root-view--resort "telega-root")
+(declare-function telega-root-view--redisplay "telega-root")
 
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
@@ -104,7 +104,13 @@ CRITERIA could be a lit of sort criterias."
 
   (if (null criteria)
       (unless telega-sort--inhibit-order
-        (string> (telega-chat-order chat1) (telega-chat-order chat2)))
+        ;; NOTE: (TDLib docs) "sorted by the pair (chat.position.order,
+        ;; chat.id) in descending order"
+        (let ((o1 (telega-chat-order chat1))
+              (o2 (telega-chat-order chat2)))
+          (if (equal o1 o2)
+              (> (plist-get chat1 :id) (plist-get chat2 :id))
+            (string> o1 o2))))
 
     (let* ((cmpfun (alist-get (car criteria) telega-sort-criteria-alist))
            (c1-val (funcall cmpfun chat1))
@@ -160,13 +166,8 @@ overwritting currently active one."
           (sort telega--ordered-chats #'telega-chat>))
 
     (telega-filters--redisplay-footer)
-    (telega-root-view--resort)
+    (telega-root-view--redisplay)
     ))
-
-(defconst telega-sort--order-events
-  '("updateChatOrder" "updateChatIsPinned" "updateChatLastMessage"
-    "updateChatIsSponsored" "updateChatDraftMessage")
-  "List of events with `:order' property.")
 
 
 ;; ** Sorting criteria

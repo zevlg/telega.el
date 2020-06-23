@@ -35,9 +35,8 @@
   "Return non-nil if EVENT causes CHAT reorder."
   (let ((event-type (plist-get event :@type)))
     (or (member event-type
-                '("updateNewChat" "updateChatOrder" "updateChatIsPinned"
-                  "updateChatLastMessage" "updateChatIsSponsored"
-                  "updateChatDraftMessage"
+                '("updateNewChat" "updateChatPosition"
+                  "updateChatLastMessage" "updateChatDraftMessage"
 
                   ;; Special fake event used by telega to force chat
                   ;; reordering
@@ -214,6 +213,21 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
 
     (telega-chat--mark-dirty chat event)))
 
+(defun telega--on-updateChatPosition (event)
+  (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
+         (new-pos (plist-get event :position))
+         (old-pos (cl-find (plist-get new-pos :list) (plist-get chat :positions)
+                           :key (telega--tl-prop :list) :test #'equal)))
+    (if old-pos
+        (progn
+          (plist-put old-pos :order (plist-get new-pos :order))
+          (plist-put old-pos :is_pinned (plist-get new-pos :is_pinned)))
+      (plist-put chat :positions (vconcat (plist-get chat :positions)
+                                          (list new-pos))))
+
+    (telega-chat--mark-dirty chat event)
+  ))
+
 (defun telega--on-updateChatIsPinned (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
@@ -283,7 +297,11 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
     (cl-assert chat)
     (plist-put chat :last_message
                (plist-get event :last_message))
-    (plist-put chat :order (plist-get event :order))
+
+    ;; Generate fake events with position updates
+    (seq-doseq (pos (plist-get event :positions))
+      (telega--on-updateChatPosition (list :chat_id (plist-get event :chat_id)
+                                           :position pos)))
 
     (telega-chat--mark-dirty chat event)))
 
@@ -326,7 +344,11 @@ NOTE: we store the number as custom chat property, to use it later."
         (draft-msg (plist-get event :draft_message)))
     (cl-assert chat)
     (plist-put chat :draft_message draft-msg)
-    (plist-put chat :order (plist-get event :order))
+
+    ;; Generate fake events with position updates
+    (seq-doseq (pos (plist-get event :positions))
+      (telega--on-updateChatPosition (list :chat_id (plist-get event :chat_id)
+                                           :position pos)))
 
     (telega-chat--mark-dirty chat event)
 
@@ -334,14 +356,6 @@ NOTE: we store the number as custom chat property, to use it later."
     (with-telega-chatbuf chat
       (telega-chatbuf--input-draft draft-msg))
     ))
-
-(defun telega--updateChatIsSponsored (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :is_sponsored (plist-get event :is_sponsored))
-    (plist-put chat :order (plist-get event :order))
-
-    (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatChatList (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
@@ -385,21 +399,15 @@ NOTE: we store the number as custom chat property, to use it later."
                               :test 'eq :key #'telega-chat--info)))
       (telega-chat--mark-dirty chat event))))
 
-(defun telega--on-main-getChats (chats)
+(defun telega--on-initial-chats-fetch (chats)
   "Ensure chats from RESULT exists, and continue fetching chats."
   (if (> (length chats) 0)
       ;; Continue fetching chats, redisplaying custom filters
-      (telega--getChats "Main" (car (last chats)) #'telega--on-main-getChats)
+      (telega--getChats (car (last chats)) (list :@type "chatListMain")
+        #'telega--on-initial-chats-fetch)
 
     ;; All chats has been fetched
-
-    ;; TODO: some chats remains with order="0", i.e. known chats, do
-    ;; not proceed with chats that once was used, such as basic
-    ;; groups upgraded to supergroups, closed secret chats, etc.  We
-    ;; might want to remove them from `telega--ordered-chats' list
-    ;; for faster processing, but keep it in chats hash
-    (telega-status--set nil "")       ;reset aux status
-
+    (telega-status--set nil "")
     (run-hooks 'telega-chats-fetched-hook)))
 
 (defun telega--on-updateChatReplyMarkup (event)
@@ -409,6 +417,21 @@ NOTE: we store the number as custom chat property, to use it later."
                (plist-get event :reply_markup_message_id))
 
     (telega-chat--update-reply-markup-message chat)))
+
+
+;; Chat filters
+(defun telega--on-updateChatFilters (event)
+  "List of chat filters has been updated."
+  (setq telega-tdlib--chat-filters
+        (append (plist-get event :chat_filters) nil))
+
+  ;; Update custom filters ewoc
+  (with-telega-root-buffer
+    (telega-save-cursor
+      (telega-filters--refresh))
+
+    (run-hooks 'telega-root-update-hook))
+  )
 
 
 ;; Messages updates

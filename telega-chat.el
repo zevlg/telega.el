@@ -440,58 +440,6 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
       (setf (alist-get category telega--top-chats) top))
     (caddr top)))
 
-(defun telega--createPrivateChat (user)
-  "Create private chat with USER.
-Return newly created chat."
-  (telega-chat-get
-   (plist-get
-    (telega-server--call
-     (list :@type "createPrivateChat"
-           :user_id (plist-get user :id))) :id)))
-
-(defun telega--viewMessages (chat messages &optional force)
-  "Mark CHAT's MESSAGES as read.
-Use non-nil value for FORCE, if messages in closed chats should
-be marked as read."
-  (when messages
-    (telega-server--send
-     (list :@type "viewMessages"
-           :chat_id (plist-get chat :id)
-           :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
-           :force_read (if force t :false)))))
-
-(defun telega--toggleChatIsPinned (chat)
-  "Toggle pin state of the CHAT."
-  (telega-server--send
-   (list :@type "toggleChatIsPinned"
-         :chat_id (plist-get chat :id)
-         :is_pinned (if (plist-get chat :is_pinned) :false t))))
-
-(defun telega--toggleChatIsMarkedAsUnread (chat)
-  "Toggle marked as read state of the CHAT."
-  (telega-server--send
-   (list :@type "toggleChatIsMarkedAsUnread"
-         :chat_id (plist-get chat :id)
-         :is_marked_as_unread
-         (if (plist-get chat :is_marked_as_unread) :false t))))
-
-(defun telega--readAllChatMentions (chat)
-  "Read all mentions in CHAT."
-  (telega-server--send
-   (list :@type "readAllChatMentions" :chat_id (plist-get chat :id))))
-
-(defun telega--openChat (chat)
-  "Mark CHAT as opened."
-  (telega-server--send
-   (list :@type "openChat"
-         :chat_id (plist-get chat :id))))
-
-(defun telega--closeChat (chat)
-  "Mark CHAT as closed."
-  (telega-server--send
-   (list :@type "closeChat"
-         :chat_id (plist-get chat :id))))
-
 
 ;;; Chat buttons in root buffer
 (defvar telega-chat-button-map
