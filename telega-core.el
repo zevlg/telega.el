@@ -86,12 +86,9 @@ Used for optimisations.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
 Used to calculate numbers displayed in custom filter buttons.")
-(defvar telega--filtered-chats-addon nil
-  "Addon list to `telega--filered-chats'.
-User by some root views, such as global search, nearby chats, etc.")
 
 (defvar telega--dirty-chats nil
-  "Chats need to be resorted and updated.
+  "Chats need to be updated with `telega-chat--update'.
 Each element is a list, where first element is chat, and rest
 is events causing chat to be dirty.")
 (defvar telega--filters nil "List of active filters.")
@@ -172,6 +169,11 @@ Only one call can be currently active.")
   "Default notification settings for chats.
 alist where key is one of `private', `group' or `channel'.")
 
+(defvar telega-tdlib--chat-filters nil
+  "List of chat filters received from TDLib.")
+(defvar telega-tdlib--chat-list nil
+  "Active tdlib chat list used for ordering.")
+
 ;; Minibuffer stuff used by chatbuf and stickers
 (defvar telega-minibuffer--choices nil
   "Bind to list of choices.
@@ -242,7 +244,6 @@ Done when telega server is ready to receive queries."
 
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
-  (setq telega--filtered-chats-addon nil)
   (setq telega--dirty-chats nil)
   (setq telega--actions (make-hash-table :test 'eq))
   (setq telega--filters nil)
@@ -283,6 +284,9 @@ Done when telega server is ready to receive queries."
   (setq telega--stickers-recent-attached nil)
   (setq telega--animations-saved nil)
   (setq telega--dice-emojis nil)
+
+  (setq telega-tdlib--chat-filters nil)
+  (setq telega-tdlib--chat-list nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -922,10 +926,29 @@ Return VALUE."
 Return nil if no username is assigned to CHAT."
   (telega-tl-str (telega-chat--info chat) :username))
 
-(defsubst telega-chat-order (chat)
+(defun telega-chat-position--list-name (position)
+  (let ((pos-list (plist-get position :list)))
+    (if (eq (telega--tl-type pos-list) 'chatListFilter)
+        (plist-get (cl-find (plist-get pos-list :chat_filter_id)
+                            telega-tdlib--chat-filters
+                            :key (telega--tl-prop :id))
+                   :title)
+      (intern (downcase (substring (plist-get pos-list :@type) 8))))))
+
+(defun telega-chat-position (chat)
+  "Return CHAT position in current `telega-tdlib--chat-list'."
+  (cl-find telega-tdlib--chat-list (plist-get chat :positions)
+           :key (telega--tl-prop :list)
+           :test #'equal))
+
+(defun telega-chat-order (chat &optional ignore-custom)
   "Return CHAT's order as string.
+Order from `telega-tdlib--chat-list' position is used.
 If CHAT has custom order, then return its custom order."
-  (or (telega-chat-uaprop chat :order) (plist-get chat :order)))
+  (or (unless ignore-custom
+        (telega-chat-uaprop chat :order))
+      (plist-get (telega-chat-position chat) :order)
+      "0"))
 
 (defsubst telega-chat> (chat1 chat2)
   "Compare CHAT1 with CHAT2 according to `telega--sort-criteria'.

@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Emacs lisp interface to TDLib API
+;; Emacs lisp interface to TDLib API v1.6.6
 
 ;;; Code:
 (require 'telega-core)
@@ -1068,11 +1068,10 @@ If REVOKE is non-nil then delete message for all users."
          :message_ids (apply 'vector message-ids)
          :revoke (or revoke :false))))
 
-(defun telega--searchMessages (query last-msg &optional _list-name callback)
+(defun telega--searchMessages (query last-msg &optional _chat-list callback)
   "Search messages by QUERY.
 Specify LAST-MSG to continue searching from LAST-MSG searched.
-If LIST-NAME is given, then fetch chats from chat list named LIST-NAME.
-LIST-NAME is one of: \"Main\" or \"Archive\".
+If CHAT-LIST is given, then fetch chats from tdlib CHAT-LIST.
 If CALLBACK is specified, then do async call and run CALLBACK
 with list of chats received."
   (with-telega-server-reply (reply)
@@ -1084,8 +1083,7 @@ with list of chats received."
           ;; search for messages in them.  So we just search in all
           ;; chats and then filter messages
 
-          ;; :chat_list (list :@type (concat "chatList"
-          ;;                                 (capitalize (or list-name "Main"))))
+          ;; :chat_list chat-list
           :query query
           :offset_date (or (plist-get last-msg :date) 0)
           :offset_chat_id (or (plist-get last-msg :chat_id) 0)
@@ -1268,24 +1266,26 @@ Default LIMIT is 30."
    (list :@type "getChat"
          :chat_id chat-id)))
 
-(defun telega--getChats (&optional list-name offset-chat callback)
+(defun telega--getChats (&optional offset-chat chat-list callback)
   "Retreive all chats from the server in async manner.
-If LIST-NAME is given, then fetch chats from chat list named LIST-NAME.
-LIST-NAME is one of: \"Main\" or \"Archive\".
 OFFSET-CHAT is the chat to start getting chats from."
+  (declare (indent 2))
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat--ensure
               (mapcar #'telega-chat-get (plist-get reply :chat_ids)))
 
-    (let* ((chat-list (if list-name (capitalize list-name) "Main"))
-           (offset-order (or (plist-get offset-chat :order)
-                             "9223372036854775807"))
-           (offset-chatid (or (plist-get offset-chat :id) 0)))
-      (list :@type "getChats"
-            :offset_order offset-order
-            :offset_chat_id offset-chatid
-            :limit 1000
-            :chat_list (list :@type (concat "chatList" chat-list))))
+    (nconc (list :@type "getChats"
+;                 :offset_order "9223372036854775807"
+                 :offset_chat_id (or (plist-get offset-chat :id) 0)
+                 :limit 1000)
+           (when chat-list
+             (list :chat_list chat-list
+                   :offset_order
+                   (if offset-chat
+                       (let ((telega-tdlib--chat-list chat-list))
+                         (plist-get (telega-chat-position offset-chat) :order))
+                     "9223372036854775807")
+                   )))
     callback))
 
 (defun telega--reportChat (chat reason &optional messages)
@@ -1302,6 +1302,61 @@ REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
   "Remove CHAT's action bar without any other action."
   (telega-server--send
    (list :@type "removeChatActionBar"
+         :chat_id (plist-get chat :id))))
+
+(defun telega--createPrivateChat (user)
+  "Create private chat with USER.
+Return newly created chat."
+  (telega-chat-get
+   (plist-get
+    (telega-server--call
+     (list :@type "createPrivateChat"
+           :user_id (plist-get user :id))) :id)))
+
+(defun telega--viewMessages (chat messages &optional force)
+  "Mark CHAT's MESSAGES as read.
+Use non-nil value for FORCE, if messages in closed chats should
+be marked as read."
+  (when messages
+    (telega-server--send
+     (list :@type "viewMessages"
+           :chat_id (plist-get chat :id)
+           :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
+           :force_read (if force t :false)))))
+
+(defun telega--toggleChatIsPinned (chat)
+  "Toggle pin state of the CHAT in the `telega-tdlib--chat-list'."
+  (telega-server--send
+   (list :@type "toggleChatIsPinned"
+         :chat_list telega-tdlib--chat-list
+         :chat_id (plist-get chat :id)
+         :is_pinned (if (plist-get (telega-chat-position chat) :is_pinned)
+                        :false
+                      t))))
+
+(defun telega--toggleChatIsMarkedAsUnread (chat)
+  "Toggle marked as read state of the CHAT."
+  (telega-server--send
+   (list :@type "toggleChatIsMarkedAsUnread"
+         :chat_id (plist-get chat :id)
+         :is_marked_as_unread
+         (if (plist-get chat :is_marked_as_unread) :false t))))
+
+(defun telega--readAllChatMentions (chat)
+  "Read all mentions in CHAT."
+  (telega-server--send
+   (list :@type "readAllChatMentions" :chat_id (plist-get chat :id))))
+
+(defun telega--openChat (chat)
+  "Mark CHAT as opened."
+  (telega-server--send
+   (list :@type "openChat"
+         :chat_id (plist-get chat :id))))
+
+(defun telega--closeChat (chat)
+  "Mark CHAT as closed."
+  (telega-server--send
+   (list :@type "closeChat"
          :chat_id (plist-get chat :id))))
 
 

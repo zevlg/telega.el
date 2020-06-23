@@ -127,8 +127,6 @@ Rest elements are ewoc specs.")
     (define-key map (kbd "q") 'bury-buffer)
     (define-key map (kbd "Q") 'telega-kill)
 
-    (define-key map (kbd "m") 'telega-chat-with)
-
     ;; ** Rootbuf fast navigation
     ;;
     ;; {{{kbd(M-g)}}} prefix in rootbuf is used to jump across chat
@@ -168,6 +166,7 @@ Rest elements are ewoc specs.")
     (define-key map (kbd "v c") 'telega-view-contacts)
     (define-key map (kbd "v C") 'telega-view-calls)
     (define-key map (kbd "v l") 'telega-view-last-messages)
+    (define-key map (kbd "v f") 'telega-view-folders)
 
     map)
   "The key map for telega root buffer.")
@@ -181,7 +180,6 @@ Global root bindings:
 \\{telega-root-mode-map}"
   :group 'telega-root
   (telega-runtime-setup)
-  (telega-filters--reset telega-filter-default)
 
   ;; NOTE: make `telega-root-keep-cursor' working as expected
   (setq-local switch-to-buffer-preserve-window-point nil)
@@ -197,6 +195,8 @@ Global root bindings:
   (insert "\n")
 
   ;; Custom filters
+  (telega-filters--reset telega-filter-default)
+  (setq telega-tdlib--chat-list (telega-filter-active-tdlib-chat-list))
   (telega-filters--create)
 
   (save-excursion
@@ -504,18 +504,6 @@ If RAW is given then do not modify statuses for animation."
          button (cons telega--status telega--status-aux)))))
   ))
 
-(defun telega-root--redisplay ()
-  "Redisplay root's buffer contents.
-This is very heavy operation, use it only if you know what you are doing."
-  (telega-filters--redisplay)
-
-  (with-telega-root-buffer
-    (telega-save-cursor
-      (dolist (ewoc (mapcar #'cdr telega-root-view--ewocs-alist))
-        (ewoc-refresh ewoc)))
-
-    (run-hooks 'telega-root-update-hook)))
-
 (defun telega-root--on-chat-update0 (ewoc-name ewoc chat &optional chat-node)
   "Update CHAT in EWOC named EWOC-NAME.
 CHAT could be new to the ewoc, in this case create new node.
@@ -644,8 +632,7 @@ If corresponding chat node does not exists in EWOC, then create new one."
          (query (plist-get ewoc-spec :search-query)))
     (cl-assert query)
     (telega-root-view--ewoc-loading-start "messages"
-      (telega--searchMessages query last-msg
-                              (telega-filter-active-chat-list-name)
+      (telega--searchMessages query last-msg telega-tdlib--chat-list
                               #'telega-root--messages-add))))
 
 (defun telega-root--call-messages-search (&optional last-msg)
@@ -730,8 +717,10 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
   ;;    result in error "Unauthorized"
   (when (and (telega-server-live-p)
              (equal telega--auth-state "Ready"))
-    (let ((online-p (funcall telega-online-status-function))
-          (curr-online-p (telega-user-online-p (telega-user-me))))
+    (let* ((online-p (funcall telega-online-status-function))
+           ;; Me user might be not available yet, at start time
+           (me-user (telega-user-me 'locally))
+           (curr-online-p (when me-user (telega-user-online-p me-user))))
       (unless (eq online-p curr-online-p)
         (telega--setOption :online (if online-p t :false))))))
 
@@ -833,7 +822,7 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
     (run-hooks 'telega-root-update-hook)))
 
-(defun telega-root-view--resort ()
+(defun telega-root-view--redisplay ()
   "Resort items in root view ewocs according to active sort criteria."
   (with-telega-root-buffer
     (telega-save-cursor
@@ -870,8 +859,7 @@ VIEW-FILTER is additional chat filter for this root view."
     ;; filter might affect the view
     (unless (equal view-filter telega-root--view-filter)
       (setq telega-root--view-filter view-filter)
-      (telega-filters--update)
-      (telega-filters--redisplay))
+      (telega-filters--update))
 
     ;; Activate VIEW-SPEC by creating ewocs specified in view-spec
     (setq telega-root--view view-spec)
@@ -1310,6 +1298,42 @@ LINK is cons, where car is the link description, and cdr is the url."
                                   "https://t.me/emacs_telega")))
          ))
   )
+
+(defun telega-view-folders--gen-pp (folder-name)
+  "Generate pretty printer for chats in folder with FOLDER-NAME."
+  (let ((tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
+    (lambda (chat)
+      (when (telega-chat-match-p chat (list 'chat-list folder-name))
+        (let ((telega-tdlib--chat-list tdlib-chat-list)
+              (telega-filters--inhibit-list '(chat-list main archive)))
+          (telega-root--chat-known-pp chat))))))
+
+(defun telega-view-folders--gen-sorter (folder-name)
+  (let ((tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
+    (lambda (chat1 chat2)
+      (let ((telega-tdlib--chat-list tdlib-chat-list))
+        (telega-chat> chat1 chat2)))))
+
+(defun telega-view-folders--ewoc-spec (folder-spec)
+  (let* ((folder-name (telega-tl-str folder-spec :title))
+         (tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
+    (cl-assert tdlib-chat-list)
+    (list :name folder-name
+          :pretty-printer (telega-view-folders--gen-pp folder-name)
+          :header (concat telega-symbol-folder folder-name)
+          :sorter (telega-view-folders--gen-sorter folder-name)
+          :loading (telega--getChats nil tdlib-chat-list
+                     (apply-partially
+                      #'telega-root-view--ewoc-loading-done folder-name))
+          :on-chat-update #'telega-root--any-on-chat-update)))
+
+(defun telega-view-folders ()
+  "View telegram folders."
+  (interactive)
+  (telega-root-view--apply
+   (nconc (list 'telega-view-folders "Folders")
+          (mapcar #'telega-view-folders--ewoc-spec
+                  telega-tdlib--chat-filters))))
 
 (provide 'telega-root)
 

@@ -77,9 +77,9 @@ If BUTTON has custom `:action', then use it, otherwise describe the user."
         (funcall custom-action user)
       (telega-describe-user user))))
 
-(defun telega-user--get (user-id)
+(defun telega-user--get (user-id &optional locally-p)
   "Get user by USER-ID."
-  (telega--info 'user user-id))
+  (telega--info 'user user-id locally-p))
 
 (defun telega-user--by-username (username)
   "Get user by his USERNAME.
@@ -90,9 +90,9 @@ user is fetched from server."
   (let ((users (hash-table-values (alist-get 'user telega--info))))
     (cl-find username users :key (telega--tl-prop :username) :test 'equal)))
 
-(defmacro telega-user-me ()
+(defun telega-user-me (&optional locally-p)
   "Return me is a user."
-  `(telega-user--get telega--me-id))
+  (telega-user--get telega--me-id locally-p))
 
 (defsubst telega-user-online-p (user)
   "Return non-nil if USER is online."

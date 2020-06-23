@@ -1871,43 +1871,6 @@ If REMOVE-CAPTION is specified, then do not insert caption."
        (t (telega-ins--content msg))))))
 
 
-;; Inserter for custom filter button
-(defun telega-ins--filter (custom-spec)
-  "Inserter for the custom filter button specified by CUSTOM-SPEC.
-See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
-  (let* ((name (nth 0 custom-spec))
-         (chats (nthcdr 2 custom-spec))
-         (active-p (not (null chats)))
-         (nchats (length chats))
-         (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
-         (mentions (apply #'+ (mapcar
-                               (telega--tl-prop :unread_mention_count) chats)))
-         (umwidth 7)
-         (title-width (- telega-filter-button-width umwidth)))
-    (telega-ins--with-props (list 'inactive (not active-p)
-                                  'face (if active-p
-                                            'telega-filter-button-active
-                                          'telega-filter-button-inactive)
-                                  'action (if active-p
-                                              'telega-filter-button--action
-                                            'ignore))
-      (telega-ins "[")
-      (telega-ins--with-attrs (list :min title-width
-                                    :max title-width
-                                    :elide t
-                                    :align 'left)
-        (telega-ins-fmt "%d:%s" nchats name))
-      (telega-ins--with-attrs (list :min umwidth
-                                    :max umwidth
-                                    :elide t
-                                    :align 'right)
-        (unless (zerop unread)
-          (telega-ins-fmt "%d" unread))
-        (unless (zerop mentions)
-          (telega-ins-fmt "@%d" mentions)))
-      (telega-ins "]"))))
-
-
 ;;; Inserters for CONTACTS ewoc buttons
 (defun telega-ins--root-contact (user)
   "Inserter for USER, used for contacts ewoc in rootbuf."
@@ -2082,7 +2045,7 @@ Return t."
       (telega-ins umstring))
 
     (telega-ins (or (cadr brackets) "]"))
-    (when (plist-get chat :is_pinned)
+    (when (plist-get (telega-chat-position chat) :is_pinned)
       (telega-ins telega-symbol-pin))
     (when (plist-get chat :has_scheduled_messages)
       (telega-ins telega-symbol-alarm))

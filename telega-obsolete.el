@@ -59,6 +59,8 @@
                            nil "0.6.12")
 (telega-obsolete--variable 'telega-root-compact-view
                            nil "0.6.21")
+(telega-obsolete--variable 'telega-filter-custom-push-list
+                           'telega-filter-custom-folders "0.6.24")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
