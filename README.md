@@ -51,6 +51,7 @@ In some random order:
 - [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
 - [x] Message scheduling, reminders [PARTLY]
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
+- [x] Telegram Folders (since TDLib 1.6.6)
 
 ## Unique features
 
