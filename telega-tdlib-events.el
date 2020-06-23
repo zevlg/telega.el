@@ -228,19 +228,6 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
     (telega-chat--mark-dirty chat event)
   ))
 
-(defun telega--on-updateChatIsPinned (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :is_pinned (plist-get event :is_pinned))
-    (plist-put chat :order (plist-get event :order))
-
-    (telega-chat--mark-dirty chat event)
-
-    ;; NOTE: `telega-chatbuf--name' uses `:is_pinned' so rename the
-    ;; buffer
-    (with-telega-chatbuf chat
-      (rename-buffer (telega-chatbuf--name chat)))))
-
 (defun telega--on-updateChatReadInbox (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
         (unread-count (plist-get event :unread_count)))
