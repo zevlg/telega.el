@@ -2023,7 +2023,7 @@ Return t."
                       ;; members in the group
                       ;; Basicgroups converted to supergroups
                       ;; does not have username and have "0" order
-                      (when (string= "0" (plist-get chat :order))
+                      (when (string= "0" (telega-chat-order chat 'raw))
                         (when (telega-chat-username chat)
                           (telega-ins--with-face 'telega-username
                             (telega-ins "@" (telega-chat-username chat))))
@@ -2052,7 +2052,7 @@ Return t."
     (when custom-order
       (telega-ins
        (if (< (string-to-number custom-order)
-              (string-to-number (plist-get chat :order)))
+              (string-to-number (telega-chat-order chat 'raw)))
            (car telega-symbol-custom-order)
          (cdr telega-symbol-custom-order))))
     (when (telega-chat-secret-p chat)
