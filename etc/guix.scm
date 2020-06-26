@@ -92,7 +92,7 @@
 	       (("python3 run_tests.py")
 		""))
 	     #t))
-	 (add-after 'unpack 'telega-paths-patch
+	 (add-after 'check 'telega-paths-patch
 	   (lambda* (#:key inputs #:allow-other-keys)
 	     ;; Hard-code paths to `ffplay` and `ffmpeg`.
 	     (let ((ffplay-bin (string-append (assoc-ref inputs "ffmpeg")
@@ -153,6 +153,7 @@
     (propagated-inputs
      `(("emacs-visual-fill-column" ,emacs-visual-fill-column)
        ("emacs-company" ,emacs-company)
+       ("emacs-rainbow-identifiers" ,emacs-rainbow-identifiers)
        ("libwebp" ,libwebp))) ; sticker support.
     (native-inputs
      `(("tdlib" ,tdlib)
