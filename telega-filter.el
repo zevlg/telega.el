@@ -305,6 +305,12 @@ Actually return active chat filter corresponding to CUSTOM filter."
   (or (get-text-property 0 'telega-folder (car custom))
       (assoc (car custom) telega-filter-custom-folders)))
 
+(defun telega-filter--custom-folder-spec (tdlib-chat-filter)
+  "Return custom filter spec for the TDLIB-CHAT-FILTER folder."
+  (let ((fn (telega-tl-str tdlib-chat-filter :title)))
+    (cons (propertize (concat telega-symbol-folder fn) 'telega-folder t)
+          (list 'chat-list (substring-no-properties fn)))))
+
 (defun telega-filter--custom-chats (custom)
   "Return chats matching CUSTOM filter."
   (telega-filter-chats
@@ -320,12 +326,7 @@ Used when `updateChatFilters' is received."
 
   (dolist (custom (append telega-filters-custom
                           (when telega-filter-custotm-show-folders
-                            (mapcar (lambda (folder)
-                                      (let ((fn (telega-tl-str folder :title)))
-                                        (cons (propertize
-                                               (concat telega-symbol-folder fn)
-                                               'telega-folder t)
-                                              (list 'chat-list fn))))
+                            (mapcar #'telega-filter--custom-folder-spec
                                     telega-tdlib--chat-filters))))
     (ewoc-enter-last telega-filters--ewoc
                      (cons (car custom)
@@ -479,10 +480,7 @@ If CHAT-FILTER is ommited, then active filter from
 
   (cl-remove-if-not
    (lambda (chat)
-     ;; Filter out chats we are not member of
-     ;; See https://github.com/zevlg/telega.el/issues/10
-     (and (telega-chat-match-p chat chat-filter)
-          (telega-chat-match-p chat 'has-order)))
+     (telega-chat-match-p chat chat-filter))
    chat-list))
 
 (defun telega-filters-reset ()
@@ -850,15 +848,6 @@ Only basicgroup, supergroup and channel can be owned."
   "Matches if chat has last message."
   (plist-get chat :last_message))
 
-;; - has-order ::
-;;   {{{fundoc(telega--filter-has-order, 2)}}}
-;;
-;;   Only chats with non-0 order are listed in rootbuf.  I.e. this
-;;   filter is implicitly applied along with active chat filter.
-(define-telega-filter has-order (chat)
-  "Matches if chat has non-0 order."
-  (not (string= "0" (plist-get chat :order))))
-
 ;; - has-avatar ::
 ;;   {{{fundoc(telega--filter-has-avatar, 2)}}}
 (define-telega-filter has-avatar (chat)
@@ -1012,9 +1001,10 @@ See `telega-chat-set-custom-label'."
 (define-telega-filter chat-list (chat list-name)
   "Matches if chat is in chat list named LIST-NAME.
 LIST-NAME is `main' or `archive' symbol, or string naming tdlib chat filter."
-  (cl-find list-name (plist-get chat :positions)
-           :key #'telega-chat-position--list-name
-           :test #'equal))
+  (when-let ((pos (cl-find list-name (plist-get chat :positions)
+                           :key #'telega-chat-position--list-name
+                           :test #'equal)))
+    (not (equal "0" (plist-get pos :order)))))
 
 ;; - main ::
 ;;   {{{fundoc(telega--filter-main, 2)}}}

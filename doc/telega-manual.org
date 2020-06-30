@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.22)
+#+TITLE: Telega Manual (v0.6.25)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -123,7 +123,7 @@ new terms specific to =telega=.  All of them are used in the manual.
      However, special (push) custom chat filter buttons exists.  Instead
      of adding chat filter into active chat filter, they substitutes
      active chat filter with custom chat filter. See
-     ~telega-filter-custom-push-list~ below.
+     ~telega-filter-custom-folders~ below.
 
   - User Option: ~telega-filters-custom~ 
 
@@ -131,17 +131,14 @@ new terms specific to =telega=.  All of them are used in the manual.
     This filters are displayed as filter buttons at the top of rootbuf.
     TODO: If NAME starts with "lng_" then ~telega-i18n~ is used. 
 
-    Default value: ~(("📑Main" . main) ("Groups" type basicgroup supergroup) ("Channels" type channel) ("Contacts" . contact) ("Important" or mention (and unread unmuted)) ("📑Archive" . archive))~
+    Default value: ~(("📑Main" . main) ("Groups" type basicgroup supergroup) ("Channels" type channel) ("Online" and (not saved-messages) (online-status "Online")) ("Important" or mention (and unread unmuted)) ("📑Archive" . archive))~
 
-  - User Option: ~telega-filter-custom-push-list~ 
+  - User Option: ~telega-filter-custom-folders~ 
 
-    List of custom filters to use ~telega-filters-push~ instead of ~telega-filter-add~.
-    By default if button with custom filter is pressed, this filter
-    is added to the list of active filters.  Custom filters from this
-    list always substitutes active filter list.
-    Mostly used by ~chat-list~ chat filters. 
+    Alist of custom folders.
+    Where car is custom filter name, and cdr is tdlib chat list for this filter. 
 
-    Default value: ~("📑Archive")~
+    Default value: ~(("📑Main" :@type "chatListMain") ("📑Archive" :@type "chatListArchive"))~
 
 - Chat Sort Criteria :: 
      List of symbols denoting how to sort chats.
@@ -193,8 +190,6 @@ buttons.
 
 ** Rootbuf view switching
 
-View different parts of the rootbuf
-Special view used to search messages
 
 * Chat Filters
 
@@ -244,7 +239,8 @@ commands.
      Pop last ~N~ filters.
 
 - @@html:<kbd>@@/ !@@html:</kbd>@@ (~telega-filters-negate~) :: 
-     Negate active filters.
+     Negate last filter.
+     If ~@@html:<kbd>@@C-u@@html:</kbd>@@~ is specified, then negate whole active filter.
 
 - @@html:<kbd>@@/ /@@html:</kbd>@@ (~telega-filters-reset~) :: 
      Reset all active filters to default.
@@ -277,8 +273,11 @@ For other Chat Filter bindings see below.
 - (name ~REGEXP~) :: 
      Matches if chat's title matches ~REGEXP~.
 
-- (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@, @@html:<kbd>@@/ n@@html:</kbd>@@ (~telega-filter-by-search~) :: 
+- (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@ (~telega-filter-by-search~) :: 
      Matches if chat maches search QUERY.
+
+- nearby, @@html:<kbd>@@/ n@@html:</kbd>@@ (~telega-filter-by-nearby~) :: 
+     Matches if chat is nearby ~telega-my-location~.
 
 - (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
      Matches if custom filter with ~NAME~ matches.
@@ -322,12 +321,6 @@ For other Chat Filter bindings see below.
 
 - has-last-message :: 
      Matches if chat has last message.
-
-- has-order :: 
-     Matches if chat has non-0 order.
-
-     Only chats with non-0 order are listed in rootbuf.  I.e. this
-     filter is implicitly applied along with active chat filter.
 
 - has-avatar :: 
      Matches if chat has chat photo.
@@ -374,7 +367,7 @@ For other Chat Filter bindings see below.
 
 - (chat-list ~LIST-NAME~) :: 
      Matches if chat is in chat list named ~LIST-NAME~.
-     Only "Main" and "Archive" names are supported.
+     ~LIST-NAME~ is ~main~ or ~archive~ symbol, or string naming tdlib chat filter.
 
 - main :: 
      Matches if chat from "Main" chat list.
@@ -399,7 +392,7 @@ For other Chat Filter bindings see below.
   This filters are displayed as filter buttons at the top of rootbuf.
   TODO: If NAME starts with "lng_" then ~telega-i18n~ is used. 
 
-  Default value: ~(("📑Main" . main) ("Groups" type basicgroup supergroup) ("Channels" type channel) ("Contacts" . contact) ("Important" or mention (and unread unmuted)) ("📑Archive" . archive))~
+  Default value: ~(("📑Main" . main) ("Groups" type basicgroup supergroup) ("Channels" type channel) ("Online" and (not saved-messages) (online-status "Online")) ("Important" or mention (and unread unmuted)) ("📑Archive" . archive))~
 
 - User Option: ~telega-use-tracking-for~ 
 
@@ -481,6 +474,10 @@ directly into ~telega-sort-criteria-alist~, use
 
 - ~chatbuf-visibility~ :: 
      Sort chats by visibility in other window in DWIM style.
+     See https://github.com/zevlg/telega.el/issues/165
+
+- ~chatbuf-visibility~ :: 
+     Sort chats by nearby distance to me.
      See https://github.com/zevlg/telega.el/issues/165
 
 - TODO Date of last message sent by ~telega-user-me~
@@ -568,17 +565,17 @@ Chatbuf bindings to attach something:
 ** Chatbuf messages filtering
 
 Messages filtering means to show only some messages matching
-filter.  Available messages filters are: =scheduled=, =search=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =call=, =missed-call=, =mention=, =unread-mention=
+filter.  Available messages filters are: =scheduled=, =search=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =call=, =missed-call=, =mention=, =unread-mention=, =failed-to-send=
 
 Chatbuf uses next bindings for messages filtering:
 
 - @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 
      Enable chat messages filtering.
      Enables ~FILTER-NAME~ filter.
-     ~QUERY~ is only used by "search" chatbuf filter.
-     If ~@@html:<kbd>@@C-u@@html:</kbd>@@~ is specified, then filter by sender
-     of the message at point.
-     Not all filters can filter by sender.
+     ~QUERY~ is only used by "search" messages filter.
+     If ~@@html:<kbd>@@C-u@@html:</kbd>@@~ is specified, then filter messages
+     sent by sender of the message at point.
+     Not all filters can filter messages by sender.
 
 - @@html:<kbd>@@C-c C-c@@html:</kbd>@@ (~telega-chatbuf-filter-cancel~) :: 
      Cancel any message filtering.

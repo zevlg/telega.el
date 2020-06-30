@@ -659,19 +659,16 @@ Examines `telega-chat-label-alist'."
                     (telega--setChatPhoto chat photo)))))
 
     ;; Archive/Unarchive
-    (let* ((chat-list (plist-get chat :chat_list))
-           (list-name (when chat-list
-                        (substring (plist-get chat-list :@type) 8))))
-      (cond ((string= list-name "Main")
-             (telega-ins " ")
-             (telega-ins--button (telega-i18n "archived_add")
-               'action (lambda (_ignored)
-                         (telega--setChatChatList chat "Archive"))))
-            ((string= list-name "Archive")
-             (telega-ins " ")
-             (telega-ins--button (telega-i18n "archived_remove")
-               'action (lambda (_ignored)
-                         (telega--setChatChatList chat "Main"))))))
+    (let ((chat-archived-p (telega-chat-match-p chat 'archive)))
+      (telega-ins " ")
+      (telega-ins--button (if chat-archived-p
+                              (telega-i18n "archived_remove")
+                            (telega-i18n "archived_add"))
+        'action (lambda (_ignored)
+                  (telega--addChatToList
+                   chat (list :@type (if chat-archived-p
+                                         "chatListMain"
+                                       "chatListArchive"))))))
     (telega-ins "\n"))
 
   (telega-ins-fmt "Id: %s\n"

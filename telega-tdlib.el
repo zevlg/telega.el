@@ -850,13 +850,14 @@ If DRAFT-MSG is ommited, then clear draft message."
           (when draft-msg
             (list :draft_message draft-msg)))))
 
-(defun telega--setChatChatList (chat list-name &optional callback)
-  "Move CHAT to a different chat list named LIST-NAME.
-LIST-NAME is one of: \"Main\" or \"Archive\"."
+(defun telega--addChatToList (chat tdlib-chat-list &optional callback)
+  "Add a CHAT to a TDLIB-CHAT-LIST.
+A chat can't be simultaneously in Main and Archive chat lists, so
+it is automatically removed from another one if needed."
   (telega-server--call
-   (list :@type "setChatChatList"
+   (list :@type "addChatToList"
          :chat_id (plist-get chat :id)
-         :chat_list (list :@type (concat "chatList" (capitalize list-name))))
+         :chat_list tdlib-chat-list)
    (or callback 'ignore)))
 
 (defun telega--setChatDiscussionGroup (chat discussion-chat)

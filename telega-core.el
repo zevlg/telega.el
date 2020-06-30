@@ -470,6 +470,7 @@ Uses `telega--tl-get' to obtain the property."
 (defsubst telega-file--ensure (file)
   "Ensure FILE is in `telega--files'.
 Return FILE."
+  (cl-assert file)
   (puthash (plist-get file :id) file telega--files)
   file)
 
@@ -929,10 +930,10 @@ Return nil if no username is assigned to CHAT."
 (defun telega-chat-position--list-name (position)
   (let ((pos-list (plist-get position :list)))
     (if (eq (telega--tl-type pos-list) 'chatListFilter)
-        (plist-get (cl-find (plist-get pos-list :chat_filter_id)
-                            telega-tdlib--chat-filters
-                            :key (telega--tl-prop :id))
-                   :title)
+        (telega-tl-str (cl-find (plist-get pos-list :chat_filter_id)
+                                telega-tdlib--chat-filters
+                                :key (telega--tl-prop :id))
+                       :title 'no-props)
       (intern (downcase (substring (plist-get pos-list :@type) 8))))))
 
 (defun telega-chat-position (chat)

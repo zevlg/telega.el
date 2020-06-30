@@ -351,7 +351,7 @@ Keep cursor position only if CHAT is visible."
   "Display CHAT found in global public chats search."
   (let* ((telega-chat-button-width (+ telega-chat-button-width
                                       (/ telega-chat-button-width 2)))
-         (telega-filters--inhibit-list '(has-order chat-list main archive)))
+         (telega-filters--inhibit-list '(chat-list main archive)))
     (telega-root--chat-known-pp chat custom-inserter)))
 
 (defun telega-root--nearby-chat-known-pp (chat &optional custom-inserter)
@@ -376,7 +376,7 @@ CONTACT is some user you have exchanged contacts with."
           (telega-chat-get (plist-get contact-user :id) 'offline))
          (visible-p (or (not user-chat)
                         (let ((telega-filters--inhibit-list
-                               '(has-order chat-list main archive)))
+                               '(chat-list main archive)))
                           (telega-filter-chats (list user-chat))))))
     (when visible-p
       (telega-button--insert 'telega-user contact-user

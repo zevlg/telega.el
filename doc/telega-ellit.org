@@ -90,11 +90,11 @@ new terms specific to =telega=.  All of them are used in the manual.
   However, special (push) custom chat filter buttons exists.  Instead
   of adding chat filter into active chat filter, they substitutes
   active chat filter with custom chat filter. See
-  ~telega-filter-custom-push-list~ below.
+  ~telega-filter-custom-folders~ below.
 
   + {{{user-option(telega-filters-custom, 4)}}}
 
-  + {{{user-option(telega-filter-custom-push-list, 4)}}}
+  + {{{user-option(telega-filter-custom-folders, 4)}}}
 
 - Chat Sort Criteria ::
   List of symbols denoting how to sort chats.

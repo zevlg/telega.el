@@ -521,7 +521,7 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
         (telega-ins "\n")
         (let ((timg (telega-media--image
                      (cons audio 'telega-audio--create-image)
-                     (cons thumb :photo))))
+                     (cons thumb :file))))
           (telega-ins--image-slices timg))
         (telega-ins " ")))
     t))
@@ -674,7 +674,7 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachement symbol."
     (telega-ins--image-slices
      (telega-media--image
       (cons doc 'telega-thumb-or-minithumb--create-image)
-      (cons thumb :photo)))
+      (cons thumb :file)))
     (telega-ins " "))))
 
 (defun telega-ins--game (msg &optional game-value)

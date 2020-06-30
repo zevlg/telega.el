@@ -345,10 +345,14 @@ CHEIGHT is the height in chars to use (default=1)."
 
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.
+THUMB could be `photoSize' or `thumbnail'.
 CHEIGHT is the height in chars (default=1)."
   (telega-media--create-image
-   ;; Always renew thumb file, even if FILE is given (from callback)
-   (telega-file--renew thumb :photo)
+   (let ((thumb-tl-type (telega--tl-type thumb)))
+     (if (eq thumb-tl-type 'photoSize)
+         (telega-file--renew thumb :photo)
+       (cl-assert (eq thumb-tl-type 'thumbnail))
+       (telega-file--renew thumb :file)))
    (plist-get thumb :width)
    (plist-get thumb :height)
    cheight))
@@ -371,8 +375,8 @@ CHEIGHT is the height in chars (default=1)."
                                                        custom-minithumb)
   "Create image fol TL-OBJ that has :thumbnail and/or :minithumbnail prop."
   (let* ((thumb (or custom-thumb (plist-get tl-obj :thumbnail)))
-         (thumb-file (or custom-minithumb (telega-file--renew thumb :photo)))
-         (minithumb (plist-get tl-obj :minithumbnail)))
+         (thumb-file (telega-file--renew thumb :file))
+         (minithumb (or custom-minithumb (plist-get tl-obj :minithumbnail))))
     (cond ((telega-file--downloaded-p thumb-file)
            (telega-thumb--create-image
             thumb thumb-file telega-thumbnail-height))
