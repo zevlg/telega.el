@@ -470,7 +470,8 @@ Uses `telega--tl-get' to obtain the property."
 (defsubst telega-file--ensure (file)
   "Ensure FILE is in `telega--files'.
 Return FILE."
-  (cl-assert file)
+  (when telega-debug
+    (cl-assert file))
   (puthash (plist-get file :id) file telega--files)
   file)
 
