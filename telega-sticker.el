@@ -79,7 +79,7 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 (defsubst telega-sticker--thumb-file (sticker)
   "Return STICKER's thumbnail file."
   (let ((thumb (plist-get sticker :thumbnail)))
-    (telega-file--renew thumb :photo)))
+    (telega-file--renew thumb :file)))
 
 (defsubst telega-sticker-favorite-p (sticker)
   "Return non-nil if STICKER is in favorite list."

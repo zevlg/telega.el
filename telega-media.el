@@ -49,10 +49,10 @@
 
 (defun telega-file--renew (place prop)
   "Renew file value at PLACE and PROP."
-  (let* ((ppfile (plist-get place prop))
-         (file-id (plist-get ppfile :id))
-         (file (or (gethash file-id telega--files)
-                   (telega-file--ensure ppfile))))
+  (when-let* ((ppfile (plist-get place prop))
+              (file-id (plist-get ppfile :id))
+              (file (or (gethash file-id telega--files)
+                        (telega-file--ensure ppfile))))
     (plist-put place prop file)
     file))
 
