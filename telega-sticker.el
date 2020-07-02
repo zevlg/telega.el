@@ -289,7 +289,7 @@ Return path to png file."
    (if (or (and telega-sticker--use-thumbnail
                 (plist-get sticker :thumbnail))
            (plist-get sticker :is_animated))
-       (cons (plist-get sticker :thumbnail) :photo)
+       (cons (plist-get sticker :thumbnail) :file)
      (cons sticker :sticker))
    nil cache-prop))
 
@@ -736,7 +736,7 @@ Return sticker set."
 If SLICES-P is non-nil, then insert ANIMATION using slices."
   (let ((aimage (telega-media--image
                  (cons animation 'telega-animation--create-image)
-                 (cons (plist-get animation :thumbnail) :photo))))
+                 (cons (plist-get animation :thumbnail) :file))))
     (if slices-p
         (telega-ins--image-slices aimage)
       (telega-ins--image aimage))))
