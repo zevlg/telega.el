@@ -391,22 +391,6 @@ exceptionally helpful.
 
 # FAQ
 
-**Q**: I have this error after `M-x telega RET`
-
-```console
-
-Status: telega-server: exited abnormally with code 127
-/home/user/.telega/telega-server: error while loading shared libraries:
-libtdjson.so: cannot open shared object file: No such file or directory
-```
-
-**A**: Add `/usr/local/lib` into library loading path using next:
-
-```console
-# echo "/usr/local/lib" > /etc/ld.so.conf.d/usr_local_lib.conf
-# ldconfig
-```
-
 **Q**: I have this error while installing telega
 
 ```console

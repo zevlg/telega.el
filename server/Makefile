@@ -5,7 +5,7 @@ LIBS_PREFIX=/usr/local
 endif
 
 CFLAGS=-I$(LIBS_PREFIX)/include -Wall -g -pthread
-LDFLAGS=-L$(LIBS_PREFIX)/lib -ltdjson
+LDFLAGS=-L$(LIBS_PREFIX)/lib -Wl,-rpath,$(LIBS_PREFIX)/lib -ltdjson
 
 PROG=telega-server
 SOURCES=telega-server.c telega-dat.c telega-pngext.c
