@@ -2638,12 +2638,13 @@ If PREVIEW-P is non-nil, then generate preview image."
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t))
         (img-size (image-size
                    (create-image filename (when (fboundp 'imagemagick-types)
-                                            'imagemagick) nil :scale 1.0) t)))
+                                            'imagemagick) nil :scale 1.0)
+                   t (telega-x-frame))))
     (telega-chatbuf-input-insert
      (nconc (list :@type "inputMessagePhoto"
                   :photo ifile
-                  :width (car img-size)
-                  :height (cdr img-size))
+                  :width (or (car img-size) 0)
+                  :height (or (cdr img-size) 0))
             (when ttl
               (list :ttl ttl))))))
 

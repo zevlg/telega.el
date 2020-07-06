@@ -179,7 +179,7 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
 (defun telega-vvnote-video--create-image (note &optional _file)
   "Create image for video NOTE frame."
   (let* ((thumb (plist-get note :thumbnail))
-         (thumb-file (telega-file--renew thumb :photo))
+         (thumb-file (telega-file--renew thumb :file))
          (minithumb (plist-get note :minithumbnail)))
     (cond ((telega-file--downloaded-p thumb-file)
            (telega-vvnote-video--svg

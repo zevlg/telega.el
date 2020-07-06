@@ -297,7 +297,7 @@ Return path to png file."
   "Inserter for the STICKER.
 If SLICES-P is non-nil, then insert STICKER using slices."
   (if (or (not telega-use-images)
-          (not (display-graphic-p)))
+          (not (display-graphic-p (telega-x-frame))))
       (telega-ins "<STICKER\u00A0" (telega-sticker-emoji sticker) ">")
 
     (funcall (if slices-p #'telega-ins--image-slices #'telega-ins--image)

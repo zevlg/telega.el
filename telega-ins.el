@@ -126,7 +126,7 @@ ommit image display if value is for this property is non-nil."
                          (or (plist-get (cdr img) :width)
                              (progn
                                (telega-debug "WARN: `image-size' used for %S" img)
-                               (car (image-size img t))))) ?X))))))
+                               (car (image-size img t (telega-x-frame)))))) ?X))))))
 
 (defun telega-ins--image-slices (image &optional props slice-func)
   "Insert sliced IMAGE at current column.
@@ -135,7 +135,7 @@ SLICE-FUNC - function called after inserting slice. Called with
 single argument - slice number, starting from 0."
   (declare (indent 2))
   (if (or (not telega-use-images)
-          (not (display-graphic-p)))
+          (not (display-graphic-p (telega-x-frame))))
       (telega-ins "<IMAGE>")
 
     (let* ((img-xheight (plist-get (cdr image) :height))
@@ -570,7 +570,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
             (telega-ins--image-slices
              (telega-media--image
               (cons video 'telega-thumb-or-minithumb--create-image)
-              (cons thumb :photo)))
+              (cons thumb :file)))
             (telega-ins " ")))))
     t))
 
@@ -638,7 +638,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                           (when (or minithumb thumb)
                             (telega-media--image
                              (cons note 'telega-vvnote-video--create-image)
-                             (cons thumb :photo))))))
+                             (cons thumb :file))))))
         (telega-ins "\n")
         (telega-ins--image-slices img)
         (telega-ins " ")))))

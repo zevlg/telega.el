@@ -448,7 +448,7 @@ Default is `:telega-image'."
             (lambda (_photoignored &optional _fileignored)
               ;; 1) FILE downloaded, show photo
               ;; 2) Thumbnail is downloaded, use it
-              ;; 2.5) TODO: Minithumbnail is available, use it
+              ;; 2.5) Minithumbnail is available, use it
               ;; 3) FILE downloading, fallback to progress svg
               (let ((best-file (telega-file--renew best :photo)))
                 (if (telega-file--downloaded-p best-file)
