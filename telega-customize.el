@@ -79,24 +79,24 @@ Only writable options can be set.  See: https://core.telegram.org/tdlib/options"
 
 (defcustom telega-use-test-dc nil
   "*Non-nil to use telegram's test environment instead of production."
-  :type 'bool
+  :type 'boolean
   :group 'telega)
 
 (defcustom telega-use-file-database t
   "Non-nil to save downloaded/uploaded files among restarts."
-  :type 'bool
+  :type 'boolean
   :group 'telega)
 
 (defcustom telega-use-chat-info-database t
   "Cache chats informations among restarts.
 Implies `telega-use-file-database' set to non-nil."
-  :type 'bool
+  :type 'boolean
   :group 'telega)
 
 (defcustom telega-use-message-database t
   "Cache chats and messages among restarts.
 Implies `telega-use-chat-info-database' set to non-nil."
-  :type 'bool
+  :type 'boolean
   :group 'telega)
 
 (defcustom telega-proxies nil
