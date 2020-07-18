@@ -51,7 +51,7 @@ pngext_get_png(struct telega_dat* src, struct telega_dat* png)
                                     png_begin, 8);
         assert(start < tdat_end(src));
         if (start && start > tdat_start(src)) {
-                /* Drain the junk befor PNG image data */
+                /* Drain the junk before PNG image data */
                 tdat_drain(src, tdat_start(src) - start);
         }
         char* end = (char*)memmem(tdat_start(src), tdat_len(src),
