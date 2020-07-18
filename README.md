@@ -99,6 +99,7 @@ and `TDLib` packaged.  If you use GNU Guix you can skip directly to
    * `GNU gperf`
    * `CMake`
    * `Python` (for testing the server)
+   * `GNU Guix` _(optional, if using the Guix installation method.)_
 
 `make` is found in most of the modern machines. The other packages can
 be download with the system package manager (such as `apt` for
