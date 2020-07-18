@@ -79,9 +79,9 @@ Attaching funny cat sticker:
 
 # Installation
 
-`telega.el` depends on `visual-fill-column` package.  This dependency
-automatically installs if you install telega from MELPA or GNU Guix.  
-Otherwise will you need to install this package by hand.
+`telega.el` depends on the `visual-fill-column` and `rainbow-identifiers` packages.
+This dependency automatically installs if you install telega from MELPA
+or GNU Guix.  Otherwise will you need to install these packages by hand.
 
 `telega.el` is built on top of the official library provided by
 Telegram [TDLib 1.6.6](https://core.telegram.org/tdlib "tdlib"). Most
