@@ -87,8 +87,7 @@ or GNU Guix.  Otherwise will you need to install these packages by hand.
 Telegram [TDLib 1.6.6](https://core.telegram.org/tdlib "tdlib").
 Most distributions do not provide this package in their repositories,
 in which case you will have to install it manually by following the
-instructions. If you wish to bypass this, you may follow the `telega.el`
-installation instructions for GNU Guix.
+instructions.
 
 [GNU Guix](https://guix.gnu.org/), however, does have both `telega.el`
 and `TDLib` packaged.  If you use GNU Guix you can skip directly to
