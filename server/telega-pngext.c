@@ -72,7 +72,7 @@ pngext_usage(char* prog)
         printf("usage: %s -E PREFIX [-R RDSIZE] -- CMD [ARGS]\n", prog);
         printf("Captures output from external command CMD and extracts\n"
                "png images from there, writing them to temporary location\n"
-               "with PREFIX\n");
+               "with PREFIX.\n");
         printf("Used to animate gifs, play voice notes.\n");
         printf("Emacs is extremely bad at processing huge outputs from external commands.\n");
         exit(0);
