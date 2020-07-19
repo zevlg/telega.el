@@ -199,7 +199,7 @@ Works only if current state is `authorizationStateWaitCode'."
     (telega--setScopeNotificationSettings
      "notificationSettingsScopeGroupChats"
      (cdr telega-notifications-defaults)))
-  ;; NOTE: telega--scope-notification-alist will be updated uppon
+  ;; NOTE: telega--scope-notification-alist will be updated upon
   ;; `updateScopeNotificationSettings' event
 
   ;; All OK, request for chats/users/etc
@@ -226,7 +226,7 @@ area."
                           " ("
                           (if tdlib-version
                               (concat "TDLib v" tdlib-version)
-                            "TDLib version unknown, server not running")
+                            "TDLib version unknown. Make sure server is running")
                           ")"
                           " (telega-server v"
                           (telega-server-version)
