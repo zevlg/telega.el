@@ -1,14 +1,15 @@
 ;;; telega.el --- Telegram client (unofficial)  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2016-2020 by Zajcev Evgeny
+;; Copyright (C) 2019-2020 by Brett Gilio
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.26
-(defconst telega-version "0.6.26")
+;; Version: 0.6.27
+(defconst telega-version "0.6.27")
 (defconst telega-server-min-version "0.6.1")
 (defconst telega-tdlib-min-version "1.6.6")
 (defconst telega-tdlib-max-version nil)
