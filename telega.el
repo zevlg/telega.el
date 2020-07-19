@@ -121,7 +121,7 @@
     (telega nil)))
 
 ;;;###autoload
-(defun telega (arg)
+(defun telega (&optional arg)
   "Start telegramming.
 If prefix ARG is given, then will not pop to telega root buffer."
   (interactive "P")
