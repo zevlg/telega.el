@@ -158,7 +158,12 @@
     (native-inputs
      `(("tdlib" ,tdlib)
        ("libtgvoip" ,libtgvoip) ; VoIP support.
-       ("emacs" ,emacs)
+       ;; Use Emacs with wide ints on 32-bit architectures.
+       ("emacs" ,(match (%current-system)
+		   ((or "i686-linux" "armhf-linux")
+		    emacs-wide-int)
+		   (_
+		    emacs)))
        ("python" ,python)))
     (synopsis "GNU Emacs client for the Telegram messenger")
     (description
