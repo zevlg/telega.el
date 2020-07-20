@@ -115,6 +115,13 @@
 		"(concat \"telega-data/\" filename)
                     (locate-dominating-file telega--lib-directory
                                             \"telega-data\")"))
+	     ;; Modify telega.el to reflect unique dir name in
+	     ;; `telega-install-contrib' phase.
+	     (substitute* "telega.el"
+	       (("\\(push \\(expand-file-name \"contrib\" telega--lib-directory\\) load-path\\)")
+		"(push (expand-file-name \"telega-contrib\"
+                     (locate-dominating-file telega--lib-directory
+                                             \"telega-contrib\")) load-path)"))
 	     #t))
 	 ;; The server test suite has a hardcoded path.
 	 ;; Reset this behavior to use the proper path.
@@ -133,7 +140,16 @@
 	 ;; Build emacs-side using `emacs-build-system'
 	 (add-after 'compress-documentation 'emacs-add-source-to-load-path
 	   (assoc-ref emacs:%standard-phases 'add-source-to-load-path))
-	 (add-after 'emacs-add-source-to-load-path 'emacs-install
+	 ;; Manually invoke bytecompilation for the contrib
+	 ;; subdirectory.
+	 (add-after 'emacs-add-source-to-load-path 'emacs-bytecomp-contrib
+	   (lambda _
+	     (substitute* "Makefile"
+	       (("byte-recompile-directory \".\"")
+		"byte-recompile-directory \"contrib\""))
+	     (invoke "make" "compile")
+	     #t))
+	 (add-after 'emacs-bytecomp-contrib 'emacs-install
 	   (assoc-ref emacs:%standard-phases 'install))
 	 ;; This step installs subdir /etc, which contains images, sounds and
 	 ;; various other data, next to the site-lisp dir.
@@ -144,9 +160,16 @@
 	      (string-append (assoc-ref outputs "out")
 			     "/share/emacs/telega-data/"))
 	     #t))
-	 (add-after 'telega-install-data 'emacs-build
+	 (add-after 'emacs-install 'telega-install-contrib
+	   (lambda* (#:key outputs #:allow-other-keys)
+	     (copy-recursively
+	      "contrib"
+	      (string-append (assoc-ref outputs "out")
+			     "/share/emacs/telega-contrib"))
+	     #t))
+	 (add-after 'telega-install-contrib 'emacs-build
 	   (assoc-ref emacs:%standard-phases 'build))
-	 (add-after 'emacs-build 'emacs-make-autoloads
+	 (add-after 'telega-install-contrib 'emacs-make-autoloads
 	   (assoc-ref emacs:%standard-phases 'make-autoloads)))))
     (inputs
      `(("ffmpeg" ,ffmpeg))) ; mp4/gif support.
