@@ -311,7 +311,7 @@ the chatbuf input prompt."
 
 (unless (assoc "code" telega-chat-attach-commands)
   (add-to-list 'telega-chat-attach-commands
-               (list "code" #'geo-last-location #'telega-mnz-attach-code)
+               (list "code" nil #'telega-mnz-attach-code)
                'append))
 
 (provide 'telega-mnz)
