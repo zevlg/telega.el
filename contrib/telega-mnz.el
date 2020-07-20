@@ -268,8 +268,12 @@ MSG ##advice-doc."
 
 (defun telega-mnz--read-major-mode ()
   "Read major mode from the user."
-  (let ((mm (mapcar #'symbol-name (cl-remove-if-not #'functionp telega-mnz-modes))))
-    (read-from-whole-string (funcall telega-completing-read-function "Major mode: " mm))))
+  (let* ((mm (mapcar #'symbol-name (cl-remove-if-not #'functionp telega-mnz-modes)))
+	 (mnm (funcall telega-completing-read-function "Major mode: " mm)))
+    (if (and (functionp (car (read-from-string mnm)))
+	     (eq (cdr (read-from-string mnm)) (length mnm)))
+	(car (read-from-string mnm))
+      (error "Invalid major mode"))))
 
 (defun telega-mnz-send-code (&optional prefix)
   "Prompt the user to send a piece of code.
