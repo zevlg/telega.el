@@ -62,7 +62,7 @@
   "The keymap to be used when editing code messages.")
 
 (defvar telega-mnz--inside-p nil
-  "Will return `t' when inside a code block.")
+  "Will be bound to t when inside code block.")
 
 (define-key telega-mnz-edit-map (kbd "C-c C-c") #'exit-recursive-edit)
 (define-key telega-mnz-edit-map (kbd "C-x C-s") #'exit-recursive-edit)
