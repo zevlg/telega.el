@@ -280,7 +280,8 @@ If FILTER is nil, then active filter is used."
      )))
 
 (defun telega-filter--folder-tdlib-chat-list (folder-name)
-  "Return tdlib chat list for folder with FOLDER-NAME."
+  "Return tdlib chat list for folder with FOLDER-NAME.
+Return nil if folder with FOLDER-NAME is not known by TDLib."
   (or (cdr (assoc folder-name telega-filter-custom-folders))
       (progn
         ;; Strip off folder symbol, in case FOLDER-NAME from custom
@@ -288,9 +289,10 @@ If FILTER is nil, then active filter is used."
         (when (get-text-property 0 'telega-folder folder-name)
           (setq folder-name
                 (substring folder-name (length telega-symbol-folder))))
-        (let ((filter-info (cl-find folder-name telega-tdlib--chat-filters
-                                    :key (telega--tl-prop :title)
-                                    :test #'equal)))
+        (when-let ((filter-info (cl-find folder-name telega-tdlib--chat-filters
+                                         :key (lambda (fi)
+                                                (telega-tl-str fi :title))
+                                         :test #'equal)))
           (list :@type "chatListFilter"
                 :chat_filter_id (plist-get filter-info :id))))))
 
@@ -1024,6 +1026,8 @@ LIST-NAME is `main' or `archive' symbol, or string naming tdlib chat filter."
   "Matches if chat has scheduled messages."
   (plist-get chat :has_scheduled_messages))
 
+;; - has-action-bar ::
+;;   {{{fundoc(telega--filter-has-action-bar, 2)}}}
 (define-telega-filter has-action-bar (chat)
   "Matches CHAT with active action bar."
   (plist-get chat :action_bar))
@@ -1053,18 +1057,6 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
   (interactive)
   (setq telega--search-chats (telega--getInactiveSupergroupChats))
   (telega-filter-add 'inactive-supergroups))
-
-(define-telega-filter chat-filter (chat title)
-  "Matches if CHAT is in chat list specified by chat filter with TITLE."
-  (let ((chat-filter-id (cl-find title telega-tdlib--chat-filters
-                                 :key (telega--tl-prop :title)
-                                 :test #'equal))
-        (positions (plist-get chat :positions)))
-    (cl-find chat-filter-id positions
-             :key (lambda (pos)
-                    (let ((chat-list (plist-get pos :list)))
-                      (and (eq (telega--tl-type chat-list) 'chatListFilter)
-                           (plist-get chat-list :chat_filter_id)))))))
 
 (provide 'telega-filter)
 

@@ -78,6 +78,10 @@ Have Stoploss 690 Satoshi. í ½í»‘
 (dolist (chat telega--ordered-chats)
   (puthash (plist-get chat :id) chat telega--chats))
 
+(setq telega-tdlib--chat-filters
+      '((:@type "chatFilterInfo" :id 2 :title "Emacs" :icon_name "")
+        (:@type "chatFilterInfo" :id 3 :title #("í ½í¸¹í ½í¸¹í ½í¸¹" 0 2 (telega-display "ðŸ˜¹" telega-emoji-p t) 2 4 (telega-display "ðŸ˜¹" telega-emoji-p t) 4 6 (telega-display "ðŸ˜¹" telega-emoji-p t)) :icon_name "")))
+
 
 ;; Tests
 (ert-deftest telega-emacs-setup ()
@@ -111,6 +115,14 @@ Have Stoploss 690 Satoshi. í ½í»‘
   (should-not
    (telega-chat-match-p
     (car telega--ordered-chats) '(name "notmatching")))
+
+  ;; Test for `telega-filter-active-tdlib-chat-list'
+  (should (equal (telega-filter-active-tdlib-chat-list)
+                 '(:@type "chatListMain")))
+  (let* ((telega--filters '(((chat-list "ðŸ˜¹ðŸ˜¹ðŸ˜¹")) (main))))
+    (should (equal (telega-filter-active-tdlib-chat-list)
+                   '(:@type "chatListFilter" :chat_filter_id 3))))
+
   ;; TODO: add more filter tests
   )
 

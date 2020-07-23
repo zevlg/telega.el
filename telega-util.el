@@ -1039,9 +1039,9 @@ Use this if you planning to change `telega-rainbow-function'."
   (dolist (chat telega--ordered-chats)
     (plist-put (plist-get chat :uaprops) :color nil)))
 
-(defun telega-keys-description (command modemap)
-  "Return string describing binding of the COMMAND in the MODEMAP"
-  (mapconcat #'key-description (where-is-internal command modemap) ", "))
+(defun telega-keys-description (command &optional keymap)
+  "Return string describing binding of the COMMAND in the KEYMAP."
+  (mapconcat #'key-description (where-is-internal command keymap) ", "))
 
 (provide 'telega-util)
 

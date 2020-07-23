@@ -20,9 +20,19 @@
 ;; along with telega.el. If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
 ;; ** /telega-mnz.el/ -- Display Emacs content inside Telega messages.
-;; To use telega-mnz, simply ~(require 'telega-mnz)~.
-;; You can attach code using `telega-mnz-attach-code' or `telega-mnz-send-code'.
+;;
+;; To use =telega-mnz=, simply ~(require 'telega-mnz)~.  There is no
+;; global minor mode for =telega-mnz=, so you can't disable it after
+;; ~(require 'telega-mnz)~.
+;;
+;; You can attach code using {{{kbd(M-x telega-mnz-attach-code RET)}}}
+;; or {{{kbd(M-x telega-mnz-send-code RET)}}}.
+;;
+;; =telega-mnz= installs ~code~ [[#chatbuf_attaching_media][media
+;; attachement type]], use it with {{{kbd(C-c C-a code RET)}}} in the
+;; chatbuf.
 
 ;;; Code:
 
@@ -66,8 +76,8 @@
 
 (define-key telega-mnz-edit-map (kbd "C-c C-c") #'exit-recursive-edit)
 (define-key telega-mnz-edit-map (kbd "C-x C-s") #'exit-recursive-edit)
-(define-key telega-mnz-edit-map (kbd "C-c C-z") #'telega-mnz--cancel)
-(define-key telega-mnz-edit-map (kbd "C-c C-k") #'telega-mnz--cancel)
+(define-key telega-mnz-edit-map (kbd "C-c C-z") #'telega-mnz-cancel)
+(define-key telega-mnz-edit-map (kbd "C-c C-k") #'telega-mnz-cancel)
 
 (defun telega-mnz--render-text-in-mode-buffer (mode text)
   "Return a string with TEXT rendered in a buffer with MODE enabled."
@@ -146,7 +156,7 @@ else nil."
 			 (+ (plist-get first-entity :offset)
 			    (plist-get first-entity :length))))))))
 
-(defun telega-mnz--cancel ()
+(defun telega-mnz-cancel ()
   "Cancel editing the current message."
   (interactive)
   (setq telega-mnz--inside-p nil)
@@ -176,10 +186,13 @@ OLD-ENTITIES will be the old list of entities"
 	       (use-local-map (copy-keymap telega-mnz-edit-map))
 	       (set-keymap-parent (current-local-map) telega-mnz-edit-map)
 	       (setq buffer-read-only read-only)
-	       (if read-only (setq header-line-format "To exit, hit C-c C-c, C-x C-s, C-c C-k, or C-x C-z.")
-		 (setq header-line-format
-		       "To save this message, hit C-c C-c or C-x C-s, or M-x exit-recursive-edit RET.  \
-To cancel saving this message, hit C-c C-z or C-c C-k."))
+               (setq header-line-format
+                     (format (if read-only
+                                 "To exit, hit %s or %s."
+		               "To save this message, hit %s.  \
+To cancel saving this message, hit %s.")
+                             (telega-keys-description #'exit-recursive-edit)
+                             (telega-keys-description #'telega-mnz-cancel)))
 	       (recursive-edit)
 	       (when (and (not read-only)
 			  telega-mnz--inside-p)

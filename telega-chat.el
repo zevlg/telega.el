@@ -2966,16 +2966,17 @@ message when user gets online."
 Prefix argument is available for next attachements:
   screenshot - Takes numeric prefix argument to delay taking
                screenshot.
-  sticker    - Takes C-u prefix argument to attach favorite/recent
+  sticker    - Takes `\\[universal-argument]' to attach favorite/recent
                sticker.
   clipboard  - Available only if image is in the clipboard.
-               Takes C-u prefix argument to attach clipboard as
+               Takes `\\[universal-argument]' to attach clipboard as
                document.
-  animation  - Takes C-u prefix to attach file as animation.
-               (Same as attching \"gif\")
-  location   - Takes C-u prefix to attach live location.
-  poll       - Takes C-u prefix to create non-anonymous poll.
-  scheduled  - Takes C-u prefix to send message when user gets online."
+  animation  - Takes `\\[universal-argument]' to attach file as animation.
+               (Same as attaching \"gif\")
+  location   - Takes `\\[universal-argument]' to attach live location.
+  poll       - Takes `\\[universal-argument]' to create non-anonymous poll.
+  scheduled  - Takes `\\[universal-argument]' to send message when
+               user gets online."
   (interactive
    (list (funcall telega-completing-read-function
                   "Attachment type: "

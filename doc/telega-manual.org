@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.25)
+#+TITLE: Telega Manual (v0.6.28)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -46,6 +46,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-alertel--notifications-using-alertel][/telega-alert.el/ -- Notifications using =alert.el=]]
     - [[#telega-dired-dwimel--attach-files-from-dired-in-dwim-style][/telega-dired-dwim.el/ -- Attach files from dired in DWIM style]]
     - [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][/telega-live-location.el/ -- Manage live location in Telega using geo.el]]
+    - [[#telega-mnzel--display-emacs-content-inside-telega-messages][/telega-mnz.el/ -- Display Emacs content inside Telega messages.]]
 
 * Telega glossary
 
@@ -240,7 +241,7 @@ commands.
 
 - @@html:<kbd>@@/ !@@html:</kbd>@@ (~telega-filters-negate~) :: 
      Negate last filter.
-     If ~@@html:<kbd>@@C-u@@html:</kbd>@@~ is specified, then negate whole active filter.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is specified, then negate whole active filter.
 
 - @@html:<kbd>@@/ /@@html:</kbd>@@ (~telega-filters-reset~) :: 
      Reset all active filters to default.
@@ -377,6 +378,9 @@ For other Chat Filter bindings see below.
 
 - has-scheduled-messages :: 
      Matches if chat has scheduled messages.
+
+- has-action-bar :: 
+     Matches ~CHAT~ with active action bar.
 
 ** Customizable options making use of Chat Filters
 
@@ -544,16 +548,17 @@ Chatbuf bindings to attach something:
      Prefix argument is available for next attachements:
        screenshot - Takes numeric prefix argument to delay taking
      	       screenshot.
-       sticker    - Takes C-u prefix argument to attach favorite/recent
+       sticker    - Takes @@html:<kbd>@@C-u@@html:</kbd>@@ to attach favorite/recent
      	       sticker.
        clipboard  - Available only if image is in the clipboard.
-     	       Takes C-u prefix argument to attach clipboard as
+     	       Takes @@html:<kbd>@@C-u@@html:</kbd>@@ to attach clipboard as
      	       document.
-       animation  - Takes C-u prefix to attach file as animation.
-     	       (Same as attching "gif")
-       location   - Takes C-u prefix to attach live location.
-       poll       - Takes C-u prefix to create non-anonymous poll.
-       scheduled  - Takes C-u prefix to send message when user gets online.
+       animation  - Takes @@html:<kbd>@@C-u@@html:</kbd>@@ to attach file as animation.
+     	       (Same as attaching "gif")
+       location   - Takes @@html:<kbd>@@C-u@@html:</kbd>@@ to attach live location.
+       poll       - Takes @@html:<kbd>@@C-u@@html:</kbd>@@ to create non-anonymous poll.
+       scheduled  - Takes @@html:<kbd>@@C-u@@html:</kbd>@@ to send message when
+     	       user gets online.
 
 - @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-file~) :: 
      Attach ~FILENAME~ as document to the current input.
@@ -573,7 +578,7 @@ Chatbuf uses next bindings for messages filtering:
      Enable chat messages filtering.
      Enables ~FILTER-NAME~ filter.
      ~QUERY~ is only used by "search" messages filter.
-     If ~@@html:<kbd>@@C-u@@html:</kbd>@@~ is specified, then filter messages
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is specified, then filter messages
      sent by sender of the message at point.
      Not all filters can filter messages by sender.
 
@@ -583,7 +588,7 @@ Chatbuf uses next bindings for messages filtering:
 
 - @@html:<kbd>@@C-c C-s@@html:</kbd>@@ (~telega-chatbuf-filter-search~) :: 
      Interactively search for messages in chatbuf.
-     If non-nil ~BY-SENDER-P~ is specified by ~@@html:<kbd>@@C-u@@html:</kbd>@@~,
+     If non-nil ~BY-SENDER-P~ is specified by @@html:<kbd>@@C-u@@html:</kbd>@@,
      then also search by sender.
 
 ** Sending ordinary messages
@@ -764,3 +769,16 @@ with @@html:<kbd>@@C-c C-a live-geo-location RET@@html:</kbd>@@ in the chatbuf.
 
 This mode requires the =geo.el= library, available at
 https://git.sr.ht/~oldosfan/geo-xdg.el
+
+** /telega-mnz.el/ -- Display Emacs content inside Telega messages.
+
+To use =telega-mnz=, simply ~(require 'telega-mnz)~.  There is no
+global minor mode for =telega-mnz=, so you can't disable it after
+~(require 'telega-mnz)~.
+
+You can attach code using @@html:<kbd>@@M-x telega-mnz-attach-code RET@@html:</kbd>@@
+or @@html:<kbd>@@M-x telega-mnz-send-code RET@@html:</kbd>@@.
+
+=telega-mnz= installs ~code~ [[#chatbuf_attaching_media][media
+attachement type]], use it with @@html:<kbd>@@C-c C-a code RET@@html:</kbd>@@ in the
+chatbuf.
