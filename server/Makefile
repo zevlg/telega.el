@@ -1,42 +1,36 @@
-CC=cc
+prog = telega-server
 
-ifndef LIBS_PREFIX
-LIBS_PREFIX=/usr/local
+sources = $(wildcard *.c)
+objects = $(sources:.c=.o)
+
+LDLIBS += -ltdjson
+LDFLAGS += -pthread
+
+ifdef TGVOIP
+sources += telega-voip.cpp
+objects += telega-voip.o
+
+LDLIBS += -ltgvoip
 endif
 
-CFLAGS=-I$(LIBS_PREFIX)/include -Wall -g -pthread
-LDFLAGS=-L$(LIBS_PREFIX)/lib -Wl,-rpath,$(LIBS_PREFIX)/lib -ltdjson
+.PHONY: all install test clean
 
-PROG=telega-server
-SOURCES=telega-server.c telega-dat.c telega-pngext.c
+all: $(prog)
 
-ifdef WITH_VOIP
-CC=c++
-CFLAGS+=-std=c++11 -DWITH_VOIP -DTGVOIP_NO_STDOUT_LOGS
-LDFLAGS+=-ltgvoip
-SOURCES+=telega-voip.cpp
-endif
+$(prog): $(objects)
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-ifdef WITH_TON
-CFLAGS+=-DWITH_TON
-LDFLAGS+=-ltonlibjson
-endif
+.c.o:
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-ifndef INSTALL_PREFIX
-INSTALL_PREFIX=$(HOME)/.telega
-endif
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(PROG): $(SOURCES)
-	$(CC) $(CFLAGS) -o $(PROG) $(SOURCES) $(LDFLAGS)
+install: all
+	install -D -m 755 $(prog) $(DESTDIR)$(BINPREFIX)
 
-install: $(PROG)
-	@install -v -d $(INSTALL_PREFIX)
-	@install -v $(PROG) $(INSTALL_PREFIX)
-
-test:
-	@python3 run_tests.py
+test: all
+	python3 run_tests.py
 
 clean:
-	@rm -vf $(PROG)
-
-.PHONY: clean install
+	$(RM) $(prog) $(objects)
