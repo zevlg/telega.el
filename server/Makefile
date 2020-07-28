@@ -1,7 +1,7 @@
 prog = telega-server
 
-sources = $(wildcard *.c)
-objects = $(sources:.c=.o)
+sources := $(wildcard *.c)
+objects := $(sources:.c=.o)
 
 LDLIBS += -ltdjson
 LDFLAGS += -pthread
