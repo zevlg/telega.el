@@ -1,3 +1,7 @@
 /server/telega-server
 
 *.elc
+
+# Added automatically by `eldev init'.
+/.eldev
+/Eldev-local

@@ -1,0 +1,36 @@
+; -*- mode: emacs-lisp; lexical-binding: t; no-byte-compile: t -*-
+
+;; Autodetermined by `eldev init'.
+(eldev-use-package-archive 'melpa)
+
+(eldev-defbuilder telega-make (dir target &optional flags)
+  :short-name "MAKE"
+  :message source-and-target
+  :source-files "*"
+  :targets ("" -> "")
+  :collect ":default"
+  (eldev-call-process (executable-find "make")
+      `("-C" ,dir ,target . ,flags)
+    ;; FIXME: do I need it?
+    (when (fboundp 'eldev--forward-process-output)
+      (eldev--forward-process-output))
+    (unless (zerop exit-code)
+      (signal 'eldev-error (list "`make' process exited with error code %d" exit-code)))))
+
+(defconst server-enable-voip "TGVOIP=1")
+
+(defvar server-flags '())
+
+(eldev-defcommand mypackage-build-server (&rest parameters)
+  "Build server"
+  (telega-make "./server" "all" server-flags))
+
+(eldev-defcommand mypackage-clean-server (&rest parameters)
+  "Clean server"
+  (telega-make "./server" "clean" server-flags))
+
+(eldev-defoption mypackage-build-server-enable-voip ()
+  "Enable Voice over IP."
+  :options (--enable-voip)
+  :for-command (build-server clean-server)
+  (add-to-list 'server-flags server-enable-voip))
