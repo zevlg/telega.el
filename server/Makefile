@@ -1,3 +1,6 @@
+PREFIX = /usr/local
+BINPREFIX = $(PREFIX)/bin
+
 prog = telega-server
 
 sources := $(wildcard *.c)
