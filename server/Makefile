@@ -30,7 +30,7 @@ $(prog): $(objects)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 install: all
-	install -D -m 755 $(prog) $(DESTDIR)$(BINPREFIX)
+	install -D -m 755 $(prog) "$(DESTDIR)$(BINPREFIX)"
 
 test: all
 	python3 run_tests.py
