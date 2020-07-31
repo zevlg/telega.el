@@ -517,8 +517,9 @@ emacs-nox)?
     5. [link text](http://actual.url)
     6. [username](tg://user?id=<USER-ID>)"
 	
-	_Note: Language syntax highlighting requires the
-	contrib telega-mnz` module_
+
+*Note: Language syntax highlighting requires the contrib telega-mnz` 
+module*
 
 **Q**: Is there manual for `telega.el`?
 
