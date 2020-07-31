@@ -3,16 +3,15 @@ BINPREFIX = $(PREFIX)/bin
 
 prog = telega-server
 
+override LDFLAGS += -pthread
+
 sources := $(wildcard *.c)
 objects := $(sources:.c=.o)
-
 LDLIBS += -ltdjson
-LDFLAGS += -pthread
 
 ifdef TGVOIP
 sources += telega-voip.cpp
 objects += telega-voip.o
-
 LDLIBS += -ltgvoip
 endif
 
@@ -22,12 +21,6 @@ all: $(prog)
 
 $(prog): $(objects)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
-
-.c.o:
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 install: all
 	install -D -m 755 $(prog) "$(DESTDIR)$(BINPREFIX)"
