@@ -1040,8 +1040,14 @@ Use this if you planning to change `telega-rainbow-function'."
     (plist-put (plist-get chat :uaprops) :color nil)))
 
 (defun telega-keys-description (command &optional keymap)
-  "Return string describing binding of the COMMAND in the KEYMAP."
-  (mapconcat #'key-description (where-is-internal command keymap) ", "))
+  "Return string describing binding of the COMMAND in the KEYMAP.
+If no keys corresponds to COMMAND, then return \"M-x COMMAND
+RET\" string."
+  (let ((keys-description (mapconcat #'key-description
+                                     (where-is-internal command keymap) ", ")))
+    (if (string-empty-p keys-description)
+        (format "M-x %S RET" command)
+      keys-description)))
 
 (provide 'telega-util)
 

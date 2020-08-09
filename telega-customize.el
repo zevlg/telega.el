@@ -620,7 +620,7 @@ Where car is custom filter name, and cdr is tdlib chat list for this filter."
   :type 'alist
   :group 'telega-filter)
 
-(defcustom telega-filter-custotm-show-folders t
+(defcustom telega-filter-custom-show-folders t
   "Non-nil to show telegram folders along with custom filters."
   :package-version '(telega . "0.6.24")
   :type 'boolean
@@ -890,13 +890,15 @@ timespan, then do not group messages."
   :group 'telega-chat)
 
 (defcustom telega-chat-mode-line-format
-  '((:eval (telega-chatbuf-mode-line-unread))
+  '((:eval (telega-chatbuf-mode-line-discuss))
+    (:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
     (:eval (telega-chatbuf-mode-line-pinned-msg 20))
     (:eval (telega-chatbuf-mode-line-messages-filter)))
   "Additional mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
+  :package-version '(telega . "0.6.29")
   :type 'sexp
   :group 'telega-chat)
 
@@ -1362,6 +1364,11 @@ If nil, then user's online status is not displayed."
 
 (defcustom telega-symbol-folder "🖿"
   "Symbol used for Telegram folders."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-linked "⭾"
+  "Symbol used for linked chats button in modeline."
   :type 'string
   :group 'telega-symbol)
 

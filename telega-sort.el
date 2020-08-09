@@ -185,7 +185,7 @@ overwritting currently active one."
 ;;
 ;;   Thanks to https://t.me/Kurvivor
 (define-telega-sorter title ("updateChatTitle") (chat)
-  "Sort chats by number of online members."
+  "Sort chats alphabetically by chat title."
   (telega-chat-title chat))
 
 ;; - ~member-count~, {{{where-is(telega-sort-by-member-count,telega-root-mode-map)}}} ::

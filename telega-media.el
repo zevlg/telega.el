@@ -555,7 +555,8 @@ Optionally IMAGE-FILE could be used."
     (add-text-properties 0 (length emoji)
                          (list 'rear-nonsticky '(display)
                                'display image)
-                         emoji)))
+                         emoji)
+    emoji))
 
 
 ;; Location

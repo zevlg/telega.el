@@ -78,8 +78,12 @@ Thumbnail is a smaller (and faster) version of sticker image.")
 
 (defsubst telega-sticker--thumb-file (sticker)
   "Return STICKER's thumbnail file."
-  (let ((thumb (plist-get sticker :thumbnail)))
-    (telega-file--renew thumb :file)))
+  ;; NOTE: return only for non-animated thumbnails, otherwise
+  ;; minithumbnail will be used
+  (when-let ((thumb (plist-get sticker :thumbnail)))
+    (when (memq (telega--tl-type (plist-get thumb :format))
+                '(thumbnailFormatJpeg thumbnailFormatPng thumbnailFormatWebp))
+      (telega-file--renew thumb :file))))
 
 (defsubst telega-sticker-favorite-p (sticker)
   "Return non-nil if STICKER is in favorite list."

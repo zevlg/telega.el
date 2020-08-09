@@ -73,6 +73,14 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} renamed group to «{title}»")
  ("lng_action_changed_title_channel"
   :value "Channel renamed to «{title}»")
+ ("lng_action_changed_photo"
+  :value "{from} updated group photo")
+ ("lng_action_changed_photo_channel"
+  :value "Channel photo updated")
+ ("lng_action_changed_video"
+  :value "{from} updated group video")
+ ("lng_action_changed_video_channel"
+  :value "Channel video updated")
  ("lng_action_pinned_message"
   :value "{from} pinned «{text}»")
  ("lng_pinned_notify"
@@ -89,6 +97,24 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_action_kick_user"
   :value "{from} removed {user}")
 
+ ("lng_action_game_score"
+  :one_value "{from} scored {count} in {game}"
+  :other_value "{from} scored {count} in {game}")
+ ("lng_action_game_you_scored"
+  :one_value "You scored {count} in {game}"
+  :other_value "You scored {count} in {game}")
+ ("lng_action_game_score_no_game"
+  :one_value "{from} scored {count}"
+  :other_value "{from} scored {count}")
+ ("lng_action_game_you_scored_no_game"
+  :one_value "You scored {count}"
+  :other_value "You scored {count}")
+
+ ("telega_action_group_upgrade_to"
+  :value "{from} upgraded the group to supergroup")
+ ("telega_action_group_upgrade_from"
+  :value "{from} created supergroup from the group")
+
  ;; chatbuf modeline
  ("telega_chat_modeline_unread"
   :value "unread:{unread_count}")
@@ -102,6 +128,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "{mouse}: Goto next mention")
  ("telega_chat_modeline_pinned_msg_help"
   :value "{mouse}: Goto pinned message")
+ ("telega_chat_modeline_discuss_help"
+  :value "{mouse}: Goto chat to discuss this channel")
  ("telega_chat_modeline_members"
   :zero_value "{member_count} members"
   :other_value "{member_count} members, {count} online")
@@ -179,6 +207,10 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_blocked_list_confirm_text"
   :value "Do you want to block {name} from messaging and calling you on Telegram?")
 
+ ("lng_manage_linked_channel"
+  :value "Linked channel")
+ ("lng_channel_discuss"
+  :value "Discuss")
  ("lng_channel_not_accessible"
   :value "Sorry, this channel is not accessible.")
 
@@ -226,4 +258,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "Telegram FAQ")
  ("lng_settings_ask_question"
   :value "Ask a Question")
+
+ ("lng_ttl_photo_expired"
+  :value "Photo has expired")
+ ("lng_ttl_video_expired"
+  :value "Video has expired")
  )

@@ -274,6 +274,10 @@ them to bots or channels."
 If INCLUDE-BOTS-P is non-nil, then return non-nil also for bots."
   (eq (telega-chat--type chat include-bots-p) 'private))
 
+(defun telega-chat-channel-p (chat)
+  "Return non-nil if CHAT is channel."
+  (eq (telega-chat--type chat) 'channel))
+
 (defun telega-chat-secret-p (chat)
   "Return non-nil if CHAT is secret."
   (eq (telega-chat--type chat 'no-interpret) 'secret))
@@ -383,7 +387,7 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
 (defun telega-chat--update-administrators (chat)
   "Asynchronously update CHAT's `telega-chatbuf--administrators'."
   ;; NOTE: admin right is required to to get admins list in channels
-  (unless (eq (telega-chat--type chat) 'channel)
+  (unless (telega-chat-channel-p chat)
     (telega--getChatAdministrators chat
       (lambda (admins)
         (with-telega-chatbuf chat
@@ -873,7 +877,7 @@ Use `telega-chat-leave' to just leave the CHAT."
 
     ;; NOTE: `telega--deletechathistory' cannot be used in channels
     ;; and public supergroups
-    (unless (or (eq (telega-chat--type chat) 'channel)
+    (unless (or (telega-chat-channel-p chat)
                 (telega-chat-public-p chat 'supergroup))
       (when (telega-read-im-sure-p
              (telega-i18n "telega_query_delete_chat_history"
@@ -974,7 +978,7 @@ CHAT-TYPE is one of \"basicgroup\", \"supergroup\", \"channel\",
         (lambda (result)
           (when (eq (telega--tl-type result) 'ok)
             (message
-             (telega-i18n (if (eq (telega-chat--type chat) 'channel)
+             (telega-i18n (if (telega-chat-channel-p chat)
                               "rights_transfer_done_channel"
                             "rights_transfer_done_group")
                :user (telega-user--name to-user)))))))
@@ -1066,6 +1070,7 @@ If OFFLINE-P is non-nil, then do not perform any requests to telega-server."
 
     ;; C-M-[ - cancels edit/reply
     (define-key map (kbd "\e\e") 'telega-chatbuf-cancel-aux)
+    (define-key map (kbd "C-c C-k") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-a") 'telega-chatbuf-beginning-of-thing)
 
@@ -1453,13 +1458,13 @@ Recover previous active action after BODY execution."
 (defun telega-chatbuf--editing-msg ()
   "Return message currently editing."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
-           'telega-ins--aux-edit-inline)
+           #'telega-ins--prompt-aux-edit)
        (button-get telega-chatbuf--aux-button :value)))
 
 (defun telega-chatbuf--replying-msg ()
   "Return message currently replying."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
-           'telega-ins--aux-reply-inline)
+           #'telega-ins--prompt-aux-reply)
        (button-get telega-chatbuf--aux-button :value)))
 
 (defun telega-chatbuf--window-scroll (window display-start)
@@ -1671,6 +1676,8 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
           ;; button instead of the prompt
           ;;  - For channels/groups show JOIN button
           ;;  - For bots show START button
+          ;;
+          ;; [Discuss] button will be displayed in modeline
           (unless (telega-chat-match-p chat 'me-is-member)
             (let ((inhibit-read-only t)
                   (buffer-undo-list t)
@@ -1680,7 +1687,8 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
                 (goto-char telega-chatbuf--prompt-button)
                 (save-excursion
                   (telega-ins--button (if (eq chat-type 'bot) "START" "JOIN")
-                    :value chat :action 'telega-chatbuf--join)))))
+                    :value chat
+                    :action 'telega-chatbuf--join)))))
 
           ;; Show the draft message if any, see
           ;; https://github.com/zevlg/telega.el/issues/80
@@ -1705,6 +1713,25 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
   "Return non-nil if newer history can be loaded."
   (and (not (telega-chatbuf--last-msg-loaded-p))
        (button-get telega-chatbuf--aux-button 'invisible)))
+
+(defun telega-chatbuf-mode-line-discuss ()
+  "Format [Discuss] button for chat buffer modeline."
+  (when (telega-chat-match-p telega-chatbuf--chat 'has-linked-chat)
+    (let ((channel-p (telega-chat-channel-p telega-chatbuf--chat)))
+      (telega-ins--as-string
+       (telega-ins " [")
+       (telega-ins--with-props
+           (list 'local-map (eval-when-compile
+                              (make-mode-line-mouse-map
+                               'mouse-1 #'telega-chatbuf-goto-linked-chat))
+                 'mouse-face 'mode-line-highlight
+                 'help-echo (telega-i18n "telega_chat_modeline_discuss_help"
+                              :mouse "mouse-1"))
+         (telega-ins telega-symbol-linked)
+         (telega-ins-i18n (if channel-p
+                              "channel_discuss"
+                            "manage_linked_channel")))
+       (telega-ins "]")))))
 
 (defun telega-chatbuf-mode-line-unread ()
   "Format unread/mentions string for chat buffer modeline."
@@ -1972,7 +1999,8 @@ instead of editing, just pop previously sent message as input."
   (let* ((edit-msg (telega-chatbuf--editing-msg))
          (last-msg (telega-chatbuf--last-msg))
          (last-sent-msg
-          (if (and backward (not edit-msg) (telega-msg-by-me-p last-msg))
+          (if (and backward (not edit-msg) (telega-msg-by-me-p last-msg)
+                   (plist-get last-msg :can_be_edited))
               last-msg
             (telega-chatbuf--next-msg (or edit-msg last-msg)
                                       (lambda (msg)
@@ -2443,7 +2471,7 @@ Also reset `telega-chatbuf--filter'."
   (setq telega-chatbuf--history-state nil))
 
 (defun telega-chatbuf-history-beginning ()
-  "Jump to the chat creation beginning."
+  "Jump to the first message in the chat history."
   ;; See https://github.com/tdlib/td/issues/195
   (interactive)
   (if (eq telega-chatbuf--history-state 'loaded)
@@ -2465,7 +2493,7 @@ Call `(recenter -1)' if point is at prompt, otherwise call recenter as-is."
     (call-interactively #'recenter)))
 
 (defun telega-chatbuf-read-all ()
-  "Read all messages in chat buffer."
+  "Jump to the last message in the chat history and mark all messages as read."
   (interactive)
   (unless (telega-chatbuf--last-msg-loaded-p)
     ;; Need to load most recent history
@@ -2539,6 +2567,19 @@ button."
       (user-error "telega: Can't fetch next unread mention message"))
     (telega-msg-goto next-unread-mention-msg 'highlight)
     ))
+
+(defun telega-chatbuf-goto-linked-chat ()
+  "Goto chat linked to current chat buffer channel."
+  (interactive)
+  (let* ((full-info (telega--full-info
+                     (telega-chat--info telega-chatbuf--chat)))
+         (linked-chat (telega-chat-get
+                       (plist-get full-info :linked_chat_id) 'offline)))
+    (unless linked-chat
+      (user-error "telega: %s has no linked chat"
+                  (telega-chat-title telega-chatbuf--chat)))
+
+    (telega-chat--pop-to-buffer linked-chat)))
 
 (defun telega-chatbuf-goto-pin-message ()
   "Goto pinned message for the chatbuffer."
@@ -3136,7 +3177,7 @@ MSG can be nil in case there is no active voice message."
   (with-telega-chatbuf (telega-msg-chat msg)
     (telega-button--update-value
      telega-chatbuf--aux-button msg
-     :inserter 'telega-ins--aux-reply-inline
+     :inserter #'telega-ins--prompt-aux-reply
      'invisible nil)
 
     (telega-button--update-value
@@ -3155,7 +3196,7 @@ MSG can be nil in case there is no active voice message."
   (with-telega-chatbuf (telega-msg-chat msg)
     (telega-button--update-value
      telega-chatbuf--aux-button msg
-     :inserter 'telega-ins--aux-edit-inline
+     :inserter #'telega-ins--prompt-aux-edit
      'invisible nil)
 
     (telega-button--update-value

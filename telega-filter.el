@@ -85,6 +85,7 @@
 
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-label "telega-chat" (chat))
 (declare-function telega-chat--info "telega-chat" (chat))
@@ -327,7 +328,7 @@ Used when `updateChatFilters' is received."
   (telega-ewoc--clean telega-filters--ewoc)
 
   (dolist (custom (append telega-filters-custom
-                          (when telega-filter-custotm-show-folders
+                          (when telega-filter-custom-show-folders
                             (mapcar #'telega-filter--custom-folder-spec
                                     telega-tdlib--chat-filters))))
     (ewoc-enter-last telega-filters--ewoc
@@ -726,6 +727,12 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive)
   (telega-filter-add 'pin))
 
+;; - has-username ::
+;;   {{{fundoc(telega--filter-has-username, 2)}}}
+(define-telega-filter has-username (chat)
+  "Matches if chat has username associated with the chat."
+  (telega-chat-username chat))
+
 ;; - has-pinned-message ::
 ;;   {{{fundoc(telega--filter-has-pinned-message, 2)}}}
 (define-telega-filter has-pinned-message (chat)
@@ -855,6 +862,12 @@ Only basicgroup, supergroup and channel can be owned."
 (define-telega-filter has-avatar (chat)
   "Matches if chat has chat photo."
   (plist-get chat :photo))
+
+;; - has-animated-avatar ::
+;;   {{{fundoc(telega--filter-has-animated-avatar, 2)}}}
+(define-telega-filter has-animated-avatar (chat)
+  "Matches if CHAT has animated chat photo."
+  (telega--tl-get chat :photo :has_animation))
 
 ;; - has-chatbuf, {{{where-is(telega-filter-by-has-chatbuf,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--filter-has-chatbuf, 2)}}}
@@ -1034,7 +1047,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming tdlib chat filter."
 
 (define-telega-filter can-view-statistics (chat)
   "Matches if CHAT's channel statistics is available."
-  (when (eq (telega-chat--type chat) 'channel)
+  (when (telega-chat-channel-p chat)
     (let ((full-info (telega--full-info (telega-chat--info chat))))
       (plist-get full-info :can_view_statistics))))
 

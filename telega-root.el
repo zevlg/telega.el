@@ -1264,6 +1264,7 @@ If QUERY is empty string, then show all contacts."
      (lambda ()
        (with-telega-root-view-ewoc "me" ewoc
          (ewoc-refresh ewoc))))
+    (telega-ins "\n")
   ))
 
 (defun telega-root--me-on-user-update (_ewoc-name ewoc user)

@@ -28,7 +28,7 @@
 (require 'telega-tdlib)
 (require 'telega-util)
 
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
@@ -438,7 +438,7 @@ CAN-GENERATE-P is non-nil if invite link can be [re]generated."
     (telega-ins "Status: " (substring member-status-name 16))
     ;; Buttons for the owner of the group
     (when (telega-chat-match-p chat 'me-is-owner)
-      (let ((channel-p (eq (telega-chat--type chat) 'channel)))
+      (let ((channel-p (telega-chat-channel-p chat)))
         ;; Delete supergroup/channel for everyone
         (telega-ins " ")
         (telega-ins--button

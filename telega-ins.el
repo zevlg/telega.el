@@ -51,9 +51,11 @@
 (declare-function telega-chat-brackets "telega-chat" (chat))
 (declare-function telega-chat-muted-p "telega-chat" (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-pinned-msg "telega-chat" (chat &optional offline-p callback))
 (declare-function telega-chatbuf--cache-msg "telega-chat" (msg))
+(declare-function telega-chatbuf-cancel-aux "telega-chat" (&optional arg))
 (declare-function telega-chat-label "telega-chat" (chat))
 (declare-function telega-chat-delete "telega-chat" (chat &optional leave-p))
 (declare-function telega-chat-admin-get "telega-chat" (chat user))
@@ -260,7 +262,7 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
               (distance (telega-chat-nearby-distance user-chat)))
     (telega-ins--with-face 'shadow
       (telega-ins (telega-distance-human-readable distance) " away"))))
-  
+
 (defun telega-ins--user (user &optional member show-phone-p)
   "Insert USER, aligning multiple lines at current column.
 MEMBER specifies corresponding \"ChatMember\" object.
@@ -852,21 +854,19 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
     (unless one-line-p
       (telega-ins "\n")
-    ;; TODO: Animated sticker as dice roll
-    ;; (if-let ((dice-sticker (telega-sticker--dice-get dice-value 'locally)))
-    ;;     (telega-ins--sticker-image dice-sticker 'slices)
 
-    ;;   ;; Possible fetch the sticker
-    ;;   (telega-sticker--dice-get dice-value nil
-    ;;     (lambda (_ignore)
-    ;;       (telega-msg-redisplay msg)))
+      ;; TODO: Animated sticker as dice roll, also see
+      ;; `:initial_state_sticker'
+      (if-let ((dice-isticker nil)) ; (plist-get content :final_state_sticker)))
+          (telega-ins--sticker-image dice-isticker 'slices)
 
-      (let ((dice-symbol (nth dice-value telega-symbol-dice-list)))
-      (if telega-emoji-use-images
-          (telega-ins--image-slices
-           (telega-emoji-create-svg dice-symbol (car telega-sticker-size)))
-        (telega-ins dice-symbol))
-      ))))
+        (let ((dice-symbol (nth dice-value telega-symbol-dice-list)))
+          (if telega-emoji-use-images
+              (telega-ins--image-slices
+                  (telega-emoji-create-svg dice-symbol (car telega-sticker-size)))
+            (telega-ins dice-symbol))
+          ))
+      )))
 
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
@@ -1103,7 +1103,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageChatJoinByLink 'messageChatDeleteMember
               'messageChatChangeTitle 'messageSupergroupChatCreate
               'messageBasicGroupChatCreate 'messageCustomServiceAction
-              'messageChatSetTtl 'messageExpiredPhoto
+              'messageChatSetTtl 'messageExpiredPhoto 'messageExpiredVideo
               'messageChatChangePhoto
               'messageChatUpgradeTo 'messageChatUpgradeFrom
               'messagePinMessage 'messageScreenshotTaken
@@ -1171,16 +1171,25 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins-fmt "messages TTL set to %s"
          (telega-duration-human-readable (plist-get content :ttl))))
       (messageExpiredPhoto
-       ;; I18N: lng_ttl_photo_expired
-       (telega-ins "Photo has expired"))
+       (telega-ins-i18n "ttl_photo_expired"))
+      (messageExpiredVideo
+       (telega-ins-i18n "ttl_video_expired"))
       (messageChatChangePhoto
-       (telega-ins "Group photo updated"))
+       (let ((animated-p (telega--tl-get content :photo :animation)))
+         (if (plist-get msg :is_channel_post)
+             (telega-ins-i18n (if animated-p
+                                  "action_changed_video_channel"
+                                "action_changed_photo_channel"))
+           (telega-ins-i18n (if animated-p
+                                "action_changed_video"
+                              "action_changed_photo")
+             :from sender-name))))
       (messageChatUpgradeTo
-       (telega-ins sender-name
-                   " upgraded the group to supergroup"))
+       (telega-ins-i18n "telega_action_group_upgrade_to"
+         :from sender-name))
       (messageChatUpgradeFrom
-       (telega-ins sender-name
-                   " created supergroup from the group"))
+       (telega-ins-i18n "telega_action_group_upgrade_from"
+         :from sender-name))
       (messageScreenshotTaken
        (cl-assert sender)
        (telega-ins (telega-user--name sender) " took a screenshot!"))
@@ -1202,9 +1211,21 @@ Special messages are determined with `telega-msg-special-p'."
                             'offline))
               (game-title
                (telega-tl-str (telega--tl-get game-msg :content :game) :title)))
-         (telega-ins-fmt "You scored %d in " (plist-get content :score))
-         (telega-ins--with-face 'bold
-           (telega-ins (or game-title "unknown")))))
+         (if game-title
+             (if (telega-me-p sender)
+                (telega-ins-i18n "lng_action_game_you_scored"
+                  :count (plist-get content :score)
+                  :game (propertize game-title 'face 'bold))
+               (telega-ins-i18n "lng_action_game_score"
+                 :from sender-name
+                 :count (plist-get content :score)
+                 :game (propertize game-title 'face 'bold)))
+           (if (telega-me-p sender)
+               (telega-ins-i18n "lng_action_game_you_scored_no_game"
+                 :count (plist-get content :score))
+             (telega-ins-i18n "lng_action_game_score_no_game"
+               :from sender-name
+               :count (plist-get content :score))))))
       (t (telega-ins-fmt "<unsupported special message: %S>"
            (telega--tl-type content)))))
   (telega-ins ")--"))
@@ -1360,24 +1381,38 @@ Display text using FACE."
      (unless telega-msg-heading-whole-line
        (telega-ins "\n"))))
 
-(defun telega-ins--aux-msg-inline (title msg face &optional with-username
-                                         remove-caption)
-  "Insert MSG as one-line prefixing with TITLE.
+(defun telega-ins--aux-msg-one-line (msg &optional with-username remove-caption)
+  "Insert contents for aux message MSG as one line.
+If WITH-USERNAME is non-nil then insert MSG sender as well.
 REMOVE-CAPTION is passed directly to `telega-ins--content-one-line'."
-  (when msg
-    (telega-ins--aux-inline title face
-      (when (and with-username
-                 (telega-ins--username (plist-get msg :sender_user_id)))
-        (telega-ins "> "))
-      (telega-ins--content-one-line msg remove-caption))))
+  (when (and with-username
+             (telega-ins--username (plist-get msg :sender_user_id)))
+    (telega-ins "> "))
+  (telega-ins--content-one-line msg remove-caption))
 
-(defun telega-ins--aux-reply-inline (reply-msg &optional face)
-  (telega-ins--aux-msg-inline
-   "Reply" reply-msg (or face 'telega-chat-prompt) 'with-username))
+(defun telega-ins--prompt-aux-msg (title msg &optional with-username)
+  "Inserter for MSG in chatbuf aux prompt."
+  (cl-assert msg)
+  (telega-ins--aux-inline
+      (progn
+        ;; NOTE: hack to insert [x] button (to cancel aux prompt)
+        ;; before title
+        (telega-ins--button "✕"
+          'action (lambda (_ignored)
+                    (telega-chatbuf-cancel-aux))
+          :help-echo (lambda (_ignored)
+                       (telega-help-message--cancel-aux 'aux-prompt)))
+        title)
+      'telega-chat-prompt
+    (telega-ins--aux-msg-one-line msg with-username)))
 
-(defun telega-ins--aux-edit-inline (edit-msg)
-  (telega-ins--aux-msg-inline
-   "Edit" edit-msg 'telega-chat-prompt))
+(defun telega-ins--prompt-aux-reply (reply-msg)
+  "Inserter for REPLY-MSG in chatbuf aux prompt."
+  (telega-ins--prompt-aux-msg "Reply" reply-msg 'with-username))
+
+(defun telega-ins--prompt-aux-edit (edit-msg)
+  "Inserter for EDIT-MSG in chatbuf aux prompt."
+  (telega-ins--prompt-aux-msg "Edit" edit-msg))
 
 (defun telega-ins--message-header (msg &optional addon-inserter)
   "Insert message's MSG header, everything except for message content.
@@ -1484,7 +1519,7 @@ argument - MSG to insert additional information after header."
                    origin-msg-id)))
     (cond ((and chat-id msg-id (not (zerop chat-id)) (not (zerop msg-id)))
            (let ((chat (telega-chat-get chat-id)))
-             (if (and (eq (telega-chat--type chat) 'channel)
+             (if (and (telega-chat-channel-p chat)
                       (not (telega-chat-public-p chat 'supergroup)))
                  (error (concat
                          "Telega: " (telega-i18n "channel_not_accessible")))
@@ -1560,8 +1595,13 @@ argument - MSG to insert additional information after header."
                  (list 'action
                        (lambda (_button)
                          (telega-msg-goto-highlight reply-to-msg)))
-               (telega-ins--aux-reply-inline
-                reply-to-msg 'telega-msg-inline-reply)))
+               (telega-ins--aux-inline "Reply" 'telega-msg-inline-reply
+                 (telega-ins--aux-msg-one-line reply-to-msg 'with-username))
+               ;; (telega-ins--aux-msg-inline
+               ;;  "Reply" reply-to-msg 'telega-msg-inline-reply 'with-username)
+               ;; (telega-ins--aux-reply-inline
+               ;;  reply-to-msg 'telega-msg-inline-reply)
+               ))
             (t
              ;; Need async request
              (telega-msg-reply-msg msg nil
@@ -1666,7 +1706,7 @@ Pass all ARGS directly to `telega-ins--message0'."
   (telega-ins (propertize "<IGNORED MESSAGE>" 'face 'shadow)))
 
 (defun telega-ins--message-with-chat-header (msg)
-  "Inserter for messages show chat header."
+  "Inserter for message MSG showing chat header."
   (let ((telega-chat-fill-column (- telega-root-fill-column 10 1)))
     (telega-ins--with-attrs (list :max telega-root-fill-column
                                   :face 'telega-msg-heading
@@ -1680,9 +1720,8 @@ Pass all ARGS directly to `telega-ins--message0'."
     (unless telega-msg-heading-whole-line
       (telega-ins "\n"))
 
-    (let ((channel-p (eq (telega-chat--type (telega-msg-chat msg))
-                         'channel)))
-      (telega-ins--message msg channel-p nil :no-footer))))
+    (telega-ins--message msg (telega-chat-channel-p (telega-msg-chat msg))
+                         nil :no-footer)))
 
 (defun telega-ins--input-content-one-line (imc)
   "Insert input message's MSG content for one line usage."

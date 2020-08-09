@@ -850,14 +850,6 @@ messages."
     (setq telega--conn-state (intern status))
     (telega-status--set status)
 
-    ;; NOTE: Optimisation: for Updating state, inhibit redisplaying
-    ;; filters, will speedup updating after TDLib wake up
-    (cl-case telega--conn-state
-      (connectionStateUpdating
-       )
-      (connectionStateReady
-       ))
-
     (run-hooks 'telega-connection-state-hook)))
 
 (defun telega--on-updateOption (event)

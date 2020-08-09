@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t
-#+TITLE: Telega Manual (v0.6.28)
+#+TITLE: Telega Manual (v0.6.29)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -286,6 +286,9 @@ For other Chat Filter bindings see below.
 - pin, @@html:<kbd>@@/ P@@html:</kbd>@@, @@html:<kbd>@@/ ^@@html:</kbd>@@ (~telega-filter-by-pin~) :: 
      Matches if chat is pinned.
 
+- has-username :: 
+     Matches if chat has username associated with the chat.
+
 - has-pinned-message :: 
      Matches if chat has pinned message.
 
@@ -325,6 +328,9 @@ For other Chat Filter bindings see below.
 
 - has-avatar :: 
      Matches if chat has chat photo.
+
+- has-animated-avatar :: 
+     Matches if ~CHAT~ has animated chat photo.
 
 - has-chatbuf, @@html:<kbd>@@/ b@@html:</kbd>@@ (~telega-filter-by-has-chatbuf~) :: 
      Matches if chat has corresponding chatbuf.
@@ -460,7 +466,7 @@ directly into ~telega-sort-criteria-alist~, use
      Sort chats by number of unread messages in chat.
 
 - ~title~, @@html:<kbd>@@\ t@@html:</kbd>@@ (~telega-sort-by-title~) :: 
-     Sort chats by number of online members.
+     Sort chats alphabetically by chat title.
 
      Thanks to https://t.me/Kurvivor
 
@@ -517,10 +523,10 @@ See [[#chat-filters][Chat Filters]]
 messages.
 
 - @@html:<kbd>@@M-g <@@html:</kbd>@@ (~telega-chatbuf-history-beginning~) :: 
-     Jump to the chat creation beginning.
+     Jump to the first message in the chat history.
 
 - @@html:<kbd>@@M-g r@@html:</kbd>@@, @@html:<kbd>@@M-g >@@html:</kbd>@@ (~telega-chatbuf-read-all~) :: 
-     Read all messages in chat buffer.
+     Jump to the last message in the chat history and mark all messages as read.
 
 - @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-chatbuf-next-unread-mention~) :: 
      Goto next unread mention in chat buffer.
