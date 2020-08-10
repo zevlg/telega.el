@@ -1384,6 +1384,7 @@ Global chat bindings:
   (modify-syntax-entry ?\_ "w" telega-chat-mode-syntax-table)
 
   (erase-buffer)
+  (setq-local nobreak-char-display nil)
   (setq-local switch-to-buffer-preserve-window-point nil)
   (setq-local window-point-insertion-type t)
   (setq-local next-line-add-newlines nil)

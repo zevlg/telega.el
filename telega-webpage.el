@@ -136,6 +136,7 @@ Return nil if URL is not available for instant view."
 Keymap:
 \\{telega-webpage-mode-map}"
   :group 'telega
+  (setq-local nobreak-char-display nil)
   (setq header-line-format telega-webpage-header-line-format)
   (set-buffer-modified-p nil))
 
