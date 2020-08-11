@@ -208,7 +208,7 @@ CALLBACK is called without arguments"
                        ?X))
     ))
 
-(defvar telega-sticker--convert-cmd '("dwebp" "-alpha_dither -nofancy -mt -o %p %w")
+(defvar telega-sticker--convert-cmd '("dwebp" "-nofancy -mt -o %p %w")
   "Command to convert WEBP file to PNG file.
 %p - png filename
 %w - webp filename.")
