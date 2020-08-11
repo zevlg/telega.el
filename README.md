@@ -56,12 +56,12 @@ In some random order:
 ## Unique features
 
 - [x] Expressive `ibuffer`-like chats filtering
-- [x] Powerful [chats sorting](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#sorting-chats)
+- [x] Powerful [chats sorting](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#sorting-chats)
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
 - [x] Labeled chats, you can assign custom label to chat
 - [x] Client side messages filtering
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
-- [x] [Messages squashing](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#telega-squash-message-mode) minor mode.
+- [x] [Messages squashing](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#telega-squash-message-mode) minor mode.
 
 # Screenshots
 
@@ -320,7 +320,7 @@ network.
 
 # Minor modes
 
-See [Minor Modes](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#minor-modes) section in [telega manual](https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org).
+See [Minor Modes](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#minor-modes) section in [telega manual](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org).
 
 ## telega-notifications-mode
 
@@ -487,7 +487,7 @@ to modify it.
 Tracking is done only for opened chats, i.e. chats having
 corresponding chat buffer.
 
-Its value is a (Chat Filter)[https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#chat-filters].
+Its value is a (Chat Filter)[https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#chat-filters].
 
 For example, to enable tracking for chats with enabled notifications or for chats where you have unread mention, use:
 
@@ -523,4 +523,4 @@ module*
 
 **Q**: Is there manual for `telega.el`?
 
-**A**: We started to write https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org
+**A**: We started to write https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org
