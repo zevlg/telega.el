@@ -45,6 +45,9 @@ JSON_TO_PLIST_TESTS = TESTS + [
 
     # joystick
     (True, b'"\ud83d\udd79"', '#("\\ud83d\\udd79" 0 2 (telega-emoji-p t telega-display "\\U0001f579"))'),
+
+    # Lightning, \u26a1 in 13.0 and \u26a1\ufe0f in 12.3
+    (True, b'"\u26a1\ufe0f"', '#("\\u26a1\\ufe0f" 0 2 (telega-emoji-p t telega-display "\\u26a1\\ufe0f"))'),
 ]
 
 def run_telega(input, flag):

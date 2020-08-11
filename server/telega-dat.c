@@ -544,7 +544,7 @@ tdat_move_emoji_sequence(struct telega_dat* src, struct telega_dat* dst,
 
         assert(emoji_trie != NULL);
         const struct emoji_trie* et;
-        for (et = &emoji_trie[0]; et->match ; et++) {
+        for (et = &emoji_trie[0]; et->match; et++) {
                 if ((et->match != EMOJI_MATCH_ANY) && (ch != et->match))
                         continue;
 

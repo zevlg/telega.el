@@ -45,7 +45,7 @@ void pngext_main(int ac, char** av);
 
 char* logfile = NULL;
 int verbosity = 5;
-const char* version = "0.6.4";
+const char* version = "0.6.5";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
