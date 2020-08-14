@@ -3107,7 +3107,15 @@ is used as FILE."
               (telega-chatbuf--view-msg-at button)
               (when (and (eq (telega-msg-at button) (telega-chatbuf--last-msg))
                          (telega-button--observable-p button))
-                (goto-char (point-max)))))
+                (goto-char (point-max)))
+
+              ;; NOTE: If point at bottom half of the window, then
+              ;; move it up a bit, so point won't stuck at the bottom
+              (unless (pos-visible-in-window-p (point-max))
+                (when (> (- (line-number-at-pos)
+                            (line-number-at-pos (window-start)))
+                         (/ (window-height) 2))
+                  (recenter)))))
         (goto-char rpoint))))
 
   ;; May affect rootbuf sorting if `chatbuf-recency' criteria is used
