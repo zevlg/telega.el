@@ -29,8 +29,44 @@
   "Clean server"
   (telega-make "./server" "clean" server-flags))
 
+(eldev-defcommand mypackage-test-server (&rest parameters)
+  "Run server tests"
+  (telega-make "./server" "test" server-flags))
+
+(eldev-defcommand mypackage-install-server (&rest parameters)
+  "Install server"
+  (telega-make "./server" "install" server-flags))
+
 (eldev-defoption mypackage-build-server-enable-voip ()
   "Enable Voice over IP."
   :options (--enable-voip)
   :for-command (build-server clean-server)
   (add-to-list 'server-flags server-enable-voip))
+
+(eldev-defoption mypackage-server-flag-destdir (&optional value)
+  "Whoop"
+  :options (--destdir)
+  :optional-value DESTDIR
+  :for-command (install-server)
+  (setf server-flags (cl-remove "DESTDIR=" server-flags :test #'string-prefix-p))
+  (add-to-list 'server-flags (concat "DESTDIR=" value)))
+
+(eldev-defoption mypackage-server-flag-prefix (&optional value)
+  "Whoop"
+  :options (--prefix)
+  :optional-value PREFIX
+  :for-command (install-server)
+  (setf server-flags (cl-remove "PREFIX=" server-flags :test #'string-prefix-p))
+  (add-to-list 'server-flags (concat "PREFIX=" value)))
+
+(eldev-defoption mypackage-server-flag-binprefix (&optional value)
+  "Whoop"
+  :options (--binprefix)
+  :optional-value BINPREFIX
+  :for-command (install-server)
+  (setf server-flags (cl-remove "BINPREFIX=" server-flags :test #'string-prefix-p))
+  (add-to-list 'server-flags (concat "BINPREFIX=" value)))
+
+;; Local Variables:
+;; eval: (add-hook (quote flycheck-disabled-checkers) (quote emacs-lisp-checkdoc) nil t)
+;; End:

@@ -5,7 +5,7 @@ import os.path
 import subprocess
 
 
-TELEGA_SERVER = os.path.expanduser('~/.telega/telega-server')
+TELEGA_SERVER = os.path.expanduser('telega-server')
 if not os.path.isfile(TELEGA_SERVER):
     TELEGA_SERVER += '.exe'
 
