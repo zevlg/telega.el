@@ -1,7 +1,14 @@
-/server/telega-server
+# Object files
+*.o
 
+# Elisp bytecode
 *.elc
 
 # Added automatically by `eldev init'.
 /.eldev
 /Eldev-local
+
+# Generated files
+/dist
+/server/telega-server
+/telega-autoloads.el

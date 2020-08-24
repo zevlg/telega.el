@@ -3,6 +3,10 @@
 ;; Autodetermined by `eldev init'.
 (eldev-use-package-archive 'melpa)
 
+(eldev-use-plugin 'autoloads)
+
+(add-to-list 'eldev-lint-disabled 'elisp)
+
 (eldev-defbuilder telega-make (dir target &optional flags)
   :short-name "MAKE"
   :message source-and-target
@@ -40,31 +44,31 @@
 (eldev-defoption mypackage-build-server-enable-voip ()
   "Enable Voice over IP."
   :options (--enable-voip)
-  :for-command (build-server clean-server)
+  :for-command (build-server)
   (add-to-list 'server-flags server-enable-voip))
 
 (eldev-defoption mypackage-server-flag-destdir (&optional value)
-  "Whoop"
+  "Flag to pass `DESTDIR' to `make'."
   :options (--destdir)
   :optional-value DESTDIR
   :for-command (install-server)
-  (setf server-flags (cl-remove "DESTDIR=" server-flags :test #'string-prefix-p))
+  (setq server-flags (cl-remove "DESTDIR=" server-flags :test #'string-prefix-p))
   (add-to-list 'server-flags (concat "DESTDIR=" value)))
 
 (eldev-defoption mypackage-server-flag-prefix (&optional value)
-  "Whoop"
+  "Flag to pass `PREFIX' to `make'."
   :options (--prefix)
   :optional-value PREFIX
   :for-command (install-server)
-  (setf server-flags (cl-remove "PREFIX=" server-flags :test #'string-prefix-p))
+  (setq server-flags (cl-remove "PREFIX=" server-flags :test #'string-prefix-p))
   (add-to-list 'server-flags (concat "PREFIX=" value)))
 
 (eldev-defoption mypackage-server-flag-binprefix (&optional value)
-  "Whoop"
+  "Flag to pass `BINPREFIX' to `make'."
   :options (--binprefix)
   :optional-value BINPREFIX
   :for-command (install-server)
-  (setf server-flags (cl-remove "BINPREFIX=" server-flags :test #'string-prefix-p))
+  (setq server-flags (cl-remove "BINPREFIX=" server-flags :test #'string-prefix-p))
   (add-to-list 'server-flags (concat "BINPREFIX=" value)))
 
 ;; Local Variables:

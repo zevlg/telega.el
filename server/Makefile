@@ -29,4 +29,4 @@ test: all
 	python3 run_tests.py
 
 clean:
-	$(RM) $(prog) $(objects)
+	$(RM) $(prog) *.o
