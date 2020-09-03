@@ -128,7 +128,9 @@ Otherwise query user about building flags."
                )))
       (unless (zerop
                (shell-command
-                (concat "make " build-flags " "
+                (concat (or (executable-find "gmake")
+                            "make")
+                        " " build-flags " "
                         "LIBS_PREFIX=" (expand-file-name telega-server-libs-prefix) " "
                         "INSTALL_PREFIX=" (expand-file-name telega-directory) " "
                         "server-reinstall")))
