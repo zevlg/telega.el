@@ -30,8 +30,8 @@ $(PROG): $(SOURCES)
 	$(CC) $(CFLAGS) -o $(PROG) $(SOURCES) $(LDFLAGS)
 
 install: $(PROG)
-	@install -v -d $(INSTALL_PREFIX)
-	@install -v $(PROG) $(INSTALL_PREFIX)
+	@install -d $(INSTALL_PREFIX)
+	@install $(PROG) $(INSTALL_PREFIX)
 
 test:
 	@python3 run_tests.py
