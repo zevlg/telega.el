@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2020-09-19 Сб 05:25 -->
+<!-- 2020-09-21 Пн 21:47 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.6.30)</title>
@@ -256,7 +256,20 @@ for the JavaScript code in this tag.
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
-<li><a href="#installation">Installation</a></li>
+<li><a href="#installation">Installation</a>
+<ul>
+<li><a href="#dependencies">Dependencies</a>
+<ul>
+<li><a href="#macos-users">MacOS users</a></li>
+<li><a href="#linux-users">Linux users</a></li>
+<li><a href="#building-tdlib">Building TDLib</a></li>
+</ul>
+</li>
+<li><a href="#installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from GNU Guix</a></li>
+<li><a href="#installing-telega-from-melpa">Installing telega from MELPA</a></li>
+<li><a href="#installing-telega-directly-from-github">Installing telega directly from GitHub</a></li>
+</ul>
+</li>
 <li><a href="#getting-started">Getting started</a></li>
 <li><a href="#telega-glossary">Telega glossary</a></li>
 <li><a href="#telega-prefix-map">Telega prefix map</a></li>
@@ -266,33 +279,38 @@ for the JavaScript code in this tag.
 <li><a href="#rootbuf-view-switching">Rootbuf view switching</a></li>
 </ul>
 </li>
+<li><a href="#chat-folders">Chat Folders</a></li>
 <li><a href="#chat-filters">Chat Filters</a>
 <ul>
 <li><a href="#list-of-chat-filters">List of chat filters</a></li>
 <li><a href="#customizable-options-making-use-of-chat-filters">Customizable options making use of Chat Filters</a></li>
 </ul>
 </li>
-<li><a href="#sorting-chats">Sorting Chats</a>
+<li><a href="#sorting-chats">Sorting chats</a>
 <ul>
 <li><a href="#sorting-criteria">Sorting criteria</a></li>
+<li><a href="#customizable-options-making-use-of-sorting-criteria">Customizable options making use of sorting criteria</a></li>
 </ul>
 </li>
 <li><a href="#chat-buffer">Chat buffer</a>
 <ul>
-<li><a href="#chat-types">Chat types</a></li>
-<li><a href="#custom-chat-label">Custom chat label</a></li>
 <li><a href="#chatbuf-fast-navigation">Chatbuf fast navigation</a></li>
-<li><a href="#chatbuf-attaching-media">Chatbuf attaching media</a></li>
-<li><a href="#chatbuf-messages-filtering">Chatbuf messages filtering</a></li>
 <li><a href="#sending-ordinary-messages">Sending ordinary messages</a></li>
+<li><a href="#attaching-media">Attaching media</a></li>
+<li><a href="#replying-and-editing-messages">Replying and editing messages</a></li>
 <li><a href="#forwarding-messages">Forwarding messages</a></li>
-<li><a href="#sending-special-messages">Sending special messages</a></li>
-<li><a href="#sending-messages-via-bots">Sending messages via bots</a></li>
+<li><a href="#deleting-messages">Deleting messages</a></li>
 <li><a href="#scheduling-messages-and-reminders">Scheduling messages and reminders</a></li>
+<li><a href="#completing-input">Completing input</a></li>
+<li><a href="#sending-messages-via-bots">Sending messages via bots</a></li>
+<li><a href="#filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</a></li>
 </ul>
 </li>
+<li><a href="#multiple-accounts">Multiple accounts</a></li>
 <li><a href="#minor-modes">Minor Modes</a>
 <ul>
+<li><a href="#notifications-for-incoming-messages">Notifications for incoming messages</a></li>
+<li><a href="#telega-mode-line-mode">telega-mode-line-mode</a></li>
 <li><a href="#telega-squash-message-mode">telega-squash-message-mode</a></li>
 <li><a href="#telega-image-mode">telega-image-mode</a></li>
 <li><a href="#telega-edit-file-mode">telega-edit-file-mode</a></li>
@@ -302,11 +320,7 @@ for the JavaScript code in this tag.
 <ul>
 <li><a href="#ol-telegael--org-mode-links-to-telegram-chats-and-messages"><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</a></li>
 <li><a href="#telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><i>telega-status-history.el</i> &#x2013; Global minore mode to save user's online status history</a></li>
-<li><a href="#telega-url-shortenel--makes-urls-look-nicer"><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</a>
-<ul>
-<li><a href="#customizable-options">Customizable options:</a></li>
-</ul>
-</li>
+<li><a href="#telega-url-shortenel--makes-urls-look-nicer"><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</a></li>
 <li><a href="#telega-alertel--notifications-using-alertel"><i>telega-alert.el</i> &#x2013; Notifications using <code>alert.el</code></a></li>
 <li><a href="#telega-dired-dwimel--attach-files-from-dired-in-dwim-style"><i>telega-dired-dwim.el</i> &#x2013; Attach files from dired in DWIM style</a></li>
 <li><a href="#telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</a></li>
@@ -327,7 +341,7 @@ Do not edit manually.  Modify <code>telega-ellit.org</code> or comments in
 </p>
 </blockquote>
 
-<div id="outline-container-org736ee22" class="outline-2">
+<div id="outline-container-org040a369" class="outline-2">
 <h2 id="introduction">Introduction</h2>
 <div class="outline-text-2" id="text-introduction">
 <p>
@@ -347,25 +361,299 @@ Join us at <a href="https://t.me/emacs_telega">https://t.me/emacs_telega</a>
 </div>
 </div>
 
-<div id="outline-container-orgead2fb1" class="outline-2">
+<div id="outline-container-orgcac28ba" class="outline-2">
 <h2 id="installation">Installation</h2>
 <div class="outline-text-2" id="text-installation">
 <p>
-TODO
+<code>telega</code> depends on the <code>visual-fill-column</code> and <code>rainbow-identifiers</code>
+packages.  This dependency automatically installs if you install
+<code>telega</code> from MELPA or GNU Guix.  Otherwise will you need to install
+these packages by hand.
+</p>
+
+<p>
+<code>telega</code> is built on top of the official library provided by Telegram
+<a href="https://core.telegram.org/tdlib">TDLib</a>.  Most distributions do not provide this package in their
+repositories, in which case you will have to install it manually by
+following the instructions.
+</p>
+
+<p>
+<a href="https://guix.gnu.org/">GNU Guix</a>, however, does have both <code>telega</code> and <code>TDLib</code> packaged.  If
+you use GNU Guix you can skip directly to <a href="#installing-telega-and-tdlib-from-gnu-guix">Installing from GNU Guix</a>.
+</p>
+</div>
+
+<div id="outline-container-orgbd70c1e" class="outline-3">
+<h3 id="dependencies">Dependencies</h3>
+<div class="outline-text-3" id="text-dependencies">
+<ul class="org-ul">
+<li><code>GNU Emacs</code> (at least 26.1 is required)</li>
+<li><code>GNU make</code> (known as gmake on BSD platforms)</li>
+<li><code>GNU gperf</code></li>
+<li><code>CMake</code></li>
+<li><code>Python</code> (for testing the server)</li>
+<li><code>GNU Guix</code> <span class="underline">(optional, if using the Guix installation method.)</span></li>
+</ul>
+
+<p>
+<code>make</code> is found in most of the modern machines. The other packages can
+be download with the system package manager (such as <code>apt</code> for
+Debian-based distributions, <code>dnf</code> for Fedora or <code>pacman</code> for
+Arch-based).
+</p>
+</div>
+
+<div id="outline-container-org07a08d0" class="outline-4">
+<h4 id="macos-users">MacOS users</h4>
+<div class="outline-text-4" id="text-macos-users">
+<ol class="org-ol">
+<li>If you are using <a href="https://emacsformacosx.com/">Emacs For Mac OS X</a>, or you installed Emacs by
+running <code>$ brew cask install emacs</code>, your Emacs lacks svg support, so
+you cannot use telega. Please switch to <a href="https://github.com/d12frosted/homebrew-emacs-plus">emacs-plus</a>.</li>
+
+<li><p>
+If you are using <a href="https://bitbucket.org/mituharu/emacs-mac/">Emacs-mac</a>, or you installed Emacs by running <code>$
+      brew install emacs-mac</code> or <code>$ brew cask install emacs-mac</code>, your
+Emacs has bug dealing with complex svg, which leads to Emacs
+hangups.  Compiling Emacs with rsvg support by running <code>$ brew
+      install emacs-mac --with-rsvg</code> will fix this problem.
+</p>
+
+<p>
+NOTE: Telega cannot display stickers correctly with emacs-mac, even
+when emacs-mac is compiled with rsvg support.  If you want sticker
+support, please consider switching to emacs-plus.
+</p></li>
+
+<li><a href="https://github.com/d12frosted/homebrew-emacs-plus">emacs-plus</a> is the best choice to run <code>telega</code>.</li>
+</ol>
+</div>
+</div>
+
+<div id="outline-container-orgba2c847" class="outline-4">
+<h4 id="linux-users">Linux users</h4>
+<div class="outline-text-4" id="text-linux-users">
+<p>
+<code>telega</code> requires at least GNU Emacs 26.1 with <code>svg</code> support. If Emacs
+version is less then 27.1, then <code>imagemagick</code> is also required.  Most
+distributions provide GNU Emacs compiled with these dependencies when
+installing GNU Emacs with GTK+ support (graphical).
 </p>
 </div>
 </div>
 
-<div id="outline-container-org5e4c0d3" class="outline-2">
+<div id="outline-container-org9f4a2d4" class="outline-4">
+<h4 id="building-tdlib">Building TDLib</h4>
+<div class="outline-text-4" id="text-building-tdlib">
+<p>
+<a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
+large amount of memory to be built.  Make sure you are using TDLib
+version greater or equal to "1.6.8".
+</p>
+
+<p>
+On MacOS you can install a pre-built <code>TDLib</code> package using homebrew from
+<a href="https://brew.sh">brew.sh</a>.  Just run:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ brew install tdlib
+</pre>
+</div>
+
+<p>
+On Linux, you will need to build <code>TDLib</code> from source.
+</p>
+
+<p>
+To get the source:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ git clone https://github.com/tdlib/td.git
+</pre>
+</div>
+
+<p>
+Move into the folder with <code>$ cd ./td</code> or wherever you checked out
+<code>td</code>.
+</p>
+
+<p>
+Prepare a folder for building the library:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ mkdir build &amp;&amp; <span style="font-weight: bold;">cd</span> build &amp;&amp; cmake ../
+</pre>
+</div>
+
+<p>
+Build the sources:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ make -jN
+</pre>
+</div>
+
+<p>
+with <code>N</code> number of cores that should be used for the compilation (the
+optimal value is the number of physical cores on the machine).
+</p>
+
+<p>
+Finally, to install the library system-wide:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ sudo make install
+</pre>
+</div>
+
+<p>
+It will install headers to <code>/usr/local/include</code> and library itself
+into <code>/usr/local/lib</code>.  If you have TDLib installed in other location,
+don't forget to modify <code>telega-server-libs-prefix</code> before starting
+<code>telega</code>.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1a8cac6" class="outline-3">
+<h3 id="installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from <a href="https://guix.gnu.org/">GNU Guix</a></h3>
+<div class="outline-text-3" id="text-installing-telega-and-tdlib-from-gnu-guix">
+<p>
+<code>telega</code> and <code>TDLib</code> are both available in GNU Guix. If you have a
+resource constrained machine or would simply prefer to bypass
+compiling <code>TDLib</code> from source, this is a good option!
+</p>
+
+<p>
+On Guix System:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ guix package -i emacs-telega
+</pre>
+</div>
+
+<p>
+On "Foreign" Distributions:
+</p>
+<ul class="org-ul">
+<li>Use the shell installer script, or install GNU Guix manually on-top
+of your current distribution. <a href="https://guix.gnu.org/manual/en/html_node/Installation.html#Installation">Installation Documentation</a></li>
+
+<li>Enable fetching substitutes from the build server cache if you do
+not wish to build from source. <a href="https://guix.gnu.org/manual/en/html_node/Substitute-Server-Authorization.html#Substitute-Server-Authorization">Substitute Server Authorization</a></li>
+
+<li><p>
+And finally, run:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ guix package -i emacs emacs-telega
+</pre>
+</div></li>
+</ul>
+
+<p>
+You will need a version of Emacs installed from GNU Guix because it is
+modified with an autoloader to identify and automatically use Emacs
+packages installed from Guix.
+</p>
+
+<p>
+Consult the official GNU Guix documentation for further
+questions. Issues related to the GUIX package must be accompanied by
+the <a href="https://github.com/zevlg/telega.el/labels/guix">GUIX label</a> in the issue tracker.
+</p>
+
+<p>
+Do note that since <code>telega</code> is actively maintained installations from
+Guix might at times lag behind master, but regular attempts to keep it
+updated will occur.  If the version in Guix is too outdated or is
+missing a feature, please use the protocol for the issue tracker.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org0257bfb" class="outline-3">
+<h3 id="installing-telega-from-melpa">Installing telega from MELPA</h3>
+<div class="outline-text-3" id="text-installing-telega-from-melpa">
+<p>
+<code>telega</code> is available from <a href="https://melpa.org">MELPA</a>, so you can install it from there as
+usual package.  This is a preferable method, because it will
+automatically handle all dependencies and provides autoloads.
+</p>
+
+<p>
+Or you could use git repository with this melpa-style recipe for <a href="https://github.com/quelpa/quelpa">quelpa</a>:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(quelpa '(telega <span style="font-weight: bold;">:fetcher</span> github
+               <span style="font-weight: bold;">:repo</span> <span style="font-style: italic;">"zevlg/telega.el"</span>
+               <span style="font-weight: bold;">:branch</span> <span style="font-style: italic;">"master"</span>
+               <span style="font-weight: bold;">:files</span> (<span style="font-weight: bold;">:defaults</span> <span style="font-style: italic;">"etc"</span> <span style="font-style: italic;">"server"</span> <span style="font-style: italic;">"Makefile"</span>)))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge4e8ef5" class="outline-3">
+<h3 id="installing-telega-directly-from-github">Installing telega directly from GitHub</h3>
+<div class="outline-text-3" id="text-installing-telega-directly-from-github">
+<p>
+Make sure dependencies are installed with <kbd>M-x package-install RET visual-fill-column RET</kbd> and <kbd>M-x package-install RET rainbow-identifiers RET</kbd>.
+</p>
+
+<p>
+Get the source:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ git clone https://github.com/zevlg/telega.el
+$ cd telega.el
+$ make compile
+</pre>
+</div>
+
+<p>
+Finally load <code>telega</code> into Emacs using:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">use-package</span> telega
+  <span style="font-weight: bold;">:load-path</span>  <span style="font-style: italic;">"~/telega.el"</span>
+  <span style="font-weight: bold;">:commands</span> (telega)
+  <span style="font-weight: bold;">:defer</span> t)
+</pre>
+</div>
+
+<p>
+Or with:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-to-list 'load-path <span style="font-style: italic;">"~/telega.el"</span>)
+(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega</span>)
+</pre>
+</div>
+
+<p>
+The code should be put in the configuration file for Emacs, which
+usually is <code>init.el</code>, or <code>emacs.el</code>.
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgb3d9566" class="outline-2">
 <h2 id="getting-started">Getting started</h2>
 <div class="outline-text-2" id="text-getting-started">
 <p>
-TODO
+Start <code>telega</code> with <kbd>M-x telega RET</kbd>. The first time it will
+ask for the phone number you have associated with the Telegram
+network.
 </p>
 </div>
 </div>
 
-<div id="outline-container-org21de0ab" class="outline-2">
+<div id="outline-container-org37b78c9" class="outline-2">
 <h2 id="telega-glossary">Telega glossary</h2>
 <div class="outline-text-2" id="text-telega-glossary">
 <p>
@@ -479,9 +767,25 @@ TODO: If NAME starts with "lng_" then <code>telega-i18n</code> is used.
 </p>
 
 <p>
-Default value: <code>(("📑Main" . main) ("Groups" type basicgroup supergroup) ("Channels" type channel) ("Online" and (not saved-messages) (online-status "Online")) ("Important" or mention (and unread unmuted)) ("📑Archive" . archive))</code>
-</p></li>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"&#128209;Main"</span> . main)
+ (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"Channels"</span> type channel)
+ (<span style="font-style: italic;">"Online"</span> and
+  (not saved-messages)
+  (online-status <span style="font-style: italic;">"Online"</span>))
+ (<span style="font-style: italic;">"Important"</span> or mention
+  (<span style="font-weight: bold;">and</span> unread unmuted))
+ (<span style="font-style: italic;">"&#128209;Archive"</span> . archive))
+</pre>
+</div></li>
+</ul></dd>
+</dl>
 
+
+<ul class="org-ul">
 <li><p>
 User Option: <code>telega-filter-custom-folders</code> 
 </p>
@@ -492,10 +796,17 @@ Where car is custom filter name, and cdr is tdlib chat list for this filter.
 </p>
 
 <p>
-Default value: <code>(("📑Main" :@type "chatListMain") ("📑Archive" :@type "chatListArchive"))</code>
-</p></li>
-</ul></dd>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"&#128209;Main"</span> <span style="font-weight: bold;">:@type</span> <span style="font-style: italic;">"chatListMain"</span>)
+ (<span style="font-style: italic;">"&#128209;Archive"</span> <span style="font-weight: bold;">:@type</span> <span style="font-style: italic;">"chatListArchive"</span>))
+</pre>
+</div></li>
+</ul>
 
+
+<dl class="org-dl">
 <dt>Chat Sort Criteria</dt><dd>List of symbols denoting how to sort chats.
 See <a href="#sorting-chats">Sorting Chats</a></dd>
 
@@ -531,7 +842,7 @@ Chat with me is also known as "Saved Messages".
 </div>
 </div>
 
-<div id="outline-container-orgd342c18" class="outline-2">
+<div id="outline-container-orgda4c7ca" class="outline-2">
 <h2 id="telega-prefix-map">Telega prefix map</h2>
 <div class="outline-text-2" id="text-telega-prefix-map">
 <p>
@@ -571,14 +882,14 @@ If prefix <code>ARG</code> is given, then will not pop to telega root buffer.</d
 <dt><kbd>c</kbd> (<code>telega-chat-with</code>)</dt><dd>Start chatting with peer matching <code>NAME</code>.</dd>
 
 <dt><kbd>s</kbd> (<code>telega-saved-messages</code>)</dt><dd>Switch to SavedMessages chat buffer.
-If SavedMessages chat is not opened, then open it.
-If prefix <code>ARG</code> is specified, then keep the point, otherwise goto
-end of the buffer.</dd>
+If "Saved Messages" chat is not opened, then open it.
+If <kbd>C-u</kbd> is specified, then keep the point,
+otherwise goto end of the buffer.</dd>
 
-<dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactive switch to chat <code>BUFFER</code>.</dd>
+<dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactively switch to chat <code>BUFFER</code>.</dd>
 
 <dt><kbd>f</kbd> (<code>telega-buffer-file-send</code>)</dt><dd>Prepare <code>FILE</code> to be sent as document or photo to <code>CHAT</code>.
-If prefix argument is used, then always send as a file.
+If <kbd>C-u</kbd> is specified, then always send as a file.
 Otherwise for <code>image-mode</code> major-mode, send file as photo.
 If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.</dd>
@@ -593,7 +904,7 @@ If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd
 </div>
 </div>
 
-<div id="outline-container-org03ef788" class="outline-2">
+<div id="outline-container-orgf57e91b" class="outline-2">
 <h2 id="root-buffer">Root Buffer</h2>
 <div class="outline-text-2" id="text-root-buffer">
 <p>
@@ -608,12 +919,11 @@ rootbuf is the heart of the <code>telega</code>.  Switch to rootbuf with
 </p>
 </div>
 
-<div id="outline-container-org209cd13" class="outline-3">
+<div id="outline-container-orgd6ddb05" class="outline-3">
 <h3 id="rootbuf-fast-navigation">Rootbuf fast navigation</h3>
 <div class="outline-text-3" id="text-rootbuf-fast-navigation">
 <p>
-<kbd>M-g</kbd> prefix in rootbuf is used to jump across chat
-buttons.
+<kbd>M-g</kbd> prefix in rootbuf is used to jump across chat buttons:
 </p>
 
 <dl class="org-dl">
@@ -624,7 +934,7 @@ Move point to the next chat with important messages.
 </p>
 
 <p>
-Important message is the messages matching "Important" custom
+Important message is a message matching "Important" custom
 <a href="#chat-filters">chat filter</a>.  If there is no "Important"
 custom chat filter, then <code>(or mention (and unread unmuted))</code>
 chat filter is used.
@@ -635,17 +945,17 @@ chat filter is used.
 </div>
 </div>
 
-<div id="outline-container-orgd5abbea" class="outline-3">
+<div id="outline-container-org1cb11f1" class="outline-3">
 <h3 id="rootbuf-view-switching">Rootbuf view switching</h3>
 <div class="outline-text-3" id="text-rootbuf-view-switching">
 <p>
-Rootbuf view is the specific way how rootbuf is shown to the
-user.  By default, list of the chats is shown, this is known as
-default root view.
+Rootbuf view is the specific way how rootbuf is shown to the user.  By
+default, list of the chats is shown, this is known as default root
+view.
 </p>
 
 <p>
-<kbd>v</kbd> prefix in rootbuf is used to switch root views.
+<kbd>v</kbd> prefix in rootbuf is used to switch root views:
 </p>
 
 <dl class="org-dl">
@@ -684,7 +994,49 @@ If <code>QUERY</code> is empty string, then show all contacts.</dd>
 </div>
 </div>
 
-<div id="outline-container-orgd7b463f" class="outline-2">
+<div id="outline-container-org8bffb5e" class="outline-2">
+<h2 id="chat-folders">Chat Folders</h2>
+<div class="outline-text-2" id="text-chat-folders">
+<p>
+<a href="https://telegram.org/blog/folders">Telegram has added</a> a new
+feature that allows users to organise chats into Chat Folders.
+</p>
+
+<p>
+Each folder can have unlimited number of pinned chats.
+</p>
+
+<p>
+Before Telegram had support for Chat Folders, <code>telega</code> implemented
+custom chat label feature, resembling Chat Folders functionality.
+But now custom chat label feature is deprecated in favor to Chat
+Folders.  Use <kbd>M-x telega-folders-migrate-custom-labels RET</kbd> to migrate your custom labels into Chat Folders.
+</p>
+
+<p>
+<kbd>F</kbd> prefix in rootbuf is used to operate on Chat Folders:
+</p>
+
+<dl class="org-dl">
+<dt><kbd>F +</kbd> (<code>telega-folder-create</code>)</dt><dd>Create new Telegram folder with name <code>FOLDER-NAME</code>.
+Use <kbd>C-u</kbd> to create folder with icon name.</dd>
+
+<dt><kbd>F -</kbd> (<code>telega-folder-delete</code>)</dt><dd>Delete Telegram folder with <code>FOLDER-NAME</code>.
+This won't delete any chat, just a folder.</dd>
+
+<dt><kbd>F =</kbd> (<code>telega-folders-reorder</code>)</dt><dd>Reorder Telegram folders to be in <code>ORDERED-FOLDER-NAMES</code> order.</dd>
+
+<dt><kbd>F R</kbd> (<code>telega-folder-rename</code>)</dt><dd>Assign new name and icon to the folder with <code>FOLDER-NAME</code>.
+Use <kbd>C-u</kbd> to change folder's icon name as well.</dd>
+
+<dt><kbd>F a</kbd> (<code>telega-chat-add-to-folder</code>)</dt><dd>Add <code>CHAT</code> to the Telegram folder named <code>FOLDER-NAME</code>.</dd>
+
+<dt><kbd>F d</kbd> (<code>telega-chat-remove-from-folder</code>)</dt><dd>Remove <code>CHAT</code> from the folder named <code>FOLDER-NAME</code>.</dd>
+</dl>
+</div>
+</div>
+
+<div id="outline-container-org6b3cfa6" class="outline-2">
 <h2 id="chat-filters">Chat Filters</h2>
 <div class="outline-text-2" id="text-chat-filters">
 <p>
@@ -729,7 +1081,7 @@ Matching is done using <code>telega-chat-match-p</code> function.
 
 <p>
 <kbd>/</kbd> prefix in rootbuf is used for some useful filtering
-commands.
+commands:
 </p>
 
 <dl class="org-dl">
@@ -745,7 +1097,7 @@ Important chat is the chat with unread messages and enabled notifications.</dd>
 <dt><kbd>/ !</kbd> (<code>telega-filters-negate</code>)</dt><dd>Negate last filter.
 If <kbd>C-u</kbd> is specified, then negate whole active filter.</dd>
 
-<dt><kbd>/ /</kbd> (<code>telega-filters-reset</code>)</dt><dd>Reset all active filters to default.</dd>
+<dt><kbd>/ /</kbd> (<code>telega-filters-reset</code>)</dt><dd>Reset active filter to the <code>telega-filter-default</code>.</dd>
 </dl>
 
 <p>
@@ -753,7 +1105,7 @@ For other Chat Filter bindings see below.
 </p>
 </div>
 
-<div id="outline-container-org10cc480" class="outline-3">
+<div id="outline-container-orgc8018b5" class="outline-3">
 <h3 id="list-of-chat-filters">List of chat filters</h3>
 <div class="outline-text-3" id="text-list-of-chat-filters">
 <dl class="org-dl">
@@ -773,7 +1125,7 @@ Matches if chat type is one of <code>CHAT-TYPE-LIST</code>.
 </p>
 
 <p>
-See <a href="#chat-types">Chat types</a>
+See [BROKEN LINK: chat-types]
 </p></dd>
 
 <dt>(name <code>REGEXP</code>)</dt><dd>Matches if chat's title matches <code>REGEXP</code>.</dd>
@@ -845,6 +1197,12 @@ Suffix can be one of:
 
 <p>
 If <code>SUFFIX-LIST</code> is not specified, then match any restriction reason.
+</p>
+
+<p>
+Chat restriction reason reported only if chat must be restricted
+by current client.  See
+<a href="https://github.com/tdlib/td/issues/1203">TDLib#1203</a>
 </p></dd>
 
 <dt>(contact [ <code>MUTUAL-P</code> ]), <kbd>/ c</kbd> (<code>telega-filter-by-contact</code>)</dt><dd>Matches private chats if corresponding user is a contact.
@@ -854,8 +1212,6 @@ If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
 
 <dt>saved-messages</dt><dd>Matches only SavedMessages chat.</dd>
 
-<dt>(label <code>LABEL</code>), <kbd>/ l</kbd> (<code>telega-filter-by-label</code>)</dt><dd>Matches chat with custom <code>LABEL</code>.</dd>
-
 <dt>tracking, <kbd>/ SPC</kbd> (<code>telega-filter-by-tracking</code>)</dt><dd>Matches if chat is in tracking buffers list.</dd>
 
 <dt>last-message-by-me</dt><dd>Matches if chat's last message sent by me.</dd>
@@ -863,6 +1219,8 @@ If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
 <dt>(chat-list <code>LIST-NAME</code>), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat is in chat list named <code>LIST-NAME</code>.
 <code>LIST-NAME</code> is <code>main</code> or <code>archive</code> symbol, or string naming tdlib
 chat filter aka Telegram Folder.</dd>
+
+<dt>(folder <code>FOLDER-NAME</code>), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat belongs to Chat Folder with <code>FOLDER-NAME</code>.</dd>
 
 <dt>main</dt><dd>Matches if chat from "Main" chat list.</dd>
 
@@ -874,7 +1232,7 @@ chat filter aka Telegram Folder.</dd>
 
 <dt>has-reply-markup</dt><dd>Matches <code>CHAT</code> with reply markup message.</dd>
 
-<dt>can-view-statistics</dt><dd>Matches if CHAT's statistics is available.</dd>
+<dt>can-view-statistics</dt><dd>Matches if statistics available for <code>CHAT</code>.</dd>
 
 <dt>has-linked-chat</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
 
@@ -887,7 +1245,7 @@ chat filter aka Telegram Folder.</dd>
 </div>
 </div>
 
-<div id="outline-container-org30923a1" class="outline-3">
+<div id="outline-container-org31d9d0f" class="outline-3">
 <h3 id="customizable-options-making-use-of-chat-filters">Customizable options making use of Chat Filters</h3>
 <div class="outline-text-3" id="text-customizable-options-making-use-of-chat-filters">
 <ul class="org-ul">
@@ -902,7 +1260,6 @@ Default chat filter to apply.
 <p>
 Default value: <code>main</code>
 </p></li>
-
 <li><p>
 User Option: <code>telega-filters-custom</code> 
 </p>
@@ -914,8 +1271,20 @@ TODO: If NAME starts with "lng_" then <code>telega-i18n</code> is used.
 </p>
 
 <p>
-Default value: <code>(("📑Main" . main) ("Groups" type basicgroup supergroup) ("Channels" type channel) ("Online" and (not saved-messages) (online-status "Online")) ("Important" or mention (and unread unmuted)) ("📑Archive" . archive))</code>
-</p></li>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"&#128209;Main"</span> . main)
+ (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"Channels"</span> type channel)
+ (<span style="font-style: italic;">"Online"</span> and
+  (not saved-messages)
+  (online-status <span style="font-style: italic;">"Online"</span>))
+ (<span style="font-style: italic;">"Important"</span> or mention
+  (<span style="font-weight: bold;">and</span> unread unmuted))
+ (<span style="font-style: italic;">"&#128209;Archive"</span> . archive))
+</pre>
+</div></li>
 
 <li><p>
 User Option: <code>telega-use-tracking-for</code> 
@@ -930,7 +1299,6 @@ Only chats with corresponding opened chatbuf are tracked.
 <p>
 Default value: <code>nil</code>
 </p></li>
-
 <li><p>
 User Option: <code>telega-rainbow-color-custom-for</code> 
 </p>
@@ -943,7 +1311,6 @@ Each element is cons cell, where car is Chat Filter, and cdr is color.
 <p>
 Default value: <code>((saved-messages))</code>
 </p></li>
-
 <li><p>
 User Option: <code>telega-chat-prompt-show-avatar-for</code> 
 </p>
@@ -955,7 +1322,6 @@ Chat Filter for which chats to show avatar nearby the prompt.
 <p>
 Default value: <code>nil</code>
 </p></li>
-
 <li><p>
 User Option: <code>telega-chat-group-messages-for</code> 
 </p>
@@ -965,8 +1331,14 @@ Chat Filter for chats where to group messages by sender.
 </p>
 
 <p>
-Default value: <code>(not (or saved-messages (type channel bot)))</code>
-</p></li>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(not
+ (<span style="font-weight: bold;">or</span> saved-messages
+     (type channel bot)))
+</pre>
+</div></li>
 
 <li><p>
 User Option: <code>telega-chat-show-deleted-messages-for</code> 
@@ -979,13 +1351,31 @@ Chat Filter for chats where to show deleted messages in chatbuf.
 <p>
 Default value: <code>nil</code>
 </p></li>
+<li><p>
+User Option: <code>telega-root-view-topics</code> 
+</p>
+
+<p>
+Alist of topics for "topics" root view.
+Car is name of the topic, cdr is chat filter to match chats. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Important"</span> or mention
+  (<span style="font-weight: bold;">and</span> unread unmuted)))
+</pre>
+</div></li>
 </ul>
 </div>
 </div>
 </div>
 
-<div id="outline-container-org15c83b6" class="outline-2">
-<h2 id="sorting-chats">Sorting Chats</h2>
+
+<div id="outline-container-org83214b6" class="outline-2">
+<h2 id="sorting-chats">Sorting chats</h2>
 <div class="outline-text-2" id="text-sorting-chats">
 <p>
 It is possible to sort chats in rootbuf out of Telega built-in
@@ -996,7 +1386,7 @@ directly into <code>telega-sort-criteria-alist</code>, use
 </p>
 
 <p>
-<kbd>\</kbd> prefix in rootbuf is used for sorting commands.
+<kbd>\</kbd> prefix in rootbuf is used for sorting commands:
 </p>
 
 <dl class="org-dl">
@@ -1019,9 +1409,13 @@ overwritting currently active one.
 Use this command to reset active sorter.
 </p></dd>
 </dl>
+
+<p>
+For other sorting keybindings see below.
+</p>
 </div>
 
-<div id="outline-container-orgb71fe27" class="outline-3">
+<div id="outline-container-orgad1af07" class="outline-3">
 <h3 id="sorting-criteria">Sorting criteria</h3>
 <div class="outline-text-3" id="text-sorting-criteria">
 <dl class="org-dl">
@@ -1046,61 +1440,59 @@ Thanks to <a href="https://t.me/Kurvivor">https://t.me/Kurvivor</a>
 <dt><code>chatbuf-visibility</code></dt><dd>Sort chats by visibility in other window in DWIM style.
 See <a href="https://github.com/zevlg/telega.el/issues/165">https://github.com/zevlg/telega.el/issues/165</a></dd>
 
-<dt><code>chatbuf-visibility</code></dt><dd>Sort chats by nearby distance to me.
+<dt><code>nearby-distance</code></dt><dd>Sort chats by nearby distance to me.
 See <a href="https://github.com/zevlg/telega.el/issues/165">https://github.com/zevlg/telega.el/issues/165</a></dd>
 </dl>
 </div>
 </div>
+
+<div id="outline-container-orgb2b1e9b" class="outline-3">
+<h3 id="customizable-options-making-use-of-sorting-criteria">Customizable options making use of sorting criteria</h3>
+<div class="outline-text-3" id="text-customizable-options-making-use-of-sorting-criteria">
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-chat-completing-sort-criteria</code> 
+</p>
+
+<p>
+Criteria to sort chats in <code>telega-completing-read-chat</code>. 
+</p>
+
+<p>
+Default value: <code>(chatbuf-visibility chatbuf-recency)</code>
+</p></li>
+<li><p>
+User Option: <code>telega-chat-switch-buffer-sort-criteria</code> 
+</p>
+
+<p>
+Criteria to sort open chats when switching with <code>telega-switch-buffer</code>. 
+</p>
+
+<p>
+Default value: <code>chatbuf-recency</code>
+</p></li>
+</ul>
+</div>
+</div>
 </div>
 
-<div id="outline-container-orgca49205" class="outline-2">
+<div id="outline-container-org0de5f30" class="outline-2">
 <h2 id="chat-buffer">Chat buffer</h2>
 <div class="outline-text-2" id="text-chat-buffer">
 <p>
-<b>TODO</b>: describe chatbuf functionality
+Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
+consists of a list of chat messages and an input for your messages
+to send.
 </p>
 </div>
 
-<div id="outline-container-orgf9f3082" class="outline-3">
-<h3 id="chat-types">Chat types</h3>
-<div class="outline-text-3" id="text-chat-types">
-<p>
-Every chat has a type.  Type is one of:
-</p>
-<dl class="org-dl">
-<dt>private</dt><dd>Private chat with telegram user</dd>
-<dt>secret</dt><dd>Secret chat with telegram user</dd>
-<dt>bot</dt><dd>Chat with telegram bot</dd>
-<dt>basicgroup</dt><dd>Small chat group, could be upgraded to supergroup</dd>
-<dt>supergroup</dt><dd>Chat group with all the chat possibilities</dd>
-<dt>channel</dt><dd>Supergroup with unlimited members, where only admins can post messags</dd>
-</dl>
-</div>
-</div>
-
-<div id="outline-container-org8fad082" class="outline-3">
-<h3 id="custom-chat-label">Custom chat label</h3>
-<div class="outline-text-3" id="text-custom-chat-label">
-<p>
-Chat can be assigned with custom label using
-<kbd>L</kbd> (<code>telega-chat-set-custom-label</code>)
-pressed on chat button.
-</p>
-
-<p>
-Custom chat labels is one of the ways to group chats together.
-Labeled chats can be easily filtered using <code>label</code> chat filter.
-See <a href="#chat-filters">Chat Filters</a>
-</p>
-</div>
-</div>
-
-<div id="outline-container-orgd015d4a" class="outline-3">
+<div id="outline-container-orga35b3fc" class="outline-3">
 <h3 id="chatbuf-fast-navigation">Chatbuf fast navigation</h3>
 <div class="outline-text-3" id="text-chatbuf-fast-navigation">
 <p>
-<kbd>M-g</kbd> prefix in chatbuf is used to jump across chat
-messages.
+<kbd>M-g</kbd> prefix in chatbuf is used to jump across various chat
+messages:
 </p>
 
 <dl class="org-dl">
@@ -1121,84 +1513,7 @@ button.</dd>
 </div>
 </div>
 
-<div id="outline-container-org63133a7" class="outline-3">
-<h3 id="chatbuf-attaching-media">Chatbuf attaching media</h3>
-<div class="outline-text-3" id="text-chatbuf-attaching-media">
-<p>
-Attach types are defined in <code>telega-chat-attach-commands</code>.  By
-default next attachement types are defined: <code>photo</code>, <code>self-destruct-photo</code>, <code>video</code>, <code>self-destruct-video</code>, <code>note-video</code>, <code>audio</code>, <code>note-voice</code>, <code>file</code>, <code>gif</code>, <code>location</code>, <code>poll</code>, <code>contact</code>, <code>member</code>, <code>sticker</code>, <code>animation</code>, <code>scheduled</code>, <code>disable-notification</code>, <code>enable-notification</code>, <code>dice</code>, <code>screenshot</code>, <code>clipboard</code>, <code>markup</code>
-</p>
-
-<p>
-Chatbuf bindings to attach something:
-</p>
-
-<dl class="org-dl">
-<dt><kbd>C-c C-a</kbd> (<code>telega-chatbuf-attach</code>)</dt><dd>Attach something into message.
-Prefix argument is available for next attachements:
-  screenshot - Takes numeric prefix argument to delay taking
-	       screenshot.
-  sticker    - Takes <kbd>C-u</kbd> to attach favorite/recent
-	       sticker.
-  clipboard  - Available only if image is in the clipboard.
-	       Takes <kbd>C-u</kbd> to attach clipboard as
-	       document.
-  animation  - Takes <kbd>C-u</kbd> to attach file as animation.
-	       (Same as attaching "gif")
-  location   - Takes <kbd>C-u</kbd> to attach live location.
-  poll       - Takes <kbd>C-u</kbd> to create non-anonymous poll.
-  scheduled  - Takes <kbd>C-u</kbd> to send message when
-	       user gets online.</dd>
-
-<dt><kbd>C-c C-f</kbd> (<code>telega-chatbuf-attach-file</code>)</dt><dd>Attach <code>FILENAME</code> as document to the current input.</dd>
-
-<dt><kbd>C-c C-v</kbd> (<code>telega-chatbuf-attach-clipboard</code>)</dt><dd>Send clipboard image to the chat.
-If <code>DOC-P</code> prefix arg as given, then send it as document.</dd>
-</dl>
-
-<p>
-Special attachement types are <code>scheduled</code>,
-<code>disable-notification</code> or <code>enable-notification</code>.  They do not
-attach anything, but changes options on how to send the
-message.  Use <code>scheduled</code> to
-<a href="#scheduling-messages-and-reminders">schedule messages</a>,
-<code>disable-notification</code> or <code>enable-notification</code> to trigger
-notification on receiver side.
-</p>
-</div>
-</div>
-
-<div id="outline-container-org63b87ff" class="outline-3">
-<h3 id="chatbuf-messages-filtering">Chatbuf messages filtering</h3>
-<div class="outline-text-3" id="text-chatbuf-messages-filtering">
-<p>
-Messages filtering means to show only some messages matching
-filter.  Available messages filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>call</code>, <code>missed-call</code>, <code>mention</code>, <code>unread-mention</code>, <code>failed-to-send</code>
-</p>
-
-<p>
-Chatbuf uses next bindings for messages filtering:
-</p>
-
-<dl class="org-dl">
-<dt><kbd>C-c /</kbd> (<code>telega-chatbuf-filter</code>)</dt><dd>Enable chat messages filtering.
-Enables <code>FILTER-NAME</code> filter.
-<code>QUERY</code> is only used by "search" messages filter.
-If <kbd>C-u</kbd> is specified, then filter messages
-sent by sender of the message at point.
-Not all filters can filter messages by sender.</dd>
-
-<dt><kbd>C-c C-c</kbd> (<code>telega-chatbuf-filter-cancel</code>)</dt><dd>Cancel any message filtering.
-If point is at some message, then keep point on this message after reseting.</dd>
-
-<dt><kbd>C-c C-s</kbd> (<code>telega-chatbuf-filter-search</code>)</dt><dd>Interactively search for messages in chatbuf.
-If non-nil <code>BY-SENDER-P</code> is specified by <kbd>C-u</kbd>,
-then also search by sender.</dd>
-</dl>
-</div>
-</div>
-
-<div id="outline-container-orgccfc839" class="outline-3">
+<div id="outline-container-org5bda1bd" class="outline-3">
 <h3 id="sending-ordinary-messages">Sending ordinary messages</h3>
 <div class="outline-text-3" id="text-sending-ordinary-messages">
 <p>
@@ -1231,7 +1546,7 @@ You can even intermix various markups, using <kbd>C-c C-a markup RET</kbd> comma
 </p>
 
 <p>
-To send media, along the side with the text message, use <a href="#chatbuf-attaching-media">media
+To send media, along the side with the text message, use <a href="#attaching-media">media
 attaching</a> commands.
 </p>
 
@@ -1255,22 +1570,158 @@ Default value: <code>nil</code>
 </div>
 </div>
 
-<div id="outline-container-orgedd219d" class="outline-3">
+<div id="outline-container-orge9723c5" class="outline-3">
+<h3 id="attaching-media">Attaching media</h3>
+<div class="outline-text-3" id="text-attaching-media">
+<p>
+Attach types are defined in <code>telega-chat-attach-commands</code>.  By default
+next attachment types are defined: <code>photo</code>, <code>self-destruct-photo</code>, <code>video</code>, <code>self-destruct-video</code>, <code>note-video</code>, <code>audio</code>, <code>note-voice</code>, <code>file</code>, <code>gif</code>, <code>location</code>, <code>poll</code>, <code>contact</code>, <code>member</code>, <code>sticker</code>, <code>animation</code>, <code>dice</code>, <code>screenshot</code>, <code>clipboard</code>, <code>markup</code>, <code>scheduled</code>, <code>disable-notification</code>, <code>enable-notification</code>, <code>disable-webpage-preview</code>
+</p>
+
+<p>
+Chatbuf bindings to attach something:
+</p>
+
+<dl class="org-dl">
+<dt><kbd>C-c C-a</kbd> (<code>telega-chatbuf-attach</code>)</dt><dd>Attach something into message.
+Prefix argument is available for next attachments:
+  screenshot - Takes numeric prefix argument to delay taking
+	       screenshot.
+  sticker    - Takes <kbd>C-u</kbd> to attach favorite/recent
+	       sticker.
+  clipboard  - Available only if image is in the clipboard.
+	       Takes <kbd>C-u</kbd> to attach clipboard as
+	       document.
+  animation  - Takes <kbd>C-u</kbd> to attach file as animation.
+	       (Same as attaching "gif")
+  location   - Takes <kbd>C-u</kbd> to attach live location.
+  poll       - Takes <kbd>C-u</kbd> to create non-anonymous poll.
+  scheduled  - Takes <kbd>C-u</kbd> to send message when
+	       user gets online.</dd>
+
+<dt><kbd>C-c C-f</kbd> (<code>telega-chatbuf-attach-file</code>)</dt><dd>Attach <code>FILENAME</code> as document to the current input.</dd>
+
+<dt><kbd>C-c C-v</kbd> (<code>telega-chatbuf-attach-clipboard</code>)</dt><dd>Send clipboard image to the chat.
+If <kbd>C-u</kbd> is given, then send it as document.</dd>
+</dl>
+
+<p>
+Special attachment types are <code>disable-webpage-preview</code>, <code>scheduled</code>,
+<code>disable-notification</code> or <code>enable-notification</code>.  They do not attach
+anything, but changes options on how to send the message.  Use
+<code>scheduled</code> to <a href="#scheduling-messages-and-reminders">schedule messages</a>, <code>disable-notification</code> or
+<code>enable-notification</code> to trigger notification on receiver side and
+<code>disable-webpage-preview</code> to disable rich web page previews for URLs
+in the message text.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgd5d8563" class="outline-3">
+<h3 id="replying-and-editing-messages">Replying and editing messages</h3>
+<div class="outline-text-3" id="text-replying-and-editing-messages">
+<p>
+To reply/edit the message, put point on the message you want to
+reply/edit and press
+<kbd>r</kbd> (<code>telega-msg-reply</code>) to reply or
+<kbd>e</kbd> (<code>telega-msg-edit</code>) to edit.
+</p>
+
+<p>
+Aux prompt will be show just above the chatbuf prompt, such as:
+</p>
+<pre class="example">
+[✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
+(T)&gt;&gt;&gt; 
+</pre>
+
+<p>
+To cancel aux prompt press on the cross button, or use
+<kbd>C-c C-k</kbd>, <kbd>C-M-c</kbd>, <kbd>M-ESC</kbd> (<code>telega-chatbuf-cancel-aux</code>)
+binding.
+<kbd>C-c C-k</kbd>, <kbd>C-M-c</kbd>, <kbd>M-ESC</kbd> (<code>telega-chatbuf-cancel-aux</code>) accepts
+<kbd>C-u</kbd> prefix, if used then chatbuf's input is also canceled.
+</p>
+
+<p>
+To edit your privously sent message press
+<kbd>M-p</kbd> (<code>telega-chatbuf-edit-prev</code>).
+</p>
+</div>
+</div>
+
+<div id="outline-container-org21ca739" class="outline-3">
 <h3 id="forwarding-messages">Forwarding messages</h3>
 <div class="outline-text-3" id="text-forwarding-messages">
+<p>
+To forward a message, put the point ot the message which you want to
+forward and press
+<kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
+and then select a Chat to forward a message to.  To forward multiple
+messages at once, mark messages with the
+<kbd>m</kbd> (<code>telega-msg-mark-toggle</code>) and then
+press
+<kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
+on one of the messages.
+</p>
+
+<p>
+There are few options how you can affect the way a message is forwarded:
+</p>
+<ol class="org-ol">
+<li><kbd>C-u f</kbd> to forward a message copy, it will look like <b>you</b>
+sent a message.</li>
+<li><kbd>C-u C-u f</kbd> To forward a message copy deleting or
+replacing capition it has.  Use this to forward media message with
+your own caption.</li>
+</ol>
 </div>
 </div>
-<div id="outline-container-org5278249" class="outline-3">
-<h3 id="sending-special-messages">Sending special messages</h3>
-<div class="outline-text-3" id="text-sending-special-messages">
+
+<div id="outline-container-org5cbda68" class="outline-3">
+<h3 id="deleting-messages">Deleting messages</h3>
+<div class="outline-text-3" id="text-deleting-messages">
+<p>
+To delete a message, put the point to the message you want to delete and press
+<kbd>DEL</kbd>, <kbd>k</kbd>, <kbd>d</kbd> (<code>telega-msg-delete-marked-or-at-point</code>).
+</p>
+
+<p>
+As with <a href="#forwarding-messages">forwarding messages</a>, you can mark multiple messages to delete
+with <kbd>m</kbd> (<code>telega-msg-mark-toggle</code>).
+</p>
+
+<p>
+<code>telega</code> can keep deleted messages visible until chatbuf is
+killed. This is controlled using custom variable:
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-chat-show-deleted-messages-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to show deleted messages in chatbuf. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+</ul>
+
+<p>
+For example, to show deleted messages in all chats except for "Saved
+Messages", use next:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacslisp">(setq telega-chat-show-deleted-messages-for '(not saved-messages))
+</pre>
 </div>
 </div>
-<div id="outline-container-orgf6c41ce" class="outline-3">
-<h3 id="sending-messages-via-bots">Sending messages via bots</h3>
-<div class="outline-text-3" id="text-sending-messages-via-bots">
 </div>
-</div>
-<div id="outline-container-org5d375c1" class="outline-3">
+
+<div id="outline-container-org8e2a815" class="outline-3">
 <h3 id="scheduling-messages-and-reminders">Scheduling messages and reminders</h3>
 <div class="outline-text-3" id="text-scheduling-messages-and-reminders">
 <p>
@@ -1290,8 +1741,223 @@ messages you planned in the past.
 </p>
 </div>
 </div>
+
+<div id="outline-container-org1dadd5b" class="outline-3">
+<h3 id="completing-input">Completing input</h3>
+<div class="outline-text-3" id="text-completing-input">
+<p>
+Powerful <code>company-mode</code> could be used to complete input in the
+chatbuf.
+</p>
+
+<p>
+<code>telega</code> provides few company backends, such as:
+</p>
+
+<dl class="org-dl">
+<dt>telega-company-emoji</dt><dd><p>
+Complete emojis via <code>:&lt;emoji&gt;:</code>
+syntax. Completion is done using predefined set of emojis.
+</p>
+
+<p>
+Customizable Options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-emoji-fuzzy-match</code> 
+</p>
+
+<p>
+Non-nil to use fuzzy prefix matching.
+For example without fuzzy matches, prefix <code>:jo</code> will match only
+<code>:joy:</code>, <code>:joy-cat:</code> and <code>:joystick:</code>.  With fuzzy matching
+enabled it will match also <code>:flag-jo:</code> and <code>:black-jocker:</code>. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul></dd>
+
+<dt>telega-company-telegram-emoji</dt><dd>Same as <code>telega-company-emoji</code>, but
+uses Telegram cloud for the emojis completion.</dd>
+
+<dt>telega-company-username</dt><dd>Complete user mentions via <code>@&lt;username&gt;</code>
+syntax.</dd>
+
+<dt>telega-company-botcmd</dt><dd>Complete bot commands via <code>/&lt;botcmd&gt;</code>
+syntax.  This backend does not complete if <code>/&lt;botcmd&gt;</code> syntax is
+used in the middle of the chatbuf input, only if <code>/&lt;botcmd&gt;</code> starts
+chatbuf input.</dd>
+
+<dt>telega-company-hashtag</dt><dd>Complete common hashtags via <code>#&lt;hashtag&gt;</code>
+syntax.</dd>
+</dl>
+
+<p>
+<code>company-mode</code> setup might look like:
+</p>
+<div class="org-src-container">
+<pre class="src src-elisp">(<span style="font-weight: bold;">setq</span> telega-emoji-company-backend 'telega-company-emoji)
+
+(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-chat-mode</span> ()
+  (set (make-local-variable 'company-backends)
+       (append (list telega-emoji-company-backend
+                   'telega-company-username
+                   'telega-company-hashtag)
+             (<span style="font-weight: bold;">when</span> (telega-chat-bot-p telega-chatbuf--chat)
+               '(telega-company-botcmd))))
+  (company-mode 1))
+
+(add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
+</pre>
 </div>
-<div id="outline-container-orga48021d" class="outline-2">
+</div>
+</div>
+
+<div id="outline-container-org552de47" class="outline-3">
+<h3 id="sending-messages-via-bots">Sending messages via bots</h3>
+<div class="outline-text-3" id="text-sending-messages-via-bots">
+<p>
+If chatbuf input starts with <code>@&lt;botname&gt; &lt;query&gt;</code> and mentioned bot
+support <a href="https://telegram.org/blog/inline-bots">inline mode</a>, then pressing
+<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>)
+will pop a special buffer with the inline results to the bot inline
+<code>&lt;query&gt;</code>, you can use these results to send a message via bot.  Some
+useful bots with <a href="https://telegram.org/blog/inline-bots">inline mode</a> support are:
+</p>
+
+<ul class="org-ul">
+<li><a href="https://t.me/gif">@gif</a> To search and send animations</li>
+<li><a href="https://t.me/pic">@pic</a>, <a href="https://t.me/bing">@bing</a> To search and send pictures</li>
+<li><a href="https://t.me/vid">@vid</a> To search and send videos on YouTube</li>
+<li><a href="https://t.me/foursquare">@foursquare</a> - To find and send places around the world</li>
+<li>etc</li>
+</ul>
+
+<p>
+To find out is some bot supports <a href="https://telegram.org/blog/inline-bots">inline mode</a> or not, enter
+<code>@&lt;botname&gt;&lt;SPC&gt;</code> in chatbuf input and press
+<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>).
+If momentary help is displayed, then this bot supports inline mode.
+</p>
+
+<p>
+Customizable options for inline bots:
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-known-inline-bots</code> 
+</p>
+
+<p>
+List of known bots for everyday use. 
+</p>
+
+<p>
+Default value: <code>("@gif" "@youtube" "@pic")</code>
+</p></li>
+
+<li><p>
+User Option: <code>telega-inline-query-window-select</code> 
+</p>
+
+<p>
+Non-nil to select window with inline query results. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgd88d5bb" class="outline-3">
+<h3 id="filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</h3>
+<div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
+<p>
+Message filtering means to show only some messages matching filter.
+Available message filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>call</code>, <code>missed-call</code>, <code>mention</code>, <code>unread-mention</code>, <code>failed-to-send</code>
+</p>
+
+<p>
+Chatbuf uses next bindings for message filtering:
+</p>
+
+<dl class="org-dl">
+<dt><kbd>C-c /</kbd> (<code>telega-chatbuf-filter</code>)</dt><dd>Enable chat messages filtering.
+Enables <code>FILTER-NAME</code> filter.
+<code>QUERY</code> is only used by "search" messages filter.
+If <kbd>C-u</kbd> is specified, then filter messages
+sent by sender of the message at point.
+Not all filters can filter messages by sender.</dd>
+
+<dt><kbd>C-c C-c</kbd> (<code>telega-chatbuf-filter-cancel</code>)</dt><dd>Cancel any message filtering.
+If point is at some message, then keep point on this message after reseting.</dd>
+
+<dt><kbd>C-c C-s</kbd> (<code>telega-chatbuf-filter-search</code>)</dt><dd>Interactively search for messages in chatbuf.
+If non-nil <code>BY-SENDER-P</code> is specified by <kbd>C-u</kbd>,
+then also search by sender.</dd>
+</dl>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org5f160d0" class="outline-2">
+<h2 id="multiple-accounts">Multiple accounts</h2>
+<div class="outline-text-2" id="text-multiple-accounts">
+<p>
+<code>telega</code> support multiple accounts, however only single account can be
+active, i.e. you can't run account simultaneously, but you can switch
+between accounts.  Notifications won't work for inactive accounts.
+</p>
+
+<p>
+To switch accounts use
+<kbd>a</kbd> (<code>telega-account-switch</code>) from <a href="#telega-prefix-map">prefix
+map</a>.  To setup multiple accounts use:
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-accounts</code> 
+</p>
+
+<p>
+List of the accounts to be used by telega.
+Each element is a list in form:
+(ACCOUNT-NAME CUSTOM-VAR1 VAL1 CUSTOM-VAR2 VAL2 &#x2026;).
+At least <code>telega-database-dir</code> should be customized for each account. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p>
+
+<p>
+For example:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-accounts (list
+  (list <span style="font-style: italic;">"zevlg"</span> 'telega-database-dir telega-database-dir)
+  (list <span style="font-style: italic;">"Evgen2"</span> 'telega-database-dir
+    (expand-file-name <span style="font-style: italic;">"evgen2"</span> telega-database-dir))))
+</pre>
+</div>
+
+<p>
+Each account can have its own configuration using custom variables
+specified in account setup, and only <code>telega-database-dir</code> must be
+different for different accounts.
+</p></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org7a859df" class="outline-2">
 <h2 id="minor-modes">Minor Modes</h2>
 <div class="outline-text-2" id="text-minor-modes">
 <p>
@@ -1299,7 +1965,97 @@ messages you planned in the past.
 </p>
 </div>
 
-<div id="outline-container-orge80d4dd" class="outline-3">
+<div id="outline-container-org94ea430" class="outline-3">
+<h3 id="notifications-for-incoming-messages">Notifications for incoming messages</h3>
+<div class="outline-text-3" id="text-notifications-for-incoming-messages">
+<p>
+<code>telega.el</code> could notify you about incoming messages and calls via
+D-Bus notifications, however notifications are disabled by default.
+To enable notifications use:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(telega-notifications-mode 1)
+</pre>
+</div>
+
+<p>
+In order for message to trigger notification, few conditions should be
+satisfied.
+</p>
+
+<p>
+Do <b>NOT</b> pop notification if:
+</p>
+<ol class="org-ol">
+<li>Message is ignored by client side filtering (see
+<code>telega-msg-ignored-p</code>)</li>
+<li>Chat is muted and message does not contain unread mention</li>
+<li>Message already has been read (see <code>telega-msg-seen-p</code>)</li>
+<li>Message is older then 1 min (to avoid poping up messages on
+laptop wakeup)</li>
+<li>Message is currently observable in chatbuf</li>
+<li><b>TODO</b>: If Emacs frame has focus and root buffer is current</li>
+</ol>
+
+<p>
+See also <a href="#telega-alertel--notifications-using-alertel">Notifications using alert.el</a>
+</p>
+</div>
+</div>
+
+<div id="outline-container-org5b06eca" class="outline-3">
+<h3 id="telega-mode-line-mode">telega-mode-line-mode</h3>
+<div class="outline-text-3" id="text-telega-mode-line-mode">
+<p>
+Global minor mode to display <code>telega</code> status in modeline.
+</p>
+
+<p>
+Enable with <code>(telega-mode-line-mode 1)</code>, or at <code>telega</code> load time:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-mode-line-mode)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-mode-line-string-format</code> 
+</p>
+
+<p>
+Format in mode-line-format for <code>telega-mode-line-string</code>. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-style: italic;">"   "</span>
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-mode-line-icon))
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-mode-line-online-status))
+ (<span style="font-weight: bold;">:eval</span>
+  (<span style="font-weight: bold;">when</span> telega-use-tracking-for
+    (telega-mode-line-tracking)))
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-mode-line-unread-unmuted))
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-mode-line-mentions 'messages)))
+</pre>
+</div></li>
+</ul>
+</div>
+</div>
+
+
+<div id="outline-container-org20af418" class="outline-3">
 <h3 id="telega-squash-message-mode">telega-squash-message-mode</h3>
 <div class="outline-text-3" id="text-telega-squash-message-mode">
 <p>
@@ -1355,13 +2111,20 @@ chats matching this chat filter.
 </p>
 
 <p>
-Default value: <code>(not (or saved-messages (type channel)))</code>
-</p></li>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(not
+ (<span style="font-weight: bold;">or</span> saved-messages
+     (type channel)))
+</pre>
+</div></li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org273dc2b" class="outline-3">
+
+<div id="outline-container-orgf3f706a" class="outline-3">
 <h3 id="telega-image-mode">telega-image-mode</h3>
 <div class="outline-text-3" id="text-telega-image-mode">
 <p>
@@ -1382,7 +2145,7 @@ To view highres image in chatbuf with <code>telega-image-mode</code> press
 </div>
 </div>
 
-<div id="outline-container-orgfc850ae" class="outline-3">
+<div id="outline-container-orgd3a1754" class="outline-3">
 <h3 id="telega-edit-file-mode">telega-edit-file-mode</h3>
 <div class="outline-text-3" id="text-telega-edit-file-mode">
 <p>
@@ -1400,16 +2163,16 @@ with <kbd>RET</kbd>, use:
 </div>
 </div>
 
-<div id="outline-container-orge1c05c1" class="outline-2">
+<div id="outline-container-orgddf052d" class="outline-2">
 <h2 id="contributed-packages">Contributed packages</h2>
 <div class="outline-text-2" id="text-contributed-packages">
 <p>
-<code>contrib/</code> directory contains packages contributed to telega.el
+<code>contrib/</code> directory contains packages contributed to <code>telega.el</code>
 project.
 </p>
 </div>
 
-<div id="outline-container-orgd4cedfe" class="outline-3">
+<div id="outline-container-orgdfba042" class="outline-3">
 <h3 id="ol-telegael--org-mode-links-to-telegram-chats-and-messages"><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</h3>
 <div class="outline-text-3" id="text-ol-telegael--org-mode-links-to-telegram-chats-and-messages">
 <p>
@@ -1418,7 +2181,7 @@ Installs "telegram" links to Org mode.
 </div>
 </div>
 
-<div id="outline-container-orgdfcf6bd" class="outline-3">
+<div id="outline-container-orgd055381" class="outline-3">
 <h3 id="telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><i>telega-status-history.el</i> &#x2013; Global minore mode to save user's online status history</h3>
 <div class="outline-text-3" id="text-telega-status-historyel--global-minore-mode-to-save-users-online-status-history">
 <p>
@@ -1427,7 +2190,7 @@ Saves online status history into <code>telega-status-history-logs-dir</code> dir
 </div>
 </div>
 
-<div id="outline-container-org7dfb62f" class="outline-3">
+<div id="outline-container-orgf96fcc2" class="outline-3">
 <h3 id="telega-url-shortenel--makes-urls-look-nicer"><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</h3>
 <div class="outline-text-3" id="text-telega-url-shortenel--makes-urls-look-nicer">
 <p>
@@ -1464,11 +2227,11 @@ Depends on
 <a href="https://github.com/domtronn/all-the-icons.el">all-the-icons</a>
 Emacs package.
 </p>
-</div>
 
-<div id="outline-container-orga2ae2f8" class="outline-4">
-<h4 id="customizable-options">Customizable options:</h4>
-<div class="outline-text-4" id="text-customizable-options">
+<p>
+Customizable options:
+</p>
+
 <ul class="org-ul">
 <li><p>
 User Option: <code>telega-url-shorten-use-images</code> 
@@ -1512,9 +2275,8 @@ Default value: <code>all</code>
 </ul>
 </div>
 </div>
-</div>
 
-<div id="outline-container-org7fefd83" class="outline-3">
+<div id="outline-container-org629235d" class="outline-3">
 <h3 id="telega-alertel--notifications-using-alertel"><i>telega-alert.el</i> &#x2013; Notifications using <code>alert.el</code></h3>
 <div class="outline-text-3" id="text-telega-alertel--notifications-using-alertel">
 <p>
@@ -1533,7 +2295,7 @@ value.  You might use this to customize alert rules with
 </div>
 </div>
 
-<div id="outline-container-orgedf805f" class="outline-3">
+<div id="outline-container-org1369802" class="outline-3">
 <h3 id="telega-dired-dwimel--attach-files-from-dired-in-dwim-style"><i>telega-dired-dwim.el</i> &#x2013; Attach files from dired in DWIM style</h3>
 <div class="outline-text-3" id="text-telega-dired-dwimel--attach-files-from-dired-in-dwim-style">
 <p>
@@ -1548,7 +2310,7 @@ that chatbuf.
 </div>
 </div>
 
-<div id="outline-container-orgb359723" class="outline-3">
+<div id="outline-container-org685c243" class="outline-3">
 <h3 id="telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</h3>
 <div class="outline-text-3" id="text-telega-live-locationel--manage-live-location-in-telega-using-geoel">
 <p>
@@ -1567,7 +2329,7 @@ This mode requires the <code>geo.el</code> library, available at
 </div>
 </div>
 
-<div id="outline-container-org7a8de5f" class="outline-3">
+<div id="outline-container-orga26fbfc" class="outline-3">
 <h3 id="telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</h3>
 <div class="outline-text-3" id="text-telega-mnzel--display-emacs-content-inside-telega-messages">
 <p>
@@ -1591,7 +2353,7 @@ chatbuf.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-09-19 Сб 05:25</p>
+<p class="date">Created: 2020-09-21 Пн 21:47</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
