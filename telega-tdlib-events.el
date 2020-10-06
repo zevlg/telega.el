@@ -240,10 +240,10 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
 
     ;; NOTE: unread_count affects modeline and footer
     (with-telega-chatbuf chat
-      ;; NOTE: if all messages are read (in another telegram client) and
-      ;; tracking is enabled, then remove the buffer from tracking
+      ;; NOTE: if all messages are read (in another telegram client),
+      ;; then remove the chatbuf from tracking
       (when (and (zerop unread-count)
-                 (telega-chat-match-p chat telega-use-tracking-for))
+                 (member (buffer-name) tracking-buffers))
         (tracking-remove-buffer (current-buffer)))
 
       (telega-chatbuf-mode-line-update)
