@@ -2755,13 +2755,19 @@ If DOC-P prefix arg as given, then send it as document."
          (temporary-file-directory telega-temp-dir)
          (tmpfile (telega-temp-name "clipboard" ".png"))
          (coding-system-for-write 'binary))
-    (if (executable-find "pngpaste")
-        ;; NOTE: On MacOS, try extracting clipboard using pngpaste
-        (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
-          (error "No image in CLIPBOARD"))
-      (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
-                        (error "No image in CLIPBOARD"))
-                    nil tmpfile nil 'quiet))
+    (pcase system-type
+      ("darwin"
+       ;; NOTE: On MacOS, try extracting clipboard using pngpaste
+       (unless (executable-find "pngpaste")
+         (error "Please install pngpaste to paste images"))
+
+       (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
+         (error "No image in CLIPBOARD")))
+
+      (_
+       (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
+                         (error "No image in CLIPBOARD"))
+                     nil tmpfile nil 'quiet)))
     (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
