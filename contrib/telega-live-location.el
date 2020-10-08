@@ -19,6 +19,7 @@
 
 ;;; Commentary:
 
+;;; ellit-org:
 ;; ** /telega-live-location.el/ -- Manage live location in Telega using geo.el
 ;;
 ;; Enable this mode with {{{kbd(M-x global-telega-live-location-mode RET)}}}

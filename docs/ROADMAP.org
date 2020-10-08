@@ -4,13 +4,14 @@
 
 * telega.el Major Features
 
-** Root Views, different views for the rootbuf
+** DONE Root Views, different views for the rootbuf
+   CLOSED: [2020-10-07 Ср 17:43]
    CREATED: [2020-03-17]
 
    - [X] Searching
    - [X] Contacts list (see https://t.me/emacs_telega/16001)
    - [X] Nearby users/chats
-   - [ ] Chats, grouped by custom labels
+   - [X] Chats, grouped by Folders
          #+begin_example
          *OOS*
            [chat1      ]
@@ -20,8 +21,10 @@
            [chat2      ]
          #+end_example
    - [X] Last messages in the chats (idea by @mrkiko)
+   - Other rootviews
 
-** WIP Multiple Accounts
+** DONE Multiple Accounts
+   CLOSED: [2020-10-07 Ср 17:43]
    - See https://github.com/tdlib/td/issues/959
    - DONE initially, accounts can be switched with
      ~M-x telega-account-switch RET~.  Done by specifying different
@@ -42,7 +45,8 @@
 ** AppIndicator in telega-server
 
 ** Searching Messages in chat
-   - [X] Shared Media
+   - [X] Shared Media, see chatbuf messages filtering
+   - [ ] Interactive searching to resemble searching in official client
    - [ ] Importing/Exporting files using "Saved Messages"
 
 ** Full integration for Transalation Platform
@@ -77,15 +81,21 @@ Implement telega-server as Emacs module to improve overall performance.
    - Save "engine" value inside rootbuf
    - "engine" as telega-server and telega-server as "engine"
 
-* TON
+* DONE TON
+  CLOSED: [2020-10-07 Ср 17:42]
 
 Unfortunately TON is postponed, see https://t.me/durov/116
 
 ** DONE tonlib integration
    CLOSED: [2020-01-20 Пн 14:24]
    VERSION: 0.5.8
-** Wallet, with list of transactions, etc (see [[https://t.me/designers/134]])
-** TON Browser for TON services and smart contracts (see [[https://test.ton.org/ton.pdf]])
+   *WONT't DO*
+** DONE Wallet, with list of transactions, etc (see [[https://t.me/designers/134]])
+   CLOSED: [2020-10-07 Ср 17:42]
+   *WONT't DO*
+** DONE TON Browser for TON services and smart contracts (see [[https://test.ton.org/ton.pdf]])
+   CLOSED: [2020-10-07 Ср 17:42]
+   *WONT't DO*
 
 * Random Ideas
 
@@ -103,7 +113,8 @@ plist like:
  :messages (list-of-messages-follows))
 #+end_example
 
-** Grouping chats by custom label, similar to ~gnus-topic.el~
+** DONE Grouping chats by custom label, similar to ~gnus-topic.el~
+   CLOSED: [2020-10-07 Ср 17:42]
 #+begin_example
     *OOS*
       [chat1      ]
@@ -114,6 +125,8 @@ plist like:
 #+end_example
 
    WON'T DO.  See [[Root Views, different views for the rootbuf]]
+
+   Also: custom labels are deprecated in favor for Chat Folders
 
 ** Global searchable history of the inputs you've sent to any chat
 
@@ -135,6 +148,8 @@ plist like:
      [x] Filter: related
      >>> []
      #+end_example
+
+     WON'T DO? see https://github.com/tdlib/td/issues/960
 
    - [X] Shared Media
      #+begin_example
@@ -160,6 +175,10 @@ plist like:
    button with some link such as t.me/joinchat/xxx.  Much like this
    message is advert
 
+   Write something like AdBlock for messages using client side
+   filtering. TODO so, write messages matching functionality like chat
+   filters.
+   
 ** Do not show input prompt for chats you can't write into
 
    see https://t.me/emacs_telega/3775
@@ -172,13 +191,14 @@ plist like:
 
    Store this annotation in chat's ~:client_data~
 
-** Animated text messages
+** DONE Animated text messages
+   CLOSED: [2020-10-07 Ср 17:24]
 
    Text message incrementally appears.  This uses simple timer and just
    updates message content by adding chars one after another.  So it
    looks like you are typing this message.
 
-   **DANGEROUS** might cause account blocks, won't publish the code
+   **DANGEROUS** might cause account blocks, WON'T PUBLISH the code
 
 ** Favorite Messages
 
@@ -204,7 +224,7 @@ plist like:
    favorite much much more complex.  So maybe former approach is not
    so bad.
 
-** Mark all chatbuf as readonly, keeping input area as ~inhit-read-only~
+** Mark all chatbuf as readonly, keeping input area as ~inhibit-read-only~
 
 ** Only changes in chatbuf input goes to undo list, making undo/redo commands usable
 
@@ -251,6 +271,8 @@ plist like:
    forward messages from public chats (i.e. messages having public
    link) as text URL.
 
+   *WON't DO*: use {{{kbd(i)}}} to get link to the message
+
 ** DONE Special mode to view images
    CLOSED: [2020-02-14 Пт 02:30]
 
@@ -260,7 +282,8 @@ plist like:
    - `n' next image in chat
    - `p' prev image in chat
 
-** Ввести custom variable - telega-media-size
+** DONE Ввести custom variable - telega-media-size
+   CLOSED: [2020-10-07 Ср 17:21]
 
    '(MIN-WIDTH  MIN-HEIGHT MAX-WIDTH  MAX-HEIGHT)
 
@@ -269,3 +292,39 @@ plist like:
    (меньше или больше по ширине или высоте), то скейлим.  После
    применения скейлинга нужно посчитать как x-margin так и y-margin
    (задаётся как cons в :margin)
+
+   *NOTE*: y-margin не получилось, последний леер оказывается с
+    дыркой.  Нужно просто при нарезке лееров в последний леер включать
+    все "лишние" пикселы, которые остались от деления height на размер
+    высоту линии.
+
+** Voice messages recognition
+
+   Use https://t.me/voicybot to recognize audio messages
+
+   Could look like:
+   #+begin_example
+   ▶||...|..||. (1m:27s) [Download]
+   Optional caption goes here
+   [Recognize via @voicybot]
+   #+end_example
+
+   And when you press on ~[Recognize via @voicybot]~
+   #+begin_example
+   ▶||...|..||. (1m:27s) [Download]
+   Optional caption goes here
+   via @voicybot: Recognized text
+                  goes here
+   #+end_example
+
+   What about setting language?
+
+** Do not show avatar for some chats
+
+   Use ~telega-chat-show-avatars-for~ chatfilter instead of boolean
+   ~telega-chat-show-avatars~.
+
+** RET to insert newline if point is not at the end of chatbuf input
+
+   So RET in the middle of chatbuf input behaves as ~C-j~.
+   Make this customizable.

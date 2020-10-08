@@ -27,6 +27,7 @@
 
 (require 'ewoc)
 (require 'cl-lib)
+(require 'puny)                         ; `puny-decode-domain'
 (require 'files)                        ; `locate-file'
 (require 'rx)                           ; `rx'
 (require 'svg)
@@ -43,7 +44,7 @@
 (declare-function telega-chat-title "telega-chat")
 (declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
-
+(declare-function telega-folder-names "telega-folders")
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
 (defun telega-file-exists-p (filename)
@@ -222,13 +223,14 @@ PROPS is passed on to `create-image' as its PROPS list."
 (defun telega-self-destruct-create-svg (minithumb &optional emoji-symbol)
   "Create svg image for the self destructing image with minithumbnail MINITHUMB.
 EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')"
-  (let* ((xh (* (ceiling (/ (cdr telega-photo-maxsize) 1.5))
+  (let* ((xh (* (ceiling (/ (nth 3 telega-photo-size-limits) 1.5))
                 (telega-chars-xheight 1)))
          (xw xh)
          (svg (telega-svg-create xw xh)))
 
     (when minithumb
-      (svg-embed svg (base64-decode-string (plist-get minithumb :data)) "image/jpeg" t
+      (svg-embed svg (base64-decode-string (plist-get minithumb :data))
+                 "image/jpeg" t
                  :x 0 :y 0 :width xw :height xh))
 
     (svg-circle svg (/ xw 2) (/ xh 2) (/ xh 4)
@@ -356,16 +358,36 @@ N can't be 0."
        (replace-regexp-in-string "_" "\\_" word-text nil t))
      text nil t)))
 
+(defun telega-puny-decode-url (url)
+  "Decode ULR according to the IDNA/punycode algorithm.
+See `puny-decode-domain' for details."
+  (replace-regexp-in-string
+   (eval-when-compile (rx string-start
+                          (? "http" (? "s") "://")
+                          (group (1+ (not "/")))))
+   (lambda (_)
+     (save-match-data
+       (puny-decode-domain (match-string 1 url))))
+   url nil nil 1))
+
 (defun telega--entity-to-properties (entity text)
   "Convert telegram ENTITY to emacs text properties to apply to TEXT."
   (let ((ent-type (plist-get entity :type)))
     (cl-case (telega--tl-type ent-type)
       (textEntityTypeMention
        (telega-link-props 'username text
-                          'telega-entity-type-mention))
+                          (if (and telega-msg-contains-unread-mention
+                                   (equal text (telega-user--name
+                                                (telega-user-me) 'short)))
+                              (list 'telega-entity-type-mention 'bold)
+                            'telega-entity-type-mention)))
       (textEntityTypeMentionName
        (telega-link-props 'user (plist-get ent-type :user_id)
-                          'telega-entity-type-mention))
+                          (if (and telega-msg-contains-unread-mention
+                                   (eq (plist-get ent-type :user_id)
+                                       telega--me-id))
+                              (list 'telega-entity-type-mention 'bold)
+                            'telega-entity-type-mention)))
       (textEntityTypeHashtag
        (telega-link-props 'hashtag text))
       (textEntityTypeBold
@@ -383,10 +405,13 @@ N can't be 0."
       (textEntityTypePreCode
        (list 'face 'telega-entity-type-pre))
       (textEntityTypeUrl
-       ;; Unhexify url, using `telega-display' property to be
-       ;; substituted at `telega-ins--text' time
-       (nconc (list 'telega-display (decode-coding-string
-                                     (url-unhex-string text) 'utf-8))
+       ;; - Unhexify url, using `telega-display' property to be
+       ;; substituted at `telega--desurrogate-apply' time
+       ;; - Convert "xn--" domains to non-ascii version
+       (nconc (list 'telega-display
+                    (telega-puny-decode-url
+                     (decode-coding-string
+                      (url-unhex-string text) 'utf-8)))
               (telega-link-props 'url text 'telega-entity-type-texturl)))
       (textEntityTypeTextUrl
        (telega-link-props 'url (plist-get ent-type :url)
@@ -426,12 +451,177 @@ Return now text with markdown syntax."
        (format "[%s](%s)" text (plist-get ent-type :url)))
       (t text))))
 
-(defun telega--entities-as-markdown (entities text)
-  "Convert propertiezed TEXT to markdown syntax text.
-Use `telega-entity-type-XXX' faces as triggers."
+(defun telega-string-fmt-text-length (str &optional rstart rend)
+  "Return resulting formattedText length for the string STR.
+Takes into account use of surrogated pairs for unicode
+supplimentary planes.
+RSTART and REND specifies STR region to work on."
+  (+ (length str)
+     ;; Number of chars from unicode supplimentary planes
+     (save-match-data
+       (with-temp-buffer
+         (insert str)
+         (count-matches "[\U00010000-\U0010FFFF]" (or rstart 0) rend)))))
+
+(defun telega-string-as-markup (str markup-name markup-func)
+  "From STR create string with markup named MARKUP-NAME.
+MARKUP-FUNC is function taking string and returning formattedText."
+  (concat (propertize
+           "❰" 'display (propertize (concat "<" markup-name ">")
+                                    'face 'shadow)
+           'rear-nonsticky t
+           :telega-markup-start markup-func)
+          str
+          (propertize
+           "❱" 'display (propertize (concat "</" markup-name ">")
+                                    'face 'shadow)
+           'rear-nonsticky t
+           :telega-markup-end markup-func)))
+
+(defun telega-markup-html-fmt (str)
+  "Format string STR to formattedText using html markup."
+  (telega-fmt-text-desurrogate
+   (telega--parseTextEntities str (list :@type "textParseModeHTML"))))
+
+(defun telega-markup-markdown-fmt (markdown-version str)
+  "Format string STR to formattedTetx using MARKDOWN-VERSION."
+  (if markdown-version
+      ;; For markdown mode, escape underscores in urls
+      ;; See https://github.com/tdlib/td/issues/672
+      ;; See https://github.com/zevlg/telega.el/issues/143
+      (telega-fmt-text-desurrogate
+       (telega--parseTextEntities
+        (telega-escape-underscores str)
+        (list :@type "textParseModeMarkdown"
+              :version markdown-version)))
+
+    (list :@type "formattedText"
+          :text (substring-no-properties str) :entities [])))
+
+(defun telega-markup-markdown1-fmt (str)
+  (telega-markup-markdown-fmt 1 str))
+
+(defun telega-markup-markdown2-fmt (str)
+  (telega-markup-markdown-fmt 2 str))
+
+(defun telega-string-split-by-markup (text &optional default-markup-func)
+  "Split TEXT by markups.
+Use DEFAULT-MARKUP-FUNC for strings without markup.
+Return list of list where first element is markup function and
+second is substring."
+  (unless default-markup-func
+    (setq default-markup-func
+          (apply-partially #'telega-markup-markdown-fmt nil)))
+
+  (let ((start 0) (end (length text)) markup-start result)
+    (while (setq markup-start
+                 (text-property-not-all
+                  start end :telega-markup-start nil text))
+      (unless (eq start markup-start)
+        (push (list default-markup-func (substring text start markup-start))
+              result))
+      (let ((markup-end (text-property-not-all
+                         markup-start end :telega-markup-end nil text)))
+        (unless markup-end
+          (user-error "Markup is non-closed"))
+        (let ((markup-func (get-text-property
+                            markup-start :telega-markup-start text)))
+          (cl-assert (eq markup-func (get-text-property
+                                      markup-end :telega-markup-end text)))
+          (push (list markup-func (substring
+                                   text (1+ markup-start) markup-end))
+                result))
+        ;; Skip markup-end char
+        (setq start (1+ markup-end))))
+
+    ;; Rest of the string
+    (when (< start end)
+      (push (list default-markup-func (substring text start))
+            result))
+    (nreverse result)))
+
+(defun telega-string-fmt-text (text &optional markdown-version)
+  "Convert TEXT to `formattedTex' type.
+If MARKDOWN is non-nil then format TEXT as markdown.
+TEXT could contain substrings marked with custom markup, for
+these parts of the string MARKDOWN-VERSION is ignored."
+  (apply #'telega-fmt-text-concat
+         (mapcar (apply-partially #'apply #'funcall)
+                 (telega-string-split-by-markup
+                  text (apply-partially
+                        #'telega-markup-markdown-fmt markdown-version)))))
+
+(defun telega--entity-for-substring (ent from to)
+  "Return new entity for `telega-fmt-text-substring'."
+  ;; Few cases:
+  ;;          from                   to
+  ;;           |------substring------|
+  ;; |----------------original string---------------------------|
+  ;; |--ent--| (outside substring)
+  ;;    |---ent---| (partially inside substring)
+  ;;                |----ent---| (inside substring)
+  ;;                             |---ent---|  (partially inside)
+  ;;                                      |--ent--| (outside substring)
+  ;;
+  (let* ((ent-off (plist-get ent :offset))
+         (ent-len (plist-get ent :length))
+         (ent-end (+ ent-off ent-len))
+         (ent-ioff (if (< ent-off from) from ent-off))
+         (ent-iend (if (> ent-end to) to ent-end)))
+    (when (and (>= ent-ioff from) (<= ent-iend to) (> ent-iend ent-ioff))
+      (list :@type "textEntity"
+            :offset (- ent-ioff from)
+            :length (- ent-iend ent-ioff)
+            :type (plist-get ent :type)))))
+
+(defun telega-fmt-text-substring (fmt-text &optional from to)
+  "Return new formattedText whose contents are a substring of FMT-TEXT.
+FROM and TO arguments are the same as for `substring'."
+  (let* ((text (plist-get fmt-text :text))
+         (text-length (length text))
+         (ito (if (and to (< to 0)) (+ text-length to) (or to text-length)))
+         (ifrom (if (and from (< from 0)) (+ text-length from) (or from 0)))
+         (new-text (substring text ifrom ito))
+         (new-ents (cl-map 'vector
+                           (lambda (ent)
+                             (telega--entity-for-substring ent ifrom ito))
+                           (plist-get fmt-text :entities))))
+    (list :@type "formattedText"
+          :text new-text
+          :entities (cl-remove nil new-ents))))
+
+(defun telega-fmt-text-desurrogate (fmt-text)
+  "Prepare FMT-TEXT to be used in imc.
+Destructively desurrogates `:text' property of FMT-TEXT.
+Return desurrogated formattedText."
+  (plist-put fmt-text :text (or (telega-tl-str fmt-text :text 'no-props) "")))
+
+(defun telega-fmt-text-concat (&rest fmt-texts)
+  "Concatenate FMT-TEXTS, returning newly created formattedText."
+  (let* ((offset 0)
+         (ents (mapcar
+                (lambda (fmt-text)
+                  (prog1
+                      (mapcar (lambda (ent)
+                                (list :@type "textEntity"
+                                      :offset (+ offset (plist-get ent :offset))
+                                      :length (plist-get ent :length)
+                                      :type (plist-get ent :type)))
+                              (plist-get fmt-text :entities))
+                    (cl-incf offset (telega-string-fmt-text-length
+                                     (plist-get fmt-text :text)))))
+                fmt-texts)))
+    (list :@type "formattedTex"
+          :text (apply #'concat (mapcar (telega--tl-prop :text) fmt-texts))
+          :entities (apply #'seq-concatenate 'vector ents))))
+
+(defun telega--fmt-text-markdown (fmt-text)
+  "Return formatted text FMT-TEXT as markdown syntax."
   ;; TODO: support nested markdown
-  (let ((offset 0) (strings nil))
-    (seq-doseq (ent entities)
+  (let ((text (substring (plist-get fmt-text :text)))
+        (offset 0)
+        (strings nil))
+    (seq-doseq (ent (plist-get fmt-text :entities))
       (let ((ent-off (plist-get ent :offset))
             (ent-len (plist-get ent :length)))
         ;; Part without attached entity
@@ -452,27 +642,32 @@ Use `telega-entity-type-XXX' faces as triggers."
       (remove-text-properties 0 (length ret-text) (list 'face) ret-text)
       ret-text)))
 
-(defun telega--entities-as-faces (entities text)
-  "Apply telegram ENTITIES to TEXT, emphasizing it.
-`telega-entity-type-XXX' faces are used to emphasize TEXT."
-  (mapc (lambda (ent)
-          (let* ((beg (plist-get ent :offset))
-                 (end (+ (plist-get ent :offset) (plist-get ent :length)))
-                 (props (telega--entity-to-properties
-                         ent (substring-no-properties text beg end)))
-                 (face (plist-get props 'face)))
-            (when props
-              (add-text-properties
-               beg end (nconc (list 'rear-nonsticky t)
-                              (telega-plist-del props 'face)) text))
-            (when face
-              (add-face-text-property beg end face 'append text))))
-        entities)
-  text)
+;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
+(defun telega--fmt-text-faces (fmt-text &optional _for-msg)
+  "Apply faces to formatted text FMT-TEXT.
+Return text string with applied faces."
+  (let ((text (substring (plist-get fmt-text :text))))
+    (seq-doseq (ent (plist-get fmt-text :entities))
+      (let* ((beg (plist-get ent :offset))
+             (end (+ (plist-get ent :offset) (plist-get ent :length)))
+             (props (telega--entity-to-properties
+                     ent (substring-no-properties text beg end)))
+             (face (plist-get props 'face)))
+        (when props
+          (add-text-properties
+           beg end (nconc (list 'rear-nonsticky t)
+                          (telega-plist-del props 'face)) text))
+        (when face
+          (add-face-text-property beg end face 'append text))))
+    text))
 
-(defun telega--entities-from-faces (_text)
-  "Extract TEXT entities using `telega-entity-type-XXX' as triggers."
-  )
+(defun telega-fmt-text-string (fmt-text &optional as-markdown)
+  "Return formattedText FMT-TEXT as string.
+If AS-MARKDOWN is non-nil, then format it as markdown syntax,
+otherwise return propertized string."
+  (if as-markdown
+      (telega--fmt-text-markdown fmt-text)
+    (telega--fmt-text-faces fmt-text)))
 
 (defun telega--region-by-text-prop (beg prop)
   "Return region after BEG point with text property PROP set."
@@ -510,11 +705,48 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                            (list (telega-chatbuf--name chat) chat))
                          (telega-sort-chats
                           (or sort-criteria telega-chat-completing-sort-criteria)
-                          (telega-filter-chats
-                           (or chats telega--ordered-chats) 'all)))))
+                          (telega-filter-chats (or chats telega--ordered-chats)
+                                               '(or main archive))))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))
+
+(defmacro telega-gen-completing-read-list (prompt items-list item-fmt-fun
+                                                  item-read-fun &rest args)
+  "Generate list reading function."
+  (let ((items (gensym "items"))
+        (candidates (gensym "candidates"))
+        (rm-item (gensym "rm-item")))
+    `(let ((,candidates ,items-list)
+           (,items nil))
+       (while (and ,candidates
+                   (condition-case nil
+                       (setq ,items
+                             (append ,items
+                                     (list (,item-read-fun
+                                            (concat ,prompt " (C-g when done)"
+                                                    (when ,items
+                                                      (concat
+                                                       " [" (mapconcat
+                                                             ,item-fmt-fun
+                                                             ,items ",")
+                                                       "]")) ": ")
+                                            ,candidates
+                                            ,@args))))
+                     (quit nil)))
+         (setq ,candidates (cl-remove-if (lambda (,rm-item)
+                                           (memq ,rm-item ,items))
+                                         ,candidates)))
+       ,items)))
+
+(defun telega-completing-read-chat-list (prompt &optional chats-list
+                                                sort-criteria)
+  "Read multiple chats from CHATS-LIST."
+  (setq chats-list
+        (telega-filter-chats (or chats-list telega--ordered-chats)
+                             '(or main archive)))
+  (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
+                                   telega-completing-read-chat sort-criteria))
 
 (defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
@@ -532,21 +764,21 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (declare (indent 1))
   (unless users-list
     (setq users-list (hash-table-values (alist-get 'user telega--info))))
-  (let (users)
-    (while (condition-case nil
-               (setq users
-                     (cons (telega-completing-read-user
-                               (concat prompt " (C-g when done)"
-                                       (when users
-                                         (concat
-                                          " [" (mapconcat
-                                                #'telega-user--name users ",")
-                                          "]")) ": ")
-                             (cl-remove-if (lambda (rm-user) (memq rm-user users))
-                                           users-list))
-                           users))
-             (quit nil)))
-    users))
+  (telega-gen-completing-read-list prompt users-list #'telega-user--name
+                                   telega-completing-read-user))
+
+(defun telega-completing-read-folder (prompt &optional folder-names)
+  "Read TDLib folder name completing."
+  (funcall telega-completing-read-function
+           prompt (or folder-names (telega-folder-names))
+           nil t))
+
+(defun telega-completing-read-folder-list (prompt &optional folder-names)
+  "Read list of the Telegram folders prompting with PROMPT."
+  (unless folder-names
+    (setq folder-names (telega-folder-names)))
+  (telega-gen-completing-read-list prompt folder-names #'identity
+                                   telega-completing-read-folder))
 
 (defun telega-location-to-string (location)
   "Convert LOCATION plist to string representation."
@@ -593,17 +825,6 @@ Return non-nil only if \"i'm sure\" is typed in."
   (let ((input (read-string
                 (concat prompt " (type \"i'm sure\" to confirm): "))))
     (string-equal input "i'm sure")))
-
-(defun telega-custom-labels (&optional no-properties)
-  "Return list with all custom labels used in `telega'."
-  (let* ((labels (nconc (mapcar (lambda (chat)
-                                  (telega-chat-uaprop chat :label))
-                                telega--ordered-chats)
-                        (mapcar 'cdr telega-chat-label-alist)))
-         (uniq-labels (seq-uniq (cl-remove-if-not 'stringp labels))))
-    (if no-properties
-        (mapcar 'substring-no-properties uniq-labels)
-      uniq-labels)))
 
 (defun telega-completing-titles ()
   "Return list of titles ready for completing.
@@ -762,11 +983,15 @@ Save point only if SAVE-POINT is non-nil."
                   (ewoc-enter-before ewoc before-node node-value)
                 (ewoc-enter-last ewoc node-value)))))
 
-    (when point-off
+    (when (and point-off
+               ;; See https://github.com/zevlg/telega.el/issues/197
+               (not (equal (ewoc-location node)
+                           (when-let ((next-node (ewoc-next ewoc node)))
+                             (ewoc-location next-node)))))
       (goto-char (+ (ewoc-location node) point-off))
       (dolist (win (get-buffer-window-list))
         (set-window-point win (point))))))
-  
+
 
 ;; Emoji
 (defvar telega-emoji-alist nil)
@@ -856,23 +1081,6 @@ CHEIGHT is height for the svg in characters, default=1."
           (telega-emoji-has-zero-joiner-p emoji))
       1
     nil))
-
-(defun telega-emoji-basic-p (emoji)
-  (memq (aref 0 emoji)
-        '(#x231A #x231B #x23E9 #x23EC #x23F0 #x23F3 #x25FD #x25FE
-                 #x2614 #x2615 #x2648 #x2649 #x2650 #x2651 #x2652 #x2653
-                 #x267F #x2693 #x26A1 #x26AA #x26AB #x26BD #x26BE #x26C4
-                 #x26C5 #x26CE #x26D4 #x26EA #x26F2 #x26F3 #x26F5 #x26FA
-                 #x26FD #x2705 #x270A #x270B #x2728 #x274C #x274E #x2753
-                 #x2754 #x2755 #x2757 #x2795 #x2796 #x2797 #x27B0 #x27BF
-                 #x2B1B #x2B1C #x2B50 #x2B55)))
-
-(defun telega-emoji-keycap-p (emoji)
-  (member emoji
-          '("\u0023\uFE0F\u20E3" "\u002A\uFE0F\u20E3" "\u0030\uFE0F\u20E3"
-            "\u0031\uFE0F\u20E3" "\u0032\uFE0F\u20E3" "\u0033\uFE0F\u20E3"
-            "\u0034\uFE0F\u20E3" "\u0035\uFE0F\u20E3" "\u0036\uFE0F\u20E3"
-            "\u0037\uFE0F\u20E3" "\u0038\uFE0F\u20E3" "\u0039\uFE0F\u20E3")))
 
 
 (defun telega-diff-wordwise (str1 str2 &optional colorize)
@@ -1048,6 +1256,11 @@ RET\" string."
     (if (string-empty-p keys-description)
         (format "M-x %S RET" command)
       keys-description)))
+
+(defun telega-xdg-open (url)
+  "Open URL using \"xdg-open\" utility."
+  (unless (zerop (call-process "xdg-open" nil nil nil url))
+    (error "Telega: xdg-open failed on %S" url)))
 
 (provide 'telega-util)
 

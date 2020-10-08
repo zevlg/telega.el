@@ -2,6 +2,7 @@
 
 ;;; Commentary:
 
+;;; ellit-org:
 ;; ** /telega-dired-dwim.el/ -- Attach files from dired in DWIM style
 ;;
 ;; This package advises ~dired-do-copy~ to attach files into visible chatbuf.

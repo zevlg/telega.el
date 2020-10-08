@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sun May 24 20:36:43 2020
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; 
+;;
 
 ;;; Code:
 (require 'telega-tdlib)
@@ -165,8 +165,13 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
     ;; Might affect root's buffer view
     ;; because for example `:is_blocked' might be used
     (when-let ((chat (telega-chat-get user-id 'offline)))
-      (telega-chat--mark-dirty chat event))
-    ))
+      (telega-chat--mark-dirty chat event)
+
+      ;; Might affect chatbuf prompt as well to display/remove
+      ;; [UNBLOCK] ujs prompt button
+      (with-telega-chatbuf chat
+        (telega-chatbuf--prompt-update))
+      )))
 
 
 ;; Chat updates
@@ -219,7 +224,13 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
          (old-pos (cl-find (plist-get new-pos :list) (plist-get chat :positions)
                            :key (telega--tl-prop :list) :test #'equal)))
     (if old-pos
-        (progn
+        ;; If new order is \"0\", then remove this position, otherwise
+        ;; modify it inplace
+        (if (equal "0" (plist-get new-pos :order))
+            (plist-put chat :positions
+                       (vconcat (seq-remove
+                                 (apply-partially #'eq old-pos)
+                                 (plist-get chat :positions))))
           (plist-put old-pos :order (plist-get new-pos :order))
           (plist-put old-pos :is_pinned (plist-get new-pos :is_pinned)))
       (plist-put chat :positions (vconcat (plist-get chat :positions)
@@ -261,35 +272,49 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
     (with-telega-chatbuf chat
       (telega-chatbuf--read-outbox old-read-outbox-msgid))))
 
-(defun telega--on-updateChatUnreadMentionCount (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
-    (cl-assert chat)
-    (plist-put chat :unread_mention_count
-               (plist-get event :unread_mention_count))
+(defun telega--on-updateChatUnreadMentionCount (event &optional chat)
+  (unless chat
+    (setq chat (telega-chat-get (plist-get event :chat_id) 'offline)))
 
-    (telega-chat--mark-dirty chat event)
+  (cl-assert chat)
+  (plist-put chat :unread_mention_count
+             (plist-get event :unread_mention_count))
 
-    ;; NOTE: unread_mention_count affects modeline and footer
-    (with-telega-chatbuf chat
-      (telega-chatbuf-mode-line-update)
-      (telega-chatbuf--footer-redisplay))))
+  (telega-chat--mark-dirty chat event)
+
+  ;; NOTE: unread_mention_count affects modeline and footer
+  (with-telega-chatbuf chat
+    (telega-chatbuf-mode-line-update)
+    (telega-chatbuf--footer-redisplay)))
 
 (defun telega--on-updateMessageMentionRead (event)
-  (telega--on-updateChatUnreadMentionCount event)
-  ;; TODO: might be some action needed on `:message_id' as well
-  )
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (telega--on-updateChatUnreadMentionCount event chat)
+
+    ;; Update message's `:contains_unread_mention' as well
+    ;; This requires message redisplay, since message could outline
+    ;; unread mention
+    (with-telega-chatbuf chat
+      (cl-destructuring-bind (msg node)
+          (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
+        (plist-put msg :contains_unread_mention nil)
+        (when node
+          (telega-chatbuf--redisplay-node node))))
+    ))
+
+(defun telega--on-updateChatDefaultDisableNotification (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :default_disable_notification
+               (plist-get event :default_disable_notification))
+    (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatLastMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (plist-put chat :last_message
-               (plist-get event :last_message))
-
-    ;; Generate fake events with position updates
-    (seq-doseq (pos (plist-get event :positions))
-      (telega--on-updateChatPosition (list :chat_id (plist-get event :chat_id)
-                                           :position pos)))
-
+    (plist-put chat :last_message (plist-get event :last_message))
+    (plist-put chat :positions (plist-get event :positions))
     (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
@@ -424,6 +449,11 @@ NOTE: we store the number as custom chat property, to use it later."
 ;; Messages updates
 (defun telega-message--update (msg)
   "Message MSG has been updated."
+  (when-let ((chat (telega-msg-chat msg 'offline)))
+    (when (eq (plist-get chat :pinned_message_id)
+              (plist-get msg :id))
+      (plist-put chat :telega-pinned-message msg)))
+
   (telega-root-view--update :on-message-update msg)
   )
 
@@ -515,10 +545,9 @@ Message id could be updated on this update."
       (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
         (cl-destructuring-bind (msg node)
             (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-          (when msg
-            (plist-put msg :content new-content)
-            (when node
-              (telega-chatbuf--redisplay-node node))))))))
+          (plist-put msg :content new-content)
+          (when node
+            (telega-chatbuf--redisplay-node node)))))))
 
 (defun telega--on-updateMessageEdited (event)
   "Edited date of the message specified by EVENT has been changed."
@@ -543,12 +572,12 @@ Message id could be updated on this update."
              :inserter (button-get telega-chatbuf--aux-button :inserter)))))
       )))
 
-(defun telega--on-updateMessageViews (event)
-  "Number of message views has been updated."
+(defun telega--on-updateMessageInteractionInfo (event)
+  "Message interaction info has been changed."
   (with-telega-chatbuf (telega-chat-get (plist-get event :chat_id))
     (cl-destructuring-bind (msg node)
         (telega-chatbuf--msg (plist-get event :message_id) 'with-node)
-      (plist-put msg :views (plist-get event :views))
+      (plist-put msg :interaction_info (plist-get event :interaction_info))
       (when node
         (telega-chatbuf--redisplay-node node)))))
 
@@ -714,13 +743,14 @@ messages."
 
     (setq telega--stickersets-installed-ids
           (append (plist-get event :sticker_set_ids) nil))
+
     ;; Asynchronously update value for `telega--stickersets-installed'
     ;; and download covers for these sticker sets
-    (telega--getInstalledStickerSets nil
-      (lambda (ssets)
-        (setq telega--stickersets-installed ssets)
-        (dolist (sset ssets)
-          (mapc #'telega-sticker--download (plist-get sset :covers)))))
+    ;; (telega--getInstalledStickerSets nil
+    ;;   (lambda (ssets)
+    ;;     (setq telega--stickersets-installed ssets)
+    ;;     (dolist (sset ssets)
+    ;;       (mapc #'telega-sticker--download (plist-get sset :covers)))))
     ))
 
 (defun telega--on-updateTrendingStickerSets (event)
@@ -797,7 +827,12 @@ messages."
                  (telega-chat-title-with-brackets chat " ")))
 
       (when telega--sort-criteria
-        (telega-chat--mark-dirty chat event)))
+        (telega-chat--mark-dirty chat event))
+
+      ;; NOTE: Chatbuf prompt might be affected as well by "status"
+      ;; change, see `telega-chatbuf--unblock-start-join'
+      (with-telega-chatbuf chat
+        (telega-chatbuf--prompt-update)))
     ))
 
 (defun telega--on-updateSupergroupFullInfo (event)
@@ -854,8 +889,15 @@ messages."
 
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server using EVENT."
-  (let ((option (intern (concat ":" (plist-get event :name))))
-        (value (plist-get (plist-get event :value) :value)))
+  (let* ((option (intern (concat ":" (plist-get event :name))))
+         (opt-val (plist-get event :value))
+         (value (plist-get opt-val :value)))
+    ;; TDLib 1.6.9 has `optionValueInteger' as int64, represented as
+    ;; string
+    (when (and (eq 'optionValueInteger (telega--tl-type opt-val))
+               (stringp value))
+      (setq value (string-to-number value)))
+
     (setq telega--options
           (plist-put telega--options option value))
 

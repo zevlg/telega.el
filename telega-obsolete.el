@@ -62,6 +62,21 @@
 (telega-obsolete--variable 'telega-filter-custom-push-list
                            'telega-filter-custom-folders "0.6.24")
 
+(telega-obsolete--variable 'telega-chat-label-format
+                           'telega-chat-folder-format "0.6.30")
+(telega-obsolete--variable 'telega-root-view-topics-custom-labels
+                           'telega-root-view-topics-folders "0.6.30")
+(telega-obsolete--variable 'telega-root-view-show-other-chats
+                           'telega-root-view-topics-other-chats "0.6.30")
+(telega-obsolete--variable 'telega-user-photo-maxsize
+                           'telega-user-photo-size "0.6.30")
+(telega-obsolete--variable 'telega-photo-maxsize
+                           'telega-photo-size-limits "0.6.30")
+(telega-obsolete--variable 'telega-thumbnail-height
+                           'telega-thumbnail-size-limits "0.6.30")
+(telega-obsolete--variable 'telega-webpage-photo-maxsize
+                           'telega-webpage-photo-size-limits "0.6.30")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

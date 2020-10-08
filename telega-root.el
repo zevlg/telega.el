@@ -19,12 +19,13 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Commentary:
-
-;; * Root Buffer
-;;
-;; rootbuf is the heart of =telega=.
-;;
+;;; ellit-org: commentary
+;; 
+;; rootbuf is the heart of the =telega=.  Switch to rootbuf with
+;; {{{kbd(M-x telega RET)}}} or use
+;; {{{where-is(telega,telega-prefix-map)}}} binding from the
+;; [[#telega-prefix-map][Telega prefix map]].
+;; 
 ;; *TODO*: describe parts of the rootbuf
 
 ;;; Code:
@@ -37,6 +38,7 @@
 (require 'telega-info)
 (require 'telega-voip)
 (require 'telega-ins)
+(require 'telega-chat)
 (require 'telega-customize)
 
 (declare-function tracking-mode "tracking" (&optional arg))
@@ -44,17 +46,6 @@
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 (declare-function telega-chats-dirty--update "telega-tdlib-events")
 (declare-function telega-chat--mark-dirty "telega-tdlib-events" (chat &rest events))
-
-(declare-function telega-chats--kill-em-all "telega-chat")
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
-(declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
-(declare-function telega-chat-at "telega-chat" (&optional pos))
-(declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-chatbuf--switch-in "telega-chat")
-(declare-function telega-chatbuf--switch-out "telega-chat")
-(declare-function telega-chatbuf--check-focus-change "telega-chat")
-(declare-function telega-chat--pop-to-buffer "telega-chat" (chat &optional no-history-load))
 
 (declare-function telega-account-current "telega")
 (declare-function telega-account-switch "telega" (account))
@@ -116,7 +107,33 @@ Rest elements are ewoc specs.")
     ;; disabled, use M-x telega-chats-filtered-delete RET if you know
     ;; what you are doing
     ;; (define-key map (kbd "D") 'telega-chats-filtered-delete)
+    (define-key map (kbd "K") 'telega-chats-filtered-kill-chatbuf)
     (define-key map (kbd "R") 'telega-chats-filtered-toggle-read)
+
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-create,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-create, 2)}}}
+    (define-key map (kbd "F +") 'telega-folder-create)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-delete,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-delete, 2)}}}
+    (define-key map (kbd "F -") 'telega-folder-delete)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folders-reorder,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folders-reorder, 2)}}}
+    (define-key map (kbd "F =") 'telega-folders-reorder)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-rename,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-rename, 2)}}}
+    (define-key map (kbd "F R") 'telega-folder-rename)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-chat-add-to-folder,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chat-add-to-folder, 2)}}}
+    (define-key map (kbd "F a") 'telega-chat-add-to-folder)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-chat-remove-from-folder,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chat-remove-from-folder, 2)}}}
+    (define-key map (kbd "F d") 'telega-chat-remove-from-folder)
 
     ;; Calls bindings
     (define-key map (kbd "c a") 'telega-voip-accept)
@@ -127,46 +144,97 @@ Rest elements are ewoc specs.")
     (define-key map (kbd "q") 'bury-buffer)
     (define-key map (kbd "Q") 'telega-kill)
 
-    ;; ** Rootbuf fast navigation
-    ;;
-    ;; {{{kbd(M-g)}}} prefix in rootbuf is used to jump across chat
-    ;; buttons.
-    ;;
+    ;;; ellit-org: rootbuf-fastnav-bindings
     ;; - {{{where-is(telega-root-next-unread,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-root-next-unread, 2)}}}
     (define-key map (kbd "M-g u") 'telega-root-next-unread)
 
+    ;;; ellit-org: rootbuf-fastnav-bindings
     ;; - {{{where-is(telega-root-next-important,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-root-next-important, 2)}}}
     ;;
-    ;;   Important message is the messages matching "Important" custom
+    ;;   Important message is a message matching "Important" custom
     ;;   [[#chat-filters][chat filter]].  If there is no "Important"
     ;;   custom chat filter, then ~(or mention (and unread unmuted))~
     ;;   chat filter is used.
     (define-key map (kbd "M-g i") 'telega-root-next-important)
 
+    ;;; ellit-org: rootbuf-fastnav-bindings
     ;; - {{{where-is(telega-root-next-mention,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-root-next-mention, 2)}}}
     (define-key map (kbd "M-g m") 'telega-root-next-mention)
     (define-key map (kbd "M-g @") 'telega-root-next-mention)
 
-    ;; ** Rootbuf view switching
-    ;;
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-search,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-search, 2)}}}
     (define-key map (kbd "s") 'telega-view-search)
     (define-key map (kbd "v s") 'telega-view-search)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-nearby,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-nearby, 2)}}}
     (define-key map (kbd "v n") 'telega-view-nearby)
-
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-reset,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-reset, 2)}}}
     (define-key map (kbd "v v") 'telega-view-reset)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-compact,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-compact, 2)}}}
     (define-key map (kbd "v 0") 'telega-view-compact)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-one-line,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-one-line, 2)}}}
     (define-key map (kbd "v 1") 'telega-view-one-line)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-two-lines,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-two-lines, 2)}}}
     (define-key map (kbd "v 2") 'telega-view-two-lines)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-topics,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-topics, 2)}}}
+    ;; 
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-root-view-topics, 4)}}}
+    ;;   - {{{user-option(telega-root-view-topics-folders, 4)}}}
+    ;;   - {{{user-option(telega-root-view-topics-other-chats, 4)}}}
     (define-key map (kbd "v t") 'telega-view-topics)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-top,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-top, 2)}}}
+    ;; 
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-root-view-top-categories, 4)}}}
     (define-key map (kbd "v T") 'telega-view-top)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-settings,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-settings, 2)}}}
     (define-key map (kbd "v S") 'telega-view-settings)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-contacts,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-contacts, 2)}}}
     (define-key map (kbd "v c") 'telega-view-contacts)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-calls,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-calls, 2)}}}
     (define-key map (kbd "v C") 'telega-view-calls)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-last-messages,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-last-messages, 2)}}}
     (define-key map (kbd "v l") 'telega-view-last-messages)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-folders,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-folders, 2)}}}
     (define-key map (kbd "v f") 'telega-view-folders)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-pinned-messages,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-pinned-messages, 2)}}}
+    (define-key map (kbd "v ^") 'telega-view-pinned-messages)
+    (define-key map (kbd "v p") 'telega-view-pinned-messages)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-deleted-chats,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-deleted-chats, 2)}}}
+    (define-key map (kbd "v d") 'telega-view-deleted-chats)
 
     map)
   "The key map for telega root buffer.")
@@ -181,6 +249,7 @@ Global root bindings:
   :group 'telega-root
   (telega-runtime-setup)
 
+  (setq-local nobreak-char-display nil)
   ;; NOTE: make `telega-root-keep-cursor' working as expected
   (setq-local switch-to-buffer-preserve-window-point nil)
 
@@ -351,7 +420,7 @@ Keep cursor position only if CHAT is visible."
   "Display CHAT found in global public chats search."
   (let* ((telega-chat-button-width (+ telega-chat-button-width
                                       (/ telega-chat-button-width 2)))
-         (telega-filters--inhibit-list '(chat-list main archive)))
+         (telega-filters--inhibit-list '(chat-list folder main archive)))
     (telega-root--chat-known-pp chat custom-inserter)))
 
 (defun telega-root--nearby-chat-known-pp (chat &optional custom-inserter)
@@ -376,7 +445,7 @@ CONTACT is some user you have exchanged contacts with."
           (telega-chat-get (plist-get contact-user :id) 'offline))
          (visible-p (or (not user-chat)
                         (let ((telega-filters--inhibit-list
-                               '(chat-list main archive)))
+                               '(chat-list folder main archive)))
                           (telega-filter-chats (list user-chat))))))
     (when visible-p
       (telega-button--insert 'telega-user contact-user
@@ -859,7 +928,8 @@ VIEW-FILTER is additional chat filter for this root view."
     ;; filter might affect the view
     (unless (equal view-filter telega-root--view-filter)
       (setq telega-root--view-filter view-filter)
-      (telega-filters--update))
+      (telega-filters--update)
+      (telega-filters--redisplay))
 
     ;; Activate VIEW-SPEC by creating ewocs specified in view-spec
     (setq telega-root--view view-spec)
@@ -1096,7 +1166,8 @@ If QUERY is empty string, then show all contacts."
                :on-chat-update #'telega-root--any-on-chat-update))))
 
 (defun telega-view-calls (arg)
-  "View calls, if prefix ARG is given, then view missed calls only."
+  "View calls.
+If `\\[universal-argument]' is given, then view missed calls only."
   (interactive "P")
   (telega-root-view--apply
    (list 'telega-view-calls
@@ -1120,11 +1191,11 @@ If QUERY is empty string, then show all contacts."
         (ewoc-delete ewoc chat-node)))
     ))
 
-(defun telega-view-topics--ewoc-spec (topic-spec)
+(defun telega-view-topics--ewoc-spec (topic-spec &optional no-upcase-p)
   "Return ewoc spec for topic ewoc labeled with LABEL."
   (list :name (car topic-spec)
         :topic-filter (cdr topic-spec)
-        :header (upcase (car topic-spec))
+        :header (funcall (if no-upcase-p #'identity #'upcase) (car topic-spec))
         :pretty-printer #'telega-root--chat-known-pp
         :sorter #'telega-chat>
         :items (telega-filter-chats telega--ordered-chats (cdr topic-spec))
@@ -1133,25 +1204,28 @@ If QUERY is empty string, then show all contacts."
 (defun telega-view-topics ()
   "Group chats by `telega-root-view-topics'."
   (interactive)
-  (let ((ewoc-specs-for-labels
-         (when telega-root-view-topics-custom-labels
-           (mapcar (lambda (label)
-                     (telega-view-topics--ewoc-spec
-                      (cons label (list 'label label))))
-                   (telega-custom-labels)))))
+  (let* ((folder-names (telega-folder-names))
+         (ewoc-specs-for-folders
+          (when telega-root-view-topics-folders
+            (mapcar (lambda (folder-name)
+                      (telega-view-topics--ewoc-spec
+                       (cons (telega-folder-format "%i%f" folder-name)
+                             (list 'folder folder-name))
+                       'no-upcase))
+                    folder-names))))
     (telega-root-view--apply
      `(telega-view-topics
        "Topics"
-       ,@(when (eq telega-root-view-topics-custom-labels 'prepend)
-           ewoc-specs-for-labels)
+       ,@(when (eq telega-root-view-topics-folders 'prepend)
+           ewoc-specs-for-folders)
        ,@(mapcar #'telega-view-topics--ewoc-spec telega-root-view-topics)
-       ,@(when (eq telega-root-view-topics-custom-labels 'append)
-           ewoc-specs-for-labels)
-       ,(when telega-root-view-show-other-chats
+       ,@(when (eq telega-root-view-topics-folders 'append)
+           ewoc-specs-for-folders)
+       ,(when telega-root-view-topics-other-chats
           (let ((other-filter
                  `(not (any ,@(mapcar 'cdr telega-root-view-topics)
-                            ,@(when telega-root-view-topics-custom-labels
-                                (list '(label any)))))))
+                            ,@(when telega-root-view-topics-folders
+                                (list (cons 'folder folder-names)))))))
             (list :name "topics-other-chats"
                   :topic-filter other-filter
                   :header "OTHER CHATS"
@@ -1188,7 +1262,7 @@ If QUERY is empty string, then show all contacts."
   )
 
 (defun telega-view-settings--me-pp (me-id)
-  "Pretty printer for me in settings root view."  
+  "Pretty printer for me in settings root view."
   (let* ((me-user (telega-user--get me-id))
          (photo (plist-get me-user :profile_photo))
          (avatar (telega-media--image
@@ -1196,7 +1270,7 @@ If QUERY is empty string, then show all contacts."
                                   (telega-avatar--create-image user file 3)))
                   (cons photo :small)
                   nil :telega-avatar-3)))
-    (telega-ins--image-slices avatar nil 
+    (telega-ins--image-slices avatar nil
       (lambda (slice-num)
         (telega-ins " ")
         (cond ((= slice-num 0)
@@ -1273,6 +1347,27 @@ If QUERY is empty string, then show all contacts."
     (telega-save-cursor
       (ewoc-refresh ewoc))))
 
+(defun telega-view-settings--option-pp (option-spec)
+  "Pretty printer for option in \"settings\" root view."
+  (let* ((opt-title (nth 0 option-spec))
+         (opt-val (telega--getOption (nth 1 option-spec))))
+    (telega-ins opt-title ": ")
+    (cl-assert (memq (telega--tl-type opt-val)
+                     '(optionValueBoolean optionValueEmpty)))
+
+    (telega-ins--button (if (plist-get opt-val :value)
+                            telega-symbol-heavy-checkmark
+                          "  ")
+      'action (lambda (_ignored)
+                (telega--setOption (nth 1 option-spec)
+                  (not (plist-get opt-val :value))
+                  'sync)
+                (with-telega-root-view-ewoc "options" opts-ewoc
+                  (telega-save-cursor
+                    (ewoc-refresh opts-ewoc)))))
+    (telega-ins "\n")
+    ))
+
 (defun telega-view-settings--link-pp (link)
   "Pretty printer for link in \"settings\" root view.
 LINK is cons, where car is the link description, and cdr is the url."
@@ -1285,15 +1380,29 @@ LINK is cons, where car is the link description, and cdr is the url."
   "View top chats in all categories."
   (interactive)
   (telega-root-view--apply
-   (list 'telega-view-settings "Settings"
+   (list 'telega-view-settings (telega-i18n "menu_settings")
          (list :name "me"
                :pretty-printer #'telega-view-settings--me-pp
                :items (list telega--me-id)
                :on-user-update #'telega-root--me-on-user-update)
+         (list :name "options"
+               :pretty-printer #'telega-view-settings--option-pp
+               :header "OPTIONS"
+               :items (list (list (telega-i18n "telega_option_sensitive_content")
+                                  :ignore_sensitive_content_restrictions)
+                            (list (telega-i18n "telega_option_prefer_ipv6")
+                                  :prefer_ipv6)
+                            ;; :disable_contact_registered_notifications
+                            ;; :disable_top_chats
+                            ;; :use_quick_ack
+                            ;; :use_storage_optimizer
+                            ))
          (list :name "links"
                :pretty-printer #'telega-view-settings--link-pp
                :header "LINKS"
-               :items (list (cons (telega-i18n "settings_faq")
+               :items (list (cons (telega-i18n "telega_settings_telega_manual")
+                                  "https://zevlg.github.io/telega.el/")
+                            (cons (telega-i18n "settings_faq")
                                   "https://telegram.org/faq")
                             (cons (telega-i18n "settings_ask_question")
                                   "https://t.me/emacs_telega")))
@@ -1304,9 +1413,9 @@ LINK is cons, where car is the link description, and cdr is the url."
   "Generate pretty printer for chats in folder with FOLDER-NAME."
   (let ((tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
     (lambda (chat)
-      (when (telega-chat-match-p chat (list 'chat-list folder-name))
+      (when (telega-chat-match-p chat (list 'folder folder-name))
         (let ((telega-tdlib--chat-list tdlib-chat-list)
-              (telega-filters--inhibit-list '(chat-list main archive)))
+              (telega-filters--inhibit-list '(chat-list folder main archive)))
           (telega-root--chat-known-pp chat))))))
 
 (defun telega-view-folders--gen-sorter (folder-name)
@@ -1321,7 +1430,7 @@ LINK is cons, where car is the link description, and cdr is the url."
     (cl-assert tdlib-chat-list)
     (list :name folder-name
           :pretty-printer (telega-view-folders--gen-pp folder-name)
-          :header (concat telega-symbol-folder folder-name)
+          :header (telega-folder-format "%i%f" folder-name)
           :sorter (telega-view-folders--gen-sorter folder-name)
           :loading (telega--getChats nil tdlib-chat-list
                      (apply-partially
@@ -1329,12 +1438,63 @@ LINK is cons, where car is the link description, and cdr is the url."
           :on-chat-update #'telega-root--any-on-chat-update)))
 
 (defun telega-view-folders ()
-  "View telegram folders."
+  "View Telegram folders."
   (interactive)
   (telega-root-view--apply
    (nconc (list 'telega-view-folders "Folders")
           (mapcar #'telega-view-folders--ewoc-spec
                   telega-tdlib--chat-filters))))
+
+(defun telega-root--chat-goto-pinned-message (chat)
+  "Goto pinned message in the CHAT."
+  (let ((pin-msg-id (plist-get chat :pinned_message_id)))
+    (unless (zerop pin-msg-id)
+      (telega-chat--goto-msg chat pin-msg-id 'highlight))))
+
+(defun telega-root--chat-pinned-message-pp (chat)
+  "Pretty printer for CHAT's pinned message."
+  (let ((visible-p (not (zerop (plist-get chat :pinned_message_id)))))
+    (when visible-p
+      (let ((telega-chat-button-width (+ telega-chat-button-width
+                                         (/ telega-chat-button-width 2))))
+        (telega-root--chat-known-pp
+         chat
+         #'telega-ins--chat-pinned-message
+         #'telega-root--chat-goto-pinned-message)))))
+
+(defun telega-view-pinned-messages ()
+  "View pinned messages of the chats."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-pinned-messages
+         (telega-i18n "telega_view_pinned_messages")
+         (list :name "root"
+               :pretty-printer #'telega-root--chat-pinned-message-pp
+               :items telega--ordered-chats
+               :sorter #'telega-chat>
+               :on-chat-update #'telega-root--any-on-chat-update))
+   'has-pinned-message))
+
+(defun telega-root--deleted-chat-pp (chat)
+  "Pretty printer for deleted chat."
+  (when (and (memq chat telega-deleted-chats)
+             (equal (telega-chat-order chat) "0"))
+    (telega-root--global-chat-pp chat)))
+
+(defun telega-view-deleted-chats ()
+  "View recently deleted chats."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-deleted-chats
+         (telega-i18n "telega_view_deleted_chats")
+         (list :name "root"
+               :pretty-printer #'telega-root--deleted-chat-pp
+               :items telega-deleted-chats
+               :sorter (lambda (chat1 chat2)
+                         (> (length (memq chat1 telega-deleted-chats))
+                            (length (memq chat2 telega-deleted-chats))))
+               :on-chat-update #'telega-root--any-on-chat-update))
+   ))
 
 (provide 'telega-root)
 

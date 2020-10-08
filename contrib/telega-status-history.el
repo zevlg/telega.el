@@ -21,6 +21,7 @@
 
 ;;; Commentary:
 
+;;; ellit-org:
 ;; ** /telega-status-history.el/ -- Global minore mode to save user's online status history
 ;;
 ;; Saves online status history into ~telega-status-history-logs-dir~ directory.

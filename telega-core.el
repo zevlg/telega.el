@@ -48,6 +48,9 @@
 Bind this to make `telega-chars-xxx' family functions to work correctly.
 Becase `telega-ins--as-string' uses temporary buffer.")
 
+(defvar telega-msg-contains-unread-mention nil
+  "Bind this variable when displaying message containing unread mention.")
+
 (defvar telega--chat nil
   "Telega chat for the current buffer.
 Used in some buffers to refer chat.")
@@ -86,6 +89,9 @@ Used for optimisations.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
 Used to calculate numbers displayed in custom filter buttons.")
+(defvar telega-deleted-chats nil
+  "List of recently deleted chats.
+Used for \"Recently Deleted Chats\" rootview.")
 
 (defvar telega--dirty-chats nil
   "Chats need to be updated with `telega-chat--update'.
@@ -147,7 +153,12 @@ Props are `:unread_count' and `:unread_unmuted_count'")
 Props are `:unread_count', `:unread_unmuted_count', `:marked_as_unread_count'
 and `:marked_as_unread_unmuted_count'")
 
-(defvar telega--chat-buffers nil "List of all chat buffers.")
+(defvar telega--chat-buffers-alist nil
+  "Alist of chats and corresponding chatbuf.")
+(defun telega-chat-buffers ()
+  "Return list of all chatbufs."
+  (mapcar #'cdr telega--chat-buffers-alist))
+
 (defvar telega--files nil
   "Files hash FILE-ID -> (list FILE UPDATE-CALBACKS..).")
 (defvar telega--files-updates nil
@@ -196,8 +207,7 @@ display the list.")
 
 (defun telega-chatbuf--chat (buffer)
   "Return chat corresponding chat BUFFER."
-  (with-current-buffer buffer
-    telega-chatbuf--chat))
+  (buffer-local-value 'telega-chatbuf--chat buffer))
 
 (defvar telega-chatbuf--messages nil
   "Local cache for the messages.")
@@ -242,6 +252,7 @@ Done when telega server is ready to receive queries."
   (setq telega--search-chats nil)
   (setq telega--nearby-chats nil)
 
+  (setq telega-deleted-chats nil)
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--dirty-chats nil)
@@ -381,10 +392,7 @@ Inhibits read-only flag."
             (,bufsym (if (and telega-chatbuf--chat
                               (eq telega-chatbuf--chat ,chatsym))
                          (current-buffer)
-                       (cl-find ,chatsym telega--chat-buffers
-                                :test (lambda (val buf)
-                                        (with-current-buffer buf
-                                          (eq telega-chatbuf--chat val)))))))
+                       (cdr (assq ,chatsym telega--chat-buffers-alist)))))
        (when (buffer-live-p ,bufsym)
          (with-current-buffer ,bufsym
            (let ((inhibit-read-only t)
@@ -467,6 +475,14 @@ Uses `telega--tl-get' to obtain the property."
     `(lambda (,tl-obj-sym)
        (telega--tl-get ,tl-obj-sym ,prop1 ,@props))))
 
+(defmacro telega--tl-dolist (bind &rest body)
+  "Execute BODY by traversing plist.
+BIND is in form ((PROP VAL) PLIST)."
+  (declare (indent 1))
+  `(cl-loop for ,(car bind) on ,(cadr bind)
+            by #'cddr
+            do (progn ,@body)))
+
 (defsubst telega-file--ensure (file)
   "Ensure FILE is in `telega--files'.
 Return FILE."
@@ -517,31 +533,6 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   "Return progress of FILE uploading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))
-
-;; DEPRECATED
-(defsubst telega--tl-desurrogate (str)
-  "Decode surrogate pairs in STR string.
-Attach `display' text property to surrogated regions."
-  (dotimes (idx (1- (length str)))
-    (let ((high (aref str idx))
-          (low (aref str (1+ idx))))
-      (when (and (>= high #xD800) (<= high #xDBFF)
-                 (>= low #xDC00) (<= low #xDFFF))
-        (let ((unicode-str (char-to-string
-                            (+ (lsh (- high #xD800) 10)
-                               (- low #xDC00) #x10000))))
-          ;; NOTE: delay emoji svg creation to
-          ;; `telega--desurrogate-apply' by marking region with
-          ;; `telega-emoji-p' property.  Creating svg at receive time,
-          ;; might result in lockups when receiving sticker sets
-          (add-text-properties
-           idx (+ idx 2) (list ;'display unicode-str
-                               'telega-emoji-p t
-                               'telega-display unicode-str) str)
-          ))))
-  ;; Mark string as already desurrogated
-  (add-text-properties 0 (length str) '(telega-desurrogated-string t) str)
-  str)
 
 (defsubst telega--desurrogate-apply-part (part &optional keep-properties)
   "Apply PART's `telega-display'"
@@ -599,9 +590,7 @@ Also supports \"formattedText\" a value of the OBJ's PROP."
   (let* ((prop-val (plist-get obj prop))
          (text (if (and (listp prop-val)
                         (equal (plist-get prop-val :@type) "formattedText"))
-                   (funcall #'telega--entities-as-faces
-                            (plist-get prop-val :entities)
-                            (plist-get prop-val :text))
+                   (telega--fmt-text-faces prop-val)
                  prop-val))
          (ret (telega--desurrogate-apply text no-properties)))
     (unless (string-empty-p ret)
@@ -928,13 +917,15 @@ Return VALUE."
 Return nil if no username is assigned to CHAT."
   (telega-tl-str (telega-chat--info chat) :username))
 
-(defun telega-chat-position--list-name (position)
+(defun telega-chat-position--list-name (position &optional no-props)
+  "Return list name for the POSITION.
+If NO-PROPS is non-nil, then remove properties from the resulting string."
   (let ((pos-list (plist-get position :list)))
     (if (eq (telega--tl-type pos-list) 'chatListFilter)
         (telega-tl-str (cl-find (plist-get pos-list :chat_filter_id)
                                 telega-tdlib--chat-filters
                                 :key (telega--tl-prop :id))
-                       :title 'no-props)
+                       :title no-props)
       (intern (downcase (substring (plist-get pos-list :@type) 8))))))
 
 (defun telega-chat-position (chat)
@@ -942,6 +933,12 @@ Return nil if no username is assigned to CHAT."
   (cl-find telega-tdlib--chat-list (plist-get chat :positions)
            :key (telega--tl-prop :list)
            :test #'equal))
+
+(defun telega-chat-at (&optional pos)
+  "Return current chat at point."
+  (let ((button (button-at (or pos (point)))))
+    (when (and button (eq (button-type button) 'telega-chat))
+      (button-get button :value))))
 
 (defun telega-chat-order (chat &optional ignore-custom)
   "Return CHAT's order as string.

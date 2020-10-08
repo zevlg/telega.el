@@ -161,20 +161,28 @@ Matches only if CHAR does not apper in the middle of the word."
                               (propertize
                                (if-let ((un (telega-tl-str member :username)))
                                    (concat "@" un)
-                                 (format "[%s](tg://user?id=%d)"
-                                         (telega-user--name member)
-                                         (plist-get member :id)))
+                                 (telega-user--name member))
                                'telega-member member))
                             members))
-               (cl-remove-if-not (lambda (botname)
-                                   (string-prefix-p arg botname))
-                                 telega-known-inline-bots))))
+              (cl-remove-if-not (lambda (botname)
+                                  (string-prefix-p arg botname))
+                                telega-known-inline-bots))))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align
      (let ((member (get-text-property 0 'telega-member arg)))
        (when member
          (concat "  " (telega-user--name member 'name)))))
     (post-completion
+     (when-let ((member (get-text-property 0 'telega-member arg)))
+       (unless (telega-tl-str member :username)
+         (delete-region (- (point) (length arg)) (point))
+         (telega-ins (telega-string-as-markup
+                      (format "[%s](tg://user?id=%d)"
+                              (telega-user--name member)
+                              (plist-get member :id))
+                      "markdown1"
+                      (apply-partially #'telega-markup-markdown-fmt 1)))))
+
      (let ((known-bot-p (member (telega-chatbuf-input-string)
                                 telega-known-inline-bots)))
        (insert " ")

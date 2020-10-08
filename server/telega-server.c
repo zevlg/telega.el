@@ -44,8 +44,9 @@ void pngext_main(int ac, char** av);
  */
 
 char* logfile = NULL;
+size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "0.6.5";
+const char* version = "0.6.6";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -65,7 +66,8 @@ usage(char* prog)
         printf(", with TON libton v%s", "0");
 #endif /* WITH_TON */
         printf("\n");
-        printf("usage: %s [-jp] [-l FILE] [-v LVL] [-h]\n", prog);
+        printf("usage: %s [-jp] [-L SIZE] [-l FILE] [-v LVL] [-h]\n", prog);
+        printf("\t-L SIZE    Log file size in bytes\n");
         printf("\t-l FILE    Log to FILE (default=stderr)\n");
         printf("\t-v LVL     Verbosity level (default=5)\n");
         printf("\t-j         Parse json from stdin and exit\n");
@@ -261,12 +263,14 @@ telega_set_verbosity(int verbosity)
 }
 
 void
-telega_set_logfile(char* logfile)
+telega_set_logfile(char* logfile, size_t logfile_size)
 {
         char req[1024];
         snprintf(req, 1024, "{\"@type\":\"setLogStream\","
                  "\"log_stream\":{\"@type\":\"logStreamFile\","
-                 "\"path\":\"%s\", \"max_file_size\":4194304}}", logfile);
+                 "\"path\":\"%s\", \"max_file_size\":%zu,"
+                 "\"redirect_stderr\":true}}",
+                 logfile, logfile_size);
         td_json_client_execute(NULL, req);
 }
 
@@ -274,15 +278,17 @@ int
 main(int ac, char** av)
 {
         int ch;
-        while ((ch = getopt(ac, av, "E:R:jpl:v:h")) != -1) {
+        while ((ch = getopt(ac, av, "L:E:R:jpl:v:h")) != -1) {
                 switch (ch) {
                 case 'v':
                         verbosity = atoi(optarg);
                         telega_set_verbosity(verbosity);
                         break;
+                case 'L':
+                        logfile_size = atoi(optarg);
+                        break;
                 case 'l':
                         logfile = optarg;
-                        telega_set_logfile(logfile);
                         break;
                 case 'j':
                         parse_mode = PARSE_MODE_JSON;
@@ -302,6 +308,9 @@ main(int ac, char** av)
                         /* NOT REACHED */
                 }
         }
+
+        if (logfile)
+                telega_set_logfile(logfile, logfile_size);
 
         if (parse_mode) {
                 parse_stdin();

@@ -1,5 +1,7 @@
 (("lng_saved_messages"
   :value "Saved Messages")
+ ("lng_profile_settings_section"
+  :value "Settings")
  ("lng_profile_send_message"
   :value "Send Message")
  ("lng_profile_share_contact"
@@ -146,6 +148,10 @@ Example: 23 y.o. designer from San Francisco")
   :other_value "Toggle read for {count} chats? ")
  ("telega_query_read_anyway"
   :value "No filtering applied, toggle anyway? ")
+ ("telega_query_kill_chatbufs"
+  :value "Kill {count} chatbufs? ")
+ ("telega_query_kill_anyway"
+  :value "No filtering applied, kill chatbufs anyway? ")
  ("telega_query_revoke_message"
   :value "Revoke the message? ")
  ("telega_query_kill_message"
@@ -193,6 +199,8 @@ Example: 23 y.o. designer from San Francisco")
 
  ("lng_report_spam"
   :value "Report Spam")
+ ("lng_report_spam_and_leave"
+  :value "Report Spam and Leave")
  ("lng_report_location"
   ;; To report chat with "UnrelatedLocation" reason
   :value "Report Location")
@@ -249,8 +257,25 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_rights_edit_admin_rank_about"
   :value "A custom title that will be shown to all members instead of '{title}'.")
 
+ ;; Help messages
  ("telega_scheduled_help"
-  :value "Next input will be scheduled")
+  :value "This message will be scheduled")
+ ("telega_disable_notification_help"
+  :value "This message won't pop notification on receiver side")
+ ("telega_enable_notification_help"
+  :value "This message will pop notification on receiver side")
+ ("telega_forward_new_caption_help"
+  :value "New caption for the forwarded message")
+ ("telega_disable_webpage_preview_help"
+  :value "This message won't have webpage preview")
+
+ ("telega_enable_notification"
+  :value "Enable Receiver Notification")
+ ("telega_disable_notification"
+  :value "Disable Receiver Notification")
+ ("telega_disable_webpage_preview"
+  :value "Disable WebPage Preview")
+
  ("telega_random_dice"
   :value "Random Dice")
 
@@ -258,9 +283,116 @@ Example: 23 y.o. designer from San Francisco")
   :value "Telegram FAQ")
  ("lng_settings_ask_question"
   :value "Ask a Question")
+ ("telega_settings_telega_manual"
+  :value "Telega.el Manual")
 
  ("lng_ttl_photo_expired"
   :value "Photo has expired")
  ("lng_ttl_video_expired"
   :value "Video has expired")
+
+ ;; Calls
+ ("lng_call_error_not_available"
+  :value "Sorry, you cannot call {user} because of their privacy settings.")
+ ("lng_call_error_outdated"
+  :value "{user}'s app does not support calls. They need to update their app before you can call them.")
+ ("lng_call_duration_info"
+  :value "{time}, {duration}")
+ ("lng_call_type_and_duration"
+  :value "{type} ({duration})")
+ ("lng_call_fingerprint_tooltip"
+  :value "If emoji on {user}'s screen are the same, this call is 100% secure")
+
+ ("lng_call_outgoing"
+  :value "Outgoing call")
+ ("lng_call_video_outgoing"
+  :value "Outgoing video call")
+ ("lng_call_cancelled"
+  :value "Cancelled call")
+ ("lng_call_video_cancelled"
+  :value "Cancelled video call")
+ ("lng_call_incoming"
+  :value "Incoming call")
+ ("lng_call_video_incoming"
+  :value "Incoming video call")
+ ("lng_call_declined"
+  :value "Declined call")
+ ("lng_call_video_declined"
+  :value "Declined video call")
+ ("lng_call_missed"
+  :value "Missed call")
+ ("lng_call_video_missed"
+  :value "Missed video call")
+
+ ("lng_call_status_connecting"
+  :value "connecting...")
+ ("lng_call_status_waiting"
+  :value "waiting...")
+ ("lng_call_status_ringing"
+  :value "ringing...")
+ ("lng_call_status_hanging"
+  :value "hanging up...")
+ ("lng_call_status_ended"
+  :value "call ended")
+ ("lng_call_status_incoming"
+  :value "is calling you...")
+ ("lng_call_status_exchanging"
+  :value "exchanging encryption keys...")
+ ("lng_call_status_busy"
+  :value "line busy")
+ ("lng_call_status_requesting"
+  :value "requesting...")
+ ("lng_call_status_failed"
+  :value "failed to connect")
+
+ ;; login url
+ ("lng_url_auth_open_confirm"
+  :value "Do you want to open {link}?")
+ ("lng_url_auth_login_option"
+  :value "Log in to {domain} as {user}")
+ ("lng_url_auth_allow_messages"
+  :value "Allow {bot} to send me messages")
+
+ ;; Notifications
+ ("lng_notification_reminder"
+  :value "Reminder")
+
+ ;; Folders
+ ("lng_settings_section_filters"
+  :value "Folders")
+ ("lng_filters_title"
+  :value "Folders")
+ ("lng_filters_recommended"
+  :value "Recommended folders")
+ ("lng_filters_create"
+  :value "Create new folder")
+ ("lng_filters_icon_header"
+  :value "Choose an icon")
+ ("lng_filters_new"
+  :value "New Folder")
+ ("lng_filters_new_name"
+  :value "Folder name")
+ ("lng_filters_edit"
+  :value "Edit Folder")
+ ("lng_filters_recommended"
+  :value "Recommended folders")
+ ("lng_filters_limit"
+  :value "Sorry, you can't create more folders.")
+ ("lng_filters_default"
+  :value "Please change at least one rule for this folder.")
+ ("lng_filters_remove_sure"
+  :value "This will remove the folder, chats won't be deleted.")
+
+ ;; Root View titles
+ ("lng_menu_settings"
+  :value "Settings")
+ ("telega_view_pinned_messages"
+  :value "Pinned Messages")
+ ("telega_view_deleted_chats"
+  :value "Recently Deleted Chats")
+
+ ("telega_option_sensitive_content"
+  :value "Show Sensitive Content")
+ ("telega_option_prefer_ipv6"
+  :value "Prefer IPv6")
  )

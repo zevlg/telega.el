@@ -108,6 +108,7 @@ If already deferring, then just executes the BODY."
 (defmacro telega-server--callback-get (extra)
   `(gethash ,extra telega-server--callbacks))
 
+;;;###autoload
 (defun telega-server-build (&optional build-flags)
   "Build and install `telega-server' binary.
 If BUILD-FLAGS is specified, then rebuild server without any

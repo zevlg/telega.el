@@ -211,12 +211,12 @@ Return thumbnail that can be downloaded."
 
 (defun telega-photo--best (photo &optional limits)
   "Select best thumbnail from PHOTO suiting LIMITS.
-By default LIMITS is `telega-photo-maxsize'."
+By default LIMITS is `telega-photo-size-limits'."
   (unless limits
-    (setq limits telega-photo-maxsize))
+    (setq limits telega-photo-size-limits))
 
-  (let ((lim-xwidth (telega-chars-xwidth (car limits)))
-        (lim-xheight (telega-chars-xheight (cdr limits)))
+  (let ((lim-xwidth (telega-chars-xwidth (nth 2 limits)))
+        (lim-xheight (telega-chars-xheight (nth 3 limits)))
         ret)
     ;; NOTE: `reverse' is used to start from highes sizes
     (seq-doseq (thumb (reverse (plist-get photo :sizes)))
@@ -266,6 +266,20 @@ Return nil if `:telega-text' is not specified in IMG."
              (mapconcat 'identity tt "\n")))
           (t (cl-assert nil nil "Invalid value for :telega-text=%S" tt)))))
 
+(defun telega-media--cheight-for-limits (width height limits)
+  "Calculate cheight for image of WIDTHxHEIGHT size fitting into LIMITS."
+  (let ((ratio (min (/ (float (telega-chars-xwidth (nth 2 limits))) width)
+                    (/ (float (telega-chars-xheight (nth 3 limits))) height))))
+    (if (< ratio 1.0)
+        (telega-chars-in-height (floor (* height ratio)))
+
+      (let ((cheight (telega-chars-in-height height)))
+        (if (< cheight (nth 1 limits))
+            (nth 1 limits)
+          (cl-assert (<= cheight (nth 3 limits)))
+          cheight))
+      )))
+
 (defun telega-media--cwidth-xmargin (width height char-height &optional _max-cwidth)
   "Calculate width in chars and margins X pixels.
 MAX-CWIDTH is maximum width in chars.
@@ -313,7 +327,7 @@ CHEIGHT is the height in chars to use (default=1)."
   (unless cheight
     (setq cheight 1))
   (if (telega-file--downloaded-p file)
-      (let ((cwidth-xmargin (telega-media--cwidth-xmargin width height cheight))
+      (let ((cw-xmargin (telega-media--cwidth-xmargin width height cheight))
             (image-filename (telega--tl-get file :local :path)))
         (create-image (if (string-empty-p image-filename)
                           (telega-etc-file "non-existing.jpg")
@@ -322,8 +336,8 @@ CHEIGHT is the height in chars to use (default=1)."
                       :height (telega-chars-xheight cheight)
                       :scale 1.0
                       :ascent 'center
-                      :margin (cons (cdr cwidth-xmargin) 0)
-                      :telega-text (make-string (car cwidth-xmargin) ?X)))
+                      :margin (cons (cdr cw-xmargin) 0)
+                      :telega-text (make-string (car cw-xmargin) ?X)))
 
     (telega-media--progress-svg file width height cheight)))
 
@@ -335,7 +349,9 @@ CHEIGHT is the height in chars to use (default=1)."
     (create-image (base64-decode-string (plist-get minithumb :data))
                   (if (and (fboundp 'image-transforms-p)
                            (funcall 'image-transforms-p))
-                      'jpeg (when (fboundp 'imagemagick-types) 'imagemagick))
+                      'jpeg
+                    (when (fboundp 'imagemagick-types)
+                      'imagemagick))
                   t
                   :height (telega-chars-xheight cheight)
                   :scale 1.0
@@ -365,6 +381,10 @@ CHEIGHT is the height in chars (default=1)."
   "Create image for thumbnail (photoSize) for two lines use."
   (telega-thumb--create-image thumb file 2))
 
+(defun telega-thumb--create-image-three-lines (thumb &optional file)
+  "Create image for thumbnail (photoSize) for three lines use."
+  (telega-thumb--create-image thumb file 3))
+
 (defun telega-thumb--create-image-as-is (thumb &optional file)
   "Create image for thumbnail THUMB (photoSize) with size as is."
   (telega-thumb--create-image
@@ -375,17 +395,27 @@ CHEIGHT is the height in chars (default=1)."
                                                        custom-minithumb)
   "Create image fol TL-OBJ that has :thumbnail and/or :minithumbnail prop."
   (let* ((thumb (or custom-thumb (plist-get tl-obj :thumbnail)))
+         (thumb-cheight (telega-media--cheight-for-limits
+                         (plist-get thumb :width)
+                         (plist-get thumb :height)
+                         telega-thumbnail-size-limits))
          (thumb-file (telega-file--renew thumb :file))
          (minithumb (or custom-minithumb (plist-get tl-obj :minithumbnail))))
     (cond ((telega-file--downloaded-p thumb-file)
            (telega-thumb--create-image
-            thumb thumb-file telega-thumbnail-height))
+            thumb thumb-file thumb-cheight))
           (minithumb
            (telega-minithumb--create-image
-            minithumb telega-thumbnail-height))
+            minithumb thumb-cheight))
           (t
            (telega-thumb--create-image
-            thumb thumb-file telega-thumbnail-height)))))
+            thumb thumb-file thumb-cheight)))))
+
+(defun telega-thumb-or-minithumb--create-image-one-line (_tl-obj &optional _file)
+  "Same as `telega-thumb-or-minithumb--create-image' but for one line."
+  ;; TODO: create squared (with round corners) version of the image
+  ;; suitable for one-line use
+  )
 
 (defun telega-audio--create-image (audio &optional file)
   "Function to create image for AUDIO album cover."
@@ -437,14 +467,14 @@ Default is `:telega-image'."
 (defun telega-photo--image (photo limits)
   "Return best suitable image for the PHOTO."
   (let* ((best (telega-photo--best photo limits))
-         (lim-xheight (telega-chars-xheight (cdr limits)))
-         (th (plist-get best :height))
-         (cheight (if (> th lim-xheight)
-                      (cdr limits)
-                    (telega-chars-in-height th)))
+         (cheight (telega-media--cheight-for-limits
+                   (plist-get best :width)
+                   (plist-get best :height)
+                   limits))
          (create-image-fun
           (progn
-            (cl-assert (<= cheight (cdr limits)))
+            (cl-assert (> cheight 0))
+            (cl-assert (<= cheight (nth 3 limits)))
             (lambda (_photoignored &optional _fileignored)
               ;; 1) FILE downloaded, show photo
               ;; 2) Thumbnail is downloaded, use it
@@ -582,7 +612,7 @@ Optionally IMAGE-FILE could be used."
     ;; Show user's avatar
     ;; TODO: calculate avatar possition according to
     ;;       map-loc/user-loc, they can differ
-    ;; 
+    ;;
     ;; TODO: show other users close enough to `:user-id'
     (when-let* ((user-id (plist-get map :user-id))
                 (user (unless (zerop user-id)

@@ -64,23 +64,21 @@
                 )
         
         ;; TODO: add more chats
-        (:@type "chat" :id -1001263892563 :type (:@type "chatTypeSupergroup" :supergroup_id 1263892563 :is_channel t) :title "Premium Signals Forward" :photo (:@type "chatPhoto" :small (:@type "file" :id 2213 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEDMzuE4el7_5oeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0)) :big (:@type "file" :id 2214 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEandjHTisoJpqeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0))) :positions [(:@type "chatPosition" :list (:@type "chatListMain") :order "0" :is_pinned t)]
- :is_marked_as_unread nil :is_sponsored nil :can_be_reported t :default_disable_notification nil :unread_count 0 :last_read_inbox_message_id 0 :last_read_outbox_message_id 2251799812636672 :unread_mention_count 0 :notification_settings (:@type "chatNotificationSettings" :use_default_mute_for t :mute_for 0 :use_default_sound t :sound "" :use_default_show_preview t :show_preview nil) :reply_markup_message_id 0 :client_data "(:color (\"#849b34\" \"#596823\" \"#2c3311\"))" :uaprops (:color ("#849b34" "#596823" "#2c3311")) :last_message (:@type "message" :id 599785472 :sender_user_id 0 :chat_id -1001263892563 :is_outgoing nil :can_be_edited nil :can_be_forwarded t :can_be_deleted_only_for_self nil :can_be_deleted_for_all_users nil :is_channel_post t :contains_unread_mention nil :date 1547562092 :edit_date 0 :reply_to_message_id 0 :ttl 0 :ttl_expires_in 0.0 :via_bot_user_id 0 :author_signature "" :views 26731 :media_album_id "0" :content (:@type "messageText" :text (:@type "formattedText" :text #("Buy GTO between 755-765 satoshi.
+        (:@type "chat" :id -1001263892563 :type (:@type "chatTypeSupergroup" :supergroup_id 1263892563 :is_channel t) :title "Premium Signals Forward" :photo (:@type "chatPhoto" :small (:@type "file" :id 2213 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEDMzuE4el7_5oeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0)) :big (:@type "file" :id 2214 :size 0 :expected_size 0 :local (:@type "localFile" :path "" :can_be_downloaded t :can_be_deleted nil :is_downloading_active nil :is_downloading_completed nil :downloaded_prefix_size 0 :downloaded_size 0) :remote (:@type "remoteFile" :id "AQADAQATkvwKMAAEandjHTisoJpqeAEAAQI" :is_uploading_active nil :is_uploading_completed t :uploaded_size 0))) :positions []
+ :is_marked_as_unread nil :is_sponsored nil :can_be_reported t :default_disable_notification nil :unread_count 0 :last_read_inbox_message_id 0 :last_read_outbox_message_id 2251799812636672 :unread_mention_count 0 :notification_settings (:@type "chatNotificationSettings" :use_default_mute_for t :mute_for 0 :use_default_sound t :sound "" :use_default_show_preview t :show_preview nil) :reply_markup_message_id 0 :client_data "(:color (\"#849b34\" \"#596823\" \"#2c3311\"))" :uaprops (:color ("#849b34" "#596823" "#2c3311")) :last_message (:@type "message" :id 599785472 :sender_user_id 0 :chat_id -1001263892563 :is_outgoing nil :can_be_edited nil :can_be_forwarded t :can_be_deleted_only_for_self nil :can_be_deleted_for_all_users nil :is_channel_post t :contains_unread_mention nil :date 1547562092 :edit_date 0 :reply_to_message_id 0 :ttl 0 :ttl_expires_in 0.0 :via_bot_user_id 0 :author_signature "" :views 26731 :media_album_id "0" :content (:@type "messageText" :text (:@type "formattedText" :text "Buy GTO between 755-765 satoshi.
 
 Breaking out resistance risk level medium. 
 
 Targets 9%,18%,27%,40%.
 
-Have Stoploss 690 Satoshi. Ì†ΩÌªë 
-
-Ì†ΩÌ∫Ä Ì†ΩÌ∫Ä" 131 133 (display "üõë" telega-desurrogate t) 136 138 (display "üöÄ" telega-desurrogate t) 139 141 (display "üöÄ" telega-desurrogate t)) :entities []))))
+Have Stoploss 690 Satoshi." :entities []))))
         ))
 (dolist (chat telega--ordered-chats)
   (puthash (plist-get chat :id) chat telega--chats))
 
 (setq telega-tdlib--chat-filters
       '((:@type "chatFilterInfo" :id 2 :title "Emacs" :icon_name "")
-        (:@type "chatFilterInfo" :id 3 :title #("Ì†ΩÌ∏πÌ†ΩÌ∏πÌ†ΩÌ∏π" 0 2 (telega-display "üòπ" telega-emoji-p t) 2 4 (telega-display "üòπ" telega-emoji-p t) 4 6 (telega-display "üòπ" telega-emoji-p t)) :icon_name "")))
+        (:@type "chatFilterInfo" :id 3 :title #("\ud83d\ude39\ud83d\ude39\ud83d\ude39" 0 2 (telega-display "üòπ" telega-emoji-p t) 2 4 (telega-display "üòπ" telega-emoji-p t) 4 6 (telega-display "üòπ" telega-emoji-p t)) :icon_name "")))
 
 
 ;; Tests
@@ -192,6 +190,12 @@ Have Stoploss 690 Satoshi. Ì†ΩÌªë
                  "102 votes"))
   (should (equal (telega-i18n "action_user_joined" :from #("'S'–¢'–ê'N'&'S'L'–ê'\\/' \"–†\"–ï\"–¢\"R\"–û\"\\/\"" 0 35 (face bold)))
                  #("'S'–¢'–ê'N'&'S'L'–ê'\\/' \"–†\"–ï\"–¢\"R\"–û\"\\/\" joined the group" 0 35 (face bold))))
+  )
+
+(ert-deftest telega-utils ()
+  "Test util code for telega."
+  (should (equal (telega-puny-decode-url "https://xn----8sbis2aqlf5f.xn--p1ai/lalabum")
+                 "https://–∏—Ç-–≥—Ä–∞–Ω—Ç—ã.—Ä—Ñ/lalabum"))
   )
 
 ;;; test.el ends here

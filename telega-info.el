@@ -132,9 +132,13 @@ REDISPLAY-FUNC is called if TTL setting is changed."
         :inserter (lambda (photo-val)
                     (telega-ins--image
                      (telega-photo--image
-                      photo-val telega-user-photo-maxsize)))
+                      photo-val
+                      (list telega-user-photo-size
+                            telega-user-photo-size
+                            telega-user-photo-size
+                            telega-user-photo-size))))
         :action 'telega-photo--open
-        'keymap
+        'local-keymap
         (when (telega-me-p user)
           (let ((pp-del (lambda (profile-photo)
                           (interactive (list (button-get

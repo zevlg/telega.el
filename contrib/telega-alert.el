@@ -22,6 +22,7 @@
 
 ;;; Commentary:
 
+;;; ellit-org:
 ;; ** /telega-alert.el/ -- Notifications using =alert.el=
 ;; 
 ;; To enable notifications using =alert.el= use:

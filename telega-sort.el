@@ -19,30 +19,14 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Commentary:
-
-;; * Sorting Chats
+;;; ellit-org: commentary
 ;;
 ;; It is possible to sort chats in rootbuf out of Telega built-in
 ;; order.  Sorting chats is done by some criteria.  Built-in criterias
 ;; are in ~telega-sort-criteria-alist~.  Do not insert criterias
 ;; directly into ~telega-sort-criteria-alist~, use
 ;; ~define-telega-sorter~ instead.
-;;
-;; {{{kbd(\)}}} prefix in rootbuf is used for sorting commands.
-;;
-;; - {{{where-is(telega-sort-reset,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega-sort-reset, 2)}}}
-;;
-;;   It is possible to add multiple criteria using ~telega-sort-reset~
-;;   with prefix argument {{{kbd(C-u)}}}.
-;;
-;; - {{{where-is(telega-sort-by-sorter,telega-root-mode-map)}}} ::
-;;   {{{fundoc(telega-sort-by-sorter, 2)}}}
-;;
-;;   Use this command to reset active sorter.
 
-;;; Code:
 
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 
@@ -170,16 +154,18 @@ overwritting currently active one."
     ))
 
 
-;; ** Sorting criteria
+;;; ellit-org: chat-sorting-criteria
 (define-telega-sorter order () (chat)
   (telega-chat-order chat))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~unread-count~, {{{where-is(telega-sort-by-unread-count,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-unread-count, 2)}}}
 (define-telega-sorter unread-count ("updateChatReadInbox") (chat)
   "Sort chats by number of unread messages in chat."
   (plist-get chat :unread_count))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~title~, {{{where-is(telega-sort-by-title,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-title, 2)}}}
 ;;
@@ -188,24 +174,28 @@ overwritting currently active one."
   "Sort chats alphabetically by chat title."
   (telega-chat-title chat))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~member-count~, {{{where-is(telega-sort-by-member-count,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-member-count, 2)}}}
 (define-telega-sorter member-count ("updateBasicGroup" "updateSupergroup") (chat)
   "Sort chats by number of members in the chat."
   (plist-get (telega-chat--info chat) :member_count))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~online-members~, {{{where-is(telega-sort-by-online-members,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-online-members, 2)}}}
 (define-telega-sorter online-members ("updateChatOnlineMemberCount") (chat)
   "Sort chats by number of online members."
   (plist-get chat :x-online-count))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~join-date~, {{{where-is(telega-sort-by-join-date,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-join-date, 2)}}}
 (define-telega-sorter join-date () (chat)
   "Sort chats by join date.  Last joined chats goes first."
   (plist-get (telega-chat--info chat) :date))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~chatbuf-recency~, {{{where-is(telega-sort-by-chatbuf-recency,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--sort-chatbuf-recency, 2)}}}
 (define-telega-sorter chatbuf-recency () (chat)
@@ -214,12 +204,13 @@ overwritting currently active one."
         (length (memq (current-buffer) (buffer-list))))
       -1))
 
+;;; ellit-org: chat-sorting-criteria
 ;; - ~chatbuf-visibility~ ::
 ;;   {{{fundoc(telega--sort-chatbuf-visibility, 2)}}}
 (define-telega-sorter chatbuf-visibility () (chat)
   "Sort chats by visibility in other window in DWIM style.
 See https://github.com/zevlg/telega.el/issues/165"
-  (let ((retn (length telega--chat-buffers)))
+  (let ((retn (length telega--chat-buffers-alist)))
     (if (get-window-with-predicate
          (lambda (win)
            (with-current-buffer (window-buffer win)
@@ -229,7 +220,8 @@ See https://github.com/zevlg/telega.el/issues/165"
         retn
       -1)))
 
-;; - ~chatbuf-visibility~ ::
+;;; ellit-org: chat-sorting-criteria
+;; - ~nearby-distance~ ::
 ;;   {{{fundoc(telega--sort-nearby-distance, 2)}}}
 (define-telega-sorter nearby-distance ("updateUsersNearby") (chat)
   "Sort chats by nearby distance to me.

@@ -98,6 +98,16 @@ user is fetched from server."
   "Return non-nil if USER is online."
   (equal (telega-user--seen user) "Online"))
 
+(defun telega-user-blocked-p (user &optional locally-p)
+  "Return non-nil if USER is blocked."
+  ;; TODO: rewrite when `telega-user-full-info 'locally' will be
+  ;; available
+  (plist-get (if locally-p
+                 (gethash (plist-get user :id)
+                          (cdr (assq 'user telega--full-info)))
+               (telega--full-info user))
+             :is_blocked))
+
 (defun telega-user--type (user)
   "Return USER type."
   (intern (downcase (substring (plist-get (plist-get user :type) :@type) 8))))

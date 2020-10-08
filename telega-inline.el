@@ -27,6 +27,7 @@
 
 ;;; Code:
 (require 'telega-core)
+(require 'telega-tdlib)
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))
@@ -79,7 +80,7 @@
        ;;  - Send as ordinary message for private chats
        (let ((chat (telega-msg-chat msg))
              (imc (list :@type "inputMessageText"
-                        :text (telega--formattedText
+                        :text (telega-string-fmt-text
                                (telega-tl-str kbd-button :text))))
              (reply-msg (unless (telega-chat-private-p
                                  (telega-msg-chat msg) 'bots)
@@ -88,6 +89,47 @@
 
       (inlineKeyboardButtonTypeUrl
        (telega-browse-url (plist-get kbd-type :url)))
+
+      (inlineKeyboardButtonTypeLoginUrl
+       (let* ((url-info (telega--getLoginUrlInfo msg kbd-type))
+              (url (or (plist-get url-info :url)
+                       (plist-get kbd-type :url))))
+         (when (or (plist-get url-info :skip_confirm)
+                   (not (memq telega-inline-login-url-action
+                              '(query-all query-open)))
+                   (y-or-n-p (telega-i18n "url_auth_open_confirm" :link url)))
+           ;; Check we need to log into domain ?
+           ;; See https://github.com/tdlib/td/issues/1189#issuecomment-691445789
+           (when (and (eq (telega--tl-type url-info)
+                          'loginUrlInfoRequestConfirmation)
+                      (memq telega-inline-login-url-action
+                            '(query-all query-login-and-write-access
+                                        query-login-only))
+                      (y-or-n-p
+                       (concat (telega-i18n "lng_url_auth_login_option"
+                                 :domain (propertize
+                                          (telega-tl-str url-info :domain)
+                                          'face 'bold)
+                                 :user (telega-user--name
+                                        (telega-user--get telega--me-id)))
+                               "? ")))
+             (let ((write-p (when (and (memq telega-inline-login-url-action
+                                             '(query-all
+                                               query-login-and-write-access))
+                                       (plist-get url-info :request_write_access))
+                              (y-or-n-p
+                               (concat (telega-i18n "lng_url_auth_allow_messages"
+                                         :bot (propertize
+                                               (telega-user--name
+                                                (telega-user--get
+                                                 (plist-get
+                                                  url-info :bot_user_id)))
+                                               'face 'bold))
+                                       "? ")))))
+               (setq url (plist-get (telega--getLoginUrl msg kbd-type write-p)
+                                    :url))))
+
+           (telega-browse-url url))))
 
       (inlineKeyboardButtonTypeCallback
        (telega--getCallbackQueryAnswer
@@ -126,7 +168,8 @@
   "Generate help-echo value for KBD-BUTTON."
   (let ((kbd-type (plist-get kbd-button :type)))
     (cl-case (telega--tl-type kbd-type)
-      (inlineKeyboardButtonTypeUrl (plist-get kbd-type :url))
+      ((inlineKeyboardButtonTypeUrl inlineKeyboardButtonTypeLoginUrl)
+       (plist-get kbd-type :url))
       )))
 
 
@@ -178,7 +221,7 @@
                      (telega-photo--thumb (telega--tl-get qr :game :photo)))
                     (inlineQueryResultVideo
                      (telega--tl-get qr :video :thumbnail))))
-           (thumb-file (when thumb (telega-file--renew thumb :photo)))
+           (thumb-file (when thumb (telega-file--renew thumb :file)))
            (thumb-img (when (telega-file--downloaded-p thumb-file)
                         (create-image (telega--tl-get thumb-file :local :path)
                                       (when (fboundp 'imagemagick-types) 'imagemagick) nil
@@ -223,7 +266,7 @@
   "Inserter for `inlineQueryResultPhoto' QR."
   (let ((photo (plist-get qr :photo)))
     (telega-ins--image
-     (telega-photo--image photo (cons 10 3)))))
+     (telega-photo--image photo (list 10 3 10 3)))))
 
 (defun telega-ins--inline-document (qr)
   "Inserter for `inlineQueryResultDocument' QR."
@@ -250,7 +293,7 @@
          (thumb-img (when thumb
                       (telega-media--image
                        (cons thumb 'telega-thumb--create-image-two-lines)
-                       (cons thumb :photo)))))
+                       (cons thumb :file)))))
     (when thumb-img
       (telega-ins--image thumb-img 0))
     (telega-ins " " (telega-tl-str qr :title) "\n")
@@ -266,7 +309,7 @@
          (thumb-img (when thumb
                       (telega-media--image
                        (cons thumb 'telega-thumb--create-image-two-lines)
-                       (cons thumb :photo)))))
+                       (cons thumb :file)))))
     (when thumb-img
       (telega-ins--image thumb-img 0)
       (telega-ins " "))
@@ -286,7 +329,7 @@
   (let* ((game (plist-get qr :game))
          (photo (plist-get game :photo))
          (photo-img (when photo
-                      (telega-photo--image photo (cons 4 2)))))
+                      (telega-photo--image photo (list 4 2 4 2)))))
     (when photo-img
       (telega-ins--image photo-img 0)
       (telega-ins " "))
@@ -297,6 +340,32 @@
       (telega-ins--image photo-img 1)
       (telega-ins " "))
     (telega-ins (telega-tl-str game :description))
+    (telega-ins "\n")))
+
+(defun telega-ins--inline-venue (qr)
+  "Inserter for `inlineQueryResultVenue' OR."
+  (let* ((venue (plist-get qr :venue))
+         (thumb (plist-get qr :thumbnail))
+         (thumb-img (when thumb
+                      (telega-media--image
+                       (cons thumb 'telega-thumb--create-image-three-lines)
+                       (cons thumb :photo)))))
+    (when thumb-img
+      (telega-ins--image thumb-img 0)
+      (telega-ins " "))
+    (telega-ins--with-face 'bold
+      (telega-ins (telega-tl-str venue :title)))
+    (telega-ins "\n")
+    (when thumb-img
+      (telega-ins--image thumb-img 1)
+      (telega-ins " "))
+    (telega-ins--with-face 'shadow
+      (telega-ins (telega-tl-str venue :address)))
+    (telega-ins "\n")
+    (when thumb-img
+      (telega-ins--image thumb-img 2)
+      (telega-ins " "))
+    (telega-ins--location (plist-get venue :location))
     (telega-ins "\n")))
 
 (defun telega-inline-bot--gen-callback (bot query &optional for-chat)
@@ -323,7 +392,8 @@
                             inlineQueryResultAudio
                             inlineQueryResultArticle
                             inlineQueryResultDocument
-                            inlineQueryResultGame))
+                            inlineQueryResultGame
+                            inlineQueryResultVenue))
                 (unless (or (= (point) (point-at-bol))
                             (= (point) 1))
                   (telega-ins "\n")
@@ -393,6 +463,12 @@
                 (inlineQueryResultGame
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-game
+                   :action 'telega-inline-bot--action)
+                 (telega-ins--inline-delim))
+
+                (inlineQueryResultVenue
+                 (telega-button--insert 'telega qr
+                   :inserter 'telega-ins--inline-venue
                    :action 'telega-inline-bot--action)
                  (telega-ins--inline-delim))
 

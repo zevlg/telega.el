@@ -51,27 +51,33 @@ CALL-SEXP and CALLBACK are passed directly to `telega-server--call'."
            ,reply-var
          ,post-form))))
 
-(defun telega--setOption (prop-kw val)
-  "Set option, defined by keyword PROP-KW to VAL."
+(defun telega--getOption (prop-kw)
+  (telega-server--call
+   (list :@type "getOption"
+         :name (substring (symbol-name prop-kw) 1))) ; strip `:'
+  )
+
+(defun telega--setOption (prop-kw val &optional sync-p)
+  "Set option, defined by keyword PROP-KW to VAL.
+If SYNC-P is specified, then set option is sync manner."
   (declare (indent 1))
-  (telega-server--send
-   (list :@type "setOption"
-         :name (substring (symbol-name prop-kw) 1) ; strip `:'
-         :value (list :@type (cond ((memq val '(t nil :false))
-                                    "optionValueBoolean")
-                                   ((integerp val)
-                                    "optionValueInteger")
-                                   ((stringp val)
-                                    "optionValueString")
-                                   (t (error "Unknown value type: %S"
-                                             (type-of val))))
-                      :value (or val :false)))))
+  (funcall (if sync-p #'telega-server--call #'telega-server--send)
+           (list :@type "setOption"
+                 :name (substring (symbol-name prop-kw) 1) ; strip `:'
+                 :value (list :@type (cond ((memq val '(t nil :false))
+                                            "optionValueBoolean")
+                                           ((integerp val)
+                                            "optionValueInteger")
+                                           ((stringp val)
+                                            "optionValueString")
+                                           (t (error "Unknown value type: %S"
+                                                     (type-of val))))
+                              :value (or val :false)))))
 
 (defun telega--setOptions (options-plist)
   "Send custom OPTIONS-PLIST to server."
-  (cl-loop for (prop-name value) on options-plist
-           by 'cddr
-           do (telega--setOption prop-name value)))
+  (telega--tl-dolist ((prop-name value) options-plist)
+    (telega--setOption prop-name value)))
 
 (defun telega--checkDatabaseEncryptionKey (&optional encryption-key)
   "Set database ENCRYPTION-KEY, if any."
@@ -105,6 +111,12 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
    (list :@type "setChatTitle"
          :chat_id (plist-get chat :id)
          :title title)))
+
+(defun telega--toggleChatDefaultDisableNotification (chat disable-p)
+  (telega-server--send
+   (list :@type "toggleChatDefaultDisableNotification"
+         :chat_id (plist-get chat :id)
+         :default_disable_notification (if disable-p t :false))))
 
 (defun telega--setChatDescription (chat descr)
   "Set CHAT's description to DESCR."
@@ -860,6 +872,36 @@ it is automatically removed from another one if needed."
          :chat_list tdlib-chat-list)
    (or callback 'ignore)))
 
+(defun telega--getChatFilter (filter-id)
+  (telega-server--call
+   (list :@type "getChatFilter"
+         :chat_filter_id filter-id)))
+
+(defun telega--createChatFilter (chat-filter &optional callback)
+  "Create new CHAT-FILTER.
+Return ChatFilterInfo."
+  (telega-server--call
+   (list :@type "createChatFilter"
+         :filter chat-filter)
+   callback))
+
+(defun telega--editChatFilter (filter-id new-chat-filter &optional callback)
+  (telega-server--call
+   (list :@type "editChatFilter"
+         :chat_filter_id filter-id
+         :filter new-chat-filter)
+   (or callback 'ignore)))
+
+(defun telega--deleteChatFilter (filter-id)
+  (telega-server--send
+   (list :@type "deleteChatFilter"
+         :chat_filter_id filter-id)))
+
+(defun telega--reorderChatFilters (filter-ids)
+  (telega-server--send
+   (list :@type "reorderChatFilters"
+         :chat_filter_ids (seq-into filter-ids 'vector))))
+  
 (defun telega--setChatDiscussionGroup (chat discussion-chat)
   "For channel CHAT set discussion chat to DISCUSSION-CHAT.
 Requires `:can_change_info' rights in the channel.
@@ -890,6 +932,17 @@ Pass nil as DISCUSSION-CHAT to unset discussion group."
                            :enable_storage_optimizer t
                            :ignore_file_names :false
                            ))))
+
+(defun telega--parseTextEntities (text parse-mode)
+  "Parse TEXT using PARSE-MODE.
+PARSE-MODE is one of:
+  (list :@type \"textParseModeMarkdown\" :version 0|1|2)
+or
+  (list :@type \"textParseModeHTML\")"
+  (telega-server--call
+   (list :@type "parseTextEntities"
+         :text text
+         :parse_mode parse-mode)))
 
 (defun telega--getFile (file-id &optional callback)
   (declare (indent 1))
@@ -1004,7 +1057,7 @@ message uppon message is created."
                 :chat_id (plist-get chat :id)
                 :from_chat_id (plist-get from-chat :id)
                 :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
-                :as_album (or as-album :false)
+                :as_album (if as-album t :false)
                 :send_copy (if send-copy t :false)
                 :remove_caption (if remove-caption t :false))
           (when options
@@ -1430,6 +1483,23 @@ If OPTION-IDS is not specified, then retract the voice."
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
          :option_ids (apply 'vector option-ids))))
+
+(defun telega--getLoginUrlInfo (msg kbd-type &optional callback)
+  (telega-server--call
+   (list :@type "getLoginUrlInfo"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :button_id (plist-get kbd-type :id))
+   callback))
+
+(defun telega--getLoginUrl (msg kbd-type allow-write-access &optional callback)
+  (telega-server--call
+   (list :@type "getLoginUrl"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :button_id (plist-get kbd-type :id)
+         :allow_write_access (if allow-write-access t :false))
+   callback))
 
 (defun telega--createCall (user)
   "Create outgoing call to the USER."

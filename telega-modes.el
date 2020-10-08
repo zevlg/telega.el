@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; See https://github.com/zevlg/telega.el/blob/master/doc/telega-manual.org#minor-modes
+;; See https://zevlg.github.io/telega.el/#minor-modes
 
 ;;; Code:
 
@@ -39,10 +39,7 @@
   :prefix "telega-"
   :group 'telega)
 
-;; * Minor Modes
-;;
-;; =telega= ships with various minor modes you might consider to use.
-
+;;; ellit-org: minor-modes
 ;; ** telega-mode-line-mode
 ;;
 ;; Global minor mode to display =telega= status in modeline.
@@ -253,6 +250,7 @@ Play in muted mode."
     (remove-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)))
 
 
+;;; ellit-org: minor-modes
 ;; ** telega-squash-message-mode
 ;;
 ;; Minor mode for chatbuf to squash messages into single one while
@@ -270,7 +268,8 @@ Play in muted mode."
 ;; 4. Last message can be edited
 ;; 5. Last and new messages are *not* replying to any message
 ;; 6. Last message has no associated web-page
-;; 7. Last message has no emojis, see https://github.com/zevlg/telega.el/issues/148
+;; 7. New message has no `messageSendOptions' to avoid squashing
+;;    scheduled messages or similar
 ;;
 ;; Can be enabled globally in all chats matching
 ;; ~telega-squash-message-mode-for~ (see below) chat filter with
@@ -279,7 +278,7 @@ Play in muted mode."
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
 ;; #+end_src
-
+;; 
 ;; Customizable options:
 ;;
 ;; - {{{user-option(telega-squash-message-mode-for, 2)}}}
@@ -314,40 +313,22 @@ chats matching this chat filter."
   (if global-telega-squash-message-mode
       (progn
         (add-hook 'telega-chat-mode-hook 'telega-squash-message-mode--maybe)
-        (dolist (buf telega--chat-buffers)
+        (dolist (buf (telega-chat-buffers))
           (with-current-buffer buf
             (telega-squash-message-mode--maybe 1))))
 
     (remove-hook 'telega-chat-mode-hook 'telega-squash-message-mode--maybe)
-    (dolist (buf telega--chat-buffers)
+    (dolist (buf (telega-chat-buffers))
       (with-current-buffer buf
         (telega-squash-message-mode -1)))))
 
-(defun telega-squash-message--concat-text (fmt-text1 fmt-text2 &optional sep)
-  "Concat two formatted texts FMT-TEXT1 and FMT-TEXT2 into one."
-  (let* ((txt1 (concat (plist-get fmt-text1 :text) (or sep "")))
-         (ent2-off (length txt1)))
-    (list :@type "formattedTex"
-          :text (concat txt1 (plist-get fmt-text2 :text))
-          :entities (seq-concatenate
-                     'vector (plist-get fmt-text1 :entities)
-                     (mapcar (lambda (ent)
-                               (list :@type "textEntity"
-                                     :offset (+ ent2-off (plist-get ent :offset))
-                                     :length (plist-get ent :length)
-                                     :type (plist-get ent :type)))
-                             (plist-get fmt-text2 :entities))))))
-
-(defun telega-squash-message--has-surrogates-p (text)
-  "Return non-nil if TEXT has surrogated pairs."
-  (string-match-p "[\uD800-\uDBFF]" text))
-
-(defun telega-squash-message--squash (chat imc reply-to-msg)
+(defun telega-squash-message--squash (chat imc reply-to-msg options)
   "Return non-nil if message has been squashed."
   (with-telega-chatbuf chat
     (when (and telega-squash-message-mode
-               ;; Check 3. and 5. for new message
+               ;; Check 3., 5. and 7.0 for new message
                (not reply-to-msg)
+               (not options)
                (eq (telega--tl-type imc) 'inputMessageText))
       (let ((last-msg (plist-get chat :last_message))
             (last-read-id (plist-get chat :last_read_outbox_message_id)))
@@ -361,25 +342,24 @@ chats matching this chat filter."
                    (zerop (plist-get last-msg :reply_to_message_id))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
-                   ;; Check for 7.
-                   (not (telega-squash-message--has-surrogates-p
-                         (telega--tl-get last-msg :content :text :text)))
                    )
 
-          ;; Squashing IMC with `last-msg' by modifying IMC
-          (plist-put imc :text (telega-squash-message--concat-text
-                                (telega--tl-get last-msg :content :text)
-                                (plist-get imc :text)
-                                "\n"))
+          ;; Squashing IMC with `last-msg' by modifying IMC inplace
+          (plist-put imc :text (telega-fmt-text-desurrogate
+                                (telega-fmt-text-concat
+                                 (telega--tl-get last-msg :content :text)
+                                 (telega-string-fmt-text "\n")
+                                 (plist-get imc :text))))
           (telega--editMessageText telega-chatbuf--chat last-msg imc)
           t)))))
 
-(defun telega-squash-message--send-message (send-msg-fun chat imc &optional reply-to-msg &rest args)
+(defun telega-squash-message--send-message (send-msg-fun chat imc &optional reply-to-msg options &rest args)
   "Advice for `telega--sendMessage' used to squash messages."
-  (unless (telega-squash-message--squash chat imc reply-to-msg)
-    (apply send-msg-fun chat imc reply-to-msg args)))
+  (unless (telega-squash-message--squash chat imc reply-to-msg options)
+    (apply send-msg-fun chat imc reply-to-msg options args)))
 
 
+;;; ellit-org: minor-modes
 ;; ** telega-image-mode
 ;;
 ;; Major mode to view images in chatbuf.  Same as ~image-mode~,
@@ -475,6 +455,7 @@ chats matching this chat filter."
   (telega-image-next 'previous))
 
 
+;;; ellit-org: minor-modes
 ;; ** telega-edit-file-mode
 ;;
 ;; {{{fundoc1(telega-edit-file-mode)}}}

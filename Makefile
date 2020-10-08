@@ -19,11 +19,11 @@ test: test.el
 compile:
 	$(EMACS) -batch -L . -f package-initialize --eval '(byte-recompile-directory "." 0 t)'
 
-doc:
-	$(MAKE) -C doc
+docs:
+	$(MAKE) -C docs
 
 clean:
 	@rm -vf *.elc contrib/*.elc
 	$(MAKE) -C server $@
 
-.PHONY: $(SERVER) clean test doc
+.PHONY: $(SERVER) clean test docs

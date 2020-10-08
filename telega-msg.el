@@ -108,7 +108,8 @@
                  'telega-ins--message-deleted)
 
                 ((telega-msg-ignored-p msg)
-                 'telega-ins--message-ignored)
+                 (when telega-ignored-messages-visible
+                   'telega-ins--message-ignored))
 
                 ;; NOTE: check for messages grouping by sender
                 ((and (telega-chat-match-p chat telega-chat-group-messages-for)
@@ -128,9 +129,10 @@
 
                 (t 'telega-ins--message)))
          (telega--current-buffer (current-buffer)))
-    (telega-button--insert 'telega-msg msg
-      :inserter msg-inserter)
-    (telega-ins "\n")))
+    (when msg-inserter
+      (telega-button--insert 'telega-msg msg
+        :inserter msg-inserter)
+      (telega-ins "\n"))))
 
 (defun telega-msg--get (chat-id msg-id &optional locally-p callback)
   "Get message by CHAT-ID and MSG-ID pair.
@@ -533,67 +535,22 @@ NODE - ewoc node, if known."
     (when node
       (telega-button--observable-p (ewoc-location node)))))
 
-(defun telega-msg-contains-unread-mention-p (msg)
-  "Return non-nil if MSG has unread mention."
-  (plist-get msg :contains_unread_mention))
-
-(defun telega--parseTextEntities (text parse-mode)
-  "Parse TEXT using PARSE-MODE.
-PARSE-MODE is one of:
-  (list :@type \"textParseModeMarkdown\" :version 0|1|2)
-or
-  (list :@type \"textParseModeHTML\")"
-  (let ((fmt-text (telega-server--call
-                   (list :@type "parseTextEntities"
-                         :text text
-                         :parse_mode parse-mode))))
-    (plist-put fmt-text :text (or (telega-tl-str fmt-text :text 'no-props) ""))))
-
-(defun telega--formattedText (text &optional markdown-version)
-  "Convert TEXT to `formattedTex' type.
-If MARKDOWN is non-nil then format TEXT as markdown."
-  (if markdown-version
-      ;; For markdown mode, escape underscores in urls
-      ;; See https://github.com/tdlib/td/issues/672
-      ;; See https://github.com/zevlg/telega.el/issues/143
-      (telega--parseTextEntities
-       (telega-escape-underscores text)
-       (list :@type "textParseModeMarkdown"
-             :version markdown-version))
-
-    (list :@type "formattedText"
-          :text (substring-no-properties text) :entities [])))
-
-(defun telega-formattedText-substring (text from &optional to)
-  "Return substring of the TEXT.
-FROM and TO are passed directly to `substring'."
-  (unless to (setq to (length (plist-get text :text))))
-
-  (let ((ents (mapcar (lambda (ent)
-                        (let* ((ent-start (plist-get ent :offset))
-                               (ent-end (+ ent-start (plist-get ent :length))))
-                          (cond ((> from ent-end) nil)
-                                ((> ent-start to) nil)
-                                (t (list :@type (plist-get ent :@type)
-                                         :type (plist-get ent :type)
-                                         :offset (max from ent-start)
-                                         :length (- (min ent-end to)
-                                                    (max from ent-start)))))))
-                      (plist-get text :entities))))
-    (list :@type "formattedText"
-          :text (substring (plist-get text :text) from to)
-          :entities (apply 'vector (cl-remove-if 'null ents)))))
-
 ;;; Ignoring messages
+(defun telega--ignored-messages-ring-index (msg)
+  "Return ignored MSG index inside `telega--ignored-messages-ring'."
+  (catch 'found
+    (dotimes (ind (ring-length telega--ignored-messages-ring))
+      (let ((ring-msg (ring-ref telega--ignored-messages-ring ind)))
+        (when (and (eq (plist-get msg :chat_id)
+                       (plist-get ring-msg :chat_id))
+                   (eq (plist-get msg :id)
+                       (plist-get ring-msg :id)))
+          (throw 'found ind))))))
+
 (defun telega-msg-ignored-p (msg)
   "Return non-nil if MSG is ignored."
   (or (plist-get msg :ignored-p)
-      ;; Search message with same ID in ignored ring
-      (catch 'found
-        (dotimes (ind (ring-length telega--ignored-messages-ring))
-          (when (eq (plist-get msg :id)
-                    (plist-get (ring-ref telega--ignored-messages-ring ind) :id))
-            (throw 'found ind))))))
+      (telega--ignored-messages-ring-index msg)))
 
 (defun telega-msg-ignore (msg)
   "Mark message MSG to be ignored (not viewed, notified about) in chats.
@@ -601,16 +558,9 @@ By side effect adds MSG into `telega--ignored-messages-ring' to be viewed
 with `M-x telega-ignored-messages RET'."
   (plist-put msg :ignored-p t)
 
-  ;; Remove message with same
-  (catch 'found
-    (dotimes (ind (ring-length telega--ignored-messages-ring))
-      (let ((ign-msg (ring-ref telega--ignored-messages-ring ind)))
-        (when (equal (cons (plist-get ign-msg :chat_id)
-                           (plist-get ign-msg :id))
-                     (cons (plist-get msg :chat_id)
-                           (plist-get msg :id)))
-          (ring-remove telega--ignored-messages-ring ind)
-        (throw 'found ind)))))
+  ;; Remove message with same chat_id/id
+  (when-let ((ind (telega--ignored-messages-ring-index msg)))
+    (ring-remove telega--ignored-messages-ring ind))
 
   (ring-insert telega--ignored-messages-ring msg)
   (telega-debug "IGNORED msg: %S" msg))
@@ -619,11 +569,8 @@ with `M-x telega-ignored-messages RET'."
   "Function to be used as `telega-chat-insert-message-hook'.
 Add it to `telega-chat-insert-message-hook' to ignore messages from
 blocked users."
-  (let ((sender-uid (plist-get msg :sender_user_id)))
-    (when (and (not (zerop sender-uid))
-               (plist-get
-                (telega--full-info (telega-user--get sender-uid))
-                :is_blocked))
+  (when-let ((sender (telega-msg-sender msg)))
+    (when (telega-user-blocked-p sender)
       (telega-msg-ignore msg))))
 
 
@@ -658,7 +605,9 @@ blocked users."
             (plist-get msg :id))
         (telega--unpinChatMessage chat)
 
-      (let ((notify (y-or-n-p (concat (telega-i18n "pinned_notify") "? "))))
+      (let ((notify (y-or-n-p (concat "Pin message.  "
+                                      (telega-i18n "pinned_notify")
+                                      "? "))))
         (telega--pinChatMessage msg (not notify))))))
 
 (defun telega-msg-save (msg)
@@ -760,12 +709,14 @@ blocked users."
 (defun telega-ignored-messages ()
   "Display all messages that has been ignored."
   (interactive)
-  (with-help-window " *Telegram Ignored Messages*"
+  (with-help-window "*Telegram Ignored Messages*"
     (set-buffer standard-output)
-    (dolist (msg (ring-elements telega--ignored-messages-ring))
-      (telega-button--insert 'telega-msg msg
-        :inserter #'telega-ins--message-with-chat-header)
-      (telega-ins "\n"))))
+    (let ((inhibit-read-only t))
+      (dolist (msg (ring-elements telega--ignored-messages-ring))
+        (telega-button--insert 'telega-msg msg
+          :inserter #'telega-ins--message-with-chat-header)
+        (telega-ins "\n"))
+      (goto-char (point-min)))))
 
 
 ;; Viewing messages diffs

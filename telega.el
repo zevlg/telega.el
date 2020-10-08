@@ -8,10 +8,10 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.29
-(defconst telega-version "0.6.29")
-(defconst telega-server-min-version "0.6.1")
-(defconst telega-tdlib-min-version "1.6.6")
+;; Version: 0.6.30
+(defconst telega-version "0.6.30")
+(defconst telega-server-min-version "0.6.6")
+(defconst telega-tdlib-min-version "1.6.9")
 (defconst telega-tdlib-max-version nil)
 
 ;; telega is free software: you can redistribute it and/or modify
@@ -45,6 +45,7 @@
 (require 'telega-ins)
 (require 'telega-filter)
 (require 'telega-chat)
+(require 'telega-folders)
 (require 'telega-user)
 (require 'telega-info)
 (require 'telega-media)
@@ -64,12 +65,33 @@
 (defvar telega-prefix-map
   (let ((map (make-sparse-keymap)))
     (suppress-keymap map)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega, 2)}}}
     (define-key map (kbd "t") 'telega)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-chat-with,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-chat-with, 2)}}}
     (define-key map (kbd "c") 'telega-chat-with)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-saved-messages,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-saved-messages, 2)}}}
     (define-key map (kbd "s") 'telega-saved-messages)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-switch-buffer,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-switch-buffer, 2)}}}
     (define-key map (kbd "b") 'telega-switch-buffer)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-buffer-file-send,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-buffer-file-send, 2)}}}
     (define-key map (kbd "f") 'telega-buffer-file-send)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-browse-url,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-browse-url, 2)}}}
     (define-key map (kbd "w") 'telega-browse-url)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-account-switch,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-account-switch, 2)}}}
     (define-key map (kbd "a") 'telega-account-switch)
     map)
   "Keymap for the telega commands.")
@@ -150,7 +172,7 @@ If prefix ARG is given, then will not pop to telega root buffer."
   "Kill currently running telega.
 With prefix arg FORCE quit without confirmation."
   (interactive "P")
-  (let* ((chat-count (length telega--chat-buffers))
+  (let* ((chat-count (length telega--chat-buffers-alist))
          (suffix (cond ((eq chat-count 0) "")
                        ((eq chat-count 1) (format " (and 1 chat buffer)"))
                        (t (format " (and all %d chat buffers)" chat-count)))))
@@ -215,6 +237,7 @@ Works only if current state is `authorizationStateWaitCode'."
 
   (run-hooks 'telega-ready-hook))
 
+;;;###autoload
 (defun telega-version (&optional print-p)
   "Return telega (and TDLib) version.
 If prefix arg PRINT-P is non-nil, then print version into echo
@@ -249,7 +272,7 @@ area."
       (insert "*OS*: " (or (ignore-errors (report-emacs-bug--os-description))
                            "unknown")
               "\n")
-      (insert "*Emacs*: " emacs-version " (" system-configuration ")" "\n")
+      (insert "*Emacs*: " (let (emacs-build-time) (emacs-version)) "\n")
       (insert "*Telega*: " (telega-version) "\n")
       (when-let ((melpa-pkg (ignore-errors
                               (read (find-file-noselect

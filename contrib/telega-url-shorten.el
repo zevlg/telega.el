@@ -21,7 +21,8 @@
 
 ;;; Commentary:
 
-;; ** /telega-url-shorten.el/
+;;; ellit-org:
+;; ** /telega-url-shorten.el/ -- Makes urls look nicer
 ;;
 ;; Minor mode for chatbuf to show shorter version for some URLs.  For
 ;; example, with ~telega-url-shorten-mode~ enabled in chatbuf, urls
@@ -57,7 +58,8 @@
   :prefix "telega-url-shorten"
   :group 'telega-modes)
 
-;; *** Customizable options:
+;;; ellit-org:
+;; Customizable options:
 ;;
 ;; - {{{user-option(telega-url-shorten-use-images, 2)}}}
 (defcustom telega-url-shorten-use-images telega-use-images
@@ -65,6 +67,7 @@
   :type 'boolean
   :group 'telega-url-shorten)
 
+;;; ellit-org:
 ;; - User Option: ~telega-url-shorten-regexps~
 ;;   {{{vardoc1(telega-url-shorten-regexps)}}}
 ;;
@@ -116,6 +119,7 @@
   :type 'alist
   :group 'telega-url-shorten)
 
+;;; ellit-org:
 ;; - {{{user-option(telega-url-shorten-mode-for, 2)}}}
 (defcustom telega-url-shorten-mode-for 'all
   "*Chat filter for `global-telega-url-shorten-mode'.
@@ -175,12 +179,12 @@ chats matching this chat filter."
   (if global-telega-url-shorten-mode
       (progn
         (add-hook 'telega-chat-mode-hook 'telega-url-shorten-mode--maybe)
-        (dolist (buf telega--chat-buffers)
+        (dolist (buf (telega-chat-buffers))
           (with-current-buffer buf
             (telega-url-shorten-mode--maybe 1))))
 
     (remove-hook 'telega-chat-mode-hook 'telega-url-shorten-mode--maybe)
-    (dolist (buf telega--chat-buffers)
+    (dolist (buf (telega-chat-buffers))
       (with-current-buffer buf
         (telega-url-shorten-mode -1)))))
 

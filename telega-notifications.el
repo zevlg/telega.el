@@ -19,15 +19,15 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Commentary:
-
-;; Notification pop-ups using `notifications.el' for incoming messages
-;; and calls.
-;;
-;; To enable notifications use next code in your init.el:
-;;
-;;   (telega-notifications-mode 1)
+;;; ellit-org: commentary
 ;; 
+;; =telega.el= could notify you about incoming messages and calls via
+;; D-Bus notifications, however notifications are disabled by default.
+;; To enable notifications use:
+;; 
+;; #+begin_src emacs-lisp
+;; (telega-notifications-mode 1)
+;; #+end_src
 
 ;;; Code:
 (require 'cl-lib)
@@ -213,7 +213,15 @@ FORCE is used for testing only, should not be used in real code."
                                   (telega-chat--goto-msg
                                    (telega-chat-get ,chat-id)
                                    ,msg-id 'highlight))
-                    :title (telega-chat-title chat 'with-username)
+                    ;; NOTE: outgoing messages bypassed notification
+                    ;; conditions are scheduled messages, mark them
+                    ;; with calendar symbol
+                    ;; See https://github.com/tdlib/td/issues/1196
+                    :title (concat (when (plist-get msg :is_outgoing)
+                                     "📅 ")
+                                   (if (telega-me-p chat)
+                                       (telega-i18n "notification_reminder")
+                                     (telega-chat-title chat 'with-username)))
                     :body (if (telega-chat-notification-setting chat :show_preview)
                               (telega-ins--as-string
                                (funcall telega-inserter-for-msg-notification msg))
@@ -234,20 +242,21 @@ FORCE is used for testing only, should not be used in real code."
 
 (defun telega-notifications-chat-message (msg)
   "Function intended to be added to `telega-chat-post-message-hook'."
-  ;; Do NOT notify message if:
-  ;;  - Message is outgoing
-  ;;  - Message is ignored by client side filtering (see `telega-msg-ignored-p')
-  ;;  - Chat is muted
-  ;;  - Message already has been read (see `telega-msg-seen-p')
-  ;;  - Message is older then 1 min (to avoid poping up messages on
-  ;;    laptop wakeup)
-  ;;  - Message is currently observable in chatbuf
-  ;;  - [TODO] If Emacs frame has focus and root buffer is current
-  (unless (or (plist-get msg :is_outgoing)
-              (telega-msg-ignored-p msg)
+  ;;; ellit-org: notification-conditions
+  ;; Do *NOT* pop notification if:
+  ;;  1. Message is ignored by client side filtering (see
+  ;;     ~telega-msg-ignored-p~)
+  ;;  2. Chat is muted and message does not contain unread mention
+  ;;  3. Message already has been read (see ~telega-msg-seen-p~)
+  ;;  4. Message is older then 1 min (to avoid poping up messages on
+  ;;     laptop wakeup)
+  ;;  5. Message is currently observable in chatbuf
+  ;;  6. *TODO*: If Emacs frame has focus and root buffer is current
+  (unless (or (telega-msg-ignored-p msg)
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
-      (unless (or (telega-chat-muted-p chat)
+      (unless (or (and (telega-chat-muted-p chat)
+                       (not (plist-get msg :contains_unread_mention)))
                   (telega-msg-seen-p msg chat)
                   (telega-msg-observable-p msg chat))
         (if (> telega-notifications-delay 0)

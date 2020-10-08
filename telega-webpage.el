@@ -190,13 +190,10 @@ Keymap:
   (let* ((doc (plist-get rt :document))
          (width (plist-get rt :width))
          (height (plist-get rt :height))
-         (lim-xheight (telega-chars-xheight (cdr limits)))
-         (cheight (if (> height lim-xheight)
-                      (cdr limits)
-                    (telega-chars-in-height height)))
+         (cheight (telega-media--cheight-for-limits width height limits))
          (create-image-fun
           (progn
-            (cl-assert (<= cheight (cdr limits)))
+            (cl-assert (<= cheight (nth 3 limits)))
             (lambda (_rtignored &optional _fileignored)
               ;; 1) FILE downloaded, show FILE
               ;; 2) Thumbnail is downloaded, use it
@@ -252,7 +249,7 @@ Keymap:
        (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextIcon
      (telega-ins--image-slices
-      (telega-webpage-rticon--image rt telega-photo-maxsize)))
+      (telega-webpage-rticon--image rt telega-photo-size-limits)))
     (richTextPlain
      (telega-ins (funcall (if telega-webpage-strip-nl
                               #'telega-strip-newlines
@@ -304,7 +301,7 @@ Keymap:
   "Inserter for pageBlockRelatedArticle PAGEBLOCK."
   (let* ((pb-photo (plist-get pageblock :photo))
          (photo-image (when pb-photo
-                        (telega-photo--image pb-photo (cons 10 3))))
+                        (telega-photo--image pb-photo (list 10 3 10 3))))
          (url (plist-get pageblock :url))
          (title (plist-get pageblock :title))
          (author (plist-get pageblock :author))
@@ -405,7 +402,7 @@ Keymap:
     (pageBlockPhoto
      (telega-button--insert 'telega (plist-get pb :photo)
        :inserter (lambda (photo)
-                   (telega-ins--photo photo nil telega-webpage-photo-maxsize))
+                   (telega-ins--photo photo nil telega-webpage-photo-size-limits))
        :action 'telega-photo--open)
      (telega-ins "\n")
      (let ((telega-webpage-strip-nl t))
@@ -429,7 +426,7 @@ Keymap:
                        (telega-ins "\n"))
                      (when poster-photo
                        (telega-ins--photo
-                        poster-photo nil telega-webpage-photo-maxsize))
+                        poster-photo nil telega-webpage-photo-size-limits))
                      (telega-ins-prefix "\n"
                        (telega-webpage--ins-pb
                         (plist-get pb-embedded :caption)))
