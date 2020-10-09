@@ -28,7 +28,7 @@
 (require 'telega-root)
 (require 'telega-chat)
 
-(defvar tracking-buffers)
+(defvar tracking-buffers nil)
 (declare-function telega--authorization-ready "telega")
 
 

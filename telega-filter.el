@@ -55,7 +55,7 @@
 (require 'telega-ins)
 (require 'telega-customize)
 
-(defvar tracking-buffers)
+(defvar tracking-buffers nil)
 (defvar telega-root--view-filter)
 
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
