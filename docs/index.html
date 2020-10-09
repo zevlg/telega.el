@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2020-09-22 Вт 04:06 -->
+<!-- 2020-10-09 Пт 23:38 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.6.30)</title>
@@ -343,7 +343,7 @@ Do not edit manually.  Modify <code>telega-ellit.org</code> or comments in
 </p>
 </blockquote>
 
-<div id="outline-container-orga6e8ba4" class="outline-2">
+<div id="outline-container-org6de43ca" class="outline-2">
 <h2 id="introduction">Introduction</h2>
 <div class="outline-text-2" id="text-introduction">
 <p>
@@ -363,7 +363,7 @@ Join us at <a href="https://t.me/emacs_telega">https://t.me/emacs_telega</a>
 </div>
 </div>
 
-<div id="outline-container-org0ca960f" class="outline-2">
+<div id="outline-container-orgb55befa" class="outline-2">
 <h2 id="installation">Installation</h2>
 <div class="outline-text-2" id="text-installation">
 <p>
@@ -386,7 +386,7 @@ you use GNU Guix you can skip directly to <a href="#installing-telega-and-tdlib-
 </p>
 </div>
 
-<div id="outline-container-org43fb5df" class="outline-3">
+<div id="outline-container-orgd622d9b" class="outline-3">
 <h3 id="dependencies">Dependencies</h3>
 <div class="outline-text-3" id="text-dependencies">
 <ul class="org-ul">
@@ -406,7 +406,7 @@ Arch-based).
 </p>
 </div>
 
-<div id="outline-container-org17e4cae" class="outline-4">
+<div id="outline-container-orgcc1879b" class="outline-4">
 <h4 id="macos-users">MacOS users</h4>
 <div class="outline-text-4" id="text-macos-users">
 <ol class="org-ol">
@@ -433,7 +433,7 @@ sticker support, please consider switching to emacs-plus.
 </div>
 </div>
 
-<div id="outline-container-org4fbc0f9" class="outline-4">
+<div id="outline-container-org8a6b18c" class="outline-4">
 <h4 id="linux-users">Linux users</h4>
 <div class="outline-text-4" id="text-linux-users">
 <p>
@@ -445,13 +445,13 @@ installing GNU Emacs with GTK+ support (graphical).
 </div>
 </div>
 
-<div id="outline-container-org7d80808" class="outline-4">
+<div id="outline-container-org0ebbea0" class="outline-4">
 <h4 id="building-tdlib">Building TDLib</h4>
 <div class="outline-text-4" id="text-building-tdlib">
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to "1.6.8".
+version greater or equal to "1.6.9".
 </p>
 
 <p>
@@ -519,7 +519,7 @@ don't forget to modify <code>telega-server-libs-prefix</code> before starting
 </div>
 </div>
 
-<div id="outline-container-org99f4568" class="outline-3">
+<div id="outline-container-org93f375d" class="outline-3">
 <h3 id="installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from <a href="https://guix.gnu.org/">GNU Guix</a></h3>
 <div class="outline-text-3" id="text-installing-telega-and-tdlib-from-gnu-guix">
 <p>
@@ -576,7 +576,7 @@ missing a feature, please use the protocol for the issue tracker.
 </div>
 </div>
 
-<div id="outline-container-orgf7f13bb" class="outline-3">
+<div id="outline-container-orgdda1d4a" class="outline-3">
 <h3 id="installing-telega-from-melpa">Installing telega from MELPA</h3>
 <div class="outline-text-3" id="text-installing-telega-from-melpa">
 <p>
@@ -599,7 +599,7 @@ Or you could use git repository with this melpa-style recipe for <a href="https:
 </div>
 </div>
 
-<div id="outline-container-org5c0c5c1" class="outline-3">
+<div id="outline-container-org6f5f67e" class="outline-3">
 <h3 id="installing-telega-directly-from-github">Installing telega directly from GitHub</h3>
 <div class="outline-text-3" id="text-installing-telega-directly-from-github">
 <p>
@@ -644,7 +644,7 @@ usually is <code>init.el</code>, or <code>emacs.el</code>.
 </div>
 </div>
 
-<div id="outline-container-org4de42d1" class="outline-2">
+<div id="outline-container-org6ae21c8" class="outline-2">
 <h2 id="getting-started">Getting started</h2>
 <div class="outline-text-2" id="text-getting-started">
 <p>
@@ -655,7 +655,7 @@ network.
 </div>
 </div>
 
-<div id="outline-container-org22cbada" class="outline-2">
+<div id="outline-container-orga3b4425" class="outline-2">
 <h2 id="telega-glossary">Telega glossary</h2>
 <div class="outline-text-2" id="text-telega-glossary">
 <p>
@@ -844,7 +844,7 @@ Chat with me is also known as "Saved Messages".
 </div>
 </div>
 
-<div id="outline-container-org820cad7" class="outline-2">
+<div id="outline-container-org865c6cf" class="outline-2">
 <h2 id="telega-prefix-map">Telega prefix map</h2>
 <div class="outline-text-2" id="text-telega-prefix-map">
 <p>
@@ -896,17 +896,23 @@ Otherwise for <code>image-mode</code> major-mode, send file as photo.
 If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
 </div>
 </div>
 
-<div id="outline-container-org2db0a09" class="outline-2">
+<div id="outline-container-orgcfd0ca3" class="outline-2">
 <h2 id="root-buffer">Root Buffer</h2>
 <div class="outline-text-2" id="text-root-buffer">
 <p>
@@ -957,7 +963,7 @@ Default value: <code>track</code>
 </ul>
 </div>
 
-<div id="outline-container-org1255c8f" class="outline-3">
+<div id="outline-container-org5418c34" class="outline-3">
 <h3 id="rootbuf-fast-navigation">Rootbuf fast navigation</h3>
 <div class="outline-text-3" id="text-rootbuf-fast-navigation">
 <p>
@@ -983,7 +989,7 @@ chat filter is used.
 </div>
 </div>
 
-<div id="outline-container-org4e46aa4" class="outline-3">
+<div id="outline-container-orga8ca63f" class="outline-3">
 <h3 id="rootbuf-view-switching">Rootbuf view switching</h3>
 <div class="outline-text-3" id="text-rootbuf-view-switching">
 <p>
@@ -1135,7 +1141,7 @@ function to reset root view.
 </div>
 </div>
 
-<div id="outline-container-orgc70fc7b" class="outline-2">
+<div id="outline-container-org55af0e7" class="outline-2">
 <h2 id="chat-folders">Chat Folders</h2>
 <div class="outline-text-2" id="text-chat-folders">
 <p>
@@ -1225,8 +1231,7 @@ Non-nil to prefix chat's title with chat folder.
      <code>telega-symbol-folder</code>.
 %f - Replaced with folder's title.
 %F - Replaced with folder's icon from <code>telega-folder-icon-names</code>
-     if icon is unique, or equivalent to %i%f.
-%L - replaced with chat's label. 
+     if icon is unique, or equivalent to %i%f. 
 </p>
 
 <p>
@@ -1271,7 +1276,7 @@ Default value: <code>t</code>
 </div>
 </div>
 
-<div id="outline-container-org1ab19c9" class="outline-2">
+<div id="outline-container-orgad6308a" class="outline-2">
 <h2 id="chat-filters">Chat Filters</h2>
 <div class="outline-text-2" id="text-chat-filters">
 <p>
@@ -1340,7 +1345,7 @@ For other Chat Filter bindings see below.
 </p>
 </div>
 
-<div id="outline-container-orga64aca7" class="outline-3">
+<div id="outline-container-org19e84e5" class="outline-3">
 <h3 id="list-of-chat-filters">List of chat filters</h3>
 <div class="outline-text-3" id="text-list-of-chat-filters">
 <dl class="org-dl">
@@ -1373,7 +1378,7 @@ See [BROKEN LINK: chat-types]
 
 <dt>pin, <kbd>/ P</kbd>, <kbd>/ ^</kbd> (<code>telega-filter-by-pin</code>)</dt><dd>Matches if chat is pinned.</dd>
 
-<dt>has-username</dt><dd>Matches if chat has username associated with the chat.</dd>
+<dt>(has-username [ <code>USERNAME</code> ])</dt><dd>Matches if chat has username associated with the chat.</dd>
 
 <dt>has-pinned-message</dt><dd>Matches if chat has pinned message.</dd>
 
@@ -1455,7 +1460,7 @@ If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
 <code>LIST-NAME</code> is <code>main</code> or <code>archive</code> symbol, or string naming tdlib
 chat filter aka Telegram Folder.</dd>
 
-<dt>(folder <code>FOLDER-NAME</code>), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat belongs to Chat Folder with <code>FOLDER-NAME</code>.</dd>
+<dt>(folder <code>FOLDER-NAMES</code>&#x2026;), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat belongs to some Chat Folder of <code>FOLDER-NAMES</code>.</dd>
 
 <dt>main</dt><dd>Matches if chat from "Main" chat list.</dd>
 
@@ -1467,9 +1472,17 @@ chat filter aka Telegram Folder.</dd>
 
 <dt>has-reply-markup</dt><dd>Matches <code>CHAT</code> with reply markup message.</dd>
 
-<dt>can-view-statistics</dt><dd>Matches if statistics available for <code>CHAT</code>.</dd>
+<dt>can-get-statistics</dt><dd><p>
+Matches if statistics available for <code>CHAT</code>.
+</p>
+
+<p>
+Available since TDLib 1.6.9
+</p></dd>
 
 <dt>has-linked-chat</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
+
+<dt>has-discussion-group</dt><dd>Matches if <code>CHAT</code> is a channel with a linked discussion group.</dd>
 
 <dt>has-location</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
 
@@ -1480,7 +1493,7 @@ chat filter aka Telegram Folder.</dd>
 </div>
 </div>
 
-<div id="outline-container-orgedd06f7" class="outline-3">
+<div id="outline-container-org59bd1c5" class="outline-3">
 <h3 id="customizable-options-making-use-of-chat-filters">Customizable options making use of Chat Filters</h3>
 <div class="outline-text-3" id="text-customizable-options-making-use-of-chat-filters">
 <ul class="org-ul">
@@ -1609,7 +1622,7 @@ Default value:
 </div>
 
 
-<div id="outline-container-orgb3662f5" class="outline-2">
+<div id="outline-container-orga43f566" class="outline-2">
 <h2 id="sorting-chats">Sorting chats</h2>
 <div class="outline-text-2" id="text-sorting-chats">
 <p>
@@ -1650,7 +1663,7 @@ For other sorting keybindings see below.
 </p>
 </div>
 
-<div id="outline-container-org66691be" class="outline-3">
+<div id="outline-container-org12f9e0d" class="outline-3">
 <h3 id="sorting-criteria">Sorting criteria</h3>
 <div class="outline-text-3" id="text-sorting-criteria">
 <dl class="org-dl">
@@ -1681,7 +1694,7 @@ See <a href="https://github.com/zevlg/telega.el/issues/165">https://github.com/z
 </div>
 </div>
 
-<div id="outline-container-orgfea0619" class="outline-3">
+<div id="outline-container-org4d54d03" class="outline-3">
 <h3 id="customizable-options-making-use-of-sorting-criteria">Customizable options making use of sorting criteria</h3>
 <div class="outline-text-3" id="text-customizable-options-making-use-of-sorting-criteria">
 <ul class="org-ul">
@@ -1712,7 +1725,7 @@ Default value: <code>chatbuf-recency</code>
 </div>
 </div>
 
-<div id="outline-container-orgf1e5110" class="outline-2">
+<div id="outline-container-orgdce401b" class="outline-2">
 <h2 id="chat-buffer">Chat buffer</h2>
 <div class="outline-text-2" id="text-chat-buffer">
 <p>
@@ -1739,7 +1752,7 @@ Default value: <code>70</code>
 </ul>
 </div>
 
-<div id="outline-container-org24c5342" class="outline-3">
+<div id="outline-container-orga0aeb45" class="outline-3">
 <h3 id="chatbuf-fast-navigation">Chatbuf fast navigation</h3>
 <div class="outline-text-3" id="text-chatbuf-fast-navigation">
 <p>
@@ -1764,7 +1777,7 @@ button.</dd>
 </div>
 </div>
 
-<div id="outline-container-org4cd6fa3" class="outline-3">
+<div id="outline-container-orgc1b3193" class="outline-3">
 <h3 id="sending-ordinary-messages">Sending ordinary messages</h3>
 <div class="outline-text-3" id="text-sending-ordinary-messages">
 <p>
@@ -1820,7 +1833,7 @@ Default value: <code>nil</code>
 </div>
 </div>
 
-<div id="outline-container-org25727c4" class="outline-3">
+<div id="outline-container-orgcc548a5" class="outline-3">
 <h3 id="attaching-media">Attaching media</h3>
 <div class="outline-text-3" id="text-attaching-media">
 <p>
@@ -1894,6 +1907,8 @@ Use this attachment to disable/enable notification on the receiver side.</dd>
 <dt>enable-notification</dt><dd>Toggle disable-notification chat option for the subsequent chatbuf input.
 Use this attachment to disable/enable notification on the receiver side.</dd>
 <dt>disable-webpage-preview</dt><dd>Disable webpage preview for the following text message.</dd>
+<dt>code</dt><dd>Interactively attach a code of the <code>LANGUAGE</code> into chatbuf input.
+For non-interactive code attach, use <code>telega-mnz--chatbuf-attach-internal</code>.</dd>
 </dl>
 
 <p>
@@ -1934,18 +1949,8 @@ List of markups to use on <code>C-c C-a markup RET</code>.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"markdown1"</span> .
-  #[128 <span style="font-style: italic;">"\302\300\303\301&#4;\"\"\207"</span>
-    [telega-markup-markdown-fmt
-     (1)
-     apply append]
-    6 <span style="font-style: italic;">"\n\n(fn &amp;rest ARGS2)"</span>])
- (<span style="font-style: italic;">"markdown2"</span> .
-  #[128 <span style="font-style: italic;">"\302\300\303\301&#4;\"\"\207"</span>
-    [telega-markup-markdown-fmt
-     (2)
-     apply append]
-    6 <span style="font-style: italic;">"\n\n(fn &amp;rest ARGS2)"</span>])
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"markdown1"</span> . telega-markup-markdown1-fmt)
+ (<span style="font-style: italic;">"markdown2"</span> . telega-markup-markdown2-fmt)
  (<span style="font-style: italic;">"html"</span> . telega-markup-html-fmt)
  (<span style="font-style: italic;">"org"</span> . telega-markup-org-fmt))
 </pre>
@@ -1955,7 +1960,7 @@ Default value:
 </div>
 
 
-<div id="outline-container-org9d57502" class="outline-3">
+<div id="outline-container-orgda37179" class="outline-3">
 <h3 id="replying-and-editing-messages">Replying and editing messages</h3>
 <div class="outline-text-3" id="text-replying-and-editing-messages">
 <p>
@@ -1988,7 +1993,7 @@ To edit your privously sent message press
 </div>
 </div>
 
-<div id="outline-container-org597334d" class="outline-3">
+<div id="outline-container-org56a25d7" class="outline-3">
 <h3 id="forwarding-messages">Forwarding messages</h3>
 <div class="outline-text-3" id="text-forwarding-messages">
 <p>
@@ -2016,7 +2021,7 @@ your own caption.</li>
 </div>
 </div>
 
-<div id="outline-container-orgecb596a" class="outline-3">
+<div id="outline-container-org900b967" class="outline-3">
 <h3 id="deleting-messages">Deleting messages</h3>
 <div class="outline-text-3" id="text-deleting-messages">
 <p>
@@ -2059,7 +2064,7 @@ Messages", use next:
 </div>
 </div>
 
-<div id="outline-container-org116b746" class="outline-3">
+<div id="outline-container-orge52d064" class="outline-3">
 <h3 id="scheduling-messages-and-reminders">Scheduling messages and reminders</h3>
 <div class="outline-text-3" id="text-scheduling-messages-and-reminders">
 <p>
@@ -2080,7 +2085,7 @@ messages you planned in the past.
 </div>
 </div>
 
-<div id="outline-container-orgea43ca7" class="outline-3">
+<div id="outline-container-org7e421e1" class="outline-3">
 <h3 id="completing-input">Completing input</h3>
 <div class="outline-text-3" id="text-completing-input">
 <p>
@@ -2154,7 +2159,7 @@ syntax.</dd>
 </div>
 </div>
 
-<div id="outline-container-org70154d4" class="outline-3">
+<div id="outline-container-org6fdf7aa" class="outline-3">
 <h3 id="sending-messages-via-bots">Sending messages via bots</h3>
 <div class="outline-text-3" id="text-sending-messages-via-bots">
 <p>
@@ -2212,7 +2217,7 @@ Default value: <code>t</code>
 </div>
 </div>
 
-<div id="outline-container-org5a2f2f1" class="outline-3">
+<div id="outline-container-org476bd59" class="outline-3">
 <h3 id="filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</h3>
 <div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
 <p>
@@ -2242,7 +2247,7 @@ then also search by sender.</dd>
 </div>
 </div>
 
-<div id="outline-container-org0343796" class="outline-2">
+<div id="outline-container-orgef31ff4" class="outline-2">
 <h2 id="multiple-accounts">Multiple accounts</h2>
 <div class="outline-text-2" id="text-multiple-accounts">
 <p>
@@ -2293,7 +2298,7 @@ different for different accounts.
 </div>
 </div>
 
-<div id="outline-container-org18c4f03" class="outline-2">
+<div id="outline-container-org83844ff" class="outline-2">
 <h2 id="minor-modes">Minor Modes</h2>
 <div class="outline-text-2" id="text-minor-modes">
 <p>
@@ -2301,7 +2306,7 @@ different for different accounts.
 </p>
 </div>
 
-<div id="outline-container-org07cfdd4" class="outline-3">
+<div id="outline-container-orgec2d7d0" class="outline-3">
 <h3 id="notifications-for-incoming-messages">Notifications for incoming messages</h3>
 <div class="outline-text-3" id="text-notifications-for-incoming-messages">
 <p>
@@ -2340,7 +2345,7 @@ See also <a href="#telega-alertel--notifications-using-alertel">Notifications us
 </div>
 </div>
 
-<div id="outline-container-orgff75f2b" class="outline-3">
+<div id="outline-container-org55044a6" class="outline-3">
 <h3 id="telega-mode-line-mode">telega-mode-line-mode</h3>
 <div class="outline-text-3" id="text-telega-mode-line-mode">
 <p>
@@ -2391,7 +2396,7 @@ Default value:
 </div>
 
 
-<div id="outline-container-org25a3181" class="outline-3">
+<div id="outline-container-org5a9d885" class="outline-3">
 <h3 id="telega-squash-message-mode">telega-squash-message-mode</h3>
 <div class="outline-text-3" id="text-telega-squash-message-mode">
 <p>
@@ -2460,7 +2465,7 @@ Default value:
 </div>
 
 
-<div id="outline-container-org0d57d1c" class="outline-3">
+<div id="outline-container-org28b3084" class="outline-3">
 <h3 id="telega-image-mode">telega-image-mode</h3>
 <div class="outline-text-3" id="text-telega-image-mode">
 <p>
@@ -2481,7 +2486,7 @@ To view highres image in chatbuf with <code>telega-image-mode</code> press
 </div>
 </div>
 
-<div id="outline-container-org252d387" class="outline-3">
+<div id="outline-container-orge8d7d89" class="outline-3">
 <h3 id="telega-edit-file-mode">telega-edit-file-mode</h3>
 <div class="outline-text-3" id="text-telega-edit-file-mode">
 <p>
@@ -2499,7 +2504,7 @@ with <kbd>RET</kbd>, use:
 </div>
 </div>
 
-<div id="outline-container-org75cc640" class="outline-2">
+<div id="outline-container-orgd89a3ba" class="outline-2">
 <h2 id="contributed-packages">Contributed packages</h2>
 <div class="outline-text-2" id="text-contributed-packages">
 <p>
@@ -2508,7 +2513,7 @@ project.
 </p>
 </div>
 
-<div id="outline-container-orgd91b179" class="outline-3">
+<div id="outline-container-org4035ee2" class="outline-3">
 <h3 id="ol-telegael--org-mode-links-to-telegram-chats-and-messages"><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</h3>
 <div class="outline-text-3" id="text-ol-telegael--org-mode-links-to-telegram-chats-and-messages">
 <p>
@@ -2517,7 +2522,7 @@ Installs "telegram" links to Org mode.
 </div>
 </div>
 
-<div id="outline-container-org3d07fa1" class="outline-3">
+<div id="outline-container-org5eba351" class="outline-3">
 <h3 id="telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><i>telega-status-history.el</i> &#x2013; Global minore mode to save user's online status history</h3>
 <div class="outline-text-3" id="text-telega-status-historyel--global-minore-mode-to-save-users-online-status-history">
 <p>
@@ -2526,7 +2531,7 @@ Saves online status history into <code>telega-status-history-logs-dir</code> dir
 </div>
 </div>
 
-<div id="outline-container-orgf063076" class="outline-3">
+<div id="outline-container-orgb0f632c" class="outline-3">
 <h3 id="telega-url-shortenel--makes-urls-look-nicer"><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</h3>
 <div class="outline-text-3" id="text-telega-url-shortenel--makes-urls-look-nicer">
 <p>
@@ -2612,7 +2617,7 @@ Default value: <code>all</code>
 </div>
 </div>
 
-<div id="outline-container-org896f222" class="outline-3">
+<div id="outline-container-orgb969975" class="outline-3">
 <h3 id="telega-alertel--notifications-using-alertel"><i>telega-alert.el</i> &#x2013; Notifications using <code>alert.el</code></h3>
 <div class="outline-text-3" id="text-telega-alertel--notifications-using-alertel">
 <p>
@@ -2631,7 +2636,7 @@ value.  You might use this to customize alert rules with
 </div>
 </div>
 
-<div id="outline-container-orga8adcc8" class="outline-3">
+<div id="outline-container-orgcd6d615" class="outline-3">
 <h3 id="telega-dired-dwimel--attach-files-from-dired-in-dwim-style"><i>telega-dired-dwim.el</i> &#x2013; Attach files from dired in DWIM style</h3>
 <div class="outline-text-3" id="text-telega-dired-dwimel--attach-files-from-dired-in-dwim-style">
 <p>
@@ -2646,7 +2651,7 @@ that chatbuf.
 </div>
 </div>
 
-<div id="outline-container-org9ff8d41" class="outline-3">
+<div id="outline-container-orgea4d2d8" class="outline-3">
 <h3 id="telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</h3>
 <div class="outline-text-3" id="text-telega-live-locationel--manage-live-location-in-telega-using-geoel">
 <p>
@@ -2665,31 +2670,121 @@ This mode requires the <code>geo.el</code> library, available at
 </div>
 </div>
 
-<div id="outline-container-orgb2e81db" class="outline-3">
+<div id="outline-container-org409b97f" class="outline-3">
 <h3 id="telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</h3>
 <div class="outline-text-3" id="text-telega-mnzel--display-emacs-content-inside-telega-messages">
 <p>
-To use <code>telega-mnz</code>, simply <code>(require 'telega-mnz)</code>.  There is no
-global minor mode for <code>telega-mnz</code>, so you can't disable it after
-<code>(require 'telega-mnz)</code>.
+Global minor mode to highlight code blocks inside messages.
 </p>
 
 <p>
-You can attach code using <kbd>M-x telega-mnz-attach-code RET</kbd>
-or <kbd>M-x telega-mnz-send-code RET</kbd>.
+Can be enabled globally in all chats matching
+<code>telega-mnz-mode-for</code> (see below) chat filter with
+<code>(global-telega-mnz-mode 1)</code> or by adding:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-mnz</span>)
+(add-hook 'telega-load-hook 'global-telega-mnz-mode)
+</pre>
+</div>
+
+<p>
+Optionally depends on <code>language-detection</code> Emacs package.  If
+<code>language-detection</code> is available, then laguage could be detected
+automatically for code blocks without language explicitly
+specified.  Install <code>language-detection</code> with <kbd>M-x package-install RET language-detection RET</kbd>
 </p>
 
 <p>
-<code>telega-mnz</code> installs <code>code</code> [BROKEN LINK: chatbuf_attaching_media], use it with <kbd>C-c C-a code RET</kbd> in the
+<code>telega-mnz</code> installs
+ (<code>telega-mnz-send-region-as-code</code>)
+binding into <a href="#telega-prefix-map">telega prefix map</a> to attach
+region as code to a chatbuf.
+</p>
+
+<p>
+Also, <code>telega-mnz</code> installs <code>code</code> [BROKEN LINK: attaching_media], use it with <kbd>C-c C-a code RET</kbd> in
 chatbuf.
 </p>
+
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-mnz-mode-for</code> 
+</p>
+
+<p>
+Chat filter for <code>global-telega-mnz-mode</code>.
+Global mnz mode enables <code>telega-mnz-mode</code> only for chats matching
+this chat filter. 
+</p>
+
+<p>
+Default value: <code>all</code>
+</p></li>
+
+<li><p>
+User Option: <code>telega-mnz-keep-pre-face</code> 
+</p>
+
+<p>
+Non-nil to keep <code>telega-entity-type-pre</code> face on the highlighted text. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+
+<li><p>
+User Option: <code>telega-mnz-edit-code-block</code> 
+</p>
+
+<p>
+How to edit message containing mnz code blocks. 
+</p>
+
+<p>
+Default value: <code>query</code>
+</p></li>
+
+<li><p>
+User Option: <code>telega-mnz-use-language-detection</code> 
+</p>
+
+<p>
+Non-nil to use <code>language-detection</code> for blocks without specified language.
+Could be also a number, meaning that language detection is done
+only for code larger then this number of chars. 
+</p>
+
+<p>
+Default value: <code>50</code>
+</p></li>
+
+<li><p>
+User Option: <code>telega-mnz-edit-display-buffer-action</code> 
+</p>
+
+<p>
+Action value when poping to code edit buffer.
+See docstring for <code>display-buffer</code> for the value meaning. 
+</p>
+
+<p>
+Default value: <code>((display-buffer-below-selected))</code>
+</p></li>
+</ul>
 </div>
 </div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-09-22 Вт 04:06</p>
+<p class="date">Created: 2020-10-09 Пт 23:38</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

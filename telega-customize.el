@@ -1103,7 +1103,7 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
-(defcustom telega-photo-size-limits '(10 6 55 10)
+(defcustom telega-photo-size-limits '(10 6 55 12)
   "*Limits image size for the photos.
 Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
   :package-version '(telega . "0.6.30")

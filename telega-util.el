@@ -463,6 +463,18 @@ RSTART and REND specifies STR region to work on."
          (insert str)
          (count-matches "[\U00010000-\U0010FFFF]" (or rstart 0) rend)))))
 
+(defun telega-fmt-text (text &optional entity-type)
+  "Create formattedText from TEST, marking whole TEXT with ENTITY-TYPE."
+  (list :@type "formattedText"
+        :text text
+        :entities (if entity-type
+                      (vector
+                       (list :@type "textEntity"
+                             :offset 0
+                             :length (telega-string-fmt-text-length text)
+                             :type entity-type))
+                    [])))
+
 (defun telega-string-as-markup (str markup-name markup-func)
   "From STR create string with markup named MARKUP-NAME.
 MARKUP-FUNC is function taking string and returning formattedText."
@@ -495,8 +507,7 @@ MARKUP-FUNC is function taking string and returning formattedText."
         (list :@type "textParseModeMarkdown"
               :version markdown-version)))
 
-    (list :@type "formattedText"
-          :text (substring-no-properties str) :entities [])))
+    (telega-fmt-text (substring-no-properties str))))
 
 (defun telega-markup-markdown1-fmt (str)
   (telega-markup-markdown-fmt 1 str))

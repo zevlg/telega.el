@@ -480,10 +480,12 @@ Telega prefix map bindings:
      is used as ~FILE~.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1271,7 +1273,8 @@ Attachment types to attach with
 - enable-notification :: Toggle disable-notification chat option for the subsequent chatbuf input.
      Use this attachment to disable/enable notification on the receiver side.
 - disable-webpage-preview :: Disable webpage preview for the following text message.
-- code :: Attach a code block into chatbuf input.
+- code :: Interactively attach a code of the ~LANGUAGE~ into chatbuf input.
+     For non-interactive code attach, use ~telega-mnz--chatbuf-attach-internal~.
 
 Special attachment types are =disable-webpage-preview=, =scheduled=,
 =disable-notification= or =enable-notification=.  They do not attach
@@ -1808,12 +1811,16 @@ https://git.sr.ht/~oldosfan/geo-xdg.el
 :CUSTOM_ID: telega-mnzel--display-emacs-content-inside-telega-messages
 :END:
 
-To use =telega-mnz=, simply ~(require 'telega-mnz)~.  There is no
-global minor mode for =telega-mnz=, so you can't disable it after
-~(require 'telega-mnz)~.
+Global minor mode to highlight code blocks inside messages.
 
-You can attach code using @@html:<kbd>@@M-x telega-mnz-attach-code RET@@html:</kbd>@@
-or @@html:<kbd>@@M-x telega-mnz-send-code RET@@html:</kbd>@@.
+Can be enabled globally in all chats matching
+~telega-mnz-mode-for~ (see below) chat filter with
+~(global-telega-mnz-mode 1)~ or by adding:
+
+#+begin_src emacs-lisp
+  (require 'telega-mnz)
+  (add-hook 'telega-load-hook 'global-telega-mnz-mode)
+#+end_src
 
 Optionally depends on =language-detection= Emacs package.  If
 =language-detection= is available, then laguage could be detected
@@ -1834,7 +1841,7 @@ Customizable options:
 - User Option: ~telega-mnz-mode-for~ 
 
   Chat filter for ~global-telega-mnz-mode~.
-  Global mnz mode enabled ~telega-mnz-mode~ only for chats matching
+  Global mnz mode enables ~telega-mnz-mode~ only for chats matching
   this chat filter. 
 
   Default value: ~all~
@@ -1853,6 +1860,15 @@ Customizable options:
 
 - User Option: ~telega-mnz-use-language-detection~ 
 
-  Non-nil to use ~language-detection~ for blocks without specified language. 
+  Non-nil to use ~language-detection~ for blocks without specified language.
+  Could be also a number, meaning that language detection is done
+  only for code larger then this number of chars. 
 
-  Default value: ~t~
+  Default value: ~50~
+
+- User Option: ~telega-mnz-edit-display-buffer-action~ 
+
+  Action value when poping to code edit buffer.
+  See docstring for ~display-buffer~ for the value meaning. 
+
+  Default value: ~((display-buffer-below-selected))~
