@@ -48,7 +48,7 @@
 ;; binding into [[#telega-prefix-map][telega prefix map]] to attach
 ;; region as code to a chatbuf.
 ;;
-;; Also, =telega-mnz= installs ~code~ [[#attaching_media][media
+;; Also, =telega-mnz= installs ~code~ [[#attaching-media][media
 ;; attachment type]], use it with {{{kbd(C-c C-a code RET)}}} in
 ;; chatbuf.
 
