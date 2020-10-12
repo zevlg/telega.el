@@ -364,7 +364,7 @@ See `puny-decode-domain' for details."
   (replace-regexp-in-string
    (eval-when-compile (rx string-start
                           (? "http" (? "s") "://")
-                          (group (1+ (not "/")))))
+                          (group (1+ (regexp "[^/]")))))
    (lambda (_)
      (save-match-data
        (puny-decode-domain (match-string 1 url))))

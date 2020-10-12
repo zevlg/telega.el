@@ -238,11 +238,11 @@ Works only if current state is `authorizationStateWaitCode'."
   (run-hooks 'telega-ready-hook))
 
 ;;;###autoload
-(defun telega-version (&optional print-p)
+(defun telega-version (&optional insert-p)
   "Return telega (and TDLib) version.
-If prefix arg PRINT-P is non-nil, then print version into echo
-area."
-  (interactive "p")
+If `\\[universal-argument] is specified, then insert the version
+string at point."
+  (interactive "P")
   (let* ((tdlib-version (plist-get telega--options :version))
          (version (concat "telega v"
                           telega-version
@@ -254,9 +254,11 @@ area."
                           " (telega-server v"
                           (telega-server-version)
                           ")")))
-    (if print-p
-        (message version)
-      version)))
+    (if insert-p
+        (insert version)
+      (if (called-interactively-p 'interactive)
+          (message "%s" version)
+        version))))
 
 ;;;###autoload
 (defun telega-report-bug ()
