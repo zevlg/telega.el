@@ -620,7 +620,13 @@ If `\\[universal-argument]' is specified, then negate whole active filter."
 ;; - (type ~CHAT-TYPE-LIST~), {{{where-is(telega-filter-by-type,telega-root-mode-map)}}} ::
 ;;   {{{fundoc(telega--filter-type, 2)}}}
 ;;
-;;   See [[#chat-types][Chat types]]
+;;   Every chat has a type.  Type is one of:
+;;   - private :: Private chat with telegram user
+;;   - secret :: Secret chat with telegram user
+;;   - bot :: Chat with telegram bot
+;;   - basicgroup :: Small chat group, could be upgraded to supergroup
+;;   - supergroup :: Chat group with all the chat possibilities
+;;   - channel :: Supergroup with unlimited members, where only admins can post messages
 (define-telega-filter type (chat &rest chat-type-list)
   "Matches if chat type is one of CHAT-TYPE-LIST."
   (memq (telega-chat--type chat) chat-type-list))

@@ -464,7 +464,7 @@ chats matching this chat filter."
 ;; with {{{kbd(RET)}}}, use:
 ;;
 ;; #+BEGIN_SRC emacs-lisp
-;;   (add-hook 'telega-find-file-hook 'telega-edit-file-mode)
+;;   (add-hook 'telega-open-file-hook 'telega-edit-file-mode)
 ;; #+END_SRC
 (declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username-delim))
 (declare-function telega-chatbuf--gen-input-file "telega-chat" (filename &optional file-type preview-p upload-callback))

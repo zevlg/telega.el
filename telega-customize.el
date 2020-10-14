@@ -356,6 +356,16 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'list
   :group 'telega)
 
+(defcustom telega-open-file-function #'find-file
+  "Function to use to open files associated with messages.
+Called with single argument - filename to open.
+Could be used to open files in external programs.
+Set it to `org-open-file' to use Org mode to open files."
+  :package-version '(telega . "0.6.31")
+  :type 'function
+  :options '(org-open-file)
+  :group 'telega)
+
 ;; Locations
 (defcustom telega-location-url-format
   "http://maps.google.com/?q=%N,%E&ll=%N,%E&z=15"
@@ -1900,8 +1910,11 @@ To find out call state examine the `:state' value."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-find-file-hook nil
-  "Hook called when `telega-find-file' is called."
+(defcustom telega-open-file-hook nil
+  "Hook called when `telega-open-file' is called.
+Hook is called only if file has been opened inside Emacs and has
+corresponding buffer."
+  :package-version '(telega . "0.6.31")
   :type 'hook
   :group 'telega-hooks)
 

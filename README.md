@@ -1,4 +1,4 @@
-# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.6.6-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.6.28-blue)](https://guix.gnu.org/packages/emacs-telega-0.6.28-0.e539967/)
+# ![logo](etc/telega-logo64.png) telega.el [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.6.9-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.6.28-blue)](https://guix.gnu.org/packages/emacs-telega-0.6.28-0.e539967/)
 
 `telega.el` is full featured unofficial client for
 [Telegram](https://telegram.org "Telegram") platform for [GNU
@@ -23,7 +23,7 @@ In some random order:
 - [x] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
-- [x] VoIP calls, including D-Bus call notification
+- [ ] VoIP calls, including D-Bus call notification
 - [x] Downloading files from the cloud
 - [x] Uploading files/media (also pasting images from clipboard) to the cloud
 - [x] Display chat actions, such as "@user is typing..."
@@ -57,12 +57,14 @@ In some random order:
 ## Unique features
 
 - [x] Expressive `ibuffer`-like chats filtering
-- [x] Powerful [chats sorting](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#sorting-chats)
+- [x] Powerful [chats sorting](https://zevlg.github.io/telega.el/#sorting-chats)
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
-- [x] Labeled chats, you can assign custom label to chat
 - [x] Client side messages filtering
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
-- [x] [Messages squashing](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#telega-squash-message-mode) minor mode.
+- [x] [Messages squashing](https://zevlg.github.io/telega.el/#telega-squash-message-mode) minor mode.
+- [x] [Highlight code blocks](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
+
+And much more.
 
 # Screenshots
 
@@ -78,307 +80,10 @@ Attaching funny cat sticker:
 
 ![screen12](https://zevlg.github.io/telega/screen-12.png)
 
-# Installation
+# Starting with telega.el
 
-`telega.el` depends on the `visual-fill-column` and `rainbow-identifiers` packages.
-This dependency automatically installs if you install telega from MELPA
-or GNU Guix.  Otherwise will you need to install these packages by hand.
-
-`telega.el` is built on top of the official library provided by
-Telegram [TDLib 1.6.6](https://core.telegram.org/tdlib "tdlib").
-Most distributions do not provide this package in their repositories,
-in which case you will have to install it manually by following the
-instructions.
-
-[GNU Guix](https://guix.gnu.org/), however, does have both `telega.el`
-and `TDLib` packaged.  If you use GNU Guix you can skip directly to
-[Installing from GNU Guix](#installing-telegael-and-tdlib-from-gnu-guix).
-
-## Dependencies
-
-   * `GNU Emacs` (at least 26.1 is required)
-   * `GNU make`
-   * `GNU gperf`
-   * `CMake`
-   * `Python` (for testing the server)
-   * `GNU Guix` _(optional, if using the Guix installation method.)_
-
-`make` is found in most of the modern machines. The other packages can
-be download with the system package manager (such as `apt` for
-Debian-based distributions, `dnf` for Fedora or `pacman` for
-Arch-based).
-
-### MacOS users
-
-1. If you are using [Emacs For Mac OS X](https://emacsformacosx.com/),
-   or you installed Emacs by running `brew cask install emacs`, your
-   Emacs lacks svg support, so you cannot use telega. Please switch to
-   [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus).
-
-2. If you are using
-   [Emacs-mac](https://bitbucket.org/mituharu/emacs-mac/), or you
-   installed Emacs by running `brew install emacs-mac` or `brew cask
-   install emacs-mac`, your Emacs has bug dealing with complex svg,
-   which leads to Emacs hangups.  Compiling Emacs with rsvg support by running
-   `brew install emacs-mac --with-rsvg` will fix this problem.
-
-   NOTE: Telega cannot display stickers correctly with emacs-mac, even when 
-   emacs-mac is compiled with rsvg support.  If you want sticker support, please 
-   consider switching to emacs-plus.
-
-3. [emacs-plus](https://github.com/d12frosted/homebrew-emacs-plus) is
-   the best choice to run telega.
-
-### Linux users
-
-`telega.el` requires at least GNU Emacs 26.1 with `imagemagick` and
-`svg` support. Most distributions provide GNU Emacs compiled with these
-dependencies when installing GNU Emacs with GTK+ support (graphical).
-
-### Building tdlib
-
-[TDLib](https://core.telegram.org/tdlib "tdlib") is the library for
-building Telegram clients. It requires a large amount of memory to be
-built.  Make sure you are using TDLib version 1.6.6.
-
-On MacOS you can install a pre-built `tdlib` package using homebrew from
-[brew.sh](https://brew.sh).  Just run:
-```console
-$ brew install tdlib
-```
-
-On Linux, you will need to build `tdlib` from source.
-
-To get the source:
-```console
-$ git clone https://github.com/tdlib/td.git
-```
-
-Move into the folder with `cd ./td` or wherever you
-checked out `td`.
-
-Prepare a folder for building the library:
-```console
-$ mkdir build && cd build && cmake ../
-```
-
-Build the sources:
-```console
-$ make -jN
-```
-
-with `N` number of cores that should be used for the compilation (the optimal
-value is the number of physical cores on the machine).
-
-Finally, to install the library system-wide:
-```console
-$ sudo make install
-```
-
-It will install headers to `/usr/local/include` and library itself
-into `/usr/local/lib`.  These paths are hardcoded in `telega.el`.
-
-### Building libtgvoip
-
-VoIP support in `telega.el` is optional, if you don't need VoIP, just
-ignore this section.
-
-[libtgvoip](https://github.com/zevlg/libtgvoip "libtgvoip") is the
-VoIP library for telegram clients.  This is the fork from
-[original](https://github.com/grishka/libtgvoip) library with patches
-needed by `telega.el`.
-
-To get the source:
-```console
-$ git clone https://github.com/zevlg/libtgvoip.git
-```
-
-Move into the folder with `cd ./libtgvoip` or wherever
-you checked out `libtgvoip`.
-
-Prepare a folder for building the library:
-```console
-$ autoreconf --force --install && ./configure && make
-```
-
-Install the library system-wide:
-```console
-$ sudo make install
-```
-
-It will also install headers to `/usr/local/include` and library into
-`/usr/local/lib`.
-
-## Installing telega.el from MELPA
-
-`telega.el` is available from [MELPA](https://melpa.org), so you can install
-it from there as usual package.  This is a preferable method, because it
-will automatically handle all dependencies.  After installing `telega.el` from 
-MELPA you can skip to [Fire up `telega.el`](#fire-up-telegael) section.
-
-Or you could use git repository with this melpa-style recipe:
-
-```lisp
-(:fetcher github
- :repo "zevlg/telega.el"
- :branch "master"
- :files (:defaults "etc" "server" "Makefile"))
-```
-
-## Building telega-server
-
-Now that the `TDLib` library is set-up, it is time to install
-`telega.el`. The first step consists in building `telega-server`,
-which is a C interface to the `TDLib`, or just let `telega` ask you at
-the first start and do the job (dependencies for compilation will need
-to be installed ahead-of-time).
-
-To get the source:
-
-```console
-$ git clone https://github.com/zevlg/telega.el
-```
-
-Moving into the folder with `cd telega.el`, it is possible to build
-the `telega-server` executable and move into the `$HOME/.telega` with:
-```console
-$ make && make install && make test
-```
-
-If you want VoIP support in `telega.el` and `libtgvoip` is installed,
-then use this instead:
-```console
-$ make WITH_VOIP=t && make WITH_VOIP=t install && make WITH_VOIP=t test
-```
-
-This command does not require superuser privileges.
-
-Start with `M-x telega RET` and follow instructions
-
-## Installing telega.el
-
-Now it is time to install `telega.el` on GNU Emacs.
-
-This can be done with `use-package`:
-
-```elisp
-(use-package telega
-  :load-path  "~/telega.el"
-  :commands (telega)
-  :defer t)
-```
-
-Or with:
-```elisp
-(add-to-list 'load-path "~/telega.el")
-(require 'telega)
-```
-
-The code should be put in the configuration file for Emacs, which
-usually is `init.el`, or `emacs.el`.
-
-## Installing telega.el and tdlib from [GNU Guix](https://guix.gnu.org/)
-
-`telega.el` and `tdlib` are both available in GNU Guix. If you have a resource
-constrained machine or would simply prefer to bypass compiling `tdlib` from
-source, this is a good option!
-
-On Guix System:
-```console
-$ guix package -i emacs-telega
-```
-
-On "Foreign" Distributions:
-- Use the shell installer script, or install GNU Guix manually on-top of your
-current distribution. [Installation Documentation](https://guix.gnu.org/manual/en/html_node/Installation.html#Installation)
-
-- Enable fetching substitutes from the build server cache if you do not
-wish to build from source. [Substitute Server Authorization](https://guix.gnu.org/manual/en/html_node/Substitute-Server-Authorization.html#Substitute-Server-Authorization)
-
-- And finally, run:
-```console
-$ guix package -i emacs emacs-telega
-```
-
-You will need a version of emacs installed from GNU Guix because it is
-modified with an autoloader to identify and automatically use emacs
-packages installed from Guix.
-
-Consult the official GNU Guix documentation for further questions. Issues related
-to the GUIX package must be accompanied by the [GUIX label](https://github.com/zevlg/telega.el/labels/guix)
-in the issue tracker.
-
-Do note that since `telega` is actively maintained installations from Guix might
-at times lag behind master, but regular attempts to keep it updated will occur.
-If the version in Guix is too outdated or is missing a feature, please use the
-protocol for the issue tracker.
-
-## Fire up `telega.el`
-
-`telega.el` can now be started with `M-x telega RET`. The first time
-it will ask for the phone number you have associated with the Telegram
-network. 
-
-# Minor modes
-
-See [Minor Modes](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#minor-modes) section in [telega manual](https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org).
-
-## telega-notifications-mode
-
-`telega.el` ships with support for D-Bus notifications, but they are
-disabled by default.  To enable notifications add next code to your
-`init.el`:
-
-```elisp
-(telega-notifications-mode 1)
-```
-
-# Enabling emoji completions in chat buffer
-
-Emoji completions with `:<EMOJI-NAME>:` syntax, uses nice
-[company-mode](http://company-mode.github.io).  It provides
-`telega-company-emoji` company backend.  So you need to add it to
-`company-backends`, maybe along with other backends in
-`telega-chat-mode-hook`, for example:
-
-```elisp
-(add-hook 'telega-chat-mode-hook
-          (lambda ()
-            (set (make-local-variable 'company-backends)
-                 (append '(telega-company-emoji
-                           telega-company-username
-                           telega-company-hashtag)
-                         (when (telega-chat-bot-p telega-chatbuf--chat)
-                           '(telega-company-botcmd))))
-            (company-mode 1)))
-```
-
-# Configuring client side messages filtering
-
-In official telegram clients all messages in group chats are displayed
-even if message has been sent by blocked user.  `telega.el` has client
-side message filtering feature implemented.  Ignoring messages can be
-done via installing special functions into
-`telega-chat-insert-message-hook` which could mark message as ignored,
-for example, to ignore messages from particular user with id=12345 you
-could add next code:
-
-```elisp
-(defun my-telega-ignore-12345-user (msg &rest notused)
-  (when (= (plist-get msg :sender_user_id) 12345)
-    (telega-msg-ignore msg)))
-
-(add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
-```
-
-Or to ignore messages from blocked users, just add:
-
-```elisp
-(add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
-```
-
-To view recent messages that has been ignored use
-`M-x telega-ignored-messages RET` command.
+See [Telega Manual](https://zevlg.github.io/telega.el/) for
+comprehensive documentation.
 
 # How to contribute
 
@@ -488,7 +193,7 @@ to modify it.
 Tracking is done only for opened chats, i.e. chats having
 corresponding chat buffer.
 
-Its value is a (Chat Filter)[https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org#chat-filters].
+Its value is a [Chat Filter](https://zevlg.github.io/telega.el/#chat-filters).
 
 For example, to enable tracking for chats with enabled notifications or for chats where you have unread mention, use:
 
@@ -503,25 +208,4 @@ emacs-nox)?
 
 **Q**: Is it possible to use markup in outgoing messages?
 
-**A**: Yes, use `C-u RET` to send message with markup, also see
-`telega-chat-use-markdown-version`.  Supported markup:
-
-    1. *bold text*
-    2. _italic text_
-    2.1) __underline text__    (only for v2)
-    2.2) ~strike through text~ (only for v2)
-    3. `inlined code`
-    4. ```<language-name-not-displayed>
-       first line of multiline preformatted code
-       second line
-       last line```
-    5. [link text](http://actual.url)
-    6. [username](tg://user?id=<USER-ID>)"
-	
-
-*Note: Language syntax highlighting requires the contrib telega-mnz 
-module*
-
-**Q**: Is there manual for `telega.el`?
-
-**A**: We started to write https://github.com/zevlg/telega.el/blob/master/docs/telega-manual.org
+**A**: Yes, use `C-u RET` to send message with markup.  See [Sending ordinary messages](https://zevlg.github.io/telega.el/#sending-ordinary-messages) for details

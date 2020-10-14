@@ -77,6 +77,9 @@
 (telega-obsolete--variable 'telega-webpage-photo-maxsize
                            'telega-webpage-photo-size-limits "0.6.30")
 
+(telega-obsolete--variable 'telega-find-file-hook
+                           'telega-open-file-hook "0.6.31")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

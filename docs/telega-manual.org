@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.6.30)
+#+TITLE: Telega Manual (v0.6.31)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -52,6 +52,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#completing-input][Completing input]]
     - [[#sending-messages-via-bots][Sending messages via bots]]
     - [[#filtering-chat-messages-aka-shared-media][Filtering chat messages a.k.a. Shared Media]]
+    - [[#opening-files-using-external-programs][Opening files using external programs]]
   - [[#multiple-accounts][Multiple accounts]]
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
@@ -480,12 +481,10 @@ Telega prefix map bindings:
      is used as ~FILE~.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -823,7 +822,13 @@ For other Chat Filter bindings see below.
 - (type ~CHAT-TYPE-LIST~), @@html:<kbd>@@/ t@@html:</kbd>@@ (~telega-filter-by-type~) :: 
      Matches if chat type is one of ~CHAT-TYPE-LIST~.
 
-     See [[#chat-types][Chat types]]
+     Every chat has a type.  Type is one of:
+  - private :: Private chat with telegram user
+  - secret :: Secret chat with telegram user
+  - bot :: Chat with telegram bot
+  - basicgroup :: Small chat group, could be upgraded to supergroup
+  - supergroup :: Chat group with all the chat possibilities
+  - channel :: Supergroup with unlimited members, where only admins can post messages
 
 - (name ~REGEXP~) :: 
      Matches if chat's title matches ~REGEXP~.
@@ -1507,6 +1512,34 @@ Chatbuf uses next bindings for message filtering:
      If non-nil ~BY-SENDER-P~ is specified by @@html:<kbd>@@C-u@@html:</kbd>@@,
      then also search by sender.
 
+** Opening files using external programs
+:PROPERTIES:
+:CUSTOM_ID: opening-files-using-external-programs
+:END:
+
+Some messages in Telegram has attached file in the message.  By
+default =telega= opens that files inside Emacs using ~find-file~
+function.  Sometimes that is not desirable behaviour and you might
+want to open some files in external application.  You can use
+~org-open-file~ function for this.  Behaviour is controlled by:
+- User Option: ~telega-open-file-function~ 
+
+  Function to use to open files associated with messages.
+  Called with single argument - filename to open.
+  Could be used to open files in external programs.
+  Set it to ~org-open-file~ to use Org mode to open files. 
+
+  Default value: ~find-file~
+
+Setup to open some files in external applications might look like:
+#+begin_src emacslisp
+  ;; ("\\.pdf\\'" . default) is already member in `org-file-apps'
+  ;; Use "xdg-open" to open files by default
+  (setcdr (assq t org-file-apps-gnu) 'browse-url-xdg-open)
+
+  (setq telega-open-file-function 'org-open-file)
+#+end_src
+
 * Multiple accounts
 :PROPERTIES:
 :CUSTOM_ID: multiple-accounts
@@ -1686,7 +1719,7 @@ To enable ~telega-edit-file-mode~ for files opened from message
 with @@html:<kbd>@@RET@@html:</kbd>@@, use:
 
 #+begin_src emacs-lisp
-  (add-hook 'telega-find-file-hook 'telega-edit-file-mode)
+  (add-hook 'telega-open-file-hook 'telega-edit-file-mode)
 #+end_src
 
 * Contributed packages

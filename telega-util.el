@@ -340,7 +340,7 @@ N can't be 0."
       (url
        (telega-browse-url (cdr link)))
       (file
-       (telega-find-file (cdr link)))
+       (telega-open-file (cdr link)))
       )))
 
 (defun telega-escape-underscores (text)
@@ -1222,12 +1222,23 @@ Return timestamp as unix time."
     ;; see https://t.me/emacs_telega/14017
     (round (time-to-seconds (apply #'encode-time (decode-time date-time))))))
 
-(defun telega-find-file (filename &optional msg)
-  "Find file for telega use."
-  (find-file filename)
-  ;; NOTE: we use `telega--help-win-param' as backref to the message
-  (setq telega--help-win-param msg)
-  (run-hooks 'telega-find-file-hook))
+(defun telega-open-file (filename &optional msg)
+  "Open FILENAME inside telega.
+MSG is the message associated with FILENAME."
+  (let ((saved-buffer (current-buffer)))
+    (funcall telega-open-file-function filename)
+
+    (unless (eq saved-buffer (current-buffer))
+      ;; NOTE: FILENAME has been opened inside Emacs, we use
+      ;; `telega--help-win-param' as backref to the message
+      (setq telega--help-win-param msg)
+      (run-hooks 'telega-open-file-hook))
+
+    (when (eq telega-open-file-function
+              (default-value 'telega-open-file-function))
+      (telega-help-message 'open-file
+          "To open files in external apps see https://zevlg.github.io/telega.el/#opening-files-using-external-programs")
+      )))
 
 (defun telega-color-name-as-hex-2digits (color)
   "Convert COLOR to #rrggbb form."

@@ -665,6 +665,24 @@ Available message filters are: {{{eval((mapconcat (lambda (mf) (concat
 Chatbuf uses next bindings for message filtering:
 #+ELLIT-INCLUDE: ../telega-chat.el :label chatbuf-filtering-bindings
 
+** Opening files using external programs
+
+Some messages in Telegram has attached file in the message.  By
+default =telega= opens that files inside Emacs using ~find-file~
+function.  Sometimes that is not desirable behaviour and you might
+want to open some files in external application.  You can use
+~org-open-file~ function for this.  Behaviour is controlled by:
+- {{{user-option(telega-open-file-function, 2)}}}
+
+Setup to open some files in external applications might look like:
+#+begin_src emacslisp
+;; ("\\.pdf\\'" . default) is already member in `org-file-apps'
+;; Use "xdg-open" to open files by default
+(setcdr (assq t org-file-apps-gnu) 'browse-url-xdg-open)
+
+(setq telega-open-file-function 'org-open-file)
+#+end_src
+
 * Multiple accounts
 
 =telega= support multiple accounts, however only single account can be

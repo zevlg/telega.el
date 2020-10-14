@@ -2046,6 +2046,7 @@ Try to keep point at its position."
       ;; NOTE: we keep window position as is, node redisplay might
       ;; change it or shift.
       (when chat-win
+        (set-window-point chat-win (point))
         (set-window-start chat-win (- (point) wstart-off) 'noforce))
       )))
 

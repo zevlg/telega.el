@@ -370,7 +370,7 @@ non-nil."
       (lambda (file)
         (telega-msg-redisplay msg)
         (when (telega-file--downloaded-p file)
-          (telega-find-file (telega--tl-get file :local :path) msg))))))
+          (telega-open-file (telega--tl-get file :local :path) msg))))))
 
 (defun telega-msg-open-location (msg)
   "Open content for location message MSG."
