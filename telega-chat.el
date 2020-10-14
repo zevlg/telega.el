@@ -730,9 +730,11 @@ Specify non-nil BAN to ban this user in this CHAT."
   (interactive (list (telega-chat-at (point))))
   (with-telega-help-win "*Telegram Chat Info*"
     (setq telega--chat chat)
+    (telega-describe-chat--inserter chat)
+
     (setq telega--help-win-param chat)
     (setq telega--help-win-inserter #'telega-describe-chat--inserter)
-    (telega-describe-chat--inserter chat)))
+    ))
 
 (defun telega-describe-chat--maybe-redisplay (chat)
   "If CHAT info buffer exists and visible, then redisplay it."
@@ -2792,19 +2794,16 @@ If `\\[universal-argument]' is given, then attach clipboard as document."
          (temporary-file-directory telega-temp-dir)
          (tmpfile (telega-temp-name "clipboard" ".png"))
          (coding-system-for-write 'binary))
-    (pcase system-type
-      ("darwin"
-       ;; NOTE: On MacOS, try extracting clipboard using pngpaste
-       (unless (executable-find "pngpaste")
-         (error "Please install pngpaste to paste images"))
-
-       (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
-         (error "No image in CLIPBOARD")))
-
-      (_
-       (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
-                         (error "No image in CLIPBOARD"))
-                     nil tmpfile nil 'quiet)))
+    (if (eq system-type 'darwin)
+        (progn
+          ;; NOTE: On MacOS, try extracting clipboard using pngpaste
+          (unless (executable-find "pngpaste")
+            (error "Please install pngpaste to paste images"))
+          (unless (= 0 (telega-screenshot-with-pngpaste tmpfile))
+            (error "No image in CLIPBOARD")))
+      (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
+                        (error "No image in CLIPBOARD"))
+                    nil tmpfile nil 'quiet))
     (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)

@@ -214,9 +214,15 @@ If AS-NUMBER is specified, return online status as number:
   "Show info about USER."
   (interactive (list (telega-user-at (point))))
   (with-telega-help-win "*Telega User*"
+    ;; NOTE: `getUserFullInfo' might generate `updateUserFullInfo'
+    ;; event causing redisplay *Telega User*, so we set
+    ;; `telega--help-win-inserter' *after* possible call to
+    ;; `getUserFullInfo' to avoid double redisplay
+    (telega-describe-user--inserter (plist-get user :id))
+
     (setq telega--help-win-param (plist-get user :id))
     (setq telega--help-win-inserter #'telega-describe-user--inserter)
-    (telega-describe-user--inserter (plist-get user :id))))
+    ))
 
 (defun telega-describe-user--maybe-redisplay (user-id)
   "Possible redisplay \\*Telega User\\* buffer for the USER-ID."
