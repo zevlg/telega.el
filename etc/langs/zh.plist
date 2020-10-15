@@ -1,0 +1,398 @@
+(("lng_saved_messages"
+  :value "收藏夹")
+ ("lng_profile_settings_section"
+  :value "设置")
+ ("lng_profile_send_message"
+  :value "发送消息")
+ ("lng_profile_share_contact"
+  :value "分享联系人")
+ ("lng_profile_unblock_user"
+  :value "取消封禁")
+ ("lng_profile_block_user"
+  :value "封禁用户")
+ ("lng_profile_username"
+  :value "用户名:")
+ ("lng_profile_mobile_number"
+  :value "手机号:")
+ ("lng_profile_bio"
+  :value "个人简介:")
+ ("lng_settings_about_bio"
+  :value "您可以在此输入任何有关您个人的信息，诸如：年龄，工作或居住城市。
+示例：23岁，来自旧金山的设计师。")
+ ("lng_profile_common_groups"
+  :zero_value "没有共同的群组"
+  :one_value "{count} 个共同的群组"
+  :other_value "{count} 个共同的群组")
+
+ ("lng_scam_badge"
+  :value "诈骗")
+ ("lng_owner_badge"
+  :value "创建者")
+ ("lng_admin_badge"
+  :value "管理员")
+
+ ("lng_polls_create_multiple_choice"
+  :value "多项选择")
+ ("lng_polls_create_anonymous"
+  :value "匿名投票")
+ ("lng_polls_create_question"
+  :value "问题")
+ ("lng_polls_anonymous"
+  :value "匿名投票")
+ ("lng_polls_anonymous_quiz"
+  :value "匿名问卷")
+ ("lng_polls_public"
+  :value "投票")
+ ("lng_polls_public_quiz"
+  :value "问卷")
+ ("lng_polls_votes_count"
+  :zero_value "无人投票"
+  :one_value "{count} 人投票"
+  :other_value "{count} 人投票")
+ ("lng_polls_answers_count"
+  :zero_value " 无人回答"
+  :one_value "{count} 答案"
+  :other_value "{count} 答案")
+ ("lng_polls_stop_warning"
+  :value "如果您现在停止这个投票，任何人都不能再投票了。此操作无法撤消。")
+ ("lng_deleted"
+  :value "已注销帐号")
+ ("lng_deleted_message"
+  :value "已删除的消息")
+
+ ("lng_settings_privacy_title"
+  :value "隐私设置")
+ ("lng_blocked_list_title"
+  :value "封禁用户")
+ ("lng_settings_section_privacy"
+  :value "隐私和安全")
+
+ ("lng_action_created_chat"
+  :value "{from} 创建 {title} 群组")
+ ("lng_action_created_channel"
+  :value "频道已创建")
+ ("lng_action_changed_title"
+  :value "{from} 修改群组名为 «{title}»")
+ ("lng_action_changed_title_channel"
+  :value "频道名称修改为 «{title}»")
+ ("lng_action_changed_photo"
+  :value "{from} 修改了群组头像")
+ ("lng_action_changed_photo_channel"
+  :value "频道头像已更新")
+ ("lng_action_changed_video"
+  :value "{from} 更新了群组视频")
+ ("lng_action_changed_video_channel"
+  :value "频道视频已更新")
+ ("lng_action_pinned_message"
+  :value "{from} 置顶了 {text} ")
+ ("lng_pinned_notify"
+  :value "通知所有成员")
+
+ ("lng_action_user_registered"
+  :value "{from} 加入了 Telegram")
+ ("lng_action_user_joined"
+  :value "{from} 加入群组")
+ ("lng_action_user_joined_by_link"
+  :value "{from} 通过邀请链接加入群组")
+ ("lng_action_user_left"
+  :value "{from} 退出群组")
+ ("lng_action_kick_user"
+  :value "{from} 删除了“{user}”")
+
+ ("lng_action_game_score"
+  :one_value "{from} 在游戏 {game} 中获得 {count} 分"
+  :other_value "{from} 在游戏 {game} 中获得 {count} 分")
+ ("lng_action_game_you_scored"
+  :one_value "您在游戏 {game} 中获得 {count} 分"
+  :other_value "您在游戏 {game} 中获得 {count} 分")
+ ("lng_action_game_score_no_game"
+  :one_value "{from} 获得 {count} 分"
+  :other_value "{from} 获得 {count} 分")
+ ("lng_action_game_you_scored_no_game"
+  :one_value "您获得 {count} 分"
+  :other_value "您获得 {count} 分")
+
+ ("telega_action_group_upgrade_to"
+  :value "{from} 将群组升级为超级群组")
+ ("telega_action_group_upgrade_from"
+  :value "{from} 将群组升级为超级群组")
+
+ ;; chatbuf modeline
+ ("telega_chat_modeline_unread"
+  :value "未读:{unread_count}")
+ ("telega_chat_modeline_unread_help"
+  :value "{mouse}: 阅读所有消息")
+ ("telega_chat_modeline_marked"
+  :value "{mouse}: 对话已标记为未读")
+ ("telega_chat_modeline_marked_help"
+  :value "{mouse}: 取消标记所有消息")
+ ("telega_chat_modeline_mention_help"
+  :value "{mouse}: 转到下一个提及")
+ ("telega_chat_modeline_pinned_msg_help"
+  :value "{mouse}: 转到置顶消息")
+ ("telega_chat_modeline_discuss_help"
+  :value "{mouse}: 转到此频道的群组")
+ ("telega_chat_modeline_members"
+  :zero_value "{member_count} 成员"
+  :other_value "{member_count} 成员, {count} 在线")
+
+ ;; queries to user
+ ("telega_action_cant_undone"
+  :value "此操作无法撤消。")
+ ("telega_query_delete_chat"
+  :value "是否删除 «{title}» 对话? ")
+ ("telega_query_delete_chat_history"
+  :value "是否删除 «{title}» 中的所有历史聊天记录? ")
+ ("telega_query_read_chats"
+  :one_value "Toggle read for {count} chat? "
+  :other_value "Toggle read for {count} chats? ")
+ ("telega_query_read_anyway"
+  :value "没有相应的过滤条件，是否继续切换? ")
+ ("telega_query_kill_chatbufs"
+  :value "是否关闭 {count} 聊天缓冲区? ")
+ ("telega_query_kill_anyway"
+  :value "没有相应的过滤条件，是否继续关闭聊天缓冲区? ")
+ ("telega_query_revoke_message"
+  :value "是否撤回此消息? ")
+ ("telega_query_kill_message"
+  :value "是否删除此消息? ")
+ ("telega_query_revoke_marked_messages"
+  :one_value "是否撤回 {count} 条标记消息? "
+  :other_value "是否撤回 {count} 条标记消息? ")
+ ("telega_query_kill_marked_messages"
+  :one_value "是否删除 {count} 条标记消息? "
+  :other_value "是否删除 {count} 条标记消息? ")
+ ("telega_query_dnd_photo_as_file"
+  :value "是否以文件方式发送此图片? ")
+
+ ("lng_profile_delete_channel"
+  :value "删除频道")
+ ("lng_profile_delete_group"
+  :value "删除群组")
+ ("lng_sure_delete_channel"
+  :value "您确定要删除此频道吗？ 所有成员将被删除，所有消息都将丢失。")
+ ("lng_sure_delete_group"
+  :value "您确定要删除此群组吗？ 所有成员将被删除，所有消息都将丢失。")
+
+ ("lng_settings_self_destruct"
+  :value "自动删除帐号设置")
+ ("lng_self_destruct_title"
+  :value "自动删除帐号")
+ ("lng_self_destruct_description"
+  :value "如果您在此期间内您的帐号未曾上线，您账号的所有资料——包括消息记录，联系人都会被删除。")
+ ("lng_settings_destroy_if"
+  :value "如果离开超过")
+ ("lng_self_destruct_months"
+  :one_value "{count} 个月"
+  :other_value "{count} 个月")
+ ("lng_self_destruct_years"
+  :one_value "{count} 年"
+  :other_value "{count} 年")
+
+ ("lng_archived_add"
+  :value "归档")
+ ("lng_archived_remove"
+  :value "取消归档")
+
+ ("lng_status_online"
+  :value "在线")
+
+ ("lng_report_spam"
+  :value "举报垃圾信息")
+ ("lng_report_spam_and_leave"
+  :value "举报垃圾信息并退出")
+ ("lng_report_location"
+  ;; To report chat with "UnrelatedLocation" reason
+  :value "报告位置")
+ ("lng_new_contact_add"
+  :value "添加联系人")
+ ("lng_new_contact_add_name"
+  :value "添加 {user} 到联系人")
+ ("lng_new_contact_block"
+  :value "封禁用户")
+ ("lng_new_contact_share"
+  :value "分享我的电话号码")
+ ("lng_blocked_list_confirm_text"
+  :value "您确定要屏蔽 {name} 给您发送消息和呼叫您吗？")
+
+ ("lng_manage_linked_channel"
+  :value "关联频道")
+ ("lng_channel_discuss"
+  :value "讨论群组")
+ ("lng_channel_not_accessible"
+  :value "抱歉，此频道无法访问。")
+
+ ("telega_scheduled"
+  :value "预订")
+ ("telega_scheduled_at_date"
+  :value "在 {date} 时")
+ ("telega_scheduled_when_online"
+  :value "在线发送")
+
+ ;; Group owenership transfering
+ ("lng_rights_transfer_about"
+  :value "这会将 {group} 所有的**创建者权限**转移给 {user}。")
+ ("lng_rights_transfer_password_description"
+  :value "请输入密码来完成转移。")
+ ("lng_rights_transfer_sure"
+  :value "更改创建者")
+ ("lng_rights_transfer_group"
+  :value "转移群组所有权")
+ ("lng_rights_transfer_channel"
+  :value "转移频道所有权")
+ ("lng_rights_transfer_check_about"
+  :value "只有在以下情况下，您才能将此群组转让给 {user}:")
+ ("lng_rights_transfer_check_session"
+  :value "• 登录此设备超过 **24 小时**。")
+ ("lng_rights_transfer_check_password"
+  :value "• 启用两步验证超过 **7 天**。")
+ ("lng_rights_transfer_check_later"
+  :value "请稍后再试。")
+ ("lng_rights_transfer_done_channel"
+  :value "此频道现在的创建者是 {user} 。")
+ ("lng_rights_transfer_done_group"
+  :value "此群组现在的创建者是 {user} 。")
+ ("lng_rights_edit_admin_rank_name"
+  :value "头衔")
+ ("lng_rights_edit_admin_rank_about"
+  :value "所有成员将会显示头衔，而不是'{title}'。")
+
+ ;; Help messages
+ ("telega_scheduled_help"
+  :value "此消息将预订发送")
+ ("telega_disable_notification_help"
+  :value "此消息不会在接收方弹出通知")
+ ("telega_enable_notification_help"
+  :value "此消息将在接收方弹出通知")
+ ("telega_forward_new_caption_help"
+  :value "转发消息使用新标题")
+ ("telega_disable_webpage_preview_help"
+  :value "此消息没有网页预览")
+
+ ("telega_enable_notification"
+  :value "启用接收者通知")
+ ("telega_disable_notification"
+  :value "禁用接收者通知")
+ ("telega_disable_webpage_preview"
+  :value "禁用网页预览")
+
+ ("telega_random_dice"
+  :value "随机骰子")
+
+ ("lng_settings_faq"
+  :value "Telegram 常见问题")
+ ("lng_settings_ask_question"
+  :value "请输入问题")
+ ("telega_settings_telega_manual"
+  :value "Telega.el 帮助手册")
+
+ ("lng_ttl_photo_expired"
+  :value "图片已自毁")
+ ("lng_ttl_video_expired"
+  :value "视频已自毁")
+
+ ;; Calls
+ ("lng_call_error_not_available"
+  :value "抱歉，{user} 不接受呼叫。")
+ ("lng_call_error_outdated"
+  :value "{user} 的应用不支持通话。在您能够呼叫他们之前，他们必须先更新自己的应用。")
+ ("lng_call_duration_info"
+  :value "{time}, {duration}")
+ ("lng_call_type_and_duration"
+  :value "{type} ({duration})")
+ ("lng_call_fingerprint_tooltip"
+  :value "如果“{user}”屏幕上的 emoji 和此处一致，那么本次通话就是 100% 安全的。")
+
+ ("lng_call_outgoing"
+  :value "呼出")
+ ("lng_call_video_outgoing"
+  :value "呼出视频通话")
+ ("lng_call_cancelled"
+  :value "取消")
+ ("lng_call_video_cancelled"
+  :value "已取消的视频通话")
+ ("lng_call_incoming"
+  :value "来电")
+ ("lng_call_video_incoming"
+  :value "视频通话来电")
+ ("lng_call_declined"
+  :value "拒接")
+ ("lng_call_video_declined"
+  :value "已拒绝的视频通话")
+ ("lng_call_missed"
+  :value "未接")
+ ("lng_call_video_missed"
+  :value "未接的视频来电")
+
+ ("lng_call_status_connecting"
+  :value "连接中…")
+ ("lng_call_status_waiting"
+  :value "等待中…")
+ ("lng_call_status_ringing"
+  :value "拨号中…")
+ ("lng_call_status_hanging"
+  :value "挂断中…")
+ ("lng_call_status_ended"
+  :value "通话结束")
+ ("lng_call_status_incoming"
+  :value "正在呼叫您…")
+ ("lng_call_status_exchanging"
+  :value "交换加密密钥中…")
+ ("lng_call_status_busy"
+  :value "线路正忙")
+ ("lng_call_status_requesting"
+  :value "请求中…")
+ ("lng_call_status_failed"
+  :value "连接失败")
+
+ ;; login url
+ ("lng_url_auth_open_confirm"
+  :value "您确定要打开 {link} ？")
+ ("lng_url_auth_login_option"
+  :value "以 {user} 登录 {domain}")
+ ("lng_url_auth_allow_messages"
+  :value "允许 {bot} 给我发送消息")
+
+ ;; Notifications
+ ("lng_notification_reminder"
+  :value "📅 提醒")
+
+ ;; Folders
+ ("lng_settings_section_filters"
+  :value "分组")
+ ("lng_filters_title"
+  :value "分组")
+ ("lng_filters_recommended"
+  :value "推荐分组")
+ ("lng_filters_create"
+  :value "新建分组")
+ ("lng_filters_icon_header"
+  :value "选择一个分组图标")
+ ("lng_filters_new"
+  :value "新建分组")
+ ("lng_filters_new_name"
+  :value "分组名")
+ ("lng_filters_edit"
+  :value "编辑分组")
+ ("lng_filters_recommended"
+  :value "推荐分组")
+ ("lng_filters_limit"
+  :value "抱歉，您的分组数量已达上限。")
+ ("lng_filters_default"
+  :value "请为此分组至少更改一条规则。")
+ ("lng_filters_remove_sure"
+  :value "这将删除该分组，聊天记录不会被删除。")
+
+ ;; Root View titles
+ ("lng_menu_settings"
+  :value "设置")
+ ("telega_view_pinned_messages"
+  :value "置顶消息")
+ ("telega_view_deleted_chats"
+  :value "最近删除的聊天")
+
+ ("telega_option_sensitive_content"
+  :value "显示敏感内容")
+ ("telega_option_prefer_ipv6"
+  :value "IPv6 优先")
+ )
