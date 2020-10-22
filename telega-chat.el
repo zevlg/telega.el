@@ -2030,8 +2030,8 @@ Try to keep point at its position."
   (let* ((pos (point))
          (msg-button (button-at pos))
          (chat-win (get-buffer-window))
-         (wstart-off (when chat-win
-                       (- (point) (window-start chat-win)))))
+         (chat-win-start (when chat-win
+                           (window-start chat-win))))
     (unwind-protect
         (if (and msg-button
                  (eq (button-get msg-button :value)
@@ -2047,7 +2047,7 @@ Try to keep point at its position."
       ;; change it or shift.
       (when chat-win
         (set-window-point chat-win (point))
-        (set-window-start chat-win (- (point) wstart-off) 'noforce))
+        (set-window-start chat-win chat-win-start 'noforce))
       )))
 
 (defun telega-chatbuf--prepend-messages (messages)
