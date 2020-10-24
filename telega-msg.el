@@ -69,7 +69,7 @@
     (define-key map (kbd "e") 'telega-msg-edit)
     (define-key map (kbd "f") 'telega-msg-forward-marked-or-at-point)
     (define-key map (kbd "d") 'telega-msg-delete-marked-or-at-point)
-    (define-key map (kbd "k") 'telega-msg-delete-marked-or-at-point)
+    ;; (define-key map (kbd "k") 'telega-msg-delete-marked-or-at-point)
     (define-key map (kbd "l") 'telega-msg-redisplay)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "R") 'telega-msg-resend)
