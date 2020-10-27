@@ -572,7 +572,8 @@ Return sticker set."
                             (telega--getInstalledStickerSets))
                       (setq telega--stickersets-installed-ids
                             (mapcar (telega--tl-prop :id)
-                                    telega--stickersets-installed)))
+                                    telega--stickersets-installed))
+                      telega--stickersets-installed)
                     (user-error "No installed sticker sets")))
          ;; Bindings used in `telega-stickerset-completing-read'
          (telega-minibuffer--chat telega-chatbuf--chat)
