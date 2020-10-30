@@ -144,7 +144,9 @@ where PROXY-TYPE is one of:
 (defcustom telega-use-tracking-for nil
   "*Specifies Chat Filter for chats to be tracked with tracking.el.
 Make sure you have tracking.el loaded if this option is used.
-Only chats with corresponding opened chatbuf are tracked."
+Only chats with corresponding opened chatbuf are tracked.
+Tracking notifications for telega buffers will use the
+`telega-tracking` face."
   :package-version '(telega . "0.5.7")
   :type 'list
   :options '((not (or saved-messages (type channel bot)))
@@ -1638,6 +1640,11 @@ Install all symbol widths inside `telega-load-hook'."
      :foreground "RoyalBlue")
     (t :bold t))
   "Face to display username for chats/users."
+  :group 'telega-faces)
+
+(defface telega-tracking
+  '((t :inherit telega-username))
+  "Face to display tracking mode-line notifications."
   :group 'telega-faces)
 
 (defface telega-entity-type-mention
