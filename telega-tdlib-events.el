@@ -478,7 +478,7 @@ NOTE: we store the number as custom chat property, to use it later."
                       telega-chatbuf--chat telega-use-tracking-for)
                      (not (plist-get new-msg :is_outgoing))
                      (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
-            (tracking-add-buffer (current-buffer)))
+            (tracking-add-buffer (current-buffer) '(telega-tracking)))
 
           ;; If message is visibible in some window, then mark it as read
           ;; see https://github.com/zevlg/telega.el/issues/4
