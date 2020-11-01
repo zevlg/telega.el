@@ -189,15 +189,15 @@ Works only if current state is `authorizationStateWaitCode'."
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   ;; Validate tdlib version
-  (when (string< (plist-get telega--options :version)
-                 telega-tdlib-min-version)
+  (when (version< (plist-get telega--options :version)
+                  telega-tdlib-min-version)
     (warn (concat "TDLib version=%s < %s (min required), "
                   "please upgrade TDLib and recompile `telega-server'")
           (plist-get telega--options :version)
           telega-tdlib-min-version))
   (when (and telega-tdlib-max-version
-             (string< telega-tdlib-max-version
-                      (plist-get telega--options :version)))
+             (version< telega-tdlib-max-version
+                       (plist-get telega--options :version)))
     (warn (concat "TDLib version=%s > %s (max required), "
                   "please downgrade TDLib and recompile `telega-server'")
           (plist-get telega--options :version)
