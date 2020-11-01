@@ -157,8 +157,8 @@ Raise error if not found."
   "Check telega-server version against MIN-REQUIRED-VERSION.
 If does not match, then query user to rebuild telega-server.
 If version does not match then query user to rebuild telega-server."
-  (let ((ts-version (or (telega-server-version) "0.0.0 [unknown]")))
-    (when (string< ts-version min-required-version)
+  (let ((ts-version (or (telega-server-version) "0.0.0-unknown")))
+    (when (version< ts-version min-required-version)
       (when (y-or-n-p
              (format "Installed `telega-server' version %s<%s, rebuild? "
                      ts-version min-required-version))
