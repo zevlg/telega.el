@@ -12,7 +12,8 @@
 (defconst telega-version "0.6.31")
 (defconst telega-server-min-version "0.6.6")
 (defconst telega-tdlib-min-version "1.6.9")
-(defconst telega-tdlib-max-version nil)
+;; TDLib 1.6.10 is not yet supported by telega.el
+(defconst telega-tdlib-max-version "1.6.9")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
