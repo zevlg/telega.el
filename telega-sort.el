@@ -27,6 +27,8 @@
 ;; directly into ~telega-sort-criteria-alist~, use
 ;; ~define-telega-sorter~ instead.
 
+(require 'telega-core)
+
 
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 

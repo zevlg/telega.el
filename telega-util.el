@@ -37,6 +37,7 @@
 (require 'org)                          ; `org-read-date'
 (require 'rainbow-identifiers)
 
+(require 'telega-core)
 (require 'telega-customize)
 
 (declare-function telega-root--buffer "telega-root")
