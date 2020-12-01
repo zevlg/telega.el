@@ -79,6 +79,16 @@
 
 (telega-obsolete--variable 'telega-find-file-hook
                            'telega-open-file-hook "0.6.31")
+(telega-obsolete--variable 'telega-chat-me-custom-title
+                           'telega-chat-title-custom-for "0.6.31")
+
+(telega-obsolete--variable 'telega-chat-reply-prompt
+                           nil "0.7.0")
+(telega-obsolete--variable 'telega-chat-edit-prompt
+                           nil "0.7.0")
+(telega-obsolete--variable 'telega-chat-messages-ring-size
+                           'telega-chat-messages-pop-ring-size
+                           nil "0.7.0")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

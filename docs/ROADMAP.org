@@ -51,6 +51,17 @@
 
 ** Full integration for Transalation Platform
 
+** TODO Use Notifications API
+  CREATED: [2020-11-27 Пт]
+
+  - Docs: https://core.telegram.org/tdlib/notification-api/
+
+  - Enable Notifications API by setting option
+
+    #+begin_src emacslisp
+    (telega--setOption :notification_group_count_max 2)
+    #+end_src
+
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
 
 ** DONE Stickers support in non-imagemagick Emacs
@@ -328,3 +339,7 @@ plist like:
 
    So RET in the middle of chatbuf input behaves as ~C-j~.
    Make this customizable.
+
+** Prefetch map thumbnail zoom levels
+
+   Prefetch map zoom levels when user presses +/- for the first

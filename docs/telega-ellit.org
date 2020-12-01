@@ -79,10 +79,11 @@ Arch-based).
 
 *** Linux users
 
-=telega= requires at least GNU Emacs 26.1 with =svg= support. If Emacs
-version is less then 27.1, then =imagemagick= is also required.  Most
-distributions provide GNU Emacs compiled with these dependencies when
-installing GNU Emacs with GTK+ support (graphical).
+=telega= requires at least GNU Emacs 26.1 with optional, but highly
+recommended, =svg= support. If Emacs version is less then 27.1, then
+=imagemagick= is also required.  Most distributions provide GNU Emacs
+compiled with these dependencies when installing GNU Emacs with GTK+
+support (graphical).
 
 *** Building TDLib
 
@@ -216,6 +217,30 @@ Start =telega= with {{{kbd(M-x telega RET)}}}. The first time it will
 ask for the phone number you have associated with the Telegram
 network.
 
+Some options affecting =TDLib= runtime:
+- {{{user-option(telega-directory, 2)}}}
+- {{{user-option(telega-options-plist, 2)}}}
+- {{{user-option(telega-proxies, 2)}}}
+- {{{user-option(telega-my-location, 2)}}}
+
+To list all available customizable user options use ~M-x
+customize-group RET telega RET~ command.
+
+* Settings for Emacs As Daemon
+
+Some people starts Emacs in daemon mode, i.e. =emacs --daemon=.  Such
+Emacs instance has no frames, frames are created when needed and
+connects to the daemon process.
+
+=telega= autodetects values for some variables at start by examining
+current frame parameters and window system posibilites.  This won't
+work in daemon mode.  You need to explicitely specify values for that
+variables.  Most notable options are:
+- {{{user-option(telega-use-images, 2)}}}
+- {{{user-option(telega-emoji-font-family, 2)}}}
+- {{{user-option(telega-emoji-use-images, 2)}}}
+- {{{user-option(telega-online-status-function, 2)}}}
+
 * Telega glossary
 
 Before start, please read [[https://core.telegram.org/tdlib/getting-started#tdlib-glossary][TDLib glossary]]
@@ -285,14 +310,14 @@ new terms specific to =telega=.  All of them are used in the manual.
   Action for such buttons is to add corresponding chat filter to
   active chat filter.
 
-  However, special (push) custom chat filter buttons exists.  Instead
-  of adding chat filter into active chat filter, they substitutes
-  active chat filter with custom chat filter. See
-  ~telega-filter-custom-folders~ below.
+  However, buttons that corresponds to a Telegram Folder, including
+  "Main" and "Archive", substitutes folder in active chat filter with
+  new one at button.
 
+  + {{{user-option(telega-filter-button-width, 4)}}}
   + {{{user-option(telega-filters-custom, 4)}}}
-
-  + {{{user-option(telega-filter-custom-folders, 4)}}}
+  + {{{user-option(telega-filter-custom-expand, 4)}}}
+  + {{{user-option(telega-filter-custom-show-folders, 4)}}}
 
 - Chat Sort Criteria ::
   List of symbols denoting how to sort chats.
@@ -391,19 +416,16 @@ commands:
 
 - {{{where-is(telega-filter-by-important,telega-root-mode-map)}}} ::
   {{{fundoc(telega-filter-by-important, 2)}}}
-
+- {{{where-is(telega-filter-by-folder,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filter-by-folder, 2)}}}
 - {{{where-is(telega-filters-edit,telega-root-mode-map)}}} ::
   {{{fundoc(telega-filters-edit, 2)}}}
-
 - {{{where-is(telega-filter-by-filter,telega-root-mode-map)}}} ::
   {{{fundoc(telega-filter-by-filter, 2)}}}
-
 - {{{where-is(telega-filters-pop-last,telega-root-mode-map)}}} ::
   {{{fundoc(telega-filters-pop-last, 2)}}}
-
 - {{{where-is(telega-filters-negate,telega-root-mode-map)}}} ::
   {{{fundoc(telega-filters-negate, 2)}}}
-
 - {{{where-is(telega-filters-reset,telega-root-mode-map)}}} ::
   {{{fundoc(telega-filters-reset, 2)}}}
 
@@ -590,7 +612,23 @@ Whenever a scheduled message or reminder is sent, you get a special
 notification marked with a 📅, so you don't get caught off-guard by
 messages you planned in the past.
 
-** Completing input
+** Navigating previous input
+
+You can navigate your previous chatbuf input using commands:
+- {{{where-is(telega-chatbuf-edit-prev,telega-chat-mode-map)}}} ::
+  {{{fundoc(telega-chatbuf-edit-prev,2)}}}
+- {{{where-is(telega-chatbuf-edit-next,telega-chat-mode-map)}}} ::
+  {{{fundoc(telega-chatbuf-edit-next,2)}}}
+- {{{where-is(telega-chatbuf-input-search,telega-chat-mode-map)}}} ::
+  {{{fundoc(telega-chatbuf-input-search,2)}}}
+
+  While searching input, you can use
+  {{{where-is(telega-chatbuf--input-search-input-prev,telega-chatbuf--input-search-map)}}}
+  and
+  {{{where-is(telega-chatbuf--input-search-input-next,telega-chatbuf--input-search-map)}}}
+  to cycle chatbuf input ring.
+
+** Completing input in chatbuf
 
 Powerful =company-mode= could be used to complete input in the
 chatbuf.
@@ -607,7 +645,8 @@ chatbuf.
   uses Telegram cloud for the emojis completion.
 
 - telega-company-username :: Complete user mentions via ~@<username>~
-  syntax.
+  syntax. Here is the screenshot, showing use of this backend:
+  [[file:completing-usernames.jpg]]
 
 - telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
   syntax.  This backend does not complete if ~/<botcmd>~ syntax is
@@ -632,6 +671,10 @@ chatbuf.
 
 (add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
 #+end_src
+
+Consider also using =company-posframe= Emacs package (in MELPA), so
+chatbuf's contents remain untouched when completion menu pops above
+the chatbuf prompt.
 
 ** Sending messages via bots
 
@@ -660,18 +703,19 @@ Customizable options for inline bots:
 
 Message filtering means to show only some messages matching filter.
 Available message filters are: {{{eval((mapconcat (lambda (mf) (concat
-"=" (car mf) "=")) telega-chat--filters "\, "),t)}}}
+"=" (car mf) "=")) telega-chat--message-filters "\, "),t)}}}
 
 Chatbuf uses next bindings for message filtering:
 #+ELLIT-INCLUDE: ../telega-chat.el :label chatbuf-filtering-bindings
 
 ** Opening files using external programs
 
-Some messages in Telegram has attached file in the message.  By
-default =telega= opens that files inside Emacs using ~find-file~
-function.  Sometimes that is not desirable behaviour and you might
-want to open some files in external application.  You can use
-~org-open-file~ function for this.  Behaviour is controlled by:
+Document messages in Telegram has attached file in the message.  By
+default =telega= opens that files inside Emacs using {{{eval((format
+"~%S~" telega-open-file-function),t)}}} function.  Sometimes that is not
+desirable behaviour and you might want to open some files in external
+application.  You can use ~org-open-file~ function for this.
+Behaviour is controlled by:
 - {{{user-option(telega-open-file-function, 2)}}}
 
 Setup to open some files in external applications might look like:
@@ -682,6 +726,39 @@ Setup to open some files in external applications might look like:
 
 (setq telega-open-file-function 'org-open-file)
 #+end_src
+
+If you also want to open non-document messages as file using
+~telega-open-file-function~ consider:
+- {{{user-option(telega-open-message-as-file, 2)}}}
+
+** Client side messages ignoring
+
+In official telegram clients all messages in group chats are displayed
+even if message has been sent by blocked sender (user or chat).
+=telega= has client side message ignoring feature implemented.
+Ignoring messages can be done via installing special functions into
+~telega-chat-insert-message-hook~, which could mark message as
+ignored, for example, to ignore messages from particular user with
+id=12345 you could add next code:
+
+#+begin_src emacs-lisp
+(defun my-telega-ignore-12345-user (msg &rest notused)
+  (let ((sender (telega-msg-sender msg)))
+    (when (and (telega-user-p sender)
+               (= (plist-get sender :id) 12345))
+      (telega-msg-ignore msg))))
+
+(add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
+#+end_src
+
+Or to ignore messages from blocked senders (users or chats), just add:
+
+#+begin_src emacs-lisp
+(add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
+#+end_src
+
+To view recent messages that has been ignored use
+~M-x telega-ignored-messages RET~ command.
 
 * Multiple accounts
 

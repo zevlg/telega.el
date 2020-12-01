@@ -88,8 +88,8 @@ Have Stoploss 690 Satoshi." :entities []))))
 
 (ert-deftest telega-info ()
   "Test info related functionality."
-  (let ((user1 (telega-user--get 22220))
-        (user2 (telega-user--get 22221)))
+  (let ((user1 (telega-user-get 22220))
+        (user2 (telega-user-get 22221)))
     (should (string= (telega-user--name user1) "Vasya Pupkin @vpupkin"))
     (should (string= (telega-user--name user1 'full) "Vasya Pupkin @vpupkin"))
     (should (string= (telega-user--name user1 'name) "Vasya Pupkin"))
@@ -186,9 +186,9 @@ Have Stoploss 690 Satoshi." :entities []))))
 
 (ert-deftest telega-internationalization ()
   "Test i18n code."
-  (should (equal (telega-i18n "polls_votes_count" :count 102)
+  (should (equal (telega-i18n "lng_polls_votes_count" :count 102)
                  "102 votes"))
-  (should (equal (telega-i18n "action_user_joined" :from #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\"" 0 35 (face bold)))
+  (should (equal (telega-i18n "lng_action_user_joined" :from #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\"" 0 35 (face bold)))
                  #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\" joined the group" 0 35 (face bold))))
   )
 

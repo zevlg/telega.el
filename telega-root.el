@@ -20,13 +20,18 @@
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; ellit-org: commentary
-;; 
+;;
 ;; rootbuf is the heart of the =telega=.  Switch to rootbuf with
 ;; {{{kbd(M-x telega RET)}}} or use
 ;; {{{where-is(telega,telega-prefix-map)}}} binding from the
 ;; [[#telega-prefix-map][Telega prefix map]].
-;; 
-;; *TODO*: describe parts of the rootbuf
+;;
+;; *TODO*: describe parts of the rootbuf: status, custom-filters,
+;; *folders, active chat filter, active chat sorter
+;;
+;; rootbuf lists chats filtered by active chat filter.  Press
+;; {{{where-is(telega-describe-chat,telega-chat-button-map)}}} to get
+;; detailed description of the chat at point.
 
 ;;; Code:
 (require 'ewoc)
@@ -85,6 +90,7 @@ Rest elements are ewoc specs.")
 
     (define-key map (kbd "\\") telega-sort-map)
 
+    ;; Chat Filter commands
     (define-key map (kbd "/") telega-filter-map)
     (define-key map (kbd "C-/") 'telega-filter-undo)
     (define-key map (kbd "C-_") 'telega-filter-undo)
@@ -193,7 +199,7 @@ Rest elements are ewoc specs.")
     ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-topics,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-topics, 2)}}}
-    ;; 
+    ;;
     ;;   Customizable options:
     ;;   - {{{user-option(telega-root-view-topics, 4)}}}
     ;;   - {{{user-option(telega-root-view-topics-folders, 4)}}}
@@ -202,7 +208,7 @@ Rest elements are ewoc specs.")
     ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-top,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-top, 2)}}}
-    ;; 
+    ;;
     ;;   Customizable options:
     ;;   - {{{user-option(telega-root-view-top-categories, 4)}}}
     (define-key map (kbd "v T") 'telega-view-top)
@@ -226,11 +232,6 @@ Rest elements are ewoc specs.")
     ;; - {{{where-is(telega-view-folders,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-folders, 2)}}}
     (define-key map (kbd "v f") 'telega-view-folders)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-pinned-messages,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-pinned-messages, 2)}}}
-    (define-key map (kbd "v ^") 'telega-view-pinned-messages)
-    (define-key map (kbd "v p") 'telega-view-pinned-messages)
     ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-deleted-chats,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-deleted-chats, 2)}}}
@@ -332,7 +333,7 @@ Terminate telega-server and kill all chat buffers."
 EWOC-SPEC is plist with keyword elements:
 `:name', `:pretty-printer', `:header', `:footer', `:items'
 `:on-chat-update', `:on-user-update', `:on-message-update',
-`:loading'."
+`:on-notifications-update',`:loading'."
   (cl-assert (stringp (plist-get ewoc-spec :name)))
   (let ((ewoc (ewoc-create (telega-ewoc--gen-pp
                             (plist-get ewoc-spec :pretty-printer))
@@ -393,6 +394,8 @@ Keep cursor position only if CHAT is visible."
     (with-telega-root-view-ewoc "root" root-ewoc
       (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
         (goto-char (ewoc-location node))
+        (unless (get-buffer-window)
+          (telega-buffer--hack-win-point))
         (dolist (win (get-buffer-window-list))
           (set-window-point win (point)))
         (run-hooks 'telega-root-update-hook)))))
@@ -780,6 +783,7 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
 (defun telega-online-status-timer-function ()
   "Timer function for online status change."
   (setq telega-online--timer nil)
+
   ;; NOTE:
   ;;  - telega server might unexpectedly die
   ;;  - telega might not be in authorized state, so setOption will
@@ -803,7 +807,7 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
         (timer-set-time telega-online--timer (time-add nil status-interval))
       (setq telega-online--timer
             (run-with-timer
-             status-interval nil 'telega-online-status-timer-function))))
+             status-interval nil #'telega-online-status-timer-function))))
 
   ;; Support for Emacs without 'after-focus-change-function
   (unless (boundp 'after-focus-change-function)
@@ -829,6 +833,9 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
   ;; For `telega-buffer-p' as `telega-online-status-function'
   (unless telega-online--timer
     (telega-check-focus-change))
+
+  ;; TODO: Run some heavy tasks, such as downloading stickers,
+  ;; full-filling user info, etc
   )
 
 (defun telega-runtime-setup ()
@@ -1263,7 +1270,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
 (defun telega-view-settings--me-pp (me-id)
   "Pretty printer for me in settings root view."
-  (let* ((me-user (telega-user--get me-id))
+  (let* ((me-user (telega-user-get me-id))
          (photo (plist-get me-user :profile_photo))
          (avatar (telega-media--image
                   (cons me-user (lambda (user file)
@@ -1314,7 +1321,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
         (with-telega-root-view-ewoc "me" ewoc
           (ewoc-refresh ewoc))))
 
-    (telega-ins--labeled (concat (telega-i18n "profile_bio") " ") nil
+    (telega-ins--labeled (concat (telega-i18n "lng_profile_bio") " ") nil
       (if-let ((bio (telega-tl-str (telega--full-info me-user) :bio)))
           (progn
             (telega-ins bio)
@@ -1330,16 +1337,9 @@ If `\\[universal-argument]' is given, then view missed calls only."
                      (read-string
                       "Set bio [empty to delete]: "))))))
     (telega-ins "\n")
-    (telega-ins--labeled "  " nil
-      (telega-ins--with-face 'shadow
-        (telega-ins-i18n "settings_about_bio")))
-    (telega-ins "\n")
-    (telega-ins--account-ttl
-     (lambda ()
-       (with-telega-root-view-ewoc "me" ewoc
-         (ewoc-refresh ewoc))))
-    (telega-ins "\n")
-  ))
+    (telega-ins--help-message
+     (telega-ins-i18n "lng_settings_about_bio"))
+    (telega-ins--account-ttl)))
 
 (defun telega-root--me-on-user-update (_ewoc-name ewoc user)
   "Update USER in EWOC."
@@ -1349,23 +1349,28 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
 (defun telega-view-settings--option-pp (option-spec)
   "Pretty printer for option in \"settings\" root view."
-  (let* ((opt-title (nth 0 option-spec))
-         (opt-val (telega--getOption (nth 1 option-spec))))
-    (telega-ins opt-title ": ")
-    (cl-assert (memq (telega--tl-type opt-val)
-                     '(optionValueBoolean optionValueEmpty)))
+  (let* ((opt-name (nth 0 option-spec))
+         (opt-val (if (plist-member telega--options opt-name)
+                      (plist-get telega--options opt-name)
+                    (plist-get (telega--getOption opt-name) :value)))
+         (opt-title (nth 1 option-spec))
+         (opt-about (nth 2 option-spec)))
+    ;; Only boolean values are supported
+    (cl-assert (memq opt-val '(t nil)))
 
-    (telega-ins--button (if (plist-get opt-val :value)
+    (telega-ins--button (if opt-val
                             telega-symbol-heavy-checkmark
-                          "  ")
+                          telega-symbol-blank-button)
       'action (lambda (_ignored)
-                (telega--setOption (nth 1 option-spec)
-                  (not (plist-get opt-val :value))
-                  'sync)
+                (telega--setOption opt-name (not opt-val) 'sync)
                 (with-telega-root-view-ewoc "options" opts-ewoc
                   (telega-save-cursor
                     (ewoc-refresh opts-ewoc)))))
+    (telega-ins " " opt-title)
     (telega-ins "\n")
+    (when opt-about
+      (telega-ins--help-message
+       (telega-ins opt-about)))
     ))
 
 (defun telega-view-settings--link-pp (link)
@@ -1376,42 +1381,83 @@ LINK is cons, where car is the link description, and cdr is the url."
     (telega-ins (cdr link)))
   (telega-ins "\n"))
 
+(defun telega-view-settings--notifications-pp (_ignored)
+  (telega-describe-notifications--inserter))
+
+(defun telega-view-settings--notifications-update (_name ewoc)
+  (let* ((root-win (get-buffer-window))
+         (w-start (when root-win (window-start root-win))))
+    (telega-save-cursor
+      (ewoc-refresh ewoc))
+    (when w-start
+      (set-window-start root-win w-start)
+      (set-window-point root-win (point)))))
+
 (defun telega-view-settings ()
-  "View top chats in all categories."
+  "View and edit your Telegram settings."
   (interactive)
   (telega-root-view--apply
-   (list 'telega-view-settings (telega-i18n "menu_settings")
+   (list 'telega-view-settings (telega-i18n "lng_menu_settings")
          (list :name "me"
                :pretty-printer #'telega-view-settings--me-pp
-               :items (list telega--me-id)
-               :on-user-update #'telega-root--me-on-user-update)
+               :items (list telega--me-id))
          (list :name "options"
                :pretty-printer #'telega-view-settings--option-pp
                :header "OPTIONS"
-               :items (list (list (telega-i18n "telega_option_sensitive_content")
-                                  :ignore_sensitive_content_restrictions)
-                            (list (telega-i18n "telega_option_prefer_ipv6")
-                                  :prefer_ipv6)
-                            ;; :disable_contact_registered_notifications
-                            ;; :disable_top_chats
-                            ;; :use_quick_ack
-                            ;; :use_storage_optimizer
-                            ))
+               :items
+               (append
+                (when (plist-get telega--options
+                                 :can_ignore_sensitive_content_restrictions)
+                  `((:ignore_sensitive_content_restrictions
+                     ,(telega-i18n "telega_option_sensitive_content")
+                     ,(telega-i18n "lng_settings_sensitive_about"))))
+                `((:prefer_ipv6
+                   ,(telega-i18n "telega_option_prefer_ipv6"))
+                  (:disable_time_adjustment_protection
+                   "Disable Time Adjustment Protection"
+                   "Enabling this significantly reduces disk usage")
+                  (:ignore_default_disable_notification
+                   "Ignore Default Disable Notification"
+                   "Enabling this will ignore per-chat \
+Default Disable Notification setting"))
+                ;; :disable_contact_registered_notifications
+                ;; :disable_top_chats
+                ;; :use_quick_ack
+                ;; :use_storage_optimizer
+                (when (plist-get
+                       telega--options
+                       :can_archive_and_mute_new_chats_from_unknown_users)
+                  `((:archive_and_mute_new_chats_from_unknown_users
+                     ,(telega-i18n "lng_settings_auto_archive")
+                     ,(telega-i18n "lng_settings_auto_archive_about"))))))
+         (list :name "notifications"
+               :pretty-printer #'telega-view-settings--notifications-pp
+               :header "NOTIFICATIONS"
+               :items (list 'dummy-ignored)
+               :on-notifications-update
+               #'telega-view-settings--notifications-update)
          (list :name "links"
                :pretty-printer #'telega-view-settings--link-pp
                :header "LINKS"
                :items (list (cons (telega-i18n "telega_settings_telega_manual")
                                   "https://zevlg.github.io/telega.el/")
-                            (cons (telega-i18n "settings_faq")
+                            (cons (telega-i18n "lng_settings_faq")
                                   "https://telegram.org/faq")
-                            (cons (telega-i18n "settings_ask_question")
+                            (cons (telega-i18n "lng_settings_ask_question")
                                   "https://t.me/emacs_telega")))
          ))
+
+  ;; NOTE: install `:on-user-update' after displaying "me" ewoc, so
+  ;; any "updateUserFullInfo" inside pretty-printer won't corrupt the
+  ;; ewoc.  "updateUserFullInfo" could be triggered on the
+  ;; `telega--full-info' call
+  (plist-put (telega-root-view--ewoc-spec "me")
+             :on-user-update #'telega-root--me-on-user-update)
   )
 
 (defun telega-view-folders--gen-pp (folder-name)
   "Generate pretty printer for chats in folder with FOLDER-NAME."
-  (let ((tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
+  (let ((tdlib-chat-list (telega-folder--tdlib-chat-list folder-name)))
     (lambda (chat)
       (when (telega-chat-match-p chat (list 'folder folder-name))
         (let ((telega-tdlib--chat-list tdlib-chat-list)
@@ -1419,14 +1465,14 @@ LINK is cons, where car is the link description, and cdr is the url."
           (telega-root--chat-known-pp chat))))))
 
 (defun telega-view-folders--gen-sorter (folder-name)
-  (let ((tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
+  (let ((tdlib-chat-list (telega-folder--tdlib-chat-list folder-name)))
     (lambda (chat1 chat2)
       (let ((telega-tdlib--chat-list tdlib-chat-list))
         (telega-chat> chat1 chat2)))))
 
 (defun telega-view-folders--ewoc-spec (folder-spec)
   (let* ((folder-name (telega-tl-str folder-spec :title))
-         (tdlib-chat-list (telega-filter--folder-tdlib-chat-list folder-name)))
+         (tdlib-chat-list (telega-folder--tdlib-chat-list folder-name)))
     (cl-assert tdlib-chat-list)
     (list :name folder-name
           :pretty-printer (telega-view-folders--gen-pp folder-name)
@@ -1444,36 +1490,6 @@ LINK is cons, where car is the link description, and cdr is the url."
    (nconc (list 'telega-view-folders "Folders")
           (mapcar #'telega-view-folders--ewoc-spec
                   telega-tdlib--chat-filters))))
-
-(defun telega-root--chat-goto-pinned-message (chat)
-  "Goto pinned message in the CHAT."
-  (let ((pin-msg-id (plist-get chat :pinned_message_id)))
-    (unless (zerop pin-msg-id)
-      (telega-chat--goto-msg chat pin-msg-id 'highlight))))
-
-(defun telega-root--chat-pinned-message-pp (chat)
-  "Pretty printer for CHAT's pinned message."
-  (let ((visible-p (not (zerop (plist-get chat :pinned_message_id)))))
-    (when visible-p
-      (let ((telega-chat-button-width (+ telega-chat-button-width
-                                         (/ telega-chat-button-width 2))))
-        (telega-root--chat-known-pp
-         chat
-         #'telega-ins--chat-pinned-message
-         #'telega-root--chat-goto-pinned-message)))))
-
-(defun telega-view-pinned-messages ()
-  "View pinned messages of the chats."
-  (interactive)
-  (telega-root-view--apply
-   (list 'telega-view-pinned-messages
-         (telega-i18n "telega_view_pinned_messages")
-         (list :name "root"
-               :pretty-printer #'telega-root--chat-pinned-message-pp
-               :items telega--ordered-chats
-               :sorter #'telega-chat>
-               :on-chat-update #'telega-root--any-on-chat-update))
-   'has-pinned-message))
 
 (defun telega-root--deleted-chat-pp (chat)
   "Pretty printer for deleted chat."

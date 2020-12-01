@@ -109,7 +109,9 @@ Matches only if CHAR does not apper in the middle of the word."
   (cons :async
         (lambda (callback)
           (telega--searchEmojis
-           (replace-regexp-in-string (regexp-quote "-") " " (substring text 1)) nil
+           (replace-regexp-in-string
+            (regexp-quote "-") " " (substring text 1))
+           nil nil
            (lambda (emojis)
              (funcall callback
                       (mapcar (lambda (emoji)
@@ -248,7 +250,7 @@ Matches only if CHAR does not apper in the middle of the word."
                    telega-chatbuf--chat "" "Bots" nil t)))
         (apply #'append
                (mapcar (lambda (bot-member)
-                         (let ((bot-user (telega-user--get
+                         (let ((bot-user (telega-user-get
                                           (plist-get bot-member :user_id))))
                            (telega-company--bot-commands-list
                             (plist-get bot-member :bot_info)

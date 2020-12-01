@@ -23,8 +23,16 @@
 
 ;;; ellit-org:
 ;; ** /ol-telega.el/ -- Org mode links to telegram chats and messages
-;; 
-;; Installs "telegram" links to Org mode.
+;;
+;; Installs "telega" links to Org mode.
+;;
+;; "telega" link can point to a chat, a message or content of a
+;; message.
+;;
+;; Creating links to a message content is very useful in conjuction
+;; with [[#telega-edit-file-mode][Edit File Mode]], so you can store
+;; your Org mode files in Telegram Cloud and create links to them in
+;; Roam manner.
 
 ;;; Code:
 (require 'telega-tme)
@@ -37,25 +45,42 @@
   (telega-tme-open-tg (concat "tg:telega:" link)))
 
 (defun org-telega-store-link ()
-  "Store a link to a telegram chat or message."
-  (when-let ((link (telega-tme-internal-link-to
-                    (or (telega-msg-at (point))
-                        (telega-chat-at (point))))))
-    ;; NOTE: strip leading "tg:"
-    (let ((org-link (substring link 3)))
+  "Store a link to a telegram chat or message.
+It could be link to a chat, message or to content opened from a
+message, file or photo."
+  (let* ((msg
+          (or (telega-msg-at (point))
+              (and telega-edit-file-mode
+                   telega--help-win-param)))
+         (msg-open-p
+          (when msg
+            (or telega-edit-file-mode
+                (and (eq 'messageDocument
+                         (telega--tl-type (plist-get msg :content)))
+                     (y-or-n-p "Store link to a message's file?")))))
+         (chat-or-msg
+          (or msg (telega-chat-at (point))))
+         (link
+          (when chat-or-msg
+            (apply #'telega-tme-internal-link-to chat-or-msg
+                   (when msg-open-p
+                     '(:open_content "")))))
+         ;; NOTE: strip leading "tg:"
+         (org-link (when link (substring link 3))))
+    (when org-link
       (org-link-store-props :type "telega" :link org-link)
       org-link)))
 
 (defun org-telega-complete-link ()
-  "Complting link to the chat."
+  "Completing link to a chat."
   (let ((chat (telega-completing-read-chat "Chat: ")))
     ;; NOTE: strip leading "tg:"
-    (substring (telega-tme-internal-link-to  chat) 3)))
+    (concat (substring (telega-tme-internal-link-to chat) 3))))
 
 (org-link-set-parameters "telega"
-                         :follow 'org-telega-follow-link
-                         :store 'org-telega-store-link
-                         :complete 'org-telega-complete-link)
+                         :follow #'org-telega-follow-link
+                         :store #'org-telega-store-link
+                         :complete #'org-telega-complete-link)
 
 (provide 'ol-telega)
 

@@ -411,9 +411,16 @@ SSET can be either `sticker' or `stickerSetInfo'."
       ;; Now SSET is always "stickerSet"
       (if sset
           (funcall sticker-list-ins sset)
+
+        ;; Set `telega--help-win-param', so callback won't insert
+        ;; stickers list of stickerset changes during request to
+        ;; telega-server.
+        (setq telega--help-win-param sset-id)
+
         (telega-stickerset-get sset-id nil
           (telega-sticker-list--gen-ins-callback 'loading
-            sticker-list-ins))))))
+            sticker-list-ins
+            sset-id))))))
 
 (defun telega-sticker-help (sticker)
   "Describe sticker set for STICKER."
@@ -422,27 +429,33 @@ SSET can be either `sticker' or `stickerSetInfo'."
    (telega-stickerset-get (plist-get sticker :set_id))))
 
 (defun telega-sticker-list--gen-ins-callback (show-loading-p
-                                              &optional insert-func)
+                                              &optional insert-func
+                                              for-param)
   "Generate callback to be used as callback.
 Insert list of stickers at MARKER position.
 Functions to be used with:
 `telega--getStickers', `telega--getFavoriteStickers',
-`telega--getRecentStickers' or `telega--searchStickerSets'"
+`telega--getRecentStickers' or `telega--searchStickerSets'.
+If FOR-PARAM is specified, then insert only if
+`telega--help-win-param' is eq to FOR-PARAM."
   (declare (indent 1))
   (let ((marker (point-marker)))
     (when show-loading-p
-      (telega-ins "Loading...\n"))
+      (telega-ins-i18n "lng_profile_loading")
+      (telega-ins "\n"))
 
     (lambda (&rest insert-args)
       (let ((marker-buf (marker-buffer marker)))
         (when (buffer-live-p marker-buf)
           (with-current-buffer marker-buf
-            (telega-save-excursion
-              (let ((inhibit-read-only t))
-                (goto-char marker)
-                (when show-loading-p
-                  (delete-region marker (point-at-eol)))
-                (apply insert-func insert-args)))))))))
+            (when (or (null for-param)
+                      (eq telega--help-win-param for-param))
+              (telega-save-excursion
+                (let ((inhibit-read-only t))
+                  (goto-char marker)
+                  (when show-loading-p
+                    (delete-region marker (point-at-eol)))
+                  (apply insert-func insert-args))))))))))
 
 (defun telega-sticker-choose-favorite-or-recent (for-chat)
   "Choose recent sticker FOR-CHAT."

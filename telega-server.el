@@ -67,7 +67,7 @@ Bind this to avoid processing some events, while executing something.")
 (defvar telega-server--idle-timer nil
   "Timer to run `telega-handle-emacs-idle' after some data is received.")
 (defvar telega-server-idle-delay 0.1
-  "Idle delay to pross dirtiness.")
+  "Idle delay to process dirtiness.")
 
 (defun telega--on-deferred-event (event)
   (setq telega-server--deferred-events

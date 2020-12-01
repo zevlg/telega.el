@@ -8,12 +8,11 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.31
-(defconst telega-version "0.6.31")
+;; Version: 0.7.0
+(defconst telega-version "0.7.0")
 (defconst telega-server-min-version "0.6.6")
-(defconst telega-tdlib-min-version "1.6.9")
-;; TDLib 1.6.10 is not yet supported by telega.el
-(defconst telega-tdlib-max-version "1.6.9")
+(defconst telega-tdlib-min-version "1.7.0")
+(defconst telega-tdlib-max-version nil)
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -145,8 +144,9 @@
 
 ;;;###autoload
 (defun telega (&optional arg)
-  "Start telegramming.
-If prefix ARG is given, then will not pop to telega root buffer."
+  "Start telega.el Telegram client.
+Pop to root buffer.
+If `\\[universal-argument]' is specified, then do not pop to root buffer."
   (interactive "P")
   (telega--create-hier)
 
@@ -204,7 +204,8 @@ Works only if current state is `authorizationStateWaitCode'."
           (plist-get telega--options :version)
           telega-tdlib-max-version))
 
-  (setq telega--me-id (plist-get telega--options :my_id))
+  (setq telega--me-id (plist-get telega--options :my_id)
+        telega--replies-id (plist-get telega--options :replies_bot_chat_id))
   (cl-assert telega--me-id)
   (telega--setOptions telega-options-plist)
   ;; In case language pack id has not yet been selected, then select
@@ -241,7 +242,7 @@ Works only if current state is `authorizationStateWaitCode'."
 ;;;###autoload
 (defun telega-version (&optional insert-p)
   "Return telega (and TDLib) version.
-If `\\[universal-argument] is specified, then insert the version
+If `\\[universal-argument]' is specified, then insert the version
 string at point."
   (interactive "P")
   (let* ((tdlib-version (plist-get telega--options :version))
@@ -299,8 +300,15 @@ string at point."
       (insert "<!--- Not obligatory, but suggest a fix/reason for the issue. -->\n")
       (insert "<!--- Delete this section if you have no idea. -->\n"))))
 
+
+;;; Emacs runtime environment for telega
+;;
+;; TODO: move runtime env stuff and timer functions here from
+;; telega-root.el
+
 (provide 'telega)
 
+
 (push (expand-file-name "contrib" telega--lib-directory) load-path)
 
 ;; Load hook might install new symbols into

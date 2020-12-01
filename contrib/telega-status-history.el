@@ -66,7 +66,7 @@
 (defun telega-status-history--on-status-update (event)
   "Save status update."
   (let* ((user-id (plist-get event :user_id))
-         (user (telega-user--get user-id))
+         (user (telega-user-get user-id))
          (status (plist-get event :status))
          (online-p (eq (telega--tl-type status) 'userStatusOnline)))
     (telega-status-history--write (or (unless online-p
@@ -113,7 +113,7 @@ USERS - list of the users to collect info about."
   (with-temp-buffer
     (insert "Interval")
     (dolist (user users)
-      (insert "\t" (substring-no-properties (telega-user--name user 'short))))
+      (insert "\t" (substring-no-properties (telega-user-title user 'short))))
     (insert "\n")
 
     ;; Insert rows

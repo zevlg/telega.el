@@ -127,7 +127,7 @@ where PROXY-TYPE is one of:
 
 (defcustom telega-week-day-names
   '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")
-  "*Week day names to use when printing times."
+  "*Week day names (starting from sunday) to use when printing times."
   :type 'list
   :group 'telega)
 
@@ -156,17 +156,12 @@ Tracking notifications for telega buffers will use the
 (defcustom telega-use-images (or (and (fboundp 'image-transforms-p)
                                       (funcall 'image-transforms-p))
                                  (fboundp 'imagemagick-types))
-  "Non-nil to show images."
+  "Non-nil to show images.
+Explicitely set it to non-nil if using emacs as a service and
+want to create X frames to show images.
+See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon"
   :type 'boolean
-  :group 'telega
-  :set (lambda (option value)
-         (if (or (fboundp 'imagemagick-types)
-                 (and (fboundp 'image-transforms-p)
-                      (funcall 'image-transforms-p)))
-             (set-default option value)
-           (set-default option nil)
-           (when value
-             (warn "No ImageMagick support, so images can't be displayed in telega")))))
+  :group 'telega)
 
 ;; See https://t.me/emacs_telega/12459
 (defcustom telega-button-endings #'telega-button--endings-func
@@ -224,10 +219,10 @@ Each element is cons cell, where car is Chat Filter, and cdr is color."
 (defcustom telega-inline-login-url-action 'query-all
   "Action to take on login url keyboard buttons."
   :package-version '(telega . "0.6.30")
-  :type '(choice (const :tag "Ask user what to do" 'query-all)
-                 (const :tag "Ask user to open url only" 'query-open)
-                 (const :tag "Open url without query, but query user for login and write access" 'query-login-and-write-access)
-                 (const :tag "Open url without query, but query user for login, without querying for write access" 'query-login-only)
+  :type '(choice (const :tag "Ask user what to do" query-all)
+                 (const :tag "Ask user to open url only" query-open)
+                 (const :tag "Open url without query, but query user for login and write access" query-login-and-write-access)
+                 (const :tag "Open url without query, but query user for login, without querying for write access" query-login-only)
                  (const :tag "Do not login, just open the url" nil))
   :group 'telega)
 
@@ -330,6 +325,13 @@ See `telega-avatar--create-img' for more info."
   :type 'alist
   :group 'telega)
 
+(defcustom telega-avatar-text-compose-chars t
+  "Non-nil to compose sender initials with `telega-symbol-circle'.
+Use this to make textual avatars look prettier."
+  :package-version '(telega . "0.7.0")
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-vvnote-waves-height-factor 0.75
   "*Factor for waves svg height.
 There is a restriction to its value:
@@ -365,7 +367,21 @@ Could be used to open files in external programs.
 Set it to `org-open-file' to use Org mode to open files."
   :package-version '(telega . "0.6.31")
   :type 'function
-  :options '(org-open-file)
+  :options '(org-open-file browse-url-xdg-open)
+  :group 'telega)
+
+(defcustom telega-open-message-as-file nil
+  "List of message types to open as file using `telega-open-file-function'.
+Supported message types are: `photo', `video', `audio',
+`video-note', `voice-note', `animation'.
+Document messages are always opens as file."
+  :package-version '(telega . "0.7.0")
+  :type '(repeat (choice (const :tag "Photo messages" photo)
+                         (const :tag "Video messages" video)
+                         (const :tag "Audio messages" audio)
+                         (const :tag "Video Note messages" video-note)
+                         (const :tag "Voice Note messages" voice-note)
+                         (const :tag "Animation messages" animation)))
   :group 'telega)
 
 ;; Locations
@@ -545,12 +561,16 @@ Each element is in form:
   :type 'list
   :group 'telega-root)
 
-(defcustom telega-chat-me-custom-title (lambda (title)
-                                         (propertize title 'face 'bold))
-  "*Custom title for the chat with myself.
-Could be a function accepting title and returning new title.
-If nil, then \"saved_messages\" name from `telega-i18n' is used."
-  :type '(or string function)
+(defcustom telega-chat-title-custom-for
+  (list (cons 'saved-messages
+              (lambda (title) (propertize title 'face 'bold)))
+        (cons 'replies-messages
+              (lambda (title) (propertize title 'face 'bold))))
+  "Alist of custom titles for chats.
+Each element is a cons cell, where car is a Chat Filter and cdr
+is a function accepting title string and returning string."
+  :package-version '(telega . "0.6.31")
+  :type 'alist
   :group 'telega-root)
 
 (defcustom telega-chat-title-emoji-use-images telega-emoji-use-images
@@ -567,8 +587,10 @@ Otherwise use simple chars."
         (cons "Travel" "🛫")
         (cons "Cat" "🐱")
         (cons "Sport" "🏅")
-        (cons "Mask" "😷"))
-  "Alist of symbols to be used as folder icons instead of `telega-symbol-folder'."
+        (cons "Mask" "😷")
+        )
+  "Alist of symbols to be used as folder icons instead of `telega-symbol-folder'.
+See list of all available icon names in `telega-folder-icon-names'."
   :type 'alist
   :group 'telega)
 
@@ -576,11 +598,13 @@ Otherwise use simple chars."
 ;; - {{{user-option(telega-chat-folder-format, 2)}}}
 (defcustom telega-chat-folder-format (propertize "%F | " 'face 'bold)
   "*Non-nil to prefix chat's title with chat folder.
-%i - Replaced with folder's icon from `telega-folder-icon-names' or
-     `telega-symbol-folder'.
+%I - Replaced with folder's icon from `telega-folder-icon-names' or
+     empty string if there is no icon.
+%i - Replaced with folder's icon from `telega-folder-format' or
+     `telega-symbol-folder' if there is no icon.
 %f - Replaced with folder's title.
 %F - Replaced with folder's icon from `telega-folder-icon-names'
-     if icon is unique, or equivalent to %i%f."
+     if icon is unique, or equivalent to %I%f."
   :package-version '(telega . "0.6.30")
   :type 'string
   :group 'telega-root)
@@ -643,8 +667,9 @@ See https://github.com/zevlg/telega.el/issues/171"
     ("Important" . (or mention (and unread unmuted)))
     ("📑Archive" . archive))
   "*Alist of custom filters in form (NAME . CHAT-FILTER).
-This filters are displayed as filter buttons at the top of rootbuf.
-TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
+NAME is evaluated to get resulting string, so it could be a lisp
+form.
+This filters are displayed as filter buttons at the top of rootbuf."
   :package-version '(telega . "0.6.23")
   :type 'alist
   :group 'telega-filter)
@@ -654,19 +679,10 @@ TODO: If NAME starts with \"lng_\" then `telega-i18n' is used."
   :type 'boolean
   :group 'telega-filter)
 
-(defcustom telega-filter-custom-folders
-  (list (cons "📑Main" (list :@type "chatListMain"))
-        (cons "📑Archive" (list :@type "chatListArchive")))
-  "*Alist of custom folders.
-Where car is custom filter name, and cdr is tdlib chat list for this filter."
-  :package-version '(telega . "0.6.24")
-  :type 'alist
-  :group 'telega-filter)
-
 ;;; ellit-org: folders-options
 ;; - {{{user-option(telega-filter-custom-show-folders, 2)}}}
 (defcustom telega-filter-custom-show-folders t
-  "Non-nil to show telegram folders along with custom filters."
+  "Non-nil to show telegram folders along the side with custom filters."
   :package-version '(telega . "0.6.24")
   :type 'boolean
   :group 'telega-filter)
@@ -791,15 +807,11 @@ Used when showing chat members list."
   :type 'string
   :group 'telega-chat)
 
-(defcustom telega-chat-reply-prompt telega-chat-input-prompt
-  "*Chatbuf input prompt when replying to a message."
+(defcustom telega-chat-input-comment-prompt "Comment>>> "
+  "*Chatbuf input prompt displayed when commenting on channel post."
+  :package-version '(telega . "0.7.0")
   :type 'string
   :group 'telega-chat)
-
-(defcustom telega-chat-edit-prompt telega-chat-input-prompt
-  "*Chatbuf input prompt when editing a message."
-  :type 'string
-  :group 'telega)
 
 (defcustom telega-chat-prompt-show-avatar-for
   (when telega-use-images
@@ -815,12 +827,14 @@ Used when showing chat members list."
   :type 'int
   :group 'telega-chat)
 
-(defcustom telega-chat-messages-ring-size 50
-  "*Size of the chat massages ring."
-  :package-version '(telega . "0.6.22")
+(defcustom telega-chat-messages-pop-ring-size 50
+  "*Size of the chat pop messages ring.
+`telega-chatbuf-goto-pop-message' command is used to pop messages
+from the ring."
+  :package-version '(telega . "0.7.0")
   :type 'integer
   :group 'telega-chat)
-  
+
 (defcustom telega-chat-input-ring-size 50
   "*Size of the chat input history."
   :type 'integer
@@ -831,8 +845,9 @@ Used when showing chat members list."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-history-limit 20
+(defcustom telega-chat-history-limit 30
   "Number of messages to fetch on history requests."
+  :package-version '(telega . "0.7.0")
   :type 'integer
   :group 'telega-chat)
 
@@ -961,12 +976,18 @@ timespan, then do not group messages."
   :options '((not saved-messages))
   :group 'telega-chat)
 
+(defcustom telega-chat-delete-move-to-archive-for nil
+  "Chat Filter for chats to move to Archive on chat deletion.
+NOT YET USED."
+  :type 'boolean
+  :group 'telega-chat)
+
 (defcustom telega-chat-mode-line-format
   '((:eval (telega-chatbuf-mode-line-discuss))
     (:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
-    (:eval (telega-chatbuf-mode-line-pinned-msg 20))
+    (:eval (telega-chatbuf-mode-line-pinned-or-thread-msg 20))
     (:eval (telega-chatbuf-mode-line-messages-filter)))
   "Additional mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
@@ -986,12 +1007,6 @@ See `mode-line-buffer-identification'."
   :type 'symbol
   :group 'telega-chat)
 
-(defcustom telega-chat-delete-moves-to-archive t
-  "*Non-nil to move chat to Archive on deletion.
-NOT YET USED."
-  :type 'boolean
-  :group 'telega-chat)
-
 (defcustom telega-chat-input-complete-function nil
   "*Custom function to be called before any other on TAB in chatbuf input.
 Should return non-nil if completion occured."
@@ -999,7 +1014,16 @@ Should return non-nil if completion occured."
   :type 'function
   :options '(counsel-company)
   :group 'telega-chat)
-  
+
+(defcustom telega-chat-message-filters-as-media nil
+  "List of message filters from `telega-chat--message-filters'.
+Messages for these filters are displayed in compact way in chatbuf.
+This is EXPERIMENTAL feature, use on your own risk."
+  :package-version '(telega . "0.7.0")
+  :type 'list
+  :options '("photo" "photo-video" "gif" "video" "chat-photo")
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil
@@ -1042,11 +1066,10 @@ Set it to nil to disable VoIP logging."
 (defcustom telega-notifications-delay 0.5
   "*Delay in seconds for notifications.
 This delay is taken before making decision show or not the
-message in notification.
-Taking pause before showing notification is wise, because another
-telegram may be active with the chat opened, you don't want the
-notification to be shown for already read message.
-Set it to 0, for no delay notifications."
+message in notification. Taking pause before showing notification
+is wise, because another Telegram client may be active with the
+chat opened, you don't want the notification to be shown for
+already read message.  Set it to 0, to not take any delay."
   :type 'float
   :group 'telega-notifications)
 
@@ -1110,6 +1133,17 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
+(defcustom telega-msg-hack-on-can-get-message-thread t
+  "Non-nil to hack on `:can_get_message_thread' message property.
+In case MSG has `:message_thread_id' and has no
+`:can_get_message_thread', we can still fetch the thread, because
+aparently message thread id is actually a thread starter message
+id.  This could change anytime in Telegram, and this option will
+no longer work."
+  :package-version '(telega . "0.6.30")
+  :type 'boolean
+  :group 'telega-msg)
+
 (defcustom telega-photo-show-details t
   "*Non-nil to show photo details for photo messages."
   :type 'boolean
@@ -1126,6 +1160,12 @@ Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
   "*Same as `telega-photo-size-limits', but for thumbnails.
 Used for such messages as audio/document/etc."
   :package-version '(telega . "0.6.30")
+  :type '(list integer integer integer integer)
+  :group 'telega)
+
+(defcustom telega-webpage-preview-size-limits '(10 3 55 6)
+  "Same as `telega-photo-size-limits', but for webpage preview image."
+  :package-version '(telega . "0.6.31")
   :type '(list integer integer integer integer)
   :group 'telega)
 
@@ -1160,6 +1200,7 @@ Message is ignored if its `:ignore' option is set to non-nil."
 (defcustom telega-completing-read-function 'ido-completing-read
   "Completing read function to use."
   :type 'function
+  :options '(ivy-completing-read)
   :group 'telega)
 
 (defcustom telega-screenshot-function
@@ -1171,6 +1212,8 @@ Message is ignored if its `:ignore' option is set to non-nil."
          'telega-screenshot-with-pngpaste)
         ((executable-find "gnome-screenshot")
          'telega-screenshot-with-gnome-screenshot)
+        ((executable-find "maim")
+         'telega-screenshot-with-maim)
         ((executable-find "import")
          'telega-screenshot-with-import))
   "*Function to use to make screenshot.
@@ -1262,6 +1305,11 @@ cdr is used if custom order is greater then real chat's order."
 
 (defcustom telega-symbol-heavy-checkmark "✔" ;\u2714
   "Symbol for heavy check mark."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-blank-button (propertize " " 'display '(space :width 2))
+  "Symbol for blank checkmark buttons."
   :type 'string
   :group 'telega-symbol)
 
@@ -1420,9 +1468,10 @@ If nil, then user's online status is not displayed."
   (define-fringe-bitmap 'telega-mark
     (vector #b11111111) nil nil '(top periodic)))
 
-(defcustom telega-symbol-mark (if (fboundp 'define-fringe-bitmap)
-                                  (propertize "*" 'display  '(left-fringe telega-mark error))
-                                (propertize "*" 'face 'error))
+(defcustom telega-symbol-mark
+  (if (fboundp 'define-fringe-bitmap)
+      (propertize "*" 'display  '(left-fringe telega-mark error))
+    (propertize "*" 'face 'error))
   "*Symbol used to denote marked messages/chats."
   :type 'string
   :group 'telega-symbol)
@@ -1469,6 +1518,11 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-multiple-folders "🗂"
+  "Symbol to use to denote multiple folders."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-linked "⭾"
   "Symbol used for linked chats button in modeline."
   :type 'string
@@ -1476,6 +1530,21 @@ If nil, then user's online status is not displayed."
 
 (defcustom telega-symbol-keyboard "🖮"
   "Symbol used to display reply markup keyboard."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-reply "⮪"
+  "Symbol used to for replies."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-forward (compose-chars ?🗩 ?🠒)
+  "Symbol used to display forwarding."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-circle "◯"
+  "Circle to create nice looking text avatars."
   :type 'string
   :group 'telega-symbol)
 
@@ -1501,7 +1570,11 @@ If nil, then user's online status is not displayed."
          telega-symbol-blocked
          telega-symbol-alarm
          telega-symbol-folder
+         telega-symbol-multiple-folders
          telega-symbol-keyboard
+         telega-symbol-reply
+         telega-symbol-forward
+         telega-symbol-circle
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.

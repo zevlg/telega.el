@@ -248,7 +248,9 @@ If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
         (when (telega-file--downloaded-p tl-file)
           (when (telega--tl-get for-msg :content :is_secret)
             (telega--openMessageContent for-msg))
-          (telega-image-view-file tl-file for-msg))))))
+          (if (memq 'photo telega-open-message-as-file)
+              (telega-open-file (telega--tl-get tl-file :local :path) for-msg)
+            (telega-image-view-file tl-file for-msg)))))))
 
 
 (defun telega-image--telega-text (img &optional slice-num)
@@ -459,7 +461,6 @@ Default is `:telega-image'."
                   (telega-file--downloading-p media-file))
           (telega-file--download media-file nil
             (lambda (dfile)
-              (cl-assert (plist-get (car obj-spec) (or cache-prop :telega-image)))
               (telega-media--image-update obj-spec dfile cache-prop)
               (force-window-update))))))
     cached-image))
@@ -496,8 +497,22 @@ Default is `:telega-image'."
      (cons best :photo)
      'force-update)))
 
-(defun telega-avatar--create-image (chat-or-user file &optional cheight)
-  "Create image for CHAT-OR-USER avatar.
+(defun telega-avatar--title-text (sender)
+  "Create textual avatar for the SENDER (chat or user).
+Return string of width 3."
+  (let ((title (telega-msg-sender-title sender))
+        (title-faces (telega-msg-sender-title-faces sender)))
+    (if telega-avatar-text-compose-chars
+        (concat (propertize (compose-chars (aref telega-symbol-circle 0)
+                                           (aref title 0))
+                            'face title-faces)
+                " ")
+      (concat "("
+              (propertize (substring title 0 1) 'face title-faces)
+              ")"))))
+
+(defun telega-avatar--create-image (sender file &optional cheight)
+  "Create SENDER (char or user) avatar image.
 CHEIGHT specifies avatar height in chars, default is 2."
   ;; NOTE:
   ;; - For CHEIGHT==1 align avatar at vertical center
@@ -511,7 +526,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (xh (telega-chars-xheight cheight))
          (margin (* mfactor xh))
          (ch (* cfactor xh))
-         (cfull (+ ch margin))
+         (cfull (floor (+ ch margin)))
          (aw-chars (telega-chars-in-width ch))
          (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
          (svg-xw (telega-chars-xwidth aw-chars))
@@ -519,9 +534,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
                        ((= cheight 2) (+ cfull (telega-chars-xheight 1)))
                        (t xh)))
          (svg (telega-svg-create svg-xw svg-xh))
-         (name (if (eq (telega--tl-type chat-or-user) 'user)
-                   (telega-user--name chat-or-user)
-                 (telega-chat-title chat-or-user))))
+         (name (telega-msg-sender-title sender)))
     (if (telega-file-exists-p photofile)
         (let ((img-type (image-type-from-file-name photofile))
               (clip (telega-svg-clip-path svg "clip")))
@@ -535,9 +548,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
 
       ;; Draw initials
       (let ((fsz (/ ch 2))
-            (colors (if (eq (telega--tl-type chat-or-user) 'user)
-                        (telega-user-color chat-or-user)
-                      (telega-chat-color chat-or-user))))
+            (colors (telega-msg-sender-color sender)))
         (svg-gradient svg "cgrad" 'linear
                       (list (cons 0 (telega-color-name-as-hex-2digits
                                      (or (nth 1 colors) "gray75")))
@@ -552,23 +563,22 @@ CHEIGHT specifies avatar height in chars, default is 2."
                   ;; XXX insane X/Y calculation
                   :x (- (/ svg-xw 2) (/ fsz 3))
                   :y (+ (/ fsz 3) (/ cfull 2)))))
-
     (telega-svg-image svg :scale 1.0
                       :width svg-xw :height svg-xh
                       :ascent 'center
                       :mask 'heuristic
                       ;; Correct text for tty-only avatar display
                       :telega-text
-                      (cons (concat "(" (substring name 0 1) ")"
+                      (cons (concat (telega-avatar--title-text sender)
                                     (make-string aw-chars-3 ?\u00A0))
                             (mapcar (lambda (_ignore)
                                       (make-string (+ 3 aw-chars-3) ?\u00A0))
                                     (make-list (1- cheight) 'not-used))))
     ))
 
-(defun telega-avatar--create-image-one-line (chat-or-user file)
-  "Avatar creator for one line use."
-  (telega-avatar--create-image chat-or-user file 1))
+(defun telega-avatar--create-image-one-line (sender file)
+  "Create SENDER (chat or user) avatar image for one line use)."
+  (telega-avatar--create-image sender file 1))
 
 (defun telega-symbol-emojify (emoji &optional image-file)
   "Attach `display' property with emoji svg to EMOJI string.
@@ -600,27 +610,30 @@ Optionally IMAGE-FILE could be used."
          (width (plist-get map :width))
          (height (plist-get map :height))
          (svg (telega-svg-create width height)))
+    (cl-assert (and (integerp width) (integerp height)))
     (if (and (telega-file--downloaded-p map-photo)
              (telega-file-exists-p map-photofile))
         (svg-embed svg map-photofile "image/png" nil
                    :x 0 :y 0 :width width :height height)
       (svg-rectangle svg 0 0 width height
-                     :fill-color (apply 'color-rgb-to-hex
-                                        (color-name-to-rgb
-                                         (face-foreground 'shadow)))))
+                     :fill-color (telega-color-name-as-hex-2digits
+                                  (face-foreground 'shadow))))
 
     ;; Show user's avatar
+    ;; - :heading - direction of user's POV
+    ;;
     ;; TODO: calculate avatar possition according to
     ;;       map-loc/user-loc, they can differ
     ;;
-    ;; TODO: show other users close enough to `:user-id'
-    (when-let* ((user-id (plist-get map :user-id))
-                (user (unless (zerop user-id)
-                        (telega-user--get user-id)))
-                (user-photo (when user
-                              (telega--tl-get user :profile_photo :small))))
-      (when (telega-file--downloaded-p user-photo)
-        (let* ((photofile (telega--tl-get user-photo :local :path))
+    ;; TODO: show other users close enough to `:sender'
+    (when-let* ((raw-sender (plist-get map :sender))
+                (sender (telega-msg-sender raw-sender))
+                (sender-photo (if (telega-user-p sender)
+                                  (telega--tl-get sender :profile_photo :small)
+                                (cl-assert (telega-chat-p sender))
+                                (telega--tl-get sender :photo :small))))
+      (when (telega-file--downloaded-p sender-photo)
+        (let* ((photofile (telega--tl-get sender-photo :local :path))
                (img-type (image-type-from-file-name photofile))
                (clip (telega-svg-clip-path svg "user-clip"))
                (sz (/ (plist-get map :height) 8))
@@ -640,6 +653,36 @@ Optionally IMAGE-FILE could be used."
                 :stroke-width 4
                 :stroke-color "white"
                 :fill-color (face-foreground 'telega-blue))
+
+    ;; User's direction heading 1-360, 0 if unknown
+    (let ((heading (or (plist-get map :user-heading) 0)))
+      (unless (zerop heading)
+        (let* ((w2 (/ width 2))
+               (h2 (/ height 2))
+               (angle1 (* pi (/ (- (+ heading 200)) 180.0)))
+               (angle2 (* pi (/ (- (+ heading 160)) 180.0)))
+               (h-dx1 (* 100 (sin angle1)))
+               (h-dy1 (* 100 (cos angle1)))
+               (h-dx2 (* 100 (sin angle2)))
+               (h-dy2 (* 100 (cos angle2)))
+               (hclip (telega-svg-clip-path svg "headclip")))
+          (telega-svg-path hclip (format "M %d %d L %f %f L %f %f Z"
+                                         w2 h2 (+ w2 h-dx1) (+ h2 h-dy1)
+                                         (+ w2 h-dx2) (+ h2 h-dy2)))
+          (telega-svg-gradient svg "headgrad" 'radial
+                               (list (list 0 (telega-color-name-as-hex-2digits
+                                              (face-foreground 'telega-blue))
+                                           :opacity 0.9)
+                                     ;; (list 50 (telega-color-name-as-hex-2digits
+                                     ;;           (face-foreground 'telega-blue))
+                                     ;;       :opacity 0.5)
+                                     (list 100 (telega-color-name-as-hex-2digits
+                                               (face-foreground 'telega-blue))
+                                           :opacity 0.0)))
+          (svg-circle svg w2 h2 50
+                      :gradient "headgrad"
+                      :clip-path "url(#headclip)")
+          )))
 
     (svg-image svg :scale 1.0
                :width width :height height

@@ -1,5 +1,21 @@
-(("lng_saved_messages"
+(
+ ("lng_weekday1" :value "Mon")
+ ("lng_weekday2" :value "Tue")
+ ("lng_weekday3" :value "Wed")
+ ("lng_weekday4" :value "Thu")
+ ("lng_weekday5" :value "Fri")
+ ("lng_weekday6" :value "Sat")
+ ("lng_weekday7" :value "Sun")
+  
+ ("lng_profile_loading"
+  :value "Loading...")
+
+ ("lng_saved_messages"
   :value "Saved Messages")
+ ("lng_replies_messages"
+  :value "Replies")
+ ("lng_replies_discussion_started"
+  :value "Discussion started")
  ("lng_profile_settings_section"
   :value "Settings")
  ("lng_profile_send_message"
@@ -66,6 +82,16 @@ Example: 23 y.o. designer from San Francisco")
   :value "Blocked Users")
  ("lng_settings_section_privacy"
   :value "Privacy and Security")
+ ("lng_settings_section_notify"
+  :value "Notifications")
+
+ ;; Screenshot #8262 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot8262
+ ("lng_settings_new_unknown"
+  :value "New chats from unknown users")
+ ("lng_settings_auto_archive"
+  :value "Archive and Mute")
+ ("lng_settings_auto_archive_about"
+  :value "Automatically archive and mute new chats, groups and channels from non-contacts.")
 
  ("lng_action_created_chat"
   :value "{from} created the group «{title}»")
@@ -96,6 +122,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} joined the group via invite link")
  ("lng_action_user_left"
   :value "{from} left the group")
+ ("lng_action_add_user"
+  :value "{from} added {user}")
  ("lng_action_kick_user"
   :value "{from} removed {user}")
 
@@ -111,6 +139,19 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_action_game_you_scored_no_game"
   :one_value "You scored {count}"
   :other_value "You scored {count}")
+
+ ("lng_action_proximity_reached_you"
+  :value "{from} is now within {distance} from you")
+ ("lng_action_you_proximity_reached"
+  :value "You are now within {distance} from {user}")
+ ("lng_action_proximity_reached"
+  :value "{from} is now within {distance} from {user}")
+ ("lng_action_proximity_distance_m"
+  :one_value "{count} meter"
+  :other_value "{count} metres")
+ ("lng_action_proximity_distance_km"
+  :one_value "{count} km"
+  :other_value "{count} km")
 
  ("telega_action_group_upgrade_to"
   :value "{from} upgraded the group to supergroup")
@@ -130,6 +171,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "{mouse}: Goto next mention")
  ("telega_chat_modeline_pinned_msg_help"
   :value "{mouse}: Goto pinned message")
+ ("telega_chat_modeline_thread_msg_help"
+  :value "{mouse}: Goto thread starter message")
  ("telega_chat_modeline_discuss_help"
   :value "{mouse}: Goto chat to discuss this channel")
  ("telega_chat_modeline_members"
@@ -153,17 +196,19 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_query_kill_anyway"
   :value "No filtering applied, kill chatbufs anyway? ")
  ("telega_query_revoke_message"
-  :value "Revoke the message? ")
+  :value "Revoke (for everyone) the message? ")
  ("telega_query_kill_message"
-  :value "Kill the message? ")
+  :value "Kill (for me only) the message? ")
  ("telega_query_revoke_marked_messages"
-  :one_value "Revoke {count} marked message? "
-  :other_value "Revoke {count} marked messages? ")
+  :one_value "Revoke (for everyone) {count} marked message? "
+  :other_value "Revoke (for everyone) {count} marked messages? ")
  ("telega_query_kill_marked_messages"
-  :one_value "Kill {count} marked message? "
-  :other_value "Kill {count} marked messages? ")
+  :one_value "Kill (for me only) {count} marked message? "
+  :other_value "Kill (for me only) {count} marked messages? ")
  ("telega_query_dnd_photo_as_file"
   :value "Send this photo as a file? ")
+ ("telega_query_reset_notifications"
+  :value "Reset all notifications settings? ")
 
  ("lng_profile_delete_channel"
   :value "Delete channel")
@@ -194,8 +239,25 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_archived_remove"
   :value "Unarchive chat")
 
+ ;; Online status
  ("lng_status_online"
   :value "online")
+ ("lng_status_offline"
+  :value "last seen a long time ago")
+ ("lng_status_lastseen_now"
+  :value "last seen just now")
+ ("lng_status_recently"
+  :value "last seen recently")
+ ("lng_status_lastseen_today"
+  :value "last seen today at {time}")
+ ("lng_status_lastseen_date_time"
+  :value "last seen {date} at {time}")
+ ("lng_status_lastseen_date"
+  :value "last seen {date}")
+ ("lng_status_last_week"
+  :value "last seen within a week")
+ ("lng_status_last_month"
+  :value "last seen within a month")
 
  ("lng_report_spam"
   :value "Report Spam")
@@ -257,6 +319,78 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_rights_edit_admin_rank_about"
   :value "A custom title that will be shown to all members instead of '{title}'.")
 
+ ;; Screenshot #7213 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot7213
+ ("lng_rights_slowmode_header"
+  :value "Slow mode")
+ ("lng_rights_slowmode_off"
+  :value "Off")
+ ("lng_rights_slowmode_about"
+  :value "Members will be able to send only one message per this interval.")
+ ("lng_rights_slowmode_about_interval"
+  :value "Members will be able to send only one message {interval}.")
+ ("lng_rights_slowmode_interval_minutes"
+  :one_value "every {count} minute"
+  :other_value "every {count} minutes")
+
+ ;; Screenshot #6213 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot6213
+ ("lng_manage_peer_permissions"
+  :value "Permissions")
+ ("lng_rights_default_restrictions_header"
+  :value "What can members of this group do?")
+ ("lng_rights_chat_send_text"
+  :value "Send messages")
+ ("lng_rights_chat_send_media"
+  :value "Send media")
+ ("lng_rights_chat_send_stickers"
+  :value "Send stickers & GIFs")
+ ("lng_rights_chat_send_links"
+  :value "Embed links")
+ ("lng_rights_chat_send_polls"
+  :value "Send polls")
+ ("lng_rights_chat_add_members"
+  :value "Add members")
+ ("lng_rights_group_pin"
+  :value "Pin messages")
+ ("lng_rights_group_info"
+  :value "Change group info")
+ ("lng_manage_peer_exceptions"
+  :value "Exceptions")
+
+ ;; Screenshot #5571 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5571
+ ("lng_rights_edit_admin_header"
+  :value "What can this admin do?")
+ ("lng_rights_group_delete"
+  :value "Delete messages")
+ ;; lng_rights_group_info
+ ("lng_rights_group_ban"
+  :value "Ban users") 
+ ("lng_rights_group_invite_link"
+  :value "Invite users via link")
+ ("lng_rights_add_admins"
+  :value "Add new admins")
+ ("lng_rights_about_add_admins_yes"
+  :value "This admin will be able to add new admins with the same (or more limited) permissions.")
+ ("lng_rights_about_add_admins_yes"
+  :value "This admin will be able to add new admins with the same (or more limited) permissions.")
+ ("lng_rights_about_admin_cant_edit"
+  :value "You cannot edit the rights of this admin.") ; :can_be_edited
+
+ ;; Screenshot #7348 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot7348
+ ("lng_channel_add_admin"
+  :value "Add Administrator")
+ ;; lng_rights_edit_admin_header
+ ("lng_rights_channel_info"
+  :value "Change channel info")
+ ("lng_rights_channel_post"
+  :value "Post messages")
+ ("lng_rights_channel_edit"
+  :value "Edit messages of others")
+ ("lng_rights_channel_delete"
+  :value "Delete messages of others")
+ ("lng_channel_add_members"
+  :value "Add members")
+ ;; lng_rights_add_admins
+
  ;; Help messages
  ("telega_scheduled_help"
   :value "This message will be scheduled")
@@ -268,6 +402,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "New caption for the forwarded message")
  ("telega_disable_webpage_preview_help"
   :value "This message won't have webpage preview")
+ ("telega_reset_notifications_help"
+  :value "Undo all custom notification settings for all chats")
 
  ("telega_enable_notification"
   :value "Enable Receiver Notification")
@@ -275,6 +411,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Disable Receiver Notification")
  ("telega_disable_webpage_preview"
   :value "Disable WebPage Preview")
+ ("telega_reset_notifications"
+  :value "Reset All Notifications")
 
  ("telega_random_dice"
   :value "Random Dice")
@@ -383,6 +521,13 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_filters_remove_sure"
   :value "This will remove the folder, chats won't be deleted.")
 
+ ;; Comments
+ ("lng_comments_open_none"
+  :value "Leave a Comment")
+ ("lng_comments_open_count"
+  :one_value "{count} Comment"
+  :other_value "{count} Comments")
+
  ;; Root View titles
  ("lng_menu_settings"
   :value "Settings")
@@ -391,8 +536,23 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_view_deleted_chats"
   :value "Recently Deleted Chats")
 
+ ;; #5584 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5584
+ ("lng_mute_duration_forever"
+  :value "Forever")
+ ("lng_mute_box_tip"
+  :value "Choose for how long you would like to turn off notifications for the following chat")
+
+ ;; #917 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot917
+ ("lng_context_reply_msg"
+  :value "Reply")
+ ("lng_context_edit_msg"
+  :value "Edit")
+
  ("telega_option_sensitive_content"
   :value "Show Sensitive Content")
+ ("lng_settings_sensitive_about"
+  :value "Display sensitive media in public channels on all your Telegram devices.")
  ("telega_option_prefer_ipv6"
   :value "Prefer IPv6")
+
  )

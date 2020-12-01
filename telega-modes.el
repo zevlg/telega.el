@@ -337,8 +337,7 @@ chats matching this chat filter."
                    (telega-msg-by-me-p last-msg)
                    (< last-read-id (plist-get last-msg :id))
                    (plist-get last-msg :can_be_edited)
-                   (eq (telega--tl-type (plist-get last-msg :content))
-                       'messageText)
+                   (telega-msg-type-p 'messageText last-msg)
                    (zerop (plist-get last-msg :reply_to_message_id))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
@@ -396,12 +395,23 @@ chats matching this chat filter."
         (concat "◁Image" (when image-type (format "[%s]" image-type))))
   )
 
+(defun telega-image-mode-p (buffer-name &rest _unused)
+  "Return non-nil if buffer named BUFFER-NAME has `telega-image-mode' major-mode.
+Could be used as condition function in `display-buffer-alist'."
+  (with-current-buffer buffer-name
+    (eq major-mode 'telega-image-mode)))
+
 (defun telega-image-view-file (tl-file &optional for-msg)
   "View image in telegram TL-FILE from message FOR-MSG."
   (cl-assert (telega-file--downloaded-p tl-file))
-  (find-file-literally (telega--tl-get tl-file :local :path))
-  (telega-image-mode)
-  (setq telega-image--message for-msg))
+  ;; NOTE: Use `pop-to-buffer' so `display-buffer-alist' is considered
+  ;; when showing the image
+  (pop-to-buffer-same-window
+   (with-current-buffer (find-file-noselect
+                         (telega--tl-get tl-file :local :path) nil t)
+     (telega-image-mode)
+     (setq telega-image--message for-msg)
+     (current-buffer))))
 
 (defun telega-image-next (&optional backward)
   "Show next image in chat."
