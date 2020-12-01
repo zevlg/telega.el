@@ -1566,7 +1566,7 @@ chatbuf.
 
 - telega-company-username :: Complete user mentions via ~@<username>~
      syntax. Here is the screenshot, showing use of this backend:
-     [[file:completing-usernames.jpg]]
+     [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 
 - telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
      syntax.  This backend does not complete if ~/<botcmd>~ syntax is
