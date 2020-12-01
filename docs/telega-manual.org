@@ -570,10 +570,12 @@ Telega prefix map bindings:
      is used as ~FILE~.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -969,11 +971,11 @@ For other Chat Filter bindings see below.
 - (ids ~ID-LIST~...) :: 
      Matches if chat's id is one of in ~ID-LIST~.
 
-- (me-is-owner [ OR-ADMIN ])::
-  Matches if me is owner of the chat.
-  Only basicgroup, supergroup and channel can be owned.
-  If optional ~OR-ADMIN~ is specified, then match also if me is
-  administrator in the chat.
+- (me-is-owner [ ~OR-ADMIN~ ]) :: 
+     Matches if me is owner of the chat.
+     Only basicgroup, supergroup and channel can be owned.
+     If optional ~OR-ADMIN~ is specified, then match also if me is
+     administrator in the chat.
 
 - me-is-member :: 
      Matches if me is member of the chat.

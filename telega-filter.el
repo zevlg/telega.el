@@ -810,7 +810,7 @@ Important chat is a chat with unread messages and enabled notifications."
                       (telega--getCreatedPublicChats)))))
 
 ;;; ellit-org: chat-filters
-;; - (me-is-owner [ OR-ADMIN ])::
+;; - (me-is-owner [ ~OR-ADMIN~ ]) ::
 ;;   {{{fundoc(telega--filter-me-is-owner, 2)}}}
 (define-telega-filter me-is-owner (chat &optional or-admin)
   "Matches if me is owner of the chat.
