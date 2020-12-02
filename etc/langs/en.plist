@@ -71,6 +71,9 @@ Example: 23 y.o. designer from San Francisco")
   :other_value "{count} answers")
  ("lng_polls_stop_warning"
   :value "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.")
+ ("lng_polls_solution_title"
+  :value "Explanation")
+
  ("lng_deleted"
   :value "Deleted Account")
  ("lng_deleted_message"
@@ -374,6 +377,14 @@ Example: 23 y.o. designer from San Francisco")
   :value "This admin will be able to add new admins with the same (or more limited) permissions.")
  ("lng_rights_about_admin_cant_edit"
   :value "You cannot edit the rights of this admin.") ; :can_be_edited
+ ("lng_rights_group_anonymous"
+  :value "Remain Anonymous")
+ ("lng_rights_edit_admin"
+  :value "Edit permissions")
+ ("telega_rights_restrict_members"
+  :value "Restrict Members")
+ ("telega_rights_promote_members"
+  :value "Promote Members")
 
  ;; Screenshot #7348 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot7348
  ("lng_channel_add_admin"

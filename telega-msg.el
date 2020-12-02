@@ -571,7 +571,17 @@ non-nil."
           (telega-ins " (" (telega-i18n "lng_polls_votes_count"
                              :count (plist-get poll :total_voter_count))
                       ")"))
-        (telega-ins "\n\n")
+        (telega-ins "\n")
+        ;; Quiz explanation goes next
+        (when-let ((explanation
+                    (telega-tl-str (plist-get poll :type) :explanation))
+                   (label (propertize
+                           (concat (telega-i18n "lng_polls_solution_title") ": ")
+                           'face 'shadow)))
+          (telega-ins--labeled label nil
+            (telega-ins explanation)
+            (telega-ins "\n")))
+        (telega-ins "\n")
 
         (let ((options (append (plist-get poll :options) nil)))
           (dotimes (popt-id (length options))

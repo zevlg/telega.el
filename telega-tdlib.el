@@ -734,14 +734,15 @@ Return list of \"ChatMember\" objects."
           :limit (or limit 200))
     callback))
 
-(defun telega--setChatMemberStatus (chat user status)
+(defun telega--setChatMemberStatus (chat user status &optional callback)
   "Change the STATUS of a CHAT USER, needs appropriate privileges.
 STATUS is one of: "
   (telega-server--send
    (list :@type "setChatMemberStatus"
          :chat_id (plist-get chat :id)
          :user_id (plist-get user :id)
-         :status status)))
+         :status status)
+   callback))
 
 (defun telega--addChatMember (chat user &optional forward-limit)
   "Add new member USER to the CHAT."

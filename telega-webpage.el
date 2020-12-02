@@ -381,7 +381,7 @@ Keymap:
      (let ((telega-webpage-strip-nl t))
        (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
     (pageBlockBlockQuote
-     (let ((vbar-prefix (propertize telega-symbol-vertical-bar 'face 'bold)))
+     (let ((vbar-prefix (propertize (telega-symbol 'vertical-bar) 'face 'bold)))
        (telega-ins vbar-prefix)
        (telega-ins--with-attrs (list :fill 'left
                                      :fill-column telega-webpage-fill-column

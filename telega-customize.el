@@ -260,9 +260,9 @@ enabled it will match also `:flag-jo:' and `:black-jocker:'."
   :type 'string
   :group 'telega)
 
-(defcustom telega-emoji-use-images (when telega-emoji-font-family t)
-  "*Non-nil to use images for emojis.
-Value is ignored if `telega-use-images' is nil."
+(defcustom telega-emoji-use-images
+  (and telega-use-images telega-emoji-font-family)
+  "*Non-nil to use images for emojis."
   :type 'boolean
   :group 'telega)
 
@@ -807,7 +807,15 @@ Used when showing chat members list."
   :type 'string
   :group 'telega-chat)
 
-(defcustom telega-chat-input-comment-prompt "Comment>>> "
+(defcustom telega-chat-input-anonymous-prompt
+  (concat "Anonymous" telega-chat-input-prompt)
+  "*Chatbuf input prompt when sending messages as anonymous admin."
+  :package-version '(telega . "0.7.1")
+  :type 'string
+  :group 'telega-chat)
+
+(defcustom telega-chat-input-comment-prompt
+  (concat "Comment" telega-chat-input-prompt)
   "*Chatbuf input prompt displayed when commenting on channel post."
   :package-version '(telega . "0.7.0")
   :type 'string
@@ -1548,6 +1556,11 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-bulp "💡"
+  "Bulp symbol to be used for quiz polls with explanation."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -1575,10 +1588,25 @@ If nil, then user's online status is not displayed."
          telega-symbol-reply
          telega-symbol-forward
          telega-symbol-circle
+         telega-symbol-bulp
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.
 Install all symbol widths inside `telega-load-hook'."
+  :type 'list
+  :group 'telega-symbol)
+
+(defcustom telega-symbols-emojify
+  '((verified (telega-etc-file "verified.svg"))
+    (vertical-bar (telega-svg-create-vertical-bar))
+
+    multiple-folders eye flames lock pin alarm failed location play
+    pause phone photo video bulp)
+  "List of symbols to emojify if `telega-emoji-use-images' is non-nil.
+Each element is either XXX from ending of telega-symbol-XXX or list,
+where car is XXX and rest is form to evaluate to get image or a
+filename with an image to be used."
+  :package-version '(telega . "0.7.1")
   :type 'list
   :group 'telega-symbol)
 
@@ -1596,10 +1624,10 @@ Install all symbol widths inside `telega-load-hook'."
 (defface telega-button
   '((((class color) (min-colors 88) (background light))
      :foreground "RoyalBlue3"
-     :box (:line-width -2 :color "RoyalBlue3" :style nil))
+     :box (:line-width (-2 . -2) :color "RoyalBlue3" :style nil))
     (((class color) (min-colors 88) (background dark))
      :foreground "cyan1"
-     :box (:line-width -2 :color "cyan1" :style nil))
+     :box (:line-width (-2 . -2) :color "cyan1" :style nil))
     (t :inherit highlight))
   "Face used for telega buttons."
   :group 'telega-faces)
@@ -1613,16 +1641,6 @@ Install all symbol widths inside `telega-load-hook'."
      :inherit telega-button)
     (t :inherit telega-button))
   "Face used for active (cursor inside) telega buttons."
-  :group 'telega-faces)
-
-(defface telega-box
-  '((((class color) (min-colors 88) (background light))
-     :inherit default
-     :box (:line-width -2 :color "gray30" :style nil))
-    (((class color) (min-colors 88) (background dark))
-     :inherit default
-     :box (:line-width -2 :color "gray70" :style nil)))
-  "Face used to outline boxes."
   :group 'telega-faces)
 
 (defface telega-blue
@@ -1995,6 +2013,15 @@ To find out call state examine the `:state' value."
 Hook is called only if file has been opened inside Emacs and has
 corresponding buffer."
   :package-version '(telega . "0.6.31")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-file-downloaded-hook nil
+  "Hook called when some file has been downloaded.
+Called with single argument - TDLib file structure.
+Could be used to copy downloaded files to another place.
+See https://t.me/emacs_telega/21925"
+  :package-version '(telega . "0.7.1")
   :type 'hook
   :group 'telega-hooks)
 

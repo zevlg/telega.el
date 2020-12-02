@@ -1233,6 +1233,76 @@ CHEIGHT is height for the svg in characters, default=1."
               (cons (cons emoji image) telega-emoji-svg-images))))
     image))
 
+(defun telega-svg-create-vertical-bar (&optional bar-width bar-position
+                                                 bar-str color)
+  "Create svg image for vertical bar.
+BAR-STR is string value for textual vertical bar, by default
+`telega-symbol-vertical-bar' is used.
+COLOR - bar color, by default `default' face foreground color is used.
+
+BAR-WIDTH and BAR-POSITION defines how vertical bar is drawn.  If
+float values then it is relative to bar width in pixels.  If
+integer values, then pixels used."
+  (unless bar-str
+    (setq bar-str telega-symbol-vertical-bar))
+  (or (cdr (assoc bar-str telega-emoji-svg-images))
+      (let* ((xh (telega-chars-xheight 1))
+             (xw (telega-chars-xwidth (string-width bar-str)))
+             (svg (telega-svg-create xw xh))
+             (bar-face (or (get-text-property 0 'face bar-str) 'default))
+             (bar-xpos (if (integerp bar-position)
+                           bar-position
+                         (round (* xw (or bar-position 0.3)))))
+             (bar-xw (if (integerp bar-width)
+                         bar-width
+                       (round (* xw (or bar-width 0.07)))))
+             image)
+        (svg-rectangle svg bar-xpos 0 bar-xw xh
+                       :fill-color (or color
+                                       (telega-color-name-as-hex-2digits
+                                        (face-foreground bar-face))))
+        (setq image (telega-svg-image svg :scale 1.0
+                                      :width xw :height xh
+                                      :ascent 'center
+                                      :mask 'heuristic
+                                      :telega-text bar-str))
+        (setq telega-emoji-svg-images
+              (cons (cons bar-str image) telega-emoji-svg-images))
+        image)))
+
+(defun telega-symbol-emojify (emoji &optional image-spec)
+  "Return a copy of EMOJI with  `display' property of EMOJI svg image.
+Optionally IMAGE-SPEC could be used to ommit svg create and use another image.
+IMAGE-SPEC could be image, filename or form to be evaluated returning image."
+  ;; Possible eval a form to get real IMAGE-SPEC
+  (when (and (listp image-spec)
+             (not (eq 'image (car image-spec))))
+    (setq image-spec (eval image-spec t)))
+
+  (let ((image (cond ((and (listp image-spec) (eq 'image (car image-spec)))
+                      image-spec)
+                     (image-spec
+                      (cl-assert (stringp image-spec))
+                      (create-image image-spec nil nil
+                                    :scale 1.0 :ascent 'center
+                                    :mask 'heuristic
+                                    :width (telega-chars-xwidth
+                                            (string-width emoji))))
+                     (t
+                      (telega-emoji-create-svg emoji)))))
+    (propertize emoji 'rear-nonsticky '(display) 'display image)))
+
+(defun telega-symbol (ending)
+  "Return possible emojified value for the symbol denoted by ENDING.
+Actual symbol value is taken from `telega-symbol-ENDING' variable.
+Only endings listed in `telega-symbols-emojify' are emojified."
+  (let ((value (symbol-value (intern (format "telega-symbol-%s" ending)))))
+    (or (and telega-emoji-use-images
+             (let ((emoji-file (cdr (assq ending telega-symbols-emojify))))
+               (when (or emoji-file (memq ending telega-symbols-emojify))
+                 (apply #'telega-symbol-emojify value emoji-file))))
+        value)))
+
 (defun telega-emoji-has-zero-joiner-p (emoji)
   "Return non-nil if EMOJI has ZWJ char inside."
   (string-match-p (regexp-quote "\U0000200D") emoji))

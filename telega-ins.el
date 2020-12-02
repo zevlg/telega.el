@@ -72,17 +72,10 @@
   (if (member label (list " " "  " "✕" telega-symbol-heavy-checkmark))
       (cons "" "")
 
-    ;; XXX inclose LABEL with shrink version of spaces, so button
-    ;; width will be char aligned
-
-    ;; NOTE: non-breakable space is used, so if line is feeded at the
-    ;; beginning of button, it won't loose its leading space
-    (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
-                                        :line-width)
-                             0)))
-           (space `(space (,(- (telega-chars-xwidth 1) box-width))))
-           (end (propertize "\u00A0" 'display space)))
-      (cons end end))))
+    ;; NOTE: we use cons as `:line-width` in telega-button face, so
+    ;; width of the button is not increased in contrast with using
+    ;; single negative number for `:line-width'
+    (cons "\u00A0" "\u00A0")))
 
 (defun telega-ins--button (label &rest props)
   "Insert pressable button labeled with LABEL.
@@ -417,13 +410,13 @@ E-CHAR - empty char, default is space."
       (telega-ins--with-face 'telega-msg-outgoing-status
         (telega-ins
          (cond ((plist-get msg :scheduling_state)
-                telega-symbol-alarm)
+                (telega-symbol 'alarm))
                ((and (stringp sending-state)
                      (string= sending-state "messageSendingStatePending"))
-                telega-symbol-pending)
+                (telega-symbol 'pending))
                ((and (stringp sending-state)
                      (string= sending-state "messageSendingStateFailed"))
-                telega-symbol-failed)
+                (telega-symbol 'failed))
                ((>= (plist-get chat :last_read_outbox_message_id)
                     (plist-get msg :id))
                 telega-symbol-heavy-checkmark)
@@ -459,7 +452,7 @@ SHOW-DETAILS - non-nil to show photo details."
           (lambda (_fileignored)
             (telega-msg-redisplay msg))))
 
-      (telega-ins telega-symbol-photo " ")
+      (telega-ins (telega-symbol 'photo) " ")
       (telega-ins-fmt "(%dx%d %s)"
         (plist-get hr :width) (plist-get hr :height)
         (file-size-human-readable (telega-file--size hr-file)))
@@ -476,7 +469,7 @@ SHOW-DETAILS - non-nil to show photo details."
           (telega-ins--image-slices
            (telega-self-destruct-create-svg
             (plist-get photo :minithumbnail)
-            (if (> ttl-in 0) telega-symbol-flames telega-symbol-lock))))
+            (telega-symbol (if (> ttl-in 0) 'flames 'lock)))))
 
       (telega-ins--image-slices
        (telega-photo--image photo (or limits telega-photo-size-limits)))
@@ -498,8 +491,8 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
 
     ;; Play/pause and downloading status
     (if (eq proc-status 'run)
-        (telega-ins (or music-symbol telega-symbol-pause))
-      (telega-ins (or music-symbol telega-symbol-play)))
+        (telega-ins (or music-symbol (telega-symbol 'pause)))
+      (telega-ins (or music-symbol (telega-symbol 'play))))
     (telega-ins " ")
 
     (telega-ins--with-attrs (list :max (/ telega-chat-fill-column 2)
@@ -557,7 +550,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (setq video (telega--tl-get msg :content :video)))
   (let ((video-name (telega-tl-str video :file_name))
         (video-file (telega-file--renew video :video)))
-    (telega-ins telega-symbol-video " ")
+    (telega-ins (telega-symbol 'video) " ")
     (if (telega-file--downloaded-p video-file)
         (let ((local-path (telega--tl-get video-file :local :path)))
           (telega-ins--with-props
@@ -585,7 +578,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
             (telega-ins--image-slices
              (telega-self-destruct-create-svg
               (plist-get video :minithumbnail)
-              (if (> ttl-in 0) telega-symbol-flames telega-symbol-lock))))
+              (telega-symbol (if (> ttl-in 0) 'flames 'lock)))))
 
         (let ((thumb (plist-get video :thumbnail))
               (minithumb (plist-get video :minithumbnail)))
@@ -614,8 +607,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     ;; play/pause only for messages
     (when msg
       (if (eq proc-status 'run)
-          (telega-ins telega-symbol-pause)
-        (telega-ins telega-symbol-play))
+          (telega-ins (telega-symbol 'pause))
+        (telega-ins (telega-symbol 'play)))
       (telega-ins " "))
 
     ;; waveform image
@@ -637,7 +630,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     ;; Show download status/button only if inserted for message
     (when msg
       (when (telega--tl-get msg :content :is_listened)
-        (telega-ins telega-symbol-eye))
+        (telega-ins (telega-symbol 'eye)))
       (telega-ins-prefix " "
         (telega-ins--file-progress msg note-file)))
     ))
@@ -653,7 +646,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (file-size-human-readable (telega-file--size note-file))
       (telega-duration-human-readable (plist-get note :duration)))
     (when viewed-p
-      (telega-ins telega-symbol-eye))
+      (telega-ins (telega-symbol 'eye)))
     (telega-ins-prefix " "
       (telega-ins--file-progress msg note-file))
 
@@ -708,8 +701,8 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
     (telega-ins telega-symbol-game " "
                 (propertize "GAME" 'face 'shadow)
                 "\n")
-    (telega-ins telega-symbol-vertical-bar)
-    (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
+    (telega-ins (telega-symbol 'vertical-bar))
+    (telega-ins--with-attrs (list :fill-prefix (telega-symbol 'vertical-bar)
                                   :fill-column (- telega-chat-fill-column 4)
                                   :fill 'left)
       (when-let ((photo (plist-get game :photo)))
@@ -728,8 +721,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (unless web-page
     (setq web-page (telega--tl-get msg :content :web_page)))
   (when web-page
-    (telega-ins telega-symbol-vertical-bar)
-    (telega-ins--with-attrs (list :fill-prefix telega-symbol-vertical-bar
+    (telega-ins (telega-symbol 'vertical-bar))
+    (telega-ins--with-attrs (list :fill-prefix (telega-symbol 'vertical-bar)
                                   :fill-column (- telega-chat-fill-column 4)
                                   :fill 'left)
       (when-let ((sitename (telega-tl-str web-page :site_name)))
@@ -786,7 +779,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
 (defun telega-ins--location (location)
   "Inserter for the LOCATION."
-  (telega-ins telega-symbol-location " ")
+  (telega-ins (telega-symbol 'location) " ")
   (telega-ins-fmt "%fN, %fE"
     (plist-get location :latitude) (plist-get location :longitude)))
 
@@ -843,9 +836,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
   "Insert call message MSG."
   (let* ((content (plist-get msg :content))
          (video-p (plist-get content :is_video))
-         (call-symbol (if video-p
-                          telega-symbol-video
-                        telega-symbol-phone))
+         (call-symbol (telega-symbol (if video-p 'video 'phone)))
          (reason (telega--tl-type (plist-get content :discard_reason)))
          (label (cond ((plist-get msg :is_outgoing)
                        (if (eq reason 'callDiscardReasonMissed)
@@ -951,6 +942,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
                              (anonymous-p "lng_polls_anonymous")
                              (quiz-p "lng_polls_public_quiz")
                              (t "lng_polls_public"))))
+    (when (and quiz-p (plist-get poll-type :explanation))
+      (telega-ins " " (telega-symbol 'bulp)))
     ;; I18N: polls_votes_count -> {count} votes
     (telega-ins ", " (telega-i18n (if quiz-p
                                       "lng_polls_answers_count"
@@ -1323,7 +1316,7 @@ Special messages are determined with `telega-msg-special-p'."
 (defun telega-ins--content (msg)
   "Insert message's MSG content."
   (when-let ((scheduled (plist-get msg :scheduling_state)))
-    (telega-ins telega-symbol-alarm " ")
+    (telega-ins (telega-symbol 'alarm) " ")
     (telega-ins--with-face 'shadow
       (telega-ins-i18n "telega_scheduled"))
     (telega-ins " ")
@@ -1522,7 +1515,7 @@ performance."
          (fwd-count (plist-get msg-ii :forward_count))
          (reply-count (telega-msg-replies-count msg)))
     (when (and view-count (not (zerop view-count)))
-      (telega-ins-fmt " %s%d" telega-symbol-eye view-count))
+      (telega-ins-fmt " %s%d" (telega-symbol 'eye) view-count))
     (when (and fwd-count (not (zerop fwd-count)))
       (telega-ins " ")
       (let ((fwd-count-label (concat telega-symbol-forward
@@ -1626,7 +1619,7 @@ argument - MSG to insert additional information after header."
 
         ;; Maybe pinned message?
         (when (plist-get msg :is_pinned)
-          (telega-ins " " telega-symbol-pin))
+          (telega-ins " " (telega-symbol 'pin)))
 
         (when addon-inserter
           (cl-assert (functionp addon-inserter))
@@ -1931,7 +1924,7 @@ Pass all ARGS directly to `telega-ins--message0'."
                         (format ", self-destruct in: %s"
                                 (telega-duration-human-readable
                                  (plist-get imc :ttl))))))
-        (telega-ins--input-file (plist-get imc :photo) telega-symbol-photo
+        (telega-ins--input-file (plist-get imc :photo) (telega-symbol 'photo)
                                 ttl-text)))
      (inputMessageAudio
       (telega-ins--input-file (plist-get imc :audio) telega-symbol-audio))
@@ -1940,7 +1933,7 @@ Pass all ARGS directly to `telega-ins--message0'."
                         (format ", self-destruct in: %s"
                                 (telega-duration-human-readable
                                  (plist-get imc :ttl))))))
-        (telega-ins--input-file (plist-get imc :video) telega-symbol-video
+        (telega-ins--input-file (plist-get imc :video) (telega-symbol 'video)
                                 ttl-text)))
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
@@ -1994,7 +1987,7 @@ Pass all ARGS directly to `telega-ins--message0'."
         (telega-ins--content-one-line
          (plist-get imc :message) (plist-get imc :remove_caption))))
      (telegaScheduledMessage
-      (telega-ins telega-symbol-alarm " " (telega-i18n "telega_scheduled") " ")
+      (telega-ins (telega-symbol 'alarm) " " (telega-i18n "telega_scheduled") " ")
       (if-let ((timestamp (plist-get imc :timestamp)))
           (telega-ins-i18n "telega_scheduled_at_date"
             :date (telega-ins--as-string (telega-ins--date timestamp)))
@@ -2021,7 +2014,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
        (messageText
         (telega-ins--fmt-text (plist-get content :text) msg))
        (messagePhoto
-        (telega-ins telega-symbol-photo " ")
+        (telega-ins (telega-symbol 'photo) " ")
         (or (telega-ins--fmt-text
              (unless remove-caption (plist-get content :caption)) msg)
             ;; I18N: lng_in_dlg_photo or lng_attach_photo
@@ -2053,7 +2046,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           (telega-duration-human-readable
            (telega--tl-get content :audio :duration))))
        (messageVideo
-        (telega-ins telega-symbol-video " ")
+        (telega-ins (telega-symbol 'video) " ")
         (or (telega-ins--fmt-text
              (unless remove-caption (plist-get content :caption)) msg)
             (telega-ins (propertize "Video" 'face 'shadow)))
@@ -2187,7 +2180,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
 
 (defun telega-ins--chat-pin-msg-one-line (pin-msg)
   "Inserter for pinned message PIN-MSG."
-  (telega-ins telega-symbol-pin " ")
+  (telega-ins (telega-symbol 'pin) " ")
   (telega-ins--chat-msg-one-line
    (telega-msg-chat pin-msg) pin-msg (+ 8 telega-chat-fill-column)))
 
@@ -2216,7 +2209,7 @@ Return t."
         (chat-type (telega-chat--type chat 'no-interpret))
         (chat-info (telega-chat--info chat)))
     (when (plist-get chat-info :is_verified)
-      (setq title (concat title telega-symbol-verified)))
+      (setq title (concat title (telega-symbol 'verified))))
     (when (telega-chat-secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
 
@@ -2236,14 +2229,14 @@ Return t."
                   (folder-name (if (= 1 (length folders-inc))
                                    (car folders-inc)
                                  (cl-assert (> (length folders-inc) 1))
-                                 telega-symbol-multiple-folders)))
+                                 (telega-symbol 'multiple-folders))))
         (setq title (concat (telega-folder-format
                              telega-chat-folder-format
                              folder-name
                              ;; NOTE: fake filter-info in case chat
                              ;; belongs to multiple folders
                              (when (> (length folders-inc) 1)
-                               (list :title telega-symbol-multiple-folders
+                               (list :title (telega-symbol 'multiple-folders)
                                      :icon_name "non-existing-icon-name")))
                             title))))
 
@@ -2303,9 +2296,9 @@ Return t."
 
     (telega-ins (or (cadr brackets) "]"))
     (when (plist-get (telega-chat-position chat) :is_pinned)
-      (telega-ins telega-symbol-pin))
+      (telega-ins (telega-symbol 'pin)))
     (when (plist-get chat :has_scheduled_messages)
-      (telega-ins telega-symbol-alarm))
+      (telega-ins (telega-symbol 'alarm)))
     (when custom-order
       (telega-ins
        (if (< (string-to-number custom-order)
@@ -2333,9 +2326,10 @@ Return t."
 
           (call
            (let ((state (plist-get call :state)))
-             (telega-ins (if (plist-get call :is_video)
-                             telega-symbol-video
-                           telega-symbol-phone) " ")
+             (telega-ins (telega-symbol (if (plist-get call :is_video)
+                                            'video
+                                          'phone))
+                         " ")
              (telega-ins-fmt "%s Call (%s)"
                (if (plist-get call :is_outgoing) "Outgoing" "Incoming")
                (substring (plist-get state :@type) 9))

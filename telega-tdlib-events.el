@@ -870,8 +870,9 @@ messages."
          (old-my-status
           (plist-get (telega--info 'supergroup (plist-get supergroup :id)
                                    'locally) :status))
-         (me-was-owner (and old-my-status (telega--tl-type old-my-status)
-                            'chatMemberStatusCreator)))
+         (me-was-owner (and old-my-status
+                            (eq 'chatMemberStatusCreator
+                                (telega--tl-type old-my-status)))))
     (telega--info-update supergroup)
 
     (when-let ((chat (cl-find supergroup telega--ordered-chats

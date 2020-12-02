@@ -375,7 +375,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
 
     (telega-ins "Title: " (telega-tl-str sset :title))
     (when (plist-get sset :is_official)
-      (telega-ins telega-symbol-verified))
+      (telega-ins (telega-symbol 'verified)))
     (telega-ins " ")
     (telega-ins--stickerset-change-button sset)
     (telega-ins "\n")

@@ -62,15 +62,16 @@
     (:can_pin_messages . "lng_rights_group_pin")))
 
 (defconst telega-chat--admin-permissions
-  '((:can_be_edited . nil)
+  '((:can_be_edited . "lng_rights_edit_admin")
     (:can_change_info . "lng_rights_group_info")
     (:can_post_messages . "lng_rights_channel_post")
     (:can_edit_messages . "lng_rights_channel_edit")
     (:can_delete_messages . "lng_rights_group_delete")
     (:can_invite_users . "lng_rights_group_invite_link")
     (:can_pin_messages . "lng_rights_group_pin")
-    (:can_restrict_members . nil)
-    (:can_promote_members . nil)))
+    (:can_restrict_members . "telega_rights_restrict_members")
+    (:can_promote_members . "telega_rights_promote_members")
+    (:is_anonymous . "lng_rights_group_anonymous")))
 
 ;;; Runtime variables
 (defvar telega--current-buffer nil

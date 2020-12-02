@@ -340,14 +340,14 @@ Only available for basicgroup and supergroup (including channels)."
   (let ((perms (copy-sequence (cddr (plist-get chat :permissions)))))
     (when-let ((status (telega-chat-member-my-status chat)))
       (cl-case (telega--tl-type status)
-        (chatMemberStatusCreator
-         ;; Owner of the chat has all the admins privs
-         (dolist (perm-spec telega-chat--admin-permissions)
-           (setq perms (plist-put perms (car perm-spec) t))))
-        (chatMemberStatusAdministrator
-         (dolist (perm-spec telega-chat--admin-permissions)
-           (setq perms (plist-put perms (car perm-spec)
-                                  (plist-get status (car perm-spec))))))
+        ((chatMemberStatusCreator chatMemberStatusAdministrator)
+         ;; NOTE: Owner of the chat has all the admins privs except
+         ;; for `:is_anonymous' which is set separately
+         (let ((owner-p (eq 'chatMemberStatusCreator (telega--tl-type status))))
+           (dolist (perm-spec telega-chat--admin-permissions)
+             (plist-put perms (car perm-spec)
+                        (or owner-p (plist-get status (car perm-spec))))))
+         (plist-put perms :is_anonymous (plist-get status :is_anonymous)))
         (chatMemberStatusRestricted
          (setq perms (plist-get status :permissions)))))
     perms))
@@ -1269,8 +1269,8 @@ Used in chatbuf footer."
                             (telega-ffplay-resume proc)))
                 'face nil)
         (if (eq proc-status 'run)
-            (telega-ins telega-symbol-pause)
-          (telega-ins telega-symbol-play))
+            (telega-ins (telega-symbol 'pause))
+          (telega-ins (telega-symbol 'play)))
         (telega-ins " ")
         (if sender
             (telega-ins (telega-user--name sender))
@@ -1686,14 +1686,14 @@ Recover previous active action after BODY execution."
 (defun telega-chatbuf--name (chat)
   "Return uniquified name for the CHAT buffer."
   (let* ((bufname (substring-no-properties
-                   (concat telega-symbol-telegram
+                   (concat (telega-symbol 'telegram)
                            (when (telega-chat-secret-p chat)
-                             telega-symbol-lock)
+                             (telega-symbol 'lock))
                            (telega-chat-title-with-brackets chat "")
                            (when (plist-get chat :is_pinned)
-                             telega-symbol-pin)
+                             (telega-symbol 'pin))
                            (when (plist-get chat :has_scheduled_messages)
-                             telega-symbol-alarm))))
+                             (telega-symbol 'alarm)))))
          (buf (get-buffer bufname)))
     ;; NOTE: Multiple chats could have same BUFNAME, uniquify it by
     ;; adding unique suffix, in case other chat occupies BUFNAME
@@ -1754,7 +1754,10 @@ unknown, i.e. has no positions set."
   (let* ((chat telega-chatbuf--chat)
          (comment-p (and telega-chatbuf--thread-msg
                          (not (telega-chat-match-p chat 'me-is-member))))
-         (usj-prompt (unless comment-p
+         (anonymous-p (and (eq 'supergroup (telega-chat--type chat 'raw))
+                           (telega--tl-get (telega-chat--supergroup chat)
+                                           :status :is_anonymous)))
+         (usj-prompt (unless (or comment-p anonymous-p)
                        (telega-chatbuf--unblock-start-join-prompt)))
          (prompt (concat (when (telega-chat-match-p
                                 chat telega-chat-prompt-show-avatar-for)
@@ -1762,6 +1765,8 @@ unknown, i.e. has no positions set."
                             (telega-ins--image
                              (telega-chat-avatar-image-one-line chat))))
                          (cond (usj-prompt usj-prompt)
+                               (anonymous-p
+                                telega-chat-input-anonymous-prompt)
                                (comment-p
                                 telega-chat-input-comment-prompt)
                                (t
@@ -2070,7 +2075,7 @@ If message thread filtering is enabled, use it first."
                        (ttl (plist-get secret :ttl)))
                   (concat " ("
                           (propertize
-                           (concat telega-symbol-lock "TTL: "
+                           (concat (telega-symbol 'lock) "TTL: "
                                    (if (zerop ttl)
                                        "Off"
                                      (telega-duration-human-readable ttl 2)))
@@ -3869,6 +3874,7 @@ Return non-nil on success."
     ;; NOTE: node could exists, where button is not!  This is true for
     ;; ignored messages if `telega-ignored-messages-visible' is nil
     (when-let ((msg-button (button-at (point))))
+      (telega-chatbuf--view-msg-at (point))
       (telega-button--make-observable msg-button)
       (when highlight
         (cl-assert (eq (button-type msg-button) 'telega-msg))

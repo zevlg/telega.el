@@ -68,7 +68,11 @@
     (telega-debug "%s %S started with %d callbacks, left %d callbacks"
                   (propertize "FILE-UPDATE" 'face 'bold)
                   (plist-get file :id) (length callbacks) (length left-cbs))
-    (puthash (plist-get file :id) left-cbs telega--files-updates)))
+    (puthash (plist-get file :id) left-cbs telega--files-updates)
+
+    (when (telega-file--downloaded-p file)
+      (run-hook-with-args 'telega-file-downloaded-hook file))
+    ))
 
 (defun telega-file--callback-wrap (callback check-fun)
   "Wrapper for CALLBACK.
@@ -579,24 +583,6 @@ CHEIGHT specifies avatar height in chars, default is 2."
 (defun telega-avatar--create-image-one-line (sender file)
   "Create SENDER (chat or user) avatar image for one line use)."
   (telega-avatar--create-image sender file 1))
-
-(defun telega-symbol-emojify (emoji &optional image-file)
-  "Attach `display' property with emoji svg to EMOJI string.
-Typical usage is to emojify `telega-symbol-XXX' values.
-Like (telega-symbol-emojify telega-symbol-pin).
-Optionally IMAGE-FILE could be used."
-  (let ((image (if image-file
-                   (create-image image-file nil nil
-                                 :scale 1.0 :ascent 'center
-                                 :mask 'heuristic
-                                 :width (telega-chars-xwidth
-                                         (string-width emoji)))
-                 (telega-emoji-create-svg emoji))))
-    (add-text-properties 0 (length emoji)
-                         (list 'rear-nonsticky '(display)
-                               'display image)
-                         emoji)
-    emoji))
 
 
 ;; Location

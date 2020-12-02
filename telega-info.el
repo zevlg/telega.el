@@ -185,7 +185,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
               (telega-me-p user))
     ;; TODO: search for existing secret chat with Ready state and
     ;; create [Open Secret Chat] button instead
-    (telega-ins--button (concat telega-symbol-lock "Start Secret Chat")
+    (telega-ins--button (concat (telega-symbol 'lock) "Start Secret Chat")
       :value user
       :action (lambda (user)
                 (telega-chat--pop-to-buffer
@@ -445,6 +445,65 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
           :action #'telega-chat-transfer-ownership)
         ))
     (telega-ins "\n")
+    ;; Buttons for administrators
+    (telega-ins--labeled "  " nil
+    (when (telega-chat-match-p chat '(me-is-owner or-admin))
+      (let* ((owner-p (telega-chat-match-p chat 'me-is-owner))
+             (my-status (telega-chat-member-my-status chat))
+             (my-perms (telega-chat-member-my-permissions chat))
+             (can-edit-p (plist-get my-perms :can_be_edited))
+             (channel-p (telega-chat-channel-p chat))
+             (custom-title (telega-tl-str my-status :custom_title)))
+        ;; Custom Title:
+        (when (or custom-title can-edit-p)
+          (telega-ins (telega-i18n "lng_rights_edit_admin_rank_name") ": ")
+          (when (telega-ins custom-title)
+            (telega-ins " "))
+          (when can-edit-p
+            (telega-ins--button "Set"
+              'action (lambda (_ignored)
+                        (let ((new-title (read-string "My Custom title: ")))
+                          (plist-put my-status :custom_title new-title)
+                          (telega--setChatMemberStatus
+                           chat (telega-user-me) my-status)))))
+          (telega-ins "\n")
+          (telega-ins--help-message
+           (telega-ins-i18n "lng_rights_edit_admin_rank_about"
+             :title (telega-i18n (if owner-p
+                                     "lng_owner_badge"
+                                   "lng_admin_badge")))))
+
+        ;; Admin Permissions:
+        (telega-ins
+         (propertize (telega-i18n "lng_manage_peer_permissions")
+                     'face 'bold) "\n")
+        (telega-ins
+         (propertize (telega-i18n "lng_rights_edit_admin_header")
+                     'face 'shadow) "\n")
+        (telega-ins--labeled "  " nil
+          (dolist (perm-spec telega-chat--admin-permissions)
+            ;; list only those permissions which has title
+            ;; NOTE: special permissions applies for channels only -
+            ;; `:can_post_messages' and `:can_edit_messages'
+            (when (and (cdr perm-spec)
+                       (or channel-p
+                           (not (memq (car perm-spec)
+                                      '(:can_post_messages :can_edit_messages)))))
+              (let ((perm-value (plist-get my-perms (car perm-spec))))
+                (if (and can-edit-p
+                         (or (not owner-p) (eq :is_anonymous (car perm-spec))))
+                    (telega-ins--button (if perm-value
+                                            telega-symbol-heavy-checkmark
+                                          telega-symbol-blank-button)
+                      :value chat
+                      :action (lambda (_chat)
+                                ;; TODO:
+                                (user-error "Not yet implemented")))
+                  (telega-ins (if perm-value
+                                  telega-symbol-ballout-check
+                                telega-symbol-ballout-empty)))
+                (telega-ins " " (telega-i18n (cdr perm-spec)))
+                (telega-ins "\n"))))))))
 
     ;; Supergroup username
     (let ((username (telega-tl-str supergroup :username))

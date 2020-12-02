@@ -243,10 +243,13 @@ Changes in 1.7.0:
   - Added the method `getMessagePublicForwards`, returning all forwards of a message to public channels.
   - Removed the now superfluous field `views` from the class `message`.
   - Removed the now superfluous update `updateMessageViews`.
-* Improved support for native polls:
+* DONE Improved support for native polls:
+  CLOSED: [2020-12-02 Ср 22:38]
   - Added the field `explanation` to the class `pollTypeQuiz`.
   - Added the fields `close_date` and `open_period` to the class `poll`.
+    [NOT DONE]
   - Added the fields `close_date` and `open_period` to the class `inputMessagePoll`; for bots only.
+    [NOT DONE]
   - Increased maximum poll question length to 300 characters for bots.
 * DONE Added support for anonymous administrators in supergroups:
   CLOSED: [2020-11-23 Пн 20:51]
