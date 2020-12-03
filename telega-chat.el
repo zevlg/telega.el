@@ -2456,7 +2456,7 @@ argument - total number of loaded messages."
                      (telega-chatbuf--insert-messages
                       (nreverse (plist-get history :messages)) 'prepend))
                    (setq telega-chatbuf--history-loading nil)
-                   (when (zerop (plist-get history :total_count))
+                   (when (zerop (length (plist-get history :messages)))
                      (telega-chatbuf--older-history-loaded))
                    (when callback
                      (funcall callback (plist-get history :total_count)))
