@@ -72,10 +72,23 @@
   (if (member label (list " " "  " "✕" telega-symbol-heavy-checkmark))
       (cons "" "")
 
-    ;; NOTE: we use cons as `:line-width` in telega-button face, so
-    ;; width of the button is not increased in contrast with using
-    ;; single negative number for `:line-width'
-    (cons "\u00A0" "\u00A0")))
+    ;; NOTE: In newer Emacs we can use cons as `:line-width` in
+    ;; telega-button face, so width of the button is not increased in
+    ;; contrast with using single negative number for `:line-width'
+    ;; However is older Emacs this is not implemented, see
+    ;; https://t.me/emacs_telega/22129
+
+    ;; XXX inclose LABEL with shrink version of spaces, so button
+    ;; width will be char aligned
+
+    ;; NOTE: non-breakable space is used, so if line is feeded at the
+    ;; beginning of button, it won't loose its leading space
+    (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
+                                        :line-width)
+                             0)))
+           (space `(space (,(- (telega-chars-xwidth 1) box-width))))
+           (end (propertize "\u00A0" 'display space)))
+      (cons end end))))
 
 (defun telega-ins--button (label &rest props)
   "Insert pressable button labeled with LABEL.

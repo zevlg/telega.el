@@ -1621,13 +1621,15 @@ filename with an image to be used."
   "Face to display various links."
   :group 'telega-faces)
 
+;; NOTE: better to use :line-width (-2 . -2), but this is only in newer Emacs
+;; see https://t.me/emacs_telega/22129
 (defface telega-button
   '((((class color) (min-colors 88) (background light))
      :foreground "RoyalBlue3"
-     :box (:line-width (-2 . -2) :color "RoyalBlue3" :style nil))
+     :box (:line-width -2 :color "RoyalBlue3" :style nil))
     (((class color) (min-colors 88) (background dark))
      :foreground "cyan1"
-     :box (:line-width (-2 . -2) :color "cyan1" :style nil))
+     :box (:line-width -2 :color "cyan1" :style nil))
     (t :inherit highlight))
   "Face used for telega buttons."
   :group 'telega-faces)
