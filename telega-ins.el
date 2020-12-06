@@ -1940,7 +1940,17 @@ Pass all ARGS directly to `telega-ins--message0'."
         (telega-ins--input-file (plist-get imc :photo) (telega-symbol 'photo)
                                 ttl-text)))
      (inputMessageAudio
-      (telega-ins--input-file (plist-get imc :audio) telega-symbol-audio))
+      (let* ((title (plist-get imc :title))
+             (artist (plist-get imc :performer))
+             (audio-description (concat (when title
+                                          (propertize title 'face 'bold))
+                                        (when artist
+                                          (concat (when title " ")
+                                                  "--" artist)))))
+        (telega-ins telega-symbol-audio " ")
+        (when (telega-ins audio-description)
+          (telega-ins ","))
+        (telega-ins--input-file (plist-get imc :audio) "")))
      (inputMessageVideo
       (let ((ttl-text (when (plist-get imc :ttl)
                         (format ", self-destruct in: %s"

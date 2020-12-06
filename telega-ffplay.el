@@ -128,6 +128,17 @@ Return newly created process."
             "-of default=nokey=1:noprint_wrappers=1 "
             "\"" (expand-file-name filename) "\""))))
 
+(defun telega-ffplay-get-metadata (filename)
+  "Return metadata as alist for the media FILENAME."
+  (let ((raw-metadata (shell-command-to-string
+                       (concat "ffmpeg -v 0 -i "
+                               "\"" (expand-file-name filename) "\" "
+                               " -f ffmetadata -"))))
+    (delq nil (mapcar (lambda (line)
+                        (when (string-match "\\([a-zA-Z]+\\)=\\(.+$\\)" line)
+                          (cons (match-string 1 line) (match-string 2 line))))
+                      (split-string raw-metadata "\n" t " \t")))))
+
 (defun telega-ffplay--png-extract ()
   "Extract png image data from current buffer.
 Return cons cell where car is the frame number and cdr is frame

@@ -3150,10 +3150,14 @@ This attachment can be used only in private chats."
 (defun telega-chatbuf-attach-audio (filename)
   "Attach FILENAME as audio to the chatbuf input."
   (interactive (list (read-file-name "Audio: ")))
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'Audio)))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Audio))
+        (metadata (telega-ffplay-get-metadata filename)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageAudio"
-           :audio ifile))))
+           :audio ifile
+           :title (cdr (assoc "title" metadata))
+           :performer (cdr (assoc "artist" metadata))
+           ))))
 
 (defun telega-chatbuf-attach-note-video (filename)
   "Attach FILENAME as (circled) video note to the chatbuf input."
