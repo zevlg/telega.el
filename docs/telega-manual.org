@@ -227,9 +227,12 @@ On "Foreign" Distributions:
     $ guix package -i emacs emacs-telega
   #+end_src
 
-You will need a version of Emacs installed from GNU Guix because it is
-modified with an autoloader to identify and automatically use Emacs
-packages installed from Guix.
+It is easiest to use the version of Emacs installed from GNU Guix because
+it is modified with an autoloader to identify and automatically use Emacs
+packages installed from Guix. Alternatively, if you wish to use the
+bundle of Emacs provided by your distribution, you may install the
+=telega= elisp sources through MELPA and use Guix to provide the server
+binary precompiled.
 
 Consult the official GNU Guix documentation for further
 questions. Issues related to the GUIX package must be accompanied by
