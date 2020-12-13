@@ -212,7 +212,7 @@ compiling =TDLib= from source, this is a good option!
 
 On Guix System:
 #+begin_src shell
-  $ guix package -i emacs-telega font-gnu-unifont font-gnu-freefont
+  $ guix package -i emacs-telega font-gnu-{unifont,freefont}
 #+end_src
 
 The latter two packages provide glyphs used by =telega=.
