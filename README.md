@@ -168,7 +168,8 @@ Also see https://github.com/zevlg/telega.el/issues/161
 
 **Q**: There are no glyphs for some unicode characters.
 
-**A**: Please install `fonts-symbola` package
+**A**: Please either install `fonts-symbola` package, or run
+`guix package -i font-gnu-{freefont,unifont}` on GNU Guix
 
 **Q**: There is some formatting issues when some unicode characters are used.
 
