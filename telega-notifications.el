@@ -221,7 +221,7 @@ M-x telega-notifications-mode RET")))
   "Close notification by ID."
   (when (eq telega-notifications--last-id id)
     (setq telega-notifications--last-id nil)
-    (ignore-errors
+    (dbus-ignore-errors
       ;; See https://t.me/emacs_telega/6532
       (notifications-close-notification id))))
 
