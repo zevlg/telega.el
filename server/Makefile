@@ -1,11 +1,14 @@
 CC=cc
 
 ifndef LIBS_PREFIX
-LIBS_PREFIX=/usr/local
+CFLAGS=`pkg-config --cflags tdjson`
+LDFLAGS=`pkg-config --libs tdjson`
+else
+CFLAGS=-I$(LIBS_PREFIX)/include
+LDFLAGS=-L$(LIBS_PREFIX)/lib -Wl,-rpath,$(LIBS_PREFIX)/lib -ltdjson
 endif
 
-CFLAGS=-I$(LIBS_PREFIX)/include -Wall -g -pthread
-LDFLAGS=-L$(LIBS_PREFIX)/lib -Wl,-rpath,$(LIBS_PREFIX)/lib -ltdjson
+CFLAGS+=-Wall -g -pthread
 
 PROG=telega-server
 SOURCES=telega-server.c telega-dat.c telega-pngext.c
@@ -15,11 +18,6 @@ CC=c++
 CFLAGS+=-std=c++11 -DWITH_VOIP -DTGVOIP_NO_STDOUT_LOGS
 LDFLAGS+=-ltgvoip
 SOURCES+=telega-voip.cpp
-endif
-
-ifdef WITH_TON
-CFLAGS+=-DWITH_TON
-LDFLAGS+=-ltonlibjson
 endif
 
 ifndef INSTALL_PREFIX

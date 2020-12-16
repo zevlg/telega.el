@@ -46,7 +46,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "0.7.0";
+const char* version = "0.7.2";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -278,7 +278,7 @@ int
 main(int ac, char** av)
 {
         int ch;
-        while ((ch = getopt(ac, av, "L:E:R:jpl:v:h")) != -1) {
+        while ((ch = getopt(ac, av, "L:E:R:f:jpl:v:h")) != -1) {
                 switch (ch) {
                 case 'v':
                         verbosity = atoi(optarg);
@@ -298,6 +298,7 @@ main(int ac, char** av)
                         break;
                 case 'E':
                 case 'R':
+                case 'f':
                         pngext_main(ac, av);
                         return 0;
                         /* NOT REACHED */
