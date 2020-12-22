@@ -198,4 +198,7 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "https://ит-гранты.рф/lalabum"))
   )
 
+;; Local Variables:
+;; no-byte-compile: t
+;; End:
 ;;; test.el ends here

@@ -25,5 +25,4 @@ jobs:
 
     - uses: actions/checkout@v2
     - name: Byte Compile
-      run: |
-        make compile
+      run: make compile
