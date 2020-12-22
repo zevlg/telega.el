@@ -1,5 +1,31 @@
 /*
- * PNG extractor for telega
+ * telega-pngext.c --- PNG extractor for telega.
+ *
+ * Copyright (C) 2016-2020 by Zajcev Evgeny
+ *
+ * Author: Zajcev Evgeny <zevlg@yandex.ru>
+ *
+ * telega is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * telega is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with telega.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ** Commentary:
+ *
+ * GNU Emacs is very bad at processing large amount of data, so
+ * consuming raw images from ffplay directly by Emacs was a bad idea
+ * (I've tried).
+ *
+ * So, here we have png extractor with precise clock ticker to match
+ * realtime.
  */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE             /* for memmem() */
@@ -90,7 +116,7 @@ pngext_usage(char* prog)
         printf("Captures output from external command CMD and extracts\n"
                "png images from there, writing them to temporary location\n"
                "with PREFIX.\n");
-        printf("Used to animate gifs, play voice notes.\n");
+        printf("Used to animate gifs, play video notes.\n");
         printf("Emacs is extremely bad at processing huge outputs from external commands.\n");
         printf("\t-R RDSIZE    Default is 20K\n");
         printf("\t-f FPS       Extract images in real time fashion using FPS as frame rate\n");

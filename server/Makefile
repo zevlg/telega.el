@@ -13,6 +13,13 @@ CFLAGS+=-Wall -g -pthread
 PROG=telega-server
 SOURCES=telega-server.c telega-dat.c telega-pngext.c
 
+ifeq ($(shell pkg-config --exists appindicator3-0.1 && echo yes), yes)
+CFLAGS+=-DWITH_APPINDICATOR
+CFLAGS+=`pkg-config --cflags appindicator3-0.1`
+LDFLAGS+=`pkg-config --libs appindicator3-0.1`
+SOURCES+=telega-appindicator.c
+endif
+
 ifdef WITH_VOIP
 CC=c++
 CFLAGS+=-std=c++11 -DWITH_VOIP -DTGVOIP_NO_STDOUT_LOGS
