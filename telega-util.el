@@ -691,7 +691,7 @@ Return desurrogated formattedText."
 (defun telega--fmt-text-markdown (fmt-text)
   "Return formatted text FMT-TEXT as markdown syntax."
   ;; TODO: support nested markdown
-  (let ((text (substring (plist-get fmt-text :text)))
+  (let ((text (copy-sequence (plist-get fmt-text :text)))
         (offset 0)
         (strings nil))
     (seq-doseq (ent (plist-get fmt-text :entities))
@@ -719,7 +719,7 @@ Return desurrogated formattedText."
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
 Return text string with applied faces."
-  (let ((text (substring (plist-get fmt-text :text))))
+  (let ((text (copy-sequence (plist-get fmt-text :text))))
     (seq-doseq (ent (plist-get fmt-text :entities))
       (let* ((beg (plist-get ent :offset))
              (end (+ (plist-get ent :offset) (plist-get ent :length)))

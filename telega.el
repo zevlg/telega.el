@@ -59,6 +59,12 @@
 (require 'telega-tdlib)
 (require 'telega-tdlib-events)
 
+;; Emacs26 compat
+(eval-when-compile
+  (unless (fboundp 'report-emacs-bug--os-description)
+    (defun report-emacs-bug--os-description ()
+      "unknown")))
+
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
 ;;;###autoload

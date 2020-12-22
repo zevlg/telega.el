@@ -35,10 +35,16 @@
 ;; Roam manner.
 
 ;;; Code:
+(require 'cl-lib)
+(require 'org)
+;; Emacs26 has `org-store-link-props' instead of `org-link-store-props'
+(eval-when-compile
+  (when (and (not (fboundp 'org-link-store-props))
+             (fboundp 'org-store-link-props))
+    (defalias 'org-link-store-props 'org-store-link-props)))
+
 (require 'telega-tme)
 (require 'telega-util)
-
-(require 'ol)
 
 (defun org-telega-follow-link (link)
   "Follow a telegram LINK to chat or message."

@@ -35,10 +35,17 @@
 ;; https://core.telegram.org/api/terms
 
 ;;; Code:
+(require 'cl-lib)
 (require 'telega)
-(eval-when 'load
-  ;; Avoid compilation errors
+
+;; Avoid compilation errors
+(cl-eval-when 'load
   (require 'geo))
+;; Shut up compiler
+(declare-function geo-location-lat "geo" (loc))
+(declare-function geo-location-lon "geo" (loc))
+(declare-function geo-last-heading "geo")
+(declare-function geo-last-location "geo")
 
 (defun telega-live-location--geo-loc (geo-loc)
   "Covert geo location GEO-LOC into telega location plist."

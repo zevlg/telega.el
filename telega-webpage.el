@@ -29,6 +29,7 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'url-util)
+(require 'browse-url)                   ; browse-url-url-at-point
 (require 'visual-fill-column)
 
 (require 'telega-server)
