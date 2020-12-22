@@ -32,7 +32,7 @@
          (need-pkgs (cl-remove-if #'package-installed-p all-pkgs)))
     (when need-pkgs
       (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
-      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
+;      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/"))
       (package-refresh-contents)
 
       (dolist (pkg need-pkgs)
@@ -41,11 +41,13 @@
 
 (defun telega-byte-compile-everything ()
   "Recompiler everything in telega repository."
-  (telega-ensure-dependencies)
+  ;; NOTE: `telega-ensure-dependencies' might change `default-directory'
+  (let ((src-dir default-directory))
+    (telega-ensure-dependencies)
 
-  (let* ((result (byte-recompile-directory "." 0 t))
-         (failed (string-match-p ", [0-9]+ failed" result)))
-    (kill-emacs (if failed 1 0))))
+    (let* ((result (byte-recompile-directory src-dir 0 t))
+           (failed (string-match-p ", [0-9]+ failed" result)))
+      (kill-emacs (if failed 1 0)))))
 
 (defun telega-run-tests ()
   "Run telega tests."
