@@ -828,6 +828,4 @@ project.
 * Troubleshooting
 ** Warning for TDLib version below minimum required, even though correct version is installed
 If at starting telega you get the warning =TDLib version=%s < %s (min required),please upgrade TDLib and recompile `telega-server= even though your tdlib version is satisfying telega's requirements, be aware that deleting the telega package and reinstalling it via melpa will not recompile the server, run =telega-server-build= instead.
-
 #  LocalWords:  customizable chatbuf tdlib gmake
-
