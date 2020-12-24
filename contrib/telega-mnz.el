@@ -43,10 +43,10 @@
 ;; specified.  Install =language-detection= with {{{kbd(M-x
 ;; package-install RET language-detection RET)}}}
 ;;
-;; =telega-mnz= installs
-;; {{{where-is(telega-mnz-send-region-as-code,telega-prefix-map)}}}
-;; binding into [[#telega-prefix-map][telega prefix map]] to attach
-;; region as code to a chatbuf.
+;; =telega-mnz= installs {{{kbd(')}}}
+;; (~telega-mnz-send-region-as-code~) binding into
+;; [[#telega-prefix-map][telega prefix map]] to attach region as code
+;; to a chatbuf.
 ;;
 ;; Also, =telega-mnz= installs ~code~ [[#attaching-media][media
 ;; attachment type]], use it with {{{kbd(C-c C-a code RET)}}} in
@@ -397,7 +397,7 @@ Return edited code as string."
                                     new-code (plist-get cb-ent :type))
                                    (telega-fmt-text-substring
                                     msg-fmt-text cb-stop))))))
-          (telega--editMessageText (telega-msg-chat msg) msg imc)
+          (telega--editMessageText msg imc)
         (ding))
 
     ;; Default behaviour

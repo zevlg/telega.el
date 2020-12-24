@@ -21,12 +21,12 @@
 
 ;;; ellit-org: commentary
 ;; 
-;; =telega.el= could notify you about incoming messages and calls via
+;; =telega.el= can notify you about incoming messages and calls via
 ;; D-Bus notifications, however notifications are disabled by default.
-;; To enable notifications use:
 ;; 
+;; Enable it with ~(telega-notifications-mode 1)~ or at =telega= load time:
 ;; #+begin_src emacs-lisp
-;; (telega-notifications-mode 1)
+;; (add-hook 'telega-load-hook 'telega-notifications-mode)
 ;; #+end_src
 
 ;;; Code:
@@ -73,13 +73,13 @@ If DEFAULT-P is non-nil, then return default setting for the CHAT."
     (when (or default-p (plist-get not-cfg use-default-name))
       (setq default-cfg
             (telega-chat-notification-scope
-            (cl-case (telega-chat--type chat)
-              (channel
-               "notificationSettingsScopeChannelChats")
-              ((basicgroup supergroup)
-               "notificationSettingsScopeGroupChats")
-              (t
-               "notificationSettingsScopePrivateChats")))))
+             (cl-case (telega-chat--type chat)
+               (channel
+                "notificationSettingsScopeChannelChats")
+               ((basicgroup supergroup)
+                "notificationSettingsScopeGroupChats")
+               (t
+                "notificationSettingsScopePrivateChats")))))
 
     (plist-get (or default-cfg not-cfg) setting)))
 

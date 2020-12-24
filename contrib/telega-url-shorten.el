@@ -151,7 +151,8 @@ chats matching this chat filter."
         (plist-put result 'telega-display
                    (concat (propertize
                             (plist-get pmatch :symbol)
-                            'display (when telega-url-shorten-use-images
+                            'display (when (and telega-use-images
+                                                telega-url-shorten-use-images)
                                        (apply #'telega-url-shorten--svg-icon
                                               (plist-get pmatch :svg-icon))))
                            (replace-match (plist-get pmatch :replace)

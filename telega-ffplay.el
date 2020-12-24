@@ -119,6 +119,22 @@ Return newly created process."
         (set-process-filter proc #'telega-ffplay--filter)
         proc))))
 
+(defun telega-ffplay-get-fps-ratio (filename &optional default)
+  "Return fps ratio string for the FILENAME video file.
+Ratio string is returned in form
+\"<fps_numerator>/<fps_denominator>\", f.i. \"30000/1001\" for 29.97fps.
+If fps is not available for FILENAME, then return DEFAULT or \"30/1\"
+if ommited."
+  (let ((fps-ratio (telega-strip-newlines
+                    (shell-command-to-string
+                     (concat "ffprobe -v error -select_streams v:0 "
+                             "-show_entries stream=r_frame_rate "
+                             "-of default=noprint_wrappers=1:nokey=1 "
+                             "\"" (expand-file-name filename) "\"")))))
+    (if (string-match-p "[0-9]+/[0-9]+" fps-ratio)
+        fps-ratio
+      (or default "30/1"))))
+
 (defun telega-ffplay-get-nframes (filename)
   "Probe number of frames of FILENAME video file."
   (string-to-number
@@ -165,6 +181,10 @@ Return nil if no image is available."
       (when callback
         (apply callback proc nil callback-args))
 
+      ;; Delete all produced files for frames
+      (dolist (frame (plist-get proc-plist :frames))
+        (delete-file (cdr frame)))
+
       ;; NOTE: sentinel might be called multiple times with 'exit
       ;; status, handle this situation simple by unsetting callback
       (set-process-plist proc (plist-put proc-plist :callback nil)))))
@@ -189,14 +209,13 @@ Return nil if no image is available."
               (telega-debug "ffplay-png: skipping frame %S" frame)
               (delete-file (cdr frame))))
           (when frame
-            (unwind-protect
-                (progn
-                  (set-process-plist
-                   proc (plist-put proc-plist :frame-num (car frame)))
-                  (when callback
-                    (apply callback proc (cdr frame) callback-args)))
-              (delete-file (cdr frame))))))
-      )))
+            ;; Put frame in the list
+            (let ((all-frames (plist-get proc-plist :frames)))
+              (plist-put proc-plist :frames (cons frame all-frames))
+              (set-process-plist proc proc-plist))
+            (when callback
+              (apply callback proc frame callback-args)))
+          )))))
 
 (defun telega-ffplay-to-png (filename ffmpeg-args callback &rest callback-args)
   "Play video FILENAME extracting png images from it.
@@ -214,10 +233,18 @@ Return newly created proc."
            (telega-server-bin (telega-server--find-bin))
            (ffmpeg-bin (or (executable-find "ffmpeg")
                            (error "ffmpeg not found in `exec-path'")))
-           (args (nconc (list "-E" prefix "--")
+           (args (nconc (list "-E" prefix)
+                        (when-let ((fps-ratio (telega-ffplay-get-fps-ratio
+                                               (expand-file-name filename))))
+                          (list "-f" fps-ratio))
+                        (list "--")
                         (list ffmpeg-bin
                               "-hide_banner"
-                              "-loglevel" "quiet" "-re"
+                              "-loglevel" "quiet"
+                              ;; NOTE: -re causes sound problems in
+                              ;; video notes "-re", instead we use
+                              ;; '-f' flag in telega-server png
+                              ;; extractor
                               "-i" (expand-file-name filename))
                         ffmpeg-args
                         (list "-f" "image2pipe" "-vcodec" "png" "-")))
@@ -226,8 +253,8 @@ Return newly created proc."
                         telega-server-bin args)))
 
       (set-process-plist proc (list :prefix prefix
-                                    :frame-num 0
                                     :nframes (telega-ffplay-get-nframes filename)
+                                    :frames nil
                                     :callback callback
                                     :callback-args callback-args))
       (set-process-query-on-exit-flag proc nil)

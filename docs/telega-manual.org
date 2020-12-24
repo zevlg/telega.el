@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.1)
+#+TITLE: Telega Manual (v0.7.2)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -22,9 +22,9 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
   - [[#introduction][Introduction]]
   - [[#installation][Installation]]
     - [[#dependencies][Dependencies]]
-      - [[#macos-users][MacOS users]]
-      - [[#linux-users][Linux users]]
-      - [[#building-tdlib][Building TDLib]]
+    - [[#macos-users][MacOS users]]
+    - [[#linux-users][Linux users]]
+    - [[#building-tdlib][Building TDLib]]
     - [[#installing-telega-and-tdlib-from-gnu-guix][Installing telega and TDLib from GNU Guix]]
     - [[#installing-telega-from-melpa][Installing telega from MELPA]]
     - [[#installing-telega-directly-from-github][Installing telega directly from GitHub]]
@@ -60,6 +60,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
     - [[#telega-mode-line-mode][telega-mode-line-mode]]
+    - [[#telega-appindicator-mode][telega-appindicator-mode]]
     - [[#telega-squash-message-mode][telega-squash-message-mode]]
     - [[#telega-image-mode][telega-image-mode]]
     - [[#telega-edit-file-mode][telega-edit-file-mode]]
@@ -71,6 +72,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-dired-dwimel--attach-files-from-dired-in-dwim-style][/telega-dired-dwim.el/ -- Attach files from dired in DWIM style]]
     - [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][/telega-live-location.el/ -- Manage live location in Telega using geo.el]]
     - [[#telega-mnzel--display-emacs-content-inside-telega-messages][/telega-mnz.el/ -- Display Emacs content inside Telega messages.]]
+    - [[#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard][/telega-dashboard.el/ -- Important telega chats in the Emacs dashboard]]
 
 * Introduction
 :PROPERTIES:
@@ -115,20 +117,25 @@ you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gn
 - =CMake= (for building TDLib)
 - =Python= (for testing the telega-server)
 - =GNU Guix= _(optional, if using the Guix installation method)_
+- =libappindicator3= (optional, to show =telega= icon/info in system tray)
 
 =make= is found in most of the modern machines. The other packages can
 be download with the system package manager (such as =apt= for
 Debian-based distributions, =dnf= for Fedora or =pacman= for
 Arch-based).
 
-*** MacOS users
+** MacOS users
 :PROPERTIES:
 :CUSTOM_ID: macos-users
 :END:
 
 1. If you are using [[https://emacsformacosx.com/][Emacs For Mac OS X]], or you installed Emacs by
-   running ~$ brew cask install emacs~, your Emacs lacks svg support, so
-   you cannot use telega. Please switch to [[https://github.com/d12frosted/homebrew-emacs-plus][emacs-plus]].
+   running ~$ brew cask install emacs~, make sure you installed a
+   recent enough version (>= =emacs-27.1-mac-8.1=, you can check your
+   version by running ~$ brew info emacs-mac~ or ~$ brew cask info
+      emacs-mac~) with rsvg support (~$ brew install emacs-mac
+      --with-rsvg~), or your Emacs may not display some media correctly,
+   in this case consider switching to [[https://github.com/d12frosted/homebrew-emacs-plus][emacs-plus]].
 
 2. If you are using [[https://bitbucket.org/mituharu/emacs-mac/][Emacs-mac]], or you installed Emacs by running ~$
       brew install emacs-mac~ or ~$ brew cask install emacs-mac~, your
@@ -142,7 +149,7 @@ Arch-based).
 
 3. [[https://github.com/d12frosted/homebrew-emacs-plus][emacs-plus]] is the best choice to run =telega=.
 
-*** Linux users
+** Linux users
 :PROPERTIES:
 :CUSTOM_ID: linux-users
 :END:
@@ -153,7 +160,7 @@ recommended, =svg= support. If Emacs version is less then 27.1, then
 compiled with these dependencies when installing GNU Emacs with GTK+
 support (graphical).
 
-*** Building TDLib
+** Building TDLib
 :PROPERTIES:
 :CUSTOM_ID: building-tdlib
 :END:
@@ -337,7 +344,8 @@ Some options affecting =TDLib= runtime:
   Set to non-nil to use this as location of me.
   Plist in form (:latitude <LAT> :longitude <LONG>)
   To publically expose this location set ~:is_location_visible~ to
-  non-nil in ~telega-options-plist~. 
+  non-nil in ~telega-options-plist~.
+  Used to calculate distances from other peers to me. 
 
   Default value: ~nil~
 
@@ -360,7 +368,7 @@ variables.  Most notable options are:
 - User Option: ~telega-use-images~ 
 
   Non-nil to show images.
-  Explicitely set it to non-nil if using emacs as a service and
+  Explicitly set it to non-nil if using Emacs as a service and
   want to create X frames to show images.
   See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon 
 
@@ -477,7 +485,7 @@ new terms specific to =telega=.  All of them are used in the manual.
 
     Default value: 
     #+begin_src emacs-lisp
-      (("📑Main" . main)
+      (("Main" . main)
        ("Groups" type basicgroup supergroup)
        ("Channels" type channel)
        ("Online" and
@@ -485,7 +493,7 @@ new terms specific to =telega=.  All of them are used in the manual.
         (online-status "Online"))
        ("Important" or mention
         (and unread unmuted))
-       ("📑Archive" . archive))
+       ("Archive" . archive))
     #+end_src
 
   - User Option: ~telega-filter-custom-expand~ 
@@ -528,8 +536,8 @@ new terms specific to =telega=.  All of them are used in the manual.
 :END:
 
 =telega= has prefix map for common =telega= commands, such as
-switching to rootbuf, switch to "SavedMessages", sending current
-buffer as file to a chat, switching accounts, openning chat or
+switching to rootbuf, switch to "Saved Messages", sending current
+buffer as file to a chat, switching accounts, opening chat or
 switching to some chat.
 
 It is convenient to have it somewhere accessible from ~global-map~,
@@ -557,11 +565,14 @@ Telega prefix map bindings:
 - @@html:<kbd>@@c@@html:</kbd>@@ (~telega-chat-with~) :: 
      Start messaging with ~CHAT-OR-USER~.
 
+- @@html:<kbd>@@i@@html:</kbd>@@ (~telega-switch-important-chat~) :: 
+     Switch to important ~CHAT~ if any.
+
 - @@html:<kbd>@@s@@html:</kbd>@@ (~telega-saved-messages~) :: 
-     Switch to SavedMessages chat buffer.
+     Switch to "Saved Messages" chat buffer.
      If "Saved Messages" chat is not opened, then open it.
-     If @@html:<kbd>@@C-u@@html:</kbd>@@ is specified, then keep the point,
-     otherwise goto end of the buffer.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is specified, then goto prompt otherwise
+     keep the point, where it is.
 
 - @@html:<kbd>@@b@@html:</kbd>@@ (~telega-switch-buffer~) :: 
      Interactively switch to chat ~BUFFER~.
@@ -572,12 +583,15 @@ Telega prefix map bindings:
      Otherwise for ~image-mode~ major-mode, send file as photo.
      If called interactively, then file associated with current buffer
      is used as ~FILE~.
+     If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1049,7 +1063,7 @@ For other Chat Filter bindings see below.
      Matches if chat from "Main" chat list.
 
 - archive :: 
-     Matchis if chat is archived, i.e. in "Archive" chat list.
+     Matches if chat is archived, i.e. in "Archive" chat list.
 
 - has-scheduled-messages :: 
      Matches if chat has scheduled messages.
@@ -1102,7 +1116,7 @@ For other Chat Filter bindings see below.
 
   Default value: 
   #+begin_src emacs-lisp
-    (("📑Main" . main)
+    (("Main" . main)
      ("Groups" type basicgroup supergroup)
      ("Channels" type channel)
      ("Online" and
@@ -1110,7 +1124,7 @@ For other Chat Filter bindings see below.
       (online-status "Online"))
      ("Important" or mention
       (and unread unmuted))
-     ("📑Archive" . archive))
+     ("Archive" . archive))
   #+end_src
 
 - User Option: ~telega-use-tracking-for~ 
@@ -1183,7 +1197,7 @@ directly into ~telega-sort-criteria-alist~, use
 - @@html:<kbd>@@\ s@@html:</kbd>@@, @@html:<kbd>@@\ a@@html:</kbd>@@ (~telega-sort-by-sorter~) :: 
      Interactively add ~CRITERIA~ to active sorter.
      If prefix ~ARG~ is used, then add sort criteria, instead of
-     overwritting currently active one.
+     overwriting currently active one.
 
      Use this command to reset active sorter.
 
@@ -1298,7 +1312,9 @@ messages:
 :CUSTOM_ID: sending-ordinary-messages
 :END:
 
-Type a text in the chatbuf input and press @@html:<kbd>@@RET@@html:</kbd>@@.
+Type a text in the chatbuf input and press @@html:<kbd>@@RET@@html:</kbd>@@ to send the
+message.  To insert newline in the middle of the input use ordinary
+@@html:<kbd>@@C-j@@html:</kbd>@@ Emacs command.
 
 You can use markdown markup with next syntax:
 #+begin_example
@@ -1328,6 +1344,15 @@ Important customizable options:
   Non-nil to use markdown formatting for outgoing messages. 
 
   Default value: ~nil~
+- User Option: ~telega-chat-ret-always-sends-message~ 
+
+  Non-nil to make @@html:<kbd>@@RET@@html:</kbd>@@ always send a message.
+  Otherwise
+  @@html:<kbd>@@RET@@html:</kbd>@@
+  sends a message only if point is at the end of the chatbuf input or
+  inserts newline otherwise. 
+
+  Default value: ~t~
 
 ** Attaching media
 :PROPERTIES:
@@ -1454,7 +1479,7 @@ binding.
 @@html:<kbd>@@C-c C-k@@html:</kbd>@@, @@html:<kbd>@@C-M-c@@html:</kbd>@@, @@html:<kbd>@@M-ESC@@html:</kbd>@@ (~telega-chatbuf-cancel-aux~) accepts
 @@html:<kbd>@@C-u@@html:</kbd>@@ prefix, if used then chatbuf's input is also canceled.
 
-To edit your privously sent message press
+To edit your previously sent message press
 @@html:<kbd>@@M-p@@html:</kbd>@@ (~telega-chatbuf-edit-prev~).
 
 ** Forwarding messages
@@ -1476,7 +1501,7 @@ There are few options how you can affect the way a message is forwarded:
 1. @@html:<kbd>@@C-u f@@html:</kbd>@@ to forward a message copy, it will look like *you*
    sent a message.
 2. @@html:<kbd>@@C-u C-u f@@html:</kbd>@@ To forward a message copy deleting or
-   replacing capition it has.  Use this to forward media message with
+   replacing caption it has.  Use this to forward media message with
    your own caption.
 
 ** Deleting messages
@@ -1489,6 +1514,11 @@ To delete a message, put cursor under the message you want to delete and press
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
 with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
+
+Also, you can ban/report message sender (and delete all messages from
+this sender in the chat) with
+@@html:<kbd>@@B@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <ban-sender>@@html:</kbd>@@ (~telega-msg-ban-sender~) when
+cursor is under the message.
 
 =telega= can keep deleted messages visible until chatbuf is
 killed. This is controlled using custom variable:
@@ -1774,12 +1804,12 @@ map]].  To setup multiple accounts use:
 :CUSTOM_ID: notifications-for-incoming-messages
 :END:
 
-=telega.el= could notify you about incoming messages and calls via
+=telega.el= can notify you about incoming messages and calls via
 D-Bus notifications, however notifications are disabled by default.
-To enable notifications use:
 
+Enable it with ~(telega-notifications-mode 1)~ or at =telega= load time:
 #+begin_src emacs-lisp
-  (telega-notifications-mode 1)
+  (add-hook 'telega-load-hook 'telega-notifications-mode)
 #+end_src
 
 In order for message to trigger notification, few conditions should be
@@ -1807,7 +1837,7 @@ See also [[#telega-alertel--notifications-using-alertel][Notifications using ale
 
 Global minor mode to display =telega= status in modeline.
 
-Enable with ~(telega-mode-line-mode 1)~, or at =telega= load time:
+Enable with ~(telega-mode-line-mode 1)~ or at =telega= load time:
 #+begin_src emacs-lisp
   (add-hook 'telega-load-hook 'telega-mode-line-mode)
 #+end_src
@@ -1835,6 +1865,43 @@ Customizable options:
   #+end_src
 
 
+** telega-appindicator-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-appindicator-mode
+:END:
+
+Global minor mode to display =telega= status in system tray.  This
+mode requires appindicator support in the =telega-server=.  To add
+appindicator support to =telega-server=, please install
+=libappindicator3-dev= system package and rebuild =telega-server=.
+
+Screenshot of system tray with enabled =telega= appindicator:
+[[https://zevlg.github.io/telega/screen-appindicator.png]]
+
+Enable with ~(telega-appindicator-mode 1)~ or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-appindicator-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-appindicator-show-account-name~ 
+
+  Non-nil to show current account name in appindicator label. 
+
+  Default value: ~t~
+- User Option: ~telega-appindicator-show-mentions~ 
+
+  Non-nil to show number of mentions in appindicator label. 
+
+  Default value: ~t~
+- User Option: ~telega-appindicator-labels~ 
+
+  List of number labels to use for the number of unread unmuted chats.
+  Use this labels instead of plain number.
+  Set to nil to use plain number. 
+
+  Default value: ~("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿" "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱" "⓲" "⓳" "⓴")~
+
 ** telega-squash-message-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-squash-message-mode
@@ -1855,7 +1922,7 @@ all the conditions are met:
 4. Last message can be edited
 5. Last and new messages are *not* replying to any message
 6. Last message has no associated web-page
-7. New message has no `messageSendOptions' to avoid squashing
+7. New message has no ~messageSendOptions~ to avoid squashing
    scheduled messages or similar
 
 Can be enabled globally in all chats matching
@@ -1896,8 +1963,8 @@ however has special bindings:
 - @@html:<kbd>@@p@@html:</kbd>@@ (~telega-image-prev~) :: 
      Show previous image in chat.
 
-To view highres image in chatbuf with ~telega-image-mode~ press
-@@html:<kbd>@@RET@@html:</kbd>@@ on the message with photo.
+To view high resolution image in chatbuf with ~telega-image-mode~
+press @@html:<kbd>@@RET@@html:</kbd>@@ on the message with photo.
 
 ** telega-edit-file-mode
 :PROPERTIES:
@@ -2038,6 +2105,10 @@ with @@html:<kbd>@@C-c C-a live-geo-location RET@@html:</kbd>@@ in the chatbuf.
 This mode requires the =geo.el= library, available at
 https://git.sr.ht/~oldosfan/geo-xdg.el
 
+Take into account that using ~geo-simulate~ backend to fake geo
+location data is Telegram API ToS violation.  See 1.4 in
+https://core.telegram.org/api/terms
+
 ** /telega-mnz.el/ -- Display Emacs content inside Telega messages.
 :PROPERTIES:
 :CUSTOM_ID: telega-mnzel--display-emacs-content-inside-telega-messages
@@ -2059,10 +2130,10 @@ Optionally depends on =language-detection= Emacs package.  If
 automatically for code blocks without language explicitly
 specified.  Install =language-detection= with @@html:<kbd>@@M-x package-install RET language-detection RET@@html:</kbd>@@
 
-=telega-mnz= installs
- (~telega-mnz-send-region-as-code~)
-binding into [[#telega-prefix-map][telega prefix map]] to attach
-region as code to a chatbuf.
+=telega-mnz= installs @@html:<kbd>@@'@@html:</kbd>@@
+(~telega-mnz-send-region-as-code~) binding into
+[[#telega-prefix-map][telega prefix map]] to attach region as code
+to a chatbuf.
 
 Also, =telega-mnz= installs ~code~ [[#attaching-media][media
 attachment type]], use it with @@html:<kbd>@@C-c C-a code RET@@html:</kbd>@@ in
@@ -2104,3 +2175,35 @@ Customizable options:
   See docstring for ~display-buffer~ for the value meaning. 
 
   Default value: ~((display-buffer-below-selected))~
+
+** /telega-dashboard.el/ -- Important telega chats in the Emacs dashboard
+:PROPERTIES:
+:CUSTOM_ID: telega-dashboardel--important-telega-chats-in-the-emacs-dashboard
+:END:
+
+Display important telega chats in the Emacs dashboard.  Enable it with:
+
+#+begin_src emacs-lisp
+  (require 'telega-dashboard)
+  (add-to-list 'dashboard-items '(telega-chats . 5))
+#+end_src
+
+Screenshot of =telega-dashboard= in action:
+[[https://zevlg.github.io/telega/telega-dashboard.png]]
+
+Customizable options:
+- User Option: ~telega-dashboard-chat-filter~ 
+
+  Chat Filter used to filter chats to display in the Emacs dashboard. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (or mention
+        (and unread unmuted))
+  #+end_src
+
+- User Option: ~telega-dashboard-chat-inserter~ 
+
+  Inserter for the chat button in the Emacs dashboard. 
+
+  Default value: ~telega-ins--chat-full~

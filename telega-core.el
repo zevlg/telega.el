@@ -32,6 +32,7 @@
 (require 'telega-customize)
 
 (declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-window-recenter "telega-util" (win &optional nlines from-point noforce))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
 (declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
 
@@ -72,6 +73,12 @@
     (:can_restrict_members . "telega_rights_restrict_members")
     (:can_promote_members . "telega_rights_promote_members")
     (:is_anonymous . "lng_rights_group_anonymous")))
+
+(defconst telega-notification-scope-types
+  '((private . "notificationSettingsScopePrivateChats")
+    (group . "notificationSettingsScopeGroupChats")
+    (channel . "notificationSettingsScopeChannelChats"))
+  "Map of lisp name of the scope to TDLib scope type name.")
 
 ;;; Runtime variables
 (defvar telega--current-buffer nil
@@ -378,27 +385,40 @@ Return non-nil if all tests are passed."
     (message "Your Emacs is suitable to run telega.el"))
   t)
 
-(defmacro telega-save-point (&rest body)
-  "Execute BODY saving current point as number."
-  (declare (indent 0))
-  (let ((pnt-sym (gensym)))
-    `(let ((,pnt-sym (point)))
+(defmacro telega-save-window-start (start end &rest body)
+  "Execute BODY saving window start and point.
+Window start is saved only if window start is inbetween START and
+END."
+  (declare (indent 2))
+  (let ((buf-win-sym (gensym))
+        (win-start (gensym "winstart"))
+        (win-start-line (gensym)))
+    `(let* ((,buf-win-sym (get-buffer-window))
+            (,win-start (when ,buf-win-sym
+                          (window-start ,buf-win-sym)))
+            (,win-start-line (when (and ,buf-win-sym
+                                        (>= ,win-start ,start)
+                                        (<= ,win-start ,end))
+                               (1+ (count-lines 1 ,win-start)))))
        (unwind-protect
            (progn ,@body)
-         (goto-char ,pnt-sym)))))
+         (when (and ,buf-win-sym ,win-start-line)
+           (save-excursion
+             (goto-char (point-min))
+             (forward-line (1- ,win-start-line))
+             (set-window-start ,buf-win-sym (point))))))))
 
 (defmacro telega-save-excursion (&rest body)
   "Execute BODY saving current point as moving marker."
   (declare (indent 0))
   (let ((pnt-sym (gensym)))
-    `(let ((,pnt-sym (copy-marker (point) t)))
+    `(let* ((,pnt-sym (copy-marker (point) t)))
        (unwind-protect
            (progn ,@body)
          (goto-char ,pnt-sym)))))
 
 (defmacro telega-save-cursor (&rest body)
-  "Execute BODY saving cursor's line and column position.
-Saves"
+  "Execute BODY saving cursor's line and column position."
   (declare (indent 0))
   (let ((line-sym (gensym "line"))
         (col-sym (gensym "col")))
@@ -467,17 +487,15 @@ If BUFFER-OR-NAME exists and visible then redisplay it."
     (with-current-buffer help-buf
       (when (and (eq for-param telega--help-win-param)
                  telega--help-win-inserter)
-        (if-let ((help-win (get-buffer-window help-buf)))
+        (if (get-buffer-window help-buf)
             ;; Buffer is visible in some HELP-WIN
-            (let ((w-start (window-start help-win)))
+            (telega-save-window-start (point-min) (point-max)
               (telega-save-cursor
                 (let ((inhibit-read-only t))
                   (setq telega--help-win-dirty-p nil)
                   (erase-buffer)
                   (funcall telega--help-win-inserter
-                           telega--help-win-param)))
-              (set-window-start help-win w-start)
-              (set-window-point help-win (point)))
+                           telega--help-win-param))))
 
           ;; Buffer is not visible, mark it as dirty, so it will be
           ;; redisplayed when switched in
@@ -868,7 +886,9 @@ Activates button if cursor enter, deactivates if leaves."
         (message "%s" (eval help-echo))))))
 
 (defun telega-button--insert (button-type value &rest props)
-  "Insert telega button of BUTTON-TYPE with VALUE and PROPS."
+  "Insert telega button of BUTTON-TYPE with VALUE and PROPS.
+Properties specified in PROPS are retained on
+`telega-button--update-value' calls."
   (declare (indent 2))
   (let ((button (apply 'make-text-button
                        (prog1 (point)
@@ -878,6 +898,8 @@ Activates button if cursor enter, deactivates if leaves."
                        (point)
                        :type button-type
                        :value value
+                       :telega-retain-props
+                       (telega-plist-map (lambda (prop _ignored) prop) props)
                        props)))
     (button-at button)))
 
@@ -894,31 +916,47 @@ Activates button if cursor enter, deactivates if leaves."
 (defun telega-button--update-value (button new-value &rest props)
   "Update BUTTON's value to NEW-VALUE.
 Additional properties PROPS are updated in button."
-  (telega-button--change button
-    (apply 'telega-button--insert (button-type button) new-value props)))
+  ;; NOTE: retain values for properties specified in
+  ;; `telega-button--insert', new PROPS overrides retained props
+  (let ((new-props nil))
+    (dolist (rprop (button-get button :telega-retain-props))
+      (setq new-props (plist-put new-props rprop (button-get button rprop))))
+    (telega--tl-dolist ((addprop value) props)
+      (setq new-props (plist-put new-props addprop value)))
 
-(defun telega-button--observable-p (button)
+    (telega-button--change button
+      (apply #'telega-button--insert (button-type button)
+             new-value new-props))))
+
+(defun telega-button--observable-p (button &optional fully-p)
   "Return non-nil if BUTTON is observable in some window.
-I.e. shown in some window, see `pos-visible-in-window-p'."
+I.e. shown in some window, see `pos-visible-in-window-p'.
+If FULLY-P is non-nil, then return non-nil only if BUTTON is fully
+visible, otherwise return non-nil if button start point is visible."
   (when (markerp button)
     (let ((bwin (get-buffer-window (marker-buffer button))))
       (and bwin
            (telega-focus-state (window-frame bwin))
-           (pos-visible-in-window-p button bwin)))))
+           (pos-visible-in-window-p button bwin)
+           (or (not fully-p)
+               (pos-visible-in-window-p (button-end button) bwin))))))
 
-(defun telega-button--make-observable (button)
+(defun telega-button--make-observable (button &optional even-if-visible-p)
   "Make BUTTON observable in window."
-  (unless (and (pos-visible-in-window-p (button-start button))
-               (pos-visible-in-window-p (button-end button)))
-    ;; NOTE:
-    ;; - Button is not fully visible, recenter to make it
-    ;;   visible
-    ;; - `recenter' might signal error
-    ;; - XXX always keep at least 2 lines visible above the message
-    (let ((nlines (count-lines (button-start button) (button-end button))))
-      (if (>= nlines (/ (window-height) 2))
-          (ignore-errors (recenter 2))
-        (ignore-errors (recenter))))))
+  (when (markerp button)
+    (when-let ((bstart (button-start button))
+               (bend (button-end button))
+               (bwin (get-buffer-window (marker-buffer button))))
+      (unless (and (not even-if-visible-p)
+                   (pos-visible-in-window-p bstart bwin)
+                   (pos-visible-in-window-p bend bwin))
+        (let ((win-h (window-height bwin))
+              (button-h (count-lines bstart bend)))
+          (if (>= button-h (/ win-h 2))
+              ;; NOTE: Always keep at least 2 lines visible above the
+              ;; message
+              (telega-window-recenter bwin 2 bstart)
+            (telega-window-recenter bwin)))))))
 
 (defun telega-button-forward (n &optional predicate no-error)
   "Move forward to N visible/active button.
@@ -927,7 +965,9 @@ PREDICATE returns non-nil.  PREDICATE is called with single arg -
 button.
 If NO-ERROR, do not signal error if no further buttons could be
 found.
-If NO-ERROR is `recenter', then possible recenter, otherwise recenter only if NO-ERROR is nil."
+If NO-ERROR is `interactive', then do whatever `telega-button-forward'
+do for interative calls, i.e. observe the button and show help
+message (if any)."
   (declare (indent 1))
   (interactive "p")
   (let (button)
@@ -944,8 +984,8 @@ If NO-ERROR is `recenter', then possible recenter, otherwise recenter only if NO
                       (button-get button 'inactive)))))
 
     ;; NOTE: Non-nil `no-error' is normally given on non-interactive
-    ;; calls, so recenter only on interactive calls
-    (when (and button (or (not no-error) (eq no-error 'recenter)))
+    ;; calls, so make button observable only on interactive calls
+    (when (and button (or (not no-error) (eq no-error 'interactive)))
       (telega-button--make-observable button)
       (telega-button--help-echo button))
     button))

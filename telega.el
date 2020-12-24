@@ -8,9 +8,9 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.1
-(defconst telega-version "0.7.1")
-(defconst telega-server-min-version "0.6.6")
+;; Version: 0.7.2
+(defconst telega-version "0.7.2")
+(defconst telega-server-min-version "0.7.2")
 (defconst telega-tdlib-min-version "1.7.0")
 (defconst telega-tdlib-max-version nil)
 
@@ -79,6 +79,10 @@
     ;; - {{{where-is(telega-chat-with,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-chat-with, 2)}}}
     (define-key map (kbd "c") 'telega-chat-with)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-switch-important-chat,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-switch-important-chat, 2)}}}
+    (define-key map (kbd "i") 'telega-switch-important-chat)
     ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega-saved-messages,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-saved-messages, 2)}}}
@@ -221,14 +225,10 @@ Works only if current state is `authorizationStateWaitCode'."
       (or (plist-get telega--options :suggested_language_pack_id) "en")))
 
   ;; Apply&update notifications settings
-  (when (car telega-notifications-defaults)
-    (telega--setScopeNotificationSettings
-     "notificationSettingsScopePrivateChats"
-     (car telega-notifications-defaults)))
-  (when (cdr telega-notifications-defaults)
-    (telega--setScopeNotificationSettings
-     "notificationSettingsScopeGroupChats"
-     (cdr telega-notifications-defaults)))
+  (dolist (scope-type telega-notification-scope-types)
+    (when-let ((settings
+                (alist-get (car scope-type) telega-notifications-defaults)))
+      (apply #'telega--setScopeNotificationSettings (cdr scope-type) settings)))
   ;; NOTE: telega--scope-notification-alist will be updated upon
   ;; `updateScopeNotificationSettings' event
 

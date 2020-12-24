@@ -140,11 +140,14 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
          (clip (telega-svg-clip-path svg "clip"))
          (clip1 (telega-svg-clip-path svg "clip1")))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
-    (svg-embed svg framefile
-               (format "image/%S" img-type) data-p
-               :x xoff :y yoff
-               :width size :height size
-               :clip-path "url(#clip)")
+    (telega-svg-embed svg (if data-p
+                              framefile
+                            (list (file-name-nondirectory framefile)
+                                  (file-name-directory framefile)))
+                      (format "image/%S" img-type) data-p
+                      :x xoff :y yoff
+                      :width size :height size
+                      :clip-path "url(#clip)")
 
     (when progress
       (let* ((angle-o (* 2 pi progress))
@@ -171,6 +174,7 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
                     :clip-path "url(#clip1)")))
 
     (svg-image svg :scale 1.0
+               :base-uri (unless data-p framefile)
                :width w :height h
                :mask 'heuristic
                :ascent 'center

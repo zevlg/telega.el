@@ -282,7 +282,7 @@ Return non-nil if USER1 > USER2."
   "Add user by PHONE to contact list."
   (interactive (list (read-string "Phone number: ")
                      (read-string "Name: ")))
-  (let* ((names (split-string name " "))
+  (let* ((names (split-string (or name "") " "))
          (reply (telega--importContacts
                  (nconc (list :@type "contact" :phone_number phone)
                         (unless (string-empty-p (car names))

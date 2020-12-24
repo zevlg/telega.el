@@ -236,6 +236,21 @@ Requires owner right."
          :supergroup_id (plist-get supergroup :id)
          :is_all_history_available (if all-history-available-p t :false))))
 
+(defun telega--reportSupergroupSpam (supergroup msg &rest other-messages)
+  "Report some messages in a supergroup as spam.
+all messages must have same user sender."
+  (let ((sender (telega-msg-sender msg)))
+    (cl-assert (telega-user-p sender))
+    (cl-assert (cl-every (lambda (omsg)
+                           (eq sender (telega-msg-sender omsg)))
+                         other-messages))
+    (telega-server--send
+     (list :@type "reportSupergroupSpam"
+           :supergroup_id (plist-get supergroup :id)
+           :user_id (plist-get sender :id)
+           :message_ids (cl-map #'vector (telega--tl-prop :id)
+                                (cons msg other-messages))))))
+    
 (defun telega--createSecretChat (secret-chat-id)
   "Return existing secret chat with id equal to SECRET-CHAT-ID."
   (telega-chat-get
@@ -693,13 +708,15 @@ SCOPE-TYPE is one of:
   "Change notification settings for chats of a given SCOPE-TYPE.
 SCOPE-TYPE is the same as in `telega--getScopeNotificationSettings'.
 SETTINGS is a plist with notification settings to set."
-  (let ((scope-settings (telega-chat-notification-scope scope-type))
+  (let ((tdlib-scope-type
+         (alist-get scope-type telega-notification-scope-types))
+        (scope-settings (telega-chat-notification-scope scope-type))
         (request (list :@type "scopeNotificationSettings")))
     (telega--tl-dolist ((prop-name value) (append scope-settings settings))
       (setq request (plist-put request prop-name (or value :false))))
     (telega-server--send
      (list :@type "setScopeNotificationSettings"
-           :scope (list :@type scope-type)
+           :scope (list :@type tdlib-scope-type)
            :notification_settings request))))
 
 (defun telega--resetAllNotificationSettings ()
@@ -1233,8 +1250,8 @@ PRIORITY is same as for `telega-file--download'."
    (list :@type "cancelUploadFile"
          :file_id file-id)))
 
-(defun telega--sendMessage (chat imc &optional reply-to-msg
-                                 options reply-markup callback)
+(cl-defun telega--sendMessage (chat imc &optional reply-to-msg
+                                    options &key reply-markup callback sync-p)
   "Send the message content represented by IMC to CHAT.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."
@@ -1251,10 +1268,10 @@ message uppon message is created."
             (list :options options))
           (when reply-markup
             (list :reply_markup reply-markup)))
-   (or callback 'ignore)))
+   (or callback (unless sync-p #'ignore))))
 
-(defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg
-                                      options callback)
+(cl-defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg
+                                         options &key callback sync-p)
   "Send IMCS as media album.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."
@@ -1267,7 +1284,7 @@ message uppon message is created."
             (list :reply_to_message_id (plist-get reply-to-msg :id)))
           (when options
             (list :options options)))
-   (or callback 'ignore)))
+   (or callback (unless sync-p #'ignore))))
 
 (defun telega--sendBotStartMessage (bot-user chat &optional param)
   "Invite a BOT-USER to a CHAT and sends it the /start command.
@@ -1281,8 +1298,8 @@ PARAM is additional parameter for deep linking."
             (list :parameter param)))
    ))
 
-(defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
-                                                  options callback)
+(cl-defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
+                                                     options &key callback sync-p)
   "Send IMC as inline query result from bot.
 If CALLBACK is specified, then call it with one argument - new
 message uppon message is created."
@@ -1298,12 +1315,13 @@ message uppon message is created."
             (list :options options))
           (when (plist-get imc :hide-via-bot)
             (list :hide_via_bot t)))
-   (or callback 'ignore)))
+   (or callback (unless sync-p #'ignore))))
 
-(defun telega--forwardMessages (chat from-chat messages &optional
-                                     options send-copy remove-caption)
+(cl-defun telega--forwardMessages (chat from-chat messages &optional
+                                     options send-copy remove-caption
+                                     &key callback sync-p)
   "Forward MESSAGES FROM-CHAT into CHAT."
-  (telega-server--send
+  (telega-server--call
    (nconc (list :@type "forwardMessages"
                 :chat_id (plist-get chat :id)
                 :from_chat_id (plist-get from-chat :id)
@@ -1311,49 +1329,78 @@ message uppon message is created."
                 :send_copy (if send-copy t :false)
                 :remove_caption (if remove-caption t :false))
           (when options
-            (list :options options)))))
+            (list :options options)))
+   (or callback (unless sync-p #'ignore))))
 
-(defun telega--editMessageText (chat msg imc &optional reply-markup)
+(cl-defun telega--editMessageText (msg imc &key reply-markup
+                                       callback sync-p)
   "Edit the text of a message, or a text of a game message."
-  (telega-server--send
+  (telega-server--call
    (nconc (list :@type "editMessageText"
-                :chat_id (plist-get chat :id)
+                :chat_id (plist-get msg :chat_id)
                 :message_id (plist-get msg :id)
                 :input_message_content imc)
           (when reply-markup
-            (list :reply_markup reply-markup)))))
+            (list :reply_markup reply-markup)))
+   (or callback (unless sync-p #'ignore))))
 
-(defun telega--editMessageLiveLocation (chat msg location &optional reply-markup)
+(cl-defun telega--editMessageLiveLocation (msg location
+                                               &key reply-markup
+                                               heading proximity-alert-radius
+                                               callback sync-p)
   "Edit the message content of a live location.
-Pass nill to stop sharing live location."
-  (telega-server--send
+Pass nil as LOCATION to stop sharing live location.
+HEADING - the new direction in which the location moves, in degrees;
+1-360. Pass 0 if unknown.
+PROXIMITY-ALERT-RADIUS - the new maximum distance for proximity
+alerts, in meters (0-100000). Pass 0 if the notification is disabled."
+  (let ((content (plist-get msg :content)))
+    ;; Keep heading/proximity-alert-radius values if not explicitly
+    ;; specified
+    (unless heading
+      (setq heading
+            (plist-get content :heading)))
+    (unless proximity-alert-radius
+      (setq proximity-alert-radius
+            (plist-get content :proximity_alert_radius))))
+
+  (telega-server--call
    (nconc (list :@type "editMessageLiveLocation"
-                :chat_id (plist-get chat :id)
+                :chat_id (plist-get msg :chat_id)
                 :message_id (plist-get msg :id)
                 :location location)
+          (when heading
+            (list :heading heading))
+          (when proximity-alert-radius
+            (list :proximity_alert_radius proximity-alert-radius))
           (when reply-markup
-            (list :reply_markup reply-markup)))))
+            (list :reply_markup reply-markup)))
+   (or callback (unless sync-p #'ignore))))
 
-(defun telega--editMessageMedia (chat msg imc &optional reply-markup)
+(cl-defun telega--editMessageMedia (msg imc &key reply-markup
+                                        callback sync-p)
   "Edit the content of a message with media content.
 Media content is an animation, an audio, a document, a photo or a video."
-  (telega-server--send
+  (telega-server--call
    (nconc (list :@type "editMessageMedia"
-                :chat_id (plist-get chat :id)
+                :chat_id (plist-get msg :chat_id)
                 :message_id (plist-get msg :id)
                 :input_message_content imc)
           (when reply-markup
-            (list :reply_markup reply-markup)))))
+            (list :reply_markup reply-markup)))
+   (or callback (unless sync-p #'ignore))))
 
-(defun telega--editMessageCaption (chat msg caption &optional reply-markup)
+(cl-defun telega--editMessageCaption (msg caption &key reply-markup
+                                          callback sync-p)
   "Edits the message content caption."
-  (telega-server--send
+  (telega-server--call
    (nconc (list :@type "editMessageCaption"
-                :chat_id (plist-get chat :id)
+                :chat_id (plist-get msg :chat_id)
                 :message_id (plist-get msg :id)
                 :caption caption)
           (when reply-markup
-            (list :reply_markup reply-markup)))))
+            (list :reply_markup reply-markup)))
+   (or callback (unless sync-p #'ignore))))
 
 (defun telega--getActiveLiveLocationMessages (&optional callback)
   "Return list of messages with active live locatins."
@@ -1363,15 +1410,27 @@ Media content is an animation, an audio, a document, a photo or a video."
     (list :@type "getActiveLiveLocationMessages")
     callback))
 
-(defun telega--deleteMessages (chat-id message-ids &optional revoke)
-  "Delete messages by its MESSAGES-IDS list.
-If REVOKE is non-nil then delete message for all users.
+(defun telega--deleteMessages (messages &optional revoke)
+  "Delete MESSAGES.
+All MESSAGES must have same `:chat_id' property.
+If REVOKE is non-nil then delete MESSAGES for all users.
 REVOKE is always non-nil for supergroups, channels and secret chats."
+  (let ((chat-id (plist-get (car messages) :chat_id)))
+    (cl-assert (cl-every (lambda (msg)
+                           (eq chat-id (plist-get msg :chat_id)))
+                         messages))
+    (telega-server--send
+     (list :@type "deleteMessages"
+           :chat_id chat-id
+           :message_ids (cl-map #'vector (telega--tl-prop :id) messages)
+           :revoke (if revoke t :false)))))
+
+(defun telega--deleteChatMessagesFromUser (chat user)
+  "Delete all messages from USER in the CHAT."
   (telega-server--send
-   (list :@type "deleteMessages"
-         :chat_id chat-id
-         :message_ids (apply 'vector message-ids)
-         :revoke (if revoke t :false))))
+   (list :@type "deleteChatMessagesFromUser"
+         :chat_id (plist-get chat :id)
+         :user_id (plist-get user :id))))
 
 (defun telega--searchMessages (query last-msg &optional _chat-list callback)
   "Search messages by QUERY.

@@ -286,7 +286,6 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
 
     (telega-chat--mark-dirty chat event)
 
-    ;; NOTE: unread_count affects modeline and footer
     (with-telega-chatbuf chat
       ;; NOTE: if all messages are read (in another telegram client),
       ;; then remove the chatbuf from tracking
@@ -509,7 +508,7 @@ NOTE: we store the number as custom chat property, to use it later."
       ;; with the id of the NEW-MSG, so check for it
       (when (telega-chatbuf--append-new-message-p new-msg)
         (when-let ((node (telega-chatbuf--insert-messages
-                          (list new-msg) 'append)))
+                          (list new-msg) 'append-new)))
           (when (and (telega-chat-match-p
                       telega-chatbuf--chat telega-use-tracking-for)
                      (not (plist-get new-msg :is_outgoing))
@@ -606,9 +605,7 @@ Message id could be updated on this update."
         (when (and aux-msg (eq (plist-get msg :id) (plist-get aux-msg :id)))
           (cl-assert (not (button-get telega-chatbuf--aux-button 'invisible)))
           (telega-save-excursion
-            (telega-button--update-value
-             telega-chatbuf--aux-button msg
-             :inserter (button-get telega-chatbuf--aux-button :inserter)))))
+            (telega-button--update-value telega-chatbuf--aux-button msg))))
       )))
 
 (defun telega--on-updateMessageIsPinned (event)
@@ -989,6 +986,11 @@ messages."
        ;; List of proxies, since tdlib 1.3.0
        ;; Do it after checkDatabaseEncryptionKey,
        ;; See https://github.com/tdlib/td/issues/456
+
+       ;; NOTE: Only `telega-proxies' setup could enable some proxy.
+       ;; See https://github.com/zevlg/telega.el/issues/233
+       (telega--disableProxy)
+
        (dolist (proxy telega-proxies)
          (telega--addProxy proxy))
        )

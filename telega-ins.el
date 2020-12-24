@@ -62,7 +62,6 @@
 (declare-function telega-chat--update-pinned-message "telega-chat" (chat &optional offline-p old-pin-msg-id))
 
 ;; telega-filter.el depends on telega-ins.el
-(declare-function telega-filter-chats "telega-filter" (chat-list &optional chat-filter))
 (declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
 
 (defvar telega-filters--inhibit-list)
@@ -77,17 +76,25 @@
     ;; contrast with using single negative number for `:line-width'
     ;; However is older Emacs this is not implemented, see
     ;; https://t.me/emacs_telega/22129
+    ;; 
+    ;; We handle both cases, for `:line-width' as cons and as negative
+    ;; number
 
     ;; XXX inclose LABEL with shrink version of spaces, so button
     ;; width will be char aligned
 
     ;; NOTE: non-breakable space is used, so if line is feeded at the
     ;; beginning of button, it won't loose its leading space
-    (let* ((box-width (- (or (plist-get (face-attribute 'telega-button :box)
-                                        :line-width)
-                             0)))
-           (space `(space (,(- (telega-chars-xwidth 1) box-width))))
-           (end (propertize "\u00A0" 'display space)))
+    (let* ((line-width (plist-get (face-attribute 'telega-button :box)
+                                  :line-width))
+           (box-width (- (if (consp line-width)
+                             (car line-width)
+                           (or line-width 0))))
+           (space (when (> box-width 0)
+                    `(space (,(- (telega-chars-xwidth 1) box-width)))))
+           (end (if space
+                    (propertize "\u00A0" 'display space)
+                  "\u00A0")))
       (cons end end))))
 
 (defun telega-ins--button (label &rest props)
@@ -531,7 +538,7 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
         (telega-ins "[")
         (telega-ins-progress-bar
          played dur (/ telega-chat-fill-column 2) ?\. ?\s)
-        (telega-ins "] "))
+        (telega-ins "]" (telega-duration-human-readable played) " "))
       (telega-ins--button "Stop"
         'action (lambda (_ignored)
                   (telega-ffplay-stop))))
@@ -815,7 +822,24 @@ Return `non-nil' if WEB-PAGE has been inserted."
             (telega-duration-human-readable live-for 1))
           (telega-ins-fmt " (updated %s ago)"
             (telega-duration-human-readable
-             (- current-ts since) 1)))))))
+             (- current-ts since) 1))))
+
+      (when (plist-get msg :can_be_edited)
+        (let ((proximity-radius (plist-get content :proximity_alert_radius)))
+          (telega-ins "\n")
+          (telega-ins "Proximity Alert Radius: ")
+          (unless (zerop proximity-radius)
+            (telega-ins (telega-distance-human-readable proximity-radius)
+                        " "))
+          (telega-ins--button (if (zerop proximity-radius)
+                                  "Set"
+                                "Change")
+            'action (lambda (_ignored)
+                      (telega--editMessageLiveLocation
+                       msg (plist-get content :location)
+                       :proximity-alert-radius
+                       (read-number "Proximity Alert Radius (meters): "))))))
+      )))
 
 (defun telega-ins--contact (contact &optional no-phone)
   "One line variant inserter for CONTACT."
@@ -1061,6 +1085,10 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins--location loc)
     (unless venue-p
       (telega-ins--location-live msg))
+    (when telega-my-location
+      (telega-ins "\n" "Distance From Me: "
+                  (telega-distance-human-readable
+                   (telega-location-distance loc telega-my-location))))
 
     (unless map
       ;; Initial location map creation
@@ -1078,22 +1106,45 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (let* ((heading (unless venue-p
                       (telega--tl-get msg :content :heading)))
            (heading-changed-p (not (equal heading (plist-get map :user-heading))))
-           (loc-changed-p (not (equal loc (plist-get map :user-location)))))
-      (when (or heading-changed-p loc-changed-p)
+           (loc-changed-p (not (equal loc (plist-get map :user-location))))
+           (need-map-photo-p
+            (telega-map--need-new-map-photo-p map (plist-get map :user-location)))
+           (alert-radius
+            (telega--tl-get msg :content :proximity_alert_radius))
+           (alert-radius-changed-p
+            (not (equal alert-radius (plist-get map :user-alert-radius)))))
+      (when (or heading-changed-p loc-changed-p alert-radius-changed-p
+                need-map-photo-p)
         ;; ARGUABLE: Cancel previously pending request?
         ;;   (telega-server--callback-rm (plist-get map :get-map-extra))
         ;;   (telega--cancelDownloadFile (plist-get (plist-get map :photo) :id))
         ;; TODO: what if some other user shown in map image moved?
+
+        (unless (plist-get map :user-location)
+          ;; Inilial map load or zoom has been changed
+          (plist-put map :photo nil)
+          (cl-assert need-map-photo-p))
+
+        ;; Save location tracks if location moved more then 50 meters
+        ;; from last track location
+        (when loc-changed-p
+          (let ((user-tracks (plist-get map :user-tracks)))
+            (when (or (not user-tracks)
+                      (> (telega-location-distance (car user-tracks) loc) 50))
+              (plist-put map :user-tracks (cons loc user-tracks)))))
+
         (plist-put map :user-location loc)
         (plist-put map :user-heading heading)
+        (plist-put map :user-alert-radius alert-radius)
         (unless (plist-get map :svg-image)
           ;; For initial image creation
           (plist-put map :map-location loc))
 
-        (plist-put map :svg-image (telega-map--create-image map))
-        (when loc-changed-p
+        (when need-map-photo-p
           (plist-put map :get-map-extra
-                     (telega-map--get-thumbnail-file map loc)))))
+                     (telega-map--get-thumbnail-file map loc)))
+
+        (plist-put map :svg-image (telega-map--create-image map))))
 
     (telega-ins "\n")
     (telega-ins--image-slices
@@ -1109,7 +1160,6 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                           (when (telega-map--zoom map 1)
                             (plist-put msg :telega-map
                                        (plist-put map :user-location nil))
-;                            (plist-put map :user-location nil)
                             (telega-msg-redisplay msg)))))
              ((= slice-num 2)
               (telega-ins " ")
@@ -1254,7 +1304,10 @@ Special messages are determined with `telega-msg-special-p'."
          :from sender-name))
       (messageScreenshotTaken
        (cl-assert sender)
-       (telega-ins (telega-user--name sender) " took a screenshot!"))
+       (if (telega-me-p sender)
+           (telega-ins-i18n "lng_action_you_took_screenshot")
+         (telega-ins-i18n "lng_action_took_screenshot"
+           :from sender-name)))
       (messagePinMessage
        ;; NOTE: if pinned message as not available right now, then
        ;; fetch is asynchronously and redisplay msg

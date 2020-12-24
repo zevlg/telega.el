@@ -34,6 +34,8 @@
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
 
+(declare-function telega-appindicator--on-event "telega-modes" (event))
+
 
 (defun telega--on-event (event)
   (let ((event-name (plist-get event :@type)))
@@ -48,7 +50,7 @@
           (telega-debug "TODO: define `%S'" event-sym))))))
 
 (defun telega--on-error (err)
-  (message "Telega error %d: %s"
+  (message "Telega error %s: %s"
            (plist-get err :code) (plist-get err :message)))
 
 ;; Server runtime vars
@@ -158,18 +160,17 @@ Raise error if not found."
 If does not match, then query user to rebuild telega-server.
 If version does not match then query user to rebuild telega-server."
   (let ((ts-version (or (telega-server-version) "0.0.0-unknown")))
-    (when (version< ts-version min-required-version)
-      (when (y-or-n-p
-             (format "Installed `telega-server' version %s<%s, rebuild? "
-                     ts-version min-required-version))
-        ;; NOTE: remove old telega-server binary before rebuilding
-        (let* ((sv-ver (car (split-string
-                             (shell-command-to-string
-                              (concat (telega-server--find-bin) " -h")) "\n")))
-               (with-voip-p (string-match-p (regexp-quote "with VOIP") sv-ver))
-               (with-ton-p (string-match-p (regexp-quote "with TON") sv-ver)))
-          (telega-server-build (concat (when with-voip-p " WITH_VOIP=t")
-                                       (when with-ton-p " WITH_TON=t"))))))))
+    (when (and (version< ts-version min-required-version)
+               (y-or-n-p
+                (format "Installed `telega-server' version %s<%s, rebuild? "
+                        ts-version min-required-version)))
+      ;; NOTE: remove old telega-server binary before rebuilding
+      (let* ((sv-ver (car (split-string
+                           (shell-command-to-string
+                            (concat (telega-server--find-bin) " -h")) "\n")))
+             (with-voip-p (string-match-p (regexp-quote "with VOIP") sv-ver)))
+        (telega-server-build (concat (when with-voip-p " WITH_VOIP=t")
+                                     ))))))
 
 (defsubst telega-server--proc ()
   "Return telega-server process."
@@ -207,19 +208,17 @@ Return parsed command."
 (defvar telega-server--last-error)
 (defsubst telega-server--dispatch-cmd (cmd value)
   "Dispatch command CMD."
-  (cond ((or (string= cmd "event")
-             (string= cmd "ton-event"))
+  (telega-debug "%s %s: %S" cmd (propertize "IN" 'face 'bold) value)
+
+  (cond ((string= cmd "event")
          (let* ((extra (plist-get value :@extra))
                 (call-cb (telega-server--callback-get extra)))
            (if call-cb
                (telega-server--callback-rm extra)
              (setq call-cb telega-server--on-event-func))
 
-           (telega-debug "%s %s: %S" cmd (propertize "IN" 'face 'bold) value)
-
            ;; Function call may return errors
            (if (or (not (telega--tl-error-p value))
-                   (string= cmd "ton-event")
                    ;; If the error code is 406, the error message must
                    ;; not be processed in any way and must not be
                    ;; displayed to the user
@@ -234,6 +233,9 @@ Return parsed command."
                  (set 'telega-server--last-error value)
                (message "telega-server error: %s"
                         (plist-get value :message))))))
+
+        ((string= cmd "appindicator-event")
+         (telega-appindicator--on-event value))
 
         ((string= cmd "error")
          (telega--on-error value))
@@ -399,8 +401,7 @@ COMMAND is passed directly to `telega-server--send'."
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-server--sentinel)
         (set-process-filter proc #'telega-server--filter)
-        (set-process-coding-system proc 'utf-8 'utf-8))))
-  (current-buffer))
+        (set-process-coding-system proc 'utf-8 'utf-8)))))
 
 (defun telega-server-kill ()
   "Kill the telega-server process."

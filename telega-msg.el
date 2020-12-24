@@ -95,6 +95,15 @@
                                    '(my-permission :can_pin_messages))
                                   (not (plist-get msg :is_pinned))))))
     (bindings--define-key menu-map [s1] menu-bar-separator)
+    (bindings--define-key menu-map [ban-sender]
+      '(menu-item (propertize "Ban Sender" 'face 'error)
+                  telega-msg-ban-sender
+                  :help "Ban/report message sender"
+                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
+                             (telega-chat-match-p
+                              (telega-msg-chat msg)
+                              '(my-permission :can_restrict_members)))
+                  ))
     (bindings--define-key menu-map [delete]
       '(menu-item (propertize "Delete" 'face 'error)
                   telega-msg-delete-at-down-mouse-3
@@ -103,6 +112,7 @@
                             (or (plist-get msg :can_be_deleted_only_for_self)
                                 (plist-get msg :can_be_deleted_for_all_users)))
                   ))
+    (bindings--define-key menu-map [s2] menu-bar-separator)
     (bindings--define-key menu-map [thread]
       '(menu-item "View Thread" telega-msg-open-thread
                   :help "Show message's thread"
@@ -141,6 +151,7 @@
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "t") 'telega-msg-open-thread)
 
+    (define-key map (kbd "B") 'telega-msg-ban-sender)
     (define-key map (kbd "L") 'telega-msg-redisplay)
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
@@ -193,6 +204,7 @@
                       (> (point) 3)
                       (let ((prev-msg (telega-msg-at (- (point) 2))))
                         (and prev-msg
+                             (not (plist-get prev-msg :telega-is-deleted-message))
                              (not (plist-get prev-msg :is_pinned))
                              (not (telega-msg-special-p prev-msg))
                              (equal (plist-get msg :sender)
@@ -433,18 +445,17 @@ If CALLBACK is specified, then get reply message asynchronously."
                              "-nodisp"))
                  (telega-msg-activate-voice-note msg)))))))))
 
-(defun telega-msg-video-note--callback (proc filename msg)
+(defun telega-msg-video-note--ffplay-callback (proc frame msg)
   "Callback for video note playback."
   (let* (;(proc (plist-get msg :telega-ffplay-proc))
          (proc-plist (process-plist proc))
          (nframes (or (float (plist-get proc-plist :nframes))
                       (* 30.0 (telega--tl-get
-                               msg :content :video_note :duration))))
-         (frame-num (plist-get proc-plist :frame-num))
-         (progress (/ frame-num nframes)))
+                               msg :content :video_note :duration)))))
     (plist-put msg :telega-ffplay-frame
-               (when filename
-                 (telega-vvnote-video--svg filename progress)))
+               (when frame
+                 (telega-vvnote-video--svg (cdr frame)
+                                           (/ (car frame) nframes))))
     (telega-msg-redisplay msg)))
 
 (defun telega-msg-open-video-note (msg)
@@ -471,16 +482,16 @@ non-nil."
                                   (telega-ffplay-to-png filepath
                                       (list "-vf" "scale=120:120"
                                             "-f" "alsa" "default" "-vsync" "0")
-                                    'telega-msg-video-note--callback msg))
+                                    #'telega-msg-video-note--ffplay-callback msg))
                      (telega-ffplay-run filepath nil)))))))))))
 
 (defun telega-msg-open-photo (msg &optional photo)
   "Open content for photo message MSG."
   (telega-photo--open (or photo (telega--tl-get msg :content :photo)) msg))
 
-(defun telega-animation--ffplay-callback (_proc filename anim)
+(defun telega-animation--ffplay-callback (_proc frame anim)
   "Callback for inline animation playback."
-  (plist-put anim :telega-ffplay-frame-filename filename)
+  (plist-put anim :telega-ffplay-frame-filename (cdr frame))
   ;; NOTE: just redisplay the image, not redisplaying full message
   (telega-media--image-update
    (cons anim 'telega-animation--create-image) nil)
@@ -509,7 +520,7 @@ non-nil."
                             (not current-prefix-arg))
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filename nil
-                                    'telega-animation--ffplay-callback anim))
+                                    #'telega-animation--ffplay-callback anim))
                      (telega-ffplay-run filename nil "-loop" "0")))))))))))
 
 (defun telega-msg-open-document (msg &optional document)
@@ -931,7 +942,50 @@ Use \\[yank] command to paste a link."
     (unless msg-text
       (user-error "Nothing to copy"))
     (kill-new msg-text)
-    (message "Copied message text")))
+    (message "Copied message text (%d chars)" (length msg-text))))
+
+(defun telega-msg-ban-sender (msg)
+  "Ban forever MSG sender in the chat.
+Also query about:
+- Report MSG sender as spammer
+- Delete all messages from the MSG sender
+- Delete only MSG
+
+Requires administrator rights in the chat."
+  (interactive (list (telega-msg-for-interactive)))
+  (let ((chat (telega-msg-chat msg))
+        (sender (telega-msg-sender msg)))
+    (unless (plist-get (telega-chat-member-my-permissions chat)
+                       :can_restrict_members)
+      (user-error "Can't restrict users in this chat"))
+    (unless (telega-user-p sender)
+      (user-error "Can't ban anonymous message sender"))
+    
+    (let* ((report-p
+            (when (eq 'supergroup (telega-chat--type chat))
+              (y-or-n-p (concat (telega-i18n "lng_report_spam") "? "))))
+           (delete-all-p
+            (when (and (eq 'supergroup (telega-chat--type chat))
+                       (plist-get (telega-chat-member-my-permissions chat)
+                                  :can_delete_messages))
+              (y-or-n-p (concat (telega-i18n "lng_delete_all_from") "? "))))
+           (delete-msg-p
+            (when (and (not delete-all-p)
+                       (plist-get (telega-chat-member-my-permissions chat)
+                                  :can_delete_messages))
+              (y-or-n-p (concat (telega-i18n "lng_deleted_message") "? ")))))
+      (when report-p
+        (telega--reportSupergroupSpam (telega-chat--supergroup chat) msg))
+      (when delete-all-p
+        (telega--deleteChatMessagesFromUser chat sender))
+      (when delete-msg-p
+        (telega--deleteMessages msg 'revoke))
+
+      ;; Ban forever
+      (telega--setChatMemberStatus
+       chat sender
+       (list :@type "chatMemberStatusBanned"
+             :banned_until_date 0)))))
 
 (defun telega-describe-message (msg &optional for-comment-p)
   "Show info about message at point."

@@ -78,6 +78,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Deleted Account")
  ("lng_deleted_message"
   :value "Deleted Message")
+ ("lng_delete_all_from"
+  :value "Delete all from this user")
 
  ("lng_settings_privacy_title"
   :value "Privacy")
@@ -129,6 +131,11 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} added {user}")
  ("lng_action_kick_user"
   :value "{from} removed {user}")
+
+ ("lng_action_you_took_screenshot"
+  :value "You took a screenshot!")
+ ("lng_action_took_screenshot"
+  :value "{from} took a screenshot!")
 
  ("lng_action_game_score"
   :one_value "{from} scored {count} in {game}"

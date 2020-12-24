@@ -772,14 +772,6 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
     (with-telega-chatbuf chat
       (telega-chatbuf-animation-insert animation))))
 
-(defun telega-animation--ffplay-callback (_proc filename anim)
-  "Ffplay callback to animate ANIM."
-  (plist-put anim :telega-ffplay-frame-filename filename)
-  (telega-media--image-update
-   (cons anim 'telega-animation--create-image) nil)
-  (force-window-update)
-  )
-
 (defun telega-animation--gen-sensor-func (anim)
   "Return sensor function to animate ANIM when entered."
   (cl-assert anim)

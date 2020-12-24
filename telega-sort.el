@@ -118,7 +118,7 @@ CRITERIA could be a lit of sort criterias."
 (defun telega-sort-by-sorter (criteria &optional arg)
   "Interactively add CRITERIA to active sorter.
 If prefix ARG is used, then add sort criteria, instead of
-overwritting currently active one."
+overwriting currently active one."
   (interactive
    (let ((cname (funcall telega-completing-read-function
                          "Sort criteria: "

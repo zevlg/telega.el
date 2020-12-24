@@ -290,16 +290,21 @@ Global root bindings:
 
 (defun telega-root--killed ()
   "Run when telega root buffer is killed.
-Terminate telega-server and kill all chat buffers."
+Terminate telega-server and kill all chat and supplementary buffers."
   (when telega-status--timer
     (cancel-timer telega-status--timer))
   (when telega-loading--timer
     (cancel-timer telega-loading--timer))
   (when telega-online--timer
     (cancel-timer telega-online--timer))
-  (telega-chats--kill-em-all)
-  (telega-server-kill)
 
+  ;; NOTE: Kill all telega buffers, except for root buffer to avoid
+  ;; infinite kill buffer loop, because `telega-root--killed' is
+  ;; called when root buffer is killed
+  (dolist (tbuf (cl-remove-if-not #'telega-buffer-p (buffer-list)))
+    (unless (eq tbuf (telega-root--buffer))
+      (kill-buffer tbuf)))
+  (telega-server-kill)
   (telega-runtime-teardown))
 
 (defun telega-root--buffer ()
@@ -390,7 +395,7 @@ ITEMS is a list of loaded items to be added into ewoc."
 (defun telega-root--keep-cursor-at-chat (chat)
   "Keep cursor position at CHAT.
 Keep cursor position only if CHAT is visible."
-  (when (telega-filter-chats (list chat)) ;visible-p
+  (when (telega-chat-match-active-p chat) ;visible-p
     (with-telega-root-view-ewoc "root" root-ewoc
       (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
         (goto-char (ewoc-location node))
@@ -415,7 +420,7 @@ Keep cursor position only if CHAT is visible."
   "Pretty printer for known CHAT button."
   ;; Insert only visible chat buttons
   ;; See https://github.com/zevlg/telega.el/issues/3
-  (let ((visible-p (telega-filter-chats (list chat))))
+  (let ((visible-p (telega-chat-match-active-p chat)))
     (when visible-p
       (telega-root--chat-pp chat custom-inserter custom-action))))
 
@@ -449,7 +454,7 @@ CONTACT is some user you have exchanged contacts with."
          (visible-p (or (not user-chat)
                         (let ((telega-filters--inhibit-list
                                '(chat-list folder main archive)))
-                          (telega-filter-chats (list user-chat))))))
+                          (telega-chat-match-active-p user-chat)))))
     (when visible-p
       (telega-button--insert 'telega-user contact-user
         :inserter (or custom-inserter
@@ -487,7 +492,7 @@ CONTACT is some user you have exchanged contacts with."
 (defun telega-root--message-pp (msg &optional custom-inserter)
   "Pretty printer for MSG button shown in root buffer."
   (declare (indent 1))
-  (let ((visible-p (telega-filter-chats (list (telega-msg-chat msg)))))
+  (let ((visible-p (telega-chat-match-active-p (telega-msg-chat msg))))
     (when visible-p
       (telega-button--insert 'telega-msg msg
         :inserter (or custom-inserter #'telega-ins--root-msg)

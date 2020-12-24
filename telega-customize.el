@@ -157,7 +157,7 @@ Tracking notifications for telega buffers will use the
                                       (funcall 'image-transforms-p))
                                  (fboundp 'imagemagick-types))
   "Non-nil to show images.
-Explicitely set it to non-nil if using emacs as a service and
+Explicitly set it to non-nil if using Emacs as a service and
 want to create X frames to show images.
 See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon"
   :type 'boolean
@@ -325,10 +325,9 @@ See `telega-avatar--create-img' for more info."
   :type 'alist
   :group 'telega)
 
-(defcustom telega-avatar-text-compose-chars t
+(defcustom telega-avatar-text-compose-chars nil
   "Non-nil to compose sender initials with `telega-symbol-circle'.
 Use this to make textual avatars look prettier."
-  :package-version '(telega . "0.7.0")
   :type 'boolean
   :group 'telega)
 
@@ -388,7 +387,7 @@ Document messages are always opens as file."
 (defcustom telega-location-url-format
   "http://maps.google.com/?q=%N,%E&ll=%N,%E&z=15"
   "*URL format used to open location messages.
-%N substituted with lattitude.
+%N substituted with latitude.
 %E substituted with longitude."
   :type 'string
   :group 'telega)
@@ -397,7 +396,8 @@ Document messages are always opens as file."
   "Set to non-nil to use this as location of me.
 Plist in form (:latitude <LAT> :longitude <LONG>)
 To publically expose this location set `:is_location_visible' to
-non-nil in `telega-options-plist'."
+non-nil in `telega-options-plist'.
+Used to calculate distances from other peers to me."
   :type 'plist
   :group 'telega)
 
@@ -415,8 +415,13 @@ In range [13..20]"
 
 (defcustom telega-location-scale 1
   "*Scale for location image.
-In range [1..3]"
+In range [1..3].  Use 1."
   :type 'number
+  :group 'telega)
+
+(defcustom telega-location-live-tracks t
+  "*Non-nil to draw live location tracks."
+  :type 'boolean
   :group 'telega)
 
 (defcustom telega-poll-result-color "#000066"
@@ -660,12 +665,12 @@ See https://github.com/zevlg/telega.el/issues/171"
   :group 'telega-filter)
 
 (defcustom telega-filters-custom
-  '(("📑Main" . main)
+  '(("Main" . main)
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
     ("Online" . (and (not saved-messages) (online-status "Online")))
     ("Important" . (or mention (and unread unmuted)))
-    ("📑Archive" . archive))
+    ("Archive" . archive))
   "*Alist of custom filters in form (NAME . CHAT-FILTER).
 NAME is evaluated to get resulting string, so it could be a lisp
 form.
@@ -796,6 +801,31 @@ Used when showing chat members list."
 (defgroup telega-chat nil
   "Customization for chat buffer."
   :group 'telega)
+
+(defcustom telega-chat-ret-always-sends-message t
+  "Non-nil to make `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]' always send a message.
+Otherwise
+`\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]'
+sends a message only if point is at the end of the chatbuf input or
+inserts newline otherwise."
+  :package-version '(telega . "0.7.2")
+  :type 'boolean
+  :group 'telega-chat)
+
+(defcustom telega-chat-send-messages-async nil
+  "Non-nil to send messages in async manner, not waiter telega-server reply.
+Setting it to non-nil might introduce additional flickery in chatbuf."
+  :package-version '(telega . "0.7.2")
+  :type 'boolean
+  :group 'telega-chat)
+
+(defcustom telega-chat-send-disable-webpage-preview nil
+  "Non-nil to disable web page previews for the outgoing messages.
+There will be no way to enable web page previews untill this option is
+enabled."
+  :package-version '(telega . "0.7.2")
+  :type 'boolean
+  :group 'telega-chat)
 
 (defcustom telega-chat-show-avatars telega-use-images
   "*Non-nil to show user avatars in chat buffer."
@@ -1108,13 +1138,14 @@ Used by `telega-ins--msg-notification'."
   :group 'telega-notifications)
 
 (defcustom telega-notifications-defaults nil
-  "Cons cell with notifications settings.
-car for private/secret chats
-cdr for any groups including channels
+  "Alist with notification settings for notification groups.
+car of each element is one of: `private', `group' or `channel'.
+rest is notification settings.
 For example:
-  (cons
-    (list :mute_for 0 :show_preview t)
-    (list :mute_for 599695961 :show_preview t))"
+  '((private :mute_for 0 :show_preview t)
+    (group :mute_for 599695961 :show_preview t)
+    (channel :mute_for 540465803 :show_preview t))"
+  :package-version '(telega . "0.7.2")
   :type 'cons
   :group 'telega-notifications)
 
@@ -1171,9 +1202,9 @@ Used for such messages as audio/document/etc."
   :type '(list integer integer integer integer)
   :group 'telega)
 
-(defcustom telega-webpage-preview-size-limits '(10 3 55 6)
+(defcustom telega-webpage-preview-size-limits '(10 5 55 10)
   "Same as `telega-photo-size-limits', but for webpage preview image."
-  :package-version '(telega . "0.6.31")
+  :package-version '(telega . "0.7.2")
   :type '(list integer integer integer integer)
   :group 'telega)
 
@@ -1561,6 +1592,16 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-chat-list "📑"
+  "Symbol to use to emphasize main or archive custom filter buttons."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-bell "🔔"
+  "Symbol to use to draw a bell (notification)."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -1589,6 +1630,8 @@ If nil, then user's online status is not displayed."
          telega-symbol-forward
          telega-symbol-circle
          telega-symbol-bulp
+         telega-symbol-chat-list
+         telega-symbol-bell
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.
@@ -1600,8 +1643,9 @@ Install all symbol widths inside `telega-load-hook'."
   '((verified (telega-etc-file "verified.svg"))
     (vertical-bar (telega-svg-create-vertical-bar))
 
-    multiple-folders eye flames lock pin alarm failed location play
-    pause phone photo video bulp)
+    folder multiple-folders chat-list
+    eye flames lock pin alarm failed location play
+    pause phone photo video bulp bell)
   "List of symbols to emojify if `telega-emoji-use-images' is non-nil.
 Each element is either XXX from ending of telega-symbol-XXX or list,
 where car is XXX and rest is form to evaluate to get image or a
@@ -1623,16 +1667,27 @@ filename with an image to be used."
 
 ;; NOTE: better to use :line-width (-2 . -2), but this is only in newer Emacs
 ;; see https://t.me/emacs_telega/22129
-(defface telega-button
-  '((((class color) (min-colors 88) (background light))
-     :foreground "RoyalBlue3"
-     :box (:line-width -2 :color "RoyalBlue3" :style nil))
-    (((class color) (min-colors 88) (background dark))
-     :foreground "cyan1"
-     :box (:line-width -2 :color "cyan1" :style nil))
-    (t :inherit highlight))
-  "Face used for telega buttons."
-  :group 'telega-faces)
+(or (ignore-errors
+      (defface telega-button
+        '((((class color) (min-colors 88) (background light))
+           :foreground "RoyalBlue3"
+           :box (:line-width (-2 . -2) :color "RoyalBlue3" :style nil))
+          (((class color) (min-colors 88) (background dark))
+           :foreground "cyan1"
+           :box (:line-width (-2 . -2) :color "cyan1" :style nil))
+          (t :inherit highlight))
+        "Face used for telega buttons."
+        :group 'telega-faces))
+    (defface telega-button
+      '((((class color) (min-colors 88) (background light))
+         :foreground "RoyalBlue3"
+         :box (:line-width -2 :color "RoyalBlue3" :style nil))
+        (((class color) (min-colors 88) (background dark))
+         :foreground "cyan1"
+         :box (:line-width -2 :color "cyan1" :style nil))
+        (t :inherit highlight))
+      "Face used for telega buttons."
+      :group 'telega-faces))
 
 (defface telega-button-active
   '((((class color) (min-colors 88) (background light))

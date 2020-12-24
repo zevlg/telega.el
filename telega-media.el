@@ -523,7 +523,8 @@ CHEIGHT specifies avatar height in chars, default is 2."
   ;; - For CHEIGHT==2 make svg height to be 3 chars, so if font size
   ;;   is increased, there will be no gap between two slices
   (unless cheight (setq cheight 2))
-  (let* ((photofile (telega--tl-get file :local :path))
+  (let* ((base-dir (telega-base-directory))
+         (photofile (telega--tl-get file :local :path))
          (factors (alist-get cheight telega-avatar-factors-alist))
          (cfactor (or (car factors) 0.9))
          (mfactor (or (cdr factors) 0.1))
@@ -543,12 +544,13 @@ CHEIGHT specifies avatar height in chars, default is 2."
         (let ((img-type (image-type-from-file-name photofile))
               (clip (telega-svg-clip-path svg "clip")))
           (svg-circle clip (/ svg-xw 2) (/ cfull 2) (/ ch 2))
-          (svg-embed svg photofile
-                     (format "image/%S" img-type)
-                     nil
-                     :x (/ (- svg-xw ch) 2) :y (/ margin 2)
-                     :width ch :height ch
-                     :clip-path "url(#clip)"))
+          (telega-svg-embed svg (list (file-relative-name photofile base-dir)
+                                      base-dir)
+                            (format "image/%S" img-type)
+                            nil
+                            :x (/ (- svg-xw ch) 2) :y (/ margin 2)
+                            :width ch :height ch
+                            :clip-path "url(#clip)"))
 
       ;; Draw initials
       (let ((fsz (/ ch 2))
@@ -571,6 +573,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
                       :width svg-xw :height svg-xh
                       :ascent 'center
                       :mask 'heuristic
+                      :base-uri (expand-file-name "dummy" base-dir)
                       ;; Correct text for tty-only avatar display
                       :telega-text
                       (cons (concat (telega-avatar--title-text sender)
@@ -588,19 +591,30 @@ CHEIGHT specifies avatar height in chars, default is 2."
 ;; Location
 (defun telega-map--create-image (map &optional _file)
   "Create map image for location MAP."
-  (let* ((map-photo (telega-file--renew map :photo))
+  (let* ((base-dir (telega-base-directory))
+         (map-photo (telega-file--renew map :photo))
          (map-photofile (when map-photo
                           (telega--tl-get map-photo :local :path)))
-         (_map-loc (plist-get map :map-location))
-         (_user-loc (plist-get map :user-location))
+         (map-loc (plist-get map :map-location)) ;at image center
+         (user-loc (plist-get map :user-location))
          (width (plist-get map :width))
          (height (plist-get map :height))
+         (user-loc-off
+          (telega-location-distance map-loc user-loc 'components))
+         (user-y (+ (/ height 2)
+                    (telega-map--distance-pixels
+                     (car user-loc-off) user-loc (plist-get map :zoom))))
+         (user-x (+ (/ width 2)
+                    (telega-map--distance-pixels 
+                     (cdr user-loc-off) user-loc (plist-get map :zoom))))
          (svg (telega-svg-create width height)))
     (cl-assert (and (integerp width) (integerp height)))
     (if (and (telega-file--downloaded-p map-photo)
              (telega-file-exists-p map-photofile))
-        (svg-embed svg map-photofile "image/png" nil
-                   :x 0 :y 0 :width width :height height)
+        (telega-svg-embed svg (list (file-relative-name map-photofile base-dir)
+                                    base-dir)
+                          "image/png" nil
+                          :x 0 :y 0 :width width :height height)
       (svg-rectangle svg 0 0 width height
                      :fill-color (telega-color-name-as-hex-2digits
                                   (face-foreground 'shadow))))
@@ -624,18 +638,20 @@ CHEIGHT specifies avatar height in chars, default is 2."
                (clip (telega-svg-clip-path svg "user-clip"))
                (sz (/ (plist-get map :height) 8))
                (sz2 (/ sz 2)))
-          (svg-circle clip (+ (/ width 2) sz2) (- (/ height 2) sz2) sz2)
-          (svg-polygon clip (list (cons (/ width 2) (/ height 2))
-                                  (cons (+ (/ width 2) (/ sz2 4))
-                                        (- (/ height 2) sz2))
-                                  (cons (+ (/ width 2) sz2)
-                                        (- (/ height 2) (/ sz2 4)))))
-          (svg-embed svg photofile (format "image/%S" img-type) nil
-                     :x (/ width 2) :y (- (/ height 2) sz)
-                     :width sz :height sz
-                     :clip-path "url(#user-clip)"))))
+          (svg-circle clip (+ user-x sz2) (- user-y sz2) sz2)
+          (svg-polygon clip (list (cons user-x user-y)
+                                  (cons (+ user-x (/ sz2 4))
+                                        (- user-y sz2))
+                                  (cons (+ user-x sz2)
+                                        (- user-y (/ sz2 4)))))
+          (telega-svg-embed svg (list (file-relative-name photofile base-dir)
+                                      base-dir)
+                            (format "image/%S" img-type) nil
+                            :x user-x :y (- user-y sz)
+                            :width sz :height sz
+                            :clip-path "url(#user-clip)"))))
 
-    (svg-circle svg (/ width 2) (/ height 2) 8
+    (svg-circle svg user-x user-y 8
                 :stroke-width 4
                 :stroke-color "white"
                 :fill-color (face-foreground 'telega-blue))
@@ -643,8 +659,8 @@ CHEIGHT specifies avatar height in chars, default is 2."
     ;; User's direction heading 1-360, 0 if unknown
     (let ((heading (or (plist-get map :user-heading) 0)))
       (unless (zerop heading)
-        (let* ((w2 (/ width 2))
-               (h2 (/ height 2))
+        (let* ((w2 user-x)
+               (h2 user-y)
                (angle1 (* pi (/ (- (+ heading 200)) 180.0)))
                (angle2 (* pi (/ (- (+ heading 160)) 180.0)))
                (h-dx1 (* 100 (sin angle1)))
@@ -670,9 +686,47 @@ CHEIGHT specifies avatar height in chars, default is 2."
                       :clip-path "url(#headclip)")
           )))
 
-    (svg-image svg :scale 1.0
-               :width width :height height
-               :ascent 'center)))
+    ;; Proximity Alert Radius
+    (let* ((alert-radius (or (plist-get map :user-alert-radius) 0))
+           (radius-px (unless (zerop alert-radius)
+                        (telega-map--distance-pixels
+                         alert-radius
+                         (plist-get map :user-location)
+                         (plist-get map :zoom)))))
+      (when radius-px
+        (svg-circle svg user-x user-y radius-px
+                    :fill "none"
+                    :stroke-dasharray "4 6"
+                    :stroke-width 4
+                    :stroke-opacity "0.6"
+                    :stroke-color "black")))
+
+    (telega-svg-image svg :scale 1.0
+                      :width width :height height
+                      :ascent 'center
+                      :base-uri (expand-file-name "dummy" base-dir))))
+
+;; See
+;; https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Resolution_and_Scale
+(defun telega-map--distance-pixels (meters loc zoom)
+  "Convert METERS distance at LOC to the pixels distance at ZOOM level."
+  (let ((lat (plist-get loc :latitude)))
+    (round (/ meters
+              (/ (* 156543.03 (cos (degrees-to-radians lat)))
+                 (expt 2 zoom))))))
+
+(defun telega-map--need-new-map-photo-p (map loc)
+  "Return non-nil if need to fetch new map photo for new user location LOC."
+  (or (and (not (plist-get map :photo))
+           (not (plist-get map :get-map-extra)))
+      (not loc)
+      (not (plist-get map :map-location))
+      (let* ((map-xh (telega-chars-xheight (car telega-location-size)))
+             (distance
+              (telega-location-distance (plist-get map :map-location) loc))
+             (distance-px (telega-map--distance-pixels
+                           distance loc (plist-get map :zoom))))
+        (> distance-px (/ map-xh 4)))))
 
 (defun telega-map--get-thumbnail-file (map loc &optional msg)
   "Request MAP image at LOC location for MSG.

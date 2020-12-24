@@ -159,23 +159,13 @@ Keymap:
       (error (format "Anchor \"#%s\" not found" name)))
     (goto-char anchor)))
 
-(defun telega-webpage-details-toggle (button)
-  "Toggle open/close state of the details block."
-  (interactive (list (button-at (point))))
-  (let ((val (button-get button :value)))
-    (telega-button--update-value
-     button (plist-put val :is_open (not (plist-get val :is_open)))
-     'action 'telega-webpage-details-toggle
-     :inserter 'telega-webpage--ins-details
-     :help-echo "Toggle details")
-    (goto-char button)))
-
 (defun telega-webpage--ins-pb-details (pb)
   "Inserter for `pageBlockDetails' page block PB."
-  (let ((open-p (or t (plist-get pb :is_open))) ;XXX always open
+  (let ((open-p (not (plist-get pb :is_closed)))
         (telega--current-buffer (current-buffer)))
     (telega-ins (funcall (if open-p 'cdr 'car)
-                         telega-symbol-webpage-details) " ")
+                         telega-symbol-webpage-details)
+                " ")
     (telega-webpage--ins-rt (plist-get pb :header))
     (telega-ins "\n")
     (telega-ins--with-face 'telega-webpage-strike-through
@@ -439,10 +429,14 @@ Keymap:
     (pageBlockEmbeddedPost
      (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
     (pageBlockCollage
-     (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks))
+     (mapc #'telega-webpage--ins-pb (plist-get pb :page_blocks))
      (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockSlideshow
-     (telega-ins "<TODO: pageBlockSlideshow>\n"))
+     (let ((page-blocks (plist-get pb :page_blocks)))
+       (dotimes (n (length page-blocks))
+         (telega-ins--labeled (format "%d/%d " (1+ n) (length page-blocks)) nil
+           (telega-webpage--ins-pb (aref page-blocks n)))))
+     (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockChatLink
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
        (telega-ins (telega-tl-str pb :title) " "
@@ -456,11 +450,15 @@ Keymap:
        (telega-ins-prefix " --"
          (telega-webpage--ins-rt (plist-get pb :credit)))))
     (pageBlockDetails
-     (telega-webpage--ins-pb-details pb))
-    ;; (telega-button--insert 'telega pb
-    ;;   'action 'telega-webpage-details-toggle
-    ;;   :inserter 'telega-webpage--ins-pb-details
-    ;;   :help-echo "Toggle details"))
+     (telega-button--insert 'telega pb
+       'action (lambda (button)
+                 (let* ((val (button-get button :value))
+                        (new-val (plist-put val :is_closed
+                                            (not (plist-get val :is_closed)))))
+                   (save-excursion
+                     (telega-button--update-value button new-val))))
+       :inserter #'telega-webpage--ins-pb-details
+       :help-echo "Toggle details"))
     (pageBlockTable
      (let ((telega-webpage-strip-nl t))
        (telega-webpage--ins-rt (plist-get pb :caption)))

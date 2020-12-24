@@ -53,17 +53,22 @@ you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gn
 - =CMake= (for building TDLib)
 - =Python= (for testing the telega-server)
 - =GNU Guix= _(optional, if using the Guix installation method)_
+- =libappindicator3= (optional, to show =telega= icon/info in system tray)
 
 =make= is found in most of the modern machines. The other packages can
 be download with the system package manager (such as =apt= for
 Debian-based distributions, =dnf= for Fedora or =pacman= for
 Arch-based).
 
-*** MacOS users
+** MacOS users
 
 1. If you are using [[https://emacsformacosx.com/][Emacs For Mac OS X]], or you installed Emacs by
-   running ~$ brew cask install emacs~, your Emacs lacks svg support, so
-   you cannot use telega. Please switch to [[https://github.com/d12frosted/homebrew-emacs-plus][emacs-plus]].
+   running ~$ brew cask install emacs~, make sure you installed a
+   recent enough version (>= =emacs-27.1-mac-8.1=, you can check your
+   version by running ~$ brew info emacs-mac~ or ~$ brew cask info
+   emacs-mac~) with rsvg support (~$ brew install emacs-mac
+   --with-rsvg~), or your Emacs may not display some media correctly,
+   in this case consider switching to [[https://github.com/d12frosted/homebrew-emacs-plus][emacs-plus]].
 
 2. If you are using [[https://bitbucket.org/mituharu/emacs-mac/][Emacs-mac]], or you installed Emacs by running ~$
    brew install emacs-mac~ or ~$ brew cask install emacs-mac~, your
@@ -77,7 +82,7 @@ Arch-based).
 
 3. [[https://github.com/d12frosted/homebrew-emacs-plus][emacs-plus]] is the best choice to run =telega=.
 
-*** Linux users
+** Linux users
 
 =telega= requires at least GNU Emacs 26.1 with optional, but highly
 recommended, =svg= support. If Emacs version is less then 27.1, then
@@ -85,7 +90,7 @@ recommended, =svg= support. If Emacs version is less then 27.1, then
 compiled with these dependencies when installing GNU Emacs with GTK+
 support (graphical).
 
-*** Building TDLib
+** Building TDLib
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
@@ -350,8 +355,8 @@ new terms specific to =telega=.  All of them are used in the manual.
 * Telega prefix map
 
 =telega= has prefix map for common =telega= commands, such as
-switching to rootbuf, switch to "SavedMessages", sending current
-buffer as file to a chat, switching accounts, openning chat or
+switching to rootbuf, switch to "Saved Messages", sending current
+buffer as file to a chat, switching accounts, opening chat or
 switching to some chat.
 
 It is convenient to have it somewhere accessible from ~global-map~,
@@ -494,7 +499,9 @@ messages:
 
 ** Sending ordinary messages
 
-Type a text in the chatbuf input and press {{{kbd(RET)}}}.
+Type a text in the chatbuf input and press {{{kbd(RET)}}} to send the
+message.  To insert newline in the middle of the input use ordinary
+{{{kbd(C-j)}}} Emacs command.
 
 You can use markdown markup with next syntax:
 #+begin_example
@@ -521,6 +528,7 @@ attaching]] commands.
 
 Important customizable options:
 - {{{user-option1(telega-chat-use-markdown-version,2)}}}
+- {{{user-option(telega-chat-ret-always-sends-message,2)}}}
 
 ** Attaching media
 
@@ -564,7 +572,7 @@ binding.
 {{{where-is(telega-chatbuf-cancel-aux,telega-chat-mode-map)}}} accepts
 {{{kbd(C-u)}}} prefix, if used then chatbuf's input is also canceled.
 
-To edit your privously sent message press
+To edit your previously sent message press
 {{{where-is(telega-chatbuf-edit-prev,telega-chat-mode-map)}}}.
 
 ** Forwarding messages
@@ -583,7 +591,7 @@ There are few options how you can affect the way a message is forwarded:
 1. {{{kbd(C-u f)}}} to forward a message copy, it will look like *you*
    sent a message.
 2. {{{kbd(C-u C-u f)}}} To forward a message copy deleting or
-   replacing capition it has.  Use this to forward media message with
+   replacing caption it has.  Use this to forward media message with
    your own caption.
 
 ** Deleting messages
@@ -593,6 +601,11 @@ To delete a message, put cursor under the message you want to delete and press
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
 with {{{where-is(telega-msg-mark-toggle,telega-msg-button-map)}}}.
+
+Also, you can ban/report message sender (and delete all messages from
+this sender in the chat) with
+{{{where-is(telega-msg-ban-sender,telega-msg-button-map)}}} when
+cursor is under the message.
 
 =telega= can keep deleted messages visible until chatbuf is
 killed. This is controlled using custom variable:
@@ -824,5 +837,7 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-live-location.el :no-load t
 
 #+ELLIT-INCLUDE: ../contrib/telega-mnz.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-dashboard.el
 
 #  LocalWords:  customizable chatbuf tdlib gmake

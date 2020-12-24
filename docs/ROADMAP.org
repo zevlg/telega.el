@@ -4,6 +4,7 @@
 
 * telega.el Major Features
 
+
 ** DONE Root Views, different views for the rootbuf
    CLOSED: [2020-10-07 Ср 17:43]
    CREATED: [2020-03-17]
@@ -42,7 +43,10 @@
    - How notifications should be shown per account?
      Maybe "--> <ACCOUNT>" as in official clients?
 
-** AppIndicator in telega-server
+** DONE AppIndicator in telega-server
+   CLOSED: [2020-12-20 Вс 01:50]
+
+   - Needs =appindicator3= library.
 
 ** Searching Messages in chat
    - [X] Shared Media, see chatbuf messages filtering
@@ -83,6 +87,15 @@
    - (NOT YET) Date of last mention (thanks to https://t.me/lainposter)
 
 ** Chat Actions
+
+** Transient commands
+
+  Use =transient.el= package for some commands, such as ~C-c C-a~.
+
+  This adds additional dependency - =transient= package.
+
+  Make use of transient commands optional, retaining default
+  behaviour.
 
 * telega-server as a module
 
@@ -141,7 +154,11 @@ plist like:
 
 ** Global searchable history of the inputs you've sent to any chat
 
-** Filters for chat messages
+** DONE Filters for chat messages
+   CLOSED: [2020-12-22 Вт 17:06]
+
+   DONE by implementing ~C-c /~ command in chatbuf.
+
    - [X] Scheduled messages
      #+begin_example
      MSG1
@@ -282,7 +299,7 @@ plist like:
    forward messages from public chats (i.e. messages having public
    link) as text URL.
 
-   *WON't DO*: use {{{kbd(i)}}} to get link to the message
+   *WON't DO*: use {{{kbd(l)}}} to copy link to the message
 
 ** DONE Special mode to view images
    CLOSED: [2020-02-14 Пт 02:30]
@@ -335,11 +352,36 @@ plist like:
    Use ~telega-chat-show-avatars-for~ chatfilter instead of boolean
    ~telega-chat-show-avatars~.
 
-** RET to insert newline if point is not at the end of chatbuf input
+** DONE RET to insert newline if point is not at the end of chatbuf input
+   CLOSED: [2020-12-22 Вт 15:17]
 
    So RET in the middle of chatbuf input behaves as ~C-j~.
    Make this customizable.
 
+   See ~telega-chat-ret-always-sends-message~
+
 ** Prefetch map thumbnail zoom levels
 
    Prefetch map zoom levels when user presses +/- for the first
+
+** Emacs Stories
+   CREATED: [2020-12-22 Вт]
+
+   See possible screenshot: https://t.me/emacs_telega/22934
+
+   Stories:
+   + Video note posted to @emacs_en
+   + asciinema cast file uploaded into @emacs_en with #story tag
+
+** Tramp-alike files opening from Telegram cloud
+
+  See ~file-name-handler-alist~
+
+  Specify it as part of interal =telega= link, like:
+  ~/telega:@zevlg#167430~
+
+  So you could set say ~org-default-notes-file~ to point to file
+  stored in "Saved Messages"
+  #+begin_src emacs-lisp
+  (setq org-default-notes-file "/telega:@zevlg#167430")
+  #+end_src

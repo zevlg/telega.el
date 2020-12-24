@@ -102,32 +102,38 @@ Can be used as value for `telega-online-status-function'."
     (or (not (display-graphic-p frame))
         (frame-parameter frame 'x-has-focus))))
 
-(defun telega-buffer-p ()
-  "Return non-nil if current buffer is some telega buffer.
+(defun telega-buffer-p (&optional buffer)
+  "Return non-nil if BUFFER is some telega buffer.
+If BUFFER is ommited, current buffer is used.
 Could be used as value for `telega-online-status-function'."
-  (when (or (derived-mode-p 'telega-root-mode)
-            (derived-mode-p 'telega-chat-mode)
-            (string-prefix-p "*Telega" (buffer-name)))
-    t))
+  (with-current-buffer (or buffer (current-buffer))
+    (when (or (derived-mode-p 'telega-root-mode)
+              (derived-mode-p 'telega-chat-mode)
+              (string-prefix-p "*Telega" (buffer-name))
+              (string-prefix-p "*Telegram" (buffer-name)))
+      t)))
 
-(defun telega-chars-xwidth (n)
-  "Return pixel width for N characters"
+(defun telega-chars-xwidth (n &optional face)
+  "Return pixel width for N characters.
+If FACE is not specified, then `default' is used."
   ;; NOTE: Same (* n (window-font-width (get-buffer-window nil (telega-x-frame))))
   ;; but without tweaking on window configuration, which breaks inserters
   (* n (if-let ((tframe (telega-x-frame)))
            (with-current-buffer (or telega--current-buffer (current-buffer))
-             (let* ((info (font-info (face-font 'default tframe) tframe))
+             (let* ((info (font-info
+                           (face-font (or face 'default) tframe) tframe))
                     (width (aref info 11)))
                (if (> width 0)
                    width
                  (aref info 10))))
          (frame-char-width))))
 
-(defun telega-chars-xheight (n)
-  "Return pixel height for N characters"
+(defun telega-chars-xheight (n &optional face)
+  "Return pixel height for N characters.
+If FACE is not specified, then `default' is used."
   (* n (if-let ((tframe (telega-x-frame)))
            (with-current-buffer (or telega--current-buffer (current-buffer))
-             (aref (font-info (face-font 'default tframe) tframe) 3))
+             (aref (font-info (face-font (or face 'default) tframe) tframe) 3))
          (frame-char-height))))
 
 (defun telega-chars-in-height (pixels)
@@ -164,6 +170,18 @@ Specify EXT with leading `.'."
   (svg--append svg (dom-node 'path
                              `((d . ,d)
                                ,@(svg--arguments svg args)))))
+
+(defun telega-svg-embed (svg image img-type datap &rest args)
+  "Embed IMAGE possible using `svg-embed-base-uri-image'.
+IMAGE could be a list of two elements \\(RELATIVE-FNAME BASE-DIR\\),
+so new Emacs `svg-embed-base-uri-image' functionality could be used."
+  (if (and (not datap) (fboundp 'svg-embed-base-uri-image)
+           (listp image))
+      (apply #'svg-embed-base-uri-image svg (car image) args)
+    (apply #'svg-embed svg (if (listp image)
+                               (apply #'expand-file-name image)
+                             image)
+           img-type datap args)))
 
 (defun telega-svg-gradient (svg id type stops)
   "Same as `svg-gradient' but supports \"stop-opacity\" property."
@@ -846,7 +864,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
 To be used `telega-completing-read-chat-member' to get user.")
 
 (defun telega-completing--chat-members-collection (chat prefix &rest _ignored)
-  "Function used for completing CHAT members."
+  "Function used for programmed completing CHAT members.
+Works only with `fido-mode' completion."
   (when prefix
     (setq telega-completing--chat-member-alist
           (mapcar (lambda (user)
@@ -859,10 +878,20 @@ To be used `telega-completing-read-chat-member' to get user.")
   "Interactively read member of CHAT.
 Return a user."
   (let* ((telega-completing--chat-member-alist nil)
-         (name (completing-read
-                prompt
-                (apply-partially #'telega-completing--chat-members-collection
-                                 chat))))
+         (name
+          (if fido-mode
+              ;; Dynamic completion, can complete any chat member
+              ;; Works ok only in `fido-mode'
+              (completing-read
+               prompt
+               (apply-partially
+                #'telega-completing--chat-members-collection chat))
+
+            ;; Static completion, can complete only 50 chat members
+            (funcall telega-completing-read-function
+                     prompt
+                     (telega-completing--chat-members-collection chat "")
+                     nil t))))
     (cdr (assoc name telega-completing--chat-member-alist))))
 
 (defun telega-completing-read-folder (prompt &optional folder-names)
@@ -877,6 +906,21 @@ Return a user."
     (setq folder-names (telega-folder-names)))
   (telega-gen-completing-read-list prompt folder-names #'identity
                                    telega-completing-read-folder))
+
+(defun telega-location-distance (loc1 loc2 &optional components-p)
+  "Return distance in meters between locations LOC1 and LOC2.
+If COMPONENTS-P is given, then return cons with distances for
+latitude and longitude."
+  (let* ((lat1 (plist-get loc1 :latitude))
+         (lat2 (plist-get loc2 :latitude))
+         (lon1 (plist-get loc1 :longitude))
+         (lon2 (plist-get loc2 :longitude))
+         (lat-d (* 111111 (- lat1 lat2)))
+         (lon-d (* 111111 (cos (degrees-to-radians (/ (+ lat1 lat2) 2)))
+                   (- lon2 lon1))))
+    (if components-p
+        (cons lat-d lon-d)
+      (round (sqrt (+ (* lat-d lat-d) (* lon-d lon-d)))))))
 
 (defun telega-location-to-string (location)
   "Convert LOCATION plist to string representation."
@@ -995,9 +1039,11 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
                                prompt (mapcar #'car i18n-choices) nil t)))
     (cdr (assoc perm-choice i18n-choices))))
 
-(defun telega-completing-titles ()
+(defun telega-completing-titles (&optional sort-criteria)
   "Return alist of titles and senders ready for completing.
-sender is chat or user."
+sender is chat or user.
+Chats in the list are sorted using SORT-CRITERIA or
+`telega-chat-completing-sort-criteria' if ommited."
   ;; NOTE:
   ;;  - Include only known chats, i.e. in Main or Archive list
   ;;  - Include only contact users
@@ -1008,7 +1054,9 @@ sender is chat or user."
                     (telega-chatbuf--name msg-sender))
                   msg-sender))
           (nconc
-           (telega-filter-chats telega--ordered-chats '(or main archive))
+           (telega-sort-chats
+            (or sort-criteria telega-chat-completing-sort-criteria)
+            (telega-filter-chats telega--ordered-chats '(or main archive)))
            (cl-remove-if-not (telega--tl-prop :is_contact)
                              (hash-table-values
                               (alist-get 'user telega--info))))))
@@ -1366,10 +1414,12 @@ Same as `momentary-string-display', but keeps the point."
          (end pos))
     (unwind-protect
         (progn
+          (message "START-> %S / max-point=%S" start (point-max))
           (save-excursion
             (goto-char start)
             (insert string)
             (setq end (point)))
+          (message "POINT-> %S" (point))
           (message "Type %s to continue editing."
                    (single-key-description exit-char))
           (let ((event (read-key)))
@@ -1539,10 +1589,43 @@ Emacs does not respect buffer local nil value for
 `switch-to-buffer-preserve-window-point', so we hack window point
 in `(window-prev-buffers)' to achive behaviour for nil-valued
 `switch-to-buffer-preserve-window-point'."
-  (cl-assert (not (get-buffer-window)))
-  (when-let ((entry (assq (current-buffer) (window-prev-buffers))))
-    (setf (nth 2 entry)
-          (copy-marker (point) (marker-insertion-type (nth 2 entry))))))
+  (when (version< emacs-version "28.1.0")
+    (cl-assert (not (get-buffer-window)))
+    (when-let ((entry (assq (current-buffer) (window-prev-buffers))))
+      (setf (nth 2 entry)
+            (copy-marker (point) (marker-insertion-type (nth 2 entry)))))))
+
+(defun telega-window-recenter (win &optional nlines from-point noforce)
+  "Set WIN's start point so there will be NLINES to current point."
+  (cl-assert win)
+  (let ((win-h (window-height win))
+        (win-start nil))
+    ;; Correct NLINES
+    (unless nlines
+      (setq nlines (/ win-h 2)))
+    (when (< nlines 0)
+      (setq nlines (+ win-h nlines)))
+    (when (< nlines 0)
+      (setq nlines 0))
+    (when (>= nlines win-h)
+      (setq nlines (1- win-h)))
+
+    (save-excursion
+      (when from-point
+        (goto-char from-point))
+      (forward-line (- nlines))
+      (setq win-start (point-at-bol)))
+
+    (cl-assert (<= (count-lines win-start (or from-point (point))) win-h))
+    (set-window-start win win-start noforce)))
+
+(defun telega-base-directory ()
+  "Return `telega-directory' following possible symlink."
+  (let ((telega-dir-link (file-symlink-p telega-directory)))
+    (if telega-dir-link
+        (expand-file-name telega-dir-link
+                          (file-name-directory telega-directory))
+      telega-directory)))
 
 (provide 'telega-util)
 

@@ -118,21 +118,46 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
   (telega-ins--help-message
    (telega-ins-i18n "lng_self_destruct_description")))
 
+(defun telega-ins--chat-photo (chat-photo)
+  "Inserter for user CHAT-PHOTO (TDLib's ChatPhoto)."
+  (if-let ((fake-anim (plist-get chat-photo :telega-fake-animation)))
+      (telega-ins--animation-image fake-anim)
+
+    (telega-ins--image
+     (telega-photo--image
+      chat-photo
+      (list telega-user-photo-size
+            telega-user-photo-size
+            telega-user-photo-size
+            telega-user-photo-size)))))
+
 (defun telega-ins--user-profile-photos (user &optional redisplay-func)
   "Insert USER's profile photos."
   (declare (indent 1))
   (when-let ((profile-photos (telega--getUserProfilePhotos user)))
     (dolist (photo profile-photos)
+      ;; NOTE: For animated user profile photos, create fake animation
+      ;; to be used for animation when cursor enters the photo
+      (when-let ((photo-anim (plist-get photo :animation))
+                 (size1 (car (append (plist-get photo :sizes) nil))))
+        (plist-put photo :telega-fake-animation
+                   (list :@type "animation"
+                         :width (plist-get photo-anim :length)
+                         :height (plist-get photo-anim :length)
+                         :minithumbnail (plist-get photo :minithumbnail)
+                         :thumbnail (list :@type "thumbnail"
+                                          :format (list :@type "thumbnailFormatJpeg")
+                                          :width (plist-get size1 :width)
+                                          :height (plist-get size1 :height)
+                                          :file (plist-get size1 :photo))
+                         :animation (plist-get photo-anim :file))))
+
       (telega-button--insert 'telega photo
-        :inserter (lambda (photo-val)
-                    (telega-ins--image
-                     (telega-photo--image
-                      photo-val
-                      (list telega-user-photo-size
-                            telega-user-photo-size
-                            telega-user-photo-size
-                            telega-user-photo-size))))
+        :inserter #'telega-ins--chat-photo
         :action 'telega-photo--open
+        'cursor-sensor-functions
+        (when-let ((fake-anim (plist-get photo :telega-fake-animation)))
+          (list (telega-animation--gen-sensor-func fake-anim)))
         'local-keymap
         (when (telega-me-p user)
           (let ((pp-del (lambda (profile-photo)
@@ -446,64 +471,65 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         ))
     (telega-ins "\n")
     ;; Buttons for administrators
-    (telega-ins--labeled "  " nil
     (when (telega-chat-match-p chat '(me-is-owner or-admin))
-      (let* ((owner-p (telega-chat-match-p chat 'me-is-owner))
-             (my-status (telega-chat-member-my-status chat))
-             (my-perms (telega-chat-member-my-permissions chat))
-             (can-edit-p (plist-get my-perms :can_be_edited))
-             (channel-p (telega-chat-channel-p chat))
-             (custom-title (telega-tl-str my-status :custom_title)))
-        ;; Custom Title:
-        (when (or custom-title can-edit-p)
-          (telega-ins (telega-i18n "lng_rights_edit_admin_rank_name") ": ")
-          (when (telega-ins custom-title)
-            (telega-ins " "))
-          (when can-edit-p
-            (telega-ins--button "Set"
-              'action (lambda (_ignored)
-                        (let ((new-title (read-string "My Custom title: ")))
-                          (plist-put my-status :custom_title new-title)
-                          (telega--setChatMemberStatus
-                           chat (telega-user-me) my-status)))))
-          (telega-ins "\n")
-          (telega-ins--help-message
-           (telega-ins-i18n "lng_rights_edit_admin_rank_about"
-             :title (telega-i18n (if owner-p
-                                     "lng_owner_badge"
-                                   "lng_admin_badge")))))
+      (telega-ins--labeled "  " nil
+        (let* ((owner-p (telega-chat-match-p chat 'me-is-owner))
+               (my-status (telega-chat-member-my-status chat))
+               (my-perms (telega-chat-member-my-permissions chat))
+               (can-edit-p (plist-get my-perms :can_be_edited))
+               (channel-p (telega-chat-channel-p chat))
+               (custom-title (telega-tl-str my-status :custom_title)))
+          ;; Custom Title:
+          (when (or custom-title can-edit-p)
+            (telega-ins (telega-i18n "lng_rights_edit_admin_rank_name") ": ")
+            (when (telega-ins custom-title)
+              (telega-ins " "))
+            (when can-edit-p
+              (telega-ins--button "Set"
+                'action (lambda (_ignored)
+                          (let ((new-title (read-string "My Custom title: ")))
+                            (plist-put my-status :custom_title new-title)
+                            (telega--setChatMemberStatus
+                             chat (telega-user-me) my-status)))))
+            (telega-ins "\n")
+            (telega-ins--help-message
+             (telega-ins-i18n "lng_rights_edit_admin_rank_about"
+               :title (telega-i18n (if owner-p
+                                       "lng_owner_badge"
+                                     "lng_admin_badge")))))
 
-        ;; Admin Permissions:
-        (telega-ins
-         (propertize (telega-i18n "lng_manage_peer_permissions")
-                     'face 'bold) "\n")
-        (telega-ins
-         (propertize (telega-i18n "lng_rights_edit_admin_header")
-                     'face 'shadow) "\n")
-        (telega-ins--labeled "  " nil
-          (dolist (perm-spec telega-chat--admin-permissions)
-            ;; list only those permissions which has title
-            ;; NOTE: special permissions applies for channels only -
-            ;; `:can_post_messages' and `:can_edit_messages'
-            (when (and (cdr perm-spec)
-                       (or channel-p
-                           (not (memq (car perm-spec)
-                                      '(:can_post_messages :can_edit_messages)))))
-              (let ((perm-value (plist-get my-perms (car perm-spec))))
-                (if (and can-edit-p
-                         (or (not owner-p) (eq :is_anonymous (car perm-spec))))
-                    (telega-ins--button (if perm-value
-                                            telega-symbol-heavy-checkmark
-                                          telega-symbol-blank-button)
-                      :value chat
-                      :action (lambda (_chat)
-                                ;; TODO:
-                                (user-error "Not yet implemented")))
-                  (telega-ins (if perm-value
-                                  telega-symbol-ballout-check
-                                telega-symbol-ballout-empty)))
-                (telega-ins " " (telega-i18n (cdr perm-spec)))
-                (telega-ins "\n"))))))))
+          ;; Admin Permissions:
+          (telega-ins
+           (propertize (telega-i18n "lng_manage_peer_permissions")
+                       'face 'bold) "\n")
+          (telega-ins
+           (propertize (telega-i18n "lng_rights_edit_admin_header")
+                       'face 'shadow) "\n")
+          (telega-ins--labeled "  " nil
+            (dolist (perm-spec telega-chat--admin-permissions)
+              ;; list only those permissions which has title
+              ;; NOTE: special permissions applies for channels only -
+              ;; `:can_post_messages' and `:can_edit_messages'
+              (when (and (cdr perm-spec)
+                         (or channel-p
+                             (not (memq (car perm-spec)
+                                        '(:can_post_messages
+                                          :can_edit_messages)))))
+                (let ((perm-value (plist-get my-perms (car perm-spec))))
+                  (if (and can-edit-p
+                           (or (not owner-p) (eq :is_anonymous (car perm-spec))))
+                      (telega-ins--button (if perm-value
+                                              telega-symbol-heavy-checkmark
+                                            telega-symbol-blank-button)
+                        :value chat
+                        :action (lambda (_chat)
+                                  ;; TODO:
+                                  (user-error "Not yet implemented")))
+                    (telega-ins (if perm-value
+                                    telega-symbol-ballout-check
+                                  telega-symbol-ballout-empty)))
+                  (telega-ins " " (telega-i18n (cdr perm-spec)))
+                  (telega-ins "\n"))))))))
 
     ;; Supergroup username
     (let ((username (telega-tl-str supergroup :username))
@@ -624,7 +650,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
             (when (buffer-live-p buffer)
               (with-current-buffer buffer
                 (let ((inhibit-read-only t))
-                  (save-excursion
+                  (telega-save-excursion
                     (goto-char at-point)
                     (telega-ins--chat-members members))))))
           )))
@@ -725,7 +751,7 @@ Call CALLBACK on updates."
          :proxy_id (plist-get proxy :id))))
 
 (defun telega--disableProxy ()
-  (telega-server--call
+  (telega-server--send
    (list :@type "disableProxy")))
 
 (defun telega-proxy-last-used (&optional proxies)
@@ -893,7 +919,9 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
     (telega-ins--with-face '(telega-webpage-header underline)
       (telega-ins-i18n "lng_settings_privacy_title"))
     (telega-ins "\n")
-    (when-let ((blocked-senders (telega--getBlockedMessageSenders)))
+    ;; NOTE: car of `telega--getBlockedMessageSenders' is total number
+    ;; of blocked senders
+    (when-let ((blocked-senders (cdr (telega--getBlockedMessageSenders))))
       ;; I18N: blocked_list_title -> Blocked Users
       (telega-ins (telega-i18n "lng_blocked_list_title") ":" "\n")
       (dolist (msg-sender blocked-senders)
