@@ -47,6 +47,7 @@
 (require 'telega-tme)
 (require 'telega-sort)
 (require 'telega-filter)
+(require 'telega-modes)
 
 (eval-when-compile
   (require 'rx)
@@ -4243,6 +4244,11 @@ If point is at some message, then keep point on this message after reseting."
           (telega-chat--goto-msg
               telega-chatbuf--chat (plist-get msg-at-point :id) 'highlight)
         (telega-chatbuf--load-initial-history)))
+
+    ;; Make sure text highlighting is disabled, in case
+    ;; `telega-chatbuf-filter-search' filter has been used
+    (telega-highlight-text-mode -1)
+
     (telega-chatbuf--modeline-update)
     (telega-chatbuf--footer-update)))
 

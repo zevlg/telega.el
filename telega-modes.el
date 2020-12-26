@@ -47,7 +47,7 @@
 ;; #+end_src
 ;;
 ;; Customizable options:
-;; 
+;;
 ;; - {{{user-option(telega-mode-line-string-format, 2)}}}
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
@@ -230,7 +230,7 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
 ;; mode requires appindicator support in the =telega-server=.  To add
 ;; appindicator support to =telega-server=, please install
 ;; =libappindicator3-dev= system package and rebuild =telega-server=.
-;; 
+;;
 ;; Screenshot of system tray with enabled =telega= appindicator:
 ;; [[https://zevlg.github.io/telega/screen-appindicator.png]]
 ;;
@@ -408,7 +408,7 @@ Play in muted mode."
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
 ;; #+end_src
-;; 
+;;
 ;; Customizable options:
 ;;
 ;; - {{{user-option(telega-squash-message-mode-for, 2)}}}
@@ -689,6 +689,52 @@ UFILE specifies Telegram file being uploading."
                        (telega-chatbuf--gen-input-file
                         (buffer-file-name) 'Document nil
                         #'telega-edit-file--upload-callback))))))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-highlight-text-mode
+;;
+;; jit-lock powered minor mode to highlight given regexps
+;;
+;; Similar to =hi-lock=, however supports jit-lock, for highlighting
+;; dynamic content.
+(defface telega-highlight-text-face
+  '((t :inherit match))
+  "Face used to highlight text in `telega-highlight-text-mode'."
+  :group 'telega-faces)
+
+(defvar telega-highlight-text-regexp nil
+  "Regexp to highlight.")
+(make-variable-buffer-local 'telega-highlight-text-regexp)
+
+(defun telega-highlight-text-region (beg end &optional _loudly)
+  "Highlight `telega-highlight-text-regexp' in the region from BEG to END."
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward telega-highlight-text-regexp end t)
+      (let ((overlay (make-overlay (match-beginning 0)
+                                   (match-end 0))))
+        (overlay-put overlay 'telega-highlight-overlay t)
+        (overlay-put overlay 'face 'telega-highlight-text-face))
+      (goto-char (match-end 0)))))
+
+(define-minor-mode telega-highlight-text-mode
+  "Minor mode to highlight text."
+  :lighter " ◁Highlight"
+  (if telega-highlight-text-mode
+      (progn
+        (cl-assert (and (stringp telega-highlight-text-regexp)
+                        (not (string-empty-p telega-highlight-text-regexp))))
+        (telega-highlight-text-region (point-min) (point-max))
+        (jit-lock-register #'telega-highlight-text-region))
+
+    (jit-lock-unregister #'telega-highlight-text-region)
+    (remove-overlays nil nil 'telega-highlight-overlay t)))
+
+(defun telega-highlight-text (text-regexp)
+  "Highlight TEXT-REGEXP in the dynamic buffer."
+  (setq telega-highlight-text-regexp text-regexp)
+  (telega-highlight-text-mode 1))
 
 (provide 'telega-modes)
 
