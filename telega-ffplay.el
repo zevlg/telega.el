@@ -155,6 +155,15 @@ if ommited."
                           (cons (match-string 1 line) (match-string 2 line))))
                       (split-string raw-metadata "\n" t " \t")))))
 
+(defun telega-ffplay-get-duration (filename)
+  "Return duration for the media FILENAME."
+  (string-to-number
+   (shell-command-to-string
+    (concat "ffprobe -v error "
+            "-show_entries format=duration "
+            "-of default=nokey=1:noprint_wrappers=1 "
+            "\"" (expand-file-name filename) "\""))))
+
 (defun telega-ffplay--png-extract ()
   "Extract png image data from current buffer.
 Return cons cell where car is the frame number and cdr is frame

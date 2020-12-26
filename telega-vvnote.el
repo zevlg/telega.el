@@ -24,6 +24,8 @@
 ;;
 
 ;;; Code:
+(require 'bindat)                       ;binary parsing
+
 (require 'telega-ffplay)
 
 (defcustom telega-vvnote-voice-max-dur (* 30 60)
@@ -95,32 +97,146 @@
                ;; text of correct width
                :telega-text (make-string aw-chars ?#))))
 
-(defun telega-vvnote--waveform-decode (waveform)
+;; Encoding and Decoding splits into two situations:
+;;     head-bits=5   tail-bits=0
+;;   v v v v v
+;; 0 1 2 3 4 5 6 7   0 1 2 3 4 5 6 7
+;; * X X X X X * *   * * * * * * * *
+;;   `-- bitoff here            bwv1
+;; and:
+;;     head-bits=3   tail-bits=2
+;;           v v v   v v
+;; 0 1 2 3 4 5 6 7   0 1 2 3 4 5 6 7
+;; * * * * * X X X   X X * * * * * *
+;; bwv0      `-- bitoff here    bwv1
+;;
+;; Handle them both correctly
+(defun telega-vvnote--waveform-decode (waveform &optional raw-p)
   "Decode WAVEFORM returning list of heights.
-heights are normalized to [0-1] values."
+Unless RAW-P is given, heights are normalized to [0-1] values."
   (let ((bwv (base64-decode-string waveform))
-        (cc 0) (cv 0) (needbits 5) (leftbits 8) result)
+        (bitoff 0)
+        result)
     (while (not (string-empty-p bwv))
-      (setq cc (logand (aref bwv 0) (lsh 255 (- leftbits 8))))
-      (when (<= leftbits needbits)
-        (setq bwv (substring bwv 1)))
+      (let* ((bwv0 (aref bwv 0))
+             (bwv1 (if (> (length bwv) 1) (aref bwv 1) 0))
+             (head-bits (min 5 (- 8 bitoff)))
+             (tail-bits (- 5 head-bits))
+             (h-value (lsh (logand bwv0 (lsh 255 (- bitoff)))
+                           (- (+ bitoff head-bits) 8)))
+             (t-value (lsh bwv1 (- tail-bits 8))))
+        (setq result (cons (logior (lsh h-value tail-bits) t-value) result)
+              bitoff (+ bitoff 5))
+        (when (>= bitoff 8)
+          (cl-assert (= (- bitoff 8) tail-bits))
+          (setq bwv (substring bwv 1)
+                bitoff (- bitoff 8)))))
+    (mapcar (lambda (v) (if raw-p v (/ v 31.0))) (nreverse result))))
 
-      (if (< leftbits needbits)
-          ;; Value not yet ready
-          (setq cv (logior (lsh cv leftbits) cc)
-                needbits (- needbits leftbits)
-                leftbits 8)
+(defun telega-vvnote--waveform-encode (waveform)
+  "Encode WAVEFORM into base64 based form.
+WAVEFORM is list of integers each in range [0-31] to fit into 5 bits."
+  (cl-assert (cl-every (apply-partially #'>= 31) waveform))
+  (let ((bytes nil)                     ; resulting bytes
+        (bitoff 0)                      ; bit offset inside `value'
+        (value 0))                      ; currently composing value
+    (dolist (w-value waveform)
+      (cl-assert (< bitoff 8))
+      (let* ((head-bits (min 5 (- 8 bitoff)))
+             (tail-bits (- 5 head-bits))
+             (h-value (lsh (logand w-value (lsh 31 tail-bits)) (- tail-bits)))
+             (t-value (logand w-value (lsh 31 (- head-bits)))))
+        ;; Write head-bits
+        (setq value (logior value (lsh h-value (- 8 (+ bitoff head-bits))))
+              bitoff (+ bitoff 5))
+        ;; Write tail bits
+        (when (>= bitoff 8)
+          (cl-assert (= (- bitoff 8) tail-bits))
+          (setq bytes (cons value bytes)
+                bitoff (- bitoff 8)
+                value (lsh t-value (- 8 bitoff))))))
 
-        ;; Ready (needbits <= leftbits)
-        (push (logior (lsh cv needbits)
-                      (lsh cc (- needbits leftbits)))
-              result)
-        (setq leftbits (- leftbits needbits)
-              needbits 5
-              cv 0)
-        (when (zerop leftbits)
-          (setq leftbits 8))))
-    (mapcar (lambda (v) (/ v 31.0)) (nreverse result))))
+    (base64-encode-string (apply #'unibyte-string (nreverse bytes)) t)))
+
+(defun telega-vvnote--wav-samples ()
+  "Parse current buffer as wav file extracting audio samples.
+Each sample is in range [-128;128]."
+  (let* ((ret (list :sample-rate nil
+                    :samples nil))
+         (wav-data (buffer-string))
+         (wav-bindat-spec
+          '((:riff str 4)                 ;"RIFF"
+            (:chunk-size u32r)
+            (:format str 4)               ;"WAVE"
+            (:subchunk1-id str 4)         ;"fmt "
+            (:subchunk1-sz u32r)
+            (:audio-format u16r)
+            (:num-channels u16r)
+            (:sample-rate u32r)
+            (:byte-rate u32r)
+            (:block-align u16r)
+            (:bits-per-sample u16r)
+            (:subchunk2-id str 4)         ;"data" or "LIST"
+            (:subchunk2-sz u32r)))
+         (wav-header
+          (bindat-unpack wav-bindat-spec wav-data))
+         (data-offset 44)
+         (data-size (bindat-get-field wav-header :subchunk2-sz)))
+    (cl-assert (string= "RIFF" (bindat-get-field wav-header :riff)))
+    (cl-assert (string= "WAVE" (bindat-get-field wav-header :format)))
+    (cl-assert (string= "fmt " (bindat-get-field wav-header :subchunk1-id)))
+    (when (string= "LIST" (bindat-get-field wav-header :subchunk2-id))
+      (let ((data-header (bindat-unpack
+                          `((:skipped fill ,data-size)
+                            (:subchunk3-id str 4)
+                            (:subchunk3-sz u32r))
+                          wav-data data-offset)))
+        (setq data-offset (+ data-offset data-size 8)
+              data-size (bindat-get-field data-header :subchunk3-sz))))
+
+    (mapcar (lambda (v) (- v 128))
+            (bindat-get-field (bindat-unpack `((:wave vec ,data-size u8))
+                                             wav-data data-offset)
+                              :wave))
+    ))
+
+(defun telega-vvnote--waveform-for-file (filename)
+  "Create a waveform for audio FILENAME."
+  (let* ((temp-wav (telega-temp-name "audio" ".wav"))
+         (samples (progn
+                    ;; Use `shell-command-to-string' to avoid noisy
+                    ;; message when shell completes
+                    (shell-command-to-string
+                     (concat "ffmpeg -v error "
+                             "-i \"" (expand-file-name filename) "\" "
+                             "-ar 8000 -ac 1 "
+                             "-acodec pcm_u8 \"" temp-wav "\""))
+                    (unwind-protect
+                        (with-temp-buffer
+                          (set-buffer-multibyte nil)
+                          (insert-file-contents-literally temp-wav)
+                          (telega-vvnote--wav-samples))
+                      (delete-file temp-wav))))
+         (frac-samples
+          (seq-partition samples (1+ (/ (length samples) 96))))
+         ;; Calculate loudness as root mean square, this gives "good
+         ;; enough" results, suitable for our needs
+         (loud-samples
+          (mapcar (lambda (quant-samples)
+                    (sqrt (/ (cl-reduce #'+ (mapcar (lambda (x) (* x x))
+                                                    quant-samples))
+                             (length quant-samples))))
+                  frac-samples))
+         (log10-samples
+          (mapcar (lambda (ms) (if (> ms 0) (log10 ms) 0)) loud-samples))
+         ;; Normalize values to fit into [0-31] so each value could be
+         ;; encoded into 5bits
+         (n-factor (/ 31.0 (apply #'max log10-samples)))
+         (n-waves
+          (mapcar (lambda (wave-value) (round (* wave-value n-factor)))
+                  log10-samples)))
+    (cl-assert (cl-every (apply-partially #'>= 31) n-waves))
+    (telega-vvnote--waveform-encode n-waves)))
 
 (defun telega-vvnote-video--svg (framefile &optional progress
                                            data-p frame-img-type)

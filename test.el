@@ -174,14 +174,15 @@ Have Stoploss 690 Satoshi." :entities []))))
 
 (ert-deftest telega-waveform ()
   "Test info related functionality."
-  (should (equal (mapcar (lambda (e)
-                           (round (* e 31)))
-                         (telega-vvnote--waveform-decode "pCiWiiGllEKIGOOYdBAipCCzlEqOKdCYAekApB5YBoxBQFkNIAQMKYAMMAYAA4ABGAAJAANAAQkABcABQAEA"))
-                 '(20 16 20 9 13 2 17 1 20 22 10 4 5 2 0 24 28 14 12 7 8 4 1 2 20 16 16 11 7 5 2 10 17 24 20 29 1 6 0 1 29 4 0 10 8 7 18 24 0 26 6 4 2 16 2 25 1 20 16 0 8 3 1 9 16 0 6 3 0 1 16 0 0 14 0 0 2 6 0 0 1 4 0 0 6 16 0 1 1 4 0 0 11 16 0 1 8 0 0 16)))
-  (should (equal (mapcar (lambda (e)
-                           (round (* e 31)))
-                         (telega-vvnote--waveform-decode "AQQAgDjruQZjZM7BttxqjqV0AgghhAAAAMAc5aCcETrGGmPPJSQAAAAMIUIAwqQGn3OOhABCAAEMEQIAQoQA"))
-                 '(0 4 2 0 1 0 1 24 29 14 28 16 12 24 27 4 25 27 0 27 13 23 3 10 17 26 18 23 8 0 16 8 4 6 2 0 0 0 0 0 24 0 14 14 11 8 4 28 2 4 29 12 12 6 19 3 25 28 18 18 8 0 0 0 0 0 6 2 2 16 16 0 24 10 18 0 13 7 27 19 17 26 2 0 0 16 16 0 0 4 6 1 2 0 16 0 8 10 2 0)))
+  (should (equal (telega-vvnote--waveform-decode "pCiWiiGllEKIGOOYdBAipCCzlEqOKdCYAekApB5YBoxBQFkNIAQMKYAMMAYAA4ABGAAJAANAAQkABcABQAEA" 'raw)
+                 '(20 16 20 9 13 2 17 1 20 22 10 4 5 2 0 24 28 14 12 7 8 4 1 2 20 16 16 11 7 5 2 10 17 24 20 29 1 6 0 1 29 4 0 10 8 7 18 24 0 26 6 4 2 16 2 25 1 20 16 0 8 3 1 9 16 0 6 3 0 1 16 0 0 14 0 0 2 6 0 0 1 4 0 0 6 16 0 1 1 4 0 0 11 16 0 1 8 0 0 16 0)))
+  (should (equal (telega-vvnote--waveform-decode "AQQAgDjruQZjZM7BttxqjqV0AgghhAAAAMAc5aCcETrGGmPPJSQAAAAMIUIAwqQGn3OOhABCAAEMEQIAQoQA" 'raw)
+                 '(0 4 2 0 1 0 1 24 29 14 28 16 12 24 27 4 25 27 0 27 13 23 3 10 17 26 18 23 8 0 16 8 4 6 2 0 0 0 0 0 24 0 14 14 11 8 4 28 2 4 29 12 12 6 19 3 25 28 18 18 8 0 0 0 0 0 6 2 2 16 16 0 24 10 18 0 13 7 27 19 17 26 2 0 0 16 16 0 0 4 6 1 2 0 16 0 8 10 2 0 0)))
+
+  ;; Test encoder
+  (let ((wv-b64 "7P/////fU/T//9sNMYYQY4whhBhjiFH+/x/IDz4CHcAAAAAgAAAAAKCC/8H34IIDAAAAAPAB+AAcACYAAwAA"))
+    (should (string= wv-b64 (telega-vvnote--waveform-encode
+                             (telega-vvnote--waveform-decode wv-b64 'raw)))))
   )
 
 (ert-deftest telega-internationalization ()

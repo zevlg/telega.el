@@ -2011,6 +2011,18 @@ Pass all ARGS directly to `telega-ins--message0'."
                                  (plist-get imc :ttl))))))
         (telega-ins--input-file (plist-get imc :video) (telega-symbol 'video)
                                 ttl-text)))
+     (inputMessageVoiceNote
+      (let ((duration (or (plist-get imc :duration) 0))
+            (waveform (plist-get imc :waveform)))
+        (telega-ins "VoiceNote ")
+        (when (and telega-use-images waveform)
+          (telega-ins--image
+           (telega-vvnote--waves-svg
+            (telega-vvnote--waveform-decode waveform)
+            (round (telega-chars-xheight
+                    telega-vvnote-waves-height-factor))
+            duration)))
+        (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
      (inputMessageAnimation

@@ -3256,6 +3256,8 @@ This attachment can be used only in private chats."
   (let ((ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
+           :waveform (telega-vvnote--waveform-for-file filename)
+           :duration (round (telega-ffplay-get-duration filename))
            :voice_note ifile))))
 
 (defun telega-chatbuf--attach-tmp-photo (tmpfile &optional doc-p)
