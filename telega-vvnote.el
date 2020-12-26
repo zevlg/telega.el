@@ -161,9 +161,7 @@ WAVEFORM is list of integers each in range [0-31] to fit into 5 bits."
 (defun telega-vvnote--wav-samples ()
   "Parse current buffer as wav file extracting audio samples.
 Each sample is in range [-128;128]."
-  (let* ((ret (list :sample-rate nil
-                    :samples nil))
-         (wav-data (buffer-string))
+  (let* ((wav-data (buffer-string))
          (wav-bindat-spec
           '((:riff str 4)                 ;"RIFF"
             (:chunk-size u32r)
@@ -228,7 +226,7 @@ Each sample is in range [-128;128]."
                              (length quant-samples))))
                   frac-samples))
          (log10-samples
-          (mapcar (lambda (ms) (if (> ms 0) (log10 ms) 0)) loud-samples))
+          (mapcar (lambda (ms) (if (> ms 0) (log ms 10) 0)) loud-samples))
          ;; Normalize values to fit into [0-31] so each value could be
          ;; encoded into 5bits
          (n-factor (/ 31.0 (apply #'max log10-samples)))
