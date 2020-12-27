@@ -45,7 +45,8 @@
   (let ((src-dir default-directory))
     (telega-ensure-dependencies)
 
-    (let* ((result (byte-recompile-directory src-dir 0 t))
+    (let* ((load-prefer-newer t)     ;do not load outdated .elc files
+           (result (byte-recompile-directory src-dir 0 t))
            (failed (string-match-p ", [0-9]+ failed" result)))
       (kill-emacs (if failed 1 0)))))
 
