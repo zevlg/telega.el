@@ -355,6 +355,9 @@ For example if duration is 4h:20m:3s then with N=2 4H:20m will be returned.
 By default N=3 (all components).
 N can't be 0."
   (cl-assert (or (null n) (> n 0)))
+  ;; NOTE: force seconds to be a number, see
+  ;; https://t.me/emacs_ru/283567?single
+  (setq seconds (round seconds))
   (let ((ncomponents (or n 3))
         (intervals `((86400 . ,(or day-label "d"))
                      (3600 . ,(or hour-label "h"))
