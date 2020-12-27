@@ -1504,6 +1504,7 @@ Global chat bindings:
 
   ;; Process earch line seperately to check for bidi paragraph
   ;; See https://github.com/zevlg/telega.el/issues/45#issuecomment-462160553
+  (setq bidi-display-reordering telega-chat-bidi-display-reordering)
   (setq bidi-paragraph-separate-re "^")
   (setq bidi-paragraph-start-re "^")
 
@@ -1513,7 +1514,7 @@ Global chat bindings:
   (setq-local window-point-insertion-type t)
   (setq-local next-line-add-newlines nil)
   (setq-local next-screen-context-lines 0) ; do not scroll if point at `eobp'
-  (setq-local scroll-conservatively telega-chat-scroll-scroll-conservatively)
+  (setq-local scroll-conservatively telega-chat-scroll-conservatively)
   (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
 

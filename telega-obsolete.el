@@ -89,6 +89,9 @@
 (telega-obsolete--variable 'telega-chat-messages-ring-size
                            'telega-chat-messages-pop-ring-size
                            nil "0.7.0")
+(telega-obsolete--variable 'telega-chat-scroll-scroll-conservatively
+                           'telega-chat-scroll-conservatively
+                           nil "0.7.3")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

@@ -859,10 +859,16 @@ enabled."
   :type 'list
   :group 'telega-chat)
 
-(defcustom telega-chat-scroll-scroll-conservatively 101
+(defcustom telega-chat-scroll-conservatively 101
   "Value for `scroll-conservatively' in chatbuf."
-  :package-version '(telega . "0.6.12")
+  :package-version '(telega . "0.7.3")
   :type 'int
+  :group 'telega-chat)
+
+(defcustom telega-chat-bidi-display-reordering nil
+  "Value for `bidi-display-reordering' in chatbuf."
+  :package-version '(telega . "0.7.3")
+  :type 'boolean
   :group 'telega-chat)
 
 (defcustom telega-chat-messages-pop-ring-size 50
