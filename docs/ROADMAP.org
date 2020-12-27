@@ -415,6 +415,11 @@ plist like:
 
   For video messages you can use video player's shortcuts to seek
 
-** Show status of currently upload/download files
+** Show status of currently uploading/downloading files
 
   See https://t.me/emacs_telega/23100
+
+  - Associate uploading/downloading file with the message, where
+    uploading/downloading is associated
+  - Implement root view to show that messages
+  - Update root view on fly to see uploading/downloading progress
