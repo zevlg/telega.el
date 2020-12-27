@@ -230,7 +230,7 @@ M-x telega-notifications-mode RET")))
   (when telega-notifications--last-id
     (notifications-close-notification telega-notifications--last-id))
   (let* ((base-spec (list :app-name "emacs.telega"
-                          :app-icon (telega-etc-file "telegram-logo.svg")
+                          :app-icon telega-notifications-logo
                           ;; NOTE: with this param popups stucks sometimes
                           ;; So we use timer to manually remove the popup
                           ;; Or newly arrived notifications also
