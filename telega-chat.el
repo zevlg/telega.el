@@ -451,9 +451,7 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
     ))
 
 (defun telega-chatbuf--pinned-messages-fetch ()
-  "Asynchronously fetch pinned messages for CHAT.
-Pass non-nil OFFLINE-P argument to avoid any async requests.
-OLD-PIN-MSG-ID is the id of the previously pinned message."
+  "Asynchronously fetch pinned messages for chatbuf."
   (let ((chat telega-chatbuf--chat))
     (telega--searchChatMessages telega-chatbuf--chat
         (list :@type "searchMessagesFilterPinned") "" 0 0 nil nil
@@ -1439,7 +1437,7 @@ If POINT is not over some message, then view last message."
        ;; Reply markup
        (when-let ((markup-msg (telega-chat-reply-markup-msg chat)))
          (unless (plist-get markup-msg :telega-is-deleted-message)
-           (telega-ins--labeled (concat telega-symbol-keyboard "\u00A0") nil
+           (telega-ins--labeled (concat (telega-symbol 'keyboard) "\u00A0") nil
              (telega-ins--reply-markup markup-msg 'force))
            (telega-ins "\n")
 
@@ -1661,13 +1659,13 @@ Recover previous active action after BODY execution."
   ;; If point moves inside prompt, move it at the beginning of input.
   ;; However inhibit this behaviour in case unblock-start-join button
   ;; is displayed in the prompt
-  ;; 
+  ;;
   ;; If AUX part is invisible it goes before real prompt, take this
   ;; into account, in this case prompt looks like:
   ;;   .----- telega-chatbuf--aux-button
   ;;   |    .-- telega-chatbuf--prompt-button
   ;;   v    v
-  ;;   [AUX][PROMPT] 
+  ;;   [AUX][PROMPT]
   ;;                 ^
   ;;                 `-- telega-chatbuf--input-marker
   (when (and (not (telega-chatbuf--prompt-unblock-start-join-p))
@@ -1960,7 +1958,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
                  'mouse-face 'mode-line-highlight
                  'help-echo (telega-i18n "telega_chat_modeline_discuss_help"
                               :mouse "mouse-1"))
-         (telega-ins telega-symbol-linked)
+         (telega-ins (telega-symbol 'linked))
          (telega-ins-i18n (if channel-p
                               "lng_channel_discuss"
                             "lng_manage_linked_channel")))
@@ -2027,7 +2025,7 @@ If ICONS-P is non-nil, then use icons for members count."
 
                 (concat
                  (number-to-string member-count)
-                 (propertize telega-symbol-contact 'face 'shadow)
+                 (propertize (telega-symbol 'contact) 'face 'shadow)
                  (unless (zerop online-count)
                    (concat ", " (number-to-string online-count)
                            telega-symbol-online-status))))
@@ -2048,8 +2046,9 @@ If message thread filtering is enabled, use it first."
       ;; NOTE: Adjust MAX-WIDTH taking into account length of the
       ;; `telega-symbol-pin'
       (setq max-width (+ (or max-width 15)
-                         (length (if thread-msg "Thread" telega-symbol-pin))))
-
+                         (length (if thread-msg
+                                     "Thread"
+                                   (telega-symbol 'pin)))))
       (telega-ins--as-string
        (telega-ins " [")
        (telega-ins--with-attrs
@@ -2068,7 +2067,7 @@ If message thread filtering is enabled, use it first."
                                 :mouse "mouse-1"))
            (if thread-msg
                (telega-ins (propertize "Thread" 'face 'error) ": ")
-             (telega-ins telega-symbol-pin)
+             (telega-ins (telega-symbol 'pin))
              (when (> (length pinned-messages) 1)
                (telega-ins-fmt "(%d/%d)"
                  (1+ pinned-msg-idx) (length pinned-messages))))
@@ -2750,7 +2749,7 @@ In case `telega-chat-use-markdown-version' is no-nil, and `\\[universal-argument
        ;; - All messages are documents
        ;; - All messages are audio
        ;; NOTE: cl-every returns `t' on empty list
-       ;; 
+       ;;
        ;; NOTE: maximum 10 messages can be grouped to album
        ;; See https://t.me/emacs_telega/22918
        ((and (> (length imcs) 1)
@@ -3672,7 +3671,7 @@ If current buffer is dired, then send all marked files."
   (when-let ((rpoint telega-chatbuf--refresh-point))
     (setq telega-chatbuf--refresh-point nil)
     (cond ((eq t rpoint)
-           ;; Just refresh point's visual appearance 
+           ;; Just refresh point's visual appearance
            (when-let ((button (button-at (point))))
              (telega-button--make-observable button 'force)))
           ((not (telega-msg-at (point)))
@@ -3822,7 +3821,7 @@ then forward message copy without caption."
                            (when-let ((msg-at-point (telega-msg-at (point))))
                              (list msg-at-point)))))
     (let ((chat (telega-completing-read-chat
-                 (concat telega-symbol-forward "Forward"
+                 (concat (telega-symbol 'forward) "Forward"
                          (when send-copy-p " Copy")
                          (when rm-cap-p " NewCap")
                          (when (> (length messages) 1)
@@ -4195,7 +4194,11 @@ by some chat member, member name is queried."
      (list :title (format "search \"%s\"" query)
            :tdlib-msg-filter (list :@type "searchMessagesFilterEmpty")
            :query query
-           :sender by-sender))))
+           :sender by-sender))
+
+    (when (and query (not (string-empty-p query)))
+      (telega-highlight-text (regexp-quote query)))
+    ))
 
 (defun telega-chatbuf-filter-by-sender ()
   "Show only messages send by some member, member is queried."
