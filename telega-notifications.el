@@ -229,8 +229,13 @@ M-x telega-notifications-mode RET")))
   "Use `notifications-notify' to popup NOTIFY-SPEC."
   (when telega-notifications--last-id
     (notifications-close-notification telega-notifications--last-id))
-  (let* ((base-spec (list :app-name "emacs.telega"
-                          :app-icon telega-notifications-logo
+  (let* ((app-icon (if (file-name-absolute-p telega-notifications-logo)
+                       telega-notifications-logo
+                     (telega-etc-file telega-notifications-logo)))
+         (base-spec (list :app-name "emacs.telega"
+                          :app-icon (if (file-exists-p app-icon)
+                                        app-icon
+                                      (telega-etc-file "telega-logo.svg"))
                           ;; NOTE: with this param popups stucks sometimes
                           ;; So we use timer to manually remove the popup
                           ;; Or newly arrived notifications also
