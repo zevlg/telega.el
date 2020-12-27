@@ -1108,7 +1108,8 @@ Set it to nil to disable VoIP logging."
   "Setup for D-Bus notifications."
   :group 'telega)
 
-(defcustom telega-notifications-logo (telega-etc-file "telega-logo.svg")
+(defcustom telega-notifications-logo
+  (image-search-load-path "etc/telega-logo.svg")
   "Logo image to use for notifications."
   :package-version '(telega . "0.7.3")
   :type 'file
