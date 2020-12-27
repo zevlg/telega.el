@@ -405,7 +405,12 @@ If CALLBACK is specified, then get reply message asynchronously."
     (telega-msg-redisplay msg)
 
     (unless (process-live-p proc)
-      (telega-msg-activate-voice-note nil (telega-msg-chat msg)))
+      ;; NOTE: another message already could be activated, so check
+      ;; current chat's voice-msg
+      (let ((chat (telega-msg-chat msg)))
+        (with-telega-chatbuf chat
+          (when (eq telega-chatbuf--voice-msg msg)
+            (telega-msg-activate-voice-note nil chat)))))
 
     (when (and (eq (process-status proc) 'exit)
                telega-vvnote-voice-play-next)
