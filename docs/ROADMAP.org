@@ -4,7 +4,6 @@
 
 * telega.el Major Features
 
-
 ** DONE Root Views, different views for the rootbuf
    CLOSED: [2020-10-07 Ср 17:43]
    CREATED: [2020-03-17]
@@ -254,6 +253,15 @@ plist like:
 
 ** Mark all chatbuf as readonly, keeping input area as ~inhibit-read-only~
 
+#+begin_src emacs-lisp
+  `(let ((inhibit-point-motion-hooks t))
+      (with-silent-modifications
+        ..
+        ))
+#+end_src
+
+  - But see docs for ~with-silent-modifications~
+
 ** Only changes in chatbuf input goes to undo list, making undo/redo commands usable
 
 ** Heavy background jobs
@@ -385,3 +393,28 @@ plist like:
   #+begin_src emacs-lisp
   (setq org-default-notes-file "/telega:@zevlg#167430")
   #+end_src
+
+** Live tracks for live locations
+
+  Idea is to draw tracks how user moves while with live location.
+  I.e. create list of point where user been, and then show them on the
+  map.  Create next point only if user moves more then say 100 meters.
+
+  See ~telega-location-live-tracks~
+
+** Seeking in audio messages
+
+  When progress bar pressed inside, seek to the corresponding moment,
+  i.e. stop current player and start new one seeking to the moment.
+
+#+begin_example
+  [....              ]30s
+            ^
+            `--- press RET here to seek
+#+end_example
+
+  For video messages you can use video player's shortcuts to seek
+
+** Show status of currently upload/download files
+
+  See https://t.me/emacs_telega/23100
