@@ -255,6 +255,7 @@ enabled it will match also `:flag-jo:' and `:black-jocker:'."
 (defcustom telega-emoji-font-family
   (let ((ffl (font-family-list)))
     (or (car (member "Emoji One" ffl))
+        (car (member "Twemoji" ffl))
         (car (member "Noto Color Emoji" ffl))))
   "*Font to use for emoji image generation using `telega-emoji-create-svg'."
   :type 'string
