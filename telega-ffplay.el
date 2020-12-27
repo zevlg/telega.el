@@ -107,7 +107,7 @@
           (delete-region (point-min) (point-max))))
       )))
 
-(defun telega-ffplay-run-command (cmd &optional callback &rest callback-args)
+(defun telega-ffplay-run-command (cmd &optional callback)
   "Run arbitrary ffplay/ffmpeg/ffprobe command CMD."
   ;; Kill previously running ffplay if any
   (telega-ffplay-stop)
