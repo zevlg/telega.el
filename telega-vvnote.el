@@ -43,8 +43,15 @@
   :type 'boolean
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-voice-cmd "ffmpeg -f alsa -i default -strict -2 -acodec opus -ab 30k"
+(defcustom telega-vvnote-voice-cmd
+  (if (telega-ffplay-check-codec "opus" '(encoder))
+      ;; Try OPUS if available, results in 3 times smaller files then
+      ;; AAC version with same sound quality
+      "ffmpeg -f alsa -i default -strict -2 -acodec opus -ab 32k"
+    ;; Fallback to AAC
+    "ffmpeg -f alsa -i default -acodec aac -ab 96k")
   "Command to use to save voice notes."
+  :package-version '(telega . "0.7.4")
   :type 'string
   :group 'telega-vvnote)
 
@@ -209,6 +216,8 @@ Each sample is in range [-128;128]."
                              "-i \"" (expand-file-name filename) "\" "
                              "-ar 8000 -ac 1 "
                              "-acodec pcm_u8 \"" temp-wav "\""))
+                    (unless (file-exists-p temp-wav)
+                      (error "telega: Can't extract waves from %s" filename))
                     (unwind-protect
                         (with-temp-buffer
                           (set-buffer-multibyte nil)
@@ -310,6 +319,54 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
            (let* ((cheight telega-video-note-height)
                   (x-size (telega-chars-xheight cheight)))
              (telega-media--progress-svg thumb-file x-size x-size cheight))))))
+
+
+;; Recording notes
+(defvar telega-vvnote-voice--record-progress nil
+  "Current record progress.
+Set to nil, when ffplay exists.")
+
+(defun telega-vvnote-voice--record-callback (proc)
+  "Progress callback for the voice note recording."
+  (let ((proc-plist (process-plist proc)))
+    (setq telega-vvnote-voice--record-progress
+          (when (process-live-p proc)
+            (plist-get proc-plist :progress)))))
+
+(defun telega-vvnote-voice--record ()
+  "Record a voice note.
+Return filename with recorded voice note."
+  (let* ((telega-vvnote-voice--record-progress 0)
+         (note-file (telega-temp-name "voice-note" ".mp4"))
+         (capture-proc (telega-ffplay-run-command
+                        (concat telega-vvnote-voice-cmd " " note-file)
+                        #'telega-vvnote-voice--record-callback)))
+    ;; Wait for ffmpeg process to start
+    (accept-process-output capture-proc)
+
+    ;; Capture voice note
+    (with-telega-symbol-animate 'audio 0.1 audio-sym
+      ;; Animation exit condition 
+      (or (not telega-vvnote-voice--record-progress)
+          (not (process-live-p capture-proc)))
+
+      ;; Animation body
+      (message (concat "telega: "
+                       (propertize "●" 'face 'error)
+                       "VoiceNote " audio-sym
+                       " " (telega-duration-human-readable
+                            telega-vvnote-voice--record-progress)
+                       " Press a key when done")))
+
+    ;; Gracefully stop capturing and wait ffmpeg for exit
+    (when (process-live-p capture-proc)
+      (interrupt-process capture-proc)
+      (while (process-live-p capture-proc)
+        (accept-process-output capture-proc)))
+
+    (unless (file-exists-p note-file)
+      (error "telega: Can't capture voice note"))
+    note-file))
 
 (provide 'telega-vvnote)
 

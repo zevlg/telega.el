@@ -50,9 +50,10 @@
     (when ffproc
       (signal-process ffproc 18))))
 
-(defun telega-ffplay-stop ()
+(defun telega-ffplay-stop (&optional proc)
   "Stop running ffplay process."
-  (let ((buf (get-buffer telega-ffplay-buffer-name)))
+  (let ((buf (or (when proc (process-buffer proc))
+                 (get-buffer telega-ffplay-buffer-name))))
     (when (buffer-live-p buf)
       (kill-buffer buf)
       ;; NOTE:
@@ -82,16 +83,45 @@
       (with-current-buffer buffer
         (goto-char (point-max))
         (insert output)
-        (when (re-search-backward "\\s-*\\([0-9.]+\\)" nil t)
-          (let ((np (string-to-number (match-string 1))))
+        (let (new-progress)
+          (cond ((save-excursion
+                   (re-search-backward "\\s-*\\([0-9.]+\\)" nil t))
+                 ;; ffplay format when playing
+                 (setq new-progress (string-to-number (match-string 1))))
+                ((save-excursion
+                   (re-search-backward
+                    " time=\\([0-9][0-9]\\):\\([0-9][0-9]\\):\\([0-9.]+\\) "
+                    nil t))
+                 ;; ffmpeg capture format
+                 (setq new-progress
+                       (+ (* 3600 (string-to-number (match-string 1)))
+                          (* 60 (string-to-number (match-string 2)))
+                          (string-to-number (match-string 3))))))
+          (when new-progress
             (set-process-plist
-             proc (plist-put proc-plist :progress np))
-            (when (and callback (> np progress))
+             proc (plist-put proc-plist :progress new-progress))
+            (when (and callback (> new-progress progress))
               (funcall callback proc))))
 
         (unless telega-debug
           (delete-region (point-min) (point-max))))
       )))
+
+(defun telega-ffplay-run-command (cmd &optional callback &rest callback-args)
+  "Run arbitrary ffplay/ffmpeg/ffprobe command CMD."
+  ;; Kill previously running ffplay if any
+  (telega-ffplay-stop)
+
+  ;; Start new ffplay
+  (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
+    (let ((proc (apply 'start-process "ffplay" (current-buffer)
+                       (split-string cmd " " t))))
+      (set-process-plist proc (list :progress-callback callback
+                                    :progress 0.0))
+      (set-process-query-on-exit-flag proc nil)
+      (set-process-sentinel proc #'telega-ffplay--sentinel)
+      (set-process-filter proc #'telega-ffplay--filter)
+      proc)))
 
 (defun telega-ffplay-run (filename callback &rest ffplay-args)
   "Start ffplay to play FILENAME.
@@ -156,13 +186,23 @@ if ommited."
                       (split-string raw-metadata "\n" t " \t")))))
 
 (defun telega-ffplay-get-duration (filename)
-  "Return duration for the media FILENAME."
+  "Return duration as float number for the media FILENAME."
   (string-to-number
    (shell-command-to-string
     (concat "ffprobe -v error "
             "-show_entries format=duration "
             "-of default=nokey=1:noprint_wrappers=1 "
             "\"" (expand-file-name filename) "\""))))
+
+(defun telega-ffplay-check-codec (codec how)
+  "Check CODEC is available in ffmpeg."
+  (let ((codecs-output
+         (shell-command-to-string "ffmpeg -v quiet -codecs"))
+        (pattern (concat (concat (if (memq 'decoder how) "D" ".")
+                                 (if (memq 'encoder how) "E" "."))
+                         "....."
+                         codec)))
+    (string-match-p pattern codecs-output)))
 
 (defun telega-ffplay--png-extract ()
   "Extract png image data from current buffer.

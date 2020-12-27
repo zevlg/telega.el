@@ -1630,6 +1630,51 @@ in `(window-prev-buffers)' to achive behaviour for nil-valued
                           (file-name-directory telega-directory))
       telega-directory)))
 
+(defconst telega-symbol-animations
+  '((dots "." ".." "...")
+    (braille1 "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    (braille2 "⠟" "⠯" "⠷" "⠾" "⠽" "⠻")
+    (braille3 "⡿" "⣟" "⣯" "⣷" "⣾" "⣽" "⣻" "⢿")
+    (circle "◴" "◷" "◶" "◵")
+    (triangles "▹▹▹▹▹" "▸▹▹▹▹" "▹▸▹▹▹" "▹▹▸▹▹" "▹▹▹▸▹" "▹▹▹▹▸")
+    (equal "[    ]" "[=   ]" "[==  ]" "[=== ]" "[ ===]" "[  ==]"
+           "[   =]" "[    ]" "[   =]" "[  ==]" "[ ===]" "[====]"
+           "[=== ]" "[==  ]" "[=   ]")
+    (black-dot "( ●    )" "(  ●   )" "(   ●  )" "(    ● )" "(     ●)" 
+               "(    ● )" "(   ●  )" "(  ●   )" "( ●    )" "(●     )")
+    (clock "🕛" "🕐" "🕑" "🕒" "🕓" "🕔" "🕕" "🕖" "🕗" "🕘" "🕙" "🕚")
+    (segments "▰▱▱▱▱▱▱" "▰▰▱▱▱▱▱" "▰▰▰▱▱▱▱" "▰▰▰▰▱▱▱" "▰▰▰▰▰▱▱" 
+              "▰▰▰▰▰▰▱" "▰▰▰▰▰▰▰")
+    (large-dots "∙∙∙∙∙" "●∙∙∙∙" "∙●∙∙∙" "∙∙●∙∙" "∙∙∙●∙" "∙∙∙∙●")
+    (globe "🌍" "🌎" "🌏")
+    (audio "[▁▁▁▁▁▁▁▁▁▁▁]" "[▂▃▂▁▁▂▁▁▁▂▁]" "[▃▄▃▁▄▇▃▁▁▅▂]" "[▃▆▅▁▆█▃▁▂█▅]"
+           "[▆█▃▄▄▆▇▃▄▆█]" "[▅▆▃▆▃▅▆▃▃█▆]" "[▄▅▂█▂▃▅▁▂▇▅]" "[▃▄▁▇▁▂▄▁▁▆▄]"
+           "[▂▃▁▆▁▁▃▁▁▄▃]" "[▁▂▁▃▁▁▃▁▁▃▂]")
+    ))
+
+(defun telega-symbol-animate (symbol)
+  "Animate character CHAT, i.e. return next char to create animations."
+  (let* ((anim (cl-find symbol telega-symbol-animations :test #'member))
+         (anim-tail (cdr (member symbol anim))))
+    (or (car anim-tail) (cadr anim))))
+
+(defmacro with-telega-symbol-animate (anim-name interval sym-bind exit-form
+                                                &rest body)
+  "Animate symbols denoted by ANIM-NAME while there is no pending input.
+Animate while there is no pending input and EXIT-FORM evaluates to nil.
+Animate with INTERVAL seconds (default=0.1)
+Binds current symbol to SYM-BIND."
+  (declare (indent 3))
+  `(let ((,sym-bind (cadr (assq ,anim-name telega-symbol-animations)))
+         (inhibit-quit t))              ;C-g as ordinary keypress
+     (while (and (not (input-pending-p))
+                 (not ,exit-form))
+       (progn
+         ,@body)
+       (sit-for (or ,interval 0.1))
+       (setq ,sym-bind (telega-symbol-animate ,sym-bind)))
+     (when (input-pending-p) (read-key))))
+
 (provide 'telega-util)
 
 ;;; telega-util.el ends here

@@ -3249,12 +3249,17 @@ This attachment can be used only in private chats."
      (list :@type "inputMessageVideoNote"
            :video_note ifile))))
 
-(defun telega-chatbuf-attach-note-voice (filename)
-  "Attach FILENAME as voice note to the chatbuf input."
-  (interactive (list (read-file-name "Voice Note: ")))
+(defun telega-chatbuf-attach-note-voice (as-file-p)
+  "Attach a voice note to the chatbuf input.
+If `\\[universal-argument] is given, then attach existing file as
+voice-note.  Otherwise record voice note inplace."
+  (interactive "P")
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
+  (let* ((filename (if as-file-p
+                       (read-file-name "Voice Note: ")
+                     (telega-vvnote-voice--record)))
+         (ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
            :waveform (telega-vvnote--waveform-for-file filename)
