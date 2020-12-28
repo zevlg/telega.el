@@ -360,6 +360,18 @@ To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
   :type 'list
   :group 'telega)
 
+(defcustom telega-voice-note-ffplay-args nil
+  "*Additional arguments to ffplay to play voice messages.
+By the way, '-nodisp' argument will always be there before `telega-voice-note-ffplay-args'"
+  :type 'list
+  :group 'telega)
+
+(defcustom telega-audio-ffplay-args nil
+  "*Additional arguments to ffplay to play audio (not voice messages).
+By the way, '-nodisp' argument will always be there before `telega-music-ffplay-args'"
+  :type 'list
+  :group 'telega)
+
 (defcustom telega-open-file-function #'find-file
   "Function to use to open files associated with messages.
 Called with single argument - filename to open.

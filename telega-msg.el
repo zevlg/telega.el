@@ -387,17 +387,17 @@ If CALLBACK is specified, then get reply message asynchronously."
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
       (t (telega-file--download audio-file 32
-          (lambda (file)
-            (telega-msg-redisplay msg)
-            (when (telega-file--downloaded-p file)
-              (if (memq 'audio telega-open-message-as-file)
-                  (telega-open-file (telega--tl-get file :local :path) msg)
-                (plist-put msg :telega-ffplay-proc
-                           (telega-ffplay-run
-                            (telega--tl-get file :local :path)
-                            (lambda (_proc)
-                              (telega-msg-redisplay msg))
-                            "-nodisp"))))))))))
+           (lambda (file)
+             (telega-msg-redisplay msg)
+             (when (telega-file--downloaded-p file)
+               (if (memq 'audio telega-open-message-as-file)
+                   (telega-open-file (telega--tl-get file :local :path) msg)
+                 (plist-put msg :telega-ffplay-proc
+                            (apply #'telega-ffplay-run
+                                   (telega--tl-get file :local :path)
+                                   (lambda (_proc)
+                                     (telega-msg-redisplay msg))
+                                   "-nodisp" telega-audio-ffplay-args))))))))))
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
@@ -444,11 +444,11 @@ If CALLBACK is specified, then get reply message asynchronously."
                (if (memq 'voice-note telega-open-message-as-file)
                    (telega-open-file (telega--tl-get file :local :path) msg)
                  (plist-put msg :telega-ffplay-proc
-                            (telega-ffplay-run
-                             (telega--tl-get file :local :path)
-                             (telega-msg-voice-note--ffplay-callback msg)
-                             "-nodisp"))
-                 (telega-msg-activate-voice-note msg)))))))))
+                            (apply #'telega-ffplay-run
+                                   (telega--tl-get file :local :path)
+                                   (telega-msg-voice-note--ffplay-callback msg)
+                                   "-nodisp" telega-voice-note-ffplay-args)))
+                 (telega-msg-activate-voice-note msg))))))))
 
 (defun telega-msg-video-note--ffplay-callback (proc frame msg)
   "Callback for video note playback."
@@ -965,7 +965,7 @@ Requires administrator rights in the chat."
       (user-error "Can't restrict users in this chat"))
     (unless (telega-user-p sender)
       (user-error "Can't ban anonymous message sender"))
-    
+
     (let* ((report-p
             (when (eq 'supergroup (telega-chat--type chat))
               (y-or-n-p (concat (telega-i18n "lng_report_spam") "? "))))
