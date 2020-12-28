@@ -3240,7 +3240,7 @@ This attachment can be used only in private chats."
            :performer (cdr (assoc "artist" metadata))
            ))))
 
-(defun telega-chatbuf-attach-note-video (filename)
+(defun telega-chatbuf-attach-video-note (filename)
   "Attach FILENAME as (circled) video note to the chatbuf input."
   (interactive (list (read-file-name "Video Note: ")))
   ;; TODO: start video note generation process
@@ -3250,7 +3250,7 @@ This attachment can be used only in private chats."
      (list :@type "inputMessageVideoNote"
            :video_note ifile))))
 
-(defun telega-chatbuf-attach-note-voice (as-file-p)
+(defun telega-chatbuf-attach-voice-note (as-file-p)
   "Attach a voice note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
 voice-note.  Otherwise record voice note inplace."
