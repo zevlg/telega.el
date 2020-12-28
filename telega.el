@@ -12,7 +12,7 @@
 (defconst telega-version "0.7.3")
 (defconst telega-server-min-version "0.7.2")
 (defconst telega-tdlib-min-version "1.7.0")
-(defconst telega-tdlib-max-version nil)
+(defconst telega-tdlib-max-version "1.7.0")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
