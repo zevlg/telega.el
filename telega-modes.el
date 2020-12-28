@@ -694,9 +694,9 @@ UFILE specifies Telegram file being uploading."
 ;;; ellit-org: minor-modes
 ;; ** telega-highlight-text-mode
 ;;
-;; jit-lock powered minor mode to highlight given regexps
+;; =jit-lock= powered minor mode to highlight given regexp.
 ;;
-;; Similar to =hi-lock=, however supports jit-lock, for highlighting
+;; Similar to =hi-lock=, however supports =jit-lock= for highlighting
 ;; dynamic content.
 (defface telega-highlight-text-face
   '((t :inherit match))
