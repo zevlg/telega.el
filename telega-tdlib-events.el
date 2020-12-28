@@ -501,6 +501,12 @@ NOTE: we store the number as custom chat property, to use it later."
   (let ((new-msg (plist-get event :message)))
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
 
+    ;; NOTE: View ignored messages, so modeline/appindicator won't
+    ;; show there is something important if ignored message contains
+    ;; mention
+    (when (telega-msg-ignored-p new-msg)
+      (telega--viewMessages (telega-msg-chat new-msg) (list new-msg) 'force))
+
     (with-telega-chatbuf (telega-msg-chat new-msg)
       (telega-msg-cache new-msg)
 
@@ -511,6 +517,7 @@ NOTE: we store the number as custom chat property, to use it later."
                           (list new-msg) 'append-new)))
           (when (and (telega-chat-match-p
                       telega-chatbuf--chat telega-use-tracking-for)
+                     (not (telega-msg-ignored-p new-msg))
                      (not (plist-get new-msg :is_outgoing))
                      (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
             (tracking-add-buffer (current-buffer) '(telega-tracking)))
@@ -518,9 +525,7 @@ NOTE: we store the number as custom chat property, to use it later."
           ;; If message is visibible in some window, then mark it as read
           ;; see https://github.com/zevlg/telega.el/issues/4
           (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
-            (telega--viewMessages telega-chatbuf--chat (list new-msg)
-                                  (plist-get telega-chatbuf--thread-msg
-                                             :message_thread_id)))
+            (telega--viewMessages telega-chatbuf--chat (list new-msg)))
           )))
     (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
 

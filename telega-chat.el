@@ -2333,7 +2333,8 @@ If `\\[universal-argument]' is given, then just copy last sent message."
 (defun telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
-  (let ((msg-button (button-at (ewoc-location node))))
+  ;; NOTE: MSG-BUTTON could be `nil' if message is ignored and not displayed
+  (when-let ((msg-button (button-at (ewoc-location node))))
     (telega-save-window-start (button-start msg-button) (button-end msg-button)
       (if (eq (telega-msg-at (point)) (ewoc--node-data node))
           (telega-save-cursor
