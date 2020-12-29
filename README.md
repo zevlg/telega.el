@@ -180,6 +180,11 @@ Also see https://github.com/zevlg/telega.el/issues/161
 **A**: Please either install `fonts-symbola` package, or run
 `guix package -i font-gnu-{freefont,unifont}` on GNU Guix
 
+And add this to your init.el:
+```elisp
+(set-fontset-font t 'unicode "Symbola" nil 'append)
+```
+
 **Q**: There is some formatting issues when some unicode characters are used.
 
 **A**: Yes, partly.  If character has full width of multiple ordinary chars you can tweak `char-width-table`.  Add code like this to your init.el:
@@ -224,3 +229,10 @@ emacs-nox)?
 **Q**: Is it possible to use markup in outgoing messages?
 
 **A**: Yes, use `C-u RET` to send message with markup.  See [Sending ordinary messages](https://zevlg.github.io/telega.el/#sending-ordinary-messages) for details
+
+**Q**: I've enabled `telega-notifications-mode`, but notifications
+does not show.
+
+**A**: Make sure your time is correct.  Eval `(telega-time-seconds)`
+to get UTC time in your Emacs, it should be more or less the same as
+on https://www.unixtimestamp.com/
