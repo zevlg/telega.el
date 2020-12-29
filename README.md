@@ -113,17 +113,17 @@ exceptionally helpful.
 
 # FAQ
 
-**Q**: I have this error while installing telega
+**Q**: **I have this error while installing telega**
 
 ```console
 Cannot open load file: No such file or directory, visual-fill-column
 ```
 
-**A**: `telega.el` depends on `visual-fill-column` package, please
+**A**: `telega.el` depends on the `visual-fill-column` package, please
 install it first.  This package is available from
 [MELPA](https://melpa.org)
 
-**Q**: I have this error while running telega
+**Q**: **I have this error while running telega**
 
 ```elisp
 (error "Invalid image type ‘svg’")
@@ -135,20 +135,17 @@ and/or
 (error "Invalid image type ‘imagemagick’")
 ```
 
-**A**: `telega.el` requires Emacs with SVG and ImageMagick support.
-SVG support in Emacs is done using `librsvg` library.  As to
-imagemagick, you will need `libmagickcore-dev` and `libmagickwand-dev`
-packages installed.  But unfortunately Emacs recently disabled
-imagemagick support by default (see
-https://lists.gnu.org/r/emacs-devel/2018-12/msg00036.html).  So you
-need to compile Emacs by hand, specifying `--with-imagemagick` flag to
-`./configure` script.
+**A**: The appropriate behavior is adjusted based on what version of
+Emacs you use. If you are using 26.3 or older you need to ensure that
+your Emacs was configured with SVG and ImageMagick support. SVG support
+is provided using the `librsvg` library, and ImageMagick is provided by
+`libmagickcore` and `libmagickwand` development libraries.
 
-Telega won't depend on `imagemagick` in future, since required image
-features has been added to newer Emacs, see
-https://lists.gnu.org/r/emacs-devel/2019-06/msg00242.html
+If you are using Emacs 27.1+ the ImageMagick support was deprecated as
+it posed a significant security issue, but `telega` now relies on the
+in-built (and faster) `image-transforms` for those versions.
 
-**Q**: Does telega have proxy support?
+**Q**: **Does telega have proxy support?**
 
 **A**: Yes, use `telega-proxies` custom variable, for example:
 
@@ -165,29 +162,25 @@ https://lists.gnu.org/r/emacs-devel/2019-06/msg00242.html
 ```
 See `C-h v telega-proxies RET` for full range of proxy types.
 
-**Q**: Stickers are not shown.
+**Q**: **Stickers are not shown.**
 
-**A**: Make sure you have `imagemagick` support and please install `webp` package
+**A**: If you are using Emacs 26.3 or older, ensure you it was 
+configured with ImageMagick support. Next, install the `webp` package.
 
-**Q**: `telega.el` is unbearable slow.
-
-**A**: You might be hitting into Emacs bug, described here https://lists.gnu.org/archive/html/bug-gnu-emacs/2020-01/msg00548.html
-
-Also see https://github.com/zevlg/telega.el/issues/161
-
-**Q**: There are no glyphs for some unicode characters.
+**Q**: **There are no glyphs for some unicode characters.**
 
 **A**: Please either install `fonts-symbola` package, or run
 `guix package -i font-gnu-{freefont,unifont}` on GNU Guix
 
-And add this to your init.el:
+If using `fonts-symbola`, add this to your init.el:
 ```elisp
 (set-fontset-font t 'unicode "Symbola" nil 'append)
 ```
 
-**Q**: There is some formatting issues when some unicode characters are used.
+**Q**: **There is some formatting issues when some unicode characters are used.**
 
-**A**: Yes, partly.  If character has full width of multiple ordinary chars you can tweak `char-width-table`.  Add code like this to your init.el:
+**A**: Yes, partly.  If character has full width of multiple ordinary chars 
+you can tweak `char-width-table`.  Add code like this to your init.el:
 
 ```elisp
 (setq telega-symbol-unread "🄌")
@@ -206,9 +199,9 @@ And add this to your init.el:
 There is also `telega-symbol-widths` custom variable, you might want
 to modify it.
 
-**Q**: Is there erc-like chats tracking functionality?
+**Q**: **Is there erc-like chats tracking functionality?**
 
-**A**: Yes, set `telega-use-tracking-for` to non-nil.
+**A**: Yes, set `telega-use-tracking-for` to non-nil
 
 Tracking is done only for opened chats, i.e. chats having
 corresponding chat buffer.
@@ -221,18 +214,24 @@ For example, to enable tracking for chats with enabled notifications or for chat
 (setq telega-use-tracking-for '(or unmuted mention))
 ```
 
-**Q**: Is it possible to use telega in tty-only Emacs (aka
-emacs-nox)?
+**Q**: **Is it possible to use telega in tty-only Emacs (aka
+emacs-nox)?**
 
-**A**: Yes, set `telega-use-images` to `nil`, before start.
+**A**: Yes, set `telega-use-images` to `nil`, before start
 
-**Q**: Is it possible to use markup in outgoing messages?
+**Q**: **Is it possible to add markup to messages?**
 
-**A**: Yes, use `C-u RET` to send message with markup.  See [Sending ordinary messages](https://zevlg.github.io/telega.el/#sending-ordinary-messages) for details
+**A**: Yes, use `C-u RET` to send a message with markup
 
-**Q**: I've enabled `telega-notifications-mode`, but notifications
-does not show.
+See [Sending ordinary messages](https://zevlg.github.io/telega.el/#sending-ordinary-messages) for details
 
-**A**: Make sure your time is correct.  Eval `(telega-time-seconds)`
-to get UTC time in your Emacs, it should be more or less the same as
-on https://www.unixtimestamp.com/
+You may also find `telega-mnz.el` from the `contrib` directory to be
+complimentary.
+
+**Q**: **I've enabled `telega-notifications-mode`, but notifications
+does not show**
+
+**A**: Make sure your time is correct
+
+Eval `(telega-time-seconds)` to get UTC time in your Emacs, 
+it should be more or less the same as on https://www.unixtimestamp.com/
