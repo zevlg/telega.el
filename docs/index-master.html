@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2020-12-28 Пн 03:26 -->
+<!-- 2020-12-29 Вт 15:13 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.3)</title>
+<title>Telega Manual (v0.7.4)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.3)</h1>
+<h1 class="title">Telega Manual (v0.7.4)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.3)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.4)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -841,7 +841,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org05edc94">
+<pre class="example" id="orgde1a18f">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -859,7 +859,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orgea3a3f8">
+<pre class="example" id="org6abe830">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -889,7 +889,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgb76a3bd">
+<pre class="example" id="orgcede215">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -984,7 +984,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org9a2115b">
+<pre class="example" id="org2fd0cd0">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1043,7 +1043,9 @@ If <kbd>C-u</kbd> is specified, then do not pop to root buffer.</dd>
 
 <dt><kbd>c</kbd> (<code>telega-chat-with</code>)</dt><dd>Start messaging with <code>CHAT-OR-USER</code>.</dd>
 
-<dt><kbd>i</kbd> (<code>telega-switch-important-chat</code>)</dt><dd>Switch to important <code>CHAT</code> if any.</dd>
+<dt><kbd>i</kbd> (<code>telega-switch-important-chat</code>)</dt><dd>Switch to important <code>CHAT</code> if any.
+If <kbd>C-u</kbd> is used, then select first chat if
+multiple chats are important.</dd>
 
 <dt><kbd>s</kbd> (<code>telega-saved-messages</code>)</dt><dd>Switch to "Saved Messages" chat buffer.
 If "Saved Messages" chat is not opened, then open it.
@@ -1059,10 +1061,16 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1782,6 +1790,24 @@ Chat Filter for chats where to show deleted messages in chatbuf.
 Default value: <code>nil</code>
 </p></li>
 <li><p>
+User Option: <code>telega-chat-use-date-breaks-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to insert date breaks.
+Date break is a special mark separating two messages received on
+different days. Such as:
+</p>
+<pre class="example" id="org0ba9224">
+MSG1                              &lt;--- msg sent on 27dec
+-------(28 December 2020)------   &lt;--- date break
+MSG2                              &lt;--- msg sent on 28dec
+</pre>
+
+<p>
+Default value: <code>all</code>
+</p></li>
+<li><p>
 User Option: <code>telega-root-view-topics</code> 
 </p>
 
@@ -1940,6 +1966,24 @@ Column to fill chat messages to.
 <p>
 Default value: <code>70</code>
 </p></li>
+<li><p>
+User Option: <code>telega-chat-use-date-breaks-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to insert date breaks.
+Date break is a special mark separating two messages received on
+different days. Such as:
+</p>
+<pre class="example" id="orgf78f507">
+MSG1                              &lt;--- msg sent on 27dec
+-------(28 December 2020)------   &lt;--- date break
+MSG2                              &lt;--- msg sent on 28dec
+</pre>
+
+<p>
+Default value: <code>all</code>
+</p></li>
 </ul>
 </div>
 
@@ -1979,13 +2023,32 @@ message.  To insert newline in the middle of the input use ordinary
 </p>
 
 <p>
-You can use markdown markup with next syntax:
+You can apply markup to the input when sending message.  This is
+controlled by number of <kbd>C-u</kbd> pressed before <kbd>RET</kbd>
+and value of the:
 </p>
-<pre class="example" id="org8c63acd">
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-chat-input-markups</code> 
+</p>
+
+<p>
+Markups to apply when sending input with <kbd>RET</kbd>. 
+</p>
+
+<p>
+Default value: <code>(nil "markdown1" "markdown2")</code>
+</p></li>
+</ul>
+
+<p>
+Markdown markup syntax for "markdown1" and "markdown2" markups:
+</p>
+<pre class="example" id="orgfe9a7c3">
 1. *bold text*
 2. _italic text_
-2.1) __underline text__    (only for v2)
-2.2) ~strike through text~ (only for v2)
+2.1) __underline text__    (only for "markdown2")
+2.2) ~strike through text~ (only for "markdown2")
 3. `inlined code`
 4. ```&lt;language-name-not-displayed&gt;
     first line of multiline preformatted code
@@ -1996,11 +2059,7 @@ You can use markdown markup with next syntax:
 </pre>
 
 <p>
-To apply markdown markup use <kbd>C-u RET</kbd> to send a message.
-</p>
-
-<p>
-You can even intermix various markups, using <kbd>C-c C-a markup RET</kbd> command.
+Also, you can intermix various markups, using <kbd>C-c C-a markup RET</kbd> command.
 </p>
 
 <p>
@@ -2013,16 +2072,35 @@ Important customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-chat-use-markdown-version</code> 
+User Option: <code>telega-chat-input-markups</code> 
 </p>
 
 <p>
-Non-nil to use markdown formatting for outgoing messages. 
+Markups to apply when sending input with <kbd>RET</kbd>. 
 </p>
 
 <p>
-Default value: <code>nil</code>
+Default value: <code>(nil "markdown1" "markdown2")</code>
 </p></li>
+<li><p>
+User Option: <code>telega-chat-markup-functions</code> 
+</p>
+
+<p>
+List of markups to use on <code>C-c C-a markup RET</code>. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"markdown1"</span> . telega-markup-markdown1-fmt)
+ (<span style="font-style: italic;">"markdown2"</span> . telega-markup-markdown2-fmt)
+ (<span style="font-style: italic;">"html"</span> . telega-markup-html-fmt)
+ (<span style="font-style: italic;">"org"</span> . telega-markup-org-fmt))
+</pre>
+</div></li>
+
 <li><p>
 User Option: <code>telega-chat-ret-always-sends-message</code> 
 </p>
@@ -2071,9 +2149,9 @@ This attachment can be used only in private chats.</dd>
 <dt>video</dt><dd>Attach <code>FILENAME</code> as video to the chatbuf input.</dd>
 <dt>self-destruct-video</dt><dd>Attach self destructing video.
 This attachment can be used only in private chats.</dd>
-<dt>note-video</dt><dd>Attach <code>FILENAME</code> as (circled) video note to the chatbuf input.</dd>
+<dt>video-note</dt><dd>Attach <code>FILENAME</code> as (circled) video note to the chatbuf input.</dd>
 <dt>audio</dt><dd>Attach <code>FILENAME</code> as audio to the chatbuf input.</dd>
-<dt>note-voice</dt><dd>Attach a voice note to the chatbuf input.
+<dt>voice-note</dt><dd>Attach a voice note to the chatbuf input.
 If <kbd>C-u</kbd> is given, then attach existing file as
 voice-note.  Otherwise record voice note inplace.</dd>
 <dt>file</dt><dd>Attach <code>FILENAME</code> as document to the chatbuf input.</dd>
@@ -2184,7 +2262,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org0b938c6">
+<pre class="example" id="orga9e8708">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2986,7 +3064,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org5d9f906">
+<pre class="example" id="org8a6af10">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3291,7 +3369,7 @@ Default value: <code>telega-ins--chat-full</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-12-28 Пн 03:26</p>
+<p class="date">Created: 2020-12-29 Вт 15:13</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

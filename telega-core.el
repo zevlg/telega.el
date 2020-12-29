@@ -928,18 +928,26 @@ Additional properties PROPS are updated in button."
       (apply #'telega-button--insert (button-type button)
              new-value new-props))))
 
-(defun telega-button--observable-p (button &optional fully-p)
+(defun telega-button--observable-p (button)
   "Return non-nil if BUTTON is observable in some window.
 I.e. shown in some window, see `pos-visible-in-window-p'.
-If FULLY-P is non-nil, then return non-nil only if BUTTON is fully
-visible, otherwise return non-nil if button start point is visible."
-  (when (markerp button)
-    (let ((bwin (get-buffer-window (marker-buffer button))))
-      (and bwin
-           (telega-focus-state (window-frame bwin))
-           (pos-visible-in-window-p button bwin)
-           (or (not fully-p)
-               (pos-visible-in-window-p (button-end button) bwin))))))
+
+Return nil if button is not visible, `full' if BUTTON is fully
+visible, `top' if top is visible and bottom is not, `bottom' if bottom
+is visible and top is not, `button' if only BUTTON point is visible."
+  ;; NOTE: BUTTON could be a real button (with value) or simple marker
+  ;; for simple marker do not check top and bottom
+  (cl-assert (markerp button))
+  (when-let ((bwin (get-buffer-window (marker-buffer button))))
+    (let* ((button-p (button-get button :value))
+           (top-p (when button-p
+                    (pos-visible-in-window-p (button-start button) bwin)))
+           (bottom-p (when button-p
+                       (pos-visible-in-window-p (button-end button) bwin))))
+      (cond ((and top-p bottom-p) 'full)
+            (top-p 'top)
+            (bottom-p 'bottom)
+            ((pos-visible-in-window-p button bwin) 'button)))))
 
 (defun telega-button--make-observable (button &optional even-if-visible-p)
   "Make BUTTON observable in window."

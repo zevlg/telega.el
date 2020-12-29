@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.3)
+#+TITLE: Telega Manual (v0.7.4)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -572,6 +572,8 @@ Telega prefix map bindings:
 
 - @@html:<kbd>@@i@@html:</kbd>@@ (~telega-switch-important-chat~) :: 
      Switch to important ~CHAT~ if any.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is used, then select first chat if
+     multiple chats are important.
 
 - @@html:<kbd>@@s@@html:</kbd>@@ (~telega-saved-messages~) :: 
      Switch to "Saved Messages" chat buffer.
@@ -591,10 +593,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1166,6 +1170,18 @@ For other Chat Filter bindings see below.
   Chat Filter for chats where to show deleted messages in chatbuf. 
 
   Default value: ~nil~
+- User Option: ~telega-chat-use-date-breaks-for~ 
+
+  Chat Filter for chats where to insert date breaks.
+  Date break is a special mark separating two messages received on
+  different days. Such as:
+  #+begin_example
+    MSG1                              <--- msg sent on 27dec
+    -------(28 December 2020)------   <--- date break
+    MSG2                              <--- msg sent on 28dec
+  #+end_example
+
+  Default value: ~all~
 - User Option: ~telega-root-view-topics~ 
 
   Alist of topics for "topics" root view.
@@ -1281,6 +1297,18 @@ Important customizable options:
   Column to fill chat messages to. 
 
   Default value: ~70~
+- User Option: ~telega-chat-use-date-breaks-for~ 
+
+  Chat Filter for chats where to insert date breaks.
+  Date break is a special mark separating two messages received on
+  different days. Such as:
+  #+begin_example
+    MSG1                              <--- msg sent on 27dec
+    -------(28 December 2020)------   <--- date break
+    MSG2                              <--- msg sent on 28dec
+  #+end_example
+
+  Default value: ~all~
 
 ** Chatbuf fast navigation
 :PROPERTIES:
@@ -1319,12 +1347,21 @@ Type a text in the chatbuf input and press @@html:<kbd>@@RET@@html:</kbd>@@ to s
 message.  To insert newline in the middle of the input use ordinary
 @@html:<kbd>@@C-j@@html:</kbd>@@ Emacs command.
 
-You can use markdown markup with next syntax:
+You can apply markup to the input when sending message.  This is
+controlled by number of @@html:<kbd>@@C-u@@html:</kbd>@@ pressed before @@html:<kbd>@@RET@@html:</kbd>@@
+and value of the:
+- User Option: ~telega-chat-input-markups~ 
+
+  Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@. 
+
+  Default value: ~(nil "markdown1" "markdown2")~
+
+Markdown markup syntax for "markdown1" and "markdown2" markups:
 #+begin_example
   1. *bold text*
   2. _italic text_
-  2.1) __underline text__    (only for v2)
-  2.2) ~strike through text~ (only for v2)
+  2.1) __underline text__    (only for "markdown2")
+  2.2) ~strike through text~ (only for "markdown2")
   3. `inlined code`
   4. ```<language-name-not-displayed>
       first line of multiline preformatted code
@@ -1334,19 +1371,29 @@ You can use markdown markup with next syntax:
   6. [username](tg://user?id=<USER-ID>)"
 #+end_example
 
-To apply markdown markup use @@html:<kbd>@@C-u RET@@html:</kbd>@@ to send a message.
-
-You can even intermix various markups, using @@html:<kbd>@@C-c C-a markup RET@@html:</kbd>@@ command.
+Also, you can intermix various markups, using @@html:<kbd>@@C-c C-a markup RET@@html:</kbd>@@ command.
 
 To send media, along the side with the text message, use [[#attaching-media][media
 attaching]] commands.
 
 Important customizable options:
-- User Option: ~telega-chat-use-markdown-version~ 
+- User Option: ~telega-chat-input-markups~ 
 
-  Non-nil to use markdown formatting for outgoing messages. 
+  Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@. 
 
-  Default value: ~nil~
+  Default value: ~(nil "markdown1" "markdown2")~
+- User Option: ~telega-chat-markup-functions~ 
+
+  List of markups to use on ~C-c C-a markup RET~. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (("markdown1" . telega-markup-markdown1-fmt)
+     ("markdown2" . telega-markup-markdown2-fmt)
+     ("html" . telega-markup-html-fmt)
+     ("org" . telega-markup-org-fmt))
+  #+end_src
+
 - User Option: ~telega-chat-ret-always-sends-message~ 
 
   Non-nil to make @@html:<kbd>@@RET@@html:</kbd>@@ always send a message.
@@ -1384,9 +1431,9 @@ Attachment types to attach with
 - video :: Attach ~FILENAME~ as video to the chatbuf input.
 - self-destruct-video :: Attach self destructing video.
      This attachment can be used only in private chats.
-- note-video :: Attach ~FILENAME~ as (circled) video note to the chatbuf input.
+- video-note :: Attach ~FILENAME~ as (circled) video note to the chatbuf input.
 - audio :: Attach ~FILENAME~ as audio to the chatbuf input.
-- note-voice :: Attach a voice note to the chatbuf input.
+- voice-note :: Attach a voice note to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
      voice-note.  Otherwise record voice note inplace.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.

@@ -423,3 +423,13 @@ plist like:
     uploading/downloading is associated
   - Implement root view to show that messages
   - Update root view on fly to see uploading/downloading progress
+
+** Add `telega-msg-ignore-predicates` custom var
+
+  Holding list of functions accepting single argument - messages and
+  returning non-nil if message should be ignored.
+
+  To simplify client side messages filtering.
+
+  Predicates runs in ~telega-chat-pre-message-hook~ and 
+  ~telega-chat-insert-message-hook~
