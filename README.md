@@ -217,7 +217,7 @@ For example, to enable tracking for chats with enabled notifications or for chat
 **Q**: **Is it possible to use telega in tty-only Emacs (aka
 emacs-nox)?**
 
-**A**: Yes, set `telega-use-images` to `nil`, before start
+**A**: Yes, set `telega-use-images` to `nil` before starting `telega`
 
 **Q**: **Is it possible to add markup to messages?**
 
