@@ -1240,6 +1240,14 @@ Used for such messages as audio/document/etc."
   :type '(list integer integer integer integer)
   :group 'telega)
 
+(defcustom telega-inline-photo-size-limits '(10 4 20 8)
+  "Same as `telega-photo-size-limits', but for photos from inline queries.
+Inlined photos are displayed, when sending messages via bots, for
+example @gif `TAB' will popup buffer with inlined photos. "
+  :package-version '(telega . "0.7.5")
+  :type '(list integer integer integer integer)
+  :group 'telega)
+
 (defcustom telega-auto-download
   '((photo all)
     (video opened)
