@@ -321,6 +321,12 @@ string at point."
 ;; `telega-symbol-widths'
 (run-hooks 'telega-load-hook)
 (telega-symbol-widths-install telega-symbol-widths)
+
+;; For newly incoming messages in openned chat
+(add-hook 'telega-chat-pre-message-hook #'telega-msg-run-ignore-predicates)
+;; For messages loaded from history
+(add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)
+
 (require 'telega-obsolete)
 
 ;;; telega.el ends here

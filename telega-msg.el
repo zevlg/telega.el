@@ -836,12 +836,21 @@ with `M-x telega-ignored-messages RET'."
   (ring-insert telega--ignored-messages-ring msg)
   (telega-debug "IGNORED msg: %S" msg))
 
-(defun telega-msg-ignore-blocked-sender (msg &rest _ignore)
-  "Function to be used as `telega-chat-insert-message-hook'.
-Add it to `telega-chat-insert-message-hook' to ignore messages from
-blocked senders (users or chats)."
-  (when (telega-msg-sender-blocked-p (telega-msg-sender msg))
-    (telega-msg-ignore msg)))
+(defun telega-msg-run-ignore-predicates (msg)
+  "Run `telega-msg-ignore-predicates' over the MSG.
+If any of function from `telega-msg-ignore-predicates' return non-nil,
+then mark MSG as ignored.
+If MSG is already ignored, do nothing."
+  (unless (telega-msg-ignored-p msg)
+    (when (cl-some (lambda (predicate)
+                     (funcall predicate msg))
+                   telega-msg-ignore-predicates)
+      (telega-msg-ignore msg))))
+
+(defun telega-msg-from-blocked-sender-p (msg)
+  "Return non-nil if MSG is sent from blocked message sender.
+Could be used in `telega-msg-ignore-predicates'."
+  (telega-msg-sender-blocked-p (telega-msg-sender msg)))
 
 
 (defun telega-msg-unmark (msg)

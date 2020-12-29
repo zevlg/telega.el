@@ -1178,6 +1178,15 @@ For example:
   :prefix "telega-msg-"
   :group 'telega)
 
+(defcustom telega-msg-ignore-predicates nil
+  "List of predicates to ignore messages.
+Each element is a function accepting single argument - messages and
+returning non-nil if message should be ignored.
+Use this for Clint Side Messages Filtering."
+  :package-version '(telega . "0.7.5")
+  :type '(list function)
+  :group 'telega-msg)
+
 (defcustom telega-msg-rainbow-title t
   "*Non-nil to display user names in chatbuf with their assigned color."
   :type 'boolean

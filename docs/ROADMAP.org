@@ -424,7 +424,8 @@ plist like:
   - Implement root view to show that messages
   - Update root view on fly to see uploading/downloading progress
 
-** Add `telega-msg-ignore-predicates` custom var
+** DONE Add `telega-msg-ignore-predicates` custom var
+   CLOSED: [2020-12-29 Вт 18:02]
 
   Holding list of functions accepting single argument - messages and
   returning non-nil if message should be ignored.

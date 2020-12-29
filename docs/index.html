@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2020-12-29 Вт 14:59 -->
+<!-- 2020-12-29 Вт 17:49 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.4)</title>
+<title>Telega Manual (v0.7.5)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.4)</h1>
+<h1 class="title">Telega Manual (v0.7.5)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.4)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.5)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -841,7 +841,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org20136e4">
+<pre class="example" id="org1f352a4">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -859,7 +859,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org03f80c8">
+<pre class="example" id="org0d926f1">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -889,7 +889,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org12b429a">
+<pre class="example" id="org7711433">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -984,7 +984,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orga4f68a0">
+<pre class="example" id="org6342130">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1798,7 +1798,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org692ba3a">
+<pre class="example" id="org231c81d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -1975,7 +1975,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org7ab6887">
+<pre class="example" id="org1e5f3de">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2044,7 +2044,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgbe4a1d5">
+<pre class="example" id="orgc929693">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2262,7 +2262,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgf06fbfe">
+<pre class="example" id="org5d6f7bd">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2640,20 +2640,20 @@ Default value: <code>nil</code>
 In official telegram clients all messages in group chats are displayed
 even if message has been sent by blocked sender (user or chat).
 <code>telega</code> has client side message ignoring feature implemented.
-Ignoring messages can be done via installing special functions into
-<code>telega-chat-insert-message-hook</code>, which could mark message as
-ignored, for example, to ignore messages from particular user with
-id=12345 you could add next code:
+Ignoring messages can be done by adding function into
+<code>telega-msg-ignore-predicates</code>.  This function must accept single
+argument - message, and return non-nil if messages should be ignored.
+For example, to ignore messages from particular user with <code>id=12345</code>
+you could add next code:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-ignore-12345-user</span> (msg <span style="font-weight: bold; text-decoration: underline;">&amp;rest</span> notused)
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-ignore-12345-user</span> (msg)
   (<span style="font-weight: bold;">let</span> ((sender (telega-msg-sender msg)))
-    (<span style="font-weight: bold;">when</span> (<span style="font-weight: bold;">and</span> (telega-user-p sender)
-             (= (plist-get sender <span style="font-weight: bold;">:id</span>) 12345))
-      (telega-msg-ignore msg))))
+    (<span style="font-weight: bold;">and</span> (telega-user-p sender)
+       (= (plist-get sender <span style="font-weight: bold;">:id</span>) 12345))))
 
-(add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
+(add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 </pre>
 </div>
 
@@ -2662,12 +2662,12 @@ Or to ignore messages from blocked senders (users or chats), just add:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
+<pre class="src src-emacs-lisp">(add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
 </pre>
 </div>
 
 <p>
-To view recent messages that has been ignored use
+To view recently ignored messages use
 <code>M-x telega-ignored-messages RET</code> command.
 </p>
 </div>
@@ -3064,7 +3064,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org0e9a9a6">
+<pre class="example" id="org38de26f">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3369,7 +3369,7 @@ Default value: <code>telega-ins--chat-full</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-12-29 Вт 14:59</p>
+<p class="date">Created: 2020-12-29 Вт 17:49</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
