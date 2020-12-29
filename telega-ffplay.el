@@ -123,10 +123,10 @@
       (set-process-filter proc #'telega-ffplay--filter)
       proc)))
 
-(defun telega-ffplay-run (filename callback &rest ffplay-args)
+(defun telega-ffplay-run (filename callback &optional ffplay-args)
   "Start ffplay to play FILENAME.
 CALLBACK is called on updates with single argument - process.
-FFPLAY-ARGS is additional args to the ffplay.
+FFPLAY-ARGS is additional arguments string for the ffplay.
 Return newly created process."
   ;; Additional args:
   ;;   -nodisp       for sounds
@@ -136,7 +136,8 @@ Return newly created process."
 
   ;; Start new ffplay
   (let ((args (nconc (list "-hide_banner" "-autoexit")
-                     ffplay-args (list (expand-file-name filename))))
+                     (split-string (or ffplay-args "") " " t)
+                     (list (expand-file-name filename))))
         (ffplay-bin (or (executable-find "ffplay")
                         (error "ffplay not found in `exec-path'"))))
     (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
@@ -268,7 +269,7 @@ Return nil if no image is available."
 
 (defun telega-ffplay-to-png (filename ffmpeg-args callback &rest callback-args)
   "Play video FILENAME extracting png images from it.
-FFMPEG-ARGS - aditional ffmpeg args to add.
+FFMPEG-ARGS - Aditional list of arguments to pass to ffmpeg.
 CALLBACK is called with args: <proc> <filename.png>  <callback-args>
 CALLBACK is called with nil filename when finished.
 Return newly created proc."

@@ -375,9 +375,9 @@ If CALLBACK is specified, then get reply message asynchronously."
             (telega--openMessageContent msg))
           (if (memq 'video telega-open-message-as-file)
               (telega-open-file (telega--tl-get file :local :path) msg)
-            (apply #'telega-ffplay-run
-                   (telega--tl-get file :local :path) nil
-                   telega-video-ffplay-args)))))))
+            (telega-ffplay-run
+             (telega--tl-get file :local :path) nil
+             (cdr (assq 'video telega-open-message-ffplay-args)))))))))
 
 (defun telega-msg-open-audio (msg)
   "Open content for audio message MSG."
@@ -399,9 +399,8 @@ If CALLBACK is specified, then get reply message asynchronously."
                 (plist-put msg :telega-ffplay-proc
                            (telega-ffplay-run
                             (telega--tl-get file :local :path)
-                            (lambda (_proc)
-                              (telega-msg-redisplay msg))
-                            "-nodisp"))))))))))
+                            (lambda (_proc) (telega-msg-redisplay msg))
+                            (cdr (assq 'audio telega-open-message-ffplay-args))))))))))))
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
@@ -451,7 +450,7 @@ If CALLBACK is specified, then get reply message asynchronously."
                             (telega-ffplay-run
                              (telega--tl-get file :local :path)
                              (telega-msg-voice-note--ffplay-callback msg)
-                             "-nodisp"))
+                             (cdr (assq 'voice-note telega-open-message-ffplay-args))))
                  (telega-msg-activate-voice-note msg)))))))))
 
 (defun telega-msg-video-note--ffplay-callback (proc frame msg)
@@ -492,7 +491,9 @@ non-nil."
                                       (list "-vf" "scale=120:120"
                                             "-f" "alsa" "default" "-vsync" "0")
                                     #'telega-msg-video-note--ffplay-callback msg))
-                     (telega-ffplay-run filepath nil)))))))))))
+                     (telega-ffplay-run
+                      filepath nil
+                      (cdr (assq 'video-note telega-open-message-ffplay-args)))))))))))))
 
 (defun telega-msg-open-photo (msg &optional photo)
   "Open content for photo message MSG."
@@ -530,7 +531,9 @@ non-nil."
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filename nil
                                     #'telega-animation--ffplay-callback anim))
-                     (telega-ffplay-run filename nil "-loop" "0")))))))))))
+                     (telega-ffplay-run
+                      filename nil
+                      (cdr (assq 'animation telega-open-message-ffplay-args)))))))))))))
 
 (defun telega-msg-open-document (msg &optional document)
   "Open content for document message MSG."

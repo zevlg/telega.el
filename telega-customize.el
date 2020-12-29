@@ -348,12 +348,6 @@ There is a restriction to its value:
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-video-ffplay-args nil
-  "*Additional arguments to ffplay to play video messages.
-To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
-  :type 'list
-  :group 'telega)
-
 (defcustom telega-open-file-function #'find-file
   "Function to use to open files associated with messages.
 Called with single argument - filename to open.
@@ -376,6 +370,22 @@ Document messages are always opens as file."
                          (const :tag "Video Note messages" video-note)
                          (const :tag "Voice Note messages" voice-note)
                          (const :tag "Animation messages" animation)))
+  :group 'telega)
+
+(defcustom telega-open-message-ffplay-args
+  '((audio      . "-nodisp")
+    (voice-note . "-nodisp")
+    (animation  . "-loop 0"))
+  "*Additional arguments to ffplay to play various type of messages.
+Each element is a cons cell, where car is one of: `video', `audio',
+`video-note', `voice-note', `animation' and cdr is string with
+additional ffplay arguments.
+
+Some useful ffplay arguments to consider:
+ - \"-volume 10\" to play with dimmed volume
+ - \"-fs\" for `video' messages, to start at fullscreen."
+  :package-version '(telega . "0.7.5")
+  :type 'list
   :group 'telega)
 
 ;; Locations
