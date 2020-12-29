@@ -68,7 +68,9 @@
     (telega-debug "%s %S started with %d callbacks, left %d callbacks"
                   (propertize "FILE-UPDATE" 'face 'bold)
                   (plist-get file :id) (length callbacks) (length left-cbs))
-    (puthash (plist-get file :id) left-cbs telega--files-updates)
+    (if left-cbs
+        (puthash (plist-get file :id) left-cbs telega--files-updates)
+      (remhash (plist-get file :id) telega--files-updates))
 
     (when (telega-file--downloaded-p file)
       (run-hook-with-args 'telega-file-downloaded-hook file))

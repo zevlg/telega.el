@@ -1047,8 +1047,9 @@ Requires `:can_change_info' rights."
   (telega-server--call
    (list :@type "setChatPhoto"
          :chat_id (plist-get chat :id)
-         :photo (list :@type "inputFileLocal"
-                      :path (expand-file-name filename)))
+         :photo (list :@type "inputChatPhotoStatic"
+                      :photo (list :@type "inputFileLocal"
+                                   :path (expand-file-name filename))))
    (or callback 'ignore)))
 
 (defun telega--setChatPermissions (chat &rest permissions)

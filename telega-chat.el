@@ -634,25 +634,27 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
     (telega-ins--button "Open"
       :value chat
-      :action 'telega-chat--pop-to-buffer)
+      :action #'telega-chat--pop-to-buffer)
     (when (telega-me-p chat)
       (telega-ins " ")
       (telega-ins--button "Set Profile Photo"
         'action (lambda (_ignored)
                   (let ((photo (read-file-name "Profile Photo: " nil nil t)))
                     (telega--setProfilePhoto photo)))))
-    (when (telega--tl-get chat :permissions :can_invite_users)
+    (when (telega-chat-match-p chat '(my-permission :can_invite_users))
       (telega-ins " ")
       (telega-ins--button "Add Member"
-        'action (lambda (_ignored)
+        :value chat
+        :action (lambda (to-chat)
                   (telega-chat-add-member
-                   chat (telega-completing-read-user "Add member: ")))))
-    (when (telega--tl-get chat :permissions :can_change_info)
+                   to-chat (telega-completing-read-user "Add member: ")))))
+    (when (telega-chat-match-p chat '(my-permission :can_change_info))
       (telega-ins " ")
       (telega-ins--button "Set Chat Photo"
-        'action (lambda (_ignored)
+        :value chat
+        :action (lambda (for-chat)
                   (let ((photo (read-file-name "Chat Photo: " nil nil t)))
-                    (telega--setChatPhoto chat photo)))))
+                    (telega--setChatPhoto for-chat photo)))))
 
     ;; Archive/Unarchive
     (telega-ins " ")
@@ -690,9 +692,9 @@ Specify non-nil BAN to ban this user in this CHAT."
                           telega-symbol-heavy-checkmark
                         telega-symbol-blank-button)
     :value chat
-    :action (lambda (chat)
+    :action (lambda (for-chat)
               (telega--toggleChatDefaultDisableNotification
-               chat (not (plist-get chat :default_disable_notification)))))
+               for-chat (not (plist-get chat :default_disable_notification)))))
   (telega-ins "\n")
   (telega-ins--help-message
    (telega-ins "Used when you send a message to the chat.\n"
