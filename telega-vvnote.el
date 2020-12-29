@@ -238,8 +238,9 @@ Each sample is in range [-128;128]."
          (log10-samples
           (mapcar (lambda (ms) (if (> ms 0) (log ms 10) 0)) loud-samples))
          ;; Normalize values to fit into [0-31] so each value could be
-         ;; encoded into 5bits
-         (n-factor (/ 31.0 (apply #'max log10-samples)))
+         ;; encoded into 5bits.
+         ;; NOTE: Avoid division by 0 if all log10-samples are zeroes
+         (n-factor (/ 31.0 (apply #'max 1 log10-samples)))
          (n-waves
           (mapcar (lambda (wave-value) (round (* wave-value n-factor)))
                   log10-samples)))
