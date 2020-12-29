@@ -125,12 +125,6 @@ where PROXY-TYPE is one of:
   :type 'integer
   :group 'telega)
 
-(defcustom telega-week-day-names
-  '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")
-  "*Week day names (starting from sunday) to use when printing times."
-  :type 'list
-  :group 'telega)
-
 (defcustom telega-help-messages t
   "*Non-nil to show sometime UI related messages."
   :type 'boolean

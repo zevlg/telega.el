@@ -92,6 +92,9 @@
 (telega-obsolete--variable 'telega-chat-scroll-scroll-conservatively
                            'telega-chat-scroll-conservatively
                            nil "0.7.3")
+(telega-obsolete--variable 'telega-week-day-names
+                           telega-i18n-weekday-names
+                           nil "0.7.4")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

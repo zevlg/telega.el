@@ -237,6 +237,10 @@ FMT-TEXT is formatted text, could be created with `teleg-str-fmt'."
         :content (list :@type "telegaInternal"
                        :text fmt-text)))
 
+(defun telega-msg-p (obj)
+  "Return non-nil if OBJ is a message object."
+  (and (listp obj) (equal "message" (plist-get obj :@type))))
+
 (defun telega-msg-internal-p (msg)
   "Return non-nil if MSG is internal, created with `telega-msg-create-internal'."
   (eq -1 (plist-get msg :id)))
@@ -1000,7 +1004,8 @@ Requires administrator rights in the chat."
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
       (telega-ins "Date(ISO8601): ")
-      (telega-ins--date-iso8601 (plist-get msg :date) "\n")
+      (telega-ins--date-iso8601 (plist-get msg :date))
+      (telega-ins "\n")
       (telega-ins-fmt "Chat-id: %d\n" chat-id)
       (telega-ins-fmt "Message-id: %d\n" msg-id)
       (when-let ((sender (telega-msg-sender msg)))

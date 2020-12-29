@@ -24,9 +24,20 @@
 ;; See https://translations.telegram.org
 
 ;;; Code:
-(require 'telega-core)
 (require 'telega-tdlib)
-(require 'telega-customize)
+
+(declare-function telega-etc-file "telega-util" (filename))
+
+(defvar telega-i18n-month-names
+  '((full "January" "February" "March" "April" "May" "June" "July"
+           "August" "September" "October" "November" "December")
+    (short "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul"
+           "Aug" "Sep" "Oct" "Nov" "Dec"))
+  "Month names in full and short forms.")
+
+(defvar telega-i18n-weekday-names
+  '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")
+  "Day names starting from sunday.")
 
 (defcustom telega-i18n-plural-rule-functions
   (list (cons "en" 'telega-i18n-plural-rule-en)
@@ -52,10 +63,18 @@ Loaded from \"etc/langs/en.plist\" in `telega-i18n-init'.")
 
 (defun telega-i18n--apply-strings ()
   "Apply i18n strings to telega configuration."
-  (setq telega-week-day-names
+  (setq telega-i18n-weekday-names
         (mapcar (lambda (daynum)
                   (telega-i18n (format "lng_weekday%d" daynum)))
                 '(7 1 2 3 4 5 6)))
+  (setcdr (assq 'full telega-i18n-month-names)
+          (mapcar (lambda (daynum)
+                    (telega-i18n (format "lng_month%d" daynum)))
+                  '(1 2 3 4 5 6 7 8 9 10 11 12)))
+  (setcdr (assq 'short telega-i18n-month-names)
+          (mapcar (lambda (daynum)
+                    (telega-i18n (format "lng_month%d_small" daynum)))
+                  '(1 2 3 4 5 6 7 8 9 10 11 12)))
   )
 
 (defun telega-i18n-init ()
