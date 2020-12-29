@@ -47,6 +47,8 @@
            (t ".")))))
 
 
+(telega-obsolete--variable 'telega-use-notifications
+                           nil "0.5.0") ;don't remember correct version
 (telega-obsolete--variable 'telega-chat-use-markdown-formatting
                            'telega-chat-use-markdown-version "0.5.6")
 (telega-obsolete--variable 'telega-use-tracking
@@ -92,6 +94,12 @@
 (telega-obsolete--variable 'telega-chat-scroll-scroll-conservatively
                            'telega-chat-scroll-conservatively
                            nil "0.7.3")
+(telega-obsolete--variable 'telega-week-day-names
+                           telega-i18n-weekday-names
+                           nil "0.7.4")
+(telega-obsolete--variable 'telega-chat-use-markdown-version
+                           'telega-chat-input-markups
+                           nil "0.7.4")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

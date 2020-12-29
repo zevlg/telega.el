@@ -6,8 +6,8 @@ See [Telega Manual](https://zevlg.github.io/telega.el/) for
 comprehensive documentation.
 
 **This project is developed on two primary branches. The 'releases' branch
-is kept in compatibility with TDlib major releases. The 'master' branch is
-for developmental purposes, and utilizes unstable features in TDlib.
+is kept in compatibility with TDLib major releases. The 'master' branch is
+for developmental purposes, and utilizes unstable features in TDLib.
 If you are using a Git checkout solely for runtime, use the 'releases' 
 branch.**
 

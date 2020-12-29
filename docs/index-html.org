@@ -17,4 +17,3 @@
 #+INCLUDE: telega-manual.org
 
 #+OPTIONS: timestamp:t \n:nil
-

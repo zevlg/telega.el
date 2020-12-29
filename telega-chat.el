@@ -1146,14 +1146,16 @@ keep the point, where it is."
   (switch-to-buffer buffer))
 
 (defun telega-switch-important-chat (chat)
-  "Switch to important CHAT if any."
+  "Switch to important CHAT if any.
+If `\\[universal-argument] is used, then select first chat if
+multiple chats are important."
   (interactive
    (list (let ((ichats (telega-filter-chats
                         telega--ordered-chats
                         '(or mention (and unread unmuted)))))
            (cond ((null ichats)
                   (user-error "No important chats"))
-                 ((= 1 (length ichats))
+                 ((or (= 1 (length ichats)) current-prefix-arg)
                   (car ichats))
                  (t
                   (telega-completing-read-chat "Important Chat: " ichats))))))
@@ -2333,7 +2335,8 @@ If `\\[universal-argument]' is given, then just copy last sent message."
 (defun telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
-  (let ((msg-button (button-at (ewoc-location node))))
+  ;; NOTE: MSG-BUTTON could be `nil' if message is ignored and not displayed
+  (when-let ((msg-button (button-at (ewoc-location node))))
     (telega-save-window-start (button-start msg-button) (button-end msg-button)
       (if (eq (telega-msg-at (point)) (ewoc--node-data node))
           (telega-save-cursor
@@ -2356,8 +2359,12 @@ Try to keep point at its position."
 HOW could be `prepend' or `append', or `append-new'.
 Return last inserted ewoc node."
   (with-telega-deferred-events
-    (let* ((node (when (eq how 'prepend)
-                   (ewoc--header telega-chatbuf--ewoc)))
+    (let* ((use-date-breaks-p
+            (telega-chat-match-p telega-chatbuf--chat
+                                 telega-chat-use-date-breaks-for))
+           (node (if (eq how 'prepend)
+                     (ewoc--header telega-chatbuf--ewoc)
+                   (ewoc-nth telega-chatbuf--ewoc -1)))
            (saved-point (if (or (eq how 'prepend)
                                 (and (eq how 'append-new)
                                      (>= (point) telega-chatbuf--input-marker)))
@@ -2381,13 +2388,35 @@ Return last inserted ewoc node."
             ;; object, so message could be modified inplace
             (telega-msg-cache msg 'maybe-update)
 
-            (setq node (if (eq how 'prepend)
-                           (ewoc-enter-after telega-chatbuf--ewoc node msg)
-                         (ewoc-enter-last telega-chatbuf--ewoc msg))))
+            ;; Maybe insert date break, such as
+            ;; -----(28 December 2020)-----
+            (let ((node-msg (ewoc--node-data node)))
+              (when (and use-date-breaks-p
+                         (telega-msg-p node-msg)
+                         (plist-get node-msg :date)
+                         (plist-get msg :date)
+                         ;; 3-6 elements are for DAY MONTH YEAR
+                         (not (equal (seq-subseq (decode-time
+                                                  (plist-get node-msg :date))
+                                                 3 6)
+                                     (seq-subseq (decode-time
+                                                  (plist-get msg :date))
+                                                 3 6))))
+                (setq node (ewoc-enter-after
+                            telega-chatbuf--ewoc node
+                            (telega-msg-create-internal
+                             telega-chatbuf--chat
+                             (telega-fmt-text
+                              (telega-ins--as-string
+                               (telega-ins--date-full (plist-get msg :date)))
+                              '(:@type "textEntityTypeBold")))))))
+
+            (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg)))
+
         (goto-char saved-point))
 
       ;; If message at point was visible - keep it visible
-      (when (and msg-button-was-observable-p
+      (when (and (memq msg-button-was-observable-p '(full top))
                  (equal msg-button (button-at (point))))
         (telega-button--make-observable msg-button))
 
@@ -2605,12 +2634,16 @@ If prefix ARG is given, also delete input."
     (telega-keys-description 'telega-chatbuf-cancel-aux telega-chat-mode-map)
     what))
 
-(defun telega-chatbuf--input-imcs (markdown-version)
+(defun telega-chatbuf--input-imcs (markup-name)
   "Convert input to input message contents list.
-If MARKDOWN-VERSION is specified, then format input as markdown
-markup of MARKDOWN-VERSION."
-  (cl-assert (memq markdown-version '(nil 0 1 2)))
-  (let ((attaches (telega--split-by-text-prop
+MARKUP-NAME names a markup function from
+`telega-chat-markup-functions' to be used for input formatting."
+  (cl-assert (or (null markup-name)
+                 (assoc markup-name telega-chat-markup-functions)))
+  (let ((markup-function
+         (or (cdr (assoc markup-name telega-chat-markup-functions))
+             #'telega-string-fmt-text))
+        (attaches (telega--split-by-text-prop
                    (telega-chatbuf-input-string) 'telega-attach))
         (disable-webpage-preview telega-chat-send-disable-webpage-preview)
         result)
@@ -2627,7 +2660,7 @@ markup of MARKDOWN-VERSION."
                    (plist-get telega--options :message_text_length_max)))
 
           (push (list :@type "inputMessageText"
-                      :text (telega-string-fmt-text text markdown-version)
+                      :text (funcall markup-function text)
                       :disable_web_page_preview
                       (if disable-webpage-preview t :false)
                       :clear_draft t)
@@ -2663,7 +2696,7 @@ markup of MARKDOWN-VERSION."
               (error "Caption exceedes %d limit"
                      (plist-get telega--options :message_caption_length_max)))
 
-            (let ((cap (telega-string-fmt-text (cadr attaches) markdown-version)))
+            (let ((cap (funcall markup-function (cadr attaches))))
               (setq attach (plist-put attach :caption cap)))
             (setq attaches (cdr attaches)))
           (push attach result))))
@@ -2689,25 +2722,19 @@ Return valid \"messageSendOptions\"."
              :disable_notification (plist-get imc :disable_notification)))
     ))
 
-(defun telega-chatbuf-input-send (&optional markdown-version)
+(defun telega-chatbuf-input-send (markup-name)
   "Send chatbuf input to the chat.
-MARKDOWN-VERSION - version for markdown formatting, by default
-`telega-chat-use-markdown-version' is used as MARKDOWN-VERSION.
-
-If called interactively, then `\\[universal-argument]' inverses
-value of the `telega-chat-use-markdown-version'.
-In case `telega-chat-use-markdown-version' is nil, number of
-`\\[universal-argument]' is used as MARKDOWN-VERSION.
-In case `telega-chat-use-markdown-version' is no-nil, and `\\[universal-argument]' is specified, then nil MARKDOWN-VERSION is used."
-  (interactive (list (if current-prefix-arg
-                         (unless telega-chat-use-markdown-version
-                           (cond ((equal current-prefix-arg '(4)) 1)
-                                 ((equal current-prefix-arg '(16)) 2)
-                                 (t 0)))
-                       telega-chat-use-markdown-version)))
+If called interactively, number of `\\[universal-argument]' before
+command determines index in `telega-chat-input-markups' of markup to
+use.  For example `C-u RET' will use
+`(nth 1 telega-chat-input-markups)' markup."
+  (interactive (list (if (and current-prefix-arg (listp current-prefix-arg))
+                         (nth (round (log (car current-prefix-arg) 4))
+                              telega-chat-input-markups)
+                       (car telega-chat-input-markups))))
 
   (let ((input (telega-chatbuf-input-string))
-        (imcs (telega-chatbuf--input-imcs markdown-version))
+        (imcs (telega-chatbuf--input-imcs markup-name))
         (replying-msg (telega-chatbuf--replying-msg))
         (editing-msg (telega-chatbuf--editing-msg))
         (options nil)
@@ -3239,7 +3266,7 @@ This attachment can be used only in private chats."
            :performer (cdr (assoc "artist" metadata))
            ))))
 
-(defun telega-chatbuf-attach-note-video (filename)
+(defun telega-chatbuf-attach-video-note (filename)
   "Attach FILENAME as (circled) video note to the chatbuf input."
   (interactive (list (read-file-name "Video Note: ")))
   ;; TODO: start video note generation process
@@ -3249,7 +3276,7 @@ This attachment can be used only in private chats."
      (list :@type "inputMessageVideoNote"
            :video_note ifile))))
 
-(defun telega-chatbuf-attach-note-voice (as-file-p)
+(defun telega-chatbuf-attach-voice-note (as-file-p)
   "Attach a voice note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
 voice-note.  Otherwise record voice note inplace."
@@ -3688,7 +3715,8 @@ If current buffer is dired, then send all marked files."
              (lambda (button)
                (telega-chatbuf--view-msg-at button)
                (if (and (eq (telega-msg-at button) (telega-chatbuf--last-msg))
-                        (telega-button--observable-p telega-chatbuf--input-marker))
+                        (telega-button--observable-p
+                         telega-chatbuf--input-marker))
                    (goto-char (+ telega-chatbuf--input-marker rpoint))
                  (telega-button--make-observable button 'force)))))))
 

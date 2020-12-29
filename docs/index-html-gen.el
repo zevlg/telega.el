@@ -1,7 +1,8 @@
 (require 'org)
 (require 'ox)
 (require 'ellit-org)
-(require 'telega)
+(let ((load-prefer-newer t))
+  (require 'telega))
 (org-babel-do-load-languages
  'org-babel-load-languages
  '((shell . t)
@@ -32,6 +33,11 @@
 
 (advice-add 'org-export-search-cells
             :around 'telega-org-title-gen-custom-id)
+
+(defun telega-org-export-html (input-file output-file)
+  "Export org INPUT-FILE to html OUTPUT-FILE."
+  (with-current-buffer (find-file-noselect input-file)
+    (org-export-to-file 'html output-file)))
 
 ;; Local Variables:
 ;; no-byte-compile: t

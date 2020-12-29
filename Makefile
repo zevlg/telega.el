@@ -2,6 +2,8 @@ EMACS=emacs -Q
 
 SERVER_TARGETS=telega-server install
 
+all: telega-server compile
+
 $(SERVER_TARGETS):
 	$(MAKE) -C server $@
 
@@ -14,7 +16,13 @@ test: test.el
 	         -f telega-run-tests
 	$(MAKE) -C server $@
 
-#EL_SOURCES=$(wildcard telega*.el)
+EL_SOURCES=$(wildcard telega*.el)
+ELC_FILES=$(patsubst %.el,%.elc,$(EL_SOURCES))
+
+%.elc: %.el
+	$(EMACS) -batch -L . -f package-initialize -f batch-byte-compile $<
+
+elc: $(ELC_FILES)
 
 compile:
 	$(EMACS) -batch -L . -l etc/telega-make \

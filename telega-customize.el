@@ -125,12 +125,6 @@ where PROXY-TYPE is one of:
   :type 'integer
   :group 'telega)
 
-(defcustom telega-week-day-names
-  '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")
-  "*Week day names (starting from sunday) to use when printing times."
-  :type 'list
-  :group 'telega)
-
 (defcustom telega-help-messages t
   "*Non-nil to show sometime UI related messages."
   :type 'boolean
@@ -164,7 +158,7 @@ See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon"
   :group 'telega)
 
 ;; See https://t.me/emacs_telega/12459
-(defcustom telega-button-endings #'telega-button--endings-func
+(defcustom telega-button-endings 'telega-button--endings-func
   "*Characters to use as beginning/ending of the button.
 Set to (\"[\" . \"]\") in nox-emacs setup.
 Could be a function of one argument - LABEL, should return cons
@@ -186,7 +180,7 @@ car value is for light scheme, cdr value is for dark scheme."
   :type 'cons
   :group 'telega)
 
-(defcustom telega-rainbow-color-function #'telega-color-rainbow-identifier
+(defcustom telega-rainbow-color-function 'telega-color-rainbow-identifier
   "Function used to assign color to the users/chats.
 Should accept two arguments - IDENTIFIER and BACKGROUND-MODE.
 Should return color or nil."
@@ -852,6 +846,36 @@ enabled."
   :type 'string
   :group 'telega-chat)
 
+(defcustom telega-chat-input-ring-size 50
+  "*Size of the chat input history."
+  :type 'integer
+  :group 'telega-chat)
+
+(defcustom telega-chat-input-markups '(nil "markdown1" "markdown2")
+  "Markups to apply when sending input with `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]'.
+Each index in the list corresponds to the number of
+`\\[universal-argument] supplied before `RET', i.e. first element is
+used for ordinary `RET', second is used for `C-u RET', and third is for
+`C-u C-u RET' and so on.  Supported markups are defined in
+`telega-chat-markup-functions'.
+
+Markdown Markups:
+  1) *bold text*
+  2) _italic text_
+  2.1) __underline text__    (only for \"markdown2\")
+  2.2) ~strike through text~ (only for \"markdown2\")
+  3) `inlined code`
+  4) ```<language-name-not-displayed>
+     first line of multiline preformatted code
+     second line
+     last line```
+  5) [link text](http://actual.url)
+  6) [username](tg://user?id=<USER-ID>)
+"
+  :type 'list
+  :package-version '(telega . "0.7.4")
+  :group 'telega-chat)
+
 (defcustom telega-chat-prompt-show-avatar-for
   (when telega-use-images
     '(and has-avatar
@@ -880,11 +904,6 @@ from the ring."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-input-ring-size 50
-  "*Size of the chat input history."
-  :type 'integer
-  :group 'telega-chat)
-
 (defcustom telega-chat-fill-column fill-column
   "*Column to fill chat messages to."
   :type 'integer
@@ -896,39 +915,18 @@ from the ring."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-insert-date-breaks t
-  "*Non-nil to insert breaks inbetween messages of different days.
-NOT YET IMPLEMENTED"
-  :type 'boolean
+(defcustom telega-chat-use-date-breaks-for 'all
+  "Chat Filter for chats where to insert date breaks.
+Date break is a special mark separating two messages received on
+different days. Such as:
+#+begin_example
+  MSG1                              <--- msg sent on 27dec
+  -------(28 December 2020)------   <--- date break
+  MSG2                              <--- msg sent on 28dec
+#+end_example"
+  :package-version '(telega . "0.7.4")
+  :type 'list
   :group 'telega-chat)
-
-(defcustom telega-chat-use-markdown-version nil
-  "*Non-nil to use markdown formatting for outgoing messages.
-Used as default value for MARKDOWN-VERSION in
-`telega-chatbuf-input-send' command.
-
-Supported versions are: 0, 1 and 2
-Supported Markup:
-  1) *bold text*
-  2) _italic text_
-  2.1) __underline text__    (only for v2)
-  2.2) ~strike through text~ (only for v2)
-  3) `inlined code`
-  4) ```<language-name-not-displayed>
-     first line of multiline preformatted code
-     second line
-     last line```
-  5) [link text](http://actual.url)
-  6) [username](tg://user?id=<USER-ID>)
-"
-  :package-version '(telega . "0.5.6")
-  :type '(choice (const :tag "Disable markdown" nil)
-                 (const :tag "Markdown v0" 0)
-                 (const :tag "Markdown v1" 1)
-                 (const :tag "Markdown v2" 2))
-  :group 'telega-chat)
-
-(declare-function telega-chat-private-p "telega-chat" (chat &optional include-bots-p))
 
 (defcustom telega-chat-attach-commands
   '(("photo" nil telega-chatbuf-attach-photo)
@@ -939,9 +937,9 @@ Supported Markup:
     ("self-destruct-video" (lambda ()
                              (telega-chat-private-p telega-chatbuf--chat))
      telega-chatbuf-attach-ttl-video)
-    ("note-video" nil telega-chatbuf-attach-note-video)
+    ("video-note" nil telega-chatbuf-attach-video-note)
     ("audio" nil telega-chatbuf-attach-audio)
-    ("note-voice" nil telega-chatbuf-attach-note-voice)
+    ("voice-note" nil telega-chatbuf-attach-voice-note)
     ("file" nil telega-chatbuf-attach-file)
     ("gif" nil telega-chatbuf-attach-gif)
     ("location" nil telega-chatbuf-attach-location)

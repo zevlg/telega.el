@@ -210,19 +210,22 @@ Format is:
                             (- current-ts (* mdays 24 3600)))))
         (if (and (> timestamp week-start00)
                  (< timestamp (+ week-start00 (* 7 24 60 60))))
-            (telega-ins (nth (nth 6 dtime) telega-week-day-names))
+            (telega-ins (nth (nth 6 dtime) telega-i18n-weekday-names))
 
           (telega-ins-fmt "%02d.%02d.%02d"
             (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000))))
       )))
 
-(defun telega-ins--date-iso8601 (timestamp &rest args)
+(defun telega-ins--date-iso8601 (timestamp)
   "Insert TIMESTAMP in ISO8601 format."
-  (apply 'telega-ins (format-time-string "%FT%T%z" timestamp) args))
+  (telega-ins (format-time-string "%FT%T%z" timestamp)))
 
-(defun telega-ins--date-full (timestamp &rest args)
+(defun telega-ins--date-full (timestamp)
   "Insert TIMESTAMP in full format - DAY MONTH YEAR."
-  (apply 'telega-ins (format-time-string "%d %B %Y" timestamp) args))
+  (cl-destructuring-bind (day month year)
+      (seq-subseq (decode-time timestamp) 3 6)
+    (telega-ins-fmt "%d %s %d"
+      day (nth month (assq 'full telega-i18n-month-names)) year)))
 
 (defun telega-ins--msg-sender (msg-sender &optional prefer-username)
   "Insert message sender.
