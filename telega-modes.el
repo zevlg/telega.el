@@ -667,8 +667,9 @@ UFILE specifies Telegram file being uploading."
           (telega-ins--as-string
            (telega-ins "Uploading [")
            (let ((progress (telega-file--uploading-progress ufile)))
-             (telega-ins-progress-bar progress 1.0 30 ?\+ ?\s)
-             (telega-ins-fmt "] %d%%" (round (* progress 100)))))))
+             (telega-ins-progress-bar
+              progress 1.0 30 telega-symbol-upload-progress)
+             (telega-ins-fmt "]%3d%%" (round (* progress 100)))))))
         ))
 
 (defun telega-edit-file-save-buffer ()

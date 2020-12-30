@@ -588,6 +588,11 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
                   (telega-file--size file))))
 
+(defun telega-file--partially-downloaded-p (file)
+  "Return non-nil if FILE is partially downloaded."
+  (and (not (telega-file--downloading-p file))
+       (< 0 (telega-file--downloading-progress file) 1)))
+
 (defsubst telega-file--uploaded-p (file)
   "Return non-nil if FILE has been uploaded."
   (telega--tl-get file :remote :is_uploading_completed))
@@ -600,6 +605,11 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   "Return progress of FILE uploading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))
+
+(defun telega-file--partially-uploaded-p (file)
+  "Return non-nil if FILE is partially uploaded."
+  (and (not (telega-file--uploading-p file))
+       (< 0 (telega-file--uploading-progress file) 1)))
 
 (defsubst telega--desurrogate-apply-part (part &optional keep-properties)
   "Apply PART's `telega-display'"

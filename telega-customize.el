@@ -527,6 +527,20 @@ Could be one of `prepend', `append' or nil."
   :type 'alist
   :group 'telega-root)
 
+(defcustom telega-root-view-files-exclude-subdirs
+  '((telega-file--downloaded-p "thumbnails" "profile_photos"))
+  "Alist specifying which subdirs to exclude when viewing files.
+car of each element is predicate matching file, and rest is list of
+subdirectories to ignore, i.e. if absolute file name contains any of
+the subdirectory in list, then file is ignored.
+Supported predicates: `telega-file--downloading-p',
+`telega-file--uploading-p', `telega-file--downloaded-p',
+`telega-file--uploaded-p', `telega-file--partially-downloaded-p',
+`telega-file--partially-uploaded-p'"
+  :package-version '(telega . "0.7.6")
+  :type 'alist
+  :group 'telega-root)
+
 (defcustom telega-root-keep-cursor 'track
   "*Non-nil to keep cursor at current chat, even if chat's order changes.
 Set to `track', to move cursor to corresponding chat button, when
@@ -1641,6 +1655,20 @@ If nil, then user's online status is not displayed."
   "Symbol to use to draw a bell (notification)."
   :type 'string
   :group 'telega-symbol)
+
+(defcustom telega-symbol-download-progress '(?= . ?>)
+  "Symbols to use when drawing progress bar for dowloading files.
+By default `(?= . ?>)' is used resulting in =====> progress bar."
+  :package-version '(telega . "0.7.5")
+  :type '(or char (cons char char))
+  :group 'telega)
+
+(defcustom telega-symbol-upload-progress '(?+ . ?>)
+  "Symbols to use when drawing progress bar for uploading files.
+By default `(?+ . ?>)' is used resulting in +++++> progress bar."
+  :package-version '(telega . "0.7.5")
+  :type '(or char (cons char char))
+  :group 'telega)
 
 (defcustom telega-symbol-widths
   (list

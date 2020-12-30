@@ -817,7 +817,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                    (condition-case nil
                        (setq ,items
                              (append ,items
-                                     (list (,item-read-fun
+                                     (list (funcall
+                                            ,item-read-fun
                                             (concat ,prompt " (C-g when done)"
                                                     (when ,items
                                                       (concat
@@ -840,7 +841,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
         (telega-filter-chats (or chats-list telega--ordered-chats)
                              '(or main archive)))
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
-                                   telega-completing-read-chat sort-criteria))
+                                   #'telega-completing-read-chat sort-criteria))
 
 (defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
@@ -860,7 +861,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (unless users-list
     (setq users-list (hash-table-values (alist-get 'user telega--info))))
   (telega-gen-completing-read-list prompt users-list #'telega-user--name
-                                   telega-completing-read-user))
+                                   #'telega-completing-read-user))
 
 (defvar telega-completing--chat-member-alist nil
   "Results from last `telega--searchChatMembers'.
@@ -908,7 +909,7 @@ Return a user."
   (unless folder-names
     (setq folder-names (telega-folder-names)))
   (telega-gen-completing-read-list prompt folder-names #'identity
-                                   telega-completing-read-folder))
+                                   #'telega-completing-read-folder))
 
 (defun telega-location-distance (loc1 loc2 &optional components-p)
   "Return distance in meters between locations LOC1 and LOC2.

@@ -578,6 +578,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Pinned Messages")
  ("telega_view_deleted_chats"
   :value "Recently Deleted Chats")
+ ("telega_view_files"
+  :value "Files")
 
  ;; #5584 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5584
  ("lng_mute_duration_forever"

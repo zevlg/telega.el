@@ -383,13 +383,21 @@ By default BUTTON-TYPE is `telega-user'."
   "Insert progress bar for PROGRESS at overall DURATION.
 Use NBARS characters for progress bar.
 P-CHAR - progress char, default is \".\"
-E-CHAR - empty char, default is space."
+         could be a cons cell, where care is filling char, and cdr is
+         trailing char. For example (?= . ?>) to draw ====> progress
+         bar.
+E-CHAR - empty char, default is non-break space."
   (let ((pbars (ceiling
                 (* nbars (/ (or progress 0)
                             (if (zerop duration) 0.1 duration))))))
     (when (> pbars nbars) (setq pbars nbars)) ; check for overflows
-    (telega-ins (make-string pbars (or p-char ?\.))
-                (make-string (- nbars pbars) (or e-char ?\s)))))
+    (telega-ins (if (consp p-char)
+                    (cond ((= 0 pbars) "")
+                          ((= 1 pbars) (char-to-string (cdr p-char)))
+                          (t (concat (make-string (1- pbars) (car p-char))
+                                     (char-to-string (cdr p-char)))))
+                  (make-string pbars (or p-char ?\.)))
+                (make-string (- nbars pbars) (or e-char 160)))))
 
 (defun telega-ins--file-progress (msg file)
   "Insert Upload/Download status for the document."
@@ -401,7 +409,8 @@ E-CHAR - empty char, default is space."
          (let ((progress (telega-file--uploading-progress file))
                (nbsp-char 160))
            (telega-ins "[")
-           (telega-ins-progress-bar progress 1.0 10 ?\+ nbsp-char)
+           (telega-ins-progress-bar
+            progress 1.0 10 telega-symbol-upload-progress nbsp-char)
            (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char)
            (telega-ins--button "Cancel"
              'action (lambda (_ignored)
@@ -411,12 +420,12 @@ E-CHAR - empty char, default is space."
          (let ((progress (telega-file--downloading-progress file))
                (nbsp-char 160))
            (telega-ins "[")
-           (telega-ins-progress-bar progress 1.0 10 ?\. nbsp-char)
+           (telega-ins-progress-bar
+            progress 1.0 10 telega-symbol-download-progress nbsp-char)
            (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char)
            (telega-ins--button "Cancel"
              'action (lambda (_ignored)
-                       (telega--cancelDownloadFile
-                        (plist-get file :id))))))
+                       (telega--cancelDownloadFile file)))))
 
         ((not (telega-file--downloaded-p file))
          (telega-ins--button "Download"
@@ -540,7 +549,7 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
       (unless (zerop dur)
         (telega-ins "[")
         (telega-ins-progress-bar
-         played dur (/ telega-chat-fill-column 2) ?\. ?\s)
+         played dur (/ telega-chat-fill-column 2) ?\.)
         (telega-ins "]" (telega-duration-human-readable played) " "))
       (telega-ins--button "Stop"
         'action (lambda (_ignored)
@@ -698,7 +707,8 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
                        (telega--tl-get doc-file :local :path))))
       (telega-ins fname))
     (telega-ins " (" (file-size-human-readable
-                      (telega-file--size doc-file)) ") ")))
+                      (telega-file--size doc-file))
+                ") ")))
 
 (defun telega-ins--document (msg &optional doc)
   "Insert document DOC."
@@ -1120,7 +1130,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                 need-map-photo-p)
         ;; ARGUABLE: Cancel previously pending request?
         ;;   (telega-server--callback-rm (plist-get map :get-map-extra))
-        ;;   (telega--cancelDownloadFile (plist-get (plist-get map :photo) :id))
+        ;;   (telega--cancelDownloadFile (plist-get map :photo))
         ;; TODO: what if some other user shown in map image moved?
 
         (unless (plist-get map :user-location)
@@ -1185,25 +1195,22 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 (defun telega-ins--input-file (document &optional attach-symbol trailing-text)
   "Insert input file."
   (telega-ins (or attach-symbol telega-symbol-attachment) " ")
+  (when-let ((preview (get-text-property
+                       0 'telega-preview (plist-get document :@type))))
+    (telega-ins--image preview)
+    (telega-ins " "))
   (cl-ecase (telega--tl-type document)
     (inputFileLocal
      (telega-ins (abbreviate-file-name (plist-get document :path))))
     (inputFileId
-     (let ((preview (get-text-property
-                     0 'telega-preview (plist-get document :@type))))
-       (when preview
-         (telega-ins--image preview)
-         (telega-ins " ")))
-     (telega-ins-fmt "Id: %d" (plist-get document :id))
-     )
+     (telega-ins-fmt "Id: %d" (plist-get document :id)))
     (inputFileRemote
      ;; TODO: getRemoteFile
      (telega-ins-fmt "Remote: %s" (plist-get document :id))
-     )
-    )
+     ))
   (when trailing-text
     (telega-ins trailing-text))
-  )
+  t)
 
 (defun telega-msg-special-p (msg)
   "Return non-nil if MSG is special."

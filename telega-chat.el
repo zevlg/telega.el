@@ -2730,6 +2730,22 @@ Return valid \"messageSendOptions\"."
              :disable_notification (plist-get imc :disable_notification)))
     ))
 
+(defun telega-chatbuf--input-imc-cancel-upload-ahead (imc)
+  "For file used in IMC cancel its ahead uploading."
+  (when-let* ((file-prop-alist '((inputMessageDocument  . :document)
+                                 (inputMessagePhoto     . :photo)
+                                 (inputMessageVideo     . :video)
+                                 (inputMessageAudio     . :audio)
+                                 (inputMessageVideoNote . :video_note)
+                                 (inputMessageVoiceNote . :voice_note)
+                                 (inputMessageAnimation . :animation)))
+              (file-prop (cdr (assq (telega--tl-type imc) file-prop-alist)))
+              (ifile (plist-get imc file-prop))
+              (upload-ahead-file
+               (get-text-property 0 'telega-upload-ahead-file
+                                  (plist-get ifile :@type))))
+    (telega--cancelUploadFile upload-ahead-file)))
+
 (defun telega-chatbuf-input-send (markup-name)
   "Send chatbuf input to the chat.
 If called interactively, number of `\\[universal-argument]' before
@@ -2877,6 +2893,14 @@ use.  For example `C-u RET' will use
           (t (telega--sendMessage
               telega-chatbuf--chat imc replying-msg options
               :sync-p (not telega-chat-send-messages-async)))))))
+
+      ;; NOTE: Cancell all file upload ahead, initiated by
+      ;; attachements in `send-imcs' See
+      ;; https://github.com/tdlib/td/issues/1348#issuecomment-752465634
+      ;; NOTE: Currently this does not cancel uploads, as noted in
+      ;; https://github.com/tdlib/td/issues/1348#issuecomment-752654650
+      (dolist (imc send-imcs)
+        (telega-chatbuf--input-imc-cancel-upload-ahead imc))
 
       ;; Continue traversing, stripping SEND-IMCS from IMCS
       ;; Each cond clause above must set SEND-IMCS
@@ -3196,9 +3220,11 @@ If `\\[universal-argument]' is given, then attach live location."
            :contact contact)))
 
 (defun telega-chatbuf--gen-input-file (filename &optional file-type
-                                                preview-p upload-callback)
+                                                preview-p upload-ahead-callback)
   "Generate InputFile using FILENAME.
-If PREVIEW-P is non-nil, then generate preview image."
+If PREVIEW-P is non-nil, then generate preview image.
+UPLOAD-AHEAD-CALLBACK is callback for file updates, when uploading
+ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
   (setq filename (expand-file-name filename))
   (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
                    (create-image filename
@@ -3206,13 +3232,13 @@ If PREVIEW-P is non-nil, then generate preview image."
                                  nil
                                  :scale 1.0 :ascent 'center
                                  :height (telega-chars-xheight 1))))
-        (ifile (if telega-chat-upload-attaches-ahead
-                   (let ((ufile (telega-file--upload
-                                    filename file-type 16 upload-callback)))
-                     (list "inputFileId" :id (plist-get ufile :id)))
-                 (list "inputFileLocal" :path filename))))
-    (nconc (list :@type (propertize (car ifile) 'telega-preview preview))
-           (cdr ifile))))
+        (upload-ahead-file
+         (when telega-chat-upload-attaches-ahead
+           (telega-file--upload filename file-type 16 upload-ahead-callback))))
+    (list :@type (propertize "inputFileLocal"
+                             'telega-preview preview
+                             'telega-upload-ahead-file upload-ahead-file)
+          :path filename)))
 
 (defun telega-chatbuf-attach-file (filename &optional preview-p)
   "Attach FILENAME as document to the chatbuf input."

@@ -785,7 +785,7 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
                     nil 'telega-animation--ffplay-callback anim))))
 
         ;; dir == left
-        (telega--cancelDownloadFile (telega--tl-get anim :animation :id))))))
+        (telega--cancelDownloadFile (plist-get anim :animation))))))
 
 (defun telega-ins--animation (anim &rest props)
   "Inserter for animation ANIM in help buffer.

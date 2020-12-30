@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2020-12-29 Вт 17:49 -->
+<!-- 2020-12-30 Ср 18:47 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.5)</title>
+<title>Telega Manual (v0.7.6)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.5)</h1>
+<h1 class="title">Telega Manual (v0.7.6)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.5)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.6)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -841,7 +841,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org8f6f4b0">
+<pre class="example" id="org3b14249">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -859,7 +859,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orgbc31254">
+<pre class="example" id="org7d4d4db">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -889,7 +889,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org8323390">
+<pre class="example" id="orgf37149d">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -984,7 +984,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org622bb6b">
+<pre class="example" id="org1be7235">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1230,6 +1230,64 @@ User Option: <code>telega-root-view-topics-other-chats</code>
 
 <p>
 Non-nil to show other chats in the "topics" root view. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul></dd>
+
+<dt><kbd>v F</kbd> (<code>telega-view-files</code>)</dt><dd><p>
+View status of files known to telega.
+File can be in one of the state kinds: "downloading", "uploading",
+"partially-downloaded", "partially-uploaded", "downloaded".
+If <kbd>C-u</kbd> is specified, then query user about file
+state kinds to show. By default all kinds are shown.
+</p>
+
+<p>
+If you use this view frequently, consider setting
+<code>telega-chat-upload-attaches-ahead</code> to nil, to avoid file
+duplications for "uploading" kind. See
+<a href="https://github.com/tdlib/td/issues/1348#issuecomment-752654650">https://github.com/tdlib/td/issues/1348#issuecomment-752654650</a>
+for details
+</p>
+
+<p>
+Press <kbd>d</kbd> under downloaded filename to delete the
+file.  Only files cached by TDLib in the <code>telega-cache-dir</code>
+can be deleted.
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-root-view-files-exclude-subdirs</code> 
+</p>
+
+<p>
+Alist specifying which subdirs to exclude when viewing files.
+car of each element is predicate matching file, and rest is list of
+subdirectories to ignore, i.e. if absolute file name contains any of
+the subdirectory in list, then file is ignored.
+Supported predicates: <code>telega-file--downloading-p</code>,
+<code>telega-file--uploading-p</code>, <code>telega-file--downloaded-p</code>,
+<code>telega-file--uploaded-p</code>, <code>telega-file--partially-downloaded-p</code>,
+<code>telega-file--partially-uploaded-p</code> 
+</p>
+
+<p>
+Default value: <code>((telega-file--downloaded-p "thumbnails" "profile_photos"))</code>
+</p></li>
+<li><p>
+User Option: <code>telega-chat-upload-attaches-ahead</code> 
+</p>
+
+<p>
+Non-nil to upload attachments ahead, before message actually sent.
+Having this non-nil "speedups" uploading, its like files uploads instantly. 
 </p>
 
 <p>
@@ -1798,7 +1856,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org6721c25">
+<pre class="example" id="orgde65128">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -1975,7 +2033,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org97b9aa3">
+<pre class="example" id="org252c085">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2044,7 +2102,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org2576070">
+<pre class="example" id="orgab30376">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2262,7 +2320,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org6f76db6">
+<pre class="example" id="orgdf2223f">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3064,7 +3122,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org4789aed">
+<pre class="example" id="orgc540269">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3369,7 +3427,7 @@ Default value: <code>telega-ins--chat-full</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-12-29 Вт 17:49</p>
+<p class="date">Created: 2020-12-30 Ср 18:47</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

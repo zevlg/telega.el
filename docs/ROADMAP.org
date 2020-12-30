@@ -4,6 +4,44 @@
 
 * telega.el Major Features
 
+** Emacs Stories
+   CREATED: [2020-12-22 Вт]
+
+   See possible screenshot: https://t.me/emacs_telega/22934
+
+   Use https://t.me/emacs_stories group to fetch stories, here is
+   rules for the stories.
+
+   Forward to @emacs_stories a message from public group, containing
+   Emacs Story
+
+   Messages considered as Emacs Story:
+   1. Nice Emacs screenshot
+   2. Video Message with screencast not longer then 60 seconds
+   3. Link to asciinema.org cast
+   4. Document (File) message with attached asciinema cast
+
+   All messages are moderated before appearing in Emacs Featured
+   Stories list
+
+   Implementation details:
+   - Use https://github.com/zevlg/asciinema.el to record/play asciinema files
+   - Sample of integration into =dashboard= -
+     https://github.com/zevlg/telega.el/blob/master/contrib/telega-dashboard.el
+   - How to decide that story is viewed?
+     Maybe store list of message-ids in chat's ~:client_data~?
+
+** Org Mode markup support
+
+  Implement ~telega-markup-org-fmt~ to apply Org Mode markup.
+  ~telega-markup-org-fmt~ already member in
+  ~telega-chat-markup-functions~
+
+** Inplace searching in a chatbuf
+
+  - ~C-c C-s~ to search for next query appearance in the chatbuf.
+  - ~C-c C-r~ to search for prev
+
 ** DONE Root Views, different views for the rootbuf
    CLOSED: [2020-10-07 Ср 17:43]
    CREATED: [2020-03-17]
@@ -372,16 +410,7 @@ plist like:
 
    Prefetch map zoom levels when user presses +/- for the first
 
-** Emacs Stories
-   CREATED: [2020-12-22 Вт]
-
-   See possible screenshot: https://t.me/emacs_telega/22934
-
-   Stories:
-   + Video note posted to @emacs_en
-   + asciinema cast file uploaded into @emacs_en with #story tag
-
-** Tramp-alike files opening from Telegram cloud
+** Tramp-alike files opening from Telegram cloud                  :important:
 
   See ~file-name-handler-alist~
 
@@ -415,16 +444,17 @@ plist like:
 
   For video messages you can use video player's shortcuts to seek
 
-** Show status of currently uploading/downloading files
+** DONE Show status of currently uploading/downloading files
+   CLOSED: [2020-12-30 Ср 19:00]
 
   See https://t.me/emacs_telega/23100
 
-  - Associate uploading/downloading file with the message, where
-    uploading/downloading is associated
+  - *[NOT DONE]* Associate uploading/downloading file with the
+    message, where uploading/downloading is associated
   - Implement root view to show that messages
   - Update root view on fly to see uploading/downloading progress
 
-** DONE Add `telega-msg-ignore-predicates` custom var
+** DONE Add ~telega-msg-ignore-predicates~ custom var
    CLOSED: [2020-12-29 Вт 18:02]
 
   Holding list of functions accepting single argument - messages and
