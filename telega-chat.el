@@ -1295,19 +1295,25 @@ Used in chatbuf footer."
                   (telega-ffplay-stop)))
       (telega-ins "]"))))
 
-(defsubst telega-chatbuf--nth-msg (n)
-  "Return N's oldest message in the current chat buffer."
-  (let ((node (ewoc-nth telega-chatbuf--ewoc n)))
+(defun telega-chatbuf--first-msg ()
+  "Return first message inserted in chat buffer."
+  ;; Find first non-telegaMessage message in the chatbuf
+  ;; telegaMessage have :id = -1
+  (let ((node (ewoc-nth telega-chatbuf--ewoc 0)))
+    (while (and node (< (plist-get (ewoc-data node) :id) 0))
+      (setq node (ewoc-next telega-chatbuf--ewoc node)))
     (when node
       (ewoc-data node))))
 
-(defmacro telega-chatbuf--first-msg ()
-  "Return first message inserted in chat buffer."
-  `(telega-chatbuf--nth-msg 0))
-
-(defmacro telega-chatbuf--last-msg ()
+(defun telega-chatbuf--last-msg ()
   "Return last message inserted in chat buffer."
-  `(telega-chatbuf--nth-msg -1))
+  ;; Find last non-telegaMessage message in the chatbuf
+  ;; telegaMessage have :id = -1
+  (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
+    (while (and node (< (plist-get (ewoc-data node) :id) 0))
+      (setq node (ewoc-prev telega-chatbuf--ewoc node)))
+    (when node
+      (ewoc-data node))))
 
 (defun telega-chatbuf--last-message-id ()
   "Return last message id in for the chatbuf.
