@@ -1559,12 +1559,12 @@ Default Disable Notification setting"))
                 'default)
         ;; `d' to delete the file at point, you can delete only files
         ;; cached by TDLib, TDLib won't delete files outside its cache dir
-        'local-map (when (telega-file--downloaded-p file)
-                     (let ((map (make-sparse-keymap)))
-                       (define-key map (kbd "d") (lambda ()
-                                                   (interactive)
-                                                   (telega--deleteFile file)))
-                       map))
+        'keymap (when (telega-file--downloaded-p file)
+                  (let ((map (make-sparse-keymap)))
+                    (define-key map (kbd "d") (lambda ()
+                                                (interactive)
+                                                (telega--deleteFile file)))
+                    map))
         :inserter (lambda (file-path)
                     (telega-ins
                      (if downloaded-p
