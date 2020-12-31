@@ -1561,6 +1561,7 @@ Default Disable Notification setting"))
         ;; cached by TDLib, TDLib won't delete files outside its cache dir
         'keymap (when (telega-file--downloaded-p file)
                   (let ((map (make-sparse-keymap)))
+                    (set-keymap-parent map button-map)
                     (define-key map (kbd "d") (lambda ()
                                                 (interactive)
                                                 (telega--deleteFile file)))
