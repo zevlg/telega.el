@@ -893,37 +893,40 @@ For interactive use only."
                                        "? ")))))
       (telega--pinChatMessage msg (not notify) for-self-only))))
 
+(defun telega-msg--content-file (msg)
+  "For message MSG return its content file as TDLib object."
+  (let ((content (plist-get msg :content)))
+    (cl-case (telega--tl-type content)
+      (messageDocument
+       (let ((doc (telega--tl-get msg :content :document)))
+         (telega-file--renew doc :document)))
+      (messagePhoto
+       (let ((hr (telega-photo--highres (plist-get content :photo))))
+         (telega-file--renew hr :photo)))
+      (messageAudio
+       (let ((audio (telega--tl-get msg :content :audio)))
+         (telega-file--renew audio :audio)))
+      (messageVideo
+       (let ((video (telega--tl-get msg :content :video)))
+         (telega-file--renew video :video)))
+      (messageVoiceNote
+       (let ((note (telega--tl-get msg :content :voice_note)))
+         (telega-file--renew note :voice)))
+      (messageVideoNote
+       (let ((note (telega--tl-get msg :content :video_note)))
+         (telega-file--renew note :video)))
+      (messageAnimation
+       (let ((anim (telega--tl-get msg :content :animation)))
+         (telega-file--renew anim :animation)))
+      (t (when-let ((web-page (plist-get content :web_page)))
+           (error "TODO: Save web-page"))))))
+
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."
   (interactive (list (telega-msg-for-interactive)))
-  (let* ((content (plist-get msg :content))
-         (file (cl-case (telega--tl-type content)
-                 (messageDocument
-                  (let ((doc (telega--tl-get msg :content :document)))
-                    (telega-file--renew doc :document)))
-                 (messagePhoto
-                  (let ((hr (telega-photo--highres (plist-get content :photo))))
-                    (telega-file--renew hr :photo)))
-                 (messageAudio
-                  (let ((audio (telega--tl-get msg :content :audio)))
-                    (telega-file--renew audio :audio)))
-                 (messageVideo
-                  (let ((video (telega--tl-get msg :content :video)))
-                    (telega-file--renew video :video)))
-                 (messageVoiceNote
-                  (let ((note (telega--tl-get msg :content :voice_note)))
-                    (telega-file--renew note :voice)))
-                 (messageVideoNote
-                  (let ((note (telega--tl-get msg :content :video_note)))
-                    (telega-file--renew note :video)))
-                 (messageAnimation
-                  (let ((anim (telega--tl-get msg :content :animation)))
-                    (telega-file--renew anim :animation)))
-                 (t (let ((web-page (plist-get content :web_page)))
-                      (if web-page
-                          (error "TODO: Save web-page")
-                        (user-error "No file associated with message")))))))
-    (cl-assert file)
+  (let ((file (telega-msg--content-file msg)))
+    (unless file
+      (user-error "No file associated with message"))
     (telega-file--download file 32
       (lambda (dfile)
         (telega-msg-redisplay msg)
@@ -937,8 +940,7 @@ For interactive use only."
                                             nil nil fname nil)))
             ;; See https://github.com/tdlib/td/issues/379
             (copy-file fpath new-fpath)
-            (message (format "Wrote %s" new-fpath))))))
-    ))
+            (message (format "Wrote %s" new-fpath))))))))
 
 (defun telega-msg-copy-link (msg &optional for-comment-p)
   "Copy link to message to kill ring.

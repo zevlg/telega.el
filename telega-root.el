@@ -383,16 +383,18 @@ EWOC-SPEC is plist with keyword elements:
       default
       #'ignore))
 
-(defun telega-root-view--ewoc-loading-start (ewoc-name loading)
+(defun telega-root-view--ewoc-loading-start (ewoc-name loading &optional footer)
   "Start loading in the root view ewoc named EWOC-NAME.
-LOADING is extra value from corresponding TDLib request."
+LOADING is extra value from corresponding TDLib request.
+FOOTER is string to use as footer, by default \"Loading...\" is used."
   (declare (indent 1))
   (let ((ewoc-spec (telega-root-view--ewoc-spec ewoc-name)))
     (cl-assert (not (plist-get ewoc-spec :loading)))
     (plist-put ewoc-spec :loading loading)
     (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
       (telega-save-cursor
-        (telega-ewoc--set-footer ewoc "Loading..\n")))
+        (telega-ewoc--set-footer
+         ewoc (concat (or footer (telega-i18n "lng_profile_loading")) "\n"))))
     (telega-loading--timer-start)))
 
 (defun telega-root-view--ewoc-loading-done (ewoc-name &optional items)

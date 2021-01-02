@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.6)
+#+TITLE: Telega Manual (v0.7.7)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -78,6 +78,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][/telega-live-location.el/ -- Manage live location in Telega using geo.el]]
     - [[#telega-mnzel--display-emacs-content-inside-telega-messages][/telega-mnz.el/ -- Display Emacs content inside Telega messages.]]
     - [[#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard][/telega-dashboard.el/ -- Important telega chats in the Emacs dashboard]]
+    - [[#telega-storiesel--display-emacs-stories-in-the-dashboard][/telega-stories.el/ -- Display Emacs Stories in the dashboard]]
 
 * Introduction
 :PROPERTIES:
@@ -92,6 +93,9 @@ implementation. However, the core parts are mature enough so that it
 is possible to use =telega= on daily basis.
 
 Join us at [[https://t.me/emacs_telega]]
+
+If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
+development]].
 
 * Installation
 :PROPERTIES:
@@ -593,12 +597,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -2306,3 +2308,58 @@ Customizable options:
   Inserter for the chat button in the Emacs dashboard. 
 
   Default value: ~telega-ins--chat-full~
+
+** /telega-stories.el/ -- Display Emacs Stories in the dashboard
+:PROPERTIES:
+:CUSTOM_ID: telega-storiesel--display-emacs-stories-in-the-dashboard
+:END:
+
+Display recent [[https://t.me/emacs_stories][Emacs Stories]] in the
+dashboard.  Enable it with:
+
+#+begin_src emacs-lisp
+  (require 'telega-stories)
+  (telega-stories-mode 1)
+  (add-to-list 'dashboard-items '(telega-stories . 5))
+#+end_src
+
+Apart from dashboard, ~telega-stories~ provides "Emacs Stories"
+[[https://zevlg.github.io/telega.el/#rootbuf-view-switching][Root
+View]].  To enable this view execute @@html:<kbd>@@M-x telega-view-emacs-stories RET@@html:</kbd>@@ in the root buffer.
+
+If you see inappropriate content in the Emacs Story, please report
+this story by pressing
+@@html:<kbd>@@!@@html:</kbd>@@ (~telega-stories-msg-report~) on
+the story.
+
+For best performance consider newest Emacs28 with ~:base_uri~ svg
+image property support.
+
+Screenshots of =telega-stories= in action:
+[[https://zevlg.github.io/telega/emacs-stories-dashboard.png]]
+
+And screenshot of "Emacs Stories" rooot view:
+[[https://zevlg.github.io/telega/emacs-stories-rootview.png]]
+
+Customizable options:
+- User Option: ~telega-stories-height~ 
+
+  Height in chars for Emacs Stories buttons 
+
+  Default value: ~6~
+- User Option: ~telega-stories-preload-content~ 
+
+  Preload content when Emacs Story is inserted, so can be viewed instantly. 
+
+  Default value: ~t~
+- User Option: ~telega-stories-root-view-count~ 
+
+  Number of Emacs Stories to show in "Emacs Stories" rootview. 
+
+  Default value: ~12~
+- User Option: ~telega-stories-root-view-keep-viewed~ 
+
+  Keep viewed stories in the "Emacs Stories" rootview.
+  Non-nil to keep story in the root view after story is viewed. 
+
+  Default value: ~t~

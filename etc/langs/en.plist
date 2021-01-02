@@ -602,4 +602,11 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_option_prefer_ipv6"
   :value "Prefer IPv6")
 
+ ;; For contrib packages
+ ("telega_dashboard_telega_not_running"
+  :value "telega not running")
+ ("telega_stories_heading"
+  :value "Emacs Stories")
+ ("telega_stories_no_stories"
+  :value "No unread stories")
  )

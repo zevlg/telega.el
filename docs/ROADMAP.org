@@ -7,6 +7,13 @@
 ** Emacs Stories
    CREATED: [2020-12-22 Вт]
 
+   *** TODO show content loading progress
+
+       Maybe as gray (background color) dot becoming black
+       (foreground color) at the left-bottom corner
+
+   Emacs Stories: share your Emacs experience with other Emacs users.
+
    See possible screenshot: https://t.me/emacs_telega/22934
 
    Use https://t.me/emacs_stories group to fetch stories, here is

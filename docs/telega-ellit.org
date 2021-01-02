@@ -25,6 +25,9 @@ is possible to use =telega= on daily basis.
 
 Join us at [[https://t.me/emacs_telega]]
 
+If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
+development]].
+
 * Installation
 
 =telega= depends on the =visual-fill-column= and =rainbow-identifiers=
@@ -840,5 +843,7 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-mnz.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-dashboard.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-stories.el
 
 #  LocalWords:  customizable chatbuf tdlib gmake

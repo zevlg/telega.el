@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2020-12-30 Ср 18:47 -->
+<!-- 2021-01-03 Вс 15:50 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.6)</title>
+<title>Telega Manual (v0.7.7)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.6)</h1>
+<h1 class="title">Telega Manual (v0.7.7)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.6)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.7)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -312,6 +312,7 @@
 <li><a href="#telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</a></li>
 <li><a href="#telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</a></li>
 <li><a href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</a></li>
+<li><a href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
 </ul>
 </li>
 </ul>
@@ -350,6 +351,11 @@ is possible to use <code>telega</code> on daily basis.
 
 <p>
 Join us at <a href="https://t.me/emacs_telega">https://t.me/emacs_telega</a>
+</p>
+
+<p>
+If you enjoy <code>telega</code>, consider making a <a href="https://opencollective.com/telega">donation for unstoppable
+development</a>.
 </p>
 </div>
 </div>
@@ -841,7 +847,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org3b14249">
+<pre class="example" id="orgdcbd80c">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -859,7 +865,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org7d4d4db">
+<pre class="example" id="orgb581bb8">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -889,7 +895,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgf37149d">
+<pre class="example" id="orgfcf31de">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -984,7 +990,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org1be7235">
+<pre class="example" id="org201ed77">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1061,16 +1067,10 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1856,7 +1856,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgde65128">
+<pre class="example" id="org31aabfd">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2033,7 +2033,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org252c085">
+<pre class="example" id="orga34752d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2102,7 +2102,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgab30376">
+<pre class="example" id="orgb994cec">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2320,7 +2320,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgdf2223f">
+<pre class="example" id="orge96dd60">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3122,7 +3122,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgc540269">
+<pre class="example" id="org83f30f4">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3423,11 +3423,107 @@ Default value: <code>telega-ins--chat-full</code>
 </ul>
 </div>
 </div>
+
+<div id="outline-container-telega-storiesel--display-emacs-stories-in-the-dashboard" class="outline-3">
+<h3 id="telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
+<div class="outline-text-3" id="text-telega-storiesel--display-emacs-stories-in-the-dashboard">
+<p>
+Display recent <a href="https://t.me/emacs_stories">Emacs Stories</a> in the
+dashboard.  Enable it with:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-stories</span>)
+(telega-stories-mode 1)
+(add-to-list 'dashboard-items '(telega-stories . 5))
+</pre>
+</div>
+
+<p>
+Apart from dashboard, <code>telega-stories</code> provides "Emacs Stories"
+<a href="https://zevlg.github.io/telega.el/#rootbuf-view-switching">Root
+View</a>.  To enable this view execute <kbd>M-x telega-view-emacs-stories RET</kbd> in the root buffer.
+</p>
+
+<p>
+If you see inappropriate content in the Emacs Story, please report
+this story by pressing
+<kbd>!</kbd> (<code>telega-stories-msg-report</code>) on
+the story.
+</p>
+
+<p>
+For best performance consider newest Emacs28 with <code>:base_uri</code> svg
+image property support.
+</p>
+
+<p>
+Screenshots of <code>telega-stories</code> in action:
+<img src="https://zevlg.github.io/telega/emacs-stories-dashboard.png" alt="emacs-stories-dashboard.png" />
+</p>
+
+<p>
+And screenshot of "Emacs Stories" rooot view:
+<img src="https://zevlg.github.io/telega/emacs-stories-rootview.png" alt="emacs-stories-rootview.png" />
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-stories-height</code> 
+</p>
+
+<p>
+Height in chars for Emacs Stories buttons 
+</p>
+
+<p>
+Default value: <code>6</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-preload-content</code> 
+</p>
+
+<p>
+Preload content when Emacs Story is inserted, so can be viewed instantly. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-root-view-count</code> 
+</p>
+
+<p>
+Number of Emacs Stories to show in "Emacs Stories" rootview. 
+</p>
+
+<p>
+Default value: <code>12</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-root-view-keep-viewed</code> 
+</p>
+
+<p>
+Keep viewed stories in the "Emacs Stories" rootview.
+Non-nil to keep story in the root view after story is viewed. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-12-30 Ср 18:47</p>
+<p class="date">Created: 2021-01-03 Вс 15:50</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

@@ -295,7 +295,7 @@ cdr is maximum width in chars to use."
   :group 'telega)
 
 (defcustom telega-animation-height 5
-  "*Height of animations in char heights."
+  "*Height in chars for animations."
   :type 'integer
   :group 'telega)
 
