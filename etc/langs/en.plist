@@ -466,6 +466,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Ask a Question")
  ("telega_settings_telega_manual"
   :value "Telega.el Manual")
+ ("telega_settings_donate"
+  :value "Donate")
 
  ("lng_ttl_photo_expired"
   :value "Photo has expired")

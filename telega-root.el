@@ -1467,7 +1467,9 @@ Default Disable Notification setting"))
                             (cons (telega-i18n "lng_settings_faq")
                                   "https://telegram.org/faq")
                             (cons (telega-i18n "lng_settings_ask_question")
-                                  "https://t.me/emacs_telega")))
+                                  "https://t.me/emacs_telega")
+                            (cons (telega-i18n "telega_settings_donate")
+                                  "https://opencollective.com/telega")))
          ))
 
   ;; NOTE: install `:on-user-update' after displaying "me" ewoc, so
