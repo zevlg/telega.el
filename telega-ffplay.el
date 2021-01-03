@@ -290,7 +290,7 @@ Return newly created proc."
 
   ;; Start new ffmpeg
   (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
-    (let* ((prefix (telega-temp-name "video"))
+    (let* ((prefix (telega-temp-name "png-video"))
            (telega-server-bin (telega-server--find-bin))
            (ffmpeg-bin (or (executable-find "ffmpeg")
                            (error "ffmpeg not found in `exec-path'")))
@@ -317,6 +317,8 @@ Return newly created proc."
            (proc (apply 'start-process "ffmpeg" (current-buffer)
                         telega-server-bin args)))
 
+      (telega-debug "ffplay RUN: %s %s" telega-server-bin
+                    (mapconcat #'identity args " "))
       (set-process-plist proc (list :prefix prefix
                                     :nframes (if filename
                                                  (telega-ffplay-get-nframes filename)

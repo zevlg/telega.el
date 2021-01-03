@@ -37,7 +37,7 @@ In some random order:
 - [x] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
-- [ ] VoIP calls, including D-Bus call notification
+- [ ] Voice/Video calls
 - [x] Downloading files from the cloud
 - [x] Uploading files/media (also pasting images from clipboard) to the cloud
 - [x] Display chat actions, such as "@user is typing..."
@@ -67,6 +67,8 @@ In some random order:
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 - [x] Telegram Folders (since TDLib 1.6.6)
 - [x] Disable/Enable message notification on receiver side
+- [ ] Stickers Outlines (since TDLib 1.7.X+)
+- [ ] Voice Chats (since TDLib 1.7.X+)
 
 ## Unique features
 
@@ -77,6 +79,7 @@ In some random order:
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
 - [x] [Messages squashing](https://zevlg.github.io/telega.el/#telega-squash-message-mode) minor mode.
 - [x] [Highlight code blocks](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
+- [x] [Emacs Stories](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
 
 And much more.
 
