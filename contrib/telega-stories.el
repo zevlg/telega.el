@@ -506,7 +506,7 @@ or from the beginning."
   "Return non-nil if MSG has #emacs_story or #story tag."
   (let ((content (plist-get msg :content)))
     (cl-case (telega--tl-type content)
-      ((messagePhoto messageVideo messageDocument)
+      ((messagePhoto messageVideo messageAnimation messageDocument)
        (string-match-p
         "#\\(emacs_\\)?story" (or (telega-tl-str content :caption) "")))
       (messageText
