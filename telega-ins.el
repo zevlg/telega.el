@@ -721,12 +721,12 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
   (let ((thumb (plist-get doc :thumbnail))
         (minithumb (plist-get doc :minithumbnail)))
     (when (or thumb minithumb)
-    (telega-ins "\n")
-    (telega-ins--image-slices
-     (telega-media--image
-      (cons doc 'telega-thumb-or-minithumb--create-image)
-      (cons thumb :file)))
-    (telega-ins " "))))
+      (telega-ins "\n")
+      (telega-ins--image-slices
+          (telega-media--image
+           (cons doc 'telega-thumb-or-minithumb--create-image)
+           (cons thumb :file)))
+      (telega-ins " "))))
 
 (defun telega-ins--game (msg &optional game-value)
   "Insert GAME."
@@ -2032,6 +2032,16 @@ Pass all ARGS directly to `telega-ins--message0'."
             (round (telega-chars-xheight
                     telega-vvnote-waves-height-factor))
             duration)))
+        (telega-ins " (" (telega-duration-human-readable duration) ")")))
+     (inputMessageVideoNote
+      (telega-ins "VideoNote")
+      (let ((duration (or (plist-get imc :duration) 0))
+            (thumb-filename (telega--tl-get imc :thumbnail :thumbnail :path)))
+        (when (and telega-use-images thumb-filename)
+          (telega-ins " ")
+          (telega-ins--image
+           (let ((telega-video-note-height 1))
+             (telega-vvnote-video--svg thumb-filename nil nil 'png))))
         (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))

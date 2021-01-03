@@ -4,7 +4,8 @@
 
 * telega.el Major Features
 
-** Emacs Stories
+** DONE Emacs Stories
+   CLOSED: [2021-01-03 Вс 00:01]
    CREATED: [2020-12-22 Вт]
 
    *** TODO show content loading progress

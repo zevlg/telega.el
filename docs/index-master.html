@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-03 Вс 15:50 -->
+<!-- 2021-01-03 Вс 23:45 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.7)</title>
+<title>Telega Manual (v0.7.8)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.7)</h1>
+<h1 class="title">Telega Manual (v0.7.8)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.7)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.8)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -847,7 +847,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgdcbd80c">
+<pre class="example" id="orge3567bb">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -865,7 +865,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orgb581bb8">
+<pre class="example" id="org71a550c">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -895,7 +895,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgfcf31de">
+<pre class="example" id="org30d8231">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -990,7 +990,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org201ed77">
+<pre class="example" id="org428d408">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1856,7 +1856,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org31aabfd">
+<pre class="example" id="org0ce16de">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2033,7 +2033,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orga34752d">
+<pre class="example" id="org5632d4d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2102,7 +2102,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgb994cec">
+<pre class="example" id="org729afef">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2202,18 +2202,22 @@ Attachment types to attach with
 </p>
 <dl class="org-dl">
 <dt>photo</dt><dd>Attach <code>FILENAME</code> as photo to the chatbuf input.</dd>
-<dt>self-destruct-photo</dt><dd>Attach self destructing photo.
+<dt>self-destruct-photo</dt><dd>Attach a file as self destructing photo.
 This attachment can be used only in private chats.</dd>
 <dt>video</dt><dd>Attach <code>FILENAME</code> as video to the chatbuf input.</dd>
-<dt>self-destruct-video</dt><dd>Attach self destructing video.
+<dt>self-destruct-video</dt><dd>Attach a file as self destructing video.
 This attachment can be used only in private chats.</dd>
-<dt>video-note</dt><dd>Attach <code>FILENAME</code> as (circled) video note to the chatbuf input.</dd>
+<dt>video-note</dt><dd>Attach a (circled) video note to the chatbuf input.
+If <kbd>C-u</kbd> is given, then attach existing file as
+video-note.  Otherwise record video note inplace.
+<code>telega-vvnote-video-cmd</code> is used to record video notes.</dd>
 <dt>audio</dt><dd>Attach <code>FILENAME</code> as audio to the chatbuf input.</dd>
 <dt>voice-note</dt><dd>Attach a voice note to the chatbuf input.
 If <kbd>C-u</kbd> is given, then attach existing file as
-voice-note.  Otherwise record voice note inplace.</dd>
+voice-note.  Otherwise record voice note inplace.
+<code>telega-vvnote-voice-cmd</code> is used to record voice notes.</dd>
 <dt>file</dt><dd>Attach <code>FILENAME</code> as document to the chatbuf input.</dd>
-<dt>gif</dt><dd>Attach animation from file.</dd>
+<dt>gif</dt><dd>Attach a file as animation to the chatbuf input.</dd>
 <dt>location</dt><dd>Attach location to the chatbuf input.
 If <kbd>C-u</kbd> is given, then attach live location.</dd>
 <dt>poll</dt><dd>Attach poll to the chatbuf input.
@@ -2320,7 +2324,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orge96dd60">
+<pre class="example" id="orgf6b16cb">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3122,7 +3126,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org83f30f4">
+<pre class="example" id="org7746447">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3523,7 +3527,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-03 Вс 15:50</p>
+<p class="date">Created: 2021-01-03 Вс 23:45</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

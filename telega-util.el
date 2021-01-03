@@ -1705,12 +1705,13 @@ in `(window-prev-buffers)' to achive behaviour for nil-valued
     (audio "[▁▁▁▁▁▁▁▁▁▁▁]" "[▂▃▂▁▁▂▁▁▁▂▁]" "[▃▄▃▁▄▇▃▁▁▅▂]" "[▃▆▅▁▆█▃▁▂█▅]"
            "[▆█▃▄▄▆▇▃▄▆█]" "[▅▆▃▆▃▅▆▃▃█▆]" "[▄▅▂█▂▃▅▁▂▇▅]" "[▃▄▁▇▁▂▄▁▁▆▄]"
            "[▂▃▁▆▁▁▃▁▁▄▃]" "[▁▂▁▃▁▁▃▁▁▃▂]")
+    (video "🞅" "🞆" "🞇" "🞈" "🞉")
     ))
 
-(defun telega-symbol-animate (symbol)
+(defun telega-symbol-animate (symbol &optional reverse-p)
   "Animate character CHAT, i.e. return next char to create animations."
   (let* ((anim (cl-find symbol telega-symbol-animations :test #'member))
-         (anim-tail (cdr (member symbol anim))))
+         (anim-tail (cdr (member symbol (if reverse-p (reverse anim) anim)))))
     (or (car anim-tail) (cadr anim))))
 
 (defmacro with-telega-symbol-animate (anim-name interval sym-bind exit-form

@@ -543,7 +543,9 @@ Attachment types to attach with
 {{{where-is(telega-chatbuf-attach,telega-chat-mode-map)}}} defined in
 ~telega-chat-attach-commands~ user option:
 {{{eval((mapconcat (lambda (ac)
-(concat "- " (nth 0 ac) " :: " (ellit-org-template-fundoc (nth 2 ac) "2"))) telega-chat-attach-commands "\n"),t)}}}
+(concat "- " (nth 0 ac) " :: " (ellit-org-template-fundoc (nth 2 ac) "2")
+(when (nth 3 ac) (concat "\n" (nth 3 ac) "\n"))))
+telega-chat-attach-commands "\n"),t)}}}
 
 Special attachment types are =disable-webpage-preview=, =scheduled=,
 =disable-notification= or =enable-notification=.  They do not attach

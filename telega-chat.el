@@ -3265,7 +3265,7 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
               (list :ttl ttl))))))
 
 (defun telega-chatbuf-attach-ttl-photo (filename ttl)
-  "Attach self destructing photo.
+  "Attach a file as self destructing photo.
 This attachment can be used only in private chats."
   (interactive (list (read-file-name "Photo: ")
                      (read-number "Self desctruct in seconds (0-60): ")))
@@ -3282,7 +3282,7 @@ This attachment can be used only in private chats."
               (list :ttl ttl))))))
 
 (defun telega-chatbuf-attach-ttl-video (filename ttl)
-  "Attach self destructing video.
+  "Attach a file as self destructing video.
 This attachment can be used only in private chats."
   (interactive (list (read-file-name "Video: ")
                      (read-number "Self desctruct in seconds (0-60): ")))
@@ -3300,20 +3300,36 @@ This attachment can be used only in private chats."
            :performer (cdr (assoc "artist" metadata))
            ))))
 
-(defun telega-chatbuf-attach-video-note (filename)
-  "Attach FILENAME as (circled) video note to the chatbuf input."
-  (interactive (list (read-file-name "Video Note: ")))
+(defun telega-chatbuf-attach-video-note (as-file-p)
+  "Attach a (circled) video note to the chatbuf input.
+If `\\[universal-argument] is given, then attach existing file as
+video-note.  Otherwise record video note inplace.
+`telega-vvnote-video-cmd' is used to record video notes."
+  (interactive "P")
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'VideoNote)))
+  (let* ((filename (if as-file-p
+                       (read-file-name "Video Note: ")
+                     (telega-vvnote-video--record)))
+         (ifile (telega-chatbuf--gen-input-file filename 'VideoNote))
+         (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageVideoNote"
-           :video_note ifile))))
+     (nconc
+      (list :@type "inputMessageVideoNote"
+            :duration (round (telega-ffplay-get-duration filename))
+            :video_note ifile)
+      (when frame1
+        `(:thumbnail
+          (:@type "inputThumbnail"
+                  :thumbnail (:@type "inputFileLocal" :path ,frame1)
+                  :width 240
+                  :height 240)))))))
 
 (defun telega-chatbuf-attach-voice-note (as-file-p)
   "Attach a voice note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
-voice-note.  Otherwise record voice note inplace."
+voice-note.  Otherwise record voice note inplace.
+`telega-vvnote-voice-cmd' is used to record voice notes."
   (interactive "P")
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
@@ -3502,7 +3518,7 @@ file, Otherwise choose animation from list of saved animations."
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
 (defun telega-chatbuf-attach-gif ()
-  "Attach animation from file."
+  "Attach a file as animation to the chatbuf input."
   (interactive)
   (telega-chatbuf-attach-animation 'from-file))
 

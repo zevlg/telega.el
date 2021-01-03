@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.7)
+#+TITLE: Telega Manual (v0.7.8)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -1465,18 +1465,22 @@ Attachment types to attach with
 @@html:<kbd>@@C-c C-a@@html:</kbd>@@ (~telega-chatbuf-attach~) defined in
 ~telega-chat-attach-commands~ user option:
 - photo :: Attach ~FILENAME~ as photo to the chatbuf input.
-- self-destruct-photo :: Attach self destructing photo.
+- self-destruct-photo :: Attach a file as self destructing photo.
      This attachment can be used only in private chats.
 - video :: Attach ~FILENAME~ as video to the chatbuf input.
-- self-destruct-video :: Attach self destructing video.
+- self-destruct-video :: Attach a file as self destructing video.
      This attachment can be used only in private chats.
-- video-note :: Attach ~FILENAME~ as (circled) video note to the chatbuf input.
+- video-note :: Attach a (circled) video note to the chatbuf input.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
+     video-note.  Otherwise record video note inplace.
+     ~telega-vvnote-video-cmd~ is used to record video notes.
 - audio :: Attach ~FILENAME~ as audio to the chatbuf input.
 - voice-note :: Attach a voice note to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
      voice-note.  Otherwise record voice note inplace.
+     ~telega-vvnote-voice-cmd~ is used to record voice notes.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.
-- gif :: Attach animation from file.
+- gif :: Attach a file as animation to the chatbuf input.
 - location :: Attach location to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach live location.
 - poll :: Attach poll to the chatbuf input.
