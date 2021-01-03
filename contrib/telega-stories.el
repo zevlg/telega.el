@@ -101,7 +101,7 @@ Non-nil to keep story in the root view after story is viewed."
     (set-keymap-parent map button-map)
     (define-key map (kbd "n") 'telega-button-forward)
     (define-key map (kbd "p") 'telega-button-backward)
-    (define-key map (kbd "TAB") 'telega-button-forward)
+    (define-key map (kbd "<TAB>") 'telega-button-forward)
     (define-key map (kbd "<backtab>") 'telega-button-backward)
     (define-key map (kbd "SPC") 'telega-stories-msg-goto)
     (define-key map (kbd "!") 'telega-stories-msg-report)
