@@ -388,6 +388,13 @@ Some useful ffplay arguments to consider:
   :type 'list
   :group 'telega)
 
+(defcustom telega-browse-url-alist nil
+  "Alist of custom url browse functions.
+Each element is in form: `(PREDICATE-OR-REGEX . FUNCTION)'."
+  :package-version '(telega . "0.7.8")
+  :type 'list
+  :group 'telega)
+
 ;; Locations
 (defcustom telega-location-url-format
   "http://maps.google.com/?q=%N,%E&ll=%N,%E&z=15"

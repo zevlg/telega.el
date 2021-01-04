@@ -755,6 +755,22 @@ If you also want to open non-document messages as file using
 ~telega-open-file-function~ consider:
 - {{{user-option(telega-open-message-as-file, 2)}}}
 
+*Browse URL with custom function*
+
+Also, you can open urls using custom functions:
+- {{{user-option(telega-browse-url-alist, 2)}}}
+
+For example, to play youtube videos using =mpv= player, add this to config:
+#+begin_src emacs-lisp
+(defun my-watch-in-mpv (url)
+  (async-shell-command (format "mpv -v %S" url)))
+
+(add-to-list 'telega-browse-url-alist
+             '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
+(add-to-list 'telega-browse-url-alist
+             '("https?://youtu.be/" . my-watch-in-mpv))
+#+end_src
+
 ** Client side messages ignoring
 
 In official telegram clients all messages in group chats are displayed

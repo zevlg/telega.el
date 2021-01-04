@@ -1821,6 +1821,27 @@ If you also want to open non-document messages as file using
 
   Default value: ~nil~
 
+*Browse URL with custom function*
+
+Also, you can open urls using custom functions:
+- User Option: ~telega-browse-url-alist~ 
+
+  Alist of custom url browse functions.
+  Each element is in form: ~(PREDICATE-OR-REGEX . FUNCTION)~. 
+
+  Default value: ~nil~
+
+For example, to play youtube videos using =mpv= player, add this to config:
+#+begin_src emacs-lisp
+  (defun my-watch-in-mpv (url)
+    (async-shell-command (format "mpv -v %S" url)))
+
+  (add-to-list 'telega-browse-url-alist
+  	     '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
+  (add-to-list 'telega-browse-url-alist
+  	     '("https?://youtu.be/" . my-watch-in-mpv))
+#+end_src
+
 ** Client side messages ignoring
 :PROPERTIES:
 :CUSTOM_ID: client-side-messages-ignoring

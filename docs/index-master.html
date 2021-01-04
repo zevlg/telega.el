@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-03 Вс 23:45 -->
+<!-- 2021-01-04 Пн 12:25 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.7.8)</title>
@@ -847,7 +847,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orge3567bb">
+<pre class="example" id="org059a033">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -865,7 +865,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org71a550c">
+<pre class="example" id="org9f9505d">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -895,7 +895,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org30d8231">
+<pre class="example" id="org8f58ce4">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -990,7 +990,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org428d408">
+<pre class="example" id="org8e447a6">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1856,7 +1856,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0ce16de">
+<pre class="example" id="orga3994f5">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2033,7 +2033,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org5632d4d">
+<pre class="example" id="org006ebf2">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2102,7 +2102,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org729afef">
+<pre class="example" id="orgb8c9c76">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2324,7 +2324,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgf6b16cb">
+<pre class="example" id="orgd4f929c">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2692,6 +2692,42 @@ Document messages are always opens as file.
 Default value: <code>nil</code>
 </p></li>
 </ul>
+
+<p>
+<b>Browse URL with custom function</b>
+</p>
+
+<p>
+Also, you can open urls using custom functions:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-browse-url-alist</code> 
+</p>
+
+<p>
+Alist of custom url browse functions.
+Each element is in form: <code>(PREDICATE-OR-REGEX . FUNCTION)</code>. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+</ul>
+
+<p>
+For example, to play youtube videos using <code>mpv</code> player, add this to config:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-watch-in-mpv</span> (url)
+  (async-shell-command (format <span style="font-style: italic;">"mpv -v %S"</span> url)))
+
+(add-to-list 'telega-browse-url-alist
+           '(<span style="font-style: italic;">"https?://</span><span style="font-weight: bold; font-style: italic;">\\</span><span style="font-weight: bold; font-style: italic;">(</span><span style="font-style: italic;">www\\.</span><span style="font-weight: bold; font-style: italic;">\\</span><span style="font-weight: bold; font-style: italic;">)</span><span style="font-style: italic;">?youtube.com/watch"</span> . my-watch-in-mpv))
+(add-to-list 'telega-browse-url-alist
+           '(<span style="font-style: italic;">"https?://youtu.be/"</span> . my-watch-in-mpv))
+</pre>
+</div>
 </div>
 </div>
 
@@ -3126,7 +3162,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org7746447">
+<pre class="example" id="org89b7396">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3527,7 +3563,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-03 Вс 23:45</p>
+<p class="date">Created: 2021-01-04 Пн 12:25</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
