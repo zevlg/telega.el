@@ -110,6 +110,8 @@ Non-nil to keep story in the root view after story is viewed."
 
 (defconst telega-stories-group "@emacs_stories"
   "Telegram group where stories are posted.")
+(defconst telega-stories--featured-chat-ids '(-1001223420888)
+  "Ids of chats from where featured stories are forwarded.")
 
 (defvar telega-stories--chat nil
   "Chat corresponding to `telega-stories-group'.")
@@ -135,6 +137,8 @@ and cdr is image displayed in the dashboard.")
   :init-value nil :global t :group 'telega-modes
   (if telega-stories-mode
       (progn
+        (advice-add 'telega--on-updateMessageSendSucceeded
+                    :after 'telega-stories--on-message-send-succeeded)
         (add-hook 'telega-chat-post-message-hook
                   #'telega-stories--on-new-message)
         ;; Install this for telega restarts
@@ -147,142 +151,13 @@ and cdr is image displayed in the dashboard.")
                  #'telega-stories--initialize)
     (remove-hook 'telega-chat-post-message-hook
                  #'telega-stories--on-new-message)
+    (advice-remove 'telega--on-updateMessageSendSucceeded
+                   'telega-stories--on-message-send-succeeded)
     (telega-stories--finalize)
     ))
 
 
 ;; Dashboard
-(defun telega-stories--svg-image (tfile title viewed-p &optional video-p)
-  "Generate story svg image with Telegram file TFLILE embedded.
-VIEWED-P is non-nil if story is viewed."
-  (let* ((size (telega-chars-xheight telega-stories-height))
-         (sw-passive (/ size 100.0))
-         (sw-active (* sw-passive 2))
-         (passive-color (telega-color-name-as-hex-2digits
-                         (face-foreground 'shadow)))
-         ;; NOTE: one more line for the `title'
-         (svg-height (+ size (telega-chars-xheight 1)))
-         (svg (telega-svg-create size svg-height))
-         (pclip (telega-svg-clip-path svg "pclip"))
-         (base-dir(telega-base-directory)))
-    (unless viewed-p
-      (apply #'telega-svg-raw-node
-             svg 'linearGradient
-             '((id . "a")
-               (x1 . 0) (y1 . 1) (x2 . 1) (y2 . 0))
-             (mapcar (lambda (stop)
-                       (dom-node 'stop `((offset . ,(format "%.1f" (car stop)))
-                                         (stop-color . ,(cdr stop)))))
-                     `((0 . "#fd5") (0.1 . "#fd5")
-                       (0.5 . "#ff543e") (1 . "#c837ab")))))
-
-    (telega-svg-squircle svg 0 0 size size
-                         :stroke-width (if viewed-p sw-passive sw-active)
-                         :stroke-color (if viewed-p passive-color "url(#a)")
-                         :fill-color "none")
-    (let ((c-off (* sw-passive 3))
-          (c-sz (- size (* sw-passive 6))))
-      ;; outline
-      (telega-svg-squircle svg c-off c-off c-sz c-sz
-                           :stroke-width (/ sw-passive 2)
-                           :stroke-color passive-color
-                           :fill-color "none")
-      ;; clip mask
-      (telega-svg-squircle pclip c-off c-off c-sz c-sz))
-
-    (if (telega-file--downloaded-p tfile)
-        (let* ((photofile (telega--tl-get tfile :local :path))
-               (photo-image (create-image photofile))
-               (photo-size (image-size photo-image t))
-               (img-type (plist-get :type (cdr photo-image))))
-          ;; Adjust base-dir
-          (setq base-dir (file-name-directory photofile))
-          (cl-destructuring-bind (x-fit y-fit w-fit h-fit)
-              (telega-svg-fit-into (car photo-size) (cdr photo-size)
-                                   size size)
-            (telega-svg-embed svg (list (file-relative-name photofile base-dir)
-                                        base-dir)
-                              (format "image/%S" img-type)
-                              nil :x x-fit :y y-fit :width w-fit :height h-fit
-                              :clip-path "url(#pclip)")))
-
-      ;; Show progress
-      (let ((progress (telega-file--downloading-progress tfile))
-            (font-size (/ size 10)))
-        (svg-text svg (format "%3d%%" (round (* progress 100)))
-                  :font-size font-size
-                  :font-weight "bold"
-                  :fill "black"
-                  :font-family "monospace"
-                  ;; XXX insane X/Y calculation
-                  :x (/ size 2)
-                  :y (+ (/ font-size 3) (/ size 2)))))
-
-    ;; Draw play triangle
-    (when video-p
-      (let ((play-size (/ size 6)))
-        (svg-polygon svg (list (cons (/ (- size play-size) 2)
-                                     (/ (- size play-size) 2))
-                               (cons (/ (- size play-size) 2)
-                                     (/ (+ size play-size) 2))
-                               (cons (/ (+ size play-size) 2)
-                                     (/ size 2)))
-                     :fill "red"
-                     :opacity "0.75")))
-
-    ;; title
-    (let ((font-size (/ size 10)))
-      (svg-text svg title
-                :font-size font-size
-                :fill (telega-color-name-as-hex-2digits
-                       (or (get-text-property 0 :color title)
-                           (face-foreground 'telega-username)))
-                :font-family "monospace"
-                ;; XXX insane X/Y calculation
-                :x (/ (- size (* (length title) (/ font-size 1.5))) 2)
-                :y (- svg-height font-size)))
-
-    (telega-svg-image svg :scale 1.0 :width size :height svg-height
-                      :ascent 'center
-                      :mask 'heuristic
-                      :base-uri (expand-file-name "dummy" base-dir))))
-
-(defun telega-stories--msg-create-image (msg &optional _file)
-  "Create image for story message MSG."
-  (cl-destructuring-bind (thumb thumb-prop)
-      (telega-stories--msg-thumbnail-spec msg)
-
-    (telega-stories--svg-image
-     (telega-file--renew thumb thumb-prop)
-     (let ((sender (telega-msg-sender msg)))
-       (propertize (or (telega-msg-sender-username sender 'with-@)
-                       (telega-msg-sender-title sender))
-                   :color (car (telega-msg-sender-color sender))))
-     (telega-stories--msg-viewed-p msg)
-     (memq (telega--tl-type (plist-get msg :content))
-           '(messageVideo messageAnimation)))))
-
-(defun telega-stories--msg-thumbnail-spec (msg)
-  "Return thumbnail spec for the story message MSG.
-Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
-  (cl-ecase (telega--tl-type (plist-get msg :content))
-    (messagePhoto
-     (list (telega-photo--best
-            (telega--tl-get msg :content :photo)
-            (list 40 telega-stories-height
-                  40 telega-stories-height))
-           :photo))
-    (messageVideo
-     (list (telega--tl-get msg :content :video :thumbnail)
-           :file))
-    (messageDocument
-     (list (telega--tl-get msg :content :document :thumbnail)
-           :file))
-    (messageAnimation
-     (list (telega--tl-get msg :content :animation :thumbnail)
-           :file))
-    ))
-
 (defun telega-stories--dashboard-insert-msg (msg)
   "Insert Emacs Story message MSG into dashboard."
   (telega-button--insert 'telega msg
@@ -421,12 +296,6 @@ or from the beginning."
                  continue-from-msg-id filter-type))))))
       )))
 
-(defun telega-stories--msg-viewed-p (msg)
-  "Return non-nil if Emacs Story MSG is viewed."
-  (memq (plist-get msg :id)
-        (telega-chat-uaprop
-         (telega-msg-chat msg) :telega-stories-viewed-ids)))
-
 (defun telega-stories-msg-view (msg)
   "View Emacs Story message MSG."
   (unless current-prefix-arg
@@ -502,6 +371,23 @@ or from the beginning."
   (telega-stories--async-fetch-stories)
   )
 
+(defun telega-stories--msg-featured-p (msg)
+  "Return non-nil if MSG is a featured story.
+Return featured chat id, if MSG is featured."
+  (when-let* ((origin (telega--tl-get msg :forward_info :origin))
+              (chat-id (cl-case (telega--tl-type origin)
+                         (messageForwardOriginChat
+                          (plist-get origin :sender_chat_id))
+                         (messageForwardOriginChannel
+                          (plist-get origin :chat_id)))))
+    (car (memq chat-id telega-stories--featured-chat-ids))))
+
+(defun telega-stories--msg-viewed-p (msg)
+  "Return non-nil if Emacs Story MSG is viewed."
+  (memq (plist-get msg :id)
+        (telega-chat-uaprop
+         (telega-msg-chat msg) :telega-stories-viewed-ids)))
+
 (defun telega-stories--msg-with-story-tag-p (msg)
   "Return non-nil if MSG has #emacs_story or #story tag."
   (let ((content (plist-get msg :content)))
@@ -564,6 +450,158 @@ or from the beginning."
                                  (plist-get thumb :format)))))
     )))
 
+(defun telega-stories--msg-thumbnail-spec (msg)
+  "Return thumbnail spec for the story message MSG.
+Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
+  (cl-ecase (telega--tl-type (plist-get msg :content))
+    (messagePhoto
+     (list (telega-photo--best
+            (telega--tl-get msg :content :photo)
+            (list 40 telega-stories-height
+                  40 telega-stories-height))
+           :photo))
+    (messageVideo
+     (list (telega--tl-get msg :content :video :thumbnail)
+           :file))
+    (messageDocument
+     (list (telega--tl-get msg :content :document :thumbnail)
+           :file))
+    (messageAnimation
+     (list (telega--tl-get msg :content :animation :thumbnail)
+           :file))
+    ))
+
+(defun telega-stories--msg-create-image (msg &optional _file)
+  "Generate svg image for story message MSG."
+  (let* ((tfile
+          (cl-destructuring-bind (thumb thumb-prop)
+              (telega-stories--msg-thumbnail-spec msg)
+            (telega-file--renew thumb thumb-prop)))
+         (title
+          (let ((sender (telega-msg-sender msg)))
+            (propertize (or (telega-msg-sender-username sender 'with-@)
+                            (telega-msg-sender-title sender))
+                        :color (car (telega-msg-sender-color sender)))))
+         (viewed-p (telega-stories--msg-viewed-p msg))
+
+         (size (telega-chars-xheight telega-stories-height))
+         (sw-passive (/ size 100.0))
+         (sw-active (* sw-passive 2))
+         (passive-color (telega-color-name-as-hex-2digits
+                         (face-foreground 'shadow)))
+         ;; NOTE: one more line for the `title'
+         (title-height (telega-chars-xheight 1))
+         (svg-height (+ size title-height))
+         (svg (telega-svg-create size svg-height))
+         (pclip (telega-svg-clip-path svg "pclip"))
+         (base-dir (telega-base-directory)))
+    (unless viewed-p
+      (apply #'telega-svg-raw-node
+             svg 'linearGradient
+             '((id . "a")
+               (x1 . 0) (y1 . 1) (x2 . 1) (y2 . 0))
+             (mapcar (lambda (stop)
+                       (dom-node 'stop `((offset . ,(format "%.1f" (car stop)))
+                                         (stop-color . ,(cdr stop)))))
+                     `((0 . "#fd5") (0.1 . "#fd5")
+                       (0.5 . "#ff543e") (1 . "#c837ab")))))
+
+    (telega-svg-squircle svg 0 0 size size
+                         :stroke-width (if viewed-p sw-passive sw-active)
+                         :stroke-color (if viewed-p passive-color "url(#a)")
+                         :fill-color "none")
+    (let ((c-off (* sw-passive 3))
+          (c-sz (- size (* sw-passive 6))))
+      ;; outline
+      (telega-svg-squircle svg c-off c-off c-sz c-sz
+                           :stroke-width (/ sw-passive 2)
+                           :stroke-color passive-color
+                           :fill-color "none")
+      ;; clip mask
+      (telega-svg-squircle pclip c-off c-off c-sz c-sz))
+
+    (if (telega-file--downloaded-p tfile)
+        (let* ((photofile (telega--tl-get tfile :local :path))
+               (photo-image (create-image photofile))
+               (photo-size (image-size photo-image t))
+               (img-type (plist-get :type (cdr photo-image))))
+          ;; Adjust base-dir
+          (setq base-dir (file-name-directory photofile))
+          (cl-destructuring-bind (x-fit y-fit w-fit h-fit)
+              (telega-svg-fit-into (car photo-size) (cdr photo-size)
+                                   size size)
+            (telega-svg-embed svg (list (file-relative-name photofile base-dir)
+                                        base-dir)
+                              (format "image/%S" img-type)
+                              nil :x x-fit :y y-fit :width w-fit :height h-fit
+                              :clip-path "url(#pclip)")))
+
+      ;; Show progress
+      (let ((progress (telega-file--downloading-progress tfile))
+            (font-size title-height))
+        (svg-text svg (format "%3d%%" (round (* progress 100)))
+                  :font-size font-size
+                  :font-weight "bold"
+                  :fill "black"
+                  :font-family "monospace"
+                  ;; XXX insane X/Y calculation
+                  :x (- (/ size 2) (* 2 (/ font-size 3)))
+                  :y (+ (/ font-size 3) (/ size 2)))))
+
+    ;; Draw play triangle
+    (when (memq (telega--tl-type (plist-get msg :content))
+                '(messageVideo messageAnimation))
+      (let ((play-size (/ size 6)))
+        (svg-polygon svg (list (cons (/ (- size play-size) 2)
+                                     (/ (- size play-size) 2))
+                               (cons (/ (- size play-size) 2)
+                                     (/ (+ size play-size) 2))
+                               (cons (/ (+ size play-size) 2)
+                                     (/ size 2)))
+                     :fill "red"
+                     :opacity "0.75")))
+
+    ;; Featured Chat icon and title
+    (let ((font-size (round (/ title-height 1.5)))
+          (featured-chat-id (telega-stories--msg-featured-p msg))
+          ;; `title-xoff' is used if featured icon is inserted
+          (title-xoff nil))
+      (when featured-chat-id
+        (let* ((fchat (telega-chat-get featured-chat-id))
+               (fchat-photo (plist-get fchat :photo))
+               (fchat-tphoto (telega-file--renew fchat-photo :small)))
+          (setq title (telega-i18n "telega_stories_featured"))
+
+          (when (telega-file--downloaded-p fchat-tphoto)
+            (let* ((c-xoff (/ font-size 4))
+                   (c-yoff (- svg-height title-height (/ font-size 3)))
+                   (clip (telega-svg-clip-path svg "fcclip")))
+              (svg-circle clip (+ c-xoff (/ title-height 2))
+                          (+ c-yoff (/ title-height 2)) (/ title-height 2))
+              ;; NOTE: embedd using data, so `base-path' can point anywhere
+              (svg-embed svg (telega--tl-get fchat-tphoto :local :path)
+                         "image/jpeg" nil
+                         :x c-xoff :y c-yoff
+                         :width title-height :height title-height
+                         :clip-path "url(#fcclip)"))
+            (setq title-xoff (+ title-height (/ font-size 2))))))
+
+      (svg-text svg title
+                :font-size font-size
+                :fill (telega-color-name-as-hex-2digits
+                       (or (get-text-property 0 :color title)
+                           (face-foreground 'telega-username)))
+                :font-family "monospace"
+                ;; XXX insane X/Y calculation
+                :x (or title-xoff
+                       (- (/ size 2) (* (length title) (/ font-size 3))))
+                :y (- svg-height (/ font-size 1.5))))
+
+    (telega-svg-image svg :scale 1.0 :width size :height svg-height
+                      :ascent 'center
+                      :mask 'heuristic
+                      :base-uri (expand-file-name "dummy" base-dir))))
+
 (defun telega-stories--msg-preload-content (msg)
   "Start downloading MSG story message's content."
   (let ((cfile (telega-msg--content-file msg)))
@@ -592,12 +630,31 @@ Return non-nil if NEW-MSG has been added."
     (telega-root-view--update :on-message-update new-msg)
     t))
 
+(defun telega-stories--on-message-send-succeeded (event)
+  "Story message might change its id."
+  (when (eq (plist-get telega-stories--chat :id)
+            (telega--tl-get event :message :chat_id))
+    (let* ((old-id (plist-get event :old_message_id))
+           (old-story (cl-find old-id telega-stories--story-messages
+                               :key (telega--tl-prop :id)))
+           (new-story (plist-get event :message)))
+      (when old-story
+        ;; Force old story message removal from root view
+        (plist-put old-story :telega-story-to-delete t)
+        (telega-root-view--update :on-message-update old-story)
+
+        (setq telega-stories--story-messages
+              (delq old-story telega-stories--story-messages)))
+
+      (telega-stories--on-new-message new-story))))
+
 
 ;; "Emacs Stories" rootview (rv = rootview)
 (defun telega-stories--rv-msg-visible-p (msg)
   "Return non-nil if msg is visible in the \"Emacs Stories\" rootview."
-  (or telega-stories-root-view-keep-viewed
-      (not (telega-stories--msg-viewed-p msg))))
+  (and (not (plist-get msg :telega-story-to-delete))
+       (or telega-stories-root-view-keep-viewed
+           (not (telega-stories--msg-viewed-p msg)))))
 
 (defun telega-stories--rv-msg-pp (msg)
   "Pretty printer story message MSG in the \"Emacs Stories\" rootview."

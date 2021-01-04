@@ -609,4 +609,6 @@ Example: 23 y.o. designer from San Francisco")
   :value "Emacs Stories")
  ("telega_stories_no_stories"
   :value "No unread stories")
+ ("telega_stories_featured"
+  :value "Featured")
  )
