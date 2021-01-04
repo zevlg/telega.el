@@ -67,7 +67,7 @@ In some random order:
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 - [x] Telegram Folders (since TDLib 1.6.6)
 - [x] Disable/Enable message notification on receiver side
-- [ ] Stickers Outlines (since TDLib 1.7.X+)
+- [x] Sticker Outlines (since TDLib 1.7.X+), see Emacs Story - https://t.me/emacs_stories/73
 - [ ] Voice Chats (since TDLib 1.7.X+)
 
 ## Unique features
@@ -79,7 +79,7 @@ In some random order:
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
 - [x] [Messages squashing](https://zevlg.github.io/telega.el/#telega-squash-message-mode) minor mode.
 - [x] [Highlight code blocks](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
-- [x] [Emacs Stories](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
+- [x] [Emacs Stories](https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard) - share your Emacs experience with other Emacs users.
 
 And much more.
 

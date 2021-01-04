@@ -177,6 +177,57 @@ CALLBACK is called without arguments"
               (cons sticker :sticker))
              (force-window-update))))
 
+(defun telega-sticker--svg-outline-path (svg tl-path factor &rest args)
+  "Draw closed TL-PATH into SVG."
+  (let* ((x-factor (car factor))
+         (y-factor (cdr factor))
+         (tl-path-commands (plist-get tl-path :commands))
+         (tl-cmd1 (aref tl-path-commands 0))
+         (tl-move-to (cl-ecase (telega--tl-type tl-cmd1)
+                       (vectorPathCommandCubicBezierCurve
+                        (plist-get tl-cmd1 :start_control_point))
+                       (vectorPathCommandLine
+                        (plist-get tl-cmd1 :end_point))))
+         (svg-path-commands
+          (mapconcat 
+           (lambda (path-cmd)
+             (cl-ecase (telega--tl-type path-cmd)
+               (vectorPathCommandCubicBezierCurve
+                (let ((p1 (plist-get path-cmd :start_control_point))
+                      (p2 (plist-get path-cmd :end_control_point))
+                      (p3 (plist-get path-cmd :end_point)))
+                  (format "C%f,%f,%f,%f,%f,%f"
+                          (* x-factor (plist-get p1 :x))
+                          (* y-factor (plist-get p1 :y))
+                          (* x-factor (plist-get p2 :x))
+                          (* y-factor (plist-get p2 :y))
+                          (* x-factor (plist-get p3 :x))
+                          (* y-factor (plist-get p3 :y)))))
+               (vectorPathCommandLine
+                (let ((end-point (plist-get path-cmd :end_point)))
+                  (format "L%f,%f"
+                          (* x-factor (plist-get end-point :x))
+                          (* y-factor (plist-get end-point :y)))))))
+           tl-path-commands "\n")))
+    (apply #'telega-svg-path svg
+           (concat (format "M%f,%f\n"
+                           (* x-factor (plist-get tl-move-to :x))
+                           (* y-factor (plist-get tl-move-to :y)))
+                   svg-path-commands "Z")
+           args)))
+
+(defun telega-sticker--svg-outline (svg sticker &rest args)
+  "Draw STICKER outline path to the SVG."
+  (declare (indent 2))
+  (cl-assert (plist-get sticker :outline))
+  (let ((factor (cons (/ (float (dom-attr svg 'width))
+                         (plist-get sticker :width))
+                      (/ (float (dom-attr svg 'height))
+                         (plist-get sticker :height)))))
+    (seq-doseq (outline-path (plist-get sticker :outline))
+      (apply #'telega-sticker--svg-outline-path
+             svg outline-path factor args))))
+
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker 'no-props))
@@ -185,17 +236,24 @@ CALLBACK is called without arguments"
          (xw (telega-chars-xwidth w-chars))
          (svg (telega-svg-create xw xh))
          (font-size (/ xh 2)))
-    (svg-text svg (if (string-empty-p emoji)
-                      "?"
-                    (substring emoji 0 1))
+    (if (plist-get sticker :outline)
+        (telega-sticker--svg-outline svg sticker
+          :fill (telega-color-name-as-hex-2digits
+                 (face-foreground 'shadow)))
+
+      ;; draw emoji and progress circle
+      (svg-text svg (if (string-empty-p emoji)
+                        "?"
+                      (substring emoji 0 1))
                 :font-size font-size
                 :font-weight "bold"
                 :fill "white"
                 :font-family "monospace"
                 :x (/ font-size 2)
                 :y (+ font-size (/ font-size 3)))
-    (telega-svg-progress svg (telega-file--downloading-progress
-                              (telega-sticker--file sticker)))
+      (telega-svg-progress svg 0.3
+                           (telega-file--downloading-progress
+                            (telega-sticker--file sticker))))
     (telega-svg-image svg :scale 1.0
                       :width xw :height xh
                       :ascent 'center
