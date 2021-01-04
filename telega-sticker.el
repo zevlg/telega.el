@@ -251,9 +251,8 @@ CALLBACK is called without arguments"
                 :font-family "monospace"
                 :x (/ font-size 2)
                 :y (+ font-size (/ font-size 3)))
-      (telega-svg-progress svg 0.3
-                           (telega-file--downloading-progress
-                            (telega-sticker--file sticker))))
+      (telega-svg-progress svg (telega-file--downloading-progress
+                                (telega-sticker--file sticker))))
     (telega-svg-image svg :scale 1.0
                       :width xw :height xh
                       :ascent 'center
