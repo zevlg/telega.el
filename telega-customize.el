@@ -978,7 +978,7 @@ different days. Such as:
               (not (telega-chat-private-p telega-chatbuf--chat)))
      telega-chatbuf-attach-poll)
     ("contact" nil telega-chatbuf-attach-contact)
-    ("member" nil telega-chatbuf-attach-member)
+    ("new-member" nil telega-chatbuf-add-member)
     ("sticker" nil telega-chatbuf-attach-sticker)
     ("animation" nil telega-chatbuf-attach-animation)
     ("dice" nil telega-chatbuf-attach-dice)

@@ -3403,7 +3403,7 @@ Uses `telega-screenshot-function' to take a screenshot."
         (x-focus-frame (window-frame (get-buffer-window)))
         (telega-chatbuf--attach-tmp-photo tmpfile)))))
 
-(defun telega-chatbuf-attach-member (user)
+(defun telega-chatbuf-add-member (user)
   "Add USER to the chat members."
   (interactive (list (telega-completing-read-user "Add member: ")))
   (cl-assert user)
