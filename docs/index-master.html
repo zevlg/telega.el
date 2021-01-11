@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-04 Пн 12:25 -->
+<!-- 2021-01-12 Вт 00:36 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.7.8)</title>
@@ -847,7 +847,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org059a033">
+<pre class="example" id="org178cb99">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -865,7 +865,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org9f9505d">
+<pre class="example" id="orgdf5b9a3">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -895,7 +895,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org8f58ce4">
+<pre class="example" id="orge52807a">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -990,7 +990,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org8e447a6">
+<pre class="example" id="orgd4beb98">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1856,7 +1856,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orga3994f5">
+<pre class="example" id="org840d23d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2033,7 +2033,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org006ebf2">
+<pre class="example" id="org3d5a532">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2102,7 +2102,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgb8c9c76">
+<pre class="example" id="org599b9de">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2223,8 +2223,8 @@ If <kbd>C-u</kbd> is given, then attach live location.</dd>
 <dt>poll</dt><dd>Attach poll to the chatbuf input.
 Can be used only in group chats.
 <code>QUESTION</code> - Title of the poll.
-<code>NON-ANONYMOUS</code> - Non-nil to create non-anonymous poll.
-<code>ALLOW-MULTIPLE-ANSWERS</code> - Non-nil to allow multiple answers.
+<code>ANONYMOUS-P</code> - Non-nil to create anonymous poll.
+<code>ALLOW-MULTIPLE-ANSWERS-P</code> - Non-nil to allow multiple answers.
 <code>OPTIONS</code> - List of strings representing poll options.</dd>
 <dt>contact</dt><dd>Attach <code>CONTACT</code> user to the chatbuf input.</dd>
 <dt>member</dt><dd>Add <code>USER</code> to the chat members.</dd>
@@ -2324,7 +2324,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgd4f929c">
+<pre class="example" id="orgd2e43b8">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3162,7 +3162,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org89b7396">
+<pre class="example" id="orgf56af8e">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3475,6 +3475,9 @@ dashboard.  Enable it with:
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-stories</span>)
 (telega-stories-mode 1)
+<span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">"Emacs Stories" rootview</span>
+(define-key telega-root-mode-map (kbd <span style="font-style: italic;">"v e"</span>) 'telega-view-emacs-stories)
+<span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">Emacs Dashboard</span>
 (add-to-list 'dashboard-items '(telega-stories . 5))
 </pre>
 </div>
@@ -3512,6 +3515,17 @@ Customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
+User Option: <code>telega-stories-show</code> 
+</p>
+
+<p>
+Show <code>all</code> or only <code>unread</code> stories. 
+</p>
+
+<p>
+Default value: <code>unread</code>
+</p></li>
+<li><p>
 User Option: <code>telega-stories-height</code> 
 </p>
 
@@ -3521,6 +3535,17 @@ Height in chars for Emacs Stories buttons
 
 <p>
 Default value: <code>6</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-notify</code> 
+</p>
+
+<p>
+Notify on new story, even if notifications are disabled for stories chat. 
+</p>
+
+<p>
+Default value: <code>t</code>
 </p></li>
 <li><p>
 User Option: <code>telega-stories-preload-content</code> 
@@ -3563,7 +3588,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-04 Пн 12:25</p>
+<p class="date">Created: 2021-01-12 Вт 00:36</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

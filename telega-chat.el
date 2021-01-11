@@ -3550,13 +3550,13 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
              (propertize inline-help 'face 'shadow)))
           t)))))
 
-(defun telega-chatbuf-attach-poll (question non-anonymous allow-multiple-answers
+(defun telega-chatbuf-attach-poll (question anonymous-p allow-multiple-answers-p
                                             &rest options)
   "Attach poll to the chatbuf input.
 Can be used only in group chats.
 QUESTION - Title of the poll.
-NON-ANONYMOUS - Non-nil to create non-anonymous poll.
-ALLOW-MULTIPLE-ANSWERS - Non-nil to allow multiple answers.
+ANONYMOUS-P - Non-nil to create anonymous poll.
+ALLOW-MULTIPLE-ANSWERS-P - Non-nil to allow multiple answers.
 OPTIONS - List of strings representing poll options."
   (interactive
    (let ((poll-q (read-string
@@ -3580,9 +3580,10 @@ OPTIONS - List of strings representing poll options."
   (telega-chatbuf-input-insert
    (list :@type "inputMessagePoll"
          :question question
-         :is_anonymous (if non-anonymous :false t)
+         :is_anonymous (if anonymous-p t :false)
          :type (list :@type "pollTypeRegular"
-                     :allow_multiple_answers allow-multiple-answers)
+                     :allow_multiple_answers
+                     (if allow-multiple-answers-p t :false))
          :options (apply 'vector options))))
 
 (defun telega-chatbuf-attach-scheduled (timestamp)

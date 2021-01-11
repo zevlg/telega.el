@@ -1486,8 +1486,8 @@ Attachment types to attach with
 - poll :: Attach poll to the chatbuf input.
      Can be used only in group chats.
      ~QUESTION~ - Title of the poll.
-     ~NON-ANONYMOUS~ - Non-nil to create non-anonymous poll.
-     ~ALLOW-MULTIPLE-ANSWERS~ - Non-nil to allow multiple answers.
+     ~ANONYMOUS-P~ - Non-nil to create anonymous poll.
+     ~ALLOW-MULTIPLE-ANSWERS-P~ - Non-nil to allow multiple answers.
      ~OPTIONS~ - List of strings representing poll options.
 - contact :: Attach ~CONTACT~ user to the chatbuf input.
 - member :: Add ~USER~ to the chat members.
@@ -2345,6 +2345,9 @@ dashboard.  Enable it with:
 #+begin_src emacs-lisp
   (require 'telega-stories)
   (telega-stories-mode 1)
+  ;; "Emacs Stories" rootview
+  (define-key telega-root-mode-map (kbd "v e") 'telega-view-emacs-stories)
+  ;; Emacs Dashboard
   (add-to-list 'dashboard-items '(telega-stories . 5))
 #+end_src
 
@@ -2367,11 +2370,21 @@ And screenshot of "Emacs Stories" rooot view:
 [[https://zevlg.github.io/telega/emacs-stories-rootview.png]]
 
 Customizable options:
+- User Option: ~telega-stories-show~ 
+
+  Show ~all~ or only ~unread~ stories. 
+
+  Default value: ~unread~
 - User Option: ~telega-stories-height~ 
 
   Height in chars for Emacs Stories buttons 
 
   Default value: ~6~
+- User Option: ~telega-stories-notify~ 
+
+  Notify on new story, even if notifications are disabled for stories chat. 
+
+  Default value: ~t~
 - User Option: ~telega-stories-preload-content~ 
 
   Preload content when Emacs Story is inserted, so can be viewed instantly. 

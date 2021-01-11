@@ -1023,7 +1023,11 @@ Return `non-nil' if WEB-PAGE has been inserted."
                               (if multiple-answers-p
                                   (apply #'telega--setPollAnswer msg
                                          (cons popt-id choices))
-                                (telega--setPollAnswer msg popt-id)))))
+                                (telega--setPollAnswer msg popt-id))))
+                  'keymap (let ((map (make-sparse-keymap)))
+                            (set-keymap-parent map button-map)
+                            (define-key map (kbd "SPC") 'push-button)
+                            map))
           (telega-ins--with-face 'telega-link
             (telega-ins
              (if quiz-p
