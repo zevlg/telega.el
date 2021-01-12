@@ -859,22 +859,25 @@ enabled."
   :group 'telega-chat)
 
 (defcustom telega-chat-input-prompt ">>> "
-  "*Chatbuf input prompt."
-  :type 'string
+  "*Chatbuf input prompt.
+Could be a string or an alist where car is one of: `prompt', `edit' or
+`reply' and cdr is prompt string."
+  :package-version '(telega . "0.7.9")
+  :type '(or string alist)
   :group 'telega-chat)
 
-(defcustom telega-chat-input-anonymous-prompt
-  (concat "Anonymous" telega-chat-input-prompt)
-  "*Chatbuf input prompt when sending messages as anonymous admin."
-  :package-version '(telega . "0.7.1")
-  :type 'string
+(defcustom telega-chat-input-anonymous-prompt "Anonymous>>> "
+  "*Chatbuf input prompt when sending messages as anonymous admin.
+Could be a string or an alist, same as `telega-chat-input-prompt'."
+  :package-version '(telega . "0.7.9")
+  :type '(or string alist)
   :group 'telega-chat)
 
-(defcustom telega-chat-input-comment-prompt
-  (concat "Comment" telega-chat-input-prompt)
-  "*Chatbuf input prompt displayed when commenting on channel post."
-  :package-version '(telega . "0.7.0")
-  :type 'string
+(defcustom telega-chat-input-comment-prompt "Comment>>> "
+  "*Chatbuf input prompt displayed when commenting on channel post.
+Could be a string or an alist, same as `telega-chat-input-prompt'."
+  :package-version '(telega . "0.7.9")
+  :type '(or string alist)
   :group 'telega-chat)
 
 (defcustom telega-chat-input-ring-size 50

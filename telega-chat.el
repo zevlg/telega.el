@@ -1792,18 +1792,31 @@ unknown, i.e. has no positions set."
                                            :status :is_anonymous)))
          (usj-prompt (unless (or comment-p anonymous-p)
                        (telega-chatbuf--unblock-start-join-prompt)))
-         (prompt (concat (when (telega-chat-match-p
-                                chat telega-chat-prompt-show-avatar-for)
-                           (telega-ins--as-string
-                            (telega-ins--image
-                             (telega-chat-avatar-image-one-line chat))))
-                         (cond (usj-prompt usj-prompt)
-                               (anonymous-p
-                                telega-chat-input-anonymous-prompt)
-                               (comment-p
-                                telega-chat-input-comment-prompt)
-                               (t
-                                telega-chat-input-prompt)))))
+         (prompt (concat
+                  (when (telega-chat-match-p
+                         chat telega-chat-prompt-show-avatar-for)
+                    (telega-ins--as-string
+                     (telega-ins--image
+                      (telega-chat-avatar-image-one-line chat))))
+
+                  ;; NOTE: Prompt could be an alist
+                  ;; See https://t.me/emacs_telega/23453
+                  (let ((iprompt (cond (usj-prompt usj-prompt)
+                                       (anonymous-p
+                                        telega-chat-input-anonymous-prompt)
+                                       (comment-p
+                                        telega-chat-input-comment-prompt)
+                                       (t
+                                        telega-chat-input-prompt))))
+                    (if (stringp iprompt)
+                        iprompt
+                      (let ((ptype
+                             (cond ((telega-chatbuf--replying-msg) 'reply)
+                                   ((telega-chatbuf--editing-msg) 'edit)
+                                   (t 'prompt))))
+                        (or (cdr (assq ptype iprompt))
+                            (user-error "Undefined prompt for `%S'" ptype)))))
+                  )))
     (telega-save-excursion
       (telega-button--update-value
        telega-chatbuf--prompt-button prompt :usj-prompt-p usj-prompt))))
