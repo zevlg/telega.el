@@ -375,9 +375,9 @@ If CALLBACK is specified, then get reply message asynchronously."
             (telega--openMessageContent msg))
           (if (memq 'video telega-open-message-as-file)
               (telega-open-file (telega--tl-get file :local :path) msg)
-            (apply #'telega-ffplay-run
-                   (telega--tl-get file :local :path) nil
-                   telega-video-ffplay-args)))))))
+            (telega-ffplay-run
+             (telega--tl-get file :local :path) nil
+             (cdr (assq 'video telega-open-message-ffplay-args)))))))))
 
 (defun telega-msg-open-audio (msg)
   "Open content for audio message MSG."
@@ -399,9 +399,8 @@ If CALLBACK is specified, then get reply message asynchronously."
                 (plist-put msg :telega-ffplay-proc
                            (telega-ffplay-run
                             (telega--tl-get file :local :path)
-                            (lambda (_proc)
-                              (telega-msg-redisplay msg))
-                            "-nodisp"))))))))))
+                            (lambda (_proc) (telega-msg-redisplay msg))
+                            (cdr (assq 'audio telega-open-message-ffplay-args))))))))))))
 
 (defun telega-msg-voice-note--ffplay-callback (msg)
   "Return callback to be used in `telega-ffplay-run'."
@@ -451,7 +450,7 @@ If CALLBACK is specified, then get reply message asynchronously."
                             (telega-ffplay-run
                              (telega--tl-get file :local :path)
                              (telega-msg-voice-note--ffplay-callback msg)
-                             "-nodisp"))
+                             (cdr (assq 'voice-note telega-open-message-ffplay-args))))
                  (telega-msg-activate-voice-note msg)))))))))
 
 (defun telega-msg-video-note--ffplay-callback (proc frame msg)
@@ -492,7 +491,9 @@ non-nil."
                                       (list "-vf" "scale=120:120"
                                             "-f" "alsa" "default" "-vsync" "0")
                                     #'telega-msg-video-note--ffplay-callback msg))
-                     (telega-ffplay-run filepath nil)))))))))))
+                     (telega-ffplay-run
+                      filepath nil
+                      (cdr (assq 'video-note telega-open-message-ffplay-args)))))))))))))
 
 (defun telega-msg-open-photo (msg &optional photo)
   "Open content for photo message MSG."
@@ -530,7 +531,9 @@ non-nil."
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filename nil
                                     #'telega-animation--ffplay-callback anim))
-                     (telega-ffplay-run filename nil "-loop" "0")))))))))))
+                     (telega-ffplay-run
+                      filename nil
+                      (cdr (assq 'animation telega-open-message-ffplay-args)))))))))))))
 
 (defun telega-msg-open-document (msg &optional document)
   "Open content for document message MSG."
@@ -833,12 +836,21 @@ with `M-x telega-ignored-messages RET'."
   (ring-insert telega--ignored-messages-ring msg)
   (telega-debug "IGNORED msg: %S" msg))
 
-(defun telega-msg-ignore-blocked-sender (msg &rest _ignore)
-  "Function to be used as `telega-chat-insert-message-hook'.
-Add it to `telega-chat-insert-message-hook' to ignore messages from
-blocked senders (users or chats)."
-  (when (telega-msg-sender-blocked-p (telega-msg-sender msg))
-    (telega-msg-ignore msg)))
+(defun telega-msg-run-ignore-predicates (msg)
+  "Run `telega-msg-ignore-predicates' over the MSG.
+If any of function from `telega-msg-ignore-predicates' return non-nil,
+then mark MSG as ignored.
+If MSG is already ignored, do nothing."
+  (unless (telega-msg-ignored-p msg)
+    (when (cl-some (lambda (predicate)
+                     (funcall predicate msg))
+                   telega-msg-ignore-predicates)
+      (telega-msg-ignore msg))))
+
+(defun telega-msg-from-blocked-sender-p (msg)
+  "Return non-nil if MSG is sent from blocked message sender.
+Could be used in `telega-msg-ignore-predicates'."
+  (telega-msg-sender-blocked-p (telega-msg-sender msg)))
 
 
 (defun telega-msg-unmark (msg)
@@ -881,37 +893,40 @@ For interactive use only."
                                        "? ")))))
       (telega--pinChatMessage msg (not notify) for-self-only))))
 
+(defun telega-msg--content-file (msg)
+  "For message MSG return its content file as TDLib object."
+  (let ((content (plist-get msg :content)))
+    (cl-case (telega--tl-type content)
+      (messageDocument
+       (let ((doc (telega--tl-get msg :content :document)))
+         (telega-file--renew doc :document)))
+      (messagePhoto
+       (let ((hr (telega-photo--highres (plist-get content :photo))))
+         (telega-file--renew hr :photo)))
+      (messageAudio
+       (let ((audio (telega--tl-get msg :content :audio)))
+         (telega-file--renew audio :audio)))
+      (messageVideo
+       (let ((video (telega--tl-get msg :content :video)))
+         (telega-file--renew video :video)))
+      (messageVoiceNote
+       (let ((note (telega--tl-get msg :content :voice_note)))
+         (telega-file--renew note :voice)))
+      (messageVideoNote
+       (let ((note (telega--tl-get msg :content :video_note)))
+         (telega-file--renew note :video)))
+      (messageAnimation
+       (let ((anim (telega--tl-get msg :content :animation)))
+         (telega-file--renew anim :animation)))
+      (t (when-let ((web-page (plist-get content :web_page)))
+           (error "TODO: Save web-page"))))))
+
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file."
   (interactive (list (telega-msg-for-interactive)))
-  (let* ((content (plist-get msg :content))
-         (file (cl-case (telega--tl-type content)
-                 (messageDocument
-                  (let ((doc (telega--tl-get msg :content :document)))
-                    (telega-file--renew doc :document)))
-                 (messagePhoto
-                  (let ((hr (telega-photo--highres (plist-get content :photo))))
-                    (telega-file--renew hr :photo)))
-                 (messageAudio
-                  (let ((audio (telega--tl-get msg :content :audio)))
-                    (telega-file--renew audio :audio)))
-                 (messageVideo
-                  (let ((video (telega--tl-get msg :content :video)))
-                    (telega-file--renew video :video)))
-                 (messageVoiceNote
-                  (let ((note (telega--tl-get msg :content :voice_note)))
-                    (telega-file--renew note :voice)))
-                 (messageVideoNote
-                  (let ((note (telega--tl-get msg :content :video_note)))
-                    (telega-file--renew note :video)))
-                 (messageAnimation
-                  (let ((anim (telega--tl-get msg :content :animation)))
-                    (telega-file--renew anim :animation)))
-                 (t (let ((web-page (plist-get content :web_page)))
-                      (if web-page
-                          (error "TODO: Save web-page")
-                        (user-error "No file associated with message")))))))
-    (cl-assert file)
+  (let ((file (telega-msg--content-file msg)))
+    (unless file
+      (user-error "No file associated with message"))
     (telega-file--download file 32
       (lambda (dfile)
         (telega-msg-redisplay msg)
@@ -925,8 +940,7 @@ For interactive use only."
                                             nil nil fname nil)))
             ;; See https://github.com/tdlib/td/issues/379
             (copy-file fpath new-fpath)
-            (message (format "Wrote %s" new-fpath))))))
-    ))
+            (message (format "Wrote %s" new-fpath))))))))
 
 (defun telega-msg-copy-link (msg &optional for-comment-p)
   "Copy link to message to kill ring.

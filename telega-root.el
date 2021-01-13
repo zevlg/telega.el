@@ -206,6 +206,24 @@ Rest elements are ewoc specs.")
     ;;   - {{{user-option(telega-root-view-topics-other-chats, 4)}}}
     (define-key map (kbd "v t") 'telega-view-topics)
     ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-files,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-files, 2)}}}
+    ;;
+    ;;   If you use this view frequently, consider setting
+    ;;   ~telega-chat-upload-attaches-ahead~ to nil, to avoid file
+    ;;   duplications for "uploading" kind. See
+    ;;   https://github.com/tdlib/td/issues/1348#issuecomment-752654650
+    ;;   for details
+    ;;
+    ;;   Press {{{kbd(d)}}} under downloaded filename to delete the
+    ;;   file.  Only files cached by TDLib in the ~telega-cache-dir~
+    ;;   can be deleted.
+    ;;
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-root-view-files-exclude-subdirs, 4)}}}
+    ;;   - {{{user-option(telega-chat-upload-attaches-ahead, 4)}}}
+    (define-key map (kbd "v F") 'telega-view-files)
+    ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-top,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-top, 2)}}}
     ;;
@@ -338,7 +356,7 @@ Terminate telega-server and kill all chat and supplementary buffers."
 EWOC-SPEC is plist with keyword elements:
 `:name', `:pretty-printer', `:header', `:footer', `:items'
 `:on-chat-update', `:on-user-update', `:on-message-update',
-`:on-notifications-update',`:loading'."
+`:on-notifications-update', `:on-file-update', `:loading'."
   (cl-assert (stringp (plist-get ewoc-spec :name)))
   (let ((ewoc (ewoc-create (telega-ewoc--gen-pp
                             (plist-get ewoc-spec :pretty-printer))
@@ -365,16 +383,18 @@ EWOC-SPEC is plist with keyword elements:
       default
       #'ignore))
 
-(defun telega-root-view--ewoc-loading-start (ewoc-name loading)
+(defun telega-root-view--ewoc-loading-start (ewoc-name loading &optional footer)
   "Start loading in the root view ewoc named EWOC-NAME.
-LOADING is extra value from corresponding TDLib request."
+LOADING is extra value from corresponding TDLib request.
+FOOTER is string to use as footer, by default \"Loading...\" is used."
   (declare (indent 1))
   (let ((ewoc-spec (telega-root-view--ewoc-spec ewoc-name)))
     (cl-assert (not (plist-get ewoc-spec :loading)))
     (plist-put ewoc-spec :loading loading)
     (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
       (telega-save-cursor
-        (telega-ewoc--set-footer ewoc "Loading..\n")))
+        (telega-ewoc--set-footer
+         ewoc (concat (or footer (telega-i18n "lng_profile_loading")) "\n"))))
     (telega-loading--timer-start)))
 
 (defun telega-root-view--ewoc-loading-done (ewoc-name &optional items)
@@ -1449,7 +1469,9 @@ Default Disable Notification setting"))
                             (cons (telega-i18n "lng_settings_faq")
                                   "https://telegram.org/faq")
                             (cons (telega-i18n "lng_settings_ask_question")
-                                  "https://t.me/emacs_telega")))
+                                  "https://t.me/emacs_telega")
+                            (cons (telega-i18n "telega_settings_donate")
+                                  "https://opencollective.com/telega")))
          ))
 
   ;; NOTE: install `:on-user-update' after displaying "me" ewoc, so
@@ -1460,6 +1482,7 @@ Default Disable Notification setting"))
              :on-user-update #'telega-root--me-on-user-update)
   )
 
+;; "Folders" root view
 (defun telega-view-folders--gen-pp (folder-name)
   "Generate pretty printer for chats in folder with FOLDER-NAME."
   (let ((tdlib-chat-list (telega-folder--tdlib-chat-list folder-name)))
@@ -1496,6 +1519,7 @@ Default Disable Notification setting"))
           (mapcar #'telega-view-folders--ewoc-spec
                   telega-tdlib--chat-filters))))
 
+;; "Recently Deleted Chats" root view
 (defun telega-root--deleted-chat-pp (chat)
   "Pretty printer for deleted chat."
   (when (and (memq chat telega-deleted-chats)
@@ -1516,6 +1540,160 @@ Default Disable Notification setting"))
                             (length (memq chat2 telega-deleted-chats))))
                :on-chat-update #'telega-root--any-on-chat-update))
    ))
+
+;; "Files" root view
+(defun telega-view-files--ins-file (file predicate)
+  "Inserter for FILE in Files root view."
+  (let* ((uploading-p (memq predicate '(telega-file--uploading-p
+                                        telega-file--uploaded-p
+                                        telega-file--partially-uploaded-p)))
+         (downloaded-p (eq predicate #'telega-file--downloaded-p))
+         (local-path (telega--tl-get file :local :path))
+         (part-width (- (/ telega-root-fill-column 3) 3))
+         (col1-width (if downloaded-p
+                         (+ part-width part-width 15)
+                       part-width)))
+    (cl-assert (not (string-empty-p local-path)))
+    (telega-ins--with-attrs (list :max col1-width :min col1-width
+                                  :align 'left :elide t
+                                  :elide-trail col1-width)
+      (telega-button--insert 'telega local-path
+        'face (if (telega-file--downloaded-p file)
+                  'telega-link
+                'default)
+        ;; `d' to delete the file at point, you can delete only files
+        ;; cached by TDLib, TDLib won't delete files outside its cache dir
+        'keymap (when (telega-file--downloaded-p file)
+                  (let ((map (make-sparse-keymap)))
+                    (set-keymap-parent map button-map)
+                    (define-key map (kbd "d") (lambda ()
+                                                (interactive)
+                                                (telega--deleteFile file)))
+                    map))
+        :inserter (lambda (file-path)
+                    (telega-ins
+                     (if downloaded-p
+                         (telega-short-filename file-path)
+                       (file-name-nondirectory file-path))))
+        :action #'telega-open-file))
+
+    (unless downloaded-p
+      (telega-ins " ")
+      (telega-ins "[")
+      (let ((progress (if uploading-p
+                          (telega-file--uploading-progress file)
+                        (telega-file--downloading-progress file))))
+        (telega-ins-progress-bar
+         progress 1.0 part-width
+         (if uploading-p
+             telega-symbol-upload-progress
+           telega-symbol-download-progress))
+        (telega-ins-fmt "]%3d%%" (round (* progress 100))))
+      (telega-ins "  ")
+      (telega-ins--with-attrs (list :min 6 :align 'right)
+        (telega-ins (file-size-human-readable
+                     (if uploading-p
+                         (telega--tl-get file :remote :uploaded_size)
+                       (telega--tl-get file :local :downloaded_size))))))
+
+    (telega-ins " | ")
+    (telega-ins--with-attrs (list :min 6 :align 'right)
+      (telega-ins (file-size-human-readable (telega-file--size file))))
+
+    (cond ((eq 'telega-file--downloading-p predicate)
+           (telega-ins "  ")
+           (telega-ins--button "Cancel"
+             :value file
+             :action #'telega--cancelDownloadFile))
+          ((eq 'telega-file--partially-downloaded-p predicate)
+           (telega-ins "  ")
+           (telega-ins--button "Resume"
+             :value file
+             :action #'telega-file--download)))
+    (when telega-debug
+      (telega-ins-fmt "  ID:%5d" (plist-get file :id)))
+    ))
+
+(defun telega-view-files--gen-pp (predicate)
+  "Generate pretty printer for files matching PREDICATE.
+PREDICATE is one of `telega-file--downloading-p',
+`telega-file--uploading-p', `telega-file--downloaded-p',
+`telega-file--uploaded-p', `telega-file--partially-downloaded-p',
+`telega-file--partially-uploaded-p'."
+  (lambda (file-id)
+    (let* ((file (telega-file-get file-id))
+           (file-path (telega--tl-get file :local :path)))
+      (when (and (funcall predicate file)
+                 ;; NOTE: Ignore files without local file path
+                 (not (string-empty-p file-path))
+                 ;; NOTE: Check all excluded subdirs
+                 (not (seq-intersection
+                       (cdr (assq predicate
+                                  telega-root-view-files-exclude-subdirs))
+                       (split-string file-path "/"))))
+        (telega-view-files--ins-file file predicate)
+        (telega-ins "\n")))))
+
+(defconst telega-view-files--predicates
+  '(("downloading" . telega-file--downloading-p)
+    ("uploading"   . telega-file--uploading-p)
+    ("partially-downloaded" . telega-file--partially-downloaded-p)
+    ("partially-uploaded"   . telega-file--partially-uploaded-p)
+    ("downloaded"  . telega-file--downloaded-p)
+    ;; NOTE: Do not list "uploaded", because we have
+    ;; no information who uploaded the file
+    ;; TODO: we might have a list of files started
+    ;; uploading with `telega--uploadFile' to list
+    ;; them as "uploaded-by-me".
+    ;("uploaded"    . telega-file--uploaded-p)
+    ))
+
+(defun telega-root--on-file-update (ewoc-name ewoc file)
+  "FILE has been updated."
+  (let ((file-node (telega-ewoc--find-by-data ewoc (plist-get file :id)))
+        (predicate (cdr (assoc ewoc-name telega-view-files--predicates))))
+    (if file-node
+        (if (funcall predicate file)
+            (ewoc-invalidate ewoc file-node)
+          (ewoc-delete ewoc file-node))
+
+      (when (funcall predicate file)
+        (ewoc-enter-first ewoc (plist-get file :id))))))
+
+(defun telega-view-files--ewoc-spec (kind)
+  "Generate ewoc spec for files tracking of KIND.
+KIND is one of \"downloading\", \"uploading\", \"downloaded\",
+\"uploaded\", \"partially-downloaded\", \"partially-uploaded\"."
+  (let ((predicate (cdr (assoc kind telega-view-files--predicates))))
+    (cl-assert predicate)
+    (list :name kind
+          :header (upcase kind)
+          :pretty-printer (telega-view-files--gen-pp predicate)
+          ;; NOTE: store file's id as data, to match by `:id', because
+          ;; file changes on file updates
+          :items (mapcar (telega--tl-prop :id)
+                         (cl-remove-if-not
+                          predicate (hash-table-values telega--files)))
+          :on-file-update #'telega-root--on-file-update)))
+
+(defun telega-view-files (kinds)
+  "View status of files known to telega.
+File can be in one of the state kinds: \"downloading\", \"uploading\",
+\"partially-downloaded\", \"partially-uploaded\", \"downloaded\".
+If `\\[universal-argument] is specified, then query user about file
+state kinds to show. By default all kinds are shown."
+  (interactive
+   (let ((all-kinds (mapcar #'car telega-view-files--predicates)))
+     (list (if current-prefix-arg
+               (telega-gen-completing-read-list
+                "File State Kind" all-kinds
+                #'identity telega-completing-read-function)
+             all-kinds))))
+
+  (telega-root-view--apply
+   (nconc (list 'telega-view-loading-files
+                (telega-i18n "telega_view_files"))
+          (mapcar #'telega-view-files--ewoc-spec kinds))))
 
 (provide 'telega-root)
 

@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.4)
+#+TITLE: Telega Manual (v0.7.8)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -78,6 +78,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][/telega-live-location.el/ -- Manage live location in Telega using geo.el]]
     - [[#telega-mnzel--display-emacs-content-inside-telega-messages][/telega-mnz.el/ -- Display Emacs content inside Telega messages.]]
     - [[#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard][/telega-dashboard.el/ -- Important telega chats in the Emacs dashboard]]
+    - [[#telega-storiesel--display-emacs-stories-in-the-dashboard][/telega-stories.el/ -- Display Emacs Stories in the dashboard]]
 
 * Introduction
 :PROPERTIES:
@@ -92,6 +93,9 @@ implementation. However, the core parts are mature enough so that it
 is possible to use =telega= on daily basis.
 
 Join us at [[https://t.me/emacs_telega]]
+
+If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
+development]].
 
 * Installation
 :PROPERTIES:
@@ -593,12 +597,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -711,6 +713,43 @@ view.
   - User Option: ~telega-root-view-topics-other-chats~ 
 
     Non-nil to show other chats in the "topics" root view. 
+
+    Default value: ~t~
+
+- @@html:<kbd>@@v F@@html:</kbd>@@ (~telega-view-files~) :: 
+     View status of files known to telega.
+     File can be in one of the state kinds: "downloading", "uploading",
+     "partially-downloaded", "partially-uploaded", "downloaded".
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is specified, then query user about file
+     state kinds to show. By default all kinds are shown.
+
+     If you use this view frequently, consider setting
+     ~telega-chat-upload-attaches-ahead~ to nil, to avoid file
+     duplications for "uploading" kind. See
+     https://github.com/tdlib/td/issues/1348#issuecomment-752654650
+     for details
+
+     Press @@html:<kbd>@@d@@html:</kbd>@@ under downloaded filename to delete the
+     file.  Only files cached by TDLib in the ~telega-cache-dir~
+     can be deleted.
+
+     Customizable options:
+  - User Option: ~telega-root-view-files-exclude-subdirs~ 
+
+    Alist specifying which subdirs to exclude when viewing files.
+    car of each element is predicate matching file, and rest is list of
+    subdirectories to ignore, i.e. if absolute file name contains any of
+    the subdirectory in list, then file is ignored.
+    Supported predicates: ~telega-file--downloading-p~,
+    ~telega-file--uploading-p~, ~telega-file--downloaded-p~,
+    ~telega-file--uploaded-p~, ~telega-file--partially-downloaded-p~,
+    ~telega-file--partially-uploaded-p~ 
+
+    Default value: ~((telega-file--downloaded-p "thumbnails" "profile_photos"))~
+  - User Option: ~telega-chat-upload-attaches-ahead~ 
+
+    Non-nil to upload attachments ahead, before message actually sent.
+    Having this non-nil "speedups" uploading, its like files uploads instantly. 
 
     Default value: ~t~
 
@@ -1426,25 +1465,29 @@ Attachment types to attach with
 @@html:<kbd>@@C-c C-a@@html:</kbd>@@ (~telega-chatbuf-attach~) defined in
 ~telega-chat-attach-commands~ user option:
 - photo :: Attach ~FILENAME~ as photo to the chatbuf input.
-- self-destruct-photo :: Attach self destructing photo.
+- self-destruct-photo :: Attach a file as self destructing photo.
      This attachment can be used only in private chats.
 - video :: Attach ~FILENAME~ as video to the chatbuf input.
-- self-destruct-video :: Attach self destructing video.
+- self-destruct-video :: Attach a file as self destructing video.
      This attachment can be used only in private chats.
-- video-note :: Attach ~FILENAME~ as (circled) video note to the chatbuf input.
+- video-note :: Attach a (circled) video note to the chatbuf input.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
+     video-note.  Otherwise record video note inplace.
+     ~telega-vvnote-video-cmd~ is used to record video notes.
 - audio :: Attach ~FILENAME~ as audio to the chatbuf input.
 - voice-note :: Attach a voice note to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
      voice-note.  Otherwise record voice note inplace.
+     ~telega-vvnote-voice-cmd~ is used to record voice notes.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.
-- gif :: Attach animation from file.
+- gif :: Attach a file as animation to the chatbuf input.
 - location :: Attach location to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach live location.
 - poll :: Attach poll to the chatbuf input.
      Can be used only in group chats.
      ~QUESTION~ - Title of the poll.
-     ~NON-ANONYMOUS~ - Non-nil to create non-anonymous poll.
-     ~ALLOW-MULTIPLE-ANSWERS~ - Non-nil to allow multiple answers.
+     ~ANONYMOUS-P~ - Non-nil to create anonymous poll.
+     ~ALLOW-MULTIPLE-ANSWERS-P~ - Non-nil to allow multiple answers.
      ~OPTIONS~ - List of strings representing poll options.
 - contact :: Attach ~CONTACT~ user to the chatbuf input.
 - member :: Add ~USER~ to the chat members.
@@ -1778,6 +1821,27 @@ If you also want to open non-document messages as file using
 
   Default value: ~nil~
 
+*Browse URL with custom function*
+
+Also, you can open urls using custom functions:
+- User Option: ~telega-browse-url-alist~ 
+
+  Alist of custom url browse functions.
+  Each element is in form: ~(PREDICATE-OR-REGEX . FUNCTION)~. 
+
+  Default value: ~nil~
+
+For example, to play youtube videos using =mpv= player, add this to config:
+#+begin_src emacs-lisp
+  (defun my-watch-in-mpv (url)
+    (async-shell-command (format "mpv -v %S" url)))
+
+  (add-to-list 'telega-browse-url-alist
+  	     '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
+  (add-to-list 'telega-browse-url-alist
+  	     '("https?://youtu.be/" . my-watch-in-mpv))
+#+end_src
+
 ** Client side messages ignoring
 :PROPERTIES:
 :CUSTOM_ID: client-side-messages-ignoring
@@ -1786,28 +1850,28 @@ If you also want to open non-document messages as file using
 In official telegram clients all messages in group chats are displayed
 even if message has been sent by blocked sender (user or chat).
 =telega= has client side message ignoring feature implemented.
-Ignoring messages can be done via installing special functions into
-~telega-chat-insert-message-hook~, which could mark message as
-ignored, for example, to ignore messages from particular user with
-id=12345 you could add next code:
+Ignoring messages can be done by adding function into
+~telega-msg-ignore-predicates~.  This function must accept single
+argument - message, and return non-nil if messages should be ignored.
+For example, to ignore messages from particular user with ~id=12345~
+you could add next code:
 
 #+begin_src emacs-lisp
-  (defun my-telega-ignore-12345-user (msg &rest notused)
+  (defun my-telega-ignore-12345-user (msg)
     (let ((sender (telega-msg-sender msg)))
-      (when (and (telega-user-p sender)
-  	       (= (plist-get sender :id) 12345))
-        (telega-msg-ignore msg))))
+      (and (telega-user-p sender)
+  	 (= (plist-get sender :id) 12345))))
 
-  (add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
+  (add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 #+end_src
 
 Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
-  (add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
+  (add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
 #+end_src
 
-To view recent messages that has been ignored use
+To view recently ignored messages use
 ~M-x telega-ignored-messages RET~ command.
 
 * Multiple accounts
@@ -2269,3 +2333,71 @@ Customizable options:
   Inserter for the chat button in the Emacs dashboard. 
 
   Default value: ~telega-ins--chat-full~
+
+** /telega-stories.el/ -- Display Emacs Stories in the dashboard
+:PROPERTIES:
+:CUSTOM_ID: telega-storiesel--display-emacs-stories-in-the-dashboard
+:END:
+
+Display recent [[https://t.me/emacs_stories][Emacs Stories]] in the
+dashboard.  Enable it with:
+
+#+begin_src emacs-lisp
+  (require 'telega-stories)
+  (telega-stories-mode 1)
+  ;; "Emacs Stories" rootview
+  (define-key telega-root-mode-map (kbd "v e") 'telega-view-emacs-stories)
+  ;; Emacs Dashboard
+  (add-to-list 'dashboard-items '(telega-stories . 5))
+#+end_src
+
+Apart from dashboard, ~telega-stories~ provides "Emacs Stories"
+[[https://zevlg.github.io/telega.el/#rootbuf-view-switching][Root
+View]].  To enable this view execute @@html:<kbd>@@M-x telega-view-emacs-stories RET@@html:</kbd>@@ in the root buffer.
+
+If you see inappropriate content in the Emacs Story, please report
+this story by pressing
+@@html:<kbd>@@!@@html:</kbd>@@ (~telega-stories-msg-report~) on
+the story.
+
+For best performance consider newest Emacs28 with ~:base_uri~ svg
+image property support.
+
+Screenshots of =telega-stories= in action:
+[[https://zevlg.github.io/telega/emacs-stories-dashboard.png]]
+
+And screenshot of "Emacs Stories" rooot view:
+[[https://zevlg.github.io/telega/emacs-stories-rootview.png]]
+
+Customizable options:
+- User Option: ~telega-stories-show~ 
+
+  Show ~all~ or only ~unread~ stories. 
+
+  Default value: ~unread~
+- User Option: ~telega-stories-height~ 
+
+  Height in chars for Emacs Stories buttons 
+
+  Default value: ~6~
+- User Option: ~telega-stories-notify~ 
+
+  Notify on new story, even if notifications are disabled for stories chat. 
+
+  Default value: ~t~
+- User Option: ~telega-stories-preload-content~ 
+
+  Preload content when Emacs Story is inserted, so can be viewed instantly. 
+
+  Default value: ~t~
+- User Option: ~telega-stories-root-view-count~ 
+
+  Number of Emacs Stories to show in "Emacs Stories" rootview. 
+
+  Default value: ~12~
+- User Option: ~telega-stories-root-view-keep-viewed~ 
+
+  Keep viewed stories in the "Emacs Stories" rootview.
+  Non-nil to keep story in the root view after story is viewed. 
+
+  Default value: ~t~

@@ -269,7 +269,7 @@
   "Inserter for `inlineQueryResultPhoto' QR."
   (let ((photo (plist-get qr :photo)))
     (telega-ins--image
-     (telega-photo--image photo (list 10 3 10 3)))))
+     (telega-photo--image photo telega-inline-photo-size-limits))))
 
 (defun telega-ins--inline-document (qr)
   "Inserter for `inlineQueryResultDocument' QR."

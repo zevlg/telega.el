@@ -1,4 +1,4 @@
-[![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/tdlib-v1.7.0-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.7.1-blue)](https://guix.gnu.org/packages/emacs-telega-0.7.1-1.1d28dc2/)
+[![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1?logo=telegram)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/TDLib-v1.7.0-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.7.1-blue)](https://guix.gnu.org/packages/emacs-telega-0.7.1-1.1d28dc2/) [![Open Collective](https://opencollective.com/telega/tiers/badge.svg)](https://opencollective.com/telega)
 
 # ![logo](etc/telega-logo.svg) telega.el
 
@@ -37,7 +37,7 @@ In some random order:
 - [x] Forwarding messages
 - [x] D-Bus notifications on incoming messages in chats with enabled
       notifications
-- [ ] VoIP calls, including D-Bus call notification
+- [ ] Voice/Video calls
 - [x] Downloading files from the cloud
 - [x] Uploading files/media (also pasting images from clipboard) to the cloud
 - [x] Display chat actions, such as "@user is typing..."
@@ -67,6 +67,8 @@ In some random order:
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 - [x] Telegram Folders (since TDLib 1.6.6)
 - [x] Disable/Enable message notification on receiver side
+- [x] Sticker Outlines (since TDLib 1.7.X+), see Emacs Story - https://t.me/emacs_stories/73
+- [ ] Voice Chats (since TDLib 1.7.X+)
 
 ## Unique features
 
@@ -77,6 +79,7 @@ In some random order:
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
 - [x] [Messages squashing](https://zevlg.github.io/telega.el/#telega-squash-message-mode) minor mode.
 - [x] [Highlight code blocks](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
+- [x] [Emacs Stories](https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard) - share your Emacs experience with other Emacs users.
 
 And much more.
 

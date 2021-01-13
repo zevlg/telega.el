@@ -1047,8 +1047,9 @@ Requires `:can_change_info' rights."
   (telega-server--call
    (list :@type "setChatPhoto"
          :chat_id (plist-get chat :id)
-         :photo (list :@type "inputFileLocal"
-                      :path (expand-file-name filename)))
+         :photo (list :@type "inputChatPhotoStatic"
+                      :photo (list :@type "inputFileLocal"
+                                   :path (expand-file-name filename))))
    (or callback 'ignore)))
 
 (defun telega--setChatPermissions (chat &rest permissions)
@@ -1219,20 +1220,20 @@ default `telega-file--update' is called."
          :priority (or priority 1))
    (or callback 'telega-file--update)))
 
-(defun telega--cancelDownloadFile (file-id &optional only-if-pending)
-  "Stop downloading the file denoted by FILE-ID.
+(defun telega--cancelDownloadFile (file &optional only-if-pending)
+  "Stop downloading the FILE.
 If ONLY-IF-PENDING is non-nil then stop downloading only if it
 hasn't been started, i.e. request hasn't been sent to server."
   (telega-server--send
    (list :@type "cancelDownloadFile"
-         :file_id file-id
+         :file_id (plist-get file :id)
          :only_if_pending (or only-if-pending :false))))
 
-(defun telega--deleteFile (file-id)
-  "Delete file from cache."
+(defun telega--deleteFile (file)
+  "Delete FILE from cache."
   (telega-server--send
    (list :@type "deleteFile"
-         :file_id file-id)))
+         :file_id (plist-get file :id))))
 
 (defun telega--uploadFile (filename &optional file-type priority)
   "Asynchronously upload file denoted by FILENAME.
@@ -1244,11 +1245,11 @@ PRIORITY is same as for `telega-file--download'."
          :file_type (list :@type (format "fileType%S" (or file-type 'Unknown)))
          :priority (or priority 1))))
 
-(defun telega--cancelUploadFile (file-id)
-  "Stop uploading file denoted by FILE-ID."
+(defun telega--cancelUploadFile (file)
+  "Stop uploading FILE."
   (telega-server--send
    (list :@type "cancelUploadFile"
-         :file_id file-id)))
+         :file_id (plist-get file :id))))
 
 (cl-defun telega--sendMessage (chat imc &optional reply-to-msg
                                     options &key reply-markup callback sync-p)

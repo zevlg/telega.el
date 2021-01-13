@@ -161,6 +161,10 @@ If FACE is not specified, then `default' is used."
 Specify EXT with leading `.'."
   (concat (expand-file-name (make-temp-name prefix) telega-temp-dir) ext))
 
+(defun telega-svg-raw-node (svg node-name node-attrs &rest node-childs)
+  "Add string as is to the SVG."
+  (svg--def svg (apply 'dom-node node-name node-attrs node-childs)))
+
 (defun telega-svg-clip-path (svg id)
   (let ((cp (dom-node 'clipPath `((id . ,id)))))
     (svg--def svg cp)
@@ -231,6 +235,38 @@ so new Emacs `svg-embed-base-uri-image' functionality could be used."
                 :clip-path "url(#pclip)")
     svg))
 
+(defun telega-svg-squircle (svg x y width height &rest args)
+  "In SVG at X and Y positioon draw squircle of WIDTHxHEIGHT size.
+X and Y denotes left up corner."
+  ;; Values are taken from
+  ;; https://upload.wikimedia.org/wikipedia/commons/5/58/Squircle2.svg
+  (let* ((w-factor (/ width 608.0))
+         (h-factor (/ height 608.0))
+         (squircle-cubic-beziers
+          '(((126.2 . 288) (196.3563 . 288) (242.1782 . 242.1782))
+            ((288 . 196.3563) (288 . 126.2) (288 . 0))
+            ((288 . -126.2) (288 . -196.3563) (242.1782 . -242.1782))
+            ((196.3563 . -288) (126.2 . -288) (0 . -288))
+            ((-126.2 . -288) (-196.3563 . -288) (-242.1782 . -242.1782))
+            ((-288 . -196.3563) (-288 . -126.2) (-288 . 0))
+            ((-288 . 126.2) (-288 . 196.3563) (-242.1782 . 242.1782))
+            ((-196.3563 . 288) (-126.2 . 288) (0 . 288))))
+         (cmd-start (format "M%f,%f\n"
+                            (+ x (* 304 w-factor))
+                            (+ y (* (+ 288 304) h-factor))))
+         (cmd-cb
+          (mapconcat
+           (lambda (cubic-bezier)
+             (concat "C"
+                     (mapconcat
+                      (lambda (p)
+                        (format "%f,%f"
+                                (+ x (* (+ 304 (car p)) w-factor))
+                                (+ y (* (+ 304 (cdr p)) h-factor))))
+                      cubic-bezier ",")))
+           squircle-cubic-beziers "\n")))
+    (apply #'telega-svg-path svg (concat cmd-start cmd-cb "Z") args)))
+
 (defun telega-svg-create (width height &rest args)
   "Create SVG image using `svg-create'.
 Addresses some issues telega got with pure `svg-create' usage."
@@ -258,6 +294,24 @@ PROPS is passed on to `create-image' as its PROPS list."
              (list :scale
                    (image-compute-scaling-factor image-scaling-factor)))
            props)))
+
+(defun telega-svg-fit-into (width height fit-width fit-height)
+  "Fit rectangle of WIDTHxHEIGHT size into FIT-WIDTHxFIT-HEIGHT rect.
+Do touch outsize scaling.
+Return resulting x,y,width,height."
+  (let* ((w-ratio (/ (float fit-width) width))
+         (h-ratio (/ (float fit-height) height))
+         (fit-horiz-p (> (/ (float width) height)
+                         (/ (float fit-width) fit-height)))
+         (ret-height (if fit-horiz-p
+                         fit-height
+                       (round (* height w-ratio))))
+         (ret-width (if (not fit-horiz-p)
+                        fit-width
+                      (round (* width h-ratio)))))
+    (list (- (/ (- ret-width fit-width) 2))
+          (- (/ (- ret-height fit-height) 2))
+          ret-width ret-height)))
 
 (defun telega-poll-create-svg (cwidth percents &optional face)
   "Create SVG for use in poll options inserter."
@@ -817,7 +871,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                    (condition-case nil
                        (setq ,items
                              (append ,items
-                                     (list (,item-read-fun
+                                     (list (funcall
+                                            ,item-read-fun
                                             (concat ,prompt " (C-g when done)"
                                                     (when ,items
                                                       (concat
@@ -840,7 +895,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
         (telega-filter-chats (or chats-list telega--ordered-chats)
                              '(or main archive)))
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
-                                   telega-completing-read-chat sort-criteria))
+                                   #'telega-completing-read-chat sort-criteria))
 
 (defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
@@ -860,7 +915,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (unless users-list
     (setq users-list (hash-table-values (alist-get 'user telega--info))))
   (telega-gen-completing-read-list prompt users-list #'telega-user--name
-                                   telega-completing-read-user))
+                                   #'telega-completing-read-user))
 
 (defvar telega-completing--chat-member-alist nil
   "Results from last `telega--searchChatMembers'.
@@ -908,7 +963,7 @@ Return a user."
   (unless folder-names
     (setq folder-names (telega-folder-names)))
   (telega-gen-completing-read-list prompt folder-names #'identity
-                                   telega-completing-read-folder))
+                                   #'telega-completing-read-folder))
 
 (defun telega-location-distance (loc1 loc2 &optional components-p)
   "Return distance in meters between locations LOC1 and LOC2.
@@ -1650,12 +1705,13 @@ in `(window-prev-buffers)' to achive behaviour for nil-valued
     (audio "[▁▁▁▁▁▁▁▁▁▁▁]" "[▂▃▂▁▁▂▁▁▁▂▁]" "[▃▄▃▁▄▇▃▁▁▅▂]" "[▃▆▅▁▆█▃▁▂█▅]"
            "[▆█▃▄▄▆▇▃▄▆█]" "[▅▆▃▆▃▅▆▃▃█▆]" "[▄▅▂█▂▃▅▁▂▇▅]" "[▃▄▁▇▁▂▄▁▁▆▄]"
            "[▂▃▁▆▁▁▃▁▁▄▃]" "[▁▂▁▃▁▁▃▁▁▃▂]")
+    (video "🞅" "🞆" "🞇" "🞈" "🞉")
     ))
 
-(defun telega-symbol-animate (symbol)
+(defun telega-symbol-animate (symbol &optional reverse-p)
   "Animate character CHAT, i.e. return next char to create animations."
   (let* ((anim (cl-find symbol telega-symbol-animations :test #'member))
-         (anim-tail (cdr (member symbol anim))))
+         (anim-tail (cdr (member symbol (if reverse-p (reverse anim) anim)))))
     (or (car anim-tail) (cadr anim))))
 
 (defmacro with-telega-symbol-animate (anim-name interval sym-bind exit-form

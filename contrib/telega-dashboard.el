@@ -60,7 +60,7 @@
   "Add at most LIST-SIZE important telega chats."
   (when (and (display-graphic-p)
              dashboard-set-heading-icons)
-    ;; Insert telega log icon
+    ;; Insert telega logo icon
     (unless telega-dashboard--cached-icon
       (setq telega-dashboard--cached-icon
             (find-image
@@ -95,9 +95,9 @@
           (insert "\n    ")
           (let ((telega-root-fill-column (- dashboard-banner-length 4)))
             (telega-button--insert 'telega-chat chat
-              :inserter telega-dashboard-chat-inserter)))
-        (dashboard-insert-shortcut
-         (dashboard-get-shortcut 'telega-chats) "Telega Chats:")))))
+              :inserter telega-dashboard-chat-inserter)))))
+    (dashboard-insert-shortcut
+     (dashboard-get-shortcut 'telega-chats) "Telega Chats:")))
 
 (provide 'telega-dashboard)
 

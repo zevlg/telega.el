@@ -634,25 +634,27 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
     (telega-ins--button "Open"
       :value chat
-      :action 'telega-chat--pop-to-buffer)
+      :action #'telega-chat--pop-to-buffer)
     (when (telega-me-p chat)
       (telega-ins " ")
       (telega-ins--button "Set Profile Photo"
         'action (lambda (_ignored)
                   (let ((photo (read-file-name "Profile Photo: " nil nil t)))
                     (telega--setProfilePhoto photo)))))
-    (when (telega--tl-get chat :permissions :can_invite_users)
+    (when (telega-chat-match-p chat '(my-permission :can_invite_users))
       (telega-ins " ")
       (telega-ins--button "Add Member"
-        'action (lambda (_ignored)
+        :value chat
+        :action (lambda (to-chat)
                   (telega-chat-add-member
-                   chat (telega-completing-read-user "Add member: ")))))
-    (when (telega--tl-get chat :permissions :can_change_info)
+                   to-chat (telega-completing-read-user "Add member: ")))))
+    (when (telega-chat-match-p chat '(my-permission :can_change_info))
       (telega-ins " ")
       (telega-ins--button "Set Chat Photo"
-        'action (lambda (_ignored)
+        :value chat
+        :action (lambda (for-chat)
                   (let ((photo (read-file-name "Chat Photo: " nil nil t)))
-                    (telega--setChatPhoto chat photo)))))
+                    (telega--setChatPhoto for-chat photo)))))
 
     ;; Archive/Unarchive
     (telega-ins " ")
@@ -690,9 +692,9 @@ Specify non-nil BAN to ban this user in this CHAT."
                           telega-symbol-heavy-checkmark
                         telega-symbol-blank-button)
     :value chat
-    :action (lambda (chat)
+    :action (lambda (for-chat)
               (telega--toggleChatDefaultDisableNotification
-               chat (not (plist-get chat :default_disable_notification)))))
+               for-chat (not (plist-get chat :default_disable_notification)))))
   (telega-ins "\n")
   (telega-ins--help-message
    (telega-ins "Used when you send a message to the chat.\n"
@@ -1293,19 +1295,25 @@ Used in chatbuf footer."
                   (telega-ffplay-stop)))
       (telega-ins "]"))))
 
-(defsubst telega-chatbuf--nth-msg (n)
-  "Return N's oldest message in the current chat buffer."
-  (let ((node (ewoc-nth telega-chatbuf--ewoc n)))
+(defun telega-chatbuf--first-msg ()
+  "Return first message inserted in chat buffer."
+  ;; Find first non-telegaMessage message in the chatbuf
+  ;; telegaMessage have :id = -1
+  (let ((node (ewoc-nth telega-chatbuf--ewoc 0)))
+    (while (and node (< (plist-get (ewoc-data node) :id) 0))
+      (setq node (ewoc-next telega-chatbuf--ewoc node)))
     (when node
       (ewoc-data node))))
 
-(defmacro telega-chatbuf--first-msg ()
-  "Return first message inserted in chat buffer."
-  `(telega-chatbuf--nth-msg 0))
-
-(defmacro telega-chatbuf--last-msg ()
+(defun telega-chatbuf--last-msg ()
   "Return last message inserted in chat buffer."
-  `(telega-chatbuf--nth-msg -1))
+  ;; Find last non-telegaMessage message in the chatbuf
+  ;; telegaMessage have :id = -1
+  (let ((node (ewoc-nth telega-chatbuf--ewoc -1)))
+    (while (and node (< (plist-get (ewoc-data node) :id) 0))
+      (setq node (ewoc-prev telega-chatbuf--ewoc node)))
+    (when node
+      (ewoc-data node))))
 
 (defun telega-chatbuf--last-message-id ()
   "Return last message id in for the chatbuf.
@@ -1784,18 +1792,31 @@ unknown, i.e. has no positions set."
                                            :status :is_anonymous)))
          (usj-prompt (unless (or comment-p anonymous-p)
                        (telega-chatbuf--unblock-start-join-prompt)))
-         (prompt (concat (when (telega-chat-match-p
-                                chat telega-chat-prompt-show-avatar-for)
-                           (telega-ins--as-string
-                            (telega-ins--image
-                             (telega-chat-avatar-image-one-line chat))))
-                         (cond (usj-prompt usj-prompt)
-                               (anonymous-p
-                                telega-chat-input-anonymous-prompt)
-                               (comment-p
-                                telega-chat-input-comment-prompt)
-                               (t
-                                telega-chat-input-prompt)))))
+         (prompt (concat
+                  (when (telega-chat-match-p
+                         chat telega-chat-prompt-show-avatar-for)
+                    (telega-ins--as-string
+                     (telega-ins--image
+                      (telega-chat-avatar-image-one-line chat))))
+
+                  ;; NOTE: Prompt could be an alist
+                  ;; See https://t.me/emacs_telega/23453
+                  (let ((iprompt (cond (usj-prompt usj-prompt)
+                                       (anonymous-p
+                                        telega-chat-input-anonymous-prompt)
+                                       (comment-p
+                                        telega-chat-input-comment-prompt)
+                                       (t
+                                        telega-chat-input-prompt))))
+                    (if (stringp iprompt)
+                        iprompt
+                      (let ((ptype
+                             (cond ((telega-chatbuf--replying-msg) 'reply)
+                                   ((telega-chatbuf--editing-msg) 'edit)
+                                   (t 'prompt))))
+                        (or (cdr (assq ptype iprompt))
+                            (user-error "Undefined prompt for `%S'" ptype)))))
+                  )))
     (telega-save-excursion
       (telega-button--update-value
        telega-chatbuf--prompt-button prompt :usj-prompt-p usj-prompt))))
@@ -2722,6 +2743,22 @@ Return valid \"messageSendOptions\"."
              :disable_notification (plist-get imc :disable_notification)))
     ))
 
+(defun telega-chatbuf--input-imc-cancel-upload-ahead (imc)
+  "For file used in IMC cancel its ahead uploading."
+  (when-let* ((file-prop-alist '((inputMessageDocument  . :document)
+                                 (inputMessagePhoto     . :photo)
+                                 (inputMessageVideo     . :video)
+                                 (inputMessageAudio     . :audio)
+                                 (inputMessageVideoNote . :video_note)
+                                 (inputMessageVoiceNote . :voice_note)
+                                 (inputMessageAnimation . :animation)))
+              (file-prop (cdr (assq (telega--tl-type imc) file-prop-alist)))
+              (ifile (plist-get imc file-prop))
+              (upload-ahead-file
+               (get-text-property 0 'telega-upload-ahead-file
+                                  (plist-get ifile :@type))))
+    (telega--cancelUploadFile upload-ahead-file)))
+
 (defun telega-chatbuf-input-send (markup-name)
   "Send chatbuf input to the chat.
 If called interactively, number of `\\[universal-argument]' before
@@ -2869,6 +2906,14 @@ use.  For example `C-u RET' will use
           (t (telega--sendMessage
               telega-chatbuf--chat imc replying-msg options
               :sync-p (not telega-chat-send-messages-async)))))))
+
+      ;; NOTE: Cancell all file upload ahead, initiated by
+      ;; attachements in `send-imcs' See
+      ;; https://github.com/tdlib/td/issues/1348#issuecomment-752465634
+      ;; NOTE: Currently this does not cancel uploads, as noted in
+      ;; https://github.com/tdlib/td/issues/1348#issuecomment-752654650
+      (dolist (imc send-imcs)
+        (telega-chatbuf--input-imc-cancel-upload-ahead imc))
 
       ;; Continue traversing, stripping SEND-IMCS from IMCS
       ;; Each cond clause above must set SEND-IMCS
@@ -3188,9 +3233,11 @@ If `\\[universal-argument]' is given, then attach live location."
            :contact contact)))
 
 (defun telega-chatbuf--gen-input-file (filename &optional file-type
-                                                preview-p upload-callback)
+                                                preview-p upload-ahead-callback)
   "Generate InputFile using FILENAME.
-If PREVIEW-P is non-nil, then generate preview image."
+If PREVIEW-P is non-nil, then generate preview image.
+UPLOAD-AHEAD-CALLBACK is callback for file updates, when uploading
+ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
   (setq filename (expand-file-name filename))
   (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
                    (create-image filename
@@ -3198,13 +3245,13 @@ If PREVIEW-P is non-nil, then generate preview image."
                                  nil
                                  :scale 1.0 :ascent 'center
                                  :height (telega-chars-xheight 1))))
-        (ifile (if telega-chat-upload-attaches-ahead
-                   (let ((ufile (telega-file--upload
-                                    filename file-type 16 upload-callback)))
-                     (list "inputFileId" :id (plist-get ufile :id)))
-                 (list "inputFileLocal" :path filename))))
-    (nconc (list :@type (propertize (car ifile) 'telega-preview preview))
-           (cdr ifile))))
+        (upload-ahead-file
+         (when telega-chat-upload-attaches-ahead
+           (telega-file--upload filename file-type 16 upload-ahead-callback))))
+    (list :@type (propertize "inputFileLocal"
+                             'telega-preview preview
+                             'telega-upload-ahead-file upload-ahead-file)
+          :path filename)))
 
 (defun telega-chatbuf-attach-file (filename &optional preview-p)
   "Attach FILENAME as document to the chatbuf input."
@@ -3231,7 +3278,7 @@ If PREVIEW-P is non-nil, then generate preview image."
               (list :ttl ttl))))))
 
 (defun telega-chatbuf-attach-ttl-photo (filename ttl)
-  "Attach self destructing photo.
+  "Attach a file as self destructing photo.
 This attachment can be used only in private chats."
   (interactive (list (read-file-name "Photo: ")
                      (read-number "Self desctruct in seconds (0-60): ")))
@@ -3248,7 +3295,7 @@ This attachment can be used only in private chats."
               (list :ttl ttl))))))
 
 (defun telega-chatbuf-attach-ttl-video (filename ttl)
-  "Attach self destructing video.
+  "Attach a file as self destructing video.
 This attachment can be used only in private chats."
   (interactive (list (read-file-name "Video: ")
                      (read-number "Self desctruct in seconds (0-60): ")))
@@ -3266,20 +3313,36 @@ This attachment can be used only in private chats."
            :performer (cdr (assoc "artist" metadata))
            ))))
 
-(defun telega-chatbuf-attach-video-note (filename)
-  "Attach FILENAME as (circled) video note to the chatbuf input."
-  (interactive (list (read-file-name "Video Note: ")))
+(defun telega-chatbuf-attach-video-note (as-file-p)
+  "Attach a (circled) video note to the chatbuf input.
+If `\\[universal-argument] is given, then attach existing file as
+video-note.  Otherwise record video note inplace.
+`telega-vvnote-video-cmd' is used to record video notes."
+  (interactive "P")
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'VideoNote)))
+  (let* ((filename (if as-file-p
+                       (read-file-name "Video Note: ")
+                     (telega-vvnote-video--record)))
+         (ifile (telega-chatbuf--gen-input-file filename 'VideoNote))
+         (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
-     (list :@type "inputMessageVideoNote"
-           :video_note ifile))))
+     (nconc
+      (list :@type "inputMessageVideoNote"
+            :duration (round (telega-ffplay-get-duration filename))
+            :video_note ifile)
+      (when frame1
+        `(:thumbnail
+          (:@type "inputThumbnail"
+                  :thumbnail (:@type "inputFileLocal" :path ,frame1)
+                  :width 240
+                  :height 240)))))))
 
 (defun telega-chatbuf-attach-voice-note (as-file-p)
   "Attach a voice note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
-voice-note.  Otherwise record voice note inplace."
+voice-note.  Otherwise record voice note inplace.
+`telega-vvnote-voice-cmd' is used to record voice notes."
   (interactive "P")
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
@@ -3352,12 +3415,6 @@ Uses `telega-screenshot-function' to take a screenshot."
         (telega-chat--pop-to-buffer chat)
         (x-focus-frame (window-frame (get-buffer-window)))
         (telega-chatbuf--attach-tmp-photo tmpfile)))))
-
-(defun telega-chatbuf-attach-member (user)
-  "Add USER to the chat members."
-  (interactive (list (telega-completing-read-user "Add member: ")))
-  (cl-assert user)
-  (telega-chat-add-member telega-chatbuf--chat user))
 
 (defun telega-chatbuf-sticker-insert (sticker)
   "Attach STICKER to the input."
@@ -3468,7 +3525,7 @@ file, Otherwise choose animation from list of saved animations."
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
 (defun telega-chatbuf-attach-gif ()
-  "Attach animation from file."
+  "Attach a file as animation to the chatbuf input."
   (interactive)
   (telega-chatbuf-attach-animation 'from-file))
 
@@ -3500,13 +3557,13 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
              (propertize inline-help 'face 'shadow)))
           t)))))
 
-(defun telega-chatbuf-attach-poll (question non-anonymous allow-multiple-answers
+(defun telega-chatbuf-attach-poll (question anonymous-p allow-multiple-answers-p
                                             &rest options)
   "Attach poll to the chatbuf input.
 Can be used only in group chats.
 QUESTION - Title of the poll.
-NON-ANONYMOUS - Non-nil to create non-anonymous poll.
-ALLOW-MULTIPLE-ANSWERS - Non-nil to allow multiple answers.
+ANONYMOUS-P - Non-nil to create anonymous poll.
+ALLOW-MULTIPLE-ANSWERS-P - Non-nil to allow multiple answers.
 OPTIONS - List of strings representing poll options."
   (interactive
    (let ((poll-q (read-string
@@ -3530,9 +3587,10 @@ OPTIONS - List of strings representing poll options."
   (telega-chatbuf-input-insert
    (list :@type "inputMessagePoll"
          :question question
-         :is_anonymous (if non-anonymous :false t)
+         :is_anonymous (if anonymous-p t :false)
          :type (list :@type "pollTypeRegular"
-                     :allow_multiple_answers allow-multiple-answers)
+                     :allow_multiple_answers
+                     (if allow-multiple-answers-p t :false))
          :options (apply 'vector options))))
 
 (defun telega-chatbuf-attach-scheduled (timestamp)

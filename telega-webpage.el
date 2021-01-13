@@ -576,9 +576,18 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
                           (when iv
                             (telega-webpage--instant-view url "Telegra.ph" iv)
                             t))))))
-
-    ;; TODO: maybe use webkit x-widget to browse the URL
-    (browse-url url)))
+    ;; Try `telega-browse-url-alist' list first
+    (let ((tbu (cl-find url telega-browse-url-alist
+                        :test (lambda (need-url predicate-or-regex)
+                                (if (stringp predicate-or-regex)
+                                    (string-match-p predicate-or-regex need-url)
+                                  (cl-assert (functionp predicate-or-regex))
+                                  (funcall predicate-or-regex need-url)))
+                        :key #'car)))
+      (if tbu
+          (funcall (cdr tbu) url)
+        ;; Fallback to default
+        (browse-url url)))))
 
 (provide 'telega-webpage)
 

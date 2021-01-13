@@ -466,6 +466,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Ask a Question")
  ("telega_settings_telega_manual"
   :value "Telega.el Manual")
+ ("telega_settings_donate"
+  :value "Donate")
 
  ("lng_ttl_photo_expired"
   :value "Photo has expired")
@@ -578,6 +580,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Pinned Messages")
  ("telega_view_deleted_chats"
   :value "Recently Deleted Chats")
+ ("telega_view_files"
+  :value "Files")
 
  ;; #5584 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5584
  ("lng_mute_duration_forever"
@@ -598,4 +602,13 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_option_prefer_ipv6"
   :value "Prefer IPv6")
 
+ ;; For contrib packages
+ ("telega_dashboard_telega_not_running"
+  :value "telega not running")
+ ("telega_stories_heading"
+  :value "Emacs Stories")
+ ("telega_stories_no_stories"
+  :value "No unread stories")
+ ("telega_stories_featured"
+  :value "Featured")
  )

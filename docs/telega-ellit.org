@@ -25,6 +25,9 @@ is possible to use =telega= on daily basis.
 
 Join us at [[https://t.me/emacs_telega]]
 
+If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
+development]].
+
 * Installation
 
 =telega= depends on the =visual-fill-column= and =rainbow-identifiers=
@@ -540,7 +543,9 @@ Attachment types to attach with
 {{{where-is(telega-chatbuf-attach,telega-chat-mode-map)}}} defined in
 ~telega-chat-attach-commands~ user option:
 {{{eval((mapconcat (lambda (ac)
-(concat "- " (nth 0 ac) " :: " (ellit-org-template-fundoc (nth 2 ac) "2"))) telega-chat-attach-commands "\n"),t)}}}
+(concat "- " (nth 0 ac) " :: " (ellit-org-template-fundoc (nth 2 ac) "2")
+(when (nth 3 ac) (concat "\n" (nth 3 ac) "\n"))))
+telega-chat-attach-commands "\n"),t)}}}
 
 Special attachment types are =disable-webpage-preview=, =scheduled=,
 =disable-notification= or =enable-notification=.  They do not attach
@@ -750,33 +755,49 @@ If you also want to open non-document messages as file using
 ~telega-open-file-function~ consider:
 - {{{user-option(telega-open-message-as-file, 2)}}}
 
+*Browse URL with custom function*
+
+Also, you can open urls using custom functions:
+- {{{user-option(telega-browse-url-alist, 2)}}}
+
+For example, to play youtube videos using =mpv= player, add this to config:
+#+begin_src emacs-lisp
+(defun my-watch-in-mpv (url)
+  (async-shell-command (format "mpv -v %S" url)))
+
+(add-to-list 'telega-browse-url-alist
+             '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
+(add-to-list 'telega-browse-url-alist
+             '("https?://youtu.be/" . my-watch-in-mpv))
+#+end_src
+
 ** Client side messages ignoring
 
 In official telegram clients all messages in group chats are displayed
 even if message has been sent by blocked sender (user or chat).
 =telega= has client side message ignoring feature implemented.
-Ignoring messages can be done via installing special functions into
-~telega-chat-insert-message-hook~, which could mark message as
-ignored, for example, to ignore messages from particular user with
-id=12345 you could add next code:
+Ignoring messages can be done by adding function into
+~telega-msg-ignore-predicates~.  This function must accept single
+argument - message, and return non-nil if messages should be ignored.
+For example, to ignore messages from particular user with ~id=12345~
+you could add next code:
 
 #+begin_src emacs-lisp
-(defun my-telega-ignore-12345-user (msg &rest notused)
+(defun my-telega-ignore-12345-user (msg)
   (let ((sender (telega-msg-sender msg)))
-    (when (and (telega-user-p sender)
-               (= (plist-get sender :id) 12345))
-      (telega-msg-ignore msg))))
+    (and (telega-user-p sender)
+         (= (plist-get sender :id) 12345))))
 
-(add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
+(add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 #+end_src
 
 Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
-(add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
+(add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
 #+end_src
 
-To view recent messages that has been ignored use
+To view recently ignored messages use
 ~M-x telega-ignored-messages RET~ command.
 
 * Multiple accounts
@@ -840,5 +861,7 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-mnz.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-dashboard.el
+
+#+ELLIT-INCLUDE: ../contrib/telega-stories.el
 
 #  LocalWords:  customizable chatbuf tdlib gmake

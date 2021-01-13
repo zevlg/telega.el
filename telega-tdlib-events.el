@@ -1060,7 +1060,10 @@ messages."
 
 (defun telega--on-updateFile (event)
   "File has been updated, call all the associated hooks."
-  (telega-file--update (plist-get event :file)))
+  (telega-file--update (plist-get event :file))
+
+  ;; Update "Files" root view as well
+  (telega-root-view--update :on-file-update (plist-get event :file)))
 
 (defun telega--on-updateScopeNotificationSettings (event)
   "Handle `updateScopeNotificationSettings' EVENT."

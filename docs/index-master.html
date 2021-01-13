@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2020-12-29 Вт 15:13 -->
+<!-- 2021-01-12 Вт 00:36 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.4)</title>
+<title>Telega Manual (v0.7.8)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.4)</h1>
+<h1 class="title">Telega Manual (v0.7.8)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.4)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.8)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -312,6 +312,7 @@
 <li><a href="#telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</a></li>
 <li><a href="#telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</a></li>
 <li><a href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</a></li>
+<li><a href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
 </ul>
 </li>
 </ul>
@@ -350,6 +351,11 @@ is possible to use <code>telega</code> on daily basis.
 
 <p>
 Join us at <a href="https://t.me/emacs_telega">https://t.me/emacs_telega</a>
+</p>
+
+<p>
+If you enjoy <code>telega</code>, consider making a <a href="https://opencollective.com/telega">donation for unstoppable
+development</a>.
 </p>
 </div>
 </div>
@@ -841,7 +847,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgde1a18f">
+<pre class="example" id="org178cb99">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -859,7 +865,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org6abe830">
+<pre class="example" id="orgdf5b9a3">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -889,7 +895,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgcede215">
+<pre class="example" id="orge52807a">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -984,7 +990,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org2fd0cd0">
+<pre class="example" id="orgd4beb98">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1061,16 +1067,10 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1230,6 +1230,64 @@ User Option: <code>telega-root-view-topics-other-chats</code>
 
 <p>
 Non-nil to show other chats in the "topics" root view. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul></dd>
+
+<dt><kbd>v F</kbd> (<code>telega-view-files</code>)</dt><dd><p>
+View status of files known to telega.
+File can be in one of the state kinds: "downloading", "uploading",
+"partially-downloaded", "partially-uploaded", "downloaded".
+If <kbd>C-u</kbd> is specified, then query user about file
+state kinds to show. By default all kinds are shown.
+</p>
+
+<p>
+If you use this view frequently, consider setting
+<code>telega-chat-upload-attaches-ahead</code> to nil, to avoid file
+duplications for "uploading" kind. See
+<a href="https://github.com/tdlib/td/issues/1348#issuecomment-752654650">https://github.com/tdlib/td/issues/1348#issuecomment-752654650</a>
+for details
+</p>
+
+<p>
+Press <kbd>d</kbd> under downloaded filename to delete the
+file.  Only files cached by TDLib in the <code>telega-cache-dir</code>
+can be deleted.
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-root-view-files-exclude-subdirs</code> 
+</p>
+
+<p>
+Alist specifying which subdirs to exclude when viewing files.
+car of each element is predicate matching file, and rest is list of
+subdirectories to ignore, i.e. if absolute file name contains any of
+the subdirectory in list, then file is ignored.
+Supported predicates: <code>telega-file--downloading-p</code>,
+<code>telega-file--uploading-p</code>, <code>telega-file--downloaded-p</code>,
+<code>telega-file--uploaded-p</code>, <code>telega-file--partially-downloaded-p</code>,
+<code>telega-file--partially-uploaded-p</code> 
+</p>
+
+<p>
+Default value: <code>((telega-file--downloaded-p "thumbnails" "profile_photos"))</code>
+</p></li>
+<li><p>
+User Option: <code>telega-chat-upload-attaches-ahead</code> 
+</p>
+
+<p>
+Non-nil to upload attachments ahead, before message actually sent.
+Having this non-nil "speedups" uploading, its like files uploads instantly. 
 </p>
 
 <p>
@@ -1798,7 +1856,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0ba9224">
+<pre class="example" id="org840d23d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -1975,7 +2033,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgf78f507">
+<pre class="example" id="org3d5a532">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2044,7 +2102,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgfe9a7c3">
+<pre class="example" id="org599b9de">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2144,25 +2202,29 @@ Attachment types to attach with
 </p>
 <dl class="org-dl">
 <dt>photo</dt><dd>Attach <code>FILENAME</code> as photo to the chatbuf input.</dd>
-<dt>self-destruct-photo</dt><dd>Attach self destructing photo.
+<dt>self-destruct-photo</dt><dd>Attach a file as self destructing photo.
 This attachment can be used only in private chats.</dd>
 <dt>video</dt><dd>Attach <code>FILENAME</code> as video to the chatbuf input.</dd>
-<dt>self-destruct-video</dt><dd>Attach self destructing video.
+<dt>self-destruct-video</dt><dd>Attach a file as self destructing video.
 This attachment can be used only in private chats.</dd>
-<dt>video-note</dt><dd>Attach <code>FILENAME</code> as (circled) video note to the chatbuf input.</dd>
+<dt>video-note</dt><dd>Attach a (circled) video note to the chatbuf input.
+If <kbd>C-u</kbd> is given, then attach existing file as
+video-note.  Otherwise record video note inplace.
+<code>telega-vvnote-video-cmd</code> is used to record video notes.</dd>
 <dt>audio</dt><dd>Attach <code>FILENAME</code> as audio to the chatbuf input.</dd>
 <dt>voice-note</dt><dd>Attach a voice note to the chatbuf input.
 If <kbd>C-u</kbd> is given, then attach existing file as
-voice-note.  Otherwise record voice note inplace.</dd>
+voice-note.  Otherwise record voice note inplace.
+<code>telega-vvnote-voice-cmd</code> is used to record voice notes.</dd>
 <dt>file</dt><dd>Attach <code>FILENAME</code> as document to the chatbuf input.</dd>
-<dt>gif</dt><dd>Attach animation from file.</dd>
+<dt>gif</dt><dd>Attach a file as animation to the chatbuf input.</dd>
 <dt>location</dt><dd>Attach location to the chatbuf input.
 If <kbd>C-u</kbd> is given, then attach live location.</dd>
 <dt>poll</dt><dd>Attach poll to the chatbuf input.
 Can be used only in group chats.
 <code>QUESTION</code> - Title of the poll.
-<code>NON-ANONYMOUS</code> - Non-nil to create non-anonymous poll.
-<code>ALLOW-MULTIPLE-ANSWERS</code> - Non-nil to allow multiple answers.
+<code>ANONYMOUS-P</code> - Non-nil to create anonymous poll.
+<code>ALLOW-MULTIPLE-ANSWERS-P</code> - Non-nil to allow multiple answers.
 <code>OPTIONS</code> - List of strings representing poll options.</dd>
 <dt>contact</dt><dd>Attach <code>CONTACT</code> user to the chatbuf input.</dd>
 <dt>member</dt><dd>Add <code>USER</code> to the chat members.</dd>
@@ -2262,7 +2324,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orga9e8708">
+<pre class="example" id="orgd2e43b8">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2630,6 +2692,42 @@ Document messages are always opens as file.
 Default value: <code>nil</code>
 </p></li>
 </ul>
+
+<p>
+<b>Browse URL with custom function</b>
+</p>
+
+<p>
+Also, you can open urls using custom functions:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-browse-url-alist</code> 
+</p>
+
+<p>
+Alist of custom url browse functions.
+Each element is in form: <code>(PREDICATE-OR-REGEX . FUNCTION)</code>. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+</ul>
+
+<p>
+For example, to play youtube videos using <code>mpv</code> player, add this to config:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-watch-in-mpv</span> (url)
+  (async-shell-command (format <span style="font-style: italic;">"mpv -v %S"</span> url)))
+
+(add-to-list 'telega-browse-url-alist
+           '(<span style="font-style: italic;">"https?://</span><span style="font-weight: bold; font-style: italic;">\\</span><span style="font-weight: bold; font-style: italic;">(</span><span style="font-style: italic;">www\\.</span><span style="font-weight: bold; font-style: italic;">\\</span><span style="font-weight: bold; font-style: italic;">)</span><span style="font-style: italic;">?youtube.com/watch"</span> . my-watch-in-mpv))
+(add-to-list 'telega-browse-url-alist
+           '(<span style="font-style: italic;">"https?://youtu.be/"</span> . my-watch-in-mpv))
+</pre>
+</div>
 </div>
 </div>
 
@@ -2640,20 +2738,20 @@ Default value: <code>nil</code>
 In official telegram clients all messages in group chats are displayed
 even if message has been sent by blocked sender (user or chat).
 <code>telega</code> has client side message ignoring feature implemented.
-Ignoring messages can be done via installing special functions into
-<code>telega-chat-insert-message-hook</code>, which could mark message as
-ignored, for example, to ignore messages from particular user with
-id=12345 you could add next code:
+Ignoring messages can be done by adding function into
+<code>telega-msg-ignore-predicates</code>.  This function must accept single
+argument - message, and return non-nil if messages should be ignored.
+For example, to ignore messages from particular user with <code>id=12345</code>
+you could add next code:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-ignore-12345-user</span> (msg <span style="font-weight: bold; text-decoration: underline;">&amp;rest</span> notused)
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-ignore-12345-user</span> (msg)
   (<span style="font-weight: bold;">let</span> ((sender (telega-msg-sender msg)))
-    (<span style="font-weight: bold;">when</span> (<span style="font-weight: bold;">and</span> (telega-user-p sender)
-             (= (plist-get sender <span style="font-weight: bold;">:id</span>) 12345))
-      (telega-msg-ignore msg))))
+    (<span style="font-weight: bold;">and</span> (telega-user-p sender)
+       (= (plist-get sender <span style="font-weight: bold;">:id</span>) 12345))))
 
-(add-hook 'telega-chat-insert-message-hook 'my-telega-ignore-12345-user)
+(add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 </pre>
 </div>
 
@@ -2662,12 +2760,12 @@ Or to ignore messages from blocked senders (users or chats), just add:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-hook 'telega-chat-insert-message-hook 'telega-msg-ignore-blocked-sender)
+<pre class="src src-emacs-lisp">(add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
 </pre>
 </div>
 
 <p>
-To view recent messages that has been ignored use
+To view recently ignored messages use
 <code>M-x telega-ignored-messages RET</code> command.
 </p>
 </div>
@@ -3064,7 +3162,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org8a6af10">
+<pre class="example" id="orgf56af8e">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3365,11 +3463,132 @@ Default value: <code>telega-ins--chat-full</code>
 </ul>
 </div>
 </div>
+
+<div id="outline-container-telega-storiesel--display-emacs-stories-in-the-dashboard" class="outline-3">
+<h3 id="telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
+<div class="outline-text-3" id="text-telega-storiesel--display-emacs-stories-in-the-dashboard">
+<p>
+Display recent <a href="https://t.me/emacs_stories">Emacs Stories</a> in the
+dashboard.  Enable it with:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-stories</span>)
+(telega-stories-mode 1)
+<span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">"Emacs Stories" rootview</span>
+(define-key telega-root-mode-map (kbd <span style="font-style: italic;">"v e"</span>) 'telega-view-emacs-stories)
+<span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">Emacs Dashboard</span>
+(add-to-list 'dashboard-items '(telega-stories . 5))
+</pre>
+</div>
+
+<p>
+Apart from dashboard, <code>telega-stories</code> provides "Emacs Stories"
+<a href="https://zevlg.github.io/telega.el/#rootbuf-view-switching">Root
+View</a>.  To enable this view execute <kbd>M-x telega-view-emacs-stories RET</kbd> in the root buffer.
+</p>
+
+<p>
+If you see inappropriate content in the Emacs Story, please report
+this story by pressing
+<kbd>!</kbd> (<code>telega-stories-msg-report</code>) on
+the story.
+</p>
+
+<p>
+For best performance consider newest Emacs28 with <code>:base_uri</code> svg
+image property support.
+</p>
+
+<p>
+Screenshots of <code>telega-stories</code> in action:
+<img src="https://zevlg.github.io/telega/emacs-stories-dashboard.png" alt="emacs-stories-dashboard.png" />
+</p>
+
+<p>
+And screenshot of "Emacs Stories" rooot view:
+<img src="https://zevlg.github.io/telega/emacs-stories-rootview.png" alt="emacs-stories-rootview.png" />
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-stories-show</code> 
+</p>
+
+<p>
+Show <code>all</code> or only <code>unread</code> stories. 
+</p>
+
+<p>
+Default value: <code>unread</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-height</code> 
+</p>
+
+<p>
+Height in chars for Emacs Stories buttons 
+</p>
+
+<p>
+Default value: <code>6</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-notify</code> 
+</p>
+
+<p>
+Notify on new story, even if notifications are disabled for stories chat. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-preload-content</code> 
+</p>
+
+<p>
+Preload content when Emacs Story is inserted, so can be viewed instantly. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-root-view-count</code> 
+</p>
+
+<p>
+Number of Emacs Stories to show in "Emacs Stories" rootview. 
+</p>
+
+<p>
+Default value: <code>12</code>
+</p></li>
+<li><p>
+User Option: <code>telega-stories-root-view-keep-viewed</code> 
+</p>
+
+<p>
+Keep viewed stories in the "Emacs Stories" rootview.
+Non-nil to keep story in the root view after story is viewed. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2020-12-29 Вт 15:13</p>
+<p class="date">Created: 2021-01-12 Вт 00:36</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

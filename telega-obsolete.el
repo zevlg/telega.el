@@ -100,6 +100,9 @@
 (telega-obsolete--variable 'telega-chat-use-markdown-version
                            'telega-chat-input-markups
                            nil "0.7.4")
+(telega-obsolete--variable 'telega-video-ffplay-args
+                           'telega-open-message-ffplay-args
+                           nil "0.7.5")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

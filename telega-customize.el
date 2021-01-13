@@ -295,7 +295,7 @@ cdr is maximum width in chars to use."
   :group 'telega)
 
 (defcustom telega-animation-height 5
-  "*Height of animations in char heights."
+  "*Height in chars for animations."
   :type 'integer
   :group 'telega)
 
@@ -348,12 +348,6 @@ There is a restriction to its value:
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-video-ffplay-args nil
-  "*Additional arguments to ffplay to play video messages.
-To play in fullscreen, set `telega-video-ffplay-args' to '(\"-fs\")."
-  :type 'list
-  :group 'telega)
-
 (defcustom telega-open-file-function #'find-file
   "Function to use to open files associated with messages.
 Called with single argument - filename to open.
@@ -376,6 +370,29 @@ Document messages are always opens as file."
                          (const :tag "Video Note messages" video-note)
                          (const :tag "Voice Note messages" voice-note)
                          (const :tag "Animation messages" animation)))
+  :group 'telega)
+
+(defcustom telega-open-message-ffplay-args
+  '((audio      . "-nodisp")
+    (voice-note . "-nodisp")
+    (animation  . "-loop 0"))
+  "*Additional arguments to ffplay to play various type of messages.
+Each element is a cons cell, where car is one of: `video', `audio',
+`video-note', `voice-note', `animation' and cdr is string with
+additional ffplay arguments.
+
+Some useful ffplay arguments to consider:
+ - \"-volume 10\" to play with dimmed volume
+ - \"-fs\" for `video' messages, to start at fullscreen."
+  :package-version '(telega . "0.7.5")
+  :type 'list
+  :group 'telega)
+
+(defcustom telega-browse-url-alist nil
+  "Alist of custom url browse functions.
+Each element is in form: `(PREDICATE-OR-REGEX . FUNCTION)'."
+  :package-version '(telega . "0.7.8")
+  :type 'list
   :group 'telega)
 
 ;; Locations
@@ -514,6 +531,20 @@ Could be one of `prepend', `append' or nil."
     ("ForwardChats" . 10))
   "List of top categories with limits."
   :package-version '(telega . "0.6.23")
+  :type 'alist
+  :group 'telega-root)
+
+(defcustom telega-root-view-files-exclude-subdirs
+  '((telega-file--downloaded-p "thumbnails" "profile_photos"))
+  "Alist specifying which subdirs to exclude when viewing files.
+car of each element is predicate matching file, and rest is list of
+subdirectories to ignore, i.e. if absolute file name contains any of
+the subdirectory in list, then file is ignored.
+Supported predicates: `telega-file--downloading-p',
+`telega-file--uploading-p', `telega-file--downloaded-p',
+`telega-file--uploaded-p', `telega-file--partially-downloaded-p',
+`telega-file--partially-uploaded-p'"
+  :package-version '(telega . "0.7.6")
   :type 'alist
   :group 'telega-root)
 
@@ -828,22 +859,25 @@ enabled."
   :group 'telega-chat)
 
 (defcustom telega-chat-input-prompt ">>> "
-  "*Chatbuf input prompt."
-  :type 'string
+  "*Chatbuf input prompt.
+Could be a string or an alist where car is one of: `prompt', `edit' or
+`reply' and cdr is prompt string."
+  :package-version '(telega . "0.7.9")
+  :type '(or string alist)
   :group 'telega-chat)
 
-(defcustom telega-chat-input-anonymous-prompt
-  (concat "Anonymous" telega-chat-input-prompt)
-  "*Chatbuf input prompt when sending messages as anonymous admin."
-  :package-version '(telega . "0.7.1")
-  :type 'string
+(defcustom telega-chat-input-anonymous-prompt "Anonymous>>> "
+  "*Chatbuf input prompt when sending messages as anonymous admin.
+Could be a string or an alist, same as `telega-chat-input-prompt'."
+  :package-version '(telega . "0.7.9")
+  :type '(or string alist)
   :group 'telega-chat)
 
-(defcustom telega-chat-input-comment-prompt
-  (concat "Comment" telega-chat-input-prompt)
-  "*Chatbuf input prompt displayed when commenting on channel post."
-  :package-version '(telega . "0.7.0")
-  :type 'string
+(defcustom telega-chat-input-comment-prompt "Comment>>> "
+  "*Chatbuf input prompt displayed when commenting on channel post.
+Could be a string or an alist, same as `telega-chat-input-prompt'."
+  :package-version '(telega . "0.7.9")
+  :type '(or string alist)
   :group 'telega-chat)
 
 (defcustom telega-chat-input-ring-size 50
@@ -947,7 +981,6 @@ different days. Such as:
               (not (telega-chat-private-p telega-chatbuf--chat)))
      telega-chatbuf-attach-poll)
     ("contact" nil telega-chatbuf-attach-contact)
-    ("member" nil telega-chatbuf-attach-member)
     ("sticker" nil telega-chatbuf-attach-sticker)
     ("animation" nil telega-chatbuf-attach-animation)
     ("dice" nil telega-chatbuf-attach-dice)
@@ -1168,6 +1201,15 @@ For example:
   :prefix "telega-msg-"
   :group 'telega)
 
+(defcustom telega-msg-ignore-predicates nil
+  "List of predicates to ignore messages.
+Each element is a function accepting single argument - messages and
+returning non-nil if message should be ignored.
+Use this for Clint Side Messages Filtering."
+  :package-version '(telega . "0.7.5")
+  :type '(list function)
+  :group 'telega-msg)
+
 (defcustom telega-msg-rainbow-title t
   "*Non-nil to display user names in chatbuf with their assigned color."
   :type 'boolean
@@ -1218,6 +1260,14 @@ Used for such messages as audio/document/etc."
 (defcustom telega-webpage-preview-size-limits '(10 5 55 10)
   "Same as `telega-photo-size-limits', but for webpage preview image."
   :package-version '(telega . "0.7.2")
+  :type '(list integer integer integer integer)
+  :group 'telega)
+
+(defcustom telega-inline-photo-size-limits '(10 4 20 8)
+  "Same as `telega-photo-size-limits', but for photos from inline queries.
+Inlined photos are displayed, when sending messages via bots, for
+example @gif `TAB' will popup buffer with inlined photos. "
+  :package-version '(telega . "0.7.5")
   :type '(list integer integer integer integer)
   :group 'telega)
 
@@ -1614,6 +1664,20 @@ If nil, then user's online status is not displayed."
   "Symbol to use to draw a bell (notification)."
   :type 'string
   :group 'telega-symbol)
+
+(defcustom telega-symbol-download-progress '(?= . ?>)
+  "Symbols to use when drawing progress bar for dowloading files.
+By default `(?= . ?>)' is used resulting in =====> progress bar."
+  :package-version '(telega . "0.7.5")
+  :type '(or char (cons char char))
+  :group 'telega)
+
+(defcustom telega-symbol-upload-progress '(?+ . ?>)
+  "Symbols to use when drawing progress bar for uploading files.
+By default `(?+ . ?>)' is used resulting in +++++> progress bar."
+  :package-version '(telega . "0.7.5")
+  :type '(or char (cons char char))
+  :group 'telega)
 
 (defcustom telega-symbol-widths
   (list

@@ -32,6 +32,7 @@
 #endif /* _GNU_SOURCE */
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -53,6 +54,12 @@ int cmd_pid;              /* PID of external command */
  */
 long fps_numerator = 0;
 long fps_denominator = 1;
+
+/*
+ * true, when all data has been read or stdin is closed on SIGINT
+ * signal
+ */
+bool input_done = false;
 
 /*
  * Time of playback start, used to calculate timeout to display a frame
@@ -132,6 +139,20 @@ pngext_signal_bypass(int sig)
         kill(cmd_pid, sig);
 }
 
+static void
+pngext_signal_int(int sig)
+{
+        assert(sig == SIGINT);
+
+        close(STDIN_FILENO);
+        /* Now wait untill CMD exits on EPIPE */
+        waitpid(cmd_pid, NULL, 0);
+
+        /* NOTE: we set it, so select() won't be done on invalid file
+         * descriptor */
+        input_done = true;
+}
+
 void
 pngext_loop(const char* prefix, size_t rdsize)
 {
@@ -139,7 +160,6 @@ pngext_loop(const char* prefix, size_t rdsize)
         assert(strlen(prefix) < 500);
 
         int frame_num = 0;
-        bool input_done = false; /* true, when all data has been read */
         struct telega_dat input = TDAT_INIT;
         struct telega_dat png_data = TDAT_INIT;
         struct timeval frame_timeout = {0, 0};
@@ -199,6 +219,7 @@ pngext_loop(const char* prefix, size_t rdsize)
                 if (err < 0) {
                         if (errno == EINTR)
                                 continue;
+
                         perror("select()");
                         break;
                         /* NOT REACHED */
@@ -299,6 +320,8 @@ pngext_main(int ac, char** av)
                 assert(!err);
                 err = dup2(pipe_fds[1], STDOUT_FILENO);
                 assert(err >= 0);
+                err = close(pipe_fds[1]);
+                assert(err == 0);
 
                 err = execv(av[optind], &av[optind]);
                 exit(err);
@@ -308,9 +331,12 @@ pngext_main(int ac, char** av)
                 assert(!err);
                 err = dup2(pipe_fds[0], STDIN_FILENO);
                 assert(err >= 0);
+                err = close(pipe_fds[0]);
+                assert(err == 0);
 
                 signal(SIGSTOP, pngext_signal_bypass);
                 signal(SIGCONT, pngext_signal_bypass);
+                signal(SIGINT, pngext_signal_int);
 
                 pngext_loop(prefix, rdsize);
         }

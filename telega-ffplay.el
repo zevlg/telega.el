@@ -27,6 +27,26 @@
 (require 'cl-lib)
 (require 'telega-core)
 
+(defun telega-ffplay-check-codecs (how &rest codecs)
+  "Check CODEC is available in ffmpeg.
+Return list of available codecs."
+  (let ((codecs-output
+         (shell-command-to-string "ffmpeg -v quiet -codecs")))
+    (cl-remove-if-not
+     #'stringp
+     (mapcar (lambda (codec)
+               (when (string-match-p
+                      (concat (concat (if (memq 'decoder how) "D" ".")
+                                      (if (memq 'encoder how) "E" "."))
+                              "....."
+                              codec)
+                      codecs-output)
+                 codec))
+             codecs))))
+
+(defconst telega-ffplay--has-encoders
+  (telega-ffplay-check-codecs '(encoder) "opus" "hevc" "aac" "h264"))
+
 (defvar telega-ffplay-buffer-name
   (concat (unless telega-debug " ") "*ffplay telega*"))
 
@@ -92,7 +112,7 @@
                    (re-search-backward
                     " time=\\([0-9][0-9]\\):\\([0-9][0-9]\\):\\([0-9.]+\\) "
                     nil t))
-                 ;; ffmpeg capture format
+                 ;; ffmpeg voice note capture format
                  (setq new-progress
                        (+ (* 3600 (string-to-number (match-string 1)))
                           (* 60 (string-to-number (match-string 2)))
@@ -113,6 +133,7 @@
   (telega-ffplay-stop)
 
   ;; Start new ffplay
+  (telega-debug "ffplay START: %s" cmd)
   (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
     (let ((proc (apply 'start-process "ffplay" (current-buffer)
                        (split-string cmd " " t))))
@@ -123,10 +144,10 @@
       (set-process-filter proc #'telega-ffplay--filter)
       proc)))
 
-(defun telega-ffplay-run (filename callback &rest ffplay-args)
+(defun telega-ffplay-run (filename callback &optional ffplay-args)
   "Start ffplay to play FILENAME.
 CALLBACK is called on updates with single argument - process.
-FFPLAY-ARGS is additional args to the ffplay.
+FFPLAY-ARGS is additional arguments string for the ffplay.
 Return newly created process."
   ;; Additional args:
   ;;   -nodisp       for sounds
@@ -136,7 +157,8 @@ Return newly created process."
 
   ;; Start new ffplay
   (let ((args (nconc (list "-hide_banner" "-autoexit")
-                     ffplay-args (list (expand-file-name filename))))
+                     (split-string (or ffplay-args "") " " t)
+                     (list (expand-file-name filename))))
         (ffplay-bin (or (executable-find "ffplay")
                         (error "ffplay not found in `exec-path'"))))
     (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
@@ -193,16 +215,6 @@ if ommited."
             "-show_entries format=duration "
             "-of default=nokey=1:noprint_wrappers=1 "
             "\"" (expand-file-name filename) "\""))))
-
-(defun telega-ffplay-check-codec (codec how)
-  "Check CODEC is available in ffmpeg."
-  (let ((codecs-output
-         (shell-command-to-string "ffmpeg -v quiet -codecs"))
-        (pattern (concat (concat (if (memq 'decoder how) "D" ".")
-                                 (if (memq 'encoder how) "E" "."))
-                         "....."
-                         codec)))
-    (string-match-p pattern codecs-output)))
 
 (defun telega-ffplay--png-extract ()
   "Extract png image data from current buffer.
@@ -268,7 +280,7 @@ Return nil if no image is available."
 
 (defun telega-ffplay-to-png (filename ffmpeg-args callback &rest callback-args)
   "Play video FILENAME extracting png images from it.
-FFMPEG-ARGS - aditional ffmpeg args to add.
+FFMPEG-ARGS - Aditional arguments list for ffmpeg.
 CALLBACK is called with args: <proc> <filename.png>  <callback-args>
 CALLBACK is called with nil filename when finished.
 Return newly created proc."
@@ -278,31 +290,39 @@ Return newly created proc."
 
   ;; Start new ffmpeg
   (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
-    (let* ((prefix (telega-temp-name "video"))
+    (let* ((prefix (telega-temp-name "png-video"))
            (telega-server-bin (telega-server--find-bin))
            (ffmpeg-bin (or (executable-find "ffmpeg")
                            (error "ffmpeg not found in `exec-path'")))
            (args (nconc (list "-E" prefix)
-                        (when-let ((fps-ratio (telega-ffplay-get-fps-ratio
-                                               (expand-file-name filename))))
+                        ;; NOTE: -re causes sound problems in video
+                        ;; notes "-re", instead we use '-f' flag in
+                        ;; telega-server png extractor
+                        (when-let ((fps-ratio (when filename
+                                                (telega-ffplay-get-fps-ratio
+                                                 (expand-file-name filename)))))
                           (list "-f" fps-ratio))
                         (list "--")
                         (list ffmpeg-bin
                               "-hide_banner"
-                              "-loglevel" "quiet"
-                              ;; NOTE: -re causes sound problems in
-                              ;; video notes "-re", instead we use
-                              ;; '-f' flag in telega-server png
-                              ;; extractor
-                              "-i" (expand-file-name filename))
+                              "-loglevel" "quiet")
+                        (when filename
+                          (list "-i" (expand-file-name filename)))
                         ffmpeg-args
-                        (list "-f" "image2pipe" "-vcodec" "png" "-")))
+                        ;; NOTE: hack, for custom capture arguments
+                        ;; for video note recorder
+                        (unless (member "image2pipe" ffmpeg-args)
+                          (list "-f" "image2pipe" "-vcodec" "png" "-"))))
            (process-adaptive-read-buffering nil) ;no buffering please
            (proc (apply 'start-process "ffmpeg" (current-buffer)
                         telega-server-bin args)))
 
+      (telega-debug "ffplay RUN: %s %s" telega-server-bin
+                    (mapconcat #'identity args " "))
       (set-process-plist proc (list :prefix prefix
-                                    :nframes (telega-ffplay-get-nframes filename)
+                                    :nframes (if filename
+                                                 (telega-ffplay-get-nframes filename)
+                                               -1)
                                     :frames nil
                                     :callback callback
                                     :callback-args callback-args))
