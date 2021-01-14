@@ -2661,9 +2661,7 @@ MARKUP-NAME names a markup function from
 `telega-chat-markup-functions' to be used for input formatting."
   (cl-assert (or (null markup-name)
                  (assoc markup-name telega-chat-markup-functions)))
-  (let ((markup-function
-         (or (cdr (assoc markup-name telega-chat-markup-functions))
-             #'telega-string-fmt-text))
+  (let ((markup-function (cdr (assoc markup-name telega-chat-markup-functions)))
         (attaches (telega--split-by-text-prop
                    (telega-chatbuf-input-string) 'telega-attach))
         (disable-webpage-preview telega-chat-send-disable-webpage-preview)
@@ -2681,7 +2679,7 @@ MARKUP-NAME names a markup function from
                    (plist-get telega--options :message_text_length_max)))
 
           (push (list :@type "inputMessageText"
-                      :text (funcall markup-function text)
+                      :text (telega-string-fmt-text text markup-function)
                       :disable_web_page_preview
                       (if disable-webpage-preview t :false)
                       :clear_draft t)
@@ -2717,7 +2715,7 @@ MARKUP-NAME names a markup function from
               (error "Caption exceedes %d limit"
                      (plist-get telega--options :message_caption_length_max)))
 
-            (let ((cap (funcall markup-function (cadr attaches))))
+            (let ((cap (telega-string-fmt-text (cadr attaches) markup-function)))
               (setq attach (plist-put attach :caption cap)))
             (setq attaches (cdr attaches)))
           (push attach result))))

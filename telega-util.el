@@ -688,16 +688,14 @@ second is substring."
             result))
     (nreverse result)))
 
-(defun telega-string-fmt-text (text &optional markdown-version)
+(defun telega-string-fmt-text (text &optional default-markup-func)
   "Convert TEXT to `formattedText' type.
-If MARKDOWN is non-nil then format TEXT as markdown.
-TEXT could contain substrings marked with custom markup, for
-these parts of the string MARKDOWN-VERSION is ignored."
+DEFAULT-MARKUP-FUNC is passed directly to
+`telega-string-split-by-markup', this markup function is used for TEXT
+parts without explicit markup."
   (apply #'telega-fmt-text-concat
          (mapcar (apply-partially #'apply #'funcall)
-                 (telega-string-split-by-markup
-                  text (apply-partially
-                        #'telega-markup-markdown-fmt markdown-version)))))
+                 (telega-string-split-by-markup text default-markup-func))))
 
 (defun telega--entity-for-substring (ent from to)
   "Return new entity for `telega-fmt-text-substring'."
