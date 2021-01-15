@@ -4322,7 +4322,7 @@ sent by some chat member, member name is queried."
     (telega-chatbuf--modeline-update)
     (telega-chatbuf--footer-update)
 
-    (telega-chatbuf--insert-messages (nreverse scheduled-messages) 'append)))
+    (telega-chatbuf--insert-messages (nreverse scheduled-messages) 'prepend)))
 
 (defun telega-chatbuf-filter-cancel (&rest _ignored)
   "Cancel any message filtering.
