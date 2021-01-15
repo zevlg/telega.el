@@ -2385,7 +2385,8 @@ Return last inserted ewoc node."
                                  telega-chat-use-date-breaks-for))
            (node (if (eq how 'prepend)
                      (ewoc--header telega-chatbuf--ewoc)
-                   (ewoc-nth telega-chatbuf--ewoc -1)))
+                   (or (ewoc-nth telega-chatbuf--ewoc -1)
+                       (ewoc--header telega-chatbuf--ewoc))))
            (saved-point (if (or (eq how 'prepend)
                                 (and (eq how 'append-new)
                                      (>= (point) telega-chatbuf--input-marker)))
@@ -2409,6 +2410,7 @@ Return last inserted ewoc node."
             ;; object, so message could be modified inplace
             (telega-msg-cache msg 'maybe-update)
 
+            (cl-assert node)
             ;; Maybe insert date break, such as
             ;; -----(28 December 2020)-----
             (let ((node-msg (ewoc--node-data node)))
@@ -4315,6 +4317,7 @@ sent by some chat member, member name is queried."
     (telega-chatbuf--clean)
     (setq telega-chatbuf--msg-filter
           (list :title "scheduled"
+                :tdlib-msg-filter #'telega-chatbuf-filter-scheduled
                 :total-count (length scheduled-messages)))
     (telega-chatbuf--modeline-update)
     (telega-chatbuf--footer-update)
