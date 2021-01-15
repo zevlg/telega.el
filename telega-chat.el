@@ -4336,7 +4336,12 @@ If point is at some message, then keep point on this message after reseting."
                             telega-chatbuf--thread-msg)))
       (telega-chatbuf--reset-filter-and-thread)
       (telega-chatbuf--clean)
-      (if msg-at-point
+      (if (and msg-at-point
+               ;; NOTE: Ignore scheduled/internal messages, see
+               ;; https://github.com/zevlg/telega.el/issues/250
+               (not (telega-msg-internal-p msg-at-point))
+               (not (plist-get msg-at-point :sending_state))
+               (not (plist-get msg-at-point :scheduling_state)))
           (telega-chat--goto-msg
               telega-chatbuf--chat (plist-get msg-at-point :id) 'highlight)
         (telega-chatbuf--load-initial-history)))
