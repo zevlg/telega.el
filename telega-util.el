@@ -475,9 +475,9 @@ N can't be 0."
        (when telega-chatbuf--chat
          (telega-chatbuf-filter-hashtag (cdr link))))
       (url
-       (telega-browse-url (cdr link)))
+       (telega-browse-url (cdr link) current-prefix-arg))
       (file
-       (telega-open-file (cdr link)))
+       (telega-open-file (cdr link) (telega-msg-at button)))
       )))
 
 (defun telega-escape-underscores (text)
