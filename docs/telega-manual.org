@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.8)
+#+TITLE: Telega Manual (v0.7.10)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -176,7 +176,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to "1.7.0".
+version greater or equal to 1.7.0.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -270,13 +270,31 @@ missing a feature, please use the protocol for the issue tracker.
 usual package.  This is a preferable method, because it will
 automatically handle all dependencies and provides autoloads.
 
+For TDLib 1.7.0 release you might
+consider stable =telega= version.  Stable =telega= version won't
+require you to rebuild TDLib until next TDLib 1.8.0 release, =telega= updates will work with
+1.7.0.  Stable =telega= is placed
+in [[https://stable.melpa.org/][MELPA Stable]].  Package configuration for =telega= from MELPA Stable
+might look like:
+#+begin_src emacs-lisp
+  (add-to-list 'package-archives
+  	     '("melpa-stable" . "https://stable.melpa.org/packages/"))
+  (add-to-list 'package-pinned-packages '(telega . "melpa-stable"))
+#+end_src
+
+=telega= from unstable [[https://melpa.org][MELPA]] is a bleeding edge of the =telega=
+development and =telega= updates might require also TDLib
+update/rebuild sometimes.  However, it brings you all newer (probably
+incompatible with TDLib 1.7.0)
+functionality faster, no need to wait for TDLib 1.8.0 to access newer features.
+
 Or you could use git repository with this melpa-style recipe for [[https://github.com/quelpa/quelpa][quelpa]]:
 
 #+begin_src emacs-lisp
   (quelpa '(telega :fetcher github
   		 :repo "zevlg/telega.el"
   		 :branch "master"
-  		 :files (:defaults "etc" "server" "Makefile")))
+  		 :files (:defaults "contrib" "etc" "server" "Makefile")))
 #+end_src
 
 ** Installing telega directly from GitHub
@@ -597,10 +615,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1490,7 +1510,6 @@ Attachment types to attach with
      ~ALLOW-MULTIPLE-ANSWERS-P~ - Non-nil to allow multiple answers.
      ~OPTIONS~ - List of strings representing poll options.
 - contact :: Attach ~CONTACT~ user to the chatbuf input.
-- member :: Add ~USER~ to the chat members.
 - sticker :: Attach a sticker.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach recent or
      favorite sticker.  Otherwise choose a sticker from installed
@@ -2339,6 +2358,8 @@ Customizable options:
 :CUSTOM_ID: telega-storiesel--display-emacs-stories-in-the-dashboard
 :END:
 
+Emacs Stories: share your Emacs experience with other Emacs users.
+
 Display recent [[https://t.me/emacs_stories][Emacs Stories]] in the
 dashboard.  Enable it with:
 
@@ -2355,7 +2376,7 @@ Apart from dashboard, ~telega-stories~ provides "Emacs Stories"
 [[https://zevlg.github.io/telega.el/#rootbuf-view-switching][Root
 View]].  To enable this view execute @@html:<kbd>@@M-x telega-view-emacs-stories RET@@html:</kbd>@@ in the root buffer.
 
-If you see inappropriate content in the Emacs Story, please report
+If you see inappropriate content in some Emacs Story, please report
 this story by pressing
 @@html:<kbd>@@!@@html:</kbd>@@ (~telega-stories-msg-report~) on
 the story.
@@ -2380,11 +2401,11 @@ Customizable options:
   Height in chars for Emacs Stories buttons 
 
   Default value: ~6~
-- User Option: ~telega-stories-notify~ 
+- User Option: ~telega-stories-notify-if~ 
 
-  Notify on new story, even if notifications are disabled for stories chat. 
+  Pop notification on new story if stories chat matches this Chat Filter. 
 
-  Default value: ~t~
+  Default value: ~(not unmuted)~
 - User Option: ~telega-stories-preload-content~ 
 
   Preload content when Emacs Story is inserted, so can be viewed instantly. 

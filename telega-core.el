@@ -568,7 +568,8 @@ Return FILE."
 
 (defsubst telega-file--downloaded-p (file)
   "Return non-nil if FILE has been downloaded."
-  (telega--tl-get file :local :is_downloading_completed))
+  (and (telega--tl-get file :local :is_downloading_completed)
+       (file-exists-p (telega--tl-get file :local :path))))
 
 (defsubst telega-file--downloading-p (file)
   "Return non-nil if FILE is downloading right now."

@@ -8,12 +8,17 @@
    CLOSED: [2021-01-03 Вс 00:01]
    CREATED: [2020-12-22 Вт]
 
+   Emacs Stories: share your Emacs experience with other Emacs users.
+
    *** TODO show content loading progress
 
        Maybe as gray (background color) dot becoming black
        (foreground color) at the left-bottom corner
 
-   Emacs Stories: share your Emacs experience with other Emacs users.
+   *** TODO open message thread on SPC
+
+       Now impossible because ~interaction_info~ is not updates for
+       story messages lists.
 
    See possible screenshot: https://t.me/emacs_telega/22934
 
@@ -142,6 +147,8 @@
   Make use of transient commands optional, retaining default
   behaviour.
 
+  **Q**: Do we really need this?
+
 * telega-server as a module
 
 Implement telega-server as Emacs module to improve overall performance.
@@ -149,6 +156,9 @@ Implement telega-server as Emacs module to improve overall performance.
    - Engine abstration to distinguish TDLib/TON/VoIP clients.
    - Save "engine" value inside rootbuf
    - "engine" as telega-server and telega-server as "engine"
+
+   **Q**: What are the benefits from having =telega-server= as module
+   instead of process?
 
 * DONE TON
   CLOSED: [2020-10-07 Ср 17:42]
@@ -165,6 +175,20 @@ Unfortunately TON is postponed, see https://t.me/durov/116
 ** DONE TON Browser for TON services and smart contracts (see [[https://test.ton.org/ton.pdf]])
    CLOSED: [2020-10-07 Ср 17:42]
    *WONT't DO*
+
+** Voice Chats
+  - Move =telega-server= bulding to CMake
+  - tgvoip (as submodule for =telega=?):
+    https://github.com/TelegramMessenger/tgcalls
+  
+*** Collaborative editor based on Voice Chats
+  - *Q*: How to attach supplementary info to the voice chat (file we
+    are editing right now) ?
+  - Use CRDT for editing commands:
+    https://code.librehq.com/qhong/crdt.el
+  - Encode CRDT commands as dubstep:
+    https://blog.benjojo.co.uk/post/encoding-data-into-dubstep-drops
+
 
 * Random Ideas
 
@@ -430,6 +454,16 @@ plist like:
   #+begin_src emacs-lisp
   (setq org-default-notes-file "/telega:@zevlg#167430")
   #+end_src
+
+  Directories could be organized as:
+  - text message with directory name as content and ~#dir~ tag,
+    f.e.: "#dir /ideas"
+
+  - replies to this message are directory files
+  - If DocumentMessage - ordinary file
+  - If TextMessage - subdirectory
+
+  To get list of the directories use ~telega--getMessageThreadHistory~
 
 ** Live tracks for live locations
 

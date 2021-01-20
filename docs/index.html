@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-12 Вт 00:36 -->
+<!-- 2021-01-20 Ср 19:15 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.8)</title>
+<title>Telega Manual (v0.7.10)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.8)</h1>
+<h1 class="title">Telega Manual (v0.7.10)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.8)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.10)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -455,7 +455,7 @@ support (graphical).
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to "1.7.0".
+version greater or equal to 1.7.0.
 </p>
 
 <p>
@@ -596,6 +596,29 @@ automatically handle all dependencies and provides autoloads.
 </p>
 
 <p>
+For TDLib 1.7.0 release you might
+consider stable <code>telega</code> version.  Stable <code>telega</code> version won't
+require you to rebuild TDLib until next TDLib 1.8.0 release, <code>telega</code> updates will work with
+1.7.0.  Stable <code>telega</code> is placed
+in <a href="https://stable.melpa.org/">MELPA Stable</a>.  Package configuration for <code>telega</code> from MELPA Stable
+might look like:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-to-list 'package-archives
+           '(<span style="font-style: italic;">"melpa-stable"</span> . <span style="font-style: italic;">"https://stable.melpa.org/packages/"</span>))
+(add-to-list 'package-pinned-packages '(telega . <span style="font-style: italic;">"melpa-stable"</span>))
+</pre>
+</div>
+
+<p>
+<code>telega</code> from unstable <a href="https://melpa.org">MELPA</a> is a bleeding edge of the <code>telega</code>
+development and <code>telega</code> updates might require also TDLib
+update/rebuild sometimes.  However, it brings you all newer (probably
+incompatible with TDLib 1.7.0)
+functionality faster, no need to wait for TDLib 1.8.0 to access newer features.
+</p>
+
+<p>
 Or you could use git repository with this melpa-style recipe for <a href="https://github.com/quelpa/quelpa">quelpa</a>:
 </p>
 
@@ -603,7 +626,7 @@ Or you could use git repository with this melpa-style recipe for <a href="https:
 <pre class="src src-emacs-lisp">(quelpa '(telega <span style="font-weight: bold;">:fetcher</span> github
                <span style="font-weight: bold;">:repo</span> <span style="font-style: italic;">"zevlg/telega.el"</span>
                <span style="font-weight: bold;">:branch</span> <span style="font-style: italic;">"master"</span>
-               <span style="font-weight: bold;">:files</span> (<span style="font-weight: bold;">:defaults</span> <span style="font-style: italic;">"etc"</span> <span style="font-style: italic;">"server"</span> <span style="font-style: italic;">"Makefile"</span>)))
+               <span style="font-weight: bold;">:files</span> (<span style="font-weight: bold;">:defaults</span> <span style="font-style: italic;">"contrib"</span> <span style="font-style: italic;">"etc"</span> <span style="font-style: italic;">"server"</span> <span style="font-style: italic;">"Makefile"</span>)))
 </pre>
 </div>
 </div>
@@ -847,7 +870,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org92aa9a5">
+<pre class="example" id="orgf6ce6f9">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -865,7 +888,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org7ad2df2">
+<pre class="example" id="org781e4b5">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -895,7 +918,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgc73d174">
+<pre class="example" id="org330e370">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -990,7 +1013,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgd6de595">
+<pre class="example" id="org1b950d2">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1067,10 +1090,16 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1856,7 +1885,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org1a3f321">
+<pre class="example" id="org907453b">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2033,7 +2062,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org3cbdf29">
+<pre class="example" id="org0e2f25b">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2102,7 +2131,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org95eb918">
+<pre class="example" id="orgcb94f62">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2227,7 +2256,6 @@ Can be used only in group chats.
 <code>ALLOW-MULTIPLE-ANSWERS-P</code> - Non-nil to allow multiple answers.
 <code>OPTIONS</code> - List of strings representing poll options.</dd>
 <dt>contact</dt><dd>Attach <code>CONTACT</code> user to the chatbuf input.</dd>
-<dt>member</dt><dd>Add <code>USER</code> to the chat members.</dd>
 <dt>sticker</dt><dd>Attach a sticker.
 If <kbd>C-u</kbd> is given, then attach recent or
 favorite sticker.  Otherwise choose a sticker from installed
@@ -2324,7 +2352,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org25d5048">
+<pre class="example" id="org8bab5b3">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3162,7 +3190,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgb637d13">
+<pre class="example" id="org19ca486">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3468,6 +3496,10 @@ Default value: <code>telega-ins--chat-full</code>
 <h3 id="telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
 <div class="outline-text-3" id="text-telega-storiesel--display-emacs-stories-in-the-dashboard">
 <p>
+Emacs Stories: share your Emacs experience with other Emacs users.
+</p>
+
+<p>
 Display recent <a href="https://t.me/emacs_stories">Emacs Stories</a> in the
 dashboard.  Enable it with:
 </p>
@@ -3489,7 +3521,7 @@ View</a>.  To enable this view execute <kbd>M-x telega-view-emacs-stories RET</k
 </p>
 
 <p>
-If you see inappropriate content in the Emacs Story, please report
+If you see inappropriate content in some Emacs Story, please report
 this story by pressing
 <kbd>!</kbd> (<code>telega-stories-msg-report</code>) on
 the story.
@@ -3537,15 +3569,15 @@ Height in chars for Emacs Stories buttons
 Default value: <code>6</code>
 </p></li>
 <li><p>
-User Option: <code>telega-stories-notify</code> 
+User Option: <code>telega-stories-notify-if</code> 
 </p>
 
 <p>
-Notify on new story, even if notifications are disabled for stories chat. 
+Pop notification on new story if stories chat matches this Chat Filter. 
 </p>
 
 <p>
-Default value: <code>t</code>
+Default value: <code>(not unmuted)</code>
 </p></li>
 <li><p>
 User Option: <code>telega-stories-preload-content</code> 
@@ -3588,7 +3620,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-12 Вт 00:36</p>
+<p class="date">Created: 2021-01-20 Ср 19:15</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

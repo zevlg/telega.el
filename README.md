@@ -7,10 +7,7 @@ comprehensive documentation.
 
 **This project is developed on two primary branches. The 'releases' branch
 is kept in compatibility with TDLib major releases. The 'master' branch is
-for developmental purposes, and utilizes unstable features in TDLib.
-If you are using a Git checkout solely for runtime, use the 'releases' 
-branch.**
-
+for developmental purposes, and utilizes unstable features in TDLib.**
 
 ---
 
@@ -63,7 +60,7 @@ In some random order:
 - [x] Multiple accounts
 - [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
 - [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
-- [x] Message scheduling, reminders [PARTLY]
+- [x] Message scheduling, Reminders
 - [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
 - [x] Telegram Folders (since TDLib 1.6.6)
 - [x] Disable/Enable message notification on receiver side
@@ -87,15 +84,15 @@ And much more.
 
 Root buffer screen:
 
-![screen15](https://zevlg.github.io/telega/screen-15.png)
+![screen15](https://zevlg.github.io/telega/telega-root-v0.7.9.png)
 
 Chat in [@emacs_en](https://t.me/emacs_en "emacs_en") group:
 
 ![screen11](https://zevlg.github.io/telega/screen-11.png)
 
-Attaching funny cat sticker:
+Dashboard with Emacs Stories and important chats:
 
-![screen12](https://zevlg.github.io/telega/screen-12.png)
+![dashboard](https://zevlg.github.io/telega/emacs-stories-dashboard.png)
 
 # Starting with telega.el
 

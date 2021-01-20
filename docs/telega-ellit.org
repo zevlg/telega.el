@@ -92,7 +92,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to {{{eval(telega-tdlib-min-version)}}}.
+version greater or equal to {{{eval(telega-tdlib-min-version, t)}}}.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -180,13 +180,33 @@ missing a feature, please use the protocol for the issue tracker.
 usual package.  This is a preferable method, because it will
 automatically handle all dependencies and provides autoloads.
 
+For TDLib {{{eval((car telega-tdlib-releases), t)}}} release you might
+consider stable =telega= version.  Stable =telega= version won't
+require you to rebuild TDLib until next TDLib {{{eval((cdr
+telega-tdlib-releases), t)}}} release, =telega= updates will work with
+{{{eval((car telega-tdlib-releases), t)}}}.  Stable =telega= is placed
+in [[https://stable.melpa.org/][MELPA Stable]].  Package configuration for =telega= from MELPA Stable
+might look like:
+#+begin_src emacs-lisp
+(add-to-list 'package-archives
+             '("melpa-stable" . "https://stable.melpa.org/packages/"))
+(add-to-list 'package-pinned-packages '(telega . "melpa-stable"))
+#+end_src
+
+=telega= from unstable [[https://melpa.org][MELPA]] is a bleeding edge of the =telega=
+development and =telega= updates might require also TDLib
+update/rebuild sometimes.  However, it brings you all newer (probably
+incompatible with TDLib {{{eval((car telega-tdlib-releases), t)}}})
+functionality faster, no need to wait for TDLib {{{eval((cdr
+telega-tdlib-releases), t)}}} to access newer features.
+
 Or you could use git repository with this melpa-style recipe for [[https://github.com/quelpa/quelpa][quelpa]]:
 
 #+begin_src emacs-lisp
 (quelpa '(telega :fetcher github
                  :repo "zevlg/telega.el"
                  :branch "master"
-                 :files (:defaults "etc" "server" "Makefile")))
+                 :files (:defaults "contrib" "etc" "server" "Makefile")))
 #+end_src
 
 ** Installing telega directly from GitHub

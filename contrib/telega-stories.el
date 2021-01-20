@@ -24,12 +24,17 @@
 ;;; ellit-org:
 ;; ** /telega-stories.el/ -- Display Emacs Stories in the dashboard
 ;;
+;; Emacs Stories: share your Emacs experience with other Emacs users.
+;;
 ;; Display recent [[https://t.me/emacs_stories][Emacs Stories]] in the
 ;; dashboard.  Enable it with:
 ;;
 ;; #+begin_src emacs-lisp
 ;; (require 'telega-stories)
 ;; (telega-stories-mode 1)
+;; ;; "Emacs Stories" rootview
+;; (define-key telega-root-mode-map (kbd "v e") 'telega-view-emacs-stories)
+;; ;; Emacs Dashboard
 ;; (add-to-list 'dashboard-items '(telega-stories . 5))
 ;; #+end_src
 ;;
@@ -38,11 +43,11 @@
 ;; View]].  To enable this view execute {{{kbd(M-x
 ;; telega-view-emacs-stories RET)}}} in the root buffer.
 ;;
-;; If you see inappropriate content in the Emacs Story, please report
+;; If you see inappropriate content in some Emacs Story, please report
 ;; this story by pressing
 ;; {{{where-is(telega-stories-msg-report,telega-stories-keymap)}}} on
 ;; the story.
-;; 
+;;
 ;; For best performance consider newest Emacs28 with ~:base_uri~ svg
 ;; image property support.
 ;;
@@ -53,7 +58,9 @@
 ;; [[https://zevlg.github.io/telega/emacs-stories-rootview.png]]
 ;;
 ;; Customizable options:
+;; - {{{user-option(telega-stories-show, 2)}}}
 ;; - {{{user-option(telega-stories-height, 2)}}}
+;; - {{{user-option(telega-stories-notify-if, 2)}}}
 ;; - {{{user-option(telega-stories-preload-content, 2)}}}
 ;; - {{{user-option(telega-stories-root-view-count, 2)}}}
 ;; - {{{user-option(telega-stories-root-view-keep-viewed, 2)}}}
@@ -68,9 +75,25 @@
   :prefix "telega-stories-"
   :group 'telega)
 
+(defcustom telega-stories-show 'unread
+  "Show `all' or only `unread' stories."
+  :type '(choice (const :tag "Only unread Emacs Stories" unread)
+                 (const :tag "All Emacs Stories" all))
+  :group 'telega-stories)
+
 (defcustom telega-stories-height telega-video-note-height
   "Height in chars for Emacs Stories buttons"
   :type 'integer
+  :group 'telega-stories)
+
+(defcustom telega-stories-notify-if '(not unmuted)
+  "Pop notification on new story if stories chat matches this Chat Filter."
+  :type 'list
+  :group 'telega-stories)
+
+(defcustom telega-stories-delimiter " "
+  "Delimiter between stories in the dashboard and rootview."
+  :type 'string
   :group 'telega-stories)
 
 (defcustom telega-stories-preload-content t
@@ -87,11 +110,6 @@
   "Keep viewed stories in the \"Emacs Stories\" rootview.
 Non-nil to keep story in the root view after story is viewed."
   :type 'boolean
-  :group 'telega-stories)
-
-(defcustom telega-stories-root-view-story-delimiter " "
-  "Delimiter between stories in \"Emacs Stories\" rootview."
-  :type 'string
   :group 'telega-stories)
 
 
@@ -128,8 +146,11 @@ Each element is cons cell, where car is a Emacs Story message,
 and cdr is image displayed in the dashboard.")
 (defvar telega-stories--dashboard-cached-icon nil
   "Cached Emacs Stories logo image.")
-(defvar telega-stories--story-messages nil
-  "List of recently fetched non-viewed Emacs Stories.")
+
+(defvar telega-stories--all-messages nil
+  "List of all fetched story messages.")
+(defvar telega-stories--show-messages nil
+  "List of story messages to show, matching `telega-stories-show' setting.")
 
 ;;;###autoload
 (define-minor-mode telega-stories-mode
@@ -137,6 +158,10 @@ and cdr is image displayed in the dashboard.")
   :init-value nil :global t :group 'telega-modes
   (if telega-stories-mode
       (progn
+        (advice-add 'telega--on-updateDeleteMessages
+                    :after 'telega-stories--on-message-delete)
+        (advice-add 'telega--on-updateMessageContent
+                    :after 'telega-stories--on-message-content-update)
         (advice-add 'telega--on-updateMessageSendSucceeded
                     :after 'telega-stories--on-message-send-succeeded)
         (add-hook 'telega-chat-post-message-hook
@@ -153,25 +178,15 @@ and cdr is image displayed in the dashboard.")
                  #'telega-stories--on-new-message)
     (advice-remove 'telega--on-updateMessageSendSucceeded
                    'telega-stories--on-message-send-succeeded)
+    (advice-remove 'telega--on-updateMessageContent
+                   'telega-stories--on-message-content-update)
+    (advice-remove 'telega--on-updateDeleteMessages
+                   'telega-stories--on-message-delete)
     (telega-stories--finalize)
     ))
 
 
 ;; Dashboard
-(defun telega-stories--dashboard-insert-msg (msg)
-  "Insert Emacs Story message MSG into dashboard."
-  (telega-button--insert 'telega msg
-    'keymap telega-stories-keymap
-    :inserter (lambda (msg)
-                (cl-destructuring-bind (thumb thumb-prop)
-                    (telega-stories--msg-thumbnail-spec msg)
-                  (telega-ins--image
-                   (telega-media--image
-                    (cons msg #'telega-stories--msg-create-image)
-                    (cons thumb thumb-prop)
-                    'force :telega-story-image))))
-    :action #'telega-stories-msg-view))
-
 (defun telega-stories-dashboard-insert (list-size)
   "Add at most LIST-SIZE important telega chats."
   (when (and (display-graphic-p) dashboard-set-heading-icons)
@@ -204,10 +219,10 @@ and cdr is image displayed in the dashboard.")
         ((not telega-stories-mode)
          (telega-ins--with-face 'error
            (telega-ins "\n    --- "
-                       "telega-stories-mode not enabled"
+                       "`telega-stories-mode' not enabled"
                        " ---")))
         (t
-         (let ((imsgs (seq-take telega-stories--story-messages list-size)))
+         (let ((imsgs (seq-take telega-stories--show-messages list-size)))
            (if (not imsgs)
                (telega-ins--with-face 'dashboard-no-items-face
                  (telega-ins "\n    --- "
@@ -215,8 +230,7 @@ and cdr is image displayed in the dashboard.")
                              " ---"))
              (insert "\n    ")
              (dolist (msg imsgs)
-               (telega-stories--dashboard-insert-msg msg)
-               (telega-ins " "))))))
+               (telega-stories--msg-pp msg))))))
   (dashboard-insert-shortcut
    (dashboard-get-shortcut 'telega-stories)
    (concat (telega-i18n "telega_stories_heading") ":"))
@@ -226,7 +240,8 @@ and cdr is image displayed in the dashboard.")
 ;; Emacs Stories Runtime
 (defun telega-stories--initialize ()
   "Initialize Emacs Stories runtime."
-  (setq telega-stories--story-messages nil)
+  (setq telega-stories--all-messages nil
+        telega-stories--show-messages nil)
 
   (telega--searchPublicChat telega-stories-group
     (lambda (chat)
@@ -240,11 +255,20 @@ and cdr is image displayed in the dashboard.")
 
 (defun telega-stories--finalize ()
   "Finalize Emacs Stories runtime."
-  (setq telega-stories--story-messages nil)
+  (setq telega-stories--all-messages nil
+        telega-stories--show-messages nil)
 
   (when (and telega-stories--chat (telega-server-live-p))
     (telega--closeChat telega-stories--chat))
-  (setq telega-stories--chat nil))
+  (setq telega-stories--chat nil)
+
+  ;; Update root view as well
+  (with-telega-root-view-ewoc "stories" ewoc
+    (telega-ewoc--clean ewoc)
+    (telega-ewoc--set-footer
+     ewoc (propertize "-- `telega-stories-mode' not enabled --"
+                      'face 'error))
+    ))
 
 (defun telega-stories--async-fetch-stories (&optional from-msg-id
                                                       &rest msg-filters)
@@ -252,7 +276,7 @@ and cdr is image displayed in the dashboard.")
 If FROM-MSG-ID is not given, then search from the last story message
 or from the beginning."
   (cl-assert telega-stories--chat)
-  (when (< (length telega-stories--story-messages)
+  (when (< (length telega-stories--show-messages)
            (max telega-stories--dashboard-list-size
                 telega-stories-root-view-count))
     ;; Need more stories
@@ -268,7 +292,7 @@ or from the beginning."
               "asciinema.org"
             "")
           (or from-msg-id
-              (plist-get (car (last telega-stories--story-messages)) :id)
+              (plist-get (car (last telega-stories--all-messages)) :id)
               0)
           0                             ; offset
           (max telega-stories--dashboard-list-size
@@ -279,7 +303,7 @@ or from the beginning."
             (telega-debug "Emacs Stories: fetched %d stories for %S"
                           (length stories-array) filter-type)
             (seq-doseq (story stories-array)
-              (telega-stories--on-new-message story))
+              (telega-stories--on-new-message story 'no-notify))
 
             ;; NOTE: If searched got some messages and there is still
             ;; not enough story messages, then search for older
@@ -296,18 +320,26 @@ or from the beginning."
                  continue-from-msg-id filter-type))))))
       )))
 
-(defun telega-stories-msg-view (msg)
-  "View Emacs Story message MSG."
-  (unless current-prefix-arg
+(defun telega-stories-msg-view (msg &optional no-open-p no-fetch-p)
+  "View Emacs Story message MSG.
+If NO-OPEN-P is specified, then do not open content."
+  (unless (or no-open-p current-prefix-arg)
     (let ((telega-animation-play-inline nil)) ; play animations externally
       (telega-msg-open-content msg)))
 
+  ;; Add this story message to the list of viewed stories
   (let ((viewed-stories (telega-chat-uaprop
                          (telega-msg-chat msg) :telega-stories-viewed-ids)))
     (unless (memq (plist-get msg :id) viewed-stories)
       ;; NOTE: Store maximum 500 ids, so `uaprop' won't grow inifinitely
       (setf (telega-chat-uaprop (telega-msg-chat msg) :telega-stories-viewed-ids)
             (seq-take (cons (plist-get msg :id) viewed-stories) 500))))
+
+  ;; Also update `telega-stories--show-messages' and possible
+  ;; asynchronously fetch older stories
+  (telega-stories--show-messages-reset)
+  (unless no-fetch-p
+    (telega-stories--async-fetch-stories))
 
   ;; Inplace update story image in the dashboard
   (cl-destructuring-bind (thumb thumb-prop)
@@ -319,22 +351,17 @@ or from the beginning."
     (force-window-update))
 
   ;; NOTE: Update the rootview *before* removing message from
-  ;; `telega-stories--story-messages', because update func checks
-  ;; message is story if it is in the list
-  (telega-root-view--update :on-message-update msg)
-
-  ;; Also update `telega-stories--story-messages' and possible
-  ;; asynchronously fetch older stories
-  (setq telega-stories--story-messages
-        (delq msg telega-stories--story-messages))
-  (telega-stories--async-fetch-stories)
-  )
+  ;; `telega-stories--show-messages', because update func checks
+  ;; message is story as membership of the list
+  (telega-root-view--update :on-message-update msg))
 
 (defun telega-stories-msg-goto (msg)
-  "Goto to Emacs Story message MSG, opening corresponding chat."
+  "Goto to Emacs Story message MSG, opening corresponding chat.
+Show discussion thread for story MSG."
   ;; NOTE: Can't use `telega-msg-at' here, because button type is
   ;; `telega', not `telega-message'
   (interactive (list (button-get (button-at (point)) :value)))
+  (telega-stories-msg-view msg 'no-open)
   (telega-msg-goto-highlight msg))
 
 (defun telega-stories-msg-report (msg reason)
@@ -352,13 +379,27 @@ or from the beginning."
 
   (message "telega: Story reported, thanks for your feedback."))
 
-(defun telega-stories-unview-all ()
-  "Pretend non of the stories are viewed."
+(defun telega-stories-view-loaded ()
+  "Mark currently loaded stories as viewed."
+  (interactive)
+
+  (dolist (msg (copy-sequence telega-stories--show-messages))
+    (unless (telega-stories--msg-viewed-p msg)
+      (telega-stories-msg-view msg 'no-open 'no-fetch)))
+
+  (telega-stories--async-fetch-stories))
+
+(defun telega-stories-unview-all (&rest story-messages)
+  "Pretend none of the STORY-MESSAGES are viewed.
+If STORY-MESSAGES is not specified, unview all story messages."
   (interactive)
   (unless telega-stories--chat
     (user-error "telega-stories-mode not started"))
   (setf (telega-chat-uaprop telega-stories--chat :telega-stories-viewed-ids)
-        nil)
+        (when story-messages
+          (seq-difference (telega-chat-uaprop
+                           telega-stories--chat :telega-stories-viewed-ids)
+                          (mapcar (telega--tl-prop :id) story-messages))))
 
   ;; Empty root view, waiting for update
   (with-telega-root-view-ewoc "stories" ewoc
@@ -367,10 +408,22 @@ or from the beginning."
     (telega-loading--timer-start))
 
   ;; Refresh stories messages
-  (setq telega-stories--story-messages nil)
+  (setq telega-stories--all-messages nil
+        telega-stories--show-messages nil)
   (telega-stories--async-fetch-stories)
   )
 
+(defun telega-stories--msg-delete (msg)
+  "Delete MSG from stories."
+  (cl-assert msg)
+  (setq telega-stories--show-messages
+        (delq msg telega-stories--show-messages))
+  (let ((telega-stories-root-view-keep-viewed nil))
+    (telega-root-view--update :on-message-update msg))
+
+  (setq telega-stories--all-messages
+        (delq msg telega-stories--all-messages)))
+  
 (defun telega-stories--msg-featured-p (msg)
   "Return non-nil if MSG is a featured story.
 Return featured chat id, if MSG is featured."
@@ -403,7 +456,7 @@ Return featured chat id, if MSG is featured."
   "Return non-nil if MSG is sent by `telega-stories-group' admin."
   (let ((sender (telega-msg-sender msg)))
     (if (telega-chat-p sender)
-        ;; sent by anononimous admin
+        ;; sent by anonymous admin
         (eq (plist-get telega-stories--chat :id) (plist-get sender :id))
       ;; sent by ordinary user
       (cl-find (plist-get sender :id) telega-stories--admins
@@ -449,6 +502,21 @@ Return featured chat id, if MSG is featured."
                           (equal '(:@type "thumbnailFormatJpeg")
                                  (plist-get thumb :format)))))
     )))
+
+(defun telega-stories--msg-pp (msg)
+  "Pretty printer for story message MSG."
+  (telega-button--insert 'telega msg
+    'keymap telega-stories-keymap
+    :inserter (lambda (msg)
+                (cl-destructuring-bind (thumb thumb-prop)
+                    (telega-stories--msg-thumbnail-spec msg)
+                  (telega-ins--image
+                   (telega-media--image
+                    (cons msg #'telega-stories--msg-create-image)
+                    (cons thumb thumb-prop)
+                    'force :telega-story-image))))
+    :action #'telega-stories-msg-view)
+  (telega-ins telega-stories-delimiter))
 
 (defun telega-stories--msg-thumbnail-spec (msg)
   "Return thumbnail spec for the story message MSG.
@@ -607,73 +675,116 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
   (let ((cfile (telega-msg--content-file msg)))
     (when (and (not (telega-file--downloaded-p cfile))
                (not (telega-file--downloading-p cfile)))
-      (telega-file--download cfile 16))))
+      ;; NOTE: Use higher priority for recent stories
+      (telega-file--download cfile
+          (max 16 (- 32 (cl-position msg telega-stories--show-messages)))))))
 
-(defun telega-stories--on-new-message (new-msg)
+(defun telega-stories--show-messages-reset ()
+  "Re-set `telega-stories--show-messages' according to `telega-stories-show'."
+  (setq telega-stories--show-messages
+        (cl-remove-if (when (eq 'unread telega-stories-show)
+                        #'telega-stories--msg-viewed-p)
+                      telega-stories--all-messages)))
+
+(defun telega-stories--on-new-message (new-msg &optional ignore-notify-p)
   "If NEW-MSG is an unread Emacs Story message, then add it to the list.
-Return non-nil if NEW-MSG has been added."
-  (when (and (telega-stories-msg-story-p new-msg)
-             (not (telega-stories--msg-viewed-p new-msg)))
+If IGNORE-NOTIFY-P is non-nil, then do not pop notification."
+  (when (telega-stories-msg-story-p new-msg)
     (telega-debug "Emacs Stories ADD story: %S" (plist-get new-msg :id))
-    (cl-pushnew new-msg telega-stories--story-messages
+    (cl-pushnew new-msg telega-stories--all-messages
                 :test (lambda (msg1 msg2)
                         (eq (plist-get msg1 :id) (plist-get msg2 :id))))
     ;; NOTE: keep messages is message id order
-    (setq telega-stories--story-messages
-          (cl-sort telega-stories--story-messages #'>
+    (setq telega-stories--all-messages
+          (cl-sort telega-stories--all-messages #'>
                    :key (telega--tl-prop :id)))
+    (telega-stories--show-messages-reset)
 
-    ;; Start preloading story content
-    (when telega-stories-preload-content
+    ;; Start preloading story content, only for unread stories
+    (when (and telega-stories-preload-content
+               (not (telega-stories--msg-viewed-p new-msg))
+               (memq new-msg
+                     (seq-take telega-stories--show-messages
+                               (max telega-stories--dashboard-list-size
+                                    telega-stories-root-view-count))))
       (telega-stories--msg-preload-content new-msg))
 
     (telega-root-view--update :on-message-update new-msg)
-    t))
+
+    ;; Show notification for new Emacs Story
+    (when (and telega-notifications-mode
+               (not ignore-notify-p)
+               (telega-chat-match-p telega-stories--chat
+                                    telega-stories-notify-if))
+      (telega-notifications--chat-msg0 new-msg nil
+        :app-icon (telega-etc-file
+                   (if (telega-stories--msg-featured-p new-msg)
+                       "emacs-stories-featured.svg"
+                     "emacs-stories.svg"))
+        :title (telega-chat-title telega-stories--chat)
+        ))
+    ))
 
 (defun telega-stories--on-message-send-succeeded (event)
   "Story message might change its id."
   (when (eq (plist-get telega-stories--chat :id)
             (telega--tl-get event :message :chat_id))
-    (let* ((old-id (plist-get event :old_message_id))
-           (old-story (cl-find old-id telega-stories--story-messages
-                               :key (telega--tl-prop :id)))
-           (new-story (plist-get event :message)))
+    (let ((old-story (cl-find (plist-get event :old_message_id)
+                              telega-stories--all-messages
+                              :key (telega--tl-prop :id))))
       (when old-story
-        ;; Force old story message removal from root view
-        (plist-put old-story :telega-story-to-delete t)
-        (telega-root-view--update :on-message-update old-story)
+        (telega-stories--msg-delete old-story))
+      (telega-stories--on-new-message
+       (plist-get event :message) (unless old-story 'no-notify)))))
 
-        (setq telega-stories--story-messages
-              (delq old-story telega-stories--story-messages)))
+(defun telega-stories--on-message-content-update (event)
+  "Message content changed."
+  (when (eq (plist-get telega-stories--chat :id)
+            (plist-get event :chat_id))
+    (when-let ((story (cl-find (plist-get event :message_id)
+                               telega-stories--all-messages
+                               :key (telega--tl-prop :id))))
+      ;; Delete story, and then re-add it with new content
+      (telega-stories--on-message-delete
+       (list :chat_id (plist-get telega-stories--chat :id)
+             :is_permanent t
+             :message_ids (vector (plist-get story :id))))
 
-      (telega-stories--on-new-message new-story))))
+      (plist-put story :content (plist-get event :new_content))
+      (telega-stories--on-new-message story 'no-notify))))
+
+(defun telega-stories--on-message-delete (event)
+  "Possible story message has been deleted."
+  (when (eq (plist-get telega-stories--chat :id)
+            (plist-get event :chat_id))
+    (when (plist-get event :is_permanent)
+      (seq-doseq (msg-id (plist-get event :message_ids))
+        (when-let ((story (cl-find msg-id
+                                   telega-stories--all-messages
+                                   :key (telega--tl-prop :id))))
+          ;; NOTE: Force `story' message removal from root view
+          (setq telega-stories--show-messages
+                (delq story telega-stories--show-messages))
+          (let ((telega-stories-root-view-keep-viewed nil))
+            (telega-root-view--update :on-message-update story))
+
+          (setq telega-stories--all-messages
+                (delq story telega-stories--all-messages)))))))
 
 
 ;; "Emacs Stories" rootview (rv = rootview)
-(defun telega-stories--rv-msg-visible-p (msg)
-  "Return non-nil if msg is visible in the \"Emacs Stories\" rootview."
-  (and (not (plist-get msg :telega-story-to-delete))
-       (or telega-stories-root-view-keep-viewed
-           (not (telega-stories--msg-viewed-p msg)))))
-
-(defun telega-stories--rv-msg-pp (msg)
-  "Pretty printer story message MSG in the \"Emacs Stories\" rootview."
-  ;; NOTE: only visible stories should apper in the root view ewoc
-  (cl-assert (telega-stories--rv-msg-visible-p msg))
-  (telega-stories--dashboard-insert-msg msg)
-  (telega-ins telega-stories-root-view-story-delimiter))
-
 (defun telega-stories--rv-msg-update (_ewoc-name ewoc msg)
   "Message MSG has been updated, possible story need to be updated as well."
-  (when (memq msg telega-stories--story-messages)
+  (when (memq msg telega-stories--all-messages)
     ;; React only on story messages in the list
     (telega-save-cursor
       (if-let ((msg-node (telega-ewoc--find-by-data ewoc msg)))
-          (if (telega-stories--rv-msg-visible-p msg)
+          (if (or telega-stories-root-view-keep-viewed
+                  (memq msg telega-stories--show-messages))
               (ewoc-invalidate ewoc msg-node)
             (ewoc-delete ewoc msg-node))
 
-        (when (telega-stories--rv-msg-visible-p msg)
+        (when (memq msg telega-stories--show-messages)
           ;; New visible story arrived
           (if-let ((before-node (telega-ewoc--find-if ewoc
                                   (lambda (story-msg)
@@ -685,7 +796,7 @@ Return non-nil if NEW-MSG has been added."
       ;; Ensure view has `telega-stories-root-view-count' stories
       ;; displayed
       ;; We might delete or add stories at the end
-      (let ((stories (ewoc-collect ewoc #'telega-stories--rv-msg-visible-p)))
+      (let ((stories (ewoc-collect ewoc #'identity)))
         (cond ((> (length stories) telega-stories-root-view-count)
                ;; Delete last visible story
                (let ((last-node (ewoc-nth ewoc -1)))
@@ -697,11 +808,10 @@ Return non-nil if NEW-MSG has been added."
                            (last-msg (when last-node (ewoc-data last-node)))
                            (next-msgs
                             (if last-msg
-                                (cdr (memq last-msg
-                                           telega-stories--story-messages))
-                              telega-stories--story-messages)))
+                                (cdr (memq last-msg telega-stories--all-messages))
+                              telega-stories--all-messages)))
                  (while next-msgs
-                   (when (telega-stories--rv-msg-visible-p (car next-msgs))
+                   (when (memq (car next-msgs) telega-stories--show-messages)
                      (ewoc-enter-last ewoc (car next-msgs))
                      (setq next-msgs nil))
                    (setq next-msgs (cdr next-msgs)))))
@@ -714,17 +824,30 @@ Return non-nil if NEW-MSG has been added."
               ""))
       )))
 
-(defun telega-view-emacs-stories ()
-  "View recent Emacs Stories."
-  (interactive)
+(defun telega-view-emacs-stories (toggle-show-p)
+  "View recent Emacs Stories.
+If `\\[universal-argument] is given, then toggle `telega-stories-show'
+option before viewing stories.  If it has value `unread', then set it
+to `all', if it was `all', then set it to `unread'."
+  (interactive "P")
+
+  (unless telega-stories-mode
+    (user-error "telega: Can't view Emacs Stories, \
+`telega-stories-mode' not enabled"))
+
+  (when toggle-show-p
+    (setq telega-stories-show
+          (if (eq 'all telega-stories-show) 'unread 'all)))
+  (telega-stories--show-messages-reset)
 
   (telega-root-view--apply
    (list 'telega-view-emacs-stories
-         (telega-i18n "telega_stories_heading")
-         (let ((stories (seq-take telega-stories--story-messages
+         (concat (telega-i18n "telega_stories_heading")
+                 " (" (if (eq 'all telega-stories-show) "all" "unread") ")")
+         (let ((stories (seq-take telega-stories--show-messages
                                   telega-stories-root-view-count)))
            (list :name "stories"
-                 :pretty-printer #'telega-stories--rv-msg-pp
+                 :pretty-printer #'telega-stories--msg-pp
                  :items stories
                  :footer (unless stories
                            (telega-i18n "telega_stories_no_stories"))
