@@ -31,6 +31,7 @@
 (declare-function telega-chat--ensure "telega-chat" (chat))
 (declare-function telega-stickerset--ensure "telega-sticker" (sset))
 (declare-function telega-user-get "telega-user" (user-id))
+(declare-function telega-file--ensure "telega-media" (file))
 
 (defvar telega-version)
 (defvar telega-app)

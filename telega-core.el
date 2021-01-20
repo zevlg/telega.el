@@ -550,14 +550,6 @@ BIND is in form ((PROP VAL) PLIST)."
             by #'cddr
             do (progn ,@body)))
 
-(defsubst telega-file--ensure (file)
-  "Ensure FILE is in `telega--files'.
-Return FILE."
-  (when telega-debug
-    (cl-assert file))
-  (puthash (plist-get file :id) file telega--files)
-  file)
-
 (defsubst telega-file--size (file)
   "Return FILE size."
   ;; NOTE: fsize is 0 if unknown, in this case esize is approximate

@@ -33,6 +33,7 @@
 (require 'telega-core)
 (require 'telega-tdlib)
 
+(declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 
@@ -42,6 +43,18 @@
 
 
 ;;; Files downloading/uploading
+(defun telega-file--ensure (file)
+  "Ensure FILE is in `telega--files'.
+Return FILE.
+As side-effect might update root view, if current root view is \"Files\"."
+  (when telega-debug
+    (cl-assert file))
+  (plist-put file :telega-file-recency (telega-time-seconds))
+  (puthash (plist-get file :id) file telega--files)
+
+  (telega-root-view--update :on-file-update file)
+  file)
+
 (defun telega-file-get (file-id)
   "Return file associated with FILE-ID."
   (or (gethash file-id telega--files)
