@@ -216,6 +216,19 @@ if ommited."
             "-of default=nokey=1:noprint_wrappers=1 "
             "\"" (expand-file-name filename) "\""))))
 
+(defun telega-ffplay-get-resolution (filename)
+  "Return resolution for video FILENAME.
+Return cons cell with width and height if resolution is extracted, nil
+otherwise."
+  (let ((raw-res (shell-command-to-string
+                  (concat "ffprobe -v error "
+                          "-show_entries stream=width,height "
+                          "-of default=nokey=1:noprint_wrappers=1 "
+                          "\"" (expand-file-name filename) "\""))))
+    (when (string-match "\\([0-9]+\\)\n\\([0-9]+\\)" raw-res)
+      (cons (string-to-number (match-string 1 raw-res))
+            (string-to-number (match-string 2 raw-res))))))
+
 (defun telega-ffplay--png-extract ()
   "Extract png image data from current buffer.
 Return cons cell where car is the frame number and cdr is frame

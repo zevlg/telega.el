@@ -76,7 +76,7 @@
     ;; contrast with using single negative number for `:line-width'
     ;; However is older Emacs this is not implemented, see
     ;; https://t.me/emacs_telega/22129
-    ;; 
+    ;;
     ;; We handle both cases, for `:line-width' as cons and as negative
     ;; number
 
@@ -1926,7 +1926,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   "Insert for compact view of media messages."
   (let ((content (plist-get msg :content)))
     (cl-ecase (telega--tl-type content)
-      (messagePhoto 
+      (messagePhoto
        (telega-ins--image
         (telega-photo--image
          (plist-get content :photo) '(10 10 10 10))))
@@ -2019,12 +2019,19 @@ Pass all ARGS directly to `telega-ins--message0'."
           (telega-ins ","))
         (telega-ins--input-file (plist-get imc :audio) "")))
      (inputMessageVideo
-      (let ((ttl-text (when (plist-get imc :ttl)
-                        (format ", self-destruct in: %s"
-                                (telega-duration-human-readable
-                                 (plist-get imc :ttl))))))
-        (telega-ins--input-file (plist-get imc :video) (telega-symbol 'video)
-                                ttl-text)))
+      (let ((duration (or (plist-get imc :duration) 0))
+            (width (plist-get imc :width))
+            (height (plist-get imc :height))
+            (ttl (plist-get imc :ttl)))
+        (telega-ins--input-file
+         (plist-get imc :video) (telega-symbol 'video)
+         (concat " (" (when (and width height)
+                        (format "%dx%d " width height))
+                 (telega-duration-human-readable duration)
+                 (when ttl
+                   (format ", self-destruct in: %s"
+                           (telega-duration-human-readable ttl)))
+                 ")"))))
      (inputMessageVoiceNote
       (let ((duration (or (plist-get imc :duration) 0))
             (waveform (plist-get imc :waveform)))
@@ -2050,7 +2057,15 @@ Pass all ARGS directly to `telega-ins--message0'."
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))
      (inputMessageAnimation
-      (telega-ins--input-file (plist-get imc :animation) "Animation"))
+      (let ((duration (or (plist-get imc :duration) 0))
+            (width (plist-get imc :width))
+            (height (plist-get imc :height)))
+        (telega-ins--input-file
+         (plist-get imc :animation) "GIF"
+         (concat " (" (when (and width height)
+                       (format "%dx%d " width height))
+                 (telega-duration-human-readable duration)
+                 ")"))))
      (inputMessagePoll
       (telega-ins telega-symbol-poll " ")
       (telega-ins (telega-tl-str imc :question))

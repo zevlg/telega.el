@@ -3287,10 +3287,14 @@ This attachment can be used only in private chats."
 (defun telega-chatbuf-attach-video (filename &optional ttl)
   "Attach FILENAME as video to the chatbuf input."
   (interactive (list (read-file-name "Video: ")))
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'Video)))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Video))
+        (resolution (telega-ffplay-get-resolution filename)))
     (telega-chatbuf-input-insert
      (nconc (list :@type "inputMessageVideo"
-                  :video ifile)
+                  :video ifile
+                  :duration (round (telega-ffplay-get-duration filename)))
+            (when resolution
+              (list :width (car resolution) :height (cdr resolution)))
             (when ttl
               (list :ttl ttl))))))
 
@@ -3517,10 +3521,14 @@ file, Otherwise choose animation from list of saved animations."
   (interactive "P")
   (if from-file-p
       (let* ((afilename (read-file-name "Animation File: "))
-             (ifile (telega-chatbuf--gen-input-file afilename 'Animation)))
+             (ifile (telega-chatbuf--gen-input-file afilename 'Animation))
+             (resolution (telega-ffplay-get-resolution afilename)))
         (telega-chatbuf-input-insert
-         (list :@type "inputMessageAnimation"
-               :animation ifile)))
+         (nconc (list :@type "inputMessageAnimation"
+                      :animation ifile
+                      :duration (round (telega-ffplay-get-duration afilename)))
+                (when resolution
+                  (list :width (car resolution) :height (cdr resolution))))))
 
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
