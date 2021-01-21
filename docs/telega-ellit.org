@@ -601,6 +601,14 @@ binding.
 To edit your previously sent message press
 {{{where-is(telega-chatbuf-edit-prev,telega-chat-mode-map)}}}.
 
+It is possible to edit message with markup text inside.  Formatting
+for such messages is controlled by:
+- {{{user-option(telega-msg-edit-markup-spec,2)}}}
+
+  {{{where-is(telega-msg-edit,telega-msg-button-map)}}} accepts
+  {{{kbd(C-u)}}} prefix to edit message as-is without using markup
+  attachment with markup name specified in this option.
+
 ** Forwarding messages
 
 To forward a message, put cursor under the message which you want to

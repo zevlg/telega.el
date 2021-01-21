@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.10)
+#+TITLE: Telega Manual (v0.7.11)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -615,12 +615,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -999,12 +997,12 @@ For other Chat Filter bindings see below.
      Matches if chat type is one of ~CHAT-TYPE-LIST~.
 
      Every chat has a type.  Type is one of:
-  - private :: Private chat with telegram user
-  - secret :: Secret chat with telegram user
-  - bot :: Chat with telegram bot
-  - basicgroup :: Small chat group, could be upgraded to supergroup
-  - supergroup :: Chat group with all the chat possibilities
-  - channel :: Supergroup with unlimited members, where only admins can post messages
+  - ~private~ Private chat with a Telegram user
+  - ~secret~ Secret chat with a Telegram user
+  - ~bot~ Chat with a Telegram bot
+  - ~basicgroup~ Small chat group, could be upgraded to supergroup
+  - ~supergroup~ Chat group with all the chat possibilities
+  - ~channel~ Supergroup with unlimited members, where only admins can post messages
 
 - (name ~REGEXP~) :: 
      Matches if chat's title matches ~REGEXP~.
@@ -1347,7 +1345,7 @@ For other sorting keybindings see below.
 Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
 consists of a list of chat messages and an input for your messages
 to send.  Press
-@@html:<kbd>@@i@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <describe>@@html:</kbd>@@ (~telega-describe-message~) to
+@@html:<kbd>@@i@@html:</kbd>@@ (~telega-describe-message~) to
 get detailed description of the message at point.
 
 Important customizable options:
@@ -1526,7 +1524,7 @@ Attachment types to attach with
      Uses ~telega-screenshot-function~ to take a screenshot.
 - clipboard :: Attach clipboard image to the chatbuf as photo.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach clipboard as document.
-- markup :: Attach text using ~MARKUP-NAME~ into chatbuf.
+- markup :: Attach ~MARKUP-TEXT~ using ~MARKUP-NAME~ into chatbuf.
      Using this type of attachment it is possible to intermix multiple
      markups in the chatbuf input.
      Markups are defined in the ~telega-chat-markup-functions~ user option.
@@ -1578,8 +1576,8 @@ Customizable options for attaching media:
 
 To reply/edit the message, put point on the message you want to
 reply/edit and press
-@@html:<kbd>@@r@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <reply>@@html:</kbd>@@ (~telega-msg-reply~) to reply or
-@@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) to edit.
+@@html:<kbd>@@r@@html:</kbd>@@ (~telega-msg-reply~) to reply or
+@@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) to edit.
 
 Aux prompt will be show just above the chatbuf prompt, such as:
 #+begin_example
@@ -1596,6 +1594,22 @@ binding.
 To edit your previously sent message press
 @@html:<kbd>@@M-p@@html:</kbd>@@ (~telega-chatbuf-edit-prev~).
 
+It is possible to edit message with markup text inside.  Formatting
+for such messages is controlled by:
+- User Option: ~telega-msg-edit-markup-spec~ 
+
+  Cons cell specifying how to format message text when editing.
+  car is a function to convert message's text to markup string.
+  cdr is a markup name from ~telega-chat-markup-functions~ to use as
+  markup attachment.  Use nil to edit message as is, without using
+  "markup" attachment type. 
+
+  Default value: ~(telega--fmt-text-markdown2 . "markdown2")~
+
+  @@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) accepts
+  @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to edit message as-is without using markup
+  attachment with markup name specified in this option.
+
 ** Forwarding messages
 :PROPERTIES:
 :CUSTOM_ID: forwarding-messages
@@ -1606,7 +1620,7 @@ forward and press
 @@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
+@@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
 @@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
@@ -1627,11 +1641,11 @@ To delete a message, put cursor under the message you want to delete and press
 @@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@k@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
-with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
+with @@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~).
 
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
-@@html:<kbd>@@B@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <ban-sender>@@html:</kbd>@@ (~telega-msg-ban-sender~) when
+@@html:<kbd>@@B@@html:</kbd>@@ (~telega-msg-ban-sender~) when
 cursor is under the message.
 
 =telega= can keep deleted messages visible until chatbuf is

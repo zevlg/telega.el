@@ -1213,6 +1213,18 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
+(defcustom telega-msg-edit-markup-spec
+  '(telega--fmt-text-markdown2 . "markdown2")
+  "Cons cell specifying how to format message text when editing.
+car is a function to convert message's text to markup string.
+cdr is a markup name from `telega-chat-markup-functions' to use as
+markup attachment.  Use nil to edit message as is, without using
+\"markup\" attachment type."
+  :package-version '(telega . "0.7.11")
+  :type 'cons
+  :options '((telega--fmt-text-markdown1 . "markdown1"))
+  :group 'telega-msg)
+
 (defcustom telega-msg-use-images-in-one-line telega-use-images
   "Non-nil to show images in one-line message version."
   :package-version '(telega . "0.6.30")

@@ -650,7 +650,7 @@ MARKUP-FUNC is function taking string and returning formattedText."
   (telega-markup-markdown-fmt 1 str))
 
 (defun telega-markup-markdown2-fmt (str)
-  (telega-markup-markdown-fmt 2 str))
+  (telega--parseMarkdown (telega-fmt-text str)))
 
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
@@ -761,8 +761,8 @@ Return desurrogated formattedText."
           :text (apply #'concat (mapcar (telega--tl-prop :text) fmt-texts))
           :entities (apply #'seq-concatenate 'vector ents))))
 
-(defun telega--fmt-text-markdown (fmt-text)
-  "Return formatted text FMT-TEXT as markdown syntax."
+(defun telega--fmt-text-markdown1 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown1 syntax."
   ;; TODO: support nested markdown
   (let ((text (copy-sequence (plist-get fmt-text :text)))
         (offset 0)
@@ -788,6 +788,10 @@ Return desurrogated formattedText."
       (remove-text-properties 0 (length ret-text) (list 'face) ret-text)
       ret-text)))
 
+(defun telega--fmt-text-markdown2 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown2 syntax."
+  (plist-get (telega--getMarkdownText fmt-text) :text))
+
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
@@ -806,14 +810,6 @@ Return text string with applied faces."
         (when face
           (add-face-text-property beg end face 'append text))))
     text))
-
-(defun telega-fmt-text-string (fmt-text &optional as-markdown)
-  "Return formattedText FMT-TEXT as string.
-If AS-MARKDOWN is non-nil, then format it as markdown syntax,
-otherwise return propertized string."
-  (if as-markdown
-      (telega--fmt-text-markdown fmt-text)
-    (telega--fmt-text-faces fmt-text)))
 
 (defun telega--region-by-text-prop (beg prop)
   "Return region after BEG point with text property PROP set."

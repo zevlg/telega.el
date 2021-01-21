@@ -255,16 +255,6 @@ It could be user, secretChat, basicGroup or supergroup."
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
-;;; ellit-org: chatbuf
-;; ** Chat types
-;;
-;; Every chat has a type.  Type is one of:
-;; - private :: Private chat with telegram user
-;; - secret :: Secret chat with telegram user
-;; - bot :: Chat with telegram bot
-;; - basicgroup :: Small chat group, could be upgraded to supergroup
-;; - supergroup :: Chat group with all the chat possibilities
-;; - channel :: Supergroup with unlimited members, where only admins can post messags
 (defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
 Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'.
@@ -3651,8 +3641,8 @@ Use this attachment to disable/enable notification on the receiver side."
          :emoji emoji
          :clear_draft t)))
 
-(defun telega-chatbuf-attach-markup (markup-name)
-  "Attach text using MARKUP-NAME into chatbuf.
+(defun telega-chatbuf-attach-markup (markup-name &optional markup-text)
+  "Attach MARKUP-TEXT using MARKUP-NAME into chatbuf.
 Using this type of attachment it is possible to intermix multiple
 markups in the chatbuf input.
 Markups are defined in the `telega-chat-markup-functions' user option."
@@ -3662,7 +3652,7 @@ Markups are defined in the `telega-chat-markup-functions' user option."
                               nil t)))
   (let ((markup-func (cdr (assoc markup-name telega-chat-markup-functions))))
     (telega-chatbuf-input-insert
-     (telega-string-as-markup "" markup-name markup-func))
+     (telega-string-as-markup (or markup-text "") markup-name markup-func))
     (backward-char 1)))
 
 (defun telega-chatbuf-attach (attach-type)
@@ -3862,9 +3852,11 @@ MSG can be nil in case there is no active voice message."
 
     (telega-help-message--cancel-aux 'reply)))
 
-(defun telega-msg-edit (msg)
-  "Start editing the MSG."
-  (interactive (list (telega-msg-for-interactive)))
+(defun telega-msg-edit (msg &optional edit-as-is)
+  "Start editing the MSG.
+If `\\[universal-argument] argument is given, then do not use markup
+name from `telega-msg-edit-markup-spec' and insert message text as is."
+  (interactive (list (telega-msg-for-interactive) current-prefix-arg))
 
   (unless (plist-get msg :can_be_edited)
     (error "Message can't be edited"))
@@ -3887,10 +3879,25 @@ MSG can be nil in case there is no active voice message."
     (goto-char (point-max))
 
     ;; Insert message's text or attachment caption
-    (let ((content (plist-get msg :content)))
-      (telega-ins--fmt-text-as-markdown
-       (or (plist-get content :text)
-           (plist-get content :caption))))
+    ;; Possible use "markdown2" markup for the text
+    (let* ((content (plist-get msg :content))
+           (orig-fmt-text (or (plist-get content :text)
+                              (plist-get content :caption)))
+           (markup-str (funcall (car telega-msg-edit-markup-spec)
+                                orig-fmt-text)))
+      ;; NOTE: if text does not changes, then no markup in the text,
+      ;; can edit text AS-IS
+      (if (or edit-as-is
+              (null (cdr telega-msg-edit-markup-spec))
+              (string= markup-str (plist-get orig-fmt-text :text)))
+          ;; Insert msg text AS-IS
+          (telega-ins (telega--desurrogate-apply markup-str))
+
+        ;; Insert msg text as markup input attachment
+        (cl-assert (stringp (cdr telega-msg-edit-markup-spec)))
+        (telega-chatbuf-attach-markup
+         (cdr telega-msg-edit-markup-spec)
+         (telega--desurrogate-apply markup-str))))
 
     (telega-help-message--cancel-aux 'edit)))
 

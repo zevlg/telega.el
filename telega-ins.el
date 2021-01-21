@@ -454,12 +454,6 @@ E-CHAR - empty char, default is non-break space."
                 telega-symbol-heavy-checkmark)
                (t telega-symbol-checkmark)))))))
 
-(defun telega-ins--fmt-text-as-markdown (fmt-text)
-  "Insert formatted text FMT-TEXT as markdown syntax."
-  (when fmt-text
-    (telega-ins
-     (telega--desurrogate-apply (telega--fmt-text-markdown fmt-text)))))
-
 (defun telega-ins--fmt-text (fmt-text &optional for-msg)
   "Insert formatted TEXT applying telegram entities.
 If AS-MARKDOWN is non-nil, then instead of applying faces, apply

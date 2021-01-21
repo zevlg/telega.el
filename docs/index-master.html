@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-20 Ср 19:16 -->
+<!-- 2021-01-21 Чт 04:15 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.10)</title>
+<title>Telega Manual (v0.7.11)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.10)</h1>
+<h1 class="title">Telega Manual (v0.7.11)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.10)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.11)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -870,7 +870,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orge4fd35d">
+<pre class="example" id="org6e68555">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -888,7 +888,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orgd4563f0">
+<pre class="example" id="org820320c">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -918,7 +918,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgf949c1c">
+<pre class="example" id="org22a570a">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1013,7 +1013,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgf9246fd">
+<pre class="example" id="orgd4d8ab3">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1090,16 +1090,10 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1624,14 +1618,14 @@ Matches if chat type is one of <code>CHAT-TYPE-LIST</code>.
 <p>
 Every chat has a type.  Type is one of:
 </p>
-<dl class="org-dl">
-<dt>private</dt><dd>Private chat with telegram user</dd>
-<dt>secret</dt><dd>Secret chat with telegram user</dd>
-<dt>bot</dt><dd>Chat with telegram bot</dd>
-<dt>basicgroup</dt><dd>Small chat group, could be upgraded to supergroup</dd>
-<dt>supergroup</dt><dd>Chat group with all the chat possibilities</dd>
-<dt>channel</dt><dd>Supergroup with unlimited members, where only admins can post messages</dd>
-</dl></dd>
+<ul class="org-ul">
+<li><code>private</code> Private chat with a Telegram user</li>
+<li><code>secret</code> Secret chat with a Telegram user</li>
+<li><code>bot</code> Chat with a Telegram bot</li>
+<li><code>basicgroup</code> Small chat group, could be upgraded to supergroup</li>
+<li><code>supergroup</code> Chat group with all the chat possibilities</li>
+<li><code>channel</code> Supergroup with unlimited members, where only admins can post messages</li>
+</ul></dd>
 
 <dt>(name <code>REGEXP</code>)</dt><dd>Matches if chat's title matches <code>REGEXP</code>.</dd>
 
@@ -1885,7 +1879,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgfd685d7">
+<pre class="example" id="orgcc89179">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2034,7 +2028,7 @@ Default value: <code>chatbuf-recency</code>
 Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
 consists of a list of chat messages and an input for your messages
 to send.  Press
-<kbd>i</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;describe&gt;</kbd> (<code>telega-describe-message</code>) to
+<kbd>i</kbd> (<code>telega-describe-message</code>) to
 get detailed description of the message at point.
 </p>
 
@@ -2062,7 +2056,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org9ff6e59">
+<pre class="example" id="orgc3ce3a5">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2131,7 +2125,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgd8b42bd">
+<pre class="example" id="orgb6d8506">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2272,7 +2266,7 @@ screenshot of the area.
 Uses <code>telega-screenshot-function</code> to take a screenshot.</dd>
 <dt>clipboard</dt><dd>Attach clipboard image to the chatbuf as photo.
 If <kbd>C-u</kbd> is given, then attach clipboard as document.</dd>
-<dt>markup</dt><dd>Attach text using <code>MARKUP-NAME</code> into chatbuf.
+<dt>markup</dt><dd>Attach <code>MARKUP-TEXT</code> using <code>MARKUP-NAME</code> into chatbuf.
 Using this type of attachment it is possible to intermix multiple
 markups in the chatbuf input.
 Markups are defined in the <code>telega-chat-markup-functions</code> user option.</dd>
@@ -2345,14 +2339,14 @@ Default value:
 <p>
 To reply/edit the message, put point on the message you want to
 reply/edit and press
-<kbd>r</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;reply&gt;</kbd> (<code>telega-msg-reply</code>) to reply or
-<kbd>e</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;edit&gt;</kbd> (<code>telega-msg-edit</code>) to edit.
+<kbd>r</kbd> (<code>telega-msg-reply</code>) to reply or
+<kbd>e</kbd> (<code>telega-msg-edit</code>) to edit.
 </p>
 
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org1db2cbc">
+<pre class="example" id="orga6f0fed">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2369,6 +2363,34 @@ binding.
 To edit your previously sent message press
 <kbd>M-p</kbd> (<code>telega-chatbuf-edit-prev</code>).
 </p>
+
+<p>
+It is possible to edit message with markup text inside.  Formatting
+for such messages is controlled by:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-msg-edit-markup-spec</code> 
+</p>
+
+<p>
+Cons cell specifying how to format message text when editing.
+car is a function to convert message's text to markup string.
+cdr is a markup name from <code>telega-chat-markup-functions</code> to use as
+markup attachment.  Use nil to edit message as is, without using
+"markup" attachment type. 
+</p>
+
+<p>
+Default value: <code>(telega--fmt-text-markdown2 . "markdown2")</code>
+</p>
+
+<p>
+<kbd>e</kbd> (<code>telega-msg-edit</code>) accepts
+<kbd>C-u</kbd> prefix to edit message as-is without using markup
+attachment with markup name specified in this option.
+</p></li>
+</ul>
 </div>
 </div>
 
@@ -2381,7 +2403,7 @@ forward and press
 <kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-<kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;unmark&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
+<kbd>m</kbd> (<code>telega-msg-mark-toggle</code>) and then
 press
 <kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 on one of the messages.
@@ -2410,13 +2432,13 @@ To delete a message, put cursor under the message you want to delete and press
 
 <p>
 As with <a href="#forwarding-messages">forwarding messages</a>, you can mark multiple messages to delete
-with <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;unmark&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>).
+with <kbd>m</kbd> (<code>telega-msg-mark-toggle</code>).
 </p>
 
 <p>
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
-<kbd>B</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;ban-sender&gt;</kbd> (<code>telega-msg-ban-sender</code>) when
+<kbd>B</kbd> (<code>telega-msg-ban-sender</code>) when
 cursor is under the message.
 </p>
 
@@ -3190,7 +3212,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgc9dd383">
+<pre class="example" id="org747196e">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3620,7 +3642,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-20 Ср 19:16</p>
+<p class="date">Created: 2021-01-21 Чт 04:15</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

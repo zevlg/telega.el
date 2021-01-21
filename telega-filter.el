@@ -652,12 +652,12 @@ If `\\[universal-argument]' is specified, then negate whole active filter."
 ;;   {{{fundoc(telega--filter-type, 2)}}}
 ;;
 ;;   Every chat has a type.  Type is one of:
-;;   - private :: Private chat with telegram user
-;;   - secret :: Secret chat with telegram user
-;;   - bot :: Chat with telegram bot
-;;   - basicgroup :: Small chat group, could be upgraded to supergroup
-;;   - supergroup :: Chat group with all the chat possibilities
-;;   - channel :: Supergroup with unlimited members, where only admins can post messages
+;;   - ~private~ Private chat with a Telegram user
+;;   - ~secret~ Secret chat with a Telegram user
+;;   - ~bot~ Chat with a Telegram bot
+;;   - ~basicgroup~ Small chat group, could be upgraded to supergroup
+;;   - ~supergroup~ Chat group with all the chat possibilities
+;;   - ~channel~ Supergroup with unlimited members, where only admins can post messages
 (define-telega-filter type (chat &rest chat-type-list)
   "Matches if chat type is one of CHAT-TYPE-LIST."
   (memq (telega-chat--type chat) chat-type-list))
