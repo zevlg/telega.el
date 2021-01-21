@@ -1462,16 +1462,16 @@ Display remains until next event is input.
 Same as `momentary-string-display', but keeps the point."
   (unless exit-char
     (setq exit-char last-command-event))
-  (let* ((start (or pos (point)))
-         (end pos))
+  ;; NOTE: `read-key' might trigger changes in the rootbuf, thats why
+  ;; save start/end as markers
+  (let* ((start (copy-marker (or pos (point))))
+         (end start))
     (unwind-protect
         (progn
-          (message "START-> %S / max-point=%S" start (point-max))
           (save-excursion
             (goto-char start)
             (insert string)
-            (setq end (point)))
-          (message "POINT-> %S" (point))
+            (setq end (copy-marker (point) t)))
           (message "Type %s to continue editing."
                    (single-key-description exit-char))
           (let ((event (read-key)))

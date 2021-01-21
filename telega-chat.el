@@ -2766,6 +2766,14 @@ use.  For example `C-u RET' will use
         (editing-msg (telega-chatbuf--editing-msg))
         (options nil)
         (send-imcs nil))
+    ;; NOTE: Allow removing captions, see
+    ;; https://github.com/zevlg/telega.el/issues/252
+    (when (and (null imcs)
+               editing-msg
+               (telega--tl-get editing-msg :content :caption))
+      (setq imcs (list (list :@type "inputMessageText"
+                             :text (telega-string-fmt-text "")))))
+
     ;; Send the input by traversing IMCS and sending composed
     ;; SEND-IMCS
     (while imcs
