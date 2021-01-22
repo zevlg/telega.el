@@ -240,6 +240,11 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     ;; Clickable user's profile photos
     (telega-ins--user-profile-photos user)
 
+    (when-let ((patron (telega-msg-sender-patron-p user)))
+      (telega-ins "Telega Patron Since: ")
+      (telega-ins--date-full (plist-get patron :since_date))
+      (telega-ins "\n"))
+
     (telega-ins-fmt "Id: %s\n"
       (if telega-debug
           (format "(telega-user-get %d)" (plist-get user :id))

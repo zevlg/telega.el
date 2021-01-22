@@ -530,7 +530,7 @@ Return string of width 3."
               (propertize (substring title 0 1) 'face title-faces)
               ")"))))
 
-(defun telega-avatar--create-image (sender file &optional cheight)
+(defun telega-avatar--create-image (sender file &optional cheight addon-function)
   "Create SENDER (char or user) avatar image.
 CHEIGHT specifies avatar height in chars, default is 2."
   ;; NOTE:
@@ -584,6 +584,11 @@ CHEIGHT specifies avatar height in chars, default is 2."
                   ;; XXX insane X/Y calculation
                   :x (- (/ svg-xw 2) (/ fsz 3))
                   :y (+ (/ fsz 3) (/ cfull 2)))))
+
+    ;; XXX: Apply additional function, used by `telega-patrons-mode'
+    (when addon-function
+      (funcall addon-function svg (list (/ svg-xw 2) (/ cfull 2) (/ ch 2))))
+
     (telega-svg-image svg :scale 1.0
                       :width svg-xw :height svg-xh
                       :ascent 'center

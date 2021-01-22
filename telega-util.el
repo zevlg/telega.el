@@ -267,6 +267,33 @@ X and Y denotes left up corner."
            squircle-cubic-beziers "\n")))
     (apply #'telega-svg-path svg (concat cmd-start cmd-cb "Z") args)))
 
+(defun telega-svg-telega-logo (svg width &rest args)
+  "Draw telega triangle of WIDTH."
+  (let ((ratio (/ width 32.0))
+        (logo-outline '((M (0 10.1891))
+                        (l (7.9819 5.5418))
+                        (c (0.8853 -0.322) (1.8202 -0.6638) (2.599 -0.9418)
+                           (1.9609 -0.7)   (7.0539 -3.4182) (7.0539 -3.4182)
+                           (-2.5145 2.2595) (-4.6401 4.5613) (-6.55 6.8691))
+                        (L (17.5694 27))
+                        (c (0.2653 -0.9309) (0.5279 -1.8618) (0.9135 -2.9018))
+                        (C (20.4518 18.4196) (32 0) (32 0)
+                           (24.4744 2.555) (10.7087 7.5896) (7.8333 8.5782)
+                           (5.5816 9.3523) (2.1946 10.5884) (0 10.1892))
+                        (z))))
+    (apply #'telega-svg-path svg
+           (mapconcat (lambda (op)
+                        (concat (symbol-name (car op))
+                                (mapconcat
+                                 (lambda (pnt)
+                                   (concat (number-to-string (* ratio (car pnt)))
+                                           " "
+                                           (number-to-string
+                                            (* ratio (cadr pnt)))))
+                                 (cdr op) " ")))
+                      logo-outline "\n")
+           args)))
+
 (defun telega-svg-create (width height &rest args)
   "Create SVG image using `svg-create'.
 Addresses some issues telega got with pure `svg-create' usage."
@@ -281,7 +308,7 @@ Addresses some issues telega got with pure `svg-create' usage."
 PROPS is passed on to `create-image' as its PROPS list."
   ;; NOTE: work around problem displaying unicode characters in some
   ;; librsvg versions (in my case 2.40.13).  Encoded (in &#xxxx format)
-  ;; text is only displayed corretly if <xml ..?> node is specified
+  ;; text is only displayed correctly if <xml ..?> node is specified
   (let ((svg-data (with-temp-buffer
                     (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
                     (svg-print svg)

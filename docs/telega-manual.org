@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.11)
+#+TITLE: Telega Manual (v0.7.12)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -69,6 +69,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-image-mode][telega-image-mode]]
     - [[#telega-edit-file-mode][telega-edit-file-mode]]
     - [[#telega-highlight-text-mode][telega-highlight-text-mode]]
+    - [[#telega-patrons-mode][telega-patrons-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
     - [[#telega-status-historyel--global-minore-mode-to-save-users-online-status-history][/telega-status-history.el/ -- Global minore mode to save user's online status history]]
@@ -615,10 +616,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -2138,6 +2141,26 @@ with @@html:<kbd>@@RET@@html:</kbd>@@, use:
 
 Similar to =hi-lock=, however supports =jit-lock= for highlighting
 dynamic content.
+
+** telega-patrons-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-patrons-mode
+:END:
+
+Emphasize =telega=
+[[https://opencollective.com/telega#section-contributors][patrons]]
+by drawing special elements (telega cat ears) above the patron's
+avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
+
+In addition:
+- Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
+- All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
+
+If you are already =telega= patron and not in the
+~telega-patrons-alist~ list, please [[https://t.me/zevlg][write
+me]].
+
+~telega-patrons-mode~ is enabled by default.
 
 * Contributed packages
 :PROPERTIES:

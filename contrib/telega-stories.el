@@ -66,7 +66,6 @@
 ;; - {{{user-option(telega-stories-root-view-keep-viewed, 2)}}}
 
 ;;; Code:
-
 (require 'telega)
 
 ;; Customizable variables
@@ -545,11 +544,11 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
           (cl-destructuring-bind (thumb thumb-prop)
               (telega-stories--msg-thumbnail-spec msg)
             (telega-file--renew thumb thumb-prop)))
+         (sender (telega-msg-sender msg))
          (title
-          (let ((sender (telega-msg-sender msg)))
             (propertize (or (telega-msg-sender-username sender 'with-@)
                             (telega-msg-sender-title sender))
-                        :color (car (telega-msg-sender-color sender)))))
+                        :color (car (telega-msg-sender-color sender))))
          (viewed-p (telega-stories--msg-viewed-p msg))
 
          (size (telega-chars-xheight telega-stories-height))
@@ -629,30 +628,41 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
                      :fill "red"
                      :opacity "0.75")))
 
-    ;; Featured Chat icon and title
-    (let ((font-size (round (/ title-height 1.5)))
-          (featured-chat-id (telega-stories--msg-featured-p msg))
-          ;; `title-xoff' is used if featured icon is inserted
-          (title-xoff nil))
+    ;; Title icon (for featured chat or patron user) and title
+    (let* ((font-size (round (/ title-height 1.5)))
+           (patron-p (telega-msg-sender-patron-p sender))
+           (featured-chat-id
+            (or (if (and patron-p (telega-chat-p sender))
+                    (plist-get sender :id)
+                  (telega-stories--msg-featured-p msg))))
+           (title-photo
+            (cond (featured-chat-id
+                   (plist-get (telega-chat-get featured-chat-id) :photo))
+                  (patron-p
+                   (cl-assert (telega-user-p sender))
+                   (plist-get sender :profile_photo))))
+           (title-tphoto
+            (when title-photo
+              (telega-file--renew title-photo :small)))
+           ;; `title-xoff' is used if title icon is inserted
+           (title-xoff nil))
       (when featured-chat-id
-        (let* ((fchat (telega-chat-get featured-chat-id))
-               (fchat-photo (plist-get fchat :photo))
-               (fchat-tphoto (telega-file--renew fchat-photo :small)))
-          (setq title (telega-i18n "telega_stories_featured"))
+        (setq title (telega-i18n "telega_stories_featured")))
 
-          (when (telega-file--downloaded-p fchat-tphoto)
-            (let* ((c-xoff (/ font-size 4))
-                   (c-yoff (- svg-height title-height (/ font-size 3)))
-                   (clip (telega-svg-clip-path svg "fcclip")))
-              (svg-circle clip (+ c-xoff (/ title-height 2))
-                          (+ c-yoff (/ title-height 2)) (/ title-height 2))
-              ;; NOTE: embedd using data, so `base-path' can point anywhere
-              (svg-embed svg (telega--tl-get fchat-tphoto :local :path)
-                         "image/jpeg" nil
-                         :x c-xoff :y c-yoff
-                         :width title-height :height title-height
-                         :clip-path "url(#fcclip)"))
-            (setq title-xoff (+ title-height (/ font-size 2))))))
+      (when (and title-tphoto
+                 (telega-file--downloaded-p title-tphoto))
+        (let* ((c-xoff (/ font-size 4))
+               (c-yoff (- svg-height title-height (/ font-size 3)))
+               (clip (telega-svg-clip-path svg "fcclip")))
+          (svg-circle clip (+ c-xoff (/ title-height 2))
+                      (+ c-yoff (/ title-height 2)) (/ title-height 2))
+          ;; NOTE: embedd using data, so `base-path' can point anywhere
+          (svg-embed svg (telega--tl-get title-tphoto :local :path)
+                     "image/jpeg" nil
+                     :x c-xoff :y c-yoff
+                     :width title-height :height title-height
+                     :clip-path "url(#fcclip)"))
+        (setq title-xoff (+ title-height (/ font-size 2))))
 
       (svg-text svg title
                 :font-size font-size

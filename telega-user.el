@@ -174,13 +174,14 @@ If AS-NUMBER is specified, return online status as number:
     (unless (zerop gic-cnt)
       (telega--getGroupsInCommon with-user))))
 
-(defun telega-user-avatar-image (user)
+(defun telega-user-avatar-image (user &optional force-update)
   "Return avatar image for the USER.
 Return two-line image."
   (let ((photo (plist-get user :profile_photo)))
     (telega-media--image
      (cons user #'telega-avatar--create-image)
-     (cons photo :small))))
+     (cons photo :small)
+     force-update)))
 
 (defun telega-user-avatar-image-one-line (user)
   "Return avatar for the USER for one line use."

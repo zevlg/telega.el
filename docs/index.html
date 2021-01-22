@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-21 Чт 04:15 -->
+<!-- 2021-01-23 Сб 02:25 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.11)</title>
+<title>Telega Manual (v0.7.12)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -233,9 +233,9 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.11)</h1>
+<h1 class="title">Telega Manual (v0.7.12)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.11)</h2>
+<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.12)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -300,6 +300,7 @@
 <li><a href="#telega-image-mode">telega-image-mode</a></li>
 <li><a href="#telega-edit-file-mode">telega-edit-file-mode</a></li>
 <li><a href="#telega-highlight-text-mode">telega-highlight-text-mode</a></li>
+<li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
 </ul>
 </li>
 <li><a href="#contributed-packages">Contributed packages</a>
@@ -870,7 +871,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org82d04bb">
+<pre class="example" id="orgab8e6f4">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -888,7 +889,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orgc984b73">
+<pre class="example" id="org1c2aa22">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -918,7 +919,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgb68939b">
+<pre class="example" id="org35a3a6e">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1013,7 +1014,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org5fa3959">
+<pre class="example" id="orgaa015d4">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1090,10 +1091,16 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1879,7 +1886,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org00cae06">
+<pre class="example" id="org4097f80">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2056,7 +2063,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org00a7b20">
+<pre class="example" id="org9b95526">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2125,7 +2132,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orge23e649">
+<pre class="example" id="org59e7e15">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2346,7 +2353,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgfefa279">
+<pre class="example" id="org98f5318">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3162,6 +3169,36 @@ dynamic content.
 </p>
 </div>
 </div>
+
+<div id="outline-container-telega-patrons-mode" class="outline-3">
+<h3 id="telega-patrons-mode">telega-patrons-mode</h3>
+<div class="outline-text-3" id="text-telega-patrons-mode">
+<p>
+Emphasize <code>telega</code>
+<a href="https://opencollective.com/telega#section-contributors">patrons</a>
+by drawing special elements (telega cat ears) above the patron's
+avatar, like: <img src="https://zevlg.github.io/telega/telega-patron-ava.png" alt="telega-patron-ava.png" />
+</p>
+
+<p>
+In addition:
+</p>
+<ul class="org-ul">
+<li>Display "Telega Patron Since: &lt;date&gt;" note in the patron's Chat/User description.</li>
+<li>All <a href="https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard">Emacs Stories</a> from <code>telega</code> patrons are automatically considered "Featured".</li>
+</ul>
+
+<p>
+If you are already <code>telega</code> patron and not in the
+<code>telega-patrons-alist</code> list, please <a href="https://t.me/zevlg">write
+me</a>.
+</p>
+
+<p>
+<code>telega-patrons-mode</code> is enabled by default.
+</p>
+</div>
+</div>
 </div>
 
 <div id="outline-container-contributed-packages" class="outline-2">
@@ -3212,7 +3249,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org758959c">
+<pre class="example" id="orge78ff54">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3642,7 +3679,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-21 Чт 04:15</p>
+<p class="date">Created: 2021-01-23 Сб 02:25</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

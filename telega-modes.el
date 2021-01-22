@@ -737,6 +737,94 @@ UFILE specifies Telegram file being uploading."
   (setq telega-highlight-text-regexp text-regexp)
   (telega-highlight-text-mode 1))
 
+
+;;; ellit-org: minor-modes
+;; ** telega-patrons-mode
+;;
+;; Emphasize =telega=
+;; [[https://opencollective.com/telega#section-contributors][patrons]]
+;; by drawing special elements (telega cat ears) above the patron's
+;; avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
+;;
+;; In addition:
+;; - Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
+;; - All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
+;;
+;; If you are already =telega= patron and not in the
+;; ~telega-patrons-alist~ list, please [[https://t.me/zevlg][write
+;; me]].
+;;
+;; ~telega-patrons-mode~ is enabled by default.
+(defconst telega-patrons-alist
+  '((82439953 :source opencollective :since_date 1609459200)
+    (781215372 :source opencollective :since_date 1609459200))
+  "Alist of telega patrons.")
+
+(defun telega-msg-sender-patron-p (sender)
+  "Return non-nil if SENDER is a telega patron.
+Return patron info, or nil if SENDER is not a telega patron."
+  (cdr (assq (plist-get sender :id) telega-patrons-alist)))
+
+(defun telega-patrons--avatar-emphasize (origfun sender file &optional cheight
+                                                 addon-fun)
+  "Emphasize SENDER's avatar if it is in the `telega-patrons-alist'."
+  (funcall origfun sender file cheight
+           (if-let ((patron (telega-msg-sender-patron-p sender)))
+               (lambda (svg circle)
+                 (when addon-fun
+                   (funcall addon-fun svg circle))
+                 (let* ((svg-w (dom-attr svg 'width))
+                        (cx (nth 0 circle))
+                        (cy (nth 1 circle))
+                        (cr (nth 2 circle))
+                        (ear-w (* 0.52 cx))
+                        (x-off 0)
+                        (y-off (- cy cr))
+                        (color
+                         (nth (if (eq (frame-parameter nil 'background-mode)
+                                      'light)
+                                  0 1)
+                              (telega-msg-sender-color sender)))
+                        (svg-color
+                         (when color
+                           (telega-color-name-as-hex-2digits color))))
+                   (telega-svg-telega-logo
+                    svg ear-w
+                    :transform (format "scale(-1, 1) translate(-%f, %f)"
+                                       (+ ear-w x-off) y-off)
+                    :fill svg-color)
+                   (telega-svg-telega-logo
+                    svg ear-w
+                    :transform (format "translate(%f, %f)"
+                                       (- svg-w ear-w x-off) y-off)
+                    :fill svg-color)))
+             addon-fun)))
+
+(defun telega-patrons--avatar-title-text (origfun sender)
+  "Emphasize text variant avatar for patronns."
+  (if-let ((patron (telega-msg-sender-patron-p sender)))
+      (concat "⸨"
+              (propertize (substring (telega-msg-sender-title sender) 0 1)
+                          'face (telega-msg-sender-title-faces sender))
+              "⸩")
+    (funcall origfun sender)))
+
+(define-minor-mode telega-patrons-mode
+  "Global mode to emphasize telega patrons."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-patrons-mode
+      (progn
+        (advice-add 'telega-avatar--create-image
+                    :around 'telega-patrons--avatar-emphasize)
+        (advice-add 'telega-avatar--title-text
+                    :around 'telega-patrons--avatar-title-text)
+        )
+    (advice-remove 'telega-avatar--title-text
+                   'telega-patrons--avatar-title-text)
+    (advice-remove 'telega-avatar--create-image
+                   'telega-patrons--avatar-emphasize)
+    ))
+
 (provide 'telega-modes)
 
 ;;; telega-modes.el ends here

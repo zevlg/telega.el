@@ -4,6 +4,21 @@
 
 * telega.el Major Features
 
+** DONE telega-patron-mode - highlight patron's avatars
+   CLOSED: [2021-01-23 Сб 01:14]
+
+   Use special symbol (telega logo) at the right bottom corner of the
+   ava to highlight that user is telega patron.
+
+   In user description also show patron info, like:
+   #+begin_example
+   ...
+   Telega Patron Since: <date>
+   ...
+   #+end_example
+
+   Store patrons info in the @emacs_telega chat description
+
 ** DONE Emacs Stories
    CLOSED: [2021-01-03 Вс 00:01]
    CREATED: [2020-12-22 Вт]
@@ -188,7 +203,6 @@ Unfortunately TON is postponed, see https://t.me/durov/116
     https://code.librehq.com/qhong/crdt.el
   - Encode CRDT commands as dubstep:
     https://blog.benjojo.co.uk/post/encoding-data-into-dubstep-drops
-
 
 * Random Ideas
 
