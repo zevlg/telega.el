@@ -757,7 +757,8 @@ UFILE specifies Telegram file being uploading."
 ;; ~telega-patrons-mode~ is enabled by default.
 (defconst telega-patrons-alist
   '((82439953 :source opencollective :since_date 1609459200)
-    (781215372 :source opencollective :since_date 1609459200))
+    (781215372 :source opencollective :since_date 1609459200)
+    (275409096 :source opencollective :since_date 1610236800))
   "Alist of telega patrons.")
 
 (defun telega-msg-sender-patron-p (sender)
