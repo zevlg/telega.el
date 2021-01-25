@@ -3323,9 +3323,10 @@ video-note.  Otherwise record video note inplace.
   (interactive "P")
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let* ((filename (if as-file-p
-                       (read-file-name "Video Note: ")
-                     (telega-vvnote-video--record)))
+  (let* ((filename (with-telega-chatbuf-action "RecordingVideoNote"
+                     (if as-file-p
+                         (read-file-name "Video Note: ")
+                       (telega-vvnote-video--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VideoNote))
          (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
@@ -3348,9 +3349,10 @@ voice-note.  Otherwise record voice note inplace.
   (interactive "P")
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let* ((filename (if as-file-p
-                       (read-file-name "Voice Note: ")
-                     (telega-vvnote-voice--record)))
+  (let* ((filename (with-telega-chatbuf-action "RecordingVoiceNote"
+                     (if as-file-p
+                         (read-file-name "Voice Note: ")
+                       (telega-vvnote-voice--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
