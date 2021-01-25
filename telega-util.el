@@ -817,7 +817,9 @@ Return desurrogated formattedText."
 
 (defun telega--fmt-text-markdown2 (fmt-text)
   "Return formatted text FMT-TEXT as string with markdown2 syntax."
-  (plist-get (telega--getMarkdownText fmt-text) :text))
+  (plist-get (telega--getMarkdownText
+              (telega-fmt-text-desurrogate (copy-sequence fmt-text)))
+             :text))
 
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)

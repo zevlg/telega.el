@@ -182,8 +182,7 @@ Matches only if CHAR does not apper in the middle of the word."
                       (format "[%s](tg://user?id=%d)"
                               (telega-user--name member)
                               (plist-get member :id))
-                      "markdown1"
-                      (apply-partially #'telega-markup-markdown-fmt 1)))))
+                      "markdown1" #'telega-markup-markdown1-fmt))))
 
      (let ((known-bot-p (member (telega-chatbuf-input-string)
                                 telega-known-inline-bots)))
