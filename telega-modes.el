@@ -777,8 +777,8 @@ Return patron info, or nil if SENDER is not a telega patron."
                         (cx (nth 0 circle))
                         (cy (nth 1 circle))
                         (cr (nth 2 circle))
-                        (ear-w (* 0.52 cx))
-                        (x-off 0)
+                        (ear-w (* 0.4 cr))
+                        (x-off (- cx cr))
                         (y-off (- cy cr))
                         (color
                          (nth (if (eq (frame-parameter nil 'background-mode)
