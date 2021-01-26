@@ -303,6 +303,9 @@ Global root bindings:
 
   (cursor-sensor-mode 1)
   (when telega-use-tracking-for
+    (unless (fboundp 'tracking-mode)
+      (user-error "Please install `tracking' package \
+to make use of `telega-use-tracking-for'"))
     (tracking-mode 1)))
 
 
