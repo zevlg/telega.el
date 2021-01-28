@@ -33,7 +33,8 @@
 (require 'ring)
 (require 'url-util)
 (require 'seq)
-(require 'dired)                        ; dired-get-marked-files
+(require 'dired)                      ; dired-get-marked-files
+(require 'mailcap)                    ; mailcap-file-name-to-mime-type
 
 (require 'telega-core)
 (require 'telega-tdlib)
@@ -1213,9 +1214,9 @@ multiple chats are important."
     ;;   {{{fundoc(telega-chatbuf-attach,2)}}}
     (define-key map (kbd "C-c C-a") 'telega-chatbuf-attach)
     ;;; ellit-org: chatbuf-attach-bindings
-    ;; - {{{where-is(telega-chatbuf-attach-file,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-attach-file,2)}}}
-    (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
+    ;; - {{{where-is(telega-chatbuf-attach-media,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-attach-media,2)}}}
+    (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-media)
     ;;; ellit-org: chatbuf-attach-bindings
     ;; - {{{where-is(telega-chatbuf-attach-clipboard,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-attach-clipboard,2)}}}
@@ -3321,6 +3322,25 @@ This attachment can be used only in private chats."
            :performer (cdr (assoc "artist" metadata))
            ))))
 
+(defun telega-chatbuf-attach-media (filename &optional as-file-p)
+  "Attach FILENAME as media, detecting media type by FILENAME extension.
+If `\\[universal-argument] is given, then attach as file."
+  (interactive (list (read-file-name "Attach Media File: ")
+                     current-prefix-arg))
+  (let ((file-mime (or (unless as-file-p
+                         (mailcap-file-name-to-mime-type filename))
+                       "telega/unknown")))
+    (cond ((string= "image/gif" file-mime)
+           (telega-chatbuf-attach-animation filename))
+          ((string-prefix-p "image/" file-mime)
+           (telega-chatbuf-attach-photo filename))
+          ((string-prefix-p "audio/" file-mime)
+           (telega-chatbuf-attach-audio filename))
+          ((string-prefix-p "video/" file-mime)
+           (telega-chatbuf-attach-video filename))
+          (t
+           (telega-chatbuf-attach-file filename)))))
+
 (defun telega-chatbuf-attach-video-note (as-file-p)
   "Attach a (circled) video note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
@@ -3520,28 +3540,28 @@ sticker sets."
       (select-window
        (temp-buffer-window-show tss-buffer)))))
 
-(defun telega-chatbuf-attach-animation (&optional from-file-p)
+(defun telega-chatbuf-attach-animation (&optional animation-file)
   "Attach an animation.
 If `\\[universal-argument]' is given, then attach animation from
-file, Otherwise choose animation from list of saved animations."
-  (interactive "P")
-  (if from-file-p
-      (let* ((afilename (read-file-name "Animation File: "))
-             (ifile (telega-chatbuf--gen-input-file afilename 'Animation))
-             (resolution (telega-ffplay-get-resolution afilename)))
+a file, otherwise choose animation from list of saved animations."
+  (interactive (when current-prefix-arg (read-file-name "Animation File: ")))
+  (if animation-file
+      (let ((ifile (telega-chatbuf--gen-input-file animation-file 'Animation))
+            (resolution (telega-ffplay-get-resolution animation-file)))
         (telega-chatbuf-input-insert
          (nconc (list :@type "inputMessageAnimation"
                       :animation ifile
-                      :duration (round (telega-ffplay-get-duration afilename)))
+                      :duration
+                      (round (telega-ffplay-get-duration animation-file)))
                 (when resolution
                   (list :width (car resolution) :height (cdr resolution))))))
 
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
-(defun telega-chatbuf-attach-gif ()
-  "Attach a file as animation to the chatbuf input."
-  (interactive)
-  (telega-chatbuf-attach-animation 'from-file))
+(defun telega-chatbuf-attach-gif (gif-file)
+  "Attach GIF-FILE as animation to the chatbuf input."
+  (interactive (list (read-file-name "GIF File: ")))
+  (telega-chatbuf-attach-animation gif-file))
 
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.

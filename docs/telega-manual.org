@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.13)
+#+TITLE: Telega Manual (v0.7.14)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -616,10 +616,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1473,8 +1475,9 @@ You can attach various media into chatbuf input, using next bindings:
      @@html:<kbd>@@C-u@@html:</kbd>@@ is passed directly to the attachment function.
      See ~telega-chat-attach-commands~ for available attachment types.
 
-- @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-file~) :: 
-     Attach ~FILENAME~ as document to the chatbuf input.
+- @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-media~) :: 
+     Attach ~FILENAME~ as media, detecting media type by ~FILENAME~ extension.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach as file.
 
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Attach clipboard image to the chatbuf as photo.
@@ -1499,7 +1502,7 @@ Attachment types to attach with
      voice-note.  Otherwise record voice note inplace.
      ~telega-vvnote-voice-cmd~ is used to record voice notes.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.
-- gif :: Attach a file as animation to the chatbuf input.
+- gif :: Attach ~GIF-FILE~ as animation to the chatbuf input.
 - location :: Attach location to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach live location.
 - poll :: Attach poll to the chatbuf input.
@@ -1515,7 +1518,7 @@ Attachment types to attach with
      sticker sets.
 - animation :: Attach an animation.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach animation from
-     file, Otherwise choose animation from list of saved animations.
+     a file, otherwise choose animation from list of saved animations.
 - dice :: Attach random dice roll message.
 - screenshot :: Attach screenshot to the chatbuf input.
      If numeric prefix arg ~N~ is given, then take screenshot in ~N~ seconds.
@@ -2023,7 +2026,8 @@ Customizable options:
 Global minor mode to display =telega= status in system tray.  This
 mode requires appindicator support in the =telega-server=.  To add
 appindicator support to =telega-server=, please install
-=libappindicator3-dev= system package and rebuild =telega-server=.
+=libappindicator3-dev= system package and rebuild =telega-server=
+with {{{kbd(M-x telega-server-build RET}}}.
 
 Screenshot of system tray with enabled =telega= appindicator:
 [[https://zevlg.github.io/telega/screen-appindicator.png]]

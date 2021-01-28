@@ -230,7 +230,8 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
 ;; Global minor mode to display =telega= status in system tray.  This
 ;; mode requires appindicator support in the =telega-server=.  To add
 ;; appindicator support to =telega-server=, please install
-;; =libappindicator3-dev= system package and rebuild =telega-server=.
+;; =libappindicator3-dev= system package and rebuild =telega-server=
+;; with {{{kbd(M-x telega-server-build RET}}}.
 ;;
 ;; Screenshot of system tray with enabled =telega= appindicator:
 ;; [[https://zevlg.github.io/telega/screen-appindicator.png]]
