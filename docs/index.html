@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-28 Чт 21:55 -->
+<!-- 2021-01-29 Пт 00:24 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.7.14)</title>
@@ -871,7 +871,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgba43e68">
+<pre class="example" id="org1a88a82">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -889,7 +889,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orga93088c">
+<pre class="example" id="org551efbd">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -919,7 +919,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org726052a">
+<pre class="example" id="org1d67274">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1014,7 +1014,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org0f6e42a">
+<pre class="example" id="org8ef276a">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1091,16 +1091,10 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1886,7 +1880,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgdc50def">
+<pre class="example" id="orgc9d62af">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2063,7 +2057,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgcec0941">
+<pre class="example" id="org0a87930">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2132,7 +2126,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgae9b805">
+<pre class="example" id="org94b2c8d">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2354,7 +2348,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgacc1db9">
+<pre class="example" id="orgfe73fe7">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3251,7 +3245,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org619fe76">
+<pre class="example" id="orgc03220f">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3681,7 +3675,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-28 Чт 21:55</p>
+<p class="date">Created: 2021-01-29 Пт 00:24</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
