@@ -177,6 +177,57 @@ CALLBACK is called without arguments"
               (cons sticker :sticker))
              (force-window-update))))
 
+(defun telega-sticker--svg-outline-path (svg tl-path factor &rest args)
+  "Draw closed TL-PATH into SVG."
+  (let* ((x-factor (car factor))
+         (y-factor (cdr factor))
+         (tl-path-commands (plist-get tl-path :commands))
+         (tl-cmd1 (aref tl-path-commands 0))
+         (tl-move-to (cl-ecase (telega--tl-type tl-cmd1)
+                       (vectorPathCommandCubicBezierCurve
+                        (plist-get tl-cmd1 :start_control_point))
+                       (vectorPathCommandLine
+                        (plist-get tl-cmd1 :end_point))))
+         (svg-path-commands
+          (mapconcat 
+           (lambda (path-cmd)
+             (cl-ecase (telega--tl-type path-cmd)
+               (vectorPathCommandCubicBezierCurve
+                (let ((p1 (plist-get path-cmd :start_control_point))
+                      (p2 (plist-get path-cmd :end_control_point))
+                      (p3 (plist-get path-cmd :end_point)))
+                  (format "C%f,%f,%f,%f,%f,%f"
+                          (* x-factor (plist-get p1 :x))
+                          (* y-factor (plist-get p1 :y))
+                          (* x-factor (plist-get p2 :x))
+                          (* y-factor (plist-get p2 :y))
+                          (* x-factor (plist-get p3 :x))
+                          (* y-factor (plist-get p3 :y)))))
+               (vectorPathCommandLine
+                (let ((end-point (plist-get path-cmd :end_point)))
+                  (format "L%f,%f"
+                          (* x-factor (plist-get end-point :x))
+                          (* y-factor (plist-get end-point :y)))))))
+           tl-path-commands "\n")))
+    (apply #'telega-svg-path svg
+           (concat (format "M%f,%f\n"
+                           (* x-factor (plist-get tl-move-to :x))
+                           (* y-factor (plist-get tl-move-to :y)))
+                   svg-path-commands "Z")
+           args)))
+
+(defun telega-sticker--svg-outline (svg sticker &rest args)
+  "Draw STICKER outline path to the SVG."
+  (declare (indent 2))
+  (cl-assert (plist-get sticker :outline))
+  (let ((factor (cons (/ (float (dom-attr svg 'width))
+                         (plist-get sticker :width))
+                      (/ (float (dom-attr svg 'height))
+                         (plist-get sticker :height)))))
+    (seq-doseq (outline-path (plist-get sticker :outline))
+      (apply #'telega-sticker--svg-outline-path
+             svg outline-path factor args))))
+
 (defun telega-sticker--progress-svg (sticker)
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker 'no-props))
@@ -185,17 +236,23 @@ CALLBACK is called without arguments"
          (xw (telega-chars-xwidth w-chars))
          (svg (telega-svg-create xw xh))
          (font-size (/ xh 2)))
-    (svg-text svg (if (string-empty-p emoji)
-                      "?"
-                    (substring emoji 0 1))
+    (if (plist-get sticker :outline)
+        (telega-sticker--svg-outline svg sticker
+          :fill (telega-color-name-as-hex-2digits
+                 (face-foreground 'shadow)))
+
+      ;; draw emoji and progress circle
+      (svg-text svg (if (string-empty-p emoji)
+                        "?"
+                      (substring emoji 0 1))
                 :font-size font-size
                 :font-weight "bold"
                 :fill "white"
                 :font-family "monospace"
                 :x (/ font-size 2)
                 :y (+ font-size (/ font-size 3)))
-    (telega-svg-progress svg (telega-file--downloading-progress
-                              (telega-sticker--file sticker)))
+      (telega-svg-progress svg (telega-file--downloading-progress
+                                (telega-sticker--file sticker))))
     (telega-svg-image svg :scale 1.0
                       :width xw :height xh
                       :ascent 'center
@@ -375,7 +432,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
 
     (telega-ins "Title: " (telega-tl-str sset :title))
     (when (plist-get sset :is_official)
-      (telega-ins telega-symbol-verified))
+      (telega-ins (telega-symbol 'verified)))
     (telega-ins " ")
     (telega-ins--stickerset-change-button sset)
     (telega-ins "\n")
@@ -411,9 +468,16 @@ SSET can be either `sticker' or `stickerSetInfo'."
       ;; Now SSET is always "stickerSet"
       (if sset
           (funcall sticker-list-ins sset)
+
+        ;; Set `telega--help-win-param', so callback won't insert
+        ;; stickers list of stickerset changes during request to
+        ;; telega-server.
+        (setq telega--help-win-param sset-id)
+
         (telega-stickerset-get sset-id nil
           (telega-sticker-list--gen-ins-callback 'loading
-            sticker-list-ins))))))
+            sticker-list-ins
+            sset-id))))))
 
 (defun telega-sticker-help (sticker)
   "Describe sticker set for STICKER."
@@ -422,27 +486,33 @@ SSET can be either `sticker' or `stickerSetInfo'."
    (telega-stickerset-get (plist-get sticker :set_id))))
 
 (defun telega-sticker-list--gen-ins-callback (show-loading-p
-                                              &optional insert-func)
+                                              &optional insert-func
+                                              for-param)
   "Generate callback to be used as callback.
 Insert list of stickers at MARKER position.
 Functions to be used with:
 `telega--getStickers', `telega--getFavoriteStickers',
-`telega--getRecentStickers' or `telega--searchStickerSets'"
+`telega--getRecentStickers' or `telega--searchStickerSets'.
+If FOR-PARAM is specified, then insert only if
+`telega--help-win-param' is eq to FOR-PARAM."
   (declare (indent 1))
   (let ((marker (point-marker)))
     (when show-loading-p
-      (telega-ins "Loading...\n"))
+      (telega-ins-i18n "lng_profile_loading")
+      (telega-ins "\n"))
 
     (lambda (&rest insert-args)
       (let ((marker-buf (marker-buffer marker)))
         (when (buffer-live-p marker-buf)
           (with-current-buffer marker-buf
-            (telega-save-excursion
-              (let ((inhibit-read-only t))
-                (goto-char marker)
-                (when show-loading-p
-                  (delete-region marker (point-at-eol)))
-                (apply insert-func insert-args)))))))))
+            (when (or (null for-param)
+                      (eq telega--help-win-param for-param))
+              (telega-save-excursion
+                (let ((inhibit-read-only t))
+                  (goto-char marker)
+                  (when show-loading-p
+                    (delete-region marker (point-at-eol)))
+                  (apply insert-func insert-args))))))))))
 
 (defun telega-sticker-choose-favorite-or-recent (for-chat)
   "Choose recent sticker FOR-CHAT."
@@ -759,14 +829,6 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
     (with-telega-chatbuf chat
       (telega-chatbuf-animation-insert animation))))
 
-(defun telega-animation--ffplay-callback (_proc filename anim)
-  "Ffplay callback to animate ANIM."
-  (plist-put anim :telega-ffplay-frame-filename filename)
-  (telega-media--image-update
-   (cons anim 'telega-animation--create-image) nil)
-  (force-window-update)
-  )
-
 (defun telega-animation--gen-sensor-func (anim)
   "Return sensor function to animate ANIM when entered."
   (cl-assert anim)
@@ -776,11 +838,11 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
           (telega-file--download (telega-file--renew anim :animation) 32
             (lambda (file)
               (when (telega-file--downloaded-p file)
-                (telega-ffplay-to-png (telega--tl-get file :local :path)
-                    nil 'telega-animation--ffplay-callback anim))))
+                (telega-ffplay-to-png (telega--tl-get file :local :path) nil
+                  #'telega-animation--ffplay-callback anim))))
 
         ;; dir == left
-        (telega--cancelDownloadFile (telega--tl-get anim :animation :id))))))
+        (telega--cancelDownloadFile (plist-get anim :animation))))))
 
 (defun telega-ins--animation (anim &rest props)
   "Inserter for animation ANIM in help buffer.

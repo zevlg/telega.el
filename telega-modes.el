@@ -30,9 +30,6 @@
 (require 'telega-filter)
 
 (defvar tracking-buffers)
-(defvar telega-chatbuf--refresh-point)
-(declare-function telega "telega" (arg))
-(declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight))
 
 (defgroup telega-modes nil
   "Customization for telega minor modes."
@@ -44,13 +41,13 @@
 ;;
 ;; Global minor mode to display =telega= status in modeline.
 ;;
-;; Enable with ~(telega-mode-line-mode 1)~, or at =telega= load time:
+;; Enable with ~(telega-mode-line-mode 1)~ or at =telega= load time:
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'telega-mode-line-mode)
 ;; #+end_src
 ;;
 ;; Customizable options:
-;; 
+;;
 ;; - {{{user-option(telega-mode-line-string-format, 2)}}}
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
@@ -226,6 +223,139 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
     (advice-remove 'tracking-remove-buffer 'telega-mode-line-update)
     ))
 
+;;; ellit-org: minor-modes
+;; ** telega-appindicator-mode
+;;
+;; Global minor mode to display =telega= status in system tray.  This
+;; mode requires appindicator support in the =telega-server=.  To add
+;; appindicator support to =telega-server=, please install
+;; =libappindicator3-dev= system package and rebuild =telega-server=.
+;;
+;; Screenshot of system tray with enabled =telega= appindicator:
+;; [[https://zevlg.github.io/telega/screen-appindicator.png]]
+;;
+;; Enable with ~(telega-appindicator-mode 1)~ or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-appindicator-mode)
+;; #+end_src
+;;
+;; Customizable options:
+;; - {{{user-option(telega-appindicator-show-account-name, 2)}}}
+;; - {{{user-option(telega-appindicator-show-mentions, 2)}}}
+;; - {{{user-option(telega-appindicator-labels, 2)}}}
+(declare-function telega "telega" (&optional arg))
+(declare-function telega-account-current "telega")
+(declare-function telega-kill "telega" (force))
+
+(defcustom telega-appindicator-show-account-name t
+  "*Non-nil to show current account name in appindicator label."
+  :package-version '(telega . "0.7.2")
+  :type 'boolean
+  :group 'telega-modes)
+
+(defcustom telega-appindicator-show-mentions t
+  "*Non-nil to show number of mentions in appindicator label."
+  :package-version '(telega . "0.7.2")
+  :type 'boolean
+  :group 'telega-modes)
+
+(defcustom telega-appindicator-labels
+  '("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿"
+    "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱" "⓲" "⓳" "⓴")
+  "List of number labels to use for the number of unread unmuted chats.
+Use this labels instead of plain number.
+Set to nil to use plain number."
+  :package-version '(telega . "0.7.2")
+  :type 'list
+  :group 'telega-modes)
+
+;;;###autoload
+(define-minor-mode telega-appindicator-mode
+  "Toggle display of the unread chats/mentions in the system tray."
+  :init-value nil :global t :group 'telega-modes
+
+  (if telega-appindicator-mode
+      (progn
+        (advice-add 'telega--on-updateUnreadChatCount
+                    :after 'telega-appindicator-update)
+        (advice-add 'telega--on-updateChatUnreadMentionCount
+                    :after 'telega-appindicator-update)
+        (add-hook 'telega-ready-hook 'telega-appindicator-init)
+        (add-hook 'telega-chats-fetched-hook 'telega-appindicator-update)
+        (when (telega-server-live-p)
+          (telega-appindicator-init)))
+
+    (remove-hook 'telega-chats-fetched-hook 'telega-appindicator-update)
+    (remove-hook 'telega-ready-hook 'telega-appindicator-init)
+    (advice-remove 'telega--on-updateChatUnreadMentionCount
+                   'telega-appindicator-update)
+    (advice-remove 'telega--on-updateUnreadChatCount
+                   'telega-appindicator-update)
+    ;; Deactivate appindicator
+    (when (telega-server-live-p)
+      (telega-server--send "status passive" "appindicator"))
+    ))
+
+(defun telega-appindicator-init ()
+  "Initialize appindicator."
+  (when telega-appindicator-mode
+    (telega-server--send
+     (concat "setup " (telega-etc-file "telega-logo.svg"))
+     "appindicator")
+    (telega-appindicator-update)))
+
+(defun telega-appindicator-update (&rest _ignored)
+  "Update appindicator label."
+  (when telega-appindicator-mode
+    (let* ((account
+            (when telega-appindicator-show-account-name
+              (car (telega-account-current))))
+           (uu-chats-num
+            (or (plist-get telega--unread-chat-count :unread_unmuted_count)
+                0))
+           (uu-chats-str
+            (unless (zerop uu-chats-num)
+              (or (nth (1- uu-chats-num) telega-appindicator-labels)
+                  (number-to-string uu-chats-num))))
+           (mentions-num
+            (or (when telega-appindicator-show-mentions
+                  (length (telega-filter-chats
+                           telega--ordered-chats '(mention))))
+                0))
+           (mentions-str
+            (unless (zerop mentions-num)
+              (format "@%d" mentions-num)))
+           (label-strings
+            (remove nil (list account
+                              (when (and account
+                                         (or uu-chats-str mentions-str))
+                                "-")
+                              uu-chats-str
+                              mentions-str))))
+      (telega-server--send
+       (concat "label " (mapconcat #'identity label-strings " "))
+       "appindicator"))))
+
+(defun telega-appindicator--on-event (event)
+  "Function called when event from appindicator is received."
+  (cond ((string= event "open")
+         ;; NOTE: Raise Emacs frame and open rootbuf
+         (x-focus-frame nil)
+         (telega)
+         ;; If there is single important chat, then switch to it
+         (let ((ichats (telega-filter-chats
+                        telega--ordered-chats
+                        '(or mention (and unread unmuted)))))
+           (when (= 1 (length ichats))
+             (telega-switch-important-chat (car ichats)))))
+
+        ((string= event "quit")
+         (x-focus-frame nil)
+         (telega-kill nil))
+
+        (t
+         (message "telega-server: Unknown appindicator-event: %s" event))))
+
 
 ;;; Animation autoplay mode
 (defcustom telega-autoplay-messages '(messageAnimation)
@@ -268,7 +398,7 @@ Play in muted mode."
 ;; 4. Last message can be edited
 ;; 5. Last and new messages are *not* replying to any message
 ;; 6. Last message has no associated web-page
-;; 7. New message has no `messageSendOptions' to avoid squashing
+;; 7. New message has no ~messageSendOptions~ to avoid squashing
 ;;    scheduled messages or similar
 ;;
 ;; Can be enabled globally in all chats matching
@@ -278,7 +408,7 @@ Play in muted mode."
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
 ;; #+end_src
-;; 
+;;
 ;; Customizable options:
 ;;
 ;; - {{{user-option(telega-squash-message-mode-for, 2)}}}
@@ -337,8 +467,7 @@ chats matching this chat filter."
                    (telega-msg-by-me-p last-msg)
                    (< last-read-id (plist-get last-msg :id))
                    (plist-get last-msg :can_be_edited)
-                   (eq (telega--tl-type (plist-get last-msg :content))
-                       'messageText)
+                   (telega-msg-type-p 'messageText last-msg)
                    (zerop (plist-get last-msg :reply_to_message_id))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
@@ -350,7 +479,7 @@ chats matching this chat filter."
                                  (telega--tl-get last-msg :content :text)
                                  (telega-string-fmt-text "\n")
                                  (plist-get imc :text))))
-          (telega--editMessageText telega-chatbuf--chat last-msg imc)
+          (telega--editMessageText last-msg imc)
           t)))))
 
 (defun telega-squash-message--send-message (send-msg-fun chat imc &optional reply-to-msg options &rest args)
@@ -371,13 +500,14 @@ chats matching this chat filter."
 ;; - {{{where-is(telega-image-prev,telega-image-mode-map)}}} ::
 ;;   {{{fundoc(telega-image-prev)}}}
 ;;
-;; To view highres image in chatbuf with ~telega-image-mode~ press
-;; {{{kbd(RET)}}} on the message with photo.
+;; To view high resolution image in chatbuf with ~telega-image-mode~
+;; press {{{kbd(RET)}}} on the message with photo.
 (require 'image-mode)
 
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-brackets "telega-chat" (chat))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
+(declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight))
 
 (defvar telega-image--message nil
   "Message corresponding to image currently viewed.")
@@ -396,12 +526,23 @@ chats matching this chat filter."
         (concat "◁Image" (when image-type (format "[%s]" image-type))))
   )
 
+(defun telega-image-mode-p (buffer-name &rest _unused)
+  "Return non-nil if buffer named BUFFER-NAME has `telega-image-mode' major-mode.
+Could be used as condition function in `display-buffer-alist'."
+  (with-current-buffer buffer-name
+    (eq major-mode 'telega-image-mode)))
+
 (defun telega-image-view-file (tl-file &optional for-msg)
   "View image in telegram TL-FILE from message FOR-MSG."
   (cl-assert (telega-file--downloaded-p tl-file))
-  (find-file-literally (telega--tl-get tl-file :local :path))
-  (telega-image-mode)
-  (setq telega-image--message for-msg))
+  ;; NOTE: Use `pop-to-buffer' so `display-buffer-alist' is considered
+  ;; when showing the image
+  (pop-to-buffer-same-window
+   (with-current-buffer (find-file-noselect
+                         (telega--tl-get tl-file :local :path) nil t)
+     (telega-image-mode)
+     (setq telega-image--message for-msg)
+     (current-buffer))))
 
 (defun telega-image-next (&optional backward)
   "Show next image in chat."
@@ -421,9 +562,7 @@ chats matching this chat filter."
         ;; Goto corresponding message in the chatbuf
         (with-telega-chatbuf (telega-msg-chat next-image-msg)
           (when (telega-chatbuf--goto-msg (plist-get next-image-msg :id))
-            (if-let ((chat-win (get-buffer-window (current-buffer))))
-                (set-window-point chat-win (point))
-              (setq telega-chatbuf--refresh-point (point)))))
+            (setq telega-chatbuf--refresh-point t)))
 
         (telega-file--download hr-file 32
           (lambda (tl-file)
@@ -481,30 +620,29 @@ chats matching this chat filter."
 
 ;;;###autoload
 (define-minor-mode telega-edit-file-mode
-  "Minor mode to edit files from Telegram messages."
+  "Minor mode to edit files from Telegram messages.
+Can be enabled only for content from editable messages."
   :lighter " ◁Edit"
   :map 'telega-edit-file-mode-map
 
   (if telega-edit-file-mode
     (let* ((msg telega--help-win-param)
            (chat (and msg (telega-msg-chat msg))))
-      (unless msg
-        (telega-edit-file-mode -1)
-        (user-error "Telega: No message associated with the file"))
-      (unless (plist-get msg :can_be_edited)
-        (telega-edit-file-mode -1)
-        (user-error "Telega: message can't be edited"))
+      (if (not (plist-get msg :can_be_edited))
+          ;; No message or message can't be edited
+          (telega-edit-file-mode -1)
 
-      (setq mode-line-buffer-identification
-            (list (propertized-buffer-identification "%b")
-                  (propertize
-                   (concat "◁" (telega-chat-title-with-brackets chat))
-                   'face 'mode-line-buffer-id
-                   'help-echo "mouse-1: To goto telegram message"
-                   'mouse-face 'mode-line-highlight
-                   'local-map (eval-when-compile
-                                (make-mode-line-mouse-map
-                                 'mouse-1 #'telega-edit-file-goto-message))))))
+        (setq mode-line-buffer-identification
+              (list (propertized-buffer-identification "%b")
+                    (propertize
+                     (concat "◁" (telega-chat-title-with-brackets chat))
+                     'face 'mode-line-buffer-id
+                     'help-echo "mouse-1: To goto telegram message"
+                     'mouse-face 'mode-line-highlight
+                     'local-map
+                     (eval-when-compile
+                       (make-mode-line-mouse-map
+                        'mouse-1 #'telega-edit-file-goto-message)))))))
 
     (setq mode-line-buffer-identification
           (propertized-buffer-identification "%12b"))))
@@ -529,8 +667,9 @@ UFILE specifies Telegram file being uploading."
           (telega-ins--as-string
            (telega-ins "Uploading [")
            (let ((progress (telega-file--uploading-progress ufile)))
-             (telega-ins-progress-bar progress 1.0 30 ?\+ ?\s)
-             (telega-ins-fmt "] %d%%" (round (* progress 100)))))))
+             (telega-ins-progress-bar
+              progress 1.0 30 telega-symbol-upload-progress)
+             (telega-ins-fmt "]%3d%%" (round (* progress 100)))))))
         ))
 
 (defun telega-edit-file-save-buffer ()
@@ -545,12 +684,148 @@ UFILE specifies Telegram file being uploading."
       (user-error "Telega: message can't be edited"))
 
     (telega--editMessageMedia
-     (telega-msg-chat msg 'offline) msg
+     msg
      (list :@type "inputMessageDocument"
            :document (let ((telega-chat-upload-attaches-ahead t))
                        (telega-chatbuf--gen-input-file
                         (buffer-file-name) 'Document nil
                         #'telega-edit-file--upload-callback))))))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-highlight-text-mode
+;;
+;; =jit-lock= powered minor mode to highlight given regexp.
+;;
+;; Similar to =hi-lock=, however supports =jit-lock= for highlighting
+;; dynamic content.
+(defface telega-highlight-text-face
+  '((t :inherit match))
+  "Face used to highlight text in `telega-highlight-text-mode'."
+  :group 'telega-faces)
+
+(defvar telega-highlight-text-regexp nil
+  "Regexp to highlight.")
+(make-variable-buffer-local 'telega-highlight-text-regexp)
+
+(defun telega-highlight-text-region (beg end &optional _loudly)
+  "Highlight `telega-highlight-text-regexp' in the region from BEG to END."
+  (save-excursion
+    (goto-char beg)
+    (while (re-search-forward telega-highlight-text-regexp end t)
+      (let ((overlay (make-overlay (match-beginning 0)
+                                   (match-end 0))))
+        (overlay-put overlay 'telega-highlight-overlay t)
+        (overlay-put overlay 'face 'telega-highlight-text-face))
+      (goto-char (match-end 0)))))
+
+(define-minor-mode telega-highlight-text-mode
+  "Minor mode to highlight text."
+  :lighter " ◁Highlight"
+  (if telega-highlight-text-mode
+      (progn
+        (cl-assert (and (stringp telega-highlight-text-regexp)
+                        (not (string-empty-p telega-highlight-text-regexp))))
+        (telega-highlight-text-region (point-min) (point-max))
+        (jit-lock-register #'telega-highlight-text-region))
+
+    (jit-lock-unregister #'telega-highlight-text-region)
+    (remove-overlays nil nil 'telega-highlight-overlay t)))
+
+(defun telega-highlight-text (text-regexp)
+  "Highlight TEXT-REGEXP in the dynamic buffer."
+  (setq telega-highlight-text-regexp text-regexp)
+  (telega-highlight-text-mode 1))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-patrons-mode
+;;
+;; Emphasize =telega=
+;; [[https://opencollective.com/telega#section-contributors][patrons]]
+;; by drawing special elements (telega cat ears) above the patron's
+;; avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
+;;
+;; In addition:
+;; - Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
+;; - All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
+;;
+;; If you are already =telega= patron and not in the
+;; ~telega-patrons-alist~ list, please [[https://t.me/zevlg][write
+;; me]].
+;;
+;; ~telega-patrons-mode~ is enabled by default.
+(defconst telega-patrons-alist
+  '((82439953 :source opencollective :since_date 1609459200)
+    (781215372 :source opencollective :since_date 1609459200)
+    (275409096 :source opencollective :since_date 1610236800)
+    (356787489 :source opencollective :since_date 1611532800))
+  "Alist of telega patrons.")
+
+(defun telega-msg-sender-patron-p (sender)
+  "Return non-nil if SENDER is a telega patron.
+Return patron info, or nil if SENDER is not a telega patron."
+  (cdr (assq (plist-get sender :id) telega-patrons-alist)))
+
+(defun telega-patrons--avatar-emphasize (origfun sender file &optional cheight
+                                                 addon-fun)
+  "Emphasize SENDER's avatar if it is in the `telega-patrons-alist'."
+  (funcall origfun sender file cheight
+           (if-let ((patron (telega-msg-sender-patron-p sender)))
+               (lambda (svg circle)
+                 (when addon-fun
+                   (funcall addon-fun svg circle))
+                 (let* ((svg-w (dom-attr svg 'width))
+                        (cx (nth 0 circle))
+                        (cy (nth 1 circle))
+                        (cr (nth 2 circle))
+                        (ear-w (* 0.4 cr))
+                        (x-off (- cx cr))
+                        (y-off (- cy cr))
+                        (color
+                         (nth (if (eq (frame-parameter nil 'background-mode)
+                                      'light)
+                                  0 1)
+                              (telega-msg-sender-color sender)))
+                        (svg-color
+                         (when color
+                           (telega-color-name-as-hex-2digits color))))
+                   (telega-svg-telega-logo
+                    svg ear-w
+                    :transform (format "scale(-1, 1) translate(-%f, %f)"
+                                       (+ ear-w x-off) y-off)
+                    :fill svg-color)
+                   (telega-svg-telega-logo
+                    svg ear-w
+                    :transform (format "translate(%f, %f)"
+                                       (- svg-w ear-w x-off) y-off)
+                    :fill svg-color)))
+             addon-fun)))
+
+(defun telega-patrons--avatar-title-text (origfun sender)
+  "Emphasize text variant avatar for patronns."
+  (if-let ((patron (telega-msg-sender-patron-p sender)))
+      (concat "⸨"
+              (propertize (substring (telega-msg-sender-title sender) 0 1)
+                          'face (telega-msg-sender-title-faces sender))
+              "⸩")
+    (funcall origfun sender)))
+
+(define-minor-mode telega-patrons-mode
+  "Global mode to emphasize telega patrons."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-patrons-mode
+      (progn
+        (advice-add 'telega-avatar--create-image
+                    :around 'telega-patrons--avatar-emphasize)
+        (advice-add 'telega-avatar--title-text
+                    :around 'telega-patrons--avatar-title-text)
+        )
+    (advice-remove 'telega-avatar--title-text
+                   'telega-patrons--avatar-title-text)
+    (advice-remove 'telega-avatar--create-image
+                   'telega-patrons--avatar-emphasize)
+    ))
 
 (provide 'telega-modes)
 

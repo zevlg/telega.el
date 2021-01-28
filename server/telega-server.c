@@ -1,3 +1,23 @@
+/*
+ * telega-server.c --- Bridge between Emacs and TDLib.
+ *
+ * Copyright (C) 2016-2020 by Zajcev Evgeny
+ *
+ * Author: Zajcev Evgeny <zevlg@yandex.ru>
+ *
+ * telega is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * telega is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with telega.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <stdbool.h>
 #include <pthread.h>
 #include <assert.h>
@@ -9,15 +29,19 @@
 
 #include <td/telegram/td_json_client.h>
 #include <td/telegram/td_log.h>
-#ifdef WITH_TON
-#include <tonlib/tonlib_client_json.h>
-#endif  /* WITH_TON */
 
 #include "telega-dat.h"
 #ifdef WITH_VOIP
 extern const char* telega_voip_version(void);
 extern int telega_voip_cmd(const char* json);
 #endif /* WITH_VOIP */
+
+#ifdef WITH_APPINDICATOR
+extern void telega_appindicator_init(void);
+extern void telega_appindicator_send(const char* json);
+extern void* telega_appindicator_loop(void* data);
+extern void telega_appindicator_stop(void);
+#endif /* WITH_APPINDICATOR */
 
 void pngext_usage(char* prog);
 void pngext_main(int ac, char** av);
@@ -34,6 +58,9 @@ void pngext_main(int ac, char** av);
  * If VOIP support is compiled in (make WITH_VOIP=true) then also
  * `voip' command available
  *
+ * If support for appindicator is compiled in, then `appindicator'
+ * command is also available.
+ *
  * For example:
  *   event 105
  *   (:@type "updateAuthorizationState" :authorization_state (:@type "authorizationStateWaitTdlibParameters"))
@@ -46,7 +73,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "0.6.6";
+const char* version = "0.7.5";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -62,9 +89,9 @@ usage(char* prog)
 #ifdef WITH_VOIP
         printf(", with VOIP tgvoip v%s", telega_voip_version());
 #endif /* WITH_VOIP */
-#ifdef WITH_TON
-        printf(", with TON libton v%s", "0");
-#endif /* WITH_TON */
+#ifdef WITH_APPINDICATOR
+        printf(", with appindicator");
+#endif /* WITH_APPINDICATOR */
         printf("\n");
         printf("usage: %s [-jp] [-L SIZE] [-l FILE] [-v LVL] [-h]\n", prog);
         printf("\t-L SIZE    Log file size in bytes\n");
@@ -123,25 +150,12 @@ static void*
 tdlib_loop(void* cln)
 {
         while (server_running) {
-                const char *res = td_json_client_receive(cln, 0.5);
+                const char *res = td_json_client_receive(cln, 10.0);
                 if (res)
                         telega_output_json("event", res);
         }
         return NULL;
 }
-
-#ifdef WITH_TON
-static void*
-tonlib_loop(void* cln)
-{
-        while (server_running) {
-                const char *res = tonlib_client_json_receive(cln, 0.5);
-                if (res)
-                        telega_output_json("ton-event", res);
-        }
-        return NULL;
-}
-#endif /* WITH_TON */
 
 /*
  * NOTE: Emacs sends HUP when associated buffer is killed
@@ -154,7 +168,7 @@ on_sighup(int sig)
 }
 
 static void
-stdin_loop(void* td_cln, void* ton_cln)
+stdin_loop(void* td_cln)
 {
         struct telega_dat plist_src = TDAT_INIT;
         struct telega_dat json_dst = TDAT_INIT;
@@ -191,23 +205,30 @@ stdin_loop(void* td_cln, void* ton_cln)
                 tdat_append1(&plist_src, "\0");
                 if (verbosity > 4) {
                         fprintf(stderr, "[telega-server] "
-                                "INPUT: %s\n", plist_src.data);
+                                "INPUT (cmd=%s): %s\n", cmd, plist_src.data);
                 }
 
                 tdat_plist_value(&plist_src, &json_dst);
                 tdat_append1(&json_dst, "\0");
 
-                if (!strcmp(cmd, "send"))
-                        td_json_client_send(td_cln, json_dst.data);
+                if (!strcmp(cmd, "send")) {
+                        td_json_client_send(td_cln, tdat_start(&json_dst));
+                } else if (!strcmp(cmd, "voip")) {
 #ifdef WITH_VOIP
-                else if (!strcmp(cmd, "voip"))
-                        telega_voip_cmd(json_dst.data);
+                        telega_voip_cmd(tdat_start(&json_dst));
 #endif /* WITH_VOIP */
-#ifdef WITH_TON
-                else if (!strcmp(cmd, "ton"))
-                         tonlib_client_json_send(ton_cln, json_dst.data);
-#endif /* WITH_TON */
-                else {
+                } else if (!strcmp(cmd, "appindicator")) {
+#ifdef WITH_APPINDICATOR
+                        /* Strip leading/trailing " */
+                        if (tdat_len(&json_dst) > 1) {
+                                if (tdat_start(&json_dst)[0] == '"')
+                                        tdat_drain(&json_dst, 1);
+                                json_dst.end -= 2;
+                                tdat_append1(&json_dst, "\0");
+                        }
+                        telega_appindicator_send(tdat_start(&json_dst));
+#endif /* WITH_APPINDICATOR */
+                } else {
                         char error[128];
                         snprintf(error, 128, "\"Unknown cmd `%s'\"", cmd);
                         telega_output("error", error);
@@ -278,7 +299,7 @@ int
 main(int ac, char** av)
 {
         int ch;
-        while ((ch = getopt(ac, av, "L:E:R:jpl:v:h")) != -1) {
+        while ((ch = getopt(ac, av, "L:E:R:f:jpl:v:h")) != -1) {
                 switch (ch) {
                 case 'v':
                         verbosity = atoi(optarg);
@@ -298,6 +319,7 @@ main(int ac, char** av)
                         break;
                 case 'E':
                 case 'R':
+                case 'f':
                         pngext_main(ac, av);
                         return 0;
                         /* NOT REACHED */
@@ -327,28 +349,27 @@ main(int ac, char** av)
         int rc = pthread_create(&td_thread, NULL, tdlib_loop, tdlib_cln);
         assert(rc == 0);
 
-        void* tonlib_cln = NULL;
-#ifdef WITH_TON
-        tonlib_cln = tonlib_client_json_create();
-        assert(tonlib_cln != NULL);
-        pthread_t ton_thread;
-        rc = pthread_create(&ton_thread, NULL, tonlib_loop, tonlib_cln);
+#ifdef WITH_APPINDICATOR
+        telega_appindicator_init();
+        pthread_t appind_thread;
+        rc = pthread_create(&appind_thread, NULL, telega_appindicator_loop, NULL);
         assert(rc == 0);
-#endif  /* WITH_TON */
+#endif /* WITH_APPINDICATOR */
 
-        stdin_loop(tdlib_cln, tonlib_cln);
-        /* Gracefully stop the tdlib_loop & tonlib_loop */
+        stdin_loop(tdlib_cln);
+        /* Gracefully stop the tdlib_loop */
         server_running = false;
 
+        td_json_client_send(tdlib_cln, "{\"@type\":\"close\"}");
         rc = pthread_join(td_thread, NULL);
         assert(rc == 0);
         td_json_client_destroy(tdlib_cln);
 
-#ifdef WITH_TON
-        rc = pthread_join(ton_thread, NULL);
+#ifdef WITH_APPINDICATOR
+        telega_appindicator_stop();
+        rc = pthread_join(appind_thread, NULL);
         assert(rc == 0);
-        tonlib_client_json_destroy(tonlib_cln);
-#endif  /* WITH_TON */
+#endif /* WITH_APPINDICATOR */
 
         return 0;
 }

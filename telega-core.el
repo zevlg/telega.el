@@ -32,6 +32,7 @@
 (require 'telega-customize)
 
 (declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-window-recenter "telega-util" (win &optional nlines from-point noforce))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
 (declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
 
@@ -41,6 +42,43 @@
 (defconst telega-chat-types
   '(private secret basicgroup supergroup bot channel)
   "All types of chats supported by telega.")
+
+(defconst telega-mute-for-ever 500000000)
+
+(defconst telega-mute-for-intervals
+  ;;  1h    4h    1d     7d   forever
+  `(3600 14400 86400 604800 ,telega-mute-for-ever))
+
+(defconst telega--slow-mode-delays '(0 10 30 60 300 900 3600)
+  "List of allowed slow mode delays.")
+
+(defconst telega-chat--chat-permisions
+  '((:can_send_messages . "lng_rights_chat_send_text")
+    (:can_send_media_messages . "lng_rights_chat_send_media")
+    (:can_send_polls . "lng_rights_chat_send_polls")
+    (:can_send_other_messages . "lng_rights_chat_send_stickers")
+    (:can_add_web_page_previews . "lng_rights_chat_send_links")
+    (:can_change_info . "lng_rights_group_info")
+    (:can_invite_users . "lng_rights_chat_add_members")
+    (:can_pin_messages . "lng_rights_group_pin")))
+
+(defconst telega-chat--admin-permissions
+  '((:can_be_edited . "lng_rights_edit_admin")
+    (:can_change_info . "lng_rights_group_info")
+    (:can_post_messages . "lng_rights_channel_post")
+    (:can_edit_messages . "lng_rights_channel_edit")
+    (:can_delete_messages . "lng_rights_group_delete")
+    (:can_invite_users . "lng_rights_group_invite_link")
+    (:can_pin_messages . "lng_rights_group_pin")
+    (:can_restrict_members . "telega_rights_restrict_members")
+    (:can_promote_members . "telega_rights_promote_members")
+    (:is_anonymous . "lng_rights_group_anonymous")))
+
+(defconst telega-notification-scope-types
+  '((private . "notificationSettingsScopePrivateChats")
+    (group . "notificationSettingsScopeGroupChats")
+    (channel . "notificationSettingsScopeChannelChats"))
+  "Map of lisp name of the scope to TDLib scope type name.")
 
 ;;; Runtime variables
 (defvar telega--current-buffer nil
@@ -72,8 +110,7 @@ Used for optimisations.")
 (make-variable-buffer-local 'telega--help-win-dirty-p)
 
 (defvar telega--me-id nil "User id of myself.")
-(defvar telega--gifbot-id nil "Bot used to search for animations.")
-(defvar telega--imgbot-id nil "Bot used to search for photos.")
+(defvar telega--replies-id nil "Id of the \"Replies\" chat.")
 (defvar telega--options nil "Options updated from telega-server.")
 (defvar telega--auth-state nil
   "Current Authorization state.")
@@ -83,7 +120,7 @@ Used for optimisations.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
-(defvar telega--pinned-messages nil "Hash table (id -> msg) for all chats.")
+(defvar telega--cached-messages nil "Hash table ((chat-id . msg-id) -> msg) of cached messages, such as pinned, replies, etc.")
 (defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions).")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
@@ -136,6 +173,8 @@ Used by `telega-stickerset-installed-p'.")
 
 (defvar telega--dice-emojis nil
   "List of supported emojis for random dice messages.")
+(defvar telega--suggested-actions nil
+  "List of suggested actions to be taken.")
 
 ;; Searching
 (defvar telega-search-history nil
@@ -209,10 +248,6 @@ display the list.")
   "Return chat corresponding chat BUFFER."
   (buffer-local-value 'telega-chatbuf--chat buffer))
 
-(defvar telega-chatbuf--messages nil
-  "Local cache for the messages.")
-(make-variable-buffer-local 'telega-chatbuf--messages)
-
 (defvar telega-chatbuf--marked-messages nil
   "List of marked messages.")
 (make-variable-buffer-local 'telega-chatbuf--marked-messages)
@@ -230,6 +265,11 @@ Actual value is `:@extra` value of the call to inline bot.")
 Asynchronously loaded when chatbuf is created.")
 (make-variable-buffer-local 'telega-chatbuf--administrators)
 
+(defvar telega-chatbuf--fetch-alist nil
+  "Alist of async requests (fetches) to the telega-server.
+Could be used for fetching `admins', `pinned-messages', `reply-markup', etc.")
+(make-variable-buffer-local 'telega-chatbuf--fetch-alist)
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -239,14 +279,13 @@ Done when telega server is ready to receive queries."
   (setq telega--status "Disconnected")
   (setq telega--status-aux "")
   (setq telega--me-id -1)
-  (setq telega--gifbot-id nil)
-  (setq telega--imgbot-id nil)
+  (setq telega--replies-id nil)
   (setq telega--options
         ;; default limits
         (list :message_caption_length_max 1024
               :message_text_length_max 4096))
   (setq telega--chats (make-hash-table :test #'eq))
-  (setq telega--pinned-messages (make-hash-table :test #'eq))
+  (setq telega--cached-messages (make-hash-table :test #'equal))
   (setq telega--top-chats nil)
 
   (setq telega--search-chats nil)
@@ -331,19 +370,49 @@ Return non-nil if all tests are passed."
                           (funcall 'image-transforms-p))
                    ;; For TTY-only emacs, images are not required
                    t))
+             nil
              (concat "Emacs with `imagemagick' support is required."
                      " (libmagickcore, libmagickwand, --with-imagemagick)"))
-  (cl-assert (image-type-available-p 'svg) nil
-             "Emacs with `svg' support is required. (librsvg)")
+  ;; SVG is no longer required if avatars are disabled (in TTY for example)
+  (cl-assert (or (image-type-available-p 'svg)
+                 (and (not telega-root-show-avatars)
+                      (not telega-user-show-avatars)
+                      (not telega-chat-show-avatars)))
+             nil
+             (concat "Emacs with `svg' support is needed to show avatars.  "
+                     "Disable `telega-XXX-show-avatars' or comple Emacs with svg support"))
   (unless quiet-p
     (message "Your Emacs is suitable to run telega.el"))
   t)
+
+(defmacro telega-save-window-start (start end &rest body)
+  "Execute BODY saving window start and point.
+Window start is saved only if window start is inbetween START and
+END."
+  (declare (indent 2))
+  (let ((buf-win-sym (gensym))
+        (win-start (gensym "winstart"))
+        (win-start-line (gensym)))
+    `(let* ((,buf-win-sym (get-buffer-window))
+            (,win-start (when ,buf-win-sym
+                          (window-start ,buf-win-sym)))
+            (,win-start-line (when (and ,buf-win-sym
+                                        (>= ,win-start ,start)
+                                        (<= ,win-start ,end))
+                               (1+ (count-lines 1 ,win-start)))))
+       (unwind-protect
+           (progn ,@body)
+         (when (and ,buf-win-sym ,win-start-line)
+           (save-excursion
+             (goto-char (point-min))
+             (forward-line (1- ,win-start-line))
+             (set-window-start ,buf-win-sym (point))))))))
 
 (defmacro telega-save-excursion (&rest body)
   "Execute BODY saving current point as moving marker."
   (declare (indent 0))
   (let ((pnt-sym (gensym)))
-    `(let ((,pnt-sym (copy-marker (point) t)))
+    `(let* ((,pnt-sym (copy-marker (point) t)))
        (unwind-protect
            (progn ,@body)
          (goto-char ,pnt-sym)))))
@@ -407,6 +476,7 @@ Inhibits read-only flag."
      (redisplay)
      (with-help-window ,buffer-or-name
        (set-buffer standard-output)
+       (setq-local nobreak-char-display nil)
        (cursor-sensor-mode 1)
        ,@body)))
 
@@ -417,18 +487,15 @@ If BUFFER-OR-NAME exists and visible then redisplay it."
     (with-current-buffer help-buf
       (when (and (eq for-param telega--help-win-param)
                  telega--help-win-inserter)
-        (if-let ((help-win (get-buffer-window help-buf)))
+        (if (get-buffer-window help-buf)
             ;; Buffer is visible in some HELP-WIN
-            (let ((w-start (window-start help-win))
-                  (w-point (window-point help-win)))
-              (telega-save-excursion
+            (telega-save-window-start (point-min) (point-max)
+              (telega-save-cursor
                 (let ((inhibit-read-only t))
                   (setq telega--help-win-dirty-p nil)
                   (erase-buffer)
                   (funcall telega--help-win-inserter
-                           telega--help-win-param)))
-              (set-window-start help-win w-start)
-              (set-window-point help-win w-point))
+                           telega--help-win-param))))
 
           ;; Buffer is not visible, mark it as dirty, so it will be
           ;; redisplayed when switched in
@@ -483,14 +550,6 @@ BIND is in form ((PROP VAL) PLIST)."
             by #'cddr
             do (progn ,@body)))
 
-(defsubst telega-file--ensure (file)
-  "Ensure FILE is in `telega--files'.
-Return FILE."
-  (when telega-debug
-    (cl-assert file))
-  (puthash (plist-get file :id) file telega--files)
-  file)
-
 (defsubst telega-file--size (file)
   "Return FILE size."
   ;; NOTE: fsize is 0 if unknown, in this case esize is approximate
@@ -501,7 +560,8 @@ Return FILE."
 
 (defsubst telega-file--downloaded-p (file)
   "Return non-nil if FILE has been downloaded."
-  (telega--tl-get file :local :is_downloading_completed))
+  (and (telega--tl-get file :local :is_downloading_completed)
+       (file-exists-p (telega--tl-get file :local :path))))
 
 (defsubst telega-file--downloading-p (file)
   "Return non-nil if FILE is downloading right now."
@@ -521,6 +581,11 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
                   (telega-file--size file))))
 
+(defun telega-file--partially-downloaded-p (file)
+  "Return non-nil if FILE is partially downloaded."
+  (and (not (telega-file--downloading-p file))
+       (< 0 (telega-file--downloading-progress file) 1)))
+
 (defsubst telega-file--uploaded-p (file)
   "Return non-nil if FILE has been uploaded."
   (telega--tl-get file :remote :is_uploading_completed))
@@ -533,6 +598,11 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   "Return progress of FILE uploading as float from 0 to 1."
   (color-clamp (/ (float (telega--tl-get file :remote :uploaded_size))
                   (telega-file--size file))))
+
+(defun telega-file--partially-uploaded-p (file)
+  "Return non-nil if FILE is partially uploaded."
+  (and (not (telega-file--uploading-p file))
+       (< 0 (telega-file--uploading-progress file) 1)))
 
 (defsubst telega--desurrogate-apply-part (part &optional keep-properties)
   "Apply PART's `telega-display'"
@@ -596,13 +666,26 @@ Also supports \"formattedText\" a value of the OBJ's PROP."
     (unless (string-empty-p ret)
       ret)))
 
-(defsubst telega-me-p (chat-or-user)
-  "Return non-nil if CHAT-OR-USER is me."
-  (eq telega--me-id (plist-get chat-or-user :id)))
+(defsubst telega-zerop (value)
+  "Return non-nil if VALUE is nil or `zerop'."
+  (or (null value) (zerop value)))
 
-(defmacro telega-svg-create (&rest args)
-  ;; See https://t.me/emacs_telega/13764
-  `(svg-create ,@args :xmlns:xlink "http://www.w3.org/1999/xlink"))
+(defsubst telega-replies-p (chat)
+  "Return non-nil if CHAT is Replies chat."
+  (eq telega--replies-id (plist-get chat :id)))
+
+(defsubst telega-me-p (msg-sender)
+  "Return non-nil if MSG-SENDER is me.
+MSG-SENDER could be a user or a chat."
+  (eq telega--me-id (plist-get msg-sender :id)))
+
+(defsubst telega-chat-p (msg-sender)
+  "Return non-nil if CHAT is Telegram chat."
+  (and msg-sender (eq 'chat (telega--tl-type msg-sender))))
+
+(defsubst telega-user-p (msg-sender)
+  "Return non-nil if USER is Telegram user."
+  (and msg-sender (eq 'user (telega--tl-type msg-sender))))
 
 
 ;;; Formatting
@@ -797,15 +880,18 @@ Activates button if cursor enter, deactivates if leaves."
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)
   "Show help message for BUTTON defined by `:help-echo' property."
-  (let ((help-echo (or (button-get button :help-echo)
-                       (button-get button 'help-echo))))
-    (when (functionp help-echo)
-      (setq help-echo (funcall help-echo (button-get button :value))))
-    (when help-echo
-      (message "%s" (eval help-echo)))))
+  (when telega-help-messages
+    (let ((help-echo (or (button-get button :help-echo)
+                         (button-get button 'help-echo))))
+      (when (functionp help-echo)
+        (setq help-echo (funcall help-echo (button-get button :value))))
+      (when help-echo
+        (message "%s" (eval help-echo))))))
 
 (defun telega-button--insert (button-type value &rest props)
-  "Insert telega button of BUTTON-TYPE with VALUE and PROPS."
+  "Insert telega button of BUTTON-TYPE with VALUE and PROPS.
+Properties specified in PROPS are retained on
+`telega-button--update-value' calls."
   (declare (indent 2))
   (let ((button (apply 'make-text-button
                        (prog1 (point)
@@ -815,6 +901,8 @@ Activates button if cursor enter, deactivates if leaves."
                        (point)
                        :type button-type
                        :value value
+                       :telega-retain-props
+                       (telega-plist-map (lambda (prop _ignored) prop) props)
                        props)))
     (button-at button)))
 
@@ -831,30 +919,55 @@ Activates button if cursor enter, deactivates if leaves."
 (defun telega-button--update-value (button new-value &rest props)
   "Update BUTTON's value to NEW-VALUE.
 Additional properties PROPS are updated in button."
-  (telega-button--change button
-    (apply 'telega-button--insert (button-type button) new-value props)))
+  ;; NOTE: retain values for properties specified in
+  ;; `telega-button--insert', new PROPS overrides retained props
+  (let ((new-props nil))
+    (dolist (rprop (button-get button :telega-retain-props))
+      (setq new-props (plist-put new-props rprop (button-get button rprop))))
+    (telega--tl-dolist ((addprop value) props)
+      (setq new-props (plist-put new-props addprop value)))
+
+    (telega-button--change button
+      (apply #'telega-button--insert (button-type button)
+             new-value new-props))))
 
 (defun telega-button--observable-p (button)
   "Return non-nil if BUTTON is observable in some window.
-I.e. shown in some window, see `pos-visible-in-window-p'."
-  (when (markerp button)
-    (let ((bwin (get-buffer-window (marker-buffer button))))
-      (and bwin
-           (telega-focus-state (window-frame bwin))
-           (pos-visible-in-window-p button bwin)))))
+I.e. shown in some window, see `pos-visible-in-window-p'.
 
-(defun telega-button--make-observable (button)
+Return nil if button is not visible, `full' if BUTTON is fully
+visible, `top' if top is visible and bottom is not, `bottom' if bottom
+is visible and top is not, `button' if only BUTTON point is visible."
+  ;; NOTE: BUTTON could be a real button (with value) or simple marker
+  ;; for simple marker do not check top and bottom
+  (cl-assert (markerp button))
+  (when-let ((bwin (get-buffer-window (marker-buffer button))))
+    (let* ((button-p (button-get button :value))
+           (top-p (when button-p
+                    (pos-visible-in-window-p (button-start button) bwin)))
+           (bottom-p (when button-p
+                       (pos-visible-in-window-p (button-end button) bwin))))
+      (cond ((and top-p bottom-p) 'full)
+            (top-p 'top)
+            (bottom-p 'bottom)
+            ((pos-visible-in-window-p button bwin) 'button)))))
+
+(defun telega-button--make-observable (button &optional even-if-visible-p)
   "Make BUTTON observable in window."
-  (unless (and (pos-visible-in-window-p (button-start button))
-               (pos-visible-in-window-p (button-end button)))
-    ;; NOTE:
-    ;; - Button is not fully visible, recenter to make it
-    ;;   visible
-    ;; - `recenter' might signal error
-    (let ((nlines (count-lines (button-start button) (button-end button))))
-      (if (>= nlines (/ (window-height) 2))
-          (ignore-errors (recenter (- nlines)))
-        (ignore-errors (recenter))))))
+  (when (markerp button)
+    (when-let ((bstart (button-start button))
+               (bend (button-end button))
+               (bwin (get-buffer-window (marker-buffer button))))
+      (unless (and (not even-if-visible-p)
+                   (pos-visible-in-window-p bstart bwin)
+                   (pos-visible-in-window-p bend bwin))
+        (let ((win-h (window-height bwin))
+              (button-h (count-lines bstart bend)))
+          (if (>= button-h (/ win-h 2))
+              ;; NOTE: Always keep at least 2 lines visible above the
+              ;; message
+              (telega-window-recenter bwin 2 bstart)
+            (telega-window-recenter bwin)))))))
 
 (defun telega-button-forward (n &optional predicate no-error)
   "Move forward to N visible/active button.
@@ -863,7 +976,9 @@ PREDICATE returns non-nil.  PREDICATE is called with single arg -
 button.
 If NO-ERROR, do not signal error if no further buttons could be
 found.
-If NO-ERROR is `recenter', then possible recenter, otherwise recenter only if NO-ERROR is nil."
+If NO-ERROR is `interactive', then do whatever `telega-button-forward'
+do for interative calls, i.e. observe the button and show help
+message (if any)."
   (declare (indent 1))
   (interactive "p")
   (let (button)
@@ -880,8 +995,8 @@ If NO-ERROR is `recenter', then possible recenter, otherwise recenter only if NO
                       (button-get button 'inactive)))))
 
     ;; NOTE: Non-nil `no-error' is normally given on non-interactive
-    ;; calls, so recenter only on interactive calls
-    (when (and button (or (not no-error) (eq no-error 'recenter)))
+    ;; calls, so make button observable only on interactive calls
+    (when (and button (or (not no-error) (eq no-error 'interactive)))
       (telega-button--make-observable button)
       (telega-button--help-echo button))
     button))
@@ -928,7 +1043,7 @@ If NO-PROPS is non-nil, then remove properties from the resulting string."
                        :title no-props)
       (intern (downcase (substring (plist-get pos-list :@type) 8))))))
 
-(defun telega-chat-position (chat)
+(defsubst telega-chat-position (chat)
   "Return CHAT position in current `telega-tdlib--chat-list'."
   (cl-find telega-tdlib--chat-list (plist-get chat :positions)
            :key (telega--tl-prop :list)
@@ -992,6 +1107,16 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   "Return distance in meters to the CHAT.
 Return non-nil only if CHAT is nearby."
   (plist-get (telega-chat-nearby-find (plist-get chat :id)) :distance))
+
+;; Msg part
+(defsubst telega-msg-cache (msg &optional only-if-already-in-cache)
+  "Put message MSG into messages cache `telega--cached-messages'.
+If optional ONLY-IF-ALREADY-IN-CACHE is specified, then update
+cache value to MSG only if it is already in cache."
+  (let ((msg-cache-key (cons (plist-get msg :chat_id) (plist-get msg :id))))
+    (when (or (not only-if-already-in-cache)
+              (gethash msg-cache-key telega--cached-messages))
+      (puthash msg-cache-key msg telega--cached-messages))))
 
 
 ;;; Inserters part
@@ -1062,6 +1187,15 @@ If COLUMN is nil or less then current column, then current column is used."
      (telega-ins ,label)
      (telega-ins--column nil ,fill-col
        ,@body)))
+
+(defmacro telega-ins--help-message (&rest body)
+  "Insert help message using shadow face.
+If help message has been inserted, insert newline at the end."
+  `(when telega-help-messages
+     (telega-ins--labeled "  " nil
+       (telega-ins--with-face 'shadow
+         (when (progn ,@body)
+           (telega-ins "\n"))))))
 
 (defmacro telega-ins--raw-button (props &rest body)
   "Execute BODY creating text button with PROPS."

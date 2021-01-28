@@ -24,7 +24,10 @@
 ;;
 
 ;;; Code:
+(require 'bindat)                       ;binary parsing
+
 (require 'telega-ffplay)
+(require 'telega-util)                  ;`with-telega-symbol-animate'
 
 (defcustom telega-vvnote-voice-max-dur (* 30 60)
   "Maximum duration of voice command in seconds."
@@ -41,13 +44,33 @@
   :type 'boolean
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-voice-cmd "ffmpeg -f alsa -i default -strict -2 -acodec opus -ab 30k"
+(defcustom telega-vvnote-voice-cmd
+  (concat "ffmpeg -f alsa -i default "
+          (cond ((member "opus1" telega-ffplay--has-encoders)
+                 ;; Try OPUS if available, results in 3 times smaller
+                 ;; files then AAC version with same sound quality
+                 "-strict -2 -acodec opus -ac 1 -ab 32k")
+                ((member "aac" telega-ffplay--has-encoders)
+                 "-acodec aac -ac 1 -ab 96k")
+                (t
+                 "-acodec mp3 -ar 44100 -ac 1 -ab 96k")))
   "Command to use to save voice notes."
+  :package-version '(telega . "0.7.4")
   :type 'string
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-video-cmd "ffmpeg -f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default -vf format=yuv420p,crop=240:240:40:0 -strict -2 -vcodec hevc -acodec opus -vb 300k -ab 30k"
-  "Command to use to save video notes."
+(defcustom telega-vvnote-video-cmd
+  (concat "ffmpeg -f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa "
+          "-i default -vf format=yuv420p,crop=240:240:40:0 "
+          "-vcodec " (if (member "hevc" telega-ffplay--has-encoders)
+                         "hevc"
+                       "h264")
+          " -vb 300k "
+          (if (member "opus" telega-ffplay--has-encoders)
+              "-strict -2 -acodec opus -ac 1 -ab 32k"
+            ;; Fallback to aac
+            "-acodec aac -ac 1 -ab 96k"))
+  "Command to use to record video notes."
   :type 'string
   :group 'telega-vvnote)
 
@@ -95,32 +118,147 @@
                ;; text of correct width
                :telega-text (make-string aw-chars ?#))))
 
-(defun telega-vvnote--waveform-decode (waveform)
+;; Encoding and Decoding splits into two situations:
+;;     head-bits=5   tail-bits=0
+;;   v v v v v
+;; 0 1 2 3 4 5 6 7   0 1 2 3 4 5 6 7
+;; * X X X X X * *   * * * * * * * *
+;;   `-- bitoff here            bwv1
+;; and:
+;;     head-bits=3   tail-bits=2
+;;           v v v   v v
+;; 0 1 2 3 4 5 6 7   0 1 2 3 4 5 6 7
+;; * * * * * X X X   X X * * * * * *
+;; bwv0      `-- bitoff here    bwv1
+;;
+;; Handle them both correctly
+(defun telega-vvnote--waveform-decode (waveform &optional raw-p)
   "Decode WAVEFORM returning list of heights.
-heights are normalized to [0-1] values."
+Unless RAW-P is given, heights are normalized to [0-1] values."
   (let ((bwv (base64-decode-string waveform))
-        (cc 0) (cv 0) (needbits 5) (leftbits 8) result)
+        (bitoff 0)
+        result)
     (while (not (string-empty-p bwv))
-      (setq cc (logand (aref bwv 0) (lsh 255 (- leftbits 8))))
-      (when (<= leftbits needbits)
-        (setq bwv (substring bwv 1)))
+      (let* ((bwv0 (aref bwv 0))
+             (bwv1 (if (> (length bwv) 1) (aref bwv 1) 0))
+             (head-bits (min 5 (- 8 bitoff)))
+             (tail-bits (- 5 head-bits))
+             (h-value (lsh (logand bwv0 (lsh 255 (- bitoff)))
+                           (- (+ bitoff head-bits) 8)))
+             (t-value (lsh bwv1 (- tail-bits 8))))
+        (setq result (cons (logior (lsh h-value tail-bits) t-value) result)
+              bitoff (+ bitoff 5))
+        (when (>= bitoff 8)
+          (cl-assert (= (- bitoff 8) tail-bits))
+          (setq bwv (substring bwv 1)
+                bitoff (- bitoff 8)))))
+    (mapcar (lambda (v) (if raw-p v (/ v 31.0))) (nreverse result))))
 
-      (if (< leftbits needbits)
-          ;; Value not yet ready
-          (setq cv (logior (lsh cv leftbits) cc)
-                needbits (- needbits leftbits)
-                leftbits 8)
+(defun telega-vvnote--waveform-encode (waveform)
+  "Encode WAVEFORM into base64 based form.
+WAVEFORM is list of integers each in range [0-31] to fit into 5 bits."
+  (cl-assert (cl-every (apply-partially #'>= 31) waveform))
+  (let ((bytes nil)                     ; resulting bytes
+        (bitoff 0)                      ; bit offset inside `value'
+        (value 0))                      ; currently composing value
+    (dolist (w-value waveform)
+      (cl-assert (< bitoff 8))
+      (let* ((head-bits (min 5 (- 8 bitoff)))
+             (tail-bits (- 5 head-bits))
+             (h-value (lsh (logand w-value (lsh 31 tail-bits)) (- tail-bits)))
+             (t-value (logand w-value (lsh 31 (- head-bits)))))
+        ;; Write head-bits
+        (setq value (logior value (lsh h-value (- 8 (+ bitoff head-bits))))
+              bitoff (+ bitoff 5))
+        ;; Write tail bits
+        (when (>= bitoff 8)
+          (cl-assert (= (- bitoff 8) tail-bits))
+          (setq bytes (cons value bytes)
+                bitoff (- bitoff 8)
+                value (lsh t-value (- 8 bitoff))))))
 
-        ;; Ready (needbits <= leftbits)
-        (push (logior (lsh cv needbits)
-                      (lsh cc (- needbits leftbits)))
-              result)
-        (setq leftbits (- leftbits needbits)
-              needbits 5
-              cv 0)
-        (when (zerop leftbits)
-          (setq leftbits 8))))
-    (mapcar (lambda (v) (/ v 31.0)) (nreverse result))))
+    (base64-encode-string (apply #'unibyte-string (nreverse bytes)) t)))
+
+(defun telega-vvnote--wav-samples ()
+  "Parse current buffer as wav file extracting audio samples.
+Each sample is in range [-128;128]."
+  (let* ((wav-data (buffer-string))
+         (wav-bindat-spec
+          '((:riff str 4)                 ;"RIFF"
+            (:chunk-size u32r)
+            (:format str 4)               ;"WAVE"
+            (:subchunk1-id str 4)         ;"fmt "
+            (:subchunk1-sz u32r)
+            (:audio-format u16r)
+            (:num-channels u16r)
+            (:sample-rate u32r)
+            (:byte-rate u32r)
+            (:block-align u16r)
+            (:bits-per-sample u16r)
+            (:subchunk2-id str 4)         ;"data" or "LIST"
+            (:subchunk2-sz u32r)))
+         (wav-header
+          (bindat-unpack wav-bindat-spec wav-data))
+         (data-offset 44)
+         (data-size (bindat-get-field wav-header :subchunk2-sz)))
+    (cl-assert (string= "RIFF" (bindat-get-field wav-header :riff)))
+    (cl-assert (string= "WAVE" (bindat-get-field wav-header :format)))
+    (cl-assert (string= "fmt " (bindat-get-field wav-header :subchunk1-id)))
+    (when (string= "LIST" (bindat-get-field wav-header :subchunk2-id))
+      (let ((data-header (bindat-unpack
+                          `((:skipped fill ,data-size)
+                            (:subchunk3-id str 4)
+                            (:subchunk3-sz u32r))
+                          wav-data data-offset)))
+        (setq data-offset (+ data-offset data-size 8)
+              data-size (bindat-get-field data-header :subchunk3-sz))))
+
+    (mapcar (lambda (v) (- v 128))
+            (bindat-get-field (bindat-unpack `((:wave vec ,data-size u8))
+                                             wav-data data-offset)
+                              :wave))
+    ))
+
+(defun telega-vvnote--waveform-for-file (filename)
+  "Create a waveform for audio FILENAME."
+  (let* ((temp-wav (telega-temp-name "audio" ".wav"))
+         (samples (progn
+                    ;; Use `shell-command-to-string' to avoid noisy
+                    ;; message when shell completes
+                    (shell-command-to-string
+                     (concat "ffmpeg -v error "
+                             "-i \"" (expand-file-name filename) "\" "
+                             "-ar 8000 -ac 1 "
+                             "-acodec pcm_u8 \"" temp-wav "\""))
+                    (unless (file-exists-p temp-wav)
+                      (error "telega: Can't extract waves from %s" filename))
+                    (unwind-protect
+                        (with-temp-buffer
+                          (set-buffer-multibyte nil)
+                          (insert-file-contents-literally temp-wav)
+                          (telega-vvnote--wav-samples))
+                      (delete-file temp-wav))))
+         (frac-samples
+          (seq-partition samples (1+ (/ (length samples) 96))))
+         ;; Calculate loudness as root mean square, this gives "good
+         ;; enough" results, suitable for our needs
+         (loud-samples
+          (mapcar (lambda (quant-samples)
+                    (sqrt (/ (cl-reduce #'+ (mapcar (lambda (x) (* x x))
+                                                    quant-samples))
+                             (length quant-samples))))
+                  frac-samples))
+         (log10-samples
+          (mapcar (lambda (ms) (if (> ms 0) (log ms 10) 0)) loud-samples))
+         ;; Normalize values to fit into [0-31] so each value could be
+         ;; encoded into 5bits.
+         ;; NOTE: Avoid division by 0 if all log10-samples are zeroes
+         (n-factor (/ 31.0 (apply #'max 1 log10-samples)))
+         (n-waves
+          (mapcar (lambda (wave-value) (round (* wave-value n-factor)))
+                  log10-samples)))
+    (cl-assert (cl-every (apply-partially #'>= 31) n-waves))
+    (telega-vvnote--waveform-encode n-waves)))
 
 (defun telega-vvnote-video--svg (framefile &optional progress
                                            data-p frame-img-type)
@@ -140,11 +278,14 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
          (clip (telega-svg-clip-path svg "clip"))
          (clip1 (telega-svg-clip-path svg "clip1")))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
-    (svg-embed svg framefile
-               (format "image/%S" img-type) data-p
-               :x xoff :y yoff
-               :width size :height size
-               :clip-path "url(#clip)")
+    (telega-svg-embed svg (if data-p
+                              framefile
+                            (list (file-name-nondirectory framefile)
+                                  (file-name-directory framefile)))
+                      (format "image/%S" img-type) data-p
+                      :x xoff :y yoff
+                      :width size :height size
+                      :clip-path "url(#clip)")
 
     (when progress
       (let* ((angle-o (* 2 pi progress))
@@ -170,7 +311,8 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
                     :stroke-color "white"
                     :clip-path "url(#clip1)")))
 
-    (svg-image svg :scale 1.0
+    (telega-svg-image svg :scale 1.0
+               :base-uri (if data-p "" framefile)
                :width w :height h
                :mask 'heuristic
                :ascent 'center
@@ -192,6 +334,139 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
            (let* ((cheight telega-video-note-height)
                   (x-size (telega-chars-xheight cheight)))
              (telega-media--progress-svg thumb-file x-size x-size cheight))))))
+
+
+;; Recording notes
+(defvar telega-vvnote--record-progress nil
+  "Current record progress.
+Set to nil, when ffplay exists.")
+
+(defun telega-vvnote--record-callback (proc)
+  "Progress callback for the video/voice note recording."
+  (let ((proc-plist (process-plist proc)))
+    (setq telega-vvnote--record-progress
+          (when (process-live-p proc)
+            (plist-get proc-plist :progress)))))
+
+(defun telega-vvnote-voice--record ()
+  "Record a voice note.
+Return filename with recorded voice note."
+  (let* ((telega-vvnote--record-progress 0)
+         (note-file (telega-temp-name "voice-note" ".mp4"))
+         (capture-proc (telega-ffplay-run-command
+                        (concat telega-vvnote-voice-cmd " " note-file)
+                        #'telega-vvnote--record-callback))
+         (done-key
+          (progn
+            ;; Wait for ffmpeg process to start
+            (accept-process-output capture-proc)
+
+            ;; Capture voice note
+            (with-telega-symbol-animate 'audio 0.1 audio-sym
+              ;; Animation exit condition 
+              (or (not telega-vvnote--record-progress)
+                  (not (process-live-p capture-proc)))
+
+              (let (message-log-max)
+                (message (concat "telega: "
+                                 (propertize "●" 'face 'error)
+                                 "VoiceNote " audio-sym
+                                 " " (telega-duration-human-readable
+                                      telega-vvnote--record-progress)
+                                 " Press a key when done, C-g to cancel")))))))
+
+    ;; Gracefully stop capturing and wait ffmpeg for exit
+    (when (process-live-p capture-proc)
+      (interrupt-process capture-proc)
+      (while (process-live-p capture-proc)
+        (accept-process-output capture-proc)))
+
+    (unless (file-exists-p note-file)
+      (error "telega: Can't capture voice note"))
+    ;; C-g = 7
+    (when (eq done-key 7)
+      (delete-file note-file)
+      (user-error "VoiceNote cancelled"))
+
+    note-file))
+
+(defvar telega-vvnote-video--preview nil
+  "Plist holding preview for video note recording.")
+
+(defun telega-vvnote-video--record-callback (_proc frame)
+  "Callback when recording video note."
+  ;; NOTE: fps = 30, hardcoded in `telega-vvnote-video-cmd'
+  (let ((start (plist-get telega-vvnote-video--preview :start-point)))
+    (with-current-buffer (marker-buffer start)
+      (unless (= (point) start)
+        (delete-region start (point)))
+
+      (when frame
+        (setq telega-vvnote--record-progress (/ (car frame) 30.0))
+
+        ;; Copy first frame
+        (when (= 1 (car frame))
+          (let ((first-frame (telega-temp-name "video-note1" ".png")))
+            (copy-file (cdr frame) first-frame)
+            (plist-put telega-vvnote-video--preview :first-frame first-frame)))
+
+        ;; Display frame
+        (telega-ins--image
+         (telega-vvnote-video--svg (cdr frame) nil nil 'png))))))
+
+(defun telega-vvnote-video--record ()
+  "Record a video note.
+Return filename with recorded video note."
+  ;; Check codecs availability
+  (when (or (and (not (member "opus" telega-ffplay--has-encoders))
+                 (not (member "aac" telega-ffplay--has-encoders)))
+            (and (not (member "hevc" telega-ffplay--has-encoders))
+                 (not (member "hevc" telega-ffplay--has-encoders))))
+    (user-error "telega: sorry, your ffmpeg can't record video notes"))
+
+  (setq telega-vvnote-video--preview
+        (list :start-point (copy-marker (point))))
+  (let* ((telega-vvnote--record-progress 0)
+         (note-file (telega-temp-name "video-note" ".mp4"))
+         (ffmpeg-args
+          (nconc (cdr (split-string telega-vvnote-video-cmd " " t))
+                 (list note-file
+                       "-f" "image2pipe" "-vf" "crop=240:240:40:0"
+                       "-vcodec" "png" "-")))
+         (capture-proc (telega-ffplay-to-png nil ffmpeg-args
+                         #'telega-vvnote-video--record-callback))
+         (done-key
+          (progn
+            ;; Wait for ffmpeg process to start
+            (accept-process-output capture-proc)
+
+            (with-telega-symbol-animate 'video 0.25 video-sym
+              ;; Animation exit condition 
+              (or (not telega-vvnote--record-progress)
+                  (not (process-live-p capture-proc)))
+
+              ;; Animation body
+              (let (message-log-max)
+                (message (concat "telega: "
+                                 (propertize video-sym 'face 'error)
+                                 "VideoNote "
+                                 (format "%.1fs" telega-vvnote--record-progress)
+                                 " Press a key when done, C-g to cancel")))))))
+
+    ;; Gracefully stop capturing and wait ffmpeg for exit
+    (when (process-live-p capture-proc)
+      (interrupt-process capture-proc)
+      (while (process-live-p capture-proc)
+        (accept-process-output capture-proc)))
+
+    (unless (file-exists-p note-file)
+      (error "telega: Can't capture video note"))
+    ;; C-g = 7
+    (when (eq done-key 7)
+      (delete-file note-file)
+      (user-error "VideoNote cancelled"))
+
+    note-file))
 
 (provide 'telega-vvnote)
 

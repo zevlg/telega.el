@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-23 Сб 02:25 -->
+<!-- 2021-01-23 Сб 02:26 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.7.12)</title>
@@ -323,9 +323,9 @@
 
 <blockquote>
 <p>
-This version of the manual covers last <code>telega</code> release available from
-MELPA. It runs under TDLib v1.7.0.  For development version of the
-manual switch to <a href="https://zevlg.github.io/telega.el/index-master.html">Telega Manual (current)</a>.
+This version of the manual for bleeding edge <code>telega</code> from "master"
+branch running under bleeding edge TDLib from "master" branch. For
+release version of the manual switch to <a href="https://zevlg.github.io/telega.el/index.html">Telega Manual</a>.
 </p>
 
 <p>
@@ -871,7 +871,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgab8e6f4">
+<pre class="example" id="orgaea7c40">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -889,7 +889,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org1c2aa22">
+<pre class="example" id="org6c155cc">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -919,7 +919,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org35a3a6e">
+<pre class="example" id="orgf45d46f">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1014,7 +1014,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgaa015d4">
+<pre class="example" id="org53b2a3d">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1886,7 +1886,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org4097f80">
+<pre class="example" id="orgf4bf8e5">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2063,7 +2063,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org9b95526">
+<pre class="example" id="org4076037">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2132,7 +2132,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org59e7e15">
+<pre class="example" id="org3c7bd7d">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2353,7 +2353,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org98f5318">
+<pre class="example" id="org1aebb31">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3249,7 +3249,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orge78ff54">
+<pre class="example" id="orge0376d0">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3679,7 +3679,7 @@ Default value: <code>t</code>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-23 Сб 02:25</p>
+<p class="date">Created: 2021-01-23 Сб 02:26</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

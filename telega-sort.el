@@ -118,7 +118,7 @@ CRITERIA could be a lit of sort criterias."
 (defun telega-sort-by-sorter (criteria &optional arg)
   "Interactively add CRITERIA to active sorter.
 If prefix ARG is used, then add sort criteria, instead of
-overwritting currently active one."
+overwriting currently active one."
   (interactive
    (let ((cname (funcall telega-completing-read-function
                          "Sort criteria: "
@@ -148,8 +148,10 @@ overwritting currently active one."
     (setq telega--sort-criteria criteria)
     (setq telega--sort-inverted inverted)
 
+    ;; NOTE: compare function might do weird things, so
+    ;; `copy-sequence' is used
     (setq telega--ordered-chats
-          (sort telega--ordered-chats #'telega-chat>))
+          (sort (copy-sequence telega--ordered-chats) #'telega-chat>))
 
     (telega-filters--redisplay-footer)
     (telega-root-view--redisplay)
@@ -232,6 +234,37 @@ See https://github.com/zevlg/telega.el/issues/165"
   (if-let ((distance (telega-chat-nearby-distance chat)))
       (- 1000000 distance)
     -1000000))
+
+;;; ellit-org: chat-sorting-criteria
+;; - ~chats-in-common~ ::
+;;   {{{fundoc(telega--sort-chats-in-common, 2)}}}
+(define-telega-sorter chats-in-common ("updateUserFullInfo") (chat)
+  "Sort by number of chats in common.
+See https://github.com/zevlg/telega.el/issues/218"
+  (if-let ((user (telega-chat-user chat 'inc-bots)))
+      (plist-get (telega--full-info user) :group_in_common_count)
+    -10))
+
+;;; ellit-org: chat-sorting-criteria
+;; - ~last-seen~ ::
+;;   {{{fundoc(telega--sort-last-seen, 2)}}}
+(define-telega-sorter last-seen ("updateUserStatus" "updateChatLastMessage") (chat)
+  "Sort by last seen activity.
+For private chats user's last seen date is taken.
+For other chats date of the last message is taken."
+  (if-let ((user (telega-chat-user chat)))
+      (let ((user-seen (telega-user--seen user)))
+        (if (equal user-seen "Online")
+            (time-to-seconds)
+          (or (plist-get user :telega-last-online)
+              (pcase (telega-user--seen user)
+                ("Recently" (- (time-to-seconds) 3600))
+                ("LastWeek" (- (time-to-seconds) (* 7 24 3600)))
+                ("LastMonth" (- (time-to-seconds) (* 30 7 24 3600)))
+                ("Offline" 10)
+                ("Empty" 5))
+              0)))
+    (or (telega--tl-get chat :last_message :date) 0)))
 
 ;; - TODO Date of last message sent by ~telega-user-me~
 ;; - TODO Date of last mention (thanks to https://t.me/lainposter)

@@ -21,12 +21,12 @@
 
 ;;; ellit-org: commentary
 ;; 
-;; =telega.el= could notify you about incoming messages and calls via
+;; =telega.el= can notify you about incoming messages and calls via
 ;; D-Bus notifications, however notifications are disabled by default.
-;; To enable notifications use:
 ;; 
+;; Enable it with ~(telega-notifications-mode 1)~ or at =telega= load time:
 ;; #+begin_src emacs-lisp
-;; (telega-notifications-mode 1)
+;; (add-hook 'telega-load-hook 'telega-notifications-mode)
 ;; #+end_src
 
 ;;; Code:
@@ -45,44 +45,43 @@
 (defvar telega-notifications--last-id nil
   "Currently shown notification.")
 
+(defun telega-chat-notification-scope (scope-type)
+  "Return notification settings for SCOPE-TYPE.
+SCOPE-TYPE is one of:
+\"notificationSettingsScopePrivateChats\",
+\"notificationSettingsScopeGroupChats\",
+\"notificationSettingsScopeChannelChats\"."
+  (let ((scope (alist-get scope-type telega--scope-notification-alist
+                          nil nil #'string=)))
+    (unless scope
+      (setq scope (telega--getScopeNotificationSettings scope-type))
+      (setf (alist-get scope-type telega--scope-notification-alist
+                       nil nil #'string=)
+            scope))
+    scope))
+
 (defun telega-chat-notification-setting (chat setting &optional default-p)
-  "For the CHAT return NOTIFICATION-SETTING value.
-If DEFAULT-P is non-nil then return default setting for the CHAT."
+  "For the CHAT return notification SETTING value.
+SETTING could be one of: `:mute_for', `:sound', `:show_preview',
+`:disable_pinned_message_notifications',
+`:disable_mention_notifications'.
+If DEFAULT-P is non-nil, then return default setting for the CHAT."
   (let ((use-default-name
          (intern (concat ":use_default_" (substring (symbol-name setting) 1))))
         (not-cfg (plist-get chat :notification_settings))
         (default-cfg nil))
     (when (or default-p (plist-get not-cfg use-default-name))
       (setq default-cfg
-            (cl-case (telega-chat--type chat)
-              (channel
-               (alist-get 'channel telega--scope-notification-alist))
-              ((basicgroup supergroup)
-               (alist-get 'group telega--scope-notification-alist))
-              (t
-               (alist-get 'private telega--scope-notification-alist)))))
+            (telega-chat-notification-scope
+             (cl-case (telega-chat--type chat)
+               (channel
+                "notificationSettingsScopeChannelChats")
+               ((basicgroup supergroup)
+                "notificationSettingsScopeGroupChats")
+               (t
+                "notificationSettingsScopePrivateChats")))))
 
     (plist-get (or default-cfg not-cfg) setting)))
-
-(defun telega--setScopeNotificationSettings (scope-type setting)
-  (telega-server--call
-   (list :@type "setScopeNotificationSettings"
-         :scope (list :@type scope-type)
-         :notification_settings
-         `(:@type "scopeNotificationSettings" ,@setting))))
-
-(defun telega--getScopeNotificationSettings (scope-type &optional callback)
-  (telega-server--call
-   (list :@type "getScopeNotificationSettings"
-         :scope (list :@type scope-type))
-   callback))
-
-(defun telega--resetAllNotificationSettings ()
-  "Resets all notification settings to their default values.
-By default, all chats are unmuted, the sound is set to
-\"default\" and message previews are shown."
-  (telega-server--call
-   (list :@type "resetAllNotificationSettings")))
 
 (defun telega-ins--msg-notification (msg)
   "Inserter to format MSG to notify about."
@@ -91,87 +90,138 @@ By default, all chats are unmuted, the sound is set to
                                 :elide t)
     (let ((chat (telega-chat-get (plist-get msg :chat_id))))
       (unless (memq (telega-chat--type chat 'raw) '(private secret))
-        (when (telega-ins--username (plist-get msg :sender_user_id) 'name)
+        (when (telega-ins--msg-sender (telega-msg-sender msg))
           (telega-ins ": "))))
 
     (let ((telega-use-images nil))
       (telega-ins--content msg))))
 
-(defun telega-ins--notification-scope (scope-type sconf)
-  "Insert notification scope."
-  (let* ((mute-for (plist-get sconf :mute_for))
+(defun telega-ins--notification-scope (scope-type)
+  "Insert notification scope of SCOPE-TYPE.
+SCOPE-TYPE is same an in `telega-chat-notification-scope'."
+  (let* ((sconf (telega-chat-notification-scope scope-type))
+         (mute-for (plist-get sconf :mute_for))
          (unmuted-p (zerop mute-for))
          (sound (plist-get sconf :sound))
-         (preview-p (plist-get sconf :show_preview)))
-    (telega-ins "Show Notifications: ")
+         (preview-p (plist-get sconf :show_preview))
+         (disable-pinned-p
+          (plist-get sconf :disable_pinned_message_notifications))
+         (disable-mentions-p
+          (plist-get sconf :disable_mention_notifications)))
     (telega-ins--button (if unmuted-p
                             telega-symbol-heavy-checkmark
-                          "  ")
-      'action (lambda (_button)
-                (telega--setScopeNotificationSettings
-                 scope-type (list :mute_for (if unmuted-p 599634793 0)
-                                  :sound sound
-                                  :show_preview (or preview-p :false)))
-                (telega-save-cursor
-                  (telega-describe-notifications))))
+                          telega-symbol-blank-button)
+      :value (if unmuted-p telega-mute-for-ever 0)
+      :action (apply-partially #'telega--setScopeNotificationSettings
+                               scope-type :mute_for))
+    (telega-ins " " "Show Notifications")
     (telega-ins "\n")
-    (telega-ins "Show Preview: ")
+
     (telega-ins--button (if preview-p
                             telega-symbol-heavy-checkmark
-                          "  ")
-      'action (lambda (_button)
-                (telega--setScopeNotificationSettings
-                 scope-type (list :mute_for mute-for
-                                  :sound sound
-                                  :show_preview (if preview-p :false t)))
-                (telega-save-cursor
-                  (telega-describe-notifications))))
+                          telega-symbol-blank-button)
+      :value (if preview-p :false t)
+      :action (apply-partially #'telega--setScopeNotificationSettings
+                               scope-type :show_preview))
+    (telega-ins " " "Show Preview")
     (telega-ins "\n")
-    (telega-ins "Sound: " (if (string-empty-p sound) "None" sound) "\n")
+
+    (telega-ins--button (if disable-pinned-p
+                            telega-symbol-heavy-checkmark
+                          telega-symbol-blank-button)
+      :value (if disable-pinned-p :false t)
+      :action (apply-partially #'telega--setScopeNotificationSettings
+                               scope-type :disable_pinned_message_notifications))
+    (telega-ins " " "Disable Pinned Message Notification")
+    (telega-ins "\n")
+
+    (telega-ins--button (if disable-mentions-p
+                            telega-symbol-heavy-checkmark
+                          telega-symbol-blank-button)
+      :value (if disable-mentions-p :false t)
+      :action (apply-partially #'telega--setScopeNotificationSettings
+                               scope-type :disable_mention_notifications))
+    (telega-ins " " "Disable Mention Notification")
+    (telega-ins "\n")
+
+    (telega-ins "Sound: " (if (string-empty-p sound) "None" sound))
+    (telega-ins "\n")
+
+    ;; Exceptions
+    (when-let ((exception-chats
+                (telega--getChatNotificationSettingsExceptions scope-type)))
+      (telega-ins-fmt "Exceptions: %d chats\n" (length exception-chats))
+      (telega-ins--labeled "  " nil
+        (cl-dolist (chat exception-chats)
+          (telega-button--insert 'telega-chat chat
+            :inserter #'telega-ins--chat
+            :action #'telega-describe-chat)
+          (telega-ins "\n"))))
     ))
+
+(defun telega-describe-notifications--inserter (&rest _ignored)
+  "Inserter for notification settings."
+  (telega-ins "telega-notifications-mode: "
+              (if telega-notifications-mode
+                  "Enabled"
+                "Disabled")
+              "\n")
+  (unless telega-notifications-mode
+    (telega-ins--help-message
+     (telega-ins "To enable notifications run \
+M-x telega-notifications-mode RET")))
+
+  (telega-ins "\n")
+  (telega-ins--with-face 'bold
+    (telega-ins "Private/Secret chats:\n"))
+  (telega-ins--labeled "  " nil
+    (telega-ins--notification-scope
+     "notificationSettingsScopePrivateChats"))
+;  (telega-ins "\n")
+  ;; TODO: exceptions
+
+  (telega-ins--with-face 'bold
+    (telega-ins "Group chats:\n"))
+  (telega-ins--labeled "  " nil
+    (telega-ins--notification-scope
+     "notificationSettingsScopeGroupChats"))
+;  (telega-ins "\n")
+
+  (telega-ins--with-face 'bold
+    (telega-ins "Channel chats:\n"))
+  (telega-ins--labeled "  " nil
+    (telega-ins--notification-scope
+     "notificationSettingsScopeChannelChats"))
+  (telega-ins "\n")
+
+  (telega-ins--button (telega-i18n "telega_reset_notifications")
+    'action (lambda (_button)
+              (when (yes-or-no-p (telega-i18n "telega_query_reset_notifications"))
+                (telega--resetAllNotificationSettings))))
+  (telega-ins "\n")
+  (telega-ins--help-message
+   (telega-ins-i18n "telega_reset_notifications_help"))
+  )
 
 (defun telega-describe-notifications (&rest _ignored)
   "Show global notifications settings."
   (interactive)
   (with-telega-help-win "*Telega Notifications*"
-    (telega-ins--with-face 'bold
-      (telega-ins "Private/Secret chats:\n"))
-    (telega-ins--notification-scope
-     "notificationSettingsScopePrivateChats"
-     (alist-get 'private telega--scope-notification-alist))
-    (telega-ins "\n")
-    ;; TODO: exceptions
+    (telega-describe-notifications--inserter)
 
-    (telega-ins--with-face 'bold
-      (telega-ins "Group chats:\n"))
-    (telega-ins--notification-scope
-     "notificationSettingsScopeGroupChats"
-     (alist-get 'group telega--scope-notification-alist))
-
-    (telega-ins--with-face 'bold
-      (telega-ins "Channel chats:\n"))
-    (telega-ins--notification-scope
-     "notificationSettingsScopeChannelChats"
-     (alist-get 'channel telega--scope-notification-alist))
-
-    (telega-ins "\n")
-    (telega-ins--button "Reset All Notifications"
-      'action (lambda (_button)
-                (when (y-or-n-p "Reset all notifications settings? ")
-                  (telega--resetAllNotificationSettings)
-                  (telega-save-cursor
-                    (telega-describe-notifications)))))
-    (telega-ins "\n")
-    (telega-ins--with-face 'shadow
-      (telega-ins " Undo all custom notification settings for all chats"))
-    (telega-ins "\n")
+    (setq telega--help-win-param nil)
+    (setq telega--help-win-inserter #'telega-describe-notifications--inserter)
     ))
+
+(defun telega-describe-notifications--maybe-redisplay ()
+  "If CHAT info buffer exists and visible, then redisplay it."
+  (telega-help-win--maybe-redisplay "*Telega Notifications*" nil))
 
 (defun telega-notifications--close (id)
   "Close notification by ID."
   (when (eq telega-notifications--last-id id)
     (setq telega-notifications--last-id nil)
-    (ignore-errors
+    (dbus-ignore-errors
       ;; See https://t.me/emacs_telega/6532
       (notifications-close-notification id))))
 
@@ -180,7 +230,7 @@ By default, all chats are unmuted, the sound is set to
   (when telega-notifications--last-id
     (notifications-close-notification telega-notifications--last-id))
   (let* ((base-spec (list :app-name "emacs.telega"
-                          :app-icon (telega-etc-file "telegram-logo.svg")
+                          :app-icon (telega-etc-file "telega-logo.svg")
                           ;; NOTE: with this param popups stucks sometimes
                           ;; So we use timer to manually remove the popup
                           ;; Or newly arrived notifications also
@@ -194,59 +244,64 @@ By default, all chats are unmuted, the sound is set to
     (setq telega-notifications--last-id
           (apply 'notifications-notify notify-args))))
 
-(defun telega-notifications--chat-msg0 (msg &optional force)
+(defun telega-notifications--chat-msg0 (msg &optional force &rest notify-args)
   "Function called after `telega-notifications-delay' delay.
 If FORCE is specified, then always popup notification.
 Otherwise popup notification only if MSG have not been seen yet.
 FORCE is used for testing only, should not be used in real code."
+  (declare (indent 2))
   ;; Checks once more that message has not yet been read in another
   ;; telegram client
   (let* ((msg-id (plist-get msg :id))
          (chat-id (plist-get msg :chat_id))
          (chat (telega-chat-get chat-id)))
     (unless (and (not force) (telega-msg-seen-p msg chat))
-      (let ((notify-args
-             (nconc
-              (list :actions (list "default" "show message")
-                    :on-action `(lambda (&rest args)
-                                  (x-focus-frame (telega-x-frame))
-                                  (telega-chat--goto-msg
-                                   (telega-chat-get ,chat-id)
-                                   ,msg-id 'highlight))
-                    ;; NOTE: outgoing messages bypassed notification
-                    ;; conditions are scheduled messages, mark them
-                    ;; with calendar symbol
-                    ;; See https://github.com/tdlib/td/issues/1196
-                    :title (concat (when (plist-get msg :is_outgoing)
-                                     "📅 ")
-                                   (if (telega-me-p chat)
-                                       (telega-i18n "notification_reminder")
-                                     (telega-chat-title chat 'with-username)))
-                    :body (if (telega-chat-notification-setting chat :show_preview)
-                              (telega-ins--as-string
-                               (funcall telega-inserter-for-msg-notification msg))
-                            "Has new unread messages"))
-              telega-notifications-msg-args)))
-        ;; Play sound only if CHAT setting has some sound
-        (when (string-empty-p
-               (or (telega-chat-notification-setting chat :sound) ""))
-          (setq notify-args (telega-plist-del notify-args :sound-name)))
+      (setq notify-args
+            (append
+             notify-args
+             (list :actions (list "default" "show message")
+                   :on-action `(lambda (&rest args)
+                                 (x-focus-frame (telega-x-frame))
+                                 (telega-chat--goto-msg
+                                     (telega-chat-get ,chat-id)
+                                     ,msg-id 'highlight))
+                   ;; NOTE: outgoing messages bypassed notification
+                   ;; conditions are scheduled messages, mark them
+                   ;; with calendar symbol
+                   ;; See https://github.com/tdlib/td/issues/1196
+                   :title (concat (when (plist-get msg :is_outgoing)
+                                    "📅 ")
+                                  (if (telega-me-p chat)
+                                      (telega-i18n "lng_notification_reminder")
+                                    (telega-chat-title chat 'with-username)))
+                   :body (if (telega-chat-notification-setting chat :show_preview)
+                             (telega-ins--as-string
+                              (funcall telega-inserter-for-msg-notification msg))
+                           "Has new unread messages"))
+             telega-notifications-msg-args))
+      ;; Play sound only if CHAT setting has some sound
+      (when (string-empty-p
+             (or (telega-chat-notification-setting chat :sound) ""))
+        (setq notify-args (telega-plist-del notify-args :sound-name)))
 
-        (telega-notifications--notify notify-args)
-        ;; Workaround stuck notifications, force closing after
-        ;; `telega-notifications-timeout' timeout
-        (run-with-timer telega-notifications-timeout nil
-                        'telega-notifications--close
-                        telega-notifications--last-id)
-        ))))
+      (telega-notifications--notify notify-args)
+      ;; Workaround stuck notifications, force closing after
+      ;; `telega-notifications-timeout' timeout
+      (run-with-timer telega-notifications-timeout nil
+                      'telega-notifications--close
+                      telega-notifications--last-id)
+      )))
 
 (defun telega-notifications-chat-message (msg)
   "Function intended to be added to `telega-chat-post-message-hook'."
   ;;; ellit-org: notification-conditions
   ;; Do *NOT* pop notification if:
-  ;;  1. Message is ignored by client side filtering (see
-  ;;     ~telega-msg-ignored-p~)
-  ;;  2. Chat is muted and message does not contain unread mention
+  ;;  0. Me is not member of the group chat, see
+  ;;     https://github.com/zevlg/telega.el/issues/224
+  ;;  1. Message is ignored by
+  ;;     [[#client-side-messages-ignoring][client side messages ignoring]]
+  ;;  2. Chat is muted and message does not contain unread mention or
+  ;;     mention notification is disabled for the chat
   ;;  3. Message already has been read (see ~telega-msg-seen-p~)
   ;;  4. Message is older then 1 min (to avoid poping up messages on
   ;;     laptop wakeup)
@@ -255,8 +310,12 @@ FORCE is used for testing only, should not be used in real code."
   (unless (or (telega-msg-ignored-p msg)
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
-      (unless (or (and (telega-chat-muted-p chat)
-                       (not (plist-get msg :contains_unread_mention)))
+      (unless (or (and (not (telega-chat-private-p chat))
+                       (not (telega-chat-match-p chat 'me-is-member)))
+                  (and (telega-chat-muted-p chat)
+                       (or (telega-chat-notification-setting
+                            chat :disable_mention_notifications)
+                           (not (plist-get msg :contains_unread_mention))))
                   (telega-msg-seen-p msg chat)
                   (telega-msg-observable-p msg chat))
         (if (> telega-notifications-delay 0)
@@ -268,7 +327,7 @@ FORCE is used for testing only, should not be used in real code."
 (defun telega-notifications-incoming-call (call)
   "Function intended to be added to `telega-call-incoming-hook'."
   (let* ((call-id (plist-get call :id))
-         (user (telega-user--get (plist-get call :user_id)))
+         (user (telega-user-get (plist-get call :user_id)))
          (notargs (list :actions (list "default" "accept")
                         :on-action `(lambda (&rest args)
                                       (x-focus-frame (telega-x-frame))

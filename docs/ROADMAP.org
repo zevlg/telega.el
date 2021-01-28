@@ -4,6 +4,72 @@
 
 * telega.el Major Features
 
+** DONE telega-patron-mode - highlight patron's avatars
+   CLOSED: [2021-01-23 Сб 01:14]
+
+   Use special symbol (telega logo) at the right bottom corner of the
+   ava to highlight that user is telega patron.
+
+   In user description also show patron info, like:
+   #+begin_example
+   ...
+   Telega Patron Since: <date>
+   ...
+   #+end_example
+
+   Store patrons info in the @emacs_telega chat description
+
+** DONE Emacs Stories
+   CLOSED: [2021-01-03 Вс 00:01]
+   CREATED: [2020-12-22 Вт]
+
+   Emacs Stories: share your Emacs experience with other Emacs users.
+
+   *** TODO show content loading progress
+
+       Maybe as gray (background color) dot becoming black
+       (foreground color) at the left-bottom corner
+
+   *** TODO open message thread on SPC
+
+       Now impossible because ~interaction_info~ is not updates for
+       story messages lists.
+
+   See possible screenshot: https://t.me/emacs_telega/22934
+
+   Use https://t.me/emacs_stories group to fetch stories, here is
+   rules for the stories.
+
+   Forward to @emacs_stories a message from public group, containing
+   Emacs Story
+
+   Messages considered as Emacs Story:
+   1. Nice Emacs screenshot
+   2. Video Message with screencast not longer then 60 seconds
+   3. Link to asciinema.org cast
+   4. Document (File) message with attached asciinema cast
+
+   All messages are moderated before appearing in Emacs Featured
+   Stories list
+
+   Implementation details:
+   - Use https://github.com/zevlg/asciinema.el to record/play asciinema files
+   - Sample of integration into =dashboard= -
+     https://github.com/zevlg/telega.el/blob/master/contrib/telega-dashboard.el
+   - How to decide that story is viewed?
+     Maybe store list of message-ids in chat's ~:client_data~?
+
+** Org Mode markup support
+
+  Implement ~telega-markup-org-fmt~ to apply Org Mode markup.
+  ~telega-markup-org-fmt~ already member in
+  ~telega-chat-markup-functions~
+
+** Inplace searching in a chatbuf
+
+  - ~C-c C-s~ to search for next query appearance in the chatbuf.
+  - ~C-c C-r~ to search for prev
+
 ** DONE Root Views, different views for the rootbuf
    CLOSED: [2020-10-07 Ср 17:43]
    CREATED: [2020-03-17]
@@ -42,7 +108,10 @@
    - How notifications should be shown per account?
      Maybe "--> <ACCOUNT>" as in official clients?
 
-** AppIndicator in telega-server
+** DONE AppIndicator in telega-server
+   CLOSED: [2020-12-20 Вс 01:50]
+
+   - Needs =appindicator3= library.
 
 ** Searching Messages in chat
    - [X] Shared Media, see chatbuf messages filtering
@@ -50,6 +119,17 @@
    - [ ] Importing/Exporting files using "Saved Messages"
 
 ** Full integration for Transalation Platform
+
+** TODO Use Notifications API
+  CREATED: [2020-11-27 Пт]
+
+  - Docs: https://core.telegram.org/tdlib/notification-api/
+
+  - Enable Notifications API by setting option
+
+    #+begin_src emacslisp
+    (telega--setOption :notification_group_count_max 2)
+    #+end_src
 
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
 
@@ -73,6 +153,17 @@
 
 ** Chat Actions
 
+** Transient commands
+
+  Use =transient.el= package for some commands, such as ~C-c C-a~.
+
+  This adds additional dependency - =transient= package.
+
+  Make use of transient commands optional, retaining default
+  behaviour.
+
+  **Q**: Do we really need this?
+
 * telega-server as a module
 
 Implement telega-server as Emacs module to improve overall performance.
@@ -80,6 +171,9 @@ Implement telega-server as Emacs module to improve overall performance.
    - Engine abstration to distinguish TDLib/TON/VoIP clients.
    - Save "engine" value inside rootbuf
    - "engine" as telega-server and telega-server as "engine"
+
+   **Q**: What are the benefits from having =telega-server= as module
+   instead of process?
 
 * DONE TON
   CLOSED: [2020-10-07 Ср 17:42]
@@ -96,6 +190,19 @@ Unfortunately TON is postponed, see https://t.me/durov/116
 ** DONE TON Browser for TON services and smart contracts (see [[https://test.ton.org/ton.pdf]])
    CLOSED: [2020-10-07 Ср 17:42]
    *WONT't DO*
+
+** Voice Chats
+  - Move =telega-server= bulding to CMake
+  - tgvoip (as submodule for =telega=?):
+    https://github.com/TelegramMessenger/tgcalls
+  
+*** Collaborative editor based on Voice Chats
+  - *Q*: How to attach supplementary info to the voice chat (file we
+    are editing right now) ?
+  - Use CRDT for editing commands:
+    https://code.librehq.com/qhong/crdt.el
+  - Encode CRDT commands as dubstep:
+    https://blog.benjojo.co.uk/post/encoding-data-into-dubstep-drops
 
 * Random Ideas
 
@@ -130,7 +237,11 @@ plist like:
 
 ** Global searchable history of the inputs you've sent to any chat
 
-** Filters for chat messages
+** DONE Filters for chat messages
+   CLOSED: [2020-12-22 Вт 17:06]
+
+   DONE by implementing ~C-c /~ command in chatbuf.
+
    - [X] Scheduled messages
      #+begin_example
      MSG1
@@ -226,6 +337,15 @@ plist like:
 
 ** Mark all chatbuf as readonly, keeping input area as ~inhibit-read-only~
 
+#+begin_src emacs-lisp
+  `(let ((inhibit-point-motion-hooks t))
+      (with-silent-modifications
+        ..
+        ))
+#+end_src
+
+  - But see docs for ~with-silent-modifications~
+
 ** Only changes in chatbuf input goes to undo list, making undo/redo commands usable
 
 ** Heavy background jobs
@@ -271,7 +391,7 @@ plist like:
    forward messages from public chats (i.e. messages having public
    link) as text URL.
 
-   *WON't DO*: use {{{kbd(i)}}} to get link to the message
+   *WON't DO*: use {{{kbd(l)}}} to copy link to the message
 
 ** DONE Special mode to view images
    CLOSED: [2020-02-14 Пт 02:30]
@@ -324,7 +444,79 @@ plist like:
    Use ~telega-chat-show-avatars-for~ chatfilter instead of boolean
    ~telega-chat-show-avatars~.
 
-** RET to insert newline if point is not at the end of chatbuf input
+** DONE RET to insert newline if point is not at the end of chatbuf input
+   CLOSED: [2020-12-22 Вт 15:17]
 
    So RET in the middle of chatbuf input behaves as ~C-j~.
    Make this customizable.
+
+   See ~telega-chat-ret-always-sends-message~
+
+** Prefetch map thumbnail zoom levels
+
+   Prefetch map zoom levels when user presses +/- for the first
+
+** Tramp-alike files opening from Telegram cloud                  :important:
+
+  See ~file-name-handler-alist~
+
+  Specify it as part of interal =telega= link, like:
+  ~/telega:@zevlg#167430~
+
+  So you could set say ~org-default-notes-file~ to point to file
+  stored in "Saved Messages"
+  #+begin_src emacs-lisp
+  (setq org-default-notes-file "/telega:@zevlg#167430")
+  #+end_src
+
+  Directories could be organized as:
+  - text message with directory name as content and ~#dir~ tag,
+    f.e.: "#dir /ideas"
+
+  - replies to this message are directory files
+  - If DocumentMessage - ordinary file
+  - If TextMessage - subdirectory
+
+  To get list of the directories use ~telega--getMessageThreadHistory~
+
+** Live tracks for live locations
+
+  Idea is to draw tracks how user moves while with live location.
+  I.e. create list of point where user been, and then show them on the
+  map.  Create next point only if user moves more then say 100 meters.
+
+  See ~telega-location-live-tracks~
+
+** Seeking in audio messages
+
+  When progress bar pressed inside, seek to the corresponding moment,
+  i.e. stop current player and start new one seeking to the moment.
+
+#+begin_example
+  [....              ]30s
+            ^
+            `--- press RET here to seek
+#+end_example
+
+  For video messages you can use video player's shortcuts to seek
+
+** DONE Show status of currently uploading/downloading files
+   CLOSED: [2020-12-30 Ср 19:00]
+
+  See https://t.me/emacs_telega/23100
+
+  - *[NOT DONE]* Associate uploading/downloading file with the
+    message, where uploading/downloading is associated
+  - Implement root view to show that messages
+  - Update root view on fly to see uploading/downloading progress
+
+** DONE Add ~telega-msg-ignore-predicates~ custom var
+   CLOSED: [2020-12-29 Вт 18:02]
+
+  Holding list of functions accepting single argument - messages and
+  returning non-nil if message should be ignored.
+
+  To simplify client side messages filtering.
+
+  Predicates runs in ~telega-chat-pre-message-hook~ and 
+  ~telega-chat-insert-message-hook~

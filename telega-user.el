@@ -24,16 +24,12 @@
 ;;
 
 ;;; Code:
-(require 'telega-core)
-(require 'telega-info)
+(require 'telega-tdlib)
 
-(declare-function telega--getGroupsInCommon "telega-chat" (with-user))
-(declare-function telega--createPrivateChat "telega-chat" (user))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
-(declare-function telega-chatbuf-mode-line-update "telega-chat")
 
 
 (defvar telega-user-button-map
@@ -63,7 +59,7 @@
   (let ((member-or-user-or-chat (button-get (button-at pos) :value)))
     (cl-ecase (telega--tl-type member-or-user-or-chat)
       (chatMember
-       (telega-user--get (plist-get member-or-user-or-chat :user_id)))
+       (telega-user-get (plist-get member-or-user-or-chat :user_id)))
       (chat (telega-chat-user member-or-user-or-chat 'include-bots))
       (user member-or-user-or-chat))))
 
@@ -77,7 +73,7 @@ If BUTTON has custom `:action', then use it, otherwise describe the user."
         (funcall custom-action user)
       (telega-describe-user user))))
 
-(defun telega-user--get (user-id &optional locally-p)
+(defun telega-user-get (user-id &optional locally-p)
   "Get user by USER-ID."
   (telega--info 'user user-id locally-p))
 
@@ -92,21 +88,11 @@ user is fetched from server."
 
 (defun telega-user-me (&optional locally-p)
   "Return me is a user."
-  (telega-user--get telega--me-id locally-p))
+  (telega-user-get telega--me-id locally-p))
 
 (defsubst telega-user-online-p (user)
   "Return non-nil if USER is online."
   (equal (telega-user--seen user) "Online"))
-
-(defun telega-user-blocked-p (user &optional locally-p)
-  "Return non-nil if USER is blocked."
-  ;; TODO: rewrite when `telega-user-full-info 'locally' will be
-  ;; available
-  (plist-get (if locally-p
-                 (gethash (plist-get user :id)
-                          (cdr (assq 'user telega--full-info)))
-               (telega--full-info user))
-             :is_blocked))
 
 (defun telega-user--type (user)
   "Return USER type."
@@ -116,7 +102,7 @@ user is fetched from server."
   "Return non-nil if USER is bot."
   (eq (telega-user--type user) 'bot))
 
-(defun telega-user--name (user &optional fmt-type)
+(defun telega-user-title (user &optional fmt-type)
   "Return name for the USER.
 Format name using FMT-TYPE, one of:
   `name' - Uses only first and last names
@@ -127,7 +113,7 @@ Default is: `full'"
   (if (and (eq (telega--tl-type user) 'user)
            (eq (telega-user--type user) 'deleted))
       ;; I18N: deleted -> Deleted Account
-      (format "%s-%d" (telega-i18n "deleted") (plist-get user :id))
+      (format "%s-%d" (telega-i18n "lng_deleted") (plist-get user :id))
 
     (let ((fmt-type (or fmt-type 'full))
           (name ""))
@@ -145,6 +131,9 @@ Default is: `full'"
         (when-let ((fn (telega-tl-str user :first_name)))
           (setq name (concat fn (if (string-empty-p name) "" " ") name))))
       name)))
+
+;; NOTE: Backward compatibility, DEPRECATED, use `telega-user-title' instead
+(defalias 'telega-user--name 'telega-user-title)
 
 (defun telega-user--seen (user &optional as-number)
   "Return last seen status for the USER.
@@ -185,30 +174,41 @@ If AS-NUMBER is specified, return online status as number:
     (unless (zerop gic-cnt)
       (telega--getGroupsInCommon with-user))))
 
-(defun telega-user-avatar-image (user)
-  "Return avatar image for the USER."
+(defun telega-user-avatar-image (user &optional force-update)
+  "Return avatar image for the USER.
+Return two-line image."
   (let ((photo (plist-get user :profile_photo)))
     (telega-media--image
-     (cons user 'telega-avatar--create-image)
-     (cons photo :small))))
+     (cons user #'telega-avatar--create-image)
+     (cons photo :small)
+     force-update)))
 
 (defun telega-user-avatar-image-one-line (user)
   "Return avatar for the USER for one line use."
   (let ((photo (plist-get user :profile_photo)))
     (telega-media--image
-     (cons user 'telega-avatar--create-image-one-line)
+     (cons user #'telega-avatar--create-image-one-line)
      (cons photo :small)
      nil :telega-avatar-1)))
 
+(defun telega-user-avatar-image-three-lines (user)
+  "Return avatar for the USER for three lines use."
+  (let ((photo (plist-get user :profile_photo)))
+    (telega-media--image
+     (cons user (lambda (c-or-u file)
+                  (telega-avatar--create-image c-or-u file 3)))
+     (cons photo :small)
+     nil :telega-avatar-3)))
+
 (defun telega-describe-user--inserter (user-id)
   "Inserter for the user info buffer."
-  (let ((user (telega-user--get user-id)))
+  (let ((user (telega-user-get user-id)))
     (telega-ins "Name: ")
     (when-let ((fn (telega-tl-str user :first_name)))
       (telega-ins fn " "))
     (telega-ins (telega-tl-str user :last_name))
     (telega-ins "\n")
-    (telega-info--insert-user user nil)))
+    (telega-info--insert-user user)))
 
 (defun telega-describe-user (user)
   "Show info about USER."
@@ -238,11 +238,13 @@ If AS-NUMBER is specified, return online status as number:
   "Toggle block state of the USER.
 If UNBLOCK-P is specified, then unblock USER."
   (interactive (list (telega-user-at (point))))
+
   (if unblock-p
-      (telega--unblockUser user)
+      (telega-msg-sender-unblock user)
     (when (yes-or-no-p
-           (format "Really block user %s? " (telega-user--name user)))
-      (telega--blockUser user))))
+           (telega-i18n "lng_blocked_list_confirm_text"
+             :name (telega-user--name user)))
+      (telega-msg-sender-block user))))
 
 (defun telega-user> (user1 user2)
   "Compare users using active sort criteria.
@@ -281,7 +283,7 @@ Return non-nil if USER1 > USER2."
   "Add user by PHONE to contact list."
   (interactive (list (read-string "Phone number: ")
                      (read-string "Name: ")))
-  (let* ((names (split-string name " "))
+  (let* ((names (split-string (or name "") " "))
          (reply (telega--importContacts
                  (nconc (list :@type "contact" :phone_number phone)
                         (unless (string-empty-p (car names))
@@ -292,14 +294,13 @@ Return non-nil if USER1 > USER2."
          (user-id (aref (plist-get reply :user_ids) 0)))
     (when (zerop user-id)
       (user-error "No telegram user with phone %s" phone))
-    (telega-describe-user (telega-user--get user-id))))
+    (telega-describe-user (telega-user-get user-id))))
 
-(defun telega-describe-contact (contact)
-  "Show CONTACT information."
-  (with-telega-help-win "*Telega Contact*"
+(defun telega-describe-contact--inserter (contact)
+  "Inserter for the contact info buffer."
     (telega-ins--contact contact)
     (telega-ins "\n")
-    (let ((user (telega-user--get (plist-get contact :user_id))))
+    (let ((user (telega-user-get (plist-get contact :user_id))))
       (if (plist-get user :is_contact)
           (telega-ins--button "RemoveContact"
             :value contact
@@ -317,8 +318,25 @@ Return non-nil if USER1 > USER2."
 
       (telega-ins "\n--- Telegram User Info ---\n")
       (telega-ins "Name: " (telega-user--name user 'name) "\n")
-      (telega-info--insert-user
-       user nil (lambda () (telega-describe-contact contact))))))
+      (telega-info--insert-user user))
+    )
+
+(defun telega-describe-contact (contact)
+  "Show CONTACT information."
+  (with-telega-help-win "*Telega Contact*"
+    (telega-describe-contact--inserter contact)
+
+    (setq telega--help-win-param (plist-get contact :user_id))
+    (setq telega--help-win-inserter #'telega-describe-contact--inserter)
+    ))
+
+(defun telega-describe-contact--maybe-redisplay (user-id)
+  "Possible redisplay \\*Telega Contact\\* buffer for the USER-ID."
+  (when-let ((contact (when-let ((help-buf (get-buffer "*Telega Contact*")))
+                        (with-current-buffer help-buf
+                          telega--help-win-param))))
+    (when (eq user-id (plist-get contact :user_id))
+      (telega-help-win--maybe-redisplay "*Telega Contact*" contact))))
 
 (provide 'telega-user)
 

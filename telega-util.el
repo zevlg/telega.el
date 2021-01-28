@@ -60,6 +60,14 @@ Also return `nil' if FILENAME is `nil'."
   "From PLIST remove property PROP."
   (cl--plist-remove plist (plist-member plist prop)))
 
+(defun telega-plist-map (func plist)
+  "Map FUNCTION on PLIST and return resulting list.
+FUNCTION must accept two arguments: KEY and VALUE."
+  (let (result)
+    (telega--tl-dolist ((prop-name value) plist)
+      (setq result (cons (funcall func prop-name value) result)))
+    (nreverse result)))
+
 (defun telega-face-height (face)
   "Return float version of FACE height."
   (let ((height (face-attribute face :height)))
@@ -94,32 +102,38 @@ Can be used as value for `telega-online-status-function'."
     (or (not (display-graphic-p frame))
         (frame-parameter frame 'x-has-focus))))
 
-(defun telega-buffer-p ()
-  "Return non-nil if current buffer is some telega buffer.
+(defun telega-buffer-p (&optional buffer)
+  "Return non-nil if BUFFER is some telega buffer.
+If BUFFER is ommited, current buffer is used.
 Could be used as value for `telega-online-status-function'."
-  (when (or (derived-mode-p 'telega-root-mode)
-            (derived-mode-p 'telega-chat-mode)
-            (string-prefix-p "*Telega" (buffer-name)))
-    t))
+  (with-current-buffer (or buffer (current-buffer))
+    (when (or (derived-mode-p 'telega-root-mode)
+              (derived-mode-p 'telega-chat-mode)
+              (string-prefix-p "*Telega" (buffer-name))
+              (string-prefix-p "*Telegram" (buffer-name)))
+      t)))
 
-(defun telega-chars-xwidth (n)
-  "Return pixel width for N characters"
+(defun telega-chars-xwidth (n &optional face)
+  "Return pixel width for N characters.
+If FACE is not specified, then `default' is used."
   ;; NOTE: Same (* n (window-font-width (get-buffer-window nil (telega-x-frame))))
   ;; but without tweaking on window configuration, which breaks inserters
   (* n (if-let ((tframe (telega-x-frame)))
            (with-current-buffer (or telega--current-buffer (current-buffer))
-             (let* ((info (font-info (face-font 'default tframe) tframe))
+             (let* ((info (font-info
+                           (face-font (or face 'default) tframe) tframe))
                     (width (aref info 11)))
                (if (> width 0)
                    width
                  (aref info 10))))
          (frame-char-width))))
 
-(defun telega-chars-xheight (n)
-  "Return pixel height for N characters"
+(defun telega-chars-xheight (n &optional face)
+  "Return pixel height for N characters.
+If FACE is not specified, then `default' is used."
   (* n (if-let ((tframe (telega-x-frame)))
            (with-current-buffer (or telega--current-buffer (current-buffer))
-             (aref (font-info (face-font 'default tframe) tframe) 3))
+             (aref (font-info (face-font (or face 'default) tframe) tframe) 3))
          (frame-char-height))))
 
 (defun telega-chars-in-height (pixels)
@@ -147,6 +161,10 @@ Could be used as value for `telega-online-status-function'."
 Specify EXT with leading `.'."
   (concat (expand-file-name (make-temp-name prefix) telega-temp-dir) ext))
 
+(defun telega-svg-raw-node (svg node-name node-attrs &rest node-childs)
+  "Add string as is to the SVG."
+  (svg--def svg (apply 'dom-node node-name node-attrs node-childs)))
+
 (defun telega-svg-clip-path (svg id)
   (let ((cp (dom-node 'clipPath `((id . ,id)))))
     (svg--def svg cp)
@@ -156,6 +174,39 @@ Specify EXT with leading `.'."
   (svg--append svg (dom-node 'path
                              `((d . ,d)
                                ,@(svg--arguments svg args)))))
+
+(defun telega-svg-embed (svg image img-type datap &rest args)
+  "Embed IMAGE possible using `svg-embed-base-uri-image'.
+IMAGE could be a list of two elements \\(RELATIVE-FNAME BASE-DIR\\),
+so new Emacs `svg-embed-base-uri-image' functionality could be used."
+  (if (and (not datap) (fboundp 'svg-embed-base-uri-image)
+           (listp image))
+      (apply #'svg-embed-base-uri-image svg (car image) args)
+    (apply #'svg-embed svg (if (listp image)
+                               (apply #'expand-file-name image)
+                             image)
+           img-type datap args)))
+
+(defun telega-svg-gradient (svg id type stops)
+  "Same as `svg-gradient' but supports \"stop-opacity\" property."
+  (svg--def
+   svg
+   (apply
+    'dom-node
+    (if (eq type 'linear)
+        'linearGradient
+      'radialGradient)
+    `((id . ,id)
+      (x1 . 0)
+      (x2 . 0)
+      (y1 . 0)
+      (y2 . 1))
+    (mapcar
+     (lambda (stop)
+       (dom-node 'stop `((offset . ,(format "%s%%" (car stop)))
+                         (stop-color . ,(cadr stop))
+                         (stop-opacity . ,(plist-get (cddr stop) :opacity)))))
+     stops))))
 
 (defun telega-svg-progress (svg progress)
   "Insert progress circle into SVG."
@@ -184,18 +235,110 @@ Specify EXT with leading `.'."
                 :clip-path "url(#pclip)")
     svg))
 
+(defun telega-svg-squircle (svg x y width height &rest args)
+  "In SVG at X and Y positioon draw squircle of WIDTHxHEIGHT size.
+X and Y denotes left up corner."
+  ;; Values are taken from
+  ;; https://upload.wikimedia.org/wikipedia/commons/5/58/Squircle2.svg
+  (let* ((w-factor (/ width 608.0))
+         (h-factor (/ height 608.0))
+         (squircle-cubic-beziers
+          '(((126.2 . 288) (196.3563 . 288) (242.1782 . 242.1782))
+            ((288 . 196.3563) (288 . 126.2) (288 . 0))
+            ((288 . -126.2) (288 . -196.3563) (242.1782 . -242.1782))
+            ((196.3563 . -288) (126.2 . -288) (0 . -288))
+            ((-126.2 . -288) (-196.3563 . -288) (-242.1782 . -242.1782))
+            ((-288 . -196.3563) (-288 . -126.2) (-288 . 0))
+            ((-288 . 126.2) (-288 . 196.3563) (-242.1782 . 242.1782))
+            ((-196.3563 . 288) (-126.2 . 288) (0 . 288))))
+         (cmd-start (format "M%f,%f\n"
+                            (+ x (* 304 w-factor))
+                            (+ y (* (+ 288 304) h-factor))))
+         (cmd-cb
+          (mapconcat
+           (lambda (cubic-bezier)
+             (concat "C"
+                     (mapconcat
+                      (lambda (p)
+                        (format "%f,%f"
+                                (+ x (* (+ 304 (car p)) w-factor))
+                                (+ y (* (+ 304 (cdr p)) h-factor))))
+                      cubic-bezier ",")))
+           squircle-cubic-beziers "\n")))
+    (apply #'telega-svg-path svg (concat cmd-start cmd-cb "Z") args)))
+
+(defun telega-svg-telega-logo (svg width &rest args)
+  "Draw telega triangle of WIDTH."
+  (let ((ratio (/ width 32.0))
+        (logo-outline '((M (0 10.1891))
+                        (l (7.9819 5.5418))
+                        (c (0.8853 -0.322) (1.8202 -0.6638) (2.599 -0.9418)
+                           (1.9609 -0.7)   (7.0539 -3.4182) (7.0539 -3.4182)
+                           (-2.5145 2.2595) (-4.6401 4.5613) (-6.55 6.8691))
+                        (L (17.5694 27))
+                        (c (0.2653 -0.9309) (0.5279 -1.8618) (0.9135 -2.9018))
+                        (C (20.4518 18.4196) (32 0) (32 0)
+                           (24.4744 2.555) (10.7087 7.5896) (7.8333 8.5782)
+                           (5.5816 9.3523) (2.1946 10.5884) (0 10.1892))
+                        (z))))
+    (apply #'telega-svg-path svg
+           (mapconcat (lambda (op)
+                        (concat (symbol-name (car op))
+                                (mapconcat
+                                 (lambda (pnt)
+                                   (concat (number-to-string (* ratio (car pnt)))
+                                           " "
+                                           (number-to-string
+                                            (* ratio (cadr pnt)))))
+                                 (cdr op) " ")))
+                      logo-outline "\n")
+           args)))
+
+(defun telega-svg-create (width height &rest args)
+  "Create SVG image using `svg-create'.
+Addresses some issues telega got with pure `svg-create' usage."
+  ;; See https://t.me/emacs_telega/13764
+  ;; Also see https://t.me/emacs_telega/20435
+  (cl-assert (and (integerp width) (integerp height)))
+  (apply #'svg-create width height
+         :xmlns:xlink "http://www.w3.org/1999/xlink" args))
+
 (defun telega-svg-image (svg &rest props)
   "Return an image object from SVG.
 PROPS is passed on to `create-image' as its PROPS list."
   ;; NOTE: work around problem displaying unicode characters in some
   ;; librsvg versions (in my case 2.40.13).  Encoded (in &#xxxx format)
-  ;; text is only displayed corretly if <xml ..?> node is specified
-  (apply #'create-image
-         (with-temp-buffer
-           (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-           (svg-print svg)
-           (buffer-string))
-         'svg t props))
+  ;; text is only displayed correctly if <xml ..?> node is specified
+  (let ((svg-data (with-temp-buffer
+                    (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+                    (svg-print svg)
+                    (buffer-string))))
+    ;; NOTE: Do not check `svg' availability, so it will work when
+    ;; `rsvg' is not compliled in and telega images disabled See
+    ;; https://github.com/zevlg/telega.el/issues/219
+    (nconc (list 'image :type 'svg :data svg-data)
+           (unless (plist-member props :scale)
+             (list :scale
+                   (image-compute-scaling-factor image-scaling-factor)))
+           props)))
+
+(defun telega-svg-fit-into (width height fit-width fit-height)
+  "Fit rectangle of WIDTHxHEIGHT size into FIT-WIDTHxFIT-HEIGHT rect.
+Do touch outsize scaling.
+Return resulting x,y,width,height."
+  (let* ((w-ratio (/ (float fit-width) width))
+         (h-ratio (/ (float fit-height) height))
+         (fit-horiz-p (> (/ (float width) height)
+                         (/ (float fit-width) fit-height)))
+         (ret-height (if fit-horiz-p
+                         fit-height
+                       (round (* height w-ratio))))
+         (ret-width (if (not fit-horiz-p)
+                        fit-width
+                      (round (* width h-ratio)))))
+    (list (- (/ (- ret-width fit-width) 2))
+          (- (/ (- ret-height fit-height) 2))
+          ret-width ret-height)))
 
 (defun telega-poll-create-svg (cwidth percents &optional face)
   "Create SVG for use in poll options inserter."
@@ -285,23 +428,35 @@ SYMBOL could be a cons cell of codepoints, specifying the range."
         ((>= meters 1000) (format "%.1f km" (/ meters 1000.0)))
         (t (format "%d m" meters))))
 
-(defun telega-duration-human-readable (seconds &optional n)
+(defun telega-duration-human-readable (seconds &optional n
+                                               day-label hour-label min-label)
   "Convert SECONDS to human readable string.
 If N is given, then use only N significant components.
 For example if duration is 4h:20m:3s then with N=2 4H:20m will be returned.
 By default N=3 (all components).
 N can't be 0."
   (cl-assert (or (null n) (> n 0)))
+  ;; NOTE: force seconds to be a number, see
+  ;; https://t.me/emacs_ru/283567?single
+  (setq seconds (round seconds))
   (let ((ncomponents (or n 3))
+        (intervals `((86400 . ,(or day-label "d"))
+                     (3600 . ,(or hour-label "h"))
+                     (60 . ,(or min-label "m"))))
         comps)
-    (when (>= seconds 3600)
-      (setq comps (list (format "%dh" (/ seconds 3600)))
-            seconds (% seconds 3600)
-            ncomponents (1- ncomponents)))
-    (when (and (> ncomponents 0) (>= seconds 60))
-      (setq comps (nconc comps (list (format "%dm" (/ seconds 60))))
-            seconds (% seconds 60)
-            ncomponents (1- ncomponents)))
+    ;; days, hours, minutes
+    (while (and (> ncomponents 0) intervals)
+      (let* ((ival (car intervals))
+             (ival-seconds (car ival)))
+        (when (>= seconds ival-seconds)
+          (setq comps (nconc comps (list (concat (int-to-string
+                                                  (/ seconds ival-seconds))
+                                                 (cdr ival))))
+                seconds (% seconds ival-seconds)
+                ncomponents (1- ncomponents)))
+        (setq intervals (cdr intervals))))
+
+    ;; seconds
     (when (and (> ncomponents 0) (or (null comps) (> seconds 0)))
       (setq comps (nconc comps (list (format "%ds" seconds)))))
     (mapconcat #'identity comps ":")))
@@ -312,7 +467,7 @@ N can't be 0."
 
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."
-  (cl-assert (memq link-type '(url file username user hashtag)))
+  (cl-assert (memq link-type '(url file username user sender hashtag)))
 
   (list 'action 'telega-link--button-action
         'face (or face 'telega-link)
@@ -323,7 +478,14 @@ N can't be 0."
   (let ((link (button-get button :telega-link)))
     (telega-debug "Action on link: %S" link)
     (cl-ecase (car link)
-      (user (telega-describe-user (telega-user--get (cdr link))))
+      (sender
+       (let ((sender (cdr link)))
+         (if (telega-user-p sender)
+             (telega-describe-user sender)
+           (cl-assert (telega-chat-p sender))
+           (telega-describe-chat sender))))
+      (user
+       (telega-describe-user (telega-user-get (cdr link))))
       (username
        (let ((user (telega-user--by-username (cdr link))))
          (if user
@@ -334,14 +496,15 @@ N can't be 0."
                (if (eq (telega-chat--type chat 'no-interpret)
                        'private)
                    (telega-describe-user
-                    (telega-user--get (plist-get chat :id)))
+                    (telega-user-get (plist-get chat :id)))
                  (telega-describe-chat chat)))))))
       (hashtag
-       (message "TODO: `hashtag' button action: tag=%s" (cdr link)))
+       (when telega-chatbuf--chat
+         (telega-chatbuf-filter-hashtag (cdr link))))
       (url
-       (telega-browse-url (cdr link)))
+       (telega-browse-url (cdr link) current-prefix-arg))
       (file
-       (telega-open-file (cdr link)))
+       (telega-open-file (cdr link) (telega-msg-at button)))
       )))
 
 (defun telega-escape-underscores (text)
@@ -465,7 +628,7 @@ RSTART and REND specifies STR region to work on."
          (count-matches "[\U00010000-\U0010FFFF]" (or rstart 0) rend)))))
 
 (defun telega-fmt-text (text &optional entity-type)
-  "Create formattedText from TEST, marking whole TEXT with ENTITY-TYPE."
+  "Create formattedText from TEXT, marking whole TEXT with ENTITY-TYPE."
   (list :@type "formattedText"
         :text text
         :entities (if entity-type
@@ -514,7 +677,7 @@ MARKUP-FUNC is function taking string and returning formattedText."
   (telega-markup-markdown-fmt 1 str))
 
 (defun telega-markup-markdown2-fmt (str)
-  (telega-markup-markdown-fmt 2 str))
+  (telega--parseMarkdown (telega-fmt-text str)))
 
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
@@ -552,16 +715,14 @@ second is substring."
             result))
     (nreverse result)))
 
-(defun telega-string-fmt-text (text &optional markdown-version)
-  "Convert TEXT to `formattedTex' type.
-If MARKDOWN is non-nil then format TEXT as markdown.
-TEXT could contain substrings marked with custom markup, for
-these parts of the string MARKDOWN-VERSION is ignored."
+(defun telega-string-fmt-text (text &optional default-markup-func)
+  "Convert TEXT to `formattedText' type.
+DEFAULT-MARKUP-FUNC is passed directly to
+`telega-string-split-by-markup', this markup function is used for TEXT
+parts without explicit markup."
   (apply #'telega-fmt-text-concat
          (mapcar (apply-partially #'apply #'funcall)
-                 (telega-string-split-by-markup
-                  text (apply-partially
-                        #'telega-markup-markdown-fmt markdown-version)))))
+                 (telega-string-split-by-markup text default-markup-func))))
 
 (defun telega--entity-for-substring (ent from to)
   "Return new entity for `telega-fmt-text-substring'."
@@ -627,10 +788,10 @@ Return desurrogated formattedText."
           :text (apply #'concat (mapcar (telega--tl-prop :text) fmt-texts))
           :entities (apply #'seq-concatenate 'vector ents))))
 
-(defun telega--fmt-text-markdown (fmt-text)
-  "Return formatted text FMT-TEXT as markdown syntax."
+(defun telega--fmt-text-markdown1 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown1 syntax."
   ;; TODO: support nested markdown
-  (let ((text (substring (plist-get fmt-text :text)))
+  (let ((text (copy-sequence (plist-get fmt-text :text)))
         (offset 0)
         (strings nil))
     (seq-doseq (ent (plist-get fmt-text :entities))
@@ -654,11 +815,17 @@ Return desurrogated formattedText."
       (remove-text-properties 0 (length ret-text) (list 'face) ret-text)
       ret-text)))
 
+(defun telega--fmt-text-markdown2 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown2 syntax."
+  (plist-get (telega--getMarkdownText
+              (telega-fmt-text-desurrogate (copy-sequence fmt-text)))
+             :text))
+
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
 Return text string with applied faces."
-  (let ((text (substring (plist-get fmt-text :text))))
+  (let ((text (copy-sequence (plist-get fmt-text :text))))
     (seq-doseq (ent (plist-get fmt-text :entities))
       (let* ((beg (plist-get ent :offset))
              (end (+ (plist-get ent :offset) (plist-get ent :length)))
@@ -672,14 +839,6 @@ Return text string with applied faces."
         (when face
           (add-face-text-property beg end face 'append text))))
     text))
-
-(defun telega-fmt-text-string (fmt-text &optional as-markdown)
-  "Return formattedText FMT-TEXT as string.
-If AS-MARKDOWN is non-nil, then format it as markdown syntax,
-otherwise return propertized string."
-  (if as-markdown
-      (telega--fmt-text-markdown fmt-text)
-    (telega--fmt-text-faces fmt-text)))
 
 (defun telega--region-by-text-prop (beg prop)
   "Return region after BEG point with text property PROP set."
@@ -735,7 +894,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                    (condition-case nil
                        (setq ,items
                              (append ,items
-                                     (list (,item-read-fun
+                                     (list (funcall
+                                            ,item-read-fun
                                             (concat ,prompt " (C-g when done)"
                                                     (when ,items
                                                       (concat
@@ -758,13 +918,14 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
         (telega-filter-chats (or chats-list telega--ordered-chats)
                              '(or main archive)))
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
-                                   telega-completing-read-chat sort-criteria))
+                                   #'telega-completing-read-chat sort-criteria))
 
 (defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
   (declare (indent 1))
   (let ((choices (mapcar (lambda (user)
-                           (list (telega-user--name user) user))
+                           (list (concat telega-symbol-contact
+                                         (telega-user-title user)) user))
                          (or users (hash-table-values
                                     (alist-get 'user telega--info))))))
     (car (alist-get (funcall telega-completing-read-function
@@ -777,7 +938,42 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (unless users-list
     (setq users-list (hash-table-values (alist-get 'user telega--info))))
   (telega-gen-completing-read-list prompt users-list #'telega-user--name
-                                   telega-completing-read-user))
+                                   #'telega-completing-read-user))
+
+(defvar telega-completing--chat-member-alist nil
+  "Results from last `telega--searchChatMembers'.
+To be used `telega-completing-read-chat-member' to get user.")
+
+(defun telega-completing--chat-members-collection (chat prefix &rest _ignored)
+  "Function used for programmed completing CHAT members.
+Works only with `fido-mode' completion."
+  (when prefix
+    (setq telega-completing--chat-member-alist
+          (mapcar (lambda (user)
+                    (cons (propertize (telega-user--name user) :user user)
+                          user))
+                  (telega--searchChatMembers chat prefix)))
+    (mapcar #'car telega-completing--chat-member-alist)))
+
+(defun telega-completing-read-chat-member (prompt chat)
+  "Interactively read member of CHAT.
+Return a user."
+  (let* ((telega-completing--chat-member-alist nil)
+         (name
+          (if fido-mode
+              ;; Dynamic completion, can complete any chat member
+              ;; Works ok only in `fido-mode'
+              (completing-read
+               prompt
+               (apply-partially
+                #'telega-completing--chat-members-collection chat))
+
+            ;; Static completion, can complete only 50 chat members
+            (funcall telega-completing-read-function
+                     prompt
+                     (telega-completing--chat-members-collection chat "")
+                     nil t))))
+    (cdr (assoc name telega-completing--chat-member-alist))))
 
 (defun telega-completing-read-folder (prompt &optional folder-names)
   "Read TDLib folder name completing."
@@ -790,7 +986,22 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (unless folder-names
     (setq folder-names (telega-folder-names)))
   (telega-gen-completing-read-list prompt folder-names #'identity
-                                   telega-completing-read-folder))
+                                   #'telega-completing-read-folder))
+
+(defun telega-location-distance (loc1 loc2 &optional components-p)
+  "Return distance in meters between locations LOC1 and LOC2.
+If COMPONENTS-P is given, then return cons with distances for
+latitude and longitude."
+  (let* ((lat1 (plist-get loc1 :latitude))
+         (lat2 (plist-get loc2 :latitude))
+         (lon1 (plist-get loc1 :longitude))
+         (lon2 (plist-get loc2 :longitude))
+         (lat-d (* 111111 (- lat1 lat2)))
+         (lon-d (* 111111 (cos (degrees-to-radians (/ (+ lat1 lat2) 2)))
+                   (- lon2 lon1))))
+    (if components-p
+        (cons lat-d lon-d)
+      (round (sqrt (+ (* lat-d lat-d) (* lon-d lon-d)))))))
 
 (defun telega-location-to-string (location)
   "Convert LOCATION plist to string representation."
@@ -838,17 +1049,98 @@ Return non-nil only if \"i'm sure\" is typed in."
                 (concat prompt " (type \"i'm sure\" to confirm): "))))
     (string-equal input "i'm sure")))
 
-(defun telega-completing-titles ()
-  "Return list of titles ready for completing.
-KIND is one of `chats', `users' or nil."
-  (let ((result))
-    (dolist (chat (telega-filter-chats telega--ordered-chats 'all))
-      (setq result (cl-pushnew (telega-chat-title chat 'with-username) result
-                               :test #'string=)))
-    (dolist (user (hash-table-values (alist-get 'user telega--info)))
-      (setq result (cl-pushnew (telega-user--name user) result
-                               :test #'string=)))
-    (nreverse result)))
+(defun telega-completing-read-slow-mode-delay (prompt)
+  "Read slow mode delay completing input."
+  (let* ((choices (mapcar
+                   (lambda (delay)
+                     (cons (if (zerop delay)
+                               (telega-i18n "lng_rights_slowmode_off")
+                             (telega-duration-human-readable delay))
+                           delay))
+                   telega--slow-mode-delays))
+         (choice (funcall telega-completing-read-function
+                          prompt (mapcar #'car choices) nil t)))
+    (cdr (assoc choice choices))))
+
+(defun telega-completing-read-mute-for (prompt)
+  "Read mute for notification parameter."
+  (let* ((choices (mapcar
+                   (lambda (delay)
+                     (cons (cond ((>= delay telega-mute-for-ever)
+                                  (telega-i18n "lng_mute_duration_forever"))
+                                 ((zerop delay)
+                                  "Disable")
+                                 (t
+                                  (telega-duration-human-readable
+                                   delay 1 " days" " hours" " minutes")))
+                           delay))
+                   telega-mute-for-intervals))
+         (choice (funcall telega-completing-read-function
+                          prompt (mapcar #'car choices) nil t)))
+    (cdr (assoc choice choices))))
+
+(defun telega-read-discussion-chat ()
+  "Interactively select or create a chat as discussion group for some channel.
+Return a chat."
+  (let* ((existing-p (y-or-n-p "Use existing chat? "))
+         (linked-chat (if existing-p
+                          (telega-completing-read-chat
+                           "Select suitable chat: "
+                           (telega--getSuitableDiscussionChats))
+                        (telega-chat-create "supergroup")))
+         (supergroup (when (eq (telega-chat--type linked-chat) 'supergroup)
+                       (telega-chat--supergroup linked-chat))))
+    (unless supergroup
+      ;; Need to upgrade to supergroup first
+      (unless (y-or-n-p "Upgrade it to supergroup? ")
+        (error "Discussion group must be a supergroup"))
+      (setq linked-chat (telega--upgradeBasicGroupChatToSupergroupChat
+                         linked-chat)
+            supergroup (telega-chat--supergroup linked-chat)))
+
+    (cl-assert supergroup)
+    (unless (plist-get (telega--full-info supergroup) :is_all_history_available)
+      ;; Need to toggle is_all_history_available prop
+      (unless (y-or-n-p "Toggle all history available? ")
+        (error "Discussion group is required to have all the history visible"))
+      (telega--toggleSupergroupIsAllHistoryAvailable supergroup t))
+    linked-chat))
+
+(defun telega-completing-read-permission (prompt &optional permissions)
+  "Read a permission from PERMISSIONS list completing user input.
+If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
+  (let* ((raw-perms (or permissions telega-chat--chat-permisions))
+         (i18n-choices (cl-remove
+                        nil (mapcar (lambda (perm-spec)
+                                      (when (cdr perm-spec)
+                                        (cons (telega-i18n (cdr perm-spec))
+                                              (car perm-spec))))
+                                    raw-perms)))
+         (perm-choice (funcall telega-completing-read-function
+                               prompt (mapcar #'car i18n-choices) nil t)))
+    (cdr (assoc perm-choice i18n-choices))))
+
+(defun telega-completing-titles (&optional sort-criteria)
+  "Return alist of titles and senders ready for completing.
+sender is chat or user.
+Chats in the list are sorted using SORT-CRITERIA or
+`telega-chat-completing-sort-criteria' if ommited."
+  ;; NOTE:
+  ;;  - Include only known chats, i.e. in Main or Archive list
+  ;;  - Include only contact users
+  (mapcar (lambda (msg-sender)
+            (cons (if (telega-user-p msg-sender)
+                      (concat telega-symbol-contact
+                              (telega-user-title msg-sender))
+                    (telega-chatbuf--name msg-sender))
+                  msg-sender))
+          (nconc
+           (telega-sort-chats
+            (or sort-criteria telega-chat-completing-sort-criteria)
+            (telega-filter-chats telega--ordered-chats '(or main archive)))
+           (cl-remove-if-not (telega--tl-prop :is_contact)
+                             (hash-table-values
+                              (alist-get 'user telega--info))))))
 
 (defun telega--animate-dots (text)
   "Animate TEXT's trailing dots.
@@ -887,7 +1179,9 @@ Do not trap errors if `debug-on-error' is enabled."
   "Find EWOC's node by item and TEST funcion.
 TEST function is run with two arguments - ITEM and NODE-VALUE.
 Optionally KEY can be specified to get KEY from node value.
-START-NODE is node to start from, default is first node.
+START-NODE is node to start from, default is first node if
+ITER-FUNC is `ewoc--node-next' and last node if ITER-FUNC is
+`ewoc--node-prev'.
 ITER-FUNC is one of `ewoc--node-next' or `ewoc--node-prev'.
 Default is `ewoc--node-next'.
 Return EWOC node, nil if not found."
@@ -896,10 +1190,14 @@ Return EWOC node, nil if not found."
   (cl-assert (memq iter-func '(ewoc--node-next ewoc--node-prev)))
 
   (ewoc--set-buffer-bind-dll-let* ewoc
-      ((node (or start-node (ewoc--node-nth dll 1)))
-       (stop (if (eq iter-func #'ewoc--node-next)
+      ((stop (if (eq iter-func #'ewoc--node-next)
                  (ewoc--footer ewoc)
+               (cl-assert (eq iter-func #'ewoc--node-prev))
                (ewoc--header ewoc)))
+       (node (or start-node
+                 (if (eq iter-func #'ewoc--node-next)
+                     (ewoc--node-next dll (ewoc--header ewoc))
+                   (ewoc--node-prev dll (ewoc--footer ewoc)))))
        (inhibit-read-only t))
     (cl-block 'ewoc-node-found
       (while (not (eq node stop))
@@ -1064,6 +1362,76 @@ CHEIGHT is height for the svg in characters, default=1."
               (cons (cons emoji image) telega-emoji-svg-images))))
     image))
 
+(defun telega-svg-create-vertical-bar (&optional bar-width bar-position
+                                                 bar-str color)
+  "Create svg image for vertical bar.
+BAR-STR is string value for textual vertical bar, by default
+`telega-symbol-vertical-bar' is used.
+COLOR - bar color, by default `default' face foreground color is used.
+
+BAR-WIDTH and BAR-POSITION defines how vertical bar is drawn.  If
+float values then it is relative to bar width in pixels.  If
+integer values, then pixels used."
+  (unless bar-str
+    (setq bar-str telega-symbol-vertical-bar))
+  (or (cdr (assoc bar-str telega-emoji-svg-images))
+      (let* ((xh (telega-chars-xheight 1))
+             (xw (telega-chars-xwidth (string-width bar-str)))
+             (svg (telega-svg-create xw xh))
+             (bar-face (or (get-text-property 0 'face bar-str) 'default))
+             (bar-xpos (if (integerp bar-position)
+                           bar-position
+                         (round (* xw (or bar-position 0.3)))))
+             (bar-xw (if (integerp bar-width)
+                         bar-width
+                       (round (* xw (or bar-width 0.07)))))
+             image)
+        (svg-rectangle svg bar-xpos 0 bar-xw xh
+                       :fill-color (or color
+                                       (telega-color-name-as-hex-2digits
+                                        (face-foreground bar-face))))
+        (setq image (telega-svg-image svg :scale 1.0
+                                      :width xw :height xh
+                                      :ascent 'center
+                                      :mask 'heuristic
+                                      :telega-text bar-str))
+        (setq telega-emoji-svg-images
+              (cons (cons bar-str image) telega-emoji-svg-images))
+        image)))
+
+(defun telega-symbol-emojify (emoji &optional image-spec)
+  "Return a copy of EMOJI with  `display' property of EMOJI svg image.
+Optionally IMAGE-SPEC could be used to ommit svg create and use another image.
+IMAGE-SPEC could be image, filename or form to be evaluated returning image."
+  ;; Possible eval a form to get real IMAGE-SPEC
+  (when (and (listp image-spec)
+             (not (eq 'image (car image-spec))))
+    (setq image-spec (eval image-spec t)))
+
+  (let ((image (cond ((and (listp image-spec) (eq 'image (car image-spec)))
+                      image-spec)
+                     (image-spec
+                      (cl-assert (stringp image-spec))
+                      (create-image image-spec nil nil
+                                    :scale 1.0 :ascent 'center
+                                    :mask 'heuristic
+                                    :width (telega-chars-xwidth
+                                            (string-width emoji))))
+                     (t
+                      (telega-emoji-create-svg emoji)))))
+    (propertize emoji 'rear-nonsticky '(display) 'display image)))
+
+(defun telega-symbol (ending)
+  "Return possible emojified value for the symbol denoted by ENDING.
+Actual symbol value is taken from `telega-symbol-ENDING' variable.
+Only endings listed in `telega-symbols-emojify' are emojified."
+  (let ((value (symbol-value (intern (format "telega-symbol-%s" ending)))))
+    (or (and telega-emoji-use-images
+             (let ((emoji-file (cdr (assq ending telega-symbols-emojify))))
+               (when (or emoji-file (memq ending telega-symbols-emojify))
+                 (apply #'telega-symbol-emojify value emoji-file))))
+        value)))
+
 (defun telega-emoji-has-zero-joiner-p (emoji)
   "Return non-nil if EMOJI has ZWJ char inside."
   (string-match-p (regexp-quote "\U0000200D") emoji))
@@ -1123,14 +1491,16 @@ Display remains until next event is input.
 Same as `momentary-string-display', but keeps the point."
   (unless exit-char
     (setq exit-char last-command-event))
-  (let* ((start (or pos (point)))
-         (end pos))
+  ;; NOTE: `read-key' might trigger changes in the rootbuf, thats why
+  ;; save start/end as markers
+  (let* ((start (copy-marker (or pos (point))))
+         (end start))
     (unwind-protect
         (progn
           (save-excursion
             (goto-char start)
             (insert string)
-            (setq end (point)))
+            (setq end (copy-marker (point) t)))
           (message "Type %s to continue editing."
                    (single-key-description exit-char))
           (let ((event (read-key)))
@@ -1185,8 +1555,17 @@ If REGION-P is non-nil, then make a screenshot of region."
                                 " -r"))
          (coding-system-for-write 'binary)
          (png-output (shell-command-to-string flameshot-cmd)))
-    (unless (string-empty-p png-output)
+    (when (string-prefix-p "\x89PNG" png-output)
       (write-region png-output nil tofile nil 'quiet))))
+
+(defun telega-screenshot-with-maim (tofile &optional region-p)
+  "Make a screenshot into TOFILE using `maim' utility.
+If REGION-P is non-nil, then make a screenshot of region."
+  (let ((maim-cmd (concat (or (executable-find "maim")
+                              (error "Utility `maim' not found"))
+                          " " (when region-p "-s")
+                          " " tofile)))
+    (call-process-shell-command maim-cmd)))
 
 (defun telega-screenshot-with-gnome-screenshot (tofile &optional region-p)
   "Make a screenshot into TOFILE using `gnome-screenshot' utility.
@@ -1284,6 +1663,96 @@ RET\" string."
   "Open URL using \"xdg-open\" utility."
   (unless (zerop (call-process "xdg-open" nil nil nil url))
     (error "Telega: xdg-open failed on %S" url)))
+
+(defun telega-buffer--hack-win-point ()
+  "Workaround Emacs bug.
+Emacs does not respect buffer local nil value for
+`switch-to-buffer-preserve-window-point', so we hack window point
+in `(window-prev-buffers)' to achive behaviour for nil-valued
+`switch-to-buffer-preserve-window-point'."
+  (when (version< emacs-version "28.1.0")
+    (cl-assert (not (get-buffer-window)))
+    (when-let ((entry (assq (current-buffer) (window-prev-buffers))))
+      (setf (nth 2 entry)
+            (copy-marker (point) (marker-insertion-type (nth 2 entry)))))))
+
+(defun telega-window-recenter (win &optional nlines from-point noforce)
+  "Set WIN's start point so there will be NLINES to current point."
+  (cl-assert win)
+  (let ((win-h (window-height win))
+        (win-start nil))
+    ;; Correct NLINES
+    (unless nlines
+      (setq nlines (/ win-h 2)))
+    (when (< nlines 0)
+      (setq nlines (+ win-h nlines)))
+    (when (< nlines 0)
+      (setq nlines 0))
+    (when (>= nlines win-h)
+      (setq nlines (1- win-h)))
+
+    (save-excursion
+      (when from-point
+        (goto-char from-point))
+      (forward-line (- nlines))
+      (setq win-start (point-at-bol)))
+
+    (cl-assert (<= (count-lines win-start (or from-point (point))) win-h))
+    (set-window-start win win-start noforce)))
+
+(defun telega-base-directory ()
+  "Return `telega-directory' following possible symlink."
+  (let ((telega-dir-link (file-symlink-p telega-directory)))
+    (if telega-dir-link
+        (expand-file-name telega-dir-link
+                          (file-name-directory telega-directory))
+      telega-directory)))
+
+(defconst telega-symbol-animations
+  '((dots "." ".." "...")
+    (braille1 "⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+    (braille2 "⠟" "⠯" "⠷" "⠾" "⠽" "⠻")
+    (braille3 "⡿" "⣟" "⣯" "⣷" "⣾" "⣽" "⣻" "⢿")
+    (circle "◴" "◷" "◶" "◵")
+    (triangles "▹▹▹▹▹" "▸▹▹▹▹" "▹▸▹▹▹" "▹▹▸▹▹" "▹▹▹▸▹" "▹▹▹▹▸")
+    (equal "[    ]" "[=   ]" "[==  ]" "[=== ]" "[ ===]" "[  ==]"
+           "[   =]" "[    ]" "[   =]" "[  ==]" "[ ===]" "[====]"
+           "[=== ]" "[==  ]" "[=   ]")
+    (black-dot "( ●    )" "(  ●   )" "(   ●  )" "(    ● )" "(     ●)" 
+               "(    ● )" "(   ●  )" "(  ●   )" "( ●    )" "(●     )")
+    (clock "🕛" "🕐" "🕑" "🕒" "🕓" "🕔" "🕕" "🕖" "🕗" "🕘" "🕙" "🕚")
+    (segments "▰▱▱▱▱▱▱" "▰▰▱▱▱▱▱" "▰▰▰▱▱▱▱" "▰▰▰▰▱▱▱" "▰▰▰▰▰▱▱" 
+              "▰▰▰▰▰▰▱" "▰▰▰▰▰▰▰")
+    (large-dots "∙∙∙∙∙" "●∙∙∙∙" "∙●∙∙∙" "∙∙●∙∙" "∙∙∙●∙" "∙∙∙∙●")
+    (globe "🌍" "🌎" "🌏")
+    (audio "[▁▁▁▁▁▁▁▁▁▁▁]" "[▂▃▂▁▁▂▁▁▁▂▁]" "[▃▄▃▁▄▇▃▁▁▅▂]" "[▃▆▅▁▆█▃▁▂█▅]"
+           "[▆█▃▄▄▆▇▃▄▆█]" "[▅▆▃▆▃▅▆▃▃█▆]" "[▄▅▂█▂▃▅▁▂▇▅]" "[▃▄▁▇▁▂▄▁▁▆▄]"
+           "[▂▃▁▆▁▁▃▁▁▄▃]" "[▁▂▁▃▁▁▃▁▁▃▂]")
+    (video "🞅" "🞆" "🞇" "🞈" "🞉")
+    ))
+
+(defun telega-symbol-animate (symbol &optional reverse-p)
+  "Animate character CHAT, i.e. return next char to create animations."
+  (let* ((anim (cl-find symbol telega-symbol-animations :test #'member))
+         (anim-tail (cdr (member symbol (if reverse-p (reverse anim) anim)))))
+    (or (car anim-tail) (cadr anim))))
+
+(defmacro with-telega-symbol-animate (anim-name interval sym-bind exit-form
+                                                &rest body)
+  "Animate symbols denoted by ANIM-NAME while there is no pending input.
+Animate while there is no pending input and EXIT-FORM evaluates to nil.
+Animate with INTERVAL seconds (default=0.1)
+Binds current symbol to SYM-BIND."
+  (declare (indent 3))
+  `(let ((,sym-bind (cadr (assq ,anim-name telega-symbol-animations)))
+         (inhibit-quit t))              ;C-g as ordinary keypress
+     (while (and (not (input-pending-p))
+                 (not ,exit-form))
+       (progn
+         ,@body)
+       (sit-for (or ,interval 0.1))
+       (setq ,sym-bind (telega-symbol-animate ,sym-bind)))
+     (when (input-pending-p) (read-key))))
 
 (provide 'telega-util)
 

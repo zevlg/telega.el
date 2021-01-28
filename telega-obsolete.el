@@ -47,6 +47,8 @@
            (t ".")))))
 
 
+(telega-obsolete--variable 'telega-use-notifications
+                           nil "0.5.0") ;don't remember correct version
 (telega-obsolete--variable 'telega-chat-use-markdown-formatting
                            'telega-chat-use-markdown-version "0.5.6")
 (telega-obsolete--variable 'telega-use-tracking
@@ -79,6 +81,28 @@
 
 (telega-obsolete--variable 'telega-find-file-hook
                            'telega-open-file-hook "0.6.31")
+(telega-obsolete--variable 'telega-chat-me-custom-title
+                           'telega-chat-title-custom-for "0.6.31")
+
+(telega-obsolete--variable 'telega-chat-reply-prompt
+                           nil "0.7.0")
+(telega-obsolete--variable 'telega-chat-edit-prompt
+                           nil "0.7.0")
+(telega-obsolete--variable 'telega-chat-messages-ring-size
+                           'telega-chat-messages-pop-ring-size
+                           nil "0.7.0")
+(telega-obsolete--variable 'telega-chat-scroll-scroll-conservatively
+                           'telega-chat-scroll-conservatively
+                           nil "0.7.3")
+(telega-obsolete--variable 'telega-week-day-names
+                           telega-i18n-weekday-names
+                           nil "0.7.4")
+(telega-obsolete--variable 'telega-chat-use-markdown-version
+                           'telega-chat-input-markups
+                           nil "0.7.4")
+(telega-obsolete--variable 'telega-video-ffplay-args
+                           'telega-open-message-ffplay-args
+                           nil "0.7.5")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

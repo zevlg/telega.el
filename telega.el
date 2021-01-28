@@ -8,12 +8,15 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.6.31
-(defconst telega-version "0.6.31")
-(defconst telega-server-min-version "0.6.6")
-(defconst telega-tdlib-min-version "1.6.9")
-;; TDLib 1.6.10 is not yet supported by telega.el
-(defconst telega-tdlib-max-version "1.6.9")
+;; Version: 0.7.13
+(defconst telega-version "0.7.13")
+(defconst telega-server-min-version "0.7.4")
+(defconst telega-tdlib-min-version "1.7.0")
+(defconst telega-tdlib-max-version nil)
+
+(defconst telega-tdlib-releases '("1.7.0" . "1.8.0")
+  "Cons cell with current and next TDLib releases.
+Used for manual generation.")
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -60,6 +63,12 @@
 (require 'telega-tdlib)
 (require 'telega-tdlib-events)
 
+;; Emacs26 compat
+(eval-when-compile
+  (unless (fboundp 'report-emacs-bug--os-description)
+    (defun report-emacs-bug--os-description ()
+      "unknown")))
+
 (defconst telega-app '(72239 . "bbf972f94cc6f0ee5da969d8d42a6c76"))
 
 ;;;###autoload
@@ -74,6 +83,10 @@
     ;; - {{{where-is(telega-chat-with,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-chat-with, 2)}}}
     (define-key map (kbd "c") 'telega-chat-with)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-switch-important-chat,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-switch-important-chat, 2)}}}
+    (define-key map (kbd "i") 'telega-switch-important-chat)
     ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega-saved-messages,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-saved-messages, 2)}}}
@@ -145,8 +158,9 @@
 
 ;;;###autoload
 (defun telega (&optional arg)
-  "Start telegramming.
-If prefix ARG is given, then will not pop to telega root buffer."
+  "Start telega.el Telegram client.
+Pop to root buffer.
+If `\\[universal-argument]' is specified, then do not pop to root buffer."
   (interactive "P")
   (telega--create-hier)
 
@@ -204,7 +218,8 @@ Works only if current state is `authorizationStateWaitCode'."
           (plist-get telega--options :version)
           telega-tdlib-max-version))
 
-  (setq telega--me-id (plist-get telega--options :my_id))
+  (setq telega--me-id (plist-get telega--options :my_id)
+        telega--replies-id (plist-get telega--options :replies_bot_chat_id))
   (cl-assert telega--me-id)
   (telega--setOptions telega-options-plist)
   ;; In case language pack id has not yet been selected, then select
@@ -214,14 +229,10 @@ Works only if current state is `authorizationStateWaitCode'."
       (or (plist-get telega--options :suggested_language_pack_id) "en")))
 
   ;; Apply&update notifications settings
-  (when (car telega-notifications-defaults)
-    (telega--setScopeNotificationSettings
-     "notificationSettingsScopePrivateChats"
-     (car telega-notifications-defaults)))
-  (when (cdr telega-notifications-defaults)
-    (telega--setScopeNotificationSettings
-     "notificationSettingsScopeGroupChats"
-     (cdr telega-notifications-defaults)))
+  (dolist (scope-type telega-notification-scope-types)
+    (when-let ((settings
+                (alist-get (car scope-type) telega-notifications-defaults)))
+      (apply #'telega--setScopeNotificationSettings (cdr scope-type) settings)))
   ;; NOTE: telega--scope-notification-alist will be updated upon
   ;; `updateScopeNotificationSettings' event
 
@@ -241,7 +252,7 @@ Works only if current state is `authorizationStateWaitCode'."
 ;;;###autoload
 (defun telega-version (&optional insert-p)
   "Return telega (and TDLib) version.
-If `\\[universal-argument] is specified, then insert the version
+If `\\[universal-argument]' is specified, then insert the version
 string at point."
   (interactive "P")
   (let* ((tdlib-version (plist-get telega--options :version))
@@ -299,14 +310,30 @@ string at point."
       (insert "<!--- Not obligatory, but suggest a fix/reason for the issue. -->\n")
       (insert "<!--- Delete this section if you have no idea. -->\n"))))
 
+
+;;; Emacs runtime environment for telega
+;;
+;; TODO: move runtime env stuff and timer functions here from
+;; telega-root.el
+
 (provide 'telega)
 
+
 (push (expand-file-name "contrib" telega--lib-directory) load-path)
 
 ;; Load hook might install new symbols into
 ;; `telega-symbol-widths'
 (run-hooks 'telega-load-hook)
 (telega-symbol-widths-install telega-symbol-widths)
+
+;; For newly incoming messages in openned chat
+(add-hook 'telega-chat-pre-message-hook #'telega-msg-run-ignore-predicates)
+;; For messages loaded from history
+(add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)
+
+;; Enable patrons mode by default
+(telega-patrons-mode 1)
+
 (require 'telega-obsolete)
 
 ;;; telega.el ends here

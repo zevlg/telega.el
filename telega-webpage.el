@@ -29,6 +29,7 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'url-util)
+(require 'browse-url)                   ; browse-url-url-at-point
 (require 'visual-fill-column)
 
 (require 'telega-server)
@@ -158,23 +159,13 @@ Keymap:
       (error (format "Anchor \"#%s\" not found" name)))
     (goto-char anchor)))
 
-(defun telega-webpage-details-toggle (button)
-  "Toggle open/close state of the details block."
-  (interactive (list (button-at (point))))
-  (let ((val (button-get button :value)))
-    (telega-button--update-value
-     button (plist-put val :is_open (not (plist-get val :is_open)))
-     'action 'telega-webpage-details-toggle
-     :inserter 'telega-webpage--ins-details
-     :help-echo "Toggle details")
-    (goto-char button)))
-
 (defun telega-webpage--ins-pb-details (pb)
   "Inserter for `pageBlockDetails' page block PB."
-  (let ((open-p (or t (plist-get pb :is_open))) ;XXX always open
+  (let ((open-p (not (plist-get pb :is_closed)))
         (telega--current-buffer (current-buffer)))
     (telega-ins (funcall (if open-p 'cdr 'car)
-                         telega-symbol-webpage-details) " ")
+                         telega-symbol-webpage-details)
+                " ")
     (telega-webpage--ins-rt (plist-get pb :header))
     (telega-ins "\n")
     (telega-ins--with-face 'telega-webpage-strike-through
@@ -381,7 +372,7 @@ Keymap:
      (let ((telega-webpage-strip-nl t))
        (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
     (pageBlockBlockQuote
-     (let ((vbar-prefix (propertize telega-symbol-vertical-bar 'face 'bold)))
+     (let ((vbar-prefix (propertize (telega-symbol 'vertical-bar) 'face 'bold)))
        (telega-ins vbar-prefix)
        (telega-ins--with-attrs (list :fill 'left
                                      :fill-column telega-webpage-fill-column
@@ -438,10 +429,14 @@ Keymap:
     (pageBlockEmbeddedPost
      (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
     (pageBlockCollage
-     (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks))
+     (mapc #'telega-webpage--ins-pb (plist-get pb :page_blocks))
      (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockSlideshow
-     (telega-ins "<TODO: pageBlockSlideshow>\n"))
+     (let ((page-blocks (plist-get pb :page_blocks)))
+       (dotimes (n (length page-blocks))
+         (telega-ins--labeled (format "%d/%d " (1+ n) (length page-blocks)) nil
+           (telega-webpage--ins-pb (aref page-blocks n)))))
+     (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockChatLink
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
        (telega-ins (telega-tl-str pb :title) " "
@@ -455,11 +450,15 @@ Keymap:
        (telega-ins-prefix " --"
          (telega-webpage--ins-rt (plist-get pb :credit)))))
     (pageBlockDetails
-     (telega-webpage--ins-pb-details pb))
-    ;; (telega-button--insert 'telega pb
-    ;;   'action 'telega-webpage-details-toggle
-    ;;   :inserter 'telega-webpage--ins-pb-details
-    ;;   :help-echo "Toggle details"))
+     (telega-button--insert 'telega pb
+       'action (lambda (button)
+                 (let* ((val (button-get button :value))
+                        (new-val (plist-put val :is_closed
+                                            (not (plist-get val :is_closed)))))
+                   (save-excursion
+                     (telega-button--update-value button new-val))))
+       :inserter #'telega-webpage--ins-pb-details
+       :help-echo "Toggle details"))
     (pageBlockTable
      (let ((telega-webpage-strip-nl t))
        (telega-webpage--ins-rt (plist-get pb :caption)))
@@ -577,9 +576,18 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
                           (when iv
                             (telega-webpage--instant-view url "Telegra.ph" iv)
                             t))))))
-
-    ;; TODO: maybe use webkit x-widget to browse the URL
-    (browse-url url)))
+    ;; Try `telega-browse-url-alist' list first
+    (let ((tbu (cl-find url telega-browse-url-alist
+                        :test (lambda (need-url predicate-or-regex)
+                                (if (stringp predicate-or-regex)
+                                    (string-match-p predicate-or-regex need-url)
+                                  (cl-assert (functionp predicate-or-regex))
+                                  (funcall predicate-or-regex need-url)))
+                        :key #'car)))
+      (if tbu
+          (funcall (cdr tbu) url)
+        ;; Fallback to default
+        (browse-url url)))))
 
 (provide 'telega-webpage)
 

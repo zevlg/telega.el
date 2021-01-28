@@ -38,7 +38,7 @@ void tdat_append(struct telega_dat* dst, const char* data, size_t len);
 
 #define tdat_append_str(dst, str) tdat_append(dst, str, strlen(str))
 
-/* Rebase data to the beginning of the alocation */
+/* Rebase data to the beginning of the allocation */
 void tdat_rebase(struct telega_dat* tdat);
 
 /* Parsers */

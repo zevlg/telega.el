@@ -91,7 +91,7 @@
               (telega-ins "←"))
 
             (apply 'insert-text-button
-                   (telega-user--name (telega-user--get user-id) 'name)
+                   (telega-user--name (telega-user-get user-id) 'name)
                    (telega-link-props 'user user-id))
             (telega-ins-fmt " %s"
               (substring (plist-get state :@type) 9))
@@ -197,13 +197,12 @@ If prefix arg is given then list only missed calls."
   "Incomming CALL pending."
   (unless telega-voip--active-call
     (telega-ffplay-run (telega-etc-file "sounds/call_incoming.mp3") nil
-                       "-nodisp" "-loop" "0")
-    ))
+                       "-nodisp -loop 0")))
 
 (defun telega-voip-sounds--play-outgoing (_call)
   "Outgoing CALL initiated."
   (telega-ffplay-run (telega-etc-file "sounds/call_outgoing.mp3") nil
-                     "-nodisp" "-loop" "0"))
+                     "-nodisp -loop 0"))
 
 (defun telega-voip-sounds--play-connect (_call)
   "Call ready to be used."

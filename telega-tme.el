@@ -33,71 +33,123 @@
 (require 'telega-i18n)
 (require 'telega-sticker)
 
+;; telega-chat.el depends on telega-tme.el
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-by-username "telega-chat" (username))
-(declare-function telega-chat--info "telega-chat" (chat)) ;`telega-chat-username'
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
-(declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
+(declare-function telega-chat--pop-to-buffer "telega-chat" (chat &optional no-history-load))
 
 
-(defun telega-tme-internal-link-to (chat-or-msg)
+(defun telega-tme-internal-link-to (chat-or-msg &rest params)
   "Return internal tme link to CHAT-OR-MSG.
-Return nil if link can't be created."
-  (when chat-or-msg
-    (let* ((chat-p (eq 'chat (telega--tl-type chat-or-msg)))
-           (chat (if chat-p
-                     chat-or-msg
-                   (telega-chat-get (plist-get chat-or-msg :chat_id) 'offline))))
-      (concat "tg:telega:"
-              (if-let ((chat-username (telega-chat-username chat)))
-                  (concat "@" chat-username)
-                (number-to-string (plist-get chat :id)))
-              (when-let ((msg (unless chat-p chat-or-msg)))
-                (concat "#" (number-to-string (plist-get msg :id))))))))
+Return nil if link can't be created.
+PARAMS is a plist of additional parameters to the returned link."
+  (let ((chat (if (telega-chat-p chat-or-msg)
+                  chat-or-msg
+                (telega-chat-get (plist-get chat-or-msg :chat_id) 'offline))))
+    (concat "tg:telega:"
+            (if-let ((chat-username (telega-chat-username chat)))
+                (concat "@" chat-username)
+              (number-to-string (plist-get chat :id)))
+            (when params
+              (concat "?" (telega-tme-build-query-string params)))
+            (when-let ((msg (unless (telega-chat-p chat-or-msg) chat-or-msg)))
+              (concat "#" (number-to-string (/ (plist-get msg :id) 1048576))))
+            )))
 
-(defun telega-tme-open-internal (chat-spec &optional msg-spec)
+(defun telega-tme-open-internal (chat-spec &optional post-spec params)
   "Open internal link to any chat or message.
 CHAT-SPEC = @<username> | <chat-id>
-MSG-SPEC = <message-id>"
-  (let ((chat (or (if (string-prefix-p "@" chat-spec)
-                      (telega-chat-by-username (substring chat-spec 1))
-                    (telega-chat-get (string-to-number chat-spec) 'offline))
-                  (user-error "No chat with CHAT-SPEC=%S" chat-spec))))
-    (telega-chat--pop-to-buffer chat)
-    (when msg-spec
-      (telega-chat--goto-msg chat (string-to-number msg-spec) 'highlight))))
+POST-SPEC = <POST-ID> | <MSG-ID> (for backward compatibility)
+PARAMS is a plist with additional parameters, supported parameters are:
+`:open_content' to open the message contents from MSG-SPEC."
+  (message "PARAMS: %S" params)
+  (let* ((chat (or (if (string-prefix-p "@" chat-spec)
+                       (telega-chat-by-username (substring chat-spec 1))
+                     (telega-chat-get (string-to-number chat-spec) 'offline))
+                   (user-error "No chat with CHAT-SPEC=%S" chat-spec)))
+         (post-id (when post-spec (string-to-number post-spec)))
+         ;; NOTE: For backward compatibility check if POST-ID is
+         ;; actually a MSG-ID
+         (msg-id (when post-id (if (zerop (% post-id 1048576))
+                                   post-id
+                                 (* post-id 1048576)))))
+    (cond ((plist-get params :open_content)
+           (cl-assert msg-id)
+           (telega-msg-get chat msg-id
+             (lambda (message _offline-p)
+               (telega-msg-open-content message))))
+          (t
+           (telega-chat--pop-to-buffer chat)
+           (when msg-id
+             (telega-chat--goto-msg chat msg-id 'highlight))))))
+
+(defun telega-tme--post-msg-id (post)
+  "Convert POST number to the message id."
+  ;; See https://github.com/tdlib/td/issues/16
+  ;; msg-id = post * 1048576
+  (* (string-to-number post) 1048576))
 
 (defun telega-tme-open-privatepost (supergroup post)
   "Open POST in private SUPERGROUP."
   (when-let ((chat (telega-chat-get
                     (string-to-number (concat "-100" supergroup))
                     'offline)))
-    ;; msg-id = post * 1048576
-    (telega-chat--goto-msg
-     chat (* (string-to-number post) 1048576) 'highlight)))
+    (telega-chat--goto-msg chat (telega-tme--post-msg-id post) 'highlight)))
 
-(defun telega-tme-open-username (username &rest bot-params)
+(defun telega-tme-open-username (username &rest params)
   "Open chat by its USERNAME.
-BOT-PARAMS are additional params."
+PARAMS are additional params."
   (cond ((string= username "telegrampassport")
          ;; TODO: passport
          (message "telega TODO: handle `telegrampassport'"))
-        ;; ((plist-get bot-params :start)
-        ;;  ;; :start :startgroup :game :post
-        ;;  (message "telega TODO: handle bot start"))
+
+        ;; See https://core.telegram.org/bots#deep-linking for
+        ;; `:start' and `:startgroup' meaning
+        ((plist-get params :startgroup)
+         (let ((bot-user (telega-chat-user
+                          (telega--searchPublicChat username) 'inc-bots))
+               (chat (telega-completing-read-chat
+                      ;; TODO: i18n
+                      (format "Start «%s» in group: "
+                              (propertize (concat "@" username) 'face 'bold))
+                      (telega-filter-chats
+                       telega--ordered-chats
+                       '(my-permission :can_invite_users)))))
+           (telega-chat--pop-to-buffer chat)
+           (telega--sendBotStartMessage
+            bot-user chat (plist-get params :startgroup))))
+
+        ((plist-get params :start)
+         (let* ((bot-chat (telega--searchPublicChat username))
+                (bot-user (telega-chat-user bot-chat 'inc-bots)))
+           (telega-chat--pop-to-buffer bot-chat)
+           (telega--sendBotStartMessage
+            bot-user bot-chat (plist-get params :startgroup))))
 
         (t
          ;; Ordinary user/channel/group, :post
          (let ((chat (telega--searchPublicChat username))
-               (post (plist-get bot-params :post)))
+               (post (plist-get params :post))
+               (comment (plist-get params :comment))
+               (thread (plist-get params :thread)))
            (unless chat
              (error "Unknown public chat: %s" username))
-           (if post
-               ;; See https://github.com/tdlib/td/issues/16
-               ;; msg-id = post * 1048576
-               (telega-chat--goto-msg
-                chat (* (string-to-number post) 1048576) 'highlight)
-             (telega-chat--pop-to-buffer chat))))
+
+           (cond ((and post thread)
+                  (telega-chat--goto-thread
+                   chat (telega-tme--post-msg-id thread)
+                   (telega-tme--post-msg-id post)))
+                 ((and post comment)
+                  ;; comment with post is the same as post with thread
+                  (telega-chat--goto-thread
+                   chat (telega-tme--post-msg-id post)
+                   (telega-tme--post-msg-id comment)))
+                 (post
+                  (telega-chat--goto-msg chat
+                      (telega-tme--post-msg-id post) 'highlight))
+                 (t
+                  (telega-chat--pop-to-buffer chat)))))
         ))
 
 (defun telega-tme-open-group (group)
@@ -156,6 +208,19 @@ Multiple params with same name in QUERY-STRING is disallowed."
     (cl-loop for (name val) in query
              nconc (list (intern (concat ":" name)) val))))
 
+(defun telega-tme-build-query-string (query-params &optional
+                                                   semicolons keep-empty)
+  "Build a query string for the QUERY-PARAMS.
+QUERY-PARAMS should be in form returned from `telega-tme-parse-query-string'.
+SEMICOLONS and KEEP-EMPTY are passed directly to `url-build-query-string'."
+  
+  (url-build-query-string
+   (telega-plist-map (lambda (key val)
+                       (cl-assert (keywordp key))
+                       (list (substring (symbol-name key) 1) val))
+                     query-params)
+   semicolons keep-empty))
+
 (defun telega-tme-open-tg (url)
   "Open URL starting with `tg:'.
 Return non-nil, meaning URL has been handled."
@@ -170,7 +235,7 @@ Return non-nil, meaning URL has been handled."
     (cond ((string= path "resolve")
            (let ((username (plist-get query :domain)))
              (setq query (telega-plist-del query :domain))
-             (apply 'telega-tme-open-username username query)))
+             (apply #'telega-tme-open-username username query)))
           ((string= path "join")
            (telega-tme-open-group (plist-get query :invite)))
           ((string= path "addstickers")
@@ -196,10 +261,14 @@ Return non-nil, meaning URL has been handled."
            )
           ;; Internal links to any chat or message
           ;; See: https://github.com/zevlg/telega.el/issues/139
-          ;; Internal links are in form tg:telega:<CHAT-SPEC>[#<MSG-ID>]
+          ;; Internal links are in form
+          ;; tg:telega:<CHAT-SPEC>[?<PARAMS>][#<POST-ID>]
           ;;   CHAT-SPEC =  @USERNAME | CHAT-ID
+          ;;   PARAMS = query params such as "open_content=t"
+          ;;   POST-ID = MSG-ID div 1048576
           ((string-match "^telega:\\([^#]+\\)" path)
-           (telega-tme-open-internal (match-string 1 path) (url-target urlobj)))
+           (telega-tme-open-internal
+            (match-string 1 path) (url-target urlobj) query))
           (t
            (message "telega: Unsupported tg url: %s" url))))
   t)
@@ -216,11 +285,11 @@ Return non-nil if url has been handled."
          (case-fold-search nil)         ;ignore case
          (tg (cond ((string-match "^/joinchat/\\([a-zA-Z0-9._-]+\\)$" path)
                     (concat "tg:join?invite=" (match-string 1 path)))
-                   ((string-match "^/addstickers/\\([a-zA-Z0-9._]+\\)$" path)
+                   ((string-match "^/addstickers/\\([a-zA-Z0-9._-]+\\)$" path)
                     (concat "tg:addstickers?set=" (match-string 1 path)))
-                   ((string-match "^/addtheme/\\([a-zA-Z0-9._]+\\)$" path)
+                   ((string-match "^/addtheme/\\([a-zA-Z0-9._-]+\\)$" path)
                     (concat "tg:addtheme?slug=" (match-string 1 path)))
-                   ((string-match "^/setlanguage/\\([a-zA-Z0-9._]+\\)$" path)
+                   ((string-match "^/setlanguage/\\([a-zA-Z0-9._-]+\\)$" path)
                     (concat "tg:setlanguage?lang=" (match-string 1 path)))
                    ((string-match "^/share/url$" path)
                     (concat "tg:msg_url?" query))

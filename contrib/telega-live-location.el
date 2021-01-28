@@ -29,17 +29,30 @@
 ;; 
 ;; This mode requires the =geo.el= library, available at
 ;; https://git.sr.ht/~oldosfan/geo-xdg.el
+;; 
+;; Take into account that using ~geo-simulate~ backend to fake geo
+;; location data is Telegram API ToS violation.  See 1.4 in
+;; https://core.telegram.org/api/terms
 
 ;;; Code:
+(require 'cl-lib)
+(require 'telega)
 
-(require 'geo)
+;; Avoid compilation errors
+(cl-eval-when 'load
+  (require 'geo))
+;; Shut up compiler
+(declare-function geo-location-lat "geo" (loc))
+(declare-function geo-location-lon "geo" (loc))
+(declare-function geo-last-heading "geo")
+(declare-function geo-last-location "geo")
 
 (defun telega-live-location--geo-loc (geo-loc)
   "Covert geo location GEO-LOC into telega location plist."
   (list :latitude (geo-location-lat geo-loc)
         :longitude (geo-location-lon geo-loc)))
 
-(defun telega-live-location--on-geo-location-changed (loc)
+(defun telega-live-location--on-geo-location-changed (geo-loc)
   "Hook to be called when the location is changed.
 LOC should be the new location."
   (setq telega-my-location (telega-live-location--geo-loc geo-loc))
@@ -50,11 +63,19 @@ LOC should be the new location."
     (when (plist-get telega--options :is_location_visible)
       (telega--setLocation telega-my-location))
 
-    (dolist (msg (telega--getActiveLiveLocationMessages))
-      (telega--editMessageLiveLocation
-       (telega-msg-chat msg) msg
-       `(:@type "Location"
-                ,@(telega-live-location--geo-loc loc))))))
+    ;; Asynchronously update all live location messages
+    (telega--getActiveLiveLocationMessages
+     (lambda (messages)
+       (let ((geo-heading (or (geo-last-heading) 0))
+             (loc (nconc (list :@type "location") telega-my-location)))
+         (dolist (msg messages)
+           (telega--editMessageLiveLocation
+            msg loc
+            ;; NOTE: Convert half-circle azimuth (used by geo.el) to
+            ;; full-circle azimuth (used by TDLib)
+            :heading (round (if (< geo-heading 0)
+                                (+ 360 geo-heading)
+                              geo-heading)))))))))
 
 (defun telega-live-location--read-location-advice (prompt &rest args)
   "Advice for `telega-read-live-location'.

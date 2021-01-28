@@ -97,7 +97,8 @@
          (when (or (plist-get url-info :skip_confirm)
                    (not (memq telega-inline-login-url-action
                               '(query-all query-open)))
-                   (y-or-n-p (telega-i18n "url_auth_open_confirm" :link url)))
+                   (y-or-n-p
+                    (telega-i18n "lng_url_auth_open_confirm" :link url)))
            ;; Check we need to log into domain ?
            ;; See https://github.com/tdlib/td/issues/1189#issuecomment-691445789
            (when (and (eq (telega--tl-type url-info)
@@ -111,7 +112,7 @@
                                           (telega-tl-str url-info :domain)
                                           'face 'bold)
                                  :user (telega-user--name
-                                        (telega-user--get telega--me-id)))
+                                        (telega-user-get telega--me-id)))
                                "? ")))
              (let ((write-p (when (and (memq telega-inline-login-url-action
                                              '(query-all
@@ -121,7 +122,7 @@
                                (concat (telega-i18n "lng_url_auth_allow_messages"
                                          :bot (propertize
                                                (telega-user--name
-                                                (telega-user--get
+                                                (telega-user-get
                                                  (plist-get
                                                   url-info :bot_user_id)))
                                                'face 'bold))
@@ -139,12 +140,9 @@
       (inlineKeyboardButtonTypeSwitchInline
        ;; Generate another inline query to the bot
        (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
-              (sender-user-id (plist-get msg :sender_user_id))
-              (bot-user-id (if (zerop via-bot-user-id)
-                               sender-user-id
-                             via-bot-user-id))
-              (bot (unless (zerop bot-user-id)
-                     (telega-user--get bot-user-id)))
+              (bot (if (not (zerop via-bot-user-id))
+                       (telega-user-get via-bot-user-id)
+                     (telega-msg-sender msg)))
               (new-query (telega-tl-str kbd-type :query)))
          (when (and bot (telega-user-bot-p bot))
            (unless (plist-get kbd-type :in_current_chat)
@@ -161,6 +159,11 @@
         msg (list :@type "callbackQueryPayloadGame"
                   :game_short_name
                   (telega--tl-get msg :content :game :short_name))))
+
+      (inlineKeyboardButtonTypeBuy
+       (let ((payment-form (telega--getPaymentForm msg)))
+         (message "payment-form: %S" payment-form)))
+
       ;; TODO: other types
       )))
 
@@ -248,7 +251,7 @@
 (defun telega-ins--inline-voice-note (qr)
   "Inserter for `inlineQueryResultVoiceNote' QR."
   (let ((voice-note (plist-get qr :voice_note)))
-    (telega-ins (plist-get qr :title) "\n")
+    (telega-ins (telega-tl-str qr :title) "\n")
     (telega-ins--voice-note nil voice-note)
     (telega-ins "\n")))
 
@@ -266,7 +269,7 @@
   "Inserter for `inlineQueryResultPhoto' QR."
   (let ((photo (plist-get qr :photo)))
     (telega-ins--image
-     (telega-photo--image photo (list 10 3 10 3)))))
+     (telega-photo--image photo telega-inline-photo-size-limits))))
 
 (defun telega-ins--inline-document (qr)
   "Inserter for `inlineQueryResultDocument' QR."
