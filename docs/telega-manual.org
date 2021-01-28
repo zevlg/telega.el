@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.12)
+#+TITLE: Telega Manual (v0.7.13)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -96,7 +96,7 @@ is possible to use =telega= on daily basis.
 Join us at [[https://t.me/emacs_telega]]
 
 If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
-development]].
+development]], also see benefits you get [[#telega-patrons-mode][being telega patron]].
 
 * Installation
 :PROPERTIES:
@@ -616,12 +616,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.

@@ -1312,11 +1312,17 @@ Takes into account threads."
                       :interaction_info :reply_info :last_message_id)
       (telega--tl-get telega-chatbuf--chat :last_message :id)))
 
-(defsubst telega-chatbuf--last-msg-loaded-p ()
+(defun telega-chatbuf--last-msg-loaded-p ()
   "Return non-nil if chat's last message is shown."
   (or (memq 'newer-loaded telega-chatbuf--history-state)
-      (<= (or (telega-chatbuf--last-message-id) 0)
-          (or (plist-get (telega-chatbuf--last-msg) :id) 0))))
+      ;; NOTE: handle gaps in the chat history
+      ;; See https://github.com/tdlib/td/issues/896
+      (let ((last-chat-msg-id (telega-chatbuf--last-message-id))
+            (last-chatbuf-msg-id (plist-get (telega-chatbuf--last-msg) :id)))
+        (or (and last-chat-msg-id last-chatbuf-msg-id
+                 (<= last-chat-msg-id last-chatbuf-msg-id))
+            ;; Or no messages in the chat at all
+            (and (not last-chat-msg-id) (not last-chatbuf-msg-id))))))
 
 (defun telega-chatbuf--last-read-inbox-msg-id ()
   "Return last read inbox message id.

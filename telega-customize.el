@@ -1306,7 +1306,7 @@ Message is ignored if its `:ignore' option is set to non-nil."
 (defcustom telega-completing-read-function 'ido-completing-read
   "Completing read function to use."
   :type 'function
-  :options '(ivy-completing-read)
+  :options '(ivy-completing-read helm--completing-read-default)
   :group 'telega)
 
 (defcustom telega-screenshot-function

@@ -26,7 +26,7 @@ is possible to use =telega= on daily basis.
 Join us at [[https://t.me/emacs_telega]]
 
 If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
-development]].
+development]], also see benefits you get [[#telega-patrons-mode][being telega patron]].
 
 * Installation
 
