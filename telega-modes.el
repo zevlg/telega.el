@@ -28,6 +28,7 @@
 (require 'telega-customize)
 (require 'telega-server)
 (require 'telega-filter)
+(require 'telega-util)
 
 (defvar tracking-buffers)
 
