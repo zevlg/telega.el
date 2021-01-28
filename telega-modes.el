@@ -760,7 +760,8 @@ UFILE specifies Telegram file being uploading."
   '((82439953 :source opencollective :since_date 1609459200)
     (781215372 :source opencollective :since_date 1609459200)
     (275409096 :source opencollective :since_date 1610236800)
-    (356787489 :source opencollective :since_date 1611532800))
+    (356787489 :source opencollective :since_date 1611532800)
+    (546432750 :source opencollective :since_date 1611792000))
   "Alist of telega patrons.")
 
 (defun telega-msg-sender-patron-p (sender)
