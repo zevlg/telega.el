@@ -30,6 +30,7 @@
 (require 'telega-tdlib)
 (require 'telega-util)
 (require 'telega-media)
+(eval-when-compile (require 'dom))
 
 ;; shutup compiler
 (defvar ido-matches)

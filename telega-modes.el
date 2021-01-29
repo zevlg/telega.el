@@ -29,6 +29,7 @@
 (require 'telega-server)
 (require 'telega-filter)
 (require 'telega-util)
+(eval-when-compile (require 'dom))
 
 (defvar tracking-buffers)
 
