@@ -374,15 +374,18 @@ Return edited code as string."
      (not (telega--tl-get msg :can_be_edited)))
     ))
 
-(defun telega-mnz-msg-edit (msg)
+(defun telega-mnz-msg-edit (msg &optional edit-as-is)
   "Command to edit message MSG in a telega-mnz aware way."
-  (interactive (list (telega-msg-at (point))))
+  (interactive (list (telega-msg-at (point)) current-prefix-arg))
 
   (if-let* ((mnz-cb (telega-mnz--msg-code-block-at msg))
-            (edit-p (or (when (eq telega-mnz-edit-code-block 'query)
-                          (y-or-n-p (format "Edit «%s» code block? "
-                                            (plist-get mnz-cb :mode))))
-                        telega-mnz-edit-code-block)))
+            (edit-p
+             (if (eq telega-mnz-edit-code-block 'query)
+                 (y-or-n-p (format "%s «%s» code block? (`n' to edit message)"
+                                   (if (plist-get msg :can_be_edited)
+                                       "Edit" "View")
+                                   (plist-get mnz-cb :mode)))
+               telega-mnz-edit-code-block)))
       (if-let* ((msg-fmt-text (telega--tl-get msg :content :text))
                 (new-code (telega-mnz--msg-code-block-edit msg mnz-cb))
                 (cb-ent (plist-get mnz-cb :ent))
@@ -401,7 +404,7 @@ Return edited code as string."
         (ding))
 
     ;; Default behaviour
-    (telega-msg-edit msg)))
+    (telega-msg-edit msg edit-as-is)))
 
 (defun telega-mnz--chatbuf-attach-internal (language code)
   "Attach CODE of LANGUAGE to the chatbuf input."

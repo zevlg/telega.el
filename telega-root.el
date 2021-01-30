@@ -303,6 +303,9 @@ Global root bindings:
 
   (cursor-sensor-mode 1)
   (when telega-use-tracking-for
+    (unless (fboundp 'tracking-mode)
+      (user-error "Please install `tracking' package \
+to make use of `telega-use-tracking-for'"))
     (tracking-mode 1)))
 
 
@@ -1664,16 +1667,18 @@ PREDICATE is one of `telega-file--downloading-p',
   "Generate ewoc spec for files tracking of KIND.
 KIND is one of \"downloading\", \"uploading\", \"downloaded\",
 \"uploaded\", \"partially-downloaded\", \"partially-uploaded\"."
-  (let ((predicate (cdr (assoc kind telega-view-files--predicates))))
-    (cl-assert predicate)
+  ;; NOTE: most recent files goes first, `:telega-file-recency' is set
+  ;; in `telega-file--ensure'
+  (let* ((predicate (cdr (assoc kind telega-view-files--predicates)))
+         (kind-files (cl-sort (cl-remove-if-not
+                               predicate (hash-table-values telega--files))
+                              #'> :key (telega--tl-prop :telega-file-recency))))
     (list :name kind
           :header (upcase kind)
           :pretty-printer (telega-view-files--gen-pp predicate)
           ;; NOTE: store file's id as data, to match by `:id', because
           ;; file changes on file updates
-          :items (mapcar (telega--tl-prop :id)
-                         (cl-remove-if-not
-                          predicate (hash-table-values telega--files)))
+          :items (mapcar (telega--tl-prop :id) kind-files)
           :on-file-update #'telega-root--on-file-update)))
 
 (defun telega-view-files (kinds)

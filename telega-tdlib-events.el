@@ -180,8 +180,10 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
          (action (plist-get event :action))
          (cancel-p (eq (telega--tl-type action) 'chatActionCancel)))
     (cond (cancel-p
-           (puthash chat-id (assq-delete-all user-id chat-actions)
-                    telega--actions))
+           (let ((new-chat-actions (assq-delete-all user-id chat-actions)))
+             (if new-chat-actions
+                 (puthash chat-id new-chat-actions telega--actions)
+               (remhash chat-id telega--actions))))
           (user-action
            (setcdr user-action action))
           (t (puthash chat-id (cons (cons user-id action) chat-actions)
@@ -353,6 +355,9 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
 (defun telega--on-updateChatLastMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
+    ;; NOTE: `:last_message' is unset when gap is create in the chat
+    ;; This case is handled in the `telega-chatbuf--last-msg-loaded-p'
+    ;; See https://github.com/tdlib/td/issues/896
     (plist-put chat :last_message (plist-get event :last_message))
     (plist-put chat :positions (plist-get event :positions))
     (telega-chat--mark-dirty chat event)

@@ -267,6 +267,33 @@ X and Y denotes left up corner."
            squircle-cubic-beziers "\n")))
     (apply #'telega-svg-path svg (concat cmd-start cmd-cb "Z") args)))
 
+(defun telega-svg-telega-logo (svg width &rest args)
+  "Draw telega triangle of WIDTH."
+  (let ((ratio (/ width 32.0))
+        (logo-outline '((M (0 10.1891))
+                        (l (7.9819 5.5418))
+                        (c (0.8853 -0.322) (1.8202 -0.6638) (2.599 -0.9418)
+                           (1.9609 -0.7)   (7.0539 -3.4182) (7.0539 -3.4182)
+                           (-2.5145 2.2595) (-4.6401 4.5613) (-6.55 6.8691))
+                        (L (17.5694 27))
+                        (c (0.2653 -0.9309) (0.5279 -1.8618) (0.9135 -2.9018))
+                        (C (20.4518 18.4196) (32 0) (32 0)
+                           (24.4744 2.555) (10.7087 7.5896) (7.8333 8.5782)
+                           (5.5816 9.3523) (2.1946 10.5884) (0 10.1892))
+                        (z))))
+    (apply #'telega-svg-path svg
+           (mapconcat (lambda (op)
+                        (concat (symbol-name (car op))
+                                (mapconcat
+                                 (lambda (pnt)
+                                   (concat (number-to-string (* ratio (car pnt)))
+                                           " "
+                                           (number-to-string
+                                            (* ratio (cadr pnt)))))
+                                 (cdr op) " ")))
+                      logo-outline "\n")
+           args)))
+
 (defun telega-svg-create (width height &rest args)
   "Create SVG image using `svg-create'.
 Addresses some issues telega got with pure `svg-create' usage."
@@ -281,7 +308,7 @@ Addresses some issues telega got with pure `svg-create' usage."
 PROPS is passed on to `create-image' as its PROPS list."
   ;; NOTE: work around problem displaying unicode characters in some
   ;; librsvg versions (in my case 2.40.13).  Encoded (in &#xxxx format)
-  ;; text is only displayed corretly if <xml ..?> node is specified
+  ;; text is only displayed correctly if <xml ..?> node is specified
   (let ((svg-data (with-temp-buffer
                     (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
                     (svg-print svg)
@@ -475,9 +502,9 @@ N can't be 0."
        (when telega-chatbuf--chat
          (telega-chatbuf-filter-hashtag (cdr link))))
       (url
-       (telega-browse-url (cdr link)))
+       (telega-browse-url (cdr link) current-prefix-arg))
       (file
-       (telega-open-file (cdr link)))
+       (telega-open-file (cdr link) (telega-msg-at button)))
       )))
 
 (defun telega-escape-underscores (text)
@@ -650,7 +677,7 @@ MARKUP-FUNC is function taking string and returning formattedText."
   (telega-markup-markdown-fmt 1 str))
 
 (defun telega-markup-markdown2-fmt (str)
-  (telega-markup-markdown-fmt 2 str))
+  (telega--parseMarkdown (telega-fmt-text str)))
 
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
@@ -688,16 +715,14 @@ second is substring."
             result))
     (nreverse result)))
 
-(defun telega-string-fmt-text (text &optional markdown-version)
+(defun telega-string-fmt-text (text &optional default-markup-func)
   "Convert TEXT to `formattedText' type.
-If MARKDOWN is non-nil then format TEXT as markdown.
-TEXT could contain substrings marked with custom markup, for
-these parts of the string MARKDOWN-VERSION is ignored."
+DEFAULT-MARKUP-FUNC is passed directly to
+`telega-string-split-by-markup', this markup function is used for TEXT
+parts without explicit markup."
   (apply #'telega-fmt-text-concat
          (mapcar (apply-partially #'apply #'funcall)
-                 (telega-string-split-by-markup
-                  text (apply-partially
-                        #'telega-markup-markdown-fmt markdown-version)))))
+                 (telega-string-split-by-markup text default-markup-func))))
 
 (defun telega--entity-for-substring (ent from to)
   "Return new entity for `telega-fmt-text-substring'."
@@ -763,8 +788,8 @@ Return desurrogated formattedText."
           :text (apply #'concat (mapcar (telega--tl-prop :text) fmt-texts))
           :entities (apply #'seq-concatenate 'vector ents))))
 
-(defun telega--fmt-text-markdown (fmt-text)
-  "Return formatted text FMT-TEXT as markdown syntax."
+(defun telega--fmt-text-markdown1 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown1 syntax."
   ;; TODO: support nested markdown
   (let ((text (copy-sequence (plist-get fmt-text :text)))
         (offset 0)
@@ -790,6 +815,12 @@ Return desurrogated formattedText."
       (remove-text-properties 0 (length ret-text) (list 'face) ret-text)
       ret-text)))
 
+(defun telega--fmt-text-markdown2 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown2 syntax."
+  (plist-get (telega--getMarkdownText
+              (telega-fmt-text-desurrogate (copy-sequence fmt-text)))
+             :text))
+
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
@@ -808,14 +839,6 @@ Return text string with applied faces."
         (when face
           (add-face-text-property beg end face 'append text))))
     text))
-
-(defun telega-fmt-text-string (fmt-text &optional as-markdown)
-  "Return formattedText FMT-TEXT as string.
-If AS-MARKDOWN is non-nil, then format it as markdown syntax,
-otherwise return propertized string."
-  (if as-markdown
-      (telega--fmt-text-markdown fmt-text)
-    (telega--fmt-text-faces fmt-text)))
 
 (defun telega--region-by-text-prop (beg prop)
   "Return region after BEG point with text property PROP set."
@@ -1468,16 +1491,16 @@ Display remains until next event is input.
 Same as `momentary-string-display', but keeps the point."
   (unless exit-char
     (setq exit-char last-command-event))
-  (let* ((start (or pos (point)))
-         (end pos))
+  ;; NOTE: `read-key' might trigger changes in the rootbuf, thats why
+  ;; save start/end as markers
+  (let* ((start (copy-marker (or pos (point))))
+         (end start))
     (unwind-protect
         (progn
-          (message "START-> %S / max-point=%S" start (point-max))
           (save-excursion
             (goto-char start)
             (insert string)
-            (setq end (point)))
-          (message "POINT-> %S" (point))
+            (setq end (copy-marker (point) t)))
           (message "Type %s to continue editing."
                    (single-key-description exit-char))
           (let ((event (read-key)))

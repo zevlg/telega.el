@@ -48,6 +48,9 @@ JSON_TO_PLIST_TESTS = TESTS + [
 
     # Lightning, \u26a1 in 13.0 and \u26a1\ufe0f in 12.3
     (True, b'"\u26a1\ufe0f"', '#("\\u26a1\\ufe0f" 0 2 (telega-emoji-p t telega-display "\\u26a1\\ufe0f"))'),
+
+    # See https://github.com/zevlg/telega.el/issues/251
+    (True, b'"\ud835\udd98\ud835\udd94\ud835\udd92\ud835\udd8a\ud835\udd99\ud835\udd8d\ud835\udd8e\ud835\udd93\ud835\udd8c here is new"', '#("\\ud835\\udd98\\ud835\\udd94\\ud835\\udd92\\ud835\\udd8a\\ud835\\udd99\\ud835\\udd8d\\ud835\\udd8e\\ud835\\udd93\\ud835\\udd8c here is new" 0 2 (telega-display "\\U0001d598") 2 4 (telega-display "\\U0001d594") 4 6 (telega-display "\\U0001d592") 6 8 (telega-display "\\U0001d58a") 8 10 (telega-display "\\U0001d599") 10 12 (telega-display "\\U0001d58d") 12 14 (telega-display "\\U0001d58e") 14 16 (telega-display "\\U0001d593") 16 18 (telega-display "\\U0001d58c"))')
 ]
 
 def run_telega(input, flag):

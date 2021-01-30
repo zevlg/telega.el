@@ -25,7 +25,7 @@ struct emoji_match_table {
          */
         size_t max_backtrack;
 
-        /* Use `any_emoji' (see below) to match any chat between
+        /* Use `any_emoji' (see below) to match any char between
          * min_match&max_match
          */
         const struct emoji_trie* match_trie;

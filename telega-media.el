@@ -33,6 +33,7 @@
 (require 'telega-core)
 (require 'telega-tdlib)
 
+(declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 
@@ -42,6 +43,18 @@
 
 
 ;;; Files downloading/uploading
+(defun telega-file--ensure (file)
+  "Ensure FILE is in `telega--files'.
+Return FILE.
+As side-effect might update root view, if current root view is \"Files\"."
+  (when telega-debug
+    (cl-assert file))
+  (plist-put file :telega-file-recency (telega-time-seconds))
+  (puthash (plist-get file :id) file telega--files)
+
+  (telega-root-view--update :on-file-update file)
+  file)
+
 (defun telega-file-get (file-id)
   "Return file associated with FILE-ID."
   (or (gethash file-id telega--files)
@@ -517,7 +530,7 @@ Return string of width 3."
               (propertize (substring title 0 1) 'face title-faces)
               ")"))))
 
-(defun telega-avatar--create-image (sender file &optional cheight)
+(defun telega-avatar--create-image (sender file &optional cheight addon-function)
   "Create SENDER (char or user) avatar image.
 CHEIGHT specifies avatar height in chars, default is 2."
   ;; NOTE:
@@ -571,6 +584,11 @@ CHEIGHT specifies avatar height in chars, default is 2."
                   ;; XXX insane X/Y calculation
                   :x (- (/ svg-xw 2) (/ fsz 3))
                   :y (+ (/ fsz 3) (/ cfull 2)))))
+
+    ;; XXX: Apply additional function, used by `telega-patrons-mode'
+    (when addon-function
+      (funcall addon-function svg (list (/ svg-xw 2) (/ cfull 2) (/ ch 2))))
+
     (telega-svg-image svg :scale 1.0
                       :width svg-xw :height svg-xh
                       :ascent 'center

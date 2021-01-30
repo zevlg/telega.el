@@ -1139,14 +1139,6 @@ Set it to nil to disable VoIP logging."
   "Setup for D-Bus notifications."
   :group 'telega)
 
-(defcustom telega-notifications-logo "telega-logo.svg"
-  "Logo image to use for notifications.
-If value is absolute path, it is used as is.
-Otherwise logo is searched with `telega-etc-file' function."
-  :package-version '(telega . "0.7.3")
-  :type 'file
-  :group 'telega-notifications)
-
 (defcustom telega-notifications-delay 0.5
   "*Delay in seconds for notifications.
 This delay is taken before making decision show or not the
@@ -1219,6 +1211,18 @@ Use this for Clint Side Messages Filtering."
   "*Non-nil to spread `telega-msg-heading' face to full line width.
 Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
+  :group 'telega-msg)
+
+(defcustom telega-msg-edit-markup-spec
+  '(telega--fmt-text-markdown2 . "markdown2")
+  "Cons cell specifying how to format message text when editing.
+car is a function to convert message's text to markup string.
+cdr is a markup name from `telega-chat-markup-functions' to use as
+markup attachment.  Use nil to edit message as is, without using
+\"markup\" attachment type."
+  :package-version '(telega . "0.7.11")
+  :type 'cons
+  :options '((telega--fmt-text-markdown1 . "markdown1"))
   :group 'telega-msg)
 
 (defcustom telega-msg-use-images-in-one-line telega-use-images
@@ -1302,7 +1306,7 @@ Message is ignored if its `:ignore' option is set to non-nil."
 (defcustom telega-completing-read-function 'ido-completing-read
   "Completing read function to use."
   :type 'function
-  :options '(ivy-completing-read)
+  :options '(ivy-completing-read helm--completing-read-default)
   :group 'telega)
 
 (defcustom telega-screenshot-function

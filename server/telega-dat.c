@@ -594,14 +594,41 @@ tdat_move_emoji_sequence(struct telega_dat* src, struct telega_dat* dst,
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif /* MIN */
 
+/*
+ * Return true if CH starts basic emoji with FE0F suffix.
+ */
+static bool
+utf16_is_fe0f_prefix(uint32_t ch)
+{
+        struct emoji_trie* et;
+        if ((0x1f170 <= ch) && (ch <= 0x1f6f3)) {
+                for (et = fe0f1; et->match; et++) {
+                        if ((ch == et->match) && (et->childs == fe0f2))
+                                return true;
+                }
+        }
+
+        if ((0x1f004 <= ch) && (ch <= 0x1f6bc)) {
+                for (et = emoji_12_1_basic2_fe0f; et->match; et++) {
+                        if ((ch == et->match) && (et->childs == fe0f2))
+                                return true;
+                }
+        }
+
+        return false;
+}
+
 static void
-tdat_emojify_append_property(struct telega_dat* props, size_t start,
-                             size_t end, struct telega_dat* disp)
+tdat_emojify_append_props(struct telega_dat* props, size_t start,
+                          size_t end, bool emoji_p, struct telega_dat* disp)
 {
         char prop_position[33];
         snprintf(prop_position, 33, " %zu %zu", start, end);
         tdat_append_str(props, prop_position);
-        tdat_append_str(props, " (telega-emoji-p t telega-display \"");
+        tdat_append_str(props, " (");
+        if (emoji_p)
+                tdat_append_str(props, "telega-emoji-p t ");
+        tdat_append_str(props, "telega-display \"");
         tdat_move(disp, props, tdat_len(disp));
         tdat_append_str(props, "\")");
 }
@@ -680,8 +707,8 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                                         found = true;
                                         offset = coff + cn;
 
-                                        tdat_emojify_append_property(
-                                                props, coff, offset, &disp);
+                                        tdat_emojify_append_props(
+                                                props, coff, offset, true, &disp);
                                         break;
                                         /* NOT REACHED */
                                 }
@@ -693,18 +720,24 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                         src_view.start = saved_start;
                 }
 
-                /* NOTE: always mark surrogated pairs as emoji, even
-                 * if not found in emoji tables, so surrogated pairs
-                 * won't apper in strings ever
+                /* NOTE: For surrogated pairs that are not part of the
+                 * emoji, add only `telega-display' property, not
+                 * marking as emoji.
+                 *
+                 * With only exception if surrogated pair codes basic
+                 * emoji and \xfe0f is missing at the end.
+                 *
+                 * See https://github.com/zevlg/telega.el/issues/251
                  */
                 if (!found && (utf16_clen(ch) == 2)) {
                         src_view.start = backtrack[0];
                         tdat_reset(&disp);
-                        tdat_move_utf16char(&src_view, &disp);
+                        uint32_t ch = tdat_move_utf16char(&src_view, &disp);
 
                         assert(offset >= 2);
-                        tdat_emojify_append_property(
-                                props, offset - 2, offset, &disp);
+                        tdat_emojify_append_props(
+                                props, offset - 2, offset,
+                                utf16_is_fe0f_prefix(ch), &disp);
                 }
         }
 

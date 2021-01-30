@@ -33,7 +33,8 @@
 (require 'ring)
 (require 'url-util)
 (require 'seq)
-(require 'dired)                        ; dired-get-marked-files
+(require 'dired)                      ; dired-get-marked-files
+(require 'mailcap)                    ; mailcap-file-name-to-mime-type
 
 (require 'telega-core)
 (require 'telega-tdlib)
@@ -255,16 +256,6 @@ It could be user, secretChat, basicGroup or supergroup."
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
-;;; ellit-org: chatbuf
-;; ** Chat types
-;;
-;; Every chat has a type.  Type is one of:
-;; - private :: Private chat with telegram user
-;; - secret :: Secret chat with telegram user
-;; - bot :: Chat with telegram bot
-;; - basicgroup :: Small chat group, could be upgraded to supergroup
-;; - supergroup :: Chat group with all the chat possibilities
-;; - channel :: Supergroup with unlimited members, where only admins can post messags
 (defun telega-chat--type (chat &optional no-interpret)
   "Return type of the CHAT.
 Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'.
@@ -1223,9 +1214,9 @@ multiple chats are important."
     ;;   {{{fundoc(telega-chatbuf-attach,2)}}}
     (define-key map (kbd "C-c C-a") 'telega-chatbuf-attach)
     ;;; ellit-org: chatbuf-attach-bindings
-    ;; - {{{where-is(telega-chatbuf-attach-file,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-attach-file,2)}}}
-    (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-file)
+    ;; - {{{where-is(telega-chatbuf-attach-media,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-attach-media,2)}}}
+    (define-key map (kbd "C-c C-f") 'telega-chatbuf-attach-media)
     ;;; ellit-org: chatbuf-attach-bindings
     ;; - {{{where-is(telega-chatbuf-attach-clipboard,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-attach-clipboard,2)}}}
@@ -1322,11 +1313,17 @@ Takes into account threads."
                       :interaction_info :reply_info :last_message_id)
       (telega--tl-get telega-chatbuf--chat :last_message :id)))
 
-(defsubst telega-chatbuf--last-msg-loaded-p ()
+(defun telega-chatbuf--last-msg-loaded-p ()
   "Return non-nil if chat's last message is shown."
   (or (memq 'newer-loaded telega-chatbuf--history-state)
-      (<= (or (telega-chatbuf--last-message-id) 0)
-          (or (plist-get (telega-chatbuf--last-msg) :id) 0))))
+      ;; NOTE: handle gaps in the chat history
+      ;; See https://github.com/tdlib/td/issues/896
+      (let ((last-chat-msg-id (telega-chatbuf--last-message-id))
+            (last-chatbuf-msg-id (plist-get (telega-chatbuf--last-msg) :id)))
+        (or (and last-chat-msg-id last-chatbuf-msg-id
+                 (<= last-chat-msg-id last-chatbuf-msg-id))
+            ;; Or no messages in the chat at all
+            (and (not last-chat-msg-id) (not last-chatbuf-msg-id))))))
 
 (defun telega-chatbuf--last-read-inbox-msg-id ()
   "Return last read inbox message id.
@@ -2385,7 +2382,8 @@ Return last inserted ewoc node."
                                  telega-chat-use-date-breaks-for))
            (node (if (eq how 'prepend)
                      (ewoc--header telega-chatbuf--ewoc)
-                   (ewoc-nth telega-chatbuf--ewoc -1)))
+                   (or (ewoc-nth telega-chatbuf--ewoc -1)
+                       (ewoc--header telega-chatbuf--ewoc))))
            (saved-point (if (or (eq how 'prepend)
                                 (and (eq how 'append-new)
                                      (>= (point) telega-chatbuf--input-marker)))
@@ -2409,6 +2407,7 @@ Return last inserted ewoc node."
             ;; object, so message could be modified inplace
             (telega-msg-cache msg 'maybe-update)
 
+            (cl-assert node)
             ;; Maybe insert date break, such as
             ;; -----(28 December 2020)-----
             (let ((node-msg (ewoc--node-data node)))
@@ -2661,9 +2660,7 @@ MARKUP-NAME names a markup function from
 `telega-chat-markup-functions' to be used for input formatting."
   (cl-assert (or (null markup-name)
                  (assoc markup-name telega-chat-markup-functions)))
-  (let ((markup-function
-         (or (cdr (assoc markup-name telega-chat-markup-functions))
-             #'telega-string-fmt-text))
+  (let ((markup-function (cdr (assoc markup-name telega-chat-markup-functions)))
         (attaches (telega--split-by-text-prop
                    (telega-chatbuf-input-string) 'telega-attach))
         (disable-webpage-preview telega-chat-send-disable-webpage-preview)
@@ -2681,7 +2678,7 @@ MARKUP-NAME names a markup function from
                    (plist-get telega--options :message_text_length_max)))
 
           (push (list :@type "inputMessageText"
-                      :text (funcall markup-function text)
+                      :text (telega-string-fmt-text text markup-function)
                       :disable_web_page_preview
                       (if disable-webpage-preview t :false)
                       :clear_draft t)
@@ -2717,7 +2714,7 @@ MARKUP-NAME names a markup function from
               (error "Caption exceedes %d limit"
                      (plist-get telega--options :message_caption_length_max)))
 
-            (let ((cap (funcall markup-function (cadr attaches))))
+            (let ((cap (telega-string-fmt-text (cadr attaches) markup-function)))
               (setq attach (plist-put attach :caption cap)))
             (setq attaches (cdr attaches)))
           (push attach result))))
@@ -2776,6 +2773,14 @@ use.  For example `C-u RET' will use
         (editing-msg (telega-chatbuf--editing-msg))
         (options nil)
         (send-imcs nil))
+    ;; NOTE: Allow removing captions, see
+    ;; https://github.com/zevlg/telega.el/issues/252
+    (when (and (null imcs)
+               editing-msg
+               (telega--tl-get editing-msg :content :caption))
+      (setq imcs (list (list :@type "inputMessageText"
+                             :text (telega-string-fmt-text "")))))
+
     ;; Send the input by traversing IMCS and sending composed
     ;; SEND-IMCS
     (while imcs
@@ -3287,10 +3292,14 @@ This attachment can be used only in private chats."
 (defun telega-chatbuf-attach-video (filename &optional ttl)
   "Attach FILENAME as video to the chatbuf input."
   (interactive (list (read-file-name "Video: ")))
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'Video)))
+  (let ((ifile (telega-chatbuf--gen-input-file filename 'Video))
+        (resolution (telega-ffplay-get-resolution filename)))
     (telega-chatbuf-input-insert
      (nconc (list :@type "inputMessageVideo"
-                  :video ifile)
+                  :video ifile
+                  :duration (round (telega-ffplay-get-duration filename)))
+            (when resolution
+              (list :width (car resolution) :height (cdr resolution)))
             (when ttl
               (list :ttl ttl))))))
 
@@ -3313,6 +3322,25 @@ This attachment can be used only in private chats."
            :performer (cdr (assoc "artist" metadata))
            ))))
 
+(defun telega-chatbuf-attach-media (filename &optional as-file-p)
+  "Attach FILENAME as media, detecting media type by FILENAME extension.
+If `\\[universal-argument] is given, then attach as file."
+  (interactive (list (read-file-name "Attach Media File: ")
+                     current-prefix-arg))
+  (let ((file-mime (or (unless as-file-p
+                         (mailcap-file-name-to-mime-type filename))
+                       "telega/unknown")))
+    (cond ((string= "image/gif" file-mime)
+           (telega-chatbuf-attach-animation filename))
+          ((string-prefix-p "image/" file-mime)
+           (telega-chatbuf-attach-photo filename))
+          ((string-prefix-p "audio/" file-mime)
+           (telega-chatbuf-attach-audio filename))
+          ((string-prefix-p "video/" file-mime)
+           (telega-chatbuf-attach-video filename))
+          (t
+           (telega-chatbuf-attach-file filename)))))
+
 (defun telega-chatbuf-attach-video-note (as-file-p)
   "Attach a (circled) video note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
@@ -3321,9 +3349,10 @@ video-note.  Otherwise record video note inplace.
   (interactive "P")
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let* ((filename (if as-file-p
-                       (read-file-name "Video Note: ")
-                     (telega-vvnote-video--record)))
+  (let* ((filename (with-telega-chatbuf-action "RecordingVideoNote"
+                     (if as-file-p
+                         (read-file-name "Video Note: ")
+                       (telega-vvnote-video--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VideoNote))
          (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
@@ -3346,9 +3375,10 @@ voice-note.  Otherwise record voice note inplace.
   (interactive "P")
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
-  (let* ((filename (if as-file-p
-                       (read-file-name "Voice Note: ")
-                     (telega-vvnote-voice--record)))
+  (let* ((filename (with-telega-chatbuf-action "RecordingVoiceNote"
+                     (if as-file-p
+                         (read-file-name "Voice Note: ")
+                       (telega-vvnote-voice--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
@@ -3510,24 +3540,28 @@ sticker sets."
       (select-window
        (temp-buffer-window-show tss-buffer)))))
 
-(defun telega-chatbuf-attach-animation (&optional from-file-p)
+(defun telega-chatbuf-attach-animation (&optional animation-file)
   "Attach an animation.
 If `\\[universal-argument]' is given, then attach animation from
-file, Otherwise choose animation from list of saved animations."
-  (interactive "P")
-  (if from-file-p
-      (let* ((afilename (read-file-name "Animation File: "))
-             (ifile (telega-chatbuf--gen-input-file afilename 'Animation)))
+a file, otherwise choose animation from list of saved animations."
+  (interactive (when current-prefix-arg (read-file-name "Animation File: ")))
+  (if animation-file
+      (let ((ifile (telega-chatbuf--gen-input-file animation-file 'Animation))
+            (resolution (telega-ffplay-get-resolution animation-file)))
         (telega-chatbuf-input-insert
-         (list :@type "inputMessageAnimation"
-               :animation ifile)))
+         (nconc (list :@type "inputMessageAnimation"
+                      :animation ifile
+                      :duration
+                      (round (telega-ffplay-get-duration animation-file)))
+                (when resolution
+                  (list :width (car resolution) :height (cdr resolution))))))
 
     (telega-animation-choose-saved telega-chatbuf--chat)))
 
-(defun telega-chatbuf-attach-gif ()
-  "Attach a file as animation to the chatbuf input."
-  (interactive)
-  (telega-chatbuf-attach-animation 'from-file))
+(defun telega-chatbuf-attach-gif (gif-file)
+  "Attach GIF-FILE as animation to the chatbuf input."
+  (interactive (list (read-file-name "GIF File: ")))
+  (telega-chatbuf-attach-animation gif-file))
 
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.
@@ -3643,8 +3677,8 @@ Use this attachment to disable/enable notification on the receiver side."
          :emoji emoji
          :clear_draft t)))
 
-(defun telega-chatbuf-attach-markup (markup-name)
-  "Attach text using MARKUP-NAME into chatbuf.
+(defun telega-chatbuf-attach-markup (markup-name &optional markup-text)
+  "Attach MARKUP-TEXT using MARKUP-NAME into chatbuf.
 Using this type of attachment it is possible to intermix multiple
 markups in the chatbuf input.
 Markups are defined in the `telega-chat-markup-functions' user option."
@@ -3654,7 +3688,7 @@ Markups are defined in the `telega-chat-markup-functions' user option."
                               nil t)))
   (let ((markup-func (cdr (assoc markup-name telega-chat-markup-functions))))
     (telega-chatbuf-input-insert
-     (telega-string-as-markup "" markup-name markup-func))
+     (telega-string-as-markup (or markup-text "") markup-name markup-func))
     (backward-char 1)))
 
 (defun telega-chatbuf-attach (attach-type)
@@ -3854,9 +3888,11 @@ MSG can be nil in case there is no active voice message."
 
     (telega-help-message--cancel-aux 'reply)))
 
-(defun telega-msg-edit (msg)
-  "Start editing the MSG."
-  (interactive (list (telega-msg-for-interactive)))
+(defun telega-msg-edit (msg &optional edit-as-is)
+  "Start editing the MSG.
+If `\\[universal-argument] argument is given, then do not use markup
+name from `telega-msg-edit-markup-spec' and insert message text as is."
+  (interactive (list (telega-msg-for-interactive) current-prefix-arg))
 
   (unless (plist-get msg :can_be_edited)
     (error "Message can't be edited"))
@@ -3879,10 +3915,25 @@ MSG can be nil in case there is no active voice message."
     (goto-char (point-max))
 
     ;; Insert message's text or attachment caption
-    (let ((content (plist-get msg :content)))
-      (telega-ins--fmt-text-as-markdown
-       (or (plist-get content :text)
-           (plist-get content :caption))))
+    ;; Possible use "markdown2" markup for the text
+    (let* ((content (plist-get msg :content))
+           (orig-fmt-text (or (plist-get content :text)
+                              (plist-get content :caption)))
+           (markup-str (funcall (car telega-msg-edit-markup-spec)
+                                orig-fmt-text)))
+      ;; NOTE: if text does not changes, then no markup in the text,
+      ;; can edit text AS-IS
+      (if (or edit-as-is
+              (null (cdr telega-msg-edit-markup-spec))
+              (string= markup-str (plist-get orig-fmt-text :text)))
+          ;; Insert msg text AS-IS
+          (telega-ins (telega--desurrogate-apply markup-str))
+
+        ;; Insert msg text as markup input attachment
+        (cl-assert (stringp (cdr telega-msg-edit-markup-spec)))
+        (telega-chatbuf-attach-markup
+         (cdr telega-msg-edit-markup-spec)
+         (telega--desurrogate-apply markup-str))))
 
     (telega-help-message--cancel-aux 'edit)))
 
@@ -4317,11 +4368,12 @@ sent by some chat member, member name is queried."
     (telega-chatbuf--clean)
     (setq telega-chatbuf--msg-filter
           (list :title "scheduled"
+                :tdlib-msg-filter #'telega-chatbuf-filter-scheduled
                 :total-count (length scheduled-messages)))
     (telega-chatbuf--modeline-update)
     (telega-chatbuf--footer-update)
 
-    (telega-chatbuf--insert-messages (nreverse scheduled-messages) 'append)))
+    (telega-chatbuf--insert-messages (nreverse scheduled-messages) 'prepend)))
 
 (defun telega-chatbuf-filter-cancel (&rest _ignored)
   "Cancel any message filtering.
@@ -4335,7 +4387,12 @@ If point is at some message, then keep point on this message after reseting."
                             telega-chatbuf--thread-msg)))
       (telega-chatbuf--reset-filter-and-thread)
       (telega-chatbuf--clean)
-      (if msg-at-point
+      (if (and msg-at-point
+               ;; NOTE: Ignore scheduled/internal messages, see
+               ;; https://github.com/zevlg/telega.el/issues/250
+               (not (telega-msg-internal-p msg-at-point))
+               (not (plist-get msg-at-point :sending_state))
+               (not (plist-get msg-at-point :scheduling_state)))
           (telega-chat--goto-msg
               telega-chatbuf--chat (plist-get msg-at-point :id) 'highlight)
         (telega-chatbuf--load-initial-history)))

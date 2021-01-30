@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.8)
+#+TITLE: Telega Manual (v0.7.15)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -69,6 +69,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-image-mode][telega-image-mode]]
     - [[#telega-edit-file-mode][telega-edit-file-mode]]
     - [[#telega-highlight-text-mode][telega-highlight-text-mode]]
+    - [[#telega-patrons-mode][telega-patrons-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
     - [[#telega-status-historyel--global-minore-mode-to-save-users-online-status-history][/telega-status-history.el/ -- Global minore mode to save user's online status history]]
@@ -95,7 +96,7 @@ is possible to use =telega= on daily basis.
 Join us at [[https://t.me/emacs_telega]]
 
 If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
-development]].
+development]], also see benefits you get [[#telega-patrons-mode][being telega patron]].
 
 * Installation
 :PROPERTIES:
@@ -176,7 +177,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to "1.7.0".
+version greater or equal to 1.7.0.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -270,13 +271,31 @@ missing a feature, please use the protocol for the issue tracker.
 usual package.  This is a preferable method, because it will
 automatically handle all dependencies and provides autoloads.
 
+For TDLib 1.7.0 release you might
+consider stable =telega= version.  Stable =telega= version won't
+require you to rebuild TDLib until next TDLib 1.8.0 release, =telega= updates will work with
+1.7.0.  Stable =telega= is placed
+in [[https://stable.melpa.org/][MELPA Stable]].  Package configuration for =telega= from MELPA Stable
+might look like:
+#+begin_src emacs-lisp
+  (add-to-list 'package-archives
+  	     '("melpa-stable" . "https://stable.melpa.org/packages/"))
+  (add-to-list 'package-pinned-packages '(telega . "melpa-stable"))
+#+end_src
+
+=telega= from unstable [[https://melpa.org][MELPA]] is a bleeding edge of the =telega=
+development and =telega= updates might require also TDLib
+update/rebuild sometimes.  However, it brings you all newer (probably
+incompatible with TDLib 1.7.0)
+functionality faster, no need to wait for TDLib 1.8.0 to access newer features.
+
 Or you could use git repository with this melpa-style recipe for [[https://github.com/quelpa/quelpa][quelpa]]:
 
 #+begin_src emacs-lisp
   (quelpa '(telega :fetcher github
   		 :repo "zevlg/telega.el"
   		 :branch "master"
-  		 :files (:defaults "etc" "server" "Makefile")))
+  		 :files (:defaults "contrib" "etc" "server" "Makefile")))
 #+end_src
 
 ** Installing telega directly from GitHub
@@ -371,8 +390,8 @@ Emacs instance has no frames, frames are created when needed and
 connects to the daemon process.
 
 =telega= autodetects values for some variables at start by examining
-current frame parameters and window system posibilites.  This won't
-work in daemon mode.  You need to explicitely specify values for that
+current frame parameters and window system possibilities.  This won't
+work in daemon mode.  You need to explicitly specify values for that
 variables.  Most notable options are:
 - User Option: ~telega-use-images~ 
 
@@ -979,12 +998,12 @@ For other Chat Filter bindings see below.
      Matches if chat type is one of ~CHAT-TYPE-LIST~.
 
      Every chat has a type.  Type is one of:
-  - private :: Private chat with telegram user
-  - secret :: Secret chat with telegram user
-  - bot :: Chat with telegram bot
-  - basicgroup :: Small chat group, could be upgraded to supergroup
-  - supergroup :: Chat group with all the chat possibilities
-  - channel :: Supergroup with unlimited members, where only admins can post messages
+  - ~private~ Private chat with a Telegram user
+  - ~secret~ Secret chat with a Telegram user
+  - ~bot~ Chat with a Telegram bot
+  - ~basicgroup~ Small chat group, could be upgraded to supergroup
+  - ~supergroup~ Chat group with all the chat possibilities
+  - ~channel~ Supergroup with unlimited members, where only admins can post messages
 
 - (name ~REGEXP~) :: 
      Matches if chat's title matches ~REGEXP~.
@@ -1327,7 +1346,7 @@ For other sorting keybindings see below.
 Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
 consists of a list of chat messages and an input for your messages
 to send.  Press
-@@html:<kbd>@@i@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <describe>@@html:</kbd>@@ (~telega-describe-message~) to
+@@html:<kbd>@@i@@html:</kbd>@@ (~telega-describe-message~) to
 get detailed description of the message at point.
 
 Important customizable options:
@@ -1454,8 +1473,9 @@ You can attach various media into chatbuf input, using next bindings:
      @@html:<kbd>@@C-u@@html:</kbd>@@ is passed directly to the attachment function.
      See ~telega-chat-attach-commands~ for available attachment types.
 
-- @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-file~) :: 
-     Attach ~FILENAME~ as document to the chatbuf input.
+- @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-media~) :: 
+     Attach ~FILENAME~ as media, detecting media type by ~FILENAME~ extension.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach as file.
 
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Attach clipboard image to the chatbuf as photo.
@@ -1480,7 +1500,7 @@ Attachment types to attach with
      voice-note.  Otherwise record voice note inplace.
      ~telega-vvnote-voice-cmd~ is used to record voice notes.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.
-- gif :: Attach a file as animation to the chatbuf input.
+- gif :: Attach ~GIF-FILE~ as animation to the chatbuf input.
 - location :: Attach location to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach live location.
 - poll :: Attach poll to the chatbuf input.
@@ -1490,14 +1510,13 @@ Attachment types to attach with
      ~ALLOW-MULTIPLE-ANSWERS-P~ - Non-nil to allow multiple answers.
      ~OPTIONS~ - List of strings representing poll options.
 - contact :: Attach ~CONTACT~ user to the chatbuf input.
-- member :: Add ~USER~ to the chat members.
 - sticker :: Attach a sticker.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach recent or
      favorite sticker.  Otherwise choose a sticker from installed
      sticker sets.
 - animation :: Attach an animation.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach animation from
-     file, Otherwise choose animation from list of saved animations.
+     a file, otherwise choose animation from list of saved animations.
 - dice :: Attach random dice roll message.
 - screenshot :: Attach screenshot to the chatbuf input.
      If numeric prefix arg ~N~ is given, then take screenshot in ~N~ seconds.
@@ -1507,7 +1526,7 @@ Attachment types to attach with
      Uses ~telega-screenshot-function~ to take a screenshot.
 - clipboard :: Attach clipboard image to the chatbuf as photo.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach clipboard as document.
-- markup :: Attach text using ~MARKUP-NAME~ into chatbuf.
+- markup :: Attach ~MARKUP-TEXT~ using ~MARKUP-NAME~ into chatbuf.
      Using this type of attachment it is possible to intermix multiple
      markups in the chatbuf input.
      Markups are defined in the ~telega-chat-markup-functions~ user option.
@@ -1559,8 +1578,8 @@ Customizable options for attaching media:
 
 To reply/edit the message, put point on the message you want to
 reply/edit and press
-@@html:<kbd>@@r@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <reply>@@html:</kbd>@@ (~telega-msg-reply~) to reply or
-@@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) to edit.
+@@html:<kbd>@@r@@html:</kbd>@@ (~telega-msg-reply~) to reply or
+@@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) to edit.
 
 Aux prompt will be show just above the chatbuf prompt, such as:
 #+begin_example
@@ -1577,6 +1596,22 @@ binding.
 To edit your previously sent message press
 @@html:<kbd>@@M-p@@html:</kbd>@@ (~telega-chatbuf-edit-prev~).
 
+It is possible to edit message with markup text inside.  Formatting
+for such messages is controlled by:
+- User Option: ~telega-msg-edit-markup-spec~ 
+
+  Cons cell specifying how to format message text when editing.
+  car is a function to convert message's text to markup string.
+  cdr is a markup name from ~telega-chat-markup-functions~ to use as
+  markup attachment.  Use nil to edit message as is, without using
+  "markup" attachment type. 
+
+  Default value: ~(telega--fmt-text-markdown2 . "markdown2")~
+
+  @@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) accepts
+  @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to edit message as-is without using markup
+  attachment with markup name specified in this option.
+
 ** Forwarding messages
 :PROPERTIES:
 :CUSTOM_ID: forwarding-messages
@@ -1587,7 +1622,7 @@ forward and press
 @@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
+@@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
 @@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
@@ -1608,11 +1643,11 @@ To delete a message, put cursor under the message you want to delete and press
 @@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@k@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
-with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
+with @@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~).
 
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
-@@html:<kbd>@@B@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <ban-sender>@@html:</kbd>@@ (~telega-msg-ban-sender~) when
+@@html:<kbd>@@B@@html:</kbd>@@ (~telega-msg-ban-sender~) when
 cursor is under the message.
 
 =telega= can keep deleted messages visible until chatbuf is
@@ -1989,7 +2024,8 @@ Customizable options:
 Global minor mode to display =telega= status in system tray.  This
 mode requires appindicator support in the =telega-server=.  To add
 appindicator support to =telega-server=, please install
-=libappindicator3-dev= system package and rebuild =telega-server=.
+=libappindicator3-dev= system package and rebuild =telega-server=
+with {{{kbd(M-x telega-server-build RET}}}.
 
 Screenshot of system tray with enabled =telega= appindicator:
 [[https://zevlg.github.io/telega/screen-appindicator.png]]
@@ -2105,6 +2141,26 @@ with @@html:<kbd>@@RET@@html:</kbd>@@, use:
 
 Similar to =hi-lock=, however supports =jit-lock= for highlighting
 dynamic content.
+
+** telega-patrons-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-patrons-mode
+:END:
+
+Emphasize =telega=
+[[https://opencollective.com/telega#section-contributors][patrons]]
+by drawing special elements (telega cat ears) above the patron's
+avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
+
+In addition:
+- Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
+- All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
+
+If you are already =telega= patron and not in the
+~telega-patrons-alist~ list, please [[https://t.me/zevlg][write
+me]].
+
+~telega-patrons-mode~ is enabled by default.
 
 * Contributed packages
 :PROPERTIES:
@@ -2339,6 +2395,8 @@ Customizable options:
 :CUSTOM_ID: telega-storiesel--display-emacs-stories-in-the-dashboard
 :END:
 
+Emacs Stories: share your Emacs experience with other Emacs users.
+
 Display recent [[https://t.me/emacs_stories][Emacs Stories]] in the
 dashboard.  Enable it with:
 
@@ -2355,7 +2413,7 @@ Apart from dashboard, ~telega-stories~ provides "Emacs Stories"
 [[https://zevlg.github.io/telega.el/#rootbuf-view-switching][Root
 View]].  To enable this view execute @@html:<kbd>@@M-x telega-view-emacs-stories RET@@html:</kbd>@@ in the root buffer.
 
-If you see inappropriate content in the Emacs Story, please report
+If you see inappropriate content in some Emacs Story, please report
 this story by pressing
 @@html:<kbd>@@!@@html:</kbd>@@ (~telega-stories-msg-report~) on
 the story.
@@ -2380,11 +2438,11 @@ Customizable options:
   Height in chars for Emacs Stories buttons 
 
   Default value: ~6~
-- User Option: ~telega-stories-notify~ 
+- User Option: ~telega-stories-notify-if~ 
 
-  Notify on new story, even if notifications are disabled for stories chat. 
+  Pop notification on new story if stories chat matches this Chat Filter. 
 
-  Default value: ~t~
+  Default value: ~(not unmuted)~
 - User Option: ~telega-stories-preload-content~ 
 
   Preload content when Emacs Story is inserted, so can be viewed instantly. 

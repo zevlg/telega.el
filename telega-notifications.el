@@ -229,13 +229,8 @@ M-x telega-notifications-mode RET")))
   "Use `notifications-notify' to popup NOTIFY-SPEC."
   (when telega-notifications--last-id
     (notifications-close-notification telega-notifications--last-id))
-  (let* ((app-icon (if (file-name-absolute-p telega-notifications-logo)
-                       telega-notifications-logo
-                     (telega-etc-file telega-notifications-logo)))
-         (base-spec (list :app-name "emacs.telega"
-                          :app-icon (if (file-exists-p app-icon)
-                                        app-icon
-                                      (telega-etc-file "telega-logo.svg"))
+  (let* ((base-spec (list :app-name "emacs.telega"
+                          :app-icon (telega-etc-file "telega-logo.svg")
                           ;; NOTE: with this param popups stucks sometimes
                           ;; So we use timer to manually remove the popup
                           ;; Or newly arrived notifications also
@@ -249,51 +244,53 @@ M-x telega-notifications-mode RET")))
     (setq telega-notifications--last-id
           (apply 'notifications-notify notify-args))))
 
-(defun telega-notifications--chat-msg0 (msg &optional force)
+(defun telega-notifications--chat-msg0 (msg &optional force &rest notify-args)
   "Function called after `telega-notifications-delay' delay.
 If FORCE is specified, then always popup notification.
 Otherwise popup notification only if MSG have not been seen yet.
 FORCE is used for testing only, should not be used in real code."
+  (declare (indent 2))
   ;; Checks once more that message has not yet been read in another
   ;; telegram client
   (let* ((msg-id (plist-get msg :id))
          (chat-id (plist-get msg :chat_id))
          (chat (telega-chat-get chat-id)))
     (unless (and (not force) (telega-msg-seen-p msg chat))
-      (let ((notify-args
-             (nconc
-              (list :actions (list "default" "show message")
-                    :on-action `(lambda (&rest args)
-                                  (x-focus-frame (telega-x-frame))
-                                  (telega-chat--goto-msg
-                                   (telega-chat-get ,chat-id)
-                                   ,msg-id 'highlight))
-                    ;; NOTE: outgoing messages bypassed notification
-                    ;; conditions are scheduled messages, mark them
-                    ;; with calendar symbol
-                    ;; See https://github.com/tdlib/td/issues/1196
-                    :title (concat (when (plist-get msg :is_outgoing)
-                                     "📅 ")
-                                   (if (telega-me-p chat)
-                                       (telega-i18n "lng_notification_reminder")
-                                     (telega-chat-title chat 'with-username)))
-                    :body (if (telega-chat-notification-setting chat :show_preview)
-                              (telega-ins--as-string
-                               (funcall telega-inserter-for-msg-notification msg))
-                            "Has new unread messages"))
-              telega-notifications-msg-args)))
-        ;; Play sound only if CHAT setting has some sound
-        (when (string-empty-p
-               (or (telega-chat-notification-setting chat :sound) ""))
-          (setq notify-args (telega-plist-del notify-args :sound-name)))
+      (setq notify-args
+            (append
+             notify-args
+             (list :actions (list "default" "show message")
+                   :on-action `(lambda (&rest args)
+                                 (x-focus-frame (telega-x-frame))
+                                 (telega-chat--goto-msg
+                                     (telega-chat-get ,chat-id)
+                                     ,msg-id 'highlight))
+                   ;; NOTE: outgoing messages bypassed notification
+                   ;; conditions are scheduled messages, mark them
+                   ;; with calendar symbol
+                   ;; See https://github.com/tdlib/td/issues/1196
+                   :title (concat (when (plist-get msg :is_outgoing)
+                                    "📅 ")
+                                  (if (telega-me-p chat)
+                                      (telega-i18n "lng_notification_reminder")
+                                    (telega-chat-title chat 'with-username)))
+                   :body (if (telega-chat-notification-setting chat :show_preview)
+                             (telega-ins--as-string
+                              (funcall telega-inserter-for-msg-notification msg))
+                           "Has new unread messages"))
+             telega-notifications-msg-args))
+      ;; Play sound only if CHAT setting has some sound
+      (when (string-empty-p
+             (or (telega-chat-notification-setting chat :sound) ""))
+        (setq notify-args (telega-plist-del notify-args :sound-name)))
 
-        (telega-notifications--notify notify-args)
-        ;; Workaround stuck notifications, force closing after
-        ;; `telega-notifications-timeout' timeout
-        (run-with-timer telega-notifications-timeout nil
-                        'telega-notifications--close
-                        telega-notifications--last-id)
-        ))))
+      (telega-notifications--notify notify-args)
+      ;; Workaround stuck notifications, force closing after
+      ;; `telega-notifications-timeout' timeout
+      (run-with-timer telega-notifications-timeout nil
+                      'telega-notifications--close
+                      telega-notifications--last-id)
+      )))
 
 (defun telega-notifications-chat-message (msg)
   "Function intended to be added to `telega-chat-post-message-hook'."

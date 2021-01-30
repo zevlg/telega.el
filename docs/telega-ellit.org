@@ -26,7 +26,7 @@ is possible to use =telega= on daily basis.
 Join us at [[https://t.me/emacs_telega]]
 
 If you enjoy =telega=, consider making a [[https://opencollective.com/telega][donation for unstoppable
-development]].
+development]], also see benefits you get [[#telega-patrons-mode][being telega patron]].
 
 * Installation
 
@@ -92,7 +92,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to {{{eval(telega-tdlib-min-version)}}}.
+version greater or equal to {{{eval(telega-tdlib-min-version, t)}}}.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -180,13 +180,33 @@ missing a feature, please use the protocol for the issue tracker.
 usual package.  This is a preferable method, because it will
 automatically handle all dependencies and provides autoloads.
 
+For TDLib {{{eval((car telega-tdlib-releases), t)}}} release you might
+consider stable =telega= version.  Stable =telega= version won't
+require you to rebuild TDLib until next TDLib {{{eval((cdr
+telega-tdlib-releases), t)}}} release, =telega= updates will work with
+{{{eval((car telega-tdlib-releases), t)}}}.  Stable =telega= is placed
+in [[https://stable.melpa.org/][MELPA Stable]].  Package configuration for =telega= from MELPA Stable
+might look like:
+#+begin_src emacs-lisp
+(add-to-list 'package-archives
+             '("melpa-stable" . "https://stable.melpa.org/packages/"))
+(add-to-list 'package-pinned-packages '(telega . "melpa-stable"))
+#+end_src
+
+=telega= from unstable [[https://melpa.org][MELPA]] is a bleeding edge of the =telega=
+development and =telega= updates might require also TDLib
+update/rebuild sometimes.  However, it brings you all newer (probably
+incompatible with TDLib {{{eval((car telega-tdlib-releases), t)}}})
+functionality faster, no need to wait for TDLib {{{eval((cdr
+telega-tdlib-releases), t)}}} to access newer features.
+
 Or you could use git repository with this melpa-style recipe for [[https://github.com/quelpa/quelpa][quelpa]]:
 
 #+begin_src emacs-lisp
 (quelpa '(telega :fetcher github
                  :repo "zevlg/telega.el"
                  :branch "master"
-                 :files (:defaults "etc" "server" "Makefile")))
+                 :files (:defaults "contrib" "etc" "server" "Makefile")))
 #+end_src
 
 ** Installing telega directly from GitHub
@@ -241,8 +261,8 @@ Emacs instance has no frames, frames are created when needed and
 connects to the daemon process.
 
 =telega= autodetects values for some variables at start by examining
-current frame parameters and window system posibilites.  This won't
-work in daemon mode.  You need to explicitely specify values for that
+current frame parameters and window system possibilities.  This won't
+work in daemon mode.  You need to explicitly specify values for that
 variables.  Most notable options are:
 - {{{user-option(telega-use-images, 2)}}}
 - {{{user-option(telega-emoji-font-family, 2)}}}
@@ -580,6 +600,14 @@ binding.
 
 To edit your previously sent message press
 {{{where-is(telega-chatbuf-edit-prev,telega-chat-mode-map)}}}.
+
+It is possible to edit message with markup text inside.  Formatting
+for such messages is controlled by:
+- {{{user-option(telega-msg-edit-markup-spec,2)}}}
+
+  {{{where-is(telega-msg-edit,telega-msg-button-map)}}} accepts
+  {{{kbd(C-u)}}} prefix to edit message as-is without using markup
+  attachment with markup name specified in this option.
 
 ** Forwarding messages
 

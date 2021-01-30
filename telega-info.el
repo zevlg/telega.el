@@ -240,6 +240,11 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     ;; Clickable user's profile photos
     (telega-ins--user-profile-photos user)
 
+    (when-let ((patron (telega-msg-sender-patron-p user)))
+      (telega-ins "Telega Patron Since: ")
+      (telega-ins--date-full (plist-get patron :since_date))
+      (telega-ins "\n"))
+
     (telega-ins-fmt "Id: %s\n"
       (if telega-debug
           (format "(telega-user-get %d)" (plist-get user :id))
@@ -369,7 +374,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                 (telega-ins (propertize telega-symbol-square
                                         'face (nth kk efaces))))))
           (telega-ins "\n")
-          (dotimes (ki (length ekey))
+
+          ;; NOTE: TDLib docs: Alternatively, the first 32 bytes of
+          ;; the hash can be converted to the hexadecimal format and
+          ;; printed as 32 2-digit hex numbers
+          (cl-assert (<= 32 (length ekey)))
+          (dotimes (ki 32)
             (cond ((and (> ki 0) (= (% ki 8) 0))
                    (telega-ins "\n"))
                   ((= (% ki 8) 4)
