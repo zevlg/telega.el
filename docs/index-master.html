@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-01-29 Пт 00:24 -->
+<!-- 2021-01-30 Сб 13:04 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.7.14)</title>
@@ -207,6 +207,13 @@
 <style>code {vertical-align:middle;font-size: 90%;}</style>
 <style>kbd {margin: 0px 0.1em; padding: 0.1em 0.5em; border-radius: 3px; border: 1px solid rgb(204, 204, 204); color: rgb(51, 51, 51); line-height: 1.0; vertical-align: middle; display: inline-block; box-shadow: 0px 1px 0px rgba(0,0,0,0.2), inset 0px 0px 0px 2px #ffffff; background-color: rgb(247, 247, 247); -moz-box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2), 0 0 0 2px #ffffff inset; -webkit-box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2), 0 0 0 2px #ffffff inset; -moz-border-radius: 3px; -webkit-border-radius: 3px; text-shadow: 0 1px 0 #fff;}</style>
 <style>p{font-size:16px; line-height:24px; margin:6px 0px 6px 0px;}</style>
+<style>img#toc-logo {height: 1.25em; vertical-align: top;}</style>
+<style>.self-link {float: left; padding-right: 4px; margin-left: -20px; line-height: 1;}</style>
+<style>.octicon-link {vertical-align: middle; visibility: hidden;}</style>
+<style>h1:hover .octicon-link, h2:hover .octicon-link, h3:hover .octicon-link, h4:hover .octicon-link, h5:hover .octicon-link, h6:hover .octicon-link { visibility: visible; }</style>
+<style>.octicon {display: inline-block; fill: currentColor;}</style>
+<style>#links-panel {float: right;} </style>
+<style>#links-panel img {height: 0.75em; margin: 2px;}</style>
 <link rel="icon" href="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg">
 <script type="text/javascript">
 // @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
@@ -233,9 +240,8 @@
 </head>
 <body>
 <div id="content">
-<h1 class="title">Telega Manual (v0.7.14)</h1>
 <div id="table-of-contents">
-<h2><img width=20 height=20 src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.14)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.14)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -319,7 +325,7 @@
 </ul>
 </div>
 </div>
-<p align="center"><img src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo64.png"/></p>
+<h1 class="title"><img src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual<div id="links-panel"><a href="https://github.com/zevlg/telega.el/"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/github.svg"/></a><a href="https://t.me/emacs_telega"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/telegram.svg"/></a><a href="https://opencollective.com/telega"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/opencollective.svg"/></a></h1>
 
 <blockquote>
 <p>
@@ -337,7 +343,7 @@ Do not edit manually.  Modify <code>telega-ellit.org</code> or comments in
 </blockquote>
 
 <div id="outline-container-introduction" class="outline-2">
-<h2 id="introduction">Introduction</h2>
+<h2 id="introduction"><a class="self-link" href="#introduction"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Introduction</h2>
 <div class="outline-text-2" id="text-introduction">
 <p>
 <code>telega</code> is full featured unofficial client for <a href="https://telegram.org">Telegram</a> platform for <a href="https://www.gnu.org/software/emacs/">GNU Emacs</a>.
@@ -362,7 +368,7 @@ development</a>, also see benefits you get <a href="#telega-patrons-mode">being 
 </div>
 
 <div id="outline-container-installation" class="outline-2">
-<h2 id="installation">Installation</h2>
+<h2 id="installation"><a class="self-link" href="#installation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installation</h2>
 <div class="outline-text-2" id="text-installation">
 <p>
 <code>telega</code> depends on the <code>visual-fill-column</code> and <code>rainbow-identifiers</code>
@@ -385,7 +391,7 @@ you use GNU Guix you can skip directly to <a href="#installing-telega-and-tdlib-
 </div>
 
 <div id="outline-container-dependencies" class="outline-3">
-<h3 id="dependencies">Dependencies</h3>
+<h3 id="dependencies"><a class="self-link" href="#dependencies"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Dependencies</h3>
 <div class="outline-text-3" id="text-dependencies">
 <ul class="org-ul">
 <li><code>GNU Emacs</code> (at least 26.1 is required with svg support)</li>
@@ -407,7 +413,7 @@ Arch-based).
 </div>
 
 <div id="outline-container-macos-users" class="outline-3">
-<h3 id="macos-users">MacOS users</h3>
+<h3 id="macos-users"><a class="self-link" href="#macos-users"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>MacOS users</h3>
 <div class="outline-text-3" id="text-macos-users">
 <ol class="org-ol">
 <li>If you are using <a href="https://emacsformacosx.com/">Emacs For Mac OS X</a>, or you installed Emacs by
@@ -438,7 +444,7 @@ sticker support, please consider switching to emacs-plus.
 </div>
 
 <div id="outline-container-linux-users" class="outline-3">
-<h3 id="linux-users">Linux users</h3>
+<h3 id="linux-users"><a class="self-link" href="#linux-users"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Linux users</h3>
 <div class="outline-text-3" id="text-linux-users">
 <p>
 <code>telega</code> requires at least GNU Emacs 26.1 with optional, but highly
@@ -451,7 +457,7 @@ support (graphical).
 </div>
 
 <div id="outline-container-building-tdlib" class="outline-3">
-<h3 id="building-tdlib">Building TDLib</h3>
+<h3 id="building-tdlib"><a class="self-link" href="#building-tdlib"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Building TDLib</h3>
 <div class="outline-text-3" id="text-building-tdlib">
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
@@ -524,7 +530,7 @@ don't forget to modify <code>telega-server-libs-prefix</code> before starting
 </div>
 
 <div id="outline-container-installing-telega-and-tdlib-from-gnu-guix" class="outline-3">
-<h3 id="installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from <a href="https://guix.gnu.org/">GNU Guix</a></h3>
+<h3 id="installing-telega-and-tdlib-from-gnu-guix"><a class="self-link" href="#installing-telega-and-tdlib-from-gnu-guix"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installing telega and TDLib from <a href="https://guix.gnu.org/">GNU Guix</a></h3>
 <div class="outline-text-3" id="text-installing-telega-and-tdlib-from-gnu-guix">
 <p>
 <code>telega</code> and <code>TDLib</code> are both available in GNU Guix. If you have a
@@ -588,7 +594,7 @@ missing a feature, please use the protocol for the issue tracker.
 </div>
 
 <div id="outline-container-installing-telega-from-melpa" class="outline-3">
-<h3 id="installing-telega-from-melpa">Installing telega from MELPA</h3>
+<h3 id="installing-telega-from-melpa"><a class="self-link" href="#installing-telega-from-melpa"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installing telega from MELPA</h3>
 <div class="outline-text-3" id="text-installing-telega-from-melpa">
 <p>
 <code>telega</code> is available from <a href="https://melpa.org">MELPA</a>, so you can install it from there as
@@ -634,7 +640,7 @@ Or you could use git repository with this melpa-style recipe for <a href="https:
 </div>
 
 <div id="outline-container-installing-telega-directly-from-github" class="outline-3">
-<h3 id="installing-telega-directly-from-github">Installing telega directly from GitHub</h3>
+<h3 id="installing-telega-directly-from-github"><a class="self-link" href="#installing-telega-directly-from-github"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Installing telega directly from GitHub</h3>
 <div class="outline-text-3" id="text-installing-telega-directly-from-github">
 <p>
 Make sure dependencies are installed with <kbd>M-x package-install RET visual-fill-column RET</kbd> and <kbd>M-x package-install RET rainbow-identifiers RET</kbd>.
@@ -679,7 +685,7 @@ usually is <code>init.el</code>, or <code>emacs.el</code>.
 </div>
 
 <div id="outline-container-getting-started" class="outline-2">
-<h2 id="getting-started">Getting started</h2>
+<h2 id="getting-started"><a class="self-link" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Getting started</h2>
 <div class="outline-text-2" id="text-getting-started">
 <p>
 Start <code>telega</code> with <kbd>M-x telega RET</kbd>. The first time it will
@@ -766,7 +772,7 @@ customize-group RET telega RET</code> command.
 </div>
 
 <div id="outline-container-settings-for-emacs-as-daemon" class="outline-2">
-<h2 id="settings-for-emacs-as-daemon">Settings for Emacs As Daemon</h2>
+<h2 id="settings-for-emacs-as-daemon"><a class="self-link" href="#settings-for-emacs-as-daemon"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Settings for Emacs As Daemon</h2>
 <div class="outline-text-2" id="text-settings-for-emacs-as-daemon">
 <p>
 Some people starts Emacs in daemon mode, i.e. <code>emacs --daemon</code>.  Such
@@ -776,8 +782,8 @@ connects to the daemon process.
 
 <p>
 <code>telega</code> autodetects values for some variables at start by examining
-current frame parameters and window system posibilites.  This won't
-work in daemon mode.  You need to explicitely specify values for that
+current frame parameters and window system possibilities.  This won't
+work in daemon mode.  You need to explicitly specify values for that
 variables.  Most notable options are:
 </p>
 <ul class="org-ul">
@@ -835,7 +841,7 @@ Default value: <code>telega-focus-state</code>
 </div>
 
 <div id="outline-container-telega-glossary" class="outline-2">
-<h2 id="telega-glossary">Telega glossary</h2>
+<h2 id="telega-glossary"><a class="self-link" href="#telega-glossary"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Telega glossary</h2>
 <div class="outline-text-2" id="text-telega-glossary">
 <p>
 Before start, please read <a href="https://core.telegram.org/tdlib/getting-started#tdlib-glossary">TDLib glossary</a>
@@ -871,7 +877,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgc2ad080">
+<pre class="example" id="org035f982">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -889,7 +895,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org8e0a955">
+<pre class="example" id="orgb7e17d7">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -919,7 +925,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org79c36b3">
+<pre class="example" id="org12118d4">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1014,7 +1020,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orge5c488d">
+<pre class="example" id="orgb0d7957">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1034,7 +1040,7 @@ Chat with me is also known as "Saved Messages".
 </div>
 
 <div id="outline-container-telega-prefix-map" class="outline-2">
-<h2 id="telega-prefix-map">Telega prefix map</h2>
+<h2 id="telega-prefix-map"><a class="self-link" href="#telega-prefix-map"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Telega prefix map</h2>
 <div class="outline-text-2" id="text-telega-prefix-map">
 <p>
 <code>telega</code> has prefix map for common <code>telega</code> commands, such as
@@ -1102,7 +1108,7 @@ If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd
 </div>
 
 <div id="outline-container-root-buffer" class="outline-2">
-<h2 id="root-buffer">Root Buffer</h2>
+<h2 id="root-buffer"><a class="self-link" href="#root-buffer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Root Buffer</h2>
 <div class="outline-text-2" id="text-root-buffer">
 <p>
 rootbuf is the heart of the <code>telega</code>.  Switch to rootbuf with
@@ -1160,7 +1166,7 @@ Default value: <code>track</code>
 </div>
 
 <div id="outline-container-rootbuf-fast-navigation" class="outline-3">
-<h3 id="rootbuf-fast-navigation">Rootbuf fast navigation</h3>
+<h3 id="rootbuf-fast-navigation"><a class="self-link" href="#rootbuf-fast-navigation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Rootbuf fast navigation</h3>
 <div class="outline-text-3" id="text-rootbuf-fast-navigation">
 <p>
 <kbd>M-g</kbd> prefix in rootbuf is used to jump across chat buttons:
@@ -1186,7 +1192,7 @@ chat filter is used.
 </div>
 
 <div id="outline-container-rootbuf-view-switching" class="outline-3">
-<h3 id="rootbuf-view-switching">Rootbuf view switching</h3>
+<h3 id="rootbuf-view-switching"><a class="self-link" href="#rootbuf-view-switching"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Rootbuf view switching</h3>
 <div class="outline-text-3" id="text-rootbuf-view-switching">
 <p>
 Rootbuf view is the specific way how rootbuf is shown to the user.  By
@@ -1394,7 +1400,7 @@ function to reset root view.
 </div>
 
 <div id="outline-container-chat-folders" class="outline-2">
-<h2 id="chat-folders">Chat Folders</h2>
+<h2 id="chat-folders"><a class="self-link" href="#chat-folders"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chat Folders</h2>
 <div class="outline-text-2" id="text-chat-folders">
 <p>
 <a href="https://telegram.org/blog/folders">Telegram has added</a> a new
@@ -1533,7 +1539,7 @@ Default value: <code>t</code>
 </div>
 
 <div id="outline-container-chat-filters" class="outline-2">
-<h2 id="chat-filters">Chat Filters</h2>
+<h2 id="chat-filters"><a class="self-link" href="#chat-filters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chat Filters</h2>
 <div class="outline-text-2" id="text-chat-filters">
 <p>
 Chat Filters are used to match chats, same as regexps are used to
@@ -1598,7 +1604,7 @@ For other Chat Filter bindings see below.
 </div>
 
 <div id="outline-container-list-of-chat-filters" class="outline-3">
-<h3 id="list-of-chat-filters">List of chat filters</h3>
+<h3 id="list-of-chat-filters"><a class="self-link" href="#list-of-chat-filters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>List of chat filters</h3>
 <div class="outline-text-3" id="text-list-of-chat-filters">
 <dl class="org-dl">
 <dt>(any <code>FILTER-LIST</code>&#x2026;)</dt><dd>Matches if any filter in <code>FILTER-LIST</code> matches.</dd>
@@ -1763,7 +1769,7 @@ Available since TDLib 1.6.9
 </div>
 
 <div id="outline-container-customizable-options-making-use-of-chat-filters" class="outline-3">
-<h3 id="customizable-options-making-use-of-chat-filters">Customizable options making use of Chat Filters</h3>
+<h3 id="customizable-options-making-use-of-chat-filters"><a class="self-link" href="#customizable-options-making-use-of-chat-filters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Customizable options making use of Chat Filters</h3>
 <div class="outline-text-3" id="text-customizable-options-making-use-of-chat-filters">
 <ul class="org-ul">
 <li><p>
@@ -1880,7 +1886,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org515f772">
+<pre class="example" id="orgc87a565">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -1913,7 +1919,7 @@ Default value:
 
 
 <div id="outline-container-sorting-chats" class="outline-2">
-<h2 id="sorting-chats">Sorting chats</h2>
+<h2 id="sorting-chats"><a class="self-link" href="#sorting-chats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sorting chats</h2>
 <div class="outline-text-2" id="text-sorting-chats">
 <p>
 It is possible to sort chats in rootbuf out of Telega built-in
@@ -1954,7 +1960,7 @@ For other sorting keybindings see below.
 </div>
 
 <div id="outline-container-sorting-criteria" class="outline-3">
-<h3 id="sorting-criteria">Sorting criteria</h3>
+<h3 id="sorting-criteria"><a class="self-link" href="#sorting-criteria"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sorting criteria</h3>
 <div class="outline-text-3" id="text-sorting-criteria">
 <dl class="org-dl">
 <dt><code>unread-count</code>, <kbd>\ u</kbd> (<code>telega-sort-by-unread-count</code>)</dt><dd>Sort chats by number of unread messages in chat.</dd>
@@ -1992,7 +1998,7 @@ For other chats date of the last message is taken.</dd>
 </div>
 
 <div id="outline-container-customizable-options-making-use-of-sorting-criteria" class="outline-3">
-<h3 id="customizable-options-making-use-of-sorting-criteria">Customizable options making use of sorting criteria</h3>
+<h3 id="customizable-options-making-use-of-sorting-criteria"><a class="self-link" href="#customizable-options-making-use-of-sorting-criteria"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Customizable options making use of sorting criteria</h3>
 <div class="outline-text-3" id="text-customizable-options-making-use-of-sorting-criteria">
 <ul class="org-ul">
 <li><p>
@@ -2023,7 +2029,7 @@ Default value: <code>chatbuf-recency</code>
 </div>
 
 <div id="outline-container-chat-buffer" class="outline-2">
-<h2 id="chat-buffer">Chat buffer</h2>
+<h2 id="chat-buffer"><a class="self-link" href="#chat-buffer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chat buffer</h2>
 <div class="outline-text-2" id="text-chat-buffer">
 <p>
 Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
@@ -2057,7 +2063,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org463fa3f">
+<pre class="example" id="orgb7aaa75">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2070,7 +2076,7 @@ Default value: <code>all</code>
 </div>
 
 <div id="outline-container-chatbuf-fast-navigation" class="outline-3">
-<h3 id="chatbuf-fast-navigation">Chatbuf fast navigation</h3>
+<h3 id="chatbuf-fast-navigation"><a class="self-link" href="#chatbuf-fast-navigation"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chatbuf fast navigation</h3>
 <div class="outline-text-3" id="text-chatbuf-fast-navigation">
 <p>
 <kbd>M-g</kbd> prefix in chatbuf is used to jump across various chat
@@ -2096,7 +2102,7 @@ button.</dd>
 </div>
 
 <div id="outline-container-sending-ordinary-messages" class="outline-3">
-<h3 id="sending-ordinary-messages">Sending ordinary messages</h3>
+<h3 id="sending-ordinary-messages"><a class="self-link" href="#sending-ordinary-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sending ordinary messages</h3>
 <div class="outline-text-3" id="text-sending-ordinary-messages">
 <p>
 Type a text in the chatbuf input and press <kbd>RET</kbd> to send the
@@ -2126,7 +2132,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org93ac34f">
+<pre class="example" id="orga7f03d1">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2203,7 +2209,7 @@ Default value: <code>t</code>
 </div>
 
 <div id="outline-container-attaching-media" class="outline-3">
-<h3 id="attaching-media">Attaching media</h3>
+<h3 id="attaching-media"><a class="self-link" href="#attaching-media"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Attaching media</h3>
 <div class="outline-text-3" id="text-attaching-media">
 <p>
 You can attach various media into chatbuf input, using next bindings:
@@ -2336,7 +2342,7 @@ Default value:
 
 
 <div id="outline-container-replying-and-editing-messages" class="outline-3">
-<h3 id="replying-and-editing-messages">Replying and editing messages</h3>
+<h3 id="replying-and-editing-messages"><a class="self-link" href="#replying-and-editing-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Replying and editing messages</h3>
 <div class="outline-text-3" id="text-replying-and-editing-messages">
 <p>
 To reply/edit the message, put point on the message you want to
@@ -2348,7 +2354,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orge81109f">
+<pre class="example" id="org1993e80">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2397,7 +2403,7 @@ attachment with markup name specified in this option.
 </div>
 
 <div id="outline-container-forwarding-messages" class="outline-3">
-<h3 id="forwarding-messages">Forwarding messages</h3>
+<h3 id="forwarding-messages"><a class="self-link" href="#forwarding-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Forwarding messages</h3>
 <div class="outline-text-3" id="text-forwarding-messages">
 <p>
 To forward a message, put cursor under the message which you want to
@@ -2425,7 +2431,7 @@ your own caption.</li>
 </div>
 
 <div id="outline-container-deleting-messages" class="outline-3">
-<h3 id="deleting-messages">Deleting messages</h3>
+<h3 id="deleting-messages"><a class="self-link" href="#deleting-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Deleting messages</h3>
 <div class="outline-text-3" id="text-deleting-messages">
 <p>
 To delete a message, put cursor under the message you want to delete and press
@@ -2475,7 +2481,7 @@ Messages", use next:
 </div>
 
 <div id="outline-container-scheduling-messages-and-reminders" class="outline-3">
-<h3 id="scheduling-messages-and-reminders">Scheduling messages and reminders</h3>
+<h3 id="scheduling-messages-and-reminders"><a class="self-link" href="#scheduling-messages-and-reminders"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Scheduling messages and reminders</h3>
 <div class="outline-text-3" id="text-scheduling-messages-and-reminders">
 <p>
 To schedule a message, press <kbd>C-c C-a scheduled RET</kbd>,
@@ -2496,7 +2502,7 @@ messages you planned in the past.
 </div>
 
 <div id="outline-container-navigating-previous-input" class="outline-3">
-<h3 id="navigating-previous-input">Navigating previous input</h3>
+<h3 id="navigating-previous-input"><a class="self-link" href="#navigating-previous-input"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Navigating previous input</h3>
 <div class="outline-text-3" id="text-navigating-previous-input">
 <p>
 You can navigate your previous chatbuf input using commands:
@@ -2523,7 +2529,7 @@ to cycle chatbuf input ring.
 </div>
 
 <div id="outline-container-completing-input-in-chatbuf" class="outline-3">
-<h3 id="completing-input-in-chatbuf">Completing input in chatbuf</h3>
+<h3 id="completing-input-in-chatbuf"><a class="self-link" href="#completing-input-in-chatbuf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Completing input in chatbuf</h3>
 <div class="outline-text-3" id="text-completing-input-in-chatbuf">
 <p>
 Powerful <code>company-mode</code> could be used to complete input in the
@@ -2604,7 +2610,7 @@ the chatbuf prompt.
 </div>
 
 <div id="outline-container-sending-messages-via-bots" class="outline-3">
-<h3 id="sending-messages-via-bots">Sending messages via bots</h3>
+<h3 id="sending-messages-via-bots"><a class="self-link" href="#sending-messages-via-bots"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sending messages via bots</h3>
 <div class="outline-text-3" id="text-sending-messages-via-bots">
 <p>
 If chatbuf input starts with <code>@&lt;botname&gt; &lt;query&gt;</code> and mentioned bot
@@ -2662,7 +2668,7 @@ Default value: <code>t</code>
 </div>
 
 <div id="outline-container-filtering-chat-messages-aka-shared-media" class="outline-3">
-<h3 id="filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</h3>
+<h3 id="filtering-chat-messages-aka-shared-media"><a class="self-link" href="#filtering-chat-messages-aka-shared-media"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Filtering chat messages a.k.a. Shared Media</h3>
 <div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
 <p>
 Message filtering means to show only some messages matching filter.
@@ -2686,7 +2692,7 @@ by some chat member, member name is queried.</dd>
 </div>
 
 <div id="outline-container-opening-files-using-external-programs" class="outline-3">
-<h3 id="opening-files-using-external-programs">Opening files using external programs</h3>
+<h3 id="opening-files-using-external-programs"><a class="self-link" href="#opening-files-using-external-programs"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Opening files using external programs</h3>
 <div class="outline-text-3" id="text-opening-files-using-external-programs">
 <p>
 Document messages in Telegram has attached file in the message.  By
@@ -2784,7 +2790,7 @@ For example, to play youtube videos using <code>mpv</code> player, add this to c
 </div>
 
 <div id="outline-container-client-side-messages-ignoring" class="outline-3">
-<h3 id="client-side-messages-ignoring">Client side messages ignoring</h3>
+<h3 id="client-side-messages-ignoring"><a class="self-link" href="#client-side-messages-ignoring"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Client side messages ignoring</h3>
 <div class="outline-text-3" id="text-client-side-messages-ignoring">
 <p>
 In official telegram clients all messages in group chats are displayed
@@ -2825,7 +2831,7 @@ To view recently ignored messages use
 </div>
 
 <div id="outline-container-multiple-accounts" class="outline-2">
-<h2 id="multiple-accounts">Multiple accounts</h2>
+<h2 id="multiple-accounts"><a class="self-link" href="#multiple-accounts"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Multiple accounts</h2>
 <div class="outline-text-2" id="text-multiple-accounts">
 <p>
 <code>telega</code> support multiple accounts, however only single account can be
@@ -2876,7 +2882,7 @@ different for different accounts.
 </div>
 
 <div id="outline-container-minor-modes" class="outline-2">
-<h2 id="minor-modes">Minor Modes</h2>
+<h2 id="minor-modes"><a class="self-link" href="#minor-modes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Minor Modes</h2>
 <div class="outline-text-2" id="text-minor-modes">
 <p>
 <code>telega</code> ships with various minor modes you might consider to use.
@@ -2884,7 +2890,7 @@ different for different accounts.
 </div>
 
 <div id="outline-container-notifications-for-incoming-messages" class="outline-3">
-<h3 id="notifications-for-incoming-messages">Notifications for incoming messages</h3>
+<h3 id="notifications-for-incoming-messages"><a class="self-link" href="#notifications-for-incoming-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Notifications for incoming messages</h3>
 <div class="outline-text-3" id="text-notifications-for-incoming-messages">
 <p>
 <code>telega.el</code> can notify you about incoming messages and calls via
@@ -2928,7 +2934,7 @@ See also <a href="#telega-alertel--notifications-using-alertel">Notifications us
 </div>
 
 <div id="outline-container-telega-mode-line-mode" class="outline-3">
-<h3 id="telega-mode-line-mode">telega-mode-line-mode</h3>
+<h3 id="telega-mode-line-mode"><a class="self-link" href="#telega-mode-line-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-mode-line-mode</h3>
 <div class="outline-text-3" id="text-telega-mode-line-mode">
 <p>
 Global minor mode to display <code>telega</code> status in modeline.
@@ -2979,7 +2985,7 @@ Default value:
 
 
 <div id="outline-container-telega-appindicator-mode" class="outline-3">
-<h3 id="telega-appindicator-mode">telega-appindicator-mode</h3>
+<h3 id="telega-appindicator-mode"><a class="self-link" href="#telega-appindicator-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-appindicator-mode</h3>
 <div class="outline-text-3" id="text-telega-appindicator-mode">
 <p>
 Global minor mode to display <code>telega</code> status in system tray.  This
@@ -3046,7 +3052,7 @@ Default value: <code>("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿
 </div>
 
 <div id="outline-container-telega-squash-message-mode" class="outline-3">
-<h3 id="telega-squash-message-mode">telega-squash-message-mode</h3>
+<h3 id="telega-squash-message-mode"><a class="self-link" href="#telega-squash-message-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-squash-message-mode</h3>
 <div class="outline-text-3" id="text-telega-squash-message-mode">
 <p>
 Minor mode for chatbuf to squash messages into single one while
@@ -3115,7 +3121,7 @@ Default value:
 
 
 <div id="outline-container-telega-image-mode" class="outline-3">
-<h3 id="telega-image-mode">telega-image-mode</h3>
+<h3 id="telega-image-mode"><a class="self-link" href="#telega-image-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-image-mode</h3>
 <div class="outline-text-3" id="text-telega-image-mode">
 <p>
 Major mode to view images in chatbuf.  Same as <code>image-mode</code>,
@@ -3136,7 +3142,7 @@ press <kbd>RET</kbd> on the message with photo.
 </div>
 
 <div id="outline-container-telega-edit-file-mode" class="outline-3">
-<h3 id="telega-edit-file-mode">telega-edit-file-mode</h3>
+<h3 id="telega-edit-file-mode"><a class="self-link" href="#telega-edit-file-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-edit-file-mode</h3>
 <div class="outline-text-3" id="text-telega-edit-file-mode">
 <p>
 Minor mode to edit files from Telegram messages.
@@ -3153,7 +3159,7 @@ with <kbd>RET</kbd>, use:
 </div>
 
 <div id="outline-container-telega-highlight-text-mode" class="outline-3">
-<h3 id="telega-highlight-text-mode">telega-highlight-text-mode</h3>
+<h3 id="telega-highlight-text-mode"><a class="self-link" href="#telega-highlight-text-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-highlight-text-mode</h3>
 <div class="outline-text-3" id="text-telega-highlight-text-mode">
 <p>
 <code>jit-lock</code> powered minor mode to highlight given regexp.
@@ -3167,7 +3173,7 @@ dynamic content.
 </div>
 
 <div id="outline-container-telega-patrons-mode" class="outline-3">
-<h3 id="telega-patrons-mode">telega-patrons-mode</h3>
+<h3 id="telega-patrons-mode"><a class="self-link" href="#telega-patrons-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-patrons-mode</h3>
 <div class="outline-text-3" id="text-telega-patrons-mode">
 <p>
 Emphasize <code>telega</code>
@@ -3198,7 +3204,7 @@ me</a>.
 </div>
 
 <div id="outline-container-contributed-packages" class="outline-2">
-<h2 id="contributed-packages">Contributed packages</h2>
+<h2 id="contributed-packages"><a class="self-link" href="#contributed-packages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Contributed packages</h2>
 <div class="outline-text-2" id="text-contributed-packages">
 <p>
 <code>contrib/</code> directory contains packages contributed to <code>telega.el</code>
@@ -3207,7 +3213,7 @@ project.
 </div>
 
 <div id="outline-container-ol-telegael--org-mode-links-to-telegram-chats-and-messages" class="outline-3">
-<h3 id="ol-telegael--org-mode-links-to-telegram-chats-and-messages"><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</h3>
+<h3 id="ol-telegael--org-mode-links-to-telegram-chats-and-messages"><a class="self-link" href="#ol-telegael--org-mode-links-to-telegram-chats-and-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>ol-telega.el</i> &#x2013; Org mode links to telegram chats and messages</h3>
 <div class="outline-text-3" id="text-ol-telegael--org-mode-links-to-telegram-chats-and-messages">
 <p>
 Installs "telega" links to Org mode.
@@ -3228,7 +3234,7 @@ Roam manner.
 </div>
 
 <div id="outline-container-telega-status-historyel--global-minore-mode-to-save-users-online-status-history" class="outline-3">
-<h3 id="telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><i>telega-status-history.el</i> &#x2013; Global minore mode to save user's online status history</h3>
+<h3 id="telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><a class="self-link" href="#telega-status-historyel--global-minore-mode-to-save-users-online-status-history"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-status-history.el</i> &#x2013; Global minore mode to save user's online status history</h3>
 <div class="outline-text-3" id="text-telega-status-historyel--global-minore-mode-to-save-users-online-status-history">
 <p>
 Saves online status history into <code>telega-status-history-logs-dir</code> directory.
@@ -3237,7 +3243,7 @@ Saves online status history into <code>telega-status-history-logs-dir</code> dir
 </div>
 
 <div id="outline-container-telega-url-shortenel--makes-urls-look-nicer" class="outline-3">
-<h3 id="telega-url-shortenel--makes-urls-look-nicer"><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</h3>
+<h3 id="telega-url-shortenel--makes-urls-look-nicer"><a class="self-link" href="#telega-url-shortenel--makes-urls-look-nicer"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-url-shorten.el</i> &#x2013; Makes urls look nicer</h3>
 <div class="outline-text-3" id="text-telega-url-shortenel--makes-urls-look-nicer">
 <p>
 Minor mode for chatbuf to show shorter version for some URLs.  For
@@ -3245,7 +3251,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgcffa7e2">
+<pre class="example" id="org6baf025">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -3323,7 +3329,7 @@ Default value: <code>all</code>
 </div>
 
 <div id="outline-container-telega-alertel--notifications-using-alertel" class="outline-3">
-<h3 id="telega-alertel--notifications-using-alertel"><i>telega-alert.el</i> &#x2013; Notifications using <code>alert.el</code></h3>
+<h3 id="telega-alertel--notifications-using-alertel"><a class="self-link" href="#telega-alertel--notifications-using-alertel"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-alert.el</i> &#x2013; Notifications using <code>alert.el</code></h3>
 <div class="outline-text-3" id="text-telega-alertel--notifications-using-alertel">
 <p>
 To enable notifications using <code>alert.el</code> use:
@@ -3342,7 +3348,7 @@ value.  You might use this to customize alert rules with
 </div>
 
 <div id="outline-container-telega-dired-dwimel--attach-files-from-dired-in-dwim-style" class="outline-3">
-<h3 id="telega-dired-dwimel--attach-files-from-dired-in-dwim-style"><i>telega-dired-dwim.el</i> &#x2013; Attach files from dired in DWIM style</h3>
+<h3 id="telega-dired-dwimel--attach-files-from-dired-in-dwim-style"><a class="self-link" href="#telega-dired-dwimel--attach-files-from-dired-in-dwim-style"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-dired-dwim.el</i> &#x2013; Attach files from dired in DWIM style</h3>
 <div class="outline-text-3" id="text-telega-dired-dwimel--attach-files-from-dired-in-dwim-style">
 <p>
 This package advises <code>dired-do-copy</code> to attach files into visible chatbuf.
@@ -3357,7 +3363,7 @@ that chatbuf.
 </div>
 
 <div id="outline-container-telega-live-locationel--manage-live-location-in-telega-using-geoel" class="outline-3">
-<h3 id="telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</h3>
+<h3 id="telega-live-locationel--manage-live-location-in-telega-using-geoel"><a class="self-link" href="#telega-live-locationel--manage-live-location-in-telega-using-geoel"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</h3>
 <div class="outline-text-3" id="text-telega-live-locationel--manage-live-location-in-telega-using-geoel">
 <p>
 Enable this mode with <kbd>M-x global-telega-live-location-mode RET</kbd>
@@ -3382,7 +3388,7 @@ location data is Telegram API ToS violation.  See 1.4 in
 </div>
 
 <div id="outline-container-telega-mnzel--display-emacs-content-inside-telega-messages" class="outline-3">
-<h3 id="telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</h3>
+<h3 id="telega-mnzel--display-emacs-content-inside-telega-messages"><a class="self-link" href="#telega-mnzel--display-emacs-content-inside-telega-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</h3>
 <div class="outline-text-3" id="text-telega-mnzel--display-emacs-content-inside-telega-messages">
 <p>
 Global minor mode to highlight code blocks inside messages.
@@ -3494,7 +3500,7 @@ Default value: <code>((display-buffer-below-selected))</code>
 </div>
 
 <div id="outline-container-telega-dashboardel--important-telega-chats-in-the-emacs-dashboard" class="outline-3">
-<h3 id="telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</h3>
+<h3 id="telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><a class="self-link" href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</h3>
 <div class="outline-text-3" id="text-telega-dashboardel--important-telega-chats-in-the-emacs-dashboard">
 <p>
 Display important telega chats in the Emacs dashboard.  Enable it with:
@@ -3548,7 +3554,7 @@ Default value: <code>telega-ins--chat-full</code>
 </div>
 
 <div id="outline-container-telega-storiesel--display-emacs-stories-in-the-dashboard" class="outline-3">
-<h3 id="telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
+<h3 id="telega-storiesel--display-emacs-stories-in-the-dashboard"><a class="self-link" href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
 <div class="outline-text-3" id="text-telega-storiesel--display-emacs-stories-in-the-dashboard">
 <p>
 Emacs Stories: share your Emacs experience with other Emacs users.
@@ -3672,11 +3678,6 @@ Default value: <code>t</code>
 </div>
 </div>
 </div>
-</div>
-<div id="postamble" class="status">
-<p class="author">Author: Zajcev Evgeny</p>
-<p class="date">Created: 2021-01-29 Пт 00:24</p>
-<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
 </html>

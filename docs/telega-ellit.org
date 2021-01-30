@@ -261,8 +261,8 @@ Emacs instance has no frames, frames are created when needed and
 connects to the daemon process.
 
 =telega= autodetects values for some variables at start by examining
-current frame parameters and window system posibilites.  This won't
-work in daemon mode.  You need to explicitely specify values for that
+current frame parameters and window system possibilities.  This won't
+work in daemon mode.  You need to explicitly specify values for that
 variables.  Most notable options are:
 - {{{user-option(telega-use-images, 2)}}}
 - {{{user-option(telega-emoji-font-family, 2)}}}

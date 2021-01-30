@@ -9,11 +9,20 @@
 #+HTML_HEAD: <style>code {vertical-align:middle;font-size: 90%;}</style>
 #+HTML_HEAD: <style>kbd {margin: 0px 0.1em; padding: 0.1em 0.5em; border-radius: 3px; border: 1px solid rgb(204, 204, 204); color: rgb(51, 51, 51); line-height: 1.0; vertical-align: middle; display: inline-block; box-shadow: 0px 1px 0px rgba(0,0,0,0.2), inset 0px 0px 0px 2px #ffffff; background-color: rgb(247, 247, 247); -moz-box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2), 0 0 0 2px #ffffff inset; -webkit-box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2), 0 0 0 2px #ffffff inset; -moz-border-radius: 3px; -webkit-border-radius: 3px; text-shadow: 0 1px 0 #fff;}</style>
 #+HTML_HEAD: <style>p{font-size:16px; line-height:24px; margin:6px 0px 6px 0px;}</style>
+#+HTML_HEAD: <style>img#toc-logo {height: 1.25em; vertical-align: top;}</style>
+
+#+HTML_HEAD: <style>.self-link {float: left; padding-right: 4px; margin-left: -20px; line-height: 1;}</style>
+#+HTML_HEAD: <style>.octicon-link {vertical-align: middle; visibility: hidden;}</style>
+#+HTML_HEAD: <style>h1:hover .octicon-link, h2:hover .octicon-link, h3:hover .octicon-link, h4:hover .octicon-link, h5:hover .octicon-link, h6:hover .octicon-link { visibility: visible; }</style>
+#+HTML_HEAD: <style>.octicon {display: inline-block; fill: currentColor;}</style>
+
+#+HTML_HEAD: <style>#links-panel {float: right;} </style>
+#+HTML_HEAD: <style>#links-panel img {height: 0.75em; margin: 2px;}</style>
 #+HTML_HEAD: <link rel="icon" href="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg">
 
-#+HTML: <p align="center"><img src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo64.png"/></p>
+#+HTML: <h1 class="title"><img src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual<div id="links-panel"><a href="https://github.com/zevlg/telega.el/"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/github.svg"/></a><a href="https://t.me/emacs_telega"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/telegram.svg"/></a><a href="https://opencollective.com/telega"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/opencollective.svg"/></a></h1>
 
 #+EXCLUDE_TAGS: nohtmlexport
 #+INCLUDE: telega-manual.org
 
-#+OPTIONS: timestamp:t \n:nil
+#+OPTIONS: timestamp:t \n:nil title:nil
