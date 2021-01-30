@@ -458,7 +458,8 @@ plist like:
 
 ** Tramp-alike files opening from Telegram cloud                  :important:
 
-  See ~file-name-handler-alist~
+  - See ~file-name-handler-alist~
+  - See ~url-handler-mode~
 
   Specify it as part of interal =telega= link, like:
   ~/telega:@zevlg#167430~

@@ -374,7 +374,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                 (telega-ins (propertize telega-symbol-square
                                         'face (nth kk efaces))))))
           (telega-ins "\n")
-          (dotimes (ki (length ekey))
+
+          ;; NOTE: TDLib docs: Alternatively, the first 32 bytes of
+          ;; the hash can be converted to the hexadecimal format and
+          ;; printed as 32 2-digit hex numbers
+          (cl-assert (<= 32 (length ekey)))
+          (dotimes (ki 32)
             (cond ((and (> ki 0) (= (% ki 8) 0))
                    (telega-ins "\n"))
                   ((= (% ki 8) 4)

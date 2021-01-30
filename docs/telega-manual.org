@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.14)
+#+TITLE: Telega Manual (v0.7.15)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
