@@ -67,6 +67,8 @@ Example: 23 y.o. designer from San Francisco")
 
  ("lng_scam_badge"
   :value "SCAM")
+ ("lng_fake_badge"
+  :value "FAKE")
  ("lng_owner_badge"
   :value "owner")
  ("lng_admin_badge"

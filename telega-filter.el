@@ -1176,6 +1176,15 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
     (and (> muted-for 0)
          (< muted-for telega-mute-for-ever))))
 
+;;; ellit-org: chat-filters
+;; - fake-or-scam ::
+;;   {{{fundoc(telega--filter-fake-or-scam, 2)}}}
+(define-telega-filter fake-or-scam (chat)
+  "Matches if chat is fake or scam user or group."
+  (let ((info (telega-chat--info chat)))
+    (or (plist-get info :is_scam)
+        (plist-get info :is_fake))))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here

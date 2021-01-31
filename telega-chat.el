@@ -4100,7 +4100,7 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
 If called interactively then copy generated link into the kill ring."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
 
-  (let ((link (telega--generateChatInviteLink chat)))
+  (let ((link (telega--replacePermanentChatInviteLink chat)))
     (when (called-interactively-p 'interactive)
       (kill-new link)
       (message "Invite link: %s (copied into kill ring)" link))

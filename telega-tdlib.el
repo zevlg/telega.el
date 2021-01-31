@@ -321,13 +321,13 @@ If message is not found, then return `nil'."
           :for_comment (if for-comment-p t :false)))
    :link))
 
-(defun telega--generateChatInviteLink (chat)
-  "Generate a new invite link for a CHAT.
+(defun telega--replacePermanentChatInviteLink (chat)
+  "Generate a new permament invite link for a CHAT.
 Available for basic groups, supergroups, and channels.
 Return generated link as string."
   (plist-get
    (telega-server--call
-    (list :@type "generateChatInviteLink"
+    (list :@type "replacePermanentChatInviteLink"
           :chat_id (plist-get chat :id)))
    :invite_link))
 
@@ -639,28 +639,28 @@ Photo and Video files have attached sticker sets."
          :chat_id (plist-get message :chat_id)
          :message_ids (vector (plist-get message :id)))))
 
-(defun telega--deleteChatReplyMarkup (chat-id msg-id)
+(defun telega--deleteChatReplyMarkup (message)
   "Deletes the default reply markup from a chat.
 Must be called after a one-time keyboard or a ForceReply reply
 markup has been used."
   (telega-server--send
    (list :@type "deleteChatReplyMarkup"
-         :chat_id chat-id
-         :message_id msg-id)))
+         :chat_id (plist-get message :chat_id)
+         :message_id (plist-get message :id))))
 
-(defun telega--searchChatMembers (chat query &optional filter limit as-member-p)
+(cl-defun telega--searchChatMembers (chat query &optional members-filter
+                                          &key limit as-member-p)
   "Search CHAT members by QUERY.
-FILTER is one \"Administrators\", \"Members\", \"Restricted\",
-\"Banned\", \"Bots\", default is \"Members\".
+MEMBERS-FILTER is TDLib's \"ChatMembersFilter\".
 LIMIT by default is 50.
-If AS-MEMBER-P, then return \"chatMember\" structs instead of users."
+If AS-MEMBER-P is non-nil, then return \"chatMember\" structs instead of users."
   (let ((reply (telega-server--call
-                (list :@type "searchChatMembers"
-                      :chat_id (plist-get chat :id)
-                      :query query
-                      :limit (or limit 50)
-                      :filter (list :@type (concat "chatMembersFilter"
-                                                   (or filter "Members")))))))
+                (nconc (list :@type "searchChatMembers"
+                             :chat_id (plist-get chat :id)
+                             :query query
+                             :limit (or limit 50))
+                       (when members-filter
+                         (list :filter members-filter))))))
     (mapcar (if as-member-p
                 #'identity
               (lambda (member)

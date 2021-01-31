@@ -1536,8 +1536,7 @@ has `replyMarkupShowKeyboard' type."
                 (telega-ins--keyboard-button kbd-button msg forced-width
                   (when (plist-get reply-markup :one_time)
                     (lambda (_kbdbutton _kbdmsg)
-                      (telega--deleteChatReplyMarkup
-                       (plist-get msg :chat_id) (plist-get msg :id)))))
+                      (telega--deleteChatReplyMarkup msg))))
                 (telega-ins " ")))
             (when (setq rows (cdr rows))
               (telega-ins "\n"))))

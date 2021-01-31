@@ -156,8 +156,16 @@ Matches only if CHAR does not apper in the middle of the word."
     (require-match 'never)
     (candidates
      (cl-assert (> (length arg) 0))
-     (let ((members (telega--searchChatMembers
-                     telega-chatbuf--chat (substring arg 1))))
+     (let ((members
+            (telega--searchChatMembers
+             telega-chatbuf--chat (substring arg 1)
+             ;; NOTE: not using "chatMembersFilterMention"
+             ;; see https://github.com/tdlib/td/issues/1393
+             ;; (list :@type "chatMembersFilterMention"
+             ;;       :message_thread_id (or (plist-get telega-chatbuf--thread-msg
+             ;;                                         :message_thread_id)
+             ;;                              0))
+             )))
        (nconc (delq nil
                     (mapcar (lambda (member)
                               (propertize
@@ -246,7 +254,9 @@ Matches only if CHAR does not apper in the middle of the word."
 
       ;; Ordinary chat
       (let ((bots (telega--searchChatMembers
-                   telega-chatbuf--chat "" "Bots" nil t)))
+                   telega-chatbuf--chat ""
+                   (list :@type "chatMembersFilterBots")
+                   :as-member-p t)))
         (apply #'append
                (mapcar (lambda (bot-member)
                          (let ((bot-user (telega-user-get
