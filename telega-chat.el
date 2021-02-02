@@ -459,6 +459,21 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
           (with-telega-chatbuf chat
             (telega-chatbuf--modeline-update)))))))
 
+(defun telega-chatbuf--voice-chat-fetch ()
+  "Asynchronously fetch voice chat state for the chatbuf."
+  (let* ((chat telega-chatbuf--chat)
+         (group-call-id (plist-get chat :voice_chat_group_call_id)))
+    (if (zerop group-call-id)
+        (progn
+          (setq telega-chatbuf--group-call nil)
+          (telega-chatbuf--footer-update))
+
+      (telega--getGroupCall group-call-id
+        (lambda (group-call)
+          (with-telega-chatbuf chat
+            (setq telega-chatbuf--group-call group-call)
+            (telega-chatbuf--footer-update)))))))
+
 (defun telega-chats-top (category)
   "Return list of top chats used by CATEGORY.
 CATEGORY is one of `Users', `Bots', `Groups', `Channels',
@@ -1502,7 +1517,10 @@ Global chat bindings:
         telega-chatbuf--inline-query nil
         telega-chatbuf--voice-msg nil
         telega-chatbuf--my-action nil
-        telega-chatbuf--administrators nil)
+        telega-chatbuf--administrators nil
+        telega-chatbuf--group-call nil
+        telega-chatbuf--group-call-users nil
+        )
 
   ;; Make usernames with "_" be completable
   (modify-syntax-entry ?\_ "w" telega-chat-mode-syntax-table)

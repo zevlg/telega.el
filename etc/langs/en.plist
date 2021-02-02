@@ -411,6 +411,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "This admin will be able to add new admins with the same (or more limited) permissions.")
  ("lng_rights_about_admin_cant_edit"
   :value "You cannot edit the rights of this admin.") ; :can_be_edited
+ ("lng_rights_group_manage_calls"
+  :value "Manage voice chats")
  ("lng_rights_group_anonymous"
   :value "Remain Anonymous")
  ("lng_rights_edit_admin"
@@ -613,4 +615,21 @@ Example: 23 y.o. designer from San Francisco")
   :value "No unread stories")
  ("telega_stories_featured"
   :value "Featured")
+
+ ;; Group chats
+ ("lng_action_group_call_started"
+  :value "{from} started {chat}")
+ ("lng_action_group_call_started_chat"
+  :value "a voice chat")
+ ("lng_action_group_call_finished"
+  :value "Voice chat finished ({duration})")
+ ("lng_group_call_invite_done_user"
+  :value "You invited {user} to the voice chat.")
+ ("lng_group_call_invite_done_many"
+  :one_value "You invited **{count} member** to the voice chat."
+  :other_value "You invited **{count} members** to the voice chat.")
+ ("lng_action_invite_users_many"
+  :value "{from} invited {users} to {chat}")
+ ("lng_action_invite_user_chat"
+  :value "the voice chat")
  )

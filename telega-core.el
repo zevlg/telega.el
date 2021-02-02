@@ -72,6 +72,7 @@
     (:can_pin_messages . "lng_rights_group_pin")
     (:can_restrict_members . "telega_rights_restrict_members")
     (:can_promote_members . "telega_rights_promote_members")
+    (:can_manage_voice_chats . "lng_rights_group_manage_calls")
     (:is_anonymous . "lng_rights_group_anonymous")))
 
 (defconst telega-notification-scope-types
@@ -264,6 +265,14 @@ Actual value is `:@extra` value of the call to inline bot.")
   "List of administrators in chatbuf chat.
 Asynchronously loaded when chatbuf is created.")
 (make-variable-buffer-local 'telega-chatbuf--administrators)
+
+(defvar telega-chatbuf--group-call nil
+  "Asynchronously loaded group voice call for the chatbuf.")
+(make-variable-buffer-local 'telega-chatbuf--group-call)
+
+(defvar telega-chatbuf--group-call-users nil
+  "List of group call participants.")
+(make-variable-buffer-local 'telega-chatbuf--group-call-users)
 
 (defvar telega-chatbuf--fetch-alist nil
   "Alist of async requests (fetches) to the telega-server.

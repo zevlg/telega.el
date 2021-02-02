@@ -68,6 +68,7 @@
 
 (defun telega-button--endings-func (label)
   "Function to generate endings for the button with LABEL."
+  ;; NOTE: " " is arguable, incorrect rendering for @chessy_bot
   (if (member label (list " " "  " "✕" telega-symbol-heavy-checkmark))
       (cons "" "")
 
@@ -819,7 +820,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (expires-in (plist-get content :expires_in)))
     (unless (or (zerop live-period) (zerop expires-in))
       (telega-ins " " (propertize "Live" 'face 'shadow))
-      (let* ((current-ts (truncate (float-time)))
+      (let* ((current-ts (telega-time-seconds))
              (since (if (zerop (plist-get msg :edit_date))
                         (plist-get msg :date)
                       (plist-get msg :edit_date)))
@@ -1223,6 +1224,9 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messagePinMessage 'messageScreenshotTaken
               'messageGameScore
               'messageProximityAlertTriggered
+              'messageVoiceChatStarted
+              'messageVoiceChatEnded
+              'messageInviteVoiceChatParticipants
               'telegaInternal)))
 
 (defun telega-ins--special (msg)
@@ -1380,6 +1384,24 @@ Special messages are determined with `telega-msg-special-p'."
                                   (/ (float distance) 1000)
                                 distance)))
          ))
+      (messageVoiceChatStarted
+       (telega-ins-i18n "lng_action_group_call_started"
+               :from sender-name
+               :chat (telega-i18n "lng_action_group_call_started_chat")))
+      (messageVoiceChatEnded
+       (telega-ins-i18n "lng_action_group_call_finished"
+               :duration (telega-duration-human-readable
+                          (plist-get content :duration))))
+      (messageInviteVoiceChatParticipants
+       (telega-ins-i18n "lng_action_invite_users_many"
+         :from sender-name
+         :users (mapconcat (lambda (user)
+                             (propertize (telega-user-title user 'name)
+                                         'face 'bold))
+                           (mapcar #'telega-user-get
+                                   (plist-get content :user_ids))
+                           ", ")
+         :chat (telega-i18n "lng_action_invite_user_chat")))
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
 
@@ -1615,7 +1637,8 @@ performance."
                 :action #'telega-msg-open-thread
                 :help-echo "Open comments in discussion group"))
           (when (> reply-count 0)
-            (telega-ins--button (format "%s%d" telega-symbol-reply reply-count)
+            (telega-ins--button
+                (format "%s%d" (telega-symbol 'reply) reply-count)
               'face 'telega-link
               :action #'telega-msg-open-thread
               :help-echo "Show message thread")))))
@@ -2417,6 +2440,10 @@ Return t."
     (telega-ins (or (cadr brackets) "]"))
     (when (plist-get (telega-chat-position chat) :is_pinned)
       (telega-ins (telega-symbol 'pin)))
+    (when (telega-chat-match-p chat 'has-voice-chat)
+      (telega-ins (telega-symbol (if (plist-get chat :is_voice_chat_empty)
+                                     'voice-chat-passive
+                                   'voice-chat-active))))
     (when (plist-get chat :has_scheduled_messages)
       (telega-ins (telega-symbol 'alarm)))
     (when custom-order

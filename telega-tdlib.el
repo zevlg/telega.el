@@ -1876,6 +1876,46 @@ If OPTION-IDS is not specified, then retract the voice."
           :only_missed (if only-missed-p t :false))
     callback))
 
+;; 
+(defun telega--getGroupCall (group-call-id &optional callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getGroupCall"
+         :group_call_id group-call-id)))
+
+(defun telega--loadGroupCallParticipants (group-call &optional limit)
+  ;; TDLib: The group call must be previously received through
+  ;; getGroupCall and must be joined or being joined
+  (telega-server--send
+   (list :@type "loadGroupCallParticipants"
+         :group_call_id (plist-get group-call :id)
+         :limit (or limit 100))))
+
+(defun telega--createVoiceChat (chat &optional callback)
+  "Create a voice chat (a group call bound to a chat).
+Available only for basic groups and supergroups.
+Return an ID of group call."
+  (with-telega-server-reply (reply)
+      (plist-get reply :id)
+
+    (list :@type "createVoiceChat"
+          :chat_id (plist-get chat :id))
+    callback))
+
+(defun telega--leaveGroupCall (group-call)
+  "Leave a GROUP-CALL."
+  (telega-server--send
+   (list :@type "leaveGroupCall"
+         :group_call_id (plist-get group-call :id)))
+  )
+
+(defun telega--discardGroupCall (group-call)
+  "Discard a GROUP-CALL."
+  (telega-server--send
+   (list :@type "discardGroupCall"
+         :group_call_id (plist-get group-call :id)))
+  )
+
 (provide 'telega-tdlib)
 
 ;;; telega-tdlib.el ends here

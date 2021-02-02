@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.15)
+#+TITLE: Telega Manual (v0.7.16)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -177,7 +177,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.0.
+version greater or equal to 1.7.1.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -1161,6 +1161,14 @@ For other Chat Filter bindings see below.
 
 - temporary-muted :: 
      Matches if ~CHAT~ is temporary muted.
+
+- fake-or-scam :: 
+     Matches if chat is fake or scam user or group.
+
+- (has-voice-chat [ ~NON-EMPTY~ ]) :: 
+     Matches if chat contains a live voice chat.
+     If non-nil ~NON-EMPTY~ is specified, then match only if voice chat is
+     not empty.
 
 ** Customizable options making use of Chat Filters
 :PROPERTIES:

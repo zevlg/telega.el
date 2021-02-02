@@ -1185,6 +1185,26 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
     (or (plist-get info :is_scam)
         (plist-get info :is_fake))))
 
+;;; ellit-org: chat-filters
+;; - (has-voice-chat [ ~NON-EMPTY~ ]) ::
+;;   {{{fundoc(telega--filter-has-voice-chat, 2)}}}
+(define-telega-filter has-voice-chat (chat &optional non-empty)
+  "Matches if chat contains a live voice chat.
+If non-nil NON-EMPTY is specified, then match only if voice chat is
+not empty."
+  (and (not (zerop (plist-get chat :voice_chat_group_call_id)))
+       (or (null non-empty)
+           (not (plist-get chat :is_voice_chat_empty)))))
+
+(defun telega-filter-by-has-voice-chat (non-empty)
+  "Filter chats with started voice chat.
+If NON-EMPTY is non-nil, then keep only non-empty voice chats."
+  (interactive
+   (list (y-or-n-p "Only non-empty voice chats? ")))
+  (telega-filter-add (if non-empty
+                         '(has-voice-chat with-users)
+                       'has-voice-chat)))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here
