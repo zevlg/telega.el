@@ -35,6 +35,7 @@
 (require 'telega-util)
 (require 'telega-tme)
 
+(declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
@@ -66,6 +67,16 @@
                   :help "Unmark the message"
                   :visible (telega-msg-marked-p (telega-msg-at-down-mouse-3))))
     (bindings--define-key menu-map [s0] menu-bar-separator)
+    (bindings--define-key menu-map [add-favorite]
+      '(menu-item "Add to Favorites" telega-msg-favorite-toggle
+                  :help "Add message to the list of favorite messages"
+                  :visible (not (telega-msg-favorite-p
+                                 (telega-msg-at-down-mouse-3)))))
+    (bindings--define-key menu-map [rm-favorite]
+      '(menu-item "Remove from Favorites" telega-msg-favorite-toggle
+                  :help "Remove message from the list of favorite messages"
+                  :visible (telega-msg-favorite-p (telega-msg-at-down-mouse-3))))
+
     (bindings--define-key menu-map [save]
       '(menu-item "Save" telega-msg-save
                   :help "Save message's media to a file"))
@@ -161,6 +172,8 @@
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "^") 'telega-msg-pin-toggle)
     (define-key map (kbd "DEL") 'telega-msg-delete-marked-or-at-point)
+
+    (define-key map (kbd "*") 'telega-msg-favorite-toggle)
 
     ;; Menu for right mouse on a message
     (define-key map [down-mouse-3] telega-msg-button-menu-map)
@@ -892,6 +905,26 @@ For interactive use only."
                                        (telega-i18n "lng_pinned_notify")
                                        "? ")))))
       (telega--pinChatMessage msg (not notify) for-self-only))))
+
+(defun telega-msg-favorite-p (msg)
+  "Return non-nil if MSG is favorite in the chat."
+  (memq (plist-get msg :id)
+        (telega-chat-uaprop (telega-msg-chat msg) :telega-favorite-ids)))
+
+(defun telega-msg-favorite-toggle (msg)
+  "Toggle MSG being favorite in the chat."
+  (interactive (list (telega-msg-for-interactive)))
+  (let* ((msg-id (plist-get msg :id))
+         (chat (telega-msg-chat msg))
+         (fav-ids (telega-chat-uaprop chat :telega-favorite-ids)))
+    (if (memq msg-id fav-ids)
+        (setf (telega-chat-uaprop chat :telega-favorite-ids)
+              (delq msg-id fav-ids))
+      (setf (telega-chat-uaprop chat :telega-favorite-ids)
+            (sort (cons msg-id fav-ids) #'>)))
+    
+    (telega-msg-redisplay msg)
+    (telega-root-view--update :on-message-update msg)))
 
 (defun telega-msg--content-file (msg)
   "For message MSG return its content file as TDLib object."

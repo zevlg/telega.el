@@ -311,7 +311,8 @@ plist like:
 
    **DANGEROUS** might cause account blocks, WON'T PUBLISH the code
 
-** Favorite Messages
+** DONE Favorite Messages
+   CLOSED: [2021-02-08 Пн 05:22]
 
    Ability to mark some message as favorite.  Emphasize favorite
    message with some symbol like ★ (see [[https://github.com/zevlg/telega.el/issues/139][telega#139]])
@@ -334,6 +335,8 @@ plist like:
    complex.  And making functionality such as outlining message as
    favorite much much more complex.  So maybe former approach is not
    so bad.
+
+   **DONE** by storing favorite messages ids in the chat's uaprops.
 
 ** Mark all chatbuf as readonly, keeping input area as ~inhibit-read-only~
 

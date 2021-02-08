@@ -254,6 +254,10 @@ Rest elements are ewoc specs.")
     ;; - {{{where-is(telega-view-deleted-chats,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-deleted-chats, 2)}}}
     (define-key map (kbd "v d") 'telega-view-deleted-chats)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-favorite-messages, 2)}}}
+    (define-key map (kbd "v *") 'telega-view-favorite-messages)
 
     map)
   "The key map for telega root buffer.")
@@ -743,34 +747,37 @@ If corresponding chat node does not exists in EWOC, then create new one."
       (telega--searchCallMessages last-msg nil only-missed-p
         #'telega-root--call-messages-add))))
 
-(defun telega-root--messages-add0 (messages search-func)
-  "Add MESSAGES to the \"messages\" ewoc."
-  (telega-root-view--ewoc-loading-done "messages" messages)
+(defun telega-root--messages-add0 (ewoc-name search-func messages)
+  "Add MESSAGES to the EWOC-NAME ewoc."
+  (telega-root-view--ewoc-loading-done ewoc-name messages)
 
   ;; If none of the messages is visible (according to active
   ;; filters) and last-msg is available, then fetch more messages
   ;; automatically.
   ;; Otherwise, when at least one message is display, show
   ;; "Load More" button
-  (when-let ((last-msg (car (last messages))))
-    (with-telega-root-view-ewoc "messages" ewoc
-      (if (telega-ewoc--empty-p ewoc)
-          ;; no nodes visible, fetch next automatically
-          (funcall search-func last-msg)
+  (when search-func
+    (when-let ((last-msg (car (last messages))))
+      (with-telega-root-view-ewoc ewoc-name ewoc
+        (if (telega-ewoc--empty-p ewoc)
+            ;; no nodes visible, fetch next automatically
+            (funcall search-func last-msg)
 
-        (telega-save-cursor
-          (telega-ewoc--set-footer
-           ewoc (telega-ins--as-string
-                 (telega-ins--button "Load More"
-                   :value last-msg
-                   :action search-func)))))
-      )))
+          (telega-save-cursor
+            (telega-ewoc--set-footer
+             ewoc (telega-ins--as-string
+                   (telega-ins--button "Load More"
+                     :value last-msg
+                     :action search-func)))))
+        ))))
 
 (defun telega-root--messages-add (messages)
-  (telega-root--messages-add0 messages #'telega-root--messages-search))
+  (telega-root--messages-add0
+   "messages" #'telega-root--messages-search messages))
 
 (defun telega-root--call-messages-add (messages)
-  (telega-root--messages-add0 messages #'telega-root--call-messages-search))
+  (telega-root--messages-add0
+   "messages" #'telega-root--call-messages-search messages))
 
 
 ;;; Emacs runtime environment for telega
@@ -1699,6 +1706,43 @@ state kinds to show. By default all kinds are shown."
    (nconc (list 'telega-view-loading-files
                 (telega-i18n "telega_view_files"))
           (mapcar #'telega-view-files--ewoc-spec kinds))))
+
+
+;; Favorite messages
+(defun telega-ins--favorite-message (msg)
+  "Inserter for favorite MSG in \"Favorite Messages\" root view."
+  ;; TODO: implement 2-lines message inserter
+  (telega-ins "  ")
+  (telega-ins--chat-msg-one-line
+   (telega-msg-chat msg) msg (- telega-root-fill-column 2)))
+
+(defun telega-root--favorite-message-pp (msg)
+  "Pretty printer for favorite message MSG."
+  (when (telega-msg-favorite-p msg)
+    (telega-root--message-pp msg #'telega-ins--favorite-message)))
+
+(defun telega-view-favorite-msg--ewoc-spec (chat)
+  "Create ewoc for favorite messages in the CHAT."
+  (let ((ewoc-name (symbol-name (gensym "fav-ewoc"))))
+    (list :name ewoc-name
+          :header (telega-ins--as-string (telega-ins--chat chat))
+          :pretty-printer #'telega-root--favorite-message-pp
+          :loading (telega--getMessages (plist-get chat :id)
+                       (telega-chat-uaprop chat :telega-favorite-ids)
+                     (apply-partially #'telega-root--messages-add0
+                                      ewoc-name nil))
+          :sorter #'telega-root--messages-sorter
+          :on-message-update #'telega-root--on-message-update)))
+
+(defun telega-view-favorite-messages ()
+  "View favorite messages in all the chats."
+  (interactive)
+  (telega-root-view--apply
+   (nconc (list 'telega-view-favorite-messages
+                (concat (telega-symbol 'favorite) "Favorite Messages"))
+          (mapcar #'telega-view-favorite-msg--ewoc-spec
+                  (telega-filter-chats
+                   telega--ordered-chats 'has-favorite-messages)))))
 
 (provide 'telega-root)
 

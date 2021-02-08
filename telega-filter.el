@@ -1176,6 +1176,13 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
     (and (> muted-for 0)
          (< muted-for telega-mute-for-ever))))
 
+;;; ellit-org: chat-filters
+;; - has-favorite-messages ::
+;;   {{{fundoc(telega--filter-has-favorite-messages, 2)}}}
+(define-telega-filter has-favorite-messages (chat)
+  "Matches if chat has favorite messages."
+  (telega-chat-uaprop chat :telega-favorite-ids))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here

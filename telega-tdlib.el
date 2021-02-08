@@ -308,7 +308,18 @@ If message is not found, then return `nil'."
     (list :@type "getMessage"
           :chat_id chat-id
           :message_id msg-id)
-     callback))
+    callback))
+
+(defun telega--getMessages (chat-id message-ids &optional callback)
+  "Get messages by CHAT-ID and MESSAGE-IDS."
+  (declare (indent 2))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "getMessages"
+          :chat_id chat-id
+          :message_ids (apply #'vector message-ids))
+    callback))
 
 (defun telega--getMessageLink (msg &optional for-album-p for-comment-p)
   "Get https link for message MSG in a supergroup or a channel."
