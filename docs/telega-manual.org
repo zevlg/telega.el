@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.16)
+#+TITLE: Telega Manual (v0.7.17)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -60,6 +60,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#filtering-chat-messages-aka-shared-media][Filtering chat messages a.k.a. Shared Media]]
     - [[#opening-files-using-external-programs][Opening files using external programs]]
     - [[#client-side-messages-ignoring][Client side messages ignoring]]
+    - [[#favorite-messages][Favorite messages]]
   - [[#multiple-accounts][Multiple accounts]]
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
@@ -812,6 +813,9 @@ view.
 - @@html:<kbd>@@v d@@html:</kbd>@@ (~telega-view-deleted-chats~) :: 
      View recently deleted chats.
 
+- @@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) :: 
+     View favorite messages in all the chats.
+
 Important customizable options:
 - User Option: ~telega-root-default-view-function~ 
 
@@ -1170,6 +1174,9 @@ For other Chat Filter bindings see below.
      If non-nil ~NON-EMPTY~ is specified, then match only if voice chat is
      not empty.
 
+- has-favorite-messages :: 
+     Matches if chat has favorite messages.
+
 ** Customizable options making use of Chat Filters
 :PROPERTIES:
 :CUSTOM_ID: customizable-options-making-use-of-chat-filters
@@ -1403,6 +1410,9 @@ messages:
 
 - @@html:<kbd>@@M-g x@@html:</kbd>@@ (~telega-chatbuf-goto-pop-message~) :: 
      Pop message from ~telega-chatbuf--messages-pop-ring~ and goto it.
+
+- @@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-next-favorite~) :: 
+     Goto next favorite message.
 
 ** Sending ordinary messages
 :PROPERTIES:
@@ -1916,6 +1926,30 @@ Or to ignore messages from blocked senders (users or chats), just add:
 
 To view recently ignored messages use
 ~M-x telega-ignored-messages RET~ command.
+
+** Favorite messages                                                    :new:
+:PROPERTIES:
+:CUSTOM_ID: favorite-messages
+:END:
+
+Any message in any chat can be marked with as /favorite/.  Favorite
+messages are labeled with:
+- User Option: ~telega-symbol-favorite~ 
+
+  Symbol to use for favorite messages, bookmarks. 
+
+  Default value: ~"🔖"~
+
+To toggle message at point being favorite, press
+@@html:<kbd>@@*@@html:</kbd>@@ (~telega-msg-favorite-toggle~).
+
+To jump to next favorite message in the chat buffer press
+@@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-next-favorite~).
+
+To view all favorite messages in all chats, enable "Favorite Messages"
+Root View, by pressing
+@@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) in
+the [[#root-buffer][root buffer]].
 
 * Multiple accounts
 :PROPERTIES:

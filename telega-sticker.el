@@ -189,7 +189,7 @@ CALLBACK is called without arguments"
                        (vectorPathCommandLine
                         (plist-get tl-cmd1 :end_point))))
          (svg-path-commands
-          (mapconcat 
+          (mapconcat
            (lambda (path-cmd)
              (cl-ecase (telega--tl-type path-cmd)
                (vectorPathCommandCubicBezierCurve
@@ -703,6 +703,15 @@ Return sticker set."
     (telega-stickerset-choose
      (telega-stickerset-completing-read
       "Trending sticker set: " sticker-sets))))
+
+(defun telega-sticker--animated-info (sticker-file)
+  "Return meta info about animated STICKER-FILE."
+  (cl-assert (telega-file--downloaded-p sticker-file))
+
+  (shell-command-to-string
+   (format "gunzip -c '%s' | tgs2png -i -"
+           (telega--tl-get sticker-file :local :path)))
+  )
 
 
 ;;; Animations

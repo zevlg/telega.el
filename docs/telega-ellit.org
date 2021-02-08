@@ -828,6 +828,23 @@ Or to ignore messages from blocked senders (users or chats), just add:
 To view recently ignored messages use
 ~M-x telega-ignored-messages RET~ command.
 
+** Favorite messages                                                    :new:
+
+Any message in any chat can be marked with as /favorite/.  Favorite
+messages are labeled with:
+- {{{user-option(telega-symbol-favorite, 2)}}}
+
+To toggle message at point being favorite, press
+{{{where-is(telega-msg-favorite-toggle,telega-msg-button-map)}}}.
+
+To jump to next favorite message in the chat buffer press
+{{{where-is(telega-chatbuf-next-favorite,telega-chat-mode-map)}}}.
+
+To view all favorite messages in all chats, enable "Favorite Messages"
+Root View, by pressing
+{{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} in
+the [[#root-buffer][root buffer]].
+
 * Multiple accounts
 
 =telega= support multiple accounts, however only single account can be

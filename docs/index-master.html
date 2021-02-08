@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-02-02 Вт 14:44 -->
+<!-- 2021-02-08 Пн 05:43 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.16)</title>
+<title>Telega Manual (v0.7.17)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.16)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.17)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -294,6 +294,7 @@
 <li><a href="#filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</a></li>
 <li><a href="#opening-files-using-external-programs">Opening files using external programs</a></li>
 <li><a href="#client-side-messages-ignoring">Client side messages ignoring</a></li>
+<li><a href="#favorite-messages">Favorite messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
 <li><a href="#multiple-accounts">Multiple accounts</a></li>
@@ -877,7 +878,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org646408c">
+<pre class="example" id="orgc0f250f">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -895,7 +896,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="orge585036">
+<pre class="example" id="orga4cc924">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -925,7 +926,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org6ab736d">
+<pre class="example" id="org0b083ad">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1020,7 +1021,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgf68c09c">
+<pre class="example" id="orgb0bc87b">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1372,6 +1373,8 @@ If <kbd>C-u</kbd> is given, then view missed calls only.</dd>
 <dt><kbd>v f</kbd> (<code>telega-view-folders</code>)</dt><dd>View Telegram folders.</dd>
 
 <dt><kbd>v d</kbd> (<code>telega-view-deleted-chats</code>)</dt><dd>View recently deleted chats.</dd>
+
+<dt><kbd>v *</kbd> (<code>telega-view-favorite-messages</code>)</dt><dd>View favorite messages in all the chats.</dd>
 </dl>
 
 <p>
@@ -1770,6 +1773,8 @@ Available since TDLib 1.6.9
 <dt>(has-voice-chat [ <code>NON-EMPTY</code> ])</dt><dd>Matches if chat contains a live voice chat.
 If non-nil <code>NON-EMPTY</code> is specified, then match only if voice chat is
 not empty.</dd>
+
+<dt>has-favorite-messages</dt><dd>Matches if chat has favorite messages.</dd>
 </dl>
 </div>
 </div>
@@ -1892,7 +1897,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org5d0d8fe">
+<pre class="example" id="org6b66fc1">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2069,7 +2074,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgcde60cb">
+<pre class="example" id="org5c1e8ba">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2103,6 +2108,8 @@ button.</dd>
 <dt><kbd>M-g ^</kbd>, <kbd>M-g P</kbd> (<code>telega-chatbuf-goto-pinned-message</code>)</dt><dd>Goto next pinned message for the chatbuffer.</dd>
 
 <dt><kbd>M-g x</kbd> (<code>telega-chatbuf-goto-pop-message</code>)</dt><dd>Pop message from <code>telega-chatbuf--messages-pop-ring</code> and goto it.</dd>
+
+<dt><kbd>M-g *</kbd> (<code>telega-chatbuf-next-favorite</code>)</dt><dd>Goto next favorite message.</dd>
 </dl>
 </div>
 </div>
@@ -2138,7 +2145,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org57d1ed4">
+<pre class="example" id="org722da8d">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2360,7 +2367,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org7e6a4a1">
+<pre class="example" id="org6e7fa79">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2834,6 +2841,46 @@ To view recently ignored messages use
 </p>
 </div>
 </div>
+
+<div id="outline-container-favorite-messages" class="outline-3">
+<h3 id="favorite-messages"><a class="self-link" href="#favorite-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Favorite messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<div class="outline-text-3" id="text-favorite-messages">
+<p>
+Any message in any chat can be marked with as <i>favorite</i>.  Favorite
+messages are labeled with:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-symbol-favorite</code> 
+</p>
+
+<p>
+Symbol to use for favorite messages, bookmarks. 
+</p>
+
+<p>
+Default value: <code>"🔖"</code>
+</p></li>
+</ul>
+
+<p>
+To toggle message at point being favorite, press
+<kbd>*</kbd> (<code>telega-msg-favorite-toggle</code>).
+</p>
+
+<p>
+To jump to next favorite message in the chat buffer press
+<kbd>M-g *</kbd> (<code>telega-chatbuf-next-favorite</code>).
+</p>
+
+<p>
+To view all favorite messages in all chats, enable "Favorite Messages"
+Root View, by pressing
+<kbd>v *</kbd> (<code>telega-view-favorite-messages</code>) in
+the <a href="#root-buffer">root buffer</a>.
+</p>
+</div>
+</div>
 </div>
 
 <div id="outline-container-multiple-accounts" class="outline-2">
@@ -3257,7 +3304,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgc563bfc">
+<pre class="example" id="orga58ebab">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
