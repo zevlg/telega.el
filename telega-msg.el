@@ -213,20 +213,22 @@
 
                 ;; NOTE: check for messages grouping by sender
                 ((and (telega-chat-match-p chat telega-chat-group-messages-for)
-                      (not (plist-get msg :is_pinned))
                       (> (point) 3)
-                      (let ((prev-msg (telega-msg-at (- (point) 2))))
-                        (and prev-msg
-                             (not (plist-get prev-msg :telega-is-deleted-message))
-                             (not (plist-get prev-msg :is_pinned))
-                             (not (telega-msg-special-p prev-msg))
-                             (equal (plist-get msg :sender)
-                                    (plist-get prev-msg :sender))
-                             (< (- (plist-get msg :date)
-                                   (plist-get prev-msg :date))
-                                telega-chat-group-messages-timespan)
-                             (< (telega-msg-replies-count msg) 1)
-                             )))
+                      (when-let ((prev-msg (telega-msg-at (- (point) 2)))
+                                 (trim-regexp (rx (1+ (or " " "\n")))))
+                        ;; Only if MSG's header is pretty the same as
+                        ;; for PREV-MSG
+                        (and (not (telega-msg-internal-p prev-msg))
+                             (not (telega-msg-internal-p msg))
+                             (string-prefix-p
+                              (string-trim-right
+                               (telega-ins--as-string
+                                (telega-ins--message-header msg chat))
+                               trim-regexp)
+                              (string-trim-right
+                               (telega-ins--as-string
+                                (telega-ins--message-header prev-msg chat))
+                               trim-regexp)))))
                  #'telega-ins--message-no-header)
 
                 (t telega-inserter-for-msg-button)))
