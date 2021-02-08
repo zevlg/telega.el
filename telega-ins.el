@@ -1701,6 +1701,9 @@ argument - MSG to insert additional information after header."
         ;; Interaction info
         (telega-ins--msg-interaction-info msg chat)
 
+        (when (telega-msg-favorite-p msg)
+          (telega-ins " " (telega-symbol 'favorite)))
+
         (when (numberp telega-debug)
           (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
 

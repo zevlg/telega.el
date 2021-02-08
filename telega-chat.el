@@ -1223,6 +1223,10 @@ multiple chats are important."
     ;; - {{{where-is(telega-chatbuf-goto-pop-message,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-goto-pop-message, 2)}}}
     (define-key map (kbd "M-g x") 'telega-chatbuf-goto-pop-message)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-next-favorite,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-favorite, 2)}}}
+    (define-key map (kbd "M-g *") 'telega-chatbuf-next-favorite)
 
     ;;; ellit-org: chatbuf-attach-bindings
     ;; - {{{where-is(telega-chatbuf-attach,telega-chat-mode-map)}}} ::
@@ -3138,6 +3142,22 @@ button."
       (user-error "telega: Can't fetch next unread mention message"))
     (telega-msg-goto next-unread-mention-msg 'highlight)
     ))
+
+(defun telega-chatbuf-next-favorite ()
+  "Goto next favorite message."
+  (interactive)
+
+  ;; NOTE: favorite messages are sorted in id decreasing order
+  (let* ((fav-ids
+          (telega-chat-uaprop telega-chatbuf--chat :telega-favorite-ids))
+         (next-fav-id
+          (or (cl-find (or (plist-get (telega-msg-at (point)) :id) -1)
+                       fav-ids :test #'<)
+              ;; wrap to first one
+              (car fav-ids))))
+    (unless next-fav-id
+      (user-error "No favorite messages in the chat"))
+    (telega-chatbuf--goto-msg next-fav-id 'highlight)))
 
 (defun telega-chatbuf-goto-reply-markup-message ()
   "Goto chat's reply markup message."

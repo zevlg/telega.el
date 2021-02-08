@@ -1693,6 +1693,11 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-favorite "🔖"
+  "Symbol to use for favorite messages, bookmarks."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -1739,7 +1744,8 @@ Install all symbol widths inside `telega-load-hook'."
     folder multiple-folders chat-list
     eye flames lock pin alarm failed location play
     pause phone photo video bulp bell
-    voice-chat-active voice-chat-passive)
+    voice-chat-active voice-chat-passive
+    favorite)
   "List of symbols to emojify if `telega-emoji-use-images' is non-nil.
 Each element is either XXX from ending of telega-symbol-XXX or list,
 where car is XXX and rest is form to evaluate to get image or a
