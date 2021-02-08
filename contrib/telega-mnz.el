@@ -179,10 +179,17 @@ Most of these languages available for language detection.")
             (funcall mode)
           (ignore-errors
             (mapc #'funcall mode)))
-        (when font-lock-mode
-          (font-lock-ensure))
-        (when jit-lock-mode
-          (jit-lock-fontify-now))
+        ;; NOTE: font-lock might trigger errors, for example:
+        ;;   (telega-mnz--render-text-for-mode "$ head -n2 /tmp/pechatnaya-forma.doc\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<?mso-application progid=\"Word.Document\"?>" 'xml-mode)
+        ;;   ==>
+        ;;   Debugger entered--Lisp error: (error "Invalid search bound (wrong side of point)")
+        ;;     search-backward("<" 2 t)
+        (ignore-errors
+          (when font-lock-mode
+            (font-lock-ensure))
+          (when jit-lock-mode
+            (jit-lock-fontify-now)))
+
         (let ((ret (propertize (buffer-string) 'syntax-table (syntax-table))))
           (when telega-mnz-keep-pre-face
             (add-face-text-property 0 (length ret)
