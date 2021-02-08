@@ -54,7 +54,7 @@
 ;; Screenshots of =telega-stories= in action:
 ;; [[https://zevlg.github.io/telega/emacs-stories-dashboard.png]]
 ;;
-;; And screenshot of "Emacs Stories" rooot view:
+;; And screenshot of "Emacs Stories" root view:
 ;; [[https://zevlg.github.io/telega/emacs-stories-rootview.png]]
 ;;
 ;; Customizable options:
