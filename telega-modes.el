@@ -520,6 +520,7 @@ chats matching this chat filter."
     (set-keymap-parent map image-mode-map)
     (define-key map "n" 'telega-image-next)
     (define-key map "p" 'telega-image-prev)
+    (define-key map "q" 'telega-image-quit)
     map))
 
 (define-derived-mode telega-image-mode image-mode nil
@@ -594,6 +595,11 @@ Could be used as condition function in `display-buffer-alist'."
   "Show previous image in chat."
   (interactive)
   (telega-image-next 'previous))
+
+(defun telega-image-quit ()
+  "Kill image buffer and its window."
+  (interactive)
+  (quit-window 'kill))
 
 
 ;;; ellit-org: minor-modes
