@@ -70,7 +70,7 @@
 
 ;; Customizable variables
 (defgroup telega-stories nil
-  "Customisation for telega-server."
+  "Customisation for Emacs Stories telega mode."
   :prefix "telega-stories-"
   :group 'telega)
 

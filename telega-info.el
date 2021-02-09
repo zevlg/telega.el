@@ -673,6 +673,11 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (insert (propertize "Full-Info: " 'face 'bold)
               (format "%S" full-info) "\n"))))
 
+(defun telega-describe-connected-websites ()
+  "Describe connected websites."
+  (interactive)
+  (error "`telega-describe-connected-websites' is not implemented."))
+
 (defun telega-describe-active-sessions (&optional sessions)
   "Describe active SESSIONS."
   (interactive)

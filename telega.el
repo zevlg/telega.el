@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.17
-(defconst telega-version "0.7.17")
+;; Version: 0.7.18
+(defconst telega-version "0.7.18")
 (defconst telega-server-min-version "0.7.4")
 (defconst telega-tdlib-min-version "1.7.1")
 (defconst telega-tdlib-max-version nil)
@@ -74,7 +74,6 @@ Used for manual generation.")
 ;;;###autoload
 (defvar telega-prefix-map
   (let ((map (make-sparse-keymap)))
-    (suppress-keymap map)
     ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega, 2)}}}

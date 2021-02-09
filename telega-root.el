@@ -79,6 +79,171 @@ Rest elements are ewoc specs.")
 (defvar telega-idle--timer nil
   "Runs when Emacs gets idle.")
 
+(defvar telega-root-view-map
+  (let ((map (make-sparse-keymap)))
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-search,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-search, 2)}}}
+    (define-key map (kbd "s") 'telega-view-search)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-nearby,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-nearby, 2)}}}
+    (define-key map (kbd "n") 'telega-view-nearby)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-reset,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-reset, 2)}}}
+    (define-key map (kbd "v") 'telega-view-reset)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-compact,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-compact, 2)}}}
+    (define-key map (kbd "0") 'telega-view-compact)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-one-line,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-one-line, 2)}}}
+    (define-key map (kbd "1") 'telega-view-one-line)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-two-lines,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-two-lines, 2)}}}
+    (define-key map (kbd "2") 'telega-view-two-lines)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-topics,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-topics, 2)}}}
+    ;;
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-root-view-topics, 4)}}}
+    ;;   - {{{user-option(telega-root-view-topics-folders, 4)}}}
+    ;;   - {{{user-option(telega-root-view-topics-other-chats, 4)}}}
+    (define-key map (kbd "t") 'telega-view-topics)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-files,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-files, 2)}}}
+    ;;
+    ;;   If you use this view frequently, consider setting
+    ;;   ~telega-chat-upload-attaches-ahead~ to nil, to avoid file
+    ;;   duplications for "uploading" kind. See
+    ;;   https://github.com/tdlib/td/issues/1348#issuecomment-752654650
+    ;;   for details
+    ;;
+    ;;   Press {{{kbd(d)}}} under downloaded filename to delete the
+    ;;   file.  Only files cached by TDLib in the ~telega-cache-dir~
+    ;;   can be deleted.
+    ;;
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-root-view-files-exclude-subdirs, 4)}}}
+    ;;   - {{{user-option(telega-chat-upload-attaches-ahead, 4)}}}
+    (define-key map (kbd "F") 'telega-view-files)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-top,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-top, 2)}}}
+    ;;
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-root-view-top-categories, 4)}}}
+    (define-key map (kbd "T") 'telega-view-top)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-settings,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-settings, 2)}}}
+    (define-key map (kbd "S") 'telega-view-settings)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-contacts,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-contacts, 2)}}}
+    (define-key map (kbd "c") 'telega-view-contacts)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-calls,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-calls, 2)}}}
+    (define-key map (kbd "C") 'telega-view-calls)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-last-messages,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-last-messages, 2)}}}
+    (define-key map (kbd "l") 'telega-view-last-messages)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-folders,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-folders, 2)}}}
+    (define-key map (kbd "f") 'telega-view-folders)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-deleted-chats,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-deleted-chats, 2)}}}
+    (define-key map (kbd "d") 'telega-view-deleted-chats)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-favorite-messages, 2)}}}
+    (define-key map (kbd "*") 'telega-view-favorite-messages)
+    map)
+  "Keymap for Root View commands.")
+
+(defvar telega-folder-map
+  (let ((map (make-sparse-keymap)))
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-create,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-create, 2)}}}
+    (define-key map (kbd "+") 'telega-folder-create)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-delete,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-delete, 2)}}}
+    (define-key map (kbd "-") 'telega-folder-delete)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folders-reorder,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folders-reorder, 2)}}}
+    (define-key map (kbd "=") 'telega-folders-reorder)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-rename,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-rename, 2)}}}
+    (define-key map (kbd "R") 'telega-folder-rename)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-chat-add-to-folder,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chat-add-to-folder, 2)}}}
+    (define-key map (kbd "a") 'telega-chat-add-to-folder)
+    ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-chat-remove-from-folder,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chat-remove-from-folder, 2)}}}
+    (define-key map (kbd "d") 'telega-chat-remove-from-folder)
+    map)
+  "Keymap for Folder commands in the rootbuf.")
+
+(defvar telega-describe-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "w") 'telega-describe-connected-websites)
+    (define-key map (kbd "s") 'telega-describe-active-sessions)
+    (define-key map (kbd "n") 'telega-describe-network)
+    (define-key map (kbd "y") 'telega-describe-notifications)
+    (define-key map (kbd "N") 'telega-describe-notifications)
+    (define-key map (kbd "p") 'telega-describe-privacy-settings)
+    map)
+  "Keymap for help/describe commands.")
+
+(defvar telega-voip-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "a") 'telega-voip-accept)
+    (define-key map (kbd "d") 'telega-voip-discard)
+    (define-key map (kbd "b") 'telega-voip-buffer-show)
+    (define-key map (kbd "l") 'telega-voip-list-calls)
+    map)
+  "Keymap for VoIP commands.")
+
+(defvar telega-root-fastnav-map
+  (let ((map (make-sparse-keymap)))
+    ;;; ellit-org: rootbuf-fastnav-bindings
+    ;; - {{{where-is(telega-root-next-unread,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-unread, 2)}}}
+    (define-key map (kbd "u") 'telega-root-next-unread)
+
+    ;;; ellit-org: rootbuf-fastnav-bindings
+    ;; - {{{where-is(telega-root-next-important,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-important, 2)}}}
+    ;;
+    ;;   Important message is a message matching "Important" custom
+    ;;   [[#chat-filters][chat filter]].  If there is no "Important"
+    ;;   custom chat filter, then ~(or mention (and unread unmuted))~
+    ;;   chat filter is used.
+    (define-key map (kbd "i") 'telega-root-next-important)
+
+    ;;; ellit-org: rootbuf-fastnav-bindings
+    ;; - {{{where-is(telega-root-next-mention,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-mention, 2)}}}
+    (define-key map (kbd "m") 'telega-root-next-mention)
+    (define-key map (kbd "@") 'telega-root-next-mention)
+    map)
+  "Keymap for fast navigation commands in the rootbuf.")
+
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map [remap self-insert-command] 'ignore)
@@ -97,14 +262,6 @@ Rest elements are ewoc specs.")
     (define-key map (kbd "C-x C-/") 'telega-filter-redo)
     (define-key map (kbd "C-x C-_") 'telega-filter-redo)
 
-    ;; Getting help
-    (define-key map (kbd "? w") 'telega-describe-connected-websites)
-    (define-key map (kbd "? s") 'telega-describe-active-sessions)
-    (define-key map (kbd "? n") 'telega-describe-network)
-    (define-key map (kbd "? y") 'telega-describe-notifications)
-    (define-key map (kbd "? N") 'telega-describe-notifications)
-    (define-key map (kbd "? p") 'telega-describe-privacy-settings)
-
     (define-key map (kbd "J") 'telega-chat-join-by-link)
     (define-key map (kbd "N") 'telega-chat-create)
     ;; Commands to all currently filtered chats
@@ -116,149 +273,17 @@ Rest elements are ewoc specs.")
     (define-key map (kbd "K") 'telega-chats-filtered-kill-chatbuf)
     (define-key map (kbd "R") 'telega-chats-filtered-toggle-read)
 
-    ;;; ellit-org: rootbuf-folder-bindings
-    ;; - {{{where-is(telega-folder-create,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-folder-create, 2)}}}
-    (define-key map (kbd "F +") 'telega-folder-create)
-    ;;; ellit-org: rootbuf-folder-bindings
-    ;; - {{{where-is(telega-folder-delete,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-folder-delete, 2)}}}
-    (define-key map (kbd "F -") 'telega-folder-delete)
-    ;;; ellit-org: rootbuf-folder-bindings
-    ;; - {{{where-is(telega-folders-reorder,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-folders-reorder, 2)}}}
-    (define-key map (kbd "F =") 'telega-folders-reorder)
-    ;;; ellit-org: rootbuf-folder-bindings
-    ;; - {{{where-is(telega-folder-rename,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-folder-rename, 2)}}}
-    (define-key map (kbd "F R") 'telega-folder-rename)
-    ;;; ellit-org: rootbuf-folder-bindings
-    ;; - {{{where-is(telega-chat-add-to-folder,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chat-add-to-folder, 2)}}}
-    (define-key map (kbd "F a") 'telega-chat-add-to-folder)
-    ;;; ellit-org: rootbuf-folder-bindings
-    ;; - {{{where-is(telega-chat-remove-from-folder,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chat-remove-from-folder, 2)}}}
-    (define-key map (kbd "F d") 'telega-chat-remove-from-folder)
-
-    ;; Calls bindings
-    (define-key map (kbd "c a") 'telega-voip-accept)
-    (define-key map (kbd "c d") 'telega-voip-discard)
-    (define-key map (kbd "c b") 'telega-voip-buffer-show)
-    (define-key map (kbd "c l") 'telega-voip-list-calls)
-
     (define-key map (kbd "q") 'bury-buffer)
     (define-key map (kbd "Q") 'telega-kill)
 
-    ;;; ellit-org: rootbuf-fastnav-bindings
-    ;; - {{{where-is(telega-root-next-unread,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-root-next-unread, 2)}}}
-    (define-key map (kbd "M-g u") 'telega-root-next-unread)
+    ;; Additional prefix keymaps
+    (define-key map (kbd "?") telega-describe-map)
+    (define-key map (kbd "F") telega-folder-map)
+    (define-key map (kbd "c") telega-voip-map)
+    (define-key map (kbd "M-g") telega-root-fastnav-map)
+    (define-key map (kbd "v") telega-root-view-map)
 
-    ;;; ellit-org: rootbuf-fastnav-bindings
-    ;; - {{{where-is(telega-root-next-important,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-root-next-important, 2)}}}
-    ;;
-    ;;   Important message is a message matching "Important" custom
-    ;;   [[#chat-filters][chat filter]].  If there is no "Important"
-    ;;   custom chat filter, then ~(or mention (and unread unmuted))~
-    ;;   chat filter is used.
-    (define-key map (kbd "M-g i") 'telega-root-next-important)
-
-    ;;; ellit-org: rootbuf-fastnav-bindings
-    ;; - {{{where-is(telega-root-next-mention,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-root-next-mention, 2)}}}
-    (define-key map (kbd "M-g m") 'telega-root-next-mention)
-    (define-key map (kbd "M-g @") 'telega-root-next-mention)
-
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-search,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-search, 2)}}}
     (define-key map (kbd "s") 'telega-view-search)
-    (define-key map (kbd "v s") 'telega-view-search)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-nearby,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-nearby, 2)}}}
-    (define-key map (kbd "v n") 'telega-view-nearby)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-reset,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-reset, 2)}}}
-    (define-key map (kbd "v v") 'telega-view-reset)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-compact,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-compact, 2)}}}
-    (define-key map (kbd "v 0") 'telega-view-compact)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-one-line,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-one-line, 2)}}}
-    (define-key map (kbd "v 1") 'telega-view-one-line)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-two-lines,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-two-lines, 2)}}}
-    (define-key map (kbd "v 2") 'telega-view-two-lines)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-topics,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-topics, 2)}}}
-    ;;
-    ;;   Customizable options:
-    ;;   - {{{user-option(telega-root-view-topics, 4)}}}
-    ;;   - {{{user-option(telega-root-view-topics-folders, 4)}}}
-    ;;   - {{{user-option(telega-root-view-topics-other-chats, 4)}}}
-    (define-key map (kbd "v t") 'telega-view-topics)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-files,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-files, 2)}}}
-    ;;
-    ;;   If you use this view frequently, consider setting
-    ;;   ~telega-chat-upload-attaches-ahead~ to nil, to avoid file
-    ;;   duplications for "uploading" kind. See
-    ;;   https://github.com/tdlib/td/issues/1348#issuecomment-752654650
-    ;;   for details
-    ;;
-    ;;   Press {{{kbd(d)}}} under downloaded filename to delete the
-    ;;   file.  Only files cached by TDLib in the ~telega-cache-dir~
-    ;;   can be deleted.
-    ;;
-    ;;   Customizable options:
-    ;;   - {{{user-option(telega-root-view-files-exclude-subdirs, 4)}}}
-    ;;   - {{{user-option(telega-chat-upload-attaches-ahead, 4)}}}
-    (define-key map (kbd "v F") 'telega-view-files)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-top,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-top, 2)}}}
-    ;;
-    ;;   Customizable options:
-    ;;   - {{{user-option(telega-root-view-top-categories, 4)}}}
-    (define-key map (kbd "v T") 'telega-view-top)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-settings,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-settings, 2)}}}
-    (define-key map (kbd "v S") 'telega-view-settings)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-contacts,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-contacts, 2)}}}
-    (define-key map (kbd "v c") 'telega-view-contacts)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-calls,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-calls, 2)}}}
-    (define-key map (kbd "v C") 'telega-view-calls)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-last-messages,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-last-messages, 2)}}}
-    (define-key map (kbd "v l") 'telega-view-last-messages)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-folders,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-folders, 2)}}}
-    (define-key map (kbd "v f") 'telega-view-folders)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-deleted-chats,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-deleted-chats, 2)}}}
-    (define-key map (kbd "v d") 'telega-view-deleted-chats)
-    ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-favorite-messages, 2)}}}
-    (define-key map (kbd "v *") 'telega-view-favorite-messages)
-
     map)
   "The key map for telega root buffer.")
 

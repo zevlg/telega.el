@@ -909,4 +909,6 @@ project.
 
 #+ELLIT-INCLUDE: ../contrib/telega-stories.el
 
+#+ELLIT-INCLUDE: ../contrib/telega-transient.el
+
 #  LocalWords:  customizable chatbuf tdlib gmake
