@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.17)
+#+TITLE: Telega Manual (v0.7.18)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -81,6 +81,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-mnzel--display-emacs-content-inside-telega-messages][/telega-mnz.el/ -- Display Emacs content inside Telega messages.]]
     - [[#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard][/telega-dashboard.el/ -- Important telega chats in the Emacs dashboard]]
     - [[#telega-storiesel--display-emacs-stories-in-the-dashboard][/telega-stories.el/ -- Display Emacs Stories in the dashboard]]
+    - [[#telega-transientel--transient-magit-like-style-commands-for-telega][/telega-transient.el/ -- Transient (magit-like style) commands for telega]]
 
 * Introduction
 :PROPERTIES:
@@ -617,10 +618,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -2501,3 +2504,23 @@ Customizable options:
   Non-nil to keep story in the root view after story is viewed. 
 
   Default value: ~t~
+
+** /telega-transient.el/ -- Transient (magit-like style) commands for telega :new:
+:PROPERTIES:
+:CUSTOM_ID: telega-transientel--transient-magit-like-style-commands-for-telega
+:END:
+
+Use transient (magit-like style) commands in the telega.  Enable it
+with:
+
+#+begin_src emacs-lisp
+  (require 'telega-transient)
+  (telega-transient-mode 1)
+#+end_src
+
+Control keymaps for which to use transient with:
+- User Option: ~telega-transient-keymaps~ 
+
+  List of keymaps names to apply transient for. 
+
+  Default value: ~(telega-prefix-map telega-sort-map telega-filter-map telega-describe-map telega-folder-map telega-voip-map telega-root-fastnav-map telega-root-view-map telega-chatbuf-fastnav-map)~
