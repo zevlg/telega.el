@@ -1164,6 +1164,42 @@ multiple chats are important."
 (defvar telega-chat-mode-hook nil
   "Hook run when telega chat buffer is created.")
 
+(defvar telega-chatbuf-fastnav-map
+  (let ((map (make-sparse-keymap)))
+        ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-history-beginning,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-history-beginning, 2)}}}
+    (define-key map (kbd "<") 'telega-chatbuf-history-beginning)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-read-all,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-read-all, 2)}}}
+    (define-key map (kbd ">") 'telega-chatbuf-read-all)
+    (define-key map (kbd "r") 'telega-chatbuf-read-all)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-next-unread-mention,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-unread-mention, 2)}}}
+    (define-key map (kbd "m") 'telega-chatbuf-next-unread-mention)
+    (define-key map (kbd "@") 'telega-chatbuf-next-unread-mention)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-next-unread,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-unread, 2)}}}
+    (define-key map (kbd "u") 'telega-chatbuf-next-unread)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-goto-pinned-message,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-pinned-message, 2)}}}
+    (define-key map (kbd "P") 'telega-chatbuf-goto-pinned-message)
+    (define-key map (kbd "^") 'telega-chatbuf-goto-pinned-message)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-goto-pop-message,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-pop-message, 2)}}}
+    (define-key map (kbd "x") 'telega-chatbuf-goto-pop-message)
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-next-favorite,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-favorite, 2)}}}
+    (define-key map (kbd "*") 'telega-chatbuf-next-favorite)
+    map)
+  "Keymap for fast navigation commands in the chatbuf.")
+
 (defvar telega-chat-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-l") 'telega-chatbuf-recenter-1)
@@ -1180,38 +1216,6 @@ multiple chats are important."
     (define-key map (kbd "M-p") 'telega-chatbuf-edit-prev)
     (define-key map (kbd "M-n") 'telega-chatbuf-edit-next)
     (define-key map (kbd "M-r") 'telega-chatbuf-input-search)
-
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-history-beginning,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-history-beginning, 2)}}}
-    (define-key map (kbd "M-g <") 'telega-chatbuf-history-beginning)
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-read-all,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-read-all, 2)}}}
-    (define-key map (kbd "M-g >") 'telega-chatbuf-read-all)
-    (define-key map (kbd "M-g r") 'telega-chatbuf-read-all)
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-next-unread-mention,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-next-unread-mention, 2)}}}
-    (define-key map (kbd "M-g m") 'telega-chatbuf-next-unread-mention)
-    (define-key map (kbd "M-g @") 'telega-chatbuf-next-unread-mention)
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-next-unread,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-next-unread, 2)}}}
-    (define-key map (kbd "M-g u") 'telega-chatbuf-next-unread)
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-goto-pinned-message,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-goto-pinned-message, 2)}}}
-    (define-key map (kbd "M-g P") 'telega-chatbuf-goto-pinned-message)
-    (define-key map (kbd "M-g ^") 'telega-chatbuf-goto-pinned-message)
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-goto-pop-message,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-goto-pop-message, 2)}}}
-    (define-key map (kbd "M-g x") 'telega-chatbuf-goto-pop-message)
-    ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-next-favorite,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-next-favorite, 2)}}}
-    (define-key map (kbd "M-g *") 'telega-chatbuf-next-favorite)
 
     ;;; ellit-org: chatbuf-attach-bindings
     ;; - {{{where-is(telega-chatbuf-attach,telega-chat-mode-map)}}} ::
@@ -1243,6 +1247,9 @@ multiple chats are important."
     ;; jumping around links
     (define-key map (kbd "TAB") 'telega-chatbuf-complete-or-next-link)
     (define-key map (kbd "<backtab>") 'telega-chatbuf-prev-link)
+
+    ;; Additional prefix keymaps
+    (define-key map (kbd "M-g") telega-chatbuf-fastnav-map)
     map))
 
 (define-button-type 'telega-prompt

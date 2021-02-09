@@ -140,6 +140,11 @@ overwriting currently active one."
   (telega-sort-set-active-criteria
    telega--sort-criteria (not telega--sort-inverted)))
 
+(defun telega-sort-pop-last ()
+  "Delete last sorter."
+  (interactive)
+  (error "`telega-sort-pop-last' not implemented."))
+
 (defun telega-sort-set-active-criteria (criteria &optional inverted)
   "Set CRITERIA as active sort criteria."
   (cl-assert (listp criteria))
