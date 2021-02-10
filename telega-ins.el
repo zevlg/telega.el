@@ -2605,7 +2605,8 @@ Return t."
 
 (defun telega-ins--chat-action-bar-button (chat kind)
   "Insert CHAT action bar button specified by KIND.
-KIND is one of: `spam', `location', `add', `block', `share' and `remove-bar'"
+KIND is one of: `spam', `location', `add', `block', `share' and
+`remove-bar', `invite'."
   (cl-ecase kind
     (spam
      (telega-ins--button
@@ -2641,6 +2642,13 @@ KIND is one of: `spam', `location', `add', `block', `share' and `remove-bar'"
                  (telega--removeChatActionBar chat)
                  (with-telega-chatbuf chat
                    (goto-char (point-max))))))
+    (invite
+     (telega-ins--button "Invite Users"
+       'action (lambda (_ignored)
+                 (let ((new-users (telega-completing-read-user-list
+                                      "Invite new users")))
+                   (dolist (user new-users)
+                     (telega-chat-add-member chat user))))))
     ))
 
 (defun telega-ins--chat-action-bar (chat)
@@ -2666,7 +2674,10 @@ KIND is one of: `spam', `location', `add', `block', `share' and `remove-bar'"
        (telega-ins--chat-action-bar-button chat 'block))
 
       (chatActionBarSharePhoneNumber
-       (telega-ins--chat-action-bar-button chat 'share)))
+       (telega-ins--chat-action-bar-button chat 'share))
+
+      (chatActionBarInviteMembers
+       (telega-ins--chat-action-bar-button chat 'invite)))
     t))
 
 (provide 'telega-ins)
