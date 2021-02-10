@@ -153,16 +153,19 @@
 
 ** Chat Actions
 
-** Transient commands
+** DONE Transient commands
+   CLOSED: [2021-02-09 Вт 20:16]
 
-  Use =transient.el= package for some commands, such as ~C-c C-a~.
+   Use =transient.el= package for some commands, such as ~C-c C-a~.
 
-  This adds additional dependency - =transient= package.
+   This adds additional dependency - =transient= package.
 
-  Make use of transient commands optional, retaining default
-  behaviour.
+   Make use of transient commands optional, retaining default
+   behaviour.
 
-  **Q**: Do we really need this?
+   **Q**: Do we really need this?
+
+   **DONE** by contrib/telega-transient.el
 
 * telega-server as a module
 
