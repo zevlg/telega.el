@@ -3290,11 +3290,12 @@ UPLOAD-AHEAD-CALLBACK is callback for file updates, when uploading
 ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
   (setq filename (expand-file-name filename))
   (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
-                   (create-image filename
-                                 (when (fboundp 'imagemagick-types) 'imagemagick)
-                                 nil
-                                 :scale 1.0 :ascent 'center
-                                 :height (telega-chars-xheight 1))))
+                   (telega-create-image
+                    filename
+                    (when (fboundp 'imagemagick-types) 'imagemagick)
+                    nil
+                    :scale 1.0 :ascent 'center
+                    :height (telega-chars-xheight 1))))
         (upload-ahead-file
          (when telega-chat-upload-attaches-ahead
            (telega-file--upload filename file-type 16 upload-ahead-callback))))
@@ -3315,15 +3316,19 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
   "Attach FILENAME as photo to the chatbuf input."
   (interactive (list (read-file-name "Photo: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t))
-        (img-size (image-size
-                   (create-image filename (when (fboundp 'imagemagick-types)
-                                            'imagemagick) nil :scale 1.0)
-                   t (telega-x-frame))))
+        (img-size (ignore-errors
+                    ;; NOTE: tty-only might trigger error here
+                    (image-size
+                     (telega-create-image
+                      filename (when (fboundp 'imagemagick-types) 'imagemagick)
+                      nil :scale 1.0)
+                     t (telega-x-frame)))))
     (telega-chatbuf-input-insert
      (nconc (list :@type "inputMessagePhoto"
-                  :photo ifile
-                  :width (or (car img-size) 0)
-                  :height (or (cdr img-size) 0))
+                  :photo ifile)
+            (when img-size
+              (list :width (car img-size)
+                    :height (cdr img-size)))
             (when ttl
               (list :ttl ttl))))))
 

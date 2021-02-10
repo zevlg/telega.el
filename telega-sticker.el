@@ -323,7 +323,7 @@ Return path to png file."
       (setq img-type (image-type-from-file-name img-file)))
 
     (if (and img-file img-type)
-        (apply #'create-image img-file img-type nil
+        (apply #'telega-create-image img-file img-type nil
                :height (telega-chars-xheight (car telega-sticker-size))
                ;; NOTE: do not use max-width setting, it will slow
                ;; down displaying stickers
@@ -750,16 +750,17 @@ Return sticker set."
          (svg (telega-svg-create xw xh)))
     (telega-svg-progress svg (telega-file--downloading-progress
                               (telega-animation--file animation)))
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text
-               (make-string
-                (or (car (plist-get animation :telega-image-cwidth-xmargin))
-                    w-chars)
-                ?X))
+    (telega-svg-image
+     svg :scale 1.0
+     :width xw :height xh
+     :ascent 'center
+     :mask 'heuristic
+     ;; text of correct width
+     :telega-text
+     (make-string
+      (or (car (plist-get animation :telega-image-cwidth-xmargin))
+          w-chars)
+      ?X))
     ))
 
 (defun telega-animation--create-image (animation &optional _fileignored)
@@ -798,7 +799,7 @@ Return sticker set."
     (cond (anim-frame-filename
            ;; Remove this prop, because file is about to be deleted
            (plist-put animation :telega-ffplay-frame-filename nil)
-           (apply 'create-image
+           (apply #'telega-create-image
                   (with-temp-buffer
                     (set-buffer-multibyte nil)
                     (insert-file-contents-literally anim-frame-filename)
@@ -806,7 +807,7 @@ Return sticker set."
                   (when (fboundp 'imagemagick-types) 'imagemagick) t img-props))
 
           ((telega-file--downloaded-p tfile)
-           (apply 'create-image
+           (apply #'telega-create-image
                   (telega--tl-get tfile :local :path)
                   (when (fboundp 'imagemagick-types) 'imagemagick) nil img-props))
 

@@ -326,12 +326,12 @@ Return cons cell, where car is width in char and cdr is margin value."
          (svg (telega-svg-create xw xh))
          (progress (telega-file--downloading-progress file)))
     (telega-svg-progress svg progress)
-    (svg-image svg :scale 1.0
-               :width xw :height xh
-               :ascent 'center
-               :mask 'heuristic
-               ;; text of correct width
-               :telega-text (make-string w-chars ?X))))
+    (telega-svg-image svg :scale 1.0
+                      :width xw :height xh
+                      :ascent 'center
+                      :mask 'heuristic
+                      ;; text of correct width
+                      :telega-text (make-string w-chars ?X))))
 
 (defsubst telega-photo--progress-svg (photo cheight)
   "Generate svg for the PHOTO."
@@ -350,15 +350,16 @@ CHEIGHT is the height in chars to use (default=1)."
   (if (telega-file--downloaded-p file)
       (let ((cw-xmargin (telega-media--cwidth-xmargin width height cheight))
             (image-filename (telega--tl-get file :local :path)))
-        (create-image (if (string-empty-p image-filename)
-                          (telega-etc-file "non-existing.jpg")
-                        image-filename)
-                      (when (fboundp 'imagemagick-types) 'imagemagick) nil
-                      :height (telega-chars-xheight cheight)
-                      :scale 1.0
-                      :ascent 'center
-                      :margin (cons (cdr cw-xmargin) 0)
-                      :telega-text (make-string (car cw-xmargin) ?X)))
+        (telega-create-image
+         (if (string-empty-p image-filename)
+             (telega-etc-file "non-existing.jpg")
+           image-filename)
+         (when (fboundp 'imagemagick-types) 'imagemagick) nil
+         :height (telega-chars-xheight cheight)
+         :scale 1.0
+         :ascent 'center
+         :margin (cons (cdr cw-xmargin) 0)
+         :telega-text (make-string (car cw-xmargin) ?X)))
 
     (telega-media--progress-svg file width height cheight)))
 
@@ -367,18 +368,19 @@ CHEIGHT is the height in chars to use (default=1)."
   (let* ((xwidth (plist-get minithumb :width))
          (xheight (plist-get minithumb :height))
          (cwidth-xmargin (telega-media--cwidth-xmargin xwidth xheight cheight)))
-    (create-image (base64-decode-string (plist-get minithumb :data))
-                  (if (and (fboundp 'image-transforms-p)
-                           (funcall 'image-transforms-p))
-                      'jpeg
-                    (when (fboundp 'imagemagick-types)
-                      'imagemagick))
-                  t
-                  :height (telega-chars-xheight cheight)
-                  :scale 1.0
-                  :ascent 'center
-                  :margin (cons (cdr cwidth-xmargin) 0)
-                  :telega-text (make-string (car cwidth-xmargin) ?X))))
+    (telega-create-image
+     (base64-decode-string (plist-get minithumb :data))
+     (if (and (fboundp 'image-transforms-p)
+              (funcall 'image-transforms-p))
+         'jpeg
+       (when (fboundp 'imagemagick-types)
+         'imagemagick))
+     t
+     :height (telega-chars-xheight cheight)
+     :scale 1.0
+     :ascent 'center
+     :margin (cons (cdr cwidth-xmargin) 0)
+     :telega-text (make-string (car cwidth-xmargin) ?X))))
 
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.

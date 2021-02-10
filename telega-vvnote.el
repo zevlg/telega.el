@@ -111,12 +111,12 @@
                   :stroke-width (if played-p (1+ wv-width) wv-width)
                   :stroke-linecap "round")
         (cl-incf w-idx)))
-    (svg-image svg :scale 1
-               :width cw :height height
-               :mask 'heuristic
-               :ascent 'center
-               ;; text of correct width
-               :telega-text (make-string aw-chars ?#))))
+    (telega-svg-image svg :scale 1
+                      :width cw :height height
+                      :mask 'heuristic
+                      :ascent 'center
+                      ;; text of correct width
+                      :telega-text (make-string aw-chars ?#))))
 
 ;; Encoding and Decoding splits into two situations:
 ;;     head-bits=5   tail-bits=0

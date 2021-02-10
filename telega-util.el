@@ -358,11 +358,11 @@ Return resulting x,y,width,height."
               :stroke-color telega-poll-result-color
               :stroke-width stroke-xwidth
               :stroke-linecap "round")
-    (svg-image svg :scale 1
-               :width xwidth :height xheight
-               :mask 'heuristic
-               :ascent 'center
-               :telega-text telega-text)))
+    (telega-svg-image svg :scale 1
+                      :width xwidth :height xheight
+                      :mask 'heuristic
+                      :ascent 'center
+                      :telega-text telega-text)))
 
 (defun telega-self-destruct-create-svg (minithumb &optional emoji-symbol)
   "Create svg image for the self destructing image with minithumbnail MINITHUMB.
@@ -1412,11 +1412,12 @@ IMAGE-SPEC could be image, filename or form to be evaluated returning image."
                       image-spec)
                      (image-spec
                       (cl-assert (stringp image-spec))
-                      (create-image image-spec nil nil
-                                    :scale 1.0 :ascent 'center
-                                    :mask 'heuristic
-                                    :width (telega-chars-xwidth
-                                            (string-width emoji))))
+                      (telega-create-image
+                       image-spec nil nil
+                       :scale 1.0 :ascent 'center
+                       :mask 'heuristic
+                       :width (telega-chars-xwidth
+                               (string-width emoji))))
                      (t
                       (telega-emoji-create-svg emoji)))))
     (propertize emoji 'rear-nonsticky '(display) 'display image)))
@@ -1707,6 +1708,11 @@ in `(window-prev-buffers)' to achive behaviour for nil-valued
         (expand-file-name telega-dir-link
                           (file-name-directory telega-directory))
       telega-directory)))
+
+(defun telega-create-image (&rest args)
+  "Wrapper around `create-image' that takes into account `telega-use-images'."
+  (when telega-use-images
+    (apply #'create-image args)))
 
 (defconst telega-symbol-animations
   '((dots "." ".." "...")

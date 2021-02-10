@@ -226,10 +226,11 @@
                      (telega--tl-get qr :video :thumbnail))))
            (thumb-file (when thumb (telega-file--renew thumb :file)))
            (thumb-img (when (telega-file--downloaded-p thumb-file)
-                        (create-image (telega--tl-get thumb-file :local :path)
-                                      (when (fboundp 'imagemagick-types) 'imagemagick) nil
-                                      :scale 1.0 :ascent 'center
-                                      :height (telega-chars-xheight 1)))))
+                        (telega-create-image
+                         (telega--tl-get thumb-file :local :path)
+                         (when (fboundp 'imagemagick-types) 'imagemagick) nil
+                         :scale 1.0 :ascent 'center
+                         :height (telega-chars-xheight 1)))))
       (with-telega-chatbuf chat
         (telega-chatbuf--input-delete)
         (telega-chatbuf-input-insert
