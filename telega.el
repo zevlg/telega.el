@@ -203,50 +203,56 @@ Works only if current state is `authorizationStateWaitCode'."
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
   ;; Validate tdlib version
-  (when (version< (plist-get telega--options :version)
-                  telega-tdlib-min-version)
-    (warn (concat "TDLib version=%s < %s (min required), "
-                  "please upgrade TDLib and recompile `telega-server'")
-          (plist-get telega--options :version)
-          telega-tdlib-min-version))
-  (when (and telega-tdlib-max-version
-             (version< telega-tdlib-max-version
-                       (plist-get telega--options :version)))
-    (warn (concat "TDLib version=%s > %s (max required), "
-                  "please downgrade TDLib and recompile `telega-server'")
-          (plist-get telega--options :version)
-          telega-tdlib-max-version))
+  (let ((version-error-msg
+         (cond ((version< (plist-get telega--options :version)
+                          telega-tdlib-min-version)
+                (format "TDLib version=%s < %s (min required), \
+please upgrade TDLib and recompile `telega-server'"
+                        (plist-get telega--options :version)
+                        telega-tdlib-min-version))
+               ((and telega-tdlib-max-version
+                     (version< telega-tdlib-max-version
+                               (plist-get telega--options :version)))
+                (format "TDLib version=%s > %s (max required), \
+please downgrade TDLib and recompile `telega-server'"
+                        (plist-get telega--options :version)
+                        telega-tdlib-max-version)))))
+    (if version-error-msg
+        (progn
+          (telega-kill 'force)
+          (run-with-timer 0 nil #'warn version-error-msg))
 
-  (setq telega--me-id (plist-get telega--options :my_id)
-        telega--replies-id (plist-get telega--options :replies_bot_chat_id))
-  (cl-assert telega--me-id)
-  (telega--setOptions telega-options-plist)
-  ;; In case language pack id has not yet been selected, then select
-  ;; suggested one or fallback to "en"
-  (unless (plist-get telega--options :language_pack_id)
-    (telega--setOption :language_pack_id
-      (or (plist-get telega--options :suggested_language_pack_id) "en")))
+      ;; Versions are ok
+      (setq telega--me-id (plist-get telega--options :my_id)
+            telega--replies-id (plist-get telega--options :replies_bot_chat_id))
+      (cl-assert telega--me-id)
+      (telega--setOptions telega-options-plist)
+      ;; In case language pack id has not yet been selected, then select
+      ;; suggested one or fallback to "en"
+      (unless (plist-get telega--options :language_pack_id)
+        (telega--setOption :language_pack_id
+          (or (plist-get telega--options :suggested_language_pack_id) "en")))
 
-  ;; Apply&update notifications settings
-  (dolist (scope-type telega-notification-scope-types)
-    (when-let ((settings
-                (alist-get (car scope-type) telega-notifications-defaults)))
-      (apply #'telega--setScopeNotificationSettings (cdr scope-type) settings)))
-  ;; NOTE: telega--scope-notification-alist will be updated upon
-  ;; `updateScopeNotificationSettings' event
+      ;; Apply&update notifications settings
+      (dolist (scope-type telega-notification-scope-types)
+        (when-let ((settings
+                    (alist-get (car scope-type) telega-notifications-defaults)))
+          (apply #'telega--setScopeNotificationSettings (cdr scope-type) settings)))
+      ;; NOTE: telega--scope-notification-alist will be updated upon
+      ;; `updateScopeNotificationSettings' event
 
-  ;; All OK, request for chats/users/etc
-  (telega-status--set nil "Fetching chats...")
+      ;; All OK, request for chats/users/etc
+      (telega-status--set nil "Fetching chats...")
 
-  (telega--getChats nil (list :@type "chatListMain")
-    #'telega--on-initial-chats-fetch)
-  ;; NOTE: We hope `telega--getChats' will return all chats in the
-  ;; Archive, in general this is not true, we need special callback to
-  ;; continue fetching, as with "chatListMain" list
-  (telega--getChats nil (list :@type "chatListArchive")
-    #'ignore)
+      (telega--getChats nil (list :@type "chatListMain")
+        #'telega--on-initial-chats-fetch)
+      ;; NOTE: We hope `telega--getChats' will return all chats in the
+      ;; Archive, in general this is not true, we need special callback to
+      ;; continue fetching, as with "chatListMain" list
+      (telega--getChats nil (list :@type "chatListArchive")
+        #'ignore)
 
-  (run-hooks 'telega-ready-hook))
+      (run-hooks 'telega-ready-hook))))
 
 ;;;###autoload
 (defun telega-version (&optional insert-p)
