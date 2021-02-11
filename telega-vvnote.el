@@ -45,7 +45,11 @@
   :group 'telega-vvnote)
 
 (defcustom telega-vvnote-voice-cmd
-  (concat "ffmpeg -f alsa -i default "
+  (concat "ffmpeg "
+          (if (eq system-type 'darwin)
+              "-f avfoundation -i :default "
+            ;; gnu/linux
+            "-f alsa -i default ")
           (cond ((member "opus1" telega-ffplay--has-encoders)
                  ;; Try OPUS if available, results in 3 times smaller
                  ;; files then AAC version with same sound quality
@@ -60,8 +64,12 @@
   :group 'telega-vvnote)
 
 (defcustom telega-vvnote-video-cmd
-  (concat "ffmpeg -f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa "
-          "-i default -vf format=yuv420p,crop=240:240:40:0 "
+  (concat "ffmpeg "
+          (if (eq system-type 'darwin)
+              "-f avfoundation -s 640x480 -framerate 30 -i default -r 30 -f avfoundation -i :default "
+            ;; gnu/linux
+            "-f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default ")
+          "-vf format=yuv420p,crop=240:240:40:0 "
           "-vcodec " (if (member "hevc" telega-ffplay--has-encoders)
                          "hevc"
                        "h264")
