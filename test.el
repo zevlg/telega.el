@@ -197,6 +197,8 @@ Have Stoploss 690 Satoshi." :entities []))))
   "Test util code for telega."
   (should (equal (telega-puny-decode-url "https://xn----8sbis2aqlf5f.xn--p1ai/lalabum")
                  "https://ит-гранты.рф/lalabum"))
+  (should (equal (telega-puny-decode-url "pt.m-team.cc##[title~=\\[NSP\\]]:nth-ancestor(6)")
+                 "pt.m-team.cc##[title~=\\[NSP\\]]:nth-ancestor(6)"))
   )
 
 ;; Local Variables:

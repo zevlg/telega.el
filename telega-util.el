@@ -532,7 +532,7 @@ See `puny-decode-domain' for details."
    (lambda (_)
      (save-match-data
        (puny-decode-domain (match-string 1 url))))
-   url nil nil 1))
+   url nil 'literal 1))
 
 (defun telega--entity-to-properties (entity text)
   "Convert telegram ENTITY to emacs text properties to apply to TEXT."
