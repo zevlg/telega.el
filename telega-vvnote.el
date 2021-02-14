@@ -436,10 +436,15 @@ Return filename with recorded video note."
         (list :start-point (copy-marker (point))))
   (let* ((telega-vvnote--record-progress 0)
          (note-file (telega-temp-name "video-note" ".mp4"))
+         (crop-filter
+          (if (string-match "\\(crop=.*?\\)\s" telega-vvnote-video-cmd)
+              (match-string 1 telega-vvnote-video-cmd)
+            ;; default crop
+            "crop=240:240:40:0"))
          (ffmpeg-args
           (nconc (cdr (split-string telega-vvnote-video-cmd " " t))
                  (list note-file
-                       "-f" "image2pipe" "-vf" "crop=240:240:40:0"
+                       "-f" "image2pipe" "-vf" crop-filter
                        "-vcodec" "png" "-")))
          (capture-proc (telega-ffplay-to-png nil ffmpeg-args
                          #'telega-vvnote-video--record-callback))
