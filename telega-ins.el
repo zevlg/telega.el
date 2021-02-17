@@ -753,52 +753,66 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (telega-ins--with-attrs (list :fill-prefix (telega-symbol 'vertical-bar)
                                   :fill-column (- telega-chat-fill-column 4)
                                   :fill 'left)
-      (when-let ((sitename (telega-tl-str web-page :site_name)))
-        (telega-ins--with-face 'telega-webpage-sitename
-          (telega-ins sitename))
-        (telega-ins "\n"))
-      (when-let ((title (telega-tl-str web-page :title)))
-        (telega-ins--with-face 'telega-webpage-title
-          (telega-ins title))
-        (telega-ins "\n"))
+      (when telega-ins-webpage-display-sitename
+        (when-let ((sitename (telega-tl-str web-page :site_name)))
+          (telega-ins--with-face 'telega-webpage-sitename
+            (telega-ins sitename))
+          (telega-ins "\n")))
+      (when telega-ins-webpage-display-title
+        (when-let ((title (telega-tl-str web-page :title)))
+          (telega-ins--with-face 'telega-webpage-title
+            (telega-ins title))
+          (telega-ins "\n")))
+
+
       (when-let ((desc (telega-tl-str web-page :description)))
-        (telega-ins desc)
-        (telega-ins "\n"))
+        (let* ((l (length desc))
+               (desc-limit (or telega-ins-webpage-description-size-limit l))
+               (limit (min l desc-limit))
+               (moderated-desc (substring desc 0 limit)))
+          (unless (string= "" moderated-desc)
+            (telega-ins moderated-desc)
+            (unless (eq l limit)
+              (telega-ins "..."))
+            (telega-ins "\n"))))
 
-      ;; NOTE: animation uses it's own thumbnails
-      (let ((photo (plist-get web-page :photo)))
-        (when (and photo (not (plist-get web-page :animation)))
-          (telega-ins--photo photo msg telega-webpage-preview-size-limits)
-          (telega-ins "\n"))
+      (when telega-ins-webpage-display-media
+        ;; NOTE: animation uses it's own thumbnails
+        (let ((photo (plist-get web-page :photo)))
+          (when (and photo (not (plist-get web-page :animation)))
+            (telega-ins--photo photo msg telega-webpage-preview-size-limits)
+            (telega-ins "\n"))
 
-        ;; See `telega-msg-open-webpage'
-        (cond ((plist-get web-page :video)
-               (telega-ins--video
-                msg (plist-get web-page :video) (when photo 'no-thumbnail))
-               (telega-ins "\n"))
-              ((plist-get web-page :animation)
-               (telega-ins--animation-msg msg (plist-get web-page :animation))
-               (telega-ins "\n"))
-              ((plist-get web-page :document)
-               (telega-ins--document msg (plist-get web-page :document))
-               (telega-ins "\n")))))
+          ;; See `telega-msg-open-webpage'
+          (cond ((plist-get web-page :video)
+                 (telega-ins--video
+                  msg (plist-get web-page :video) (when photo 'no-thumbnail))
+                 (telega-ins "\n"))
+                ((plist-get web-page :animation)
+                 (telega-ins--animation-msg msg (plist-get web-page :animation))
+                 (telega-ins "\n"))
+                ((plist-get web-page :document)
+                 (telega-ins--document msg (plist-get web-page :document))
+                 (telega-ins "\n")))))
+      )
 
-    ;; Additional View button
-    (if (zerop (plist-get web-page :instant_view_version))
-        (when-let ((title (pcase (plist-get web-page :type)
-                            ("telegram_channel" "VIEW CHANNEL")
-                            ((or "telegram_chat"
-                                 "telegram_megagroup") "VIEW GROUP")
-                            ("telegram_message" "VIEW MESSAGE")
-                            ("telegram_background" "VIEW BACKGROUND")
-                            ("telegram_user" "VIEW CHAT")
-                            ("telegram_theme" "VIEW THEME"))))
-          (telega-ins--button (concat "   " title "   ")
-            'action 'telega-msg-button--action))
+    (when telega-ins-webpage-display-view-button
+      ;; Additional View button
+      (if (zerop (plist-get web-page :instant_view_version))
+          (when-let ((title (pcase (plist-get web-page :type)
+                              ("telegram_channel" "VIEW CHANNEL")
+                              ((or "telegram_chat"
+                                   "telegram_megagroup") "VIEW GROUP")
+                              ("telegram_message" "VIEW MESSAGE")
+                              ("telegram_background" "VIEW BACKGROUND")
+                              ("telegram_user" "VIEW CHAT")
+                              ("telegram_theme" "VIEW THEME"))))
+            (telega-ins--button (concat "   " title "   ")
+                                'action 'telega-msg-button--action))
 
-      (telega-ins--button
-          (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
-        'action 'telega-msg-button--iv-action))
+        (telega-ins--button
+         (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
+         'action 'telega-msg-button--iv-action)))
 
     ;; Remove trailing newline, if any
     (when (= (char-before) ?\n)

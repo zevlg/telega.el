@@ -1,4 +1,4 @@
-;;; telega-customize.el --- Customization for telega  -*- lexical-binding:t -*-
+;; telega-customize.el --- Customization for telega  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2018 by Zajcev Evgeny.
 
@@ -800,6 +800,44 @@ See `telega-ins--message' for NO-HEADER argument."
   :package-version '(telega . "0.6.30")
   :type '(list integer integer integer integer)
   :group 'telega-webpage)
+
+(defgroup telega-ins nil
+  "Customization of webpage insertion."
+  :group 'telega)
+
+(defcustom telega-ins-webpage-display-media t
+  "Non-nil to display media in webpage insertion."
+  :package-version '(telega . "0.7.19")
+  :type 'boolean
+  :group 'telega-ins)
+
+(defcustom telega-ins-webpage-display-title
+  t
+  "Non-nil to display title of webpage."
+  :package-version '(telega . "0.7.19")
+  :type 'boolean
+  :group 'telega-ins)
+
+(defcustom telega-ins-webpage-display-sitename
+  t
+  "Non-nil to display sitename of webpage."
+  :package-version '(telega . "0.7.19")
+  :type 'boolean
+  :group 'telega-ins)
+
+(defcustom telega-ins-webpage-description-size-limit
+  nil
+  "Non-nil integer to limit the size of the description, 0 to remove description."
+  :package-version '(telega . "0.7.19")
+  :type 'integer
+  :group 'telega-ins)
+
+(defcustom telega-ins-webpage-display-view-button
+  t
+  "Non-nil to display view button in webpage insertion."
+  :package-version '(telega . "0.7.19")
+  :type 'boolean
+  :group 'telega-ins)
 
 
 (defgroup telega-user nil
