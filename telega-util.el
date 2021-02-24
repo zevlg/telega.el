@@ -269,6 +269,7 @@ X and Y denotes left up corner."
 
 (defun telega-svg-telega-logo (svg width &rest args)
   "Draw telega triangle of WIDTH."
+  (declare (indent 2))
   (let ((ratio (/ width 32.0))
         (logo-outline '((M (0 10.1891))
                         (l (7.9819 5.5418))

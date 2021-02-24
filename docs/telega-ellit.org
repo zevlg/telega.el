@@ -779,6 +779,9 @@ Setup to open some files in external applications might look like:
 (setq telega-open-file-function 'org-open-file)
 #+end_src
 
+On MacOS use ~browse-url-default-macosx-browser~ instead of
+~browse-url-xdg-open~.
+
 If you also want to open non-document messages as file using
 ~telega-open-file-function~ consider:
 - {{{user-option(telega-open-message-as-file, 2)}}}

@@ -81,6 +81,7 @@ appindicator_setup(char* icon_path)
         } else {
                 app_indicator_set_status(appind, APP_INDICATOR_STATUS_ACTIVE);
                 app_indicator_set_icon_full(appind, icon_path, "telega icon");
+                app_indicator_set_label(appind, "", "");
         }
 }
 
@@ -111,6 +112,8 @@ appindicator_cmd(void* data)
                 /* label <label:str> */
                 if (appind)
                         app_indicator_set_label(appind, cmd_args, cmd_args);
+        } else if (!strncmp(cmd, "icon ", 5)) {
+                app_indicator_set_icon_full(appind, cmd_args, "telega icon");
         } else {
                 fprintf(stderr, "[telega-appindicator]: unknown cmd -> %s\n",
                         cmd);

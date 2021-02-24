@@ -855,7 +855,9 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
            (me-user (telega-user-me 'locally))
            (curr-online-p (when me-user (telega-user-online-p me-user))))
       (unless (eq online-p curr-online-p)
-        (telega--setOption :online (if online-p t :false))))))
+        (telega--setOption :online (if online-p t :false))
+
+        (run-hook-with-args 'telega-online-status-hook online-p)))))
 
 (defun telega-check-focus-change ()
   "Function called when some emacs frame changes focus."

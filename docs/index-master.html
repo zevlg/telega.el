@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-02-09 Вт 14:28 -->
+<!-- 2021-02-24 Ср 18:31 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.18)</title>
+<title>Telega Manual (v0.7.21)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.18)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.21)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -303,6 +303,7 @@
 <li><a href="#notifications-for-incoming-messages">Notifications for incoming messages</a></li>
 <li><a href="#telega-mode-line-mode">telega-mode-line-mode</a></li>
 <li><a href="#telega-appindicator-mode">telega-appindicator-mode</a></li>
+<li><a href="#telega-autoplay-mode">telega-autoplay-mode</a></li>
 <li><a href="#telega-squash-message-mode">telega-squash-message-mode</a></li>
 <li><a href="#telega-image-mode">telega-image-mode</a></li>
 <li><a href="#telega-edit-file-mode">telega-edit-file-mode</a></li>
@@ -879,7 +880,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org0adcc5e">
+<pre class="example" id="org21c310a">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -897,7 +898,7 @@ Only chats matching active chat filter are displayed in rootbuf.
 Active chat filter is displayed above the chat list in rootbuf, such
 as:
 </p>
-<pre class="example" id="org1b0f406">
+<pre class="example" id="orgbb1108a">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -927,7 +928,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org0281854">
+<pre class="example" id="orgb45160d">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1022,7 +1023,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org948cdcd">
+<pre class="example" id="orgb5aa140">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1099,16 +1100,10 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1904,7 +1899,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org887ef0f">
+<pre class="example" id="org9595b32">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2081,7 +2076,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0837c60">
+<pre class="example" id="orgb8ec4a3">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2152,7 +2147,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orge537686">
+<pre class="example" id="orgc824341">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2374,7 +2369,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org684ae21">
+<pre class="example" id="orgbe35b2b">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2751,6 +2746,11 @@ Setup to open some files in external applications might look like:
 </div>
 
 <p>
+On MacOS use <code>browse-url-default-macosx-browser</code> instead of
+<code>browse-url-xdg-open</code>.
+</p>
+
+<p>
 If you also want to open non-document messages as file using
 <code>telega-open-file-function</code> consider:
 </p>
@@ -3073,11 +3073,45 @@ Customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
+User Option: <code>telega-appindicator-use-label</code> 
+</p>
+
+<p>
+Non-nil to add text labels to the icon.
+Otherwise use just icon to show info.
+labels are not supported by XEMBED based system trays, such as
+<code>exwm-systemtray</code> or <code>polybar</code>. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-appindicator-icon-colors</code> 
+</p>
+
+<p>
+Colors to use for offline/online appindicator icon.
+Alist with <code>offline</code> / <code>online</code> as key, and value in form
+(CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR). 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((offline <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"black"</span> nil)
+ (online <span style="font-style: italic;">"#7739aa"</span> <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"#00ff00"</span>))
+</pre>
+</div></li>
+
+<li><p>
 User Option: <code>telega-appindicator-show-account-name</code> 
 </p>
 
 <p>
-Non-nil to show current account name in appindicator label. 
+Non-nil to show current account name in appindicator label.
+Applied only if <code>telega-appindicator-use-label</code> is non-nil. 
 </p>
 
 <p>
@@ -3088,7 +3122,8 @@ User Option: <code>telega-appindicator-show-mentions</code>
 </p>
 
 <p>
-Non-nil to show number of mentions in appindicator label. 
+Non-nil to show number of mentions in appindicator label.
+Applied only if <code>telega-appindicator-use-label</code> is non-nil. 
 </p>
 
 <p>
@@ -3106,6 +3141,54 @@ Set to nil to use plain number.
 
 <p>
 Default value: <code>("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿" "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱" "⓲" "⓳" "⓴")</code>
+</p></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-telega-autoplay-mode" class="outline-3">
+<h3 id="telega-autoplay-mode"><a class="self-link" href="#telega-autoplay-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-autoplay-mode</h3>
+<div class="outline-text-3" id="text-telega-autoplay-mode">
+<p>
+Global minor mode to automatically open content for incoming
+messages.  Message automatically opens if its type is in the
+<code>telega-autoplay-messages</code> list and message content is fully
+observable.
+</p>
+
+<p>
+Enable with <code>(telega-autoplay-mode 1)</code> or at <code>telega</code> load time:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-autoplay-mode)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-autoplay-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to automatically open content. 
+</p>
+
+<p>
+Default value: <code>all</code>
+</p></li>
+<li><p>
+User Option: <code>telega-autoplay-messages</code> 
+</p>
+
+<p>
+Message types to automatically play when received. 
+</p>
+
+<p>
+Default value: <code>(messageAnimation)</code>
 </p></li>
 </ul>
 </div>
@@ -3311,7 +3394,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org1289fd8">
+<pre class="example" id="orgfa23839">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

@@ -504,7 +504,8 @@ non-nil."
                  (if (memq 'video-note telega-open-message-as-file)
                      (telega-open-file filepath msg)
                    (if (and telega-video-note-play-inline
-                            (not current-prefix-arg))
+                            (or (not this-command) ; *NOT* called interactively
+                                (not current-prefix-arg)))
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filepath
                                       (list "-vf" "scale=120:120"
@@ -546,7 +547,8 @@ non-nil."
                  (if (memq 'animation telega-open-message-as-file)
                      (telega-open-file filename msg)
                    (if (and telega-animation-play-inline
-                            (not current-prefix-arg))
+                            (or (not this-command) ; *NOT* called interactively
+                                (not current-prefix-arg)))
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filename nil
                                     #'telega-animation--ffplay-callback anim))

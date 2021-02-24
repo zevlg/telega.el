@@ -242,6 +242,8 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
 ;; #+end_src
 ;;
 ;; Customizable options:
+;; - {{{user-option(telega-appindicator-use-label, 2)}}}
+;; - {{{user-option(telega-appindicator-icon-colors, 2)}}}
 ;; - {{{user-option(telega-appindicator-show-account-name, 2)}}}
 ;; - {{{user-option(telega-appindicator-show-mentions, 2)}}}
 ;; - {{{user-option(telega-appindicator-labels, 2)}}}
@@ -249,14 +251,35 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
 (declare-function telega-account-current "telega")
 (declare-function telega-kill "telega" (force))
 
+(defcustom telega-appindicator-use-label nil
+  "Non-nil to add text labels to the icon.
+Otherwise use just icon to show info.
+labels are not supported by XEMBED based system trays, such as
+`exwm-systemtray' or `polybar'."
+  :package-version '(telega . "0.7.20")
+  :type 'boolean
+  :group 'telega-modes)
+
+(defcustom telega-appindicator-icon-colors
+  '((offline "white" "black" nil)
+    (online "#7739aa" "white" "#00ff00"))
+  "Colors to use for offline/online appindicator icon.
+Alist with `offline' / `online' as key, and value in form
+(CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR)."
+  :package-version '(telega . "0.7.20")
+  :type 'list
+  :group 'telega-modes)
+
 (defcustom telega-appindicator-show-account-name t
-  "*Non-nil to show current account name in appindicator label."
+  "*Non-nil to show current account name in appindicator label.
+Applied only if `telega-appindicator-use-label' is non-nil."
   :package-version '(telega . "0.7.2")
   :type 'boolean
   :group 'telega-modes)
 
 (defcustom telega-appindicator-show-mentions t
-  "*Non-nil to show number of mentions in appindicator label."
+  "*Non-nil to show number of mentions in appindicator label.
+Applied only if `telega-appindicator-use-label' is non-nil."
   :package-version '(telega . "0.7.2")
   :type 'boolean
   :group 'telega-modes)
@@ -271,6 +294,9 @@ Set to nil to use plain number."
   :type 'list
   :group 'telega-modes)
 
+(defvar telega-appindicator--cached-icons nil
+  "Cached icons for offline/online statuses.")
+
 ;;;###autoload
 (define-minor-mode telega-appindicator-mode
   "Toggle display of the unread chats/mentions in the system tray."
@@ -284,9 +310,11 @@ Set to nil to use plain number."
                     :after 'telega-appindicator-update)
         (add-hook 'telega-ready-hook 'telega-appindicator-init)
         (add-hook 'telega-chats-fetched-hook 'telega-appindicator-update)
+        (add-hook 'telega-online-status-hook 'telega-appindicator-update)
         (when (telega-server-live-p)
           (telega-appindicator-init)))
 
+    (remove-hook 'telega-online-status-hook 'telega-appindicator-update)
     (remove-hook 'telega-chats-fetched-hook 'telega-appindicator-update)
     (remove-hook 'telega-ready-hook 'telega-appindicator-init)
     (advice-remove 'telega--on-updateChatUnreadMentionCount
@@ -298,19 +326,68 @@ Set to nil to use plain number."
       (telega-server--send "status passive" "appindicator"))
     ))
 
+(defun telega-appindicator--gen-svg-icon (&optional online-p label)
+  "Generate svg icon to be used in appindicator.
+Return filename of the generated icon."
+  (let ((cached-label (concat (if online-p "online" "offline") label)))
+    (or (cdr (assoc cached-label telega-appindicator--cached-icons))
+        (let* ((w 48) (h 48) (logo-w 36)
+               (svg (telega-svg-create w h))
+               (colors (cdr (assq (if online-p 'online 'offline)
+                                  telega-appindicator-icon-colors))))
+          (svg-circle svg (/ h 2) (/ h 2) (/ h 2)
+                      :fill-color (nth 0 colors))
+          (when (nth 2 colors)
+            (svg-circle svg (/ h 6) (/ h 6) (/ h 6)
+                        :fill-color (nth 2 colors)))
+          (telega-svg-telega-logo svg logo-w
+            :fill-color (nth 1 colors)
+            :transform (format "translate(%f, %f)"
+                               (/ (- h logo-w) 3) (- h logo-w)))
+          ;; Label
+          (when (and label (not (string-empty-p label)))
+            (let ((fsz 36))
+              ;; XXX: white background below the label
+              ;; TODO: find a better way in the future
+              (svg-circle svg (- w (/ fsz 2)) (- h (/ fsz 2)) (1- (/ fsz 2))
+                          :fill-color "white")
+              (svg-text svg label
+                        :font-size fsz
+                        :font-weight "bold"
+                        :fill "#ff0000"
+                        :font-family "monospace"
+                        :stroke-width 1
+                        :stroke-color "white"
+                        ;; XXX insane X/Y calculation
+                        :x (- w fsz)
+                        :y (- h (/ fsz 8)))))
+
+          (let ((image (telega-svg-image svg))
+                (svg-icon-file (telega-temp-name "appindicator-icon" ".svg")))
+            (write-region (plist-get (cdr image) :data)
+                          nil svg-icon-file nil 'quiet)
+            ;; Cache it
+            (setq telega-appindicator--cached-icons
+                  (cons (cons cached-label svg-icon-file)
+                        telega-appindicator--cached-icons))
+            svg-icon-file)))))
+
 (defun telega-appindicator-init ()
   "Initialize appindicator."
   (when telega-appindicator-mode
     (telega-server--send
-     (concat "setup " (telega-etc-file "telega-logo.svg"))
+     (concat "setup " (telega-appindicator--gen-svg-icon
+                       (funcall telega-online-status-function)))
      "appindicator")
     (telega-appindicator-update)))
 
 (defun telega-appindicator-update (&rest _ignored)
   "Update appindicator label."
   (when telega-appindicator-mode
-    (let* ((account
-            (when telega-appindicator-show-account-name
+    (let* ((me-online-p (funcall telega-online-status-function))
+           (account
+            (when (and telega-appindicator-use-label
+                       telega-appindicator-show-account-name)
               (car (telega-account-current))))
            (uu-chats-num
             (or (plist-get telega--unread-chat-count :unread_unmuted_count)
@@ -320,7 +397,8 @@ Set to nil to use plain number."
               (or (nth (1- uu-chats-num) telega-appindicator-labels)
                   (number-to-string uu-chats-num))))
            (mentions-num
-            (or (when telega-appindicator-show-mentions
+            (or (when (and telega-appindicator-use-label
+                           telega-appindicator-show-mentions)
                   (length (telega-filter-chats
                            telega--ordered-chats '(mention))))
                 0))
@@ -333,10 +411,15 @@ Set to nil to use plain number."
                                          (or uu-chats-str mentions-str))
                                 "-")
                               uu-chats-str
-                              mentions-str))))
-      (telega-server--send
-       (concat "label " (mapconcat #'identity label-strings " "))
-       "appindicator"))))
+                              mentions-str)))
+           (new-label (mapconcat #'identity label-strings " "))
+           (icon-filename
+            (if telega-appindicator-use-label
+                (telega-appindicator--gen-svg-icon me-online-p)
+              (telega-appindicator--gen-svg-icon me-online-p new-label))))
+      (telega-server--send (concat "icon " icon-filename) "appindicator")
+      (when telega-appindicator-use-label
+        (telega-server--send (concat "label " new-label) "appindicator")))))
 
 (defun telega-appindicator--on-event (event)
   "Function called when event from appindicator is received."
@@ -359,7 +442,27 @@ Set to nil to use plain number."
          (message "telega-server: Unknown appindicator-event: %s" event))))
 
 
-;;; Animation autoplay mode
+;;; ellit-org: minor-modes
+;; ** telega-autoplay-mode
+;;
+;; Global minor mode to automatically open content for incoming
+;; messages.  Message automatically opens if its type is in the
+;; ~telega-autoplay-messages~ list and message content is fully
+;; observable.
+;;
+;; Enable with ~(telega-autoplay-mode 1)~ or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-autoplay-mode)
+;; #+end_src
+;;
+;; Customizable options:
+;; - {{{user-option(telega-autoplay-for, 2)}}}
+;; - {{{user-option(telega-autoplay-messages, 2)}}}
+(defcustom telega-autoplay-for 'all
+  "Chat Filter for chats where to automatically open content."
+  :type 'list
+  :group 'telega-modes)
+
 (defcustom telega-autoplay-messages '(messageAnimation)
   "Message types to automatically play when received."
   :type 'list
@@ -370,7 +473,9 @@ Set to nil to use plain number."
 Play in muted mode."
   (when (and (not (plist-get msg :is_outgoing))
              (memq (telega--tl-type (plist-get msg :content))
-                   telega-autoplay-messages))
+                   telega-autoplay-messages)
+             (telega-chat-match-p (telega-msg-chat msg) telega-autoplay-for)
+             (telega-msg-observable-p msg))
     (telega-msg-open-content msg)))
 
 ;;;###autoload

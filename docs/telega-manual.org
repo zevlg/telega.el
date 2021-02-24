@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.18)
+#+TITLE: Telega Manual (v0.7.21)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -66,6 +66,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
     - [[#telega-mode-line-mode][telega-mode-line-mode]]
     - [[#telega-appindicator-mode][telega-appindicator-mode]]
+    - [[#telega-autoplay-mode][telega-autoplay-mode]]
     - [[#telega-squash-message-mode][telega-squash-message-mode]]
     - [[#telega-image-mode][telega-image-mode]]
     - [[#telega-edit-file-mode][telega-edit-file-mode]]
@@ -618,12 +619,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1866,6 +1865,9 @@ Setup to open some files in external applications might look like:
   (setq telega-open-file-function 'org-open-file)
 #+end_src
 
+On MacOS use ~browse-url-default-macosx-browser~ instead of
+~browse-url-xdg-open~.
+
 If you also want to open non-document messages as file using
 ~telega-open-file-function~ consider:
 - User Option: ~telega-open-message-as-file~ 
@@ -2081,14 +2083,36 @@ Enable with ~(telega-appindicator-mode 1)~ or at =telega= load time:
 #+end_src
 
 Customizable options:
+- User Option: ~telega-appindicator-use-label~ 
+
+  Non-nil to add text labels to the icon.
+  Otherwise use just icon to show info.
+  labels are not supported by XEMBED based system trays, such as
+  ~exwm-systemtray~ or ~polybar~. 
+
+  Default value: ~nil~
+- User Option: ~telega-appindicator-icon-colors~ 
+
+  Colors to use for offline/online appindicator icon.
+  Alist with ~offline~ / ~online~ as key, and value in form
+  (CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR). 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    ((offline "white" "black" nil)
+     (online "#7739aa" "white" "#00ff00"))
+  #+end_src
+
 - User Option: ~telega-appindicator-show-account-name~ 
 
-  Non-nil to show current account name in appindicator label. 
+  Non-nil to show current account name in appindicator label.
+  Applied only if ~telega-appindicator-use-label~ is non-nil. 
 
   Default value: ~t~
 - User Option: ~telega-appindicator-show-mentions~ 
 
-  Non-nil to show number of mentions in appindicator label. 
+  Non-nil to show number of mentions in appindicator label.
+  Applied only if ~telega-appindicator-use-label~ is non-nil. 
 
   Default value: ~t~
 - User Option: ~telega-appindicator-labels~ 
@@ -2098,6 +2122,33 @@ Customizable options:
   Set to nil to use plain number. 
 
   Default value: ~("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿" "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱" "⓲" "⓳" "⓴")~
+
+** telega-autoplay-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-autoplay-mode
+:END:
+
+Global minor mode to automatically open content for incoming
+messages.  Message automatically opens if its type is in the
+~telega-autoplay-messages~ list and message content is fully
+observable.
+
+Enable with ~(telega-autoplay-mode 1)~ or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-autoplay-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-autoplay-for~ 
+
+  Chat Filter for chats where to automatically open content. 
+
+  Default value: ~all~
+- User Option: ~telega-autoplay-messages~ 
+
+  Message types to automatically play when received. 
+
+  Default value: ~(messageAnimation)~
 
 ** telega-squash-message-mode
 :PROPERTIES:
