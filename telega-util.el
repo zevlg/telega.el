@@ -1349,10 +1349,23 @@ CHEIGHT is height for the svg in characters, default=1."
              (telega-text (if (= (string-width emoji) aw-chars)
                               emoji
                             (make-string aw-chars ?E))))
-        (svg-text svg emoji
-                  :font-family telega-emoji-font-family
-                  :font-size font-size
-                  :x 0 :y font-size)
+        ;; NOTE: special case librsvg does not handles well - labels
+        ;; such as 1️⃣, for such cases `telega-emoji-svg-width' returns 1
+        (if (and (= (length emoji) 3) (string-suffix-p "️⃣" emoji))
+            (progn
+              (setq telega-text (compose-chars (aref emoji 0) ?⃣))
+              (svg-text svg "⃣"
+                        :font-family telega-emoji-font-family
+                        :font-size font-size
+                        :x 0 :y font-size)
+              (svg-text svg (substring emoji 0 1)
+                        :font-family telega-emoji-font-family
+                        :font-size font-size
+                        :x 0 :y font-size))
+          (svg-text svg emoji
+                    :font-family telega-emoji-font-family
+                    :font-size font-size
+                    :x 0 :y font-size))
         (setq image (telega-svg-image svg :scale 1.0
                                       :width xw :height xh
                                       :ascent 'center
@@ -1460,7 +1473,8 @@ Only endings listed in `telega-symbols-emojify' are emojified."
   (if (or (telega-emoji-fitz-p emoji)
           (telega-emoji-flag-p emoji)
           (telega-emoji-fe0f-p emoji)
-          (telega-emoji-has-zero-joiner-p emoji))
+          (telega-emoji-has-zero-joiner-p emoji)
+          (and (= (length emoji) 3) (string-suffix-p "️⃣" emoji)))
       1
     nil))
 
