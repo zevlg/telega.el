@@ -256,7 +256,7 @@ enabled it will match also `:flag-jo:' and `:black-jocker:'."
   :group 'telega)
 
 (defcustom telega-emoji-use-images
-  (and telega-use-images telega-emoji-font-family)
+  (and telega-use-images (image-type-available-p 'svg) telega-emoji-font-family)
   "*Non-nil to use images for emojis."
   :type 'boolean
   :group 'telega)
