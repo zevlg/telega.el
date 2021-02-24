@@ -801,6 +801,24 @@ See `telega-ins--message' for NO-HEADER argument."
   :type '(list integer integer integer integer)
   :group 'telega-webpage)
 
+;; WebPage preview settings
+(defcustom telega-webpage-preview-size-limits '(10 5 55 10)
+  "Same as `telega-photo-size-limits', but for webpage preview image.
+Set to nil to disable photo in a webpage preview."
+  :package-version '(telega . "0.7.20")
+  :type '(choice (const :tag "Disable photo preview" nil)
+                 (list integer integer integer integer))
+  :group 'telega-webpage)
+
+(defcustom telega-webpage-preview-description-limit nil
+  "Maximum length in chars to display webpage preview description.
+Set to 0 to disable description in a webpage preview."
+  :package-version '(telega . "0.7.20")
+  :type '(choice (const :tag "No limit" nil)
+                 (const :tag "Disable webpage preview description" 0)
+                 integer)
+  :group 'telega-webpage)
+
 
 (defgroup telega-user nil
   "Customization for users."
@@ -1258,12 +1276,6 @@ Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
   "*Same as `telega-photo-size-limits', but for thumbnails.
 Used for such messages as audio/document/etc."
   :package-version '(telega . "0.6.30")
-  :type '(list integer integer integer integer)
-  :group 'telega)
-
-(defcustom telega-webpage-preview-size-limits '(10 5 55 10)
-  "Same as `telega-photo-size-limits', but for webpage preview image."
-  :package-version '(telega . "0.7.2")
   :type '(list integer integer integer integer)
   :group 'telega)
 
@@ -2170,6 +2182,13 @@ Called with single argument - TDLib file structure.
 Could be used to copy downloaded files to another place.
 See https://t.me/emacs_telega/21925"
   :package-version '(telega . "0.7.1")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-online-status-hook nil
+  "Hook called when my online status changes.
+Called with single argument - ONLINE-P."
+  :package-version '(telega . "0.7.20")
   :type 'hook
   :group 'telega-hooks)
 

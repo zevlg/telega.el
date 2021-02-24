@@ -762,12 +762,19 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (telega-ins title))
         (telega-ins "\n"))
       (when-let ((desc (telega-tl-str web-page :description)))
-        (telega-ins desc)
-        (telega-ins "\n"))
+        (when (and telega-webpage-preview-description-limit
+                   (> (length desc) telega-webpage-preview-description-limit))
+          (setq desc (truncate-string-to-width
+                      desc telega-webpage-preview-description-limit nil nil
+                      (when (> telega-webpage-preview-description-limit 0)
+                        telega-symbol-eliding))))
+        (when (telega-ins desc)
+          (telega-ins "\n")))
 
       ;; NOTE: animation uses it's own thumbnails
       (let ((photo (plist-get web-page :photo)))
-        (when (and photo (not (plist-get web-page :animation)))
+        (when (and photo (not (plist-get web-page :animation))
+                   telega-webpage-preview-size-limits)
           (telega-ins--photo photo msg telega-webpage-preview-size-limits)
           (telega-ins "\n"))
 
