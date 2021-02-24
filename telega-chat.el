@@ -4022,7 +4022,9 @@ then forward message copy without caption."
       (telega-chat--pop-to-buffer chat)
       (with-telega-chatbuf chat
         (goto-char (point-max))
-        (dolist (msg messages)
+        ;; NOTE: Forward messages in the id order, see
+        ;; https://github.com/zevlg/telega.el/issues/271
+        (dolist (msg (cl-sort messages #'< :key (telega--tl-prop :id)))
           (telega-chatbuf-attach-fwd-msg msg send-copy-p rm-cap-p))))))
 
 (defun telega-msg-delete0 (msg &optional revoke)
