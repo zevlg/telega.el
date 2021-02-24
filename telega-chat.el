@@ -4027,6 +4027,20 @@ then forward message copy without caption."
         (dolist (msg (cl-sort messages #'< :key (telega--tl-prop :id)))
           (telega-chatbuf-attach-fwd-msg msg send-copy-p rm-cap-p))))))
 
+(defun telega-msg-forward-marked-or-at-point-to-multiple-chats (chats)
+  "Forward marked messages or message at point to multiple CHATS."
+  (interactive (list (telega-completing-read-chat-list "Forward to Chats")))
+  (when-let* ((messages
+               (cl-sort (or telega-chatbuf--marked-messages
+                            (when-let ((msg-at-point (telega-msg-at (point))))
+                              (list msg-at-point)))
+                        #'< :key (telega--tl-prop :id)))
+              (from-chat (telega-msg-chat (car messages))))
+    (when (y-or-n-p (format "Forward %d messages to %d chats? "
+                            (length messages) (length chats)))
+      (dolist (chat chats)
+        (telega--forwardMessages chat from-chat messages)))))
+
 (defun telega-msg-delete0 (msg &optional revoke)
   (cl-assert (eq (telega--tl-type msg) 'message))
   (if (plist-get msg :telega-is-deleted-message)

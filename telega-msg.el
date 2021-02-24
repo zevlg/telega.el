@@ -163,6 +163,7 @@
     (define-key map (kbd "t") 'telega-msg-open-thread)
 
     (define-key map (kbd "B") 'telega-msg-ban-sender)
+    (define-key map (kbd "F") 'telega-msg-forward-marked-or-at-point-to-multiple-chats)
     (define-key map (kbd "L") 'telega-msg-redisplay)
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
