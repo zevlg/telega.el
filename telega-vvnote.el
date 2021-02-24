@@ -69,7 +69,7 @@
               "-f avfoundation -s 640x480 -framerate 30 -i default -r 30 -f avfoundation -i :default "
             ;; gnu/linux
             "-f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default ")
-          "-vf format=yuv420p,crop=240:240:40:0 "
+          "-vf format=yuv420p,scale=320:240,crop=240:240:40:0 "
           "-vcodec " (if (member "hevc" telega-ffplay--has-encoders)
                          "hevc"
                        "h264")
@@ -439,7 +439,7 @@ Return filename with recorded video note."
          (ffmpeg-args
           (nconc (cdr (split-string telega-vvnote-video-cmd " " t))
                  (list note-file
-                       "-f" "image2pipe" "-vf" "crop=240:240:40:0"
+                       "-f" "image2pipe" "-vf" "scale=320:240,crop=240:240:40:0"
                        "-vcodec" "png" "-")))
          (capture-proc (telega-ffplay-to-png nil ffmpeg-args
                          #'telega-vvnote-video--record-callback))
