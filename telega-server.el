@@ -143,10 +143,11 @@ Otherwise query user about building flags."
   "Find telega-server executable.
 Raise error if not found."
   (let ((exec-path (cons telega-directory exec-path)))
-    (or (executable-find "telega-server")
-        (progn (telega-server-build)
-               (executable-find "telega-server"))
-        (error "`telega-server' not found in exec-path"))))
+    (or (if (file-executable-p telega-server-command) telega-server-command nil)
+        (or (executable-find "telega-server")
+            (progn (telega-server-build)
+                   (executable-find "telega-server"))
+            (error "`telega-server' not found in exec-path")))))
 
 (defun telega-server-version ()
   "Return telega-server version."
