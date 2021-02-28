@@ -478,8 +478,9 @@ Default is `:telega-image'."
               (telega-media--image-update obj-spec media-file cache-prop))
 
         ;; Possible initiate file downloading
-        (when (or (telega-file--need-download-p media-file)
-                  (telega-file--downloading-p media-file))
+        (when (and telega-use-images
+                   (or (telega-file--need-download-p media-file)
+                       (telega-file--downloading-p media-file)))
           (telega-file--download media-file nil
             (lambda (dfile)
               (telega-media--image-update obj-spec dfile cache-prop)

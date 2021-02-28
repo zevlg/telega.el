@@ -125,28 +125,34 @@ If SLICE-NUM is specified, then insert single slice.
 
 Special property `:no-display-if' is supported in PROPS to
 ommit image display if value is for this property is non-nil."
-  ;; NOTE: do not check SLICE-NUM
-  (let ((slice (when slice-num
-                 (list 0 (telega-chars-xheight slice-num)
-                       1.0 (telega-chars-xheight 1)))))
-    (telega-ins--with-props
-        (nconc (list 'rear-nonsticky '(display))
-               (unless (plist-get props :no-display-if)
-                 (list 'display
-                       (if slice
-                           (list (cons 'slice slice) img)
-                         img)))
-               props)
-      (telega-ins
-       (or (telega-image--telega-text img slice-num)
-           ;; Otherwise use slow `image-size' to get correct
-           ;; `:telega-text'
-           (make-string (telega-chars-in-width
-                         (or (plist-get (cdr img) :width)
-                             (progn
-                               (telega-debug "WARN: `image-size' used for %S" img)
-                               (cl-assert img)
-                               (car (image-size img t (telega-x-frame)))))) ?X))))))
+  ;; NOTE: IMG might be nil if `telega-use-images' is nil
+  ;; See https://github.com/zevlg/telega.el/issues/274
+  (if (not img)
+      (telega-ins "<IMAGE>")
+
+    ;; NOTE: do not check SLICE-NUM
+    (let ((slice (when slice-num
+                   (list 0 (telega-chars-xheight slice-num)
+                         1.0 (telega-chars-xheight 1)))))
+      (telega-ins--with-props
+          (nconc (list 'rear-nonsticky '(display))
+                 (unless (plist-get props :no-display-if)
+                   (list 'display
+                         (if slice
+                             (list (cons 'slice slice) img)
+                           img)))
+                 props)
+        (telega-ins
+         (or (telega-image--telega-text img slice-num)
+             ;; Otherwise use slow `image-size' to get correct
+             ;; `:telega-text'
+             (make-string (telega-chars-in-width
+                           (or (plist-get (cdr img) :width)
+                               (progn
+                                 (telega-debug "WARN: `image-size' used for %S" img)
+                                 (cl-assert img)
+                                 (car (image-size img t (telega-x-frame))))))
+                          ?X)))))))
 
 (defun telega-ins--image-slices (image &optional props slice-func)
   "Insert sliced IMAGE at current column.
