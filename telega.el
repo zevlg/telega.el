@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.22
-(defconst telega-version "0.7.22")
+;; Version: 0.7.23
+(defconst telega-version "0.7.23")
 (defconst telega-server-min-version "0.7.6")
 (defconst telega-tdlib-min-version "1.7.1")
 (defconst telega-tdlib-max-version nil)
@@ -86,6 +86,13 @@ Used for manual generation.")
     ;; - {{{where-is(telega-switch-important-chat,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-switch-important-chat, 2)}}}
     (define-key map (kbd "i") 'telega-switch-important-chat)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-switch-unread-chat,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-switch-unread-chat, 2)}}}
+    ;; 
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-filter-unread-chats, 4)}}}
+    (define-key map (kbd "u") 'telega-switch-unread-chat)
     ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega-saved-messages,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-saved-messages, 2)}}}

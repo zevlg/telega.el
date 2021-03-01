@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.21)
+#+TITLE: Telega Manual (v0.7.23)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -600,6 +600,17 @@ Telega prefix map bindings:
      Switch to important ~CHAT~ if any.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is used, then select first chat if
      multiple chats are important.
+
+- @@html:<kbd>@@u@@html:</kbd>@@ (~telega-switch-unread-chat~) :: 
+     Switch to next unread message in next unread ~CHAT~.
+     Chat considered unread if matches ~telega-filter-unread-chats~ chat filter.
+
+     Customizable options:
+  - User Option: ~telega-filter-unread-chats~ 
+
+    Chat Filter for ~telega-switch-unread-chat~ command. 
+
+    Default value: ~(and main unread)~
 
 - @@html:<kbd>@@s@@html:</kbd>@@ (~telega-saved-messages~) :: 
      Switch to "Saved Messages" chat buffer.

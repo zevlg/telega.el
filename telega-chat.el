@@ -1170,6 +1170,19 @@ multiple chats are important."
 
   (telega-chat--pop-to-buffer chat))
 
+(defun telega-switch-unread-chat (chat)
+  "Switch to next unread message in next unread CHAT.
+Chat considered unread if matches `telega-filter-unread-chats' chat filter."
+  (interactive
+   (list (or (car (telega-filter-chats
+                   telega--ordered-chats telega-filter-unread-chats))
+             (user-error "No unread chats"))))
+
+  (let ((last-msg-id (or (plist-get chat :last_read_inbox_message_id) 0)))
+    (if (zerop last-msg-id)
+        (telega-chat--pop-to-buffer chat)
+      (telega-chat--goto-msg chat last-msg-id 'highlight))))
+
 
 ;;; Chat Buffer
 (defvar telega-chatbuf--origin-recenter-command

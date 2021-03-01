@@ -701,6 +701,12 @@ See https://github.com/zevlg/telega.el/issues/171"
   :options '(all (or saved-messages pin unread))
   :group 'telega-filter)
 
+(defcustom telega-filter-unread-chats '(and main unread)
+  "*Chat Filter for `telega-switch-unread-chat' command."
+  :package-version '(telega . "0.7.22")
+  :type 'list
+  :group 'telega-filter)
+
 (defcustom telega-filters-custom
   '(("Main" . main)
     ("Groups" . (type basicgroup supergroup))

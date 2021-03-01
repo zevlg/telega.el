@@ -632,4 +632,7 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} invited {users} to {chat}")
  ("lng_action_invite_user_chat"
   :value "the voice chat")
+
+  ("lng_action_bot_allowed_from_domain"
+   :value "You allowed this bot to message you when you logged in on {domain}.")
  )

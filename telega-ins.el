@@ -1244,6 +1244,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageVoiceChatStarted
               'messageVoiceChatEnded
               'messageInviteVoiceChatParticipants
+              'messageWebsiteConnected
               'telegaInternal)))
 
 (defun telega-ins--special (msg)
@@ -1256,6 +1257,9 @@ Special messages are determined with `telega-msg-special-p'."
                         (propertize (telega-msg-sender-title sender)
                                     'face 'bold))))
     (cl-case (telega--tl-type content)
+      (messageWebsiteConnected
+       (telega-ins-i18n "lng_action_bot_allowed_from_domain"
+         :domain (telega-tl-str content :domain_name)))
       (messageContactRegistered
        ;; I18N: action_user_registered -> joined Telegram
        (telega-ins-i18n "lng_action_user_registered" :from sender-name))

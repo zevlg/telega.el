@@ -493,7 +493,9 @@ external player even if `telega-video-note-play-inline' is
 non-nil."
   (let* ((note (telega--tl-get msg :content :video_note))
          (note-file (telega-file--renew note :video))
-         (proc (plist-get msg :telega-ffplay-proc)))
+         (proc (plist-get msg :telega-ffplay-proc))
+         (saved-this-command this-command)
+         (saved-current-prefix-arg current-prefix-arg))
     (cl-case (and (process-live-p proc) (process-status proc))
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
@@ -505,8 +507,9 @@ non-nil."
                  (if (memq 'video-note telega-open-message-as-file)
                      (telega-open-file filepath msg)
                    (if (and telega-video-note-play-inline
-                            (or (not this-command) ; *NOT* called interactively
-                                (not current-prefix-arg)))
+                            ;; *NOT* called interactively
+                            (or (not saved-this-command)
+                                (not saved-current-prefix-arg)))
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filepath
                                       (list "-vf" "scale=120:120"
@@ -536,7 +539,9 @@ external player even if `telega-animation-play-inline' is
 non-nil."
   (let* ((anim (or animation (telega--tl-get msg :content :animation)))
          (anim-file (telega-file--renew anim :animation))
-         (proc (plist-get msg :telega-ffplay-proc)))
+         (proc (plist-get msg :telega-ffplay-proc))
+         (saved-this-command this-command)
+         (saved-current-prefix-arg current-prefix-arg))
     (cl-case (and (process-live-p proc) (process-status proc))
       (run (telega-ffplay-pause proc))
       (stop (telega-ffplay-resume proc))
@@ -548,8 +553,9 @@ non-nil."
                  (if (memq 'animation telega-open-message-as-file)
                      (telega-open-file filename msg)
                    (if (and telega-animation-play-inline
-                            (or (not this-command) ; *NOT* called interactively
-                                (not current-prefix-arg)))
+                            ;; *NOT* called interactively
+                            (or (not saved-this-command)
+                                (not saved-current-prefix-arg)))
                        (plist-put msg :telega-ffplay-proc
                                   (telega-ffplay-to-png filename nil
                                     #'telega-animation--ffplay-callback anim))
