@@ -174,11 +174,13 @@ Most of these languages available for language detection.")
       (with-current-buffer (get-buffer-create "*Telega Mnz Fontification*")
         (erase-buffer)
         (insert text)
-        (if (and (symbolp mode)
-                 (commandp mode))
-            (funcall mode)
-          (ignore-errors
-            (mapc #'funcall mode)))
+        ;; NOTE: suppress annoying messages from some major modes
+        (let ((inhibit-message t))
+          (if (and (symbolp mode)
+                   (commandp mode))
+              (funcall mode)
+            (ignore-errors
+              (mapc #'funcall mode))))
         ;; NOTE: font-lock might trigger errors, for example:
         ;;   (telega-mnz--render-text-for-mode "$ head -n2 /tmp/pechatnaya-forma.doc\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<?mso-application progid=\"Word.Document\"?>" 'xml-mode)
         ;;   ==>
