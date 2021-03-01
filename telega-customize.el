@@ -125,6 +125,17 @@ where PROXY-TYPE is one of:
   :type 'integer
   :group 'telega)
 
+(defcustom telega-old-date-format "%D.%M.%Y"
+  "Format for old dates in the chat buffer.
+Date considered \"old\" if older then one week from now.
+Resulting string must be no longer then 8 chars. Format specifiers:
+%D - Two digits for a day.
+%M - Two digits for a month.
+%Y - Two digits for a year relative to 2000."
+  :package-version '(telega . "0.7.22")
+  :type 'string
+  :group 'telega)
+
 (defcustom telega-help-messages t
   "*Non-nil to show sometime UI related messages."
   :type 'boolean

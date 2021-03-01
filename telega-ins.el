@@ -200,7 +200,7 @@ single argument - slice number, starting from 0."
 Format is:
 - HH:MM      if today
 - Mon/Tue/.. if on this week
-- DD.MM.YY   otherwise"
+- DD.MM.YY   otherwise (uses `telega-old-date-format')"
   (let* ((dtime (decode-time timestamp))
          (current-ts (time-to-seconds (current-time)))
          (ctime (decode-time current-ts))
@@ -219,8 +219,12 @@ Format is:
                  (< timestamp (+ week-start00 (* 7 24 60 60))))
             (telega-ins (nth (nth 6 dtime) telega-i18n-weekday-names))
 
-          (telega-ins-fmt "%02d.%02d.%02d"
-            (nth 3 dtime) (nth 4 dtime) (- (nth 5 dtime) 2000))))
+          (telega-ins
+           (format-spec telega-old-date-format
+                        (format-spec-make
+                         ?D (format "%02d" (nth 3 dtime))
+                         ?M (format "%02d" (nth 4 dtime))
+                         ?Y (format "%02d" (- (nth 5 dtime) 2000)))))))
       )))
 
 (defun telega-ins--date-iso8601 (timestamp)
