@@ -171,7 +171,7 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
 (defun telega-filter-button--action (button)
   "Action to take when custom filter button is pressed.
 If prefix ARG is specified then set custom filter as active,
-otherwise toggle custom filter in active chat filters."
+otherwise toggle custom filter in the active chat filters."
   (let* ((custom (button-get button :value))
          (fspec (if (or telega-filter-custom-expand
                         (telega-filter--folder-p (nth 1 custom)))
@@ -185,7 +185,11 @@ otherwise toggle custom filter in active chat filters."
       (if (and (telega-filter--folder-p (car (telega-filter-active)))
                (telega-filter--folder-p fspec))
           (telega-filters-push (cons fspec (cdr (telega-filter-active))))
-        (telega-filters-push (cons fspec (telega-filter-active)))))))
+
+        ;; Otherwise toggle it in the active chat filter
+        (if (member fspec (telega-filter-active))
+            (telega-filters-push (delete fspec (telega-filter-active)))
+          (telega-filter-add fspec))))))
 
 (defun telega-filter-active (&optional with-root-view-filter)
   "Return active filter.

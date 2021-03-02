@@ -468,11 +468,11 @@ new terms specific to =telega=.  All of them are used in the manual.
      See [[#chat-filters][Chat Filters]] for the details.
 
 - Active Chat Filter :: 
-     Chat filter applied to the chat list in rootbuf.
+     List of chat filters applied to the chat list in rootbuf.
 
-     Only chats matching active chat filter are displayed in rootbuf.
-     Active chat filter is displayed above the chat list in rootbuf, such
-     as:
+     Only chats matching **all** chat filters in the active chat filter
+     are displayed in rootbuf.  Active chat filter is displayed above the
+     chat list in rootbuf, such as:
      #+begin_example
        -/------------------------------(main)--------------------------------
      #+end_example
