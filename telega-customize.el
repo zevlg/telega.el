@@ -459,7 +459,8 @@ In range [1..3].  Use 1."
   :group 'telega)
 
 (defcustom telega-server-command "telega-server"
-  "Command to run as telega server."
+  "Command to run as telega server.
+It should be absolute path or binary file searchable in `exec-path'."
   :type 'string
   :group 'telega-server)
 
