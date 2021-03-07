@@ -38,7 +38,8 @@
      footer)
     (("updateMessageInteractionInfo")
      thread-footer)
-    (("updateUserStatus" "updateChatOnlineMemberCount")
+    (("updateUserStatus" "updateChatOnlineMemberCount"
+      "updateChatMessageTtlSetting")
      modeline)
     (("updateChatReadInbox" "updateChatUnreadMentionCount")
      footer modeline)
@@ -433,6 +434,13 @@ NOTE: we store the number as custom chat property, to use it later."
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :action_bar (plist-get event :action_bar))
+
+    (telega-chat--mark-dirty chat event)))
+
+(defun telega--on-updateChatMessageTtlSetting (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id))))
+    (cl-assert chat)
+    (plist-put chat :message_ttl_setting (plist-get event :message_ttl_setting))
 
     (telega-chat--mark-dirty chat event)))
 

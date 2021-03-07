@@ -477,6 +477,13 @@ Example: 23 y.o. designer from San Francisco")
   :value "Photo has expired")
  ("lng_ttl_video_expired"
   :value "Video has expired")
+ ;; message_ttl_setting
+ ("lng_ttl_about_duration1"
+  :value "24 hours")
+ ("lng_ttl_about_duration2"
+  :value "7 days")
+ ("telega_ttl_about_disable"
+  :value "disable")
 
  ;; Calls
  ("lng_call_error_not_available"
@@ -635,4 +642,16 @@ Example: 23 y.o. designer from San Francisco")
 
   ("lng_action_bot_allowed_from_domain"
    :value "You allowed this bot to message you when you logged in on {domain}.")
+
+ ("lng_rights_gigagroup_title"
+  :value "Broadcast group")
+ ("lng_rights_gigagroup_about"
+  :value "Broadcast groups can have over 200,000 members, but only admins can send messages in them.")
+ ("lng_gigagroup_convert_feature1"
+  :value "No limit on the number of members.")
+ ("lng_gigagroup_convert_feature2"
+  :value "Only admins can send messages.")
+ ("lng_gigagroup_convert_feature3"
+  :value "Can't be turned back into a regular group.")
+
  )

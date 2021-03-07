@@ -588,7 +588,9 @@ If CHAT-FILTER is ommited, then active filter from
     (let* ((filter-funs
             (cl-remove-if
              (lambda (funsym)
-               (> (length (help-function-arglist funsym)) 1))
+               (let ((funargs (help-function-arglist funsym)))
+                 (and (> (length funargs) 1)
+                      (not (eq '&optional (nth 1 funargs))))))
              (apropos-internal "^telega--filter-[a-z-]+" 'functionp)))
            (filter-names
             (mapcar (lambda (funame)
@@ -853,12 +855,15 @@ Important chat is a chat with unread messages and enabled notifications."
   "Matches if chat's id is one of in ID-LIST."
   (memq (plist-get chat :id) id-list))
 
-(defun telega-filter-by-created-by-me ()
-  "Filter public chats created by me."
-  (interactive)
+(defun telega-filter-by-created-by-me (chat-type)
+  "Filter public chats created by me.
+CHAT-TYPE is one of `has-username' or `location-based'."
+  (interactive
+   (list (intern (completing-read "Public Chat Type: "
+                                  '("has-username" "location-based") nil t))))
   (telega-filter-add
    (cons 'ids (mapcar (telega--tl-prop :id)
-                      (telega--getCreatedPublicChats)))))
+                      (telega--getCreatedPublicChats chat-type)))))
 
 ;;; ellit-org: chat-filters
 ;; - (me-is-owner [ ~OR-ADMIN~ ]) ::
@@ -1213,6 +1218,21 @@ If NON-EMPTY is non-nil, then keep only non-empty voice chats."
 (define-telega-filter has-favorite-messages (chat)
   "Matches if chat has favorite messages."
   (telega-chat-uaprop chat :telega-favorite-ids))
+
+;;; ellit-org: chat-filters
+;; - is-public ::
+;;   {{{fundoc(telega--filter-has-message-ttl-setting, 2)}}}
+(define-telega-filter has-message-ttl-setting (chat)
+  "Matches if chat has `:message_ttl_setting'."
+  (when-let ((msg-ttl (plist-get chat :message_ttl_setting)))
+    (> msg-ttl 0)))
+
+;;; ellit-org: chat-filters
+;; - is-broadcast-group ::
+;;   {{{fundoc(telega--filter-is-broadcast-group, 2)}}}
+(define-telega-filter is-broadcast-group (chat)
+  "Matches if chat is a broadcast group."
+  (plist-get (telega-chat--info chat) :is_broadcast_group))
 
 (provide 'telega-filter)
 

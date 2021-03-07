@@ -64,6 +64,7 @@
 
 (defconst telega-chat--admin-permissions
   '((:can_be_edited . "lng_rights_edit_admin")
+    (:can_manage_chat . nil)            ;TODO
     (:can_change_info . "lng_rights_group_info")
     (:can_post_messages . "lng_rights_channel_post")
     (:can_edit_messages . "lng_rights_channel_edit")
@@ -389,7 +390,7 @@ Return non-nil if all tests are passed."
                       (not telega-chat-show-avatars)))
              nil
              (concat "Emacs with `svg' support is needed to show avatars.  "
-                     "Disable `telega-XXX-show-avatars' or comple Emacs with svg support"))
+                     "Disable `telega-XXX-show-avatars' or recompile Emacs with svg support"))
   (unless quiet-p
     (message "Your Emacs is suitable to run telega.el"))
   t)

@@ -275,14 +275,6 @@ all messages must have same user sender."
          :message_thread_id (telega-chat-message-thread-id chat)
          :action action)))
 
-(defun telega--sendChatSetTtlMessage (chat ttl-seconds)
-  "Changes the current TTL setting for the CHAT.
-Sends corresponding message."
-  (telega-server--send
-   (list :@type "sendChatSetTtlMessage"
-         :chat_id (plist-get chat :id)
-         :ttl ttl-seconds)))
-
 (defun telega--getMessageEmbeddingCode (msg &optional for-album-p)
   "Returns an HTML code for embedding the message MSG."
   ;; TDLib: Available only for messages in supergroups and channels
@@ -423,12 +415,18 @@ Use it when `inlineKeyboardButtonBuy' key is pressed."
          :shipping_option_id (or shipping-id "")
          :credentials credentials)))
 
-(defun telega--getCreatedPublicChats (&optional callback)
-  "Return list of public chats created by the user."
+(defun telega--getCreatedPublicChats (chat-type &optional callback)
+  "Return list of public chats created by the user.
+CHAT-TYPE is one of `has-username' or `location-based'."
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat-get (append (plist-get reply :chat_ids) nil))
 
-   (list :@type "getCreatedPublicChats")
+   (list :@type "getCreatedPublicChats"
+         :type (cl-ecase chat-type
+                 (has-username
+                  (list :@type "publicChatTypeHasUsername"))
+                 (location-based
+                  (list :@type "publicChatTypeIsLocationBased"))))
    callback))
 
 (defun telega--getInactiveSupergroupChats (&optional callback)
@@ -1063,6 +1061,18 @@ Requires `:can_change_info' rights."
                       :photo (list :@type "inputFileLocal"
                                    :path (expand-file-name filename))))
    (or callback 'ignore)))
+
+(defun telega--setChatMessageTtlSetting (chat ttl)
+  "Changes CHAT's message TTL setting.
+Message TTL is a self-destruct timer for new messages used in a
+chat. Requires can_delete_messages administrator right in basic
+groups, supergroups and channels.
+TTL must be 0, 86400 or 604800."
+  (cl-assert (or (telega-chat-secret-p chat) (memq ttl '(0 86400 604800))))
+  (telega-server--send
+   (list :@type "setChatMessageTtlSetting"
+         :chat_id (plist-get chat :id)
+         :ttl ttl)))
 
 (defun telega--setChatPermissions (chat &rest permissions)
   "Set CHAT's permission with updated values from PERMISSIONS."

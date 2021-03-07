@@ -563,9 +563,16 @@ Specify non-nil BAN to ban this user in this CHAT."
 (defun telega-chat-set-ttl (chat ttl-seconds)
   "Set TTL setting for secret CHAT to TTL-SECONDS."
   (interactive
-   (let ((chat (or telega-chatbuf--chat (telega-chat-at (point)))))
-     (list chat (ceiling (read-number "TTL (seconds): ")))))
-  (telega--sendChatSetTtlMessage chat ttl-seconds))
+   (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
+          (ttl-table `((,(telega-i18n "lng_ttl_about_duration1") . 86400)
+                       (,(telega-i18n "lng_ttl_about_duration2") . 604800)
+                       (,(telega-i18n "telega_ttl_about_disable") . 0)))
+          (ttl (if (telega-chat-secret-p chat)
+                   (read-number "Messages TTL (seconds): ")
+                 (completing-read "Messages TTL: "
+                                  (mapcar #'car ttl-table) nil t))))
+     (list chat (or (assoc ttl ttl-table) (ceiling ttl)))))
+  (telega--setChatMessageTtlSetting chat ttl-seconds))
 
 (defun telega-chat-set-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
@@ -636,8 +643,10 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins "\n")
     (telega-ins--image chat-ava 1
                        :no-display-if (not telega-chat-show-avatars))
-
-    (telega-ins (capitalize (symbol-name (telega-chat--type chat))) " ")
+    (telega-ins (if (telega-chat-match-p chat 'is-broadcast-group)
+                    (telega-i18n "lng_rights_gigagroup_title")
+                  (capitalize (symbol-name (telega-chat--type chat))))
+                " ")
     (telega-ins--button "Open"
       :value chat
       :action #'telega-chat--pop-to-buffer)
@@ -670,6 +679,9 @@ Specify non-nil BAN to ban this user in this CHAT."
       :value chat
       :action #'telega-chat-toggle-archive)
     (telega-ins "\n"))
+  (when (telega-chat-match-p chat 'is-broadcast-group)
+    (telega-ins--help-message
+     (telega-ins-i18n "lng_rights_gigagroup_about")))
 
   (telega-ins-fmt "Id: %s\n"
     (if telega-debug
@@ -693,6 +705,24 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins " (" (propertize "custom" 'face 'shadow) ")"))
   (telega-ins ": " (telega-chat-order chat) "\n")
 
+  ;; Messages TTL setting for the chat
+  (let ((ttl (or (plist-get chat :message_ttl_setting) 0))
+        (can-change-ttl-p
+         (telega-chat-match-p
+          chat '(or (type secret)
+                    (my-permission :can_delete_messages)))))
+    (when (or (> ttl 0) can-change-ttl-p)
+      (telega-ins "Messages TTL: " 
+                  (if (> ttl 0)
+                      (telega-duration-human-readable ttl 2)
+                    ;; TODO: i18n
+                    "disabled"))
+      (when can-change-ttl-p
+        (telega-ins " ")
+        (telega-ins--button "Change"
+          :value chat
+          :action #'telega-chat-set-ttl))
+      (telega-ins "\n")))
   (telega-ins "Default Disable Notification: ")
   (telega-ins--button (if (plist-get chat :default_disable_notification)
                           telega-symbol-heavy-checkmark
@@ -2152,6 +2182,33 @@ If message thread filtering is enabled, use it first."
               (concat " by " (telega-msg-sender-title sender)))
             "]")))
 
+(defun telega-chatbuf--modeline-messages-ttl ()
+  "Format TTL messages settings for the chatbuf."
+  (when-let ((ttl (plist-get telega-chatbuf--chat :message_ttl_setting)))
+    (when (or (telega-chat-secret-p telega-chatbuf--chat)
+              (not (zerop ttl)))
+      (concat " ("
+              (apply #'propertize
+                     (concat (telega-symbol 'lock) "TTL: "
+                             (if (zerop ttl)
+                                 "Off"
+                               (telega-duration-human-readable ttl 2)))
+                     ;; NOTE: can change TTL only in
+                     ;; secret chats or if have
+                     ;; `:can_delete_messages' admin
+                     ;; permission
+                     (when (telega-chat-match-p
+                            telega-chatbuf--chat
+                            '(or (type secret)
+                                 (my-permission :can_delete_messages)))
+                       (list
+                        'local-map (eval-when-compile
+                                     (make-mode-line-mouse-map
+                                      'mouse-1 'telega-chat-set-ttl))
+                        'mouse-face 'mode-line-highlight
+                        'help-echo "Change Time-To-Live for messages")))
+              ")"))))
+
 (defun telega-chatbuf--modeline-update ()
   "Update `mode-line-buffer-identification' for the CHAT buffer."
   ;; NOTE: Avoid images in modeline if mode-line height is less then
@@ -2170,23 +2227,7 @@ If message thread filtering is enabled, use it first."
                            (telega-user-online-p
                             (telega-chat-user telega-chatbuf--chat 'inc-bots)))
                   telega-symbol-online-status)
-                ;; TTL for secret chats
-                (when (telega-chat-secret-p telega-chatbuf--chat)
-                  (let* ((secret (telega-chat--secretchat telega-chatbuf--chat))
-                         (ttl (plist-get secret :ttl)))
-                    (concat " ("
-                            (propertize
-                             (concat (telega-symbol 'lock) "TTL: "
-                                     (if (zerop ttl)
-                                         "Off"
-                                       (telega-duration-human-readable ttl 2)))
-                             'local-map (eval-when-compile
-                                          (make-mode-line-mouse-map
-                                           'mouse-1 'telega-chat-set-ttl))
-                             'mouse-face 'mode-line-highlight
-                             'help-echo "Change Time-To-Live for messages")
-                            ")")))
-
+                (telega-chatbuf--modeline-messages-ttl)
                 (format-mode-line telega-chat-mode-line-format nil nil
                                   (current-buffer)))))
   (force-mode-line-update))
@@ -4022,6 +4063,8 @@ If `\\[universal-argument]' `\\[universal-argument]' is given,
 then forward message copy without caption."
   (interactive (list current-prefix-arg
                      (> (prefix-numeric-value current-prefix-arg) 4)))
+  (when (telega-chat-secret-p telega-chatbuf--chat)
+    (user-error "telega: Can't forward messages from secret chat"))
   (when-let ((messages (or (reverse telega-chatbuf--marked-messages)
                            (when-let ((msg-at-point (telega-msg-at (point))))
                              (list msg-at-point)))))
