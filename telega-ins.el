@@ -2678,7 +2678,7 @@ KIND is one of: `spam', `location', `add', `block', `share' and
     (telega-ins--chat-action-bar-button chat 'remove-bar)
     (telega-ins " ActionBar: ")
     (cl-ecase (telega--tl-type action-bar)
-      (publicChatTypeIsLocationBased
+      (chatActionBarReportUnrelatedLocation
        (telega-ins--chat-action-bar-button chat 'location))
 
       (chatActionBarReportSpam

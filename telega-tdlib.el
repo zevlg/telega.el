@@ -1676,15 +1676,25 @@ OFFSET-CHAT is the chat to start getting chats from."
                    )))
     callback))
 
-(defun telega--reportChat (chat reason &optional messages)
+(defun telega--reportChat (chat reason &optional messages text)
   "Report a CHAT to the Telegram moderators.
 REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
-\"ChildAbuse\", \"Copyright\" or \"UnrelatedLocation\"."
+\"ChildAbuse\", \"Copyright\", \"UnrelatedLocation\",
+\"Fake\" or \"Custom\"."
   (telega-server--send
    (list :@type "reportChat"
          :chat_id (plist-get chat :id)
          :reason (list :@type (concat "chatReportReason" reason))
-         :message_ids (cl-map 'vector (telega--tl-prop :id) messages))))
+         :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
+         :text (or text ""))))
+
+(defun telega--reportChatPhoto (chat photo reason &optional text)
+  (telega-server--send
+   (list :@type "reportChatPhoto"
+         :chat_id (plist-get chat :id)
+         ;; TODO: file-id
+         :reason (list :@type (concat "chatReportReason" reason))
+         :text (or text ""))))
 
 (defun telega--removeChatActionBar (chat)
   "Remove CHAT's action bar without any other action."

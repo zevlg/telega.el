@@ -1142,6 +1142,19 @@ Return newly created chat."
                                     (telega-tl-str full-info :description)))))
   (telega--setChatDescription chat descr))
 
+(defun telega-chat-report (chat reason)
+  "Report a CHAT having inappropriate content."
+  (interactive
+   (list (or telega-chatbuf--chat (telega-chat-at (point)))
+         (apply telega-completing-read-function
+                "Report Reason: "
+                '("Spam" "Violence" "Pornography" "ChildAbuse"
+                  "Copyright" "UnrelatedLocation" "Fake" "Custom")
+                nil t)))
+  (let ((text (when (string= "Custom" reason)
+                (read-string "Custom Report Reason: "))))
+    (telega--reportChat chat reason text)))
+
 (defun telega-chats-filtered-delete (&optional force)
   "Apply `telega-chat-delete' to all currently filtered chats.
 Do it only if FORCE is non-nil."
