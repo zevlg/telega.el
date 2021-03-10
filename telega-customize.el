@@ -168,6 +168,16 @@ See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon"
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-use-one-line-preview-for
+  (when (fboundp 'svg-embed-base-uri-image) 'all)
+  "Chat Filter for chats where to show one-line previews for photos/videos.
+Used only if `telega-use-images' is non-nil.
+Enable it only if you have `:base-uri' SVG functionality, otherwise
+performance might suffer."
+  :package-version '(telega . "0.7.26")
+  :type 'list
+  :group 'telega-chat)
+
 ;; See https://t.me/emacs_telega/12459
 (defcustom telega-button-endings 'telega-button--endings-func
   "*Characters to use as beginning/ending of the button.
@@ -1261,12 +1271,6 @@ markup attachment.  Use nil to edit message as is, without using
   :options '((telega--fmt-text-markdown1 . "markdown1"))
   :group 'telega-msg)
 
-(defcustom telega-msg-use-images-in-one-line telega-use-images
-  "Non-nil to show images in one-line message version."
-  :package-version '(telega . "0.6.30")
-  :type 'boolean
-  :group 'telega-msg)
-
 (defcustom telega-msg-hack-on-can-get-message-thread t
   "Non-nil to hack on `:can_get_message_thread' message property.
 In case MSG has `:message_thread_id' and has no
@@ -2034,12 +2038,12 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-webpage-header
-  '((t :family "FreeSerif" :height 1.2))
+  '((t :family "FreeSerif" :height 1.3))
   "Face to display header in webpage instant view."
   :group 'telega-faces)
 
 (defface telega-webpage-subheader
-  '((t :inherit telega-webpage-header :height 1.1))
+  '((t :family "FreeSerif" :height 1.15))
   "Face to display subheader in webpage instant view."
   :group 'telega-faces)
 

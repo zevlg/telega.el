@@ -2181,7 +2181,10 @@ If REMOVE-CAPTION is specified, then do not insert caption."
        (messageText
         (telega-ins--fmt-text (plist-get content :text) msg))
        (messagePhoto
-        (telega-ins (telega-symbol 'photo) " ")
+        (if-let ((preview-img (telega-msg--preview-photo-image msg)))
+            (telega-ins--image preview-img)
+          (telega-ins (telega-symbol 'photo)))
+        (telega-ins " ")
         (or (telega-ins--fmt-text
              (unless remove-caption (plist-get content :caption)) msg)
             ;; I18N: lng_in_dlg_photo or lng_attach_photo
@@ -2213,7 +2216,10 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           (telega-duration-human-readable
            (telega--tl-get content :audio :duration))))
        (messageVideo
-        (telega-ins (telega-symbol 'video) " ")
+        (if-let ((preview-img (telega-msg--preview-video-image msg)))
+            (telega-ins--image preview-img)
+          (telega-ins (telega-symbol 'video)))
+        (telega-ins " ")
         (or (telega-ins--fmt-text
              (unless remove-caption (plist-get content :caption)) msg)
             (telega-ins (propertize "Video" 'face 'shadow)))

@@ -234,7 +234,7 @@ plist like:
       [chat2      ]
 #+end_example
 
-   WON'T DO.  See [[Root Views, different views for the rootbuf]]
+   **WON'T DO**  See [[Root Views, different views for the rootbuf]]
 
    Also: custom labels are deprecated in favor for Chat Folders
 
@@ -391,7 +391,8 @@ plist like:
 
    Works only for messages of ~messageText~.
 
-** Forwarding as link to message
+** DONE Forwarding as link to message
+   CLOSED: [2021-03-10 Ср 11:55]
 
    Have custom option ~telega-forward-public-message-as-link~ to
    forward messages from public chats (i.e. messages having public
@@ -527,3 +528,7 @@ plist like:
 
   Predicates runs in ~telega-chat-pre-message-hook~ and 
   ~telega-chat-insert-message-hook~
+
+** Make use of ~:progressive_sizes~ in photo sizes
+
+   To show intermediate photo downloading progress.

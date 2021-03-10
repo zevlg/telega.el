@@ -295,6 +295,28 @@ X and Y denotes left up corner."
                       logo-outline "\n")
            args)))
 
+(defun telega-svg-round-square (svg x y width height radius &rest args)
+  "In SVG at X and Y positioon draw square with round corners.
+RADIUS denotes radius for round corners.
+X and Y denotes left up corner."
+  ;; NOTE: Draw 8-corners polygon, and then circles in all four
+  ;; corners
+  (let ((poly-points (list (cons (+ x radius) y)
+                           (cons (- (+ x width) radius) y)
+                           (cons (+ x width) (+ y radius))
+                           (cons (+ x width) (- (+ y height) radius))
+                           (cons (- (+ x width) radius) (+ y height))
+                           (cons (+ x radius) (+ y height))
+                           (cons x (- (+  y height) radius))
+                           (cons x radius))))
+    (apply #'svg-polygon svg poly-points args)
+    ;; Four round courners
+    (apply #'svg-circle svg (+ x radius) (+ y radius) radius args)
+    (apply #'svg-circle svg (- (+ x width) radius) (+ y radius) radius args)
+    (apply #'svg-circle svg (- (+ x width) radius) (- (+ height y) radius) radius args)
+    (apply #'svg-circle svg (+ x radius) (- (+ height y) radius) radius args)
+    ))
+
 (defun telega-svg-create (width height &rest args)
   "Create SVG image using `svg-create'.
 Addresses some issues telega got with pure `svg-create' usage."
@@ -393,6 +415,53 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
     (telega-svg-image svg :scale 1.0
                       :width xw :height xh
                       :ascent 'center)))
+
+(defun telega-preview-one-line-create-svg (filename data-p width height
+                                                    &optional video-p)
+  "Create preview svg for FILENAME.
+DATA-P is non-nil if FILENAME is actually an image data instead 
+WIDTH and HEIGHT is an image size.
+Specify non-nil VIDEO-P if generating preview for video."
+  (let* ((base-dir (if data-p
+                       (telega-base-directory)
+                     (file-name-directory filename)))
+         (svg-size (telega-chars-xheight 1))
+         (margin 1)                     ; margin for the mask in pixels
+         (svg (telega-svg-create svg-size svg-size))
+         (pclip (telega-svg-clip-path svg "pclip")))
+    (telega-svg-round-square pclip margin margin
+                             (- svg-size (* 2 margin)) (- svg-size (* 2 margin))
+                             (/ svg-size 6))
+    (cl-destructuring-bind (x-fit y-fit w-fit h-fit)
+        (telega-svg-fit-into width height svg-size svg-size)
+      (telega-svg-embed svg (if data-p
+                                filename
+                              (list (file-relative-name filename base-dir)
+                                    base-dir))
+                        (format "image/%s"
+                                (if data-p
+                                    "jpeg"
+                                  (image-type-from-file-name filename)))
+                        data-p :x x-fit :y y-fit :width w-fit :height h-fit
+                        :clip-path "url(#pclip)"))
+
+    ;; Draw play triangle
+    (when video-p
+      (let ((play-size (/ svg-size 3)))
+        (svg-polygon svg (list (cons (/ (- svg-size play-size) 2)
+                                     (/ (- svg-size play-size) 2))
+                               (cons (/ (- svg-size play-size) 2)
+                                     (/ (+ svg-size play-size) 2))
+                               (cons (/ (+ svg-size play-size) 2)
+                                     (/ svg-size 2)))
+                     :fill "red"
+                     :opacity "0.75")))
+
+    (telega-svg-image svg :scale 1.0 :width svg-size :height svg-size
+                      :ascent 'center
+                      :mask 'heuristic
+                      :base-uri (expand-file-name "dummy" base-dir))
+    ))
 
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
