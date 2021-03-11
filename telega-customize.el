@@ -24,6 +24,8 @@
 ;;
 
 ;;; Code:
+(require 'svg)                          ; `svg-embed-base-uri-image'
+
 (defgroup telega nil
   "Telegram client."
   :prefix "telega-"
