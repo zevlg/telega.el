@@ -1794,9 +1794,10 @@ in `(window-prev-buffers)' to achive behaviour for nil-valued
       telega-directory)))
 
 (defun telega-create-image (&rest args)
-  "Wrapper around `create-image' that takes into account `telega-use-images'."
+  "Wrapper around `create-image' that takes into account `telega-use-images'.
+Also enforces `:transform-smoothing' property to be non-nil."
   (when telega-use-images
-    (apply #'create-image args)))
+    (apply #'create-image (nconc args (list :transform-smoothing t)))))
 
 (defconst telega-symbol-animations
   '((dots "." ".." "...")
