@@ -415,9 +415,8 @@ If SLICES-P is non-nil, then insert STICKER using slices."
                    (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
       'action 'telega-sticker--choosen-action
       'cursor-sensor-functions
-      (list (when (and (plist-get sticker :is_animated)
-                       telega-sticker-animated-play)
-              (telega-sticker--gen-sensor-func sticker)))
+      (when (and (plist-get sticker :is_animated) telega-sticker-animated-play)
+        (list (telega-sticker--gen-sensor-func sticker)))
       )
     (when addon-inserter
       (funcall addon-inserter sticker))
@@ -569,8 +568,6 @@ If FOR-PARAM is specified, then insert only if
 
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."
-  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
-
   ;; NOTE:
   ;;  - Avoid help window selection by binding `help-window-select'
   ;;  - Avoid smart packages (such as shackle) to handle help window by
