@@ -119,7 +119,7 @@ pngext_get_png(struct telega_dat* src, struct telega_dat* png)
 void
 pngext_usage(char* prog)
 {
-        printf("usage: %s -E PREFIX [-f FPS] [-R RDSIZE] -- CMD [ARGS]\n", prog);
+        printf("usage: %s -E PREFIX [-f FPS] [-R RDSIZE] [-- CMD [ARGS]]\n", prog);
         printf("Captures output from external command CMD and extracts\n"
                "png images from there, writing them to temporary location\n"
                "with PREFIX.\n");
@@ -305,7 +305,9 @@ pngext_main(int ac, char** av)
         }
 
         if (optind >= ac) {
-                pngext_usage(av[0]);
+                /* No CMD specified */
+                pngext_loop(prefix, rdsize);
+                return;
                 /* NOT REACHED */
         }
 

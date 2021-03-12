@@ -364,6 +364,12 @@ If CALLBACK is specified, then get reply message asynchronously."
   "Goto message MSG and highlight it."
   (telega-msg-goto msg 'highlight))
 
+(defun telega-msg-open-animated-sticker (msg)
+  "Open content for animated sticker message MSG."
+  (let ((sticker (telega--tl-get msg :content :sticker)))
+    (when (plist-get sticker :is_animated)
+      (telega-sticker--animate sticker))))
+
 (defun telega-msg-open-sticker (msg)
   "Open content for sticker message MSG."
   (let ((sset-id (telega--tl-get msg :content :sticker :set_id)))
@@ -662,7 +668,12 @@ non-nil."
     (messageDocument
      (telega-msg-open-document msg))
     (messageSticker
-     (telega-msg-open-sticker msg))
+     (let ((sticker (telega--tl-get msg :content :sticker)))
+       (if (and (plist-get sticker :is_animated)
+                telega-sticker-animated-play
+                (not current-prefix-arg))
+           (telega-msg-open-animated-sticker msg)
+         (telega-msg-open-sticker msg))))
     (messageVideo
      (telega-msg-open-video msg))
     (messageAudio

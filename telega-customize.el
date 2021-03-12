@@ -317,6 +317,13 @@ cdr is maximum width in chars to use."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-sticker-animated-play (executable-find "tgs2png")
+  "Non-nil to play animated stickers inside Emacs.
+Requires `tgs2png' program from https://github.com/zevlg/tgs2png"
+  :package-version '(telega . "0.7.30")
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-animation-height 5
   "*Height in chars for animations."
   :type 'integer

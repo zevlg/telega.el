@@ -601,7 +601,8 @@ Message id could be updated on this update."
                   (progn
                     (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
                     (ewoc-invalidate telega-chatbuf--ewoc before-node))
-                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))))
+                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))
+    (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."

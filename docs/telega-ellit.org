@@ -49,9 +49,13 @@ you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gn
 - =GNU make= (known as gmake on BSD platforms)
 - =GNU gperf= (for building TDLib)
 - =CMake= (for building TDLib)
-- =Python= (for testing the telega-server)
+- =pkg-config= (for building =telega-server=)
+- =Python= (for testing the =telega-server=)
 - =GNU Guix= _(optional, if using the Guix installation method)_
-- =libappindicator3= (optional, to show =telega= icon/info in system tray)
+- =libappindicator3= (optional, to show =telega= icon/info in system
+  tray)
+- =tgs2png= (optional, for Animated Stickers), sources are at
+  https://github.com/zevlg/tgs2png
 
 =make= is found in most of the modern machines. The other packages can
 be download with the system package manager (such as =apt= for

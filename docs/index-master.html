@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-03-02 Вт 18:35 -->
+<!-- 2021-03-12 Пт 02:59 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.23)</title>
+<title>Telega Manual (v0.7.30)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.23)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.30)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -401,9 +401,13 @@ you use GNU Guix you can skip directly to <a href="#installing-telega-and-tdlib-
 <li><code>GNU make</code> (known as gmake on BSD platforms)</li>
 <li><code>GNU gperf</code> (for building TDLib)</li>
 <li><code>CMake</code> (for building TDLib)</li>
-<li><code>Python</code> (for testing the telega-server)</li>
+<li><code>pkg-config</code> (for building <code>telega-server</code>)</li>
+<li><code>Python</code> (for testing the <code>telega-server</code>)</li>
 <li><code>GNU Guix</code> <span class="underline">(optional, if using the Guix installation method)</span></li>
-<li><code>libappindicator3</code> (optional, to show <code>telega</code> icon/info in system tray)</li>
+<li><code>libappindicator3</code> (optional, to show <code>telega</code> icon/info in system
+tray)</li>
+<li><code>tgs2png</code> (optional, for Animated Stickers), sources are at
+<a href="https://github.com/zevlg/tgs2png">https://github.com/zevlg/tgs2png</a></li>
 </ul>
 
 <p>
@@ -465,7 +469,7 @@ support (graphical).
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.1.
+version greater or equal to 1.7.2.
 </p>
 
 <p>
@@ -880,7 +884,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org1180395">
+<pre class="example" id="org4e3a543">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -898,7 +902,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgf1c9f0c">
+<pre class="example" id="org7838e18">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -928,7 +932,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgd388ce1">
+<pre class="example" id="orgf407a18">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1023,7 +1027,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org86d5d2c">
+<pre class="example" id="orgfe159ef">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1799,6 +1803,10 @@ If non-nil <code>NON-EMPTY</code> is specified, then match only if voice chat is
 not empty.</dd>
 
 <dt>has-favorite-messages</dt><dd>Matches if chat has favorite messages.</dd>
+
+<dt>is-public</dt><dd>Matches if chat has <code>:message_ttl_setting</code>.</dd>
+
+<dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
 </dl>
 </div>
 </div>
@@ -1921,7 +1929,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org80c73ee">
+<pre class="example" id="orgcbdf913">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2098,7 +2106,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgf7c5f5c">
+<pre class="example" id="org1d6dccb">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2169,7 +2177,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org9127a4e">
+<pre class="example" id="org2cf3cf9">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2391,7 +2399,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgaac6afd">
+<pre class="example" id="org2749771">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3210,7 +3218,7 @@ Message types to automatically play when received.
 </p>
 
 <p>
-Default value: <code>(messageAnimation)</code>
+Default value: <code>(messageAnimation messageSticker)</code>
 </p></li>
 </ul>
 </div>
@@ -3416,7 +3424,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org02908a8">
+<pre class="example" id="orgbcc3bbf">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

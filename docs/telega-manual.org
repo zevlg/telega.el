@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.23)
+#+TITLE: Telega Manual (v0.7.30)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -128,9 +128,13 @@ you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gn
 - =GNU make= (known as gmake on BSD platforms)
 - =GNU gperf= (for building TDLib)
 - =CMake= (for building TDLib)
-- =Python= (for testing the telega-server)
+- =pkg-config= (for building =telega-server=)
+- =Python= (for testing the =telega-server=)
 - =GNU Guix= _(optional, if using the Guix installation method)_
-- =libappindicator3= (optional, to show =telega= icon/info in system tray)
+- =libappindicator3= (optional, to show =telega= icon/info in system
+  tray)
+- =tgs2png= (optional, for Animated Stickers), sources are at
+  https://github.com/zevlg/tgs2png
 
 =make= is found in most of the modern machines. The other packages can
 be download with the system package manager (such as =apt= for
@@ -180,7 +184,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.1.
+version greater or equal to 1.7.2.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -1190,6 +1194,12 @@ For other Chat Filter bindings see below.
 - has-favorite-messages :: 
      Matches if chat has favorite messages.
 
+- is-public :: 
+     Matches if chat has ~:message_ttl_setting~.
+
+- is-broadcast-group :: 
+     Matches if chat is a broadcast group.
+
 ** Customizable options making use of Chat Filters
 :PROPERTIES:
 :CUSTOM_ID: customizable-options-making-use-of-chat-filters
@@ -2159,7 +2169,7 @@ Customizable options:
 
   Message types to automatically play when received. 
 
-  Default value: ~(messageAnimation)~
+  Default value: ~(messageAnimation messageSticker)~
 
 ** telega-squash-message-mode
 :PROPERTIES:
