@@ -2604,8 +2604,8 @@ Return t."
   (if-let ((pin-msg (telega-chat-pinned-msg chat 'offline)))
       (telega-ins--message-with-chat-header pin-msg)
 
-    (with-telega-chatbuf
-        (telega-chatbuf--pinned-messages-fetch))
+    (with-telega-chatbuf chat
+      (telega-chatbuf--pinned-messages-fetch))
     (telega-ins-i18n "lng_profile_loading")))
 
 (defun telega-ins--root-msg (msg)
