@@ -247,14 +247,20 @@ By default LIMITS is `telega-photo-size-limits'."
         ;; Select sizes larger then limits, because downscaling works
         ;; betten then upscaling
 
-        ;; TODO: prefer thumbs with `:progressive_sizes' set
         (when (and (or (telega-file--downloaded-p thumb-file)
                        (and (telega-file--can-download-p thumb-file)
                             (not (telega-file--downloaded-p
                                   (plist-get ret :photo)))))
                    (or (not ret)
                        (and (>= tw lim-xwidth)
-                            (>= th lim-xheight))))
+                            (>= th lim-xheight)))
+
+                   ;; NOTE: prefer thumbs with `:progressive_sizes' set
+                   (or (not ret)
+                       (and (telega-file--can-download-p (plist-get ret :photo))
+                            (not (plist-get ret :progressive_sizes))
+                            (plist-get thumb :progressive_sizes)))
+                   )
           (setq ret thumb))))
     ret))
 
@@ -344,15 +350,45 @@ Return cons cell, where car is width in char and cdr is margin value."
    (plist-get photo :height)
    cheight))
 
-(defun telega-media--create-image (file width height &optional cheight)
+(defun telega-media--create-image (file width height &optional cheight
+                                        progressive-sizes)
   "Create image to display FILE.
 WIDTH and HEIGHT specifies size of the FILE's image.
-CHEIGHT is the height in chars to use (default=1)."
+CHEIGHT is the height in chars to use (default=1).
+PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
   (unless cheight
     (setq cheight 1))
-  (if (telega-file--downloaded-p file)
+  (if (or (telega-file--downloaded-p file)
+          (and progressive-sizes
+               (>= (telega-file--downloaded-size file)
+                   (car progressive-sizes))))
       (let ((cw-xmargin (telega-media--cwidth-xmargin width height cheight))
             (image-filename (telega--tl-get file :local :path)))
+        ;; NOTE: Handle case when file is partially downloaded and
+        ;; some progressive size is reached. In this case create
+        ;; temporary image file writing corresponding progress bytes
+        ;; into it and displaying it
+        (unless (telega-file--downloaded-p file)
+          (let* ((tmp-size (cl-find (telega-file--downloaded-size file)
+                                    (reverse progressive-sizes) :test #'>=))
+                 (tmp-fname (expand-file-name
+                             (format "%s-%d.%s"
+                                     (file-name-base image-filename)
+                                     tmp-size
+                                     (file-name-extension image-filename))
+                             telega-temp-dir))
+                 (coding-system-for-write 'binary))
+            (unless (file-exists-p tmp-fname)
+              (telega-debug "Creating progressive img: %d / %S -> %s"
+                            (telega-file--downloaded-size file)
+                            progressive-sizes
+                            tmp-fname)
+              (with-temp-buffer
+                (set-buffer-multibyte nil)
+                (insert-file-contents-literally image-filename)
+                (write-region 1 (+ 1 tmp-size) tmp-fname nil 'quiet)))
+            (setq image-filename tmp-fname)))
+
         (telega-create-image
          (if (string-empty-p image-filename)
              (telega-etc-file "non-existing.jpg")
@@ -397,7 +433,8 @@ CHEIGHT is the height in chars (default=1)."
        (telega-file--renew thumb :file)))
    (plist-get thumb :width)
    (plist-get thumb :height)
-   cheight))
+   cheight
+   (append (plist-get thumb :progressive_sizes) nil)))
 
 (defun telega-thumb--create-image-one-line (thumb &optional file)
   "Create image for thumbnail (photoSize) for one line use."
@@ -459,7 +496,7 @@ Return nil if preview image is unavailable."
                    cached-preview)
                   (minithumb
                    (cons 'mini
-                         (telega-preview-one-line-create-svg 
+                         (telega-preview-one-line-create-svg
                           (base64-decode-string (plist-get minithumb :data)) t
                           (plist-get minithumb :width)
                           (plist-get minithumb :height)))))))
@@ -484,7 +521,7 @@ Return nil if preview image is unavailable."
                         (telega-file--downloaded-p (plist-get thumb :file))
                         (not (eq 'best (car cached-preview))))
                    (cons 'best
-                         (telega-preview-one-line-create-svg 
+                         (telega-preview-one-line-create-svg
                           (telega--tl-get thumb :file :local :path) nil
                           (plist-get thumb :width) (plist-get thumb :height)
                           'video)))
@@ -492,7 +529,7 @@ Return nil if preview image is unavailable."
                    cached-preview)
                   (minithumb
                    (cons 'mini
-                         (telega-preview-one-line-create-svg 
+                         (telega-preview-one-line-create-svg
                           (base64-decode-string (plist-get minithumb :data)) t
                           (plist-get minithumb :width)
                           (plist-get minithumb :height)
@@ -688,7 +725,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
                     (telega-map--distance-pixels
                      (car user-loc-off) user-loc (plist-get map :zoom))))
          (user-x (+ (/ width 2)
-                    (telega-map--distance-pixels 
+                    (telega-map--distance-pixels
                      (cdr user-loc-off) user-loc (plist-get map :zoom))))
          (svg (telega-svg-create width height)))
     (cl-assert (and (integerp width) (integerp height)))

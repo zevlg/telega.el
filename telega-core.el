@@ -122,7 +122,9 @@ Used for optimisations.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
-(defvar telega--cached-messages nil "Hash table ((chat-id . msg-id) -> msg) of cached messages, such as pinned, replies, etc.")
+(defvar telega--cached-messages nil
+  "Hash table ((chat-id . msg-id) -> msg) of cached messages.
+Such as pinned, replies, etc.")
 (defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions).")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
@@ -586,9 +588,12 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (and (telega-file--can-download-p file)
        (not (telega-file--downloaded-p file))))
 
+(defsubst telega-file--downloaded-size (file)
+  (telega--tl-get file :local :downloaded_size))
+
 (defsubst telega-file--downloading-progress (file)
   "Return progress of FILE downloading as float from 0 to 1."
-  (color-clamp (/ (float (telega--tl-get file :local :downloaded_size))
+  (color-clamp (/ (float (telega-file--downloaded-size file))
                   (telega-file--size file))))
 
 (defun telega-file--partially-downloaded-p (file)
