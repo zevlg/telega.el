@@ -1705,6 +1705,21 @@ MSG is the message associated with FILENAME."
           "To open files in external apps see https://zevlg.github.io/telega.el/#opening-files-using-external-programs")
       )))
 
+(defun telega-file-local-copy (file)
+  "Same as `file-local-copy', but use `telega-temp-dir' for temp files.
+If FILE is local, then return expanded FILE."
+  ;; NOTE: `tramp-compat-temporary-file-directory'<f> uses standard
+  ;; value for `temporary-file-directory', so just binding it won't
+  ;; work
+  (let ((tfd-value (get 'temporary-file-directory 'standard-value))
+        (temporary-file-directory telega-temp-dir))
+    (unwind-protect
+        (progn
+          (put 'temporary-file-directory 'standard-value
+               (list telega-temp-dir))
+          (or (file-local-copy file) (expand-file-name file)))
+      (put 'temporary-file-directory 'standard-value tfd-value))))
+
 (defun telega-color-name-as-hex-2digits (color)
   "Convert COLOR to #rrggbb form."
   (apply #'color-rgb-to-hex (append (color-name-to-rgb color) '(2))))
