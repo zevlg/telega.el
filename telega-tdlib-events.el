@@ -565,7 +565,11 @@ NOTE: we store the number as custom chat property, to use it later."
           (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
             (telega--viewMessages telega-chatbuf--chat (list new-msg)))
           )))
-    (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
+    ;; NOTE: Trigger `telega-chat-post-message-hook' for outgoing
+    ;; messages, only when message is successfully sent
+    ;; See https://t.me/emacs_telega/25615
+    (unless (plist-get new-msg :sending_state)
+      (run-hook-with-args 'telega-chat-post-message-hook new-msg))))
 
 (defun telega--on-updateMessageSendSucceeded (event)
   "Message has been successfully sent to server.
@@ -602,7 +606,8 @@ Message id could be updated on this update."
                     (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
                     (ewoc-invalidate telega-chatbuf--ewoc before-node))
                 (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))
-    (run-hook-with-args 'telega-chat-post-message-hook new-msg)))
+    (unless (plist-get new-msg :sending_state)
+      (run-hook-with-args 'telega-chat-post-message-hook new-msg))))
 
 (defun telega--on-updateMessageSendFailed (event)
   "Message failed to send."
