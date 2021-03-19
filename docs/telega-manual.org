@@ -132,11 +132,14 @@ you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gn
 - =GNU gperf= (for building TDLib)
 - =CMake= (for building TDLib)
 - =pkg-config= (for building =telega-server=)
-- =Python= (for testing the =telega-server=)
+
+**Optional dependencies**:
+- =Python= (optional, for testing the =telega-server=)
 - =GNU Guix= _(optional, if using the Guix installation method)_
 - =libappindicator3= (optional, to show =telega= icon/info in system
   tray)
-- =tgs2png= (optional, for Animated Stickers), sources are at
+- =dwebp= (optional, to display [[#stickers][Stickers]])
+- =tgs2png= (optional, for [[#animated-stickers][Animated Stickers]]), sources are at
   https://github.com/zevlg/tgs2png
 
 =make= is found in most of the modern machines. The other packages can
@@ -1986,6 +1989,29 @@ the [[#root-buffer][root buffer]].
 :PROPERTIES:
 :CUSTOM_ID: stickers
 :END:
+
+To display stickers =telega= uses =dwebp= utility to convert ~.webp~
+stickers into png images that can be displayed by Emacs. =dwebp=
+utility is available on almost every system inside =webp= package.
+
+Important customizable options for stickers:
+- User Option: ~telega-sticker-size~ 
+
+  Size for the sticker.
+  car is height in chars to use.
+  cdr is maximum width in chars to use. 
+
+  Default value: ~(4 . 24)~
+- User Option: ~telega-sticker-set-download~ 
+
+  Non-nil to automatically download known sticker sets. 
+
+  Default value: ~nil~
+- User Option: ~telega-sticker-favorite-background~ 
+
+  Background color for the favorite stickers. 
+
+  Default value: ~"cornflower blue"~
 
 ** Animated stickers
 :PROPERTIES:

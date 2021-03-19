@@ -50,11 +50,14 @@ you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gn
 - =GNU gperf= (for building TDLib)
 - =CMake= (for building TDLib)
 - =pkg-config= (for building =telega-server=)
-- =Python= (for testing the =telega-server=)
+
+**Optional dependencies**:
+- =Python= (optional, for testing the =telega-server=)
 - =GNU Guix= _(optional, if using the Guix installation method)_
 - =libappindicator3= (optional, to show =telega= icon/info in system
   tray)
-- =tgs2png= (optional, for Animated Stickers), sources are at
+- =dwebp= (optional, to display [[#stickers][Stickers]])
+- =tgs2png= (optional, for [[#animated-stickers][Animated Stickers]]), sources are at
   https://github.com/zevlg/tgs2png
 
 =make= is found in most of the modern machines. The other packages can
@@ -853,6 +856,15 @@ Root View, by pressing
 the [[#root-buffer][root buffer]].
 
 * Stickers
+
+To display stickers =telega= uses =dwebp= utility to convert ~.webp~
+stickers into png images that can be displayed by Emacs. =dwebp=
+utility is available on almost every system inside =webp= package.
+
+Important customizable options for stickers:
+- {{{user-option(telega-sticker-size, 2)}}}
+- {{{user-option(telega-sticker-set-download, 2)}}}
+- {{{user-option(telega-sticker-favorite-background, 2)}}}
 
 ** Animated stickers
 
