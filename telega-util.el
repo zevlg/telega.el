@@ -1510,10 +1510,10 @@ IMAGE-SPEC could be image, filename or form to be evaluated returning image."
 Actual symbol value is taken from `telega-symbol-ENDING' variable.
 Only endings listed in `telega-symbols-emojify' are emojified."
   (let ((value (symbol-value (intern (format "telega-symbol-%s" ending)))))
-    (or (and telega-emoji-use-images
-             (let ((emoji-file (cdr (assq ending telega-symbols-emojify))))
-               (when (or emoji-file (memq ending telega-symbols-emojify))
-                 (apply #'telega-symbol-emojify value emoji-file))))
+    (or (let ((emoji-file (cdr (assq ending telega-symbols-emojify))))
+          (when (or emoji-file (and telega-emoji-use-images
+                                    (memq ending telega-symbols-emojify)))
+            (apply #'telega-symbol-emojify value emoji-file)))
         value)))
 
 (defun telega-emoji-has-zero-joiner-p (emoji)
