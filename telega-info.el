@@ -471,7 +471,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                            (telega-i18n (if channel-p
                                             "lng_sure_delete_channel"
                                           "lng_sure_delete_group")))
-                      (telega--deleteSupergroup supergroup))))
+                      (telega--deleteChat chat))))
 
         (telega-ins " ")
         (telega-ins--button (telega-i18n (if channel-p

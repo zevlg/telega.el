@@ -208,15 +208,6 @@ Return (or call the CALLBACK with) newly create chat."
            :force (if force t :false)))
     :id)))
 
-(defun telega--deleteSupergroup (supergroup)
-  "Delete a SUPERGROUP or channel.
-All messagess will be deleted as well.
-Only owner can delete supergroup.
-Chats with more than 1000 members can't be deleted using this method."
-  (telega-server--send
-   (list :@type "deleteSupergroup"
-         :supergroup_id (plist-get supergroup :id))))
-
 (defun telega--setSupergroupUsername (supergroup username)
   "Change SUPERGROUP's username to USERNAME.
 Requires owner right."
@@ -871,6 +862,13 @@ The messages are returned in a reverse chronological order."
          :limit (or limit telega-chat-history-limit)
          :only_local (or only-local :false))
    callback))
+
+(defun telega--deleteChat (chat)
+  "Delete a CHAT along with all messages.
+Requires owner privileges."
+  (telega-server--send
+   (list :@type "deleteChat"
+         :chat-id (plist-get chat :id))))
 
 (defun telega--deleteChatHistory (chat &optional remove-from-list revoke)
   "Deletes all messages in the CHAT only for the user.
