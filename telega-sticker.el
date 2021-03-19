@@ -741,10 +741,10 @@ Install from https://github.com/zevlg/tgs2png")))
                                   :frames nil
                                   :callback callback
                                   :callback-args callback-args))
-      (set-process-query-on-exit-flag proc nil)
-      (set-process-sentinel proc 'telega-ffplay--png-sentinel)
-      (set-process-filter proc 'telega-ffplay--png-filter)
-      proc))
+    (set-process-query-on-exit-flag proc nil)
+    (set-process-sentinel proc 'telega-ffplay--png-sentinel)
+    (set-process-filter proc 'telega-ffplay--png-filter)
+    proc))
 
 (defun telega-sticker--animate (sticker)
   "Start animating animated STICKER."

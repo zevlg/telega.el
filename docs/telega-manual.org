@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.30)
+#+TITLE: Telega Manual (v0.7.33)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -61,6 +61,9 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#opening-files-using-external-programs][Opening files using external programs]]
     - [[#client-side-messages-ignoring][Client side messages ignoring]]
     - [[#favorite-messages][Favorite messages]]
+  - [[#stickers][Stickers]]
+    - [[#animated-stickers][Animated stickers]]
+    - [[#favorite-and-recently-used-stickers][Favorite and recently used stickers]]
   - [[#multiple-accounts][Multiple accounts]]
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
@@ -184,7 +187,7 @@ support (graphical).
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.2.
+version greater or equal to 1.7.3.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -634,10 +637,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1976,6 +1981,44 @@ To view all favorite messages in all chats, enable "Favorite Messages"
 Root View, by pressing
 @@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) in
 the [[#root-buffer][root buffer]].
+
+* Stickers
+:PROPERTIES:
+:CUSTOM_ID: stickers
+:END:
+
+** Animated stickers
+:PROPERTIES:
+:CUSTOM_ID: animated-stickers
+:END:
+
+=telega= supports animated stickers using =tgs2png= utility from
+https://github.com/zevlg/tgs2png
+
+Once =tgs2png= tool is installed into ~exec-path~ (check value for
+~telega-sticker-animated-play~ after =telega= is started), you can
+play animated stickers by pressing @@html:<kbd>@@RET@@html:</kbd>@@ on sticker.
+
+Also [[https://zevlg.github.io/telega.el/index-master.html#telega-autoplay-mode][AutoPlay Mode]] can be used, to automatically animate sticker
+messages.
+
+** Favorite and recently used stickers
+:PROPERTIES:
+:CUSTOM_ID: favorite-and-recently-used-stickers
+:END:
+
+To attach your favorite or rencetly used sticker use @@html:<kbd>@@C-u@@html:</kbd>@@
+before @@html:<kbd>@@C-c C-a sticker RET@@html:</kbd>@@.  Background for favorite
+stickers are filled with color:
+- User Option: ~telega-sticker-favorite-background~ 
+
+  Background color for the favorite stickers. 
+
+  Default value: ~"cornflower blue"~
+
+To toggle sticker being favorite, press
+@@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@f@@html:</kbd>@@ (~telega-sticker-toggle-favorite~)
+while point is under sticker in the ~*Telega Sticker Set*~ buffer.
 
 * Multiple accounts
 :PROPERTIES:

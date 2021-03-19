@@ -852,6 +852,31 @@ Root View, by pressing
 {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} in
 the [[#root-buffer][root buffer]].
 
+* Stickers
+
+** Animated stickers
+
+=telega= supports animated stickers using =tgs2png= utility from
+https://github.com/zevlg/tgs2png
+
+Once =tgs2png= tool is installed into ~exec-path~ (check value for
+~telega-sticker-animated-play~ after =telega= is started), you can
+play animated stickers by pressing {{{kbd(RET)}}} on sticker.
+
+Also [[https://zevlg.github.io/telega.el/index-master.html#telega-autoplay-mode][AutoPlay Mode]] can be used, to automatically animate sticker
+messages.
+
+** Favorite and recently used stickers
+
+To attach your favorite or rencetly used sticker use {{{kbd(C-u)}}}
+before {{{kbd(C-c C-a sticker RET)}}}.  Background for favorite
+stickers are filled with color:
+- {{{user-option(telega-sticker-favorite-background, 2)}}}
+
+To toggle sticker being favorite, press
+{{{where-is(telega-sticker-toggle-favorite,telega-sticker-button-map)}}}
+while point is under sticker in the ~*Telega Sticker Set*~ buffer.
+
 * Multiple accounts
 
 =telega= support multiple accounts, however only single account can be
