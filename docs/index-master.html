@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-03-20 Сб 01:15 -->
+<!-- 2021-03-20 Сб 01:37 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.7.33)</title>
@@ -897,7 +897,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org3f18687">
+<pre class="example" id="orgb5c1f5d">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -915,7 +915,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org18e6dcc">
+<pre class="example" id="org84bb489">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -945,7 +945,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org2f2fbfe">
+<pre class="example" id="orgb35bb74">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1040,7 +1040,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org92524f8">
+<pre class="example" id="org2fc1511">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1948,7 +1948,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org10bf30f">
+<pre class="example" id="orgb483332">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2125,7 +2125,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org4d5ec7b">
+<pre class="example" id="org2dd69c3">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2196,7 +2196,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Markdown markup syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org6b81464">
+<pre class="example" id="orgbfc9edc">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2418,7 +2418,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org0c0e239">
+<pre class="example" id="orgdc79286">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2819,6 +2819,11 @@ Document messages are always opens as file.
 Default value: <code>nil</code>
 </p></li>
 </ul>
+
+<p>
+Another alternative to open some files using external programs is to
+use nice <code>openwith</code> Emacs package available in MELPA.
+</p>
 
 <p>
 <b>Browse URL with custom function</b>
@@ -3546,7 +3551,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org64380a8">
+<pre class="example" id="orgc75ac7c">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

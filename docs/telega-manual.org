@@ -1908,6 +1908,9 @@ If you also want to open non-document messages as file using
 
   Default value: ~nil~
 
+Another alternative to open some files using external programs is to
+use nice =openwith= Emacs package available in MELPA.
+
 *Browse URL with custom function*
 
 Also, you can open urls using custom functions:
