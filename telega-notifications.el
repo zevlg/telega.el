@@ -152,7 +152,7 @@ SCOPE-TYPE is same an in `telega-chat-notification-scope'."
                 (telega--getChatNotificationSettingsExceptions scope-type)))
       (telega-ins-fmt "Exceptions: %d chats\n" (length exception-chats))
       (telega-ins--labeled "  " nil
-        (cl-dolist (chat exception-chats)
+        (dolist (chat exception-chats)
           (telega-button--insert 'telega-chat chat
             :inserter #'telega-ins--chat
             :action #'telega-describe-chat)

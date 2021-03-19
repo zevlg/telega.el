@@ -108,7 +108,7 @@ Download only if `telega-use-images' is non-nil."
 
 (defun telega-stickerset--download (sset)
   "Ensure sticker set SSET data is downloaded."
-  (dolist (sticker (plist-get sset :stickers))
+  (seq-doseq (sticker (plist-get sset :stickers))
     (telega-sticker--download sticker)))
 
 (defun telega-stickerset--ensure (sset)
