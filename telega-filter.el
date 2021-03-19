@@ -1200,9 +1200,11 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
   "Matches if chat contains a live voice chat.
 If non-nil NON-EMPTY is specified, then match only if voice chat is
 not empty."
-  (and (not (zerop (plist-get chat :voice_chat_group_call_id)))
-       (or (null non-empty)
-           (not (plist-get chat :is_voice_chat_empty)))))
+  (when-let* ((voice-chat (plist-get chat :voice_chat))
+              (group-call-id (plist-get voice-chat :group_call_id)))
+    (and (not (zerop group-call-id))
+         (or (null non-empty)
+             (plist-get voice-chat :has_participants)))))
 
 (defun telega-filter-by-has-voice-chat (non-empty)
   "Filter chats with started voice chat.

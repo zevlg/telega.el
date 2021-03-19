@@ -478,10 +478,7 @@ NOTE: we store the number as custom chat property, to use it later."
 (defun telega--on-updateChatVoiceChat (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (plist-put chat :voice_chat_group_call_id
-               (plist-get event :voice_chat_group_call_id))
-    (plist-put chat :is_voice_chat_empty
-               (plist-get event :is_voice_chat_empty))
+    (plist-put chat :voice_chat (plist-get event :voice_chat))
 
     (telega-chat--mark-dirty chat event)
 
@@ -493,7 +490,7 @@ NOTE: we store the number as custom chat property, to use it later."
         (call-user (plist-get event :participant)))
     (when-let ((chat (cl-find group-call-id
                               telega--ordered-chats
-                              :key (telega--tl-prop :voice_chat_group_call_id))))
+                              :key (telega--tl-prop :voice_chat :group_call_id))))
       (with-telega-chatbuf chat
         ;; TODO: voice-chats
         ;; update `telega-chatbuf--group-call-users'

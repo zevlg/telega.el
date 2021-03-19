@@ -462,7 +462,7 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
 (defun telega-chatbuf--voice-chat-fetch ()
   "Asynchronously fetch voice chat state for the chatbuf."
   (let* ((chat telega-chatbuf--chat)
-         (group-call-id (plist-get chat :voice_chat_group_call_id)))
+         (group-call-id (telega--tl-get chat :voice_chat :group_call_id)))
     (if (zerop group-call-id)
         (progn
           (setq telega-chatbuf--group-call nil)
