@@ -725,6 +725,16 @@ Return sticker set."
   ;; Kill previously running animations/ffplay if any
   (telega-ffplay-stop)
 
+  ;; XXX: heavy heuristics to detect HiDPI displays on MacOS
+  ;; If resulting PNG is too small and DPI is high, then consider HiDPI
+  ;; mode is in use
+  ;; png height = 76 * 4 = 306 is still generates pretty fast on modern PC
+  ;; See https://t.me/emacs_telega/25785
+  (when (and (< xheight 76)
+             (> (round (/ (display-pixel-height) (/ (display-mm-height) 25.4)))
+                96))
+    (setq xheight (* xheight 4)))
+
   (let* ((prefix (telega-temp-name "png-sticker-anim"))
          (telega-server-bin (telega-server--find-bin))
          (tgs2png-bin (or (executable-find "tgs2png")
