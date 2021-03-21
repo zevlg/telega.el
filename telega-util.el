@@ -1511,8 +1511,9 @@ Actual symbol value is taken from `telega-symbol-ENDING' variable.
 Only endings listed in `telega-symbols-emojify' are emojified."
   (let ((value (symbol-value (intern (format "telega-symbol-%s" ending)))))
     (or (let ((emoji-file (cdr (assq ending telega-symbols-emojify))))
-          (when (or emoji-file (and telega-emoji-use-images
-                                    (memq ending telega-symbols-emojify)))
+          (when (or (and telega-use-images emoji-file)
+                    (and telega-emoji-use-images
+                         (memq ending telega-symbols-emojify)))
             (apply #'telega-symbol-emojify value emoji-file)))
         value)))
 
