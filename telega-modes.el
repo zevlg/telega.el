@@ -75,19 +75,28 @@
 (defvar telega-mode-line--logo-image-cache nil "Cached loaded logo image.")
 (defun telega-mode-line-logo-image ()
   "Return telega logo image to be used in modeline."
-  (or telega-mode-line--logo-image-cache
+  (let* ((box-line-width
+          (plist-get (face-attribute 'mode-line :box) :line-width))
+         (mode-line-height
+          (+ (telega-chars-xheight 1 'mode-line)
+             (* 2 (if (consp box-line-width)
+                      (car box-line-width)
+                    (or box-line-width 0))))))
+    (if (eq mode-line-height
+            (plist-get (cdr telega-mode-line--logo-image-cache) :height))
+        telega-mode-line--logo-image-cache
       (setq telega-mode-line--logo-image-cache
             (find-image
-             (list (list :type (when (fboundp 'imagemagick-types) 'imagemagick)
+             (list (list :type 'svg :file "etc/telega-logo.svg"
+                         :ascent 'center :mask 'heuristic
+                         :height mode-line-height)
+                   (list :type (when (fboundp 'imagemagick-types) 'imagemagick)
                          :file "etc/telega-logo.png"
                          :ascent 'center :mask 'heuristic
-                         :height (window-mode-line-height))
-                   (list :type 'svg :file "etc/telega-logo.svg"
-                         :ascent 'center
-                         :background (face-attribute 'mode-line :background)
-                         :height (window-mode-line-height))
+                         :height mode-line-height)
                    (list :type 'xpm :file "etc/telega-logo.xpm"
-                         :ascent 'center))))))
+                         :ascent 'center
+                         :height mode-line-height)))))))
 
 (defun telega-mode-line-icon ()
   "Return telegram logo icon to be used in modeline."
@@ -457,6 +466,7 @@ Return filename of the generated icon."
 ;;
 ;; Customizable options:
 ;; - {{{user-option(telega-autoplay-for, 2)}}}
+;; - {{{user-option(telega-autoplay-outgoing, 2)}}}
 ;; - {{{user-option(telega-autoplay-messages, 2)}}}
 (defcustom telega-autoplay-for 'all
   "Chat Filter for chats where to automatically open content."
