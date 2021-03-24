@@ -889,7 +889,7 @@ If MSG is already ignored, do nothing."
 (defun telega-msg-from-blocked-sender-p (msg)
   "Return non-nil if MSG is sent from blocked message sender.
 Could be used in `telega-msg-ignore-predicates'."
-  (telega-msg-sender-blocked-p (telega-msg-sender msg)))
+  (telega-msg-sender-blocked-p (telega-msg-sender msg) 'offline))
 
 
 (defun telega-msg-unmark (msg)
