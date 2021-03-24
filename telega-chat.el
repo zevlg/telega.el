@@ -3197,19 +3197,22 @@ button."
             (goto-char (point-max))))))))
 
 (defun telega-chatbuf-next-unread-mention ()
-  "Goto next unread mention in chat buffer."
+  "Goto next unread mention in chat buffer.
+If there is no unread mentions, then search for last mention starting
+from message at point."
   (interactive)
 
-  ;; NOTE:
-  ;; - check `:unread_mention_count' for zerop
-  ;; - searchChatMessages with :filter searchMessagesFilterUnreadMention
-  ;; - Goto first found message
-  (when (zerop (plist-get telega-chatbuf--chat :unread_mention_count))
-    (user-error "telega: No next unread mention"))
-
-  (let* ((reply
+  (let* ((has-unread-mentions-p
+          (not (zerop (plist-get telega-chatbuf--chat :unread_mention_count))))
+         (reply
           (telega--searchChatMessages telega-chatbuf--chat
-              (list :@type "searchMessagesFilterUnreadMention") "" 0 0 1))
+              (if has-unread-mentions-p
+                  (list :@type "searchMessagesFilterUnreadMention")
+                (list :@type "searchMessagesFilterMention"))
+              "" (if has-unread-mentions-p
+                     0
+                   (or (plist-get (telega-msg-at (point)) :id) 0))
+              0 1))
          (next-unread-mention-msg
           (car (append (plist-get reply :messages) nil))))
     (unless next-unread-mention-msg
