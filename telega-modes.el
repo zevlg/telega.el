@@ -271,11 +271,12 @@ labels are not supported by XEMBED based system trays, such as
 
 (defcustom telega-appindicator-icon-colors
   '((offline "white" "black" nil)
-    (online "#7739aa" "white" "#00ff00"))
+    (online "#7739aa" "white" "#00ff00")
+    (connecting "gray" "white" "white"))
   "Colors to use for offline/online appindicator icon.
-Alist with `offline' / `online' as key, and value in form
+Alist with `offline', `online' or `connecting' as key, and value in form
 (CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR)."
-  :package-version '(telega . "0.7.20")
+  :package-version '(telega . "0.7.34")
   :type 'list
   :group 'telega-modes)
 
@@ -320,9 +321,11 @@ Set to nil to use plain number."
         (add-hook 'telega-ready-hook 'telega-appindicator-init)
         (add-hook 'telega-chats-fetched-hook 'telega-appindicator-update)
         (add-hook 'telega-online-status-hook 'telega-appindicator-update)
+        (add-hook 'telega-connection-state-hook 'telega-appindicator-update)
         (when (telega-server-live-p)
           (telega-appindicator-init)))
 
+    (remove-hook 'telega-connection-state-hook 'telega-appindicator-update)
     (remove-hook 'telega-online-status-hook 'telega-appindicator-update)
     (remove-hook 'telega-chats-fetched-hook 'telega-appindicator-update)
     (remove-hook 'telega-ready-hook 'telega-appindicator-init)
@@ -335,15 +338,17 @@ Set to nil to use plain number."
       (telega-server--send "status passive" "appindicator"))
     ))
 
-(defun telega-appindicator--gen-svg-icon (&optional online-p label)
+(defun telega-appindicator--gen-svg-icon (&optional label)
   "Generate svg icon to be used in appindicator.
 Return filename of the generated icon."
-  (let ((cached-label (concat (if online-p "online" "offline") label)))
+  (let* ((state (cond ((eq telega--conn-state 'Connecting) 'connecting)
+                      ((funcall telega-online-status-function) 'online)
+                      (t 'offline)))
+         (cached-label (concat (symbol-name state) label)))
     (or (cdr (assoc cached-label telega-appindicator--cached-icons))
         (let* ((w 48) (h 48) (logo-w 36)
                (svg (telega-svg-create w h))
-               (colors (cdr (assq (if online-p 'online 'offline)
-                                  telega-appindicator-icon-colors))))
+               (colors (cdr (assq state telega-appindicator-icon-colors))))
           (svg-circle svg (/ h 2) (/ h 2) (/ h 2)
                       :fill-color (nth 0 colors))
           (when (nth 2 colors)
@@ -385,16 +390,14 @@ Return filename of the generated icon."
   "Initialize appindicator."
   (when telega-appindicator-mode
     (telega-server--send
-     (concat "setup " (telega-appindicator--gen-svg-icon
-                       (funcall telega-online-status-function)))
+     (concat "setup " (telega-appindicator--gen-svg-icon))
      "appindicator")
     (telega-appindicator-update)))
 
 (defun telega-appindicator-update (&rest _ignored)
   "Update appindicator label."
   (when telega-appindicator-mode
-    (let* ((me-online-p (funcall telega-online-status-function))
-           (account
+    (let* ((account
             (when (and telega-appindicator-use-label
                        telega-appindicator-show-account-name)
               (car (telega-account-current))))
@@ -423,9 +426,9 @@ Return filename of the generated icon."
                               mentions-str)))
            (new-label (mapconcat #'identity label-strings " "))
            (icon-filename
-            (if telega-appindicator-use-label
-                (telega-appindicator--gen-svg-icon me-online-p)
-              (telega-appindicator--gen-svg-icon me-online-p new-label))))
+            (telega-appindicator--gen-svg-icon
+             (unless telega-appindicator-use-label
+               new-label))))
       (telega-server--send (concat "icon " icon-filename) "appindicator")
       (when telega-appindicator-use-label
         (telega-server--send (concat "label " new-label) "appindicator")))))
