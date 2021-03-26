@@ -201,6 +201,14 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "test.domain.ru##[title~=\\[NSP\\]]:nth-ancestor(6)"))
   )
 
+(ert-deftest telega-org-formatting ()
+  "Test org mode text formatting."
+  (should (equal (telega-markup-org-fmt "*bold*")
+                 '(:@type "formattedText" :text "bold" :entities [(:@type "textEntity" :offset 0 :length 4 :type (:@type "textEntityTypeBold"))])))
+  (should (equal (telega-markup-org-fmt "prefix *bold* here ~code~ trailing")
+                 '(:@type "formattedText" :text "prefix bold here code trailing" :entities [(:@type "textEntity" :offset 7 :length 4 :type (:@type "textEntityTypeBold")) (:@type "textEntity" :offset 17 :length 4 :type (:@type "textEntityTypeCode"))])))
+  )
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
