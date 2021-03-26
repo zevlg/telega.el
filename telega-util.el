@@ -724,30 +724,33 @@ MARKUP-FUNC is function taking string and returning formattedText."
            'rear-nonsticky t
            :telega-markup-end markup-func)))
 
+(defun telega-markup-org-fmt (_str)
+  "Format string STR to formattedText using Org Mode markup."
+  (error "TODO: `telega-markup-org-fmt' is not implemented")
+  )
+
 (defun telega-markup-html-fmt (str)
   "Format string STR to formattedText using html markup."
   (telega-fmt-text-desurrogate
    (telega--parseTextEntities str (list :@type "textParseModeHTML"))))
 
-(defun telega-markup-markdown-fmt (markdown-version str)
-  "Format string STR to formattedTetx using MARKDOWN-VERSION."
-  (if markdown-version
-      ;; For markdown mode, escape underscores in urls
-      ;; See https://github.com/tdlib/td/issues/672
-      ;; See https://github.com/zevlg/telega.el/issues/143
-      (telega-fmt-text-desurrogate
-       (telega--parseTextEntities
-        (telega-escape-underscores str)
-        (list :@type "textParseModeMarkdown"
-              :version markdown-version)))
-
-    (telega-fmt-text (substring-no-properties str))))
+(defun telega-markup-as-is-fmt (str)
+  "Format string STR to formattedTetx as is, without applying any markup."
+  (telega-fmt-text (substring-no-properties str)))
 
 (defun telega-markup-markdown1-fmt (str)
-  (telega-markup-markdown-fmt 1 str))
+  ;; For markdown mode, escape underscores in urls
+  ;; See https://github.com/tdlib/td/issues/672
+  ;; See https://github.com/zevlg/telega.el/issues/143
+  (telega-fmt-text-desurrogate
+   (telega--parseTextEntities
+    (telega-escape-underscores str)
+    (list :@type "textParseModeMarkdown"
+          :version markdown-version))))
 
 (defun telega-markup-markdown2-fmt (str)
-  (telega--parseMarkdown (telega-fmt-text str)))
+  (telega-fmt-text-desurrogate
+   (telega--parseMarkdown (telega-fmt-text str))))
 
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
@@ -755,8 +758,7 @@ Use DEFAULT-MARKUP-FUNC for strings without markup.
 Return list of list where first element is markup function and
 second is substring."
   (unless default-markup-func
-    (setq default-markup-func
-          (apply-partially #'telega-markup-markdown-fmt nil)))
+    (setq default-markup-func #'telega-markup-as-is-fmt))
 
   (let ((start 0) (end (length text)) markup-start result)
     (while (setq markup-start
