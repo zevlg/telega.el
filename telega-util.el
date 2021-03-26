@@ -34,7 +34,8 @@
 (require 'color)                        ; `color-XXX'
 (require 'ansi-color)                   ; `ansi-color-apply'
 (require 'url-util)                     ; `url-unhex-string'
-(require 'org)                          ; `org-read-date'
+(require 'org)                          ; `org-read-date', `org-do-emphasis-faces'
+(require 'org-element)                  ; for `org-do-emphasis-faces'
 (require 'rainbow-identifiers)
 
 (require 'telega-core)
@@ -654,10 +655,60 @@ MARKUP-FUNC is function taking string and returning formattedText."
            'rear-nonsticky t
            :telega-markup-end markup-func)))
 
-(defun telega-markup-org-fmt (_str)
+(defun telega-markup-org--emphasis-fmt (str)
+  "Convert STR emphasised by org mode to formattedText.
+Return nil if STR is not emphasised by org mode."
+  (when (get-text-property 0 'org-emphasis str)
+    (let* ((tl-face (car (get-text-property 0 'face str)))
+           (entity-type
+            (cl-case tl-face
+              (telega-entity-type-bold
+               '(:@type "textEntityTypeBold"))
+              (telega-entity-type-italic
+               '(:@type "textEntityTypeItalic"))
+              (telega-entity-type-underline
+               '(:@type "textEntityTypeUnderline"))
+              (telega-entity-type-pre
+               '(:@type "textEntityTypePre"))
+              (telega-entity-type-code
+               '(:@type "textEntityTypeCode"))
+              (telega-entity-type-strikethrough
+               '(:@type "textEntityTypeStrikethrough")))))
+      (telega-fmt-text (substring-no-properties str 1 -1) entity-type))))
+
+(defun telega-markup-org-fmt (str)
   "Format string STR to formattedText using Org Mode markup."
-  (error "TODO: `telega-markup-org-fmt' is not implemented")
-  )
+  (let ((seen-org-emphasis nil)
+        (fmt-strings nil)
+        (substrings
+         (with-temp-buffer
+           (save-excursion
+             (insert str))
+           (let ((org-hide-emphasis-markers nil)
+                 (org-emphasis-alist '(("*" telega-entity-type-bold)
+                                       ("/" telega-entity-type-italic)
+                                       ("_" telega-entity-type-underline)
+                                       ("=" telega-entity-type-pre)
+                                       ("~" telega-entity-type-code)
+                                       ("+" telega-entity-type-strikethrough))))
+             (org-do-emphasis-faces nil)
+             (telega--split-by-text-prop (buffer-string) 'org-emphasis)))))
+    ;; NOTE: Traverse result collecting formatted strings
+    (while substrings
+      (let* ((str1 (car substrings))
+             (fmt-str (cond ((get-text-property 0 'org-emphasis str1)
+                             (setq seen-org-emphasis t)
+                             (telega-markup-org--emphasis-fmt str1))
+                            (seen-org-emphasis
+                             ;; Trailing string
+                             (cl-assert (= 1 (length substrings)))
+                             (telega-markup-org-fmt str1))
+                            (t
+                             ;; Non-emphasised text
+                             (telega-fmt-text str1)))))
+        (push fmt-str fmt-strings))
+      (setq substrings (cdr substrings)))
+    (apply #'telega-fmt-text-concat (nreverse fmt-strings))))
 
 (defun telega-markup-html-fmt (str)
   "Format string STR to formattedText using html markup."
@@ -676,7 +727,7 @@ MARKUP-FUNC is function taking string and returning formattedText."
    (telega--parseTextEntities
     (telega-escape-underscores str)
     (list :@type "textParseModeMarkdown"
-          :version markdown-version))))
+          :version 1))))
 
 (defun telega-markup-markdown2-fmt (str)
   (telega-fmt-text-desurrogate
@@ -786,7 +837,7 @@ Return desurrogated formattedText."
                     (cl-incf offset (telega-string-fmt-text-length
                                      (plist-get fmt-text :text)))))
                 fmt-texts)))
-    (list :@type "formattedTex"
+    (list :@type "formattedText"
           :text (apply #'concat (mapcar (telega--tl-prop :text) fmt-texts))
           :entities (apply #'seq-concatenate 'vector ents))))
 
