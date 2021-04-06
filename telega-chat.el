@@ -3358,7 +3358,11 @@ If `\\[universal-argument]' is given, then attach live location."
 If PREVIEW-P is non-nil, then generate preview image.
 UPLOAD-AHEAD-CALLBACK is callback for file updates, when uploading
 ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
-  (setq filename (telega-file-local-copy filename))
+  ;; NOTE: Call `telega-file-local-copy' only for remote files, to
+  ;; avoid calling local-copy handlers
+  ;; See https://t.me/emacs_telega/26267
+  (when (file-remote-p filename)
+    (setq filename (telega-file-local-copy filename)))
   (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
                    (telega-create-image
                     filename
