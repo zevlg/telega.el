@@ -1762,17 +1762,22 @@ MSG is the message associated with FILENAME."
 (defun telega-file-local-copy (file)
   "Same as `file-local-copy', but use `telega-temp-dir' for temp files.
 If FILE is local, then return expanded FILE."
-  ;; NOTE: `tramp-compat-temporary-file-directory'<f> uses standard
-  ;; value for `temporary-file-directory', so just binding it won't
-  ;; work
-  (let ((tfd-value (get 'temporary-file-directory 'standard-value))
-        (temporary-file-directory telega-temp-dir))
-    (unwind-protect
-        (progn
-          (put 'temporary-file-directory 'standard-value
-               (list telega-temp-dir))
-          (or (file-local-copy file) (expand-file-name file)))
-      (put 'temporary-file-directory 'standard-value tfd-value))))
+  ;; NOTE: Do logic only for remote files, to avoid calling local-copy
+  ;; handlers.  See https://t.me/emacs_telega/26267
+  (if (not (file-remote-p file))
+      (expand-file-name file)
+
+    ;; NOTE: `tramp-compat-temporary-file-directory'<f> uses standard
+    ;; value for `temporary-file-directory', so just binding it won't
+    ;; work.
+    (let ((tfd-value (get 'temporary-file-directory 'standard-value))
+          (temporary-file-directory telega-temp-dir))
+      (unwind-protect
+          (progn
+            (put 'temporary-file-directory 'standard-value
+                 (list telega-temp-dir))
+            (or (file-local-copy file) (expand-file-name file)))
+        (put 'temporary-file-directory 'standard-value tfd-value)))))
 
 (defun telega-color-name-as-hex-2digits (color)
   "Convert COLOR to #rrggbb form."
