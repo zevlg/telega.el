@@ -3440,6 +3440,7 @@ This attachment can be used only in private chats."
            :audio ifile
            :title (cdr (assoc "title" metadata))
            :performer (cdr (assoc "artist" metadata))
+           :duration (round (telega-ffplay-get-duration filename))
            ))))
 
 (defun telega-chatbuf-attach-media (filename &optional as-file-p)
