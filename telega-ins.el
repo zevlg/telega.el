@@ -814,7 +814,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
             'action 'telega-msg-button--action))
 
       (telega-ins--button
-          (concat "  " telega-symbol-thunder " INSTANT VIEW  ")
+          (concat "  " (telega-symbol 'lightning) " INSTANT VIEW  ")
         'action 'telega-msg-button--iv-action))
 
     ;; Remove trailing newline, if any
