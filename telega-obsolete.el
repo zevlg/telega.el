@@ -103,6 +103,9 @@
 (telega-obsolete--variable 'telega-video-ffplay-args
                            'telega-open-message-ffplay-args
                            nil "0.7.5")
+(telega-obsolete--variable 'telega-symbol-thunder
+                           'telega-symbol-lightning
+                           nil "0.7.38")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

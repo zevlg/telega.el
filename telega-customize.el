@@ -1507,7 +1507,7 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-thunder "🗲"
+(defcustom telega-symbol-lightning "⚡"
   "Symbol used inside INSTANT VIEW buttons."
   :type 'string
   :group 'telega-symbol)
@@ -1750,7 +1750,6 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
          telega-symbol-eye
          telega-symbol-unread
          telega-symbol-verified
-         telega-symbol-thunder
 
          telega-symbol-checkmark
          telega-symbol-heavy-checkmark
