@@ -554,6 +554,11 @@ CACHE-PROP specifies property name to cache image at OBJ-SPEC.
 Default is `:telega-image'."
   (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image)))
         (simage (funcall (cdr obj-spec) (car obj-spec) file)))
+    ;; NOTE: Sometimes `create' function returns nil results
+    (when (and telega-use-images (not simage))
+      (error "telega: [BUG] Image create (%S %S %S) -> nil"
+             (cdr obj-spec) (car obj-spec) file))
+
     (unless (equal cached-image simage)
       ;; Update the image
       (if cached-image
