@@ -230,8 +230,10 @@ pngext_loop(const char* prefix, size_t rdsize)
                         if (!pngext_get_png(&input, &png_data)) {
                                 char png_filename[512];
                                 snprintf(png_filename, 512, "%s%d.png", prefix, ++frame_num);
-                                if (!pngext_write_file(png_filename, &png_data))
+                                if (!pngext_write_file(png_filename, &png_data)) {
                                         printf("%d %s\n", frame_num, png_filename);
+                                        fflush(stdout);
+                                }
                                 tdat_reset(&png_data);
                         } else {
                                 /* Need more input */
