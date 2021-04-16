@@ -1467,6 +1467,12 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-horizontal-delim "-"
+  "Symbol used to draw horizontal delimiters.
+Horizontal delimiters are used to draw chat filter/sorter bar in rootbuf."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-vertical-bar "|\u00A0"
   "Symbol used to form vertical lines."
   :type 'string

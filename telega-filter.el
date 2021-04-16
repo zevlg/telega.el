@@ -267,10 +267,13 @@ If FILTER is nil, then active filter is used."
   (let ((filters-width (- telega-root-fill-column 8)))
     (telega-ins--as-string
      (telega-ins "\n")
-     (telega-ins "-/--")
+     (telega-ins telega-symbol-horizontal-delim
+                 "/"
+                 telega-symbol-horizontal-delim
+                 telega-symbol-horizontal-delim)
      (telega-ins--with-attrs (list :min filters-width
                                    :align 'center
-                                   :align-symbol "-"
+                                   :align-symbol telega-symbol-horizontal-delim
                                    :max filters-width
                                    :elide t
                                    :elide-trail (/ filters-width 2))
@@ -279,14 +282,20 @@ If FILTER is nil, then active filter is used."
          (unless (telega-filter-default-p active-filter)
            (setq af-str (propertize af-str 'face 'telega-filter-active)))
          (telega-ins af-str)))
-     (telega-ins "----")
+     (telega-ins telega-symbol-horizontal-delim
+                 telega-symbol-horizontal-delim
+                 telega-symbol-horizontal-delim
+                 telega-symbol-horizontal-delim)
 
      (when telega--sort-criteria
        (telega-ins "\n")
-       (telega-ins "-\\--")
+       (telega-ins telega-symbol-horizontal-delim
+                   "\\"
+                   telega-symbol-horizontal-delim
+                   telega-symbol-horizontal-delim)
        (telega-ins--with-attrs (list :min filters-width
                                      :align 'center
-                                     :align-symbol "-"
+                                     :align-symbol telega-symbol-horizontal-delim
                                      :max filters-width
                                      :elide t
                                      :elide-trail (/ filters-width 2))
@@ -296,7 +305,10 @@ If FILTER is nil, then active filter is used."
            (telega-ins-fmt "%S" telega--sort-criteria)
            (when telega--sort-inverted
              (telega-ins ")"))))
-       (telega-ins "----"))
+       (telega-ins telega-symbol-horizontal-delim
+                   telega-symbol-horizontal-delim
+                   telega-symbol-horizontal-delim
+                   telega-symbol-horizontal-delim))
      )))
 
 (defun telega-filter--custom-active-p (custom)
@@ -1235,6 +1247,14 @@ If NON-EMPTY is non-nil, then keep only non-empty voice chats."
 (define-telega-filter is-broadcast-group (chat)
   "Matches if chat is a broadcast group."
   (plist-get (telega-chat--info chat) :is_broadcast_group))
+
+;;; ellit-org: chat-filters
+;; - has-groups-in-common ::
+;;   {{{fundoc(telega--filter-has-groups-in-common, 2)}}}
+(define-telega-filter has-groups-in-common (chat)
+  "Matches if corresponding user has groups in common with me."
+  (when-let ((user (telega-chat-user chat)))
+    (not (zerop (plist-get (telega--full-info user) :group_in_common_count)))))
 
 (provide 'telega-filter)
 
