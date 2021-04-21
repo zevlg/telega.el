@@ -130,10 +130,10 @@ telega_appindicator_send(const char* json)
         g_idle_add(appindicator_cmd, json_copy);
 }
 
-void
+bool
 telega_appindicator_init(void)
 {
-        gtk_init(NULL, NULL);
+        return gtk_init_check(NULL, NULL);
 }
 
 void*
