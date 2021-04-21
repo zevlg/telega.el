@@ -276,15 +276,17 @@ Return path to png file."
   (let ((png-filename (concat (file-name-sans-extension webp-filename)
                               "_telega.png")))
     (unless (file-exists-p png-filename)
-      (if (executable-find (car telega-sticker--convert-cmd))
-          (shell-command-to-string
-           (format-spec (mapconcat #'identity telega-sticker--convert-cmd " ")
-                        (format-spec-make ?p png-filename
-                                          ?w webp-filename)))
-
-        (telega-help-message 'no-dwebp-binary
-            "Can't find `%s' binary.  `webp' system package not installed?"
-          (car telega-sticker--convert-cmd))))
+      (let ((convert-cmd
+             (telega-docker-exec-cmd
+               (format-spec (mapconcat #'identity telega-sticker--convert-cmd " ")
+                            (format-spec-make ?p png-filename
+                                              ?w webp-filename))
+               'try-host-cmd-first)))
+        (if convert-cmd
+            (shell-command-to-string convert-cmd)
+          (telega-help-message 'no-dwebp-binary
+              "Can't find `%s' binary.  `webp' system package not installed?"
+            (car telega-sticker--convert-cmd)))))
 
     (when (file-exists-p png-filename)
       png-filename)))
@@ -736,16 +738,25 @@ Return sticker set."
     (setq xheight (* xheight 4)))
 
   (let* ((prefix (telega-temp-name "png-sticker-anim"))
-         (telega-server-bin (telega-server--find-bin))
-         (tgs2png-bin (or (executable-find "tgs2png")
-                          (error "tgs2png not found in `exec-path', \
-Install from https://github.com/zevlg/tgs2png")))
+         (shell-cmd
+          (if telega-use-docker
+              (telega-docker-exec-cmd
+                (format "sh -c \"gunzip -c '%s' | tgs2png -s 0x%d - | telega-server -E %s\""
+                        (telega--tl-get sticker-file :local :path)
+                        xheight  prefix))
+            (format
+             "gunzip -c '%s' | %s -s 0x%d - | %s -E %s"
+             (telega--tl-get sticker-file :local :path)
+             (or (executable-find "tgs2png")
+                 (error "tgs2png not found in `exec-path', \
+Install from https://github.com/zevlg/tgs2png"))
+             xheight (telega-server--process-command) prefix)))
          (process-adaptive-read-buffering nil) ;no buffering please
          (proc (start-process-shell-command
                 "sticker-animate" (get-buffer-create telega-ffplay-buffer-name)
-                (format "gunzip -c '%s' | %s -s 0x%d - | %s -E %s"
-                        (telega--tl-get sticker-file :local :path)
-                        tgs2png-bin xheight telega-server-bin prefix))))
+                shell-cmd)))
+    (telega-debug "Running sticker-animate: %s" shell-cmd)
+
     (set-process-plist proc (list :prefix prefix
                                   :nframes -1
                                   :frames nil
@@ -913,7 +924,8 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
           (telega-file--download (telega-file--renew anim :animation) 32
             (lambda (file)
               (when (telega-file--downloaded-p file)
-                (telega-ffplay-to-png (telega--tl-get file :local :path) nil
+                (telega-ffplay-to-png (telega--tl-get file :local :path)
+                    '("-an")            ;no sound
                   #'telega-animation--ffplay-callback anim))))
 
         ;; dir == left

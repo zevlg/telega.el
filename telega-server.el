@@ -124,7 +124,10 @@ Otherwise query user about building flags."
       (unless build-flags
         (setq build-flags
               (concat
-               (when (y-or-n-p "Build `telega-server' with VOIP support? ")
+               ;; NOTE: Do not ask about VOIP support, because there
+               ;; is no support for it yet
+               (when (and nil
+                          (y-or-n-p "Build `telega-server' with VOIP support? "))
                  " WITH_VOIP=t")
                ;; NOTE: TON is postponed, see https://t.me/durov/116
                ;; So do not ask for TON support
@@ -139,35 +142,58 @@ Otherwise query user about building flags."
                         "server-reinstall")))
         (error "`telega-server' installation failed")))))
 
-(defun telega-server--find-bin ()
-  "Find `telega-server-command' executable.
+(defun telega-server--ensure-build ()
+  "Make sure telega-server is build and can run."
+  (if telega-use-docker
+      (or (executable-find "docker")
+          (error "`docker' not found in exec-path"))
+
+    (let ((exec-path (cons telega-directory exec-path)))
+      (or (if (executable-find telega-server-command)
+              (telega-server--check-version)
+            (telega-server-build))
+          (executable-find telega-server-command)
+          (error "`%s' not found in exec-path" telega-server-command)))))
+
+(defun telega-server--process-command (&rest flags)
+  "Create command to start `telega-server' progress.
+FLAGS - additional.
 Raise error if not found."
-  (let ((exec-path (cons telega-directory exec-path)))
-    (or (executable-find telega-server-command)
-        (progn (telega-server-build)
-               (executable-find telega-server-command))
-        (error "`%s' not found in exec-path" telega-server-command))))
+  (mapconcat #'identity
+             (cons 
+              (if telega-use-docker
+                  (telega-docker-run-cmd telega-server-command)
+                (let ((exec-path (cons telega-directory exec-path)))
+                  (or (executable-find telega-server-command)
+                      (error "`%s' not found in exec-path"
+                             telega-server-command))))
+              flags)
+             " "))
 
 (defun telega-server-version ()
   "Return telega-server version."
   (let ((ts-usage (shell-command-to-string
-                   (concat (telega-server--find-bin) " -h"))))
+                   (telega-server--process-command "-h"))))
     (when (string-match "^Version \\([0-9.]+\\)" ts-usage)
       (match-string 1 ts-usage))))
 
-(defun telega-server--check-version (min-required-version)
-  "Check telega-server version against MIN-REQUIRED-VERSION.
-If does not match, then query user to rebuild telega-server.
-If version does not match then query user to rebuild telega-server."
-  (let ((ts-version (or (telega-server-version) "0.0.0-unknown")))
-    (when (and (version< ts-version min-required-version)
+(defvar telega-server-min-version)
+(defun telega-server--check-version ()
+  "Check telega-server version against `telega-server-min-version'.
+If does not match, then query user to rebuild telega-server."
+  ;; NOTE: do not check version if using dockerized telega-server
+  (let ((ts-version (if telega-use-docker
+                        telega-server-min-version
+                      (or (telega-server-version) "0.0.0-unknown"))))
+    (when (and (version< ts-version telega-server-min-version)
                (y-or-n-p
                 (format "Installed `telega-server' version %s<%s, rebuild? "
-                        ts-version min-required-version)))
+                        ts-version telega-server-min-version)))
       ;; NOTE: remove old telega-server binary before rebuilding
       (let* ((sv-ver (car (split-string
                            (shell-command-to-string
-                            (concat (telega-server--find-bin) " -h")) "\n")))
+                            (telega-server--process-command "-h"))
+                           "\n")))
              (with-voip-p (string-match-p (regexp-quote "with VOIP") sv-ver)))
         (telega-server-build (concat (when with-voip-p " WITH_VOIP=t")
                                      ))))))
@@ -378,9 +404,19 @@ COMMAND is passed directly to `telega-server--send'."
    (erase-buffer)
    (insert (format "%s ---[ telega-server started\n" (current-time-string))))
 
+  ;; 
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering nil)
-        (server-bin (telega-server--find-bin)))
+        (server-cmd (telega-server--process-command
+                     (when telega-server-logfile
+                       "-l")
+                     (when telega-server-logfile
+                       telega-server-logfile)
+                     "-v"
+                     (if telega-server-logfile
+                         (int-to-string telega-server-verbosity)
+                       "0"))))
+    (telega-debug "telega-server CMD: %s" server-cmd)
     (with-current-buffer (generate-new-buffer " *telega-server*")
       (setq telega-server--on-event-func 'telega--on-event)
       (setq telega-server--deferred-events nil)
@@ -391,13 +427,18 @@ COMMAND is passed directly to `telega-server--send'."
       (setq telega-server--buffer (current-buffer))
 
       (telega-status--set "telega-server: starting.")
-      (let* ((proc-args (if telega-server-logfile
-                            (list "-l" telega-server-logfile
-                                  "-v" (int-to-string telega-server-verbosity))
-                          (list "-v" "0")))
-             (proc (apply 'start-process
-                          "telega-server" (current-buffer) server-bin
-                          proc-args)))
+      (let* ((proc-cmd-with-args (split-string server-cmd " " t))
+             ;; NOTE: use `start-process-shell-command' for dockerized
+             ;; `telega-server', to make env variables expansion work
+             ;; as they might be specified in
+             ;; `telega-docker-run-command'
+             (proc (apply (if telega-use-docker
+                              'start-process-shell-command
+                            'start-process)
+                          "telega-server" (current-buffer)
+                          (if telega-use-docker
+                              (list server-cmd)
+                            proc-cmd-with-args))))
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-server--sentinel)
         (set-process-filter proc #'telega-server--filter)

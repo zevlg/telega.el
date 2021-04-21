@@ -686,6 +686,38 @@ Return now text with markdown syntax."
        (format "[%s](%s)" text (plist-get ent-type :url)))
       (t text))))
 
+(defsubst telega--entity-to-org (entity-text)
+  "Convert ENTITY back to markdown syntax applied to TEXT.
+ENTITY-TEXT is cons cell where car is the ENTITY and cdr is the TEXT.
+Return string with org mode syntax."
+  ;; NOTE: text might have surrogated pairs, for example when editing
+  ;; message with emojis
+  (let ((ent-type (plist-get (car entity-text) :type))
+        (text (cdr entity-text)))
+    (cl-case (and ent-type (telega--tl-type ent-type))
+      (textEntityTypeBold (concat "*" text "*"))
+      (textEntityTypeItalic (concat "/" text "/"))
+      (textEntityTypeUnderline (concat "_" text "_"))
+      (textEntityTypeStrikethrough (concat "+" text "+"))
+      (textEntityTypeCode (concat "~" text "~"))
+      (textEntityTypePre (concat "=" text "="))
+      (textEntityTypePreCode
+       (concat "\n" "#+begin_src " (plist-get ent-type :language) "\n"
+               text "\n"
+               "#+end_src\n"))
+      (textEntityTypeMentionName
+       (format "[[tg://user?id=%d][%s]]" (plist-get ent-type :user_id) text))
+      (textEntityTypeUrl
+       ;; Hexify only spaces and tabs, removing `telega-display'
+       ;; property, which is used in `telega--desurrogate-apply'
+       (replace-regexp-in-string
+        (regexp-quote "\t") "%09"
+        (replace-regexp-in-string (regexp-quote " ") "%20"
+                                  (substring-no-properties text))))
+      (textEntityTypeTextUrl
+       (format "[[%s][%s]]" (plist-get ent-type :url) text))
+      (t text))))
+
 (defun telega-string-fmt-text-length (str &optional rstart rend)
   "Return resulting formattedText length for the string STR.
 Takes into account use of surrogated pairs for unicode
@@ -745,6 +777,26 @@ Return nil if STR is not emphasised by org mode."
               (telega-entity-type-strikethrough
                '(:@type "textEntityTypeStrikethrough")))))
       (telega-fmt-text (substring-no-properties str 1 -1) entity-type))))
+
+(defun telega-markup-org--begin-src-fmt (str)
+  "Format org mode src block specified by STR to formattedText.
+Return nil if STR does not specify org mode source block."
+  (error "TODO: format `begin_src' block")
+  )
+
+(defun telega-markup-org--link-fmt (str)
+  "Format org link specified by STR to formattedText.
+Return nil if STR does not specify an org mode link."
+  (when (string-match org-link-any-re str)
+    (let* ((link-text (match-string 3 str))
+           (link-url (match-string 2 str))
+           (user-id (when (string-prefix-p "tg://user?id=" link-url)
+                      (string-to-number (substring link-url 13)))))
+      (if user-id
+          (telega-fmt-text link-text (list :@type "textEntityTypeMentionName"
+                                           :user_id user-id))
+        (telega-fmt-text link-text (list :@type "textEntityTypeTextUrl"
+                                         :url link-url))))))
 
 (defun telega-markup-org-fmt (str)
   "Format string STR to formattedText using Org Mode markup."
@@ -911,9 +963,9 @@ Return desurrogated formattedText."
           :text (apply #'concat (mapcar (telega--tl-prop :text) fmt-texts))
           :entities (apply #'seq-concatenate 'vector ents))))
 
-(defun telega--fmt-text-markdown1 (fmt-text)
-  "Return formatted text FMT-TEXT as string with markdown1 syntax."
-  ;; TODO: support nested markdown
+(defun telega--fmt-text-markup (fmt-text entity-to-markup-fun)
+  "Return formatted text FMT-TEXT as string by applying entity function.
+ENTITY-TO-MARKUP-FUN is function to convert TDLib entities to string."
   (let ((text (copy-sequence (plist-get fmt-text :text)))
         (offset 0)
         (strings nil))
@@ -933,16 +985,24 @@ Return desurrogated formattedText."
     ;; won't intermix with markdown syntax.
     ;; But keep 'display property, so emojis are still displayed as
     ;; images (if `telega-emoji-use-images' is set)
-    (let ((ret-text (apply 'concat (mapcar 'telega--entity-to-markdown
+    (let ((ret-text (apply 'concat (mapcar entity-to-markup-fun
                                            (nreverse strings)))))
       (remove-text-properties 0 (length ret-text) (list 'face) ret-text)
       ret-text)))
+
+(defun telega--fmt-text-markdown1 (fmt-text)
+  "Return formatted text FMT-TEXT as string with markdown1 syntax."
+  (telega--fmt-text-markup fmt-text #'telega--entity-to-markdown))
 
 (defun telega--fmt-text-markdown2 (fmt-text)
   "Return formatted text FMT-TEXT as string with markdown2 syntax."
   (plist-get (telega--getMarkdownText
               (telega-fmt-text-desurrogate (copy-sequence fmt-text)))
              :text))
+
+(defun telega--fmt-text-org (fmt-text)
+  "Return formatted text FMT-TEXT as string with org mode syntax."
+  (telega--fmt-text-markup fmt-text #'telega--entity-to-org))
 
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
@@ -1765,7 +1825,21 @@ If FILE is local, then return expanded FILE."
   ;; NOTE: Do logic only for remote files, to avoid calling local-copy
   ;; handlers.  See https://t.me/emacs_telega/26267
   (if (not (file-remote-p file))
-      (expand-file-name file)
+      ;; NOTE: if using `telega-server' in docker, and file is not
+      ;; accessible by docker container (i.e. outside ~/.telega dir),
+      ;; then copy file into temporary directory accessible by docker
+      (let ((absfile (expand-file-name file)))
+        (if (and telega-use-docker
+                 (not (string-prefix-p
+                       (concat telega-database-dir "/") absfile)))
+            (let ((tmpfile (telega-temp-name
+                            (concat (file-name-sans-extension
+                                     (file-name-nondirectory absfile))
+                                    "-")
+                            (file-name-extension absfile t))))
+              (copy-file absfile tmpfile 'ok-if-already-exists 'keep-time)
+              tmpfile)
+          absfile))
 
     ;; NOTE: `tramp-compat-temporary-file-directory'<f> uses standard
     ;; value for `temporary-file-directory', so just binding it won't
@@ -1918,6 +1992,91 @@ Binds current symbol to SYM-BIND."
        (sit-for (or ,interval 0.1))
        (setq ,sym-bind (telega-symbol-animate ,sym-bind)))
      (when (input-pending-p) (read-key))))
+
+
+;;; Docker support
+(defvar telega-tdlib-min-version)
+(defvar telega-tdlib-max-version)
+(defun telega-docker--image-name ()
+  "Return image name for suitable docker container."
+  (if (equal telega-tdlib-min-version telega-tdlib-max-version)
+      (format "zevlg/telega-server:%s" telega-tdlib-min-version)
+    "zevlg/telega-server:latest"))
+
+(defvar telega-docker--user-id nil)
+(defun telega-docker--user-id ()
+  "Return UID:GID suitable for docker's -u."
+  (or telega-docker--user-id
+      (setq telega-docker--user-id
+            (shell-command-to-string "echo -n $UID:$GID"))))
+
+(defun telega-docker--container-id ()
+  "Return running container id."
+  (or (and telega-use-docker (telega-server-live-p) telega-docker--container-id)
+      (setq telega-docker--container-id
+            (string-trim
+             (shell-command-to-string
+              (format "docker ps -qf \"ancestor=%s\""
+                      (telega-docker--image-name)))))))
+
+(defun telega-docker-run-cmd (cmd &rest volumes)
+  "Dockerize command CMD."
+  (declare (indent 1))
+  (concat
+   (if telega-docker-run-command
+       (format-spec telega-docker-run-command
+                    (format-spec-make ?u (telega-docker--user-id)
+                                      ?w telega-database-dir
+                                      ?i (telega-docker--image-name)))
+     (concat (format "docker run -i -v %s:%s"
+                     telega-database-dir telega-database-dir)
+             " -u " (telega-docker--user-id)
+             ;; Export volumes and env vars need to run appindicator
+             (when telega-appindicator-mode
+               (concat " --security-opt apparmor=unconfined"
+                       " -v /tmp/.X11-unix:/tmp/.X11-unix"
+                       (when-let ((xauthority (getenv "XAUTHORITY")))
+                         (format " -v %s:%s" xauthority xauthority))
+                       (when-let ((bus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
+                                  (bus-path (nth 1 (split-string bus-addr "="))))
+                         (format " -v %s:%s" bus-path bus-path))
+                       " -e DISPLAY -e XAUTHORITY -e DBUS_SESSION_BUS_ADDRESS"))
+             ;; Additional volumes
+             (mapconcat (lambda (volume)
+                          (format " -v %s:%s" volume volume))
+                        (or volumes telega-docker-volumes) "")
+             " " (telega-docker--image-name)))
+   " " cmd))
+
+(defun telega-docker-exec-cmd (cmd &optional try-host-p exec-flags no-error)
+  "Format docker exec command to run CMD in the running docker.
+If TRY-HOST-P is specified, return CMD if corresponding program is available.
+Additial EXEC-FLAGS can be specifier to exec command, for example \"-i\".
+If NO-ERROR is specified and corresponding command is not found, do
+not signal an error and just return nil."
+  (let* ((cmd-args (when try-host-p
+                     (split-string cmd " ")))
+         (program (when try-host-p
+                    (car cmd-args)))
+         program-bin)
+    (cond ((and try-host-p
+                (not (eq telega-debug 'docker))
+                (setq program-bin
+                      (let ((exec-path (cons telega-directory exec-path)))
+                        (executable-find program))))
+           (mapconcat #'identity (cons program-bin (cdr cmd-args)) " "))
+
+          ((and telega-use-docker (telega-server-live-p))
+           (concat "docker exec "
+                   " " exec-flags
+                   " -u " (telega-docker--user-id)
+                   " " (telega-docker--container-id)
+                   " " cmd))
+
+          (no-error nil)
+          (t (error "telega: Install `%s' or set `telega-use-docker' to non-nil"
+                    program))
+          )))
 
 (provide 'telega-util)
 

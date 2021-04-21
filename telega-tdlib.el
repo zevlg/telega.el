@@ -1226,19 +1226,34 @@ Consider this as reverse operation to `telega--parseMarkdown'."
          :file_id file-id)
    callback))
 
-(defun telega--downloadFile (file-id &optional priority callback)
+(defun telega--getRemoteFile (remote-file-id &optional file-type callback)
+  (telega-server--call
+   (nconc (list :@type "getRemoteFile"
+                :remote_file_id remote-file-id)
+          (when file-type
+            (list :file_type file-type)))
+   callback))
+
+(cl-defun telega--downloadFile (file-id &key priority offset limit sync-p
+                                        callback)
   "Asynchronously downloads a file by its FILE-ID from the cloud.
 `telega--on-updateFile' will be called to notify about the
 download progress and successful completion of the download.
 PRIORITY is integer in range 1-32 (higher downloads faster), default is 1.
 CALLBACK is callback to call with single argument - file, by
 default `telega-file--update' is called."
-  (declare (indent 2))
+  (declare (indent 1))
   (telega-server--call
-   (list :@type "downloadFile"
-         :file_id file-id
-         :priority (or priority 1))
-   (or callback 'telega-file--update)))
+   (nconc (list :@type "downloadFile"
+                :file_id file-id
+                :priority (or priority 1))
+          (when offset
+            (list :offset offset))
+          (when limit
+            (list :limit limit))
+          (when sync-p
+            (list :synchronous (if sync-p t :false))))
+   (or callback (when sync-p 'telega-file--update))))
 
 (defun telega--cancelDownloadFile (file &optional only-if-pending)
   "Stop downloading the FILE.
@@ -1686,11 +1701,11 @@ REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
          :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
          :text (or text ""))))
 
-(defun telega--reportChatPhoto (chat photo reason &optional text)
+(defun telega--reportChatPhoto (chat photo-file reason &optional text)
   (telega-server--send
    (list :@type "reportChatPhoto"
          :chat_id (plist-get chat :id)
-         ;; TODO: file-id
+         :file_id (plist-get photo-file :id)
          :reason (list :@type (concat "chatReportReason" reason))
          :text (or text ""))))
 
@@ -1905,7 +1920,7 @@ If OPTION-IDS is not specified, then retract the voice."
           :only_missed (if only-missed-p t :false))
     callback))
 
-;; 
+;; Group Calls section
 (defun telega--getGroupCall (group-call-id &optional callback)
   (declare (indent 1))
   (telega-server--call
@@ -1925,12 +1940,21 @@ If OPTION-IDS is not specified, then retract the voice."
   "Create a voice chat (a group call bound to a chat).
 Available only for basic groups and supergroups.
 Return an ID of group call."
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (plist-get reply :id)
 
     (list :@type "createVoiceChat"
           :chat_id (plist-get chat :id))
     callback))
+
+(defun telega--setGroupCallTitle (group-call title)
+  "Set GROUP-CALL TITLE."
+  (cl-assert (plist-get group-call :can_be_managed))
+  (telega-server--send
+   (list :@type "setGroupCallTitle"
+         :group_call_id (plist-get group-call :id)
+         :title title)))
 
 (defun telega--leaveGroupCall (group-call)
   "Leave a GROUP-CALL."
@@ -1945,6 +1969,40 @@ Return an ID of group call."
    (list :@type "discardGroupCall"
          :group_call_id (plist-get group-call :id)))
   )
+
+(defun telega--getGroupCallInviteLink (group-call &optional can-self-unmute-p
+                                                  callback)
+  (telega-server--call
+   (list :@type "getGroupCallInviteLink"
+         :group_call_id (plist-get group-call :id)
+         :can_self_unmute (if can-self-unmute-p t :false))
+   callback))
+
+(defun telega--startGroupCallRecording (group-call title)
+  "Starts recording of a GROUP-CALL."
+  (cl-assert (plist-get group-call :can_be_managed))
+  (telega-server--call
+   (list :@type "startGroupCallRecording"
+         :group_call_id (plist-get group-call :id)
+         :title title)))
+
+(defun telega--endGroupCallRecording (group-call)
+  "Ends recording of a GROUP-CALL."
+  (cl-assert (plist-get group-call :can_be_managed))
+  (telega-server--call
+   (list :@type "endGroupCallRecording"
+         :group_call_id (plist-get group-call :id))))
+
+(defun telega--getAvailableVoiceChatAliases (chat &optional callback)
+  "Get list of message senders, which can be used as voice chat alias.
+CHAT is ordinary Telegram chat."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-msg-sender (plist-get reply :senders))
+
+    (list :@type "getAvailableVoiceChatAliases"
+          :chat_id (plist-get chat :id))
+    callback))
 
 (provide 'telega-tdlib)
 

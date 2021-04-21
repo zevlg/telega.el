@@ -180,6 +180,8 @@ Used by `telega-stickerset-installed-p'.")
 (defvar telega--suggested-actions nil
   "List of suggested actions to be taken.")
 
+(defvar telega--group-calls nil "Hash table (id -> group-call).")
+
 ;; Searching
 (defvar telega-search-history nil
   "List of recent search queries.")
@@ -242,6 +244,9 @@ Each element in form: (NAME SSET-ID)")
 Use \\[execute-extended-command] telega-ignored-messages RET to
 display the list.")
 
+(defvar telega-docker--container-id nil
+  "Docker image id currently running.")
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
@@ -269,10 +274,9 @@ Actual value is `:@extra` value of the call to inline bot.")
 Asynchronously loaded when chatbuf is created.")
 (make-variable-buffer-local 'telega-chatbuf--administrators)
 
-(defvar telega-chatbuf--group-call nil
-  "Asynchronously loaded group voice call for the chatbuf.")
-(make-variable-buffer-local 'telega-chatbuf--group-call)
-
+(defvar telega-chatbuf--voice-chat-hidden nil
+  "Non-nil if non-empty voice chat is displayed in modeline instead of footer.")
+(make-variable-buffer-local 'telega-chatbuf--voice-chat-hidden)
 (defvar telega-chatbuf--group-call-users nil
   "List of group call participants.")
 (make-variable-buffer-local 'telega-chatbuf--group-call-users)
@@ -349,6 +353,9 @@ Done when telega server is ready to receive queries."
 
   (setq telega-tdlib--chat-filters nil)
   (setq telega-tdlib--chat-list nil)
+
+  (setq telega--group-calls (make-hash-table :test 'eq))
+  (setq telega-docker--container-id nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -992,7 +999,7 @@ button.
 If NO-ERROR, do not signal error if no further buttons could be
 found.
 If NO-ERROR is `interactive', then do whatever `telega-button-forward'
-do for interative calls, i.e. observe the button and show help
+do for interactive calls, i.e. observe the button and show help
 message (if any)."
   (declare (indent 1))
   (interactive "p")

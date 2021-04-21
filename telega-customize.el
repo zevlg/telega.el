@@ -250,11 +250,55 @@ See docstring for `display-buffer' for the values."
   :type 'cons
   :group 'telega)
 
+
+;;; Docker support
+(defgroup telega-docker nil
+  "Customisation for docker support."
+  :prefix "telega-docker-"
+  :group 'telega)
+
+(defcustom telega-use-docker nil
+  "*Non-nil to use \"docker\" to run various tools.
+Including `telega-server'."
+  :package-version '(telega . "0.7.40")
+  :type 'boolean
+  :group 'telega-docker)
+
+(defcustom telega-docker-security-opt "apparmor=unconfined"
+  "security-opt option for the docker run command.
+Set to \"apparmor=unconfined\" if you use `telega-appindicator-mode'."
+  :package-version '(telega . "0.7.40")
+  :type 'string
+  :group 'telega-docker)
+
+(defcustom telega-docker-volumes nil
+  "List of additional volumes to attach."
+  :package-version '(telega . "0.7.40")
+  :type 'list
+  :group 'telega-docker)
+
+;; To use something like: docker run --security-opt apparmor=unconfined -i -u %u -v %w:%w -v /tmp/.X11-unix:/tmp/.X11-unix -v $XAUTHORITY:$XAUTHORITY -v /var/run/dbus:/var/run/dbus -e DISPLAY=$DISPLAY -e XAUTHORITY=$XAUTHORITY --net=host %i
+(defcustom telega-docker-run-command nil
+  "Custom docker command to use to run `telega-server' in docker.
+If nil, autogenerate the command according to all telega docker settings.
+%u - substituted with current used UID:GID
+%w - substituted with current Telegram account database directory.
+%i - substituted with infered docker image name."
+  :package-version '(telega . "0.7.40")
+  :type '(or nil string)
+  :group 'telega-docker)
+
+
+(defgroup telega-emoji nil
+  "Customisation for telega emojis."
+  :prefix "telega-emoji-"
+  :group 'telega)
+
 (defcustom telega-emoji-company-backend 'telega-company-emoji
   "Company backend to use for emoji completions."
   :type 'symbol
-  :group 'telega
-  :options '(telega-company-telegram-emoji))
+  :options '(telega-company-telegram-emoji)
+  :group 'telega-emoji)
 
 (defcustom telega-emoji-fuzzy-match t
   "*Non-nil to use fuzzy prefix matching.
@@ -262,12 +306,12 @@ For example without fuzzy matches, prefix `:jo' will match only
 `:joy:', `:joy-cat:' and `:joystick:'.  With fuzzy matching
 enabled it will match also `:flag-jo:' and `:black-jocker:'."
   :type 'boolean
-  :group 'telega)
+  :group 'telega-emoji)
 
 (defcustom telega-emoji-custom-alist nil
   "*Alist of custom emojis to add along with `etc/emojis.alist'."
   :type 'alist
-  :group 'telega)
+  :group 'telega-emoji)
 
 (defcustom telega-emoji-font-family
   (let ((ffl (font-family-list)))
@@ -276,20 +320,22 @@ enabled it will match also `:flag-jo:' and `:black-jocker:'."
         (car (member "Noto Color Emoji" ffl))))
   "*Font to use for emoji image generation using `telega-emoji-create-svg'."
   :type 'string
-  :group 'telega)
+  :group 'telega-emoji)
 
 (defcustom telega-emoji-use-images
   (and telega-use-images (image-type-available-p 'svg) telega-emoji-font-family)
   "*Non-nil to use images for emojis."
   :type 'boolean
-  :group 'telega)
+  :group 'telega-emoji)
 
 (defcustom telega-emoji-large-height 2
   "*Vertical size in characters for emoji only messages.
 Used only if `telega-emoji-use-images' is non-nil."
   :type 'integer
-  :group 'telega)
+  :group 'telega-emoji)
 
+
+;; Stickers/Animations
 (defcustom telega-sticker-size '(4 . 24)
   "*Size for the sticker.
 car is height in chars to use.
@@ -317,7 +363,8 @@ cdr is maximum width in chars to use."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-sticker-animated-play (executable-find "tgs2png")
+(defcustom telega-sticker-animated-play
+  (or (executable-find "tgs2png") telega-use-docker)
   "Non-nil to play animated stickers inside Emacs.
 Requires `tgs2png' program from https://github.com/zevlg/tgs2png"
   :package-version '(telega . "0.7.30")
@@ -374,8 +421,25 @@ There is a restriction to its value:
   :group 'telega)
 
 (defcustom telega-video-play-inline nil
-  "*Non-nil to play video files inside telega."
+  "*Non-nil to play video files inside telega.
+NOT USED."
   :type 'boolean
+  :group 'telega)
+
+(defcustom telega-video-play-incrementally t
+  "Non-nil to start playing video while still downloading the file."
+  :package-version '(telega . "0.7.40")
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-video-player-command
+  (cond ((executable-find "ffplay") "ffplay -autoexit")
+        ((executable-find "mpv") "mpv")
+        ((executable-find "mplayer" "mplayer")))
+  "Command used to play video files."
+  :package-version '(telega . "0.7.40")
+  :type '(or string null)
+  :options '("mpv" "ffplay -autoexit -fs")
   :group 'telega)
 
 (defcustom telega-open-file-function #'find-file
@@ -943,24 +1007,10 @@ Could be a string or an alist, same as `telega-chat-input-prompt'."
 (defcustom telega-chat-input-markups '(nil "markdown1" "markdown2")
   "Markups to apply when sending input with `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]'.
 Each index in the list corresponds to the number of
-`\\[universal-argument] supplied before `RET', i.e. first element is
+`\\[universal-argument]' supplied before `RET', i.e. first element is
 used for ordinary `RET', second is used for `C-u RET', and third is for
 `C-u C-u RET' and so on.  Supported markups are defined in
-`telega-chat-markup-functions'.
-
-Markdown Markups:
-  1) *bold text*
-  2) _italic text_
-  2.1) __underline text__    (only for \"markdown2\")
-  2.2) ~strike through text~ (only for \"markdown2\")
-  3) `inlined code`
-  4) ```<language-name-not-displayed>
-     first line of multiline preformatted code
-     second line
-     last line```
-  5) [link text](http://actual.url)
-  6) [username](tg://user?id=<USER-ID>)
-"
+`telega-chat-markup-functions'."
   :type 'list
   :package-version '(telega . "0.7.4")
   :group 'telega-chat)
@@ -1114,7 +1164,8 @@ NOT YET USED."
   :group 'telega-chat)
 
 (defcustom telega-chat-mode-line-format
-  '((:eval (telega-chatbuf-mode-line-discuss))
+  '((:eval (telega-chatbuf-mode-line-voice-chat 20))
+    (:eval (telega-chatbuf-mode-line-discuss))
     (:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
@@ -1122,7 +1173,7 @@ NOT YET USED."
     (:eval (telega-chatbuf-mode-line-messages-filter)))
   "Additional mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
-  :package-version '(telega . "0.6.29")
+  :package-version '(telega . "0.7.35")
   :type 'sexp
   :group 'telega-chat)
 
@@ -1186,6 +1237,14 @@ Set it to nil to disable VoIP logging."
 (defcustom telega-voip-use-sounds nil
   "*Non-nil to play sounds (using ffplay) for call status changes."
   :type 'boolean
+  :group 'telega-voip)
+
+(defcustom telega-voice-chat-display
+  '((active footer modeline)
+    (passive modeline))
+  "Where to display active/passive voice chats info."
+  :type 'list
+  :package-version '(telega . "0.7.34")
   :group 'telega-voip)
 
 
@@ -1789,11 +1848,16 @@ Install all symbol widths inside `telega-load-hook'."
   '((verified (telega-etc-file "verified.svg"))
     (vertical-bar (telega-svg-create-vertical-bar))
 
-    folder multiple-folders chat-list
-    eye flames lock pin alarm failed location play
-    pause phone photo video bulp bell
-    voice-chat-active voice-chat-passive
-    favorite)
+    alarm
+    bell bulp
+    chat-list
+    eye
+    failed favorite flames folder
+    lightning lock location 
+    multiple-folders
+    pause phone photo pin play
+    video voice-chat-active voice-chat-passive
+    )
   "List of symbols to emojify if `telega-emoji-use-images' is non-nil.
 Each element is either XXX from ending of telega-symbol-XXX or list,
 where car is XXX and rest is form to evaluate to get image or a

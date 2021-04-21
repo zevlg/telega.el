@@ -45,8 +45,6 @@
 (declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-public-p "telega-chat" (chat &optional chat-type))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
-(declare-function telega-chat-avatar-image "telega-chat" (chat))
-(declare-function telega-chat-avatar-image-one-line "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
 (declare-function telega-chat-private-p "telega-chat" (chat &optional inc-bots-p))
 (declare-function telega-chat-secret-p "telega-chat" (chat))
@@ -317,7 +315,7 @@ FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
   "Insert USER, aligning multiple lines at current column.
 MEMBER specifies corresponding \"ChatMember\" object.
 If SHOW-PHONE-P is non-nil, then show USER's phone number."
-  (let ((avatar (telega-user-avatar-image user))
+  (let ((avatar (telega-msg-sender-avatar-image user))
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
@@ -439,11 +437,20 @@ E-CHAR - empty char, default is non-break space."
                        (telega--cancelDownloadFile file)))))
 
         ((not (telega-file--downloaded-p file))
-         (telega-ins--button "Download"
-           'action (lambda (_ignored)
-                     (telega-file--download file 32
-                       (lambda (_fileignored)
-                         (telega-msg-redisplay msg))))))))
+         (let ((progress (telega-file--downloading-progress file))
+               (nbsp-char 160))
+           (when (> progress 0)
+             (telega-ins "[")
+             (telega-ins-progress-bar progress 1.0 10 (cons ?= ?⏸) nbsp-char)
+             (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char))
+           (telega-ins--button
+               (concat (when (> progress 0)
+                         (format "Resume%c" nbsp-char))
+                       "Download")
+             'action (lambda (_ignored)
+                       (telega-file--download file 32
+                         (lambda (_fileignored)
+                           (telega-msg-redisplay msg)))))))))
 
 (defun telega-ins--outgoing-status (msg)
   "Insert outgoing status of the message MSG."
@@ -884,7 +891,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (user-id (plist-get contact :user_id))
          (user (unless (zerop user-id) (telega-user-get user-id)))
          (user-ava (when (and telega-user-show-avatars user)
-                     (telega-user-avatar-image user))))
+                     (telega-msg-sender-avatar-image user))))
     (when user-ava
       (telega-ins--image user-ava 0))
     (telega-ins--contact (plist-get content :contact))
@@ -916,7 +923,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
                       ((plist-get msg :is_outgoing)
                        (concat call-symbol "🠺"))
                       (t
-                       (concat call-symbol "🠸"))) " ")
+                       (concat call-symbol "🠸")))
+                " ")
     (telega-ins (propertize label 'face 'shadow))
     (telega-ins-fmt " (%s)"
       (telega-duration-human-readable
@@ -1789,24 +1797,24 @@ argument - MSG to insert additional information after header."
     (messageForwardOriginChat
      ;; NOTE: Since TDLib 1.6.9
      (let* ((sender-chat-id (plist-get origin :sender_chat_id))
-            (sender-chat (unless (zerop sender-chat-id)
-                           (telega-chat-get sender-chat-id))))
+            (sender (unless (zerop sender-chat-id)
+                      (telega-chat-get sender-chat-id))))
        (when telega-chat-show-avatars
-         (telega-ins--image (telega-chat-avatar-image-one-line sender-chat)))
-       (telega-ins "[" (telega-chat-title sender-chat) "]")))
+         (telega-ins--image (telega-msg-sender-avatar-image-one-line sender)))
+       (telega-ins "[" (telega-msg-sender-title sender) "]")))
     (messageForwardOriginUser
      (let* ((sender-id (plist-get origin :sender_user_id))
             (sender (unless (zerop sender-id)
                       (telega-user-get sender-id))))
        (when telega-user-show-avatars
-         (telega-ins--image (telega-user-avatar-image-one-line sender)))
+         (telega-ins--image (telega-msg-sender-avatar-image-one-line sender)))
        (telega-ins "{" (telega-user--name sender) "}")))
     (messageForwardOriginHiddenUser
      (telega-ins (telega-tl-str origin :sender_name)))
     (messageForwardOriginChannel
      (let ((chat (telega-chat-get (plist-get origin :chat_id))))
        (when telega-chat-show-avatars
-         (telega-ins--image (telega-chat-avatar-image-one-line chat)))
+         (telega-ins--image (telega-msg-sender-avatar-image-one-line chat)))
        (telega-ins (telega-chat-title-with-brackets chat " ")))
      (when-let ((signature (telega-tl-str origin :author_signature)))
        (telega-ins " --" signature)))))
@@ -1829,7 +1837,8 @@ argument - MSG to insert additional information after header."
           (if (and from-chat-id (not (zerop from-chat-id)))
               (let ((chat (telega-chat-get from-chat-id)))
                 (when telega-chat-show-avatars
-                  (telega-ins--image (telega-chat-avatar-image-one-line chat)))
+                  (telega-ins--image
+                   (telega-msg-sender-avatar-image-one-line chat)))
                 (telega-ins (telega-chat-title-with-brackets chat " ")))
             (telega-ins--fwd-info-origin (plist-get fwd-info :origin))))
 
@@ -1904,17 +1913,17 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
 
     ;; Message header needed
     (let* ((chat (telega-msg-chat msg))
-           (sender (if (telega-replies-p chat)
+           ;; Is formatting done for "Replies" chat?
+           ;; Workaround for case when `:forward_info' is unset (for
+           ;; outgoing messages [what?] for example)
+           (msg-for-replies-p (and (telega-replies-p chat)
+                                   (plist-get msg :forward_info)))
+           (sender (if msg-for-replies-p
                        (telega-replies-msg-sender msg)
                      (telega-msg-sender msg)))
-           (avatar (cond ((telega-replies-p chat)
-                          (cl-assert sender)
-                          (telega-user-avatar-image-three-lines sender))
-                         ((telega-user-p sender)
-                          (telega-user-avatar-image sender))
-                         (t
-                          (cl-assert (telega-chat-p sender))
-                          (telega-chat-avatar-image chat))))
+           (avatar (if msg-for-replies-p
+                       (telega-msg-sender-avatar-image-three-lines sender)
+                     (telega-msg-sender-avatar-image sender)))
            (awidth (length (telega-image--telega-text avatar 0)))
            ;; NOTE: `telega-msg-contains-unread-mention' is used
            ;; inside `telega--entity-to-properties'
@@ -1946,7 +1955,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (setq ccol (telega-current-column))
       (telega-ins--fwd-info-inline (plist-get msg :forward_info))
       ;; NOTE: Three lines avatars in "Replies" chat
-      (when (telega-replies-p chat)
+      (when msg-for-replies-p
         (telega-ins--image avatar 2
                            :no-display-if (not telega-chat-show-avatars)))
       (telega-ins--msg-reply-inline msg)
@@ -2039,7 +2048,7 @@ Pass all ARGS directly to `telega-ins--message0'."
              (user-id (plist-get contact :user_id))
              (user (when user-id (telega-user-get user-id))))
         (when (and user telega-user-show-avatars)
-          (telega-ins--image (telega-user-avatar-image-one-line user)))
+          (telega-ins--image (telega-msg-sender-avatar-image-one-line user)))
         (telega-ins--contact contact)))
      (inputMessageDocument
       (telega-ins--input-file (plist-get imc :document)))
@@ -2280,7 +2289,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   "Inserter for USER, used for contacts ewoc in rootbuf."
   ;; Show `telegram' symbol if user ever has been chatted with
   (when telega-root-show-avatars
-    (telega-ins--image (telega-user-avatar-image-one-line user)))
+    (telega-ins--image (telega-msg-sender-avatar-image-one-line user)))
 
   (if-let ((user-chat (telega-chat-get (plist-get user :id) 'offline)))
       (telega-ins--with-face 'telega-blue
@@ -2307,7 +2316,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
 
 (defun telega-ins--root-contact-2lines (user)
   "Two lines inserter for USER, used for contacts ewoc in rootbuf."
-  (let ((avatar (telega-user-avatar-image user)))
+  (let ((avatar (telega-msg-sender-avatar-image user)))
     ;; first line
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
@@ -2418,7 +2427,7 @@ Return t."
                             title))))
 
     (when telega-root-show-avatars
-      (telega-ins--image (telega-chat-avatar-image-one-line chat)))
+      (telega-ins--image (telega-msg-sender-avatar-image-one-line chat)))
     (telega-ins (or (car brackets) "["))
 
     ;; 1) First we format unread@mentions as string to find out its
@@ -2475,9 +2484,10 @@ Return t."
     (when (plist-get (telega-chat-position chat) :is_pinned)
       (telega-ins (telega-symbol 'pin)))
     (when (telega-chat-match-p chat 'has-voice-chat)
-      (telega-ins (telega-symbol (if (plist-get chat :is_voice_chat_empty)
-                                     'voice-chat-passive
-                                   'voice-chat-active))))
+      (telega-ins (telega-symbol
+                   (if (telega--tl-get chat :voice_chat :has_participants)
+                       'voice-chat-active
+                     'voice-chat-passive))))
     (when (plist-get chat :has_scheduled_messages)
       (telega-ins (telega-symbol 'alarm)))
     (when custom-order
@@ -2562,7 +2572,7 @@ Return t."
 
 (defun telega-ins--chat-full-2lines (chat)
   "Two lines inserter for the CHAT button in rootbuf."
-  (let ((avatar (telega-chat-avatar-image chat)))
+  (let ((avatar (telega-msg-sender-avatar-image chat)))
     (when telega-root-show-avatars
       (telega-ins--image avatar 0))
     (let ((telega-root-show-avatars nil))
@@ -2579,7 +2589,7 @@ Return t."
 
 (defun telega-ins--chat-nearby-2lines (chat)
   "Two lines inserter for the nearby CHAT in rootbuf."
-  (let ((avatar (telega-chat-avatar-image chat)))
+  (let ((avatar (telega-msg-sender-avatar-image chat)))
     (telega-ins--image avatar 0)
     (let ((telega-root-show-avatars nil))
       (telega-ins--chat chat))

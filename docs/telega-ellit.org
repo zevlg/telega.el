@@ -43,6 +43,10 @@ following the instructions.
 [[https://guix.gnu.org/][GNU Guix]], however, does have both =telega= and =TDLib= packaged.  If
 you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gnu-guix][Installing from GNU Guix]].
 
+Also, you can use [[https://www.docker.com/][Docker]] to avoid complicated installation steps by
+using one of the provided docker images.  See [[#running-telega-server-in-docker][Running telega-server in
+docker]] for details.
+
 ** Dependencies
 
 - =GNU Emacs= (at least 26.1 is required with svg support)
@@ -245,6 +249,23 @@ Or with:
 
 The code should be put in the configuration file for Emacs, which
 usually is =init.el=, or =emacs.el=.
+
+** Running telega-server in docker
+
+Pull latest =telega-server= image:
+#+begin_src shell
+$ docker pull zevlg/telega-server:latest
+#+end_src
+
+Make =telega= know you want to use docker by adding this to your =init.el=:
+#+begin_src emacs-lisp
+(setq telega-use-docker t)
+#+end_src
+
+That's it, you are ready to get starting.  However, you might anyway
+need to have local =ffmpeg= installation to utilize some =telega=
+features, such as playing audio/voice messages, capturing video/voice
+notes, etc.
 
 * Getting started
 
@@ -533,9 +554,9 @@ message.  To insert newline in the middle of the input use ordinary
 You can apply markup to the input when sending message.  This is
 controlled by number of {{{kbd(C-u)}}} pressed before {{{kbd(RET)}}}
 and value of the:
-- {{{user-option1(telega-chat-input-markups, 2)}}}
+- {{{user-option(telega-chat-input-markups, 2)}}}
 
-Markdown markup syntax for "markdown1" and "markdown2" markups:
+Syntax for "markdown1" and "markdown2" markups:
 #+begin_example
   1. *bold text*
   2. _italic text_
@@ -550,6 +571,25 @@ Markdown markup syntax for "markdown1" and "markdown2" markups:
   6. [username](tg://user?id=<USER-ID>)"
 #+end_example
 
+Syntax for "org" markup:
+#+begin_example
+  1. *bold text*
+  2. /italic text/
+  3. _underline text_
+  4. +strike through text+
+  5. =pre text=
+  6. ~code text~
+
+  **NOT YET**
+  7. #+begin_src <language>
+     code line
+     next code line
+     ...
+     #+end_src
+  8. [[http://www.url][link description text]]
+  9. [[tg://user?id=<USER-ID>][username]]
+#+end_example
+
 Also, you can intermix various markups, using {{{kbd(C-c C-a markup
 RET)}}} command.
 
@@ -558,8 +598,9 @@ attaching]] commands.
 
 Important customizable options:
 - {{{user-option1(telega-chat-input-markups,2)}}}
-- {{{user-option1(telega-chat-markup-functions,2)}}}
 - {{{user-option(telega-chat-ret-always-sends-message,2)}}}
+- {{{user-option1(telega-chat-markup-functions,2)}}}
+- {{{user-option(telega-msg-edit-markup-spec,2)}}}
 
 ** Attaching media
 
@@ -858,6 +899,10 @@ Root View, by pressing
 {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} in
 the [[#root-buffer][root buffer]].
 
+* Voice Chats
+
+**TODO**: write me
+
 * Stickers
 
 To display stickers =telega= uses =dwebp= utility to convert ~.webp~
@@ -915,6 +960,9 @@ map]].  To setup multiple accounts use:
   Each account can have its own configuration using custom variables
   specified in account setup, and only ~telega-database-dir~ must be
   different for different accounts.
+
+  Uninitialized account from ~telega-accounts~ will be initialized when
+  you switch to it for the first time.
 
 * Minor Modes
 

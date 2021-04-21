@@ -39,7 +39,7 @@
     (("updateMessageInteractionInfo")
      thread-footer)
     (("updateUserStatus" "updateChatOnlineMemberCount"
-      "updateChatMessageTtlSetting")
+      "updateChatMessageTtlSetting" "updateMessageMentionRead")
      modeline)
     (("updateChatReadInbox" "updateChatUnreadMentionCount")
      footer modeline)
@@ -220,8 +220,13 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
   (let ((chat (telega-chat-get (plist-get event :chat_id)))
         (photo (plist-get event :photo)))
     (plist-put chat :photo photo)
+
+    ;; XXX remove cached avatars
     (plist-put chat :telega-image nil)
     (plist-put chat :telega-avatar-1 nil)
+    (plist-put chat :telega-avatar-3 nil)
+    (plist-put chat :telega-avatar-vc-1 nil)
+    (plist-put chat :telega-avatar-vc-speaking-1 nil)
 
     (telega-chat--mark-dirty chat event)
     ))
@@ -485,7 +490,18 @@ NOTE: we store the number as custom chat property, to use it later."
     (with-telega-chatbuf chat
       (telega-chatbuf--voice-chat-fetch))))
 
-(defun telega--updateGroupCallParticipant (event)
+(defun telega--on-updateGroupCall (event)
+  (let ((new-group-call (plist-get event :group_call)))
+    (telega-group-call--ensure new-group-call)
+
+    (when-let ((chat (cl-find (plist-get new-group-call :id)
+                              telega--ordered-chats
+                              :key (telega--tl-prop :voice_chat :group_call_id))))
+      (with-telega-chatbuf chat
+        (telega-chatbuf--footer-update)))
+    ))
+  
+(defun telega--on-updateGroupCallParticipant (event)
   (let ((group-call-id (plist-get event :group_call_id))
         (call-user (plist-get event :participant)))
     (when-let ((chat (cl-find group-call-id

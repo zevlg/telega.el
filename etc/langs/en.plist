@@ -212,6 +212,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "{mouse}: Goto thread starter message")
  ("telega_chat_modeline_discuss_help"
   :value "{mouse}: Goto chat to discuss this channel")
+ ("telega_chat_modeline_voice_chat_help"
+  :value "{mouse}: Goto Voice Chat of this group")
  ("telega_chat_modeline_members"
   :zero_value "{member_count} members"
   :other_value "{member_count} members, {count} online")
@@ -623,7 +625,19 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_stories_featured"
   :value "Featured")
 
- ;; Group chats
+ ;; Group call chats
+ ("lng_group_call_title"
+  :value "Voice Chat")
+ ("lng_group_call_end"
+  :value "End Voice Chat")
+ ("lng_group_call_leave_title"
+  :value "Leave voice chat")
+ ("lng_group_call_join_as_header"
+  :value "Join Voice Chat as...")
+
+ ("lng_group_call_members"
+  :one_value "{count} participant"
+  :other_value "{count} participants")
  ("lng_action_group_call_started"
   :value "{from} started {chat}")
  ("lng_action_group_call_started_chat"

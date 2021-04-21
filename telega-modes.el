@@ -344,8 +344,15 @@ Return filename of the generated icon."
   (let* ((state (cond ((eq telega--conn-state 'Connecting) 'connecting)
                       ((funcall telega-online-status-function) 'online)
                       (t 'offline)))
-         (cached-label (concat (symbol-name state) label)))
-    (or (cdr (assoc cached-label telega-appindicator--cached-icons))
+         (cached-label (concat (symbol-name state) label))
+         (cached-entry (assoc cached-label telega-appindicator--cached-icons)))
+    ;; NOTE: Check cached icon is still accessible
+    (when (and cached-entry (not (file-exists-p (cdr cached-entry))))
+      (setq telega-appindicator--cached-icons
+            (remove cached-entry telega-appindicator--cached-icons)
+            cached-entry nil))
+
+    (or (cdr cached-entry)
         (let* ((w 48) (h 48) (logo-w 36)
                (svg (telega-svg-create w h))
                (colors (cdr (assq state telega-appindicator-icon-colors))))

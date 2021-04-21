@@ -234,10 +234,12 @@ Each sample is in range [-128;128]."
                     ;; Use `shell-command-to-string' to avoid noisy
                     ;; message when shell completes
                     (shell-command-to-string
-                     (concat "ffmpeg -v error "
-                             "-i \"" (expand-file-name filename) "\" "
-                             "-ar 8000 -ac 1 "
-                             "-acodec pcm_u8 \"" temp-wav "\""))
+                     (telega-docker-exec-cmd
+                       (concat "ffmpeg -v error "
+                               "-i \"" (expand-file-name filename) "\" "
+                               "-ar 8000 -ac 1 "
+                               "-acodec pcm_u8 \"" temp-wav "\"")
+                       'try-host-cmd-first))
                     (unless (file-exists-p temp-wav)
                       (error "telega: Can't extract waves from %s" filename))
                     (unwind-protect

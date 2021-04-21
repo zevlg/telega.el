@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-03-20 Сб 01:37 -->
+<!-- 2021-04-22 Чт 01:40 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.33)</title>
+<title>Telega Manual (v0.7.40)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.33)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.40)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -254,6 +254,7 @@
 <li><a href="#installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from GNU Guix</a></li>
 <li><a href="#installing-telega-from-melpa">Installing telega from MELPA</a></li>
 <li><a href="#installing-telega-directly-from-github">Installing telega directly from GitHub</a></li>
+<li><a href="#running-telega-server-in-docker">Running telega-server in docker</a></li>
 </ul>
 </li>
 <li><a href="#getting-started">Getting started</a></li>
@@ -297,6 +298,7 @@
 <li><a href="#favorite-messages">Favorite messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
+<li><a href="#voice-chats">Voice Chats</a></li>
 <li><a href="#stickers">Stickers</a>
 <ul>
 <li><a href="#animated-stickers">Animated stickers</a></li>
@@ -396,6 +398,12 @@ following the instructions.
 <p>
 <a href="https://guix.gnu.org/">GNU Guix</a>, however, does have both <code>telega</code> and <code>TDLib</code> packaged.  If
 you use GNU Guix you can skip directly to <a href="#installing-telega-and-tdlib-from-gnu-guix">Installing from GNU Guix</a>.
+</p>
+
+<p>
+Also, you can use <a href="https://www.docker.com/">Docker</a> to avoid complicated installation steps by
+using one of the provided docker images.  See <a href="#running-telega-server-in-docker">Running telega-server in
+docker</a> for details.
 </p>
 </div>
 
@@ -702,6 +710,34 @@ usually is <code>init.el</code>, or <code>emacs.el</code>.
 </p>
 </div>
 </div>
+
+<div id="outline-container-running-telega-server-in-docker" class="outline-3">
+<h3 id="running-telega-server-in-docker"><a class="self-link" href="#running-telega-server-in-docker"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running telega-server in docker</h3>
+<div class="outline-text-3" id="text-running-telega-server-in-docker">
+<p>
+Pull latest <code>telega-server</code> image:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">$ docker pull zevlg/telega-server:latest
+</pre>
+</div>
+
+<p>
+Make <code>telega</code> know you want to use docker by adding this to your <code>init.el</code>:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-use-docker t)
+</pre>
+</div>
+
+<p>
+That's it, you are ready to get starting.  However, you might anyway
+need to have local <code>ffmpeg</code> installation to utilize some <code>telega</code>
+features, such as playing audio/voice messages, capturing video/voice
+notes, etc.
+</p>
+</div>
+</div>
 </div>
 
 <div id="outline-container-getting-started" class="outline-2">
@@ -897,7 +933,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgb5c1f5d">
+<pre class="example" id="org4121ada">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -915,7 +951,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org84bb489">
+<pre class="example" id="org4d10c88">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -945,7 +981,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgb35bb74">
+<pre class="example" id="orga959562">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1040,7 +1076,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org2fc1511">
+<pre class="example" id="org3d4d8d2">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1826,6 +1862,8 @@ not empty.</dd>
 <dt>is-public</dt><dd>Matches if chat has <code>:message_ttl_setting</code>.</dd>
 
 <dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
+
+<dt>has-groups-in-common</dt><dd>Matches if corresponding user has groups in common with me.</dd>
 </dl>
 </div>
 </div>
@@ -1948,7 +1986,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgb483332">
+<pre class="example" id="org0ab2df6">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2125,7 +2163,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org2dd69c3">
+<pre class="example" id="org41adf32">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2150,7 +2188,9 @@ messages:
 <dt><kbd>M-g r</kbd>, <kbd>M-g &gt;</kbd> (<code>telega-chatbuf-read-all</code>)</dt><dd>Jump to the last message in the chat history and mark all messages as read.
 If <kbd>C-u</kbd> is used, then reset active messages filter.</dd>
 
-<dt><kbd>M-g @</kbd>, <kbd>M-g m</kbd> (<code>telega-chatbuf-next-unread-mention</code>)</dt><dd>Goto next unread mention in chat buffer.</dd>
+<dt><kbd>M-g @</kbd>, <kbd>M-g m</kbd> (<code>telega-chatbuf-next-unread-mention</code>)</dt><dd>Goto next unread mention in chat buffer.
+If there is no unread mentions, then search for last mention starting
+from message at point.</dd>
 
 <dt><kbd>M-g u</kbd> (<code>telega-chatbuf-next-unread</code>)</dt><dd>Goto next uneard message in chat.
 <code>BUTTON-CALLBACK</code> - callback to call with single argument - message
@@ -2160,7 +2200,11 @@ button.</dd>
 
 <dt><kbd>M-g x</kbd> (<code>telega-chatbuf-goto-pop-message</code>)</dt><dd>Pop message from <code>telega-chatbuf--messages-pop-ring</code> and goto it.</dd>
 
-<dt><kbd>M-g *</kbd> (<code>telega-chatbuf-next-favorite</code>)</dt><dd>Goto next favorite message.</dd>
+<dt><kbd>M-g *</kbd> (<code>telega-chatbuf-next-favorite</code>)</dt><dd>Goto next favorite message.
+See <a href="#favorite-messages">Favorite Messages</a> for details.</dd>
+
+<dt><kbd>M-g v</kbd> (<code>telega-chatbuf-goto-voice-chat</code>)</dt><dd>Goto voice chat associated with the chat.
+See <a href="#voice-chats">Voice Chats</a> for details.</dd>
 </dl>
 </div>
 </div>
@@ -2185,7 +2229,12 @@ User Option: <code>telega-chat-input-markups</code>
 </p>
 
 <p>
-Markups to apply when sending input with <kbd>RET</kbd>. 
+Markups to apply when sending input with <kbd>RET</kbd>.
+Each index in the list corresponds to the number of
+<kbd>C-u</kbd> supplied before <code>RET</code>, i.e. first element is
+used for ordinary <code>RET</code>, second is used for <code>C-u RET</code>, and third is for
+<code>C-u C-u RET</code> and so on.  Supported markups are defined in
+<code>telega-chat-markup-functions</code>. 
 </p>
 
 <p>
@@ -2194,9 +2243,9 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 </ul>
 
 <p>
-Markdown markup syntax for "markdown1" and "markdown2" markups:
+Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgbfc9edc">
+<pre class="example" id="orga48bd86">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2208,6 +2257,27 @@ Markdown markup syntax for "markdown1" and "markdown2" markups:
     last line```
 5. [link text](http://actual.url)
 6. [username](tg://user?id=&lt;USER-ID&gt;)"
+</pre>
+
+<p>
+Syntax for "org" markup:
+</p>
+<pre class="example" id="org79a7595">
+1. *bold text*
+2. /italic text/
+3. _underline text_
+4. +strike through text+
+5. =pre text=
+6. ~code text~
+
+**NOT YET**
+7. #+begin_src &lt;language&gt;
+   code line
+   next code line
+   ...
+   #+end_src
+8. [[http://www.url][link description text]]
+9. [[tg://user?id=&lt;USER-ID&gt;][username]]
 </pre>
 
 <p>
@@ -2235,6 +2305,21 @@ Markups to apply when sending input with <kbd>RET</kbd>.
 Default value: <code>(nil "markdown1" "markdown2")</code>
 </p></li>
 <li><p>
+User Option: <code>telega-chat-ret-always-sends-message</code> 
+</p>
+
+<p>
+Non-nil to make <kbd>RET</kbd> always send a message.
+Otherwise
+<kbd>RET</kbd>
+sends a message only if point is at the end of the chatbuf input or
+inserts newline otherwise. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+<li><p>
 User Option: <code>telega-chat-markup-functions</code> 
 </p>
 
@@ -2254,19 +2339,19 @@ Default value:
 </div></li>
 
 <li><p>
-User Option: <code>telega-chat-ret-always-sends-message</code> 
+User Option: <code>telega-msg-edit-markup-spec</code> 
 </p>
 
 <p>
-Non-nil to make <kbd>RET</kbd> always send a message.
-Otherwise
-<kbd>RET</kbd>
-sends a message only if point is at the end of the chatbuf input or
-inserts newline otherwise. 
+Cons cell specifying how to format message text when editing.
+car is a function to convert message's text to markup string.
+cdr is a markup name from <code>telega-chat-markup-functions</code> to use as
+markup attachment.  Use nil to edit message as is, without using
+"markup" attachment type. 
 </p>
 
 <p>
-Default value: <code>t</code>
+Default value: <code>(telega--fmt-text-markdown2 . "markdown2")</code>
 </p></li>
 </ul>
 </div>
@@ -2418,7 +2503,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgdc79286">
+<pre class="example" id="org2166049">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -2944,6 +3029,15 @@ the <a href="#root-buffer">root buffer</a>.
 </div>
 </div>
 
+<div id="outline-container-voice-chats" class="outline-2">
+<h2 id="voice-chats"><a class="self-link" href="#voice-chats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Voice Chats</h2>
+<div class="outline-text-2" id="text-voice-chats">
+<p>
+<b><b>TODO</b></b>: write me
+</p>
+</div>
+</div>
+
 <div id="outline-container-stickers" class="outline-2">
 <h2 id="stickers"><a class="self-link" href="#stickers"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Stickers</h2>
 <div class="outline-text-2" id="text-stickers">
@@ -3093,6 +3187,11 @@ For example:
 Each account can have its own configuration using custom variables
 specified in account setup, and only <code>telega-database-dir</code> must be
 different for different accounts.
+</p>
+
+<p>
+Uninitialized account from <code>telega-accounts</code> will be initialized when
+you switch to it for the first time.
 </p></li>
 </ul>
 </div>
@@ -3249,7 +3348,7 @@ User Option: <code>telega-appindicator-icon-colors</code>
 
 <p>
 Colors to use for offline/online appindicator icon.
-Alist with <code>offline</code> / <code>online</code> as key, and value in form
+Alist with <code>offline</code>, <code>online</code> or <code>connecting</code> as key, and value in form
 (CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR). 
 </p>
 
@@ -3258,7 +3357,8 @@ Default value:
 </p>
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">((offline <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"black"</span> nil)
- (online <span style="font-style: italic;">"#7739aa"</span> <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"#00ff00"</span>))
+ (online <span style="font-style: italic;">"#7739aa"</span> <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"#00ff00"</span>)
+ (connecting <span style="font-style: italic;">"gray"</span> <span style="font-style: italic;">"white"</span> <span style="font-style: italic;">"white"</span>))
 </pre>
 </div></li>
 
@@ -3337,6 +3437,17 @@ Chat Filter for chats where to automatically open content.
 Default value: <code>all</code>
 </p></li>
 <li><p>
+User Option: <code>telega-autoplay-outgoing</code> 
+</p>
+
+<p>
+Non-nil to play outgoing messages as well. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+<li><p>
 User Option: <code>telega-autoplay-messages</code> 
 </p>
 
@@ -3345,7 +3456,7 @@ Message types to automatically play when received.
 </p>
 
 <p>
-Default value: <code>(messageAnimation messageSticker)</code>
+Default value: <code>(messageAnimation)</code>
 </p></li>
 </ul>
 </div>
@@ -3551,7 +3662,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgc75ac7c">
+<pre class="example" id="org071e407">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

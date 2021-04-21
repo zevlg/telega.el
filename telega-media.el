@@ -97,13 +97,23 @@ Removes callback in case downloading is canceled or completed."
       (funcall callback file)
       (funcall check-fun file))))
 
-(defun telega-file--download (file &optional priority callback)
+(defun telega-file--ensure-update-callback (file-id update-callback)
+  "Ensure FILE-ID is monitored with UPDATE-CALLBACK."
+  (cl-assert update-callback)
+  (let ((cb-list (gethash file-id telega--files-updates)))
+    (unless (memq update-callback cb-list)
+      (puthash file-id (cons update-callback cb-list)
+               telega--files-updates))))
+
+(defun telega-file--download (file &optional priority callback
+                                   &rest parts)
   "Download file denoted by FILE-ID.
 PRIORITY - (1-32) the higher the PRIORITY, the earlier the file
 will be downloaded. (default=1)
 Run CALLBACK every time FILE gets updated.
 To cancel downloading use `telega--cancelDownloadFile', it will
-remove the callback as well."
+remove the callback as well.
+PARTS - list of file parts to download sequentually."
   (declare (indent 2))
   ;; - If file already downloaded, then just call the callback
   ;; - If file already downloading, then just install the callback
@@ -117,24 +127,32 @@ remove the callback as well."
            (when cbwrap
              (funcall cbwrap dfile)))
 
-          ((telega-file--downloading-p dfile)
+          ((or (telega-file--downloading-p dfile)
+               (telega-file--can-download-p dfile))
            (when cbwrap
-             (let ((cb-list (gethash file-id telega--files-updates)))
-               (puthash file-id (cons cbwrap cb-list)
-                        telega--files-updates))))
+             (telega-file--ensure-update-callback file-id cbwrap))
 
-          ((telega-file--can-download-p dfile)
-           (telega--downloadFile file-id priority
-             (lambda (downfile)
-               ;; NOTE: updateFile may arrive without setting
-               ;; telega-file--downloaded-p or telega-file--downloading-p
-               ;; to non-nil
-               (telega-file--update downfile)
-               (when (and cbwrap
-                          (or (telega-file--downloaded-p downfile)
-                              (telega-file--downloading-p downfile)))
-                 (telega-file--download downfile priority callback))))))
-    ))
+           (unless (telega-file--downloading-p dfile)
+             (let ((next-parts (cdr parts)))
+               (telega--downloadFile file-id
+                 :priority priority
+                 :offset (car (car parts))
+                 :limit (cdr (car parts))
+                 :sync-p next-parts
+                 ;; NOTE: Continue downloading other parts
+                 ;; If downloading is canceled, callback is not called,
+                 ;; this is exactly what we want
+                 :callback
+                 (lambda (downfile)
+                   ;; NOTE: update callback maybe deleted,
+                   ;; before file actually starts
+                   ;; downloading
+                   (when (and cbwrap (not next-parts))
+                     (telega-file--ensure-update-callback file-id cbwrap))
+                   (telega-file--update downfile)
+                   (when next-parts
+                     (apply #'telega-file--download downfile
+                            priority callback next-parts))))))))))
 
 (defun telega-file--upload-internal (file &optional callback)
   "Monitor FILE uploading progress by installing CALLBACK."
@@ -161,6 +179,7 @@ Return file object, obtained from `telega--uploadFile'."
     (telega-file--upload-internal file callback)
     file))
 
+;; TODO: use `telega-msg--content-file' instead
 (defun telega-file--used-in-msg (msg)
   "Return File object associated with MSG.
 Return nil if no File object is associated with the message."
@@ -691,6 +710,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
                   :y (+ (/ fsz 3) (/ cfull 2)))))
 
     ;; XXX: Apply additional function, used by `telega-patrons-mode'
+    ;; Also used to outline currently speaking users in voice chats
     (when addon-function
       (funcall addon-function svg (list (/ svg-xw 2) (/ cfull 2) (/ ch 2))))
 
@@ -709,8 +729,44 @@ CHEIGHT specifies avatar height in chars, default is 2."
     ))
 
 (defun telega-avatar--create-image-one-line (sender file)
-  "Create SENDER (chat or user) avatar image for one line use)."
+  "Create SENDER (chat or user) avatar image for one line use."
   (telega-avatar--create-image sender file 1))
+
+(defun telega-avatar--create-image-three-lines (sender file)
+  "Create SENDER (chat or user) avatar image for three lines use."
+  (telega-avatar--create-image sender file 3))
+
+(defun telega-msg-sender-avatar-image (msg-sender
+                                       &optional create-image-fun
+                                       force-update cache-prop)
+  "Create avatar image for the MSG-SENDER.
+By default CREATE-IMAGE-FUN is `telega-avatar--create-image'."
+  (cl-assert msg-sender)
+  (telega-media--image
+   (cons msg-sender (or create-image-fun #'telega-avatar--create-image))
+   (if (telega-user-p msg-sender)
+       (cons (plist-get msg-sender :profile_photo) :small) ;user
+     (cl-assert (telega-chat-p msg-sender))
+     (cons (plist-get msg-sender :photo) :small)) ;chat
+   force-update cache-prop))
+
+(defun telega-msg-sender-avatar-image-one-line (msg-sender
+                                                &optional create-image-fun
+                                                force-update cache-prop)
+  "Create one-line avatar for the MSG-SENDER.
+By default CREATE-IMAGE-FUN is `telega-avatar--create-image-one-line'."
+  (telega-msg-sender-avatar-image
+   msg-sender (or create-image-fun #'telega-avatar--create-image-one-line)
+   force-update (or cache-prop :telega-avatar-1)))
+
+(defun telega-msg-sender-avatar-image-three-lines (msg-sender
+                                                   &optional create-image-fun
+                                                   force-update cache-prop)
+  "Create three lines avatar for the MSG-SENDER.
+By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
+  (telega-msg-sender-avatar-image
+   msg-sender (or create-image-fun #'telega-avatar--create-image-three-lines)
+   force-update (or cache-prop :telega-avatar-3)))
 
 
 ;; Location

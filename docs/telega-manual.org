@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.33)
+#+TITLE: Telega Manual (v0.7.40)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -32,6 +32,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#installing-telega-and-tdlib-from-gnu-guix][Installing telega and TDLib from GNU Guix]]
     - [[#installing-telega-from-melpa][Installing telega from MELPA]]
     - [[#installing-telega-directly-from-github][Installing telega directly from GitHub]]
+    - [[#running-telega-server-in-docker][Running telega-server in docker]]
   - [[#getting-started][Getting started]]
   - [[#settings-for-emacs-as-daemon][Settings for Emacs As Daemon]]
   - [[#telega-glossary][Telega glossary]]
@@ -61,6 +62,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#opening-files-using-external-programs][Opening files using external programs]]
     - [[#client-side-messages-ignoring][Client side messages ignoring]]
     - [[#favorite-messages][Favorite messages]]
+  - [[#voice-chats][Voice Chats]]
   - [[#stickers][Stickers]]
     - [[#animated-stickers][Animated stickers]]
     - [[#favorite-and-recently-used-stickers][Favorite and recently used stickers]]
@@ -121,6 +123,10 @@ following the instructions.
 
 [[https://guix.gnu.org/][GNU Guix]], however, does have both =telega= and =TDLib= packaged.  If
 you use GNU Guix you can skip directly to [[#installing-telega-and-tdlib-from-gnu-guix][Installing from GNU Guix]].
+
+Also, you can use [[https://www.docker.com/][Docker]] to avoid complicated installation steps by
+using one of the provided docker images.  See [[#running-telega-server-in-docker][Running telega-server in
+docker]] for details.
 
 ** Dependencies
 :PROPERTIES:
@@ -341,6 +347,26 @@ Or with:
 
 The code should be put in the configuration file for Emacs, which
 usually is =init.el=, or =emacs.el=.
+
+** Running telega-server in docker
+:PROPERTIES:
+:CUSTOM_ID: running-telega-server-in-docker
+:END:
+
+Pull latest =telega-server= image:
+#+begin_src shell
+  $ docker pull zevlg/telega-server:latest
+#+end_src
+
+Make =telega= know you want to use docker by adding this to your =init.el=:
+#+begin_src emacs-lisp
+  (setq telega-use-docker t)
+#+end_src
+
+That's it, you are ready to get starting.  However, you might anyway
+need to have local =ffmpeg= installation to utilize some =telega=
+features, such as playing audio/voice messages, capturing video/voice
+notes, etc.
 
 * Getting started
 :PROPERTIES:
@@ -1208,6 +1234,9 @@ For other Chat Filter bindings see below.
 - is-broadcast-group :: 
      Matches if chat is a broadcast group.
 
+- has-groups-in-common :: 
+     Matches if corresponding user has groups in common with me.
+
 ** Customizable options making use of Chat Filters
 :PROPERTIES:
 :CUSTOM_ID: customizable-options-making-use-of-chat-filters
@@ -1430,6 +1459,8 @@ messages:
 
 - @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-chatbuf-next-unread-mention~) :: 
      Goto next unread mention in chat buffer.
+     If there is no unread mentions, then search for last mention starting
+     from message at point.
 
 - @@html:<kbd>@@M-g u@@html:</kbd>@@ (~telega-chatbuf-next-unread~) :: 
      Goto next uneard message in chat.
@@ -1444,6 +1475,11 @@ messages:
 
 - @@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-next-favorite~) :: 
      Goto next favorite message.
+     See [[#favorite-messages][Favorite Messages]] for details.
+
+- @@html:<kbd>@@M-g v@@html:</kbd>@@ (~telega-chatbuf-goto-voice-chat~) :: 
+     Goto voice chat associated with the chat.
+     See [[#voice-chats][Voice Chats]] for details.
 
 ** Sending ordinary messages
 :PROPERTIES:
@@ -1459,11 +1495,16 @@ controlled by number of @@html:<kbd>@@C-u@@html:</kbd>@@ pressed before @@html:<
 and value of the:
 - User Option: ~telega-chat-input-markups~ 
 
-  Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@. 
+  Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@.
+  Each index in the list corresponds to the number of
+  @@html:<kbd>@@C-u@@html:</kbd>@@ supplied before ~RET~, i.e. first element is
+  used for ordinary ~RET~, second is used for ~C-u RET~, and third is for
+  ~C-u C-u RET~ and so on.  Supported markups are defined in
+  ~telega-chat-markup-functions~. 
 
   Default value: ~(nil "markdown1" "markdown2")~
 
-Markdown markup syntax for "markdown1" and "markdown2" markups:
+Syntax for "markdown1" and "markdown2" markups:
 #+begin_example
   1. *bold text*
   2. _italic text_
@@ -1478,6 +1519,25 @@ Markdown markup syntax for "markdown1" and "markdown2" markups:
   6. [username](tg://user?id=<USER-ID>)"
 #+end_example
 
+Syntax for "org" markup:
+#+begin_example
+  1. *bold text*
+  2. /italic text/
+  3. _underline text_
+  4. +strike through text+
+  5. =pre text=
+  6. ~code text~
+
+  ,**NOT YET**
+  7. #+begin_src <language>
+     code line
+     next code line
+     ...
+     ,#+end_src
+  8. [[http://www.url][link description text]]
+  9. [[tg://user?id=<USER-ID>][username]]
+#+end_example
+
 Also, you can intermix various markups, using @@html:<kbd>@@C-c C-a markup RET@@html:</kbd>@@ command.
 
 To send media, along the side with the text message, use [[#attaching-media][media
@@ -1489,6 +1549,15 @@ Important customizable options:
   Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@. 
 
   Default value: ~(nil "markdown1" "markdown2")~
+- User Option: ~telega-chat-ret-always-sends-message~ 
+
+  Non-nil to make @@html:<kbd>@@RET@@html:</kbd>@@ always send a message.
+  Otherwise
+  @@html:<kbd>@@RET@@html:</kbd>@@
+  sends a message only if point is at the end of the chatbuf input or
+  inserts newline otherwise. 
+
+  Default value: ~t~
 - User Option: ~telega-chat-markup-functions~ 
 
   List of markups to use on ~C-c C-a markup RET~. 
@@ -1501,15 +1570,15 @@ Important customizable options:
      ("org" . telega-markup-org-fmt))
   #+end_src
 
-- User Option: ~telega-chat-ret-always-sends-message~ 
+- User Option: ~telega-msg-edit-markup-spec~ 
 
-  Non-nil to make @@html:<kbd>@@RET@@html:</kbd>@@ always send a message.
-  Otherwise
-  @@html:<kbd>@@RET@@html:</kbd>@@
-  sends a message only if point is at the end of the chatbuf input or
-  inserts newline otherwise. 
+  Cons cell specifying how to format message text when editing.
+  car is a function to convert message's text to markup string.
+  cdr is a markup name from ~telega-chat-markup-functions~ to use as
+  markup attachment.  Use nil to edit message as is, without using
+  "markup" attachment type. 
 
-  Default value: ~t~
+  Default value: ~(telega--fmt-text-markdown2 . "markdown2")~
 
 ** Attaching media
 :PROPERTIES:
@@ -1988,6 +2057,13 @@ Root View, by pressing
 @@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) in
 the [[#root-buffer][root buffer]].
 
+* Voice Chats
+:PROPERTIES:
+:CUSTOM_ID: voice-chats
+:END:
+
+**TODO**: write me
+
 * Stickers
 :PROPERTIES:
 :CUSTOM_ID: stickers
@@ -2082,6 +2158,9 @@ map]].  To setup multiple accounts use:
   Each account can have its own configuration using custom variables
   specified in account setup, and only ~telega-database-dir~ must be
   different for different accounts.
+
+  Uninitialized account from ~telega-accounts~ will be initialized when
+  you switch to it for the first time.
 
 * Minor Modes
 :PROPERTIES:
@@ -2187,13 +2266,14 @@ Customizable options:
 - User Option: ~telega-appindicator-icon-colors~ 
 
   Colors to use for offline/online appindicator icon.
-  Alist with ~offline~ / ~online~ as key, and value in form
+  Alist with ~offline~, ~online~ or ~connecting~ as key, and value in form
   (CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR). 
 
   Default value: 
   #+begin_src emacs-lisp
     ((offline "white" "black" nil)
-     (online "#7739aa" "white" "#00ff00"))
+     (online "#7739aa" "white" "#00ff00")
+     (connecting "gray" "white" "white"))
   #+end_src
 
 - User Option: ~telega-appindicator-show-account-name~ 
@@ -2237,11 +2317,16 @@ Customizable options:
   Chat Filter for chats where to automatically open content. 
 
   Default value: ~all~
+- User Option: ~telega-autoplay-outgoing~ 
+
+  Non-nil to play outgoing messages as well. 
+
+  Default value: ~t~
 - User Option: ~telega-autoplay-messages~ 
 
   Message types to automatically play when received. 
 
-  Default value: ~(messageAnimation messageSticker)~
+  Default value: ~(messageAnimation)~
 
 ** telega-squash-message-mode
 :PROPERTIES:

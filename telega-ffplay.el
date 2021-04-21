@@ -179,10 +179,12 @@ If fps is not available for FILENAME, then return DEFAULT or \"30/1\"
 if ommited."
   (let ((fps-ratio (telega-strip-newlines
                     (shell-command-to-string
-                     (concat "ffprobe -v error -select_streams v:0 "
-                             "-show_entries stream=r_frame_rate "
-                             "-of default=noprint_wrappers=1:nokey=1 "
-                             "\"" (expand-file-name filename) "\"")))))
+                     (telega-docker-exec-cmd
+                       (concat "ffprobe -v error -select_streams v:0 "
+                               "-show_entries stream=r_frame_rate "
+                               "-of default=noprint_wrappers=1:nokey=1 "
+                               "\"" (expand-file-name filename) "\"")
+                       'try-host-cmd-first)))))
     (if (string-match-p "[0-9]+/[0-9]+" fps-ratio)
         fps-ratio
       (or default "30/1"))))
@@ -191,17 +193,21 @@ if ommited."
   "Probe number of frames of FILENAME video file."
   (string-to-number
    (shell-command-to-string
-    (concat "ffprobe -v error -select_streams v:0 "
-            "-show_entries stream=nb_frames "
-            "-of default=nokey=1:noprint_wrappers=1 "
-            "\"" (expand-file-name filename) "\""))))
+    (telega-docker-exec-cmd
+      (concat "ffprobe -v error -select_streams v:0 "
+              "-show_entries stream=nb_frames "
+              "-of default=nokey=1:noprint_wrappers=1 "
+              "\"" (expand-file-name filename) "\"")
+      'try-host-cmd-first))))
 
 (defun telega-ffplay-get-metadata (filename)
   "Return metadata as alist for the media FILENAME."
   (let ((raw-metadata (shell-command-to-string
-                       (concat "ffmpeg -v 0 -i "
-                               "\"" (expand-file-name filename) "\" "
-                               " -f ffmetadata -"))))
+                       (telega-docker-exec-cmd
+                         (concat "ffmpeg -v 0 -i "
+                                 "\"" (expand-file-name filename) "\" "
+                                 " -f ffmetadata -")
+                         'try-host-cmd-first))))
     (delq nil (mapcar (lambda (line)
                         (when (string-match "\\([a-zA-Z]+\\)=\\(.+$\\)" line)
                           (cons (match-string 1 line) (match-string 2 line))))
@@ -211,20 +217,24 @@ if ommited."
   "Return duration as float number for the media FILENAME."
   (string-to-number
    (shell-command-to-string
-    (concat "ffprobe -v error "
-            "-show_entries format=duration "
-            "-of default=nokey=1:noprint_wrappers=1 "
-            "\"" (expand-file-name filename) "\""))))
+    (telega-docker-exec-cmd
+      (concat "ffprobe -v error "
+              "-show_entries format=duration "
+              "-of default=nokey=1:noprint_wrappers=1 "
+              "\"" (expand-file-name filename) "\"")
+      'try-host-cmd-first))))
 
 (defun telega-ffplay-get-resolution (filename)
   "Return resolution for video FILENAME.
 Return cons cell with width and height if resolution is extracted, nil
 otherwise."
   (let ((raw-res (shell-command-to-string
-                  (concat "ffprobe -v error "
-                          "-show_entries stream=width,height "
-                          "-of default=nokey=1:noprint_wrappers=1 "
-                          "\"" (expand-file-name filename) "\""))))
+                  (telega-docker-exec-cmd
+                    (concat "ffprobe -v error "
+                            "-show_entries stream=width,height "
+                            "-of default=nokey=1:noprint_wrappers=1 "
+                            "\"" (expand-file-name filename) "\"")
+                    'try-host-cmd-first))))
     (when (string-match "\\([0-9]+\\)\n\\([0-9]+\\)" raw-res)
       (cons (string-to-number (match-string 1 raw-res))
             (string-to-number (match-string 2 raw-res))))))
@@ -304,34 +314,43 @@ Return newly created proc."
   ;; Start new ffmpeg
   (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
     (let* ((prefix (telega-temp-name "png-video"))
-           (telega-server-bin (telega-server--find-bin))
-           (ffmpeg-bin (or (executable-find "ffmpeg")
-                           (error "ffmpeg not found in `exec-path'")))
-           (args (nconc (list "-E" prefix)
-                        ;; NOTE: -re causes sound problems in video
-                        ;; notes "-re", instead we use '-f' flag in
-                        ;; telega-server png extractor
-                        (when-let ((fps-ratio (when filename
-                                                (telega-ffplay-get-fps-ratio
-                                                 (expand-file-name filename)))))
-                          (list "-f" fps-ratio))
-                        (list "--")
-                        (list ffmpeg-bin
-                              "-hide_banner"
-                              "-loglevel" "quiet")
-                        (when filename
-                          (list "-i" (expand-file-name filename)))
-                        ffmpeg-args
-                        ;; NOTE: hack, for custom capture arguments
-                        ;; for video note recorder
-                        (unless (member "image2pipe" ffmpeg-args)
-                          (list "-f" "image2pipe" "-vcodec" "png" "-"))))
+           (ffmpeg-cmd-args
+            (concat " -hide_banner -loglevel quiet"
+                    (when filename
+                      (concat " -i " (expand-file-name filename)))
+                    " " (mapconcat 'identity ffmpeg-args " ")
+                    ;; NOTE: hack, for custom capture arguments
+                    ;; for video note recorder
+                    (unless (member "image2pipe" ffmpeg-args)
+                      " -f image2pipe -vcodec png -")))
+           (pngext-cmd-args
+            (concat "-E " prefix
+                    ;; NOTE: -re causes sound problems in video
+                    ;; notes "-re", instead we use '-f' flag in
+                    ;; telega-server png extractor
+                    (when-let ((fps-ratio (when filename
+                                            (telega-ffplay-get-fps-ratio
+                                             (expand-file-name filename)))))
+                      (concat " -f " fps-ratio))))
+           (shell-cmd
+            (if (and telega-use-docker (member "-an" ffmpeg-args))
+                ;; Can run both ffmpeg and pngextractor in docker
+                (telega-docker-exec-cmd
+                  (format "sh -c \"ffmpeg %s | telega-server %s\""
+                          ffmpeg-cmd-args pngext-cmd-args))
+              (format "%s %s | %s %s"
+                      (or (executable-find "ffmpeg")
+                          (error "ffmpeg not found in `exec-path'"))
+                      ffmpeg-cmd-args
+                      (telega-docker-exec-cmd
+                        telega-server-command 'try-host-cmd-first "-i")
+                      pngext-cmd-args)))
            (process-adaptive-read-buffering nil) ;no buffering please
-           (proc (apply 'start-process "ffmpeg" (current-buffer)
-                        telega-server-bin args)))
+           (proc (start-process-shell-command
+                  "ffmpeg" (current-buffer)
+                  shell-cmd)))
 
-      (telega-debug "ffplay RUN: %s %s" telega-server-bin
-                    (mapconcat #'identity args " "))
+      (telega-debug "ffplay RUN: %s" shell-cmd)
       (set-process-plist proc (list :prefix prefix
                                     :nframes (if filename
                                                  (telega-ffplay-get-nframes filename)
@@ -343,6 +362,35 @@ Return newly created proc."
       (set-process-sentinel proc 'telega-ffplay--png-sentinel)
       (set-process-filter proc 'telega-ffplay--png-filter)
       proc)))
+
+
+;;; Video Player
+(defun telega-video-player--sentinel (proc _event)
+  "Sentinel for incremental player."
+  (telega-debug "video-player SENTINEL: status=%S, live=%S"
+                (process-status proc) (process-live-p proc))
+
+  (let* ((proc-plist (process-plist proc))
+         (done-callback (plist-get proc-plist :done-callback)))
+    (unless (process-live-p proc)
+      (when done-callback
+        (funcall done-callback)))))
+
+(defun telega-video-player-run (filename &optional done-callback)
+  "Start playing video FILENAME with `telega-video-player-command' command.
+DONE-CALLBACK - callback to call, when done viewing video."
+  (unless telega-video-player-command
+    (user-error "telega: `telega-video-player-command' is unset"))
+
+  (let ((proc (start-process "telega-video-player" nil
+                             telega-video-player-command filename)))
+    (telega-debug "video-player RUN: %s %s"
+                  telega-video-player-command filename)
+
+    (set-process-plist proc (list :done-callback done-callback))
+    (set-process-query-on-exit-flag proc nil)
+    (set-process-sentinel proc 'telega-video-player--sentinel)
+    proc))
 
 (provide 'telega-ffplay)
 
