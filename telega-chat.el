@@ -2402,7 +2402,7 @@ If message thread filtering is enabled, use it first."
 
 (defun telega-chatbuf--minibuf-post-command ()
   "Function to search chatbuf history input."
-  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+  (cl-assert (minibufferp))
   (let ((regexp (buffer-substring (minibuffer-prompt-end) (point))))
     (if (string-empty-p regexp)
         (with-telega-chatbuf telega-minibuffer--chat
@@ -2417,7 +2417,7 @@ If message thread filtering is enabled, use it first."
 (defun telega-chatbuf--input-search-prev (&optional forward-p)
   "For `C-r' in minibuffer."
   (interactive)
-  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+  (cl-assert (minibufferp))
   (let ((regexp telega-minibuffer--string))
     (with-telega-chatbuf telega-minibuffer--chat
       (telega-chatbuf-input-match regexp forward-p))))
@@ -2430,19 +2430,19 @@ If message thread filtering is enabled, use it first."
 (defun telega-chatbuf--input-search-cancel ()
   "Cancel input search results."
   (interactive)
-  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+  (cl-assert (minibufferp))
   (delete-region (minibuffer-prompt-end) (point))
   (exit-minibuffer))
 
 (defun telega-chatbuf--input-search-accept ()
   "Accept input search results."
   (interactive)
-  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+  (cl-assert (minibufferp))
   (exit-minibuffer))
 
 (defun telega-chatbuf--input-search-input-prev (&optional forward-p)
   (interactive)
-  (cl-assert (eq major-mode 'minibuffer-inactive-mode))
+  (cl-assert (minibufferp))
   (delete-region (minibuffer-prompt-end) (point))
 
   (let ((prompt-input (with-telega-chatbuf telega-minibuffer--chat
