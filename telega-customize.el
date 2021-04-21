@@ -435,7 +435,7 @@ NOT USED."
 (defcustom telega-video-player-command
   (cond ((executable-find "ffplay") "ffplay -autoexit")
         ((executable-find "mpv") "mpv")
-        ((executable-find "mplayer" "mplayer")))
+        ((executable-find "mplayer") "mplayer"))
   "Command used to play video files."
   :package-version '(telega . "0.7.40")
   :type '(or string null)
