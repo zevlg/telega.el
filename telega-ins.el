@@ -1250,7 +1250,9 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 (defun telega-ins--special (msg)
   "Insert special message MSG.
 Special messages are determined with `telega-msg-special-p'."
-  (telega-ins "--(")
+  (telega-ins telega-symbol-horizontal-delim
+              telega-symbol-horizontal-delim
+              "(")
   (let* ((content (plist-get msg :content))
          (sender (telega-msg-sender msg))
          (sender-name (when sender
@@ -1428,7 +1430,9 @@ Special messages are determined with `telega-msg-special-p'."
 
       (t (telega-ins-fmt "<unsupported special message: %S>"
            (telega--tl-type content)))))
-  (telega-ins ")--"))
+  (telega-ins ")"
+              telega-symbol-horizontal-delim
+              telega-symbol-horizontal-delim))
 
 (defun telega-ins--content (msg)
   "Insert message's MSG content."
@@ -1895,7 +1899,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (telega-ins--with-attrs (list :min (- telega-chat-fill-column
                                             (telega-current-column))
                                     :align 'center
-                                    :align-symbol "-")
+                                    :align-symbol telega-symbol-horizontal-delim)
         (telega-ins--content msg))
 
     ;; Message header needed
