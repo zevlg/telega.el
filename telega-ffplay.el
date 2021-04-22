@@ -382,8 +382,9 @@ DONE-CALLBACK - callback to call, when done viewing video."
   (unless telega-video-player-command
     (user-error "telega: `telega-video-player-command' is unset"))
 
-  (let ((proc (start-process "telega-video-player" nil
-                             telega-video-player-command filename)))
+  (let* ((player-cmd-args (split-string telega-video-player-command " " t))
+         (proc (apply #'start-process "telega-video-player" nil
+                      (append player-cmd-args (list filename)))))
     (telega-debug "video-player RUN: %s %s"
                   telega-video-player-command filename)
 
