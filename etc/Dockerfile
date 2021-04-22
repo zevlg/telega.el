@@ -44,11 +44,16 @@ RUN cd / && git clone https://github.com/zevlg/tgs2png && \
     cmake --build . && \
     install tgs2png /usr/bin
 
-RUN cd / && git clone https://github.com/zevlg/telega.el && \
-    cd telega.el && \
-    git checkout ${telega_branch} && \
-    cd server && \
+ADD server /telega-server
+RUN cd /telega-server && \
     make && make INSTALL_PREFIX=/usr/bin install
+
+# ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+# RUN cd / && git clone https://github.com/zevlg/telega.el && \
+#     cd telega.el && \
+#     git checkout ${telega_branch} && \
+#     cd server && \
+#     make && make INSTALL_PREFIX=/usr/bin install
 
 # RUN set +x && apk update && apk upgrade && \
 #     apk add --update bash
