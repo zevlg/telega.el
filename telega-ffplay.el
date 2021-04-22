@@ -317,7 +317,7 @@ Return newly created proc."
            (ffmpeg-cmd-args
             (concat " -hide_banner -loglevel quiet"
                     (when filename
-                      (concat " -i " (expand-file-name filename)))
+                      (concat " -i '" (expand-file-name filename) "'"))
                     " " (mapconcat 'identity ffmpeg-args " ")
                     ;; NOTE: hack, for custom capture arguments
                     ;; for video note recorder
