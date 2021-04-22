@@ -297,7 +297,9 @@ If message is not found, then return `nil'."
   "Get messages by CHAT-ID and MESSAGE-IDS."
   (declare (indent 2))
   (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
+      ;; Filter out nil messages
+      ;; See https://github.com/tdlib/td/issues/1511
+      (delq nil (append (plist-get reply :messages) nil))
 
     (list :@type "getMessages"
           :chat_id chat-id
