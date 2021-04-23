@@ -75,13 +75,19 @@
 (defvar telega-mode-line--logo-image-cache nil "Cached loaded logo image.")
 (defun telega-mode-line-logo-image ()
   "Return telega logo image to be used in modeline."
-  (let* ((box-line-width
+  (let* ((box-line-width-raw
           (plist-get (face-attribute 'mode-line :box) :line-width))
+         (box-line-width
+          (if (consp box-line-width-raw)
+              (car box-line-width-raw)
+            (or box-line-width-raw 0)))
          (mode-line-height
           (+ (telega-chars-xheight 1 'mode-line)
-             (* 2 (if (consp box-line-width)
-                      (car box-line-width)
-                    (or box-line-width 0))))))
+             ;; NOTE: height adjustment only needed if box-line-width
+             ;; is negative. See https://t.me/emacs_telega/26677
+             (if (< box-line-width 0)
+                 (* 2 box-line-width)
+               0))))
     (if (eq mode-line-height
             (plist-get (cdr telega-mode-line--logo-image-cache) :height))
         telega-mode-line--logo-image-cache
