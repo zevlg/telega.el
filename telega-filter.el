@@ -1256,6 +1256,13 @@ If NON-EMPTY is non-nil, then keep only non-empty voice chats."
   (when-let ((user (telega-chat-user chat)))
     (not (zerop (plist-get (telega--full-info user) :group_in_common_count)))))
 
+;;; ellit-org: chat-filters
+;; - is-telega-patron ::
+;;   {{{fundoc(telega--filter-is-telega-patron, 2)}}}
+(define-telega-filter is-telega-patron (chat)
+  "Matches if corresponding user is a telega patron."
+  (telega-msg-sender-patron-p chat))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here
