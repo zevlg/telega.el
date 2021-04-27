@@ -1845,8 +1845,10 @@ Install all symbol widths inside `telega-load-hook'."
   :group 'telega-symbol)
 
 (defcustom telega-symbols-emojify
-  '((verified (telega-etc-file "verified.svg"))
-    (vertical-bar (telega-svg-create-vertical-bar))
+  `((verified ,(when (image-type-available-p 'svg)
+                 '(telega-etc-file "verified.svg")))
+    (vertical-bar ,(when (image-type-available-p 'svg)
+                     '(telega-svg-create-vertical-bar)))
 
     alarm
     bell bulp
