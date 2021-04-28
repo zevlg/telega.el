@@ -295,7 +295,9 @@ Chat bindings (cursor on chat):
 Global root bindings:
 \\{telega-root-mode-map}"
   :group 'telega-root
-  (telega-runtime-setup)
+
+  (unless (eq (current-buffer) (telega-root--buffer))
+    (error "telega: Can't enable `telega-root-mode' in random buffer"))
 
   (setq-local nobreak-char-display nil)
   ;; NOTE: make `telega-root-keep-cursor' working as expected
@@ -335,7 +337,9 @@ Global root bindings:
     (unless (fboundp 'tracking-mode)
       (user-error "Please install `tracking' package \
 to make use of `telega-use-tracking-for'"))
-    (tracking-mode 1)))
+    (tracking-mode 1))
+
+  (telega-runtime-setup))
 
 
 (defun telega-root--killed ()
@@ -348,14 +352,15 @@ Terminate telega-server and kill all chat and supplementary buffers."
   (when telega-online--timer
     (cancel-timer telega-online--timer))
 
+  (telega-runtime-teardown)
+
   ;; NOTE: Kill all telega buffers, except for root buffer to avoid
   ;; infinite kill buffer loop, because `telega-root--killed' is
   ;; called when root buffer is killed
   (dolist (tbuf (cl-remove-if-not #'telega-buffer-p (buffer-list)))
     (unless (eq tbuf (telega-root--buffer))
       (kill-buffer tbuf)))
-  (telega-server-kill)
-  (telega-runtime-teardown))
+  (telega-server-kill))
 
 (defun telega-root--buffer ()
   "Return telega root buffer."
