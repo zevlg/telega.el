@@ -872,7 +872,11 @@ Install from https://github.com/zevlg/tgs2png"))
                  :ascent 'center
                  :margin (cons (cdr cwidth-xmargin) 0)
                  :telega-text (make-string (car cwidth-xmargin) ?X))))
-    (cond (anim-frame-filename
+    (cond ((and anim-frame-filename
+                ;; NOTE: Check file for existance, to avoid errors in
+                ;; `insert-file-contents-literally' if file does not
+                ;; exists for some strange reason
+                (file-exists-p anim-frame-filename))
            ;; Remove this prop, because file is about to be deleted
            (plist-put animation :telega-ffplay-frame-filename nil)
            (apply #'telega-create-image
