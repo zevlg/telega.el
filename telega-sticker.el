@@ -586,14 +586,14 @@ If FOR-PARAM is specified, then insert only if
                      ;; ivy used
                      (nth ivy--index ivy--old-cands))
                     (t (buffer-substring start end))))
-         (comp (car (all-completions str telega-minibuffer--choices)))
-         (sset-id (cadr (assoc comp telega-minibuffer--choices)))
-         (sset (or (cl-find sset-id telega--stickersets-installed
-                            :test 'equal
-                            :key (telega--tl-prop :id))
-                   (telega-stickerset-get sset-id)))
+         (comp (when str (car (all-completions str telega-minibuffer--choices))))
+         (sset-id (when comp (cadr (assoc comp telega-minibuffer--choices))))
+         (sset (when sset-id
+                 (or (cl-find sset-id telega--stickersets-installed
+                              :test 'equal
+                              :key (telega--tl-prop :id))
+                     (telega-stickerset-get sset-id))))
          (tss-buffer (get-buffer "*Telegram Sticker Set*")))
-
     (when (and sset
                (or (not (buffer-live-p tss-buffer))
                    (not (with-current-buffer tss-buffer

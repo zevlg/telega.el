@@ -2336,13 +2336,12 @@ If REMOVE-CAPTION is specified, then do not insert caption."
 
 (defun telega-ins--chat-msg-one-line (chat msg max-width)
   "Insert message for the chat button usage."
-  (cl-assert (> max-width 11))
+;  (cl-assert (> max-width 11))
   (let* ((trail (telega-ins--as-string
                  (telega-ins--date (plist-get msg :date))))
          (trail-width (string-width trail)))
-    ;; NOTE: date - 10 chars, outgoing-status - 1 char
     (telega-ins--with-attrs (list :align 'left
-                                  :max (- max-width trail-width 2)
+                                  :max (- max-width trail-width 1)
                                   :elide t)
       ;; NOTE: Do not show username for:
       ;;;  - Saved Messages
@@ -2471,7 +2470,17 @@ Return t."
                                         (number-to-string
                                          (plist-get chat-info :member_count))))))
                       ))
-           (title-width (- telega-chat-button-width (string-width umstring))))
+           (chat-button-width
+            (telega-canonicalize-number telega-chat-button-width
+                                        telega-root-fill-column))
+           (title-width
+            (- chat-button-width (string-width umstring)
+               ;; NOTE: Do *not* include brackets into
+               ;; `chat-button-width' to avoid additional calls to
+               ;; `string-width'
+               ;; (string-width (or (car brackets) "["))
+               ;; (string-width (or (cadr brackets) "]"))
+               )))
       (telega-ins--with-attrs (list :min title-width
                                     :max title-width
                                     :align 'left

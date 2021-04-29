@@ -287,7 +287,31 @@ Rest elements are ewoc specs.")
     map)
   "The key map for telega root buffer.")
 
-(define-derived-mode telega-root-mode nil "◁Root"
+;;; ellit-org: minor-modes
+;; ** telega-root-auto-fill-mode  :new:
+;;
+;; Global minor mode to automatically adjust ~telega-root-fill-column~
+;; to the width of the window displaying rootbuf.
+;;
+;; ~telega-root-auto-fill-mode~ is enabled by default.
+(define-minor-mode telega-root-auto-fill-mode nil
+  "Toggle rootbuf autofill mode."
+  :init-value nil
+  :global t :group 'telega-modes
+  (if telega-root-auto-fill-mode
+      (with-telega-root-buffer
+        (add-hook 'window-size-change-functions
+                  #'telega-root--buffer-auto-fill nil 'local)
+        (when-let ((rootbuf-win (get-buffer-window (current-buffer))))
+          (telega-root--buffer-auto-fill rootbuf-win)))
+
+    (with-telega-root-buffer
+      (remove-hook 'window-size-change-functions
+                   #'telega-root--buffer-auto-fill 'local))))
+
+(define-derived-mode telega-root-mode nil
+  `("◁Root" (telega-root-auto-fill-mode
+             "[autofill]" (:eval (format "[%d]" telega-root-fill-column))))
   "The mode for telega root buffer.
 
 Chat bindings (cursor on chat):
@@ -338,6 +362,11 @@ Global root bindings:
       (user-error "Please install `tracking' package \
 to make use of `telega-use-tracking-for'"))
     (tracking-mode 1))
+
+  ;; NOTE: If rootbuf autofill mode was enabled before telega start,
+  ;; then reapply it, because it uses buffer local hook
+  (when telega-root-auto-fill-mode
+    (telega-root-auto-fill-mode 1))
 
   (telega-runtime-setup))
 
@@ -461,6 +490,33 @@ Keep cursor position only if CHAT is visible."
         (dolist (win (get-buffer-window-list))
           (set-window-point win (point)))
         (run-hooks 'telega-root-update-hook)))))
+
+(defun telega-root--buffer-auto-fill (&optional win)
+  "Automatically resize root buffer formatting to new WIN's width."
+  (cl-assert telega-root-auto-fill-mode)
+  (cl-assert (eq (window-buffer win) (telega-root--buffer)))
+
+  ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
+  (let ((new-fill-column (- (window-width win) 2)))
+    (when (and new-fill-column
+               (> new-fill-column 15)   ;XXX ignore too narrow window
+               (not (eq new-fill-column telega-root-fill-column)))
+      (let ((progress (make-progress-reporter
+                       (format "telega: rootbuf auto fill %d -> %d ..."
+                               telega-root-fill-column new-fill-column))))
+        (with-telega-root-buffer
+          (setq telega-root-fill-column new-fill-column)
+          ;; Fully redisplay filters
+          (let ((telega-filters--dirty t))
+            (telega-filters--redisplay))
+          ;; Redisplay all rootbuf ewocs
+          (telega-save-cursor
+            (dolist (ewoc-spec (nthcdr 2 telega-root--view))
+              (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
+                (ewoc-refresh ewoc))))
+          (run-hooks 'telega-root-update-hook))
+
+        (progress-reporter-done progress)))))
 
 
 ;;; Pretty Printers for root view ewocs
@@ -840,8 +896,7 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
 
             ;; See docstring for `telega-root-keep-cursor'
             (when (eq telega-root-keep-cursor 'track)
-              (telega-root--keep-cursor-at-chat telega-chatbuf--chat))
-            )
+              (telega-root--keep-cursor-at-chat telega-chatbuf--chat)))
         (error
          (message "telega: error in `telega-chatbuf--switch-in': %S" err))))))
 
@@ -956,14 +1011,17 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
 
 (defun telega-root-view--update (on-update-prop &rest args)
   "Update root view ewocs using ON-UPDATE-PROP ewoc-spec property and ARGS."
-  (with-telega-root-buffer
+  (let ((rootbuf-updated-p nil))
     (dolist (ewoc-spec (nthcdr 2 telega-root--view))
-      (let ((ewoc-name (plist-get ewoc-spec :name)))
+      (when-let ((on-update-func (plist-get ewoc-spec on-update-prop))
+                 (ewoc-name (plist-get ewoc-spec :name)))
+        (setq rootbuf-updated-p t)
         (with-telega-root-view-ewoc ewoc-name ewoc
-          (when-let ((on-update-func (plist-get ewoc-spec on-update-prop)))
-            (apply on-update-func ewoc-name ewoc args)))))
+          (apply on-update-func ewoc-name ewoc args))))
 
-    (run-hooks 'telega-root-update-hook)))
+    (when rootbuf-updated-p
+      (with-telega-root-buffer
+        (run-hooks 'telega-root-update-hook)))))
 
 (defun telega-root-view--redisplay ()
   "Resort items in root view ewocs according to active sort criteria."

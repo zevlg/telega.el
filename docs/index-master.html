@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-04-22 Чт 01:40 -->
+<!-- 2021-04-29 Чт 03:19 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.40)</title>
+<title>Telega Manual (v0.7.41)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.40)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.41)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -254,7 +254,7 @@
 <li><a href="#installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from GNU Guix</a></li>
 <li><a href="#installing-telega-from-melpa">Installing telega from MELPA</a></li>
 <li><a href="#installing-telega-directly-from-github">Installing telega directly from GitHub</a></li>
-<li><a href="#running-telega-server-in-docker">Running telega-server in docker</a></li>
+<li><a href="#running-telega-server-in-docker">Running telega-server in docker&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
 <li><a href="#getting-started">Getting started</a></li>
@@ -317,6 +317,7 @@
 <li><a href="#telega-edit-file-mode">telega-edit-file-mode</a></li>
 <li><a href="#telega-highlight-text-mode">telega-highlight-text-mode</a></li>
 <li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
+<li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
 <li><a href="#contributed-packages">Contributed packages</a>
@@ -712,7 +713,7 @@ usually is <code>init.el</code>, or <code>emacs.el</code>.
 </div>
 
 <div id="outline-container-running-telega-server-in-docker" class="outline-3">
-<h3 id="running-telega-server-in-docker"><a class="self-link" href="#running-telega-server-in-docker"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running telega-server in docker</h3>
+<h3 id="running-telega-server-in-docker"><a class="self-link" href="#running-telega-server-in-docker"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running telega-server in docker&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
 <div class="outline-text-3" id="text-running-telega-server-in-docker">
 <p>
 Pull latest <code>telega-server</code> image:
@@ -933,7 +934,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org4121ada">
+<pre class="example" id="orgd4437bd">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -951,7 +952,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org4d10c88">
+<pre class="example" id="org2ff8460">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -981,7 +982,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orga959562">
+<pre class="example" id="org83a9304">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1003,11 +1004,17 @@ User Option: <code>telega-filter-button-width</code>
 </p>
 
 <p>
-Width of the custom filter buttons. 
+Width of the custom filter buttons.
+If integer, then use this number of chars.
+If float in range (0..1), then occupy this percents of
+<code>telega-root-fill-column</code> chars, but not less then 15 chars.
+If list, where first element is float, then use 1 and 2 list values as
+min and max values for a width calculation using
+<code>telega-canonicalize-number</code>. 
 </p>
 
 <p>
-Default value: <code>20</code>
+Default value: <code>(0.25 17 25)</code>
 </p></li>
 <li><p>
 User Option: <code>telega-filters-custom</code> 
@@ -1076,7 +1083,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org3d4d8d2">
+<pre class="example" id="org3982aef">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1175,16 +1182,10 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1226,7 +1227,15 @@ Maximum width to use in root buffer to display active filters and chats.
 
 <p>
 Default value: <code>70</code>
+</p>
+
+<p>
+This option is applied only if <a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode</a> is
+disabled.  Default behaviour is to automatically adjust
+<code>telega-root-fill-column</code> to the width of the window displaying
+rootbuf.
 </p></li>
+
 <li><p>
 User Option: <code>telega-root-keep-cursor</code> 
 </p>
@@ -1864,6 +1873,8 @@ not empty.</dd>
 <dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
 
 <dt>has-groups-in-common</dt><dd>Matches if corresponding user has groups in common with me.</dd>
+
+<dt>is-telega-patron</dt><dd>Matches if corresponding user is a telega patron.</dd>
 </dl>
 </div>
 </div>
@@ -1986,7 +1997,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0ab2df6">
+<pre class="example" id="orgc463be2">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2163,7 +2174,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org41adf32">
+<pre class="example" id="org0f30ad6">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2245,7 +2256,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orga48bd86">
+<pre class="example" id="org5fcfbfb">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2262,7 +2273,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org79a7595">
+<pre class="example" id="org42ebc51">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2503,7 +2514,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org2166049">
+<pre class="example" id="org5222fd1">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3612,6 +3623,20 @@ me</a>.
 </p>
 </div>
 </div>
+
+<div id="outline-container-telega-root-auto-fill-mode" class="outline-3">
+<h3 id="telega-root-auto-fill-mode"><a class="self-link" href="#telega-root-auto-fill-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<div class="outline-text-3" id="text-telega-root-auto-fill-mode">
+<p>
+Global minor mode to automatically adjust <code>telega-root-fill-column</code>
+to the width of the window displaying rootbuf.
+</p>
+
+<p>
+<code>telega-root-auto-fill-mode</code> is enabled by default.
+</p>
+</div>
+</div>
 </div>
 
 <div id="outline-container-contributed-packages" class="outline-2">
@@ -3662,7 +3687,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org071e407">
+<pre class="example" id="org16bc311">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

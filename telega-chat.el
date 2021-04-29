@@ -182,20 +182,31 @@ If there is no CHAT color, then generate new and assign it to CHAT."
                           (funcall telega-rainbow-color-function cid 'dark))))))
     ))
 
-(defsubst telega--ordered-chats-insert (chat)
+(defun telega--ordered-chats-insert (chat)
   "Insert CHAT into `telega--ordered-chats' according active sorter."
-  (let ((place telega--ordered-chats))
-    (if (or (null place)
-            (telega-chat> chat (car place)))
-        (setq telega--ordered-chats (push chat telega--ordered-chats))
+  (if (or (null telega--ordered-chats)
+          (telega-chat> chat (car telega--ordered-chats)))
+      ;; Insert at the head ?
+      (setq telega--ordered-chats (cons chat telega--ordered-chats))
 
-      (while (and (telega-chat> (car place) chat)
-                  (cdr place)
-                  (telega-chat> (cadr place) chat))
-        (setq place (cdr place)))
+    ;; NOTE: Binary search the place where to insert, starting from
+    ;; the very last item in the `telega--ordered-chats'
+    (cl-assert (not (null telega--ordered-chats)))
+    (let ((idx (1- (length telega--ordered-chats)))
+          (place (last telega--ordered-chats 1)))
+      (unless (telega-chat> (car place) chat)
+        ;; Need binary search
+        (setq place telega--ordered-chats)
+        (while (not (zerop idx))
+          (let* ((middle-idx (/ idx 2))
+                 (middle-place (nthcdr middle-idx place)))
+            (when (telega-chat> (car middle-place) chat)
+              (setq place middle-place))
+            (setq idx middle-idx))))
+
       (cl-assert place)
-      (setcdr place (cons chat (cdr place))))
-    telega--ordered-chats))
+      (setcdr place (cons chat (cdr place)))))
+  telega--ordered-chats)
 
 (defun telega-chat--ensure (chat)
   "Ensure CHAT resides in `telega--chats' and `telega--ordered-chats'.
@@ -206,8 +217,6 @@ Return chat from `telega--chats'."
             chat
 
           (puthash chat-id chat telega--chats)
-          ;; Place chat in correct place inside `telega--ordered-chats'
-          (telega--ordered-chats-insert chat)
 
           ;; parse :client_data as plist, we use it to store
           ;; additional chat properties (user application properties)
@@ -217,6 +226,11 @@ Return chat from `telega--chats'."
           (when-let ((client-data (telega-tl-str chat :client_data)))
             (ignore-errors
               (plist-put chat :uaprops (car (read-from-string client-data)))))
+
+          ;; Place chat in correct place inside `telega--ordered-chats'
+          ;; NOTE: `:uaprops' might have order for the chat, thats why
+          ;; we put it in ordered list *after* constructing `:uaprops'
+          (telega--ordered-chats-insert chat)
           ))))
 
 (defun telega-chat-get (chat-id &optional offline-p)

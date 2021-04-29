@@ -157,6 +157,28 @@ If FACE is not specified, then `default' is used."
   "Same as `current-column', but take into account width of the characters."
   (string-width (buffer-substring (point-at-bol) (point))))
 
+(defun telega-canonicalize-number (value from-value)
+  "Canonicalize number VALUE.
+VALUE can be a float, in this case take this fraction from FROM-VALUE.
+Otherwise use VALUE as is.
+MIN-VALUE specifies minimal value after canonicalization.
+Used to calculate canonical values for with of some buttons such as
+`telega-filter-button-width' and `telega-chat-button-width'."
+  (let* ((min-value (when (listp value) (nth 1 value)))
+         (max-value (when (listp value) (nth 2 value)))
+         (value (if (listp value) (nth 0 value) value))
+         (canon-value (if (floatp value)
+                          (progn
+                            (cl-assert (< 0 value 1))
+                            (round (* value from-value)))
+                        value))
+         (ret-min-value (if min-value
+                            (max min-value canon-value)
+                          canon-value)))
+    (if max-value
+        (min max-value ret-min-value)
+      ret-min-value)))
+
 (defun telega-temp-name (prefix &optional ext)
   "Generate unique temporary file name with PREFIX and extension EXT.
 Specify EXT with leading `.'."
@@ -420,7 +442,7 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
 (defun telega-preview-one-line-create-svg (filename data-p width height
                                                     &optional video-p)
   "Create preview svg for FILENAME.
-DATA-P is non-nil if FILENAME is actually an image data instead 
+DATA-P is non-nil if FILENAME is actually an image data instead
 WIDTH and HEIGHT is an image size.
 Specify non-nil VIDEO-P if generating preview for video."
   (let* ((base-dir (if data-p
@@ -1518,10 +1540,12 @@ CHEIGHT is height for the svg in characters, default=1."
   (let* ((emoji-cheight (or cheight 1))
          (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
          (image (when use-cache-p
-                  (cdr (assoc emoji telega-emoji-svg-images)))))
-    (unless image
-      (let* ((xh (telega-chars-xheight emoji-cheight))
-             (font-size (- xh (/ xh 4)))
+                  (cdr (assoc emoji telega-emoji-svg-images))))
+         (xh (telega-chars-xheight emoji-cheight)))
+    (unless (and image
+                 ;; Also check char height has not been changed
+                 (eq xh (plist-get (cdr image) :height)))
+      (let* ((font-size (- xh (/ xh 4)))
              (aw-chars (* (or (telega-emoji-svg-width emoji) (length emoji))
                           (telega-chars-in-width (- xh (/ xh 8)))))
              (xw (telega-chars-xwidth aw-chars))
@@ -1957,10 +1981,10 @@ Also enforces `:transform-smoothing' property to be non-nil."
     (equal "[    ]" "[=   ]" "[==  ]" "[=== ]" "[ ===]" "[  ==]"
            "[   =]" "[    ]" "[   =]" "[  ==]" "[ ===]" "[====]"
            "[=== ]" "[==  ]" "[=   ]")
-    (black-dot "( ●    )" "(  ●   )" "(   ●  )" "(    ● )" "(     ●)" 
+    (black-dot "( ●    )" "(  ●   )" "(   ●  )" "(    ● )" "(     ●)"
                "(    ● )" "(   ●  )" "(  ●   )" "( ●    )" "(●     )")
     (clock "🕛" "🕐" "🕑" "🕒" "🕓" "🕔" "🕕" "🕖" "🕗" "🕘" "🕙" "🕚")
-    (segments "▰▱▱▱▱▱▱" "▰▰▱▱▱▱▱" "▰▰▰▱▱▱▱" "▰▰▰▰▱▱▱" "▰▰▰▰▰▱▱" 
+    (segments "▰▱▱▱▱▱▱" "▰▰▱▱▱▱▱" "▰▰▰▱▱▱▱" "▰▰▰▰▱▱▱" "▰▰▰▰▰▱▱"
               "▰▰▰▰▰▰▱" "▰▰▰▰▰▰▰")
     (large-dots "∙∙∙∙∙" "●∙∙∙∙" "∙●∙∙∙" "∙∙●∙∙" "∙∙∙●∙" "∙∙∙∙●")
     (globe "🌍" "🌎" "🌏")

@@ -859,6 +859,10 @@ messages."
     (setq telega--stickersets-installed-ids
           (append (plist-get event :sticker_set_ids) nil))
 
+    ;; NOTE: Refresh `telega--stickersets-installed' on next call to
+    ;; `telega-stickerset-completing-read'
+    (setq telega--stickersets-installed nil)
+
     ;; Asynchronously update value for `telega--stickersets-installed'
     ;; and download covers for these sticker sets
     ;; (telega--getInstalledStickerSets nil

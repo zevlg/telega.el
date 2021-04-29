@@ -670,9 +670,16 @@ to make `telega-root-keep-cursor' always work as expected."
   :type 'integer
   :group 'telega-root)
 
-(defcustom telega-chat-button-width 28
-  "*Width for the chat buttons in root buffer.."
-  :type 'integer
+(defcustom telega-chat-button-width '(0.35 15 48)
+  "*Width for the chat buttons in root buffer.
+If integer, then use this number of chars.
+If float in range (0..1), then occupy this percents of
+`telega-root-fill-column' chars, but not less then 10 chars.
+If list, where first element is float, then use 1 and 2 list values as
+min and max values for a width calculation using
+ `telega-canonicalize-number'."
+  :package-version '(telega . "0.7.41")
+  :type '(or number list)
   :group 'telega-root)
 
 (defcustom telega-chat-button-brackets
@@ -819,9 +826,16 @@ This filters are displayed as filter buttons at the top of rootbuf."
   :type 'boolean
   :group 'telega-filter)
 
-(defcustom telega-filter-button-width 20
-  "*Width of the custom filter buttons."
-  :type 'integer
+(defcustom telega-filter-button-width '(0.25 17 25)
+  "*Width of the custom filter buttons.
+If integer, then use this number of chars.
+If float in range (0..1), then occupy this percents of
+`telega-root-fill-column' chars, but not less then 15 chars.
+If list, where first element is float, then use 1 and 2 list values as
+min and max values for a width calculation using
+`telega-canonicalize-number'."
+  :package-version '(telega . "0.7.41")
+  :type '(or number list)
   :group 'telega-filter)
 
 

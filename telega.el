@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.40
-(defconst telega-version "0.7.40")
+;; Version: 0.7.41
+(defconst telega-version "0.7.41")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.7.3")
 (defconst telega-tdlib-max-version nil)
@@ -344,6 +344,9 @@ string at point."
 (add-hook 'telega-chat-pre-message-hook #'telega-msg-run-ignore-predicates)
 ;; For messages loaded from history
 (add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)
+
+;; Enable root auto fill mode by default
+(telega-root-auto-fill-mode 1)
 
 ;; Enable patrons mode by default
 (telega-patrons-mode 1)

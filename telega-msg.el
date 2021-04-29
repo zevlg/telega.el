@@ -438,6 +438,12 @@ If CALLBACK is specified, then get reply message asynchronously."
             ;; Start playing video file incrementally, cancel
             ;; downloading file if video player exits
             (plist-put video :telega-video-pending-open nil)
+
+            (unless (file-exists-p (telega--tl-get file :local :path))
+              (warn "File is gone: %s" (telega--tl-get file :local :path))
+              ;; TODO: start player in idle timer then, so filename
+              ;; gets updated from `telega-server'
+              )
             (telega-msg--play-video msg file
               (lambda ()
                 (when (telega-file--downloading-p file)

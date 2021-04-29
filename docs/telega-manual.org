@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.40)
+#+TITLE: Telega Manual (v0.7.41)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -77,6 +77,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-edit-file-mode][telega-edit-file-mode]]
     - [[#telega-highlight-text-mode][telega-highlight-text-mode]]
     - [[#telega-patrons-mode][telega-patrons-mode]]
+    - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
     - [[#telega-status-historyel--global-minore-mode-to-save-users-online-status-history][/telega-status-history.el/ -- Global minore mode to save user's online status history]]
@@ -348,7 +349,7 @@ Or with:
 The code should be put in the configuration file for Emacs, which
 usually is =init.el=, or =emacs.el=.
 
-** Running telega-server in docker
+** Running telega-server in docker                                      :new:
 :PROPERTIES:
 :CUSTOM_ID: running-telega-server-in-docker
 :END:
@@ -540,9 +541,15 @@ new terms specific to =telega=.  All of them are used in the manual.
 
   - User Option: ~telega-filter-button-width~ 
 
-    Width of the custom filter buttons. 
+    Width of the custom filter buttons.
+    If integer, then use this number of chars.
+    If float in range (0..1), then occupy this percents of
+    ~telega-root-fill-column~ chars, but not less then 15 chars.
+    If list, where first element is float, then use 1 and 2 list values as
+    min and max values for a width calculation using
+    ~telega-canonicalize-number~. 
 
-    Default value: ~20~
+    Default value: ~(0.25 17 25)~
   - User Option: ~telega-filters-custom~ 
 
     Alist of custom filters in form (NAME . CHAT-FILTER).
@@ -666,12 +673,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -699,6 +704,12 @@ Important customizable options:
   Maximum width to use in root buffer to display active filters and chats. 
 
   Default value: ~70~
+
+  This option is applied only if [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]] is
+  disabled.  Default behaviour is to automatically adjust
+  ~telega-root-fill-column~ to the width of the window displaying
+  rootbuf.
+
 - User Option: ~telega-root-keep-cursor~ 
 
   Non-nil to keep cursor at current chat, even if chat's order changes.
@@ -1236,6 +1247,9 @@ For other Chat Filter bindings see below.
 
 - has-groups-in-common :: 
      Matches if corresponding user has groups in common with me.
+
+- is-telega-patron :: 
+     Matches if corresponding user is a telega patron.
 
 ** Customizable options making use of Chat Filters
 :PROPERTIES:
@@ -2435,6 +2449,16 @@ If you are already =telega= patron and not in the
 me]].
 
 ~telega-patrons-mode~ is enabled by default.
+
+** telega-root-auto-fill-mode                                           :new:
+:PROPERTIES:
+:CUSTOM_ID: telega-root-auto-fill-mode
+:END:
+
+Global minor mode to automatically adjust ~telega-root-fill-column~
+to the width of the window displaying rootbuf.
+
+~telega-root-auto-fill-mode~ is enabled by default.
 
 * Contributed packages
 :PROPERTIES:

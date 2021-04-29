@@ -139,8 +139,25 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
          (unread (apply #'+ (mapcar (telega--tl-prop :unread_count) chats)))
          (mentions (apply #'+ (mapcar
                                (telega--tl-prop :unread_mention_count) chats)))
-         (umwidth 7)
-         (title-width (- telega-filter-button-width umwidth)))
+         (umstring
+          (telega-ins--as-string
+           (telega-ins--with-attrs (list :max 7
+                                         :align-symbol "\u00a0"
+                                         :elide t
+                                         :align 'right)
+             (unless (zerop unread)
+               (telega-ins-fmt "%d" unread))
+             (unless (zerop mentions)
+               (telega-ins-fmt "@%d" mentions)))))
+         (filter-button-width
+          (telega-canonicalize-number telega-filter-button-width
+                                      telega-root-fill-column))
+         (title-width
+          (- filter-button-width (string-width umstring)
+             ;; `filter-button-width' is width for the button
+             ;; including brackes
+             2
+             )))
     (telega-ins--with-props (list 'inactive (not active-p)
                                   'action (if active-p
                                               #'telega-filter-button--action
@@ -151,6 +168,8 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
         (telega-ins "[")
         (telega-ins--with-attrs (list :min title-width
                                       :max title-width
+                                      ;; non-break space
+                                      :align-symbol "\u00a0"
                                       :elide t
                                       :align 'left)
           (telega-ins (number-to-string nchats) ":")
@@ -158,14 +177,8 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
               (telega-ins--with-face 'bold
                 (telega-ins name))
             (telega-ins name)))
-        (telega-ins--with-attrs (list :min umwidth
-                                      :max umwidth
-                                      :elide t
-                                      :align 'right)
-          (unless (zerop unread)
-            (telega-ins-fmt "%d" unread))
-          (unless (zerop mentions)
-            (telega-ins-fmt "@%d" mentions)))
+        (telega-ins "\u00a0")
+        (telega-ins umstring)
         (telega-ins "]")))))
 
 (defun telega-filter-button--action (button)
@@ -256,11 +269,19 @@ If FILTER is nil, then active filter is used."
 ;; ewoc stuff
 (defun telega-filter--pp (custom)
   "Pretty printer for CUSTOM filter button."
-  (when (> (+ (current-column) telega-filter-button-width)
-           telega-root-fill-column)
-    (insert "\n"))
-  (telega-button--insert 'telega-filter custom)
-  (insert "  "))
+  (let ((filter-button-width
+         (telega-canonicalize-number telega-filter-button-width
+                                     telega-root-fill-column))
+        (ccolumn (current-column)))
+    ;; NOTE: 3 - two spaces and a newline
+    (cond ((> (+ 3 ccolumn filter-button-width) telega-root-fill-column)
+           (insert "\n"))
+          ((zerop ccolumn)
+           ;; no-op
+           )
+          (t
+           (insert "  "))))
+  (telega-button--insert 'telega-filter custom))
 
 (defun telega-filters--footer ()
   "Generate string used as root header."
@@ -287,7 +308,7 @@ If FILTER is nil, then active filter is used."
                  telega-symbol-horizontal-delim
                  telega-symbol-horizontal-delim)
 
-     (when telega--sort-criteria
+     (when (or telega--sort-criteria telega--sort-inverted)
        (telega-ins "\n")
        (telega-ins telega-symbol-horizontal-delim
                    "\\"
@@ -301,8 +322,11 @@ If FILTER is nil, then active filter is used."
                                      :elide-trail (/ filters-width 2))
          (telega-ins--with-face 'bold
            (when telega--sort-inverted
-             (telega-ins "(inverted "))
-           (telega-ins-fmt "%S" telega--sort-criteria)
+             (telega-ins "(inverted"))
+           (when telega--sort-criteria
+             (when telega--sort-inverted
+               (telega-ins " "))
+             (telega-ins-fmt "%S" telega--sort-criteria))
            (when telega--sort-inverted
              (telega-ins ")"))))
        (telega-ins telega-symbol-horizontal-delim
