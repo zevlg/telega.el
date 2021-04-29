@@ -301,13 +301,13 @@ Rest elements are ewoc specs.")
   (if telega-root-auto-fill-mode
       (with-telega-root-buffer
         (add-hook 'window-size-change-functions
-                  #'telega-root--buffer-auto-fill nil 'local)
-        (when-let ((rootbuf-win (get-buffer-window (current-buffer))))
-          (telega-root--buffer-auto-fill rootbuf-win)))
+                  #'telega-root-buffer-auto-fill nil 'local)
+        (when-let ((rootbuf-win (get-buffer-window)))
+          (telega-root-buffer-auto-fill rootbuf-win)))
 
     (with-telega-root-buffer
       (remove-hook 'window-size-change-functions
-                   #'telega-root--buffer-auto-fill 'local))))
+                   #'telega-root-buffer-auto-fill 'local))))
 
 (define-derived-mode telega-root-mode nil
   `("◁Root" (telega-root-auto-fill-mode
@@ -353,6 +353,7 @@ Global root bindings:
   (setq telega-root--view nil)
   (telega-view-reset)
 
+  (setq truncate-lines t)
   (setq buffer-read-only t)
   (add-hook 'kill-buffer-hook 'telega-root--killed nil t)
 
@@ -491,10 +492,12 @@ Keep cursor position only if CHAT is visible."
           (set-window-point win (point)))
         (run-hooks 'telega-root-update-hook)))))
 
-(defun telega-root--buffer-auto-fill (&optional win)
-  "Automatically resize root buffer formatting to new WIN's width."
-  (cl-assert telega-root-auto-fill-mode)
-  (cl-assert (eq (window-buffer win) (telega-root--buffer)))
+(defun telega-root-buffer-auto-fill (win)
+  "Automatically resize root buffer formatting to WIN's width."
+  (interactive (list (get-buffer-window)))
+  (unless (eq (window-buffer win) (telega-root--buffer))
+    (user-error (concat "telega: `telega-root-buffer-auto-fill' "
+                        "can be called only in Root Buffer.")))
 
   ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
   (let ((new-fill-column (- (window-width win) 2)))
@@ -509,10 +512,17 @@ Keep cursor position only if CHAT is visible."
           ;; Fully redisplay filters
           (let ((telega-filters--dirty t))
             (telega-filters--redisplay))
-          ;; Redisplay all rootbuf ewocs
+          ;; Redisplay Root View header and all its ewocs
           (telega-save-cursor
+            (goto-char telega-root-view--header-marker)
+            (telega-root-view--ins-header telega-root--view)
+            (delete-region (point) telega-root-view--ewocs-marker)
+
             (dolist (ewoc-spec (nthcdr 2 telega-root--view))
               (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
+                (when-let ((ewoc-hdr (telega-root-view--ewoc-header
+                                      (plist-get ewoc-spec :header))))
+                  (telega-ewoc--set-header ewoc ewoc-hdr))
                 (ewoc-refresh ewoc))))
           (run-hooks 'telega-root-update-hook))
 
@@ -1001,13 +1011,24 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
   )
 
 ;;; RootView
-(defun telega-root-view--set-header (header)
-  "Set HEADER for the root view."
-  (save-excursion
-    (delete-region telega-root-view--header-marker
-                   telega-root-view--ewocs-marker)
-    (telega-ins header)
-    (setq telega-root-view--ewocs-marker (point-marker))))
+(defun telega-root-view--ins-header (view-spec)
+  "Insert root view header at the point."
+  (when-let ((view-name (nth 1 view-spec)))
+    (telega-ins--with-attrs
+        (list :elide t
+              :elide-trail (/ telega-root-fill-column 3)
+              :min telega-root-fill-column
+              :max telega-root-fill-column
+              :align 'left
+              :face 'telega-root-heading)
+      (telega-ins (if (listp view-name) (car view-name) "View") ": ")
+      (telega-ins--with-face 'bold
+        (telega-ins (if (listp view-name) (cadr view-name) view-name)))
+      (telega-ins " ")
+      (telega-ins--button "Reset"
+        :action #'telega-view-reset)
+      (telega-ins " "))
+    (telega-ins "\n")))
 
 (defun telega-root-view--update (on-update-prop &rest args)
   "Update root view ewocs using ON-UPDATE-PROP ewoc-spec property and ARGS."
@@ -1066,23 +1087,7 @@ VIEW-FILTER is additional chat filter for this root view."
     ;; Activate VIEW-SPEC by creating ewocs specified in view-spec
     (setq telega-root--view view-spec)
     (save-excursion
-      (when-let ((view-name (nth 1 view-spec)))
-        (telega-ins--with-attrs
-            (list :elide t
-                  :elide-trail (/ telega-root-fill-column 3)
-                  :min telega-root-fill-column
-                  :max telega-root-fill-column
-                  :align 'left
-                  :face 'telega-root-heading)
-          (telega-ins (if (listp view-name) (car view-name) "View") ": ")
-          (telega-ins--with-face 'bold
-            (telega-ins (if (listp view-name) (cadr view-name) view-name)))
-          (telega-ins " ")
-          (telega-ins--button "Reset"
-            :action #'telega-view-reset)
-          (telega-ins " "))
-        (telega-ins "\n"))
-
+      (telega-root-view--ins-header view-spec)
       (setq telega-root-view--ewocs-marker (point-marker))
       (let ((ewoc-specs (nthcdr 2 view-spec))
             (need-loading-timer-p nil))
