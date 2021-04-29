@@ -246,7 +246,7 @@ filename.
 Return nil if no image is available."
   (save-excursion
     (goto-char (point-min))
-    (when (re-search-forward "^\\([0-9]+\\) \\(.+\\)\n" nil t)
+    (when (re-search-forward "^\\([0-9]+\\) \\([^\r\n]+\\)\r?\n" nil t)
       (let ((frame-num (match-string 1))
             (frame-filename (match-string 2)))
         (delete-region (match-beginning 0) (match-end 0))
