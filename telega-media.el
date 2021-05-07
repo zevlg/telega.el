@@ -71,23 +71,41 @@ As side-effect might update root view, if current root view is \"Files\"."
 
 (defun telega-file--update (file)
   "FILE has been updated, call any pending callbacks."
-  (telega-file--ensure file)
+  (let* ((file-id (plist-get file :id))
+         (old-file (gethash file-id telega--files))
+         (throttle-p
+          ;; NOTE: Throttle number of update callbacks calls
+          ;; Throttle only if `:downloaded_size'/`:uploaded_size'
+          ;; property advances more then 1/100s part of the file size
+          ;; See https://github.com/zevlg/telega.el/issues/164
+          (or (and (telega-file--uploading-p file)
+                   (telega-file--uploading-p old-file)
+                   (< (- (telega-file--uploading-progress file)
+                         (telega-file--uploading-progress old-file))
+                      0.01))
+              (and (telega-file--downloading-p file)
+                   (telega-file--downloading-p old-file)
+                   (< (- (telega-file--downloading-progress file)
+                         (telega-file--downloading-progress old-file))
+                      0.01)))))
+    (unless throttle-p
+      (telega-file--ensure file)
 
-  ;; Run update callbacks
-  (let* ((callbacks (gethash (plist-get file :id) telega--files-updates))
-         (left-cbs (cl-loop for cb in callbacks
-                            when (funcall cb file)
-                            collect cb)))
-    (telega-debug "%s %S started with %d callbacks, left %d callbacks"
-                  (propertize "FILE-UPDATE" 'face 'bold)
-                  (plist-get file :id) (length callbacks) (length left-cbs))
-    (if left-cbs
-        (puthash (plist-get file :id) left-cbs telega--files-updates)
-      (remhash (plist-get file :id) telega--files-updates))
+      (let* ((callbacks (gethash file-id telega--files-updates))
+             (left-cbs (cl-loop for cb in callbacks
+                                when (funcall cb file)
+                                collect cb)))
+        (telega-debug "%s %S started with %d callbacks, left %d callbacks"
+                      (propertize "FILE-UPDATE" 'face 'bold)
+                      file-id (length callbacks) (length left-cbs))
+        (if left-cbs
+            (puthash file-id left-cbs telega--files-updates)
+          (remhash file-id telega--files-updates))
 
-    (when (telega-file--downloaded-p file)
-      (run-hook-with-args 'telega-file-downloaded-hook file))
-    ))
+        (when (and (not (telega-file--downloaded-p old-file))
+                   (telega-file--downloaded-p file))
+          (run-hook-with-args 'telega-file-downloaded-hook file))
+        ))))
 
 (defun telega-file--callback-wrap (callback check-fun)
   "Wrapper for CALLBACK.
