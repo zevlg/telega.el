@@ -310,8 +310,8 @@ FORCE is used for testing only, should not be used in real code."
   (unless (or (telega-msg-ignored-p msg)
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
-      (unless (or (and (not (telega-chat-private-p chat))
-                       (not (telega-chat-match-p chat 'me-is-member)))
+      (unless (or (not (telega-chat-match-p chat
+                         '(or (type private secret) me-is-member)))
                   (and (telega-chat-muted-p chat)
                        (or (telega-chat-notification-setting
                             chat :disable_mention_notifications)
