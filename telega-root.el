@@ -549,8 +549,10 @@ Keep cursor position only if CHAT is visible."
 
 (defun telega-root--global-chat-pp (chat &optional custom-inserter)
   "Display CHAT found in global public chats search."
-  (let* ((telega-chat-button-width (+ telega-chat-button-width
-                                      (/ telega-chat-button-width 2)))
+  (let* ((telega-chat-button-width
+          (round (* (telega-canonicalize-number telega-chat-button-width
+                                                telega-root-fill-column)
+                    1.5)))
          (telega-filters--inhibit-list '(chat-list folder main archive)))
     (telega-root--chat-known-pp chat custom-inserter)))
 

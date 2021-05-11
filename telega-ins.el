@@ -2634,7 +2634,10 @@ Return t."
 (defun telega-ins--root-msg (msg)
   "Inserter for message MSG shown in `telega-root-messages--ewoc'."
   (let ((chat (telega-msg-chat msg))
-        (telega-chat-button-width (* 2 (/ telega-chat-button-width 3))))
+        (telega-chat-button-width
+         (round (* (telega-canonicalize-number telega-chat-button-width
+                                               telega-root-fill-column)
+                   (/ 2.0 3)))))
     (telega-ins--chat chat)
     (telega-ins "  ")
     (let ((max-width (- telega-root-fill-column (current-column))))
