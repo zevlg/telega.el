@@ -166,29 +166,33 @@ Matches only if CHAR does not apper in the middle of the word."
              ;;                                         :message_thread_id)
              ;;                              0))
              )))
-       (nconc (delq nil
-                    (mapcar (lambda (member)
-                              (propertize
-                               (if-let ((un (telega-tl-str member :username)))
-                                   (concat "@" un)
-                                 (telega-user--name member))
-                               'telega-member member))
-                            members))
+       (nconc (mapcar (lambda (member)
+                        (propertize
+                         (or (telega-msg-sender-username member 'with-@)
+                             (telega-msg-sender-title member))
+                         'telega-member member))
+                      members)
               (cl-remove-if-not (lambda (botname)
                                   (string-prefix-p arg botname))
                                 telega-known-inline-bots))))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align
-     (let ((member (get-text-property 0 'telega-member arg)))
-       (when member
-         (concat "  " (telega-user--name member 'name)))))
+     (when-let ((member (or (get-text-property 0 'telega-member arg)
+                            (telega-user--by-username arg))))
+       (telega-ins--as-string
+        (telega-ins "  ")
+        (telega-ins (telega-msg-sender-title member))
+        (when telega-company-username-show-avatars
+          (insert-image
+           (telega-msg-sender-avatar-image-one-line member))))))
     (post-completion
      (when-let ((member (get-text-property 0 'telega-member arg)))
-       (unless (telega-tl-str member :username)
+       (unless (or (telega-msg-sender-username member)
+                   (telega-chat-p member))
          (delete-region (- (point) (length arg)) (point))
          (telega-ins (telega-string-as-markup
                       (format "[%s](tg://user?id=%d)"
-                              (telega-user--name member)
+                              (telega-msg-sender-title member)
                               (plist-get member :id))
                       "markdown1" #'telega-markup-markdown1-fmt))))
 

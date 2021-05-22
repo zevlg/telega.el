@@ -242,7 +242,7 @@ If PREFER-USERNAME is non-nil, then prefer using @<username>
 instead of the sender title."
   (cl-assert msg-sender)
   (telega-ins (or (when prefer-username
-                    (telega-msg-sender-username msg-sender 'with-a))
+                    (telega-msg-sender-username msg-sender 'with-@))
                   (telega-msg-sender-title msg-sender))))
 
 (defun telega-ins--username (user-id &optional fmt-type)
@@ -349,6 +349,8 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
     (telega-ins (make-string off-column ?\s))
     (telega-ins--image avatar 1
                        :no-display-if (not telega-user-show-avatars))
+    ;; Setup `off-column' for "invited by" string
+    (setq off-column (telega-current-column))
     (telega-ins--user-status user)
 
     (when-let ((join-date (plist-get member :joined_chat_date)))
@@ -358,13 +360,26 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
 
     (telega-ins-prefix ", "
       (telega-ins--user-nearby-distance user))
+
+    (when-let* ((inviter-id (plist-get member :inviter_user_id))
+                (inviter-user (unless (zerop inviter-id)
+                                (telega-user-get inviter-id 'local))))
+      (telega-ins "\n")
+      (telega-ins (make-string off-column ?\s))
+      (telega-ins "invited by ")
+      (apply 'insert-text-button
+             (telega-user--name inviter-user 'name)
+             (telega-link-props 'user inviter-id)))
     t))
 
 (defun telega-ins--chat-member (member)
   "Formatting for the chat MEMBER.
 Return COLUMN at which user name is inserted."
-  (telega-ins--user
-   (telega-user-get (plist-get member :user_id)) member))
+  (let ((sender (telega-msg-sender (plist-get member :member_id))))
+    (if (telega-user-p sender)
+        (telega-ins--user sender member)
+      ;; TODO: support for chat as member
+      )))
 
 (defun telega-ins--user-list (users &optional button-type)
   "Insert list of the USERS using BUTTON-TYPE.
@@ -1249,6 +1264,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messagePinMessage 'messageScreenshotTaken
               'messageGameScore
               'messageProximityAlertTriggered
+              'messageVoiceChatScheduled
               'messageVoiceChatStarted
               'messageVoiceChatEnded
               'messageInviteVoiceChatParticipants
@@ -1415,6 +1431,13 @@ Special messages are determined with `telega-msg-special-p'."
                                   (/ (float distance) 1000)
                                 distance)))
          ))
+      (messageVoiceChatScheduled
+       (telega-ins-i18n (if (plist-get msg :is_channel_post)
+                            "lng_action_group_call_scheduled_channel"
+                          "lng_action_group_call_scheduled_group")
+         :from sender-name
+         :date (telega-ins--as-string
+                (telega-ins--date-iso8601 (plist-get content :start_date)))))
       (messageVoiceChatStarted
        (telega-ins-i18n "lng_action_group_call_started"
                :from sender-name

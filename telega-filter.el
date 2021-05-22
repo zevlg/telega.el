@@ -586,6 +586,7 @@ ARGS specifies arguments to operation, first must always be chat."
 (defun telega-chat-match-p (chat chat-filter)
   "Return non-nil if CHAT-FILTER matches CHAT.
 If CHAT-FILTER is not specified, active chat filter is used."
+  (declare (indent 1))
   (cond ((null chat-filter) nil)
         ((symbolp chat-filter)
          (funcall (telega-filter--get chat-filter) chat))
@@ -1242,13 +1243,13 @@ not empty."
          (or (null non-empty)
              (plist-get voice-chat :has_participants)))))
 
-(defun telega-filter-by-has-voice-chat (non-empty)
+(defun telega-filter-by-has-voice-chat (including-empty-p)
   "Filter chats with started voice chat.
-If NON-EMPTY is non-nil, then keep only non-empty voice chats."
-  (interactive (list (y-or-n-p "Only non-empty voice chats? ")))
-  (telega-filter-add (if non-empty
-                         '(has-voice-chat with-users)
-                       'has-voice-chat)))
+If INCLUDING-EMPTY-P is non-nil, then keep also empty voice chats."
+  (interactive (list (y-or-n-p "Include empty voice chats? ")))
+  (telega-filter-add (if including-empty-p
+                         'has-voice-chat
+                       '(has-voice-chat with-users))))
 
 ;;; ellit-org: chat-filters
 ;; - has-favorite-messages ::

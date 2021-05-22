@@ -944,6 +944,12 @@ Set to 0 to disable description in a webpage preview."
   :type 'boolean
   :group 'telega-user)
 
+(defcustom telega-company-username-show-avatars telega-user-show-avatars
+  "Non-nil to show avatars in the company annotation."
+  :package-version '(telega . "0.7.44")
+  :type 'boolean
+  :group 'telega-user)
+
 (defcustom telega-user-show-relationship t
   "*Non-nil to show user relationship with me.
 Used when showing chat members list."

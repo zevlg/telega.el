@@ -418,8 +418,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                           (telega-user-get creator-id))))
       (telega-ins "Created: " (telega-user--name creator) "  ")
       (when-let ((creator-member
-                  (cl-find creator-id members
-                           :test '= :key (telega--tl-prop :user_id))))
+                  (cl-find creator members :key #'telega-msg-sender)))
         (telega-ins--date (plist-get creator-member :joined_chat_date))
         (telega-ins "\n")))
 
@@ -661,7 +660,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
             (when (buffer-live-p buffer)
               (with-current-buffer buffer
                 (let ((inhibit-read-only t))
-                  (telega-save-excursion
+                  (save-excursion
                     (goto-char at-point)
                     (telega-ins--chat-members members))))))
           )))

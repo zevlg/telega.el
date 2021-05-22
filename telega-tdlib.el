@@ -655,7 +655,8 @@ markup has been used."
   "Search CHAT members by QUERY.
 MEMBERS-FILTER is TDLib's \"ChatMembersFilter\".
 LIMIT by default is 50.
-If AS-MEMBER-P is non-nil, then return \"chatMember\" structs instead of users."
+If AS-MEMBER-P is non-nil, then return \"chatMember\" structs instead
+of message sender."
   (let ((reply (telega-server--call
                 (nconc (list :@type "searchChatMembers"
                              :chat_id (plist-get chat :id)
@@ -663,10 +664,7 @@ If AS-MEMBER-P is non-nil, then return \"chatMember\" structs instead of users."
                              :limit (or limit 50))
                        (when members-filter
                          (list :filter members-filter))))))
-    (mapcar (if as-member-p
-                #'identity
-              (lambda (member)
-                (telega-user-get (plist-get member :user_id))))
+    (mapcar (if as-member-p #'identity #'telega-msg-sender)
             (plist-get reply :members))))
 
 (defun telega--getChatAdministrators (chat &optional callback)
@@ -754,14 +752,25 @@ Return list of \"ChatMember\" objects."
           :limit (or limit 200))
     callback))
 
-(defun telega--setChatMemberStatus (chat user status &optional callback)
-  "Change the STATUS of a CHAT USER, needs appropriate privileges.
-STATUS is one of: "
+(defun telega--setChatMemberStatus (chat msg-sender status &optional callback)
+  "Change the STATUS of a MSG-SENDER, needs appropriate privileges.
+STATUS is a tl object."
   (telega-server--send
    (list :@type "setChatMemberStatus"
          :chat_id (plist-get chat :id)
-         :user_id (plist-get user :id)
+         :member_id (telega--MessageSender msg-sender)
          :status status)
+   callback))
+
+(defun telega--banChatMember (chat msg-sender &optional revoke-messages-p
+                                   until-date callback)
+  "Ban MSG-SENDER in the CHAT."
+  (telega-server--send
+   (list :@type "banChatMember"
+         :chat_id (plist-get chat :id)
+         :member_id (telega--MessageSender msg-sender)
+         :revoke_messages (if revoke-messages-p t :false)
+         :banned_until_date (or until-date 0))
    callback))
 
 (defun telega--addChatMember (chat user &optional forward-limit)
@@ -1938,16 +1947,18 @@ If OPTION-IDS is not specified, then retract the voice."
          :group_call_id (plist-get group-call :id)
          :limit (or limit 100))))
 
-(defun telega--createVoiceChat (chat &optional callback)
+(cl-defun telega--createVoiceChat (chat title &key (start-time 0) callback)
   "Create a voice chat (a group call bound to a chat).
 Available only for basic groups and supergroups.
 Return an ID of group call."
-  (declare (indent 1))
+  (declare (indent 2))
   (with-telega-server-reply (reply)
       (plist-get reply :id)
 
     (list :@type "createVoiceChat"
-          :chat_id (plist-get chat :id))
+          :chat_id (plist-get chat :id)
+          :title title
+          :start_date start-time)
     callback))
 
 (defun telega--setGroupCallTitle (group-call title)
@@ -1995,16 +2006,29 @@ Return an ID of group call."
    (list :@type "endGroupCallRecording"
          :group_call_id (plist-get group-call :id))))
 
-(defun telega--getAvailableVoiceChatAliases (chat &optional callback)
+(defun telega--getVoiceChatAvailableParticipants (chat &optional callback)
   "Get list of message senders, which can be used as voice chat alias.
 CHAT is ordinary Telegram chat."
   (declare (indent 1))
   (with-telega-server-reply (reply)
       (mapcar #'telega-msg-sender (plist-get reply :senders))
 
-    (list :@type "getAvailableVoiceChatAliases"
+    (list :@type "getVoiceChatAvailableParticipants"
           :chat_id (plist-get chat :id))
     callback))
+
+(defun telega--startScheduledGroupCall (group-call)
+  "Starts a scheduled GROUP-CALL."
+  (telega-server--send
+   (list :@type "startScheduledGroupCall"
+         :group_call_id (plist-get group-call :id))))
+
+(defun telega--toggleGroupCallEnabledStartNotification (group-call)
+  (telega-server--send
+   (list :@type "startScheduledGroupCall"
+         :group_call_id (plist-get group-call :id)
+         :enabled_start_notification
+         (if (plist-get group-call :enabled_start_notification) :false t))))
 
 (provide 'telega-tdlib)
 

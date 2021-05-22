@@ -839,13 +839,14 @@ corresponding thread."
        ;; NOTE: info about `:author_signature' is lost :(
        (telega-chat-get (plist-get fwd-origin :sender_chat_id))))))
 
-(defun telega-msg-sender (msg-or-sender)
-  "Convert message sender to a chat or a user.
-MSG-SENDER could be a raw message sender or a message.
+(defun telega-msg-sender (tl-obj)
+  "Convert given TL-OBJ to message sender (a chat or a user).
+TL-OBJ could be a \"message\", \"chatMember\" or \"messageSender\".
 Return a user or a chat."
-  (let ((sender (if (eq (telega--tl-type msg-or-sender) 'message)
-                    (plist-get msg-or-sender :sender)
-                  msg-or-sender)))
+  (let ((sender (cl-ecase (telega--tl-type tl-obj)
+                  (message (plist-get tl-obj :sender))
+                  (chatMember (plist-get tl-obj :member_id))
+                  ((messageSenderUser messageSenderChat) tl-obj))))
     ;; NOTE: sender could be `nil' for internal telega messages, see
     ;; `telega-msg-create-internal'
     (when sender

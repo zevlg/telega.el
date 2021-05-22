@@ -626,18 +626,37 @@ Example: 23 y.o. designer from San Francisco")
   :value "Featured")
 
  ;; Group call chats
+ ("lng_group_call_starts"
+  :value "Voice Chat starts {when}")
+ ("lng_group_call_starts_in"
+  :value "Starts in")
+ ("lng_group_call_start_now"
+  :value "Start Now")
+ ("lng_group_call_edit_title_header"
+  :value "Voice chat title")
+ ("lng_group_call_schedule_title"
+  :value "Schedule Voice Chat")
+ ("lng_group_call_scheduled_status"
+  :value "Scheduled")
+
  ("lng_group_call_title"
   :value "Voice Chat")
  ("lng_group_call_end"
   :value "End Voice Chat")
  ("lng_group_call_leave_title"
   :value "Leave voice chat")
+ ("lng_group_call_leave_sure"
+  :value "Do you want to leave this voice chat?")
  ("lng_group_call_join_as_header"
   :value "Join Voice Chat as...")
 
  ("lng_group_call_members"
   :one_value "{count} participant"
   :other_value "{count} participants")
+ ("lng_action_group_call_scheduled_group"
+  :value "{from} scheduled a voice chat for {date}")
+ ("lng_action_group_call_scheduled_channel"
+  :value "Voice chat scheduled for {date}")
  ("lng_action_group_call_started"
   :value "{from} started {chat}")
  ("lng_action_group_call_started_chat"

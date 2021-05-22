@@ -473,9 +473,10 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
           (with-telega-chatbuf chat
             (telega-chatbuf--modeline-update)))))))
 
-(defun telega-chatbuf--group-call ()
-  "Return group call for the chatbuf's voice chat."
-  (telega-group-call-get (telega--tl-get telega-chatbuf--chat
+(defun telega-chat-group-call (&optional chat)
+  "Return group call for the chatbuf's voice chat.
+If CHAT is specified, return group call for the CHAT."
+  (telega-group-call-get (telega--tl-get (or chat telega-chatbuf--chat)
                                          :voice_chat :group_call_id)))
 
 (defun telega-chatbuf--voice-chat-fetch ()
@@ -1305,7 +1306,7 @@ Chat considered unread if matches `telega-filter-unread-chats' chat filter."
     (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
     (define-key map (kbd "C-M-a") 'telega-chatbuf-beginning-of-thing)
 
-    (define-key map (kbd "C-c ?") 'telega-describe-chatbuf)
+    (define-key map (kbd "C-c ?") 'telega-describe-chat)
 
     (define-key map (kbd "RET") 'telega-chatbuf-newline-or-input-send)
     (define-key map (kbd "M-p") 'telega-chatbuf-edit-prev)
@@ -1553,6 +1554,20 @@ If POINT is not over some message, then view last message."
              :value group-call
              :action #'telega-group-call-join))
          (telega-ins "\n")
+
+         ;; Group Call scheduled?
+         (when (> (plist-get group-call :scheduled_start_date) 0)
+           (telega-ins "   " (telega-symbol 'alarm)
+                       (telega-i18n "lng_group_call_scheduled_status") ": ")
+           (telega-ins--date-iso8601
+            (plist-get group-call :scheduled_start_date))
+           ;; Start Now
+           (telega-ins " ")
+           (telega-ins--button "Start Now"
+             :value group-call
+             :action #'telega--startScheduledGroupCall)
+           (telega-ins "\n"))
+
          (when (and (plist-get voice-chat :has_participants)
                     (not (zerop (plist-get group-call :participant_count))))
            (telega-ins "   " (telega-i18n "lng_group_call_members"
@@ -1697,11 +1712,6 @@ Global chat bindings:
   (setq telega--chat-buffers-alist
         (cl-pushnew (cons telega-chatbuf--chat (current-buffer))
                     telega--chat-buffers-alist)))
-
-(defun telega-describe-chatbuf ()
-  "Show info about chat."
-  (interactive)
-  (telega-describe-chat telega-chatbuf--chat))
 
 (defun telega-chatbuf--set-action (action)
   "Set my chatbuf action to ACTION"
@@ -2124,7 +2134,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
            (display-spec (cdr (assq (if active-p 'active 'passive)
                                     telega-voice-chat-display))))
       (when (memq 'modeline display-spec)
-        (when-let ((group-call (telega-chatbuf--group-call)))
+        (when-let ((group-call (telega-chat-group-call telega-chatbuf--chat)))
           (telega-ins--as-string
            (telega-ins " [")
            (telega-ins--with-attrs (list :max max-width :align 'left :elide t)
@@ -3409,7 +3419,7 @@ Return nil if CHAT has no linked chat."
 (defun telega-chatbuf-goto-voice-chat ()
   "Goto voice chat associated with the chat."
   (interactive)
-  (let ((group-call (telega-chatbuf--group-call)))
+  (let ((group-call (telega-chat-group-call telega-chatbuf--chat)))
     (unless group-call
       (user-error "telega: No group call associated with the chat"))
     (telega-describe-group-call group-call)))

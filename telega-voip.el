@@ -242,35 +242,65 @@ If ARG is not given then treat it as 1."
 
 
 ;; Voice Chats and Group calls
-(defun telega-voice-chat-start (chat title)
-  "Start voice chat in the CHAT."
-  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))
-                     (read-string "Voice Chat Title: ")))
-  (telega--createVoiceChat chat
-    (unless (string-empty-p title)
-      (lambda (group-call-id)
-        (telega--setGroupCallTitle
-         ;; NOTE: use faked group call to avoid
-         ;; `telega-group-call-get' call
-         (list :id group-call-id :can_be_managed t) title))))
-  )
+(defun telega-voice-chat-start (chat)
+  "Interactively start Voice Chat in the CHAT."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+  (let ((group-call (telega-chat-group-call chat)))
+    (cond ((and group-call
+                (> (plist-get group-call :scheduled_start_date) 0))
+           (when (y-or-n-p "Start already scheduled Voice Chat? ")
+             (telega--startScheduledGroupCall group-call)))
+          (group-call
+           (user-error "Voice Chat already running"))
+          (t
+           (telega--createVoiceChat chat
+               (read-string
+                (concat (telega-i18n "lng_group_call_edit_title_header")
+                        ": ")))))))
+
+(defun telega-voice-chat-schedule (chat)
+  "Interactively schedule a voice chat in the CHAT."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+  (when-let ((group-call (telega-chat-group-call chat)))
+    (if (> (plist-get group-call :scheduled_start_date) 0)
+        (user-error "Voice Chat already scheduled")
+      (user-error "Voice Chat already running")))
+
+  (let ((start-time (telega-read-timestamp
+                     (concat (telega-i18n "lng_group_call_schedule_title")
+                             ": ")))
+        (title (read-string
+                (concat (telega-i18n "lng_group_call_edit_title_header")
+                        ": "))))
+    (telega--createVoiceChat chat title
+      :start-time start-time)))
+
+(defun telega-voice-chat-discard (chat &optional no-confirm-p)
+  "Discard voice chat in the CHAT."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+  (let ((group-call (telega-chat-group-call chat)))
+    (unless group-call
+      (user-error "Chat has no associated Voice Chat"))
+    (when (or (not no-confirm-p)
+              (y-or-n-p "Discard this Voice Chat? "))
+      (telega--discardGroupCall group-call))))
 
 (defun telega-voice-chat-record-start (chat title)
   "Start recording group call associated with CHAT."
   (interactive
    (list (or telega-chatbuf--chat (telega-chat-at (point)))
          (read-string "Record with Title: ")))
-  (let ((group-call (with-telega-chatbuf chat
-                      (telega-chatbuf--group-call))))
-    (unless (and group-call (plist-get group-call :can_be_managed))
-      (user-error "Can't record"))
+  (let ((group-call (telega-chat-group-call chat)))
+    (unless group-call
+      (user-error "Chat has no associated Voice Chat"))
+    (unless (plist-get group-call :can_be_managed)
+      (user-error "Can't record: no permission"))
     (telega--startGroupCallRecording group-call title)))
 
 (defun telega-voice-chat-record-stop (chat)
   "Start recording group call associated with CHAT."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
-  (let ((group-call (with-telega-chatbuf chat
-                      (telega-chatbuf--group-call))))
+  (let ((group-call (telega-chat-group-call chat)))
     (unless (and group-call (plist-get group-call :can_be_managed))
       (user-error "Can't stop recording"))
     (telega--endGroupCallRecording group-call)))
@@ -344,7 +374,7 @@ CHEIGHT is height in chars, default is 1."
   (telega-msg-sender-avatar-image
    (telega-msg-sender
     (or (plist-get participant :speaker) ;groupCallRecentSpeaker
-        (plist-get participant :participant))) ;groupCallParticipant
+        (plist-get participant :participant_id))) ;groupCallParticipant
    (apply-partially #'telega-group-call--participant-create-image
                     (plist-get participant :is_speaking) (or cheight 1))
    force-update
