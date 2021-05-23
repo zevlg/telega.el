@@ -3947,6 +3947,8 @@ See `telega-chat-attach-commands' for available attachment types."
     (cl-assert (commandp cmd))
     (call-interactively cmd)))
 
+(declare-function eaf-get-path-or-url "eaf")
+
 (defun telega-buffer-file-send (file chat &optional as-photo-p)
   "Prepare FILE to be sent as document or photo to CHAT.
 If `\\[universal-argument]' is specified, then always send as a file.
@@ -3961,6 +3963,10 @@ If current buffer is dired, then send all marked files."
           (or (buffer-file-name)
               (when (eq 'dired-mode major-mode)
                 (seq-filter #'file-regular-p (dired-get-marked-files)))
+              ;; Support for EAF
+              ;; see https://github.com/manateelazycat/emacs-application-framework/issues/675
+              (when (eq 'eaf-mode major-mode)
+                (eaf-get-path-or-url))
               (user-error (concat "Can't send current buffer, "
                                   "it does not have corresponding file")))))
      (list file
