@@ -223,7 +223,10 @@ Active call is either outgoing call or accepted incoming call.
 Only one call can be currently active.")
 (defvar telega--scope-notification-alist (cons nil nil)
   "Default notification settings for chats.
-alist where key is one of `private', `group' or `channel'.")
+alist where key is one of:
+\"notificationSettingsScopePrivateChats\",
+\"notificationSettingsScopeGroupChats\",
+\"notificationSettingsScopeChannelChats\".")
 
 (defvar telega-tdlib--chat-filters nil
   "List of chat filters received from TDLib.")

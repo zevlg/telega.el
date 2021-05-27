@@ -709,15 +709,14 @@ SCOPE-TYPE is one of:
   "Change notification settings for chats of a given SCOPE-TYPE.
 SCOPE-TYPE is the same as in `telega--getScopeNotificationSettings'.
 SETTINGS is a plist with notification settings to set."
-  (let ((tdlib-scope-type
-         (alist-get scope-type telega-notification-scope-types))
-        (scope-settings (telega-chat-notification-scope scope-type))
+  (let ((scope-settings (telega-chat-notification-scope scope-type))
         (request (list :@type "scopeNotificationSettings")))
     (telega--tl-dolist ((prop-name value) (append scope-settings settings))
       (setq request (plist-put request prop-name (or value :false))))
+    (cl-assert (stringp scope-type))
     (telega-server--send
      (list :@type "setScopeNotificationSettings"
-           :scope (list :@type tdlib-scope-type)
+           :scope (list :@type scope-type)
            :notification_settings request))))
 
 (defun telega--resetAllNotificationSettings ()
