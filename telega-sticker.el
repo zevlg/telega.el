@@ -239,7 +239,7 @@ CALLBACK is called without arguments"
     (if (plist-get sticker :outline)
         (telega-sticker--svg-outline svg sticker
           :fill (telega-color-name-as-hex-2digits
-                 (face-foreground 'shadow)))
+                 (or (face-foreground 'shadow) "gray50")))
 
       ;; draw emoji and progress circle
       (svg-text svg (if (string-empty-p emoji)

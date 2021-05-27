@@ -253,7 +253,7 @@ so new Emacs `svg-embed-base-uri-image' functionality could be used."
       (telega-svg-path pclip cp))
     ;; progress circle
     (svg-circle svg (/ w 2) (/ h 2) (/ h 2)
-                :fill-color (face-foreground 'shadow)
+                :fill-color (or (face-foreground 'shadow) "gray50")
                 :fill-opacity "0.25"
                 :clip-path "url(#pclip)")
     svg))

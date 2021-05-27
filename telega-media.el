@@ -816,7 +816,7 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
                           :x 0 :y 0 :width width :height height)
       (svg-rectangle svg 0 0 width height
                      :fill-color (telega-color-name-as-hex-2digits
-                                  (face-foreground 'shadow))))
+                                  (or (face-foreground 'shadow) "gray50"))))
 
     ;; Show user's avatar
     ;; - :heading - direction of user's POV
@@ -878,7 +878,7 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
                                      ;;           (face-foreground 'telega-blue))
                                      ;;       :opacity 0.5)
                                      (list 100 (telega-color-name-as-hex-2digits
-                                               (face-foreground 'telega-blue))
+                                                (face-foreground 'telega-blue))
                                            :opacity 0.0)))
           (svg-circle svg w2 h2 50
                       :gradient "headgrad"
