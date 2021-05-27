@@ -2043,6 +2043,11 @@ Binds current symbol to SYM-BIND."
               (format "docker ps -qf \"ancestor=%s\""
                       (telega-docker--image-name)))))))
 
+(defun telega-docker--selinux-p ()
+  "Return non-nil if running in the selinux environment."
+  (when-let ((selinux-enabled-bin (executable-find "selinuxenabled")))
+    (zerop (call-process selinux-enabled-bin))))
+
 (defun telega-docker-run-cmd (cmd &rest volumes)
   "Dockerize command CMD."
   (declare (indent 1))
@@ -2052,24 +2057,31 @@ Binds current symbol to SYM-BIND."
                     (format-spec-make ?u (telega-docker--user-id)
                                       ?w telega-database-dir
                                       ?i (telega-docker--image-name)))
-     (concat (format "docker run -i -v %s:%s"
-                     telega-database-dir telega-database-dir)
-             " -u " (telega-docker--user-id)
-             ;; Export volumes and env vars need to run appindicator
-             (when telega-appindicator-mode
-               (concat " --security-opt apparmor=unconfined"
-                       " -v /tmp/.X11-unix:/tmp/.X11-unix"
-                       (when-let ((xauthority (getenv "XAUTHORITY")))
-                         (format " -v %s:%s" xauthority xauthority))
-                       (when-let ((bus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
-                                  (bus-path (nth 1 (split-string bus-addr "="))))
-                         (format " -v %s:%s" bus-path bus-path))
-                       " -e DISPLAY -e XAUTHORITY -e DBUS_SESSION_BUS_ADDRESS"))
-             ;; Additional volumes
-             (mapconcat (lambda (volume)
-                          (format " -v %s:%s" volume volume))
-                        (or volumes telega-docker-volumes) "")
-             " " (telega-docker--image-name)))
+     (let ((selinux-p (telega-docker--selinux-p)))
+       (concat
+        (format "docker run -i -v %s:%s%s"
+                telega-database-dir telega-database-dir
+                (if selinux-p ":z" ""))
+        " -u " (telega-docker--user-id)
+        ;; Export volumes and env vars need to run appindicator
+        (when telega-appindicator-mode
+          (concat " --security-opt apparmor=unconfined"
+                  (format " -v /tmp/.X11-unix:/tmp/.X11-unix%s"
+                          (if selinux-p ":z" ""))
+                  (when-let ((xauthority (getenv "XAUTHORITY")))
+                    (format " -v %s:%s%s" xauthority xauthority
+                            (if selinux-p ":z" "")))
+                  (when-let ((bus-addr (getenv "DBUS_SESSION_BUS_ADDRESS"))
+                             (bus-path (nth 1 (split-string bus-addr "="))))
+                    (format " -v %s:%s%s" bus-path bus-path
+                            (if selinux-p ":z" "")))
+                  " -e DISPLAY -e XAUTHORITY -e DBUS_SESSION_BUS_ADDRESS"))
+        ;; Additional volumes
+        (mapconcat (lambda (volume)
+                     (format " -v %s:%s%s" volume volume
+                             (if selinux-p ":z" "")))
+                   (or volumes telega-docker-volumes) "")
+        " " (telega-docker--image-name))))
    " " cmd))
 
 (defun telega-docker-exec-cmd (cmd &optional try-host-p exec-flags no-error)
