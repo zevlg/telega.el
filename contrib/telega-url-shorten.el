@@ -94,6 +94,11 @@
     :symbol ,(all-the-icons-faicon "gitlab")
     :replace "\\1#\\2"
     :svg-icon ("fa-brands/gitlab-rgb.svg" :scale 0.75))
+  `(gitlab-repo
+    :regexp "https?://gitlab.com/\\(.+\\)/\\(.*\\)"
+    :symbol ,(all-the-icons-faicon "gitlab")
+    :replace "\\1/\\2"
+    :svg-icon ("fa-brands/gitlab-rgb.svg" :scale 0.75))
    `(youtube
      :regexp "https?://www.youtube.com/watch.*[?&]v=\\([^&]+\\).+"
      :symbol ,(all-the-icons-faicon "youtube-play")
