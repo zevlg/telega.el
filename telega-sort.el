@@ -202,7 +202,16 @@ overwriting currently active one."
 ;;   {{{fundoc(telega--sort-join-date, 2)}}}
 (define-telega-sorter join-date () (chat)
   "Sort chats by join date.  Last joined chats goes first."
-  (plist-get (telega-chat--info chat) :date))
+  (let ((info (telega-chat--info chat)))
+    (cl-case (telega--tl-type info)
+      (supergroup (plist-get info :date))
+      (basicGroup
+       (let* ((full-info (telega--full-info info))
+              (me-member
+               (cl-find-if (lambda (member)
+                             (telega-me-p (telega-msg-sender member)))
+                           (plist-get full-info :members))))
+         (plist-get me-member :joined_chat_date))))))
 
 ;;; ellit-org: chat-sorting-criteria
 ;; - ~chatbuf-recency~, {{{where-is(telega-sort-by-chatbuf-recency,telega-root-mode-map)}}} ::
