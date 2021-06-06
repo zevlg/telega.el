@@ -1933,29 +1933,18 @@ in `(window-prev-buffers)' to achive behaviour for nil-valued
       (setf (nth 2 entry)
             (copy-marker (point) (marker-insertion-type (nth 2 entry)))))))
 
-(defun telega-window-recenter (win &optional nlines from-point noforce)
-  "Set WIN's start point so there will be NLINES to current point."
+(defun telega-window-recenter (win &optional nlines from-point)
+  "Set WIN's start point so there will be NLINES to FROM-POINT.
+If FROM-POINT is nil, then current point is taken.
+If NLINES is nil, then recenter."
   (cl-assert win)
-  (let ((win-h (window-height win))
-        (win-start nil))
-    ;; Correct NLINES
-    (unless nlines
-      (setq nlines (/ win-h 2)))
-    (when (< nlines 0)
-      (setq nlines (+ win-h nlines)))
-    (when (< nlines 0)
-      (setq nlines 0))
-    (when (>= nlines win-h)
-      (setq nlines (1- win-h)))
-
+  ;; NOTE: Do not use `set-window-start`, since it might move point
+  ;; See https://github.com/zevlg/telega.el/issues/291
+  (with-selected-window win
     (save-excursion
       (when from-point
         (goto-char from-point))
-      (forward-line (- nlines))
-      (setq win-start (point-at-bol)))
-
-    (cl-assert (<= (count-lines win-start (or from-point (point))) win-h))
-    (set-window-start win win-start noforce)))
+      (recenter nlines))))
 
 (defun telega-base-directory ()
   "Return `telega-directory' following possible symlink."

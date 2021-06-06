@@ -1522,7 +1522,7 @@ LINK is cons, where car is the link description, and cdr is the url."
     (telega-save-cursor
       (ewoc-refresh ewoc))
     (when w-start
-      (set-window-start root-win w-start)
+      (set-window-start root-win w-start 'noforce)
       (set-window-point root-win (point)))))
 
 (defun telega-view-settings ()

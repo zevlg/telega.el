@@ -32,7 +32,7 @@
 (require 'telega-customize)
 
 (declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-window-recenter "telega-util" (win &optional nlines from-point noforce))
+(declare-function telega-window-recenter "telega-util" (win &optional nlines from-point))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
 (declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
 
@@ -428,7 +428,7 @@ END."
            (save-excursion
              (goto-char (point-min))
              (forward-line (1- ,win-start-line))
-             (set-window-start ,buf-win-sym (point))))))))
+             (set-window-start ,buf-win-sym (point) 'noforce)))))))
 
 (defmacro telega-save-excursion (&rest body)
   "Execute BODY saving current point as moving marker."
