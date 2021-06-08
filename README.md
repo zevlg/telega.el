@@ -84,7 +84,7 @@ And much more.
 
 Root buffer screen:
 
-![screen15](https://zevlg.github.io/telega/telega-root-v0.7.9.png)
+![screen31](https://zevlg.github.io/telega/telega-31.png)
 
 Chat in [@emacs_en](https://t.me/emacs_en "emacs_en") group:
 
