@@ -482,6 +482,8 @@ tdat_move_utf16codepoint(struct telega_dat* src, struct telega_dat* dst)
                 return (uint32_t)'\\';
         case 'n':
                 return (uint32_t)'\n';
+        case 'f':
+                return (uint32_t)'\f';
         case 'r':
                 return (uint32_t)'\r';
         case 't':
