@@ -1262,7 +1262,13 @@ Set it to nil to disable VoIP logging."
 (defcustom telega-voice-chat-display
   '((active footer modeline)
     (passive modeline))
-  "Where to display active/passive voice chats info."
+  "Alist to specify where to display voice chat info.
+Each element is a cons cell where car is one of `active' or `passive'
+and cdr is list of possible values:
+  - `footer' to display voice chat info in the chatbuf footer
+  - `modeline' to display voice chat info in the modeline.
+Voice chat is considered `active' if it has at least one participant,
+otherwise voice chat is `passive'."
   :type 'list
   :package-version '(telega . "0.7.34")
   :group 'telega-voip)
