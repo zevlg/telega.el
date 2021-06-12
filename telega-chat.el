@@ -1481,7 +1481,12 @@ If POINT is not over some message, then view last message."
                            telega--actions))
          (chat telega-chatbuf--chat)
          (voice-chat (plist-get telega-chatbuf--chat :voice_chat))
-         (voice-chat-visible-p (not telega-chatbuf--voice-chat-hidden))
+         (voice-chat-visible-p
+          (and (not telega-chatbuf--voice-chat-hidden)
+               (let* ((active-p (plist-get voice-chat :has_participants))
+                      (display-spec (cdr (assq (if active-p 'active 'passive)
+                                               telega-voice-chat-display))))
+                 (memq 'footer display-spec))))
          (msg-filter telega-chatbuf--msg-filter)
          (thread-msg telega-chatbuf--thread-msg)
          (history-loading-p telega-chatbuf--history-loading)
@@ -1521,7 +1526,6 @@ If POINT is not over some message, then view last message."
        (telega-ins fill-symbol)
        (telega-ins "\n")
 
-       ;; Voice Chat
        ;; Message thread
        (when thread-msg
          (telega-ins--button (propertize "✕" 'face 'bold)
