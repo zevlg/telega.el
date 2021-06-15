@@ -1087,8 +1087,10 @@ For interactive use only."
           ;; Need to execute this outside of process filter
           (let* ((fpath (telega--tl-get dfile :local :path))
                  (fname (file-name-nondirectory fpath))
-                 (new-fpath (read-file-name "Save to file: " default-directory
-                                            nil nil fname nil)))
+                 (new-fpath (if telega-msg-save-dir
+                                (expand-file-name fname telega-msg-save-dir)
+                                (read-file-name "Save to file: " default-directory
+                                            nil nil fname nil))))
             ;; See https://github.com/tdlib/td/issues/379
             (copy-file fpath new-fpath)
             (message (format "Wrote %s" new-fpath))))))))
