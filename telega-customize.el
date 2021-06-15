@@ -1381,6 +1381,12 @@ no longer work."
   :type 'boolean
   :group 'telega-msg)
 
+(defcustom telega-msg-save-dir nil
+  "*Directory for `telega-msg-save' without asking.
+If nil, the saved path is always asked."
+  :type 'string
+  :group 'telega-msg)
+
 (defcustom telega-photo-size-limits '(10 6 55 12)
   "*Limits image size for the photos.
 Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
