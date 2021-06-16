@@ -99,6 +99,12 @@ recommended, =svg= support. If Emacs version is less then 27.1, then
 compiled with these dependencies when installing GNU Emacs with GTK+
 support (graphical).
 
+** Windows 10 users
+
+See [[https://ritschmaster.github.io/2021/06/13/Using-telga-in-Windows-10.html][detailed description]] how to install =telega= under Windows 10.
+
+Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
+
 ** Building TDLib
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
@@ -991,7 +997,7 @@ See also [[#telega-alertel--notifications-using-alertel][Notifications using ale
 
 * Contributed packages
 
-=contrib/= directory contains packages contributed to =telega.el=
+=contrib/= directory contains packages contributed to =telega=
 project.
 
 #+ELLIT-INCLUDE: ../contrib/ol-telega.el

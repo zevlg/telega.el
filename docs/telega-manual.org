@@ -28,6 +28,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#dependencies][Dependencies]]
     - [[#macos-users][MacOS users]]
     - [[#linux-users][Linux users]]
+    - [[#windows-10-users][Windows 10 users]]
     - [[#building-tdlib][Building TDLib]]
     - [[#installing-telega-and-tdlib-from-gnu-guix][Installing telega and TDLib from GNU Guix]]
     - [[#installing-telega-from-melpa][Installing telega from MELPA]]
@@ -190,6 +191,15 @@ recommended, =svg= support. If Emacs version is less then 27.1, then
 =imagemagick= is also required.  Most distributions provide GNU Emacs
 compiled with these dependencies when installing GNU Emacs with GTK+
 support (graphical).
+
+** Windows 10 users
+:PROPERTIES:
+:CUSTOM_ID: windows-10-users
+:END:
+
+See [[https://ritschmaster.github.io/2021/06/13/Using-telga-in-Windows-10.html][detailed description]] how to install =telega= under Windows 10.
+
+Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 ** Building TDLib
 :PROPERTIES:
@@ -2466,7 +2476,7 @@ to the width of the window displaying rootbuf.
 :CUSTOM_ID: contributed-packages
 :END:
 
-=contrib/= directory contains packages contributed to =telega.el=
+=contrib/= directory contains packages contributed to =telega=
 project.
 
 ** /ol-telega.el/ -- Org mode links to telegram chats and messages
