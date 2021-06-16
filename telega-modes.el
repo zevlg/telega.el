@@ -495,11 +495,8 @@ Return filename of the generated icon."
   :group 'telega-modes)
 
 (defcustom telega-autoplay-messages
-  (nconc (when telega-animation-play-inline
-           '(messageAnimation))
-         (when telega-sticker-animated-play
-           '(messageSticker)))
-  "Message types to automatically play when received."
+  '(messageAnimation messageSticker)
+  "Message to automatically play when received."
   :type 'list
   :group 'telega-modes)
 
@@ -514,11 +511,20 @@ Play in muted mode."
                    telega-autoplay-messages)
              (telega-chat-match-p (telega-msg-chat msg) telega-autoplay-for)
              (telega-msg-observable-p msg))
-    ;; NOTE: special case for sticker messages
     (cl-case (telega--tl-type (plist-get msg :content))
+      ;; NOTE: special case for animations, animate only those which
+      ;; can be animated inline, see `telega-animation-play-inline'
+      (messageAnimation
+       (let ((animation (telega--tl-get msg :content :animation)))
+         (when (telega-animation-play-inline-p animation)
+           (telega-msg-open-animation msg animation))))
+
+      ;; NOTE: special case for sticker messages, play animated
+      ;; sticker only if `telega-sticker-animated-play' is set
       (messageSticker
        (let ((sticker (telega--tl-get msg :content :sticker)))
-         (when (plist-get sticker :is_animated)
+         (when (and (plist-get sticker :is_animated)
+                    telega-sticker-animated-play)
            (telega-sticker--animate sticker))))
 
       (t

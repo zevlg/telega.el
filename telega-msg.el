@@ -640,7 +640,7 @@ non-nil."
                (let ((filename (telega--tl-get file :local :path)))
                  (if (memq 'animation telega-open-message-as-file)
                      (telega-open-file filename msg)
-                   (if (and telega-animation-play-inline
+                   (if (and (telega-animation-play-inline-p anim)
                             ;; *NOT* called interactively
                             (or (not saved-this-command)
                                 (not saved-current-prefix-arg)))

@@ -376,9 +376,12 @@ Requires `tgs2png' program from https://github.com/zevlg/tgs2png"
   :type 'integer
   :group 'telega)
 
-(defcustom telega-animation-play-inline t
-  "*Non-nil to play animation inside telega."
-  :type 'boolean
+(defcustom telega-animation-play-inline 10
+  "*Non-nil to play animation inside telega.
+If number, then play animation inline only if animation is shorter
+then this number of seconds."
+  :package-version '(telega . "0.7.45")
+  :type '(or boolean integer)
   :group 'telega)
 
 (defcustom telega-animation-download-saved nil

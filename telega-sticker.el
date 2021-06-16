@@ -283,7 +283,9 @@ Return path to png file."
                                               ?w webp-filename))
                'try-host-cmd-first)))
         (if convert-cmd
-            (shell-command-to-string convert-cmd)
+            (progn
+              (telega-debug "WEBP -> PNG: %s" convert-cmd)
+              (shell-command-to-string convert-cmd))
           (telega-help-message 'no-dwebp-binary
               "Can't find `%s' binary.  `webp' system package not installed?"
             (car telega-sticker--convert-cmd)))))
@@ -966,6 +968,16 @@ PROPS are additional properties to the animation button."
   "Choose saved animation FOR-CHAT."
   (interactive (list telega-chatbuf--chat))
   (telega-animation-choose for-chat (telega--getSavedAnimations) t))
+
+(defun telega-animation-play-inline-p (animation)
+  "Return non-nil if ANIMATION should be played inside Emacs.
+Its behavior is controlled by `telega-animation-play-inline' and
+`telega-open-message-as-file' custom options."
+  (unless (memq 'animation telega-open-message-as-file)
+    (if (numberp telega-animation-play-inline)
+        (>= telega-animation-play-inline
+            (or (plist-get animation :duration) 0))
+      telega-animation-play-inline)))
 
 (provide 'telega-sticker)
 

@@ -167,7 +167,7 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
     (when (eq (telega--tl-type status) 'userStatusOnline)
       (plist-put user :telega-last-online (telega-time-seconds)))
 
-    ;; NOTE: do not track me online status changes
+    ;; NOTE: do not track online status changes on me
     (unless (telega-me-p user)
       (telega-user--update user event))
     ))
