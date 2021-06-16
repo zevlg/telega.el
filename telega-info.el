@@ -429,9 +429,14 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins descr "\n")))
 
     (telega-ins "\n")
-    (telega-ins-fmt "Members: %d users (%d online)\n"
+    (telega-ins-fmt "Members: %d users (%d online, %d admins)\n"
       (plist-get basicgroup :member_count)
-      (or (plist-get chat :x-online-count) 0))
+      (or (plist-get chat :x-online-count) 0)
+      (length (cl-remove-if-not
+               (lambda (member)
+                 (memq (telega--tl-type (plist-get member :status))
+                       '(chatMemberStatusCreator chatMemberStatusAdministrator)))
+               members)))
     (telega-ins--chat-members members)
     ))
 
@@ -648,9 +653,10 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins restr-reason "\n")))
 
     (telega-ins "\n")
-    (telega-ins-fmt "Members: %d (%d online)\n"
+    (telega-ins-fmt "Members: %d (%d online, %d admins)\n"
       (plist-get full-info :member_count)
-      (or (plist-get chat :x-online-count) 0))
+      (or (plist-get chat :x-online-count) 0)
+      (plist-get full-info :administrator_count))
     (when (plist-get full-info :can_get_members)
       ;; Asynchronously fetch/insert supergroup members
       (telega--getSupergroupMembers supergroup nil nil nil
