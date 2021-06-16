@@ -283,7 +283,8 @@ plist like:
      >>> []
      #+end_example
 
-** Client Side filtering for advert messages in channels
+** DONE Client Side filtering for advert messages in channels
+   CLOSED: [2021-06-17 Чт 00:30]
 
    Mark message with ~telega-msg-ignore~ if it contains keyboard
    button with some link such as t.me/joinchat/xxx.  Much like this
@@ -292,7 +293,9 @@ plist like:
    Write something like AdBlock for messages using client side
    filtering. TODO so, write messages matching functionality like chat
    filters.
-   
+
+   **DONE**: by [[file:../contrib/telega-adblock.el]]
+
 ** Do not show input prompt for chats you can't write into
 
    see https://t.me/emacs_telega/3775

@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-04-29 Чт 03:19 -->
+<!-- 2021-06-17 Чт 00:27 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.41)</title>
+<title>Telega Manual (v0.7.45)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.41)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.45)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -332,6 +332,7 @@
 <li><a href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</a></li>
 <li><a href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
 <li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
 </ul>
@@ -491,7 +492,7 @@ support (graphical).
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.3.
+version greater or equal to 1.7.4.
 </p>
 
 <p>
@@ -934,7 +935,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgd4437bd">
+<pre class="example" id="org9e25ef7">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -952,7 +953,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org2ff8460">
+<pre class="example" id="org8e285ef">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -982,7 +983,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org83a9304">
+<pre class="example" id="org871b8dc">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1083,7 +1084,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org3982aef">
+<pre class="example" id="org116cc7a">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1997,7 +1998,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgc463be2">
+<pre class="example" id="orge168f35">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2174,7 +2175,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0f30ad6">
+<pre class="example" id="orgefef361">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2256,7 +2257,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org5fcfbfb">
+<pre class="example" id="org390442b">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2273,7 +2274,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org42ebc51">
+<pre class="example" id="orgf472156">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2514,7 +2515,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org5222fd1">
+<pre class="example" id="org5db52cd">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt; 
 </pre>
@@ -3463,11 +3464,11 @@ User Option: <code>telega-autoplay-messages</code>
 </p>
 
 <p>
-Message types to automatically play when received. 
+Message to automatically play when received. 
 </p>
 
 <p>
-Default value: <code>(messageAnimation)</code>
+Default value: <code>(messageAnimation messageSticker)</code>
 </p></li>
 </ul>
 </div>
@@ -3687,7 +3688,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org16bc311">
+<pre class="example" id="orge4b64e6">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4142,6 +4143,74 @@ List of keymaps names to apply transient for.
 
 <p>
 Default value: <code>(telega-prefix-map telega-sort-map telega-filter-map telega-describe-map telega-folder-map telega-voip-map telega-root-fastnav-map telega-root-view-map telega-chatbuf-fastnav-map)</code>
+</p></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-telega-adblockel--block-advertisement-messages" class="outline-3">
+<h3 id="telega-adblockel--block-advertisement-messages"><a class="self-link" href="#telega-adblockel--block-advertisement-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-adblock.el</i> &#x2013; Block advertisement messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<div class="outline-text-3" id="text-telega-adblockel--block-advertisement-messages">
+<p>
+Telegram channels often advertises another channels in annoying
+manner.  Sometimes adverts has inappropriate content.  This mode
+uses <a href="#client-side-messages-ignoring">client side messages
+ignoring</a> functionality to block such advert messages.
+</p>
+
+<p>
+To enable advertisement blocking use:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(telega-adblock-mode 1)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-adblock-for</code> 
+</p>
+
+<p>
+Chat Filter defines for which chats to apply adblock logic. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">and</span>
+ (type channel)
+ (not verified))
+</pre>
+</div></li>
+
+<li><p>
+User Option: <code>telega-adblock-verbose</code> 
+</p>
+
+<p>
+Non-nil to show (in echo area) reason why message is ignored. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-adblock-max-distance</code> 
+</p>
+
+<p>
+Maximum string-distance for self-link.
+Used for heuristics to avoid blocking non-advert messages in some channels.
+Set it to less value if you see some advert messages are not blocked. 
+</p>
+
+<p>
+Default value: <code>4</code>
 </p></li>
 </ul>
 </div>
