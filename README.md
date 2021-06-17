@@ -72,11 +72,12 @@ In some random order:
 - [x] Expressive `ibuffer`-like chats filtering
 - [x] Powerful [chats sorting](https://zevlg.github.io/telega.el/#sorting-chats)
 - [x] Custom order for chats (some chats on top, some chats on bottom, etc)
-- [x] Client side messages filtering
+- [x] [Client side messages filtering](https://zevlg.github.io/telega.el/index-master.html#client-side-messages-ignoring)
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
 - [x] [Messages squashing](https://zevlg.github.io/telega.el/#telega-squash-message-mode) minor mode.
 - [x] [Highlight code blocks](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
 - [x] [Emacs Stories](https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard) - share your Emacs experience with other Emacs users.
+- [x] [AdBlock](https://zevlg.github.io/telega.el/index-master.html#telega-adblockel--block-advertisement-messages) - block advertisement messages in Telegram channels.
 
 And much more.
 
