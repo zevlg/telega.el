@@ -361,7 +361,7 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
 (defun telega--on-updateChatLastMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    ;; NOTE: `:last_message' is unset when gap is create in the chat
+    ;; NOTE: `:last_message' is unset when gap is created in the chat
     ;; This case is handled in the `telega-chatbuf--last-msg-loaded-p'
     ;; See https://github.com/tdlib/td/issues/896
     (plist-put chat :last_message (plist-get event :last_message))
@@ -461,11 +461,20 @@ NOTE: we store the number as custom chat property, to use it later."
       (telega-chat--mark-dirty chat event))))
 
 (defun telega--on-initial-chats-fetch (chats)
-  "Ensure chats from RESULT exists, and continue fetching chats."
+  "Process initially fetched CHATS, and continue fetching chats."
   (if (> (length chats) 0)
-      ;; Continue fetching chats, redisplaying custom filters
-      (telega--getChats (car (last chats)) (list :@type "chatListMain")
-        #'telega--on-initial-chats-fetch)
+      (progn
+        ;; Check `:last_message' of initially fetched chats for client
+        ;; side messages ignoring
+        (dolist (chat chats)
+          (when-let ((last-message (plist-get chat :last_message)))
+            (telega-msg-run-ignore-predicates last-message)
+            (when (telega-msg-ignored-p last-message)
+              (telega-chat--mark-dirty chat))))
+
+        ;; Continue fetching chats
+        (telega--getChats (car (last chats)) (list :@type "chatListMain")
+          #'telega--on-initial-chats-fetch))
 
     ;; All chats has been fetched
     (telega-status--set nil "")
