@@ -3345,7 +3345,7 @@ from message at point."
               (car fav-ids))))
     (unless next-fav-id
       (user-error "No favorite messages in the chat"))
-    (telega-chatbuf--goto-msg next-fav-id 'highlight)))
+    (telega-chat--goto-msg telega-chatbuf--chat next-fav-id 'highlight)))
 
 (defun telega-chatbuf-goto-reply-markup-message ()
   "Goto chat's reply markup message."
@@ -4373,6 +4373,7 @@ If called interactively then copy generated link into the kill ring."
 
 (defun telega-chatbuf--goto-msg (msg-id &optional highlight)
   "In chatbuf goto message denoted by MSG-ID.
+Goto message only if it is already displayed in the chatbuf.
 If HIGHLIGHT is non-nil, then momentary highlight the message.
 Return non-nil on success."
   (when-let ((node (telega-chatbuf--node-by-msg-id msg-id)))
