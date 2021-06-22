@@ -63,7 +63,7 @@ RUN cd /telega-server && \
 FROM alpine:latest
 
 RUN set +x && apk update && apk upgrade && \
-    apk add --update zlib-dev openssl ffmpeg libwebp-tools bash
+    apk add --update zlib-dev openssl ffmpeg libwebp-tools psmisc bash
 
 # To make ALSA work
 COPY etc/asound.conf /etc/asound.conf
