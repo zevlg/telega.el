@@ -253,19 +253,21 @@ If OFFLINE-P is non-nil then do not request the telega-server."
   ;; NOTE: Saved Messages has same id as me user
   (telega-chat-get telega--me-id 'offline))
 
-(defun telega-chat--info (chat)
+(defun telega-chat--info (chat &optional locally-p)
   "Return info structure for the CHAT.
-It could be user, secretChat, basicGroup or supergroup."
+It could be user, secretChat, basicGroup or supergroup.
+If LOCALLY-P is non-nil, then return nil if chat info is not available
+without request to the server."
   (let ((chat-type (plist-get chat :type)))
     (cl-ecase (telega--tl-type chat-type)
       (chatTypePrivate
-       (telega--info 'user (plist-get chat-type :user_id)))
+       (telega--info 'user (plist-get chat-type :user_id) locally-p))
       (chatTypeSecret
-       (telega--info 'secretChat (plist-get chat-type :secret_chat_id)))
+       (telega--info 'secretChat (plist-get chat-type :secret_chat_id) locally-p))
       (chatTypeBasicGroup
-       (telega--info 'basicGroup (plist-get chat-type :basic_group_id)))
+       (telega--info 'basicGroup (plist-get chat-type :basic_group_id) locally-p))
       (chatTypeSupergroup
-       (telega--info 'supergroup (plist-get chat-type :supergroup_id))))))
+       (telega--info 'supergroup (plist-get chat-type :supergroup_id) locally-p)))))
 (defalias 'telega-chat--secretchat 'telega-chat--info)
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
@@ -371,13 +373,20 @@ delimiting with WITH-USERNAME-DELIM."
                     (progn
                       (cl-assert (telega-chat-user chat 'inc-bots))
                       (telega-user-title
-                       (telega-chat-user chat 'inc-bots) 'name)))))
+                       (telega-chat-user chat 'inc-bots) 'name))))
+         (info (telega-chat--info chat 'offline)))
     (when with-username-delim
       (when-let ((username (telega-chat-username chat)))
         (setq title (concat title (if (stringp with-username-delim)
                                       with-username-delim
                                     " ")
                             "@" username))))
+    (when (plist-get info :is_scam)
+      (setq title (concat title " " (propertize (telega-i18n "lng_scam_badge")
+                                                'face 'error))))
+    (when (plist-get info :is_fake)
+      (setq title (concat title " " (propertize (telega-i18n "lng_fake_badge")
+                                                'face 'error))))
 
     (if-let ((cctfun (cdr (cl-find chat telega-chat-title-custom-for
                                    :test #'telega-chat-match-p
