@@ -289,22 +289,17 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins share-text))
       (telega-ins "\n"))
 
-    ;; Bot info
-    (when-let ((bot-info (plist-get full-info :bot_info)))
-      (when-let ((bot-descr (telega-tl-str bot-info :description)))
-        (telega-ins--labeled "Bot info: " nil
-          (telega-ins bot-descr))
+    ;; Bot Commands
+    (when-let ((bot-cmds (plist-get full-info :commands)))
+      (telega-ins "Bot commands: \n")
+      (seq-doseq (cmd bot-cmds)
+        (telega-ins "  ")
+        (telega-ins--with-attrs (list :min 10 :align 'left)
+          (telega-ins "/" (telega-tl-str cmd :command)))
+        (when-let ((cmd-descr (telega-tl-str cmd :description)))
+          (telega-ins--column nil nil
+            (telega-ins " - " cmd-descr)))
         (telega-ins "\n"))
-      (when-let ((bot-cmds (append (plist-get bot-info :commands) nil)))
-        (telega-ins "Bot cmds: \n")
-        (dolist (cmd bot-cmds)
-          (telega-ins "  ")
-          (telega-ins--with-attrs (list :min 10 :align 'left)
-            (telega-ins "/" (telega-tl-str cmd :command)))
-          (when-let ((cmd-descr (telega-tl-str cmd :description)))
-            (telega-ins--column nil nil
-              (telega-ins " - " cmd-descr)))
-          (telega-ins "\n")))
       (telega-ins "\n"))
 
     (when-let ((chats-in-common (telega-user--chats-in-common user)))

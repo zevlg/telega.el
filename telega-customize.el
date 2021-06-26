@@ -219,6 +219,13 @@ Each element is cons cell, where car is Chat Filter, and cdr is color."
   :type 'list
   :group 'telega)
 
+(defcustom telega-company-tooltip-always-below t
+  "Non-nil to show company tooltip always below the point.
+Done by recentering point in the chatbuf."
+  :package-version '(telega . "0.7.47")
+  :type 'boolean
+  :group 'telega)
+
 ;;; ellit-org: inline-bot-options
 ;; - {{{user-option(telega-known-inline-bots,2)}}}
 (defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")

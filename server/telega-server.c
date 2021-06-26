@@ -73,7 +73,7 @@ void pngext_main(int ac, char** av);
 char* logfile = NULL;
 size_t logfile_size = 4 * 1024 * 1024;
 int verbosity = 5;
-const char* version = "0.7.11";
+const char* version = "0.7.12";
 
 /* true when stdin_loop() is running */
 volatile bool server_running;
@@ -138,12 +138,6 @@ telega_output_json(const char* otype, const char* json)
 
         tdat_drop(&json_src);
         tdat_drop(&plist_dst);
-}
-
-static void
-on_error_cb(const char* errmsg)
-{
-        telega_output_json("error", errmsg);
 }
 
 static void*
@@ -342,7 +336,6 @@ main(int ac, char** av)
 
         server_running = true;
 
-        td_set_log_fatal_error_callback(on_error_cb);
         void* tdlib_cln = td_json_client_create();
         assert(tdlib_cln != NULL);
         pthread_t td_thread;

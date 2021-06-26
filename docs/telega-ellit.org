@@ -294,14 +294,17 @@ Some people starts Emacs in daemon mode, i.e. =emacs --daemon=.  Such
 Emacs instance has no frames, frames are created when needed and
 connects to the daemon process.
 
-=telega= autodetects values for some variables at start by examining
-current frame parameters and window system possibilities.  This won't
-work in daemon mode.  You need to explicitly specify values for that
-variables.  Most notable options are:
+=telega= autodetects values for some variables at load time by
+examining current frame parameters and window system possibilities.
+This won't work in daemon mode.  You need to explicitly specify values
+for that variables.  Most notable options are:
 - {{{user-option(telega-use-images, 2)}}}
 - {{{user-option(telega-emoji-font-family, 2)}}}
 - {{{user-option(telega-emoji-use-images, 2)}}}
 - {{{user-option(telega-online-status-function, 2)}}}
+
+Setting ~telega-use-images~ **before** loading =telega= is essential,
+because many other custom options depends on its value.
 
 * Telega glossary
 
@@ -787,6 +790,9 @@ chatbuf.
 Consider also using =company-posframe= Emacs package (in MELPA), so
 chatbuf's contents remain untouched when completion menu pops above
 the chatbuf prompt.
+
+If you don't like =company-posframe=, consider option:
+- {{{user-option(telega-company-tooltip-always-below, 2)}}}
 
 ** Sending messages via bots
 

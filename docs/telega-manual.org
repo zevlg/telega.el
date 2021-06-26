@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.45)
+#+TITLE: Telega Manual (v0.7.47)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -440,10 +440,10 @@ Some people starts Emacs in daemon mode, i.e. =emacs --daemon=.  Such
 Emacs instance has no frames, frames are created when needed and
 connects to the daemon process.
 
-=telega= autodetects values for some variables at start by examining
-current frame parameters and window system possibilities.  This won't
-work in daemon mode.  You need to explicitly specify values for that
-variables.  Most notable options are:
+=telega= autodetects values for some variables at load time by
+examining current frame parameters and window system possibilities.
+This won't work in daemon mode.  You need to explicitly specify values
+for that variables.  Most notable options are:
 - User Option: ~telega-use-images~ 
 
   Non-nil to show images.
@@ -469,6 +469,9 @@ variables.  Most notable options are:
   See https://github.com/zevlg/telega.el/issues/171 
 
   Default value: ~telega-focus-state~
+
+Setting ~telega-use-images~ **before** loading =telega= is essential,
+because many other custom options depends on its value.
 
 * Telega glossary
 :PROPERTIES:
@@ -684,10 +687,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1902,6 +1907,14 @@ chatbuf.
 Consider also using =company-posframe= Emacs package (in MELPA), so
 chatbuf's contents remain untouched when completion menu pops above
 the chatbuf prompt.
+
+If you don't like =company-posframe=, consider option:
+- User Option: ~telega-company-tooltip-always-below~ 
+
+  Non-nil to show company tooltip always below the point.
+  Done by recentering point in the chatbuf. 
+
+  Default value: ~t~
 
 ** Sending messages via bots
 :PROPERTIES:
