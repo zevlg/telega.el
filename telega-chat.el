@@ -1652,12 +1652,12 @@ Update modeline as well."
        telega-chatbuf--ewoc (telega-chatbuf--footer)))))
 
 (defun telega-chatbuf--check-focus-change ()
-  "Check is some messages need to be viewed."
+  "Called when fram showing chatbuf changes its focus."
+  ;; NOTE: we treat focus changes the same way as buffer switching
   (cl-assert (eq major-mode 'telega-chat-mode))
-  (when (telega-focus-state)
-    ;; NOTE: on focus-in view all visible messages, see
-    ;; https://github.com/zevlg/telega.el/issues/81
-    (telega-chatbuf--view-msg-at (point))))
+  (if (telega-focus-state)
+      (telega-chatbuf--switch-in)
+    (telega-chatbuf--switch-out 'focus-out)))
 
 (define-derived-mode telega-chat-mode nil "◁Chat"
   "The mode for telega chat buffer.
@@ -4006,8 +4006,9 @@ If current buffer is dired, then send all marked files."
             (telega-chatbuf-attach-file file))))
       )))
 
-(defun telega-chatbuf--switch-out ()
-  "Called when switching from chat buffer."
+(defun telega-chatbuf--switch-out (&optional focus-out-p)
+  "Called when switching from chat buffer.
+FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
   (telega-debug "Switch %s: %s" (propertize "OUT" 'face 'bold)
                 (buffer-name))
   (telega--closeChat telega-chatbuf--chat)
@@ -4031,12 +4032,13 @@ If current buffer is dired, then send all marked files."
 
   ;; NOTE: temporary move point out of prompt, so newly incoming
   ;; messages won't get automatically read
-  (when (and (not (get-buffer-window))
+  (when (and (or focus-out-p (not (get-buffer-window)))
              (>= (point) telega-chatbuf--input-marker))
     (setq telega-chatbuf--refresh-point
           (- (point) telega-chatbuf--input-marker))
     (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
-    (telega-buffer--hack-win-point))
+    (unless focus-out-p
+      (telega-buffer--hack-win-point)))
   )
 
 (defun telega-chatbuf--switch-in ()

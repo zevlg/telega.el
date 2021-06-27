@@ -305,8 +305,11 @@ FORCE is used for testing only, should not be used in real code."
   ;;  3. Message already has been read (see ~telega-msg-seen-p~)
   ;;  4. Message is older then 1 min (to avoid poping up messages on
   ;;     laptop wakeup)
-  ;;  5. Message is currently observable in chatbuf
+  ;;  5. Message is currently observable in chatbuf chatbuf must be
+  ;;     selected and focused in (not having
+  ;;     `telega-chatbuf--refresh-point')
   ;;  6. *TODO*: If Emacs frame has focus and root buffer is current
+  ;;     ARGUABLE!
   (unless (or (telega-msg-ignored-p msg)
               (> (- (time-to-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
@@ -317,7 +320,9 @@ FORCE is used for testing only, should not be used in real code."
                             chat :disable_mention_notifications)
                            (not (plist-get msg :contains_unread_mention))))
                   (telega-msg-seen-p msg chat)
-                  (telega-msg-observable-p msg chat))
+                  (and (not (with-telega-chatbuf chat
+                              telega-chatbuf--refresh-point))
+                       (telega-msg-observable-p msg chat)))
         (if (> telega-notifications-delay 0)
             (run-with-timer telega-notifications-delay nil
                             'telega-notifications--chat-msg0 msg)
