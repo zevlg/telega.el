@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Jun 16 11:10:15 2021
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 ;; #+begin_src emacs-lisp
 ;; (telega-adblock-mode 1)
 ;; #+end_src
-;; 
+;;
 ;; Customizable options:
 ;; - {{{user-option(telega-adblock-for, 2)}}}
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
@@ -64,9 +64,8 @@ Set it to less value if you see some advert messages are not blocked."
 
 (defun telega-adblock-msg-extract-links (msg)
   "Extract all links from the message."
-  (let* ((reply-markup (plist-get msg :reply_markup))
-         (reply-markup-rows (plist-get reply-markup :rows))
-         (ret-links nil))
+  (let ((reply-markup (plist-get msg :reply_markup))
+        (ret-links nil))
     ;; Extract links from the reply-markup keyboard
     (seq-doseq (row (plist-get reply-markup :rows))
       (seq-doseq (kbd-button row)
@@ -142,7 +141,8 @@ an URL."
          ;; to another channel.
          (cl-some (apply-partially #'telega-adblock-link-advert-p chat)
                   (telega-adblock-msg-extract-links msg)))))
-         
+
+;;;###autoload
 (define-minor-mode telega-adblock-mode
   "Global mode to block ads for `telega-adblock-for' chats."
   :init-value nil :global t :group 'telega-modes

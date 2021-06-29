@@ -43,8 +43,7 @@
              (fboundp 'org-store-link-props))
     (defalias 'org-link-store-props 'org-store-link-props)))
 
-(require 'telega-tme)
-(require 'telega-util)
+(require 'telega)
 
 (defun org-telega-follow-link (link)
   "Follow a telegram LINK to chat or message."
@@ -74,7 +73,20 @@ message, file or photo."
          ;; NOTE: strip leading "tg:"
          (org-link (when link (substring link 3))))
     (when org-link
-      (org-link-store-props :type "telega" :link org-link)
+      (org-link-store-props
+       :type "telega" :link org-link
+       :description
+       (concat (telega-symbol 'telegram)
+               (if (telega-chat-p chat-or-msg)
+                   (telega-chat-title-with-brackets chat-or-msg)
+                 (cl-assert (telega-msg-p chat-or-msg))
+                 (telega-ins--as-string
+                  (telega-ins--msg-sender
+                   (telega-msg-sender chat-or-msg) 'short)
+                  (telega-ins ": ")
+                  (telega-ins--with-attrs
+                      (list :max 20 :align 'left :elide t)
+                    (telega-ins--content-one-line chat-or-msg))))))
       org-link)))
 
 (defun org-telega-complete-link ()
