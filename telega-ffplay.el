@@ -85,6 +85,16 @@ Return list of available codecs."
 
 (defun telega-ffplay--sentinel (proc _event)
   "Sentinel for the ffplay process."
+  ;; NOTE: Killing "docker exec" process won't kill underlining
+  ;; process running in the docker container, because process could be
+  ;; running under shell
+  (when telega-use-docker
+    (shell-command-to-string
+     ;; NOTE: We use killall from "psmisc" package, this killall tool
+     ;; supports --wait flag to wait for process to terminate
+     (telega-docker-exec-cmd "/usr/bin/killall --quiet --wait ffmpeg ffplay"
+                             nil nil 'no-error)))
+
   (telega-debug "ffplay SENTINEL: status=%S, live=%S"
                 (process-status proc) (process-live-p proc))
 
@@ -161,6 +171,7 @@ Return newly created process."
                      (list (expand-file-name filename))))
         (ffplay-bin (or (executable-find "ffplay")
                         (error "ffplay not found in `exec-path'"))))
+    (telega-debug "ffplay START: %s" (apply #'concat ffplay-bin " " args))
     (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
       (let ((proc (apply 'start-process "ffplay" (current-buffer)
                          ffplay-bin args)))
@@ -230,11 +241,11 @@ Return cons cell with width and height if resolution is extracted, nil
 otherwise."
   (let ((raw-res (shell-command-to-string
                   (telega-docker-exec-cmd
-                    (concat "ffprobe -v error "
-                            "-show_entries stream=width,height "
-                            "-of default=nokey=1:noprint_wrappers=1 "
-                            "\"" (expand-file-name filename) "\"")
-                    'try-host-cmd-first))))
+                   (concat "ffprobe -v error "
+                           "-show_entries stream=width,height "
+                           "-of default=nokey=1:noprint_wrappers=1 "
+                           "\"" (expand-file-name filename) "\"")
+                   'try-host-cmd-first))))
     (when (string-match "\\([0-9]+\\)\n\\([0-9]+\\)" raw-res)
       (cons (string-to-number (match-string 1 raw-res))
             (string-to-number (match-string 2 raw-res))))))
@@ -271,7 +282,11 @@ Return nil if no image is available."
 
       ;; NOTE: sentinel might be called multiple times with 'exit
       ;; status, handle this situation simple by unsetting callback
-      (set-process-plist proc (plist-put proc-plist :callback nil)))))
+      (set-process-plist proc (plist-put proc-plist :callback nil))
+
+      ;; NOTE: `telega-ffplay--sentinel' has some docker-related
+      ;; logic, so call it at the end
+      (telega-ffplay--sentinel proc _event))))
 
 (defun telega-ffplay--png-filter (proc output)
   "Filter for png extractor, see `telega-ffplay-to-png'."
@@ -334,10 +349,11 @@ Return newly created proc."
                       (concat " -f " fps-ratio))))
            (shell-cmd
             (if (and telega-use-docker (member "-an" ffmpeg-args))
+                ;; NOTE: play without sound requested
                 ;; Can run both ffmpeg and pngextractor in docker
                 (telega-docker-exec-cmd
-                  (format "sh -c \"ffmpeg %s | telega-server %s\""
-                          ffmpeg-cmd-args pngext-cmd-args))
+                 (format "sh -c \"ffmpeg %s | telega-server %s\""
+                         ffmpeg-cmd-args pngext-cmd-args))
               (format "%s %s | %s %s"
                       (or (executable-find "ffmpeg")
                           (error "ffmpeg not found in `exec-path'"))
