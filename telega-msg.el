@@ -395,11 +395,7 @@ If CALLBACK is specified, then get reply message asynchronously."
         (telega-open-file (telega--tl-get file :local :path) msg))
 
     (telega-video-player-run
-     (telega--tl-get file :local :path) done-callback)
-    ;; (telega-ffplay-run
-    ;;  (telega--tl-get file :local :path) ffplay-callback
-    ;;  (cdr (assq 'video telega-open-message-ffplay-args)))
-    ))
+     (telega--tl-get file :local :path) done-callback)))
 
 (defun telega-msg--play-video-incrementally (msg file)
   "Start playing video FILE while still downloading FILE."
