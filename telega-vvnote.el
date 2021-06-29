@@ -364,7 +364,9 @@ Return filename with recorded voice note."
   (let* ((telega-vvnote--record-progress 0)
          (note-file (telega-temp-name "voice-note" ".mp4"))
          (capture-proc (telega-ffplay-run-command
-                        (concat telega-vvnote-voice-cmd " " note-file)
+                        (telega-docker-exec-cmd
+                         (concat telega-vvnote-voice-cmd " " note-file)
+                         'try-host-cmd-first)
                         #'telega-vvnote--record-callback))
          (done-key
           (progn
