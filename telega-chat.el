@@ -740,7 +740,7 @@ Specify non-nil BAN to ban this user in this CHAT."
           chat '(or (type secret)
                     (my-permission :can_delete_messages)))))
     (when (or (> ttl 0) can-change-ttl-p)
-      (telega-ins "Messages TTL: " 
+      (telega-ins "Messages TTL: "
                   (if (> ttl 0)
                       (telega-duration-human-readable ttl 2)
                     ;; TODO: i18n
@@ -3540,12 +3540,17 @@ This attachment can be used only in private chats."
 (defun telega-chatbuf-attach-video (filename &optional ttl)
   "Attach FILENAME as video to the chatbuf input."
   (interactive (list (read-file-name "Video: ")))
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'Video))
-        (resolution (telega-ffplay-get-resolution filename)))
+  ;; NOTE: `telega-chatbuf--gen-input-file' might return another path
+  ;; (accessible by docker) while FILENAME might not be accessible by
+  ;; docker.  Docker might be used in `telega-ffplay-get-resolution'
+  ;; and `telega-ffplay-get-duration'
+  (let* ((ifile (telega-chatbuf--gen-input-file filename 'Video))
+         (i-filename (plist-get ifile :path))
+         (resolution (telega-ffplay-get-resolution i-filename)))
     (telega-chatbuf-input-insert
      (nconc (list :@type "inputMessageVideo"
                   :video ifile
-                  :duration (round (telega-ffplay-get-duration filename)))
+                  :duration (round (telega-ffplay-get-duration i-filename)))
             (when resolution
               (list :width (car resolution) :height (cdr resolution)))
             (when ttl
@@ -3561,14 +3566,17 @@ This attachment can be used only in private chats."
 (defun telega-chatbuf-attach-audio (filename)
   "Attach FILENAME as audio to the chatbuf input."
   (interactive (list (read-file-name "Audio: ")))
-  (let ((ifile (telega-chatbuf--gen-input-file filename 'Audio))
-        (metadata (telega-ffplay-get-metadata filename)))
+  ;; NOTE: Comments about `i-filename' see in
+  ;; `telega-chatbuf-attach-video'
+  (let* ((ifile (telega-chatbuf--gen-input-file filename 'Audio))
+         (i-filename (plist-get ifile :path))
+         (metadata (telega-ffplay-get-metadata i-filename)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageAudio"
            :audio ifile
            :title (cdr (assoc "title" metadata))
            :performer (cdr (assoc "artist" metadata))
-           :duration (round (telega-ffplay-get-duration filename))
+           :duration (round (telega-ffplay-get-duration i-filename))
            ))))
 
 (defun telega-chatbuf-attach-media (filename &optional as-file-p)
@@ -3598,16 +3606,20 @@ video-note.  Otherwise record video note inplace.
   (interactive "P")
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
+
+  ;; NOTE: Comments about `i-filename' see in the
+  ;; `telega-chatbuf-attach-video'
   (let* ((filename (with-telega-chatbuf-action "RecordingVideoNote"
                      (if as-file-p
                          (read-file-name "Video Note: ")
                        (telega-vvnote-video--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VideoNote))
+         (i-filename (plist-get ifile :path))
          (frame1 (plist-get telega-vvnote-video--preview :first-frame)))
     (telega-chatbuf-input-insert
      (nconc
       (list :@type "inputMessageVideoNote"
-            :duration (round (telega-ffplay-get-duration filename))
+            :duration (round (telega-ffplay-get-duration i-filename))
             :video_note ifile)
       (when frame1
         `(:thumbnail
@@ -3624,15 +3636,19 @@ voice-note.  Otherwise record voice note inplace.
   (interactive "P")
   ;; TODO: start voice note generation process
   ;; see https://github.com/tdlib/td/issues/126
+
+  ;; NOTE: Comments about `i-filename' see in the
+  ;; `telega-chatbuf-attach-video'
   (let* ((filename (with-telega-chatbuf-action "RecordingVoiceNote"
                      (if as-file-p
                          (read-file-name "Voice Note: ")
                        (telega-vvnote-voice--record))))
-         (ifile (telega-chatbuf--gen-input-file filename 'VoiceNote)))
+         (ifile (telega-chatbuf--gen-input-file filename 'VoiceNote))
+         (i-filename (plist-get ifile :path)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageVoiceNote"
-           :waveform (telega-vvnote--waveform-for-file filename)
-           :duration (round (telega-ffplay-get-duration filename))
+           :waveform (telega-vvnote--waveform-for-file i-filename)
+           :duration (round (telega-ffplay-get-duration i-filename))
            :voice_note ifile))))
 
 (defun telega-chatbuf--attach-tmp-photo (tmpfile &optional doc-p)
@@ -3795,14 +3811,17 @@ If `\\[universal-argument]' is given, then attach animation from
 a file, otherwise choose animation from list of saved animations."
   (interactive (when current-prefix-arg
                  (list (read-file-name "Animation File: "))))
+  ;; NOTE: Comments about `i-filename' see in the
+  ;; `telega-chatbuf-attach-video'
   (if animation-file
-      (let ((ifile (telega-chatbuf--gen-input-file animation-file 'Animation))
-            (resolution (telega-ffplay-get-resolution animation-file)))
+      (let* ((ifile (telega-chatbuf--gen-input-file animation-file 'Animation))
+             (i-filename (plist-get ifile :path))
+             (resolution (telega-ffplay-get-resolution i-filename)))
         (telega-chatbuf-input-insert
          (nconc (list :@type "inputMessageAnimation"
                       :animation ifile
                       :duration
-                      (round (telega-ffplay-get-duration animation-file)))
+                      (round (telega-ffplay-get-duration i-filename)))
                 (when resolution
                   (list :width (car resolution) :height (cdr resolution))))))
 
