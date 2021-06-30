@@ -465,12 +465,14 @@ NOTE: we store the number as custom chat property, to use it later."
   (if (> (length chats) 0)
       (progn
         ;; Check `:last_message' of initially fetched chats for client
-        ;; side messages ignoring
+        ;; side messages ignoring.  Also trigger reordering, since
+        ;; ignored last message might affect chat order, see
+        ;; `contrib/telega-adblock.el'
         (dolist (chat chats)
           (when-let ((last-message (plist-get chat :last_message)))
             (telega-msg-run-ignore-predicates last-message)
             (when (telega-msg-ignored-p last-message)
-              (telega-chat--mark-dirty chat))))
+              (telega-chat--update chat (list :@type "telegaChatReorder")))))
 
         ;; Continue fetching chats
         (telega--getChats (car (last chats)) (list :@type "chatListMain")

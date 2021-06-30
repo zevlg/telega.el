@@ -36,28 +36,47 @@
 ;;
 ;; Customizable options:
 ;; - {{{user-option(telega-adblock-for, 2)}}}
+;; - {{{user-option(telega-adblock-chat-order-if-last-message-ignored, 2)}}}
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
 
 ;;; Code:
 (require 'telega)
 
+(defgroup telega-adblock nil
+  "Customisation for telega adblock mode."
+  :prefix "telega-adblock-"
+  :group 'telega-modes)
+
 (defcustom telega-adblock-for '(and (type channel) (not verified))
   "Chat Filter defines for which chats to apply adblock logic."
   :type 'list
-  :group 'telega-modes)
+  :group 'telega-adblock)
 
 (defcustom telega-adblock-max-distance 4
   "Maximum string-distance for self-link.
 Used for heuristics to avoid blocking non-advert messages in some channels.
-Set it to less value if you see some advert messages are not blocked."
+Set it to less value if you see some advert messages not being blocked."
   :type 'integer
-  :group 'telega-modes)
+  :group 'telega-adblock)
 
 (defcustom telega-adblock-verbose nil
   "Non-nil to show (in echo area) reason why message is ignored."
   :type 'boolean
-  :group 'telega-modes)
+  :group 'telega-adblock)
+
+(defcustom telega-adblock-chat-order-if-last-message-ignored nil
+  "Custom chat order for chats with last message being ignored by adblock.
+Set to \"1\" to put chats with ignored last message to the bottom of
+the rootbuf."
+  :type '(or string null)
+  :group 'telega-adblock)
+
+;; TODO: allow links to known chats
+(defcustom telega-adblock-allow-links-to-known-chats t
+  "Non-nil to not block messages with links to known chats."
+  :type 'boolean
+  :group 'telega-adblock)
 
 ;; TODO: heuristics about multiple links to same url
 ;; to block messages like https://t.me/c/1127375190/3747
@@ -142,12 +161,24 @@ an URL."
          (cl-some (apply-partially #'telega-adblock-link-advert-p chat)
                   (telega-adblock-msg-extract-links msg)))))
 
+(defun telega-adblock--chat-order-if-last-msg-ignored (orig-fun chat &rest args)
+  (if (and telega-adblock-chat-order-if-last-message-ignored
+           (eq (telega-msg-ignored-p (plist-get chat :last_message))
+               'telega-adblock-msg-ignore-p))
+      telega-adblock-chat-order-if-last-message-ignored
+    (apply orig-fun chat args)))
+
 ;;;###autoload
 (define-minor-mode telega-adblock-mode
   "Global mode to block ads for `telega-adblock-for' chats."
   :init-value nil :global t :group 'telega-modes
   (if telega-adblock-mode
-      (add-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)
+      (progn
+        (add-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)
+        (advice-add 'telega-chat-order
+                    :around #'telega-adblock--chat-order-if-last-msg-ignored))
+    (advice-remove 'telega-chat-order
+                   #'telega-adblock--chat-order-if-last-msg-ignored)
     (remove-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)))
 
 (provide 'telega-adblock)
