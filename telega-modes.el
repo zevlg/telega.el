@@ -94,14 +94,14 @@
       (setq telega-mode-line--logo-image-cache
             (find-image
              (list (list :type 'svg :file "etc/telega-logo.svg"
-                         :ascent 'center :mask 'heuristic
+                         :scale 1 :ascent 'center :mask 'heuristic
                          :height mode-line-height)
                    (list :type (when (fboundp 'imagemagick-types) 'imagemagick)
                          :file "etc/telega-logo.png"
-                         :ascent 'center :mask 'heuristic
+                         :scale 1 :ascent 'center :mask 'heuristic
                          :height mode-line-height)
                    (list :type 'xpm :file "etc/telega-logo.xpm"
-                         :ascent 'center
+                         :scale 1 :ascent 'center
                          :height mode-line-height)))))))
 
 (defun telega-mode-line-icon ()
