@@ -946,9 +946,11 @@ NODE - ewoc node, if known."
           (throw 'found ind))))))
 
 (defun telega-msg-ignored-p (msg)
-  "Return non-nil if MSG is ignored."
+  "Return non-nil if MSG is ignored.
+Return function by which MSG has been ignored."
   (or (plist-get msg :ignored-p)
-      (telega--ignored-messages-ring-index msg)))
+      (when-let ((ind (telega--ignored-messages-ring-index msg)))
+        (plist-get (ring-ref telega--ignored-messages-ring ind) :ignored-p))))
 
 (defun telega-msg-ignore (msg &optional ignored-by)
   "Mark message MSG to be ignored (not viewed, notified about) in chats.
