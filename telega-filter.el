@@ -1246,7 +1246,7 @@ not empty."
 (defun telega-filter-by-has-voice-chat (including-empty-p)
   "Filter chats with started voice chat.
 If INCLUDING-EMPTY-P is non-nil, then keep also empty voice chats."
-  (interactive (list (y-or-n-p "Include empty voice chats? ")))
+  (interactive (list (y-or-n-p "Include empty/scheduled voice chats? ")))
   (telega-filter-add (if including-empty-p
                          'has-voice-chat
                        '(has-voice-chat with-users))))
