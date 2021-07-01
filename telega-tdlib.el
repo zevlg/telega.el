@@ -887,7 +887,7 @@ Pass REVOKE to try to delete chat history for all users."
   (telega-server--send
    (list :@type "deleteChatHistory"
          :chat_id (plist-get chat :id)
-         :remove_from_chat_list (or remove-from-list :false)
+         :remove_from_chat_list (if remove-from-list t :false)
          :revoke (if revoke t :false))))
 
 (defun telega--getChatScheduledMessages (chat &optional callback)
