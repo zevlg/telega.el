@@ -41,6 +41,7 @@
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
 
 ;;; Code:
+(require 'rx)
 (require 'telega)
 
 (defgroup telega-adblock nil
@@ -131,6 +132,7 @@ the rootbuf."
             (descr (telega-tl-str full-info :description)))
        (and descr
             (string-match-p (regexp-quote link-url) descr)))
+     ;; 5. TODO: Link URL points to the Discussion Group of the channel
      )))
 
 (defun telega-adblock--link-other-channel-p (chat link-spec)
@@ -150,13 +152,14 @@ the rootbuf."
 Cheating means link text looks like regular url (like
 http://blabla.com), but underlying url of the link points to site on
 another domain."
-  (let* ((link-text (car link-spec))
-         (text-domain (ignore-errors
-                        (url-domain (url-generic-parse-url link-text))))
-         (link-url (cdr link-spec))
-         (url-domain (ignore-errors
-                       (url-domain (url-generic-parse-url link-url)))))
-    (not (string-equal text-domain url-domain))))
+  (let ((link-text (string-trim (car link-spec)))
+        (link-url (cdr link-spec)))
+    (and (string-match-p (eval-when-compile
+                           (rx string-start "http" (? "s") "://"))
+                         link-text)
+         ;; NOTE: real url might have some additional trailing params,
+         ;; such as utm and other stuff
+         (not (string-prefix-p link-text link-url)))))
 
 (defun telega-adblock-link-advert-p (chat link-spec)
   "Return non-nil if LINK-SPEC is an advertisement link.
