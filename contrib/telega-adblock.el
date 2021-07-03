@@ -108,49 +108,70 @@ the rootbuf."
                       ret-links)))))
     ret-links))
 
+(defun telega-adblock--link-internal-p (chat link-spec)
+  "Return non-nil if link points to CHAT itself."
+  ;; NOTE: string-distance is case sensitive, thats why we use
+  ;; lowercase everywhere
+  (let ((chat-title (downcase (telega-chat-title chat)))
+        (chat-username (telega-chat-username chat))
+        (link-text (downcase (car link-spec)))
+        (link-url (cdr link-spec)))
+    (or
+     ;; 1. Link text matches CHAT's title/username
+     (<= (string-distance chat-title link-text)
+         telega-adblock-max-distance)
+     ;; 2. Link text starts chat's title
+     (string-prefix-p link-text chat-title)
+     ;; 3. Link text resembles channel's username
+     (and chat-username
+          (<= (string-distance (downcase chat-username) link-text)
+              telega-adblock-max-distance))
+     ;; 4. Link URL is in the chat's description
+     (let* ((full-info (telega--full-info (telega-chat--info chat) 'offline))
+            (descr (telega-tl-str full-info :description)))
+       (and descr
+            (string-match-p (regexp-quote link-url) descr)))
+     )))
+
+(defun telega-adblock--link-other-channel-p (chat link-spec)
+  "Return non-nil if link points to another channel."
+  (when-let ((tme-internal-link (telega-tme-open (cdr link-spec) 'convert)))
+    (or (string-prefix-p "tg:join?" tme-internal-link)
+        (string-prefix-p "tg:msg_url?" tme-internal-link)
+        (string-prefix-p "tg:privatepost?" tme-internal-link)
+        (and (string-prefix-p "tg:resolve?" tme-internal-link)
+             ;; 4. Link URL is not direct url to the CHAT
+             (not (when-let ((chat-username (telega-chat-username chat)))
+                    (string-prefix-p (concat "tg:resolve?domain=" chat-username)
+                                     tme-internal-link)))))))
+
+(defun telega-adblock--link-cheating-p (link-spec)
+  "Return non-nil if link is cheating on me.
+Cheating means link text looks like regular url (like
+http://blabla.com), but underlying url of the link points to site on
+another domain."
+  (let* ((link-text (car link-spec))
+         (text-domain (ignore-errors
+                        (url-domain (url-generic-parse-url link-text))))
+         (link-url (cdr link-spec))
+         (url-domain (ignore-errors
+                       (url-domain (url-generic-parse-url link-url)))))
+    (not (string-equal text-domain url-domain))))
+
 (defun telega-adblock-link-advert-p (chat link-spec)
   "Return non-nil if LINK-SPEC is an advertisement link.
 LINK-SPEC is a cons cell, where car is text under the link and cdr is
 an URL."
-  (let ((chat-title (telega-chat-title chat))
-        (chat-username (telega-chat-username chat))
-        (link-text (car link-spec))
-        (link-url (cdr link-spec)))
-    (and
-     ;; 1. Link text does not match CHAT's title/username
-     (> (string-distance chat-title link-text)
-        telega-adblock-max-distance)
-     (or (null chat-username)
-         (> (string-distance chat-username link-text)
-            telega-adblock-max-distance))
-     ;; 3. Link URL is not in the chat's description
-     (let* ((full-info (telega--full-info (telega-chat--info chat) 'offline))
-            (descr (telega-tl-str full-info :description)))
-       (or (null descr)
-           (not (string-match-p (regexp-quote link-url) descr))))
-     ;; 3. Link URL points to some channel or/and post
-     (when (or (string-prefix-p "https://t.me/" link-url)
-               (string-prefix-p "http://t.me/" link-url)
-               (string-prefix-p "https://telegram.me/" link-url)
-               (string-prefix-p "https://telegram.dog/" link-url))
-       (let ((tme-internal-link (telega-tme-open link-url 'convert)))
-         (or (string-prefix-p "tg:join?" tme-internal-link)
-             (string-prefix-p "tg:msg_url?" tme-internal-link)
-             (string-prefix-p "tg:privatepost?" tme-internal-link)
-             (and (string-prefix-p "tg:resolve?" tme-internal-link)
-                  ;; 4. Link URL is not direct url to the CHAT
-                  (not (and chat-username
-                            (string-prefix-p
-                             (concat "tg:resolve?domain=" chat-username)
-                             tme-internal-link)))))))
-     (progn
-       (if telega-adblock-verbose
-           (message "telega: Blocking advert link: %s in %s"
-                    link-url chat-title)
-         (telega-debug "ADBLOCK: Blocking advert link: %s in %s"
-                       link-url chat-title))
-       t)
-     )))
+  (when (and
+         (not (telega-adblock--link-internal-p chat link-spec))
+         (or (telega-adblock--link-other-channel-p chat link-spec)
+             (telega-adblock--link-cheating-p link-spec)))
+    (if telega-adblock-verbose
+        (message "telega: Blocking advert link: %s in %s"
+                 (cdr link-spec) (telega-chat-title chat))
+      (telega-debug "ADBLOCK: Blocking advert link: %s in %s"
+                    (cdr link-spec) (telega-chat-title chat)))
+    t))
 
 (defun telega-adblock-msg-ignore-p (msg)
   "Return non-nil if message MSG is advert message."
@@ -162,6 +183,9 @@ an URL."
                   (telega-adblock-msg-extract-links msg)))))
 
 (defun telega-adblock--chat-order-if-last-msg-ignored (orig-fun chat &rest args)
+  "Advice for `telega-chat-order' to return custom order.
+Custom `telega-adblock-chat-order-if-last-message-ignored' is returned
+for chats with last message blocked by adblock."
   (if (and telega-adblock-chat-order-if-last-message-ignored
            (eq (telega-msg-ignored-p (plist-get chat :last_message))
                'telega-adblock-msg-ignore-p))

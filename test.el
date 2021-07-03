@@ -153,6 +153,9 @@ Have Stoploss 690 Satoshi." :entities []))))
                    "tg:socks?server=my&port=1234"))
   (should (string= (telega-tme-open "https://t.me/c/101110111/286125" t)
                    "tg:privatepost?channel=101110111&post=286125"))
+  ;; Non telegram urls
+  (should (null (telega-tme-open "www.domain.ru" t)))
+  (should (null (telega-tme-open "https://www.domain.ru" t)))
   )
 
 (ert-deftest telega-formatting ()

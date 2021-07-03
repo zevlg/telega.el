@@ -273,48 +273,58 @@ Return non-nil, meaning URL has been handled."
            (message "telega: Unsupported tg url: %s" url))))
   t)
 
+(defconst telega-tme--url-regexp
+  (rx (? (group "http" (? "s") "://"))
+      (or "t.me" "telegram.me" "telegram.dog")
+      (group "/" (1+ (regexp "[^?]")))  ;path
+      (? "?" (group (1+ any))))         ;query
+  "Regexp to match urls to the Telegram resources.
+Matches only t.me, telegram.me and telegram.dog domains.")
+
 (defun telega-tme-open (url &optional just-convert)
   "Open any URL with https://t.me prefix.
 If JUST-CONVERT is non-nil, return converted link value.
-JUST-CONVERT used for testing only.
 Return non-nil if url has been handled."
   ;; Convert URL to `tg:' form and call `telega-tme-open-tg'
-  (let* ((path-query (url-path-and-query (url-generic-parse-url url)))
-         (path (car path-query))
-         (query (cdr path-query))
-         (case-fold-search nil)         ;ignore case
-         (tg (cond ((string-match "^/joinchat/\\([a-zA-Z0-9._-]+\\)$" path)
-                    (concat "tg:join?invite=" (match-string 1 path)))
-                   ((string-match "^/addstickers/\\([a-zA-Z0-9._-]+\\)$" path)
-                    (concat "tg:addstickers?set=" (match-string 1 path)))
-                   ((string-match "^/addtheme/\\([a-zA-Z0-9._-]+\\)$" path)
-                    (concat "tg:addtheme?slug=" (match-string 1 path)))
-                   ((string-match "^/setlanguage/\\([a-zA-Z0-9._-]+\\)$" path)
-                    (concat "tg:setlanguage?lang=" (match-string 1 path)))
-                   ((string-match "^/share/url$" path)
-                    (concat "tg:msg_url?" query))
-                   ((string-match "^/\\(socks\\|proxy\\)$" path)
-                    (concat "tg:" (match-string 1 path) "?" query))
-                   ((string-match
-                     (rx (and line-start "/c/"
-                              (group (? "-") (1+ digit))
-                              "/"
-                              (group (1+ digit))))
-                     path)
-                    (concat "tg:privatepost?channel=" (match-string 1 path)
-                            "&post=" (match-string 2 path)))
-                   ((string-match
-                     (rx (and line-start "/"
-                              (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))
-                              (? "/" (group (1+ digit)))))
-                     path)
-                    (concat "tg:resolve?domain=" (match-string 1 path)
-                            (when (match-string 2 path)
-                              (concat "&post=" (match-string 2 path)))
-                            (when query (concat "&" query)))))))
-    (cond (just-convert tg)
-          (tg (telega-tme-open-tg tg) t)
-          (t (telega-debug "WARN: Can't open \"%s\" internally") nil))))
+  (when (string-match telega-tme--url-regexp url)
+    (let* ((path (match-string 2 url))
+           (query (match-string 3 url))
+           (case-fold-search nil)         ;ignore case
+           (tg
+            (cond ((string-match "^/joinchat/\\([a-zA-Z0-9._-]+\\)$" path)
+                   (concat "tg:join?invite=" (match-string 1 path)))
+                  ((string-match "^/addstickers/\\([a-zA-Z0-9._-]+\\)$" path)
+                   (concat "tg:addstickers?set=" (match-string 1 path)))
+                  ((string-match "^/addtheme/\\([a-zA-Z0-9._-]+\\)$" path)
+                   (concat "tg:addtheme?slug=" (match-string 1 path)))
+                  ((string-match "^/setlanguage/\\([a-zA-Z0-9._-]+\\)$" path)
+                   (concat "tg:setlanguage?lang=" (match-string 1 path)))
+                  ((string-match "^/share/url$" path)
+                   (concat "tg:msg_url?" query))
+                  ((string-match "^/\\(socks\\|proxy\\)$" path)
+                   (concat "tg:" (match-string 1 path) "?" query))
+                  ((string-match
+                    (eval-when-compile
+                      (rx (and line-start "/c/"
+                               (group (? "-") (1+ digit))
+                               "/"
+                               (group (1+ digit)))))
+                    path)
+                   (concat "tg:privatepost?channel=" (match-string 1 path)
+                           "&post=" (match-string 2 path)))
+                  ((string-match
+                    (eval-when-compile
+                      (rx (and line-start "/"
+                               (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))
+                               (? "/" (group (1+ digit))))))
+                    path)
+                   (concat "tg:resolve?domain=" (match-string 1 path)
+                           (when (match-string 2 path)
+                             (concat "&post=" (match-string 2 path)))
+                           (when query (concat "&" query)))))))
+      (cond (just-convert tg)
+            (tg (telega-tme-open-tg tg) t)
+            (t (telega-debug "WARN: Can't open \"%s\" internally") nil)))))
 
 (provide 'telega-tme)
 

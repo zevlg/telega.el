@@ -555,27 +555,19 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
   (when (or in-web-browser
             (not (cond ((string-prefix-p "tg:" url)
                         (telega-tme-open-tg url))
-                       ((or (string-prefix-p "https://t.me/" url)
-                            (string-prefix-p "http://t.me/" url)
-                            (string-prefix-p "https://telegram.me/" url)
-                            (string-prefix-p "https://telegram.dog/" url))
-                        (telega-tme-open url))
-                       ((string-prefix-p "t.me/" url)
-                        (telega-tme-open (concat "https://" url)))
-
+                       ((telega-tme-open url)
+                        t)
                        ((and (derived-mode-p 'telega-webpage-mode)
                              (telega-webpage-anchor-url-p url))
                         ;; Link to local anchor on current webpage
                         (telega-webpage-goto-anchor
                          (string-trim-left url "[^#]+#"))
                         t)
-
                        (t
                         ;; Try instant view
-                        (let ((iv (telega--getWebPageInstantView url)))
-                          (when iv
-                            (telega-webpage--instant-view url "Telegra.ph" iv)
-                            t))))))
+                        (when-let ((iv (telega--getWebPageInstantView url)))
+                          (telega-webpage--instant-view url "Telegra.ph" iv)
+                          t)))))
     ;; Try `telega-browse-url-alist' list first
     (let ((tbu (cl-find url telega-browse-url-alist
                         :test (lambda (need-url predicate-or-regex)
