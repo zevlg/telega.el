@@ -466,12 +466,11 @@ NOTE: we store the number as custom chat property, to use it later."
       (progn
         ;; Check `:last_message' of initially fetched chats for client
         ;; side messages ignoring.  Also trigger reordering, since
-        ;; ignored last message might affect chat order, see
+        ;; ignoring last message might affect chat order, see
         ;; `contrib/telega-adblock.el'
         (dolist (chat chats)
           (when-let ((last-message (plist-get chat :last_message)))
-            (telega-msg-run-ignore-predicates last-message)
-            (when (telega-msg-ignored-p last-message)
+            (when (telega-msg-run-ignore-predicates last-message 'last-msg)
               (telega-chat--update chat (list :@type "telegaChatReorder")))))
 
         ;; Continue fetching chats
@@ -560,16 +559,21 @@ NOTE: we store the number as custom chat property, to use it later."
 
 (defun telega--on-updateNewMessage (event)
   "A new message was received; can also be an outgoing message."
-  (let ((new-msg (plist-get event :message)))
+  (let* ((new-msg (plist-get event :message))
+         (chat (telega-msg-chat new-msg)))
+    ;; NOTE: We always set `:ignored-p' property to not trigger
+    ;; `telega-msg-run-ignore-predicates' once again when this message
+    ;; is inserted into chatbuf
+    (if (telega-msg-run-ignore-predicates new-msg 'last-msg)
+        ;; NOTE: View ignored message, so modeline/appindicator
+        ;; won't show there is something important if ignored
+        ;; message contains mention
+        (telega--viewMessages chat (list new-msg) 'force)
+      (plist-put new-msg :ignored-p nil))
+
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
 
-    ;; NOTE: View ignored messages, so modeline/appindicator won't
-    ;; show there is something important if ignored message contains
-    ;; mention
-    (when (telega-msg-ignored-p new-msg)
-      (telega--viewMessages (telega-msg-chat new-msg) (list new-msg) 'force))
-
-    (with-telega-chatbuf (telega-msg-chat new-msg)
+    (with-telega-chatbuf chat
       (telega-msg-cache new-msg)
 
       ;; NOTE: `:last_message' could be already updated in the chat

@@ -949,8 +949,11 @@ NODE - ewoc node, if known."
   "Return non-nil if MSG is ignored.
 Return function by which MSG has been ignored."
   (or (plist-get msg :ignored-p)
-      (when-let ((ind (telega--ignored-messages-ring-index msg)))
-        (plist-get (ring-ref telega--ignored-messages-ring ind) :ignored-p))))
+      (when msg
+        (let ((last-ignored
+               (plist-get (telega-msg-chat msg) :telega-last-ignored)))
+          (when (eq (plist-get msg :id) (car last-ignored))
+            (cdr last-ignored))))))
 
 (defun telega-msg-ignore (msg &optional ignored-by)
   "Mark message MSG to be ignored (not viewed, notified about) in chats.
@@ -967,17 +970,30 @@ IGNORED-BY specifies function by which message is ignored."
   (telega-debug "IGNORED msg%s: %S"
                 (if ignored-by (format " (by `%S')" ignored-by) "") msg))
 
-(defun telega-msg-run-ignore-predicates (msg)
+(defun telega-msg-run-ignore-predicates (msg &optional last-msg-p)
   "Run `telega-msg-ignore-predicates' over the MSG.
+Do not ignore outgoing messages.
 If any of function from `telega-msg-ignore-predicates' return non-nil,
 then mark MSG as ignored.
-If MSG is already ignored, do nothing."
-  (unless (telega-msg-ignored-p msg)
-    (when-let ((ignored-by (cl-some (lambda (predicate)
-                                      (when (funcall predicate msg)
-                                        predicate))
-                                    telega-msg-ignore-predicates)))
-      (telega-msg-ignore msg ignored-by))))
+If LAST-MSG-P is specified, then also update `:telega-last-ignored'
+chat's property denoting last ignored message.
+Return function by which MSG has been ignored."
+  (let ((ignored-p
+         (cond ((plist-get msg :is_outgoing)
+                nil)
+               ((plist-member msg :ignored-p)
+                (plist-get msg :ignored-p))
+               (msg
+                (when-let ((ignored-by (cl-some (lambda (predicate)
+                                                  (when (funcall predicate msg)
+                                                    predicate))
+                                                telega-msg-ignore-predicates)))
+                  (telega-msg-ignore msg ignored-by)
+                  ignored-by)))))
+    (when (and ignored-p last-msg-p)
+      (plist-put (telega-msg-chat msg) :telega-last-ignored
+                 (cons (plist-get msg :id) ignored-p)))
+    ignored-p))
 
 (defun telega-msg-from-blocked-sender-p (msg)
   "Return non-nil if MSG is sent from blocked message sender.

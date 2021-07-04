@@ -62,7 +62,7 @@
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
-(declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-chat--info "telega-chat" (chat &optional local-p))
 (declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
 (declare-function telega-chats-top "telega-chat" (category))
 (declare-function telega-chat-member-my-status "telega-chat" (chat))
@@ -719,7 +719,7 @@ If `\\[universal-argument]' is specified, then negate whole active filter."
 (define-telega-filter name (chat regexp)
   "Matches if chat's title matches REGEXP."
   (or (string-match regexp (telega-chat-title chat))
-      (let ((info (telega-chat--info chat)))
+      (let ((info (telega-chat--info chat 'locally)))
         (or (string-match regexp (or (telega-tl-str info :first_name) ""))
             (string-match regexp (or (telega-tl-str info :last_name) ""))
             (string-match regexp (or (telega-tl-str info :username) ""))))))
@@ -878,7 +878,7 @@ Important chat is a chat with unread messages and enabled notifications."
 ;;   {{{fundoc(telega--filter-verified, 2)}}}
 (define-telega-filter verified (chat)
   "Matches if chat is verified."
-  (plist-get (telega-chat--info chat) :is_verified))
+  (plist-get (telega-chat--info chat 'locally) :is_verified))
 
 (defun telega-filter-by-verified ()
   "Filter verified chats."
@@ -1012,8 +1012,8 @@ Suffix can be one of:
 - \"-wp\"       - Windows?
 
 If SUFFIX-LIST is not specified, then match any restriction reason."
-  (when-let ((reason (telega-tl-str
-                      (telega-chat--info chat) :restriction_reason)))
+  (when-let ((reason (telega-tl-str (telega-chat--info chat 'locally)
+                                    :restriction_reason)))
     (or (not suffix-list)
         (cl-find reason suffix-list
                  :test (lambda (string regexp)

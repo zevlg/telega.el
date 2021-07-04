@@ -274,7 +274,8 @@ Return non-nil, meaning URL has been handled."
   t)
 
 (defconst telega-tme--url-regexp
-  (rx (? (group "http" (? "s") "://"))
+  (rx string-start
+      (? (group "http" (? "s") "://"))
       (or "t.me" "telegram.me" "telegram.dog")
       (group "/" (1+ (regexp "[^?]")))  ;path
       (? "?" (group (1+ any))))         ;query
