@@ -140,9 +140,14 @@ the rootbuf."
   (when-let ((tme-internal-link (telega-tme-open (cdr link-spec) 'convert)))
     (or (string-prefix-p "tg:join?" tme-internal-link)
         (string-prefix-p "tg:msg_url?" tme-internal-link)
-        (string-prefix-p "tg:privatepost?" tme-internal-link)
+        (and (string-prefix-p "tg:privatepost?" tme-internal-link)
+             ;; Link URL is not direct url to the CHAT's message
+             (not (when-let* ((info (telega-chat--supergroup chat 'locally))
+                              (cid (plist-get info :id)))
+                    (string-prefix-p (format "tg:privatepost?channel=%d" cid)
+                                     tme-internal-link))))
         (and (string-prefix-p "tg:resolve?" tme-internal-link)
-             ;; 4. Link URL is not direct url to the CHAT
+             ;; Link URL is not direct url to the CHAT
              (not (when-let ((chat-username (telega-chat-username chat)))
                     (string-prefix-p (concat "tg:resolve?domain=" chat-username)
                                      tme-internal-link)))))))
@@ -192,7 +197,10 @@ for chats with last message blocked by adblock."
   (if (and telega-adblock-chat-order-if-last-message-ignored
            (eq (telega-msg-ignored-p (plist-get chat :last_message))
                'telega-adblock-msg-ignore-p))
-      telega-adblock-chat-order-if-last-message-ignored
+      (progn
+        ;; See https://t.me/emacs_telega/27884
+        (cl-assert (stringp telega-adblock-chat-order-if-last-message-ignored))
+        telega-adblock-chat-order-if-last-message-ignored)
     (apply orig-fun chat args)))
 
 ;;;###autoload
