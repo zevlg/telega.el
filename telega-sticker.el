@@ -408,7 +408,7 @@ If SLICES-P is non-nil, then insert STICKER using slices."
           (delete-char 1)))
       (telega-chatbuf-sticker-insert sticker))))
 
-(defun telega-ins--sticker-list (stickers &optional addon-inserter)
+(defun telega-ins--sticker-list (stickers)
   "Insert STICKERS list int current buffer."
   (declare (indent 1))
   (seq-doseq (sticker stickers)
@@ -422,8 +422,8 @@ If SLICES-P is non-nil, then insert STICKER using slices."
       (when (and (plist-get sticker :is_animated) telega-sticker-animated-play)
         (list (telega-sticker--gen-sensor-func sticker)))
       )
-    (when addon-inserter
-      (funcall addon-inserter sticker))
+    (when telega-sticker-set-show-emoji
+      (telega-ins (telega-sticker-emoji sticker) "  "))
 ;    (redisplay)
     ))
 
@@ -466,11 +466,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
                        ((plist-get sset :is_masks) "Masks")
                        (t "Stickers"))
                  (length stickers))
-               (telega-ins--sticker-list stickers
-                 (when telega-sticker-set-show-emoji
-                   (lambda (sticker)
-                     (telega-ins (telega-sticker-emoji sticker) "  "))))
-               )))
+               (telega-ins--sticker-list stickers))))
           (sset-id (plist-get sset :id)))
       (when (eq (telega--tl-type sset) 'stickerSetInfo)
         (setq sset (telega-stickerset-get sset-id 'locally)))
