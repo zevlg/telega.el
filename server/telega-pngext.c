@@ -307,7 +307,15 @@ pngext_main(int ac, char** av)
         }
 
         if (optind >= ac) {
-                /* No CMD specified */
+                /*
+                 * No CMD specified, stop only when stdin is closed,
+                 * ignoring incoming signals.  Making it possible for
+                 * writer decide when to exit.
+                 */
+                signal(SIGSTOP, SIG_IGN);
+                signal(SIGCONT, SIG_IGN);
+                signal(SIGINT, SIG_IGN);
+
                 pngext_loop(prefix, rdsize);
                 return;
                 /* NOT REACHED */
