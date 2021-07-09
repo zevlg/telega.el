@@ -526,12 +526,14 @@ SHOW-DETAILS - non-nil to show photo details."
             (telega-ins (propertize "Self-descruct in" 'face 'shadow) " "
                         (telega-duration-human-readable ttl-in) "\n"))
           (telega-ins--image-slices
-           (telega-self-destruct-create-svg
-            (plist-get photo :minithumbnail)
-            (telega-symbol (if (> ttl-in 0) 'flames 'lock)))))
+              (when telega-use-images
+                (telega-self-destruct-create-svg
+                 (plist-get photo :minithumbnail)
+                 (telega-symbol (if (> ttl-in 0) 'flames 'lock))))))
 
       (telega-ins--image-slices
-       (telega-photo--image photo (or limits telega-photo-size-limits)))
+          (when telega-use-images
+            (telega-photo--image photo (or limits telega-photo-size-limits))))
       )))
 
 (defun telega-ins--audio (msg &optional audio music-symbol)
@@ -595,9 +597,10 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
           (minithumb (plist-get audio :album_cover_minithumbnail)))
       (when (or minithumb thumb)
         (telega-ins "\n")
-        (let ((timg (telega-media--image
-                     (cons audio 'telega-audio--create-image)
-                     (cons thumb :file))))
+        (let ((timg (when telega-use-images
+                      (telega-media--image
+                       (cons audio 'telega-audio--create-image)
+                       (cons thumb :file)))))
           (telega-ins--image-slices timg))
         (telega-ins " ")))
     t))
@@ -635,18 +638,20 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                           (telega-duration-human-readable ttl-in)
                           "\n"))
             (telega-ins--image-slices
-             (telega-self-destruct-create-svg
-              (plist-get video :minithumbnail)
-              (telega-symbol (if (> ttl-in 0) 'flames 'lock)))))
+                (when telega-use-images
+                  (telega-self-destruct-create-svg
+                   (plist-get video :minithumbnail)
+                   (telega-symbol (if (> ttl-in 0) 'flames 'lock))))))
 
         (let ((thumb (plist-get video :thumbnail))
               (minithumb (plist-get video :minithumbnail)))
           (when (or thumb minithumb)
             (telega-ins "\n")
             (telega-ins--image-slices
-             (telega-media--image
-              (cons video 'telega-thumb-or-minithumb--create-image)
-              (cons thumb :file)))
+                (when telega-use-images
+                  (telega-media--image
+                   (cons video 'telega-thumb-or-minithumb--create-image)
+                   (cons thumb :file))))
             (telega-ins " ")))))
     t))
 
@@ -711,11 +716,12 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 
     (let ((thumb (plist-get note :thumbnail))
           (minithumb (plist-get note :minithumbnail)))
-      (when-let ((img (or (plist-get msg :telega-ffplay-frame)
-                          (when (or minithumb thumb)
-                            (telega-media--image
-                             (cons note 'telega-vvnote-video--create-image)
-                             (cons thumb :file))))))
+      (when-let ((img (when telega-use-images
+                        (or (plist-get msg :telega-ffplay-frame)
+                            (when (or minithumb thumb)
+                              (telega-media--image
+                               (cons note 'telega-vvnote-video--create-image)
+                               (cons thumb :file)))))))
         (telega-ins "\n")
         (telega-ins--image-slices img)
         (telega-ins " ")))))
@@ -750,9 +756,10 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
     (when (or thumb minithumb)
       (telega-ins "\n")
       (telega-ins--image-slices
-          (telega-media--image
-           (cons doc 'telega-thumb-or-minithumb--create-image)
-           (cons thumb :file)))
+          (when telega-use-images
+            (telega-media--image
+             (cons doc 'telega-thumb-or-minithumb--create-image)
+             (cons thumb :file))))
       (telega-ins " "))))
 
 (defun telega-ins--game (msg &optional game-value)
@@ -967,7 +974,9 @@ Return `non-nil' if WEB-PAGE has been inserted."
                                (number-to-string dice-value))))
           (if telega-emoji-use-images
               (telega-ins--image-slices
-                  (telega-emoji-create-svg dice-symbol (car telega-sticker-size)))
+                  (when telega-use-images
+                    (telega-emoji-create-svg dice-symbol
+                                             (car telega-sticker-size))))
             (telega-ins dice-symbol))
           ))
       )))
@@ -1124,7 +1133,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (telega-ins--file-progress msg anim-file))
     (telega-ins "\n")
 
-    (telega-ins--animation-image animation 'sliced)))
+    (when telega-use-images
+      (telega-ins--animation-image animation 'sliced))))
 
 (defun telega-ins--location-msg (msg &optional venue-p)
   "Insert content for location message MSG."
@@ -1495,7 +1505,9 @@ Special messages are determined with `telega-msg-special-p'."
                            (telega--desurrogate-apply text))))
          (if real-text
              (telega-ins--image-slices
-              (telega-emoji-create-svg real-text telega-emoji-large-height))
+                 (when telega-use-images
+                   (telega-emoji-create-svg real-text
+                                            telega-emoji-large-height)))
            (telega-ins--fmt-text (plist-get content :text) msg)))
        (telega-ins-prefix "\n"
          (telega-ins--webpage msg)))
