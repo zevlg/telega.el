@@ -443,7 +443,8 @@ Return filename with recorded video note."
          (ffmpeg-args
           (nconc (cdr (split-string telega-vvnote-video-cmd " " t))
                  (list note-file
-                       "-f" "image2pipe" "-vf" "scale=320:240,crop=240:240:40:0"
+                       "-f" "image2pipe"
+                       "-vf" "hflip,scale=320:240,crop=240:240:40:0"
                        "-vcodec" "png" "-")))
          (capture-proc (telega-ffplay-to-png nil ffmpeg-args
                          #'telega-vvnote-video--record-callback))
