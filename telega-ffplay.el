@@ -171,7 +171,8 @@ Return newly created process."
                      (list (expand-file-name filename))))
         (ffplay-bin (or (executable-find "ffplay")
                         (error "ffplay not found in `exec-path'"))))
-    (telega-debug "ffplay START: %s" (apply #'concat ffplay-bin " " args))
+    (telega-debug "ffplay START: %s %s"
+                  ffplay-bin (mapconcat #'identity args " "))
     (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
       (let ((proc (apply 'start-process "ffplay" (current-buffer)
                          ffplay-bin args)))
