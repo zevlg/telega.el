@@ -115,9 +115,11 @@
 
 (defun telega-mode-line-online-status ()
   "Return online status symbol."
-  (if (telega-user-online-p (telega-user-me))
-      telega-symbol-online-status
-    (propertize telega-symbol-online-status 'face 'shadow)))
+  ;; NOTE: At start time user info might not be available
+  (when-let ((me-user (telega-user-me 'locally)))
+    (if (telega-user-online-p me-user)
+        telega-symbol-online-status
+      (propertize telega-symbol-online-status 'face 'shadow))))
 
 (defun telega-mode-line--online-status-update (event)
   (when (eq (plist-get event :user_id) telega--me-id)
