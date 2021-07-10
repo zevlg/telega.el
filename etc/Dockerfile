@@ -11,13 +11,17 @@
 # docker push zevlg/telega-server:1.7.0
 
 FROM alpine:latest AS builder
-ARG tdlib_branch=master
+ARG tdlib_branch=5bd0c2c46ded5c75a641829cfe84c0b5fead5bfc
 ARG telega_branch=master
 
 RUN set +x && apk update && apk upgrade && \
     apk add --update alpine-sdk linux-headers git zlib-dev openssl-dev gperf php cmake
 
-RUN echo "TDLib 1.7.5" > tdlib-version && \
+# TDLib 1.7.5 is broken ATM
+# see https://github.com/tdlib/td/issues/1603#issuecomment-877494594
+# and https://t.me/emacs_telega/27967
+# thats why we use tdlib_branch=5bd0c2c46ded5c75a641829cfe84c0b5fead5bfc (1.7.4)
+RUN echo "TDLib 1.7.4" > tdlib-version && \
     git clone https://github.com/tdlib/td.git && \
     cd td && \
     git checkout ${tdlib_branch} && \
