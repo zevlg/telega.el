@@ -937,11 +937,11 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
   (let ((status-interval (if (funcall telega-online-status-function)
                              telega-online-status-interval
                            telega-offline-status-interval)))
-    (if telega-online--timer
-        (timer-set-time telega-online--timer (time-add nil status-interval))
-      (setq telega-online--timer
-            (run-with-timer
-             status-interval nil #'telega-online-status-timer-function))))
+    (when telega-online--timer
+      (cancel-timer telega-online--timer))
+    (setq telega-online--timer
+          (run-with-timer status-interval nil
+                          #'telega-online-status-timer-function)))
 
   ;; Support for Emacs without 'after-focus-change-function
   (unless (boundp 'after-focus-change-function)
