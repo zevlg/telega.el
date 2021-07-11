@@ -302,10 +302,14 @@ Rest elements are ewoc specs.")
       (with-telega-root-buffer
         (add-hook 'window-size-change-functions
                   #'telega-root-buffer-auto-fill nil 'local)
+        (add-hook 'text-scale-mode-hook
+                  #'telega-root-buffer-auto-fill nil 'local)
         (when-let ((rootbuf-win (get-buffer-window)))
           (telega-root-buffer-auto-fill rootbuf-win)))
 
     (with-telega-root-buffer
+      (remove-hook 'text-scale-mode-hook
+                   #'telega-root-buffer-auto-fill 'local)
       (remove-hook 'window-size-change-functions
                    #'telega-root-buffer-auto-fill 'local))))
 
@@ -492,15 +496,21 @@ Keep cursor position only if CHAT is visible."
           (set-window-point win (point)))
         (run-hooks 'telega-root-update-hook)))))
 
-(defun telega-root-buffer-auto-fill (win)
+(defun telega-root-buffer-auto-fill (&optional win)
   "Automatically resize root buffer formatting to WIN's width."
   (interactive (list (get-buffer-window)))
   (unless (eq (window-buffer win) (telega-root--buffer))
     (user-error (concat "telega: `telega-root-buffer-auto-fill' "
                         "can be called only in Root Buffer.")))
 
+  ;; NOTE: `window-width' does not regard use of oth
+  ;; `text-scale-increase' or `text-scale-decrease'.  So we manually
+  ;; calculate window width in characters
+  ;; 
   ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
-  (let ((new-fill-column (- (window-width win) 2)))
+  (let* ((win-char-width (/ (window-width win 'pixels)
+                            (telega-chars-xwidth 1)))
+         (new-fill-column (- win-char-width 2)))
     (when (and new-fill-column
                (> new-fill-column 15)   ;XXX ignore too narrow window
                (not (eq new-fill-column telega-root-fill-column)))
