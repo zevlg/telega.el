@@ -504,17 +504,21 @@ Return featured chat id, if MSG is featured."
 
 (defun telega-stories--msg-pp (msg)
   "Pretty printer for story message MSG."
-  (telega-button--insert 'telega msg
-    'keymap telega-stories-keymap
-    :inserter (lambda (msg)
-                (cl-destructuring-bind (thumb thumb-prop)
-                    (telega-stories--msg-thumbnail-spec msg)
-                  (telega-ins--image
-                   (telega-media--image
-                    (cons msg #'telega-stories--msg-create-image)
-                    (cons thumb thumb-prop)
-                    'force :telega-story-image))))
-    :action #'telega-stories-msg-view)
+  (telega-ins-prefix "\n"
+    (telega-button--insert 'telega msg
+      'keymap telega-stories-keymap
+      :inserter (lambda (msg)
+                  (cl-destructuring-bind (thumb thumb-prop)
+                      (telega-stories--msg-thumbnail-spec msg)
+                    (telega-ins--image
+                     (telega-media--image
+                      (cons msg #'telega-stories--msg-create-image)
+                      (cons thumb thumb-prop)
+                      'force :telega-story-image))))
+      :action #'telega-stories-msg-view)
+    ;; NOTE: start a new line if story does not fit into
+    ;; `telega-root-fill-column'
+    (> (telega-current-column) telega-root-fill-column))
   (telega-ins telega-stories-delimiter))
 
 (defun telega-stories--msg-thumbnail-spec (msg)
@@ -550,8 +554,7 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
                             (telega-msg-sender-title sender))
                         :color (car (telega-msg-sender-color sender))))
          (viewed-p (telega-stories--msg-viewed-p msg))
-
-         (size (telega-chars-xheight telega-stories-height))
+         (size (telega-chars-xwidth (* 2 telega-stories-height)))
          (sw-passive (/ size 100.0))
          (sw-active (* sw-passive 2))
          (passive-color (telega-color-name-as-hex-2digits
