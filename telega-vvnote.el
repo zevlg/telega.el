@@ -39,46 +39,52 @@
   :type 'cons
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-voice-play-next t
+(defcustom telega-vvnote-play-speed 1
+  "*Playback speed for voice/video notes."
+  :package-version '(telega . "0.7.52")
+  :type 'number
+  :group 'telega-vvnote)
+
+(defcustom telega-vvnote-play-next t
   "*After playing voice note continue playing next voice note in the chat."
+  :package-version '(telega . "0.7.52")
   :type 'boolean
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-voice-cmd
-  (concat "ffmpeg "
-          (if (eq system-type 'darwin)
-              "-f avfoundation -i :default "
+(defcustom telega-vvnote-voice-record-args
+  (concat (if (eq system-type 'darwin)
+              "-f avfoundation -i :default"
             ;; gnu/linux
-            "-f alsa -i default ")
+            "-f alsa -i default")
           (cond ((member "opus1" telega-ffplay--has-encoders)
                  ;; Try OPUS if available, results in 3 times smaller
                  ;; files then AAC version with same sound quality
-                 "-strict -2 -acodec opus -ac 1 -ab 32k")
+                 " -strict -2 -acodec opus -ac 1 -ab 32k")
                 ((member "aac" telega-ffplay--has-encoders)
-                 "-acodec aac -ac 1 -ab 96k")
+                 " -acodec aac -ac 1 -ab 96k")
                 (t
-                 "-acodec mp3 -ar 44100 -ac 1 -ab 96k")))
-  "Command to use to save voice notes."
-  :package-version '(telega . "0.7.4")
+                 " -acodec mp3 -ar 44100 -ac 1 -ab 96k")))
+  "Arguments to ffmpeg to record a voice note."
+  :package-version '(telega . "0.7.53")
   :type 'string
   :group 'telega-vvnote)
 
-(defcustom telega-vvnote-video-cmd
-  (concat "ffmpeg "
-          (if (eq system-type 'darwin)
-              "-f avfoundation -s 640x480 -framerate 30 -i default -r 30 -f avfoundation -i :default "
+(defcustom telega-vvnote-video-record-args
+  (concat (if (eq system-type 'darwin)
+              "-f avfoundation -s 640x480 -framerate 30 -i default -r 30 -f avfoundation -i :default"
             ;; gnu/linux
-            "-f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default ")
-          "-vf format=yuv420p,scale=320:240,crop=240:240:40:0 "
-          "-vcodec " (if (member "hevc" telega-ffplay--has-encoders)
-                         "hevc"
-                       "h264")
-          " -vb 300k "
+            "-f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default")
+          " -vf format=yuv420p,scale=320:240,crop=240:240:40:0"
+          " -vcodec " (if (member "hevc" telega-ffplay--has-encoders)
+                          "hevc"
+                        "h264")
+          " -vb 300k"
           (if (member "opus" telega-ffplay--has-encoders)
-              "-strict -2 -acodec opus -ac 1 -ab 32k"
+              " -strict -2 -acodec opus -ac 1 -ab 32k"
             ;; Fallback to aac
-            "-acodec aac -ac 1 -ab 96k"))
-  "Command to use to record video notes."
+            " -acodec aac -ac 1 -ab 96k"))
+  "Arguments to ffmpeg to record a video note."
+  :package-version '(telega . "0.7.53")
   :type 'string
   :group 'telega-vvnote)
 
@@ -274,11 +280,16 @@ Each sample is in range [-128;128]."
                                            data-p frame-img-type)
   "Generate svg image for the video note FRAMEFILE.
 PROGRESS is value from 0 to 1 indicating played content.
-PROGRESS might be nil.
+PROGRESS might be nil, meaning video not is not started.
+PROGRESS also can be a cons cell, where car is `paused' and cdr is
+value from 0 to 1, meaning video note is paused at given progress.
 If DATA-P is non-nil then FRAMEFILE is actually an image data.
 If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
   (let* ((img-type (or frame-img-type (image-type-from-file-name framefile)))
-         (size (telega-chars-xheight telega-video-note-height))
+         (size (telega-chars-xheight
+                (if (consp telega-video-note-height)
+                    (car telega-video-note-height)
+                  telega-video-note-height)))
          (h size)
          (aw-chars (telega-chars-in-width size))
          (w (telega-chars-xwidth aw-chars))
@@ -286,7 +297,8 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
          (yoff (/ (- h size) 2))
          (svg (telega-svg-create w h))
          (clip (telega-svg-clip-path svg "clip"))
-         (clip1 (telega-svg-clip-path svg "clip1")))
+         (clip1 (telega-svg-clip-path svg "clip1"))
+         (playing-p (numberp progress)))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
     (telega-svg-embed svg (if data-p
                               framefile
@@ -298,6 +310,13 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
                       :clip-path "url(#clip)")
 
     (when progress
+      ;; Extract progress number in case progress is in the
+      ;; (paused . progress) form
+      (when (consp progress)
+        (cl-assert (and (eq (car progress) 'paused)
+                        (numberp (cdr progress))))
+        (setq progress (cdr progress)))
+
       (let* ((angle-o (* 2 pi progress))
              (angle (+ (* 2 pi (- progress)) pi))
              (dx (+ (* (/ size 2) (sin angle)) (/ size 2)))
@@ -321,6 +340,18 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
                     :stroke-color "white"
                     :clip-path "url(#clip1)")))
 
+    ;; Draw play triangle
+    (unless playing-p
+      (let ((play-size (/ size 6)))
+        (svg-polygon svg (list (cons (/ (- size play-size) 2)
+                                     (/ (- size play-size) 2))
+                               (cons (/ (- size play-size) 2)
+                                     (/ (+ size play-size) 2))
+                               (cons (/ (+ size play-size) 2)
+                                     (/ size 2)))
+                     :fill "red"
+                     :opacity "0.5")))
+
     (telega-svg-image svg :scale 1.0
                :base-uri (if data-p "" framefile)
                :width w :height h
@@ -341,7 +372,9 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
             (base64-decode-string (plist-get minithumb :data))
             nil t 'jpeg))
           (t
-           (let* ((cheight telega-video-note-height)
+           (let* ((cheight (if (consp telega-video-note-height)
+                               (car telega-video-note-height)
+                             telega-video-note-height))
                   (x-size (telega-chars-xheight cheight)))
              (telega-media--progress-svg thumb-file x-size x-size cheight))))))
 
@@ -365,7 +398,8 @@ Return filename with recorded voice note."
          (note-file (telega-temp-name "voice-note" ".mp4"))
          (capture-proc (telega-ffplay-run-command
                         (telega-docker-exec-cmd
-                         (concat telega-vvnote-voice-cmd " " note-file)
+                         (concat "ffmpeg" " " telega-vvnote-voice-record-args
+                                 " " note-file)
                          'try-host-cmd-first)
                         #'telega-vvnote--record-callback))
          (done-key
@@ -375,7 +409,7 @@ Return filename with recorded voice note."
 
             ;; Capture voice note
             (with-telega-symbol-animate 'audio 0.1 audio-sym
-              ;; Animation exit condition 
+              ;; Animation exit condition
               (or (not telega-vvnote--record-progress)
                   (not (process-live-p capture-proc)))
 
@@ -407,7 +441,7 @@ Return filename with recorded voice note."
 
 (defun telega-vvnote-video--record-callback (_proc frame)
   "Callback when recording video note."
-  ;; NOTE: fps = 30, hardcoded in `telega-vvnote-video-cmd'
+  ;; NOTE: fps = 30, hardcoded in `telega-vvnote-video-record-args'
   (let ((start (plist-get telega-vvnote-video--preview :start-point)))
     (with-current-buffer (marker-buffer start)
       (unless (= (point) start)
@@ -441,12 +475,12 @@ Return filename with recorded video note."
   (let* ((telega-vvnote--record-progress 0)
          (note-file (telega-temp-name "video-note" ".mp4"))
          (ffmpeg-args
-          (nconc (cdr (split-string telega-vvnote-video-cmd " " t))
-                 (list note-file
-                       "-f" "image2pipe"
-                       "-vf" "hflip,scale=320:240,crop=240:240:40:0"
-                       "-vcodec" "png" "-")))
-         (capture-proc (telega-ffplay-to-png nil ffmpeg-args
+          (concat telega-vvnote-video-record-args
+                  " " note-file
+                  " -f image2pipe"
+                  " -vf hflip,scale=320:240,crop=240:240:40:0"
+                  " -vcodec png -"))
+         (capture-proc (telega-ffplay-to-png--internal ffmpeg-args
                          #'telega-vvnote-video--record-callback))
          (done-key
           (progn
@@ -454,7 +488,7 @@ Return filename with recorded video note."
             (accept-process-output capture-proc)
 
             (with-telega-symbol-animate 'video 0.25 video-sym
-              ;; Animation exit condition 
+              ;; Animation exit condition
               (or (not telega-vvnote--record-progress)
                   (not (process-live-p capture-proc)))
 
@@ -468,7 +502,7 @@ Return filename with recorded video note."
 
     ;; Gracefully stop capturing and wait ffmpeg for exit
     (when (process-live-p capture-proc)
-      (interrupt-process capture-proc)
+      (internal-default-interrupt-process capture-proc)
       (while (process-live-p capture-proc)
         (accept-process-output capture-proc)))
 
@@ -480,6 +514,83 @@ Return filename with recorded video note."
       (user-error "VideoNote cancelled"))
 
     note-file))
+
+
+;; Callbacks for ffplay controls, used by `telega-msg-button-map'
+(defun telega-msg--vvnote-play-speed-toggle (msg)
+  "Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed."
+  (interactive (list (telega-msg-for-interactive)))
+  (when-let ((proc (plist-get msg :telega-ffplay-proc)))
+    (if (equal telega-vvnote-play-speed 1)
+        (setq telega-vvnote-play-speed 1.8)
+      (setq telega-vvnote-play-speed 1))
+
+    (telega-msg-redisplay msg)
+
+    ;; Restart ffplay by reopenning message content
+    (when (telega-ffplay-playing-p proc)
+      (telega-ffplay-pause proc nil 'ignore-callback)
+      (telega-msg-open-content msg))))
+
+(defun telega-msg--vvnote-stop (msg)
+  "Stop playing media message."
+  (interactive (list (telega-msg-for-interactive)))
+  (when-let ((proc (plist-get msg :telega-ffplay-proc)))
+    (telega-ffplay-stop proc)
+
+    ;; Force stop for possibly paused process
+    (when (telega-ffplay-paused-p proc)
+      (plist-put msg :telega-ffplay-frame nil)
+      (plist-put msg :telega-ffplay-proc nil)
+      (telega-msg-redisplay msg))))
+
+(defun telega-msg--vvnote-rewind (msg step)
+  "Rewind current ffplay position by STEP."
+  (let ((proc (plist-get msg :telega-ffplay-proc)))
+    (when (telega-ffplay-playing-p proc)
+      (telega-ffplay-pause
+       proc (+ step (or (telega-ffplay-progress proc) 0)) 'ignore-callback)
+      (telega-msg-open-content msg))))
+
+(defun telega-msg--vvnote-rewind-10-forward (msg)
+  "Rewind 10 seconds forward."
+  (interactive (list (telega-msg-for-interactive)))
+  (telega-msg--vvnote-rewind msg 10))
+
+(defun telega-msg--vvnote-rewind-10-backward (msg)
+  "Rewind 10 seconds backward."
+  (interactive (list (telega-msg-for-interactive)))
+  (telega-msg--vvnote-rewind msg -10))
+
+(defun telega-msg--vvnote-rewind-part (msg)
+  "Rewind to the N's 10 part of the message duration.
+I.e. if you press 7, then you will jump to 70% of the message
+duration."
+  (interactive (list (telega-msg-for-interactive)))
+
+  (when-let ((proc (plist-get msg :telega-ffplay-proc)))
+    (let* ((content (plist-get msg :content))
+           (duration (cl-case (telega--tl-type content)
+                       (messageVoiceNote
+                        (telega--tl-get content :voice_note :duration))
+                       (messageVideoNote
+                        (telega--tl-get content :video_note :duration))
+                       (messageAudio
+                        (telega--tl-get content :audio :duration))
+                       (t
+                        ;; Possibly a element embedded into webpage
+                        (let ((web-page (plist-get content :web_page)))
+                          (plist-get (or (plist-get web-page :audio)
+                                         (plist-get web-page :video_note)
+                                         (plist-get web-page :voice_note))
+                                     :duration)))))
+           (n-part (string-to-number (this-command-keys))))
+      (cl-assert (< 0 n-part 10))
+      (when (and (telega-ffplay-playing-p proc) duration)
+        (telega-ffplay-pause
+         proc (floor (* (/ n-part 10.0) duration)) 'ignore-callback)
+        (telega-msg-open-content msg)))))
 
 (provide 'telega-vvnote)
 

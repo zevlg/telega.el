@@ -509,35 +509,45 @@ Play in muted mode."
                  (and telega-autoplay-outgoing
                       ;; i.e. sent successfully
                       (not (plist-get msg :sending_state))))
-             (memq (telega--tl-type (plist-get msg :content))
-                   telega-autoplay-messages)
              (telega-chat-match-p (telega-msg-chat msg) telega-autoplay-for)
              (telega-msg-observable-p msg))
-    (cl-case (telega--tl-type (plist-get msg :content))
-      ;; NOTE: special case for animations, animate only those which
-      ;; can be animated inline, see `telega-animation-play-inline'
-      (messageAnimation
-       (let ((animation (telega--tl-get msg :content :animation)))
-         (when (telega-animation-play-inline-p animation)
-           (telega-msg-open-animation msg animation))))
+    (let* ((content (plist-get msg :content))
+           (content-type (telega--tl-type content))
+           (web-page (plist-get content :web_page)))
+      (cond ((and (memq 'messageAnimation telega-autoplay-messages)
+                  (or (eq 'messageAnimation content-type)
+                      (plist-get web-page :animation)))
+             ;; NOTE: special case for animations, animate only those
+             ;; which can be animated inline, see
+             ;; `telega-animation-play-inline'
+             (let ((animation (or (plist-get content :animation)
+                                  (plist-get web-page :animation))))
+               (when (telega-animation-play-inline-p animation)
+                 (telega-msg-open-animation msg animation))))
 
-      ;; NOTE: special case for sticker messages, play animated
-      ;; sticker only if `telega-sticker-animated-play' is set
-      (messageSticker
-       (let ((sticker (telega--tl-get msg :content :sticker)))
-         (when (and (plist-get sticker :is_animated)
-                    telega-sticker-animated-play)
-           (telega-sticker--animate sticker))))
+            ((and (memq 'messageSticker telega-autoplay-messages)
+                  (or (eq 'messageSticker content-type)
+                      (plist-get web-page :sticker)))
+             ;; NOTE: special case for sticker messages, play animated
+             ;; sticker only if `telega-sticker-animated-play' is set
+             (let ((sticker (or (plist-get content :sticker)
+                                (plist-get web-page :sticker))))
+               (when (and (plist-get sticker :is_animated)
+                          telega-sticker-animated-play)
+                 (telega-sticker--animate sticker))))
 
-      (t
-       (telega-msg-open-content msg)))))
+            ((memq content-type telega-autoplay-messages)
+             (telega-msg-open-content msg))))))
 
 ;;;###autoload
 (define-minor-mode telega-autoplay-mode
   "Automatically play animation messages."
   :init-value nil :global t :group 'telega-modes
   (if telega-autoplay-mode
-      (add-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)
+      (progn
+        (add-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)
+        (add-hook 'telega-chat-goto-message-hook 'telega-autoplay-on-msg))
+    (remove-hook 'telega-chat-goto-message-hook 'telega-autoplay-on-msg)
     (remove-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)))
 
 
@@ -1001,6 +1011,48 @@ Return patron info, or nil if SENDER is not a telega patron."
     (advice-remove 'telega-avatar--create-image
                    'telega-patrons--avatar-emphasize)
     ))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-my-location-mode  :new:
+;;
+;; ~telega-my-location~ is used by =telega= to calculate distance to
+;; me for location messages.  Also, ~telega-my-location~ is used to
+;; search chats nearby me.  So, having it set to correct value is
+;; essential.  There is
+;; [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][contrib/telega-live-location.el]]
+;; which uses =geo.el= to actualize ~telega-my-location~, however it
+;; is not always possible to use it.
+;; 
+;; When ~telega-my-location-mode~ is enabled, your
+;; ~telega-my-location~ gets automatic update when you send location
+;; message into "Saved Messages" using mobile Telegram client.
+;;
+;; Enable with ~(telega-my-location-mode 1)~ or at =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-my-location-mode)
+;; #+end_src
+(defun telega-my-location--on-new-message (msg)
+  "Set `telega-my-location' if MSG is a location sent to \"Saved Messages\"."
+  (when (eq telega--me-id (plist-get msg :chat_id))
+    (let ((content (plist-get msg :content)))
+      (when (equal (plist-get content :@type)
+                   "messageLocation")
+        (setq telega-my-location (plist-get content :location))
+        (message "telega: telega-my-location → %s"
+                 (telega-ins--as-string
+                  (telega-ins--location telega-my-location)))))))
+
+(define-minor-mode telega-my-location-mode
+  "Global mode to set `telega-my-location' using \"Saved Messages\".
+When this mode is enabled, you can set `telega-my-location' by sending
+your actual location to \"Saved Messages\" using mobile Telegram client."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-my-location-mode
+      (add-hook 'telega-chat-post-message-hook
+                'telega-my-location--on-new-message)
+    (remove-hook 'telega-chat-post-message-hook
+                 'telega-my-location--on-new-message)))
 
 (provide 'telega-modes)
 

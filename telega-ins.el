@@ -66,10 +66,17 @@
 
 (defun telega-button--endings-func (label)
   "Function to generate endings for the button with LABEL."
-  ;; NOTE: " " is arguable, incorrect rendering for @chessy_bot
-  (if (member label (list " " "  " "✕" telega-symbol-heavy-checkmark))
-      (cons "" "")
+  (cond
+   ((member label (list " " "  " "✕" telega-symbol-heavy-checkmark))
+    ;; NOTE: " " is arguable, incorrect rendering for @chessy_bot
+    (cons "" ""))
 
+   ((string-equal label "2×")
+    ;; Special case for voice/video notes speedup button
+    (let ((half-space (propertize " " 'display '(space :width 0.5))))
+      (cons half-space half-space)))
+
+   (t
     ;; NOTE: In newer Emacs we can use cons as `:line-width` in
     ;; telega-button face, so width of the button is not increased in
     ;; contrast with using single negative number for `:line-width'
@@ -94,7 +101,7 @@
            (end (if space
                     (propertize "\u00A0" 'display space)
                   "\u00A0")))
-      (cons end end))))
+      (cons end end)))))
 
 (defun telega-ins--button (label &rest props)
   "Insert pressable button labeled with LABEL.
@@ -162,7 +169,8 @@ single argument - slice number, starting from 0."
           (not (display-graphic-p (telega-x-frame))))
       (telega-ins "<IMAGE>")
 
-    (let* ((img-xheight (plist-get (cdr image) :height))
+    (let* ((img-xheight (* (plist-get (cdr image) :height)
+                           (plist-get (cdr image) :scale)))
            (img-slices (if img-xheight
                            (telega-chars-in-height img-xheight)
                          (ceiling
@@ -536,20 +544,19 @@ SHOW-DETAILS - non-nil to show photo details."
 
 (defun telega-ins--audio (msg &optional audio music-symbol)
   "Insert audio message MSG.
-If MUSIC-SYMBOL is  specified, use it instead of play/pause."
+If MUSIC-SYMBOL is specified, use it instead of play/pause."
   (unless audio
     (setq audio (telega--tl-get msg :content :audio)))
   (let* ((dur (plist-get audio :duration))
          (proc (plist-get msg :telega-ffplay-proc))
-         (proc-status (and (process-live-p proc)
-                           (process-status proc)))
-         (played (and proc-status
-                      (plist-get (process-plist proc) :progress)))
+         (playing-p (telega-ffplay-playing-p proc))
+         (played (if (telega-ffplay-playing-p proc)
+                     (telega-ffplay-progress proc)
+                   (telega-ffplay-paused-p proc)))
          (audio-name (plist-get audio :file_name))
          (audio-file (telega-file--renew audio :audio)))
-
     ;; Play/pause and downloading status
-    (if (eq proc-status 'run)
+    (if playing-p
         (telega-ins (or music-symbol (telega-symbol 'pause)))
       (telega-ins (or music-symbol (telega-symbol 'play))))
     (telega-ins " ")
@@ -578,9 +585,11 @@ If MUSIC-SYMBOL is  specified, use it instead of play/pause."
         (telega-ins-progress-bar
          played dur (/ telega-chat-fill-column 2) ?\.)
         (telega-ins "]" (telega-duration-human-readable played) " "))
-      (telega-ins--button "Stop"
-        'action (lambda (_ignored)
-                  (telega-ffplay-stop))))
+      (if (telega-ffplay-playing-p proc)
+          (telega-ins--ffplay-controls msg)
+        (telega-ins--button (telega-i18n "lng_mac_menu_player_stop")
+          :value msg
+          :action #'telega-msg--vvnote-stop)))
 
     ;; Title --Performer
     (when-let ((title (telega-tl-str audio :title)))
@@ -650,22 +659,50 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
             (telega-ins " ")))))
     t))
 
+(defun telega-ins--ffplay-controls (msg)
+  "Insert controls for voice/video notes."
+  (telega-ins--button "⏪"
+    'action (lambda (_button)
+              (telega-msg--vvnote-rewind msg -10)))
+  (telega-ins " ")
+  (telega-ins--button "⏩"
+    'action (lambda (_button)
+              (telega-msg--vvnote-rewind msg 10)))
+  (telega-ins " ")
+  (let* ((label2x "2×")
+         (ends (if (functionp telega-button-endings)
+                   (funcall telega-button-endings label2x)
+                 telega-button-endings)))
+    (setq label2x (concat (or (car ends) "[") label2x (or (cdr ends) "]")))
+
+    (telega-ins--button label2x
+        'face (if (eq telega-vvnote-play-speed 1)
+                  'telega-button
+                'telega-button-active)
+        :value msg
+        :action #'telega-msg--vvnote-play-speed-toggle
+        'action #'telega-button--action))
+  (telega-ins " ")
+  (telega-ins--button (telega-i18n "lng_mac_menu_player_stop")
+    :value msg
+    :action #'telega-msg--vvnote-stop))
+
 (defun telega-ins--voice-note (msg &optional voice-note)
   "Insert message MSG with VOICE-NOTE content."
   (let* ((note (or voice-note (telega--tl-get msg :content :voice_note)))
          (dur (plist-get note :duration))
          (proc (plist-get msg :telega-ffplay-proc))
-         (proc-status (and (process-live-p proc)
-                           (process-status proc)))
-         (played (and proc-status
-                      (plist-get (process-plist proc) :progress)))
+         (playing-p (telega-ffplay-playing-p proc))
+         (played (if (telega-ffplay-playing-p proc)
+                     (telega-ffplay-progress proc)
+                   (telega-ffplay-paused-p proc)))
          (note-file (telega-file--renew note :voice))
          (waveform (plist-get note :waveform))
          (waves (telega-vvnote--waveform-decode waveform)))
 
     ;; play/pause only for messages
     (when msg
-      (if (eq proc-status 'run)
+      (if playing-p
           (telega-ins (telega-symbol 'pause))
         (telega-ins (telega-symbol 'play)))
       (telega-ins " "))
@@ -686,6 +723,12 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     ;; Duration
     (telega-ins " (" (telega-duration-human-readable dur) ")")
 
+    ;; ffplay controls to seek/2x/stop
+    (when (telega-ffplay-playing-p proc)
+      (telega-ins " ")
+      (telega-ins--ffplay-controls msg)
+      (telega-ins " "))
+
     ;; Show download status/button only if inserted for message
     (when msg
       (when (telega--tl-get msg :content :is_listened)
@@ -704,6 +747,13 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
       (plist-get note :length) (plist-get note :length)
       (file-size-human-readable (telega-file--size note-file))
       (telega-duration-human-readable (plist-get note :duration)))
+
+    ;; ffplay controls to seek/2x/stop
+    (when (telega-ffplay-playing-p (plist-get msg :telega-ffplay-proc))
+      (telega-ins " ")
+      (telega-ins--ffplay-controls msg)
+      (telega-ins " "))
+
     (when viewed-p
       (telega-ins (telega-symbol 'eye)))
     (telega-ins-prefix " "
@@ -811,16 +861,29 @@ Return `non-nil' if WEB-PAGE has been inserted."
           (telega-ins "\n"))
 
         ;; See `telega-msg-open-webpage'
-        (cond ((plist-get web-page :video)
-               (telega-ins--video
-                msg (plist-get web-page :video) (when photo 'no-thumbnail))
-               (telega-ins "\n"))
-              ((plist-get web-page :animation)
+        (cond ((plist-get web-page :animation)
                (telega-ins--animation-msg msg (plist-get web-page :animation))
+               (telega-ins "\n"))
+              ((plist-get web-page :audio)
+               (telega-ins--audio msg (plist-get web-page :audio))
                (telega-ins "\n"))
               ((plist-get web-page :document)
                (telega-ins--document msg (plist-get web-page :document))
-               (telega-ins "\n")))))
+               (telega-ins "\n"))
+              ((plist-get web-page :sticker)
+               (telega-ins--sticker-image (plist-get web-page :sticker) 'slices)
+               (telega-ins "\n"))
+              ((plist-get web-page :video)
+               (telega-ins--video
+                msg (plist-get web-page :video) (when photo 'no-thumbnail))
+               (telega-ins "\n"))
+              ((plist-get web-page :video_note)
+               (telega-ins--video-note msg (plist-get web-page :video_note))
+               (telega-ins "\n"))
+              ((plist-get web-page :voice_note)
+               (telega-ins--voice-note msg (plist-get web-page :voice_note))
+               (telega-ins "\n"))
+              )))
 
     ;; Additional View button
     (if (zerop (plist-get web-page :instant_view_version))
@@ -1678,27 +1741,39 @@ performance."
               :value msg
               :action #'telega-msg-public-forwards)
           (telega-ins fwd-count-label))))
-    (telega-ins-prefix " "
-      (when (and (plist-get msg :can_get_message_thread)
-                 reply-count)
-        (if (telega-chat-channel-p msg-chat)
-            (when (>= reply-count 0)
-              (telega-ins--button (if (zerop reply-count)
-                                      (telega-i18n "lng_comments_open_none")
-                                    (concat (telega-i18n "lng_comments_open_count"
-                                              :count reply-count)
-                                            (when (telega-msg-replies-has-unread-p msg)
-                                              "•")))
-                ;; Use custom :action for clickable comments button
-                :action #'telega-msg-open-thread
-                :help-echo "Open comments in discussion group"))
-          (when (> reply-count 0)
-            (telega-ins--button
-                (format "%s%d" (telega-symbol 'reply) reply-count)
-              'face 'telega-link
-              :action #'telega-msg-open-thread
-              :help-echo "Show message thread")))))
+    (when (and (plist-get msg :can_get_message_thread)
+               (> reply-count 0))
+      (telega-ins " ")
+      (telega-ins--button
+          (format "%s%d" (telega-symbol 'reply) reply-count)
+        'face 'telega-link
+        :action #'telega-msg-open-thread
+        :help-echo "Show message thread"))
     t))
+
+(defun telega-ins--msg-comments (msg &optional msg-chat)
+  "Insert \"Comments\" section for the message MSG."
+  (when (and (plist-get msg :can_get_message_thread)
+             (telega-chat-channel-p (or msg-chat (telega-msg-chat msg))))
+    (let* ((msg-ri (telega--tl-get msg :interaction_info :reply_info))
+           (reply-count (or (plist-get msg-ri :reply_count) 0))
+           (recent-repliers (append (plist-get msg-ri :recent_repliers) nil)))
+      (telega-ins--button
+          (telega-ins--as-string
+           (if recent-repliers
+               (seq-doseq (rr recent-repliers)
+                 (telega-ins--image (telega-msg-sender-avatar-image-one-line
+                                     (telega-msg-sender rr))))
+             (telega-ins (telega-symbol 'leave-comment)))
+           (telega-ins " " (if (zerop reply-count)
+                               (telega-i18n "lng_comments_open_none")
+                             (concat (telega-i18n "lng_comments_open_count"
+                                       :count reply-count)
+                                     (when (telega-msg-replies-has-unread-p msg)
+                                       "•")))))
+        ;; Use custom :action for clickable comments button
+        :action #'telega-msg-open-thread
+        :help-echo "Open comments in discussion group"))))
 
 (defun telega-ins--message-header (msg &optional msg-chat msg-sender
                                        addon-inserter)
@@ -1985,7 +2060,10 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (telega-ins--column ccol telega-chat-fill-column
         (telega-ins--content msg)
         (telega-ins-prefix "\n"
-          (telega-ins--reply-markup msg)))))
+          (telega-ins--reply-markup msg))
+        (telega-ins-prefix "\n"
+          (telega-ins--msg-comments msg chat))
+        )))
 
   (unless no-footer
     ;; Footer: Date/status starts at `telega-chat-fill-column' column

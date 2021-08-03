@@ -264,6 +264,10 @@ display the list.")
   "List of marked messages.")
 (make-variable-buffer-local 'telega-chatbuf--marked-messages)
 
+(defvar telega-chatbuf--marked-messages-1 nil
+  "List of previously marked messages.")
+(make-variable-buffer-local 'telega-chatbuf--marked-messages-1)
+
 (defvar telega-chatbuf--inline-query nil
   "Non-nil if some inline bot has been requested.
 Actual value is `:@extra` value of the call to inline bot.")

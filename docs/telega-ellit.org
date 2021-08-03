@@ -3,6 +3,7 @@
 #+STARTUP: showall
 
 #+MACRO: nl          (eval (concat "\n" (make-string (1- (string-to-number $1)) ?\s)))
+#+MACRO: user-option-ndv User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}}
 #+MACRO: user-option User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 #+MACRO: user-option1 User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc1($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 
@@ -280,10 +281,17 @@ ask for the phone number you have associated with the Telegram
 network.
 
 Some options affecting =TDLib= runtime:
-- {{{user-option(telega-directory, 2)}}}
+- {{{user-option-ndv(telega-directory, 2)}}}
+
+  Default value: "~/.telega"
+
 - {{{user-option(telega-options-plist, 2)}}}
 - {{{user-option(telega-proxies, 2)}}}
 - {{{user-option(telega-my-location, 2)}}}
+
+  See also [[#telega-my-location-mode][telega-my-location-mode]] to automatically update
+  ~telega-my-location~ when you send location message to the
+  "Saved Messages" using mobile Telegram client.
 
 To list all available customizable user options use ~M-x
 customize-group RET telega RET~ command.
@@ -298,10 +306,10 @@ connects to the daemon process.
 examining current frame parameters and window system possibilities.
 This won't work in daemon mode.  You need to explicitly specify values
 for that variables.  Most notable options are:
-- {{{user-option(telega-use-images, 2)}}}
-- {{{user-option(telega-emoji-font-family, 2)}}}
-- {{{user-option(telega-emoji-use-images, 2)}}}
-- {{{user-option(telega-online-status-function, 2)}}}
+- {{{user-option-ndv(telega-use-images, 2)}}}
+- {{{user-option-ndv(telega-emoji-font-family, 2)}}}
+- {{{user-option-ndv(telega-emoji-use-images, 2)}}}
+- {{{user-option-ndv(telega-online-status-function, 2)}}}
 
 Setting ~telega-use-images~ **before** loading =telega= is essential,
 because many other custom options depends on its value.
@@ -652,7 +660,7 @@ reply/edit and press
 Aux prompt will be show just above the chatbuf prompt, such as:
 #+begin_example
 [✕]| Reply: @demash> Trying to install telega  M-x packag…
-(T)>>> 
+(T)>>>
 #+end_example
 
 To cancel aux prompt press on the cross button, or use
@@ -917,11 +925,36 @@ Root View, by pressing
 {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} in
 the [[#root-buffer][root buffer]].
 
+** Media Controls for media messages                                  :new:
+
+Some media messages that are playing inside Emacs (such as "audio",
+"voice-note" or "video-note" messages) will have additional media
+control buttons to control media playback parameters:
+#+begin_example
+[⏪] [⏩] [2×] [Stop] 
+#+end_example
+
+For fast access to media controls you can you next bindings:
+- {{{where-is(telega-msg--vvnote-stop,telega-msg-button-map)}}} ::
+  {{{fundoc(telega-msg--vvnote-stop,2)}}}
+- {{{where-is(telega-msg--vvnote-rewind-10-backward,telega-msg-button-map)}}} ::
+  {{{fundoc(telega-msg--vvnote-rewind-10-backward,2)}}}
+- {{{where-is(telega-msg--vvnote-rewind-10-forward,telega-msg-button-map)}}} ::
+  {{{fundoc(telega-msg--vvnote-rewind-10-forward,2)}}}
+- {{{where-is(telega-msg--vvnote-play-speed-toggle,telega-msg-button-map)}}} ::
+  {{{fundoc(telega-msg--vvnote-play-speed-toggle,2)}}}
+- {{{where-is(telega-msg--vvnote-rewind-part,telega-msg-button-map)}}} ::
+  {{{fundoc(telega-msg--vvnote-rewind-part,2)}}}
+
+To play/pause media messages use {{{kbd(RET)}}}.  Also,
+{{{where-is(telega-msg-copy-link,telega-msg-button-map)}}} command
+supports linking to the currently playing (or paused at) moment.
+
 * Voice Chats
 
 **TODO**: write me
 
-* Stickers
+* Stickers / Animations
 
 To display stickers =telega= uses =dwebp= utility to convert ~.webp~
 stickers into png images that can be displayed by Emacs. =dwebp=
@@ -932,6 +965,15 @@ Important customizable options for stickers:
 - {{{user-option(telega-sticker-set-download, 2)}}}
 - {{{user-option(telega-sticker-favorite-background, 2)}}}
 
+To play short animations inside Emacs =telega= uses =ffmpeg= utility.
+Playing animations inside Emacs is a bit heavy process, so be careful
+in choosing value for the ~telega-animation-play-inline~.
+
+Important customizable options for animations:
+- {{{user-option(telega-animation-height, 2)}}}
+- {{{user-option(telega-animation-play-inline, 2)}}}
+- {{{user-option(telega-animation-download-saved, 2)}}}
+
 ** Animated stickers
 
 =telega= supports animated stickers using =tgs2png= utility from
@@ -941,8 +983,8 @@ Once =tgs2png= tool is installed into ~exec-path~ (check value for
 ~telega-sticker-animated-play~ after =telega= is started), you can
 play animated stickers by pressing {{{kbd(RET)}}} on sticker.
 
-Also [[https://zevlg.github.io/telega.el/index-master.html#telega-autoplay-mode][AutoPlay Mode]] can be used, to automatically animate sticker
-messages.
+Also [[#telega-autoplay-mode][telega-autoplay-mode]] can be used, to automatically animate
+messages containing animated stickers.
 
 ** Favorite and recently used stickers
 
@@ -954,6 +996,23 @@ stickers are filled with color:
 To toggle sticker being favorite, press
 {{{where-is(telega-sticker-toggle-favorite,telega-sticker-button-map)}}}
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
+
+** Animations                                                         :new:
+
+There are multiple methods you can use to attach an animation:
+- {{{kbd(C-c C-a animation RET)}}} to attach animation from the Saved
+  Animations list.
+- {{{kbd(C-c C-a gif RET)}}} to attach animation from a =gif= or =mp4=
+  file.
+- [[#sending-messages-via-bots][via @gif bot]]
+
+To play animation message press {{{kbd(RET)}}} on the message.  Also,
+[[#telega-autoplay-mode][telega-autoplay-mode]] can be used to automatically play animation
+messages.
+
+To explicitly add animation to Saved Animations list, press
+{{{where-is(telega-msg-mark-toggle,telega-msg-button-map)}}} on the
+corresponding animation message.
 
 * Multiple accounts
 
@@ -1027,5 +1086,33 @@ project.
 #+ELLIT-INCLUDE: ../contrib/telega-transient.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-adblock.el
+
+* Troubleshooting                                                       :new:
+
+** Can't compile =telega-server=
+**TODO**
+
+** Invalid TDLib version
+**TODO**
+
+** Stickers are not shown
+
+**Q**: Stickers are not fully shown, I see only outlines for some
+stickers, like on the screenshot:
+[[file:https:/zevlg.github.io/telega/bad-stickers.jpg]]
+
+**A**: =telega= uses =dwebp= tool to convert stickers in the WEBP
+format to the format supported by Emacs.  See
+[[#stickers--animations][Stickers / Animations]] for details.
+
+** Notifications does not work
+
+**Q**: I've enabled ~telega-notifications-mode~ as described in the
+manual, but notifications still does not pop up.
+
+**A**: Make sure your time is correct.  Eval ~(telega-time-seconds)~
+to get UTC time in your Emacs, it should be more or less the same as
+on https://www.unixtimestamp.com/
+
 
 #  LocalWords:  customizable chatbuf tdlib gmake

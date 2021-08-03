@@ -224,7 +224,7 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_query_delete_chat"
   :value "Delete «{title}» chat? ")
  ("telega_query_delete_chat_history"
-  :value "Delete all message history in «{title}» chat? ")
+  :value "Delete all messages history in «{title}» chat? ")
  ("telega_query_read_chats"
   :one_value "Toggle read for {count} chat? "
   :other_value "Toggle read for {count} chats? ")
@@ -687,4 +687,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_gigagroup_convert_feature3"
   :value "Can't be turned back into a regular group.")
 
+ ;; Player controls
+ ("lng_mac_menu_player_stop"
+  :value "Stop")
  )

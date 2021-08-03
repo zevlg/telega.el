@@ -196,17 +196,17 @@ If prefix arg is given then list only missed calls."
 (defun telega-voip-sounds--play-incoming (_call)
   "Incomming CALL pending."
   (unless telega-voip--active-call
-    (telega-ffplay-run (telega-etc-file "sounds/call_incoming.mp3") nil
+    (telega-ffplay-run (telega-etc-file "sounds/call_incoming.mp3")
                        "-nodisp -loop 0")))
 
 (defun telega-voip-sounds--play-outgoing (_call)
   "Outgoing CALL initiated."
-  (telega-ffplay-run (telega-etc-file "sounds/call_outgoing.mp3") nil
+  (telega-ffplay-run (telega-etc-file "sounds/call_outgoing.mp3")
                      "-nodisp -loop 0"))
 
 (defun telega-voip-sounds--play-connect (_call)
   "Call ready to be used."
-  (telega-ffplay-run (telega-etc-file "sounds/call_connect.mp3") nil
+  (telega-ffplay-run (telega-etc-file "sounds/call_connect.mp3")
                      "-nodisp"))
 
 (defun telega-voip-sounds--play-end (call)
@@ -221,8 +221,7 @@ If prefix arg is given then list only missed calls."
                                         callDiscardReasonMissed)))
                     "sounds/call_busy.mp3"
                   "sounds/call_end.mp3")))
-      (telega-ffplay-run (telega-etc-file snd) nil "-nodisp"))
-    ))
+      (telega-ffplay-run (telega-etc-file snd) "-nodisp"))))
 
 (defun telega-voip-sounds-mode (&optional arg)
   "Toggle soundsToggle telega notifications on or off.

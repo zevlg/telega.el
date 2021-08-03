@@ -36,10 +36,22 @@
 ;; telega-chat.el depends on telega-tme.el
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-by-username "telega-chat" (username))
-(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
+(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat &optional no-history-load))
 
 
+(defun telega-tme--media-timestamp-callback (media-timestamp-str)
+  "Generate callback to open media message at MEDIA-TIMESTAMP."
+  (when media-timestamp-str
+    (lambda ()
+      (let ((msg (telega-msg-at (point))))
+        (when (telega-msg-type-p
+               '(messageVideoNote messageVoiceNote messageAudio messageVideo)
+               msg)
+          (let ((telega-ffplay-media-timestamp
+                 (string-to-number media-timestamp-str)))
+            (telega-msg-open-content msg)))))))
+
 (defun telega-tme-internal-link-to (chat-or-msg &rest params)
   "Return internal tme link to CHAT-OR-MSG.
 Return nil if link can't be created.
@@ -63,7 +75,6 @@ CHAT-SPEC = @<username> | <chat-id>
 POST-SPEC = <POST-ID> | <MSG-ID> (for backward compatibility)
 PARAMS is a plist with additional parameters, supported parameters are:
 `:open_content' to open the message contents from MSG-SPEC."
-  (message "PARAMS: %S" params)
   (let* ((chat (or (if (string-prefix-p "@" chat-spec)
                        (telega-chat-by-username (substring chat-spec 1))
                      (telega-chat-get (string-to-number chat-spec) 'offline))
@@ -77,7 +88,7 @@ PARAMS is a plist with additional parameters, supported parameters are:
     (cond ((plist-get params :open_content)
            (cl-assert msg-id)
            (telega-msg-get chat msg-id
-             (lambda (message _offline-p)
+             (lambda (message &optional _offline-p)
                (telega-msg-open-content message))))
           (t
            (telega-chat--pop-to-buffer chat)
@@ -90,12 +101,13 @@ PARAMS is a plist with additional parameters, supported parameters are:
   ;; msg-id = post * 1048576
   (* (string-to-number post) 1048576))
 
-(defun telega-tme-open-privatepost (supergroup post)
+(defun telega-tme-open-privatepost (supergroup post &optional media-timestamp)
   "Open POST in private SUPERGROUP."
   (when-let ((chat (telega-chat-get
                     (string-to-number (concat "-100" supergroup))
                     'offline)))
-    (telega-chat--goto-msg chat (telega-tme--post-msg-id post) 'highlight)))
+    (telega-chat--goto-msg chat (telega-tme--post-msg-id post) 'highlight
+      (telega-tme--media-timestamp-callback media-timestamp))))
 
 (defun telega-tme-open-username (username &rest params)
   "Open chat by its USERNAME.
@@ -132,7 +144,8 @@ PARAMS are additional params."
          (let ((chat (telega--searchPublicChat username))
                (post (plist-get params :post))
                (comment (plist-get params :comment))
-               (thread (plist-get params :thread)))
+               (thread (plist-get params :thread))
+               (media-timestamp (plist-get params :t)))
            (unless chat
              (error "Unknown public chat: %s" username))
 
@@ -147,7 +160,8 @@ PARAMS are additional params."
                    (telega-tme--post-msg-id comment)))
                  (post
                   (telega-chat--goto-msg chat
-                      (telega-tme--post-msg-id post) 'highlight))
+                      (telega-tme--post-msg-id post) 'highlight
+                    (telega-tme--media-timestamp-callback media-timestamp)))
                  (t
                   (telega-chat--pop-to-buffer chat)))))
         ))
@@ -246,7 +260,8 @@ Return non-nil, meaning URL has been handled."
            (telega-tme-open-lang (plist-get query :lang)))
           ((string= path "privatepost")
            (telega-tme-open-privatepost
-            (plist-get query :channel) (plist-get query :post)))
+            (plist-get query :channel) (plist-get query :post)
+            (plist-get query :t)))
           ((or (string= path "msg") (string= path "share"))
            )
           ((string= path "msg_url")
@@ -312,7 +327,8 @@ Return non-nil if url has been handled."
                                (group (1+ digit)))))
                     path)
                    (concat "tg:privatepost?channel=" (match-string 1 path)
-                           "&post=" (match-string 2 path)))
+                           "&post=" (match-string 2 path)
+                           (when query (concat "&" query))))
                   ((string-match
                     (eval-when-compile
                       (rx (and line-start "/"

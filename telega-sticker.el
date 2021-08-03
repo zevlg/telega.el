@@ -926,9 +926,8 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
           (telega-file--download (telega-file--renew anim :animation) 32
             (lambda (file)
               (when (telega-file--downloaded-p file)
-                (telega-ffplay-to-png (telega--tl-get file :local :path)
-                    '("-an")            ;no sound
-                  #'telega-animation--ffplay-callback anim))))
+                (telega-ffplay-to-png (telega--tl-get file :local :path) "-an"
+                  (list #'telega-animation--ffplay-callback anim)))))
 
         ;; dir == left
         (telega--cancelDownloadFile (plist-get anim :animation))))))

@@ -808,7 +808,7 @@ Return nil if STR is not emphasised by org mode."
                '(:@type "textEntityTypeStrikethrough")))))
       (telega-fmt-text (substring-no-properties str 1 -1) entity-type))))
 
-(defun telega-markup-org--begin-src-fmt (str)
+(defun telega-markup-org--begin-src-fmt (_str)
   "Format org mode src block specified by STR to formattedText.
 Return nil if STR does not specify org mode source block."
   (error "TODO: format `begin_src' block")
@@ -1654,13 +1654,16 @@ IMAGE-SPEC could be image, filename or form to be evaluated returning image."
   "Return possible emojified value for the symbol denoted by ENDING.
 Actual symbol value is taken from `telega-symbol-ENDING' variable.
 Only endings listed in `telega-symbols-emojify' are emojified."
-  (let ((value (symbol-value (intern (format "telega-symbol-%s" ending)))))
-    (or (let ((emoji-file (cdr (assq ending telega-symbols-emojify))))
-          (when (or (and telega-use-images emoji-file)
-                    (and telega-emoji-use-images
-                         (memq ending telega-symbols-emojify)))
-            (apply #'telega-symbol-emojify value emoji-file)))
-        value)))
+  (let ((value (symbol-value (intern (format "telega-symbol-%s" ending))))
+        (image-spec (cdr (assq ending telega-symbols-emojify))))
+    (cond ((functionp image-spec)
+           (funcall image-spec ending value))
+          ((or (and telega-use-images image-spec)
+               (and telega-emoji-use-images
+                    (memq ending telega-symbols-emojify)))
+           (apply #'telega-symbol-emojify value image-spec))
+          (t
+           value))))
 
 (defun telega-emoji-has-zero-joiner-p (emoji)
   "Return non-nil if EMOJI has ZWJ char inside."
@@ -2056,10 +2059,29 @@ Binds current symbol to SYM-BIND."
                                       ?i (telega-docker--image-name)))
      (let ((selinux-p (telega-docker--selinux-p)))
        (concat
-        (format "docker run -i -v %s:%s%s"
+        (format "docker run --privileged -i -v %s:%s%s"
                 telega-database-dir telega-database-dir
                 (if selinux-p ":z" ""))
         " -u " (telega-docker--user-id)
+        ;; Connect container to host networking
+        " --net=host"
+        ;; Add host devices to container to allow voice/video
+        ;; recording
+        " --device /dev/snd:/dev/snd"
+        " --device /dev/video0:/dev/video0"
+        " --device /dev/video1:/dev/video1"
+
+        ;; Export resources for pulseaudio to work
+        ;; ref: https://stackoverflow.com/questions/28985714/run-apps-using-audio-in-a-docker-container
+        (concat " -v /dev/shm:/dev/shm"
+                " -v /etc/machine-id:/etc/machine-id"
+                (when-let ((xdg-runtime-dir (getenv "XDG_RUNTIME_DIR")))
+                  (concat (format " -v %s:%s" xdg-runtime-dir xdg-runtime-dir)
+                          " -e XDG_RUNTIME_DIR"))
+                " -v /var/lib/dbus"
+                " -e XDG_RUNTIME_DIR"
+                ;; TODO
+                )
         ;; Export volumes and env vars need to run appindicator
         (when telega-appindicator-mode
           (concat " --security-opt apparmor=unconfined"
@@ -2081,6 +2103,12 @@ Binds current symbol to SYM-BIND."
         " " (telega-docker--image-name))))
    " " cmd))
 
+(defun telega-docker-host-cmd-find (program)
+  "Return non-nil if PROGRAM is available on host platform.
+Return absolute path to PROGRAM."
+  (let ((exec-path (cons telega-directory exec-path)))
+    (executable-find program)))
+
 (defun telega-docker-exec-cmd (cmd &optional try-host-p exec-flags no-error)
   "Format docker exec command to run CMD in the running docker.
 If TRY-HOST-P is specified, return CMD if corresponding program is available.
@@ -2093,16 +2121,19 @@ not signal an error and just return nil."
                     (car cmd-args)))
          program-bin)
     (cond ((and try-host-p
-                (not (eq telega-debug 'docker))
-                (setq program-bin
-                      (let ((exec-path (cons telega-directory exec-path)))
-                        (executable-find program))))
+                (or (not telega-use-docker)
+                    (not (eq telega-debug 'docker)))
+                (setq program-bin (telega-docker-host-cmd-find program)))
            (mapconcat #'identity (cons program-bin (cdr cmd-args)) " "))
 
           ((and telega-use-docker (telega-server-live-p))
            (concat "docker exec "
                    " " exec-flags
-                   " -u " (telega-docker--user-id)
+                   ;; NOTE: `exec-flags' might specify its own "-u",
+                   ;; for example to run commands under root with
+                   ;; "-u 0" `exec-flags'
+                   (unless (string-prefix-p "-u " (or exec-flags ""))
+                     (concat " -u " (telega-docker--user-id)))
                    " " (telega-docker--container-id)
                    " " cmd))
 

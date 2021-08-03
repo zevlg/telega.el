@@ -1,9 +1,10 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.48)
+#+TITLE: Telega Manual (v0.7.54)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
 #+macro: nl          (eval (concat "\n" (make-string (1- (string-to-number $1)) ?\s)))
+#+macro: user-option-ndv User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}}
 #+macro: user-option User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 #+macro: user-option1 User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc1($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 
@@ -63,10 +64,12 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#opening-files-using-external-programs][Opening files using external programs]]
     - [[#client-side-messages-ignoring][Client side messages ignoring]]
     - [[#favorite-messages][Favorite messages]]
+    - [[#media-controls-for-media-messages][Media Controls for media messages]]
   - [[#voice-chats][Voice Chats]]
-  - [[#stickers][Stickers]]
+  - [[#stickers--animations][Stickers / Animations]]
     - [[#animated-stickers][Animated stickers]]
     - [[#favorite-and-recently-used-stickers][Favorite and recently used stickers]]
+    - [[#animations][Animations]]
   - [[#multiple-accounts][Multiple accounts]]
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
@@ -78,6 +81,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-edit-file-mode][telega-edit-file-mode]]
     - [[#telega-highlight-text-mode][telega-highlight-text-mode]]
     - [[#telega-patrons-mode][telega-patrons-mode]]
+    - [[#telega-my-location-mode][telega-my-location-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
@@ -91,6 +95,11 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-storiesel--display-emacs-stories-in-the-dashboard][/telega-stories.el/ -- Display Emacs Stories in the dashboard]]
     - [[#telega-transientel--transient-magit-like-style-commands-for-telega][/telega-transient.el/ -- Transient (magit-like style) commands for telega]]
     - [[#telega-adblockel--block-advertisement-messages][/telega-adblock.el/ -- Block advertisement messages]]
+  - [[#troubleshooting][Troubleshooting]]
+    - [[#cant-compile-telega-server][Can't compile =telega-server=]]
+    - [[#invalid-tdlib-version][Invalid TDLib version]]
+    - [[#stickers-are-not-shown][Stickers are not shown]]
+    - [[#notifications-does-not-work][Notifications does not work]]
 
 * Introduction
 :PROPERTIES:
@@ -392,9 +401,13 @@ network.
 Some options affecting =TDLib= runtime:
 - User Option: ~telega-directory~ 
 
-  Directory for telega runtime files. 
+  Directory for telega runtime files.
+  Set this variable before loading telega, because other variables
+  depends on ~telega-directory~ value.
 
-  Default value: ~"/home/lg/.telega"~
+
+Default value: "~/.telega"
+
 - User Option: ~telega-options-plist~ 
 
   Plist of options to set.
@@ -410,10 +423,10 @@ Some options affecting =TDLib= runtime:
     (:server "<SERVER>" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
 
   where PROXY-TYPE is one of:
-    (:@type "proxyTypeSocks5" :username <USER> :password <PASSWORD>)
-    (:@type "proxyTypeHttp" :username <USER> :password <PASSWORD>
-  	 :http_only <BOOL>)
-    (:@type "proxyTypeMtproto" :secret <SECRET-STRING>)
+  - (:@type "proxyTypeSocks5" :username <USER> :password <PASSWORD>)
+  - (:@type "proxyTypeHttp" :username <USER> :password <PASSWORD>
+    :http_only <BOOL>)
+  - (:@type "proxyTypeMtproto" :secret <SECRET-STRING>)
 
   <BOOL> is either t or ~:false~, nil is not valid value. 
 
@@ -427,6 +440,10 @@ Some options affecting =TDLib= runtime:
   Used to calculate distances from other peers to me. 
 
   Default value: ~nil~
+
+  See also [[#telega-my-location-mode][telega-my-location-mode]] to automatically update
+  ~telega-my-location~ when you send location message to the
+  "Saved Messages" using mobile Telegram client.
 
 To list all available customizable user options use ~M-x
 customize-group RET telega RET~ command.
@@ -449,26 +466,22 @@ for that variables.  Most notable options are:
   Non-nil to show images.
   Explicitly set it to non-nil if using Emacs as a service and
   want to create X frames to show images.
-  See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon 
+  See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon
 
-  Default value: ~nil~
 - User Option: ~telega-emoji-font-family~ 
 
-  Font to use for emoji image generation using ~telega-emoji-create-svg~. 
+  Font to use for emoji image generation using ~telega-emoji-create-svg~.
 
-  Default value: ~nil~
 - User Option: ~telega-emoji-use-images~ 
 
-  Non-nil to use images for emojis. 
+  Non-nil to use images for emojis.
 
-  Default value: ~nil~
 - User Option: ~telega-online-status-function~ 
 
   Function used to determine if user is online.
   Function should return non-nil if user is online, and nil if offline.
-  See https://github.com/zevlg/telega.el/issues/171 
+  See https://github.com/zevlg/telega.el/issues/171
 
-  Default value: ~telega-focus-state~
 
 Setting ~telega-use-images~ **before** loading =telega= is essential,
 because many other custom options depends on its value.
@@ -687,12 +700,10 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -1641,7 +1652,8 @@ Attachment types to attach with
 - video-note :: Attach a (circled) video note to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
      video-note.  Otherwise record video note inplace.
-     ~telega-vvnote-video-cmd~ is used to record video notes.
+     ~telega-vvnote-video-record-args~ is used as arguments to ffmpeg to
+     record video notes.
 - audio :: Attach ~FILENAME~ as audio to the chatbuf input.
 - voice-note :: Attach a voice note to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
@@ -1732,7 +1744,7 @@ reply/edit and press
 Aux prompt will be show just above the chatbuf prompt, such as:
 #+begin_example
   [✕]| Reply: @demash> Trying to install telega  M-x packag…
-  (T)>>> 
+  (T)>>>
 #+end_example
 
 To cancel aux prompt press on the cross button, or use
@@ -2095,6 +2107,37 @@ Root View, by pressing
 @@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) in
 the [[#root-buffer][root buffer]].
 
+** Media Controls for media messages                                    :new:
+:PROPERTIES:
+:CUSTOM_ID: media-controls-for-media-messages
+:END:
+
+Some media messages that are playing inside Emacs (such as "audio",
+"voice-note" or "video-note" messages) will have additional media
+control buttons to control media playback parameters:
+#+begin_example
+  [⏪] [⏩] [2×] [Stop] 
+#+end_example
+
+For fast access to media controls you can you next bindings:
+- @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
+     Stop playing media message.
+- @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
+     Rewind 10 seconds backward.
+- @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
+     Rewind 10 seconds forward.
+- @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
+     Toggle playback speed for the media message.
+     Only two modes are available: normal speed and x2 speed.
+- @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
+     Rewind to the N's 10 part of the message duration.
+     I.e. if you press 7, then you will jump to 70% of the message
+     duration.
+
+To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
+@@html:<kbd>@@l@@html:</kbd>@@ (~telega-msg-copy-link~) command
+supports linking to the currently playing (or paused at) moment.
+
 * Voice Chats
 :PROPERTIES:
 :CUSTOM_ID: voice-chats
@@ -2102,9 +2145,9 @@ the [[#root-buffer][root buffer]].
 
 **TODO**: write me
 
-* Stickers
+* Stickers / Animations
 :PROPERTIES:
-:CUSTOM_ID: stickers
+:CUSTOM_ID: stickers--animations
 :END:
 
 To display stickers =telega= uses =dwebp= utility to convert ~.webp~
@@ -2130,6 +2173,29 @@ Important customizable options for stickers:
 
   Default value: ~"cornflower blue"~
 
+To play short animations inside Emacs =telega= uses =ffmpeg= utility.
+Playing animations inside Emacs is a bit heavy process, so be careful
+in choosing value for the ~telega-animation-play-inline~.
+
+Important customizable options for animations:
+- User Option: ~telega-animation-height~ 
+
+  Height in chars for animations. 
+
+  Default value: ~5~
+- User Option: ~telega-animation-play-inline~ 
+
+  Non-nil to play animation inside telega.
+  If number, then play animation inline only if animation is shorter
+  then this number of seconds. 
+
+  Default value: ~10~
+- User Option: ~telega-animation-download-saved~ 
+
+  Non-nil to automatically download saved animations. 
+
+  Default value: ~nil~
+
 ** Animated stickers
 :PROPERTIES:
 :CUSTOM_ID: animated-stickers
@@ -2142,8 +2208,8 @@ Once =tgs2png= tool is installed into ~exec-path~ (check value for
 ~telega-sticker-animated-play~ after =telega= is started), you can
 play animated stickers by pressing @@html:<kbd>@@RET@@html:</kbd>@@ on sticker.
 
-Also [[https://zevlg.github.io/telega.el/index-master.html#telega-autoplay-mode][AutoPlay Mode]] can be used, to automatically animate sticker
-messages.
+Also [[#telega-autoplay-mode][telega-autoplay-mode]] can be used, to automatically animate
+messages containing animated stickers.
 
 ** Favorite and recently used stickers
 :PROPERTIES:
@@ -2162,6 +2228,26 @@ stickers are filled with color:
 To toggle sticker being favorite, press
 @@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@f@@html:</kbd>@@ (~telega-sticker-toggle-favorite~)
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
+
+** Animations                                                           :new:
+:PROPERTIES:
+:CUSTOM_ID: animations
+:END:
+
+There are multiple methods you can use to attach an animation:
+- @@html:<kbd>@@C-c C-a animation RET@@html:</kbd>@@ to attach animation from the Saved
+  Animations list.
+- @@html:<kbd>@@C-c C-a gif RET@@html:</kbd>@@ to attach animation from a =gif= or =mp4=
+  file.
+- [[#sending-messages-via-bots][via @gif bot]]
+
+To play animation message press @@html:<kbd>@@RET@@html:</kbd>@@ on the message.  Also,
+[[#telega-autoplay-mode][telega-autoplay-mode]] can be used to automatically play animation
+messages.
+
+To explicitly add animation to Saved Animations list, press
+@@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~) on the
+corresponding animation message.
 
 * Multiple accounts
 :PROPERTIES:
@@ -2477,6 +2563,28 @@ me]].
 
 ~telega-patrons-mode~ is enabled by default.
 
+** telega-my-location-mode                                              :new:
+:PROPERTIES:
+:CUSTOM_ID: telega-my-location-mode
+:END:
+
+~telega-my-location~ is used by =telega= to calculate distance to
+me for location messages.  Also, ~telega-my-location~ is used to
+search chats nearby me.  So, having it set to correct value is
+essential.  There is
+[[#telega-live-locationel--manage-live-location-in-telega-using-geoel][contrib/telega-live-location.el]]
+which uses =geo.el= to actualize ~telega-my-location~, however it
+is not always possible to use it.
+
+When ~telega-my-location-mode~ is enabled, your
+~telega-my-location~ gets automatic update when you send location
+message into "Saved Messages" using mobile Telegram client.
+
+Enable with ~(telega-my-location-mode 1)~ or at =telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-my-location-mode)
+#+end_src
+
 ** telega-root-auto-fill-mode                                           :new:
 :PROPERTIES:
 :CUSTOM_ID: telega-root-auto-fill-mode
@@ -2762,7 +2870,7 @@ Customizable options:
 
   Height in chars for Emacs Stories buttons 
 
-  Default value: ~6~
+  Default value: ~(6 . 9)~
 - User Option: ~telega-stories-notify-if~ 
 
   Pop notification on new story if stories chat matches this Chat Filter. 
@@ -2851,3 +2959,47 @@ Customizable options:
   Set it to less value if you see some advert messages not being blocked. 
 
   Default value: ~4~
+
+* Troubleshooting                                                       :new:
+:PROPERTIES:
+:CUSTOM_ID: troubleshooting
+:END:
+
+** Can't compile =telega-server=
+:PROPERTIES:
+:CUSTOM_ID: cant-compile-telega-server
+:END:
+
+**TODO**
+
+** Invalid TDLib version
+:PROPERTIES:
+:CUSTOM_ID: invalid-tdlib-version
+:END:
+
+**TODO**
+
+** Stickers are not shown
+:PROPERTIES:
+:CUSTOM_ID: stickers-are-not-shown
+:END:
+
+**Q**: Stickers are not fully shown, I see only outlines for some
+stickers, like on the screenshot:
+[[file:https:/zevlg.github.io/telega/bad-stickers.jpg]]
+
+**A**: =telega= uses =dwebp= tool to convert stickers in the WEBP
+format to the format supported by Emacs.  See
+[[#stickers--animations][Stickers / Animations]] for details.
+
+** Notifications does not work
+:PROPERTIES:
+:CUSTOM_ID: notifications-does-not-work
+:END:
+
+**Q**: I've enabled ~telega-notifications-mode~ as described in the
+manual, but notifications still does not pop up.
+
+**A**: Make sure your time is correct.  Eval ~(telega-time-seconds)~
+to get UTC time in your Emacs, it should be more or less the same as
+on https://www.unixtimestamp.com/

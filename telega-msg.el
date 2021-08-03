@@ -39,8 +39,8 @@
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
-(declare-function telega-msg-activate-voice-note "telega-chat" (msg &optional for-chat))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
+(declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf--modeline-update "telega-chat" ())
@@ -147,6 +147,7 @@
     (set-keymap-parent map button-map)
     (define-key map [remap self-insert-command] 'ignore)
 
+    (define-key map (kbd "SPC") 'scroll-up-command)
     (define-key map (kbd "c") 'telega-msg-copy-text)
     (define-key map (kbd "d") 'telega-msg-delete-marked-or-at-point)
     (define-key map (kbd "e") 'telega-msg-edit)
@@ -168,7 +169,7 @@
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "S") 'telega-msg-save)
-    (define-key map (kbd "U") 'telega-chatbuf-unmark-all)
+    (define-key map (kbd "U") 'telega-chatbuf-msg-marks-toggle)
 
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "^") 'telega-msg-pin-toggle)
@@ -179,6 +180,25 @@
     ;; Menu for right mouse on a message
     (define-key map [down-mouse-3] telega-msg-button-menu-map)
     (define-key map [mouse-3] #'ignore)
+
+    ;; ffplay media controls for some media messages
+    (define-key map (kbd ",") 'telega-msg--vvnote-rewind-10-backward)
+    (define-key map (kbd "<") 'telega-msg--vvnote-rewind-10-backward)
+    (define-key map (kbd ".") 'telega-msg--vvnote-rewind-10-forward)
+    (define-key map (kbd ">") 'telega-msg--vvnote-rewind-10-forward)
+    (define-key map (kbd "x") 'telega-msg--vvnote-play-speed-toggle)
+
+    (define-key map (kbd "0") 'telega-msg--vvnote-stop)
+    (define-key map (kbd "1") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "2") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "3") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "4") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "5") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "6") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "7") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "8") 'telega-msg--vvnote-rewind-part)
+    (define-key map (kbd "9") 'telega-msg--vvnote-rewind-part)
+
     map))
 
 (define-button-type 'telega-msg
@@ -322,8 +342,10 @@ For use by interactive commands."
 (defun telega-msg-type-p (msg-type msg)
   "Return non-nil if MSG is of MSG-TYPE.
 Suitable to generate msg type predicates using `apply-partially'.
-Thats why MSG-TYPE argument goes first."
-  (eq (telega--tl-type (plist-get msg :content)) msg-type))
+Thats why MSG-TYPE argument goes first.
+MSG-TYPE can be a list of message types."
+  (memq (telega--tl-type (plist-get msg :content))
+        (if (listp msg-type) msg-type (list msg-type))))
 
 (defun telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG.
@@ -364,27 +386,29 @@ If CALLBACK is specified, then get reply message asynchronously."
   "Goto message MSG and highlight it."
   (telega-msg-goto msg 'highlight))
 
-(defun telega-msg-open-animated-sticker (msg)
-  "Open content for animated sticker message MSG."
-  (let ((sticker (telega--tl-get msg :content :sticker)))
-    (when (plist-get sticker :is_animated)
-      (telega-sticker--animate sticker))))
-
-(defun telega-msg-open-sticker (msg)
+(defun telega-msg-open-sticker (msg &optional sticker)
   "Open content for sticker message MSG."
-  (let ((sset-id (telega--tl-get msg :content :sticker :set_id)))
-    (if (string= "0" sset-id)
-        (message "Sticker has no associated stickerset")
+  (unless sticker
+    (setq sticker (telega--tl-get msg :content :sticker)))
 
-      (if-let ((sset (telega-stickerset-get sset-id 'locally)))
-          (telega-describe-stickerset sset (telega-msg-chat msg))
+  (if (and (plist-get sticker :is_animated)
+           telega-sticker-animated-play
+           (not current-prefix-arg))
+      (telega-sticker--animate sticker)
 
-        (with-telega-help-win "*Telegram Sticker Set*"
-          (telega-ins "Loading stickerset..."))
-        (telega-stickerset-get sset-id nil
-          (lambda (stickerset)
-            (telega-describe-stickerset
-             stickerset (telega-msg-chat msg))))))))
+    (let ((sset-id (plist-get sticker :set_id)))
+      (if (string= "0" sset-id)
+          (message "Sticker has no associated stickerset")
+
+        (if-let ((sset (telega-stickerset-get sset-id 'locally)))
+            (telega-describe-stickerset sset (telega-msg-chat msg))
+
+          (with-telega-help-win "*Telegram Sticker Set*"
+            (telega-ins "Loading stickerset..."))
+          (telega-stickerset-get sset-id nil
+            (lambda (stickerset)
+              (telega-describe-stickerset
+               stickerset (telega-msg-chat msg)))))))))
 
 (defun telega-msg--play-video (msg file &optional done-callback)
   "Start playing video FILE for MSG."
@@ -483,125 +507,196 @@ If CALLBACK is specified, then get reply message asynchronously."
                (when (telega-file--downloaded-p file)
                  (telega-msg--play-video msg file))))))))
 
-(defun telega-msg-open-audio (msg)
+(defun telega-msg-open-audio (msg &optional audio)
   "Open content for audio message MSG."
   ;; - If already playing, then pause
   ;; - If paused, start from paused position
-  ;; - If not start, start playing
-  (let* ((audio (telega--tl-get msg :content :audio))
+  ;; - If not started, start playing
+  (let* ((audio (or audio (telega--tl-get msg :content :audio)))
          (audio-file (telega-file--renew audio :audio))
-         (proc (plist-get msg :telega-ffplay-proc)))
-    (cl-case (and (process-live-p proc) (process-status proc))
-      (run (telega-ffplay-pause proc))
-      (stop (telega-ffplay-resume proc))
-      (t (telega-file--download audio-file 32
-          (lambda (file)
-            (telega-msg-redisplay msg)
-            (when (telega-file--downloaded-p file)
-              (if (memq 'audio telega-open-message-as-file)
-                  (telega-open-file (telega--tl-get file :local :path) msg)
-                (plist-put msg :telega-ffplay-proc
-                           (telega-ffplay-run
-                            (telega--tl-get file :local :path)
-                            (lambda (_proc) (telega-msg-redisplay msg))
-                            (cdr (assq 'audio telega-open-message-ffplay-args))))))))))))
+         (proc (plist-get msg :telega-ffplay-proc))
+         (paused-p (or telega-ffplay-media-timestamp
+                       (telega-ffplay-paused-p proc))))
+    (if (telega-ffplay-playing-p proc)
+        (telega-ffplay-pause proc)
+      (telega-file--download audio-file 32
+        (lambda (file)
+          (telega-msg-redisplay msg)
+          (when (telega-file--downloaded-p file)
+            (if (memq 'audio telega-open-message-as-file)
+                (telega-open-file (telega--tl-get file :local :path) msg)
+              (plist-put msg :telega-ffplay-proc
+                         (telega-ffplay-run (telega--tl-get file :local :path)
+                             (concat
+                              (when paused-p
+                                (format "-ss %.2f " paused-p))
+                              (cdr (assq 'audio telega-open-message-ffplay-args)))
+                           (lambda (_proc)
+                             (telega-msg-redisplay msg)))))))))))
 
-(defun telega-msg-voice-note--ffplay-callback (msg)
-  "Return callback to be used in `telega-ffplay-run'."
-  (lambda (proc)
-    (telega-msg-redisplay msg)
+(defun telega-msg-voice-note--ffplay-callback (proc msg &optional
+                                                    no-progress-adjust)
+  "Callback for voice/video note.
+Adjust progress according to the `telega-vvnote-play-speed'.
+Also, start playing next voice/video note when active voice/video
+note finishes."
+  ;; NOTE: adjust `:progress' with `telega-vvnote-play-speed'
+  ;; since ffplay reports progress disreguarding atempo
+  (unless no-progress-adjust
+    (when-let* ((proc-plist (process-plist proc))
+                (progress (plist-get proc-plist :progress))
+                (resumed-at (or (plist-get msg :telega-ffplay-resumed-at) 0)))
+      (cl-assert (numberp progress))
+      (unless (equal 1 telega-vvnote-play-speed)
+        (setq progress (+ resumed-at (* (- progress resumed-at)
+                                        telega-vvnote-play-speed)))
+        (set-process-plist proc (plist-put proc-plist :progress progress)))))
 
-    (unless (process-live-p proc)
-      ;; NOTE: another message already could be activated, so check
-      ;; current chat's voice-msg
-      (let ((chat (telega-msg-chat msg)))
-        (with-telega-chatbuf chat
-          (when (eq telega-chatbuf--voice-msg msg)
-            (telega-msg-activate-voice-note nil chat)))))
+  (telega-msg-redisplay msg)
 
-    (when (and (eq (process-status proc) 'exit)
-               telega-vvnote-voice-play-next)
-      ;; NOTE: callback might be called *twice* with 'exit status,
-      ;; this might cause problems if not handled, to handle this, we
-      ;; simple unset the callback on proc
-      (set-process-plist proc nil)
+  (unless (process-live-p proc)
+    ;; NOTE: another message could be already activated
+    (with-telega-chatbuf (telega-msg-chat msg)
+      (when (eq telega-chatbuf--vvnote-msg msg)
+        (telega-chatbuf--activate-vvnote-msg nil))))
 
-      ;; ffplay exited normally (finished playing), try to play next
-      ;; voice message if any
-      (when-let ((next-voice-msg
-                  (telega-chatbuf--next-msg
-                   msg (apply-partially #'telega-msg-type-p 'messageVoiceNote))))
-        (telega-msg-open-content next-voice-msg)))))
+  (when (and telega-vvnote-play-next
+             (eq 'finished (telega-ffplay-stop-reason proc)))
+    ;; NOTE: ffplay exited normally (finished playing), try to play
+    ;; next voice/video message if any
+    (when-let ((next-vvnote-msg
+                (telega-chatbuf--next-msg msg
+                  (apply-partially #'telega-msg-type-p
+                                   '(messageVoiceNote messageVideoNote)))))
+      (with-telega-chatbuf (telega-msg-chat next-vvnote-msg)
+        (telega-chatbuf--goto-msg (plist-get next-vvnote-msg :id) 'highlight))
+      (telega-msg-open-content next-vvnote-msg))))
 
 (defun telega-msg-open-voice-note (msg)
   "Open content for voiceNote message MSG."
   ;; - If already playing, then pause
   ;; - If paused, start from paused position
-  ;; - If not start, start playing
+  ;; - If not started, start playing
   (let* ((note (telega--tl-get msg :content :voice_note))
          (note-file (telega-file--renew note :voice))
-         (proc (plist-get msg :telega-ffplay-proc)))
-    (cl-case (and (process-live-p proc) (process-status proc))
-      (run (telega-ffplay-pause proc))
-      (stop (telega-ffplay-resume proc))
-      (t (telega-file--download note-file 32
-           (lambda (file)
-             (telega-msg-redisplay msg)
-             (when (telega-file--downloaded-p file)
-               (if (memq 'voice-note telega-open-message-as-file)
-                   (telega-open-file (telega--tl-get file :local :path) msg)
-                 (plist-put msg :telega-ffplay-proc
-                            (telega-ffplay-run
-                             (telega--tl-get file :local :path)
-                             (telega-msg-voice-note--ffplay-callback msg)
-                             (cdr (assq 'voice-note telega-open-message-ffplay-args))))
-                 (telega-msg-activate-voice-note msg)))))))))
+         (proc (plist-get msg :telega-ffplay-proc))
+         (paused-p (or telega-ffplay-media-timestamp
+                       (telega-ffplay-paused-p proc))))
+    (if (telega-ffplay-playing-p proc)
+        (telega-ffplay-pause proc)
+      ;; Start playing or resume from the paused moment
+      (telega-file--download note-file 32
+        (lambda (file)
+          (cond
+           ((not (telega-file--downloaded-p file))
+            (telega-msg-redisplay msg))
 
-(defun telega-msg-video-note--ffplay-callback (proc frame msg)
+           ((memq 'voice-note telega-open-message-as-file)
+            (telega-open-file (telega--tl-get file :local :path) msg))
+
+           (t
+            ;; NOTE: Set moment we resumed for `:progress' correction
+            ;; in the `telega-msg-voice-note--ffplay-callback'
+            (plist-put msg :telega-ffplay-resumed-at paused-p)
+            (plist-put msg :telega-ffplay-proc
+                       (telega-ffplay-run (telega--tl-get file :local :path)
+                           (concat
+                            (when paused-p
+                              (format "-ss %.2f " paused-p))
+                            (unless (equal telega-vvnote-play-speed 1)
+                              (format "-af atempo=%.2f "
+                                      telega-vvnote-play-speed))
+                            (cdr (assq 'voice-note
+                                       telega-open-message-ffplay-args)))
+                         (lambda (proc)
+                           (telega-msg-voice-note--ffplay-callback proc msg))))
+            (with-telega-chatbuf (telega-msg-chat msg)
+              (telega-chatbuf--activate-vvnote-msg msg)))))))))
+
+(defun telega-msg-video-note--ffplay-callback (proc frame msg video-note)
   "Callback for video note playback."
-  (let* (;(proc (plist-get msg :telega-ffplay-proc))
-         (proc-plist (process-plist proc))
+  (let* ((proc-plist (process-plist proc))
+         (note (or video-note (telega--tl-get msg :content :video_note)))
+         (duration (plist-get note :duration))
          (nframes (or (float (plist-get proc-plist :nframes))
-                      (* 30.0 (telega--tl-get
-                               msg :content :video_note :duration)))))
-    (plist-put msg :telega-ffplay-frame
-               (when frame
-                 (telega-vvnote-video--svg (cdr frame)
-                                           (/ (car frame) nframes))))
-    (telega-msg-redisplay msg)))
+                      (* 30.0 duration)))
+         (played (when frame
+                   (+ (or (plist-get msg :telega-ffplay-resumed-at) 0)
+                      (* (/ (car frame) nframes) duration))))
+         (normalized-progress
+          (when frame
+            (/ (or played 0) (if (zerop duration) 0.1 duration))))
+         (ffplay-frame
+          (when frame
+            (telega-vvnote-video--svg (cdr frame)
+                                      (if (telega-ffplay-paused-p proc)
+                                          (cons 'paused normalized-progress)
+                                        normalized-progress)))))
+    ;; NOTE: Update proc's `:progress' property to start from correct
+    ;; place if [x2] button is pressed
+    (set-process-plist proc (plist-put proc-plist :progress played))
 
-(defun telega-msg-open-video-note (msg)
+    ;; NOTE: Scale frame when starting to play, simulating Video
+    ;; Messages 2.0 interface in official client
+    (when (and ffplay-frame (consp telega-video-note-height))
+      (let* ((max-scale (/ (float (cdr telega-video-note-height))
+                           (float (car telega-video-note-height))))
+             (scale (if (plist-get msg :telega-ffplay-resumed-at)
+                        max-scale
+                      (min max-scale (+ 1.0 (/ (float (car frame)) 10))))))
+        (plist-put (cdr ffplay-frame) :scale scale)))
+    (plist-put msg :telega-ffplay-frame ffplay-frame)
+
+    (telega-msg-voice-note--ffplay-callback proc msg 'no-progress-adjust)))
+
+(defun telega-msg-open-video-note (msg &optional video-note)
   "Open content for videoNote message MSG.
 If called with `\\[universal-argument]' prefix, then open with
 external player even if `telega-video-note-play-inline' is
 non-nil."
-  (let* ((note (telega--tl-get msg :content :video_note))
+  (let* ((note (or video-note (telega--tl-get msg :content :video_note)))
          (note-file (telega-file--renew note :video))
          (proc (plist-get msg :telega-ffplay-proc))
+         (paused-p (or telega-ffplay-media-timestamp
+                       (telega-ffplay-paused-p proc)))
          (saved-this-command this-command)
          (saved-current-prefix-arg current-prefix-arg))
-    (cl-case (and (process-live-p proc) (process-status proc))
-      (run (telega-ffplay-pause proc))
-      (stop (telega-ffplay-resume proc))
-      (t (telega-file--download note-file 32
-           (lambda (file)
-             (telega-msg-redisplay msg)
-             (when (telega-file--downloaded-p file)
-               (let ((filepath (telega--tl-get file :local :path)))
-                 (if (memq 'video-note telega-open-message-as-file)
-                     (telega-open-file filepath msg)
-                   (if (and telega-video-note-play-inline
-                            ;; *NOT* called interactively
-                            (or (not saved-this-command)
-                                (not saved-current-prefix-arg)))
-                       (plist-put msg :telega-ffplay-proc
-                                  (telega-ffplay-to-png filepath
-                                      (list "-vf" "scale=120:120"
-                                            "-f" "alsa" "default" "-vsync" "0")
-                                    #'telega-msg-video-note--ffplay-callback msg))
-                     (telega-ffplay-run
-                      filepath nil
-                      (cdr (assq 'video-note telega-open-message-ffplay-args)))))))))))))
+    (if (telega-ffplay-playing-p proc)
+        (telega-ffplay-pause proc)
+      (telega-file--download note-file 32
+        (lambda (file)
+          (cond
+           ((not (telega-file--downloaded-p file))
+            (telega-msg-redisplay msg))
+
+            ((memq 'video-note telega-open-message-as-file)
+             (telega-open-file (telega--tl-get file :local :path) msg))
+
+            ((and telega-video-note-play-inline
+                  ;; *NOT* called interactively
+                  (or (not saved-this-command)
+                      (not saved-current-prefix-arg)))
+             ;; NOTE: Set moment we resumed for `:progress' correction
+             ;; in the `telega-msg-video-note--ffplay-callback'
+             (plist-put msg :telega-ffplay-resumed-at paused-p)
+             (plist-put msg :telega-ffplay-proc
+                        (telega-ffplay-to-png
+                            (telega--tl-get file :local :path)
+                            (concat
+                             "-vf scale=120:120"
+                             (unless (equal telega-vvnote-play-speed 1)
+                               (format " -af atempo=%.2f"
+                                       telega-vvnote-play-speed))
+                             " -f alsa default -vsync 0")
+                          (list #'telega-msg-video-note--ffplay-callback msg note)
+                          :seek paused-p :speed telega-vvnote-play-speed))
+             (with-telega-chatbuf (telega-msg-chat msg)
+               (telega-chatbuf--activate-vvnote-msg msg)))
+
+            (t
+             (telega-ffplay-run (telega--tl-get file :local :path)
+                 (cdr (assq 'video-note telega-open-message-ffplay-args))))))
+        ))))
 
 (defun telega-msg-open-photo (msg &optional photo)
   "Open content for photo message MSG."
@@ -626,27 +721,30 @@ non-nil."
          (proc (plist-get msg :telega-ffplay-proc))
          (saved-this-command this-command)
          (saved-current-prefix-arg current-prefix-arg))
-    (cl-case (and (process-live-p proc) (process-status proc))
-      (run (telega-ffplay-pause proc))
-      (stop (telega-ffplay-resume proc))
-      (t (telega-file--download anim-file 32
-           (lambda (file)
-             (telega-msg-redisplay msg)
-             (when (telega-file--downloaded-p file)
-               (let ((filename (telega--tl-get file :local :path)))
-                 (if (memq 'animation telega-open-message-as-file)
-                     (telega-open-file filename msg)
-                   (if (and (telega-animation-play-inline-p anim)
-                            ;; *NOT* called interactively
-                            (or (not saved-this-command)
-                                (not saved-current-prefix-arg)))
-                       (plist-put msg :telega-ffplay-proc
-                                  (telega-ffplay-to-png filename
-                                      '("-an") ; no sound
-                                    #'telega-animation--ffplay-callback anim))
-                     (telega-ffplay-run
-                      filename nil
-                      (cdr (assq 'animation telega-open-message-ffplay-args)))))))))))))
+    (if (telega-ffplay-playing-p proc)
+        (telega-ffplay-stop proc)
+      (telega-file--download anim-file 32
+        (lambda (file)
+          (cond
+           ((not (telega-file--downloaded-p file))
+            (telega-msg-redisplay msg))
+
+           ((memq 'animation telega-open-message-as-file)
+            (telega-open-file (telega--tl-get file :local :path) msg))
+
+           ((and (telega-animation-play-inline-p anim)
+                 ;; *NOT* called interactively
+                 (or (not saved-this-command)
+                     (not saved-current-prefix-arg)))
+            (plist-put msg :telega-ffplay-proc
+                       ;; NOTE: "-an" for no sound
+                       (telega-ffplay-to-png
+                           (telega--tl-get file :local :path) "-an"
+                         (list #'telega-animation--ffplay-callback anim))))
+
+           (t
+            (telega-ffplay-run (telega--tl-get file :local :path)
+                (cdr (assq 'animation telega-open-message-ffplay-args))))))))))
 
 (defun telega-msg-open-document (msg &optional document)
   "Open content for document message MSG."
@@ -679,12 +777,18 @@ non-nil."
 
   ;; NOTE: "document" webpage might contain :video instead of :document
   ;; see https://t.me/c/1347510619/43
-  (cond ((plist-get web-page :video)
-         (telega-msg-open-video msg (plist-get web-page :video)))
-        ((plist-get web-page :animation)
+  (cond ((plist-get web-page :animation)
          (telega-msg-open-animation msg (plist-get web-page :animation)))
+        ((plist-get web-page :audio)
+         (telega-msg-open-audio msg (plist-get web-page :audio)))
         ((plist-get web-page :document)
          (telega-msg-open-document msg (plist-get web-page :document)))
+        ((plist-get web-page :sticker)
+         (telega-msg-open-sticker msg (plist-get web-page :sticker)))
+        ((plist-get web-page :video)
+         (telega-msg-open-video msg (plist-get web-page :video)))
+        ((plist-get web-page :video_note)
+         (telega-msg-open-video-note msg (plist-get web-page :video_note)))
         ((and (string= "photo" (plist-get web-page :type))
               (plist-get web-page :photo))
          (telega-msg-open-photo msg (plist-get web-page :photo)))
@@ -747,12 +851,7 @@ non-nil."
     (messageDocument
      (telega-msg-open-document msg))
     (messageSticker
-     (let ((sticker (telega--tl-get msg :content :sticker)))
-       (if (and (plist-get sticker :is_animated)
-                telega-sticker-animated-play
-                (not current-prefix-arg))
-           (telega-msg-open-animated-sticker msg)
-         (telega-msg-open-sticker msg))))
+     (telega-msg-open-sticker msg))
     (messageVideo
      (telega-msg-open-video msg))
     (messageAudio
@@ -1127,10 +1226,18 @@ Use \\[yank] command to paste a link."
   (interactive (list (telega-msg-for-interactive)
                      (when telega-chatbuf--thread-msg t)))
   (let* ((chat (telega-msg-chat msg 'offline))
+         (media-timestamp
+          (when (telega-msg-type-p
+                 '(messageVideoNote messageVoiceNote messageAudio messageVideo)
+                 msg)
+            (when-let ((proc (plist-get msg :telega-ffplay-proc)))
+              (floor (telega-ffplay-progress proc)))))
          (link (if (and (eq 'supergroup (telega-chat--type chat 'raw))
                         (not (plist-get msg :sending_state))
                         (not (plist-get msg :scheduling_state)))
-                   (telega--getMessageLink msg nil for-comment-p)
+                   (telega--getMessageLink msg
+                     :media-timestamp media-timestamp
+                     :for-comment-p for-comment-p)
                  (telega-tme-internal-link-to msg))))
     (kill-new link)
     (message "Copied link: %s" link)))

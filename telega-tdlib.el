@@ -306,13 +306,16 @@ If message is not found, then return `nil'."
           :message_ids (apply #'vector message-ids))
     callback))
 
-(defun telega--getMessageLink (msg &optional for-album-p for-comment-p)
+(cl-defun telega--getMessageLink (msg &key for-album-p for-comment-p
+                                      media-timestamp)
   "Get https link for message MSG in a supergroup or a channel."
+  (declare (indent 1))
   (plist-get
    (telega-server--call
     (list :@type "getMessageLink"
           :chat_id (plist-get msg :chat_id)
           :message_id (plist-get msg :id)
+          :media_timestamp (or media-timestamp 0)
           :for_album (if for-album-p t :false)
           :for_comment (if for-comment-p t :false)))
    :link))

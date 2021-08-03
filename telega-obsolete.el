@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri Jan 17 14:55:16 2020
-;; Keywords: 
+;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -90,22 +90,31 @@
                            nil "0.7.0")
 (telega-obsolete--variable 'telega-chat-messages-ring-size
                            'telega-chat-messages-pop-ring-size
-                           nil "0.7.0")
+                           "0.7.0")
 (telega-obsolete--variable 'telega-chat-scroll-scroll-conservatively
                            'telega-chat-scroll-conservatively
-                           nil "0.7.3")
+                           "0.7.3")
 (telega-obsolete--variable 'telega-week-day-names
                            telega-i18n-weekday-names
-                           nil "0.7.4")
+                           "0.7.4")
 (telega-obsolete--variable 'telega-chat-use-markdown-version
                            'telega-chat-input-markups
-                           nil "0.7.4")
+                           "0.7.4")
 (telega-obsolete--variable 'telega-video-ffplay-args
                            'telega-open-message-ffplay-args
-                           nil "0.7.5")
+                           "0.7.5")
 (telega-obsolete--variable 'telega-symbol-thunder
                            'telega-symbol-lightning
-                           nil "0.7.38")
+                           "0.7.38")
+(telega-obsolete--variable 'telega-vvnote-voice-play-next
+                           'telega-vvnote-play-next
+                           "0.7.52")
+(telega-obsolete--variable 'telega-vvnote-voice-cmd
+                           'telega-vvnote-voice-record-args
+                           "0.7.53")
+(telega-obsolete--variable 'telega-vvnote-video-cmd
+                           'telega-vvnote-video-record-args
+                           "0.7.53")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

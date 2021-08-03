@@ -33,7 +33,9 @@
   :link '(url-link :tag "Github" "https://github.com/zevlg/telega.el"))
 
 (defcustom telega-directory (expand-file-name "~/.telega")
-  "Directory for telega runtime files."
+  "Directory for telega runtime files.
+Set this variable before loading telega, because other variables
+depends on `telega-directory' value."
   :type 'string
   :group 'telega)
 
@@ -107,10 +109,10 @@ Format is:
   (:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
 
 where PROXY-TYPE is one of:
-  (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
-  (:@type \"proxyTypeHttp\" :username <USER> :password <PASSWORD>
-         :http_only <BOOL>)
-  (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)
+- (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
+- (:@type \"proxyTypeHttp\" :username <USER> :password <PASSWORD>
+   :http_only <BOOL>)
+- (:@type \"proxyTypeMtproto\" :secret <SECRET-STRING>)
 
 <BOOL> is either t or `:false', nil is not valid value."
   :type 'list
@@ -420,9 +422,13 @@ There is a restriction to its value:
   :type 'float
   :group 'telega)
 
-(defcustom telega-video-note-height 6
-  "*Height in chars for video notes."
-  :type 'integer
+(defcustom telega-video-note-height '(6 . 9)
+  "*Height in chars for video notes.
+Can be also a cons cell, where car specifies height for video note
+when note is not playing, and cdr specifies height for video note when
+note is currently playing."
+  :package-version '(telega . 0.7.54)
+  :type '(choice integer (cons integer integer))
   :group 'telega)
 
 (defcustom telega-video-note-play-inline t
@@ -506,6 +512,7 @@ Each element is in form: `(PREDICATE-OR-REGEX . FUNCTION)'."
 %N substituted with latitude.
 %E substituted with longitude."
   :type 'string
+  :options '("https://yandex.ru/maps/?ll=%E,%N&pt=%E,%N&z=15")
   :group 'telega)
 
 (defcustom telega-my-location nil
@@ -1271,10 +1278,11 @@ Set it to nil to disable VoIP logging."
 
 (defcustom telega-voice-chat-display
   '((active footer modeline)
-    (passive modeline))
+    (passive modeline)
+    (scheduled footer modeline))
   "Alist to specify where to display voice chat info.
-Each element is a cons cell where car is one of `active' or `passive'
-and cdr is list of possible values:
+Each element is a cons cell where car is one of `active', `passive' or
+`scheduled'and cdr is list of possible values:
   - `footer' to display voice chat info in the chatbuf footer
   - `modeline' to display voice chat info in the modeline.
 Voice chat is considered `active' if it has at least one participant,
@@ -1848,6 +1856,11 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-leave-comment "💬"
+  "Symbol used to display symbol nearby \"Leave Comment\" button."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -1897,7 +1910,7 @@ Install all symbol widths inside `telega-load-hook'."
     chat-list
     eye
     failed favorite flames folder
-    lightning lock location 
+    leave-comment lightning lock location 
     multiple-folders
     pause phone photo pin play
     video voice-chat-active voice-chat-passive
@@ -2283,6 +2296,12 @@ Always called, even if corresponding chat is closed at the moment.
 Called even for messages ignored by client side filtering, to
 check message is filtered by client side filtering use
 `telega-msg-ignored-p'."
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chat-goto-message-hook nil
+  "Hook called when user goes to a message.
+Called with a single argument - MESSAGE."
   :type 'hook
   :group 'telega-hooks)
 

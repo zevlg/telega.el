@@ -104,9 +104,9 @@ Actual value is `:@extra` value of the call to load history.")
 Could contain `older-loaded' or `newer-loaded' elements.")
 (make-variable-buffer-local 'telega-chatbuf--history-state)
 
-(defvar telega-chatbuf--voice-msg nil
-  "Active (playing/paused) voice note message for the current chat.")
-(make-variable-buffer-local 'telega-chatbuf--voice-msg)
+(defvar telega-chatbuf--vvnote-msg nil
+  "Active (playing/paused) voice/video note message for the chatbuf.")
+(make-variable-buffer-local 'telega-chatbuf--vvnote-msg)
 
 (defvar telega-chatbuf--my-action nil
   "My current action in chat buffer.")
@@ -1068,7 +1068,7 @@ Use `telega-chat-leave' to just leave the CHAT."
       (when (telega-read-im-sure-p
              (telega-i18n "telega_query_delete_chat_history"
                :title (telega-chat-title chat)))
-        (telega--deleteChatHistory chat t)))
+        (telega--deleteChatHistory chat 'remove-from-list 'revoke)))
 
     ;; Kill corresponding chat buffer
     (with-telega-chatbuf chat
@@ -1374,8 +1374,8 @@ Chat considered unread if matches `telega-filter-unread-chats' chat filter."
   'cursor-intangible t
   'field 'telega-prompt)
 
-(defun telega-ins--voice-msg-status (msg)
-  "Insert voice message MSG status.
+(defun telega-ins--vvnote-msg-status (msg)
+  "Insert voice/video note message MSG status.
 Used in chatbuf footer."
   (let* ((proc (plist-get msg :telega-ffplay-proc))
          (proc-status (and (process-live-p proc) (process-status proc)))
@@ -1500,7 +1500,7 @@ If POINT is not over some message, then view last message."
          (thread-msg telega-chatbuf--thread-msg)
          (history-loading-p telega-chatbuf--history-loading)
          (compact-view-p telega-chatbuf--messages-compact-view)
-         (voice-msg telega-chatbuf--voice-msg))
+         (vvnote-msg telega-chatbuf--vvnote-msg))
     (telega-ins--as-string
      (when compact-view-p
        (telega-ins "\n"))
@@ -1529,8 +1529,8 @@ If POINT is not over some message, then view last message."
                                      :elide-trail (/ column2 2))
          (cond (history-loading-p
                 (telega-ins "[history loading]"))
-               (voice-msg
-                (telega-ins--voice-msg-status voice-msg))
+               (vvnote-msg
+                (telega-ins--vvnote-msg-status vvnote-msg))
                ))
        (telega-ins fill-symbol)
        (telega-ins "\n")
@@ -1636,8 +1636,8 @@ Update modeline as well."
   (setq mode-line-process
         (cond (telega-chatbuf--history-loading
                "[history loading]")
-              (telega-chatbuf--voice-msg
-               "[voice note]")))
+              (telega-chatbuf--vvnote-msg
+               "[vvnote]")))
   (force-mode-line-update)
 
   ;; NOTE: This keeps point where it is
@@ -1675,7 +1675,7 @@ Global chat bindings:
         telega-chatbuf--input-pending nil
         telega-chatbuf--history-loading nil
         telega-chatbuf--inline-query nil
-        telega-chatbuf--voice-msg nil
+        telega-chatbuf--vvnote-msg nil
         telega-chatbuf--my-action nil
         telega-chatbuf--administrators nil
         telega-chatbuf--group-call-users nil
@@ -2230,7 +2230,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
                    'face 'error
                    'local-map (eval-when-compile
                                 (make-mode-line-mouse-map
-                                 'mouse-1 'telega-chatbuf-unmark-all))
+                                 'mouse-1 #'telega-chatbuf-msg-marks-toggle))
                    'mouse-face 'mode-line-highlight
                    'help-echo (telega-i18n "telega_chat_modeline_marked_help"
                                 :mouse "mouse-1"))
@@ -2702,19 +2702,20 @@ First message in MESSAGE will be first message at the beginning."
            #'ewoc--node-next
          #'ewoc--node-prev)))))
 
-(defun telega-chatbuf--next-msg (msg predicate &optional backward)
+(defun telega-chatbuf--next-msg (msg predicate &optional backward-p)
   "Return message next to MSG matching PREDICATE.
-If BACKWARD is non-nil, then return previous message.
+If BACKWARD-P is non-nil, then return previous message.
 Return nil, if not found."
+  (declare (indent 1))
   (with-telega-chatbuf (telega-msg-chat msg)
     (let* ((mnode (telega-chatbuf--node-by-msg-id (plist-get msg :id)))
-           (mnode1 (if backward
+           (mnode1 (if backward-p
                        (ewoc-prev telega-chatbuf--ewoc mnode)
                      (ewoc-next telega-chatbuf--ewoc mnode)))
            (nnode (and mnode1
                        (telega-ewoc--find-if
                         telega-chatbuf--ewoc predicate nil mnode1
-                        (if backward #'ewoc--node-prev #'ewoc--node-next)))))
+                        (if backward-p #'ewoc--node-prev #'ewoc--node-next)))))
       (when nnode
         (ewoc--node-data nnode)))))
 
@@ -3279,11 +3280,20 @@ If `\\[universal-argument]' is used, then reset active messages filter."
 
   (goto-char (point-max)))
 
-(defun telega-chatbuf-unmark-all ()
+(defun telega-chatbuf-msg-marks-toggle ()
   "Unmark all marked messages in chatbuf."
   (interactive)
-  (let ((marked-messages telega-chatbuf--marked-messages))
-    (setq telega-chatbuf--marked-messages nil)
+  (let ((marked-messages))
+    (if telega-chatbuf--marked-messages
+        (setq marked-messages telega-chatbuf--marked-messages
+              telega-chatbuf--marked-messages-1
+              telega-chatbuf--marked-messages
+              telega-chatbuf--marked-messages
+              nil)
+
+      (setq telega-chatbuf--marked-messages
+            telega-chatbuf--marked-messages-1
+            marked-messages telega-chatbuf--marked-messages))
 
     (dolist (msg marked-messages)
       (telega-msg-redisplay msg))
@@ -3602,7 +3612,8 @@ If `\\[universal-argument] is given, then attach as file."
   "Attach a (circled) video note to the chatbuf input.
 If `\\[universal-argument] is given, then attach existing file as
 video-note.  Otherwise record video note inplace.
-`telega-vvnote-video-cmd' is used to record video notes."
+`telega-vvnote-video-record-args' is used as arguments to ffmpeg to
+record video notes."
   (interactive "P")
   ;; TODO: start video note generation process
   ;; see https://github.com/tdlib/td/issues/126
@@ -3620,6 +3631,7 @@ video-note.  Otherwise record video note inplace.
      (nconc
       (list :@type "inputMessageVideoNote"
             :duration (round (telega-ffplay-get-duration i-filename))
+            :length 240
             :video_note ifile)
       (when frame1
         `(:thumbnail
@@ -4103,9 +4115,9 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
   (ignore-errors
     (telega-chatbuf--switch-out))
 
-  ;; Stop any voice notes, see
+  ;; Stop any voice/video notes, see
   ;; https://github.com/zevlg/telega.el/issues/49
-  (when telega-chatbuf--voice-msg
+  (when telega-chatbuf--vvnote-msg
     (telega-ffplay-stop))
 
   (setq telega--chat-buffers-alist
@@ -4128,6 +4140,14 @@ with input prompt as region."
           end (point-max)))
   (apply orig-region-func start end args))
 
+(defun telega-chatbuf--activate-vvnote-msg (msg)
+  "Activate voice/video note message MSG in the chatbuf.
+MSG can be nil in case there is no active voice/video note message."
+  (cl-assert telega-chatbuf--chat)
+  (setq telega-chatbuf--vvnote-msg msg)
+  (telega-chatbuf--footer-update))
+
+
 ;;; Message commands
 (defun telega-msg-redisplay (msg &optional node)
   "Redisplay the message MSG.
@@ -4136,19 +4156,12 @@ NODE is already calculated ewoc NODE, or nil."
 
   (with-telega-chatbuf (telega-msg-chat msg)
     ;; Redisplay footer in case active voice note is redisplayed
-    (when (eq msg telega-chatbuf--voice-msg)
+    (when (eq msg telega-chatbuf--vvnote-msg)
       (telega-chatbuf--footer-update))
 
     (when-let ((msg-node (or node (telega-chatbuf--node-by-msg-id
                                    (plist-get msg :id)))))
       (telega-chatbuf--redisplay-node msg-node))))
-
-(defun telega-msg-activate-voice-note (msg &optional for-chat)
-  "Activate voice note MSG FOR-CHAT.
-MSG can be nil in case there is no active voice message."
-  (with-telega-chatbuf (or for-chat (telega-msg-chat msg))
-    (setq telega-chatbuf--voice-msg msg)
-    (telega-chatbuf--footer-update)))
 
 (defun telega-msg-reply (msg)
   "Start replying to MSG."
@@ -4248,6 +4261,10 @@ then forward message copy without caption."
                          (when (> (length messages) 1)
                            (format " (%d marked)" (length messages)))
                          " to: "))))
+      ;; NOTE: unmark all messages if forwarding marked messages
+      (when telega-chatbuf--marked-messages
+        (telega-chatbuf-msg-marks-toggle))
+
       (telega-chat--pop-to-buffer chat)
       (with-telega-chatbuf chat
         (goto-char (point-max))
@@ -4267,6 +4284,10 @@ then forward message copy without caption."
               (from-chat (telega-msg-chat (car messages))))
     (when (y-or-n-p (format "Forward %d messages to %d chats? "
                             (length messages) (length chats)))
+      ;; NOTE: unmark all messages if forwarding marked messages
+      (when telega-chatbuf--marked-messages
+        (telega-chatbuf-msg-marks-toggle))
+
       (dolist (chat chats)
         (telega--forwardMessages chat from-chat messages)))))
 
@@ -4418,7 +4439,10 @@ Return non-nil on success."
         (cl-assert (eq (button-type msg-button) 'telega-msg))
         (with-no-warnings
           (pulse-momentary-highlight-region
-           (button-start msg-button) (button-end msg-button)))))
+           (button-start msg-button) (button-end msg-button))))
+
+      (run-hook-with-args
+       'telega-chat-goto-message-hook (ewoc--node-data node)))
     t))
 
 (defun telega-chat--goto-msg (chat msg-id &optional highlight callback)
