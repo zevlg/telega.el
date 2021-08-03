@@ -80,7 +80,9 @@
                  (const :tag "All Emacs Stories" all))
   :group 'telega-stories)
 
-(defcustom telega-stories-height telega-video-note-height
+(defcustom telega-stories-height (if (consp telega-video-note-height)
+                                     (car telega-video-note-height)
+                                   telega-video-note-height)
   "Height in chars for Emacs Stories buttons"
   :type 'integer
   :group 'telega-stories)
