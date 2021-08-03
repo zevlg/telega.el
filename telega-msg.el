@@ -1090,27 +1090,36 @@ For interactive use only."
            (error "TODO: Save web-page"))))))
 
 (defun telega-msg-save (msg)
-  "Save messages's MSG media content to a file."
+  "Save messages's MSG media content to a file.
+If MSG is an animation message, then possibly add animation to
+the saved animations list."
   (interactive (list (telega-msg-for-interactive)))
   (let ((file (telega-msg--content-file msg)))
     (unless file
       (user-error "No file associated with message"))
-    (telega-file--download file 32
-      (lambda (dfile)
-        (telega-msg-redisplay msg)
-        (when (telega-file--downloaded-p dfile)
-          ;; TODO: This might be executed in process filter, so
-          ;; pressing C-g will trigger "error in process filter: Quit"
-          ;; Need to execute this outside of process filter
-          (let* ((fpath (telega--tl-get dfile :local :path))
-                 (fname (file-name-nondirectory fpath))
-                 (new-fpath (if telega-msg-save-dir
-                                (expand-file-name fname telega-msg-save-dir)
+    (if (and (telega-msg-type-p 'messageAnimation msg)
+             (y-or-n-p "Add animation to Saved Animations? "))
+        (progn
+          (telega--addSavedAnimation
+           (list :@type "inputFileId" :id (plist-get file :id)))
+          (message "telega: saved new animation"))
+
+      (telega-file--download file 32
+        (lambda (dfile)
+          (telega-msg-redisplay msg)
+          (when (telega-file--downloaded-p dfile)
+            ;; TODO: This might be executed in process filter, so
+            ;; pressing C-g will trigger "error in process filter: Quit"
+            ;; Need to execute this outside of process filter
+            (let* ((fpath (telega--tl-get dfile :local :path))
+                   (fname (file-name-nondirectory fpath))
+                   (new-fpath (if telega-msg-save-dir
+                                  (expand-file-name fname telega-msg-save-dir)
                                 (read-file-name "Save to file: " default-directory
-                                            nil nil fname nil))))
-            ;; See https://github.com/tdlib/td/issues/379
-            (copy-file fpath new-fpath)
-            (message (format "Wrote %s" new-fpath))))))))
+                                                nil nil fname nil))))
+              ;; See https://github.com/tdlib/td/issues/379
+              (copy-file fpath new-fpath)
+              (message (format "Wrote %s" new-fpath)))))))))
 
 (defun telega-msg-copy-link (msg &optional for-comment-p)
   "Copy link to message to kill ring.
