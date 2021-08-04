@@ -589,7 +589,8 @@ note finishes."
         (lambda (file)
           (cond
            ((not (telega-file--downloaded-p file))
-            (telega-msg-redisplay msg))
+            ;; no-op
+            )
 
            ((memq 'voice-note telega-open-message-as-file)
             (telega-open-file (telega--tl-get file :local :path) msg))
@@ -611,7 +612,11 @@ note finishes."
                          (lambda (proc)
                            (telega-msg-voice-note--ffplay-callback proc msg))))
             (with-telega-chatbuf (telega-msg-chat msg)
-              (telega-chatbuf--activate-vvnote-msg msg)))))))))
+              (telega-chatbuf--activate-vvnote-msg msg))))
+
+          ;; NOTE: always redisplay the message to actualize
+          ;; downloading progress
+          (telega-msg-redisplay msg))))))
 
 (defun telega-msg-video-note--ffplay-callback (proc frame msg video-note)
   "Callback for video note playback."
@@ -667,36 +672,40 @@ non-nil."
         (lambda (file)
           (cond
            ((not (telega-file--downloaded-p file))
-            (telega-msg-redisplay msg))
+            ;; no-op
+            )
 
-            ((memq 'video-note telega-open-message-as-file)
-             (telega-open-file (telega--tl-get file :local :path) msg))
+           ((memq 'video-note telega-open-message-as-file)
+            (telega-open-file (telega--tl-get file :local :path) msg))
 
-            ((and telega-video-note-play-inline
-                  ;; *NOT* called interactively
-                  (or (not saved-this-command)
-                      (not saved-current-prefix-arg)))
-             ;; NOTE: Set moment we resumed for `:progress' correction
-             ;; in the `telega-msg-video-note--ffplay-callback'
-             (plist-put msg :telega-ffplay-resumed-at paused-p)
-             (plist-put msg :telega-ffplay-proc
-                        (telega-ffplay-to-png
-                            (telega--tl-get file :local :path)
-                            (concat
-                             "-vf scale=120:120"
-                             (unless (equal telega-vvnote-play-speed 1)
-                               (format " -af atempo=%.2f"
-                                       telega-vvnote-play-speed))
-                             " -f alsa default -vsync 0")
-                          (list #'telega-msg-video-note--ffplay-callback msg note)
-                          :seek paused-p :speed telega-vvnote-play-speed))
-             (with-telega-chatbuf (telega-msg-chat msg)
-               (telega-chatbuf--activate-vvnote-msg msg)))
+           ((and telega-video-note-play-inline
+                 ;; *NOT* called interactively
+                 (or (not saved-this-command)
+                     (not saved-current-prefix-arg)))
+            ;; NOTE: Set moment we resumed for `:progress' correction
+            ;; in the `telega-msg-video-note--ffplay-callback'
+            (plist-put msg :telega-ffplay-resumed-at paused-p)
+            (plist-put msg :telega-ffplay-proc
+                       (telega-ffplay-to-png
+                           (telega--tl-get file :local :path)
+                           (concat
+                            "-vf scale=120:120"
+                            (unless (equal telega-vvnote-play-speed 1)
+                              (format " -af atempo=%.2f"
+                                      telega-vvnote-play-speed))
+                            " -f alsa default -vsync 0")
+                         (list #'telega-msg-video-note--ffplay-callback msg note)
+                         :seek paused-p :speed telega-vvnote-play-speed))
+            (with-telega-chatbuf (telega-msg-chat msg)
+              (telega-chatbuf--activate-vvnote-msg msg)))
 
-            (t
-             (telega-ffplay-run (telega--tl-get file :local :path)
-                 (cdr (assq 'video-note telega-open-message-ffplay-args))))))
-        ))))
+           (t
+            (telega-ffplay-run (telega--tl-get file :local :path)
+                (cdr (assq 'video-note telega-open-message-ffplay-args)))))
+
+          ;; NOTE: always redisplay the message to actualize
+          ;; downloading progress
+          (telega-msg-redisplay msg))))))
 
 (defun telega-msg-open-photo (msg &optional photo)
   "Open content for photo message MSG."
@@ -727,7 +736,8 @@ non-nil."
         (lambda (file)
           (cond
            ((not (telega-file--downloaded-p file))
-            (telega-msg-redisplay msg))
+            ;; no-op
+            )
 
            ((memq 'animation telega-open-message-as-file)
             (telega-open-file (telega--tl-get file :local :path) msg))
@@ -744,7 +754,11 @@ non-nil."
 
            (t
             (telega-ffplay-run (telega--tl-get file :local :path)
-                (cdr (assq 'animation telega-open-message-ffplay-args))))))))))
+                (cdr (assq 'animation telega-open-message-ffplay-args)))))
+
+          ;; NOTE: always redisplay the message to actualize
+          ;; downloading progress
+          (telega-msg-redisplay msg))))))
 
 (defun telega-msg-open-document (msg &optional document)
   "Open content for document message MSG."
