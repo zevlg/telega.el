@@ -427,7 +427,8 @@ Terminate telega-server and kill all chat and supplementary buffers."
 EWOC-SPEC is plist with keyword elements:
 `:name', `:pretty-printer', `:header', `:footer', `:items'
 `:on-chat-update', `:on-user-update', `:on-message-update',
-`:on-notifications-update', `:on-file-update', `:loading'."
+`:on-notifications-update', `:on-file-update',
+`:on-group-call-update', `:loading'."
   (cl-assert (stringp (plist-get ewoc-spec :name)))
   (let ((ewoc (ewoc-create (telega-ewoc--gen-pp
                             (plist-get ewoc-spec :pretty-printer))
@@ -506,7 +507,7 @@ Keep cursor position only if CHAT is visible."
   ;; NOTE: `window-width' does not regard use of oth
   ;; `text-scale-increase' or `text-scale-decrease'.  So we manually
   ;; calculate window width in characters
-  ;; 
+  ;;
   ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
   (let* ((win-char-width (/ (window-width win 'pixels)
                             (telega-chars-xwidth 1)))
@@ -1850,6 +1851,82 @@ state kinds to show. By default all kinds are shown."
           (mapcar #'telega-view-favorite-msg--ewoc-spec
                   (telega-filter-chats
                    telega--ordered-chats 'has-favorite-messages)))))
+
+
+;; Voice Chats, inspired by https://t.me/designers/177
+(defun telega-root--passive-voice-chat-pp (_chat)
+  ;; TODO
+  )
+
+(defun telega-root--scheduled-voice-chat-pp (_chat)
+  ;; TODO
+  )
+
+(defun telega-root--active-voice-chat-pp (_chat)
+  ;; TODO
+  )
+
+(defun telega-root--on-group-call-update (_ewoc-name _ewoc _group-call)
+  ;; TODO
+  )
+
+(defun telega-view-voice-chats ()
+  "View active/passive/scheduled voice chats."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-voice-chats "Voice Chats"
+         (list :name "Active"
+               :pretty-printer #'telega-root--active-voice-chat-pp
+               :items nil               ; todo
+               :on-group-call-update #'telega-root--on-group-call-update)
+         (list :name "Scheduled"
+               :pretty-printer #'telega-root--scheduled-voice-chat-pp
+               :items nil               ; todo
+               :on-group-call-update #'telega-root--on-group-call-update)
+         (list :name "Passive"
+               :pretty-printer #'telega-root--passive-voice-chat-pp
+               :items nil               ; todo
+               :on-group-call-update #'telega-root--on-group-call-update)
+         )))
+
+
+;; Logging in via QR code
+(defun telega-qr-code--show (link)
+  "Hide QR code scanning dialog.
+If LINK is nil, then link is loading."
+  (cl-assert telega-use-images)
+  (with-telega-root-view-ewoc "root" ewoc
+    (telega-save-cursor
+      (telega-ewoc--set-footer ewoc
+        (telega-ins--as-string
+         (if link
+             (telega-ins--image
+              (telega-qr-code--create-image link (telega-chars-xheight 10)))
+           (telega-ins "QR code loading.."))
+         (telega-ins "\n")
+         (telega-ins--with-face 'bold
+           (telega-ins (telega-i18n "lng_intro_qr_title") "\n"))
+         (telega-ins "1. " (telega-i18n "lng_intro_qr_step1") "\n")
+         (telega-ins "2. " (telega-i18n "lng_intro_qr_step2") "\n")
+         (telega-ins "3. " (telega-i18n "lng_intro_qr_step3") "\n")
+         (telega-ins "\n")
+         (telega-ins--button (telega-i18n "lng_intro_qr_skip")
+           'action (lambda (_button)
+                     ;; Skip QR auth and fallback to phone number as
+                     ;; auth method, see
+                     ;; https://github.com/tdlib/td/issues/1645
+                     (setq telega--relogin-with-phone-number t)
+                     (telega-logout))))))
+
+    (run-hooks 'telega-root-update-hook)))
+
+(defun telega-qr-code--hide ()
+  "Hide QR code scanning dialog."
+  (with-telega-root-view-ewoc "root" ewoc
+    (telega-save-cursor
+      (telega-ewoc--set-footer ewoc ""))
+
+    (run-hooks 'telega-root-update-hook)))
 
 (provide 'telega-root)
 

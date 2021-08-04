@@ -1462,6 +1462,7 @@ KEY, START-NODE and ITER-FUNC are passed directly to `telega-ewoc--find'."
   "Set EWOC's new FOOTER."
   ;; NOTE: No ewoc API to change just footer :(
   ;; only `ewoc-set-hf'
+  (declare (indent 1))
   (ewoc--set-buffer-bind-dll-let* ewoc
       ((foot (ewoc--footer ewoc))
        (hf-pp (ewoc--hf-pp ewoc)))
@@ -2060,7 +2061,7 @@ Binds current symbol to SYM-BIND."
      (let ((selinux-p (telega-docker--selinux-p)))
        (concat
         (format "docker run --privileged -i -v %s:%s%s"
-                telega-database-dir telega-database-dir
+                telega-directory telega-directory
                 (if selinux-p ":z" ""))
         " -u " (telega-docker--user-id)
         ;; Connect container to host networking
@@ -2141,6 +2142,22 @@ not signal an error and just return nil."
           (t (error "telega: Install `%s' or set `telega-use-docker' to non-nil"
                     program))
           )))
+
+
+;; QR code image generation
+(defun telega-qr-code--create-image (text size)
+  "Generate image of SIZE with the QR code encoding TEXT."
+  (let* ((png-filename (telega-temp-name "qrcode-" ".png"))
+         (qrcode-cmd (telega-docker-exec-cmd
+                      (format "qrencode -m 1 -s %d -t png -o %s '%s'"
+                              (telega-chars-xwidth 1) png-filename text)
+                      'try-host-first)))
+    (telega-debug "RUN: %s" qrcode-cmd)
+    (shell-command-to-string qrcode-cmd)
+    (telega-create-image png-filename
+                         (when (fboundp 'imagemagick-types) 'imagemagick) nil
+                         :scale 1.0 :ascent 'center
+                         :width size :height size)))
 
 (provide 'telega-util)
 

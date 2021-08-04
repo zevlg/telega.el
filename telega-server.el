@@ -31,6 +31,7 @@
 
 (declare-function telega-chats-dirty--update "telega-tdlib-events")
 
+(declare-function telega "telega")
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-status--set "telega-root" (conn-status &optional aux-status raw))
 
@@ -330,7 +331,11 @@ Return parsed command."
     ;; Notify in echo area if telega-server exited abnormally
     (unless (zerop (process-exit-status proc))
       (message "[%d]telega-server: %s" (process-exit-status proc) status))
-    ))
+
+    ;; If QR auth skipped, then relogin with phone number
+    (when (and telega--relogin-with-phone-number
+               (not (process-live-p proc)))
+      (telega))))
 
 (defun telega-server--send (sexp &optional command)
   "Send SEXP to telega-server."

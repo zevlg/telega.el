@@ -1085,12 +1085,29 @@ messages."
        )
 
       (authorizationStateWaitPhoneNumber
-       (let ((phone (read-string "Telega phone number: " "+")))
-         (telega--setAuthenticationPhoneNumber phone)))
+       (if (and (not telega--relogin-with-phone-number)
+                telega-use-images
+                (or (executable-find "qrencode")
+                    ;; NOTE: docker image has "qrencode" tool
+                    telega-use-docker))
+           (progn
+             ;; NOTE: transition to
+             ;; "authorizationStateWaitOtherDeviceConfirmation" state
+             ;; takes some time, so display QR code dialog first, then
+             ;; wait for QR code itself
+             (telega--requestQrCodeAuthentication)
+             (telega-qr-code--show nil))
+
+         (setq telega--relogin-with-phone-number nil)
+         (telega--setAuthenticationPhoneNumber
+          (read-string "Telega phone number: " "+"))))
 
       (authorizationStateWaitCode
        (let ((code (read-string "Telega login code: ")))
          (telega--checkAuthenticationCode code)))
+
+      (authorizationStateWaitOtherDeviceConfirmation
+       (telega-qr-code--show (plist-get state :link)))
 
       (authorizationStateWaitRegistration
        (let* ((names (split-string (read-from-minibuffer "Your Name: ") " "))
@@ -1110,6 +1127,9 @@ messages."
 
 
       (authorizationStateReady
+       ;; Hide previously possibly shown QR code auth dialog
+       (telega-qr-code--hide)
+
        ;; TDLib is now ready to answer queries
        (telega--authorization-ready))
 

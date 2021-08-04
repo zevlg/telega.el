@@ -690,4 +690,28 @@ Example: 23 y.o. designer from San Francisco")
  ;; Player controls
  ("lng_mac_menu_player_stop"
   :value "Stop")
+
+ ;; QR code
+ ("lng_phone_to_qr"
+  :value "Quick log in using QR code")
+ ("lng_intro_qr_step1"
+  :value "Open Telegram on your phone")
+ ("lng_intro_qr_step2"
+  :value "Go to Settings > Devices > Scan QR")
+ ("lng_intro_qr_step3"
+  :value "Scan this image to Log In")
+ ("lng_intro_qr_skip"
+  :value "Or log in using your phone number")
+ ("lng_intro_qr_title"
+  :value "Scan From Mobile Telegram")
+
+ ("lng_group_invite_qr_title"
+  :value "Invite by QR Code")
+ ("lng_group_invite_qr_about"
+  :value "Everyone on Telegram can scan this code to join your group.")
+ ("lng_group_invite_context_qr"
+  :value "Get QR Code")
+ ("lng_group_invite_qr_copied"
+  :value "QR Code copied to clipboard.")
+
  )

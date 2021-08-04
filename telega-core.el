@@ -250,6 +250,10 @@ display the list.")
 (defvar telega-docker--container-id nil
   "Docker image id currently running.")
 
+;; See https://github.com/tdlib/td/issues/1645
+(defvar telega--relogin-with-phone-number nil
+  "This var is used to relogin with phone number when skipping QR auth")
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil

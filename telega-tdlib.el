@@ -975,6 +975,10 @@ Pass REVOKE to try to delete chat history for all users."
    (list :@type "checkAuthenticationCode"
          :code code)))
 
+(defun telega--requestQrCodeAuthentication ()
+  (telega-server--send
+   (list :@type "requestQrCodeAuthentication")))
+
 (defun telega--registerUser (first-name &optional last-name)
   "Finish new user registration."
   (telega-server--send
