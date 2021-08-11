@@ -687,6 +687,13 @@ to make `telega-root-keep-cursor' always work as expected."
   :type 'integer
   :group 'telega-root)
 
+(defcustom telega-root-aux-inserters nil
+  "List of additional inserters to show below Status in the rootbuf.
+Can be used to display additional global data."
+  :package-version '(telega . "0.7.56")
+  :type '(repeat function)
+  :group 'telega-root)
+
 (defcustom telega-chat-button-width '(0.35 15 48)
   "*Width for the chat buttons in root buffer.
 If integer, then use this number of chars.
@@ -1272,17 +1279,12 @@ Set it to nil to disable VoIP logging."
   :group 'telega-voip)
 
 (defcustom telega-voip-busy-if-active t
-  "*Reply with busy status to any incoming calls if have active call."
+  "*Reply with busy status to any incoming call if other call is active."
   :type 'boolean
   :group 'telega-voip)
 
 (defcustom telega-voip-help-echo t
   "*Non-nil to show help messages in echo area on call activation."
-  :type 'boolean
-  :group 'telega-voip)
-
-(defcustom telega-voip-use-sounds nil
-  "*Non-nil to play sounds (using ffplay) for call status changes."
   :type 'boolean
   :group 'telega-voip)
 

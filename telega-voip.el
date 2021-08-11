@@ -73,35 +73,38 @@
                          'callStatePending)))
               (mapcar 'cdr telega-voip--alist)))
 
-(defun telega-voip--aux-status (call)
-  "Update `telega--status-aux' according to active CALL."
-  (telega-status--set
-   nil (telega-ins--as-string
-        (when call
-          (let ((user-id (plist-get call :user_id))
-                (state (plist-get call :state)))
-            ;; server/user receive status
-            (cond ((plist-get state :is_received)
-                   (telega-ins telega-symbol-heavy-checkmark))
-                  ((plist-get state :is_created)
-                   (telega-ins telega-symbol-checkmark)))
-            (telega-ins telega-symbol-phone)
-            (if (plist-get call :is_outgoing)
-                (telega-ins "→")
-              (telega-ins "←"))
+(defun telega-ins--voip-active-call (&optional call)
+  "Insert active voip call inte root aux ewoc."
+  (when-let ((call (or call telega-voip--active-call)))
+    (telega-ins "Active Call: ")
+    (let ((user-id (plist-get call :user_id))
+          (state (plist-get call :state)))
+      ;; server/user receive status
+      (cond ((plist-get state :is_received)
+             (telega-ins telega-symbol-heavy-checkmark))
+            ((plist-get state :is_created)
+             (telega-ins telega-symbol-checkmark)))
+      (telega-ins telega-symbol-phone)
+      (if (plist-get call :is_outgoing)
+          (telega-ins "→")
+        (telega-ins "←"))
 
-            (apply 'insert-text-button
-                   (telega-user--name (telega-user-get user-id) 'name)
-                   (telega-link-props 'user user-id))
-            (telega-ins-fmt " %s"
-              (substring (plist-get state :@type) 9))
-            (cl-case (telega--tl-type state)
-              (callStatePending
-               ;; dot for animation
-               (telega-ins "."))
-              (callStateReady
-               ;; key emojis
-               (telega-ins " " (telega-voip--call-emojis call)))))))))
+      (apply 'insert-text-button
+             (telega-user--name (telega-user-get user-id) 'name)
+             (telega-link-props 'user user-id))
+      (telega-ins-fmt " %s"
+        (substring (plist-get state :@type) 9))
+      (cl-case (telega--tl-type state)
+        (callStatePending
+         ;; dot for animation
+         (telega-ins "."))
+        (callStateReady
+         ;; key emojis
+         (telega-ins " " (telega-voip--call-emojis call)))))))
+
+(defun telega-voip--active-call-redisplay (call)
+  "Redisplay root aux for active voip call."
+  (telega-root-aux-redisplay #'telega-root-aux--insert-voip-active-call))
 
 
 (defun telega-voip-discard (call)
@@ -128,7 +131,7 @@ Discard currently active call, if any."
     (telega-voip-discard telega-voip--active-call))
 
   (setq telega-voip--active-call call)
-  (telega-voip--aux-status telega-voip--active-call))
+  (telega-root-aux-redisplay #'telega-ins--voip-active-call))
 
 (defun telega-voip-call (user &optional force)
   "Call the USER.
@@ -164,35 +167,8 @@ Discard active call if any."
   (interactive (list telega-voip--active-call))
   (message "TODO: `telega-voip-buffer-show'"))
 
-(defun telega-voip-list-calls (only-missed)
-  "List recent calls.
-If prefix arg is given then list only missed calls."
-  (interactive "P")
-  (let* ((ret (telega-server--call
-               (list :@type "searchCallMessages"
-                     :from_message_id 0
-                     :limit 100
-                     ;; NOTE: `:only_missed t' gives some problems :(
-                     :only_missed (if (null only-missed) :false t))))
-         (messages (mapcar #'identity (plist-get ret :messages))))
-    (with-telega-help-win "*Telega Recent Calls*"
-      (telega-ins (if only-missed "Missed" "All") " Calls\n")
-      (telega-ins (make-string (- (point-max) 2) ?-) "\n")
-
-      (dolist (call-msg messages)
-        (telega-ins--with-attrs (list :align 'left
-                                      :min 60
-                                      :max 60
-                                      :elide t)
-          (telega-ins--username (plist-get call-msg :sender_user_id) 'name)
-          (telega-ins ": ")
-          (telega-ins--content-one-line call-msg))
-        (telega-ins--with-attrs (list :align 'right :min 10)
-          (telega-ins--date (plist-get call-msg :date)))
-        (telega-ins "\n")))
-    ))
-
 
+;; Sounds for `telega-voip-sounds-mode'
 (defun telega-voip-sounds--play-incoming (_call)
   "Incomming CALL pending."
   (unless telega-voip--active-call
@@ -223,9 +199,17 @@ If prefix arg is given then list only missed calls."
                   "sounds/call_end.mp3")))
       (telega-ffplay-run (telega-etc-file snd) "-nodisp"))))
 
+;;; ellit-org: minor-modes
+;; ** telega-voip-sounds-mode
+;; 
+;; Mode to notify about VoIP call by playing sounds.
+;; ~telega-voip-sounds-mode~ is enabled by default.  Disable it with:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook (lambda () (telega-voip-sounds-mode -1)))
+;; #+end_src
 (defun telega-voip-sounds-mode (&optional arg)
-  "Toggle soundsToggle telega notifications on or off.
-With positive ARG - enables notifications, otherwise disables.
+  "Toggle sounds for voip calls.
+With positive ARG - enable sounds, otherwise disable.
 If ARG is not given then treat it as 1."
   (interactive "p")
   (if (or (null arg) (> arg 0))
@@ -443,7 +427,9 @@ If TITLE is not specified, ask user interactively for the new title."
 (provide 'telega-voip)
 
 ;; On load
-(when telega-voip-use-sounds
-  (telega-voip-sounds-mode 1))
+(telega-voip-sounds-mode 1)
+
+;; Display Active Call in the rootbuf aux ewoc
+(add-to-list 'telega-root-aux-inserters #'telega-ins--voip-active-call)
 
 ;;; telega-voip.el ends here

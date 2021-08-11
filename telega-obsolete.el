@@ -115,6 +115,9 @@
 (telega-obsolete--variable 'telega-vvnote-video-cmd
                            'telega-vvnote-video-record-args
                            "0.7.53")
+(telega-obsolete--variable 'telega-voip-use-sounds
+                           nil
+                           "0.7.56")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

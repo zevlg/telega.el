@@ -69,7 +69,9 @@ Rest elements are ewoc specs.")
   "Ewocs in `telega-root-view--ewocs-alist' starts here.")
 (defvar telega-root-view--ewocs-alist nil
   "Named ewocs alist in rootbuf.")
-
+(defvar telega-root-aux--ewoc nil
+  "Auxiliary data shown in the rootbuf.
+Use `telega-root-aux-inserters' to customize it.")
 (defvar telega-status--timer nil
   "Timer used to animate status string.")
 (defvar telega-loading--timer nil
@@ -212,10 +214,26 @@ Rest elements are ewoc specs.")
 
 (defvar telega-voip-map
   (let ((map (make-sparse-keymap)))
+    ;;; ellit-org: rootbuf-voip-bindings
+    ;; - {{{where-is(telega-chat-call,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chat-call,2)}}}
+    (define-key map (kbd "c") 'telega-chat-call)
+    ;;; ellit-org: rootbuf-voip-bindings
+    ;; - {{{where-is(telega-voip-accept,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-voip-accept,2)}}}
     (define-key map (kbd "a") 'telega-voip-accept)
+    ;;; ellit-org: rootbuf-voip-bindings
+    ;; - {{{where-is(telega-voip-discard,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-voip-discard,2)}}}
     (define-key map (kbd "d") 'telega-voip-discard)
+    ;;; ellit-org: rootbuf-voip-bindings
+    ;; - {{{where-is(telega-voip-buffer-show,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-voip-buffer-show,2)}}}
     (define-key map (kbd "b") 'telega-voip-buffer-show)
-    (define-key map (kbd "l") 'telega-voip-list-calls)
+    ;;; ellit-org: rootbuf-voip-bindings
+    ;; - {{{where-is(telega-view-calls,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-calls,2)}}}
+    (define-key map (kbd "l") 'telega-view-calls)
     map)
   "Keymap for VoIP commands.")
 
@@ -338,7 +356,17 @@ Global root bindings:
   (telega-button--insert
    'telega-status (cons telega--status telega--status-aux))
 
-  ;; delim
+  ;; NOTE: There is no delim between status and aux ewoc, becaus
+  ;; newline delimiters are added in the `telega-root-aux--pp'.  This
+  ;; is done, because there always should be a delim between ewocs
+
+  ;; Ewoc for rootbuf auxiliary inserters
+  (setq telega-root-aux--ewoc (ewoc-create #'telega-root-aux--pp nil nil t))
+  (dolist (aux-inserter telega-root-aux-inserters)
+    (ewoc-enter-last telega-root-aux--ewoc aux-inserter))
+  (goto-char (point-max))
+
+  ;; Delim between ewocs
   (insert "\n")
 
   ;; Custom filters
@@ -374,6 +402,27 @@ to make use of `telega-use-tracking-for'"))
     (telega-root-auto-fill-mode 1))
 
   (telega-runtime-setup))
+
+(defun telega-root-aux--pp (inserter)
+  "Pretty printer for rootbuf aux INSERTER from `telega-root-aux-inserters'."
+  (telega-ins-prefix "\n"
+    (funcall inserter)))
+
+(defun telega-root-aux-redisplay (&optional item)
+  "Redisplay auxiliary ITEM.
+ITEM is a corresponding inserter from the `telega-root-aux-inserters'.
+If ITEM is not given, then redisplay whole aux ewoc."
+  (with-telega-root-buffer
+    (if item
+        (when-let ((aux-node (telega-ewoc--find-by-data
+                              telega-root-aux--ewoc item)))
+          (ewoc-invalidate telega-root-aux--ewoc aux-node))
+
+      ;; NOTE: `telega-root-aux-inserters' might have changed, so
+      ;; recreate all items
+      (telega-ewoc--clean telega-root-aux--ewoc)
+      (dolist (aux-inserter telega-root-aux-inserters)
+        (ewoc-enter-last telega-root-aux--ewoc aux-inserter)))))
 
 
 (defun telega-root--killed ()
