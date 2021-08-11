@@ -120,7 +120,6 @@ Default is: `full'"
       (when (memq fmt-type '(full short))
         (if-let ((un (telega-tl-str user :username)))
             (setq name (concat "@" un))
-
           ;; Change format in case `:username' is unavailable
           (when (eq fmt-type 'short)
             (setq fmt-type 'name))))
@@ -130,6 +129,17 @@ Default is: `full'"
       (when (or (memq fmt-type '(full name)) (string-empty-p name))
         (when-let ((fn (telega-tl-str user :first_name)))
           (setq name (concat fn (if (string-empty-p name) "" " ") name))))
+
+      ;; Scam/Fake/Blacklist badge
+      (when (plist-get user :is_scam)
+        (setq name (concat name " " (propertize (telega-i18n "lng_scam_badge")
+                                                'face 'error))))
+      (when (plist-get user :is_fake)
+        (setq name (concat name " " (propertize (telega-i18n "lng_fake_badge")
+                                                'face 'error))))
+      (when (telega-msg-sender-blocked-p user 'offline)
+        (setq name (concat name " " (propertize "BLOCKED" 'face 'error))))
+
       name)))
 
 ;; NOTE: Backward compatibility, DEPRECATED, use `telega-user-title' instead
