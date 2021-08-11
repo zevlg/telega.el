@@ -421,22 +421,24 @@ If CALLBACK is specified, then get reply message asynchronously."
     (telega-video-player-run
      (telega--tl-get file :local :path) done-callback)))
 
-(defun telega-msg--play-video-incrementally (msg file)
+(defun telega-msg--play-video-incrementally (msg _file)
   "Start playing video FILE while still downloading FILE."
   ;; NOTE: search `moov' atom at the beginning or ending
   ;; Considering 2k of index data per second
-  (let ((video (telega--tl-get msg :content :video)))
-    (if (and (telega-file--downloaded-p file)
+  (let* ((video (or (telega--tl-get msg :content :video)
+                    (telega--tl-get msg :content :web_page :video)))
+         (video-file (telega-file--renew video :video)))
+    (if (and (telega-file--downloaded-p video-file)
              (plist-get video :telega-video-pending-open))
-        (telega-msg--play-video msg file)
+        (telega-msg--play-video msg video-file)
 
       ;; File is partially downloaded, start playing incrementally if:
       ;; 1) At least 3 seconds of the video is downloaded
       ;; 2) `moov' atom is available, we use
       ;;    `telega-ffplay-get-resolution' function to check this
       ;; 3) File downloads faster, than it takes time to play
-      (let* ((fsize (telega-file--size file))
-             (dsize (telega-file--downloaded-size file))
+      (let* ((fsize (telega-file--size video-file))
+             (dsize (telega-file--downloaded-size video-file))
              (duration (or (plist-get video :duration) 50))
              ;; Size for 3 seconds of the video
              (d3-size (/ (* 3 fsize) duration))
@@ -450,7 +452,7 @@ If CALLBACK is specified, then get reply message asynchronously."
                    open-time (> ddur (- (time-to-seconds) open-time)))
           ;; Check for 2)
           (if (not (telega-ffplay-get-resolution
-                    (telega--tl-get file :local :path)))
+                    (telega--tl-get video-file :local :path)))
               ;; NOTE: Can't play this file incrementally, so start
               ;; playing it after full download
               (plist-put video :telega-video-probe-size nil)
@@ -459,19 +461,27 @@ If CALLBACK is specified, then get reply message asynchronously."
             ;; downloading file if video player exits
             (plist-put video :telega-video-pending-open nil)
 
-            (unless (file-exists-p (telega--tl-get file :local :path))
-              (warn "File is gone: %s" (telega--tl-get file :local :path))
+            (unless (file-exists-p (telega--tl-get video-file :local :path))
+              (user-error "File is gone: %s"
+                          (telega--tl-get video-file :local :path))
               ;; TODO: start player in idle timer then, so filename
               ;; gets updated from `telega-server'
               )
-            (telega-msg--play-video msg file
+            (telega-msg--play-video msg video-file
               (lambda ()
-                (when (telega-file--downloading-p file)
-                  (telega--cancelDownloadFile file))))
+                ;; NOTE: video file might be already updated at the
+                ;; callback time, so get it latest version
+                (when-let ((file (telega-file-get
+                                  (plist-get video-file :id) 'local)))
+                  (when (telega-file--downloading-p file)
+                    (telega--cancelDownloadFile file)))))
             ))))))
 
 (defun telega-msg-open-video (msg &optional video)
   "Open content for video message MSG."
+  (cl-assert (or (not video)
+                 (eq video (telega--tl-get msg :content :web_page :video))))
+
   (let* ((video (or video (telega--tl-get msg :content :video)))
          (video-file (telega-file--renew video :video))
          (incremental-part
@@ -509,6 +519,9 @@ If CALLBACK is specified, then get reply message asynchronously."
 
 (defun telega-msg-open-audio (msg &optional audio)
   "Open content for audio message MSG."
+  (cl-assert (or (not audio)
+                 (eq audio (telega--tl-get msg :content :web_page :audio))))
+
   ;; - If already playing, then pause
   ;; - If paused, start from paused position
   ;; - If not started, start playing
@@ -577,8 +590,11 @@ note finishes."
   ;; - If already playing, then pause
   ;; - If paused, start from paused position
   ;; - If not started, start playing
-  (let* ((note (telega--tl-get msg :content :voice_note))
-         (note-file (telega-file--renew note :voice))
+  (let* ((note (or (telega--tl-get msg :content :voice_note)
+                   (telega--tl-get msg :content :web_page :voice_note)))
+         (note-file (progn
+                      (cl-assert note)
+                      (telega-file--renew note :voice)))
          (proc (plist-get msg :telega-ffplay-proc))
          (paused-p (or telega-ffplay-media-timestamp
                        (telega-ffplay-paused-p proc))))
@@ -618,10 +634,11 @@ note finishes."
           ;; downloading progress
           (telega-msg-redisplay msg))))))
 
-(defun telega-msg-video-note--ffplay-callback (proc frame msg video-note)
+(defun telega-msg-video-note--ffplay-callback (proc frame msg)
   "Callback for video note playback."
   (let* ((proc-plist (process-plist proc))
-         (note (or video-note (telega--tl-get msg :content :video_note)))
+         (note (or (telega--tl-get msg :content :video_note)
+                   (telega--tl-get msg :content :web_page :video_note)))
          (duration (plist-get note :duration))
          (nframes (or (float (plist-get proc-plist :nframes))
                       (* 30.0 duration)))
@@ -694,7 +711,7 @@ non-nil."
                               (format " -af atempo=%.2f"
                                       telega-vvnote-play-speed))
                             " -f alsa default -vsync 0")
-                         (list #'telega-msg-video-note--ffplay-callback msg note)
+                         (list #'telega-msg-video-note--ffplay-callback msg)
                          :seek paused-p :speed telega-vvnote-play-speed))
             (with-telega-chatbuf (telega-msg-chat msg)
               (telega-chatbuf--activate-vvnote-msg msg)))

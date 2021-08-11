@@ -55,10 +55,11 @@ As side-effect might update root view, if current root view is \"Files\"."
   (telega-root-view--update :on-file-update file)
   file)
 
-(defun telega-file-get (file-id)
+(defun telega-file-get (file-id &optional locally)
   "Return file associated with FILE-ID."
   (or (gethash file-id telega--files)
-      (telega-file--ensure (telega--getFile file-id))))
+      (unless locally
+        (telega-file--ensure (telega--getFile file-id)))))
 
 (defun telega-file--renew (place prop)
   "Renew file value at PLACE and PROP."
