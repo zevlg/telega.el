@@ -843,6 +843,16 @@ This filters are displayed as filter buttons at the top of rootbuf."
   :type 'boolean
   :group 'telega-filter)
 
+(defcustom telega-filter-custom-one-liners '(custom folders)
+  "List of custom filter types to display in one line.
+If `custom' is in the list, then display all custom filters in one line.
+If `folders' is in the list, then display all folders in one line.
+Otherwise fit custom filters into `telega-root-fill-column'."
+  :package-version '(telega . "0.7.56")
+  :type '(repeat (choice (const :tag "Custom Filters" custom)
+                         (const :tag "Folders" folders)))
+  :group 'telega-filter)
+
 (defcustom telega-filter-button-width '(0.25 17 25)
   "*Width of the custom filter buttons.
 If integer, then use this number of chars.

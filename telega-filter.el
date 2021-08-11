@@ -269,12 +269,24 @@ If FILTER is nil, then active filter is used."
 ;; ewoc stuff
 (defun telega-filter--pp (custom)
   "Pretty printer for CUSTOM filter button."
-  (let ((filter-button-width
-         (telega-canonicalize-number telega-filter-button-width
-                                     telega-root-fill-column))
-        (ccolumn (current-column)))
+  (let* ((filter-button-width
+          (telega-canonicalize-number telega-filter-button-width
+                                      telega-root-fill-column))
+         (ccolumn (current-column))
+         (custom-filter (nth 1 custom))
+         (folder-p (and (listp custom-filter)
+                        (eq 'folder (car custom-filter)))))
     ;; NOTE: 3 - two spaces and a newline
-    (cond ((> (+ 3 ccolumn filter-button-width) telega-root-fill-column)
+    (cond ((and (not (memq (if folder-p 'folders 'custom)
+                           telega-filter-custom-one-liners))
+                (> (+ 3 ccolumn filter-button-width) telega-root-fill-column))
+           (insert "\n"))
+          ;; NOTE: start Folders from newline for any non-nil
+          ;; `telega-filter-custom-one-liners' setting
+          ((and telega-filter-custom-one-liners
+                folder-p
+                (equal (nth 1 custom-filter)
+                       (telega-tl-str (car telega-tdlib--chat-filters) :title)))
            (insert "\n"))
           ((zerop ccolumn)
            ;; no-op
