@@ -476,6 +476,16 @@ Important customizable options:
   {{{where-is(telega-view-reset,telega-root-mode-map)}}} uses this
   function to reset root view.
 
+** Voice/Video calls
+
+Telegram provides nice voice/video calls.
+
+**TODO** more documentation about voice/video calls support by
+=telega=.
+
+{{{kbd(c)}}} prefix in rootbuf is used to call VoIP commands:
+#+ELLIT-INCLUDE: ../telega-root.el :label rootbuf-voip-bindings
+
 * Chat Folders
 
 #+ELLIT-INCLUDE: ../telega-folders.el :label commentary
@@ -729,6 +739,12 @@ To schedule a message, press {{{kbd(C-c C-a scheduled RET)}}},
 select date and time to schedule message at, type text of a message
 and send it as always.
 
+To reschedule a message, first list all scheduled messages in the chat
+with {{{kbd(C-c / scheduled RET)}}}, then press
+{{{where-is(telega-msg-edit,telega-msg-button-map)}}} on the message
+you want to reschedule, remove previous "Schedule" attachment and add
+a new one at the beginning.
+
 Message scheduled in "Saved Messages" chat is called reminder.
 
 Whenever a scheduled message or reminder is sent, you get a special
@@ -753,8 +769,9 @@ You can navigate your previous chatbuf input using commands:
 
 ** Completing input in chatbuf
 
-Powerful =company-mode= could be used to complete input in the
-chatbuf.
+Powerful =company-mode= can be used to complete input in the chatbuf
+with
+{{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}}.
 
 =telega= provides few company backends, such as:
 
@@ -801,6 +818,31 @@ the chatbuf prompt.
 
 If you don't like =company-posframe=, consider option:
 - {{{user-option(telega-company-tooltip-always-below, 2)}}}
+
+*** Using capf for input completions                                  :new:
+
+It is possible to use standard Emacs ~capf~ (completion at point)
+functionality to perform completions in the chatbuf.  You still need
+~company.el~ package installed **and loaded** because =telega= uses it
+as engine.
+
+~capf~ is used by default if ~company-mode~ is disabled in the
+chatbuf, so to enable ~capf~ completions setup could look like:
+
+#+begin_src elisp
+(setq telega-emoji-company-backend 'telega-company-emoji)
+
+(defun my-telega-chat-mode ()
+  (require 'company)
+  (add-hook 'completion-at-point-functions
+            #'telega-chatbuf-complete-at-point nil 'local)
+  )
+
+(add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
+#+end_src
+
+~capf~ functionality is very limited comparing to ~company-mode~
+completions, however, some users might still prefer ~capf~.
 
 ** Sending messages via bots
 
@@ -1011,7 +1053,7 @@ To play animation message press {{{kbd(RET)}}} on the message.  Also,
 messages.
 
 To explicitly add animation to Saved Animations list, press
-{{{where-is(telega-msg-mark-toggle,telega-msg-button-map)}}} on the
+{{{where-is(telega-msg-save,telega-msg-button-map)}}} on the
 corresponding animation message.
 
 * Multiple accounts
@@ -1059,6 +1101,8 @@ See also [[#telega-alertel--notifications-using-alertel][Notifications using ale
 #+ELLIT-INCLUDE: ../telega-modes.el :label minor-modes
 
 #+ELLIT-INCLUDE: ../telega-root.el :label minor-modes
+
+#+ELLIT-INCLUDE: ../telega-voip.el :label minor-modes
 
 * Contributed packages
 

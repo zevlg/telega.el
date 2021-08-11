@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.54)
+#+TITLE: Telega Manual (v0.7.56)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -42,6 +42,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
   - [[#root-buffer][Root Buffer]]
     - [[#rootbuf-fast-navigation][Rootbuf fast navigation]]
     - [[#rootbuf-view-switching][Rootbuf view switching]]
+    - [[#voicevideo-calls][Voice/Video calls]]
   - [[#chat-folders][Chat Folders]]
   - [[#chat-filters][Chat Filters]]
     - [[#list-of-chat-filters][List of chat filters]]
@@ -59,6 +60,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#scheduling-messages-and-reminders][Scheduling messages and reminders]]
     - [[#navigating-previous-input][Navigating previous input]]
     - [[#completing-input-in-chatbuf][Completing input in chatbuf]]
+      - [[#using-capf-for-input-completions][Using capf for input completions]]
     - [[#sending-messages-via-bots][Sending messages via bots]]
     - [[#filtering-chat-messages-aka-shared-media][Filtering chat messages a.k.a. Shared Media]]
     - [[#opening-files-using-external-programs][Opening files using external programs]]
@@ -83,6 +85,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-patrons-mode][telega-patrons-mode]]
     - [[#telega-my-location-mode][telega-my-location-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
+    - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
     - [[#telega-status-historyel--global-minore-mode-to-save-users-online-status-history][/telega-status-history.el/ -- Global minore mode to save user's online status history]]
@@ -700,10 +703,12 @@ Telega prefix map bindings:
      If current buffer is dired, then send all marked files.
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 - @@html:<kbd>@@a@@html:</kbd>@@ (~telega-account-switch~) :: 
      Switch to the ~ACCOUNT-NAME~.
@@ -889,7 +894,7 @@ view.
      View contacts searched by ~QUERY~.
      If ~QUERY~ is empty string, then show all contacts.
 
-- @@html:<kbd>@@v C@@html:</kbd>@@ (~telega-view-calls~) :: 
+- @@html:<kbd>@@v C@@html:</kbd>@@, @@html:<kbd>@@c l@@html:</kbd>@@ (~telega-view-calls~) :: 
      View calls.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then view missed calls only.
 
@@ -914,6 +919,35 @@ Important customizable options:
 
   @@html:<kbd>@@v v@@html:</kbd>@@ (~telega-view-reset~) uses this
   function to reset root view.
+
+** Voice/Video calls
+:PROPERTIES:
+:CUSTOM_ID: voicevideo-calls
+:END:
+
+Telegram provides nice voice/video calls.
+
+**TODO** more documentation about voice/video calls support by
+=telega=.
+
+@@html:<kbd>@@c@@html:</kbd>@@ prefix in rootbuf is used to call VoIP commands:
+- @@html:<kbd>@@c c@@html:</kbd>@@ (~telega-chat-call~) :: 
+     Call to the user associated with the given private ~CHAT~.
+
+- @@html:<kbd>@@c a@@html:</kbd>@@ (~telega-voip-accept~) :: 
+     Accept last incoming ~CALL~.
+     Discard active call if any.
+
+- @@html:<kbd>@@c d@@html:</kbd>@@ (~telega-voip-discard~) :: 
+     Discard the ~CALL~.
+     If called interactively then discard active call.
+
+- @@html:<kbd>@@c b@@html:</kbd>@@ (~telega-voip-buffer-show~) :: 
+     Show callbuf for the CALL.
+
+- @@html:<kbd>@@v C@@html:</kbd>@@, @@html:<kbd>@@c l@@html:</kbd>@@ (~telega-view-calls~) :: 
+     View calls.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then view missed calls only.
 
 * Chat Folders
 :PROPERTIES:
@@ -1834,6 +1868,12 @@ To schedule a message, press @@html:<kbd>@@C-c C-a scheduled RET@@html:</kbd>@@,
 select date and time to schedule message at, type text of a message
 and send it as always.
 
+To reschedule a message, first list all scheduled messages in the chat
+with @@html:<kbd>@@C-c / scheduled RET@@html:</kbd>@@, then press
+@@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) on the message
+you want to reschedule, remove previous "Schedule" attachment and add
+a new one at the beginning.
+
 Message scheduled in "Saved Messages" chat is called reminder.
 
 Whenever a scheduled message or reminder is sent, you get a special
@@ -1867,8 +1907,9 @@ You can navigate your previous chatbuf input using commands:
 :CUSTOM_ID: completing-input-in-chatbuf
 :END:
 
-Powerful =company-mode= could be used to complete input in the
-chatbuf.
+Powerful =company-mode= can be used to complete input in the chatbuf
+with
+@@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~).
 
 =telega= provides few company backends, such as:
 
@@ -1927,6 +1968,34 @@ If you don't like =company-posframe=, consider option:
   Done by recentering point in the chatbuf. 
 
   Default value: ~t~
+
+*** Using capf for input completions                                    :new:
+:PROPERTIES:
+:CUSTOM_ID: using-capf-for-input-completions
+:END:
+
+It is possible to use standard Emacs ~capf~ (completion at point)
+functionality to perform completions in the chatbuf.  You still need
+~company.el~ package installed **and loaded** because =telega= uses it
+as engine.
+
+~capf~ is used by default if ~company-mode~ is disabled in the
+chatbuf, so to enable ~capf~ completions setup could look like:
+
+#+begin_src elisp
+  (setq telega-emoji-company-backend 'telega-company-emoji)
+
+  (defun my-telega-chat-mode ()
+    (require 'company)
+    (add-hook 'completion-at-point-functions
+  	    #'telega-chatbuf-complete-at-point nil 'local)
+    )
+
+  (add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
+#+end_src
+
+~capf~ functionality is very limited comparing to ~company-mode~
+completions, however, some users might still prefer ~capf~.
 
 ** Sending messages via bots
 :PROPERTIES:
@@ -2122,17 +2191,27 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
+
+     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
+
+     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
+
+     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
+
+     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
+
+     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@ (~telega-msg-copy-link~) command
@@ -2246,7 +2325,7 @@ To play animation message press @@html:<kbd>@@RET@@html:</kbd>@@ on the message.
 messages.
 
 To explicitly add animation to Saved Animations list, press
-@@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~) on the
+@@html:<kbd>@@S@@html:</kbd>@@ (~telega-msg-save~) on the
 corresponding animation message.
 
 * Multiple accounts
@@ -2595,6 +2674,17 @@ to the width of the window displaying rootbuf.
 
 ~telega-root-auto-fill-mode~ is enabled by default.
 
+** telega-voip-sounds-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-voip-sounds-mode
+:END:
+
+Mode to notify about VoIP call by playing sounds.
+~telega-voip-sounds-mode~ is enabled by default.  Disable it with:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook (lambda () (telega-voip-sounds-mode -1)))
+#+end_src
+
 * Contributed packages
 :PROPERTIES:
 :CUSTOM_ID: contributed-packages
@@ -2870,7 +2960,7 @@ Customizable options:
 
   Height in chars for Emacs Stories buttons 
 
-  Default value: ~(6 . 9)~
+  Default value: ~6~
 - User Option: ~telega-stories-notify-if~ 
 
   Pop notification on new story if stories chat matches this Chat Filter. 

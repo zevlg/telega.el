@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.55
-(defconst telega-version "0.7.55")
+;; Version: 0.7.56
+(defconst telega-version "0.7.56")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.7.4")
 (defconst telega-tdlib-max-version nil)
@@ -335,20 +335,21 @@ string at point."
 
 (push (expand-file-name "contrib" telega--lib-directory) load-path)
 
+;; Enable patrons mode by default
+(telega-patrons-mode 1)
+
+;; Enable root auto fill mode by default
+(telega-root-auto-fill-mode 1)
+
+(run-hooks 'telega-load-hook)
 ;; Load hook might install new symbols into
 ;; `telega-symbol-widths'
-(run-hooks 'telega-load-hook)
 (telega-symbol-widths-install telega-symbol-widths)
 
 ;; For messages loaded from history
 (add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)
 
-;; Enable root auto fill mode by default
-(telega-root-auto-fill-mode 1)
-
-;; Enable patrons mode by default
-(telega-patrons-mode 1)
-
+;; WARN about usage of the obsolete variables
 (require 'telega-obsolete)
 
 ;;; telega.el ends here

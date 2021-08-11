@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-08-03 Вт 16:49 -->
+<!-- 2021-08-12 Чт 01:13 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.54)</title>
+<title>Telega Manual (v0.7.56)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.54)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.56)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -266,6 +266,7 @@
 <ul>
 <li><a href="#rootbuf-fast-navigation">Rootbuf fast navigation</a></li>
 <li><a href="#rootbuf-view-switching">Rootbuf view switching</a></li>
+<li><a href="#voicevideo-calls">Voice/Video calls</a></li>
 </ul>
 </li>
 <li><a href="#chat-folders">Chat Folders</a></li>
@@ -291,7 +292,11 @@
 <li><a href="#deleting-messages">Deleting messages</a></li>
 <li><a href="#scheduling-messages-and-reminders">Scheduling messages and reminders</a></li>
 <li><a href="#navigating-previous-input">Navigating previous input</a></li>
-<li><a href="#completing-input-in-chatbuf">Completing input in chatbuf</a></li>
+<li><a href="#completing-input-in-chatbuf">Completing input in chatbuf</a>
+<ul>
+<li><a href="#using-capf-for-input-completions">Using capf for input completions&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+</ul>
+</li>
 <li><a href="#sending-messages-via-bots">Sending messages via bots</a></li>
 <li><a href="#filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</a></li>
 <li><a href="#opening-files-using-external-programs">Opening files using external programs</a></li>
@@ -322,6 +327,7 @@
 <li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
 <li><a href="#telega-my-location-mode">telega-my-location-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 <li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
 </li>
 <li><a href="#contributed-packages">Contributed packages</a>
@@ -967,7 +973,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgc26fd37">
+<pre class="example" id="org41f29be">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -985,7 +991,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgef90da3">
+<pre class="example" id="orgb7b8c8b">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1015,7 +1021,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgae0eecb">
+<pre class="example" id="org58131b0">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1116,7 +1122,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org4e8fbdc">
+<pre class="example" id="org81547cf">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1215,10 +1221,16 @@ If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
@@ -1490,7 +1502,7 @@ Default value:
 <dt><kbd>v c</kbd> (<code>telega-view-contacts</code>)</dt><dd>View contacts searched by <code>QUERY</code>.
 If <code>QUERY</code> is empty string, then show all contacts.</dd>
 
-<dt><kbd>v C</kbd> (<code>telega-view-calls</code>)</dt><dd>View calls.
+<dt><kbd>v C</kbd>, <kbd>c l</kbd> (<code>telega-view-calls</code>)</dt><dd>View calls.
 If <kbd>C-u</kbd> is given, then view missed calls only.</dd>
 
 <dt><kbd>v l</kbd> (<code>telega-view-last-messages</code>)</dt><dd>View last messages in the chats.</dd>
@@ -1523,6 +1535,38 @@ Default value: <code>telega-view-default</code>
 function to reset root view.
 </p></li>
 </ul>
+</div>
+</div>
+
+<div id="outline-container-voicevideo-calls" class="outline-3">
+<h3 id="voicevideo-calls"><a class="self-link" href="#voicevideo-calls"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Voice/Video calls</h3>
+<div class="outline-text-3" id="text-voicevideo-calls">
+<p>
+Telegram provides nice voice/video calls.
+</p>
+
+<p>
+<b><b>TODO</b></b> more documentation about voice/video calls support by
+<code>telega</code>.
+</p>
+
+<p>
+<kbd>c</kbd> prefix in rootbuf is used to call VoIP commands:
+</p>
+<dl class="org-dl">
+<dt><kbd>c c</kbd> (<code>telega-chat-call</code>)</dt><dd>Call to the user associated with the given private <code>CHAT</code>.</dd>
+
+<dt><kbd>c a</kbd> (<code>telega-voip-accept</code>)</dt><dd>Accept last incoming <code>CALL</code>.
+Discard active call if any.</dd>
+
+<dt><kbd>c d</kbd> (<code>telega-voip-discard</code>)</dt><dd>Discard the <code>CALL</code>.
+If called interactively then discard active call.</dd>
+
+<dt><kbd>c b</kbd> (<code>telega-voip-buffer-show</code>)</dt><dd>Show callbuf for the CALL.</dd>
+
+<dt><kbd>v C</kbd>, <kbd>c l</kbd> (<code>telega-view-calls</code>)</dt><dd>View calls.
+If <kbd>C-u</kbd> is given, then view missed calls only.</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -2030,7 +2074,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgebbf749">
+<pre class="example" id="orgc35c53d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2207,7 +2251,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org747bcab">
+<pre class="example" id="org7f20443">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2289,7 +2333,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orge85b9d3">
+<pre class="example" id="org32ccf42">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2306,7 +2350,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="orgfff8db2">
+<pre class="example" id="org6995630">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2548,7 +2592,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org80983f9">
+<pre class="example" id="orgccf2d88">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2684,6 +2728,14 @@ and send it as always.
 </p>
 
 <p>
+To reschedule a message, first list all scheduled messages in the chat
+with <kbd>C-c / scheduled RET</kbd>, then press
+<kbd>e</kbd> (<code>telega-msg-edit</code>) on the message
+you want to reschedule, remove previous "Schedule" attachment and add
+a new one at the beginning.
+</p>
+
+<p>
 Message scheduled in "Saved Messages" chat is called reminder.
 </p>
 
@@ -2726,8 +2778,9 @@ to cycle chatbuf input ring.
 <h3 id="completing-input-in-chatbuf"><a class="self-link" href="#completing-input-in-chatbuf"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Completing input in chatbuf</h3>
 <div class="outline-text-3" id="text-completing-input-in-chatbuf">
 <p>
-Powerful <code>company-mode</code> could be used to complete input in the
-chatbuf.
+Powerful <code>company-mode</code> can be used to complete input in the chatbuf
+with
+<kbd>TAB</kbd> (<code>telega-chatbuf-complete-or-next-link</code>).
 </p>
 
 <p>
@@ -2818,6 +2871,41 @@ Done by recentering point in the chatbuf.
 Default value: <code>t</code>
 </p></li>
 </ul>
+</div>
+
+<div id="outline-container-using-capf-for-input-completions" class="outline-4">
+<h4 id="using-capf-for-input-completions"><a class="self-link" href="#using-capf-for-input-completions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using capf for input completions&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h4>
+<div class="outline-text-4" id="text-using-capf-for-input-completions">
+<p>
+It is possible to use standard Emacs <code>capf</code> (completion at point)
+functionality to perform completions in the chatbuf.  You still need
+<code>company.el</code> package installed <b><b>and loaded</b></b> because <code>telega</code> uses it
+as engine.
+</p>
+
+<p>
+<code>capf</code> is used by default if <code>company-mode</code> is disabled in the
+chatbuf, so to enable <code>capf</code> completions setup could look like:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-elisp">(<span style="font-weight: bold;">setq</span> telega-emoji-company-backend 'telega-company-emoji)
+
+(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-chat-mode</span> ()
+  (<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">company</span>)
+  (add-hook 'completion-at-point-functions
+          #'telega-chatbuf-complete-at-point nil 'local)
+  )
+
+(add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
+</pre>
+</div>
+
+<p>
+<code>capf</code> functionality is very limited comparing to <code>company-mode</code>
+completions, however, some users might still prefer <code>capf</code>.
+</p>
+</div>
 </div>
 </div>
 
@@ -3099,7 +3187,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org3954564">
+<pre class="example" id="org095869d">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3107,14 +3195,44 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.</dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
+Stop playing media message.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
+Rewind 10 seconds backward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
+Rewind 10 seconds forward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
+Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
+Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.</dd>
+duration.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
 </dl>
 
 <p>
@@ -3306,7 +3424,7 @@ messages.
 
 <p>
 To explicitly add animation to Saved Animations list, press
-<kbd>m</kbd> (<code>telega-msg-mark-toggle</code>) on the
+<kbd>S</kbd> (<code>telega-msg-save</code>) on the
 corresponding animation message.
 </p>
 </div>
@@ -3830,6 +3948,20 @@ to the width of the window displaying rootbuf.
 </p>
 </div>
 </div>
+
+<div id="outline-container-telega-voip-sounds-mode" class="outline-3">
+<h3 id="telega-voip-sounds-mode"><a class="self-link" href="#telega-voip-sounds-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-voip-sounds-mode</h3>
+<div class="outline-text-3" id="text-telega-voip-sounds-mode">
+<p>
+Mode to notify about VoIP call by playing sounds.
+<code>telega-voip-sounds-mode</code> is enabled by default.  Disable it with:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook (<span style="font-weight: bold;">lambda</span> () (telega-voip-sounds-mode -1)))
+</pre>
+</div>
+</div>
+</div>
 </div>
 
 <div id="outline-container-contributed-packages" class="outline-2">
@@ -3880,7 +4012,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org4d2ab0c">
+<pre class="example" id="org98576e6">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4256,7 +4388,7 @@ Height in chars for Emacs Stories buttons
 </p>
 
 <p>
-Default value: <code>(6 . 9)</code>
+Default value: <code>6</code>
 </p></li>
 <li><p>
 User Option: <code>telega-stories-notify-if</code> 
