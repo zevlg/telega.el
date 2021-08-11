@@ -3003,8 +3003,21 @@ use.  For example `C-u RET' will use
     (while imcs
       (cond
        (editing-msg
+        ;; Possible reschedule the message
+        (when (eq 'telegaScheduledMessage (telega--tl-type (car imcs)))
+          (unless (plist-get editing-msg :scheduling_state)
+            (user-error "telega: Can't reschedule non-scheduled message"))
+          (let ((timestamp (plist-get (car imcs) :timestamp)))
+            (telega--editMessageSchedulingState editing-msg
+              (if timestamp
+                  (list :@type "messageSchedulingStateSendAtDate"
+                        :send_date timestamp)
+                (list :@type "messageSchedulingStateSendWhenOnline"))))
+          (setq imcs (cdr imcs)))
+
         (when (> (length imcs) 1)
-          (user-error "Multiple input messages while edit"))
+          (user-error "telega: Multiple input messages while edit"))
+
         (setq send-imcs (seq-take imcs 1))
         (let ((edit-mc (plist-get editing-msg :content))
               (imc (car send-imcs)))
@@ -3868,8 +3881,7 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
 
           ;; Display the inline help
           (when (string-empty-p query)
-            (telega-momentary-display
-             (propertize inline-help 'face 'shadow)))
+            (telega-momentary-display (propertize inline-help 'face 'shadow)))
           t)))))
 
 (defun telega-chatbuf-attach-poll (question anonymous-p allow-multiple-answers-p
@@ -3920,8 +3932,9 @@ message when user gets online."
   (telega-chatbuf-input-insert
    (list :@type "telegaScheduledMessage"
          :timestamp timestamp))
-  (telega-momentary-display
-   (propertize (telega-i18n "telega_scheduled_help") 'face 'shadow)))
+  (when (eobp)
+    (telega-momentary-display
+     (propertize (telega-i18n "telega_scheduled_help") 'face 'shadow))))
 
 (defun telega-chatbuf-attach-toggle-disable-notification (disable-p)
   "Toggle disable-notification chat option for the subsequent chatbuf input.
@@ -3932,11 +3945,12 @@ Use this attachment to disable/enable notification on the receiver side."
   (telega-chatbuf-input-insert
    (list :@type "telegaDisableNotification"
          :disable_notification disable-p))
-  (telega-momentary-display
-   (propertize (telega-i18n (if disable-p
-                                "telega_disable_notification_help"
-                              "telega_enable_notification_help"))
-               'face 'shadow)))
+  (when (eobp)
+    (telega-momentary-display
+     (propertize (telega-i18n (if disable-p
+                                  "telega_disable_notification_help"
+                                "telega_enable_notification_help"))
+                 'face 'shadow))))
 
 (defun telega-chatbuf-attach-disable-webpage-preview ()
   "Disable webpage preview for the following text message."
@@ -4211,6 +4225,16 @@ name from `telega-msg-edit-markup-spec' and insert message text as is."
                               (plist-get content :caption)))
            (markup-str (funcall (car telega-msg-edit-markup-spec)
                                 orig-fmt-text)))
+      ;; NOTE: Scheduling state also can be edited
+      (when-let ((scheduling-state (plist-get msg :scheduling_state)))
+        (telega-chatbuf-input-insert
+         (list :@type "telegaScheduledMessage"
+               :timestamp (cl-ecase (telega--tl-type scheduling-state)
+                            (messageSchedulingStateSendAtDate
+                             (plist-get scheduling-state :send_date))
+                            (messageSchedulingStateSendWhenOnline
+                             nil)))))
+
       ;; NOTE: if text does not changes, then no markup in the text,
       ;; can edit text AS-IS
       (if (or edit-as-is
@@ -4236,11 +4260,10 @@ name from `telega-msg-edit-markup-spec' and insert message text as is."
          :remove_caption rm-cap-p
          :unmark-after-sent (telega-msg-marked-p msg)))
 
-  (when (and send-copy-p rm-cap-p)
+  (when (and send-copy-p rm-cap-p (eobp))
     (telega-momentary-display
      (propertize (telega-i18n "telega_forward_new_caption_help")
-                 'face 'shadow)))
-  )
+                 'face 'shadow))))
 
 (defun telega-msg-forward-marked-or-at-point (&optional send-copy-p rm-cap-p)
   "Forward marked messages or message at point.

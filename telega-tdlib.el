@@ -1455,6 +1455,27 @@ Media content is an animation, an audio, a document, a photo or a video."
             (list :reply_markup reply-markup)))
    (or callback (unless sync-p #'ignore))))
 
+(defun telega--editMessageSchedulingState (msg scheduling-state)
+  "Edit scheduling state for the message MSG.
+MSG must be previously scheduled."
+  (declare (indent 1))
+  (telega-server--send
+   (list :@type "editMessageSchedulingState"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :scheduling_state scheduling-state)))
+
+(defun telega--searchChatRecentLocationMessages (chat &optional callback)
+  "Returns recent location messages of CHAT members that were sent to the CHAT."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "searchChatRecentLocationMessages"
+          :chat_id (plist-get chat :id)
+          :limit 20)
+    callback))
+
 (defun telega--getActiveLiveLocationMessages (&optional callback)
   "Return list of messages with active live locatins."
   (with-telega-server-reply (reply)
