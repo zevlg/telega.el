@@ -1841,6 +1841,15 @@ Return timestamp as unix time."
   "Open FILENAME inside telega.
 MSG is the message associated with FILENAME."
   (let ((saved-buffer (current-buffer)))
+    ;; NOTE: For newly downloaded FILENAME modtime could differ from
+    ;; modtime of existing buffer, causing annoying "Reread file from
+    ;; disk?" query from Emacs.  We workaround this by updating
+    ;; buffer's modtime to filename's modtime
+    (when-let ((buf (get-file-buffer filename)))
+      (with-current-buffer buf
+        (unless (buffer-modified-p)
+          (set-visited-file-modtime))))
+
     (funcall telega-open-file-function filename)
 
     (unless (eq saved-buffer (current-buffer))
