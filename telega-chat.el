@@ -57,6 +57,7 @@
 ;; shutup compiler
 (declare-function company-complete-common "company")
 (declare-function company-begin-backend "company" (backend &optional callback))
+(declare-function company-call-backend "company" (&rest args))
 
 ;; telega-tdlib-events.el depends on telega-chat.el
 (declare-function telega--on-updateDeleteMessages "telega-tdlib-events" (event))
@@ -4392,23 +4393,50 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
   (interactive)
   (or (when (functionp telega-chat-input-complete-function)
         (funcall telega-chat-input-complete-function))
+      ;; 1) Try completing emoji to sticker
       (call-interactively 'telega-chatbuf-attach-sticker-by-emoji)
-      (when (and (boundp 'company-mode) company-mode)
-        (when-let ((backend (cond ((telega-company-grab-username)
-                                   'telega-company-username)
-                                  ((telega-company-grab-emoji)
-                                   telega-emoji-company-backend)
-                                  ((telega-company-grab-hashtag)
-                                   'telega-company-hashtag)
-                                  ((telega-company-grab-botcmd)
-                                   'telega-company-botcmd)
-                                  )))
-          (company-begin-backend backend)
-          (company-complete)
-          t))
+      ;; 2) Try all company backends for completions
+      (if (and (boundp 'company-mode) company-mode)
+          ;; Use company-mode for completion
+          (when-let ((backend (telega-company--grab-backend 'backend)))
+            (company-begin-backend backend)
+            (company-complete)
+            t)
+        ;; Use capf for completion, `completion-at-point' returns
+        ;; non-nil if completion at point is performed
+        (let ((completion-at-point-functions
+               (cons 'telega-chatbuf-complete-at-point
+                     completion-at-point-functions)))
+          (completion-at-point)))
+      ;; 3) Try to complete bot's inline query
       (call-interactively 'telega-chatbuf-attach-inline-bot-query)
       ;; TODO: add other completions
       ))
+
+(defun telega-chatbuf-completion-candidates (prefix)
+  "Return list of completion candidates for current user input."
+  ;; NOTE: for empty PREFIX string we can't decide which company
+  ;; backend to use to fetch candidates
+  (unless (string-empty-p prefix)
+    (when-let* ((chat telega-chatbuf--chat)
+                (company-backend (with-temp-buffer
+                                   (setq telega-chatbuf--chat chat)
+                                   ;; NOTE: `telega-company-grab-botcmd' uses
+                                   ;; `telega-chatbuf--input-marker'
+                                   (setq telega-chatbuf--input-marker (point))
+                                   (insert prefix)
+                                   (telega-company--grab-backend 'backend))))
+      (company-call-backend 'candidates prefix))))
+
+(defun telega-chatbuf-complete-at-point ()
+  "Function suitable for use by `completion-at-point-functions'.
+Works only if `company' feature is provided."
+  (interactive)
+  (when-let ((has-company-p (featurep 'company))
+             (prefix (telega-company--grab-backend 'prefix)))
+    (list (- (point) (length (car prefix))) (point)
+          (completion-table-with-cache
+           #'telega-chatbuf-completion-candidates))))
 
 (defun telega-chatbuf-next-link (n)
   (interactive "p")

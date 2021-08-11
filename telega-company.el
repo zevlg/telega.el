@@ -31,6 +31,7 @@
 (require 'telega-util)
 (require 'telega-user)
 
+(defvar company-backend)
 (defvar company-minimum-prefix-length)
 (defvar company-tooltip-minimum)
 (declare-function company--row "company" (&optional pos))
@@ -38,6 +39,7 @@
 (declare-function company-begin-backend "company" (backend &optional callback))
 (declare-function company-grab "company" (regexp &optional expression limit))
 (declare-function company-grab-line "company" (regexp &optional expression))
+(declare-function company-call-backend "company" (&rest args))
 
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
@@ -316,6 +318,25 @@ Only if `telega-company-tooltip-always-below' is non-nil."
     (let ((restore-row telega-company--chatbuf-row))
       (setq telega-company--chatbuf-row nil)
       (recenter restore-row))))
+
+
+;; Utility functions
+(defun telega-company--grab-backend (what)
+  "Return prefix or a backend for input at point.
+WHAT is one of `prefix', `backend' or `prefix-and-backend'"
+  (let* ((prefix nil)
+         (backend (cl-find-if (lambda (b)
+                                (let ((company-backend b))
+                                  (setq prefix (company-call-backend 'prefix))))
+                              (list 'telega-company-username
+                                    telega-emoji-company-backend
+                                    'telega-company-hashtag
+                                    'telega-company-botcmd))))
+    (when prefix
+      (cl-ecase what
+        (prefix prefix)
+        (backend backend)
+        (prefix-and-backend (cons prefix backend))))))
 
 (provide 'telega-company)
 
