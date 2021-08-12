@@ -2308,6 +2308,10 @@ To toggle sticker being favorite, press
 @@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@f@@html:</kbd>@@ (~telega-sticker-toggle-favorite~)
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
 
+Or you can press @@html:<kbd>@@S@@html:</kbd>@@ (~telega-msg-save~)
+on the sticker message to add that sticker to the favorite stickers
+list.
+
 ** Animations                                                           :new:
 :PROPERTIES:
 :CUSTOM_ID: animations

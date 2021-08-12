@@ -1039,6 +1039,10 @@ To toggle sticker being favorite, press
 {{{where-is(telega-sticker-toggle-favorite,telega-sticker-button-map)}}}
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
 
+Or you can press {{{where-is(telega-msg-save,telega-msg-button-map)}}}
+on the sticker message to add that sticker to the favorite stickers
+list.
+
 ** Animations                                                         :new:
 
 There are multiple methods you can use to attach an animation:

@@ -1216,6 +1216,9 @@ For interactive use only."
       (messageAnimation
        (let ((anim (telega--tl-get msg :content :animation)))
          (telega-file--renew anim :animation)))
+      (messageSticker
+       (let ((sticker (telega--tl-get msg :content :sticker)))
+         (telega-file--renew sticker :sticker)))
       (t (when-let ((web-page (plist-get content :web_page)))
            (error "TODO: Save web-page"))))))
 
@@ -1227,13 +1230,20 @@ the saved animations list."
   (let ((file (telega-msg--content-file msg)))
     (unless file
       (user-error "No file associated with message"))
-    (if (and (telega-msg-type-p 'messageAnimation msg)
-             (y-or-n-p "Add animation to Saved Animations? "))
-        (progn
-          (telega--addSavedAnimation
-           (list :@type "inputFileId" :id (plist-get file :id)))
-          (message "telega: saved new animation"))
 
+    (cond
+     ((and (telega-msg-type-p 'messageAnimation msg)
+           (y-or-n-p "Add animation to Saved Animations? "))
+      (telega--addSavedAnimation
+       (list :@type "inputFileId" :id (plist-get file :id)))
+      (message "telega: saved new animation"))
+
+     ((and (telega-msg-type-p 'messageSticker msg)
+           (y-or-n-p "Add sticker to Favorite Stickers? "))
+      (telega--addFavoriteSticker
+       (list :@type "inputFileId" :id (plist-get file :id))))
+
+     (t
       (telega-file--download file 32
         (lambda (dfile)
           (telega-msg-redisplay msg)
@@ -1249,7 +1259,7 @@ the saved animations list."
                                                 nil nil fname nil))))
               ;; See https://github.com/tdlib/td/issues/379
               (copy-file fpath new-fpath)
-              (message (format "Wrote %s" new-fpath)))))))))
+              (message (format "Wrote %s" new-fpath))))))))))
 
 (defun telega-msg-copy-link (msg &optional for-comment-p)
   "Copy link to message to kill ring.
