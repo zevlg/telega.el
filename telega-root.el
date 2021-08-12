@@ -312,7 +312,7 @@ Use `telega-root-aux-inserters' to customize it.")
 ;; to the width of the window displaying rootbuf.
 ;;
 ;; ~telega-root-auto-fill-mode~ is enabled by default.
-(define-minor-mode telega-root-auto-fill-mode nil
+(define-minor-mode telega-root-auto-fill-mode
   "Toggle rootbuf autofill mode."
   :init-value nil
   :global t :group 'telega-modes
