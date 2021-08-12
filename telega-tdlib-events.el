@@ -861,8 +861,7 @@ messages."
     (telega-user--update (telega-user-get (plist-get call :user_id)) event)
 
     ;; Update aux status
-    (telega-voip--root-aux-redisplay
-     (or telega-voip--active-call (telega-voip--incoming-call)))
+    (telega-root-aux-redisplay 'telega-ins--voip-active-call)
     ))
 
 ;; Stickers updates

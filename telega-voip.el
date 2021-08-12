@@ -102,10 +102,6 @@
          ;; key emojis
          (telega-ins " " (telega-voip--call-emojis call)))))))
 
-(defun telega-voip--active-call-redisplay (call)
-  "Redisplay root aux for active voip call."
-  (telega-root-aux-redisplay #'telega-root-aux--insert-voip-active-call))
-
 
 (defun telega-voip-discard (call)
   "Discard the CALL.
