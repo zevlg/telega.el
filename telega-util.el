@@ -244,7 +244,7 @@ so new Emacs `svg-embed-base-uri-image' functionality could be used."
   (let* ((w (alist-get 'width (cadr svg)))
          (h (alist-get 'height (cadr svg)))
          ;; progress clipping mask
-         (angle-o (+ pi (* 2 pi (- 1.0 progress))))
+         (angle-o (+ float-pi (* 2 float-pi (- 1.0 progress))))
          (clip-dx (* (/ w 2) (1+ (sin angle-o))))
          (clip-dy (* (/ h 2) (1+ (cos angle-o))))
          (pclip (telega-svg-clip-path svg "pclip")))
