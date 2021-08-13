@@ -150,6 +150,12 @@ Resulting string must be no longer then 8 chars. Format specifiers:
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-use-short-numbers t
+  "Non-nil to write numbers larger then 1000 in \"X.Yk\" form."
+  :package-version '(telega . "0.7.57")
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-use-tracking-for nil
   "*Specifies Chat Filter for chats to be tracked with tracking.el.
 Make sure you have tracking.el loaded if this option is used.
@@ -834,16 +840,16 @@ See https://github.com/zevlg/telega.el/issues/171"
 
 (defcustom telega-filters-custom
   '(("Main" . main)
+    ("Important" . (or mention (and unread unmuted)))
+    ("Online" . (and (not saved-messages) (online-status "Online")))
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
-    ("Online" . (and (not saved-messages) (online-status "Online")))
-    ("Important" . (or mention (and unread unmuted)))
     ("Archive" . archive))
   "*Alist of custom filters in form (NAME . CHAT-FILTER).
 NAME is evaluated to get resulting string, so it could be a lisp
 form.
 This filters are displayed as filter buttons at the top of rootbuf."
-  :package-version '(telega . "0.6.23")
+  :package-version '(telega . "0.7.57")
   :type 'alist
   :group 'telega-filter)
 
@@ -1932,7 +1938,7 @@ Install all symbol widths inside `telega-load-hook'."
     chat-list
     eye
     failed favorite flames folder
-    leave-comment lightning lock location 
+    leave-comment lightning lock location
     multiple-folders
     pause phone photo pin play
     video voice-chat-active voice-chat-passive

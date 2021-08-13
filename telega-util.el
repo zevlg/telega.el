@@ -529,6 +529,12 @@ SYMBOL could be a cons cell of codepoints, specifying the range."
         ((>= meters 1000) (format "%.1f km" (/ meters 1000.0)))
         (t (format "%d m" meters))))
 
+(defun telega-number-human-readable (num)
+  "Convert METERS to human readable string."
+  (if (and telega-use-short-numbers (>= num 1000))
+      (format "%.1fk" (/ num 1000.0))
+    (number-to-string num)))
+
 (defun telega-duration-human-readable (seconds &optional n
                                                day-label hour-label min-label)
   "Convert SECONDS to human readable string.

@@ -146,7 +146,7 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
                                          :elide t
                                          :align 'right)
              (unless (zerop unread)
-               (telega-ins-fmt "%d" unread))
+               (telega-ins (telega-number-human-readable unread)))
              (unless (zerop mentions)
                (telega-ins-fmt "@%d" mentions)))))
          (filter-button-width

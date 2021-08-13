@@ -2539,7 +2539,7 @@ Return t."
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
-                          (telega-ins (number-to-string unread))))
+                          (telega-ins (telega-number-human-readable unread))))
                       (unless (zerop mentions)
                         (telega-ins--with-face
                             (if (telega-chat-notification-setting
@@ -2568,7 +2568,7 @@ Return t."
                                                  'telega-unmuted-count)
                           (when (memq chat-type '(basicgroup supergroup))
                             (telega-ins telega-symbol-contact
-                                        (number-to-string
+                                        (telega-number-human-readable
                                          (plist-get chat-info :member_count))))))
                       ))
            (chat-button-width
