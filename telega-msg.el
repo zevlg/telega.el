@@ -380,7 +380,7 @@ If CALLBACK is specified, then get reply message asynchronously."
 (defun telega-msg-goto (msg &optional highlight)
   "Goto message MSG."
   (telega-chat--goto-msg
-   (telega-msg-chat msg) (plist-get msg :id) highlight))
+      (telega-msg-chat msg) (plist-get msg :id) highlight))
 
 (defun telega-msg-goto-highlight (msg)
   "Goto message MSG and highlight it."
@@ -945,6 +945,42 @@ corresponding thread."
     (telega-chat--goto-thread
      (telega-msg-chat msg 'offline) thread-msg-id reply-msg-id)))
 
+(defun telega-msg-can-open-media-timestamp-p (msg)
+  "Return non-nil if MSG can be opened with custom media timestamp.
+Only video, audio, video-note, voice-note or a message with web page
+preview, having media content, can be opened with media timestamp."
+  (or (telega-msg-type-p
+       '(messageVideoNote messageVoiceNote messageAudio messageVideo) msg)
+      (when-let ((web-page (telega--tl-get msg :content :web_page)))
+        (or (plist-get web-page :video)
+            (plist-get web-page :audio)
+            (plist-get web-page :video_note)
+            (plist-get web-page :voice_note)))))
+
+(defun telega-msg-open-media-timestamp (msg timestamp &optional error-p)
+  "Open media message MSG (or replied to) at a given TIMESTAMP."
+  (cl-assert (and (telega-msg-p msg) (numberp timestamp)))
+  (if (telega-msg-can-open-media-timestamp-p msg)
+      (let ((telega-ffplay-media-timestamp timestamp))
+        (telega-msg-open-content msg))
+
+    (when error-p
+      (error "telega: Message ID=%d does not have media content"
+             (plist-get msg :id)))
+
+    ;; NOTE: timestamp might refer media in the reply to message
+    (let ((reply-to-msg-id (plist-get msg :reply_to_message_id))
+          (reply-in-chat-id (or (plist-get msg :reply_in_chat_id)
+                                (plist-get msg :chat_id))))
+      (unless (and reply-in-chat-id reply-to-msg-id)
+        (error "telega: no media message is associated with timestamp"))
+
+      (telega-chat--goto-msg
+          (telega-chat-get reply-in-chat-id) reply-to-msg-id 'hightlight
+        (lambda ()
+          (telega-msg-open-media-timestamp
+           (telega-msg-at (point)) timestamp t))))))
+
 (defun telega-msg--track-file-uploading-progress (msg)
   "Track uploading progress for the file associated with MSG."
   (let ((msg-file (telega-file--used-in-msg msg)))
@@ -1268,9 +1304,7 @@ Use \\[yank] command to paste a link."
                      (when telega-chatbuf--thread-msg t)))
   (let* ((chat (telega-msg-chat msg 'offline))
          (media-timestamp
-          (when (telega-msg-type-p
-                 '(messageVideoNote messageVoiceNote messageAudio messageVideo)
-                 msg)
+          (when (telega-msg-can-open-media-timestamp-p msg)
             (when-let ((proc (plist-get msg :telega-ffplay-proc)))
               (floor (telega-ffplay-progress proc)))))
          (link (if (and (eq 'supergroup (telega-chat--type chat 'raw))

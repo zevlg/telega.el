@@ -992,6 +992,11 @@ To play/pause media messages use {{{kbd(RET)}}}.  Also,
 {{{where-is(telega-msg-copy-link,telega-msg-button-map)}}} command
 supports linking to the currently playing (or paused at) moment.
 
+To reference a given moment in a media message (or in a reply to media
+message) use ~[HH:]MM:SS]~ syntax in the message's body/caption.  Such
+timestamp marks will be automatically emphasised with a media
+timestamp text entity.
+
 * Voice Chats
 
 **TODO**: write me

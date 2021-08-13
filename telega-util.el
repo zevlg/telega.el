@@ -683,6 +683,12 @@ See `puny-decode-domain' for details."
                           'telega-entity-type-texturl))
       (textEntityTypeBotCommand
        (list 'face 'telega-entity-type-botcommand))
+      (textEntityTypeMediaTimestamp
+       (list 'action (lambda (button)
+                       (telega-msg-open-media-timestamp
+                        (telega-msg-at button)
+                        (plist-get ent-type :media_timestamp)))
+             'face 'telega-link))
       )))
 
 ;; https://core.telegram.org/bots/api#markdown-style

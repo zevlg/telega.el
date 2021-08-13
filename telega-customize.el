@@ -449,12 +449,22 @@ NOT USED."
   :group 'telega)
 
 (defcustom telega-video-player-command
-  (cond ((executable-find "ffplay") "ffplay -autoexit")
-        ((executable-find "mpv") "mpv")
-        ((executable-find "mplayer") "mplayer"))
-  "Command used to play video files."
-  :package-version '(telega . "0.7.40")
-  :type '(or string null)
+  (cond ((executable-find "ffplay")
+         '(concat "ffplay -autoexit"
+                  (when telega-ffplay-media-timestamp
+                    (format " -ss %f" telega-ffplay-media-timestamp))))
+        ((executable-find "mpv")
+         '(concat "mpv"
+                  (when telega-ffplay-media-timestamp
+                    (format " --start=%f" telega-ffplay-media-timestamp))))
+        ((executable-find "mplayer")
+         '(concat "mplayer"
+                  (when telega-ffplay-media-timestamp
+                    (format " -ss %f" telega-ffplay-media-timestamp)))))
+  "Command used to play video files.
+Can be a sexp to evaluate to get a command."
+  :package-version '(telega . "0.7.57")
+  :type '(or string list)
   :options '("mpv" "ffplay -autoexit -fs")
   :group 'telega)
 

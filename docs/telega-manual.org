@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.56)
+#+TITLE: Telega Manual (v0.7.57)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -2216,6 +2216,11 @@ For fast access to media controls you can you next bindings:
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@ (~telega-msg-copy-link~) command
 supports linking to the currently playing (or paused at) moment.
+
+To reference a given moment in a media message (or in a reply to media
+message) use ~[HH:]MM:SS]~ syntax in the message's body/caption.  Such
+timestamp marks will be automatically emphasised with a media
+timestamp text entity.
 
 * Voice Chats
 :PROPERTIES:

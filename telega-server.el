@@ -285,6 +285,9 @@ Return parsed command."
   "Parse all available events from telega-server."
   (goto-char (point-min))
   (let (cmd-val)
+    ;; TODO: First parse all commands, then optimize events, because
+    ;; some events (such as file-updates can be collapsed to single
+    ;; event), then dispatch all the events left after optimization
     (while (setq cmd-val (telega-server--parse-cmd))
       (apply 'telega-server--dispatch-cmd cmd-val))
 
