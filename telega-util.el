@@ -57,9 +57,17 @@ Also return `nil' if FILENAME is `nil'."
        (not (string-empty-p filename))
        (file-exists-p filename)))
 
-(defsubst telega-plist-del (plist prop)
+(defun telega-plist-del (plist prop)
   "From PLIST remove property PROP."
-  (cl--plist-remove plist (plist-member plist prop)))
+  ;; NOTE: `cl--plist-remove' has been removed in Emacs master
+  ;; See https://t.me/emacs_telega/27687
+  ;; Code taken from `org-plist-delete'
+  (let (p)
+    (while plist
+      (if (not (eq prop (car plist)))
+          (setq p (plist-put p (car plist) (nth 1 plist))))
+      (setq plist (cddr plist)))
+    p))
 
 (defun telega-plist-map (func plist)
   "Map FUNCTION on PLIST and return resulting list.
@@ -930,7 +938,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                          (telega-sort-chats
                           (or sort-criteria telega-chat-completing-sort-criteria)
                           (telega-filter-chats (or chats telega--ordered-chats)
-                                               '(or main archive))))))
+                                               '(or main archive has-chatbuf))))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))

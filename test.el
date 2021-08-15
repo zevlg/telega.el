@@ -209,6 +209,17 @@ Have Stoploss 690 Satoshi." :entities []))))
                  '(:@type "formattedText" :text "prefix bold here code trailing" :entities [(:@type "textEntity" :offset 7 :length 4 :type (:@type "textEntityTypeBold")) (:@type "textEntity" :offset 17 :length 4 :type (:@type "textEntityTypeCode"))])))
   )
 
+
+(ert-deftest telega-plist-del-test ()
+  "Testing for `telega-plist-del'."
+  (should (equal '(:test 1)
+                 (telega-plist-del '(:hahah 2 :test 1) :hahah)))
+  (should (equal '(:not-deleted 2)
+                 (telega-plist-del '(:not-deleted 2) :not-deletedXX)))
+  (should (equal nil
+                 (telega-plist-del '(:delete-me 1) :delete-me)))
+  )
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
