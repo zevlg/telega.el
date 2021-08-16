@@ -938,7 +938,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
                          (telega-sort-chats
                           (or sort-criteria telega-chat-completing-sort-criteria)
                           (telega-filter-chats (or chats telega--ordered-chats)
-                                               '(or main archive has-chatbuf))))))
+                                               '(or main archive))))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))
