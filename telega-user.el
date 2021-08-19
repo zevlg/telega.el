@@ -59,9 +59,12 @@
   (let ((member-or-user-or-chat (button-get (button-at pos) :value)))
     (cl-ecase (telega--tl-type member-or-user-or-chat)
       (chatMember
-       (telega-user-get (plist-get member-or-user-or-chat :user_id)))
-      (chat (telega-chat-user member-or-user-or-chat 'include-bots))
-      (user member-or-user-or-chat))))
+       (telega-user-get
+        (telega--tl-get member-or-user-or-chat :member_id :user_id)))
+      (chat
+       (telega-chat-user member-or-user-or-chat 'include-bots))
+      (user
+       member-or-user-or-chat))))
 
 (defun telega-user-button--action (button)
   "Action to take when user BUTTON is pressed.
