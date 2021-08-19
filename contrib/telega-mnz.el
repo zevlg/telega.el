@@ -454,7 +454,7 @@ For non-interactive code attach, use `telega-mnz--chatbuf-attach-internal'."
   "Attach region in current buffer to some chatbuf's input as code.
 BEG is the beginning of the region.
 END is the end of the region."
-  (interactive "*r")
+  (interactive "r")
   (let ((lang (telega-mnz--language-for-mode major-mode))
         (code (buffer-substring-no-properties beg end))
         (chat (telega-completing-read-chat "Attach code to chat: ")))
