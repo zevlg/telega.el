@@ -467,7 +467,7 @@ Return filename with recorded video note."
   (when (or (and (not (member "opus" telega-ffplay--has-encoders))
                  (not (member "aac" telega-ffplay--has-encoders)))
             (and (not (member "hevc" telega-ffplay--has-encoders))
-                 (not (member "hevc" telega-ffplay--has-encoders))))
+                 (not (member "h264" telega-ffplay--has-encoders))))
     (user-error "telega: sorry, your ffmpeg can't record video notes"))
 
   (setq telega-vvnote-video--preview
