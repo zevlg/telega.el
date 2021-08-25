@@ -1039,17 +1039,21 @@ Return `non-nil' if WEB-PAGE has been inserted."
   "Insert invoice message MSG."
   (let ((title (plist-get invoice :title))
         (desc (plist-get invoice :description))
-        (photo (plist-get invoice :photo)))
-    (telega-ins telega-symbol-invoice " ")
-    (telega-ins-fmt "%.2f%s" (/ (plist-get invoice :total_amount) 100.0)
-                    (plist-get invoice :currency))
-    (when (plist-get invoice :is_test)
-      (telega-ins " (Test)"))
+        (photo (plist-get invoice :photo))
+        (currency (plist-get invoice :currency)))
+    (telega-ins (telega-symbol 'invoice) " ")
+    (telega-ins-fmt "%.2f%s " (/ (plist-get invoice :total_amount) 100.0)
+                    (or (cdr (assoc currency telega-currency-symbols-alist))
+                        currency))
+    (telega-ins--with-face 'shadow
+      (telega-ins-i18n (if (plist-get invoice :is_test)
+                           "lng_payments_invoice_label_test"
+                         "lng_payments_invoice_label")))
     (telega-ins "\n")
     (when photo
       (telega-ins--photo photo)
       (telega-ins "\n"))
-    (telega-ins--with-face 'telega-webpage-title
+    (telega-ins--with-face '(telega-link bold)
       (telega-ins title))
     (telega-ins "\n")
     (telega-ins desc)))
@@ -1623,6 +1627,14 @@ ADDITIONAL-ACTION is called with two args kbd-button and message."
                                                       :max forced-width)
                           (telega-ins (telega-tl-str kbd-button :text))))
                      (telega-tl-str kbd-button :text))))
+    ;; NOTE: for "buy" buttons add credit card symbol
+    (when (eq 'inlineKeyboardButtonTypeBuy
+              (telega--tl-type (plist-get kbd-button :type)))
+      (setq kbdb-text
+            (concat kbdb-text
+                    (propertize telega-symbol-credit-card
+                                'display '((raise 0.5) (height 0.5))))))
+
     (telega-ins--button kbdb-text
       'action (lambda (_ignored)
                 (telega-inline--callback kbd-button msg)
@@ -2369,11 +2381,21 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           (telega--tl-get content :contact :first_name)
           (telega--tl-get content :contact :last_name)))
        (messageInvoice
-        (telega-ins (propertize "Invoice" 'face 'shadow))
+        (telega-ins (telega-symbol 'invoice) " ")
+        (let ((currency (plist-get content :currency)))
+          (telega-ins-fmt "%.2f%s " (/ (plist-get content :total_amount) 100.0)
+                          (or (cdr (assoc currency telega-currency-symbols-alist))
+                              currency)))
+        (telega-ins--with-face 'shadow
+          (telega-ins-i18n (if (plist-get content :is_test)
+                               "lng_payments_invoice_label_test"
+                             "lng_payments_invoice_label")))
         (when-let ((title (telega-tl-str content :title)))
-          (telega-ins " " title)))
+          (telega-ins " ")
+          (telega-ins--with-face '(telega-link bold)
+            (telega-ins title))))
        (messagePoll
-        (telega-ins telega-symbol-poll " ")
+        (telega-ins (telega-symbol 'poll) " ")
         (let ((poll (plist-get content :poll)))
           (telega-ins (telega-tl-str poll :question))
           ;; I18N: polls_votes_count -> {count} votes

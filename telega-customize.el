@@ -1702,6 +1702,11 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-credit-card "💳"
+  "Symbol used for inline keyboard buttons of type \"buy\"."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-poll "📊"
   "Symbol used in poll messages."
   :type 'string

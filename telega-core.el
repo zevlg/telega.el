@@ -82,6 +82,12 @@
     (channel . "notificationSettingsScopeChannelChats"))
   "Map of lisp name of the scope to TDLib scope type name.")
 
+(defconst telega-currency-symbols-alist
+  '(("EUR" . "€")
+    ("USD" . "$")
+    ("RUB" . "₽"))
+  "Alist of currency symbols.")
+
 ;;; Runtime variables
 (defvar telega--current-buffer nil
   "Buffer currently inserting into.

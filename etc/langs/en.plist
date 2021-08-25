@@ -714,4 +714,9 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_group_invite_qr_copied"
   :value "QR Code copied to clipboard.")
 
+ ("lng_payments_invoice_label_test"
+  :value "Test invoice")
+ ("lng_payments_invoice_label"
+  :value "Invoice")
+
  )
