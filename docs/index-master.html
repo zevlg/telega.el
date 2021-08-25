@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-08-13 Пт 15:14 -->
+<!-- 2021-08-25 Ср 23:04 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.57)</title>
+<title>Telega Manual (v0.7.58)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.57)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.58)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -973,7 +973,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org52e1907">
+<pre class="example" id="orgca225ce">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -991,7 +991,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgb755c12">
+<pre class="example" id="org5f0e72d">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1021,7 +1021,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgd1d931e">
+<pre class="example" id="orgf2f4d66">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1071,13 +1071,13 @@ Default value:
 </p>
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main)
- (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"Channels"</span> type channel)
+ (<span style="font-style: italic;">"Important"</span> or mention
+  (<span style="font-weight: bold;">and</span> unread unmuted))
  (<span style="font-style: italic;">"Online"</span> and
   (not saved-messages)
   (online-status <span style="font-style: italic;">"Online"</span>))
- (<span style="font-style: italic;">"Important"</span> or mention
-  (<span style="font-weight: bold;">and</span> unread unmuted))
+ (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"Channels"</span> type channel)
  (<span style="font-style: italic;">"Archive"</span> . archive))
 </pre>
 </div></li>
@@ -1122,7 +1122,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org358c124">
+<pre class="example" id="org475002a">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1175,15 +1175,33 @@ Telega prefix map bindings:
 </p>
 
 <dl class="org-dl">
-<dt><kbd>t</kbd> (<code>telega</code>)</dt><dd>Start telega.el Telegram client.
-Pop to root buffer.
-If <kbd>C-u</kbd> is specified, then do not pop to root buffer.</dd>
+<dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
+
+<dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactively switch to chat <code>BUFFER</code>.</dd>
 
 <dt><kbd>c</kbd> (<code>telega-chat-with</code>)</dt><dd>Start messaging with <code>CHAT-OR-USER</code>.</dd>
+
+<dt><kbd>e</kbd> (<code>telega-edit-file-switch-buffer</code>)</dt><dd>Interactively switch to <code>BUFFER</code> having <code>telega-edit-file-mode</code>.</dd>
 
 <dt><kbd>i</kbd> (<code>telega-switch-important-chat</code>)</dt><dd>Switch to important <code>CHAT</code> if any.
 If <kbd>C-u</kbd> is used, then select first chat if
 multiple chats are important.</dd>
+
+<dt><kbd>f</kbd> (<code>telega-buffer-file-send</code>)</dt><dd>Prepare <code>FILE</code> to be sent as document or photo to <code>CHAT</code>.
+If <kbd>C-u</kbd> is specified, then always send as a file.
+Otherwise for <code>image-mode</code> major-mode, send file as photo.
+If called interactively, then file associated with current buffer
+is used as <code>FILE</code>.
+If current buffer is dired, then send all marked files.</dd>
+
+<dt><kbd>s</kbd> (<code>telega-saved-messages</code>)</dt><dd>Switch to "Saved Messages" chat buffer.
+If "Saved Messages" chat is not opened, then open it.
+If <kbd>C-u</kbd> is specified, then goto prompt otherwise
+keep the point, where it is.</dd>
+
+<dt><kbd>t</kbd> (<code>telega</code>)</dt><dd>Start telega.el Telegram client.
+Pop to root buffer.
+If <kbd>C-u</kbd> is specified, then do not pop to root buffer.</dd>
 
 <dt><kbd>u</kbd> (<code>telega-switch-unread-chat</code>)</dt><dd><p>
 Switch to next unread message in next unread <code>CHAT</code>.
@@ -1207,20 +1225,6 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>s</kbd> (<code>telega-saved-messages</code>)</dt><dd>Switch to "Saved Messages" chat buffer.
-If "Saved Messages" chat is not opened, then open it.
-If <kbd>C-u</kbd> is specified, then goto prompt otherwise
-keep the point, where it is.</dd>
-
-<dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactively switch to chat <code>BUFFER</code>.</dd>
-
-<dt><kbd>f</kbd> (<code>telega-buffer-file-send</code>)</dt><dd>Prepare <code>FILE</code> to be sent as document or photo to <code>CHAT</code>.
-If <kbd>C-u</kbd> is specified, then always send as a file.
-Otherwise for <code>image-mode</code> major-mode, send file as photo.
-If called interactively, then file associated with current buffer
-is used as <code>FILE</code>.
-If current buffer is dired, then send all marked files.</dd>
-
 <dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
 Open the URL.
 If URL can be opened directly inside telega, then do it.
@@ -1231,8 +1235,6 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser.
 <p>
 (fn URL &amp;optional IN-WEB-BROWSER)
 </p></dd>
-
-<dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 </dl>
 </div>
 </div>
@@ -1987,13 +1989,13 @@ Default value:
 </p>
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main)
- (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"Channels"</span> type channel)
+ (<span style="font-style: italic;">"Important"</span> or mention
+  (<span style="font-weight: bold;">and</span> unread unmuted))
  (<span style="font-style: italic;">"Online"</span> and
   (not saved-messages)
   (online-status <span style="font-style: italic;">"Online"</span>))
- (<span style="font-style: italic;">"Important"</span> or mention
-  (<span style="font-weight: bold;">and</span> unread unmuted))
+ (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"Channels"</span> type channel)
  (<span style="font-style: italic;">"Archive"</span> . archive))
 </pre>
 </div></li>
@@ -2074,7 +2076,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgeda2acc">
+<pre class="example" id="org31af21e">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2251,7 +2253,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgf2a220a">
+<pre class="example" id="org2fcede9">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2333,7 +2335,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org9edcbd0">
+<pre class="example" id="orgcf00f86">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2350,7 +2352,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org6139cb7">
+<pre class="example" id="orgbfdd162">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2592,7 +2594,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orge5cc76d">
+<pre class="example" id="orgae0ccf4">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2889,9 +2891,7 @@ chatbuf, so to enable <code>capf</code> completions setup could look like:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-elisp">(<span style="font-weight: bold;">setq</span> telega-emoji-company-backend 'telega-company-emoji)
-
-(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-chat-mode</span> ()
+<pre class="src src-elisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-chat-mode</span> ()
   (<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">company</span>)
   (add-hook 'completion-at-point-functions
           #'telega-chatbuf-complete-at-point nil 'local)
@@ -3187,7 +3187,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org6ada282">
+<pre class="example" id="org1cc537f">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3195,44 +3195,14 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
-Stop playing media message.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
-Rewind 10 seconds backward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
-Rewind 10 seconds forward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
-Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
-Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.</dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
+duration.</dd>
 </dl>
 
 <p>
@@ -3872,6 +3842,41 @@ with <kbd>RET</kbd>, use:
 <pre class="src src-emacs-lisp">(add-hook 'telega-open-file-hook 'telega-edit-file-mode)
 </pre>
 </div>
+
+<p>
+While editing file press
+<kbd>M-g t</kbd> (<code>telega-edit-file-goto-message</code>)
+to go back to the file's message.
+</p>
+
+<p>
+To switch between files opened from <code>telega</code> use
+<kbd>e</kbd> (<code>telega-edit-file-switch-buffer</code>)
+binding from the <a href="#telega-prefix-map">Telega prefix map</a>.
+</p>
+
+<p>
+To distinguish files opened from <code>telega</code> with ordinary files
+suffix is added to the buffer name.  You can modify this suffix
+using user option:
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-edit-file-buffer-name-function</code> 
+</p>
+
+<p>
+Function to return buffer name when <code>telega-edit-file-mode</code> is enabled.
+Function is called without arguments and should return a buffer name string.
+Inside a function you can use <code>telega-edit-file-message&lt;f&gt;</code> to
+get message associated with the file. 
+</p>
+
+<p>
+Default value: <code>telega-edit-file-buffer-name</code>
+</p></li>
+</ul>
 </div>
 </div>
 
@@ -4025,7 +4030,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org30d0536">
+<pre class="example" id="orgc5efcc2">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

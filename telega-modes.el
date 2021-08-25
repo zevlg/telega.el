@@ -782,18 +782,53 @@ Could be used as condition function in `display-buffer-alist'."
 ;; #+BEGIN_SRC emacs-lisp
 ;;   (add-hook 'telega-open-file-hook 'telega-edit-file-mode)
 ;; #+END_SRC
+;;
+;; While editing file press
+;; {{{where-is(telega-edit-file-goto-message,telega-edit-file-mode-map)}}}
+;; to go back to the file's message.
+;;
+;; To switch between files opened from =telega= use
+;; {{{where-is(telega-edit-file-switch-buffer,telega-prefix-map)}}}
+;; binding from the [[#telega-prefix-map][Telega prefix map]].
+;;
+;; To distinguish files opened from =telega= with ordinary files
+;; suffix is added to the buffer name.  You can modify this suffix
+;; using user option:
+;;
+;; - {{{user-option(telega-edit-file-buffer-name-function, 2)}}}
 (declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username-delim))
 (declare-function telega-chatbuf--gen-input-file "telega-chat" (filename &optional file-type preview-p upload-callback))
+
+(defcustom telega-edit-file-buffer-name-function 'telega-edit-file-buffer-name
+  "Function to return buffer name when `telega-edit-file-mode' is enabled.
+Function is called without arguments and should return a buffer name string.
+Inside a function you can use `telega-edit-file-message<f>' to
+get message associated with the file."
+  :package-version '(telega . "0.7.59")
+  :type 'function
+  :group 'telega-modes)
 
 (defvar telega-edit-file-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map [remap save-buffer] 'telega-edit-file-save-buffer)
+    (define-key map (kbd "M-g t") 'telega-edit-file-goto-message)
 
     (define-key map [menu-bar goto-message]
       '("Goto Telegram Message" . telega-edit-file-goto-message))
     (define-key map [menu-bar turn-off]
       '("Turn off minor mode" . telega-edit-file-mode))
     map))
+
+(defun telega-edit-file-message ()
+  "Return message for the currently edited file with `telega-edit-file-mode'."
+  (cl-assert telega-edit-file-mode)
+  telega--help-win-param)
+
+(defun telega-edit-file-buffer-name ()
+  "Return buffer name for a file edited with `telega-edit-file-mode'."
+  (concat (buffer-name) telega-symbol-mode
+          (telega-chat-title-with-brackets
+           (telega-msg-chat (telega-edit-file-message)))))
 
 ;;;###autoload
 (define-minor-mode telega-edit-file-mode
@@ -803,23 +838,31 @@ Can be enabled only for content from editable messages."
   :map 'telega-edit-file-mode-map
 
   (if telega-edit-file-mode
-    (let* ((msg telega--help-win-param)
-           (chat (and msg (telega-msg-chat msg))))
-      (if (not (plist-get msg :can_be_edited))
-          ;; No message or message can't be edited
-          (telega-edit-file-mode -1)
+      (let ((msg telega--help-win-param))
+        (if (not (plist-get msg :can_be_edited))
+            ;; No message or message can't be edited
+            (telega-edit-file-mode -1)
 
-        (setq mode-line-buffer-identification
-              (list (propertized-buffer-identification "%b")
-                    (propertize
-                     (concat "◁" (telega-chat-title-with-brackets chat))
-                     'face 'mode-line-buffer-id
-                     'help-echo "mouse-1: To goto telegram message"
-                     'mouse-face 'mode-line-highlight
-                     'local-map
-                     (eval-when-compile
-                       (make-mode-line-mouse-map
-                        'mouse-1 #'telega-edit-file-goto-message)))))))
+          ;; Apply buffer name modification to distinguish files
+          ;; opened from telega with ordinary files.  Apply
+          ;; `telega-edit-file-buffer-name-function' only once, by
+          ;; marking buffer name with special text property
+          (when telega-edit-file-buffer-name-function
+            (let ((old-bufname (buffer-name))
+                  (new-bufname (funcall telega-edit-file-buffer-name-function)))
+              (unless (get-text-property 0 :telega-buffer-name old-bufname)
+                (setf (buffer-name)
+                      (propertize new-bufname :telega-buffer-name t)))))
+          (setq mode-line-buffer-identification
+                (list (propertize
+                       "%b"
+                       'face 'mode-line-buffer-id
+                       'help-echo "mouse-1: To goto telegram message"
+                       'mouse-face 'mode-line-highlight
+                       'local-map
+                       (eval-when-compile
+                         (make-mode-line-mouse-map
+                          'mouse-1 #'telega-edit-file-goto-message)))))))
 
     (setq mode-line-buffer-identification
           (propertized-buffer-identification "%12b"))))
@@ -867,6 +910,20 @@ UFILE specifies Telegram file being uploading."
                        (telega-chatbuf--gen-input-file
                         (buffer-file-name) 'Document nil
                         #'telega-edit-file--upload-callback))))))
+
+(defun telega-edit-file-switch-buffer (buffer)
+  "Interactively switch to BUFFER having `telega-edit-file-mode'."
+  (interactive
+   (list (funcall telega-completing-read-function
+                  "Telega Edit File: "
+                  (internal-complete-buffer
+                   ""
+                   (lambda (name-and-buf)
+                     (buffer-local-value 'telega-edit-file-mode
+                                         (cdr name-and-buf)))
+                   t)
+                  nil t nil 'buffer-name-history)))
+  (switch-to-buffer buffer))
 
 
 ;;; ellit-org: minor-modes
@@ -1023,7 +1080,7 @@ Return patron info, or nil if SENDER is not a telega patron."
 ;; [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][contrib/telega-live-location.el]]
 ;; which uses =geo.el= to actualize ~telega-my-location~, however it
 ;; is not always possible to use it.
-;; 
+;;
 ;; When ~telega-my-location-mode~ is enabled, your
 ;; ~telega-my-location~ gets automatic update when you send location
 ;; message into "Saved Messages" using mobile Telegram client.

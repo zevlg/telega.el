@@ -830,8 +830,6 @@ as engine.
 chatbuf, so to enable ~capf~ completions setup could look like:
 
 #+begin_src elisp
-(setq telega-emoji-company-backend 'telega-company-emoji)
-
 (defun my-telega-chat-mode ()
   (require 'company)
   (add-hook 'completion-at-point-functions

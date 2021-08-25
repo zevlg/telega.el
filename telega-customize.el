@@ -1517,6 +1517,11 @@ Function should take two arguments - TOFILE and REGION-P."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-mode "◁"
+  "*String used for telega modes."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-eliding "..."
   "*String used for eliding long string in formats.
 Nice looking middle dots can be done by setting

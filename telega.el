@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.58
-(defconst telega-version "0.7.58")
+;; Version: 0.7.59
+(defconst telega-version "0.7.59")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.7.4")
 (defconst telega-tdlib-max-version nil)
@@ -75,44 +75,48 @@ Used for manual generation.")
 (defvar telega-prefix-map
   (let ((map (make-sparse-keymap)))
     ;;; ellit-org: prefix-map-bindings
-    ;; - {{{where-is(telega,telega-prefix-map)}}} ::
-    ;;   {{{fundoc(telega, 2)}}}
-    (define-key map (kbd "t") 'telega)
-    ;;; ellit-org: prefix-map-bindings
-    ;; - {{{where-is(telega-chat-with,telega-prefix-map)}}} ::
-    ;;   {{{fundoc(telega-chat-with, 2)}}}
-    (define-key map (kbd "c") 'telega-chat-with)
-    ;;; ellit-org: prefix-map-bindings
-    ;; - {{{where-is(telega-switch-important-chat,telega-prefix-map)}}} ::
-    ;;   {{{fundoc(telega-switch-important-chat, 2)}}}
-    (define-key map (kbd "i") 'telega-switch-important-chat)
-    ;;; ellit-org: prefix-map-bindings
-    ;; - {{{where-is(telega-switch-unread-chat,telega-prefix-map)}}} ::
-    ;;   {{{fundoc(telega-switch-unread-chat, 2)}}}
-    ;; 
-    ;;   Customizable options:
-    ;;   - {{{user-option(telega-filter-unread-chats, 4)}}}
-    (define-key map (kbd "u") 'telega-switch-unread-chat)
-    ;;; ellit-org: prefix-map-bindings
-    ;; - {{{where-is(telega-saved-messages,telega-prefix-map)}}} ::
-    ;;   {{{fundoc(telega-saved-messages, 2)}}}
-    (define-key map (kbd "s") 'telega-saved-messages)
+    ;; - {{{where-is(telega-account-switch,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-account-switch, 2)}}}
+    (define-key map (kbd "a") 'telega-account-switch)
     ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega-switch-buffer,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-switch-buffer, 2)}}}
     (define-key map (kbd "b") 'telega-switch-buffer)
     ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-chat-with,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-chat-with, 2)}}}
+    (define-key map (kbd "c") 'telega-chat-with)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-edit-file-switch-buffer,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-edit-file-switch-buffer, 2)}}}
+    (define-key map (kbd "e") 'telega-edit-file-switch-buffer)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-switch-important-chat,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-switch-important-chat, 2)}}}
+    (define-key map (kbd "i") 'telega-switch-important-chat)
+    ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega-buffer-file-send,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-buffer-file-send, 2)}}}
     (define-key map (kbd "f") 'telega-buffer-file-send)
     ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-saved-messages,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-saved-messages, 2)}}}
+    (define-key map (kbd "s") 'telega-saved-messages)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega, 2)}}}
+    (define-key map (kbd "t") 'telega)
+    ;;; ellit-org: prefix-map-bindings
+    ;; - {{{where-is(telega-switch-unread-chat,telega-prefix-map)}}} ::
+    ;;   {{{fundoc(telega-switch-unread-chat, 2)}}}
+    ;;
+    ;;   Customizable options:
+    ;;   - {{{user-option(telega-filter-unread-chats, 4)}}}
+    (define-key map (kbd "u") 'telega-switch-unread-chat)
+    ;;; ellit-org: prefix-map-bindings
     ;; - {{{where-is(telega-browse-url,telega-prefix-map)}}} ::
     ;;   {{{fundoc(telega-browse-url, 2)}}}
     (define-key map (kbd "w") 'telega-browse-url)
-    ;;; ellit-org: prefix-map-bindings
-    ;; - {{{where-is(telega-account-switch,telega-prefix-map)}}} ::
-    ;;   {{{fundoc(telega-account-switch, 2)}}}
-    (define-key map (kbd "a") 'telega-account-switch)
     map)
   "Keymap for the telega commands.")
 
@@ -290,7 +294,7 @@ string at point."
 (defun telega-report-bug ()
   "Create bug report for https://github.com/zevlg/telega.el/issues."
   (interactive)
-  
+
   (let ((help-window-select t))
     (with-telega-help-win "*Telega Bug Report*"
       (insert "<!--- Provide a general summary of the issue in the Title above -->"
