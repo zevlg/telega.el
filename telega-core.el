@@ -762,7 +762,9 @@ Return list of strings."
     ;; result))
 
 (defun telega-fmt-eval-align (estr attrs)
-  "Apply `:min', `:align' and `:align-symbol' properties from ATTRS to ESTR."
+  "Apply `:min', `:align' and `:align-symbol' properties from ATTRS to ESTR.
+`:align-symbol' might be a symbol, in this case `telega-symbol' is
+used to get a string for alignment."
   (let* ((min (plist-get attrs :min))
          (width (- min (string-width estr)))
          (align (plist-get attrs :align))
@@ -771,9 +773,13 @@ Return list of strings."
          (right ""))
     ;; Grow `left' and `right' until they have required width
     (while (< (string-width left) (/ width 2))
-      (setq left (concat left align-symbol)))
+      (setq left (concat left (if (symbolp align-symbol)
+                                  (telega-symbol align-symbol)
+                                align-symbol))))
     (while (< (string-width right) (- width (/ width 2)))
-      (setq right (concat right align-symbol)))
+      (setq right (concat right (if (symbolp align-symbol)
+                                    (telega-symbol align-symbol)
+                                  align-symbol))))
 
     (cl-ecase align
       (left (concat estr left right))

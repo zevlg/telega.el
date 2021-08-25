@@ -1555,20 +1555,38 @@ Alist with elements in form (emoji . image)")
   (telega-emoji-init)
   (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
 
+(defun telega-emoji--image-cache-get (emoji xheight)
+  "Get EMOJI from `telega-emoji-svg-images'.
+Also checks that height of the cached image equals to XHEIGHT."
+  (when-let ((cached-image (cdr (assoc emoji telega-emoji-svg-images))))
+    (when (eq xheight (plist-get (cdr cached-image) :height))
+      cached-image)))
+
+(defun telega-emoji--image-cache-put (emoji image)
+  "Put EMOJI IMAGE into `telega-emoji-svg-images' cache."
+  (let ((cached-image (assoc emoji telega-emoji-svg-images)))
+    (if cached-image
+        (setcdr cached-image image)
+      (setq telega-emoji-svg-images
+            (cons (cons emoji image) telega-emoji-svg-images)))))
+
 (defun telega-emoji-create-svg (emoji &optional cheight)
   "Create svg image for the EMOJI.
 CHEIGHT is height for the svg in characters, default=1."
   (let* ((emoji-cheight (or cheight 1))
          (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
+         (xh (telega-chars-xheight emoji-cheight))
          (image (when use-cache-p
-                  (cdr (assoc emoji telega-emoji-svg-images))))
-         (xh (telega-chars-xheight emoji-cheight)))
-    (unless (and image
-                 ;; Also check char height has not been changed
-                 (eq xh (plist-get (cdr image) :height)))
-      (let* ((font-size (- xh (/ xh 4)))
+                  (telega-emoji--image-cache-get emoji xh))))
+    (unless image
+      (let* ((font-xh (min xh (telega-chars-xwidth (* 2 emoji-cheight))))
+             (font-size (- font-xh (/ font-xh 5)))
+             (font-y (if (> font-xh xh)
+                         font-size
+                       (cl-assert (>= xh font-xh))
+                       (+ font-size (/ (- xh font-xh) 4))))
              (aw-chars (* (or (telega-emoji-svg-width emoji) (length emoji))
-                          (telega-chars-in-width (- xh (/ xh 8)))))
+                          (telega-chars-in-width font-xh)))
              (xw (telega-chars-xwidth aw-chars))
              (svg (telega-svg-create xw xh))
              ;; NOTE: if EMOJI width matches final width, then use
@@ -1584,23 +1602,22 @@ CHEIGHT is height for the svg in characters, default=1."
               (svg-text svg "⃣"
                         :font-family telega-emoji-font-family
                         :font-size font-size
-                        :x 0 :y font-size)
+                        :x 0 :y font-y)
               (svg-text svg (substring emoji 0 1)
                         :font-family telega-emoji-font-family
                         :font-size font-size
-                        :x 0 :y font-size))
+                        :x 0 :y font-y))
           (svg-text svg emoji
                     :font-family telega-emoji-font-family
                     :font-size font-size
-                    :x 0 :y font-size))
+                    :x 0 :y font-y))
         (setq image (telega-svg-image svg :scale 1.0
                                       :width xw :height xh
                                       :ascent 'center
                                       :mask 'heuristic
                                       :telega-text telega-text)))
       (when use-cache-p
-        (setq telega-emoji-svg-images
-              (cons (cons emoji image) telega-emoji-svg-images))))
+        (telega-emoji--image-cache-put emoji image)))
     image))
 
 (defun telega-svg-create-vertical-bar (&optional bar-width bar-position
@@ -1615,7 +1632,7 @@ float values then it is relative to bar width in pixels.  If
 integer values, then pixels used."
   (unless bar-str
     (setq bar-str telega-symbol-vertical-bar))
-  (or (cdr (assoc bar-str telega-emoji-svg-images))
+  (or (telega-emoji--image-cache-get bar-str (telega-chars-xheight 1))
       (let* ((xh (telega-chars-xheight 1))
              (xw (telega-chars-xwidth (string-width bar-str)))
              (svg (telega-svg-create xw xh))
@@ -1627,18 +1644,66 @@ integer values, then pixels used."
                          bar-width
                        (round (* xw (or bar-width 0.07)))))
              image)
+        (when (< bar-xw 1)
+          (setq bar-xw 1))
         (svg-rectangle svg bar-xpos 0 bar-xw xh
                        :fill-color (or color
                                        (telega-color-name-as-hex-2digits
-                                        (face-foreground bar-face))))
+                                        (or (face-foreground bar-face)
+                                            (face-foreground 'default))))
         (setq image (telega-svg-image svg :scale 1.0
                                       :width xw :height xh
                                       :ascent 'center
                                       :mask 'heuristic
                                       :telega-text bar-str))
-        (setq telega-emoji-svg-images
-              (cons (cons bar-str image) telega-emoji-svg-images))
+        (telega-emoji--image-cache-put bar-str image)
         image)))
+
+(defun telega-svg-create-horizontal-bar (&optional bar-width bar-position
+                                                   bar-str color)
+  "Create svg image for a horizontal bar.
+BAR-STR is string value for textual horizontal bar, by default
+`telega-symbol-horizontal-bar' is used.
+COLOR - bar color, by default `default' face foreground color is used.
+
+BAR-WIDTH and BAR-POSITION defines how horizontal bar is drawn.  If
+float values then it is relative to bar height in pixels.  If
+integer values, then absolute value in pixels is used."
+  (unless bar-str
+    (setq bar-str telega-symbol-horizontal-bar))
+  ;; NOTE: horizontal bars are frequently used as consecutive
+  ;; characters.  However in Emacs if consecutive chars has `eq'
+  ;; `display' property it is displayed is single unit (ref: 40.16.1
+  ;; Display Specs That Replace The Text).  So we use `seq-copy' to
+  ;; make `display' property for horizontal-bar differ
+  (seq-copy 
+   (or (telega-emoji--image-cache-get bar-str (telega-chars-xheight 1))
+       (let* ((xh (telega-chars-xheight 1))
+              (xw (telega-chars-xwidth (string-width bar-str)))
+              (svg (telega-svg-create xw xh))
+              (bar-face (or (get-text-property 0 'face bar-str) 'default))
+              (bar-xw (if (integerp bar-width)
+                          bar-width
+                        (round (* xh (or bar-width 0.07)))))
+              (bar-ypos (- (if (integerp bar-position)
+                               bar-position
+                             (round (* xh (or bar-position 0.5))))
+                           (/ bar-xw 2)))
+              image)
+         (when (< bar-xw 1)
+           (setq bar-xw 1))
+         (svg-rectangle svg 0 bar-ypos xw bar-xw
+                        :fill-color (or color
+                                        (telega-color-name-as-hex-2digits
+                                         (or (face-foreground bar-face)
+                                             (face-foreground 'default)))))
+         (setq image (telega-svg-image svg :scale 1.0
+                                       :width xw :height xh
+                                       :ascent 'center
+                                       :mask 'heuristic
+                                       :telega-text bar-str))
+         (telega-emoji--image-cache-put bar-str image)
+         image))))
 
 (defun telega-symbol-emojify (emoji &optional image-spec)
   "Return a copy of EMOJI with  `display' property of EMOJI svg image.
@@ -1665,10 +1730,14 @@ IMAGE-SPEC could be image, filename or form to be evaluated returning image."
 
 (defun telega-symbol (ending)
   "Return possible emojified value for the symbol denoted by ENDING.
-Actual symbol value is taken from `telega-symbol-ENDING' variable.
+ENDING could be a string or a symbol.
+If ENDING is a symbol, then value is taken from `telega-symbol-ENDING'
+variable.
 Only endings listed in `telega-symbols-emojify' are emojified."
-  (let ((value (symbol-value (intern (format "telega-symbol-%s" ending))))
-        (image-spec (cdr (assq ending telega-symbols-emojify))))
+  (let ((value (if (stringp ending)
+                   ending
+                 (symbol-value (intern (format "telega-symbol-%s" ending)))))
+        (image-spec (cdr (assoc ending telega-symbols-emojify))))
     (cond ((functionp image-spec)
            (funcall image-spec ending value))
           ((or (and telega-use-images image-spec)

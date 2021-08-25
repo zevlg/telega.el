@@ -1604,9 +1604,10 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-horizontal-delim "-"
-  "Symbol used to draw horizontal delimiters.
+(defcustom telega-symbol-horizontal-bar "-"
+  "Symbol used to draw horizontal bars/delimiters.
 Horizontal delimiters are used to draw chat filter/sorter bar in rootbuf."
+  :package-version '(telega . "0.7.58")
   :type 'string
   :group 'telega-symbol)
 
@@ -1932,12 +1933,17 @@ Install all symbol widths inside `telega-load-hook'."
                  '(telega-etc-file "verified.svg")))
     (vertical-bar ,(when (image-type-available-p 'svg)
                      '(telega-svg-create-vertical-bar)))
-
+    (horizontal-bar ,(when (image-type-available-p 'svg)
+                       '(telega-svg-create-horizontal-bar)))
+    (underline-bar ,(when (image-type-available-p 'svg)
+                      '(telega-svg-create-horizontal-bar
+                        1 0.7 telega-symbol-underline-bar)))
     alarm
     bell bulp
     chat-list
     eye
     failed favorite flames folder
+    invoice
     leave-comment lightning lock location
     multiple-folders
     pause phone photo pin play

@@ -1483,8 +1483,8 @@ If POINT is not over some message, then view last message."
          (column2 (- column column1))
          (fill-symbol (if (or (null telega-chatbuf--ewoc)
                               (telega-chatbuf--last-msg-loaded-p))
-                          telega-symbol-underline-bar
-                        telega-symbol-underline-bar-partial))
+                          'underline-bar
+                        'underline-bar-partial))
          ;; NOTE: `telega-ins--as-string' uses temporary buffer, so
          ;; prepare everything we need before
          (actions (gethash (plist-get telega-chatbuf--chat :id)
@@ -1507,7 +1507,7 @@ If POINT is not over some message, then view last message."
        (telega-ins "\n"))
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        ;; Chat action part
-       (telega-ins fill-symbol)
+       (telega-ins (telega-symbol fill-symbol))
        (telega-ins--with-attrs (list :min (- column1 2)
                                      :max (- column1 2)
                                      :align 'left
@@ -1518,10 +1518,10 @@ If POINT is not over some message, then view last message."
            (telega-ins "(")
            (telega-ins--actions actions)
            (telega-ins ")")))
-       (telega-ins fill-symbol)
+       (telega-ins (telega-symbol fill-symbol))
 
        ;; Chat's additional info part
-       (telega-ins fill-symbol)
+       (telega-ins (telega-symbol fill-symbol))
        (telega-ins--with-attrs (list :min (- column2 2)
                                      :max (- column2 2)
                                      :align 'right
@@ -1533,7 +1533,7 @@ If POINT is not over some message, then view last message."
                (vvnote-msg
                 (telega-ins--vvnote-msg-status vvnote-msg))
                ))
-       (telega-ins fill-symbol)
+       (telega-ins (telega-symbol fill-symbol))
        (telega-ins "\n")
 
        ;; Message thread

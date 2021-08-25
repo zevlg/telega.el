@@ -118,6 +118,10 @@
 (telega-obsolete--variable 'telega-voip-use-sounds
                            nil
                            "0.7.56")
+(telega-obsolete--variable 'telega-symbol-horizontal-delim
+                           'telega-symbol-horizontal-bar
+                           "0.7.58")
+
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

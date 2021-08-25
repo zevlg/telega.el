@@ -300,13 +300,13 @@ If FILTER is nil, then active filter is used."
   (let ((filters-width (- telega-root-fill-column 8)))
     (telega-ins--as-string
      (telega-ins "\n")
-     (telega-ins telega-symbol-horizontal-delim
+     (telega-ins (telega-symbol 'horizontal-bar)
                  "/"
-                 telega-symbol-horizontal-delim
-                 telega-symbol-horizontal-delim)
+                 (telega-symbol 'horizontal-bar)
+                 (telega-symbol 'horizontal-bar))
      (telega-ins--with-attrs (list :min filters-width
                                    :align 'center
-                                   :align-symbol telega-symbol-horizontal-delim
+                                   :align-symbol 'horizontal-bar
                                    :max filters-width
                                    :elide t
                                    :elide-trail (/ filters-width 2))
@@ -315,20 +315,20 @@ If FILTER is nil, then active filter is used."
          (unless (telega-filter-default-p active-filter)
            (setq af-str (propertize af-str 'face 'telega-filter-active)))
          (telega-ins af-str)))
-     (telega-ins telega-symbol-horizontal-delim
-                 telega-symbol-horizontal-delim
-                 telega-symbol-horizontal-delim
-                 telega-symbol-horizontal-delim)
+     (telega-ins (telega-symbol 'horizontal-bar)
+                 (telega-symbol 'horizontal-bar)
+                 (telega-symbol 'horizontal-bar)
+                 (telega-symbol 'horizontal-bar))
 
      (when (or telega--sort-criteria telega--sort-inverted)
        (telega-ins "\n")
-       (telega-ins telega-symbol-horizontal-delim
+       (telega-ins (telega-symbol 'horizontal-bar)
                    "\\"
-                   telega-symbol-horizontal-delim
-                   telega-symbol-horizontal-delim)
+                   (telega-symbol 'horizontal-bar)
+                   (telega-symbol 'horizontal-bar))
        (telega-ins--with-attrs (list :min filters-width
                                      :align 'center
-                                     :align-symbol telega-symbol-horizontal-delim
+                                     :align-symbol 'horizontal-bar
                                      :max filters-width
                                      :elide t
                                      :elide-trail (/ filters-width 2))
@@ -341,10 +341,10 @@ If FILTER is nil, then active filter is used."
              (telega-ins-fmt "%S" telega--sort-criteria))
            (when telega--sort-inverted
              (telega-ins ")"))))
-       (telega-ins telega-symbol-horizontal-delim
-                   telega-symbol-horizontal-delim
-                   telega-symbol-horizontal-delim
-                   telega-symbol-horizontal-delim))
+       (telega-ins (telega-symbol 'horizontal-bar)
+                   (telega-symbol 'horizontal-bar)
+                   (telega-symbol 'horizontal-bar)
+                   (telega-symbol 'horizontal-bar)))
      )))
 
 (defun telega-filter--custom-active-p (custom)
