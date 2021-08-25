@@ -94,12 +94,13 @@ FUNCTION must accept two arguments: KEY and VALUE."
 (defun telega-x-frame ()
   "Return window system frame, if any.
 Selected frame and frame displaying root buffer are examined first."
-  (cl-find-if (lambda (frame)
-                (frame-parameter frame 'window-system))
-              (nconc (list (window-frame
-                            (get-buffer-window (or telega--current-buffer
-                                                   (telega-root--buffer)))))
-                     (frame-list))))
+  (or (when-let ((root-frame
+                  (window-frame
+                   (get-buffer-window (or telega--current-buffer
+                                          (telega-root--buffer))))))
+        (when (display-graphic-p root-frame)
+          root-frame))
+      (cl-find-if #'display-graphic-p (frame-list))))
 
 (defun telega-focus-state (&optional frame)
   "Return non-nil if FRAME has focus.
