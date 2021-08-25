@@ -1651,7 +1651,7 @@ integer values, then pixels used."
                        :fill-color (or color
                                        (telega-color-name-as-hex-2digits
                                         (or (face-foreground bar-face)
-                                            (face-foreground 'default))))
+                                            (face-foreground 'default)))))
         (setq image (telega-svg-image svg :scale 1.0
                                       :width xw :height xh
                                       :ascent 'center
