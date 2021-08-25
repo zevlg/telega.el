@@ -190,7 +190,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins (telega-i18n "lng_fake_badge") " "))
       (when (plist-get user :is_scam)
         (telega-ins (telega-i18n "lng_scam_badge") " "))
-      (when (plist-get chat :is_blocked)
+      (when (telega-msg-sender-blocked-p user 'offline)
         (telega-ins "BLOCKED "))))
 
   ;; Buttons line
@@ -256,9 +256,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-ins "\n")
       (telega-ins--account-ttl))
 
-    (telega-ins "Relationship: ")
-    (telega-ins--user-relationship user)
-    (telega-ins "\n")
+    (telega-ins-prefix "Relationship: "
+      (when (telega-ins--user-relationship user)
+        (telega-ins "\n")))
 
     (when-let ((username (telega-tl-str user :username)))
       ;; I18N: profile_username -> Username:
@@ -290,7 +290,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-ins "\n"))
 
     ;; Bot Commands
-    (when-let ((bot-cmds (plist-get full-info :commands)))
+    (when-let ((bot-cmds (append (plist-get full-info :commands) nil)))
       (telega-ins "Bot commands: \n")
       (seq-doseq (cmd bot-cmds)
         (telega-ins "  ")
