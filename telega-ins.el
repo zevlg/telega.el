@@ -2487,7 +2487,8 @@ Return t."
   (unless brackets
     (setq brackets (telega-chat-brackets chat)))
 
-  (let ((title (telega-chat-title chat))
+  (let ((curr-column (telega-current-column))
+        (title (telega-chat-title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
         (custom-order (telega-chat-uaprop chat :order))
@@ -2582,12 +2583,12 @@ Return t."
                ;; (string-width (or (car brackets) "["))
                ;; (string-width (or (cadr brackets) "]"))
                )))
-      (telega-ins--with-attrs (list :min title-width
-                                    :max title-width
+      (telega-ins--with-attrs (list :max title-width
                                     :align 'left
                                     :elide t)
         (telega-ins title)
         (telega-ins--user-online-status (telega-chat-user chat)))
+      (telega-ins--move-to-column (+ curr-column 3 1 title-width))
       (telega-ins umstring))
 
     (telega-ins (or (cadr brackets) "]"))

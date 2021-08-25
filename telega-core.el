@@ -1262,7 +1262,7 @@ Return what BODY returns."
            (goto-char ,spnt-sym)
            (telega-ins ,prefix))))))
 
-(defun telega-ins--move-to-column (column)
+(defun telega-ins--move-to-column (column &optional space-char)
   "Insert space aligned to COLUMN.
 Uses `:align-to' display property."
   ;; NOTE: Use Pixel Specification for `:align-to' this will take into
@@ -1270,7 +1270,8 @@ Uses `:align-to' display property."
   (let ((nwidth (- column (telega-current-column))))
     (telega-ins--with-props 
         `(display (space :align-to (,(telega-chars-xwidth column))))
-      (telega-ins (make-string (if (> nwidth 0) nwidth 1) ?\s)))))
+      (telega-ins (make-string (if (> nwidth 0) nwidth 1)
+                               (or space-char ?\s))))))
 
 (provide 'telega-core)
 
