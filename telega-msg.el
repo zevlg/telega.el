@@ -37,7 +37,7 @@
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
+(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
