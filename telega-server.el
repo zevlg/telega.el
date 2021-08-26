@@ -301,11 +301,15 @@ Used to optimize events processing in the `telega-server--parse-commands'."
             (eq (telega--tl-get cmd1-value :file :id)
                 (telega--tl-get cmd2-value :file :id)))
            ((updateChatLastMessage
-             updateChatPosition
              updateChatReadInbox
              updateChatReadOutbox
              updateChatUnreadMentionCount
-             updateChatOnlineMemberCount)
+             updateChatOnlineMemberCount
+             ;; NOTE: `updateChatPosition' can't be collapsed this
+             ;; way, because this event does not provide full info
+             ;; about all chat list positions, it just updates a
+             ;; single chat list position
+             )
             (and (eq (plist-get cmd1-value :chat_id)
                      (plist-get cmd2-value :chat_id))))
            ((updateUserStatus
