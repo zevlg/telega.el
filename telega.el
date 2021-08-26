@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.60
-(defconst telega-version "0.7.60")
+;; Version: 0.7.61
+(defconst telega-version "0.7.61")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.7.4")
 (defconst telega-tdlib-max-version nil)
@@ -122,22 +122,18 @@ Used for manual generation.")
 
 (defun telega--create-hier ()
   "Ensure directory hier is valid."
-  (ignore-errors
-    (mkdir telega-directory))
-  (ignore-errors
-    (mkdir telega-cache-dir))
-  (ignore-errors
-    (mkdir telega-temp-dir))
-  )
-
-(defun telega-account-current ()
-  "Return current account."
-  (cl-find-if #'telega-account--current-p telega-accounts))
+  (mkdir telega-directory t)
+  (mkdir telega-cache-dir t)
+  (mkdir telega-temp-dir t))
 
 (defun telega-account--current-p (account)
   "Return non-nil if the ACCOUNT is current."
   (equal (plist-get (cdr account) 'telega-database-dir)
          telega-database-dir))
+
+(defun telega-account-current ()
+  "Return current account."
+  (cl-find-if #'telega-account--current-p telega-accounts))
 
 (defun telega-account-switch (account-name)
   "Switch to the ACCOUNT-NAME."
@@ -154,10 +150,13 @@ Used for manual generation.")
   (let ((account (assoc account-name telega-accounts)))
     (cl-assert account)
     (unless (telega-account--current-p account)
-      (setq account (cdr account))
-      (while account
-        (set (car account) (cadr account))
-        (setq account (cddr account)))
+      ;; Set account's variables
+      (telega--tl-dolist ((var-name var-value) (cdr account))
+        (set var-name var-value))
+      ;; After setting all the variables of the account it must
+      ;; become current
+      (unless (telega-account--current-p account)
+        (user-error "telega: Invalid config for \"%s\" account: at least 'telega-database-dir variable must be provided"))
 
       (telega-server-kill)
       ;; Wait for server to die
@@ -172,25 +171,30 @@ Used for manual generation.")
 Pop to root buffer.
 If `\\[universal-argument]' is specified, then do not pop to root buffer."
   (interactive "P")
-  (telega--create-hier)
 
-  (unless (telega-server-live-p)
-    ;; NOTE: for telega-server restarts also recreate root buffer,
-    ;; killing root buffer also cleanup all chat buffers and stops any
-    ;; timers used for animation
-    (when (buffer-live-p (telega-root--buffer))
-      (kill-buffer (telega-root--buffer)))
+  ;; For multiple accounts setup possibly select (if there is no
+  ;; default account declared) an account to use
+  (if (and telega-accounts (not (telega-account-current)))
+      (call-interactively #'telega-account-switch)
 
-    (telega--init-vars)
-    (with-current-buffer (get-buffer-create telega-root-buffer-name)
-      (telega-root-mode))
+    (telega--create-hier)
+    (unless (telega-server-live-p)
+      ;; NOTE: for telega-server restarts also recreate root buffer,
+      ;; killing root buffer also cleanup all chat buffers and stops any
+      ;; timers used for animation
+      (when (buffer-live-p (telega-root--buffer))
+        (kill-buffer (telega-root--buffer)))
 
-    (telega-server--ensure-build)
-    (telega-server--start)
-    (telega-i18n-init))
+      (telega--init-vars)
+      (with-current-buffer (get-buffer-create telega-root-buffer-name)
+        (telega-root-mode))
 
-  (unless arg
-    (pop-to-buffer-same-window telega-root-buffer-name)))
+      (telega-server--ensure-build)
+      (telega-server--start)
+      (telega-i18n-init))
+
+    (unless arg
+      (pop-to-buffer-same-window telega-root-buffer-name))))
 
 ;;;###autoload
 (defun telega-kill (force)
