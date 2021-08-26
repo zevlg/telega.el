@@ -681,7 +681,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
   ;; - For CHEIGHT==2 make svg height to be 3 chars, so if font size
   ;;   is increased, there will be no gap between two slices
   (unless cheight (setq cheight 2))
-  (let* ((base-dir (telega-base-directory))
+  (let* ((base-dir (telega-directory-base-uri telega-database-dir))
          (photofile (telega--tl-get file :local :path))
          (factors (alist-get cheight telega-avatar-factors-alist))
          (cfactor (or (car factors) 0.9))
@@ -791,7 +791,7 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
 ;; Location
 (defun telega-map--create-image (map &optional _file)
   "Create map image for location MAP."
-  (let* ((base-dir (telega-base-directory))
+  (let* ((base-dir (telega-directory-base-uri telega-database-dir))
          (map-photo (telega-file--renew map :photo))
          (map-photofile (when map-photo
                           (telega--tl-get map-photo :local :path)))

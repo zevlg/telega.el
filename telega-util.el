@@ -455,7 +455,7 @@ DATA-P is non-nil if FILENAME is actually an image data instead
 WIDTH and HEIGHT is an image size.
 Specify non-nil VIDEO-P if generating preview for video."
   (let* ((base-dir (if data-p
-                       (telega-base-directory)
+                       (telega-directory-base-uri telega-temp-dir)
                      (file-name-directory filename)))
          (svg-size (telega-chars-xheight 1))
          (margin 1)                     ; margin for the mask in pixels
@@ -2049,13 +2049,14 @@ If NLINES is nil, then recenter."
         (goto-char from-point))
       (recenter nlines))))
 
-(defun telega-base-directory ()
-  "Return `telega-directory' following possible symlink."
-  (let ((telega-dir-link (file-symlink-p telega-directory)))
+(defun telega-directory-base-uri (directory)
+  "Return DIRECTORY following possible symlink.
+Used as for SVG's `:base-uri' functionality."
+  (let ((telega-dir-link (file-symlink-p directory)))
     (if telega-dir-link
         (expand-file-name telega-dir-link
-                          (file-name-directory telega-directory))
-      telega-directory)))
+                          (file-name-directory directory))
+      directory)))
 
 (defun telega-create-image (&rest args)
   "Wrapper around `create-image' that takes into account `telega-use-images'.
