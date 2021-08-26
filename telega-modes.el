@@ -31,6 +31,9 @@
 (require 'telega-util)
 
 (defvar tracking-buffers)
+(declare-function telega-account-current "telega")
+(declare-function telega "telega" (&optional arg))
+(declare-function telega-kill "telega" (force))
 
 (defgroup telega-modes nil
   "Customization for telega minor modes."
@@ -52,6 +55,7 @@
 ;; - {{{user-option(telega-mode-line-string-format, 2)}}}
 (defcustom telega-mode-line-string-format
   '("   " (:eval (telega-mode-line-icon))
+    (:eval (car (telega-account-current)))
     (:eval (telega-mode-line-online-status))
     (:eval (when telega-use-tracking-for
              (telega-mode-line-tracking)))
@@ -264,10 +268,6 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
 ;; - {{{user-option(telega-appindicator-show-account-name, 2)}}}
 ;; - {{{user-option(telega-appindicator-show-mentions, 2)}}}
 ;; - {{{user-option(telega-appindicator-labels, 2)}}}
-(declare-function telega "telega" (&optional arg))
-(declare-function telega-account-current "telega")
-(declare-function telega-kill "telega" (force))
-
 (defcustom telega-appindicator-use-label nil
   "Non-nil to add text labels to the icon.
 Otherwise use just icon to show info.
