@@ -1106,9 +1106,9 @@ When this mode is enabled, you can set `telega-my-location' by sending
 your actual location to \"Saved Messages\" using mobile Telegram client."
   :init-value nil :global t :group 'telega-modes
   (if telega-my-location-mode
-      (add-hook 'telega-chat-post-message-hook
+      (add-hook 'telega-chat-pre-message-hook
                 'telega-my-location--on-new-message)
-    (remove-hook 'telega-chat-post-message-hook
+    (remove-hook 'telega-chat-pre-message-hook
                  'telega-my-location--on-new-message)))
 
 (provide 'telega-modes)
