@@ -914,15 +914,17 @@ UFILE specifies Telegram file being uploading."
 (defun telega-edit-file-switch-buffer (buffer)
   "Interactively switch to BUFFER having `telega-edit-file-mode'."
   (interactive
-   (list (funcall telega-completing-read-function
-                  "Telega Edit File: "
-                  (internal-complete-buffer
-                   ""
-                   (lambda (name-and-buf)
-                     (buffer-local-value 'telega-edit-file-mode
-                                         (cdr name-and-buf)))
-                   t)
-                  nil t nil 'buffer-name-history)))
+   (let ((edit-file-buffers (internal-complete-buffer
+                             ""
+                             (lambda (name-and-buf)
+                               (buffer-local-value 'telega-edit-file-mode
+                                                   (cdr name-and-buf)))
+                             t)))
+     (unless edit-file-buffers
+       (user-error "No files opened from telega"))
+     (list (funcall telega-completing-read-function
+                    "Telega Edit File: " edit-file-buffers
+                    nil t nil 'buffer-name-history))))
   (switch-to-buffer buffer))
 
 
