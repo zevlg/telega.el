@@ -161,7 +161,7 @@ Otherwise query user about building flags."
 FLAGS - additional.
 Raise error if not found."
   (mapconcat #'identity
-             (cons 
+             (cons
               (if telega-use-docker
                   (telega-docker-run-cmd telega-server-command)
                 (let ((exec-path (cons telega-directory exec-path)))
@@ -281,15 +281,65 @@ Return parsed command."
   (telega-chats-dirty--update)
   (telega-filters--redisplay))
 
+(defun telega-server--commands-equal (cmd1 cmd2)
+  "Return non-nil if CMD1 and CMD2 are equal and can be collapsed.
+Used to optimize events processing in the `telega-server--parse-commands'."
+  (let* ((cmd1-type (nth 0 cmd1))
+         (cmd1-value (nth 1 cmd1))
+         (value-type (telega--tl-type cmd1-value))
+         (cmd2-type (nth 0 cmd2))
+         (cmd2-value (nth 1 cmd2)))
+    (and (string= cmd1-type "event")
+         (string= cmd2-type "event")
+         ;; No callback registered
+         (not (plist-get cmd1-value :@extra))
+         (not (plist-get cmd2-value :@extra))
+         ;; Value types are equal
+         (eq value-type (telega--tl-type cmd2-value))
+         (cl-case value-type
+           (updateFile
+            (eq (telega--tl-get cmd1-value :file :id)
+                (telega--tl-get cmd2-value :file :id)))
+           ((updateChatLastMessage
+             updateChatPosition
+             updateChatReadInbox
+             updateChatReadOutbox
+             updateChatUnreadMentionCount
+             updateChatOnlineMemberCount)
+            (and (eq (plist-get cmd1-value :chat_id)
+                     (plist-get cmd2-value :chat_id))))
+           ((updateUserStatus
+             updateUserFullInfo)
+            (eq (telega--tl-get cmd1-value :user_id)
+                (telega--tl-get cmd2-value :user_id)))
+           (updateUser
+            (eq (telega--tl-get cmd1-value :user :id)
+                (telega--tl-get cmd2-value :user :id)))
+           (updateHavePendingNotifications
+            t)
+           ((updateUnreadMessageCount
+             updateUnreadChatCount)
+            (equal (plist-get cmd1-value :chat_list)
+                   (plist-get cmd2-value :chat_list)))
+           )
+         (progn
+           (telega-debug "Collapsed events: %S" value-type)
+           t)
+         )))
+
 (defun telega-server--parse-commands ()
   "Parse all available events from telega-server."
   (goto-char (point-min))
-  (let (cmd-val)
-    ;; TODO: First parse all commands, then optimize events, because
-    ;; some events (such as file-updates can be collapsed to single
-    ;; event), then dispatch all the events left after optimization
+  (let (cmd-val parsed-commands)
+    ;; NOTE: First parse all commands, then optimize events, because
+    ;; some events (such as `updateFile', `updateChatLastMessage',
+    ;; etc) can be collapsed to single event, then dispatch all the
+    ;; events left after optimization
     (while (setq cmd-val (telega-server--parse-cmd))
-      (apply 'telega-server--dispatch-cmd cmd-val))
+      (setq parsed-commands (cons cmd-val parsed-commands)))
+    (dolist (cmd (cl-delete-duplicates (nreverse parsed-commands)
+                                       :test #'telega-server--commands-equal))
+      (apply #'telega-server--dispatch-cmd cmd))
 
     (if telega-server--idle-timer
         (timer-set-time telega-server--idle-timer
@@ -412,7 +462,7 @@ COMMAND is passed directly to `telega-server--send'."
    (erase-buffer)
    (insert (format "%s ---[ telega-server started\n" (current-time-string))))
 
-  ;; 
+  ;;
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering nil)
         (server-cmd (telega-server--process-command
