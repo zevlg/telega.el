@@ -498,10 +498,7 @@ list, if no, then `main' is returned."
 (defun telega-filters--reset (&optional default)
   "Reset all filters.
 Set active filter to DEFAULT."
-  (setq telega--filters (when default
-                          (if (listp default)
-                              (list default)
-                            (list (list default))))
+  (setq telega--filters (when default (list (list default)))
         telega--undo-filters nil))
 
 (defun telega-filters-push (flist)
