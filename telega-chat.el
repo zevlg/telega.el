@@ -4080,8 +4080,7 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
   ;; messages won't get automatically read
   (when (and (or focus-out-p (not (get-buffer-window)))
              (>= (point) telega-chatbuf--input-marker))
-    (setq telega-chatbuf--refresh-point
-          (- (point) telega-chatbuf--input-marker))
+    (setq telega-chatbuf--refresh-point (copy-marker (point) t))
     (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
     (unless focus-out-p
       (telega-buffer--hack-win-point)))
@@ -4104,7 +4103,7 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
              (telega-button--make-observable button 'force)))
           ((not (telega-msg-at (point)))
            ;; No new messages arrived
-           (goto-char (+ telega-chatbuf--input-marker rpoint)))
+           (goto-char rpoint))
           (t
            ;; New messages arrived, move to next unread then
            (telega-chatbuf-next-unread
