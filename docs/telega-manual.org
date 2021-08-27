@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.58)
+#+TITLE: Telega Manual (v0.7.61)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -709,12 +709,10 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 * Root Buffer
 :PROPERTIES:
@@ -1528,6 +1526,9 @@ Important customizable options:
 
 @@html:<kbd>@@M-g@@html:</kbd>@@ prefix in chatbuf is used to jump across various chat
 messages:
+- @@html:<kbd>@@M-g d@@html:</kbd>@@, @@html:<kbd>@@M-g !@@html:</kbd>@@ (~telega-chatbuf-goto-date~) :: 
+     Goto last message before ~DATE~ timestamp.
+
 - @@html:<kbd>@@M-g <@@html:</kbd>@@ (~telega-chatbuf-history-beginning~) :: 
      Jump to the first message in the chat history.
 
@@ -2429,6 +2430,9 @@ Customizable options:
     ("   "
      (:eval
       (telega-mode-line-icon))
+     (:eval
+      (car
+       (telega-account-current)))
      (:eval
       (telega-mode-line-online-status))
      (:eval

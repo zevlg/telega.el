@@ -1910,11 +1910,12 @@ If REGION-P is non-nil, then make a screenshot of region."
                               " " tofile)))
     (call-process-shell-command pngpaste-cmd)))
 
-(defun telega-read-timestamp (prompt)
+(defun telega-read-timestamp (prompt &optional only-date-p)
   "Interactively read timestamp in the future.
+If ONLY-DATE-P is specified, then query for date only.
 Return timestamp as unix time."
   (interactive)
-  (let ((date-time (org-read-date 'with-time t nil prompt)))
+  (let ((date-time (org-read-date (not only-date-p) t nil prompt)))
     ;; NOTE: we use `apply' to support Emacs 26
     ;; see https://t.me/emacs_telega/14017
     (round (time-to-seconds (apply #'encode-time (decode-time date-time))))))

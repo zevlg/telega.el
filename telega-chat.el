@@ -1266,7 +1266,12 @@ Chat considered unread if matches `telega-filter-unread-chats' chat filter."
 
 (defvar telega-chatbuf-fastnav-map
   (let ((map (make-sparse-keymap)))
-        ;;; ellit-org: chatbuf-fastnav-bindings
+    ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-goto-date,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-date, 2)}}}
+    (define-key map (kbd "!") 'telega-chatbuf-goto-date)
+    (define-key map (kbd "d") 'telega-chatbuf-goto-date)
+    ;;; ellit-org: chatbuf-fastnav-bindings
     ;; - {{{where-is(telega-chatbuf-history-beginning,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-history-beginning, 2)}}}
     (define-key map (kbd "<") 'telega-chatbuf-history-beginning)
@@ -3460,6 +3465,16 @@ Return nil if CHAT has no linked chat."
     (unless group-call
       (user-error "telega: No group call associated with the chat"))
     (telega-describe-group-call group-call)))
+
+(defun telega-chatbuf-goto-date (date)
+  "Goto last message before DATE timestamp."
+  (interactive (list (telega-read-timestamp "History at" 'only-date)))
+  (telega--getChatMessageByDate (plist-get telega-chatbuf--chat :id) date
+    (lambda (msg)
+      (if (not msg)
+          (message "telega: No chat history at %s"
+                   (format-time-string "%Y-%m-%d" (seconds-to-time date)))
+        (telega-msg-goto-highlight msg)))))
 
 ;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location &optional live-secs)

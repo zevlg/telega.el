@@ -242,7 +242,7 @@ all messages must have same user sender."
            :user_id (plist-get sender :id)
            :message_ids (cl-map #'vector (telega--tl-prop :id)
                                 (cons msg other-messages))))))
-    
+
 (defun telega--createSecretChat (secret-chat-id)
   "Return existing secret chat with id equal to SECRET-CHAT-ID."
   (telega-chat-get
@@ -291,6 +291,19 @@ If message is not found, then return `nil'."
     (list :@type "getMessage"
           :chat_id chat-id
           :message_id msg-id)
+    callback))
+
+(defun telega--getChatMessageByDate (chat-id date &optional callback)
+  "Returns the last message sent in a chat no later than the specified DATE.
+DATE is a unix timestamp."
+  (declare (indent 2))
+  (with-telega-server-reply (reply)
+      (unless (telega--tl-error-p reply)
+        reply)
+
+    (list :@type "getChatMessageByDate"
+          :chat_id chat-id
+          :date date)
     callback))
 
 (defun telega--getMessages (chat-id message-ids &optional callback)
@@ -696,7 +709,7 @@ of message sender."
           :scope (list :@type scope-type)
           :compare_sound (if compare-sound-p t :false))
     callback))
-           
+
 (defun telega--getScopeNotificationSettings (scope-type &optional callback)
   "Return the notification settings for chats of a given type SCOPE-TYPE.
 SCOPE-TYPE is one of:
@@ -1785,7 +1798,7 @@ be marked as read."
     (when force
       (dolist (msg non-viewed-messages)
         (plist-put msg :telega-viewed-in-thread thread-id)))
-  
+
     (when non-viewed-messages
       (telega-server--send
        (list :@type "viewMessages"
