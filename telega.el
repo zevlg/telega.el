@@ -8,10 +8,10 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.7.62
-(defconst telega-version "0.7.62")
+;; Version: 0.7.70
+(defconst telega-version "0.7.70")
 (defconst telega-server-min-version "0.7.7")
-(defconst telega-tdlib-min-version "1.7.4")
+(defconst telega-tdlib-min-version "1.7.7")
 (defconst telega-tdlib-max-version nil)
 
 (defconst telega-tdlib-releases '("1.7.0" . "1.8.0")
@@ -257,15 +257,14 @@ please downgrade TDLib and recompile `telega-server'"
       ;; `updateScopeNotificationSettings' event
 
       ;; All OK, request for chats/users/etc
-      (telega-status--set nil "Fetching chats...")
+      (telega-status--set nil "Loading chats...")
 
-      (telega--getChats nil (list :@type "chatListMain")
-        #'telega--on-initial-chats-fetch)
+      (telega--loadChats (list :@type "chatListMain")
+        #'telega--on-initial-chats-load)
       ;; NOTE: We hope `telega--getChats' will return all chats in the
       ;; Archive, in general this is not true, we need special callback to
       ;; continue fetching, as with "chatListMain" list
-      (telega--getChats nil (list :@type "chatListArchive")
-        #'ignore)
+      (telega--loadChats (list :@type "chatListArchive"))
 
       (run-hooks 'telega-ready-hook))))
 

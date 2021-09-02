@@ -1160,6 +1160,7 @@ Return ChatFilterInfo."
    callback))
 
 (defun telega--editChatFilter (filter-id new-chat-filter &optional callback)
+  (declare (indent 2))
   (telega-server--call
    (list :@type "editChatFilter"
          :chat_filter_id filter-id
@@ -1208,7 +1209,7 @@ New slow mode DELAY for the chat must be one of 0, 10, 30, 60,
   (telega-server--send
    (list :@type "setTdlibParameters"
          :parameters (list :@type "tdlibParameters"
-                           :use_test_dc (or telega-use-test-dc :false)
+                           :use_test_dc (if telega-use-test-dc t :false)
                            :database_directory telega-database-dir
                            :files_directory telega-cache-dir
                            :use_file_database telega-use-file-database
@@ -1718,26 +1719,27 @@ Default LIMIT is 30."
    (list :@type "getChat"
          :chat_id chat-id)))
 
-(defun telega--getChats (&optional offset-chat chat-list callback)
+(defun telega--loadChats (chat-list &optional callback)
+  "Load more chats from a CHAT-LIST.
+Return error if all chats are loaded."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "loadChats"
+         :chat_list chat-list
+         :limit 1000)
+   (or callback 'ignore)))
+
+(defun telega--getChats (chat-list &optional callback)
   "Retreive all chats from the server in async manner.
 OFFSET-CHAT is the chat to start getting chats from."
-  (declare (indent 2))
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat--ensure
               (mapcar #'telega-chat-get (plist-get reply :chat_ids)))
 
-    (nconc (list :@type "getChats"
-;                 :offset_order "9223372036854775807"
-                 :offset_chat_id (or (plist-get offset-chat :id) 0)
-                 :limit 1000)
-           (when chat-list
-             (list :chat_list chat-list
-                   :offset_order
-                   (if offset-chat
-                       (let ((telega-tdlib--chat-list chat-list))
-                         (plist-get (telega-chat-position offset-chat) :order))
-                     "9223372036854775807")
-                   )))
+    (list :@type "getChats"
+          :chat_list chat-list
+          :limit 1000)
     callback))
 
 (defun telega--reportChat (chat reason &optional messages text)

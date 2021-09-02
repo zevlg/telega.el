@@ -55,11 +55,12 @@ See `telega-folder-icons-alist'")
                     (mapcar #'telega-chat-position--list-name
                             (plist-get chat :positions))))
 
-(defun telega-folder-names (&optional no-props)
-  "Return list of names for all Telegram folders."
+(defun telega-folder-names (&optional tdlib-filters)
+  "Return list of names for all Telegram folders.
+Specify TDLIB-FILTERS list to use alternative TDLib chat filters list."
   (mapcar (lambda (fi)
-            (telega-tl-str fi :title no-props))
-          telega-tdlib--chat-filters))
+            (telega-tl-str fi :title))
+          (or tdlib-filters telega-tdlib--chat-filters)))
 
 (defun telega-folder--chat-filter-info (folder-name)
   "Return chatFilterInfo corresponding to FOLDER-NAME."

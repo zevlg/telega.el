@@ -122,8 +122,13 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
   ;; If there are more then 50 chats are dirty, then force update
   (when (> (length telega--dirty-chats) 50)
     (telega-chats-dirty--update)
-    (telega-filters--redisplay))
-  )
+    (telega-filters--redisplay)
+
+    ;; NOTE: Timers are not run when Emacs is under heavy load, so
+    ;; force status animations as well if timer is running
+    (when telega-status--timer
+      (telega-status--animate))
+    ))
 
 (defun telega-chats-dirty--update ()
   "Update dirty chats."
@@ -460,25 +465,26 @@ NOTE: we store the number as custom chat property, to use it later."
                               :test 'eq :key #'telega-chat--info)))
       (telega-chat--mark-dirty chat event))))
 
-(defun telega--on-initial-chats-fetch (chats)
-  "Process initially fetched CHATS, and continue fetching chats."
-  (if (> (length chats) 0)
+(defun telega--on-initial-chats-load (tl-ok)
+  "Process initially loaded chats, or continue loading chats."
+  (if (not (telega--tl-error-p tl-ok))
       (progn
-        ;; Check `:last_message' of initially fetched chats for client
-        ;; side messages ignoring.  Also trigger reordering, since
-        ;; ignoring last message might affect chat order, see
-        ;; `contrib/telega-adblock.el'
-        (dolist (chat chats)
-          (when-let ((last-message (plist-get chat :last_message)))
-            (when (telega-msg-run-ignore-predicates last-message 'last-msg)
-              (telega-chat--update chat (list :@type "telegaChatReorder")))))
-
         ;; Continue fetching chats
-        (telega--getChats (car (last chats)) (list :@type "chatListMain")
-          #'telega--on-initial-chats-fetch))
+        (telega--loadChats (list :@type "chatListMain")
+          #'telega--on-initial-chats-load))
 
     ;; All chats has been fetched
     (telega-status--set nil "")
+
+    ;; Check `:last_message' of initially fetched chats for client
+    ;; side messages ignoring.  Also trigger reordering, since
+    ;; ignoring last message might affect chat order, see
+    ;; `contrib/telega-adblock.el'
+    (dolist (chat telega--ordered-chats)
+      (when-let ((last-message (plist-get chat :last_message)))
+        (when (telega-msg-run-ignore-predicates last-message 'last-msg)
+          (telega-chat--update chat (list :@type "telegaChatReorder")))))
+
     (run-hooks 'telega-chats-fetched-hook)))
 
 (defun telega--on-updateChatReplyMarkup (event)
@@ -527,16 +533,27 @@ NOTE: we store the number as custom chat property, to use it later."
 ;; Chat filters
 (defun telega--on-updateChatFilters (event)
   "List of chat filters has been updated."
-  (setq telega-tdlib--chat-filters
-        (append (plist-get event :chat_filters) nil))
+  ;; NOTE: collect folders with changed names and update all chats in
+  ;; that folders.  Because folder name might be displayed along the
+  ;; side with chat's title in the rootbuf
+  (let* ((new-tdlib-filters (append (plist-get event :chat_filters) nil))
+         (new-names (seq-difference (telega-folder-names new-tdlib-filters)
+                                    (telega-folder-names))))
+    (setq telega-tdlib--chat-filters new-tdlib-filters)
 
-  ;; Update custom filters ewoc
-  (with-telega-root-buffer
-    (telega-save-cursor
-      (telega-filters--refresh))
+    (dolist (folder-name new-names)
+      (dolist (fchat (telega-filter-chats
+                      telega--ordered-chats `(folder ,folder-name)))
+        (telega-chat--mark-dirty fchat)))
+    (telega-chats-dirty--update)
 
-    (run-hooks 'telega-root-update-hook))
-  )
+    ;; Update custom filters ewoc
+    (with-telega-root-buffer
+      (telega-save-cursor
+        (telega-filters--refresh))
+
+      (run-hooks 'telega-root-update-hook))
+    ))
 
 
 ;; Messages updates
