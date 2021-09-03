@@ -566,7 +566,7 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
          (svg-height (+ size title-height))
          (svg (telega-svg-create size svg-height))
          (pclip (telega-svg-clip-path svg "pclip"))
-         (base-dir (telega-base-directory)))
+         (base-dir (telega-directory-base-uri telega-temp-dir)))
     (unless viewed-p
       (apply #'telega-svg-raw-node
              svg 'linearGradient
