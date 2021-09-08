@@ -776,7 +776,7 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
   (let ((fname (telega-tl-str doc :file_name))
         (doc-file (telega-file--renew doc :document)))
     (unless no-attach-symbol
-      (telega-ins telega-symbol-attachment " "))
+      (telega-ins (telega-symbol 'attachment) " "))
 
     (if (telega-file--downloaded-p doc-file)
         (telega-ins--with-face 'telega-link
@@ -1300,7 +1300,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 
 (defun telega-ins--input-file (document &optional attach-symbol trailing-text)
   "Insert input file."
-  (telega-ins (or attach-symbol telega-symbol-attachment) " ")
+  (telega-ins (or attach-symbol (telega-symbol 'attachment)) " ")
   (when-let ((preview (get-text-property
                        0 'telega-preview (plist-get document :@type))))
     (telega-ins--image preview)
@@ -2316,7 +2316,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
             ;; I18N: lng_in_dlg_photo or lng_attach_photo
             (telega-ins (propertize "Photo" 'face 'shadow))))
        (messageDocument
-        (telega-ins telega-symbol-attachment " ")
+        (telega-ins (telega-symbol 'attachment) " ")
         (or (telega-ins (telega--tl-get content :document :file_name))
             (telega-ins--fmt-text
              (unless remove-caption (plist-get content :caption)) msg)

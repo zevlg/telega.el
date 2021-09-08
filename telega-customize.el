@@ -1948,7 +1948,7 @@ Install all symbol widths inside `telega-load-hook'."
     (underline-bar ,(when (image-type-available-p 'svg)
                       '(telega-svg-create-horizontal-bar
                         1 0.7 telega-symbol-underline-bar)))
-    alarm
+    alarm attachment
     bell bulp
     chat-list
     eye
