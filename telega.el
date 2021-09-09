@@ -253,6 +253,10 @@ please downgrade TDLib and recompile `telega-server'"
         (when-let ((settings
                     (alist-get (car scope-type) telega-notifications-defaults)))
           (apply #'telega--setScopeNotificationSettings (cdr scope-type) settings)))
+
+      ;; Fetch blocked users
+      (telega--getBlockedMessageSenders 0 #'telega--on-blocked-senders-load)
+
       ;; NOTE: telega--scope-notification-alist will be updated upon
       ;; `updateScopeNotificationSettings' event
 

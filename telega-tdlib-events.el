@@ -209,6 +209,18 @@ If FOR-REORDER is non-nil, then CHAT's node is ok, just update filters."
         (ufi (cdr (assq 'user telega--full-info))))
     (puthash user-id (plist-get event :user_full_info) ufi)
 
+    ;; Possibly update `telega--blocked-user-ids', keeping
+    ;; `telega--blocked-user-ids' in sync with update events
+    ;; see https://github.com/tdlib/td/issues/1669
+    (if (telega--tl-get event :user_full_info :is_blocked)
+        (unless (memq user-id telega--blocked-user-ids)
+          (setq telega--blocked-user-ids
+                (append telega--blocked-user-ids (list user-id))))
+      (when (memq user-id telega--blocked-user-ids)
+        (setq telega--blocked-user-ids
+              (cons (car telega--blocked-user-ids)
+                    (delq user-id (cdr telega--blocked-user-ids))))))
+
     (telega-user--update (telega-user-get user-id) event)))
 
 
@@ -464,6 +476,21 @@ NOTE: we store the number as custom chat property, to use it later."
                                telega--ordered-chats '(type secret))
                               :test 'eq :key #'telega-chat--info)))
       (telega-chat--mark-dirty chat event))))
+
+(defun telega--on-blocked-senders-load (senders)
+  ;; NOTE: car of the senders is total number of blocked senders
+  (setq senders (cdr senders))
+  (when senders
+    (cl-incf (car telega--blocked-user-ids) (length senders))
+    (setq telega--blocked-user-ids
+          (append telega--blocked-user-ids
+                  (mapcar (telega--tl-prop :id)
+                          (cl-remove-if-not #'telega-user-p senders))))
+
+    ;; Continue fetching blocked users
+    (telega--getBlockedMessageSenders
+     (car telega--blocked-user-ids) #'telega--on-blocked-senders-load)
+    ))
 
 (defun telega--on-initial-chats-load (tl-ok)
   "Process initially loaded chats, or continue loading chats."

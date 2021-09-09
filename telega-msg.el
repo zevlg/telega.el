@@ -1057,7 +1057,8 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
   "Return non-nil if message sender MSG-SENDER is blocked.
 LOCALLY-P only used"
   (if (telega-user-p msg-sender)
-      (plist-get (telega--full-info msg-sender offline-p) :is_blocked)
+      (or (memq (plist-get msg-sender :id) (cdr telega--blocked-user-ids))
+          (plist-get (telega--full-info msg-sender offline-p) :is_blocked))
     (cl-assert (telega-chat-p msg-sender))
     (plist-get msg-sender :is_blocked)))
 

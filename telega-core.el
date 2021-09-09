@@ -139,6 +139,10 @@ Used to calculate numbers displayed in custom filter buttons.")
 (defvar telega-deleted-chats nil
   "List of recently deleted chats.
 Used for \"Recently Deleted Chats\" rootview.")
+(defvar telega--blocked-user-ids (list 0)
+  "List of IDs for blocked users.
+Used to avoid fetching user's full-info to find out that user is blocked.
+CAR of the list is current offset for `telega--getBlockedMessageSenders'.")
 
 (defvar telega--dirty-chats nil
   "Chats need to be updated with `telega-chat--update'.
@@ -325,6 +329,7 @@ Done when telega server is ready to receive queries."
   (setq telega--nearby-chats nil)
 
   (setq telega-deleted-chats nil)
+  (setq telega--blocked-user-ids (list 0))
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--dirty-chats nil)
