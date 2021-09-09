@@ -102,8 +102,16 @@ the rootbuf."
                          (telega-tl-str content :caption))))
       (seq-doseq (txt (telega--split-by-text-prop msg-text :telega-link))
         (when-let* ((txt-link (get-text-property 0 :telega-link txt))
-                    (link-url (when (eq 'url (car txt-link))
-                                (cdr txt-link))))
+                    (link-url
+                     (cl-case (car txt-link)
+                       ;; NOTE: Convert direct mention to the url
+                       ;; see https://github.com/zevlg/telega.el/issues/309
+                       (username
+                        (concat "https://t.me/"
+                                ;; Strip leading "@"
+                                (substring (cdr txt-link) 1)))
+                       (url
+                        (cdr txt-link)))))
           (setq ret-links
                 (cons (cons txt link-url)
                       ret-links)))))
