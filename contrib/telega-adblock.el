@@ -39,6 +39,7 @@
 ;; - {{{user-option(telega-adblock-chat-order-if-last-message-ignored, 2)}}}
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
+;; - {{{user-option(telega-adblock-forwarded-messages, 2)}}}
 
 ;;; Code:
 (require 'rx)
@@ -52,6 +53,12 @@
 (defcustom telega-adblock-for '(and (type channel) (not verified))
   "Chat Filter defines for which chats to apply adblock logic."
   :type 'list
+  :group 'telega-adblock)
+
+(defcustom telega-adblock-forwarded-messages t
+  "Non-nil to block messages forwarded from other channels.
+Block them even if message has no links at all."
+  :type 'boolean
   :group 'telega-adblock)
 
 (defcustom telega-adblock-max-distance 4
@@ -189,14 +196,25 @@ an URL."
                     (cdr link-spec) (telega-chat-title chat)))
     t))
 
+(defun telega-adblock-msg-forwarded-p (msg)
+  "Return non-nil if MSG is forwarded from another channel."
+  (when-let ((fwd-origin (telega--tl-get msg :forward_info :origin))
+             (orig-chat-id (when (equal "messageForwardOriginChannel"
+                                        (plist-get fwd-origin :@type))
+                             (plist-get fwd-origin :chat_id))))
+    ;; Allow self-forwards
+    (not (eq orig-chat-id (plist-get msg :chat_id)))))
+
 (defun telega-adblock-msg-ignore-p (msg)
   "Return non-nil if message MSG is advert message."
   (when-let ((chat (telega-msg-chat msg 'offline)))
     (and (telega-chat-match-p chat telega-adblock-for)
-         ;; NOTE: message considered as advertisement if it has link
-         ;; to another channel.
-         (cl-some (apply-partially #'telega-adblock-link-advert-p chat)
-                  (telega-adblock-msg-extract-links msg)))))
+         (or (and telega-adblock-forwarded-messages
+                  (telega-adblock-msg-forwarded-p msg))
+             ;; NOTE: message considered as advertisement if it has a link
+             ;; to another channel.
+             (cl-some (apply-partially #'telega-adblock-link-advert-p chat)
+                      (telega-adblock-msg-extract-links msg))))))
 
 (defun telega-adblock--chat-order-if-last-msg-ignored (orig-fun chat &rest args)
   "Advice for `telega-chat-order' to return custom order.
