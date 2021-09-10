@@ -2124,9 +2124,13 @@ Binds current symbol to SYM-BIND."
 (defvar telega-docker--user-id nil)
 (defun telega-docker--user-id ()
   "Return UID:GID suitable for docker's -u."
-  (or telega-docker--user-id
-      (setq telega-docker--user-id
-            (shell-command-to-string "echo -n $UID:$GID"))))
+  (unless telega-docker--user-id
+    (setq telega-docker--user-id
+          (shell-command-to-string "echo -n $UID:$GID")))
+
+  (unless (string-match-p "[0-9]+:[0-9]+" telega-docker--user-id)
+    (user-error "telega: Can't get UID/GID, set `telega-docker--user-id' explicitly to \"<UID>:<GID>\""))
+  telega-docker--user-id)
 
 (defun telega-docker--container-id ()
   "Return running container id."
