@@ -528,7 +528,7 @@ SYMBOL could be a cons cell of codepoints, specifying the range."
   (cond ((not (integerp meters)) "unknown")
         ((> meters 10000) (format "%d km" (/ meters 1000)))
         ((>= meters 1000) (format "%.1f km" (/ meters 1000.0)))
-        (t (format "%d m" meters))))
+        (t (format "%d meters" meters))))
 
 (defun telega-number-human-readable (num)
   "Convert METERS to human readable string."
