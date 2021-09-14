@@ -2126,7 +2126,7 @@ Binds current symbol to SYM-BIND."
   "Return UID:GID suitable for docker's -u."
   (unless telega-docker--user-id
     (setq telega-docker--user-id
-          (shell-command-to-string "echo -n $UID:$GID")))
+          (format "%s:%s" (user-uid) (group-gid))))
 
   (unless (string-match-p "[0-9]+:[0-9]+" telega-docker--user-id)
     (user-error "telega: Can't get UID/GID, set `telega-docker--user-id' explicitly to \"<UID>:<GID>\""))
