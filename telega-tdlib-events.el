@@ -1088,6 +1088,13 @@ messages."
     (setq telega--options
           (plist-put telega--options option value))
 
+    (when (and (eq option :unix_time) value)
+      ;; Mark unix-time as need to be updated when Emacs gets idle
+      ;; time, it will be updated on next call to
+      ;; `telega-server--idle-timer-function'
+      (setq telega-tdlib--unix-time
+            (plist-put telega-tdlib--unix-time :need-update t)))
+
     (when (and (eq option :is_location_visible) value)
       (if telega-my-location
           (telega--setLocation telega-my-location)
@@ -1235,6 +1242,12 @@ messages."
           (append (seq-difference telega--suggested-actions removed-actions
                                   #'equal)
                   added-actions))))
+
+(defun telega--on-updateHavePendingNotifications (event)
+  ;; We define this to avoid
+  ;; "TODO: define `telega--on-updateHavePendingNotifications'"
+  ;; messages in the *telega-debug*
+  )
 
 (provide 'telega-tdlib-events)
 

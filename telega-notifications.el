@@ -311,7 +311,7 @@ FORCE is used for testing only, should not be used in real code."
   ;;  6. *TODO*: If Emacs frame has focus and root buffer is current
   ;;     ARGUABLE!
   (unless (or (telega-msg-ignored-p msg)
-              (> (- (time-to-seconds) (plist-get msg :date)) 60))
+              (> (- (telega-time-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
       (unless (or (not (telega-chat-match-p chat
                          '(or (type private secret) me-is-member)))

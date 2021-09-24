@@ -275,6 +275,33 @@ Return parsed command."
   "Function to be called when telega-server gets idle."
   (setq telega-server--idle-timer nil)
 
+  ;; Sync remote and local time. `telega-tdlib--unix-time' will be
+  ;; used in the `(telega-time-seconds)' calls to adjust time to
+  ;; match time on Telegram server side.  Also take into account
+  ;; time used to accomplish request.
+  ;; 
+  ;; We do sync while idle to prevent local clock drift, see
+  ;; https://github.com/tdlib/td/issues/1681
+  (when (plist-get telega-tdlib--unix-time :need-update)
+    (plist-put telega-tdlib--unix-time :need-update nil)
+    (let ((request-time (telega-time-seconds 'as-is)))
+      (telega--getOption :unix_time
+        (lambda (tl-value)
+          (cl-assert (eq (telega--tl-type tl-value) 'optionValueInteger))
+          (if (<= (- (telega-time-seconds 'as-is) request-time) 1)
+              (progn
+                ;; Request took less then 1 second
+                (setq telega-tdlib--unix-time
+                      (list :remote (string-to-number (plist-get tl-value :value))
+                            :local request-time))
+                (telega-debug "Unix time: remote:%S - local:%S = adj:%S"
+                              (plist-get telega-tdlib--unix-time :remote)
+                              (plist-get telega-tdlib--unix-time :local)
+                              (- (plist-get telega-tdlib--unix-time :remote)
+                                 (plist-get telega-tdlib--unix-time :local))))
+            ;; Try update "unix_time" on next idle
+            (plist-put telega-tdlib--unix-time :need-update t))))))
+
   ;; Update dirty stuff
   ;; - Updating chats may cause filters became dirty, so update chats
   ;;   first before redisplaying filters

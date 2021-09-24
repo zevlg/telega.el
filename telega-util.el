@@ -519,9 +519,15 @@ SYMBOL could be a cons cell of codepoints, specifying the range."
   (setf (alist-get width telega-symbol-widths)
         (cons symbol (alist-get width telega-symbol-widths))))
 
-(defun telega-time-seconds ()
-  "Return current time as unix timestamp."
-  (floor (time-to-seconds)))
+(defun telega-time-seconds (&optional as-is)
+  "Return current time as unix timestamp.
+If AS-IS is non-nil, then do not apply time adjustment using
+`telega-tdlib--unix-time'."
+  (let ((ctime (floor (time-to-seconds))))
+    (if as-is
+        ctime
+      (+ ctime (- (or (plist-get telega-tdlib--unix-time :remote) 0)
+                  (or (plist-get telega-tdlib--unix-time :local) 0))))))
 
 (defun telega-distance-human-readable (meters)
   "Convert METERS to human readable string."
