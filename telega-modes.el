@@ -879,7 +879,11 @@ Can be enabled only for content from editable messages."
   "Callback for the file uploading progress.
 UFILE specifies Telegram file being uploading."
   (cond ((telega-file--uploaded-p ufile)
-         (message "Uploaded %s" (telega--tl-get ufile :local :path)))
+         (message "Uploaded %s (%s%s)" (telega--tl-get ufile :local :path)
+                  (file-size-human-readable (telega-file--size ufile))
+                  (if (< (telega-file--size ufile) 1024)
+                      " bytes"
+                    "")))
 
         ((telega-file--uploading-p ufile)
          (message
@@ -903,9 +907,13 @@ UFILE specifies Telegram file being uploading."
     (unless (plist-get msg :can_be_edited)
       (user-error "Telega: message can't be edited"))
 
+    ;; NOTE: `editMessageMedia' always replaces caption, so retain
+    ;; existing caption in the call to `editMessageMedia'
     (telega--editMessageMedia
      msg
      (list :@type "inputMessageDocument"
+           :caption (when-let ((cap (telega--tl-get msg :content :caption)))
+                      (telega-fmt-text-desurrogate (copy-sequence cap)))
            :document (let ((telega-chat-upload-attaches-ahead t))
                        (telega-chatbuf--gen-input-file
                         (buffer-file-name) 'Document nil
