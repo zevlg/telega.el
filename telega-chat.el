@@ -752,27 +752,29 @@ Specify non-nil BAN to ban this user in this CHAT."
           :value chat
           :action #'telega-chat-set-ttl))
       (telega-ins "\n")))
-  (telega-ins "Default Disable Notification: ")
-  (telega-ins--button (if (plist-get chat :default_disable_notification)
-                          telega-symbol-heavy-checkmark
-                        telega-symbol-blank-button)
-    :value chat
-    :action (lambda (for-chat)
-              (telega--toggleChatDefaultDisableNotification
-               for-chat (not (plist-get chat :default_disable_notification)))))
-  (telega-ins "\n")
-  (telega-ins--help-message
-   (telega-ins "Used when you send a message to the chat.\n"
-               "Disables message notification on receiver side.\n"
-               "Use `C-c C-a "
-               (if (plist-get chat :default_disable_notification)
-                   "enable-notification"
-                 "disable-notification")
-               " RET' in chatbuf prompt to temporary "
-               (if (plist-get chat :default_disable_notification)
-                   "enable"
-                 "disable")
-               " notifications on receiver side at message send time."))
+
+  (when (telega-chat-match-p chat '(my-permission :can_send_messages))
+    (telega-ins "Default Disable Notification: ")
+    (telega-ins--button (if (plist-get chat :default_disable_notification)
+                            telega-symbol-heavy-checkmark
+                          telega-symbol-blank-button)
+      :value chat
+      :action (lambda (for-chat)
+                (telega--toggleChatDefaultDisableNotification
+                 for-chat (not (plist-get chat :default_disable_notification)))))
+    (telega-ins "\n")
+    (telega-ins--help-message
+     (telega-ins "Used when you send a message to the chat.\n"
+                 "Disables message notification on receiver side.\n"
+                 "Use `C-c C-a "
+                 (if (plist-get chat :default_disable_notification)
+                     "enable-notification"
+                   "disable-notification")
+                 " RET' in chatbuf prompt to temporary "
+                 (if (plist-get chat :default_disable_notification)
+                     "enable"
+                   "disable")
+                 " notifications on receiver side at message send time.")))
 
   ;; Chat notification settings
   (let* ((notify-cfg (plist-get chat :notification_settings))
