@@ -61,11 +61,12 @@ CALL-SEXP and CALLBACK are passed directly to `telega-server--call'."
     (list :@type "messageSenderChat"
           :chat_id (plist-get msg-sender :id))))
 
-(defun telega--getOption (prop-kw)
+(defun telega--getOption (prop-kw &optional callback)
+  (declare (indent 1))
   (telega-server--call
    (list :@type "getOption"
-         :name (substring (symbol-name prop-kw) 1))) ; strip `:'
-  )
+         :name (substring (symbol-name prop-kw) 1)) ; strip `:'
+   callback))
 
 (defun telega--setOption (prop-kw val &optional sync-p)
   "Set option, defined by keyword PROP-KW to VAL.
