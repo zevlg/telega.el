@@ -957,6 +957,19 @@ Pass REVOKE to try to delete chat history for all users."
          :message_id msg-id)
    callback))
 
+(defun telega--getMessageViewers (msg &optional callback)
+  "Get MSG message viewers list."
+  (declare (indent 1))
+  (declare (tdlib-api "1.7.8"))
+
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-user-get (plist-get reply :user_ids))
+
+    (list :@type "getMessageViewers"
+          :chat_id (plist-get msg :chat_id)
+          :message_id (plist-get msg :id))
+    callback))
+
 (defun telega--getMessagePublicForwards (msg &optional offset limit callback)
   "Return forwarded copies of a channel message to different public channels."
   (telega-server--call

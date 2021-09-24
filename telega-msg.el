@@ -1412,6 +1412,21 @@ Requires administrator rights in the chat."
         (telega-ins-fmt "MsgSexp: (telega-msg-get (telega-chat-get %d) %d)\n"
           chat-id msg-id))
 
+      (when (plist-get msg :can_get_viewers)
+        (telega-ins "Message Viewers:\n")
+        ;; Asynchronously fetch message viewers
+        (telega--getMessageViewers msg
+          (let ((buffer (current-buffer))
+                (at-point (point)))
+            (lambda (users)
+              (when (buffer-live-p buffer)
+                (with-current-buffer buffer
+                  (let ((inhibit-read-only t))
+                    (telega-save-cursor
+                      (goto-char at-point)
+                      (telega-ins--user-list users))))))))
+        (telega-ins "\n"))
+
       (when telega-debug
         (let ((print-length nil))
           (telega-ins-fmt "\nMessage: %S\n" msg)))
