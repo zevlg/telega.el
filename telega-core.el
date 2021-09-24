@@ -242,6 +242,9 @@ alist where key is one of:
   "List of chat filters received from TDLib.")
 (defvar telega-tdlib--chat-list nil
   "Active tdlib chat list used for ordering.")
+(defvar telega-tdlib--unix-time nil
+  "Plist holding remote/local unix times.
+Used for adjustments for timing info received from Telegram.")
 
 ;; Minibuffer stuff used by chatbuf and stickers
 (defvar telega-minibuffer--choices nil
@@ -375,6 +378,7 @@ Done when telega server is ready to receive queries."
 
   (setq telega-tdlib--chat-filters nil)
   (setq telega-tdlib--chat-list nil)
+  (setq telega-tdlib--unix-time nil)
 
   (setq telega--group-calls (make-hash-table :test 'eq))
   (setq telega-docker--container-id nil)
