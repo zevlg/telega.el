@@ -124,7 +124,15 @@ Used for manual generation.")
   "Ensure directory hier is valid."
   (mkdir telega-directory t)
   (mkdir telega-cache-dir t)
-  (mkdir telega-temp-dir t))
+  (mkdir telega-temp-dir t)
+
+  ;; NOTE: make sure directory for `telega-server-logfile' exists
+  ;; See https://github.com/zevlg/telega.el/issues/307
+  (unless (file-exists-p (file-name-directory telega-server-logfile))
+    (error (concat "telega: directory %s does not exists, "
+                   "can't write to `telega-server-logfile'")
+           (file-name-directory telega-server-logfile)))
+  )
 
 (defun telega-account--current-p (account)
   "Return non-nil if the ACCOUNT is current."
