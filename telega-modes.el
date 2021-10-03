@@ -560,8 +560,8 @@ Play in muted mode."
 ;; Squashing mean adding contents of the new message to the previous
 ;; message by editing contents of the previous message.
 ;;
-;; New message in chat is squashed into your previous message only if
-;; all the conditions are met:
+;; New message in a chat is squashed into your previous message only
+;; if all next conditions are met:
 ;;
 ;; 1. Last message in chat is sent by you
 ;; 2. Nobody seen your last message
@@ -571,7 +571,9 @@ Play in muted mode."
 ;; 6. Last message has no associated web-page
 ;; 7. New message has no ~messageSendOptions~ to avoid squashing
 ;;    scheduled messages or similar
-;;
+;; 8. New message is sent within ~telega-squash-message-within-seconds~
+;;    seconds from last message
+
 ;; Can be enabled globally in all chats matching
 ;; ~telega-squash-message-mode-for~ (see below) chat filter with
 ;; ~(global-telega-squash-message-mode 1)~ or by adding:
@@ -583,12 +585,20 @@ Play in muted mode."
 ;; Customizable options:
 ;;
 ;; - {{{user-option(telega-squash-message-mode-for, 2)}}}
+;; - {{{user-option(telega-squash-message-within-seconds, 2)}}}
 (defcustom telega-squash-message-mode-for
   '(not (or saved-messages (type channel)))
   "*Chat filter for `global-telega-squash-message-mode'.
 Global squash message mode enables message squashing only in
 chats matching this chat filter."
   :type 'list
+  :group 'telega-modes)
+
+(defcustom telega-squash-message-within-seconds 60
+  "Maximum number of seconds between last and new message to apply squashing.
+If new message is sent later then this number of seconds, then
+squashing is not applied."
+  :type 'integer
   :group 'telega-modes)
 
 ;;;###autoload
@@ -642,6 +652,12 @@ chats matching this chat filter."
                    (zerop (plist-get last-msg :reply_to_message_id))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
+                   ;; Check for 8.
+                   (< (- (telega-time-seconds)
+                         (if (zerop (plist-get last-msg :edit_date))
+                             (plist-get last-msg :date)
+                           (plist-get last-msg :edit_date)))
+                      telega-squash-message-within-seconds)
                    )
 
           ;; Squashing IMC with `last-msg' by modifying IMC inplace
