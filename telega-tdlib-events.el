@@ -609,10 +609,12 @@ NOTE: we store the number as custom chat property, to use it later."
     ;; `telega-msg-run-ignore-predicates' once again when this message
     ;; is inserted into chatbuf
     (if (telega-msg-run-ignore-predicates new-msg 'last-msg)
-        ;; NOTE: View ignored message, so modeline/appindicator
-        ;; won't show there is something important if ignored
-        ;; message contains mention
-        (telega--viewMessages chat (list new-msg) 'force)
+        ;; NOTE: In case ignored message contains mention, we mark all
+        ;; chat mentions as read if there is no other mentions.
+        ;; See https://github.com/zevlg/telega.el/issues/314
+        (when (and (plist-get new-msg :contains_unread_mention)
+                   (eq 1 (plist-get chat :unread_mention_count)))
+          (telega--readAllChatMentions chat))
       (plist-put new-msg :ignored-p nil))
 
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
