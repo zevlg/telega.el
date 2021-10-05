@@ -1,4 +1,4 @@
-;;; telega-dashboard.el --- Important telega chats in Emacs dashboard.  -*- lexical-binding: t -*-
+;;; telega-dashboard.el --- Important telega chats in Emacs dashboard.  -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2020 by Zajcev Evgeny.
 

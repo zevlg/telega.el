@@ -1,9 +1,10 @@
-;;; telega-url-shorten.el --- URL shortening for telega  -*- lexical-binding:t -*-
+;;; telega-url-shorten.el --- URL shortening for telega  -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2020 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sun Apr  5 12:07:57 2020
+;; Package-Requires: ((all-the-icons "4.0.0"))
 ;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
@@ -51,6 +52,9 @@
 ;; Emacs package.
 
 ;;; Code:
+(require 'cl-lib)
+(require 'telega)
+
 (require 'all-the-icons)
 
 (defgroup telega-url-shorten nil

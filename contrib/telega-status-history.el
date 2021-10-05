@@ -1,4 +1,4 @@
-;;; telega-status-history.el --- Collect online status history.  -*- lexical-binding:t -*-
+;;; telega-status-history.el --- Collect online status history.  -*- lexical-binding:t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2020 by Zajcev Evgeny.
 

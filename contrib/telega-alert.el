@@ -1,4 +1,4 @@
-;;; telega-alert.el --- Notifications with alert.el  -*- lexical-binding: t -*-
+;;; telega-alert.el --- Notifications with alert.el  -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2020 by Zajcev Evgeny.
 
@@ -35,6 +35,7 @@
 ;; ~alert-add-rule~.
 
 ;;; Code:
+(require 'telega)
 (require 'alert)
 
 (defun telega-alert--notify (notify-spec)

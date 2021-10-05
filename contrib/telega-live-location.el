@@ -1,4 +1,4 @@
-;;; telega-live-location.el --- Live location for telega, based on geo.el  -*- lexical-binding: t; -*-
+;;; telega-live-location.el --- Live location for telega, based on geo.el  -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (c) 2020 Would (oldosfan).
 
@@ -38,14 +38,7 @@
 (require 'cl-lib)
 (require 'telega)
 
-;; Avoid compilation errors
-(cl-eval-when 'load
-  (require 'geo))
-;; Shut up compiler
-(declare-function geo-location-lat "geo" (loc))
-(declare-function geo-location-lon "geo" (loc))
-(declare-function geo-last-heading "geo")
-(declare-function geo-last-location "geo")
+(require 'geo)
 
 (defun telega-live-location--geo-loc (geo-loc)
   "Covert geo location GEO-LOC into telega location plist."

@@ -1,4 +1,4 @@
-;;; telega-transient.el --- Transient commands support for telega.el  -*- lexical-binding: t -*-
+;;; telega-transient.el --- Transient commands support for telega.el  -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2021 by Zajcev Evgeny.
 

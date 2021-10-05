@@ -1,4 +1,4 @@
-;;; telega-stories.el --- Emacs Stories.  -*- lexical-binding: t -*-
+;;; telega-stories.el --- Emacs Stories.  -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2021 by Zajcev Evgeny.
 
