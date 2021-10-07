@@ -3549,7 +3549,8 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageDocument"
-           :document ifile))))
+           :document ifile
+           :disable_content_type_detection t))))
 
 (defun telega-chatbuf-attach-photo (filename &optional ttl)
   "Attach FILENAME as photo to the chatbuf input."
@@ -4025,17 +4026,15 @@ See `telega-chat-attach-commands' for available attachment types."
 
 (declare-function eaf-get-path-or-url "eaf")
 
-(defun telega-buffer-file-send (file chat &optional as-photo-p)
+(defun telega-buffer-file-send (file chat &optional as-file-p)
   "Prepare FILE to be sent as document or photo to CHAT.
 If `\\[universal-argument]' is specified, then always send as a file.
-Otherwise for `image-mode' major-mode, send file as photo.
+Otherwise FILE type is automatically detected.
 If called interactively, then file associated with current buffer
 is used as FILE.
 If current buffer is dired, then send all marked files."
   (interactive
-   (let ((send-photo-p
-          (and (not current-prefix-arg) (derived-mode-p 'image-mode)))
-         (file
+   (let ((file
           (or (buffer-file-name)
               (when (eq 'dired-mode major-mode)
                 (seq-filter #'file-regular-p (dired-get-marked-files)))
@@ -4044,14 +4043,18 @@ If current buffer is dired, then send all marked files."
               (when (eq 'eaf-mode major-mode)
                 (eaf-get-path-or-url))
               (user-error (concat "Can't send current buffer, "
-                                  "it does not have corresponding file")))))
+                                  "it does not have corresponding file"))))
+         (as-file-p current-prefix-arg))
      (list file
            (telega-completing-read-chat
-            (format "Send %s to chat: "
-                    (cond (send-photo-p "PHOTO")
-                          ((listp file) (format "%d FILES" (length file)))
-                          (t "FILE"))))
-           send-photo-p)))
+            (format "Send %s(%s) to chat: "
+                    (cond ((listp file)
+                           (format "%d FILES" (length file)))
+                          (t "FILE"))
+                    (if as-file-p
+                        "as file"
+                      "autodetect")))
+           as-file-p)))
 
   (cl-assert chat)
   (with-current-buffer (telega-chat--pop-to-buffer chat)
@@ -4064,9 +4067,7 @@ If current buffer is dired, then send all marked files."
       (with-telega-deferred-events
         (dolist (file files)
           (goto-char (point-max))
-          (if as-photo-p
-              (telega-chatbuf-attach-photo file)
-            (telega-chatbuf-attach-file file))))
+          (telega-chatbuf-attach-media file as-file-p)))
       )))
 
 (defun telega-chatbuf--switch-out (&optional focus-out-p)
