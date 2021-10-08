@@ -901,7 +901,7 @@ Important chat is a chat with unread messages and enabled notifications."
   "Matches if chat's id is one of in ID-LIST."
   (memq (plist-get chat :id) id-list))
 
-(defun telega-filter-by-created-by-me (chat-type)
+(defun telega-filter-by-my-public-chats (chat-type)
   "Filter public chats created by me.
 CHAT-TYPE is one of `has-username' or `location-based'."
   (interactive
