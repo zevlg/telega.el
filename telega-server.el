@@ -494,17 +494,19 @@ COMMAND is passed directly to `telega-server--send'."
    (insert (format "%s ---[ telega-server started\n" (current-time-string))))
 
   ;;
-  (let ((process-connection-type nil)
-        (process-adaptive-read-buffering nil)
-        (server-cmd (telega-server--process-command
-                     (when telega-server-logfile
-                       "-l")
-                     (when telega-server-logfile
-                       telega-server-logfile)
-                     "-v"
-                     (if telega-server-logfile
-                         (int-to-string telega-server-verbosity)
-                       "0"))))
+  (let* ((process-connection-type nil)
+         (process-adaptive-read-buffering nil)
+         (telega-docker--cidfile
+          (telega-docker--container-id-filename))
+         (server-cmd (telega-server--process-command
+                      (when telega-server-logfile
+                        "-l")
+                      (when telega-server-logfile
+                        telega-server-logfile)
+                      "-v"
+                      (if telega-server-logfile
+                          (int-to-string telega-server-verbosity)
+                        "0"))))
     (telega-debug "telega-server CMD: %s" server-cmd)
     (with-current-buffer (generate-new-buffer " *telega-server*")
       (setq telega-server--on-event-func 'telega--on-event)
@@ -514,6 +516,10 @@ COMMAND is passed directly to `telega-server--send'."
       (setq telega-server--callbacks (make-hash-table :test 'eq))
       (setq telega-server--results (make-hash-table :test 'eq))
       (setq telega-server--buffer (current-buffer))
+
+      ;; NOTE: `docker' won't start if cidfile already exists
+      (when (and telega-use-docker telega-docker--cidfile)
+        (delete-file telega-docker--cidfile))
 
       (telega-status--set "telega-server: starting.")
       (let* ((proc-cmd-with-args (split-string server-cmd " " t))

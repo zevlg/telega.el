@@ -2163,6 +2163,8 @@ Binds current symbol to SYM-BIND."
   (when-let ((selinux-enabled-bin (executable-find "selinuxenabled")))
     (zerop (call-process selinux-enabled-bin))))
 
+(defvar telega-docker--cidfile nil
+  "Filename to write container id into using --cidfile docker flag.")
 (defun telega-docker-run-cmd (cmd &rest volumes)
   "Dockerize command CMD."
   (declare (indent 1))
@@ -2177,7 +2179,8 @@ Binds current symbol to SYM-BIND."
         (format "docker run --privileged -i -v %s:%s%s"
                 telega-directory telega-directory
                 (if selinux-p ":z" ""))
-        " --cidfile " (telega-docker--container-id-filename)
+        (when telega-docker--cidfile
+          (concat " --cidfile " telega-docker--cidfile))
         " -u " (telega-docker--user-id)
         ;; Connect container to host networking
         " --net=host"
