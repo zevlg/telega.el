@@ -2138,14 +2138,25 @@ Binds current symbol to SYM-BIND."
     (user-error "telega: Can't get UID/GID, set `telega-docker--user-id' explicitly to \"<UID>:<GID>\""))
   telega-docker--user-id)
 
+(defun telega-docker--container-id-filename ()
+  "Return file to store docker container id to."
+  (expand-file-name "docker.cid" telega-database-dir))
+
 (defun telega-docker--container-id ()
   "Return running container id."
-  (or (and telega-use-docker (telega-server-live-p) telega-docker--container-id)
+  (when (and telega-use-docker (telega-server-live-p))
+    (unless telega-docker--container-id
       (setq telega-docker--container-id
             (string-trim
-             (shell-command-to-string
-              (format "docker ps -qf \"ancestor=%s\""
-                      (telega-docker--image-name)))))))
+             (or (let ((cid-filename (telega-docker--container-id-filename)))
+                   (when (file-exists-p cid-filename)
+                     (with-temp-buffer
+                       (insert-file-contents cid-filename)
+                       (string-trim (buffer-string)))))
+                 (shell-command-to-string
+                  (format "docker ps -qf \"ancestor=%s\""
+                          (telega-docker--image-name)))))))
+    telega-docker--container-id))
 
 (defun telega-docker--selinux-p ()
   "Return non-nil if running in the selinux environment."
@@ -2166,6 +2177,7 @@ Binds current symbol to SYM-BIND."
         (format "docker run --privileged -i -v %s:%s%s"
                 telega-directory telega-directory
                 (if selinux-p ":z" ""))
+        " --cidfile " (telega-docker--container-id-filename)
         " -u " (telega-docker--user-id)
         ;; Connect container to host networking
         " --net=host"
