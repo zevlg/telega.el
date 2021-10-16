@@ -17,7 +17,7 @@ ARG telega_branch=master
 RUN set +x && apk update && apk upgrade && \
     apk add --update alpine-sdk linux-headers git zlib-dev openssl-dev gperf php cmake
 
-RUN echo "TDLib 1.7.8-0126cec2" > tdlib-version && \
+RUN echo "TDLib 1.7.8-49282f35" > tdlib-version && \
     git clone https://github.com/tdlib/td.git && \
     cd td && \
     git checkout ${tdlib_branch} && \
@@ -37,7 +37,8 @@ RUN cd / && git clone https://github.com/Samsung/rlottie.git && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && \
     cmake --build . --target install
 
-RUN cd / && git clone https://github.com/zevlg/tgs2png && \
+RUN echo "tgs2png 0.3.0" > /tgs2png-version && \
+    cd / && git clone https://github.com/zevlg/tgs2png && \
     cd tgs2png && \
     mkdir build && \
     cd build && \
