@@ -2007,6 +2007,32 @@ argument - MSG to insert additional information after header."
              (telega-ins--aux-inline-reply
               (telega-ins-i18n "lng_profile_loading")))))))
 
+(defun telega-ins--msg-sending-state-failed (msg)
+  "Insert sending state failure reason for message MSG."
+  (when-let ((send-state (plist-get msg :sending_state)))
+    (when (eq 'messageSendingStateFailed (telega--tl-type send-state))
+      (telega-ins (telega-symbol 'failed))
+      (telega-ins--with-face 'error
+        (telega-ins "Failed to send: "
+                    (telega-tl-str send-state :error_message)))
+      (cond ((and (telega-msg-type-p 'messagePhoto msg)
+                  (equal (telega-tl-str send-state :error_message)
+                         "PHOTO_INVALID_DIMENSIONS"))
+             ;; NOTE: Resending as file will accomplish without errors
+             (when-let ((photofile
+                         (plist-get (cl-find "i" (telega--tl-get
+                                                  msg :content :photo :sizes)
+                                             :test #'equal
+                                             :key (telega--tl-prop :type))
+                                    :photo))
+                        (caption (telega--tl-get msg :content :caption)))
+               (telega-ins " ")
+               (telega-ins--button "RESEND as file"
+                 'action (lambda (_button)
+                           (message "TODO: resend as file")))))
+            )
+      t)))
+
 (defun telega-ins--message0 (msg &optional no-header
                                  addon-header-inserter no-footer)
   "Insert message MSG.
@@ -2071,6 +2097,9 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (telega-ins--msg-reply-inline msg)
       (telega-ins--column ccol telega-chat-fill-column
         (telega-ins--content msg)
+
+        (telega-ins-prefix "\n"
+          (telega-ins--msg-sending-state-failed msg))
         (telega-ins-prefix "\n"
           (telega-ins--reply-markup msg))
         (telega-ins-prefix "\n"
