@@ -1,6 +1,6 @@
 ;;; ol-telega.el --- Links to telega chats and messages -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020 by Zajcev Evgeny.
+;; Copyright (C) 2020-2021 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sat Mar 28 11:15:21 2020
@@ -64,7 +64,7 @@ message, file or photo."
                          (telega--tl-type (plist-get msg :content)))
                      (y-or-n-p "Store link to a message's file?")))))
          (chat-or-msg
-          (or msg (telega-chat-at (point))))
+          (or msg telega-chatbuf--chat (telega-chat-at (point))))
          (link
           (when chat-or-msg
             (apply #'telega-tme-internal-link-to chat-or-msg
