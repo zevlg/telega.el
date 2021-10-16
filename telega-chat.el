@@ -1484,6 +1484,7 @@ If POINT is not over some message, then view last message."
   ;; [x] Voice Chat: <Title> [Join] [Leave] [Show]
   ;;     5 participants: (A) (B) <-- recent speakers
   ;; [ REPLY-MARKUP] buttons
+  ;; <BOT-DESCRIPTION if no last message>
   ;; (AVA)>>>
   (let* ((column (+ telega-chat-fill-column 10 1))
          (column1 (/ column 2))
@@ -1636,6 +1637,18 @@ If POINT is not over some message, then view last message."
                                          :align-symbol fill-symbol))
            (telega-ins "\n")
            ))
+
+       ;; Bot description in case chat with bot does not have any
+       ;; messages
+       (when (telega-chat-match-p chat '(and (not has-last-message) (type bot)))
+         (when-let* ((ci (telega-chat--info chat t))
+                     (fi (telega--full-info ci))
+                     (desc (telega-tl-str fi :description)))
+           (telega-ins--with-face 'bold
+             (telega-ins-i18n "lng_bot_description"))
+           (telega-ins "\n")
+           (telega-ins desc)
+           (telega-ins "\n")))
        ))))
 
 (defun telega-chatbuf--footer-update ()

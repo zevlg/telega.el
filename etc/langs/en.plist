@@ -719,4 +719,25 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_payments_invoice_label"
   :value "Invoice")
 
+ ;; Searching messages
+ ("lng_search_messages_from"
+  :value "Show messages from")
+ ("lng_search_global_results"
+  :value "Global search results")
+ ("lng_search_no_results"
+  :value "No messages found")
+ ("lng_search_found_results"
+  :one_value "Found {count} message"
+  :other_value "Found {count} messages")
+
+ ("telega_stop_live_location"
+  :one_value "Stop"
+  :other_value "Stop All")
+ ("telega_query_stop_live_location"
+  :one_value "Stop sharing live location?"
+  :other_value "Stop sharing live location in {count} chats?")
+
+ ("lng_bot_description"
+  :value "What can this bot do?")
+
  )
