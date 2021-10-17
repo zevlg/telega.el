@@ -1195,9 +1195,16 @@ Return t."
 
 (defmacro telega-ins--as-string (&rest body)
   "Execute BODY inserters and return result as a string."
-  `(with-temp-buffer
-     ,@body
-     (buffer-string)))
+  (let ((fra-sym (gensym "frasym")))
+    ;; NOTE: Keep value for buffer local default face while using
+    ;; temporary buffer, so `telega-chars-xwidth/xheight' will
+    ;; continue returning correct values
+    `(let ((,fra-sym face-remapping-alist))
+       (with-temp-buffer
+         (when ,fra-sym
+           (setq-local face-remapping-alist ,fra-sym))
+         ,@body
+         (buffer-string)))))
 
 (defmacro telega-ins--one-lined (&rest body)
   "Execute BODY making insertation one-lined.
