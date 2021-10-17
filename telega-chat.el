@@ -3556,14 +3556,18 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
                              'telega-upload-ahead-file upload-ahead-file)
           :path filename)))
 
-(defun telega-chatbuf-attach-file (filename &optional preview-p)
-  "Attach FILENAME as document to the chatbuf input."
+(defun telega-chatbuf-attach-file (filename &optional preview-p
+                                            content-type-detect-p)
+  "Attach FILENAME as document to the chatbuf input.
+If CONTENT-TYPE-DETECT-P is specified, then FILENAME's content type is
+automatically detected."
   (interactive (list (read-file-name "Attach file: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageDocument"
            :document ifile
-           :disable_content_type_detection t))))
+           :disable_content_type_detection
+           (if content-type-detect-p :false t)))))
 
 (defun telega-chatbuf-attach-photo (filename &optional ttl)
   "Attach FILENAME as photo to the chatbuf input."
@@ -3636,7 +3640,9 @@ This attachment can be used only in private chats."
 
 (defun telega-chatbuf-attach-media (filename &optional as-file-p)
   "Attach FILENAME as media, detecting media type by FILENAME extension.
-If `\\[universal-argument] is given, then attach as file."
+If `\\[universal-argument] is given, then attach as file.
+If AS-FILE-P is `preview', then attach as file with preview.  FILENAME
+must be a photo in this case."
   (interactive (list (read-file-name "Attach Media File: ")
                      current-prefix-arg))
   (let ((file-mime (or (unless as-file-p
@@ -3651,7 +3657,7 @@ If `\\[universal-argument] is given, then attach as file."
           ((string-prefix-p "video/" file-mime)
            (telega-chatbuf-attach-video filename))
           (t
-           (telega-chatbuf-attach-file filename)))))
+           (telega-chatbuf-attach-file filename (eq as-file-p 'preview))))))
 
 (defun telega-chatbuf-attach-video-note (as-file-p)
   "Attach a (circled) video note to the chatbuf input.
@@ -3708,13 +3714,6 @@ voice-note.  Otherwise record voice note inplace.
            :duration (round (telega-ffplay-get-duration i-filename))
            :voice_note ifile))))
 
-(defun telega-chatbuf--attach-tmp-photo (tmpfile &optional doc-p)
-  "Attach temporary photo file TMPFILE.
-If DOC-P is non-nil, then attach it as document."
-  (if doc-p
-      (telega-chatbuf-attach-file tmpfile t)
-    (telega-chatbuf-attach-photo tmpfile)))
-
 (defun telega-chatbuf-attach-clipboard (doc-p)
   "Attach clipboard image to the chatbuf as photo.
 If `\\[universal-argument]' is given, then attach clipboard as document."
@@ -3733,7 +3732,7 @@ If `\\[universal-argument]' is given, then attach clipboard as document."
       (write-region (or (gui-get-selection 'CLIPBOARD 'image/png)
                         (error "No image in CLIPBOARD"))
                     nil tmpfile nil 'quiet))
-    (telega-chatbuf--attach-tmp-photo tmpfile doc-p)))
+    (telega-chatbuf-attach-media tmpfile (when doc-p 'preview))))
 
 (defun telega-chatbuf-attach-screenshot (&optional n chat)
   "Attach screenshot to the chatbuf input.
@@ -3766,7 +3765,7 @@ Uses `telega-screenshot-function' to take a screenshot."
         ;; NOTE: Screenshot successfully taken
         (telega-chat--pop-to-buffer chat)
         (x-focus-frame (window-frame (get-buffer-window)))
-        (telega-chatbuf--attach-tmp-photo tmpfile)))))
+        (telega-chatbuf-attach-media tmpfile)))))
 
 (defun telega-chatbuf-sticker-insert (sticker)
   "Attach STICKER to the input."
@@ -4619,7 +4618,7 @@ If called outside chat buffer, then fallback to default DND behaviour."
         ("file"
          (let ((doc-p (or (not (image-type-from-file-name real-name))
                           (y-or-n-p (telega-i18n "telega_query_dnd_photo_as_file")))))
-           (telega-chatbuf--attach-tmp-photo real-name doc-p)))
+           (telega-chatbuf-attach-media real-name doc-p)))
         (_
          (goto-char (point-max))
          (insert (concat proto "://" real-name)))))))
