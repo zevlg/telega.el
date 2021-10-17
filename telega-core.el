@@ -310,6 +310,10 @@ Asynchronously loaded when chatbuf is created.")
 Could be used for fetching `admins', `pinned-messages', `reply-markup', etc.")
 (make-variable-buffer-local 'telega-chatbuf--fetch-alist)
 
+(defvar telega-chatbuf--bot-start-parameter nil
+  "Parameter to pass to `telega--sendBotStartMessage' when START is pressed.")
+(make-variable-buffer-local 'telega-chatbuf--bot-start-parameter)
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.

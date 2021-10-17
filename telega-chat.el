@@ -1700,6 +1700,7 @@ Global chat bindings:
         telega-chatbuf--my-action nil
         telega-chatbuf--administrators nil
         telega-chatbuf--group-call-users nil
+        telega-chatbuf--bot-start-parameter nil
         )
 
   ;; Make usernames with "_" be completable
@@ -1942,7 +1943,8 @@ Recover previous active action after BODY execution."
         (when (telega-chat-bot-p telega-chatbuf--chat)
           (telega--sendBotStartMessage
            (telega-chat-user telega-chatbuf--chat 'inc-bots)
-           telega-chatbuf--chat)))
+           telega-chatbuf--chat telega-chatbuf--bot-start-parameter)
+          (setq telega-chatbuf--bot-start-parameter nil)))
 
     (telega--joinChat telega-chatbuf--chat)))
 
@@ -1950,13 +1952,18 @@ Recover previous active action after BODY execution."
   "Return unblock-start-join button to be used in chatbuf prompt.
 unblock-start-join button is used for prompt if chatbuf is
 unknown, i.e. has no positions set."
-  (unless (append (plist-get telega-chatbuf--chat :positions) nil)
+  (when (or (not (append (plist-get telega-chatbuf--chat :positions) nil))
+            telega-chatbuf--bot-start-parameter)
     (when-let ((label (cond ((plist-get telega-chatbuf--chat :is_blocked)
                              (if (telega-chat-bot-p telega-chatbuf--chat)
                                  "RESTART BOT"
                                "UNBLOCK"))
                             ((telega-chat-bot-p telega-chatbuf--chat)
-                             "START")
+                             (concat "START"
+                                     (when telega-chatbuf--bot-start-parameter
+                                       " ")
+                                     (when telega-chatbuf--bot-start-parameter
+                                       telega-chatbuf--bot-start-parameter)))
                             ((and (not (telega-chat-private-p
                                         telega-chatbuf--chat))
                                   (not (telega-chat-secret-p
