@@ -1,9 +1,10 @@
-;;; telega-channels-export.el --- Export all subscribed channels to OPML -*- lexical-binding: t; -*-
+;;; telega-channels-export.el --- Export all subscribed channels to OPML -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; Copyright (C) 2021 by 4da.
 
 ;; Author: 4da <4da@sandycat.info>
 ;; Created: Sat Oct 21 15:00 2021
+;; Package-Requires: ((esxml "0.3.7"))
 ;; Keywords:
 
 ;; telega is free software: you can redistribute it and/or modify
@@ -21,12 +22,13 @@
 
 ;;; Commentary:
 ;;
-;; Allows user to get a list of all telegram channels she is subscribed to which have usernames.
+;;; ellit-org:
+;; ** /telega-channels-export.el/ -- Export all telegam channels to OPML
 ;;
 ;; Usage:
 ;;
 ;; Login to telega via M-x telega, after that call M-x
-;; telega-export-channels and choose file name to channels export to.
+;; telega-channels-export and choose file name to channels export to.
 ;; You can customize telega-export-channels-template variable with
 ;; template of rsshub or rssbrdige (or whatever that supports
 ;; telegram) url.
@@ -46,25 +48,21 @@
   :group 'telega
   )
 
-(defun make-rss-url (username)
-  (format telega-export-channels-template username))
+(defun telega-channels-export--outline (username title description)
+  (let ((http-url (format "https://t.me/%s" username))
+        (rss-url (format telega-export-channels-template username))
+        (plain-title (if title (substring-no-properties title) ""))
+        (plain-description (if description (substring-no-properties description) "")))
 
-(defun make-channel-outline (username title description)
-  (setq http-url (format "https://t.me/%s" username))
-  (setq rss-url (make-rss-url username))
-  (setq plain-title (format "%s" title))
-  (setq plain-description (format "%s" description))
-  (set-text-properties 0 (length title) nil plain-title)
-  (set-text-properties 0 (length description) nil plain-description)
+    `(outline ((text . ,plain-title)
+               (description . ,plain-description)
+               (htmlUrl . ,http-url)
+               (type . "Atom")
+               (xmlUrl . ,rss-url)
+               ))))
 
-  `(outline ((text . ,plain-title)
-             (description . ,plain-description)
-             (htmlUrl . ,http-url)
-             (type . "Atom")
-             (xmlUrl . ,rss-url)
-             )))
-
-(defun telega-export-channels ()
+(defun telega-channels-export ()
+  "Export all telegam channels to OPML"
   (interactive)
 
   (setq filename (read-file-name "Enter file name:"))
@@ -72,10 +70,11 @@
 
   (setq outlines
         (mapcar (lambda (chat)
-                  (make-channel-outline
+                  (telega-channels-export--outline
                    (telega-chat-username chat)
                    (telega-chat-title chat)
-                   (telega-chat-description chat)
+                   (telega-tl-str (telega--full-info (telega-chat--info chat))
+                                  :description :formattedText)
                    ))
                 (telega-filter-chats
                  telega--ordered-chats filter)))
