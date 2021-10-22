@@ -954,7 +954,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
 (defun telega-ins--contact (contact &optional no-phone)
   "One line variant inserter for CONTACT."
   (telega-ins telega-symbol-contact " ")
-  (telega-ins (telega-user--name contact 'name))
+  (telega-ins (telega-user-title contact 'name))
   (when (eq (telega--tl-type contact) 'user)
     (telega-ins--user-online-status contact))
 

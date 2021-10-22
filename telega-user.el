@@ -113,13 +113,15 @@ Format name using FMT-TYPE, one of:
   `full' - Uses all available namings
 Default is: `full'"
   ;; NOTE: USER might be of "contact" type
-  (if (and (eq (telega--tl-type user) 'user)
-           (eq (telega-user--type user) 'deleted))
-      ;; I18N: deleted -> Deleted Account
-      (format "%s-%d" (telega-i18n "lng_deleted") (plist-get user :id))
+  (let ((user-p (eq (telega--tl-type user) 'user))
+        (fmt-type (or fmt-type 'full))
+        (name ""))
+    (if (and user-p (eq (telega-user--type user) 'deleted))
+        ;; I18N: deleted -> Deleted Account
+        (setq name (format "%s-%d" (telega-i18n "lng_deleted")
+                           (plist-get user :id)))
 
-    (let ((fmt-type (or fmt-type 'full))
-          (name ""))
+      ;; Existing user or a contact
       (when (memq fmt-type '(full short))
         (if-let ((un (telega-tl-str user :username)))
             (setq name (concat "@" un))
@@ -131,9 +133,11 @@ Default is: `full'"
           (setq name (concat ln (if (string-empty-p name) "" " ") name))))
       (when (or (memq fmt-type '(full name)) (string-empty-p name))
         (when-let ((fn (telega-tl-str user :first_name)))
-          (setq name (concat fn (if (string-empty-p name) "" " ") name))))
+          (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
 
-      ;; Scam/Fake/Blacklist badge
+    ;; Scam/Fake/Blacklist badge, apply for users only
+    ;; see https://t.me/emacs_telega/30318
+    (when user-p
       (when (plist-get user :is_scam)
         (setq name (concat name " " (propertize (telega-i18n "lng_scam_badge")
                                                 'face 'error))))
@@ -141,9 +145,8 @@ Default is: `full'"
         (setq name (concat name " " (propertize (telega-i18n "lng_fake_badge")
                                                 'face 'error))))
       (when (telega-msg-sender-blocked-p user 'offline)
-        (setq name (concat name " " (propertize "BLOCKED" 'face 'error))))
-
-      name)))
+        (setq name (concat name " " (propertize "BLOCKED" 'face 'error)))))
+    name))
 
 ;; NOTE: Backward compatibility, DEPRECATED, use `telega-user-title' instead
 (defalias 'telega-user--name 'telega-user-title)
