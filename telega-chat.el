@@ -34,7 +34,7 @@
 (require 'url-util)
 (require 'seq)
 (require 'dired)                      ; dired-get-marked-files
-(require 'mailcap)                    ; mailcap-file-name-to-mime-type
+(require 'mailcap)                    ; mailcap-extension-to-mime
 
 (require 'telega-core)
 (require 'telega-tdlib)
@@ -3653,7 +3653,8 @@ must be a photo in this case."
   (interactive (list (read-file-name "Attach Media File: ")
                      current-prefix-arg))
   (let ((file-mime (or (unless as-file-p
-                         (mailcap-file-name-to-mime-type filename))
+                         (mailcap-extension-to-mime
+                          (or (file-name-extension filename) "")))
                        "telega/unknown")))
     (cond ((string= "image/gif" file-mime)
            (telega-chatbuf-attach-animation filename))
