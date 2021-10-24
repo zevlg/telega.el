@@ -61,42 +61,42 @@
                (xmlUrl . ,rss-url)
                ))))
 
-(defun telega-channels-export ()
+(defun telega-channels-export (filename)
   "Export all telegam channels to OPML"
-  (interactive)
 
-  (setq filename (read-file-name "Enter file name:"))
-  (setq filter '(and (type channel) has-username))
+  (interactive "FSelect output file: ")
 
-  (setq outlines
-        (mapcar (lambda (chat)
-                  (telega-channels-export--outline
-                   (telega-chat-username chat)
-                   (telega-chat-title chat)
-                   (telega-tl-str (telega--full-info (telega-chat--info chat))
-                                  :description :formattedText)
-                   ))
-                (telega-filter-chats
-                 telega--ordered-chats filter)))
+  (let* ((filter '(and (type channel) has-username))
 
-  (setq toplevel-outline
-        `(outline ((text . "Telegram"))
-                  ,@outlines))
+        (outlines
+         (mapcar (lambda (chat)
+                   (telega-channels-export--outline
+                    (telega-chat-username chat)
+                    (telega-chat-title chat)
+                    (telega-tl-str (telega--full-info (telega-chat--info chat))
+                                   :description :formattedText)
+                    ))
+                 (telega-filter-chats
+                  telega--ordered-chats filter)))
 
-  (with-temp-file filename
-    (insert
-     (esxml-to-xml `(opml ((version . "1.0"))
-                          (head () (title () "Exported channels"))
-                          (body ()
-                                (outline ((text . "Telegram"))
-                                         ,@outlines
-                                         )
-                                )
-                          )))
+        (toplevel-outline
+         `(outline ((text . "Telegram"))
+                   ,@outlines)))
 
-    ;; TODO find out why this fails
-    ;; (sgml-pretty-print 0 (buffer-size))
-    )
+    (with-temp-file filename
+      (insert
+       (esxml-to-xml `(opml ((version . "1.0"))
+                            (head () (title () "Exported channels"))
+                            (body ()
+                                  (outline ((text . "Telegram"))
+                                           ,@outlines
+                                           )
+                                  )
+                            ))))
+
+  ;; TODO find out why this fails
+  ;; (sgml-pretty-print 0 (buffer-size))
+  )
 
   (message (format "Channels saved to %s" filename))
 )
