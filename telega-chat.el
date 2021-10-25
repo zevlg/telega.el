@@ -1638,6 +1638,15 @@ If POINT is not over some message, then view last message."
            (telega-ins "\n")
            ))
 
+       ;; Restriction reason
+       (when-let ((reason (telega-tl-str (telega-chat--info chat 'locally)
+                                         :restriction_reason)))
+           (telega-ins--with-face 'bold
+             (telega-ins "Chat is restricted:"))
+           (telega-ins "\n")
+           (telega-ins reason)
+           (telega-ins "\n"))
+
        ;; Bot description in case chat with bot does not have any
        ;; messages
        (when (telega-chat-match-p chat '(and (not has-last-message) (type bot)))
