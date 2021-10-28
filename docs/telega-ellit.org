@@ -1138,6 +1138,8 @@ project.
 
 #+ELLIT-INCLUDE: ../contrib/telega-adblock.el
 
+#+ELLIT-INCLUDE: ../contrib/telega-channels-export.el
+
 * Troubleshooting                                                       :new:
 
 ** Can't compile =telega-server=

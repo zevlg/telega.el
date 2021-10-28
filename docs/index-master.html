@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-08-27 Пт 12:18 -->
+<!-- 2021-10-28 Чт 17:07 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.61)</title>
+<title>Telega Manual (v0.7.81)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.61)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.81)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -343,6 +343,7 @@
 <li><a href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
 <li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 <li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
 <li><a href="#troubleshooting">Troubleshooting&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a>
@@ -523,7 +524,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.4.
+version greater or equal to 1.7.7.
 </p>
 
 <p>
@@ -973,7 +974,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org3fa4f9f">
+<pre class="example" id="org1a8cc43">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -991,7 +992,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org8717a7d">
+<pre class="example" id="org67dacee">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1021,7 +1022,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgf7312c9">
+<pre class="example" id="org20808c6">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1122,7 +1123,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org6570ed2">
+<pre class="example" id="org310b1a8">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1189,7 +1190,7 @@ multiple chats are important.</dd>
 
 <dt><kbd>f</kbd> (<code>telega-buffer-file-send</code>)</dt><dd>Prepare <code>FILE</code> to be sent as document or photo to <code>CHAT</code>.
 If <kbd>C-u</kbd> is specified, then always send as a file.
-Otherwise for <code>image-mode</code> major-mode, send file as photo.
+Otherwise <code>FILE</code> type is automatically detected.
 If called interactively, then file associated with current buffer
 is used as <code>FILE</code>.
 If current buffer is dired, then send all marked files.</dd>
@@ -2070,7 +2071,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orga9ef07c">
+<pre class="example" id="org984356a">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2247,7 +2248,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0ce1b25">
+<pre class="example" id="org3092b25">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2331,7 +2332,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org246c7c5">
+<pre class="example" id="org6dd3d0d">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2348,7 +2349,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org640ba44">
+<pre class="example" id="org8f05655">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2455,7 +2456,9 @@ You can attach various media into chatbuf input, using next bindings:
 See <code>telega-chat-attach-commands</code> for available attachment types.</dd>
 
 <dt><kbd>C-c C-f</kbd> (<code>telega-chatbuf-attach-media</code>)</dt><dd>Attach <code>FILENAME</code> as media, detecting media type by <code>FILENAME</code> extension.
-If <kbd>C-u</kbd> is given, then attach as file.</dd>
+If <kbd>C-u</kbd> is given, then attach as file.
+If <code>AS-FILE-P</code> is <code>preview</code>, then attach as file with preview.  <code>FILENAME</code>
+must be a photo in this case.</dd>
 
 <dt><kbd>C-c C-v</kbd> (<code>telega-chatbuf-attach-clipboard</code>)</dt><dd>Attach clipboard image to the chatbuf as photo.
 If <kbd>C-u</kbd> is given, then attach clipboard as document.</dd>
@@ -2483,7 +2486,9 @@ record video notes.</dd>
 If <kbd>C-u</kbd> is given, then attach existing file as
 voice-note.  Otherwise record voice note inplace.
 <code>telega-vvnote-voice-cmd</code> is used to record voice notes.</dd>
-<dt>file</dt><dd>Attach <code>FILENAME</code> as document to the chatbuf input.</dd>
+<dt>file</dt><dd>Attach <code>FILENAME</code> as document to the chatbuf input.
+If <code>CONTENT-TYPE-DETECT-P</code> is specified, then FILENAME's content type is
+automatically detected.</dd>
 <dt>gif</dt><dd>Attach <code>GIF-FILE</code> as animation to the chatbuf input.</dd>
 <dt>location</dt><dd>Attach location to the chatbuf input.
 If <kbd>C-u</kbd> is given, then attach live location.</dd>
@@ -2590,7 +2595,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org773d454">
+<pre class="example" id="orgd3e7025">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3183,7 +3188,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org94e0ccb">
+<pre class="example" id="org1f7f64b">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3751,8 +3756,8 @@ message by editing contents of the previous message.
 </p>
 
 <p>
-New message in chat is squashed into your previous message only if
-all the conditions are met:
+New message in a chat is squashed into your previous message only
+if all next conditions are met:
 </p>
 
 <ol class="org-ol">
@@ -3764,47 +3769,11 @@ all the conditions are met:
 <li>Last message has no associated web-page</li>
 <li>New message has no <code>messageSendOptions</code> to avoid squashing
 scheduled messages or similar</li>
+<li>New message is sent within <code>telega-squash-message-within-seconds</code>
+seconds from last message</li>
 </ol>
-
-<p>
-Can be enabled globally in all chats matching
-<code>telega-squash-message-mode-for</code> (see below) chat filter with
-<code>(global-telega-squash-message-mode 1)</code> or by adding:
-</p>
-
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'global-telega-squash-message-mode)
-</pre>
-</div>
-
-<p>
-Customizable options:
-</p>
-
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-squash-message-mode-for</code> 
-</p>
-
-<p>
-Chat filter for <code>global-telega-squash-message-mode</code>.
-Global squash message mode enables message squashing only in
-chats matching this chat filter. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">(not
- (<span style="font-weight: bold;">or</span> saved-messages
-     (type channel)))
-</pre>
-</div></li>
-</ul>
 </div>
 </div>
-
 
 <div id="outline-container-telega-image-mode" class="outline-3">
 <h3 id="telega-image-mode"><a class="self-link" href="#telega-image-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-image-mode</h3>
@@ -4029,7 +3998,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgac47100">
+<pre class="example" id="orgb7010c7">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4565,6 +4534,49 @@ Set it to less value if you see some advert messages not being blocked.
 
 <p>
 Default value: <code>4</code>
+</p></li>
+<li><p>
+User Option: <code>telega-adblock-forwarded-messages</code> 
+</p>
+
+<p>
+Non-nil to block messages forwarded from other channels.
+Block them even if message has no links at all. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-telega-channels-exportel--export-telegam-channels-to-opml" class="outline-3">
+<h3 id="telega-channels-exportel--export-telegam-channels-to-opml"><a class="self-link" href="#telega-channels-exportel--export-telegam-channels-to-opml"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<div class="outline-text-3" id="text-telega-channels-exportel--export-telegam-channels-to-opml">
+<p>
+Use <kbd>M-x telega-channels-export RET</kbd> to export public
+channels shown in the rootbuf (i.e. matching Active Chat Filter)
+into XML file of <a href="https://en.wikipedia.org/wiki/OPML">OPML</a>
+format.  Making it possible to import this file into any RSS reader
+that supports OPML.
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-channels-export-template</code> 
+</p>
+
+<p>
+URL template where single %s is substituteed with channel username.
+Use rsshub or rssbrdige (or whatever that supports Telegram) url. 
+</p>
+
+<p>
+Default value: <code>"https://sebsauvage.net/rss-bridge/?action=display&amp;bridge=Telegram&amp;username=%s&amp;format=Atom"</code>
 </p></li>
 </ul>
 </div>

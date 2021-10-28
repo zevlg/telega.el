@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.61)
+#+TITLE: Telega Manual (v0.7.81)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -98,6 +98,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-storiesel--display-emacs-stories-in-the-dashboard][/telega-stories.el/ -- Display Emacs Stories in the dashboard]]
     - [[#telega-transientel--transient-magit-like-style-commands-for-telega][/telega-transient.el/ -- Transient (magit-like style) commands for telega]]
     - [[#telega-adblockel--block-advertisement-messages][/telega-adblock.el/ -- Block advertisement messages]]
+    - [[#telega-channels-exportel--export-telegam-channels-to-opml][/telega-channels-export.el/ -- Export Telegam channels to OPML]]
   - [[#troubleshooting][Troubleshooting]]
     - [[#cant-compile-telega-server][Can't compile =telega-server=]]
     - [[#invalid-tdlib-version][Invalid TDLib version]]
@@ -220,7 +221,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.4.
+version greater or equal to 1.7.7.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -681,7 +682,7 @@ Telega prefix map bindings:
 - @@html:<kbd>@@f@@html:</kbd>@@ (~telega-buffer-file-send~) :: 
      Prepare ~FILE~ to be sent as document or photo to ~CHAT~.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is specified, then always send as a file.
-     Otherwise for ~image-mode~ major-mode, send file as photo.
+     Otherwise ~FILE~ type is automatically detected.
      If called interactively, then file associated with current buffer
      is used as ~FILE~.
      If current buffer is dired, then send all marked files.
@@ -1673,6 +1674,8 @@ You can attach various media into chatbuf input, using next bindings:
 - @@html:<kbd>@@C-c C-f@@html:</kbd>@@ (~telega-chatbuf-attach-media~) :: 
      Attach ~FILENAME~ as media, detecting media type by ~FILENAME~ extension.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach as file.
+     If ~AS-FILE-P~ is ~preview~, then attach as file with preview.  ~FILENAME~
+     must be a photo in this case.
 
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Attach clipboard image to the chatbuf as photo.
@@ -1698,6 +1701,8 @@ Attachment types to attach with
      voice-note.  Otherwise record voice note inplace.
      ~telega-vvnote-voice-cmd~ is used to record voice notes.
 - file :: Attach ~FILENAME~ as document to the chatbuf input.
+     If ~CONTENT-TYPE-DETECT-P~ is specified, then FILENAME's content type is
+     automatically detected.
 - gif :: Attach ~GIF-FILE~ as animation to the chatbuf input.
 - location :: Attach location to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach live location.
@@ -2549,8 +2554,8 @@ nobody saw this.
 Squashing mean adding contents of the new message to the previous
 message by editing contents of the previous message.
 
-New message in chat is squashed into your previous message only if
-all the conditions are met:
+New message in a chat is squashed into your previous message only
+if all next conditions are met:
 
 1. Last message in chat is sent by you
 2. Nobody seen your last message
@@ -2560,30 +2565,8 @@ all the conditions are met:
 6. Last message has no associated web-page
 7. New message has no ~messageSendOptions~ to avoid squashing
    scheduled messages or similar
-
-Can be enabled globally in all chats matching
-~telega-squash-message-mode-for~ (see below) chat filter with
-~(global-telega-squash-message-mode 1)~ or by adding:
-
-#+begin_src emacs-lisp
-  (add-hook 'telega-load-hook 'global-telega-squash-message-mode)
-#+end_src
-
-Customizable options:
-
-- User Option: ~telega-squash-message-mode-for~ 
-
-  Chat filter for ~global-telega-squash-message-mode~.
-  Global squash message mode enables message squashing only in
-  chats matching this chat filter. 
-
-  Default value: 
-  #+begin_src emacs-lisp
-    (not
-     (or saved-messages
-         (type channel)))
-  #+end_src
-
+8. New message is sent within ~telega-squash-message-within-seconds~
+   seconds from last message
 
 ** telega-image-mode
 :PROPERTIES:
@@ -3074,6 +3057,31 @@ Customizable options:
   Set it to less value if you see some advert messages not being blocked. 
 
   Default value: ~4~
+- User Option: ~telega-adblock-forwarded-messages~ 
+
+  Non-nil to block messages forwarded from other channels.
+  Block them even if message has no links at all. 
+
+  Default value: ~t~
+
+** /telega-channels-export.el/ -- Export Telegam channels to OPML       :new:
+:PROPERTIES:
+:CUSTOM_ID: telega-channels-exportel--export-telegam-channels-to-opml
+:END:
+
+Use @@html:<kbd>@@M-x telega-channels-export RET@@html:</kbd>@@ to export public
+channels shown in the rootbuf (i.e. matching Active Chat Filter)
+into XML file of [[https://en.wikipedia.org/wiki/OPML][OPML]]
+format.  Making it possible to import this file into any RSS reader
+that supports OPML.
+
+Customizable options:
+- User Option: ~telega-channels-export-template~ 
+
+  URL template where single %s is substituteed with channel username.
+  Use rsshub or rssbrdige (or whatever that supports Telegram) url. 
+
+  Default value: ~"https://sebsauvage.net/rss-bridge/?action=display&bridge=Telegram&username=%s&format=Atom"~
 
 * Troubleshooting                                                       :new:
 :PROPERTIES:

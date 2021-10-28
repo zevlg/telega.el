@@ -5,7 +5,7 @@
 ;; Author: 4da <4da@sandycat.info>
 ;; Created: Sat Oct 21 15:00 2021
 ;; Package-Requires: ((esxml "0.3.7"))
-;; Keywords:
+;; Keywords: news
 
 ;; telega is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,82 +21,71 @@
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;
+
 ;;; ellit-org:
-;; ** /telega-channels-export.el/ -- Export all telegam channels to OPML
+;; ** /telega-channels-export.el/ -- Export Telegam channels to OPML  :new:
 ;;
-;; Usage:
+;; Use {{{kbd(M-x telega-channels-export RET)}}} to export public
+;; channels shown in the rootbuf (i.e. matching Active Chat Filter)
+;; into XML file of [[https://en.wikipedia.org/wiki/OPML][OPML]]
+;; format.  Making it possible to import this file into any RSS reader
+;; that supports OPML.
 ;;
-;; Login to telega via M-x telega, after that call M-x
-;; telega-channels-export and choose file name to channels export to.
-;; You can customize telega-export-channels-template variable with
-;; template of rsshub or rssbrdige (or whatever that supports
-;; telegram) url.
+;; Customizable options:
+;; - {{{user-option(telega-channels-export-template, 2)}}}
 
 ;;; Code:
 (require 'telega)
+(require 'xml)                          ; `xml-escape-string'
 (require 'esxml)
 
-(defsubst telega-chat-description (chat)
-  "Return CHAT's description. "
-  (telega-tl-str (telega--full-info (telega-chat--info chat)) :description :formattedText))
-
-(defcustom telega-export-channels-template
+(defcustom telega-channels-export-template
   "https://sebsauvage.net/rss-bridge/?action=display&bridge=Telegram&username=%s&format=Atom"
-  "URL template where signle %s denotes channel username"
+  "URL template where single %s is substituteed with channel username.
+Use rsshub or rssbrdige (or whatever that supports Telegram) url."
   :type 'string
-  :group 'telega
-  )
+  :group 'telega)
 
-(defun telega-channels-export--outline (username title description)
-  (let ((http-url (format "https://t.me/%s" username))
-        (rss-url (format telega-export-channels-template username))
-        (plain-title (if title (substring-no-properties title) ""))
-        (plain-description (if description (substring-no-properties description) "")))
-
-    `(outline ((text . ,plain-title)
-               (description . ,plain-description)
-               (htmlUrl . ,http-url)
+(defun telega-channels-export--outline (chat)
+  "Return OPML outline for the CHAT.
+CHAT must be a public channel or supergroup."
+  (let* ((username (telega-chat-username chat))
+         (http-url (concat (or (plist-get telega--options :t_me_url)
+                               "https://t.me/")
+                           username))
+         (rss-url (format telega-channels-export-template username))
+         (title (substring-no-properties (or (telega-chat-title chat) "")))
+         (description (substring-no-properties
+                       (or (telega-tl-str (telega--full-info
+                                           (telega-chat--info chat))
+                                          :description)
+                           ""))))
+    `(outline ((text . ,(xml-escape-string title))
+               (description . ,(xml-escape-string description))
+               (htmlUrl . ,(xml-escape-string http-url))
                (type . "Atom")
-               (xmlUrl . ,rss-url)
-               ))))
+               (xmlUrl . ,(xml-escape-string rss-url))))))
 
+;;;###autoload
 (defun telega-channels-export (filename)
   "Export all telegam channels to OPML"
-
-  (interactive "FSelect output file: ")
+  (interactive "FExport channels into XML file: ")
 
   (let* ((filter '(and (type channel) has-username))
-
-        (outlines
-         (mapcar (lambda (chat)
-                   (telega-channels-export--outline
-                    (telega-chat-username chat)
-                    (telega-chat-title chat)
-                    (telega-tl-str (telega--full-info (telega-chat--info chat))
-                                   :description :formattedText)
-                    ))
-                 (telega-filter-chats
-                  telega--ordered-chats filter)))
-
-        (toplevel-outline
-         `(outline ((text . "Telegram"))
-                   ,@outlines)))
-
+         (chats (telega-filter-chats telega--filtered-chats filter))
+         (outlines (mapcar #'telega-channels-export--outline chats)))
     (with-temp-file filename
+      (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
       (insert
-       (esxml-to-xml `(opml ((version . "1.0"))
-                            (head () (title () "Exported channels"))
-                            (body ()
-                                  (outline ((text . "Telegram"))
-                                           ,@outlines
-                                           )
-                                  )
-                            ))))
+       (pp-esxml-to-xml
+        `(opml ((version . "1.0"))
+               (head () (title () "Exported channels"))
+               (body ()
+                     (outline ((text . "Telegram"))
+                              ,@outlines))))))
 
-  ;; TODO find out why this fails
-  ;; (sgml-pretty-print 0 (buffer-size))
-  )
+    (message "%d channels exported into %s" (length chats) filename)))
 
-  (message (format "Channels saved to %s" filename))
-)
+(provide 'telega-channels-export)
+
+;;; telega-channels-export.el ends here
