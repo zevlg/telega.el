@@ -1485,6 +1485,7 @@ If POINT is not over some message, then view last message."
   ;;     5 participants: (A) (B) <-- recent speakers
   ;; [ REPLY-MARKUP] buttons
   ;; <BOT-DESCRIPTION if no last message>
+  ;; <RESTRICTION if any>
   ;; (AVA)>>>
   (let* ((column (+ telega-chat-fill-column 10 1))
          (column1 (/ column 2))
@@ -1638,7 +1639,7 @@ If POINT is not over some message, then view last message."
            (telega-ins "\n")
            ))
 
-       ;; Restriction reason
+       ;; Chat's restriction reason
        (when-let ((reason (telega-tl-str (telega-chat--info chat 'locally)
                                          :restriction_reason)))
            (telega-ins--with-face 'bold
@@ -1646,6 +1647,11 @@ If POINT is not over some message, then view last message."
            (telega-ins "\n")
            (telega-ins reason)
            (telega-ins "\n"))
+
+       ;; My restrictions in the chat
+       (when (telega-ins--with-face 'shadow
+               (telega-ins--chat-my-restrictions chat))
+         (telega-ins "\n"))
 
        ;; Bot description in case chat with bot does not have any
        ;; messages
@@ -2025,7 +2031,13 @@ unknown, i.e. has no positions set."
                   )))
     (telega-save-excursion
       (telega-button--update-value
-       telega-chatbuf--prompt-button prompt :usj-prompt-p usj-prompt))))
+       telega-chatbuf--prompt-button
+       (if (or usj-prompt
+               (telega-chat-match-p telega-chatbuf--chat
+                 '(my-permission :can_send_messages)))
+           prompt
+         (propertize prompt 'face 'shadow))
+       :usj-prompt-p usj-prompt))))
 
 (defun telega-chatbuf--prompt-reset ()
   "Reset prompt to initial state in chat buffer."

@@ -2886,6 +2886,41 @@ KIND is one of: `spam', `location', `add', `block', `share' and
        (telega-ins--chat-action-bar-button chat 'invite)))
     t))
 
+(defun telega-ins--chat-my-restrictions (chat)
+  "Insert my restrictions (if any) in the CHAT.
+Return non-nil if restrictions has been inserted."
+  (when-let ((my-status (telega-chat-member-my-status chat)))
+    (when (eq (telega--tl-type my-status) 'chatMemberStatusRestricted)
+      (let* ((until (plist-get my-status :restricted_until_date))
+             (until-date (unless (zerop until)
+                           (format-time-string
+                            (downcase telega-old-date-format) until)))
+             (until-time (unless (zerop until)
+                           (format-time-string "%H:%M" until)))
+             (perms (plist-get my-status :permissions)))
+        (cond ((not (plist-get perms :can_send_messages))
+               (if (and until-date until-time)
+                   (telega-ins-i18n "lng_restricted_send_message_until"
+                     :date until-date :time until-time)
+                 (telega-ins-i18n "lng_restricted_send_message")))
+              ((not (plist-get perms :can_send_media_messages))
+               (if (and until-date until-time)
+                   (telega-ins-i18n "lng_restricted_send_media_until"
+                     :date until-date :time until-time)
+                 (telega-ins-i18n "lng_restricted_send_media")))
+              ((not (plist-get perms :can_send_polls))
+               (if (and until-date until-time)
+                   (telega-ins-i18n "lng_restricted_send_polls_until"
+                     :date until-date :time until-time)
+                 (telega-ins-i18n "lng_restricted_send_polls")))
+              (t
+               (if (and until-date until-time)
+                   (telega-ins-i18n "lng_restricted_send_message_until"
+                     :date until-date :time until-time)
+                 (telega-ins-i18n "lng_restricted_send_message")))
+              )
+        t))))
+
 (provide 'telega-ins)
 
 ;;; telega-ins.el ends here

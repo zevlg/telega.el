@@ -992,7 +992,8 @@ messages."
   (let* ((supergroup (plist-get event :supergroup))
          (old-my-status
           (plist-get (telega--info 'supergroup (plist-get supergroup :id)
-                                   'locally) :status))
+                                   'locally)
+                     :status))
          (me-was-owner (and old-my-status
                             (eq 'chatMemberStatusCreator
                                 (telega--tl-type old-my-status)))))
@@ -1011,6 +1012,8 @@ messages."
       ;; NOTE: Chatbuf prompt might be affected as well by "status"
       ;; change, see `telega-chatbuf--unblock-start-join'
       (with-telega-chatbuf chat
+        (unless (equal old-my-status (plist-get supergroup :status))
+          (telega-chatbuf--footer-update))
         (telega-chatbuf--prompt-update)))
     ))
 
