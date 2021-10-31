@@ -1192,6 +1192,15 @@ COMMAND-FUNC - Command function to execute."
   :type 'list
   :group 'telega-chat)
 
+(defcustom telega-dired-dwim-target 'inherit
+  "*Non-nil to initialize file pickers in a displayed dired buffer, if any.
+
+See also `dired-dwim-target'."
+  :type '(choice (const :tag "Do not guess default directory" nil)
+                 (const :tag "Guess as if `dired-dwim-target' was t" t)
+                 (const :tag "Guess according to `dired-dwim-target'" inherit))
+  :group 'telega-chat)
+
 (defcustom telega-chat-upload-attaches-ahead t
   "*Non-nil to upload attachments ahead, before message actually sent.
 Having this non-nil \"speedups\" uploading, its like files uploads instantly."
