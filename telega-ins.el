@@ -586,7 +586,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
          played dur (/ telega-chat-fill-column 2) ?\.)
         (telega-ins "]" (telega-duration-human-readable played) " "))
       (if (telega-ffplay-playing-p proc)
-          (telega-ins--ffplay-controls msg)
+          (telega-ins--ffplay-controls msg 'no-2x-button)
         (telega-ins--button (telega-i18n "lng_mac_menu_player_stop")
           :value msg
           :action #'telega-msg--vvnote-stop)))
@@ -659,8 +659,9 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
             (telega-ins " ")))))
     t))
 
-(defun telega-ins--ffplay-controls (msg)
-  "Insert controls for voice/video notes."
+(defun telega-ins--ffplay-controls (msg &optional no-2x-button)
+  "Insert controls for voice/video notes.
+If NO-2X-BUTTON is specified, then do not display \"2x\" button."
   (telega-ins--button "⏪"
     'action (lambda (_button)
               (telega-msg--vvnote-rewind msg -10)))
@@ -669,20 +670,21 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     'action (lambda (_button)
               (telega-msg--vvnote-rewind msg 10)))
   (telega-ins " ")
-  (let* ((label2x "2×")
-         (ends (if (functionp telega-button-endings)
-                   (funcall telega-button-endings label2x)
-                 telega-button-endings)))
-    (setq label2x (concat (or (car ends) "[") label2x (or (cdr ends) "]")))
+  (unless no-2x-button
+    (let* ((label2x "2×")
+           (ends (if (functionp telega-button-endings)
+                     (funcall telega-button-endings label2x)
+                   telega-button-endings)))
+      (setq label2x (concat (or (car ends) "[") label2x (or (cdr ends) "]")))
 
-    (telega-ins--button label2x
+      (telega-ins--button label2x
         'face (if (eq telega-vvnote-play-speed 1)
                   'telega-button
                 'telega-button-active)
         :value msg
         :action #'telega-msg--vvnote-play-speed-toggle
         'action #'telega-button--action))
-  (telega-ins " ")
+    (telega-ins " "))
   (telega-ins--button (telega-i18n "lng_mac_menu_player_stop")
     :value msg
     :action #'telega-msg--vvnote-stop))
