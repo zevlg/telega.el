@@ -24,6 +24,7 @@
 ;;
 
 ;;; Code:
+(require 'cus-edit)                     ; `custom-variable-type'
 (require 'dired)                        ; `dired-dwim-target'
 (require 'svg)                          ; `svg-embed-base-uri-image'
 
