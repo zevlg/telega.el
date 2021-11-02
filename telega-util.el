@@ -32,6 +32,7 @@
 (require 'rx)                           ; `rx'
 (require 'svg)
 (require 'color)                        ; `color-XXX'
+(require 'dired-aux)                    ; `dired-dwim-target-directory'
 (require 'ansi-color)                   ; `ansi-color-apply'
 (require 'url-util)                     ; `url-unhex-string'
 (require 'org)                          ; `org-read-date', `org-do-emphasis-faces'
@@ -1243,6 +1244,16 @@ latitude and longitude."
           (number-to-string
            (plist-get location :longitude))
           "E"))
+
+(defun telega-read-file-name (prompt &optional dir default-filename
+                                     mustmatch initial predicate)
+  "Like `read-file-name' but taking `telega-dired-dwim-target' into account."
+  (read-file-name prompt
+                  (or dir
+                      (when telega-dired-dwim-target
+                        (let ((dired-dwim-target telega-dired-dwim-target))
+                          (dired-dwim-target-directory))))
+                  default-filename mustmatch initial predicate))
 
 (defun telega-read-location (prompt &optional initial-loc default-loc history)
   "Read location with PROMPT.

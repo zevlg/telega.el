@@ -24,6 +24,8 @@
 ;;
 
 ;;; Code:
+(require 'cus-edit)                     ; `custom-variable-type'
+(require 'dired)                        ; `dired-dwim-target'
 (require 'svg)                          ; `svg-embed-base-uri-image'
 
 (defgroup telega nil
@@ -1191,6 +1193,13 @@ otherwise function returning non-nil if COMMAND is available.
 COMMAND-FUNC - Command function to execute."
   :type 'list
   :group 'telega-chat)
+
+(custom-declare-variable
+ 'telega-dired-dwim-target
+ dired-dwim-target
+ "*Value to bind `dired-dwim-target' to, in telega file pickers."
+ :type (custom-variable-type 'dired-dwim-target)
+ :group 'telega-chat)
 
 (defcustom telega-chat-upload-attaches-ahead t
   "*Non-nil to upload attachments ahead, before message actually sent.
