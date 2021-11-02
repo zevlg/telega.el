@@ -654,17 +654,6 @@ Specify non-nil BAN to ban this user in this CHAT."
   (interactive (list telega-chatbuf--chat))
   (telega--unpinAllChatMessages chat))
 
-(defun telega--read-file-name (prompt &optional dir default-filename
-                                      mustmatch initial predicate)
-  "Like `read-file-name' but taking `telega-dired-dwim-target' into account."
-  (read-file-name prompt
-                  (cl-ecase telega-dired-dwim-target
-                    (inherit (dired-dwim-target-directory))
-                    (t (let ((dired-dwim-target t))
-                         (dired-dwim-target-directory)))
-                    ((nil) nil))
-                  default-filename mustmatch initial predicate))
-
 (defun telega-describe-chat--inserter (chat)
   "Inserter for the CHAT description."
   (let ((chat-ava (telega-msg-sender-avatar-image chat)))
@@ -694,7 +683,7 @@ Specify non-nil BAN to ban this user in this CHAT."
       (telega-ins " ")
       (telega-ins--button "Set Profile Photo"
         'action (lambda (_ignored)
-                  (let ((photo (telega--read-file-name "Profile Photo: " nil nil t)))
+                  (let ((photo (telega-read-file-name "Profile Photo: " nil nil t)))
                     (telega--setProfilePhoto photo)))))
     (when (telega-chat-match-p chat '(my-permission :can_invite_users))
       (telega-ins " ")
@@ -708,7 +697,7 @@ Specify non-nil BAN to ban this user in this CHAT."
       (telega-ins--button "Set Chat Photo"
         :value chat
         :action (lambda (for-chat)
-                  (let ((photo (telega--read-file-name "Chat Photo: " nil nil t)))
+                  (let ((photo (telega-read-file-name "Chat Photo: " nil nil t)))
                     (telega--setChatPhoto for-chat photo)))))
 
     ;; Archive/Unarchive
@@ -3600,7 +3589,7 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
   "Attach FILENAME as document to the chatbuf input.
 If CONTENT-TYPE-DETECT-P is specified, then FILENAME's content type is
 automatically detected."
-  (interactive (list (telega--read-file-name "Attach file: ")))
+  (interactive (list (telega-read-file-name "Attach file: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Document preview-p)))
     (telega-chatbuf-input-insert
      (list :@type "inputMessageDocument"
@@ -3610,7 +3599,7 @@ automatically detected."
 
 (defun telega-chatbuf-attach-photo (filename &optional ttl)
   "Attach FILENAME as photo to the chatbuf input."
-  (interactive (list (telega--read-file-name "Photo: ")))
+  (interactive (list (telega-read-file-name "Photo: ")))
   (let ((ifile (telega-chatbuf--gen-input-file filename 'Photo t))
         (img-size (ignore-errors
                     ;; NOTE: tty-only might trigger error here
@@ -3631,13 +3620,13 @@ automatically detected."
 (defun telega-chatbuf-attach-ttl-photo (filename ttl)
   "Attach a file as self destructing photo.
 This attachment can be used only in private chats."
-  (interactive (list (telega--read-file-name "Photo: ")
+  (interactive (list (telega-read-file-name "Photo: ")
                      (read-number "Self desctruct in seconds (0-60): ")))
   (telega-chatbuf-attach-photo filename ttl))
 
 (defun telega-chatbuf-attach-video (filename &optional ttl)
   "Attach FILENAME as video to the chatbuf input."
-  (interactive (list (telega--read-file-name "Video: ")))
+  (interactive (list (telega-read-file-name "Video: ")))
   ;; NOTE: `telega-chatbuf--gen-input-file' might return another path
   ;; (accessible by docker) while FILENAME might not be accessible by
   ;; docker.  Docker might be used in `telega-ffplay-get-resolution'
@@ -3657,13 +3646,13 @@ This attachment can be used only in private chats."
 (defun telega-chatbuf-attach-ttl-video (filename ttl)
   "Attach a file as self destructing video.
 This attachment can be used only in private chats."
-  (interactive (list (telega--read-file-name "Video: ")
+  (interactive (list (telega-read-file-name "Video: ")
                      (read-number "Self desctruct in seconds (0-60): ")))
   (telega-chatbuf-attach-video filename ttl))
 
 (defun telega-chatbuf-attach-audio (filename)
   "Attach FILENAME as audio to the chatbuf input."
-  (interactive (list (telega--read-file-name "Audio: ")))
+  (interactive (list (telega-read-file-name "Audio: ")))
   ;; NOTE: Comments about `i-filename' see in
   ;; `telega-chatbuf-attach-video'
   (let* ((ifile (telega-chatbuf--gen-input-file filename 'Audio))
@@ -3682,7 +3671,7 @@ This attachment can be used only in private chats."
 If `\\[universal-argument] is given, then attach as file.
 If AS-FILE-P is `preview', then attach as file with preview.  FILENAME
 must be a photo in this case."
-  (interactive (list (telega--read-file-name "Attach Media File: ")
+  (interactive (list (telega-read-file-name "Attach Media File: ")
                      current-prefix-arg))
   (let ((file-mime (or (unless as-file-p
                          (mailcap-extension-to-mime
@@ -3713,7 +3702,7 @@ record video notes."
   ;; `telega-chatbuf-attach-video'
   (let* ((filename (with-telega-chatbuf-action "RecordingVideoNote"
                      (if as-file-p
-                         (telega--read-file-name "Video Note: ")
+                         (telega-read-file-name "Video Note: ")
                        (telega-vvnote-video--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VideoNote))
          (i-filename (plist-get ifile :path))
@@ -3744,7 +3733,7 @@ voice-note.  Otherwise record voice note inplace.
   ;; `telega-chatbuf-attach-video'
   (let* ((filename (with-telega-chatbuf-action "RecordingVoiceNote"
                      (if as-file-p
-                         (telega--read-file-name "Voice Note: ")
+                         (telega-read-file-name "Voice Note: ")
                        (telega-vvnote-voice--record))))
          (ifile (telega-chatbuf--gen-input-file filename 'VoiceNote))
          (i-filename (plist-get ifile :path)))
@@ -3906,7 +3895,7 @@ sticker sets."
 If `\\[universal-argument]' is given, then attach animation from
 a file, otherwise choose animation from list of saved animations."
   (interactive (when current-prefix-arg
-                 (list (telega--read-file-name "Animation File: "))))
+                 (list (telega-read-file-name "Animation File: "))))
   ;; NOTE: Comments about `i-filename' see in the
   ;; `telega-chatbuf-attach-video'
   (if animation-file
@@ -3925,7 +3914,7 @@ a file, otherwise choose animation from list of saved animations."
 
 (defun telega-chatbuf-attach-gif (gif-file)
   "Attach GIF-FILE as animation to the chatbuf input."
-  (interactive (list (telega--read-file-name "GIF File: ")))
+  (interactive (list (telega-read-file-name "GIF File: ")))
   (telega-chatbuf-attach-animation gif-file))
 
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)

@@ -1244,6 +1244,17 @@ latitude and longitude."
            (plist-get location :longitude))
           "E"))
 
+(defun telega-read-file-name (prompt &optional dir default-filename
+                                     mustmatch initial predicate)
+  "Like `read-file-name' but taking `telega-dired-dwim-target' into account."
+  (read-file-name prompt
+                  (cl-ecase telega-dired-dwim-target
+                    (inherit (dired-dwim-target-directory))
+                    (t (let ((dired-dwim-target t))
+                         (dired-dwim-target-directory)))
+                    ((nil) nil))
+                  default-filename mustmatch initial predicate))
+
 (defun telega-read-location (prompt &optional initial-loc default-loc history)
   "Read location with PROMPT.
 INITIAL-LOC - location converted to INITIAL-INPUT argument to `read-string'.
