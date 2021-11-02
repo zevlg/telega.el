@@ -32,6 +32,7 @@
 (require 'rx)                           ; `rx'
 (require 'svg)
 (require 'color)                        ; `color-XXX'
+(require 'dired)                        ; `dired-dwim-target-directory'
 (require 'ansi-color)                   ; `ansi-color-apply'
 (require 'url-util)                     ; `url-unhex-string'
 (require 'org)                          ; `org-read-date', `org-do-emphasis-faces'
