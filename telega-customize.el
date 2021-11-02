@@ -24,6 +24,7 @@
 ;;
 
 ;;; Code:
+(require 'dired)                        ; `dired-dwim-target'
 (require 'svg)                          ; `svg-embed-base-uri-image'
 
 (defgroup telega nil
@@ -1192,14 +1193,12 @@ COMMAND-FUNC - Command function to execute."
   :type 'list
   :group 'telega-chat)
 
-(defcustom telega-dired-dwim-target 'inherit
-  "*Non-nil to initialize file pickers in a displayed dired buffer, if any.
-
-See also `dired-dwim-target'."
-  :type '(choice (const :tag "Do not guess default directory" nil)
-                 (const :tag "Guess as if `dired-dwim-target' was t" t)
-                 (const :tag "Guess according to `dired-dwim-target'" inherit))
-  :group 'telega-chat)
+(custom-declare-variable
+ 'telega-dired-dwim-target
+ dired-dwim-target
+ "*Value to bind `dired-dwim-target' to, in telega file pickers."
+ :type (custom-variable-type 'dired-dwim-target)
+ :group 'telega-chat)
 
 (defcustom telega-chat-upload-attaches-ahead t
   "*Non-nil to upload attachments ahead, before message actually sent.

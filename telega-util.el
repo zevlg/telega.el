@@ -1249,11 +1249,9 @@ latitude and longitude."
   "Like `read-file-name' but taking `telega-dired-dwim-target' into account."
   (read-file-name prompt
                   (or dir
-                      (cl-ecase telega-dired-dwim-target
-                        (inherit (dired-dwim-target-directory))
-                        (t (let ((dired-dwim-target t))
-                             (dired-dwim-target-directory)))
-                        ((nil) nil)))
+                      (when telega-dired-dwim-target
+                        (let ((dired-dwim-target telega-dired-dwim-target))
+                          (dired-dwim-target-directory))))
                   default-filename mustmatch initial predicate))
 
 (defun telega-read-location (prompt &optional initial-loc default-loc history)
