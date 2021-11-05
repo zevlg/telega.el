@@ -4838,12 +4838,12 @@ If point is at some message, then keep point on this message after reseting."
 (defun telega-ins--chat-theme (theme)
   "Inserter for chat THEME."
   (let* ((lightp (eq (frame-parameter nil 'background-mode) 'light))
-         (theme-settings
+         (_theme-settings
           (plist-get theme (if lightp :light_settings :dark_settings))))
-    ;; TODO: genereta and insert SVG reflecting color values in the
+    ;; TODO: generate and insert SVG reflecting color values in the
     ;; THEME-SETTINGS
     (telega-ins (telega-tl-str theme :name))
-  )
+    ))
 
 (defun telega-describe-chat-themes (&optional themes for-chat)
   "Describe chat themes."

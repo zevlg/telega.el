@@ -205,10 +205,17 @@ CLOSED: [2020-10-07 Ср 17:42]
   https://code.librehq.com/qhong/crdt.el
 - Encode CRDT commands as dubstep:
   https://blog.benjojo.co.uk/post/encoding-data-into-dubstep-drops
+- UI ideas, see https://replit.com
 
 * Random Ideas
 
 Random list of ideas for telega.el
+
+** Generate SVG for chat themes
+- 4 corner gradients using 4 radial gradients, see
+  https://stackoverflow.com/questions/11072830/svg-transparency-with-multiple-gradients
+
+[[file:~/github/telega.el/telega-chat.el::;; TODO: generate and insert SVG reflecting color values in the][Implement here in the telega-chat.el]]
 
 ** Saving chatbuf into file
 
@@ -220,6 +227,17 @@ plist like:
  :avatars (list-of-avatars)
  :aux-messages (list-of-aux-messages-such-as-reply-to)
  :messages (list-of-messages-follows))
+#+end_example
+
+Better to export chatbuf messages into =org-mode= format.  Exported
+directory hier example:
+#+begin_example
+chat_title_export_dir_from_date_to_date/
+├── index.org
+│     Org Mode file with chatbuf messages
+├── pic1.jpg
+├── pic2.jpg
+       ....
 #+end_example
 
 ** DONE Grouping chats by custom label, similar to ~gnus-topic.el~
@@ -295,9 +313,12 @@ filters.
 
 **DONE**: by [[file:../contrib/telega-adblock.el]]
 
-** Do not show input prompt for chats you can't write into
+** DONE Do not show input prompt for chats you can't write into
+CLOSED: [2021-11-05 Пт 10:47]
 
 see https://t.me/emacs_telega/3775
+
+**DONE**: prompt is shown shadowed, see https://github.com/zevlg/telega.el/commit/2a82a0a4c96b70034e9e92f9139e892afad90f43
 
 ** Annotations for chats/users
 
