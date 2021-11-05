@@ -459,6 +459,12 @@ NOTE: we store the number as custom chat property, to use it later."
 
     (telega-chat--mark-dirty chat event)))
 
+(defun telega--on-updateChatTheme (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :theme_name (plist-get event :theme_name))
+    (telega-chat--mark-dirty chat event)))
+
 (defun telega--on-updateChatMessageTtlSetting (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id))))
     (cl-assert chat)
@@ -963,6 +969,12 @@ messages."
   ;; Asynchronously download corresponding files
   (when telega-animation-download-saved
     (mapc 'telega--downloadFile telega--animations-saved)))
+
+(defun telega--on-updateChatThemes (event)
+  "List of chat themes has been updated."
+  (setq telega--chat-themes
+        (append (plist-get event :chat_themes) nil))
+  )
 
 ;; since TDLib 1.6.3
 (defun telega--on-updateStickerSet (event)

@@ -673,8 +673,17 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_action_invite_user_chat"
   :value "the voice chat")
 
-  ("lng_action_bot_allowed_from_domain"
-   :value "You allowed this bot to message you when you logged in on {domain}.")
+ ("lng_action_theme_changed"
+  :value "{from} changed the chat theme to {emoji}")
+ ("lng_action_you_theme_changed"
+  :value "You changed the chat theme to {emoji}")
+ ("lng_action_theme_disabled"
+  :value "{from} disabled the chat theme")
+ ("lng_action_you_theme_disabled"
+  :value "You disabled the chat theme")
+
+ ("lng_action_bot_allowed_from_domain"
+  :value "You allowed this bot to message you when you logged in on {domain}.")
 
  ("lng_rights_gigagroup_title"
   :value "Broadcast group")
@@ -739,6 +748,15 @@ Example: 23 y.o. designer from San Francisco")
 
  ("lng_bot_description"
   :value "What can this bot do?")
+
+ ("lng_chat_theme_title"
+  :value "Select theme")
+ ("lng_chat_theme_title_about"
+  :value "Theme will be also applied for {user}.")
+ ("lng_chat_theme_reset"
+  :value "Reset Theme")
+ ("lng_chat_theme_none"
+  :value "No\nTheme")
 
  ;; Restrictions
  ("lng_restricted_list_title"

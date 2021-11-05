@@ -1128,6 +1128,13 @@ TTL must be 0, 86400 or 604800."
            :chat_id (plist-get chat :id)
            :permissions request))))
 
+(defun telega--setChatTheme (chat theme-name)
+  "For private or secret CHAT set theme denoted by THEME-NAME."
+  (telega-server--send
+   (list :@type "setChatTheme"
+         :chat_id (plist-get chat :id)
+         :theme_name theme-name)))
+
 (defun telega--setChatNotificationSettings (chat &rest settings)
   "Set CHAT's notification settings to SETTINGS."
   (declare (indent 1))

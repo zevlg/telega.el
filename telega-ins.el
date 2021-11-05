@@ -1338,6 +1338,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageVoiceChatEnded
               'messageInviteVoiceChatParticipants
               'messageWebsiteConnected
+              'messageChatSetTheme
               'telegaInternal)))
 
 (defun telega-ins--special (msg)
@@ -1525,6 +1526,20 @@ Special messages are determined with `telega-msg-special-p'."
                                    (plist-get content :user_ids))
                            ", ")
          :chat (telega-i18n "lng_action_invite_user_chat")))
+      (messageChatSetTheme
+       (let ((theme (telega-tl-str content :theme_name))
+             (sender-me-p (telega-me-p sender)))
+         (cond ((and sender-me-p theme)
+                (telega-ins-i18n "lng_action_you_theme_changed"
+                  :emoji theme))
+               (sender-me-p
+                (telega-ins-i18n "lng_action_you_theme_disabled"))
+               (theme
+                (telega-ins-i18n "lng_action_theme_changed"
+                  :from sender-name :emoji theme))
+               (t
+                (telega-ins-i18n "lng_action_theme_disabled"
+                  :from sender-name)))))
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
 
@@ -2322,6 +2337,9 @@ Pass all ARGS directly to `telega-ins--message0'."
                          "telega_enable_notification")))
      (telegaDisableWebpagePreview
       (telega-ins-i18n "telega_disable_webpage_preview"))
+     (telegaChatTheme
+      (telega-ins "Theme: " (or (telega-tl-str imc :name)
+                                "disable")))
 
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))

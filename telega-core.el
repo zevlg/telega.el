@@ -184,6 +184,8 @@ Used by `telega-stickerset-installed-p'.")
   "List of recently attached stickers.")
 (defvar telega--animations-saved nil
   "List of saved animations.")
+(defvar telega--chat-themes nil
+  "List of chat themes.")
 
 (defvar telega--dice-emojis nil
   "List of supported emojis for random dice messages.")
@@ -378,6 +380,7 @@ Done when telega server is ready to receive queries."
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
   (setq telega--animations-saved nil)
+  (setq telega--chat-themes nil)
   (setq telega--dice-emojis nil)
 
   (setq telega-tdlib--chat-filters nil)

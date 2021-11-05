@@ -1170,6 +1170,10 @@ different days. Such as:
      telega-chatbuf-attach-clipboard)
     ("markup" nil
      telega-chatbuf-attach-markup)
+    ("theme"
+     (lambda ()
+       (telega-chat-match-p telega-chatbuf--chat '(type private secret)))
+     telega-chatbuf-attach-chat-theme)
 
     ;; Special attachment types affecting how message is sent
     ("scheduled" nil telega-chatbuf-attach-scheduled)

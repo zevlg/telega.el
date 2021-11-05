@@ -3187,6 +3187,10 @@ use.  For example `C-u RET' will use
            (telega--tl-dolist ((prop value) (telega-chatbuf--input-options imc))
              (setq options (plist-put options prop value))))
 
+          (telegaChatTheme
+           (telega--setChatTheme
+            telega-chatbuf--chat (or (plist-get imc :name) "")))
+
           (t (telega--sendMessage
               telega-chatbuf--chat imc replying-msg options
               :sync-p (not telega-chat-send-messages-async)))))))
@@ -4817,6 +4821,67 @@ If point is at some message, then keep point on this message after reseting."
 
     (telega-chatbuf--modeline-update)
     (telega-chatbuf--footer-update)))
+
+
+;;; Chat Themes
+(defun telega-chat-theme--choosen-action (theme)
+  "Execute action when chat theme BUTTON is pressed."
+  (let ((chat telega--chat))
+    ;; NOTE: Kill help win before modifying chatbuffer, because it
+    ;; recovers window configuration on kill
+    (quit-window 'kill-buffer)
+    (with-telega-chatbuf chat
+      (telega-chatbuf-input-insert
+       (list :@type "telegaChatTheme"
+             :name (telega-tl-str theme :name))))))
+
+(defun telega-ins--chat-theme (theme)
+  "Inserter for chat THEME."
+  (let* ((lightp (eq (frame-parameter nil 'background-mode) 'light))
+         (theme-settings
+          (plist-get theme (if lightp :light_settings :dark_settings))))
+    ;; TODO: genereta and insert SVG reflecting color values in the
+    ;; THEME-SETTINGS
+    (telega-ins (telega-tl-str theme :name))
+  )
+
+(defun telega-describe-chat-themes (&optional themes for-chat)
+  "Describe chat themes."
+  (let ((themes (or themes telega--chat-themes))
+        (help-window-select t))
+    (with-telega-help-win "*Telegram Chat Themes*"
+      (visual-line-mode 1)
+      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
+      ;; of the buffer
+      (set (make-local-variable 'auto-window-vscroll) nil)
+
+      (setq telega--chat for-chat)
+      (setq telega--help-win-param themes)
+
+      (telega-ins--with-face 'bold
+        (telega-ins-i18n "lng_chat_theme_title"))
+      (when (telega-tl-str for-chat :theme_name)
+        (telega-ins " ")
+        (telega-ins--button (telega-i18n "lng_chat_theme_reset")
+          :value nil
+          :action #'telega-chat-theme--choosen-action))
+      (telega-ins "\n")
+      (telega-ins--help-message
+       (telega-ins-i18n "lng_chat_theme_title_about"
+         :user (telega-chat-title for-chat)))
+      (telega-ins "\n")
+
+      (seq-doseq (theme themes)
+        (telega-button--insert 'telega theme
+          :inserter #'telega-ins--chat-theme
+          :action #'telega-chat-theme--choosen-action)
+        (telega-ins " "))
+      )))
+
+(defun telega-chatbuf-attach-chat-theme ()
+  "Interactively attach new chat theme to the chat buffer."
+  (interactive)
+  (telega-describe-chat-themes telega--chat-themes telega-chatbuf--chat))
 
 
 ;; Chat Event Log
