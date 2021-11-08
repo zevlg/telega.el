@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-10-28 Чт 17:07 -->
+<!-- 2021-11-08 Пн 23:36 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.81)</title>
+<title>Telega Manual (v0.7.82)</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="Zajcev Evgeny" />
 <style type="text/css">
@@ -241,7 +241,7 @@
 <body>
 <div id="content">
 <div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.81)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.82)</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -974,7 +974,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org1a8cc43">
+<pre class="example" id="orgfd2d6a9">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -992,7 +992,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org67dacee">
+<pre class="example" id="orgbc13990">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1022,7 +1022,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org20808c6">
+<pre class="example" id="org0699c7d">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1123,7 +1123,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org310b1a8">
+<pre class="example" id="org921bad0">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2071,7 +2071,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org984356a">
+<pre class="example" id="org7ae0937">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2248,7 +2248,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org3092b25">
+<pre class="example" id="orgb482c37">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2332,7 +2332,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org6dd3d0d">
+<pre class="example" id="orga9a5c70">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2349,7 +2349,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org8f05655">
+<pre class="example" id="org79c2618">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2519,6 +2519,7 @@ If <kbd>C-u</kbd> is given, then attach clipboard as document.</dd>
 Using this type of attachment it is possible to intermix multiple
 markups in the chatbuf input.
 Markups are defined in the <code>telega-chat-markup-functions</code> user option.</dd>
+<dt>theme</dt><dd>Interactively attach new chat theme to the chat buffer.</dd>
 <dt>scheduled</dt><dd>Mark content as scheduled.
 Send following message at <code>TIMESTAMP</code>.
 If <kbd>C-u</kbd> is given and chat is private and
@@ -2595,7 +2596,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgd3e7025">
+<pre class="example" id="org5243264">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3188,7 +3189,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org1f7f64b">
+<pre class="example" id="org83ae5a9">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3511,13 +3512,11 @@ Do <b>NOT</b> pop notification if:
 <li>Chat is muted and message does not contain unread mention or
 mention notification is disabled for the chat</li>
 <li>Message already has been read (see <code>telega-msg-seen-p</code>)</li>
-<li>Message is older then 1 min (to avoid poping up messages on
+<li>Message is older than 1 min (to avoid popping up messages on
 laptop wakeup)</li>
-<li>Message is currently observable in chatbuf chatbuf must be
-selected and focused in (not having
-`telega-chatbuf&#x2013;refresh-point')</li>
-<li><b>TODO</b>: If Emacs frame has focus and root buffer is current
-ARGUABLE!</li>
+<li>Message is currently observable in a chatbuf, i.e. chatbuf
+must be selected and focused in (not having
+<code>telega-chatbuf--refresh-point</code>)</li>
 </ol>
 
 <p>
@@ -3998,7 +3997,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgb7010c7">
+<pre class="example" id="org203210a">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

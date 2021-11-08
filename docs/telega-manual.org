@@ -1,5 +1,5 @@
 #+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.81)
+#+TITLE: Telega Manual (v0.7.82)
 #+AUTHOR: Zajcev Evgeny
 #+startup: showall
 
@@ -1733,6 +1733,7 @@ Attachment types to attach with
      Using this type of attachment it is possible to intermix multiple
      markups in the chatbuf input.
      Markups are defined in the ~telega-chat-markup-functions~ user option.
+- theme :: Interactively attach new chat theme to the chat buffer.
 - scheduled :: Mark content as scheduled.
      Send following message at ~TIMESTAMP~.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given and chat is private and
@@ -2402,13 +2403,11 @@ Do *NOT* pop notification if:
 3. Chat is muted and message does not contain unread mention or
    mention notification is disabled for the chat
 4. Message already has been read (see ~telega-msg-seen-p~)
-5. Message is older then 1 min (to avoid poping up messages on
+5. Message is older than 1 min (to avoid popping up messages on
    laptop wakeup)
-6. Message is currently observable in chatbuf chatbuf must be
-   selected and focused in (not having
-   `telega-chatbuf--refresh-point')
-7. *TODO*: If Emacs frame has focus and root buffer is current
-   ARGUABLE!
+6. Message is currently observable in a chatbuf, i.e. chatbuf
+   must be selected and focused in (not having
+   ~telega-chatbuf--refresh-point~)
 
 See also [[#telega-alertel--notifications-using-alertel][Notifications using alert.el]]
 
