@@ -1960,14 +1960,16 @@ argument - MSG to insert additional information after header."
                                      :elide t
                                      :face 'telega-msg-inline-forward)
         (telega-ins "| Forwarded From: ")
-        (let ((from-chat-id (plist-get fwd-info :from_chat_id)))
-          (if (and from-chat-id (not (zerop from-chat-id)))
-              (let ((chat (telega-chat-get from-chat-id)))
-                (when telega-chat-show-avatars
-                  (telega-ins--image
-                   (telega-msg-sender-avatar-image-one-line chat)))
-                (telega-ins (telega-chat-title-with-brackets chat " ")))
-            (telega-ins--fwd-info-origin (plist-get fwd-info :origin))))
+        (let* ((from-chat-id (plist-get fwd-info :from_chat_id))
+               (from-chat (when (and from-chat-id (not (zerop from-chat-id)))
+                            (telega-chat-get from-chat-id))))
+          (telega-ins--fwd-info-origin (plist-get fwd-info :origin))
+          (when from-chat
+            (telega-ins "→")
+            (if telega-chat-show-avatars
+                (telega-ins--image
+                 (telega-msg-sender-avatar-image-one-line from-chat))
+              (telega-ins (telega-chat-title-with-brackets from-chat " ")))))
 
         (let ((date (plist-get fwd-info :date)))
           (unless (zerop date)
