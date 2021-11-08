@@ -2174,7 +2174,7 @@ Pass all ARGS directly to `telega-ins--message0'."
 
 (defun telega-ins--message-ignored (_msg)
   "Inserter for ignored message MSG in chatbuf."
-  (telega-ins (propertize "<IGNORED MESSAGE>" 'face 'shadow)))
+  (telega-ins (propertize "<Ignored Message>" 'face 'shadow)))
 
 (defun telega-ins--message-with-chat-header (msg)
   "Inserter for message MSG showing chat header."
