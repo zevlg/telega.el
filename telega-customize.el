@@ -1196,7 +1196,7 @@ COMMAND-FUNC - Command function to execute."
 
 (custom-declare-variable
  'telega-dired-dwim-target
- dired-dwim-target
+ 'dired-dwim-target
  "*Value to bind `dired-dwim-target' to, in telega file pickers."
  :type (custom-variable-type 'dired-dwim-target)
  :group 'telega-chat)
