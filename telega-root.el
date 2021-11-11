@@ -553,40 +553,49 @@ Keep cursor position only if CHAT is visible."
     (user-error (concat "telega: `telega-root-buffer-auto-fill' "
                         "can be called only in Root Buffer.")))
 
-  ;; NOTE: `window-width' does not regard use of oth
-  ;; `text-scale-increase' or `text-scale-decrease'.  So we manually
-  ;; calculate window width in characters
-  ;;
-  ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
-  (let* ((win-char-width (/ (window-width win 'pixels)
-                            (telega-chars-xwidth 1)))
-         (new-fill-column (- win-char-width 2)))
-    (when (and new-fill-column
-               (> new-fill-column 15)   ;XXX ignore too narrow window
-               (not (eq new-fill-column telega-root-fill-column)))
-      (let ((progress (make-progress-reporter
-                       (format "telega: rootbuf auto fill %d -> %d ..."
-                               telega-root-fill-column new-fill-column))))
-        (with-telega-root-buffer
-          (setq telega-root-fill-column new-fill-column)
-          ;; Fully redisplay filters
-          (let ((telega-filters--dirty t))
-            (telega-filters--redisplay))
-          ;; Redisplay Root View header and all its ewocs
-          (telega-save-cursor
-            (goto-char telega-root-view--header-marker)
-            (telega-root-view--ins-header telega-root--view)
-            (delete-region (point) telega-root-view--ewocs-marker)
+  ;; NOTE: refill only if WIN is selected, making
+  ;; `(line-number-display-width)' to work correctly
+  (when (or (null win) (eq (selected-window) win))
+    ;; NOTE: `window-width' does not regard use of oth
+    ;; `text-scale-increase' or `text-scale-decrease'.  So we manually
+    ;; calculate window width in characters
+    ;;
+    ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
+    (let* ((win-char-width (/ (window-width win 'pixels)
+                              (telega-chars-xwidth 1)))
+           (new-fill-column (- win-char-width 2
+                               ;; NOTE: take into account width occupied
+                               ;; by `display-line-numbers-mode', see
+                               ;; https://github.com/zevlg/telega.el/issues/325
+                               (if display-line-numbers-mode
+                                   (1+ (line-number-display-width))
+                                 0))))
+      (when (and new-fill-column
+                 (> new-fill-column 15)   ;XXX ignore too narrow window
+                 (not (eq new-fill-column telega-root-fill-column)))
+        (let ((progress (make-progress-reporter
+                         (format "telega: rootbuf auto fill %d -> %d ..."
+                                 telega-root-fill-column new-fill-column))))
+          (with-telega-root-buffer
+            (setq telega-root-fill-column new-fill-column)
+            ;; Fully redisplay filters
+            (let ((telega-filters--dirty t))
+              (telega-filters--redisplay))
+            ;; Redisplay Root View header and all its ewocs
+            (telega-save-cursor
+              (goto-char telega-root-view--header-marker)
+              (telega-root-view--ins-header telega-root--view)
+              (delete-region (point) telega-root-view--ewocs-marker)
 
-            (dolist (ewoc-spec (nthcdr 2 telega-root--view))
-              (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
-                (when-let ((ewoc-hdr (telega-root-view--ewoc-header
-                                      (plist-get ewoc-spec :header))))
-                  (telega-ewoc--set-header ewoc ewoc-hdr))
-                (ewoc-refresh ewoc))))
-          (run-hooks 'telega-root-update-hook))
+              (dolist (ewoc-spec (nthcdr 2 telega-root--view))
+                (with-telega-root-view-ewoc (plist-get ewoc-spec :name) ewoc
+                  (when-let ((ewoc-hdr (telega-root-view--ewoc-header
+                                        (plist-get ewoc-spec :header))))
+                    (telega-ewoc--set-header ewoc ewoc-hdr))
+                  (ewoc-refresh ewoc))))
+            (run-hooks 'telega-root-update-hook))
 
-        (progress-reporter-done progress)))))
+          (progress-reporter-done progress))))))
 
 
 ;;; Pretty Printers for root view ewocs
