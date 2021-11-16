@@ -556,20 +556,19 @@ Keep cursor position only if CHAT is visible."
   ;; NOTE: refill only if WIN is selected, making
   ;; `(line-number-display-width)' to work correctly
   (when (or (null win) (eq (selected-window) win))
-    ;; NOTE: `window-width' does not regard use of oth
+    ;; NOTE: `window-width' does not regard use of both
     ;; `text-scale-increase' or `text-scale-decrease'.  So we manually
     ;; calculate window width in characters
     ;;
+    ;; Also, take into account width occupied by
+    ;; `display-line-numbers-mode', see
+    ;; https://github.com/zevlg/telega.el/issues/325
+    ;; 
     ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
-    (let* ((win-char-width (/ (window-width win 'pixels)
+    (let* ((win-char-width (/ (- (window-width win 'pixels)
+                                 (line-number-display-width 'pixels))
                               (telega-chars-xwidth 1)))
-           (new-fill-column (- win-char-width 2
-                               ;; NOTE: take into account width occupied
-                               ;; by `display-line-numbers-mode', see
-                               ;; https://github.com/zevlg/telega.el/issues/325
-                               (if display-line-numbers-mode
-                                   (1+ (line-number-display-width))
-                                 0))))
+           (new-fill-column (- win-char-width 2)))
       (when (and new-fill-column
                  (> new-fill-column 15)   ;XXX ignore too narrow window
                  (not (eq new-fill-column telega-root-fill-column)))
