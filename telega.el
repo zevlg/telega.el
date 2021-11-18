@@ -128,10 +128,12 @@ Used for manual generation.")
 
   ;; NOTE: make sure directory for `telega-server-logfile' exists
   ;; See https://github.com/zevlg/telega.el/issues/307
-  (unless (file-exists-p (file-name-directory telega-server-logfile))
-    (error (concat "telega: directory %s does not exists, "
-                   "can't write to `telega-server-logfile'")
-           (file-name-directory telega-server-logfile)))
+  ;; `telega-server-logfile' can be nil, see https://t.me/emacs_telega/30754
+  (when-let ((logfile-dir (when telega-server-logfile
+                            (file-name-directory telega-server-logfile))))
+    (unless (file-exists-p logfile-dir)
+      (error "telega: directory \"%s\" does not exists, \
+can't write to `telega-server-logfile'" logfile-dir)))
   )
 
 (defun telega-account--current-p (account)
@@ -185,7 +187,6 @@ If `\\[universal-argument]' is specified, then do not pop to root buffer."
   (if (and telega-accounts (not (telega-account-current)))
       (call-interactively #'telega-account-switch)
 
-    (telega--create-hier)
     (unless (telega-server-live-p)
       ;; NOTE: for telega-server restarts also recreate root buffer,
       ;; killing root buffer also cleanup all chat buffers and stops any
@@ -193,6 +194,7 @@ If `\\[universal-argument]' is specified, then do not pop to root buffer."
       (when (buffer-live-p (telega-root--buffer))
         (kill-buffer (telega-root--buffer)))
 
+      (telega--create-hier)
       (telega--init-vars)
       (with-current-buffer (get-buffer-create telega-root-buffer-name)
         (telega-root-mode))
