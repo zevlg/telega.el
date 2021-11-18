@@ -1924,15 +1924,14 @@ Recover previous active action after BODY execution."
 
 (defun telega-chatbuf--name (chat)
   "Return uniquified name for the CHAT buffer."
-  (let* ((bufname (substring-no-properties
-                   (concat (telega-symbol 'telegram)
-                           (when (telega-chat-secret-p chat)
-                             (telega-symbol 'lock))
-                           (telega-chat-title-with-brackets chat "")
-                           (when (plist-get chat :is_pinned)
-                             (telega-symbol 'pin))
-                           (when (plist-get chat :has_scheduled_messages)
-                             (telega-symbol 'alarm)))))
+  (let* ((bufname (concat (telega-symbol 'telegram)
+                          (when (telega-chat-secret-p chat)
+                            (telega-symbol 'lock))
+                          (telega-chat-title-with-brackets chat "")
+                          (when (plist-get chat :is_pinned)
+                            (telega-symbol 'pin))
+                          (when (plist-get chat :has_scheduled_messages)
+                            (telega-symbol 'alarm))))
          (buf (get-buffer bufname)))
     ;; NOTE: Multiple chats could have same BUFNAME, uniquify it by
     ;; adding unique suffix, in case other chat occupies BUFNAME
