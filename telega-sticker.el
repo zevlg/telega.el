@@ -265,7 +265,12 @@ CALLBACK is called without arguments"
                        ?X))
     ))
 
-(defvar telega-sticker--convert-cmd '("dwebp" "-nofancy -mt -o %p %w")
+(defvar telega-sticker--convert-cmd
+  (if (or telega-use-docker
+          (executable-find "dwebp")
+          (not (telega-ffplay-check-codecs '(decoder) "webp")))
+      "dwebp -nofancy -mt -o %p %w"
+    "ffmpeg -v quiet -i %w %p")
   "Command to convert WEBP file to PNG file.
 %p - png filename
 %w - webp filename.")
@@ -278,7 +283,7 @@ Return path to png file."
     (unless (file-exists-p png-filename)
       (let ((convert-cmd
              (telega-docker-exec-cmd
-               (format-spec (mapconcat #'identity telega-sticker--convert-cmd " ")
+               (format-spec telega-sticker--convert-cmd
                             (format-spec-make ?p png-filename
                                               ?w webp-filename))
                'try-host-cmd-first)))
@@ -288,7 +293,7 @@ Return path to png file."
               (shell-command-to-string convert-cmd))
           (telega-help-message 'no-dwebp-binary
               "Can't find `%s' binary.  `webp' system package not installed?"
-            (car telega-sticker--convert-cmd)))))
+            (car (split-string telega-sticker--convert-cmd))))))
 
     (when (file-exists-p png-filename)
       png-filename)))
