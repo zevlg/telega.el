@@ -3,14 +3,14 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-11-08 Пн 23:36 -->
+<!-- 2021-11-23 Вт 03:04 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.82)</title>
-<meta name="generator" content="Org mode" />
+<title>Telega Manual (v0.7.90)</title>
 <meta name="author" content="Zajcev Evgeny" />
-<style type="text/css">
- <!--/*--><![CDATA[/*><!--*/
+<meta name="generator" content="Org Mode" />
+<style>
+  #content { max-width: 60em; margin: auto; }
   .title  { text-align: center;
              margin-bottom: .2em; }
   .subtitle { text-align: center;
@@ -31,8 +31,9 @@
   #postamble p, #preamble p { font-size: 90%; margin: .2em; }
   p.verse { margin-left: 3%; }
   pre {
-    border: 1px solid #ccc;
-    box-shadow: 3px 3px 3px #eee;
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
     padding: 8pt;
     font-family: monospace;
     overflow: auto;
@@ -41,21 +42,21 @@
   pre.src {
     position: relative;
     overflow: auto;
-    padding-top: 1.2em;
   }
   pre.src:before {
     display: none;
     position: absolute;
-    background-color: white;
-    top: -10px;
-    right: 10px;
+    top: -8px;
+    right: 12px;
     padding: 3px;
-    border: 1px solid black;
+    color: #555;
+    background-color: #f2f2f299;
   }
   pre.src:hover:before { display: inline; margin-top: 14px;}
   /* Languages per Org manual */
   pre.src-asymptote:before { content: 'Asymptote'; }
   pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
   pre.src-C:before { content: 'C'; }
   /* pre.src-C++ doesn't work in CSS */
   pre.src-clojure:before { content: 'Clojure'; }
@@ -191,7 +192,6 @@
   .org-info-js_search-highlight
     { background-color: #ffff00; color: #000000; font-weight: bold; }
   .org-svg { width: 90%; }
-  /*]]>*/-->
 </style>
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
@@ -215,34 +215,12 @@
 <style>#links-panel {float: right;} </style>
 <style>#links-panel img {height: 0.75em; margin: 2px;}</style>
 <link rel="icon" href="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg">
-<script type="text/javascript">
-// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
-<!--/*--><![CDATA[/*><!--*/
-     function CodeHighlightOn(elem, id)
-     {
-       var target = document.getElementById(id);
-       if(null != target) {
-         elem.classList.add("code-highlighted");
-         target.classList.add("code-highlighted");
-       }
-     }
-     function CodeHighlightOff(elem, id)
-     {
-       var target = document.getElementById(id);
-       if(null != target) {
-         elem.classList.remove("code-highlighted");
-         target.classList.remove("code-highlighted");
-       }
-     }
-    /*]]>*///-->
-// @license-end
-</script>
 </head>
 <body>
-<div id="content">
-<div id="table-of-contents">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.82)</h2>
-<div id="text-table-of-contents">
+<div id="content" class="content">
+<div id="table-of-contents" role="doc-toc">
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.90)</h2>
+<div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
 <li><a href="#installation">Installation</a>
@@ -305,7 +283,7 @@
 <li><a href="#media-controls-for-media-messages">Media Controls for media messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
-<li><a href="#voice-chats">Voice Chats</a></li>
+<li><a href="#video-chats">Video Chats</a></li>
 <li><a href="#stickers--animations">Stickers / Animations</a>
 <ul>
 <li><a href="#animated-stickers">Animated stickers</a></li>
@@ -326,6 +304,7 @@
 <li><a href="#telega-highlight-text-mode">telega-highlight-text-mode</a></li>
 <li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
 <li><a href="#telega-my-location-mode">telega-my-location-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#telega-active-locations-mode">telega-active-locations-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 <li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
@@ -524,7 +503,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.7.
+version greater or equal to 1.7.9.
 </p>
 
 <p>
@@ -974,7 +953,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgfd2d6a9">
+<pre class="example" id="orgca7a297">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -992,7 +971,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgbc13990">
+<pre class="example" id="org5fe7440">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1022,7 +1001,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org0699c7d">
+<pre class="example" id="orgafb1584">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1123,7 +1102,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org921bad0">
+<pre class="example" id="org8a02217">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1226,10 +1205,16 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 </dl>
 </div>
 </div>
@@ -1936,8 +1921,8 @@ Available since TDLib 1.6.9
 
 <dt>fake-or-scam</dt><dd>Matches if chat is fake or scam user or group.</dd>
 
-<dt>(has-voice-chat [ <code>NON-EMPTY</code> ])</dt><dd>Matches if chat contains a live voice chat.
-If non-nil <code>NON-EMPTY</code> is specified, then match only if voice chat is
+<dt>(has-video-chat [ <code>NON-EMPTY</code> ])</dt><dd>Matches if chat contains a live video chat.
+If non-nil <code>NON-EMPTY</code> is specified, then match only if video chat is
 not empty.</dd>
 
 <dt>has-favorite-messages</dt><dd>Matches if chat has favorite messages.</dd>
@@ -2071,7 +2056,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org7ae0937">
+<pre class="example" id="org6d12cdb">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2220,7 +2205,7 @@ Default value: <code>chatbuf-recency</code>
 Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
 consists of a list of chat messages and an input for your messages
 to send.  Press
-<kbd>i</kbd> (<code>telega-describe-message</code>) to
+<kbd>i</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;describe&gt;</kbd> (<code>telega-describe-message</code>) to
 get detailed description of the message at point.
 </p>
 
@@ -2248,7 +2233,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgb482c37">
+<pre class="example" id="org0b9d65b">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2290,8 +2275,8 @@ button.</dd>
 <dt><kbd>M-g *</kbd> (<code>telega-chatbuf-next-favorite</code>)</dt><dd>Goto next favorite message.
 See <a href="#favorite-messages">Favorite Messages</a> for details.</dd>
 
-<dt><kbd>M-g v</kbd> (<code>telega-chatbuf-goto-voice-chat</code>)</dt><dd>Goto voice chat associated with the chat.
-See <a href="#voice-chats">Voice Chats</a> for details.</dd>
+<dt><kbd>M-g v</kbd> (<code>telega-chatbuf-goto-video-chat</code>)</dt><dd>Goto video chat associated with the chat.
+See <a href="#video-chats">Video Chats</a> for details.</dd>
 </dl>
 </div>
 </div>
@@ -2332,7 +2317,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orga9a5c70">
+<pre class="example" id="org152111b">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2349,7 +2334,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org79c2618">
+<pre class="example" id="org64c36a2">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2589,14 +2574,14 @@ Default value:
 <p>
 To reply/edit the message, put point on the message you want to
 reply/edit and press
-<kbd>r</kbd> (<code>telega-msg-reply</code>) to reply or
-<kbd>e</kbd> (<code>telega-msg-edit</code>) to edit.
+<kbd>r</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;reply&gt;</kbd> (<code>telega-msg-reply</code>) to reply or
+<kbd>e</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;edit&gt;</kbd> (<code>telega-msg-edit</code>) to edit.
 </p>
 
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org5243264">
+<pre class="example" id="org9c77107">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2636,7 +2621,7 @@ Default value: <code>(telega--fmt-text-markdown2 . "markdown2")</code>
 </p>
 
 <p>
-<kbd>e</kbd> (<code>telega-msg-edit</code>) accepts
+<kbd>e</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;edit&gt;</kbd> (<code>telega-msg-edit</code>) accepts
 <kbd>C-u</kbd> prefix to edit message as-is without using markup
 attachment with markup name specified in this option.
 </p></li>
@@ -2653,7 +2638,7 @@ forward and press
 <kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-<kbd>m</kbd> (<code>telega-msg-mark-toggle</code>) and then
+<kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;unmark&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
 press
 <kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 on one of the messages.
@@ -2682,13 +2667,13 @@ To delete a message, put cursor under the message you want to delete and press
 
 <p>
 As with <a href="#forwarding-messages">forwarding messages</a>, you can mark multiple messages to delete
-with <kbd>m</kbd> (<code>telega-msg-mark-toggle</code>).
+with <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;unmark&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>).
 </p>
 
 <p>
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
-<kbd>B</kbd> (<code>telega-msg-ban-sender</code>) when
+<kbd>B</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;ban-sender&gt;</kbd> (<code>telega-msg-ban-sender</code>) when
 cursor is under the message.
 </p>
 
@@ -2734,7 +2719,7 @@ and send it as always.
 <p>
 To reschedule a message, first list all scheduled messages in the chat
 with <kbd>C-c / scheduled RET</kbd>, then press
-<kbd>e</kbd> (<code>telega-msg-edit</code>) on the message
+<kbd>e</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;edit&gt;</kbd> (<code>telega-msg-edit</code>) on the message
 you want to reschedule, remove previous "Schedule" attachment and add
 a new one at the beginning.
 </p>
@@ -3164,7 +3149,7 @@ Default value: <code>"🔖"</code>
 
 <p>
 To toggle message at point being favorite, press
-<kbd>*</kbd> (<code>telega-msg-favorite-toggle</code>).
+<kbd>*</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;rm-favorite&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;add-favorite&gt;</kbd> (<code>telega-msg-favorite-toggle</code>).
 </p>
 
 <p>
@@ -3189,7 +3174,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org83ae5a9">
+<pre class="example" id="org3c28293">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3197,19 +3182,49 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.</dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
+Stop playing media message.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
+Rewind 10 seconds backward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
+Rewind 10 seconds forward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
+Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
+Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.</dd>
+duration.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
 </dl>
 
 <p>
 To play/pause media messages use <kbd>RET</kbd>.  Also,
-<kbd>l</kbd> (<code>telega-msg-copy-link</code>) command
+<kbd>l</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;copy-link&gt;</kbd> (<code>telega-msg-copy-link</code>) command
 supports linking to the currently playing (or paused at) moment.
 </p>
 
@@ -3223,9 +3238,9 @@ timestamp text entity.
 </div>
 </div>
 
-<div id="outline-container-voice-chats" class="outline-2">
-<h2 id="voice-chats"><a class="self-link" href="#voice-chats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Voice Chats</h2>
-<div class="outline-text-2" id="text-voice-chats">
+<div id="outline-container-video-chats" class="outline-2">
+<h2 id="video-chats"><a class="self-link" href="#video-chats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Video Chats</h2>
+<div class="outline-text-2" id="text-video-chats">
 <p>
 <b><b>TODO</b></b>: write me
 </p>
@@ -3274,7 +3289,8 @@ User Option: <code>telega-sticker-favorite-background</code>
 </p>
 
 <p>
-Background color for the favorite stickers. 
+Background color for the favorite stickers.
+Can be nil, in this case favorite stickers are not outlined. 
 </p>
 
 <p>
@@ -3365,7 +3381,8 @@ User Option: <code>telega-sticker-favorite-background</code>
 </p>
 
 <p>
-Background color for the favorite stickers. 
+Background color for the favorite stickers.
+Can be nil, in this case favorite stickers are not outlined. 
 </p>
 
 <p>
@@ -3380,7 +3397,7 @@ while point is under sticker in the <code>*Telega Sticker Set*</code> buffer.
 </p>
 
 <p>
-Or you can press <kbd>S</kbd> (<code>telega-msg-save</code>)
+Or you can press <kbd>S</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;save&gt;</kbd> (<code>telega-msg-save</code>)
 on the sticker message to add that sticker to the favorite stickers
 list.
 </p>
@@ -3409,7 +3426,7 @@ messages.
 
 <p>
 To explicitly add animation to Saved Animations list, press
-<kbd>S</kbd> (<code>telega-msg-save</code>) on the
+<kbd>S</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;save&gt;</kbd> (<code>telega-msg-save</code>) on the
 corresponding animation message.
 </p>
 </div>
@@ -3735,7 +3752,7 @@ Message to automatically play when received.
 </p>
 
 <p>
-Default value: <code>(messageAnimation messageSticker)</code>
+Default value: <code>(messageAnimation messageSticker messageAnimatedEmoji)</code>
 </p></li>
 </ul>
 </div>
@@ -3812,7 +3829,7 @@ with <kbd>RET</kbd>, use:
 
 <p>
 While editing file press
-<kbd>M-g t</kbd> (<code>telega-edit-file-goto-message</code>)
+<kbd>&lt;menu-bar&gt; &lt;goto-message&gt;</kbd>, <kbd>M-g t</kbd> (<code>telega-edit-file-goto-message</code>)
 to go back to the file's message.
 </p>
 
@@ -3875,6 +3892,7 @@ avatar, like: <img src="https://zevlg.github.io/telega/telega-patron-ava.png" al
 In addition:
 </p>
 <ul class="org-ul">
+<li><a href="https://promote.telegram.org">Sponsored messages</a> are disabled by default for telega patrons</li>
 <li>Display "Telega Patron Since: &lt;date&gt;" note in the patron's Chat/User description.</li>
 <li>All <a href="https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard">Emacs Stories</a> from <code>telega</code> patrons are automatically considered "Featured".</li>
 </ul>
@@ -3888,6 +3906,23 @@ me</a>.
 <p>
 <code>telega-patrons-mode</code> is enabled by default.
 </p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-patrons-disable-sponsored-messages</code> 
+</p>
+
+<p>
+Non-nil to disable sponsored messages for telega patrons. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
 </div>
 </div>
 
@@ -3919,6 +3954,46 @@ Enable with <code>(telega-my-location-mode 1)</code> or at <code>telega</code> l
 </div>
 </div>
 </div>
+
+<div id="outline-container-telega-active-locations-mode" class="outline-3">
+<h3 id="telega-active-locations-mode"><a class="self-link" href="#telega-active-locations-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-active-locations-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<div class="outline-text-3" id="text-telega-active-locations-mode">
+<p>
+Minor mode to display currently active live locations in the root
+buffer.
+</p>
+
+<p>
+<code>telega-active-locations-mode</code> is enabled by default.
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-active-locations-show-avatars</code> 
+</p>
+
+<p>
+Non-nil to show user avatars in chat buffer. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-active-locations-show-titles</code> 
+</p>
+
+<p>
+Non-nil to show sender/chat titles along the side with avatars. 
+</p>
+
+<p>
+Default value: <code>t</code>
+</p></li>
+</ul>
+</div>
+</div>
+
 
 <div id="outline-container-telega-root-auto-fill-mode" class="outline-3">
 <h3 id="telega-root-auto-fill-mode"><a class="self-link" href="#telega-root-auto-fill-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
@@ -3997,7 +4072,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org203210a">
+<pre class="example" id="org4660ce1">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

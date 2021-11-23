@@ -41,6 +41,10 @@
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
 ;; - {{{user-option(telega-adblock-forwarded-messages, 2)}}}
 
+;; TODO:
+;; - "invisible" links, example: https://t.me/botoid/1058351
+;;   codepoint: 0x200B (ZERO WIDTH SPACE)
+
 ;;; Code:
 (require 'rx)
 (require 'telega)

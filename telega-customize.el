@@ -361,8 +361,9 @@ cdr is maximum width in chars to use."
   :group 'telega)
 
 (defcustom telega-sticker-favorite-background "cornflower blue"
-  "*Background color for the favorite stickers."
-  :type 'string
+  "*Background color for the favorite stickers.
+Can be nil, in this case favorite stickers are not outlined."
+  :type '(or nil string)
   :group 'telega)
 
 (defcustom telega-sticker-set-download nil
@@ -387,6 +388,14 @@ Requires `tgs2png' program from https://github.com/zevlg/tgs2png"
   :package-version '(telega . "0.7.30")
   :type 'boolean
   :group 'telega)
+
+(defcustom telega-emoji-animated-play
+  (when telega-sticker-animated-play 'with-sound)
+  "Non-nil to play animated emoji as animated sticker.
+Can be the `with-sound' symbol , in this case play animated emoji with sound."
+  :package-version '(telega . "0.7.81")
+  :type 'boolean
+  :group 'telega-emoji)
 
 (defcustom telega-animation-height 5
   "*Height in chars for animations."
@@ -560,6 +569,12 @@ In range [1..3].  Use 1."
   :type 'number
   :group 'telega)
 
+(defcustom telega-location-show-me t
+  "*Non-nil to show me on location maps if it fits into the map thumbnail."
+  :package-version '(telega . "0.7.63")
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-location-live-tracks t
   "*Non-nil to draw live location tracks."
   :type 'boolean
@@ -707,7 +722,8 @@ to make `telega-root-keep-cursor' always work as expected."
 
 (defcustom telega-root-aux-inserters nil
   "List of additional inserters to show below Status in the rootbuf.
-Can be used to display additional global data."
+Can be used to display additional global data.
+Insert MUST return non-nil if something has been inserted."
   :package-version '(telega . "0.7.56")
   :type '(repeat function)
   :group 'telega-root)
@@ -1057,20 +1073,6 @@ Could be a string or an alist where car is one of: `prompt', `edit' or
   :type '(or string alist)
   :group 'telega-chat)
 
-(defcustom telega-chat-input-anonymous-prompt "Anonymous>>> "
-  "*Chatbuf input prompt when sending messages as anonymous admin.
-Could be a string or an alist, same as `telega-chat-input-prompt'."
-  :package-version '(telega . "0.7.9")
-  :type '(or string alist)
-  :group 'telega-chat)
-
-(defcustom telega-chat-input-comment-prompt "Comment>>> "
-  "*Chatbuf input prompt displayed when commenting on channel post.
-Could be a string or an alist, same as `telega-chat-input-prompt'."
-  :package-version '(telega . "0.7.9")
-  :type '(or string alist)
-  :group 'telega-chat)
-
 (defcustom telega-chat-input-ring-size 50
   "*Size of the chat input history."
   :type 'integer
@@ -1247,7 +1249,7 @@ NOT YET USED."
   :group 'telega-chat)
 
 (defcustom telega-chat-mode-line-format
-  '((:eval (telega-chatbuf-mode-line-voice-chat 20))
+  '((:eval (telega-chatbuf-mode-line-video-chat 20))
     (:eval (telega-chatbuf-mode-line-discuss))
     (:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
@@ -1317,19 +1319,19 @@ Set it to nil to disable VoIP logging."
   :type 'boolean
   :group 'telega-voip)
 
-(defcustom telega-voice-chat-display
+(defcustom telega-video-chat-display
   '((active footer modeline)
     (passive modeline)
     (scheduled footer modeline))
-  "Alist to specify where to display voice chat info.
+  "Alist to specify where to display video chat info.
 Each element is a cons cell where car is one of `active', `passive' or
 `scheduled'and cdr is list of possible values:
-  - `footer' to display voice chat info in the chatbuf footer
-  - `modeline' to display voice chat info in the modeline.
-Voice chat is considered `active' if it has at least one participant,
-otherwise voice chat is `passive'."
+  - `footer' to display video chat info in the chatbuf footer
+  - `modeline' to display video chat info in the modeline.
+Video chat is considered `active' if it has at least one participant,
+otherwise video chat is `passive'."
   :type 'list
-  :package-version '(telega . "0.7.34")
+  :package-version '(telega . "0.7.90")
   :group 'telega-voip)
 
 
@@ -1485,7 +1487,7 @@ NOT USED"
   :group 'telega)
 
 (defcustom telega-ignored-messages-visible nil
-  "*Non-nil to make ignored messages visible as <IGNORED MESSAGE>."
+  "*Non-nil to make ignored messages visible as <ignored message>."
   :package-version '(telega . "0.6.30")
   :type 'boolean
   :group 'telega-chat)
@@ -1893,13 +1895,15 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type '(or char (cons char char))
   :group 'telega)
 
-(defcustom telega-symbol-voice-chat-active "🗣"
-  "Symbol to use for non-empty voice chats."
+(defcustom telega-symbol-video-chat-active "🗣"
+  "Symbol to use for non-empty video chats."
+  :package-version '(telega . "0.7.90")
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-voice-chat-passive "🗧"
-  "Symbol to use for empty voice chats."
+(defcustom telega-symbol-video-chat-passive "🗧"
+  "Symbol to use for empty video chats."
+  :package-version '(telega . "0.7.90")
   :type 'string
   :group 'telega-symbol)
 
@@ -1910,6 +1914,11 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
 
 (defcustom telega-symbol-leave-comment "💬"
   "Symbol used to display symbol nearby \"Leave Comment\" button."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-distance "📏"
+  "Symbol used to display distance."
   :type 'string
   :group 'telega-symbol)
 
@@ -1942,8 +1951,8 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
          telega-symbol-bulp
          telega-symbol-chat-list
          telega-symbol-bell
-         telega-symbol-voice-chat-active
-         telega-symbol-voice-chat-passive
+         telega-symbol-video-chat-active
+         telega-symbol-video-chat-passive
          ))
   "*Custom widths for some symbols, used for correct formatting.
 Use `telega-symbol-set-width' to install symbol's width.
@@ -1964,13 +1973,14 @@ Install all symbol widths inside `telega-load-hook'."
     alarm attachment
     bell bulp
     chat-list
+    distance
     eye
     failed favorite flames folder
     invoice
     leave-comment lightning lock location
     multiple-folders
     pause phone photo pin play
-    video voice-chat-active voice-chat-passive
+    video video-chat-active video-chat-passive
     )
   "List of symbols to emojify if `telega-emoji-use-images' is non-nil.
 Each element is either XXX from ending of telega-symbol-XXX or list,

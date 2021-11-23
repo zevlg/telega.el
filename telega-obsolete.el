@@ -122,6 +122,22 @@
                            'telega-symbol-horizontal-bar
                            "0.7.58")
 
+(telega-obsolete--variable 'telega-voice-chat-display
+                           'telega-video-chat-display
+                           "0.7.90")
+(telega-obsolete--variable 'telega-symbol-voice-chat-active
+                           'telega-symbol-video-chat-active
+                           "0.7.90")
+(telega-obsolete--variable 'telega-symbol-voice-chat-passive
+                           'telega-symbol-video-chat-passive
+                           "0.7.90")
+
+(telega-obsolete--variable 'telega-chat-input-anonymous-prompt
+                           nil
+                           "0.7.90")
+(telega-obsolete--variable 'telega-chat-input-comment-prompt
+                           nil
+                           "0.7.90")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

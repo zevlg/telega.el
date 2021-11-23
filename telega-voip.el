@@ -100,7 +100,8 @@
          (telega-ins "."))
         (callStateReady
          ;; key emojis
-         (telega-ins " " (telega-voip--call-emojis call)))))))
+         (telega-ins " " (telega-voip--call-emojis call)))))
+    t))
 
 
 (defun telega-voip-discard (call)
@@ -221,8 +222,8 @@ If ARG is not given then treat it as 1."
 
 
 ;; Voice Chats and Group calls
-(defun telega-voice-chat-start (chat)
-  "Interactively start Voice Chat in the CHAT."
+(defun telega-video-chat-start (chat)
+  "Interactively start Video Chat in the CHAT."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (let ((group-call (telega-chat-group-call chat)))
     (cond ((and group-call
@@ -237,8 +238,8 @@ If ARG is not given then treat it as 1."
                 (concat (telega-i18n "lng_group_call_edit_title_header")
                         ": ")))))))
 
-(defun telega-voice-chat-schedule (chat)
-  "Interactively schedule a voice chat in the CHAT."
+(defun telega-video-chat-schedule (chat)
+  "Interactively schedule a video chat in the CHAT."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (when-let ((group-call (telega-chat-group-call chat)))
     (if (> (plist-get group-call :scheduled_start_date) 0)
@@ -254,8 +255,8 @@ If ARG is not given then treat it as 1."
     (telega--createVoiceChat chat title
       :start-time start-time)))
 
-(defun telega-voice-chat-discard (chat &optional no-confirm-p)
-  "Discard voice chat in the CHAT."
+(defun telega-video-chat-discard (chat &optional no-confirm-p)
+  "Discard video chat in the CHAT."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (let ((group-call (telega-chat-group-call chat)))
     (unless group-call
@@ -264,7 +265,7 @@ If ARG is not given then treat it as 1."
               (y-or-n-p "Discard this Voice Chat? "))
       (telega--discardGroupCall group-call))))
 
-(defun telega-voice-chat-record-start (chat title)
+(defun telega-video-chat-record-start (chat title)
   "Start recording group call associated with CHAT."
   (interactive
    (list (or telega-chatbuf--chat (telega-chat-at (point)))
@@ -276,7 +277,7 @@ If ARG is not given then treat it as 1."
       (user-error "Can't record: no permission"))
     (telega--startGroupCallRecording group-call title)))
 
-(defun telega-voice-chat-record-stop (chat)
+(defun telega-video-chat-record-stop (chat)
   "Start recording group call associated with CHAT."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (let ((group-call (telega-chat-group-call chat)))
@@ -284,12 +285,12 @@ If ARG is not given then treat it as 1."
       (user-error "Can't stop recording"))
     (telega--endGroupCallRecording group-call)))
 
-(defun telega-voice-chat-toggle-footer (chat)
-  "Toggle voice chate visibility in CHAT's footer/modeline."
+(defun telega-video-chat-toggle-footer (chat)
+  "Toggle video chat visibility in CHAT's footer/modeline."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (with-telega-chatbuf chat
-    (setq telega-chatbuf--voice-chat-hidden
-          (not telega-chatbuf--voice-chat-hidden))
+    (setq telega-chatbuf--video-chat-hidden
+          (not telega-chatbuf--video-chat-hidden))
     (telega-chatbuf--footer-update)
     (telega-chatbuf--modeline-update)))
 
@@ -318,6 +319,12 @@ Return GROUP-CALL."
         (lambda (group-call)
           (telega-group-call--ensure group-call)
           (funcall callback group-call))))))
+
+(defun telega-group-call-get-chat (group-call-id)
+  "Return chat with group call of GROUP-CALL-ID."
+  (cl-find group-call-id
+           telega--ordered-chats
+           :key (telega--tl-prop :video_chat :group_call_id)))
 
 (defun telega-group-call--participant-svg-outline (svg circle
                                                        &optional speaking-p)

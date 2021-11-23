@@ -161,6 +161,21 @@ CALLBACK is called without arguments"
               (funcall callback))))
         ))))
 
+(defun telega-sticker--emoji-get (emoji)
+  "Get Animated Sticker for emoji."
+  ;; NOTE: EMOJI itself or sticker's emoji could be a fe0f emoji
+  (when (telega-emoji-fe0f-p emoji)
+    (setq emoji (substring emoji 0 1)))
+  (cl-find emoji (plist-get (telega-stickerset-get
+                                telega--animated-emojis-stickerset-id 'locally)
+                            :stickers)
+           :test #'equal
+           :key (lambda (obj)
+                  (let ((sticker-emoji (telega-tl-str obj :emoji)))
+                    (if (telega-emoji-fe0f-p sticker-emoji)
+                        (substring sticker-emoji 0 1)
+                      sticker-emoji)))))
+
 (defun telega-sticker-toggle-favorite (sticker)
   "Toggle sticker as favorite."
   (interactive (list (telega-sticker-at)))
@@ -420,7 +435,7 @@ If SLICES-P is non-nil, then insert STICKER using slices."
     ;; (when (> (telega-current-column) (- telega-chat-fill-column 10))
     ;;   (telega-ins "\n"))
     (telega-button--insert 'telega-sticker sticker
-      'help-echo (let ((emoji (telega-sticker-emoji sticker 'no-props)))
+      'help-echo (let ((emoji (telega-sticker-emoji sticker)))
                    (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
       'action 'telega-sticker--choosen-action
       'cursor-sensor-functions
@@ -712,14 +727,16 @@ Return sticker set."
      (telega-stickerset-completing-read
       "Trending sticker set: " sticker-sets))))
 
-(defun telega-sticker--animate-callback (_proc frame sticker)
+(defun telega-sticker--animate-callback (_proc frame sticker &optional for-msg)
   "Callback for inline animated sticker playback."
   (plist-put sticker :telega-ffplay-frame-filename (cdr frame))
-  ;; NOTE: just redisplay the image, not redisplaying full message
   (telega-media--image-update
    (cons sticker 'telega-sticker--create-image) nil)
-  (force-window-update)
-  )
+  (if for-msg
+      (telega-msg-redisplay for-msg)
+
+    ;; NOTE: just redisplay the image, not redisplaying full message
+    (force-window-update)))
 
 (defun telega-sticker--animate-to-png (sticker-file xheight callback
                                                     &rest callback-args)
@@ -770,7 +787,7 @@ Install from https://github.com/zevlg/tgs2png"))
     (set-process-filter proc 'telega-ffplay--png-filter)
     proc))
 
-(defun telega-sticker--animate (sticker)
+(defun telega-sticker--animate (sticker &optional for-msg)
   "Start animating animated STICKER."
   (cl-assert (plist-get sticker :is_animated))
   (telega-file--download (plist-get sticker :sticker) 32
@@ -779,7 +796,7 @@ Install from https://github.com/zevlg/tgs2png"))
       (when (telega-file--downloaded-p file)
         (telega-sticker--animate-to-png file
             (telega-chars-xheight (car telega-sticker-size))
-          #'telega-sticker--animate-callback sticker)))))
+          #'telega-sticker--animate-callback sticker for-msg)))))
 
 (defun telega-sticker--gen-sensor-func (sticker)
   "Return sensor function to animate STICKER when entered."
@@ -846,7 +863,7 @@ Install from https://github.com/zevlg/tgs2png"))
   "Return image for the ANIMATION."
   ;; Cases:
   ;;   1) Next inline animation frame (set in
-  ;;   `telega-msg-animation--callback') is available - display it
+  ;;   `telega-animation--ffplay-callback') is available - display it
   ;;
   ;;   2) Thumbnail is downloaded, while animation still downloading
   ;;      Show thumbnail (caching temporary), waiting for animation to

@@ -217,7 +217,7 @@
     (cl-assert msg)
     (if custom-action
         (funcall custom-action msg)
-      (telega-msg-open-content msg))))
+      (telega-msg-open-content msg 'clicked))))
 
 (defun telega-msg--pp (msg)
   "Pretty printer for MSG button."
@@ -270,7 +270,7 @@
 (defun telega-msg-create-internal (chat fmt-text)
   "Create message for internal use.
 Used to add content to chatbuf that is not a regular message.
-FMT-TEXT is formatted text, could be created with `teleg-str-fmt'."
+FMT-TEXT is formatted text, can be created with `telega-fmt-text'."
   (list :@type "message"
         :id -1
         :chat_id (plist-get chat :id)
@@ -410,6 +410,22 @@ If CALLBACK is specified, then get reply message asynchronously."
               (telega-describe-stickerset
                stickerset (telega-msg-chat msg)))))))))
 
+(defun telega-msg-open-animated-emoji (msg &optional clicked-p)
+  "Open content for animated emoji message MSG."
+  (let ((sticker (telega--tl-get msg :content :animated_emoji :sticker)))
+    (telega-sticker--animate sticker msg)
+
+    ;; Try fullscreen animated emoji sticker as well
+    (when clicked-p
+      (telega--clickAnimatedEmojiMessage msg
+        (lambda (fs-sticker)
+          (when (and (not (telega--tl-error-p fs-sticker))
+                     (plist-get fs-sticker :is_animated)
+                     telega-sticker-animated-play)
+            (plist-put msg :telega-sticker-fullscreen fs-sticker)
+            (telega-sticker--animate fs-sticker msg)))))
+    ))
+
 (defun telega-msg--play-video (msg file &optional done-callback)
   "Start playing video FILE for MSG."
   (declare (indent 2))
@@ -433,21 +449,21 @@ If CALLBACK is specified, then get reply message asynchronously."
         (telega-msg--play-video msg video-file)
 
       ;; File is partially downloaded, start playing incrementally if:
-      ;; 1) At least 3 seconds of the video is downloaded
+      ;; 1) At least 5 seconds of the video is downloaded
       ;; 2) `moov' atom is available, we use
       ;;    `telega-ffplay-get-resolution' function to check this
       ;; 3) File downloads faster, than it takes time to play
       (let* ((fsize (telega-file--size video-file))
              (dsize (telega-file--downloaded-size video-file))
              (duration (or (plist-get video :duration) 50))
-             ;; Size for 3 seconds of the video
-             (d3-size (/ (* 3 fsize) duration))
+             ;; Size for 5 seconds of the video
+             (d5-size (/ (* 5 fsize) duration))
              ;; Downloaded duration
              (ddur (* duration (/ (float dsize) fsize)))
              (probe-size (plist-get video :telega-video-probe-size))
              (open-time (plist-get video :telega-video-pending-open)))
         (when (and ;; Check for 1)
-                   probe-size (> dsize (+ probe-size d3-size))
+                   probe-size (> dsize (+ probe-size d5-size))
                    ;; Check for 3)
                    open-time (> ddur (- (time-to-seconds) open-time)))
           ;; Check for 2)
@@ -457,25 +473,23 @@ If CALLBACK is specified, then get reply message asynchronously."
               ;; playing it after full download
               (plist-put video :telega-video-probe-size nil)
 
-            ;; Start playing video file incrementally, cancel
-            ;; downloading file if video player exits
+            ;; NOTE: By canceling downloading process we fix
+            ;; filename, so file won't be update at video player start
+            ;; time.  After video player is started, we continue
+            ;; downloading process, canceling it only on video player
+            ;; exit
             (plist-put video :telega-video-pending-open nil)
-
-            (unless (file-exists-p (telega--tl-get video-file :local :path))
-              (user-error "File is gone: %s"
-                          (telega--tl-get video-file :local :path))
-              ;; TODO: start player in idle timer then, so filename
-              ;; gets updated from `telega-server'
-              )
-            (telega-msg--play-video msg video-file
-              (lambda ()
-                ;; NOTE: video file might be already updated at the
-                ;; callback time, so get it latest version
-                (when-let ((file (telega-file-get
-                                  (plist-get video-file :id) 'local)))
-                  (when (telega-file--downloading-p file)
-                    (telega--cancelDownloadFile file)))))
-            ))))))
+            (telega--cancelDownloadFile video-file nil
+              (lambda (_ignored)
+                (let ((vfile (telega-file-get (plist-get video-file :id) 'local)))
+                  (telega-msg--play-video msg vfile
+                    (lambda ()
+                      (telega--cancelDownloadFile vfile)))
+                  ;; Continue downloading file in 0.5 seconds, giving
+                  ;; time for video player command to run
+                  (run-with-timer 0.5 nil #'telega-file--download vfile 32
+                                  (lambda (_ignored)
+                                    (telega-msg-redisplay msg))))))))))))
 
 (defun telega-msg-open-video (msg &optional video)
   "Open content for video message MSG."
@@ -871,8 +885,25 @@ non-nil."
             )))
     ))))
 
-(defun telega-msg-open-content (msg)
-  "Open message MSG content."
+(defun telega-msg-open-sponsored (sponsored-msg)
+  "Open sponsored message SPONSORED-MSG."
+  (if-let ((tdlib-link (plist-get sponsored-msg :link)))
+      (telega-tme-open-tdlib-link tdlib-link)
+
+    (when-let ((schat (telega-chat-get
+                       (plist-get sponsored-msg :sponsor_chat_id) t)))
+      (telega-chat--pop-to-buffer schat))))
+
+(defun telega-msg-emojis-only-p (msg)
+  "Return non-nil if text message MSG contains only emojis."
+  (when (telega-msg-type-p 'messageText msg)
+    (let ((text (telega--tl-get msg :content :text :text)))
+      (not (text-property-not-all
+            0 (length text) 'telega-emoji-p t text)))))
+
+(defun telega-msg-open-content (msg &optional clicked-p)
+  "Open message MSG content.
+non-nil CLICKED-P means message explicitly has been clicked by user."
   ;; NOTE: openMessageContent for is_secret content only after
   ;; downloading completed
   (unless (telega--tl-get msg :content :is_secret)
@@ -922,6 +953,8 @@ non-nil."
     (messageChatDeleteMember
      (telega-describe-user
       (telega-user-get (telega--tl-get msg :content :user_id))))
+    (messageAnimatedEmoji
+     (telega-msg-open-animated-emoji msg clicked-p))
 
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
@@ -1003,9 +1036,12 @@ preview, having media content, can be opened with media timestamp."
 
 (defun telega-msg-sender (tl-obj)
   "Convert given TL-OBJ to message sender (a chat or a user).
-TL-OBJ could be a \"message\", \"chatMember\" or \"messageSender\".
-Return a user or a chat."
+TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\" or
+\"messageSender\".  Return a user or a chat."
   (let ((sender (cl-ecase (telega--tl-type tl-obj)
+                  (sponsoredMessage
+                   (list :@type "messageSenderChat"
+                         :chat_id (plist-get tl-obj :sponsor_chat_id)))
                   (message (plist-get tl-obj :sender))
                   (chatMember (plist-get tl-obj :member_id))
                   ((messageSenderUser messageSenderChat) tl-obj))))
@@ -1294,6 +1330,15 @@ the saved animations list."
                                   (expand-file-name fname telega-msg-save-dir)
                                 (read-file-name "Save to file: " default-directory
                                                 nil nil fname nil))))
+              ;; NOTE: Ensure corresponding directory exists
+              (let ((fdir (file-name-directory new-fpath)))
+                (unless (file-exists-p fdir)
+                  (if (y-or-n-p
+                       (format-message
+                        "Directory `%s' does not exist; create? " fdir))
+                      (make-directory fdir t)
+                    (error "Canceled"))))
+
               ;; See https://github.com/tdlib/td/issues/379
               (copy-file fpath new-fpath)
               (message (format "Wrote %s" new-fpath))))))))))

@@ -895,7 +895,7 @@ The messages are returned in a reverse chronological order."
 Requires owner privileges."
   (telega-server--send
    (list :@type "deleteChat"
-         :chat-id (plist-get chat :id))))
+         :chat_id (plist-get chat :id))))
 
 (defun telega--deleteChatHistory (chat &optional remove-from-list revoke)
   "Deletes all messages in the CHAT only for the user.
@@ -979,6 +979,24 @@ Pass REVOKE to try to delete chat history for all users."
          :offset (or offset "")
          :limit (or limit 100))
    callback))
+
+(defun telega--getChatSponsoredMessages (chat &optional callback)
+  "Return list of sponsored messages for the CHAT."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "getChatSponsoredMessages"
+          :chat_id (plist-get chat :id))
+    callback))
+
+(defun telega--viewSponsoredMessage (chat sponsored-msg)
+  "Inform that SPONSORED-MSG has been viewed in the CHAT."
+  (cl-assert (eq 'sponsoredMessage (telega--tl-type sponsored-msg)))
+  (telega-server--send
+   (list :@type "viewSponsoredMessage"
+         :chat_id (plist-get chat :id)
+         :sponsored_message_id (plist-get sponsored-msg :id))))
 
 
 (defun telega--setAuthenticationPhoneNumber (phone-number)
@@ -1307,14 +1325,16 @@ default `telega-file--update' is called."
             (list :synchronous (if sync-p t :false))))
    (or callback (when sync-p 'telega-file--update))))
 
-(defun telega--cancelDownloadFile (file &optional only-if-pending)
+(defun telega--cancelDownloadFile (file &optional only-if-pending callback)
   "Stop downloading the FILE.
 If ONLY-IF-PENDING is non-nil then stop downloading only if it
 hasn't been started, i.e. request hasn't been sent to server."
-  (telega-server--send
+  (declare (indent 2))
+  (telega-server--call
    (list :@type "cancelDownloadFile"
          :file_id (plist-get file :id)
-         :only_if_pending (or only-if-pending :false))))
+         :only_if_pending (if only-if-pending t :false))
+   (or callback #'ignore)))
 
 (defun telega--deleteFile (file)
   "Delete FILE from cache."
@@ -1571,6 +1591,13 @@ ZOOM - zoom level in [13-20], default=13
 WIDTH/HEIGHT - in [16-1024]
 SCALE - in [1-3]"
   (declare (indent 6))
+  ;; NOTE: width and height are limited to 1024px max, otherwise TDLib
+  ;; generates "Wrong width/height" error
+  (when (and width (> width 1024))
+    (setq width 1024))
+  (when (and height (> height 1024))
+    (setq height 1024))
+
   (with-telega-server-reply (reply)
       (telega-file--ensure reply)
 
@@ -1804,6 +1831,30 @@ Return newly created chat."
    (list :@type "openMessageContent"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id))))
+
+(defun telega--clickAnimatedEmojiMessage (msg &optional callback)
+  "Animated emoji message has been clicked.
+Return non-nil if animated sticker need to be played."
+  (declare (indent 1))
+  (declare (tdlib-api "1.7.8"))
+  (telega-server--call
+   (list :@type "clickAnimatedEmojiMessage"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))
+   callback))
+
+(defun telega--getInternalLinkType (link-url &optional callback)
+  "Return information about the type of an internal link.
+Return nil if LINK-URL is not Telegram's internal link."
+  (declare (indent 1))
+  (declare (tdlib-api "1.7.8"))
+  (with-telega-server-reply (reply)
+      (unless (telega--tl-error-p reply)
+        reply)
+
+    (list :@type "getInternalLinkType"
+          :link link-url)
+    callback))
 
 (defun telega--viewMessages (chat messages &optional force)
   "Mark CHAT's MESSAGES as read.

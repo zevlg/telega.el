@@ -1240,25 +1240,25 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
         (plist-get info :is_fake))))
 
 ;;; ellit-org: chat-filters
-;; - (has-voice-chat [ ~NON-EMPTY~ ]) ::
-;;   {{{fundoc(telega--filter-has-voice-chat, 2)}}}
-(define-telega-filter has-voice-chat (chat &optional non-empty)
-  "Matches if chat contains a live voice chat.
-If non-nil NON-EMPTY is specified, then match only if voice chat is
+;; - (has-video-chat [ ~NON-EMPTY~ ]) ::
+;;   {{{fundoc(telega--filter-has-video-chat, 2)}}}
+(define-telega-filter has-video-chat (chat &optional non-empty)
+  "Matches if chat contains a live video chat.
+If non-nil NON-EMPTY is specified, then match only if video chat is
 not empty."
-  (when-let* ((voice-chat (plist-get chat :voice_chat))
-              (group-call-id (plist-get voice-chat :group_call_id)))
+  (when-let* ((video-chat (plist-get chat :video_chat))
+              (group-call-id (plist-get video-chat :group_call_id)))
     (and (not (zerop group-call-id))
          (or (null non-empty)
-             (plist-get voice-chat :has_participants)))))
+             (plist-get video-chat :has_participants)))))
 
-(defun telega-filter-by-has-voice-chat (including-empty-p)
-  "Filter chats with started voice chat.
-If INCLUDING-EMPTY-P is non-nil, then keep also empty voice chats."
-  (interactive (list (y-or-n-p "Include empty/scheduled voice chats? ")))
+(defun telega-filter-by-has-video-chat (including-empty-p)
+  "Filter chats with started video chat.
+If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."
+  (interactive (list (y-or-n-p "Include empty/scheduled video chats? ")))
   (telega-filter-add (if including-empty-p
-                         'has-voice-chat
-                       '(has-voice-chat with-users))))
+                         'has-video-chat
+                       '(has-video-chat with-users))))
 
 ;;; ellit-org: chat-filters
 ;; - has-favorite-messages ::
@@ -1296,6 +1296,11 @@ If INCLUDING-EMPTY-P is non-nil, then keep also empty voice chats."
 (define-telega-filter is-telega-patron (chat)
   "Matches if corresponding user is a telega patron."
   (telega-msg-sender-patron-p chat))
+
+(define-telega-filter has-sponsored-messages (chat)
+  "Matches if chat has sponsored messages."
+  (when (telega-chat-match-p chat '(type channel))
+    (telega--getChatSponsoredMessages chat)))
 
 (provide 'telega-filter)
 

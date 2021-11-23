@@ -88,6 +88,10 @@
     ("RUB" . "₽"))
   "Alist of currency symbols.")
 
+(defconst telega-emoji-animated-fullscreen-list
+  '("🎆" "🎉" "🎈" "👍" "💩" "❤" "👻" "👎" "🤮" "😂" "💸" "🎃" "🍆")
+  "List of animated emojis with fullscreen support.")
+
 ;;; Runtime variables
 (defvar telega--current-buffer nil
   "Buffer currently inserting into.
@@ -145,13 +149,14 @@ Used to avoid fetching user's full-info to find out that user is blocked.
 CAR of the list is current offset for `telega--getBlockedMessageSenders'.")
 
 (defvar telega--dirty-chats nil
-  "Chats need to be updated with `telega-chat--update'.
-Each element is a list, where first element is chat, and rest
-is events causing chat to be dirty.")
+  "List of chats that need to be updated with `telega-chat--update'.
+Dirtiness types are stored in the `:telega-dirtiness' chat's property.")
 (defvar telega--filters nil "List of active filters.")
 (defvar telega--undo-filters nil "List of undo entries.")
 (defvar telega--sort-criteria nil "Active sorting criteria list.")
 (defvar telega--sort-inverted nil "Non-nil if sorting is inverted.")
+(defvar telega--sort-reorder-dirtiness nil
+  "List of event types affecting chat order for Active sorting criteria.")
 
 (defvar telega--info nil "Alist of (TYPE . INFO-TABLE).")
 (defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE).")
@@ -182,6 +187,9 @@ Used by `telega-stickerset-installed-p'.")
   "List of recently used stickers.")
 (defvar telega--stickers-recent-attached nil
   "List of recently attached stickers.")
+(defvar telega--animated-emojis-stickerset-id nil
+  "Id for sticker set with animated emojis.")
+
 (defvar telega--animations-saved nil
   "List of saved animations.")
 (defvar telega--chat-themes nil
@@ -300,9 +308,9 @@ Actual value is `:@extra` value of the call to inline bot.")
 Asynchronously loaded when chatbuf is created.")
 (make-variable-buffer-local 'telega-chatbuf--administrators)
 
-(defvar telega-chatbuf--voice-chat-hidden nil
-  "Non-nil if non-empty voice chat is displayed in modeline instead of footer.")
-(make-variable-buffer-local 'telega-chatbuf--voice-chat-hidden)
+(defvar telega-chatbuf--video-chat-hidden nil
+  "Non-nil if non-empty video chat is displayed in modeline instead of footer.")
+(make-variable-buffer-local 'telega-chatbuf--video-chat-hidden)
 (defvar telega-chatbuf--group-call-users nil
   "List of group call participants.")
 (make-variable-buffer-local 'telega-chatbuf--group-call-users)
@@ -347,6 +355,7 @@ Done when telega server is ready to receive queries."
   (setq telega--undo-filters nil)
   (setq telega--sort-criteria nil)
   (setq telega--sort-inverted nil)
+  (setq telega--sort-reorder-dirtiness nil)
   (setq telega--info
         (list (cons 'user (make-hash-table :test 'eq))
               (cons 'secretChat (make-hash-table :test 'eq))
@@ -379,6 +388,7 @@ Done when telega server is ready to receive queries."
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
+  (setq telega--animated-emojis-stickerset-id nil)
   (setq telega--animations-saved nil)
   (setq telega--chat-themes nil)
   (setq telega--dice-emojis nil)
@@ -720,6 +730,28 @@ Also supports \"formattedText\" a value of the OBJ's PROP."
          (ret (telega--desurrogate-apply text no-properties)))
     (unless (string-empty-p ret)
       ret)))
+
+(defun telega--tl-json-object (tl-obj)
+  "Extract json object from from TL-OBJ object."
+  (cl-ecase (telega--tl-type tl-obj)
+    (jsonValueObject
+     ;; json object as alist
+     (mapcar (lambda (obj)
+               (cl-assert (telega--tl-type obj) 'jsonObjectMember)
+               (cons (telega-tl-str obj :key)
+                     (telega--tl-json-object (plist-get obj :value))))
+             (plist-get tl-obj :members)))
+    (jsonValueArray
+     (mapcar #'telega--tl-json-object (plist-get tl-obj :values)))
+    (jsonValueNumber
+     (plist-get tl-obj :value))
+    (jsonValueString
+     (telega-tl-str tl-obj :value))
+    (jsonValueBoolean
+     (plist-get tl-obj :value))
+    (jsonValueNull
+     nil)
+    ))
 
 (defsubst telega-zerop (value)
   "Return non-nil if VALUE is nil or `zerop'."
@@ -1125,6 +1157,26 @@ If CHAT has custom order, then return its custom order."
       (plist-get (telega-chat-position chat) :order)
       "0"))
 
+(defconst telega--chat-reorder-dirtiness
+  '("updateNewChat"
+    "updateChatPosition"
+    "updateChatDraftMessage"
+    "updateChatLastMessage"
+
+    ;; Special dirtiness, so (telega-chat--update chat 'reorder) can
+    ;; be used to force chat reordering
+    reorder
+    )
+  "List of dirtiness events when chat needs to update its order.")
+
+(defun telega-chat-order-dirty-p (chat)
+  "Return non-nil if CHAT's order is dirty, i.e. CHAT need to be reordered."
+  (let ((dirtiness (plist-get chat :telega-dirtiness)))
+    (or (cl-intersection telega--chat-reorder-dirtiness dirtiness
+                         :test #'equal)
+        (cl-intersection telega--sort-reorder-dirtiness dirtiness
+                         :test #'equal))))
+
 (defsubst telega-chat> (chat1 chat2)
   "Compare CHAT1 with CHAT2 according to `telega--sort-criteria'.
 Return if CHAT1 is greater than CHAT2."
@@ -1178,6 +1230,21 @@ cache value to MSG only if it is already in cache."
     (when (or (not only-if-already-in-cache)
               (gethash msg-cache-key telega--cached-messages))
       (puthash msg-cache-key msg telega--cached-messages))))
+
+(defun telega-msg-location-live-for (msg)
+  "For live location message MSG return number of seconds it will last live.
+Return nil if location message is not live.
+Return list of two values - (LIVE-FOR UPDATED-AGO)."
+  (let* ((content (plist-get msg :content))
+         (live-period (plist-get content :live_period))
+         (expires-in (plist-get content :expires_in)))
+    (unless (or (zerop live-period) (zerop expires-in))
+      (let ((current-ts (telega-time-seconds))
+            (since (if (zerop (plist-get msg :edit_date))
+                       (plist-get msg :date)
+                     (plist-get msg :edit_date))))
+        (list (- (+ since expires-in) current-ts)
+              (- current-ts since))))))
 
 
 ;;; Inserters part

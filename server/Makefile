@@ -36,7 +36,7 @@ $(PROG): $(SOURCES)
 
 install: $(PROG)
 	@install -d $(INSTALL_PREFIX)
-	@install $(PROG) $(INSTALL_PREFIX)
+	@install -v $(PROG) $(INSTALL_PREFIX)
 
 test:
 	@python3 run_tests.py

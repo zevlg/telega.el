@@ -48,9 +48,9 @@
 
 (declare-function tracking-mode "tracking" (&optional arg))
 
-(declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
+(declare-function telega-chat--update "telega-tdlib-events" (chat &rest dirtiness))
 (declare-function telega-chats-dirty--update "telega-tdlib-events")
-(declare-function telega-chat--mark-dirty "telega-tdlib-events" (chat &rest events))
+(declare-function telega-chat--mark-dirty "telega-tdlib-events" (chat &optional event))
 
 (declare-function telega-account-current "telega")
 (declare-function telega-account-switch "telega" (account))
@@ -352,16 +352,12 @@ Global root bindings:
   (setq buffer-read-only nil)
   (erase-buffer)
 
-  ;; Status goes first
-  (telega-button--insert
-   'telega-status (cons telega--status telega--status-aux))
-
-  ;; NOTE: There is no delim between status and aux ewoc, becaus
-  ;; newline delimiters are added in the `telega-root-aux--pp'.  This
-  ;; is done, because there always should be a delim between ewocs
-
   ;; Ewoc for rootbuf auxiliary inserters
-  (setq telega-root-aux--ewoc (ewoc-create #'telega-root-aux--pp nil nil t))
+  (setq telega-root-aux--ewoc
+        (ewoc-create (telega-ewoc--gen-pp #'telega-root-aux--pp) nil nil t))
+  ;; Status inserter always goes first
+  (ewoc-enter-last telega-root-aux--ewoc #'telega-ins--status)
+  ;; Then goes additional inserters
   (dolist (aux-inserter telega-root-aux-inserters)
     (ewoc-enter-last telega-root-aux--ewoc aux-inserter))
   (goto-char (point-max))
@@ -405,7 +401,8 @@ to make use of `telega-use-tracking-for'"))
 
 (defun telega-root-aux--pp (inserter)
   "Pretty printer for rootbuf aux INSERTER from `telega-root-aux-inserters'."
-  (telega-ins-prefix "\n"
+  ;; NOTE: special case for status inserter, no need in leading newline
+  (telega-ins-prefix (unless (eq inserter #'telega-ins--status) "\n")
     (funcall inserter)))
 
 (defun telega-root-aux-redisplay (&optional item)
@@ -413,16 +410,36 @@ to make use of `telega-use-tracking-for'"))
 ITEM is a corresponding inserter from the `telega-root-aux-inserters'.
 If ITEM is not given, then redisplay whole aux ewoc."
   (with-telega-root-buffer
-    (if item
-        (when-let ((aux-node (telega-ewoc--find-by-data
-                              telega-root-aux--ewoc item)))
-          (ewoc-invalidate telega-root-aux--ewoc aux-node))
+    (telega-save-cursor
+      (if item
+          (when-let ((aux-node (telega-ewoc--find-by-data
+                                telega-root-aux--ewoc item)))
+            (ewoc-invalidate telega-root-aux--ewoc aux-node))
 
-      ;; NOTE: `telega-root-aux-inserters' might have changed, so
-      ;; recreate all items
-      (telega-ewoc--clean telega-root-aux--ewoc)
-      (dolist (aux-inserter telega-root-aux-inserters)
-        (ewoc-enter-last telega-root-aux--ewoc aux-inserter)))))
+        ;; NOTE: `telega-root-aux-inserters' might have changed, so
+        ;; recreate all items
+        (telega-ewoc--clean telega-root-aux--ewoc)
+        (dolist (aux-inserter telega-root-aux-inserters)
+          (ewoc-enter-last telega-root-aux--ewoc aux-inserter))))))
+
+(defun telega-root-aux-append (inserter)
+  "Append INSERTER to root aux inserters."
+  (unless (memq inserter telega-root-aux-inserters)
+    (setq telega-root-aux-inserters
+          (append telega-root-aux-inserters (list inserter)))
+    (with-telega-root-buffer
+      (telega-save-excursion
+        (ewoc-enter-last telega-root-aux--ewoc inserter)))))
+
+(defun telega-root-aux-remove (inserter)
+  "Remove root aux INSERTER."
+  (setq telega-root-aux-inserters
+        (delq inserter telega-root-aux-inserters))
+  (with-telega-root-buffer
+    (telega-save-excursion
+      (when-let ((node (telega-ewoc--find-by-data
+                        telega-root-aux--ewoc inserter)))
+        (ewoc-delete telega-root-aux--ewoc node)))))
 
 
 (defun telega-root--killed ()
@@ -699,31 +716,26 @@ CONTACT is some user you have exchanged contacts with."
 
 
 ;;; Auth/Connection Status
-(define-button-type 'telega-status
-  :supertype 'telega
-  :inserter 'telega-ins--status
-  'inactive t)
-
-(defun telega-ins--status (status)
-  "Default inserter for the `telega-status' button.
-STATUS is cons with connection status as car and aux status as cdr."
-  (let ((conn-status (car status))
-        (aux-status (cdr status)))
-    (telega-ins "Status")
-    (when-let (account (telega-account-current))
-      (telega-ins " (")
-      (telega-ins--button (car account)
-        'face 'bold
-        'action (lambda (_ignored)
-                  (call-interactively #'telega-account-switch))
-        'help "Switch to another account")
-      (telega-ins ")"))
-    (telega-ins ": " conn-status)
-    (unless (string-empty-p aux-status)
-      (if (< (current-column) 28)
-          (telega-ins (make-string (- 30 (current-column)) ?\s))
-        (telega-ins "  "))
-      (telega-ins aux-status))))
+(defun telega-ins--status ()
+  "Inserter for the telega status.
+Status values are hold in the `telega--status' and
+`telega--status-aux' variables."
+  (telega-ins "Status")
+  (when-let (account (telega-account-current))
+    (telega-ins " (")
+    (telega-ins--button (car account)
+      'face 'bold
+      'action (lambda (_ignored)
+                (call-interactively #'telega-account-switch))
+      'help "Switch to another account")
+    (telega-ins ")"))
+  (telega-ins ": " telega--status)
+  (unless (string-empty-p telega--status-aux)
+    (when (< (current-column) 30)
+      (telega-ins (make-string (- 30 (current-column)) ?\s)))
+    (telega-ins "  ")
+    (telega-ins telega--status-aux))
+  t)
 
 (defun telega-status--animate ()
   "Animate dots at the end of the current connection or/and aux status."
@@ -762,17 +774,12 @@ If RAW is given then do not modify statuses for animation."
             ((string-match "\\.+$" telega--status-aux)
              (telega-status--timer-start))
             (telega-status--timer
-             (cancel-timer telega-status--timer))))
+             (cancel-timer telega-status--timer)
+             (setq telega-status--timer nil))))
 
-  (with-telega-root-buffer
-    (setq mode-line-process (concat ":" telega--status))
-    (telega-save-cursor
-      (let ((button (button-at (point-min))))
-        (cl-assert (and button (eq (button-type button) 'telega-status))
-                   nil "Telega status button is gone")
-        (telega-button--update-value
-         button (cons telega--status telega--status-aux)))))
-  ))
+    (with-telega-root-buffer
+      (setq mode-line-process (concat ":" telega--status))
+      (telega-root-aux-redisplay #'telega-ins--status))))
 
 (defun telega-root--on-chat-update0 (ewoc-name ewoc chat &optional chat-node)
   "Update CHAT in EWOC named EWOC-NAME.
@@ -781,7 +788,7 @@ CHAT-NODE is EWOC's node for the CHAT."
   (unless chat-node
     (setq chat-node (telega-ewoc--find-by-data ewoc chat)))
 
-  (if (and chat-node (not (plist-get chat :telega-need-reorder-p)))
+  (if (and chat-node (not (telega-chat-order-dirty-p chat)))
       (telega-ewoc--move-node ewoc chat-node chat-node
                               telega-root-keep-cursor)
 
@@ -789,7 +796,8 @@ CHAT-NODE is EWOC's node for the CHAT."
     (let* ((cmp-func (telega-root-view--ewoc-sorter ewoc-name #'telega-chat>))
            (before-node (telega-ewoc--find-if ewoc
                           (lambda (echat)
-                            (unless (eq chat echat)
+                            (unless (or (eq chat echat)
+                                        (telega-chat-order-dirty-p echat))
                               (funcall cmp-func chat echat))))))
       (if (not chat-node)
           ;; New chat created
@@ -803,12 +811,12 @@ CHAT-NODE is EWOC's node for the CHAT."
                                 telega-root-keep-cursor))
       )))
 
-(defun telega-root--any-on-chat-update (ewoc-name ewoc chat _events)
+(defun telega-root--any-on-chat-update (ewoc-name ewoc chat)
   "Update CHAT in EWOC.
 If corresponding chat node does not exists in EWOC, then create new one."
   (telega-root--on-chat-update0 ewoc-name ewoc chat))
 
-(defun telega-root--existing-on-chat-update (ewoc-name ewoc chat _events)
+(defun telega-root--existing-on-chat-update (ewoc-name ewoc chat)
   "Update CHAT in EWOC, only if corresponding chat node exists."
   (when-let ((chat-node (telega-ewoc--find-by-data ewoc chat)))
     (telega-root--on-chat-update0 ewoc-name ewoc chat chat-node)))
@@ -827,7 +835,7 @@ If corresponding chat node does not exists in EWOC, then create new one."
       (telega-ewoc--move-node ewoc user-node before-node telega-root-keep-cursor)
       )))
 
-(defun telega-root--contact-on-chat-update (ewoc-name ewoc chat _events)
+(defun telega-root--contact-on-chat-update (ewoc-name ewoc chat)
   (when-let ((user (telega-chat-user chat)))
     (telega-root--contact-on-user-update ewoc-name ewoc user)))
 
@@ -1308,7 +1316,7 @@ If QUERY is empty string, then show all contacts."
                :on-user-update #'telega-root--contact-on-user-update))
    ))
 
-(defun telega-root--nearby-on-chat-update (ewoc-name ewoc chat _events)
+(defun telega-root--nearby-on-chat-update (ewoc-name ewoc chat)
   "Update nearby CHAT in EWOC, chat dirtiness is cased by EVENTS."
   (when (telega-chat-nearby-find (plist-get chat :id))
     (telega-root--on-chat-update0 ewoc-name ewoc chat)))
@@ -1386,12 +1394,12 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
   (telega-root--call-messages-search))
 
-(defun telega-root--topics-on-chat-update (ewoc-name ewoc chat events)
+(defun telega-root--topics-on-chat-update (ewoc-name ewoc chat)
   "Handler for chat updates in \"topics\" root view."
   (let ((topic-filter (plist-get (telega-root-view--ewoc-spec ewoc-name)
                                  :topic-filter)))
     (if (telega-chat-match-p chat topic-filter)
-        (telega-root--any-on-chat-update ewoc-name ewoc chat events)
+        (telega-root--any-on-chat-update ewoc-name ewoc chat)
 
       ;; Possible need a removal from EWOC
       (when-let ((chat-node (telega-ewoc--find-by-data ewoc chat)))
@@ -1681,7 +1689,7 @@ Default Disable Notification setting"))
           :pretty-printer (telega-view-folders--gen-pp folder-name)
           :header (telega-folder-format "%i%f" folder-name)
           :sorter (telega-view-folders--gen-sorter folder-name)
-          :loading (telega--getChats nil tdlib-chat-list
+          :loading (telega--getChats tdlib-chat-list
                      (apply-partially
                       #'telega-root-view--ewoc-loading-done folder-name))
           :on-chat-update #'telega-root--any-on-chat-update)))
@@ -1911,15 +1919,15 @@ state kinds to show. By default all kinds are shown."
 
 
 ;; Voice Chats, inspired by https://t.me/designers/177
-(defun telega-root--passive-voice-chat-pp (_chat)
+(defun telega-root--passive-video-chat-pp (_chat)
   ;; TODO
   )
 
-(defun telega-root--scheduled-voice-chat-pp (_chat)
+(defun telega-root--scheduled-video-chat-pp (_chat)
   ;; TODO
   )
 
-(defun telega-root--active-voice-chat-pp (_chat)
+(defun telega-root--active-video-chat-pp (_chat)
   ;; TODO
   )
 
@@ -1927,21 +1935,21 @@ state kinds to show. By default all kinds are shown."
   ;; TODO
   )
 
-(defun telega-view-voice-chats ()
-  "View active/passive/scheduled voice chats."
+(defun telega-view-video-chats ()
+  "View active/passive/scheduled video chats."
   (interactive)
   (telega-root-view--apply
-   (list 'telega-view-voice-chats "Voice Chats"
+   (list 'telega-view-video-chats "Video Chats"
          (list :name "Active"
-               :pretty-printer #'telega-root--active-voice-chat-pp
+               :pretty-printer #'telega-root--active-video-chat-pp
                :items nil               ; todo
                :on-group-call-update #'telega-root--on-group-call-update)
          (list :name "Scheduled"
-               :pretty-printer #'telega-root--scheduled-voice-chat-pp
+               :pretty-printer #'telega-root--scheduled-video-chat-pp
                :items nil               ; todo
                :on-group-call-update #'telega-root--on-group-call-update)
          (list :name "Passive"
-               :pretty-printer #'telega-root--passive-voice-chat-pp
+               :pretty-printer #'telega-root--passive-video-chat-pp
                :items nil               ; todo
                :on-group-call-update #'telega-root--on-group-call-update)
          )))

@@ -995,7 +995,7 @@ message) use ~[HH:]MM:SS]~ syntax in the message's body/caption.  Such
 timestamp marks will be automatically emphasised with a media
 timestamp text entity.
 
-* Voice Chats
+* Video Chats
 
 **TODO**: write me
 

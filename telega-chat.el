@@ -483,16 +483,29 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
           (with-telega-chatbuf chat
             (telega-chatbuf--modeline-update)))))))
 
+(defun telega-chatbuf--sponsored-messages-fetch ()
+  "Asynchronously fetch sponsored messages for chatbuf."
+  (let ((chat telega-chatbuf--chat))
+    (plist-put chat :telega-sponsored-messages nil)
+    (when (and (telega-chat-match-p chat '(type channel))
+               (not (and telega-patrons-disable-sponsored-messages
+                         (telega-msg-sender-patron-p (telega-chat-me)))))
+      (telega--getChatSponsoredMessages telega-chatbuf--chat
+        (lambda (messages)
+          (plist-put chat :telega-sponsored-messages messages)
+          (with-telega-chatbuf chat
+            (telega-chatbuf--footer-update)))))))
+
 (defun telega-chat-group-call (&optional chat)
   "Return group call for the chatbuf's voice chat.
 If CHAT is specified, return group call for the CHAT."
   (telega-group-call-get (telega--tl-get (or chat telega-chatbuf--chat)
-                                         :voice_chat :group_call_id)))
+                                         :video_chat :group_call_id)))
 
-(defun telega-chatbuf--voice-chat-fetch ()
-  "Asynchronously fetch voice chat state for the chatbuf."
+(defun telega-chatbuf--video-chat-fetch ()
+  "Asynchronously fetch video chat state for the chatbuf."
   (let* ((chat telega-chatbuf--chat)
-         (group-call-id (telega--tl-get chat :voice_chat :group_call_id)))
+         (group-call-id (telega--tl-get chat :video_chat :group_call_id)))
     (if (zerop group-call-id)
         (progn
           (telega-chatbuf--footer-update)
@@ -615,8 +628,8 @@ Specify non-nil BAN to ban this user in this CHAT."
       (error "Invalid order, must contain only digits")))
 
   (setf (telega-chat-uaprop chat :order) order)
-  ;; NOTE: Update chat with fake event causing chat reorder
-  (telega-chat--update chat (list :@type "telegaChatReorder")))
+  ;; NOTE: Update chat forcing reorder
+  (telega-chat--update chat 'reorder))
 
 (defun telega-chat-call (chat)
   "Call to the user associated with the given private CHAT."
@@ -1306,10 +1319,10 @@ Chat considered unread if matches `telega-filter-unread-chats' chat filter."
     ;;   See [[#favorite-messages][Favorite Messages]] for details.
     (define-key map (kbd "*") 'telega-chatbuf-next-favorite)
     ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-goto-voice-chat,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-goto-voice-chat, 2)}}}
-    ;;   See [[#voice-chats][Voice Chats]] for details.
-    (define-key map (kbd "v") 'telega-chatbuf-goto-voice-chat)
+    ;; - {{{where-is(telega-chatbuf-goto-video-chat,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-goto-video-chat, 2)}}}
+    ;;   See [[#video-chats][Video Chats]] for details.
+    (define-key map (kbd "v") 'telega-chatbuf-goto-video-chat)
     map)
   "Keymap for fast navigation commands in the chatbuf.")
 
@@ -1478,6 +1491,9 @@ If POINT is not over some message, then view last message."
 
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
+  ;; ------------(sponsored)------------
+  ;; MSG1
+  ;; MSG2
   ;; --(actions part)---------------[additional status]--
   ;; [x] Messages Filter: <FILTER> (total: MSG-COUNT)
   ;; [x] Action Bar: [ action ] [ bar ] [ buttons ]
@@ -1499,12 +1515,12 @@ If POINT is not over some message, then view last message."
          (actions (gethash (plist-get telega-chatbuf--chat :id)
                            telega--actions))
          (chat telega-chatbuf--chat)
-         (voice-chat (plist-get telega-chatbuf--chat :voice_chat))
-         (voice-chat-visible-p
-          (and (not telega-chatbuf--voice-chat-hidden)
-               (let* ((active-p (plist-get voice-chat :has_participants))
+         (video-chat (plist-get telega-chatbuf--chat :video_chat))
+         (video-chat-visible-p
+          (and (not telega-chatbuf--video-chat-hidden)
+               (let* ((active-p (plist-get video-chat :has_participants))
                       (display-spec (cdr (assq (if active-p 'active 'passive)
-                                               telega-voice-chat-display))))
+                                               telega-video-chat-display))))
                  (memq 'footer display-spec))))
          (msg-filter telega-chatbuf--msg-filter)
          (thread-msg telega-chatbuf--thread-msg)
@@ -1514,6 +1530,7 @@ If POINT is not over some message, then view last message."
     (telega-ins--as-string
      (when compact-view-p
        (telega-ins "\n"))
+     (telega-ins--chat-sponsored-messages chat)
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        ;; Chat action part
        (telega-ins (telega-symbol fill-symbol))
@@ -1557,12 +1574,12 @@ If POINT is not over some message, then view last message."
          (telega-ins "\n"))
 
        ;; Group Call section
-       (when-let ((visible-p voice-chat-visible-p)
+       (when-let ((visible-p video-chat-visible-p)
                   (group-call (telega-group-call-get
-                                  (plist-get voice-chat :group_call_id))))
+                                  (plist-get video-chat :group_call_id))))
          (telega-ins--button (propertize "✕" 'face 'bold)
            :value chat
-           :action #'telega-voice-chat-toggle-footer)
+           :action #'telega-video-chat-toggle-footer)
          (telega-ins " ")
          (telega-ins (telega-i18n "lng_group_call_title")
                      ": "
@@ -1591,7 +1608,7 @@ If POINT is not over some message, then view last message."
              :action #'telega--startScheduledGroupCall)
            (telega-ins "\n"))
 
-         (when (and (plist-get voice-chat :has_participants)
+         (when (and (plist-get video-chat :has_participants)
                     (not (zerop (plist-get group-call :participant_count))))
            (telega-ins "   " (telega-i18n "lng_group_call_members"
                                :count (plist-get group-call :participant_count))
@@ -1771,7 +1788,8 @@ Global chat bindings:
                                 "UploadingPhoto" "UploadingDocument"
                                 "ChoosingLocation" "ChoosingContact"
                                 "StartPlayingGame" "RecordingVideoNote"
-                                "UploadingVideoNote" "Cancel")))
+                                "UploadingVideoNote" "WatchingAnimations"
+                                "Cancel")))
     (setq action (list :@type (concat "chatAction" action))))
   ;; NOTE: special case is for `chatActionUploadingVideoNote', it
   ;; might have additional `:progress' argument.  In this case, pass
@@ -1849,6 +1867,24 @@ Recover previous active action after BODY execution."
                  (not telega-chatbuf--history-loading)
                  (telega-chatbuf--need-newer-history-p))
         (telega-chatbuf--load-newer-history)))
+
+    ;; NOTE: If all chatbuf messages are read, then mark all sponsored
+    ;; messages as viewed as well
+    (when-let ((sponsored-messages 
+                (plist-get telega-chatbuf--chat :telega-sponsored-messages))
+               (sponsored-views
+                (or (plist-get telega-chatbuf--chat :telega-sponsored-views) 0)))
+      (when (and (telega-chatbuf--last-msg-loaded-p)
+                 (pos-visible-in-window-p
+                  (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
+        (when (zerop sponsored-views)
+          (dolist (smsg sponsored-messages)
+            (telega--viewSponsoredMessage telega-chatbuf--chat smsg)))
+
+        (plist-put telega-chatbuf--chat :telega-sponsored-views
+                   (1+ sponsored-views))
+        (when (> sponsored-views 9)
+          (plist-put telega-chatbuf--chat :telega-sponsored-messages nil))))
     ))
 
 (defun telega-chatbuf--post-command ()
@@ -2001,6 +2037,7 @@ unknown, i.e. has no positions set."
          (anonymous-p (and (eq 'supergroup (telega-chat--type chat 'raw))
                            (telega--tl-get (telega-chat--supergroup chat)
                                            :status :is_anonymous)))
+         (broadcast-p (telega-chat-match-p chat '(type channel)))
          (usj-prompt (unless (or comment-p anonymous-p)
                        (telega-chatbuf--unblock-start-join-prompt)))
          (prompt (concat
@@ -2010,15 +2047,18 @@ unknown, i.e. has no positions set."
                      (telega-ins--image
                       (telega-msg-sender-avatar-image-one-line chat))))
 
+                  ;; Prompt prefix
+                  (unless usj-prompt
+                    (cond (anonymous-p
+                           (telega-i18n "telega_chat_prompt_anonymous"))
+                          (comment-p
+                           (telega-i18n "telega_chat_prompt_comment"))
+                          (broadcast-p
+                           (telega-i18n "telega_chat_prompt_broadcast"))))
+
                   ;; NOTE: Prompt could be an alist
                   ;; See https://t.me/emacs_telega/23453
-                  (let ((iprompt (cond (usj-prompt usj-prompt)
-                                       (anonymous-p
-                                        telega-chat-input-anonymous-prompt)
-                                       (comment-p
-                                        telega-chat-input-comment-prompt)
-                                       (t
-                                        telega-chat-input-prompt))))
+                  (let ((iprompt (or usj-prompt telega-chat-input-prompt)))
                     (if (stringp iprompt)
                         iprompt
                       (let ((ptype
@@ -2033,7 +2073,9 @@ unknown, i.e. has no positions set."
        telega-chatbuf--prompt-button
        (if (or usj-prompt
                (telega-chat-match-p telega-chatbuf--chat
-                 '(my-permission :can_send_messages)))
+                 '(or (my-permission :can_send_messages)
+                      (and (type channel)
+                           (my-permission :can_post_messages)))))
            prompt
          (propertize prompt 'face 'shadow))
        :usj-prompt-p usj-prompt))))
@@ -2139,8 +2181,9 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
           ;; Asynchronously fetch some chat info
           (telega-chatbuf--admins-fetch)
           (telega-chatbuf--pinned-messages-fetch)
-          (unless (zerop (telega--tl-get chat :voice_chat :group_call_id))
-            (telega-chatbuf--voice-chat-fetch))
+          (telega-chatbuf--sponsored-messages-fetch)
+          (unless (zerop (telega--tl-get chat :video_chat :group_call_id))
+            (telega-chatbuf--video-chat-fetch))
           (unless (zerop (plist-get chat :reply_markup_message_id))
             (telega-chatbuf--reply-markup-message-fetch))
 
@@ -2187,13 +2230,13 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
        (button-get telega-chatbuf--aux-button 'invisible)
        (not (telega-chatbuf-has-input-p))))
 
-(defun telega-chatbuf-mode-line-voice-chat (&optional max-width)
-  "Format [Voice Chat] button for chat's group call."
-  (when (telega-chat-match-p telega-chatbuf--chat 'has-voice-chat)
+(defun telega-chatbuf-mode-line-video-chat (&optional max-width)
+  "Format [Video Chat] button for chat's group call."
+  (when (telega-chat-match-p telega-chatbuf--chat 'has-video-chat)
     (let* ((active-p (telega--tl-get telega-chatbuf--chat
-                                     :voice_chat :has_participants))
+                                     :video_chat :has_participants))
            (display-spec (cdr (assq (if active-p 'active 'passive)
-                                    telega-voice-chat-display))))
+                                    telega-video-chat-display))))
       (when (memq 'modeline display-spec)
         (when-let ((group-call (telega-chat-group-call telega-chatbuf--chat)))
           (telega-ins--as-string
@@ -2202,15 +2245,15 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
              (telega-ins--with-props
                  (list 'local-map (eval-when-compile
                                     (make-mode-line-mouse-map
-                                     'mouse-1 #'telega-chatbuf-goto-voice-chat))
+                                     'mouse-1 #'telega-chatbuf-goto-video-chat))
                        'mouse-face 'mode-line-highlight
-                       'help-echo (telega-i18n "telega_chat_modeline_voice_chat_help"
+                       'help-echo (telega-i18n "telega_chat_modeline_video_chat_help"
                                     :mouse "mouse-1"))
                (telega-ins
                 (number-to-string (plist-get group-call :participant_count))
                 (propertize (telega-symbol (if active-p
-                                               'voice-chat-active
-                                             'voice-chat-passive))
+                                               'video-chat-active
+                                             'video-chat-passive))
                             'face 'shadow)
                 ": "
                 (or (telega-tl-str group-call :title)
@@ -2391,7 +2434,7 @@ If message thread filtering is enabled, use it first."
               ")"))))
 
 (defun telega-chatbuf--modeline-update ()
-  "Update `mode-line-buffer-identification' for the CHAT buffer."
+  "Update `mode-line-buffer-identification' for the chatbuf."
   ;; NOTE: Avoid images in modeline if mode-line height is less then
   ;; default height
   (let* ((mode-line-smaller-p (< (telega-chars-xheight 1 'mode-line)
@@ -2412,6 +2455,64 @@ If message thread filtering is enabled, use it first."
                 (format-mode-line telega-chat-mode-line-format nil nil
                                   (current-buffer)))))
   (force-mode-line-update))
+
+(defconst telega-chatbuf--modeline-dirtiness
+  '("updateUserStatus"
+    "updateChatOnlineMemberCount"
+    "updateChatMessageTtlSetting"
+    "updateMessageMentionRead"
+    "updateChatReadInbox"
+    "updateChatUnreadMentionCount"
+    )
+  "List of dirtiness events when chatbuf modeline needs to be updated.")
+
+(defconst telega-chatbuf--footer-dirtiness
+  '("updateChatLastMessage"
+    "updateUserChatAction"
+    "updateChatActionBar"
+    "updateChatReadInbox"
+    "updateChatUnreadMentionCount"
+    )
+  "List of dirtiness events when chatbuf footer needs to be updated.")
+
+(defconst telega-chatbuf--thread-dirtiness
+  '("updateMessageInteractionInfo"
+    )
+  "List of dirtiness events when current chatbuf thread needs to be updated.")
+
+(defconst telega-chatbuf--prompt-dirtiness
+  '("updateChatPhoto"
+    "updateChatIsBlocked"
+    )
+  "List of dirtiness events when chatbuf prompt needs to be updated.")
+
+(defun telega-chatbuf--chat-update ()
+  "Chat structure has been updated by `telega-chat--update'.
+Examine `:telega-dirtiness' property and update corresponding chatbuf parts."
+  (let ((modeline-p nil)
+        (footer-p nil)
+        (prompt-p nil))
+    (dolist (event-type (plist-get telega-chatbuf--chat :telega-dirtiness))
+      (setq modeline-p (or modeline-p
+                           (member event-type telega-chatbuf--modeline-dirtiness))
+            footer-p (or footer-p
+                         (member event-type telega-chatbuf--footer-dirtiness)
+                         (when telega-chatbuf--thread-msg
+                           (member event-type telega-chatbuf--thread-dirtiness)))
+            prompt-p (or prompt-p
+                         (member event-type telega-chatbuf--prompt-dirtiness))))
+
+    (when modeline-p
+      (telega-chatbuf--modeline-update))
+    (when footer-p
+      (telega-chatbuf--footer-update))
+    ;; NOTE: also update it if usj prompt is currently used and chat
+    ;; reorders.  Why?
+    (when (or prompt-p
+              (and (telega-chat-order-dirty-p telega-chatbuf--chat)
+                   (telega-chatbuf--prompt-unblock-start-join-p)))
+      (telega-chatbuf--prompt-update))
+    ))
 
 (defun telega-chatbuf--input-idx-valid-p (idx)
   "Return non-nil if input history position IDX is valid."
@@ -2667,8 +2768,16 @@ Return last inserted ewoc node."
             ;; see: https://github.com/zevlg/telega.el/issues/60
             (telega-msg--track-file-uploading-progress msg)
 
+            ;; Possibly download sound file for the animate emoji
+            ;; message, to be played instantly when message is opened
+            (when (and (eq telega-emoji-animated-play 'with-sound)
+                       (telega-msg-type-p 'messageAnimatedEmoji msg))
+              (when-let ((sound (telega--tl-get
+                                 msg :content :animated_emoji :sound)))
+                (telega-file--download sound)))
+
             ;; Ensure cached message (if any) and node data is the same
-            ;; object, so message could be modified inplace
+            ;; object, so message can be modified inplace
             (telega-msg-cache msg 'maybe-update)
 
             (cl-assert node)
@@ -3504,8 +3613,8 @@ Return nil if CHAT has no linked chat."
     (let ((telega-chatbuf--messages-pop-ring nil))
       (telega-msg-goto-highlight pop-to-msg))))
 
-(defun telega-chatbuf-goto-voice-chat ()
-  "Goto voice chat associated with the chat."
+(defun telega-chatbuf-goto-video-chat ()
+  "Goto video chat associated with the chat."
   (interactive)
   (let ((group-call (telega-chat-group-call telega-chatbuf--chat)))
     (unless group-call
@@ -4179,8 +4288,7 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
 
   ;; May affect rootbuf sorting if `chatbuf-recency' criteria is used
   (when (memq 'chatbuf-recency telega--sort-criteria)
-    (telega-chat--update telega-chatbuf--chat
-                         (list :@type "telegaChatReorder")))
+    (telega-chat--update telega-chatbuf--chat 'reorder))
   )
 
 (defun telega-chatbuf--killed ()

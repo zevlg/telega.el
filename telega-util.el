@@ -496,6 +496,15 @@ Specify non-nil VIDEO-P if generating preview for video."
                       :base-uri (expand-file-name "dummy" base-dir))
     ))
 
+;; TODO:
+(defun telega-video--create-svg (filename data-p width height)
+  "Create image for the VIDEO."
+  (let* ((base-dir (if data-p
+                       (telega-directory-base-uri telega-temp-dir)
+                     (file-name-directory filename))))
+    ;; TODO: create svg
+    ))
+
 ;; code taken from
 ;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
 (defun telega-symbol-widths-install (symbol-widths-alist)
@@ -1694,7 +1703,7 @@ integer values, then absolute value in pixels is used."
   ;; `display' property it is displayed is single unit (ref: 40.16.1
   ;; Display Specs That Replace The Text).  So we use `seq-copy' to
   ;; make `display' property for horizontal-bar differ
-  (seq-copy 
+  (seq-copy
    (or (telega-emoji--image-cache-get bar-str (telega-chars-xheight 1))
        (let* ((xh (telega-chars-xheight 1))
               (xw (telega-chars-xwidth (string-width bar-str)))
@@ -2017,6 +2026,15 @@ BACKGROUND-MODE is one of `light' or `dark'."
     (plist-get (car (rainbow-identifiers-cie-l*a*b*-choose-face
                      (rainbow-identifiers--hash-function identifier)))
                :foreground)))
+
+(defun telega-color-name-from-rgb24 (rgb24)
+  "Convert RGB24 int value to color name."
+  (format "#%06x" (+ 8388608 rgb24)))
+
+(defun telega-color-name-from-argb (argb)
+  "Convert ARGB int value to color name.
+Strips alpha component."
+  (format "#%06x" (logand (+ 2147483648 argb) 16777215)))
 
 (defun telega-clear-assigned-colors ()
   "Clears assigned colors for all chats and users.

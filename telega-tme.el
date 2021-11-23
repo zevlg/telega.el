@@ -38,6 +38,7 @@
 (declare-function telega-chat-by-username "telega-chat" (username))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat &optional no-history-load))
+(declare-function telega-chatbuf--prompt-update "telega-chat")
 
 
 (defun telega-tme--media-timestamp-callback (media-timestamp-str)
@@ -137,7 +138,7 @@ PARAMS are additional params."
                 (bot-user (telega-chat-user bot-chat 'inc-bots)))
            (telega-chat--pop-to-buffer bot-chat)
            (telega--sendBotStartMessage
-            bot-user bot-chat (plist-get params :startgroup))))
+            bot-user bot-chat (plist-get params :start))))
 
         (t
          ;; Ordinary user/channel/group, :post
@@ -171,7 +172,10 @@ PARAMS are additional params."
   (let* ((url (concat (or (plist-get telega--options :t_me_url)
                           "https://t.me/")
                       "joinchat/" group))
-         (link-check (telega--checkChatInviteLink url))
+         (link-check (let ((tl-obj (telega--checkChatInviteLink url)))
+                       (when (telega--tl-error-p tl-obj)
+                         (error "telega: %s" (telega-tl-str tl-obj :error)))
+                       tl-obj))
          (chat-id (plist-get link-check :chat_id))
          (chat (when link-check
                  (if (zerop chat-id)
@@ -342,6 +346,39 @@ Return non-nil if url has been handled."
       (cond (just-convert tg)
             (tg (telega-tme-open-tg tg) t)
             (t (telega-debug "WARN: Can't open \"%s\" internally") nil)))))
+
+(defun telega-tme-open-tdlib-link (tdlib-link)
+  "Open TDLib's internal link."
+  (cl-ecase (telega--tl-type tdlib-link)
+    (internalLinkTypeBotStart
+     (let* ((bot-username (plist-get tdlib-link :bot_username))
+            (bot-chat (telega--searchPublicChat bot-username))
+            (bot-user (when bot-chat
+                        (telega-chat-user bot-chat 'inc-bots))))
+       (unless bot-user
+         (error "telega: No such bot @%s" bot-username))
+
+       (telega-chat--pop-to-buffer bot-chat)
+       (setq telega-chatbuf--bot-start-parameter
+             (telega-tl-str tdlib-link :start_parameter))
+       (telega-chatbuf--prompt-update)
+       ;; Now wait till [START] is pressed
+       ))
+    (internalLinkTypeMessage
+     (telega-tme-open-tg (plist-get tdlib-link :url)))
+
+    (internalLinkTypeActiveSessions
+     )
+
+    (internalLinkTypeVoiceChat
+     )
+
+    (internalLinkTypeChatInvite
+     (let* ((invite-link (plist-get tdlib-link :invite_link))
+            (invite-link-info (telega--checkChatInviteLink invite-link)))
+       ;; TODO
+       ))
+    ))
 
 (provide 'telega-tme)
 

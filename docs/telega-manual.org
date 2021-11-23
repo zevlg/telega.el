@@ -1,6 +1,6 @@
-#+OPTIONS: timestamp:nil \n:t num:nil ellit-cid:t
-#+TITLE: Telega Manual (v0.7.82)
-#+AUTHOR: Zajcev Evgeny
+#+options: timestamp:nil \n:t num:nil ellit-cid:t
+#+title: Telega Manual (v0.7.90)
+#+author: Zajcev Evgeny
 #+startup: showall
 
 #+macro: nl          (eval (concat "\n" (make-string (1- (string-to-number $1)) ?\s)))
@@ -67,7 +67,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#client-side-messages-ignoring][Client side messages ignoring]]
     - [[#favorite-messages][Favorite messages]]
     - [[#media-controls-for-media-messages][Media Controls for media messages]]
-  - [[#voice-chats][Voice Chats]]
+  - [[#video-chats][Video Chats]]
   - [[#stickers--animations][Stickers / Animations]]
     - [[#animated-stickers][Animated stickers]]
     - [[#favorite-and-recently-used-stickers][Favorite and recently used stickers]]
@@ -84,6 +84,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-highlight-text-mode][telega-highlight-text-mode]]
     - [[#telega-patrons-mode][telega-patrons-mode]]
     - [[#telega-my-location-mode][telega-my-location-mode]]
+    - [[#telega-active-locations-mode][telega-active-locations-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
@@ -221,7 +222,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.7.
+version greater or equal to 1.7.9.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -710,10 +711,12 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 * Root Buffer
 :PROPERTIES:
@@ -1294,9 +1297,9 @@ For other Chat Filter bindings see below.
 - fake-or-scam :: 
      Matches if chat is fake or scam user or group.
 
-- (has-voice-chat [ ~NON-EMPTY~ ]) :: 
-     Matches if chat contains a live voice chat.
-     If non-nil ~NON-EMPTY~ is specified, then match only if voice chat is
+- (has-video-chat [ ~NON-EMPTY~ ]) :: 
+     Matches if chat contains a live video chat.
+     If non-nil ~NON-EMPTY~ is specified, then match only if video chat is
      not empty.
 
 - has-favorite-messages :: 
@@ -1498,7 +1501,7 @@ For other sorting keybindings see below.
 Chatbuf is a Emacs buffer showing some Telegram chat.  Chatbuf
 consists of a list of chat messages and an input for your messages
 to send.  Press
-@@html:<kbd>@@i@@html:</kbd>@@ (~telega-describe-message~) to
+@@html:<kbd>@@i@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <describe>@@html:</kbd>@@ (~telega-describe-message~) to
 get detailed description of the message at point.
 
 Important customizable options:
@@ -1557,9 +1560,9 @@ messages:
      Goto next favorite message.
      See [[#favorite-messages][Favorite Messages]] for details.
 
-- @@html:<kbd>@@M-g v@@html:</kbd>@@ (~telega-chatbuf-goto-voice-chat~) :: 
-     Goto voice chat associated with the chat.
-     See [[#voice-chats][Voice Chats]] for details.
+- @@html:<kbd>@@M-g v@@html:</kbd>@@ (~telega-chatbuf-goto-video-chat~) :: 
+     Goto video chat associated with the chat.
+     See [[#video-chats][Video Chats]] for details.
 
 ** Sending ordinary messages
 :PROPERTIES:
@@ -1782,8 +1785,8 @@ Customizable options for attaching media:
 
 To reply/edit the message, put point on the message you want to
 reply/edit and press
-@@html:<kbd>@@r@@html:</kbd>@@ (~telega-msg-reply~) to reply or
-@@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) to edit.
+@@html:<kbd>@@r@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <reply>@@html:</kbd>@@ (~telega-msg-reply~) to reply or
+@@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) to edit.
 
 Aux prompt will be show just above the chatbuf prompt, such as:
 #+begin_example
@@ -1812,7 +1815,7 @@ for such messages is controlled by:
 
   Default value: ~(telega--fmt-text-markdown2 . "markdown2")~
 
-  @@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) accepts
+  @@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) accepts
   @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to edit message as-is without using markup
   attachment with markup name specified in this option.
 
@@ -1826,7 +1829,7 @@ forward and press
 @@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-@@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
+@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
 @@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
@@ -1847,11 +1850,11 @@ To delete a message, put cursor under the message you want to delete and press
 @@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@k@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
-with @@html:<kbd>@@m@@html:</kbd>@@ (~telega-msg-mark-toggle~).
+with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
 
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
-@@html:<kbd>@@B@@html:</kbd>@@ (~telega-msg-ban-sender~) when
+@@html:<kbd>@@B@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <ban-sender>@@html:</kbd>@@ (~telega-msg-ban-sender~) when
 cursor is under the message.
 
 =telega= can keep deleted messages visible until chatbuf is
@@ -1880,7 +1883,7 @@ and send it as always.
 
 To reschedule a message, first list all scheduled messages in the chat
 with @@html:<kbd>@@C-c / scheduled RET@@html:</kbd>@@, then press
-@@html:<kbd>@@e@@html:</kbd>@@ (~telega-msg-edit~) on the message
+@@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) on the message
 you want to reschedule, remove previous "Schedule" attachment and add
 a new one at the beginning.
 
@@ -2174,7 +2177,7 @@ messages are labeled with:
   Default value: ~"🔖"~
 
 To toggle message at point being favorite, press
-@@html:<kbd>@@*@@html:</kbd>@@ (~telega-msg-favorite-toggle~).
+@@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <rm-favorite>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <add-favorite>@@html:</kbd>@@ (~telega-msg-favorite-toggle~).
 
 To jump to next favorite message in the chat buffer press
 @@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-next-favorite~).
@@ -2199,20 +2202,30 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
+
+     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
+
+     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
+
+     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
+
+     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
 
+     (fn MSG)
+
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
-@@html:<kbd>@@l@@html:</kbd>@@ (~telega-msg-copy-link~) command
+@@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command
 supports linking to the currently playing (or paused at) moment.
 
 To reference a given moment in a media message (or in a reply to media
@@ -2220,9 +2233,9 @@ message) use ~[HH:]MM:SS]~ syntax in the message's body/caption.  Such
 timestamp marks will be automatically emphasised with a media
 timestamp text entity.
 
-* Voice Chats
+* Video Chats
 :PROPERTIES:
-:CUSTOM_ID: voice-chats
+:CUSTOM_ID: video-chats
 :END:
 
 **TODO**: write me
@@ -2251,7 +2264,8 @@ Important customizable options for stickers:
   Default value: ~nil~
 - User Option: ~telega-sticker-favorite-background~ 
 
-  Background color for the favorite stickers. 
+  Background color for the favorite stickers.
+  Can be nil, in this case favorite stickers are not outlined. 
 
   Default value: ~"cornflower blue"~
 
@@ -2303,7 +2317,8 @@ before @@html:<kbd>@@C-c C-a sticker RET@@html:</kbd>@@.  Background for favorit
 stickers are filled with color:
 - User Option: ~telega-sticker-favorite-background~ 
 
-  Background color for the favorite stickers. 
+  Background color for the favorite stickers.
+  Can be nil, in this case favorite stickers are not outlined. 
 
   Default value: ~"cornflower blue"~
 
@@ -2311,7 +2326,7 @@ To toggle sticker being favorite, press
 @@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@f@@html:</kbd>@@ (~telega-sticker-toggle-favorite~)
 while point is under sticker in the ~*Telega Sticker Set*~ buffer.
 
-Or you can press @@html:<kbd>@@S@@html:</kbd>@@ (~telega-msg-save~)
+Or you can press @@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@ (~telega-msg-save~)
 on the sticker message to add that sticker to the favorite stickers
 list.
 
@@ -2332,7 +2347,7 @@ To play animation message press @@html:<kbd>@@RET@@html:</kbd>@@ on the message.
 messages.
 
 To explicitly add animation to Saved Animations list, press
-@@html:<kbd>@@S@@html:</kbd>@@ (~telega-msg-save~) on the
+@@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@ (~telega-msg-save~) on the
 corresponding animation message.
 
 * Multiple accounts
@@ -2540,7 +2555,7 @@ Customizable options:
 
   Message to automatically play when received. 
 
-  Default value: ~(messageAnimation messageSticker)~
+  Default value: ~(messageAnimation messageSticker messageAnimatedEmoji)~
 
 ** telega-squash-message-mode
 :PROPERTIES:
@@ -2599,7 +2614,7 @@ with @@html:<kbd>@@RET@@html:</kbd>@@, use:
 #+end_src
 
 While editing file press
-@@html:<kbd>@@M-g t@@html:</kbd>@@ (~telega-edit-file-goto-message~)
+@@html:<kbd>@@<menu-bar> <goto-message>@@html:</kbd>@@, @@html:<kbd>@@M-g t@@html:</kbd>@@ (~telega-edit-file-goto-message~)
 to go back to the file's message.
 
 To switch between files opened from =telega= use
@@ -2640,6 +2655,7 @@ by drawing special elements (telega cat ears) above the patron's
 avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
 
 In addition:
+- [[https://promote.telegram.org][Sponsored messages]] are disabled by default for telega patrons
 - Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
 - All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
 
@@ -2648,6 +2664,13 @@ If you are already =telega= patron and not in the
 me]].
 
 ~telega-patrons-mode~ is enabled by default.
+
+Customizable options:
+- User Option: ~telega-patrons-disable-sponsored-messages~ 
+
+  Non-nil to disable sponsored messages for telega patrons. 
+
+  Default value: ~t~
 
 ** telega-my-location-mode                                              :new:
 :PROPERTIES:
@@ -2670,6 +2693,28 @@ Enable with ~(telega-my-location-mode 1)~ or at =telega= load time:
 #+begin_src emacs-lisp
   (add-hook 'telega-load-hook 'telega-my-location-mode)
 #+end_src
+
+** telega-active-locations-mode                                         :new:
+:PROPERTIES:
+:CUSTOM_ID: telega-active-locations-mode
+:END:
+
+Minor mode to display currently active live locations in the root
+buffer.
+
+~telega-active-locations-mode~ is enabled by default.
+
+- User Option: ~telega-active-locations-show-avatars~ 
+
+  Non-nil to show user avatars in chat buffer. 
+
+  Default value: ~nil~
+- User Option: ~telega-active-locations-show-titles~ 
+
+  Non-nil to show sender/chat titles along the side with avatars. 
+
+  Default value: ~t~
+
 
 ** telega-root-auto-fill-mode                                           :new:
 :PROPERTIES:
