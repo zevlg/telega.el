@@ -4189,11 +4189,11 @@ If current buffer is dired, then send all marked files."
   (interactive
    (let ((file
           (or (buffer-file-name)
-              (when (eq 'dired-mode major-mode)
+              (when (derived-mode-p 'dired-mode)
                 (seq-filter #'file-regular-p (dired-get-marked-files)))
               ;; Support for EAF
               ;; see https://github.com/manateelazycat/emacs-application-framework/issues/675
-              (when (eq 'eaf-mode major-mode)
+              (when (derived-mode-p 'eaf-mode)
                 (eaf-get-path-or-url))
               (user-error (concat "Can't send current buffer, "
                                   "it does not have corresponding file"))))
