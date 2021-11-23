@@ -223,7 +223,7 @@ Example: 23 y.o. designer from San Francisco")
   :value "Broadcast")
  ("telega_chat_prompt_anonymous"
   :value "Anonymous")
- ("telega_chat_prompt_Comment"
+ ("telega_chat_prompt_comment"
   :value "Comment")
 
  ;; queries to user
