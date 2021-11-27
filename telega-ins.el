@@ -1936,34 +1936,6 @@ argument - MSG to insert additional information after header."
           ((and origin-sender-id (not (zerop origin-sender-id)))
            (telega-describe-user (telega-user-get origin-sender-id))))))
 
-(defun telega-ins--fwd-info-origin (origin)
-  "Inserter for messageForwardOrigin ORIGIN."
-  (cl-ecase (telega--tl-type origin)
-    (messageForwardOriginChat
-     ;; NOTE: Since TDLib 1.6.9
-     (let* ((sender-chat-id (plist-get origin :sender_chat_id))
-            (sender (unless (zerop sender-chat-id)
-                      (telega-chat-get sender-chat-id))))
-       (when telega-chat-show-avatars
-         (telega-ins--image (telega-msg-sender-avatar-image-one-line sender)))
-       (telega-ins "[" (telega-msg-sender-title sender) "]")))
-    (messageForwardOriginUser
-     (let* ((sender-id (plist-get origin :sender_user_id))
-            (sender (unless (zerop sender-id)
-                      (telega-user-get sender-id))))
-       (when telega-user-show-avatars
-         (telega-ins--image (telega-msg-sender-avatar-image-one-line sender)))
-       (telega-ins "{" (telega-user--name sender) "}")))
-    (messageForwardOriginHiddenUser
-     (telega-ins (telega-tl-str origin :sender_name)))
-    (messageForwardOriginChannel
-     (let ((chat (telega-chat-get (plist-get origin :chat_id))))
-       (when telega-chat-show-avatars
-         (telega-ins--image (telega-msg-sender-avatar-image-one-line chat)))
-       (telega-ins (telega-chat-title-with-brackets chat " ")))
-     (when-let ((signature (telega-tl-str origin :author_signature)))
-       (telega-ins " --" signature)))))
-
 (defun telega-ins--fwd-info-inline (fwd-info)
   "Insert forward info FWD-INFO as one liner."
   (when fwd-info
@@ -1978,11 +1950,37 @@ argument - MSG to insert additional information after header."
                                      :elide t
                                      :face 'telega-msg-inline-forward)
         (telega-ins "| Forwarded From: ")
-        (let* ((from-chat-id (plist-get fwd-info :from_chat_id))
+        (let* ((origin (plist-get fwd-info :origin))
+               (sender nil)
+               (from-chat-id (plist-get fwd-info :from_chat_id))
                (from-chat (when (and from-chat-id (not (zerop from-chat-id)))
                             (telega-chat-get from-chat-id))))
-          (telega-ins--fwd-info-origin (plist-get fwd-info :origin))
-          (when from-chat
+          ;; Insert forward origin first
+          (cl-ecase (telega--tl-type origin)
+            (messageForwardOriginChat
+             (setq sender (telega-chat-get (plist-get origin :sender_chat_id)))
+             (telega-ins "[" (telega-msg-sender-title sender) "]"))
+            (messageForwardOriginUser
+             (setq sender (telega-user-get (plist-get origin :sender_user_id)))
+             (when telega-user-show-avatars
+               (telega-ins--image
+                (telega-msg-sender-avatar-image-one-line sender)))
+             (telega-ins "{" (telega-user-title sender 'full) "}"))
+            (messageForwardOriginHiddenUser
+             (telega-ins (telega-tl-str origin :sender_name)))
+            (messageForwardOriginChannel
+             (setq sender (telega-chat-get (plist-get origin :chat_id)))
+             (when telega-chat-show-avatars
+               (telega-ins--image
+                (telega-msg-sender-avatar-image-one-line sender)))
+             (telega-ins (telega-chat-title-with-brackets sender " "))
+             (when-let ((signature (telega-tl-str origin :author_signature)))
+               (telega-ins " --" signature))))
+
+          (when (and from-chat
+                     (not (or (eq sender from-chat)
+                              (and (telega-user-p sender)
+                                   (eq sender (telega-chat-user from-chat))))))
             (telega-ins "→")
             (if telega-chat-show-avatars
                 (telega-ins--image
