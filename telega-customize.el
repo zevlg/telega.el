@@ -1979,7 +1979,7 @@ Install all symbol widths inside `telega-load-hook'."
     invoice
     leave-comment lightning lock location
     multiple-folders
-    pause phone photo pin play
+    pause phone photo pin poll play
     video video-chat-active video-chat-passive
     )
   "List of symbols to emojify if `telega-emoji-use-images' is non-nil.

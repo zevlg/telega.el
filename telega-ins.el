@@ -1109,7 +1109,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
     ;; Poll header
     ;; NOTE: Currently all polls are anonymous, this might be changed
     ;; in future See https://telegram.org/blog/polls
-    (telega-ins telega-symbol-poll " ")
+    (telega-ins (telega-symbol 'poll) " ")
     (telega-ins--with-face 'shadow
       (telega-ins-i18n (cond ((and anonymous-p quiz-p) "lng_polls_anonymous_quiz")
                              (anonymous-p "lng_polls_anonymous")
@@ -2297,7 +2297,7 @@ Pass all ARGS directly to `telega-ins--message0'."
                  (telega-duration-human-readable duration)
                  ")"))))
      (inputMessagePoll
-      (telega-ins telega-symbol-poll " ")
+      (telega-ins (telega-symbol 'poll) " ")
       (telega-ins (telega-tl-str imc :question))
       (telega-ins--with-face 'shadow
         (telega-ins-fmt " (%d options)" (length (plist-get imc :options)))))
