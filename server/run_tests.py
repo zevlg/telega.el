@@ -90,7 +90,7 @@ def run_single_test(test, flag):
         # should fail
         if status == 0:
             print('FAILED  %s -> %s   parsed, while expecting it to fail' % (
-                input, output, status))
+                input, output))
             return False
         else:
             print('PASSED  %s  failed to parse, as expected' % (input, ))
