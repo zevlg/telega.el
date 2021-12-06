@@ -692,8 +692,10 @@ CONTACT is some user you have exchanged contacts with."
   "Pretty printer for CHAT's last message."
   (let ((visible-p (plist-get chat :last_message)))
     (when visible-p
-      (let ((telega-chat-button-width (+ telega-chat-button-width
-                                         (/ telega-chat-button-width 2))))
+      (let ((telega-chat-button-width
+             (round (* (telega-canonicalize-number telega-chat-button-width
+                                                   telega-root-fill-column)
+                       (/ 3.0 2)))))
         (telega-root--chat-known-pp
          chat
          #'telega-ins--chat-last-message
