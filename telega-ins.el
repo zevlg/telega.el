@@ -1009,9 +1009,9 @@ Return `non-nil' if WEB-PAGE has been inserted."
                                       callDiscardReasonDeclined))
                        (propertize call-symbol 'face 'error))
                       ((plist-get msg :is_outgoing)
-                       (concat call-symbol "🠺"))
+                       (concat call-symbol "→"))
                       (t
-                       (concat call-symbol "🠸")))
+                       (concat call-symbol "←")))
                 " ")
     (telega-ins (propertize label 'face 'shadow))
     (telega-ins-fmt " (%s)"
