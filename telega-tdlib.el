@@ -232,17 +232,11 @@ Requires owner right."
 (defun telega--reportSupergroupSpam (supergroup msg &rest other-messages)
   "Report some messages in a supergroup as spam.
 all messages must have same user sender."
-  (let ((sender (telega-msg-sender msg)))
-    (cl-assert (telega-user-p sender))
-    (cl-assert (cl-every (lambda (omsg)
-                           (eq sender (telega-msg-sender omsg)))
-                         other-messages))
-    (telega-server--send
-     (list :@type "reportSupergroupSpam"
-           :supergroup_id (plist-get supergroup :id)
-           :user_id (plist-get sender :id)
-           :message_ids (cl-map #'vector (telega--tl-prop :id)
-                                (cons msg other-messages))))))
+  (telega-server--send
+   (list :@type "reportSupergroupSpam"
+         :supergroup_id (plist-get supergroup :id)
+         :message_ids (cl-map #'vector (telega--tl-prop :id)
+                              (cons msg other-messages)))))
 
 (defun telega--createSecretChat (secret-chat-id)
   "Return existing secret chat with id equal to SECRET-CHAT-ID."
@@ -933,7 +927,7 @@ Pass REVOKE to try to delete chat history for all users."
                  :offset offset
                  :limit (or limit telega-chat-history-limit))
            (when msg-sender
-             (list :sender (telega--MessageSender msg-sender))))
+             (list :sender_id (telega--MessageSender msg-sender))))
     callback))
 
 ;; Threads

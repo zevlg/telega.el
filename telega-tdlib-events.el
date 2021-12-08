@@ -135,22 +135,27 @@ DIRTINESS specifies additional CHAT dirtiness."
       (telega-user--update user event))
     ))
 
-(defun telega--on-updateUserChatAction (event)
-  "Some user has actions on chat."
+(defun telega--on-updateChatAction (event)
+  "Some message sender has actions on chat."
   (let* ((chat-id (plist-get event :chat_id))
          (chat-actions (gethash chat-id telega--actions))
-         (user-id (plist-get event :user_id))
-         (user-action (assq user-id chat-actions))
+         (msg-thread-id (plist-get event :message_thread_id))
+         (sender (plist-get event :sender_id))
+         (user-action (assoc sender chat-actions))
          (action (plist-get event :action))
          (cancel-p (eq (telega--tl-type action) 'chatActionCancel)))
+    ;; Make thread id be part of action, will be examined at insert
+    ;; time
+    (when msg-thread-id
+      (plist-put action :message_thread_id msg-thread-id))
     (cond (cancel-p
-           (let ((new-chat-actions (assq-delete-all user-id chat-actions)))
+           (let ((new-chat-actions (assoc-delete-all sender chat-actions)))
              (if new-chat-actions
                  (puthash chat-id new-chat-actions telega--actions)
                (remhash chat-id telega--actions))))
           (user-action
            (setcdr user-action action))
-          (t (puthash chat-id (cons (cons user-id action) chat-actions)
+          (t (puthash chat-id (cons (cons sender action) chat-actions)
                       telega--actions)))
 
     (let ((chat (telega-chat-get chat-id)))
@@ -158,7 +163,7 @@ DIRTINESS specifies additional CHAT dirtiness."
 
       (with-telega-chatbuf chat
         ;; If action by me, update `telega-chatbuf--my-action' as well
-        (when (eq user-id telega--me-id)
+        (when (telega-me-p (telega-msg-sender sender))
           (setq telega-chatbuf--my-action (unless cancel-p action)))))
     ))
 

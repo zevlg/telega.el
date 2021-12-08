@@ -371,10 +371,9 @@ delimiting with WITH-USERNAME-DELIM."
                     (when (telega-replies-p chat)
                       (telega-i18n "lng_replies_messages"))
                     (telega-tl-str chat :title)
-                    (progn
-                      (cl-assert (telega-chat-user chat 'inc-bots))
-                      (telega-user-title
-                       (telega-chat-user chat 'inc-bots) 'name))))
+                    ;; NOTE: Channels we are banned in can have empty title
+                    (when-let ((chat-user (telega-chat-user chat 'inc-bots)))
+                      (telega-user-title chat-user 'name))))
          (info (telega-chat--info chat 'offline)))
     (when with-username-delim
       (when-let ((username (telega-chat-username chat)))
@@ -2468,7 +2467,7 @@ If message thread filtering is enabled, use it first."
 
 (defconst telega-chatbuf--footer-dirtiness
   '("updateChatLastMessage"
-    "updateUserChatAction"
+    "updateChatAction"
     "updateChatActionBar"
     "updateChatReadInbox"
     "updateChatUnreadMentionCount"

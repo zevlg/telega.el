@@ -1042,7 +1042,7 @@ TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\" or
                   (sponsoredMessage
                    (list :@type "messageSenderChat"
                          :chat_id (plist-get tl-obj :sponsor_chat_id)))
-                  (message (plist-get tl-obj :sender))
+                  (message (plist-get tl-obj :sender_id))
                   (chatMember (plist-get tl-obj :member_id))
                   ((messageSenderUser messageSenderChat) tl-obj))))
     ;; NOTE: sender could be `nil' for internal telega messages, see
@@ -1532,13 +1532,13 @@ Requires administrator rights in the chat."
         (user-error "Can't find message edit in last 50 edits"))
 
       (with-telega-help-win "*Telega Message Diff*"
-        (telega-ins--with-face (ansi-color-get-face-1 31)
+        (telega-ins--with-face 'diff-removed
           (telega-ins "Orig"))
         (telega-ins " message at: ")
         (telega-ins--date-iso8601 (plist-get msg-old :date))
         (telega-ins "\n")
 
-        (telega-ins--with-face (ansi-color-get-face-1 32)
+        (telega-ins--with-face 'diff-added
           (telega-ins "Edit"))
         (telega-ins " message at: ")
         (telega-ins--date-iso8601 (plist-get msg-new :edit_date))

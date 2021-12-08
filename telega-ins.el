@@ -198,9 +198,10 @@ single argument - slice number, starting from 0."
   "Insert chat ACTIONS alist."
   (when actions
     ;; NOTE: Display only last action
-    (let* ((user (telega-user-get (caar actions)))
-           (action (cdar actions)))
-      (telega-ins (telega-user--name user 'short) " ")
+    (let* ((first-action (car actions))
+           (sender (telega-msg-sender (car first-action)))
+           (action (cdr first-action)))
+      (telega-ins (telega-msg-sender-title sender) " ")
       (telega-ins
        (propertize (concat "is " (substring (plist-get action :@type) 10))
                    'face 'shadow)))))
@@ -1507,8 +1508,8 @@ Special messages are determined with `telega-msg-special-p'."
                :from sender-name
                :count (plist-get content :score))))))
       (messageProximityAlertTriggered
-       (let ((traveler (telega-msg-sender (plist-get content :traveler)))
-             (watcher (telega-msg-sender (plist-get content :watcher)))
+       (let ((traveler (telega-msg-sender (plist-get content :traveler_id)))
+             (watcher (telega-msg-sender (plist-get content :watcher_id)))
              (distance (plist-get content :distance)))
          (telega-ins-i18n "lng_action_proximity_reached"
            :from (propertize (telega-msg-sender-title traveler) 'face 'bold)
@@ -1804,7 +1805,7 @@ performance."
              (telega-chat-channel-p (or msg-chat (telega-msg-chat msg))))
     (let* ((msg-ri (telega--tl-get msg :interaction_info :reply_info))
            (reply-count (or (plist-get msg-ri :reply_count) 0))
-           (recent-repliers (append (plist-get msg-ri :recent_repliers) nil)))
+           (recent-repliers (append (plist-get msg-ri :recent_replier_ids) nil)))
       (telega-ins--button
           (telega-ins--as-string
            (if recent-repliers

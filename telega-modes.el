@@ -842,7 +842,7 @@ get message associated with the file."
 
 (defun telega-edit-file-buffer-name ()
   "Return buffer name for a file edited with `telega-edit-file-mode'."
-  (concat (buffer-name) telega-symbol-mode
+  (concat (buffer-name) (telega-symbol 'mode)
           (telega-chat-title-with-brackets
            (telega-msg-chat (telega-edit-file-message)))))
 
