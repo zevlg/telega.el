@@ -1966,7 +1966,7 @@ argument - MSG to insert additional information after header."
                (telega-ins--image
                 (telega-msg-sender-avatar-image-one-line sender)))
              (telega-ins "{" (telega-user-title sender 'full) "}"))
-            (messageForwardOriginHiddenUser
+            ((messageForwardOriginHiddenUser messageForwardOriginMessageImport)
              (telega-ins (telega-tl-str origin :sender_name)))
             (messageForwardOriginChannel
              (setq sender (telega-chat-get (plist-get origin :chat_id)))
