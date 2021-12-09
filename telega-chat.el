@@ -4788,8 +4788,6 @@ If called outside chat buffer, then fallback to default DND behaviour."
     ("video-note" :@type "searchMessagesFilterVideoNote")
     ("voice-video-note" :@type "searchMessagesFilterVoiceAndVideoNote")
     ("chat-photo" :@type "searchMessagesFilterChatPhoto")
-    ("call" :@type "searchMessagesFilterCall")
-    ("missed-call" :@type "searchMessagesFilterMissedCall")
     ("mention" :@type "searchMessagesFilterMention")
     ("unread-mention" :@type "searchMessagesFilterUnreadMention")
     ("failed-to-send" :@type "searchMessagesFilterFailedToSend")
