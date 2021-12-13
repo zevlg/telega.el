@@ -241,7 +241,7 @@
                :via-bot bot
                :hide-via-bot current-prefix-arg
                :query-id (plist-get inline-results :inline_query_id)
-               :result-id (plist-get qr :id)))))))
+               :result-id (telega-tl-str qr :id)))))))
 
 (defun telega-ins--inline-audio (qr)
   "Inserter for `inlineQueryResultAudio' QR."
