@@ -32,21 +32,24 @@
 SUPPORT should be a list of states supported by the DESIRED-PROPERTIES.
 Currently it may contain a decoder, an encoder, or both."
   (let* ((output (shell-command-to-string (concat "ffmpeg -v quiet " option)))
-         (header-end (string-match-p "-" output))
+         (header-end (when (string-match (regexp-quote "-") output)
+                       (match-beginning 0)))
          (additional-characters
-          (- (string-match-p
-              "="
-              (string-trim
-               (cadr (split-string (substring output 0 header-end) "\n"))))
-             2)))
+          (when-let ((header (when header-end
+                               (string-trim
+                                (cadr (split-string
+                                       (substring output 0 header-end) "\n"))))))
+            (when (string-match (regexp-quote "=") header)
+              (- (match-beginning 0) 2)))))
     (cl-remove-if-not
      #'stringp
      (mapcar (lambda (prop)
                (when (string-match-p
                       (concat (concat (if (memq 'decoder support) "D" ".")
                                       (if (memq 'encoder support) "E" "."))
-                              (cl-assert (>= additional-characters 0))
-                              (make-string additional-characters ?\.)
+                              (when additional-characters
+                                (cl-assert (>= additional-characters 0))
+                                (make-string additional-characters ?\.))
                               prop)
                       output)
                  prop))
