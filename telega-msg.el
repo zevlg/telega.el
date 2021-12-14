@@ -724,7 +724,8 @@ non-nil."
                             (unless (equal telega-vvnote-play-speed 1)
                               (format " -af atempo=%.2f"
                                       telega-vvnote-play-speed))
-                            " -f alsa default -vsync 0")
+                            (concat " -f " (car telega-vvnote--has-audio-inputs))
+                            " default -vsync 0")
                          (list #'telega-msg-video-note--ffplay-callback msg)
                          :seek paused-p :speed telega-vvnote-play-speed))
             (with-telega-chatbuf (telega-msg-chat msg)
