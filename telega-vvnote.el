@@ -51,11 +51,20 @@
   :type 'boolean
   :group 'telega-vvnote)
 
+(defun telega-vvnote-check-devices (how &rest devices)
+  "Check DEVICES is available in ffmpeg.
+Return list of available DEVICES."
+  (apply #'telega-ffplay--parse-ffmpeg-output "devices" how devices))
+
+(defconst telega-vvnote--has-audio-inputs
+  (telega-vvnote-check-devices '(encoder) "alsa" "pulse"))
+
 (defcustom telega-vvnote-voice-record-args
   (concat (if (eq system-type 'darwin)
               "-f avfoundation -i :default"
             ;; gnu/linux
-            "-f alsa -i default")
+            (concat "-f " (car telega-vvnote--has-audio-inputs)
+                    " -i default"))
           (cond ((member "opus1" telega-ffplay--has-encoders)
                  ;; Try OPUS if available, results in 3 times smaller
                  ;; files then AAC version with same sound quality
@@ -73,7 +82,8 @@
   (concat (if (eq system-type 'darwin)
               "-f avfoundation -s 640x480 -framerate 30 -i default -r 30 -f avfoundation -i :default"
             ;; gnu/linux
-            "-f v4l2 -s 320x240 -i /dev/video0 -r 30 -f alsa -i default")
+            (concat "-f v4l2 -s 320x240 -i /dev/video0 -r 30 -f "
+                    (car telega-vvnote--has-audio-inputs) " -i default"))
           " -vf format=yuv420p,scale=320:240,crop=240:240:40:0"
           " -vcodec " (if (member "hevc" telega-ffplay--has-encoders)
                           "hevc"
