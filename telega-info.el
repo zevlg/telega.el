@@ -37,11 +37,11 @@
             (cdr (assq (telega--tl-type ,tlobj) telega--info))))
 
 (defun telega--info (tlobj-type tlobj-id &optional locally-p)
-  (cl-assert (not (zerop tlobj-id)))
   (let* ((info-hash (alist-get tlobj-type telega--info))
          (info (gethash tlobj-id info-hash)))
     (unless info
       (unless locally-p
+        (cl-assert (not (zerop tlobj-id)))
         (setq info (telega-server--call
                     (cl-ecase tlobj-type
                       (user
