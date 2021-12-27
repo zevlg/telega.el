@@ -40,6 +40,7 @@
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
 ;; - {{{user-option(telega-adblock-forwarded-messages, 2)}}}
+;; - {{{user-option(telega-adblock-sponsored-messages, 2)}}}
 
 ;; TODO:
 ;; - "invisible" links, example: https://t.me/botoid/1058351
@@ -54,7 +55,9 @@
   :prefix "telega-adblock-"
   :group 'telega-modes)
 
-(defcustom telega-adblock-for '(and (type channel) (not verified))
+(defcustom telega-adblock-for '(and (type channel)
+                                    (not unmuted)
+                                    (not verified))
   "Chat Filter defines for which chats to apply adblock logic."
   :type 'list
   :group 'telega-adblock)
@@ -62,6 +65,14 @@
 (defcustom telega-adblock-forwarded-messages t
   "Non-nil to block messages forwarded from other channels.
 Block them even if message has no links at all."
+  :type 'boolean
+  :group 'telega-adblock)
+
+(defcustom telega-adblock-sponsored-messages nil
+  "Non-nil to block sponsored messages.
+Applies only for chats matching `telega-adblock-for' Chat Filter.
+NOTE: Blocking sponsored messages is a TOS violation, consider
+Telegram subscription to disable sponsored messages."
   :type 'boolean
   :group 'telega-adblock)
 
@@ -233,6 +244,12 @@ for chats with last message blocked by adblock."
         telega-adblock-chat-order-if-last-message-ignored)
     (apply orig-fun chat args)))
 
+(defun telega-adblock--ins-sponsored-message (orig-fun chat)
+  "Advice for `telega-ins--chat-sponsored-message' ORIG-FUN."
+  (unless (and telega-adblock-sponsored-messages
+               (telega-chat-match-p chat telega-adblock-for))
+    (funcall orig-fun chat)))
+
 ;;;###autoload
 (define-minor-mode telega-adblock-mode
   "Global mode to block ads for `telega-adblock-for' chats."
@@ -241,9 +258,14 @@ for chats with last message blocked by adblock."
       (progn
         (add-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)
         (advice-add 'telega-chat-order
-                    :around #'telega-adblock--chat-order-if-last-msg-ignored))
+                    :around #'telega-adblock--chat-order-if-last-msg-ignored)
+        (advice-add 'telega-ins--chat-sponsored-message
+                    :around #'telega-adblock--ins-sponsored-message))
+
     (advice-remove 'telega-chat-order
                    #'telega-adblock--chat-order-if-last-msg-ignored)
+    (advice-remove 'telega-ins--chat-sponsored-message
+                   #'telega-adblock--ins-sponsored-message)
     (remove-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)))
 
 (provide 'telega-adblock)

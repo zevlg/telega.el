@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.7.100)
+#+title: Telega Manual (v0.7.110)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -222,7 +222,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.10.
+version greater or equal to 1.7.11.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -1005,12 +1005,29 @@ Customizable options for Chat Folders:
 
   Default value: 
   #+begin_src emacs-lisp
-    (("Favorite" . "★")
-     ("Love" . "♥")
-     ("Travel" . "🛫")
+    (("All" . "💬")
+     ("Unread" . "✅")
+     ("Unmuted" . "🔔")
+     ("Bots" . "🤖")
+     ("Channels" . "📢")
+     ("Groups" . "👥")
+     ("Private" . "👤")
+     ("Custom" . "📁")
+     ("Setup" . "📋")
      ("Cat" . "🐱")
-     ("Sport" . "🏅")
-     ("Mask" . "😷"))
+     ("Crown" . "👑")
+     ("Favorite" . "⭐️")
+     ("Flower" . "🌹")
+     ("Game" . "🎮")
+     ("Home" . "🏠")
+     ("Love" . "❤️")
+     ("Mask" . "🎭")
+     ("Party" . "🍸")
+     ("Sport" . "⚽️")
+     ("Study" . "🎓")
+     ("Trade" . "📊")
+     ("Travel" . "🛫️")
+     ("Work" . "💼"))
   #+end_src
 
 
@@ -1192,6 +1209,9 @@ For other Chat Filter bindings see below.
      Matches if me is member of the chat.
      Matches only basicgroup, supergroup or a channel.
 
+- me-is-anonymous :: 
+     Matches if me is anonymous in the chat.
+
 - has-last-message :: 
      Matches if chat has last message.
 
@@ -1304,7 +1324,7 @@ For other Chat Filter bindings see below.
      Matches if chat has favorite messages.
 
 - is-public :: 
-     Matches if chat has ~:message_ttl_setting~.
+     Matches if chat has ~:message_ttl~.
 
 - is-broadcast-group :: 
      Matches if chat is a broadcast group.
@@ -1360,11 +1380,28 @@ For other Chat Filter bindings see below.
   Each element is cons cell, where car is Chat Filter, and cdr is color. 
 
   Default value: ~((saved-messages))~
-- User Option: ~telega-chat-prompt-show-avatar-for~ 
+- User Option: ~telega-chat-prompt-format~ 
 
-  Show chat avatar nearby prompt input for chats matching this Chat Filter. 
+  Modeline compatible format for the chatbuf input prompt.
+  You can use ~telega-chatbuf-editing-msg~ or
+  ~telega-chatbuf-replying-msg~ in ~:eval~ section if you want different
+  prompt when editing/replying a message. 
 
-  Default value: ~nil~
+  Default value: 
+  #+begin_src emacs-lisp
+    ((:eval
+      (telega-chatbuf-prompt-default-sender-avatar))
+     (:eval
+      (telega-chatbuf-prompt-body))
+     (:eval
+      (when
+          (and telega-use-images
+    	   (telega-chatbuf-match-p
+    	    '(and has-avatar can-send-or-post)))
+        (telega-chatbuf-prompt-chat-avatar)))
+     ">>> ")
+  #+end_src
+
 - User Option: ~telega-chat-group-messages-for~ 
 
   Chat Filter for chats where to group messages by sender. 
@@ -1745,6 +1782,7 @@ Attachment types to attach with
 - enable-notification :: Toggle disable-notification chat option for the subsequent chatbuf input.
      Use this attachment to disable/enable notification on the receiver side.
 - disable-webpage-preview :: Disable webpage preview for the following text message.
+- send-by :: Set sender for the following message.
 - code :: Interactively attach a code of the ~LANGUAGE~ into chatbuf input.
      For non-interactive code attach, use ~telega-mnz--chatbuf-attach-internal~.
 
@@ -2048,7 +2086,7 @@ Customizable options for inline bots:
 :END:
 
 Message filtering means to show only some messages matching filter.
-Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =call=, =missed-call=, =mention=, =unread-mention=, =failed-to-send=, =pinned=
+Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =failed-to-send=, =pinned=
 
 Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 
@@ -2643,7 +2681,6 @@ by drawing special elements (telega cat ears) above the patron's
 avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
 
 In addition:
-- [[https://promote.telegram.org][Sponsored messages]] are disabled by default for telega patrons
 - Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
 - All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
 
@@ -2652,13 +2689,6 @@ If you are already =telega= patron and not in the
 me]].
 
 ~telega-patrons-mode~ is enabled by default.
-
-Customizable options:
-- User Option: ~telega-patrons-disable-sponsored-messages~ 
-
-  Non-nil to disable sponsored messages for telega patrons. 
-
-  Default value: ~t~
 
 ** telega-my-location-mode                                              :new:
 :PROPERTIES:
@@ -3067,6 +3097,7 @@ Customizable options:
   #+begin_src emacs-lisp
     (and
      (type channel)
+     (not unmuted)
      (not verified))
   #+end_src
 

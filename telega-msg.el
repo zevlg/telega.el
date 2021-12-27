@@ -93,17 +93,15 @@
       '(menu-item "Unpin" telega-msg-pin-toggle
                   :help "Unpin message"
                   :visible (let ((msg (telega-msg-at-down-mouse-3)))
-                             (and (telega-chat-match-p
-                                   (telega-msg-chat msg)
-                                   '(my-permission :can_pin_messages))
+                             (and (telega-chat-match-p (telega-msg-chat msg)
+                                    '(my-permission :can_pin_messages))
                                   (plist-get msg :is_pinned)))))
     (bindings--define-key menu-map [pin]
       '(menu-item "Pin" telega-msg-pin-toggle
                   :help "Pin message"
                   :visible (let ((msg (telega-msg-at-down-mouse-3)))
-                             (and (telega-chat-match-p
-                                   (telega-msg-chat msg)
-                                   '(my-permission :can_pin_messages))
+                             (and (telega-chat-match-p (telega-msg-chat msg)
+                                    '(my-permission :can_pin_messages))
                                   (not (plist-get msg :is_pinned))))))
     (bindings--define-key menu-map [s1] menu-bar-separator)
     (bindings--define-key menu-map [ban-sender]
@@ -111,9 +109,8 @@
                   telega-msg-ban-sender
                   :help "Ban/report message sender"
                   :enable (let ((msg (telega-msg-at-down-mouse-3)))
-                             (telega-chat-match-p
-                              (telega-msg-chat msg)
-                              '(my-permission :can_restrict_members)))
+                             (telega-chat-match-p (telega-msg-chat msg)
+                               '(my-permission :can_restrict_members)))
                   ))
     (bindings--define-key menu-map [delete]
       '(menu-item (propertize "Delete" 'face 'error)
@@ -223,8 +220,8 @@
   "Pretty printer for MSG button."
   (let* ((chat (telega-msg-chat msg))
          (msg-inserter
-          (cond ((and (telega-chat-match-p
-                       chat telega-chat-show-deleted-messages-for)
+          (cond ((and (telega-chat-match-p chat
+                        telega-chat-show-deleted-messages-for)
                       (plist-get msg :telega-is-deleted-message))
                  #'telega-ins--message-deleted)
 
@@ -1367,6 +1364,12 @@ Use \\[yank] command to paste a link."
 (defun telega-msg-copy-text (msg)
   "Copy a text of the message MSG."
   (interactive (list (telega-msg-for-interactive)))
+
+  (unless (plist-get msg :can_be_saved)
+    (user-error "telega: %s" (telega-i18n (if (plist-get msg :is_channel_post)
+                                              "lng_error_nocopy_channel"
+                                            "lng_error_nocopy_group"))))
+
   (let* ((content (plist-get msg :content))
          (msg-text (or (telega-tl-str content :text)
                        (telega-tl-str content :caption))))
@@ -1408,7 +1411,7 @@ Requires administrator rights in the chat."
       (when report-p
         (telega--reportSupergroupSpam (telega-chat--supergroup chat) msg))
       (when delete-all-p
-        (telega--deleteChatMessagesFromUser chat sender))
+        (telega--deleteChatMessagesBySender chat sender))
       (when delete-msg-p
         (telega--deleteMessages msg 'revoke))
 

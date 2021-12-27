@@ -333,6 +333,8 @@ Return non-nil if url has been handled."
                    (concat "tg:privatepost?channel=" (match-string 1 path)
                            "&post=" (match-string 2 path)
                            (when query (concat "&" query))))
+                  ((string-match "^/\\+\\([^/]+\\)$" path)
+                   (concat "tg:join?invite=" (match-string 1 path)))
                   ((string-match
                     (eval-when-compile
                       (rx (and line-start "/"
@@ -345,10 +347,13 @@ Return non-nil if url has been handled."
                            (when query (concat "&" query)))))))
       (cond (just-convert tg)
             (tg (telega-tme-open-tg tg) t)
-            (t (telega-debug "WARN: Can't open \"%s\" internally") nil)))))
+            (t
+             (telega-debug "WARN: Can't open \"%s\" internally" url)
+             nil)))))
 
 (defun telega-tme-open-tdlib-link (tdlib-link)
-  "Open TDLib's internal link."
+  "Open TDLib's internal link.
+To convert url to TDLib link, use `telega--getInternalLinkType'."
   (cl-ecase (telega--tl-type tdlib-link)
     (internalLinkTypeBotStart
      (let* ((bot-username (plist-get tdlib-link :bot_username))

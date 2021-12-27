@@ -479,8 +479,8 @@ list, if no, then `main' is returned."
     (dolist (ewoc-spec (ewoc-collect telega-filters--ewoc #'identity))
       (let* ((filter (nth 1 ewoc-spec))
              (match-p (if (telega-filter-active-special-p filter)
-                          (telega-chat-match-p
-                           chat (telega-filter-active-prepare t filter))
+                          (telega-chat-match-p chat
+                            (telega-filter-active-prepare t filter))
                         ;; No special treatment
                         (and chat-matches-p
                              (telega-chat-match-p chat filter))))
@@ -576,6 +576,7 @@ Do not add FSPEC if it is already in the list."
 (defmacro define-telega-filter (name args &rest body)
   "Define new filter for telega chats.
 ARGS specifies arguments to operation, first must always be chat."
+  (declare (doc-string 3) (indent 2))
   (let ((fsym (intern (format "telega--filter-%S" name))))
     `(defun ,fsym ,args
        ,@body)))
@@ -940,6 +941,13 @@ Matches only basicgroup, supergroup or a channel."
        nil))))
 
 ;;; ellit-org: chat-filters
+;; - me-is-anonymous ::
+;;   {{{fundoc(telega--filter-me-is-anonymous, 2)}}}
+(define-telega-filter me-is-anonymous (chat)
+  "Matches if me is anonymous in the chat."
+  (plist-get (telega-chat-member-my-status chat) :is_anonymous))
+
+;;; ellit-org: chat-filters
 ;; - has-last-message ::
 ;;   {{{fundoc(telega--filter-has-last-message, 2)}}}
 (define-telega-filter has-last-message (chat)
@@ -1269,10 +1277,10 @@ If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."
 
 ;;; ellit-org: chat-filters
 ;; - is-public ::
-;;   {{{fundoc(telega--filter-has-message-ttl-setting, 2)}}}
-(define-telega-filter has-message-ttl-setting (chat)
-  "Matches if chat has `:message_ttl_setting'."
-  (when-let ((msg-ttl (plist-get chat :message_ttl_setting)))
+;;   {{{fundoc(telega--filter-has-message-ttl, 2)}}}
+(define-telega-filter has-message-ttl (chat)
+  "Matches if chat has `:message_ttl'."
+  (when-let ((msg-ttl (plist-get chat :message_ttl)))
     (> msg-ttl 0)))
 
 ;;; ellit-org: chat-filters
@@ -1297,10 +1305,29 @@ If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."
   "Matches if corresponding user is a telega patron."
   (telega-msg-sender-patron-p chat))
 
-(define-telega-filter has-sponsored-messages (chat)
-  "Matches if chat has sponsored messages."
+(define-telega-filter has-sponsored-message (chat)
+  "Matches if chat has sponsored message."
   (when (telega-chat-match-p chat '(type channel))
-    (telega--getChatSponsoredMessages chat)))
+    (telega--getChatSponsoredMessage chat)))
+
+(define-telega-filter has-protected-content (chat)
+  "Matches if chat has protected content."
+  (plist-get chat :has_protected_content))
+
+(define-telega-filter has-private-forwards (chat)
+  "Matches if user can't be linked in forwarded messages."
+  (when-let ((user (telega-chat-user chat)))
+    (plist-get (telega--full-info user) :has_private_forwards)))
+
+(define-telega-filter has-default-sender (chat)
+  "Matches if chat allows choosing a message sender."
+  (plist-get chat :message_sender_id))
+
+(define-telega-filter can-send-or-post (chat)
+  "Me can send or post messages to the CHAT."
+  (let ((my-perms (telega-chat-member-my-permissions chat)))
+    (or (plist-get my-perms :can_send_messages)
+        (plist-get my-perms :can_post_messages))))
 
 (provide 'telega-filter)
 

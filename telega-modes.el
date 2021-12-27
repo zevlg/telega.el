@@ -614,7 +614,7 @@ squashing is not applied."
                    'telega-squash-message--send-message)))
 
 (defun telega-squash-message-mode--maybe (&optional arg)
-  (when (telega-chat-match-p telega-chatbuf--chat telega-squash-message-mode-for)
+  (when (telega-chatbuf-match-p telega-squash-message-mode-for)
     (telega-squash-message-mode arg)))
 
 ;;;###autoload
@@ -1023,7 +1023,6 @@ UFILE specifies Telegram file being uploading."
 ;; avatar, like: [[https://zevlg.github.io/telega/telega-patron-ava.png]]
 ;;
 ;; In addition:
-;; - [[https://promote.telegram.org][Sponsored messages]] are disabled by default for telega patrons
 ;; - Display "Telega Patron Since: <date>" note in the patron's Chat/User description.
 ;; - All [[https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard][Emacs Stories]] from =telega= patrons are automatically considered "Featured".
 ;;
@@ -1032,15 +1031,6 @@ UFILE specifies Telegram file being uploading."
 ;; me]].
 ;;
 ;; ~telega-patrons-mode~ is enabled by default.
-;;
-;; Customizable options:
-;; - {{{user-option(telega-patrons-disable-sponsored-messages, 2)}}}
-
-(defcustom telega-patrons-disable-sponsored-messages t
-  "Non-nil to disable sponsored messages for telega patrons."
-  :package-version '(telega . "0.7.90")
-  :type 'boolean
-  :group 'telega-modes)
 
 (defconst telega-patrons-alist
   '((82439953 :source opencollective :since_date 1609459200)

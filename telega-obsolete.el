@@ -138,6 +138,12 @@
 (telega-obsolete--variable 'telega-chat-input-comment-prompt
                            nil
                            "0.7.90")
+(telega-obsolete--variable 'telega-chat-input-prompt
+                           'telega-chat-prompt-format
+                           "0.7.101")
+(telega-obsolete--variable 'telega-chat-prompt-show-avatar-for
+                           'telega-chat-prompt-format
+                           "0.7.101")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

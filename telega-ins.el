@@ -201,6 +201,8 @@ single argument - slice number, starting from 0."
     (let* ((first-action (car actions))
            (sender (telega-msg-sender (car first-action)))
            (action (cdr first-action)))
+      ;; (telega-ins--image
+      ;;  (telega-msg-sender-avatar-image-one-line sender))
       (telega-ins (telega-msg-sender-title sender) " ")
       (telega-ins
        (propertize (concat "is " (substring (plist-get action :@type) 10))
@@ -1838,8 +1840,11 @@ argument - MSG to insert additional information after header."
     (cl-assert sender)
     (telega-ins--with-face 'telega-msg-heading
       (telega-ins--with-attrs (list :max twidth :align 'left :elide t)
+        (unless (plist-get msg :can_be_saved)
+          (telega-ins (telega-symbol 'copyright)))
         (telega-ins--with-attrs
             (list :face (telega-msg-sender-title-faces sender))
+
           ;; Message title itself
           (telega-ins (telega-msg-sender-title sender))
           (telega-ins-prefix " @"
@@ -2700,7 +2705,9 @@ Return t."
            (car telega-symbol-custom-order)
          (cdr telega-symbol-custom-order))))
     (when (telega-chat-secret-p chat)
-      (telega-ins telega-symbol-lock))
+      (telega-ins (telega-symbol 'lock)))
+    (when (telega-chat-match-p chat 'has-protected-content)
+      (telega-ins (telega-symbol 'copyright)))
     t))
 
 (defun telega-ins--chat-status (chat &optional max-width)
@@ -2976,15 +2983,15 @@ Return non-nil if restrictions has been inserted."
     (telega-ins--content sponsored-msg))
   (telega-ins "\n"))
 
-(defun telega-ins--chat-sponsored-messages (chat)
-  "For the CHAT insert sponsored messages."
-  (when-let ((sponsored-messages (plist-get chat :telega-sponsored-messages)))
+(defun telega-ins--chat-sponsored-message (chat)
+  "For the CHAT insert sponsored message."
+  (when-let ((sponsored-msg (plist-get chat :telega-sponsored-message)))
     (telega-ins--message
      (telega-msg-create-internal
       chat (telega-fmt-text (telega-i18n "lng_sponsored"))))
     (telega-ins "\n")
-    (dolist (smsg sponsored-messages)
-      (telega-button--insert 'telega smsg
+    (telega-ins--with-face 'telega-msg-sponsored
+      (telega-button--insert 'telega sponsored-msg
         :inserter #'telega-ins--sponsored-message
         :action #'telega-msg-open-sponsored))
     t))

@@ -402,6 +402,21 @@ FILTERS are created with `telega-chatevent-log-filter'."
                    (cl-map 'vector (telega--tl-prop :id) users))))
     callback))
 
+(defun telega--getChatAvailableMessageSenders (chat &optional callback)
+  "Return message senders available for the CHAT."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-msg-sender (plist-get reply :senders))
+    (list :@type "getChatAvailableMessageSenders"
+          :chat_id (plist-get chat :id))
+    callback))
+
+(defun telega--setChatMessageSender (chat sender)
+  "For CHAT set default message SENDER."
+  (telega-server--send
+   (list :@type "setChatMessageSender"
+         :chat_id (plist-get chat :id)
+         :message_sender_id (telega--MessageSender sender))))
+
 (defun telega--getPaymentForm (msg)
   "Return a payment form for an invoice message.
 Use it when `inlineKeyboardButtonBuy' key is pressed."
@@ -456,7 +471,7 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
   "Toggle block state of a CHAT."
   (telega-server--call
    (list :@type "toggleMessageSenderIsBlocked"
-         :sender (telega--MessageSender msg-sender)
+         :sender_id (telega--MessageSender msg-sender)
          :is_blocked (if blocked-p t :false))
    (or callback #'ignore)))
 
@@ -974,13 +989,14 @@ Pass REVOKE to try to delete chat history for all users."
          :limit (or limit 100))
    callback))
 
-(defun telega--getChatSponsoredMessages (chat &optional callback)
-  "Return list of sponsored messages for the CHAT."
+(defun telega--getChatSponsoredMessage (chat &optional callback)
+  "Return a sponsored message for the CHAT."
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
+      (unless (telega--tl-error-p reply)
+        reply)
 
-    (list :@type "getChatSponsoredMessages"
+    (list :@type "getChatSponsoredMessage"
           :chat_id (plist-get chat :id))
     callback))
 
@@ -1116,15 +1132,15 @@ Requires `:can_change_info' rights."
                                    :path (expand-file-name filename))))
    (or callback 'ignore)))
 
-(defun telega--setChatMessageTtlSetting (chat ttl)
-  "Changes CHAT's message TTL setting.
+(defun telega--setChatMessageTtl (chat ttl)
+  "Changes CHAT's message TTL.
 Message TTL is a self-destruct timer for new messages used in a
 chat. Requires can_delete_messages administrator right in basic
 groups, supergroups and channels.
 TTL must be 0, 86400 or 604800."
   (cl-assert (or (telega-chat-secret-p chat) (memq ttl '(0 86400 604800))))
   (telega-server--send
-   (list :@type "setChatMessageTtlSetting"
+   (list :@type "setChatMessageTtl"
          :chat_id (plist-get chat :id)
          :ttl ttl)))
 
@@ -1548,12 +1564,12 @@ REVOKE is always non-nil for supergroups, channels and secret chats."
            :message_ids (cl-map #'vector (telega--tl-prop :id) messages)
            :revoke (if revoke t :false)))))
 
-(defun telega--deleteChatMessagesFromUser (chat user)
-  "Delete all messages from USER in the CHAT."
+(defun telega--deleteChatMessagesBySender (chat sender)
+  "Delete all messages by SENDER in the CHAT."
   (telega-server--send
-   (list :@type "deleteChatMessagesFromUser"
+   (list :@type "deleteChatMessagesBySender"
          :chat_id (plist-get chat :id)
-         :user_id (plist-get user :id))))
+         :sender_id (telega--MessageSender sender))))
 
 (defun telega--searchMessages (query last-msg &optional _chat-list callback)
   "Search messages by QUERY.
@@ -1886,6 +1902,14 @@ be marked as read."
                         :false
                       t))))
 
+(defun telega--toggleChatHasProtectedContent (chat)
+  "Toogle ability of users to save, forward, or copy CHAT content."
+  (telega-server--send
+   (list :@type "toggleChatHasProtectedContent"
+         :chat_id (plist-get chat :id)
+         :has_protected_content
+         (if (plist-get chat :has_protected_content) :false t))))
+
 (defun telega--toggleChatIsMarkedAsUnread (chat)
   "Toggle marked as read state of the CHAT."
   (telega-server--send
@@ -2084,10 +2108,10 @@ Return an ID of group call."
          :group_call_id (plist-get group-call :id)))
   )
 
-(defun telega--discardGroupCall (group-call)
-  "Discard a GROUP-CALL."
+(defun telega--endGroupCall (group-call)
+  "End a GROUP-CALL."
   (telega-server--send
-   (list :@type "discardGroupCall"
+   (list :@type "endGroupCall"
          :group_call_id (plist-get group-call :id)))
   )
 

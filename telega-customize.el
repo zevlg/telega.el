@@ -773,12 +773,29 @@ Otherwise use simple chars."
 ;;; ellit-org: folders-options
 ;; - {{{user-option(telega-folder-icons-alist, 2)}}}
 (defcustom telega-folder-icons-alist
-  (list (cons "Favorite" "★")
-        (cons "Love" "♥")
-        (cons "Travel" "🛫")
-        (cons "Cat" "🐱")
-        (cons "Sport" "🏅")
-        (cons "Mask" "😷")
+  (list (cons "All"      "💬")
+        (cons "Unread"   "✅")
+        (cons "Unmuted"  "🔔")
+        (cons "Bots"     "🤖")
+        (cons "Channels" "📢")
+        (cons "Groups"   "👥")
+        (cons "Private"  "👤")
+        (cons "Custom"   "📁")
+        (cons "Setup"    "📋")
+        (cons "Cat"      "🐱")
+        (cons "Crown"    "👑")
+        (cons "Favorite" "⭐️")
+        (cons "Flower"   "🌹")
+        (cons "Game"     "🎮")
+        (cons "Home"     "🏠")
+        (cons "Love"     "❤️")
+        (cons "Mask"     "🎭")          ; or 😷
+        (cons "Party"    "🍸")
+        (cons "Sport"    "⚽️")          ; or 🏅
+        (cons "Study"    "🎓")
+        (cons "Trade"    "📊")          ; or 📈
+        (cons "Travel"   "🛫️")          ; or ✈️
+        (cons "Work"     "💼")
         )
   "Alist of symbols to be used as folder icons instead of `telega-symbol-folder'.
 See list of all available icon names in `telega-folder-icon-names'."
@@ -1065,12 +1082,20 @@ enabled."
   :type 'boolean
   :group 'telega-chat)
 
-(defcustom telega-chat-input-prompt ">>> "
-  "*Chatbuf input prompt.
-Could be a string or an alist where car is one of: `prompt', `edit' or
-`reply' and cdr is prompt string."
-  :package-version '(telega . "0.7.9")
-  :type '(or string alist)
+(defcustom telega-chat-prompt-format
+  '((:eval (telega-chatbuf-prompt-default-sender-avatar))
+    (:eval (telega-chatbuf-prompt-body))
+    (:eval (when (and telega-use-images
+                      (telega-chatbuf-match-p
+                       '(and has-avatar can-send-or-post)))
+             (telega-chatbuf-prompt-chat-avatar)))
+    ">>> ")
+  "*Modeline compatible format for the chatbuf input prompt.
+You can use `telega-chatbuf-editing-msg' or
+`telega-chatbuf-replying-msg' in `:eval' section if you want different
+prompt when editing/replying a message."
+  :package-version '(telega . "0.7.101")
+  :type 'string
   :group 'telega-chat)
 
 (defcustom telega-chat-input-ring-size 50
@@ -1087,14 +1112,6 @@ used for ordinary `RET', second is used for `C-u RET', and third is for
 `telega-chat-markup-functions'."
   :type 'list
   :package-version '(telega . "0.7.4")
-  :group 'telega-chat)
-
-(defcustom telega-chat-prompt-show-avatar-for
-  (when telega-use-images
-    '(and has-avatar
-          (permission :can_send_messages)))
-  "*Show chat avatar nearby prompt input for chats matching this Chat Filter."
-  :type 'list
   :group 'telega-chat)
 
 (defcustom telega-chat-scroll-conservatively 101
@@ -1174,7 +1191,7 @@ different days. Such as:
      telega-chatbuf-attach-markup)
     ("theme"
      (lambda ()
-       (telega-chat-match-p telega-chatbuf--chat '(type private secret)))
+       (telega-chatbuf-match-p '(type private secret)))
      telega-chatbuf-attach-chat-theme)
 
     ;; Special attachment types affecting how message is sent
@@ -1189,6 +1206,10 @@ different days. Such as:
      telega-chatbuf-attach-toggle-disable-notification)
     ("disable-webpage-preview" nil
      telega-chatbuf-attach-disable-webpage-preview)
+    ("send-by"
+     (lambda ()
+       (telega-chatbuf-match-p 'has-default-sender))
+     telega-chatbuf-attach-send-by)
     )
   "*List of the attachments available for `C-c C-a' in chatbuf.
 Each element is a list of three elements:
@@ -1922,6 +1943,11 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-copyright "©"
+  "Symbol used to emphasize protected content."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-widths
   (list
    (list 1
@@ -2281,6 +2307,11 @@ You can customize its `:height' to fit width of the default face."
 (defface telega-button-highlight
   '((t :inherit highlight))
   "Face used to highlight active button."
+  :group 'telega-faces)
+
+(defface telega-msg-sponsored
+  '((t :inherit shadow))
+  "Face to display sponsored message."
   :group 'telega-faces)
 
 

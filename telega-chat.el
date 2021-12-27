@@ -371,9 +371,10 @@ delimiting with WITH-USERNAME-DELIM."
                     (when (telega-replies-p chat)
                       (telega-i18n "lng_replies_messages"))
                     (telega-tl-str chat :title)
-                    ;; NOTE: Channels we are banned in can have empty title
                     (when-let ((chat-user (telega-chat-user chat 'inc-bots)))
-                      (telega-user-title chat-user 'name))))
+                      (telega-user-title chat-user 'name))
+                    ;; NOTE: Channels we are banned in can have empty title
+                    (format "CHAT-%d" (plist-get chat :id))))
          (info (telega-chat--info chat 'offline)))
     (when with-username-delim
       (when-let ((username (telega-chat-username chat)))
@@ -482,18 +483,18 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
           (with-telega-chatbuf chat
             (telega-chatbuf--modeline-update)))))))
 
-(defun telega-chatbuf--sponsored-messages-fetch ()
-  "Asynchronously fetch sponsored messages for chatbuf."
-  (let ((chat telega-chatbuf--chat))
-    (plist-put chat :telega-sponsored-messages nil)
-    (when (and (telega-chat-match-p chat '(type channel))
-               (not (and telega-patrons-disable-sponsored-messages
-                         (telega-msg-sender-patron-p (telega-chat-me)))))
-      (telega--getChatSponsoredMessages telega-chatbuf--chat
-        (lambda (messages)
-          (plist-put chat :telega-sponsored-messages messages)
-          (with-telega-chatbuf chat
-            (telega-chatbuf--footer-update)))))))
+(defun telega-chatbuf--sponsored-message-fetch ()
+  "Asynchronously fetch sponsored message for the chatbuf."
+  (let* ((chat telega-chatbuf--chat)
+         (tsm-orig (plist-get chat :telega-sponsored-message)))
+    (plist-put chat :telega-sponsored-message nil)
+    (when (telega-chat-match-p chat '(type channel))
+      (telega--getChatSponsoredMessage telega-chatbuf--chat
+        (lambda (message)
+          (plist-put chat :telega-sponsored-message message)
+          (unless (equal tsm-orig message)
+            (with-telega-chatbuf chat
+              (telega-chatbuf--footer-update))))))))
 
 (defun telega-chat-group-call (&optional chat)
   "Return group call for the chatbuf's voice chat.
@@ -527,6 +528,11 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
                       (telega--getTopChats (symbol-name category))))
       (setf (alist-get category telega--top-chats) top))
     (caddr top)))
+
+(defun telega-chatbuf-match-p (chat-filter)
+  "Return non-nil if chatbuf matches CHAT-FILTER."
+  (cl-assert telega-chatbuf--chat)
+  (telega-chat-match-p telega-chatbuf--chat chat-filter))
 
 
 ;;; Chat buttons in root buffer
@@ -613,7 +619,7 @@ Specify non-nil BAN to ban this user in this CHAT."
                  (completing-read "Messages TTL: "
                                   (mapcar #'car ttl-table) nil t))))
      (list chat (or (assoc ttl ttl-table) (ceiling ttl)))))
-  (telega--setChatMessageTtlSetting chat ttl-seconds))
+  (telega--setChatMessageTtl chat ttl-seconds))
 
 (defun telega-chat-set-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."
@@ -747,11 +753,10 @@ Specify non-nil BAN to ban this user in this CHAT."
   (telega-ins ": " (telega-chat-order chat) "\n")
 
   ;; Messages TTL setting for the chat
-  (let ((ttl (or (plist-get chat :message_ttl_setting) 0))
-        (can-change-ttl-p
-         (telega-chat-match-p
-          chat '(or (type secret)
-                    (my-permission :can_delete_messages)))))
+  (let ((ttl (or (plist-get chat :message_ttl) 0))
+        (can-change-ttl-p (telega-chat-match-p chat
+                            '(or (type secret)
+                                 (my-permission :can_delete_messages)))))
     (when (or (> ttl 0) can-change-ttl-p)
       (telega-ins "Messages TTL: "
                   (if (> ttl 0)
@@ -1529,7 +1534,7 @@ If POINT is not over some message, then view last message."
     (telega-ins--as-string
      (when compact-view-p
        (telega-ins "\n"))
-     (telega-ins--chat-sponsored-messages chat)
+     (telega-ins--chat-sponsored-message chat)
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        ;; Chat action part
        (telega-ins (telega-symbol fill-symbol))
@@ -1835,7 +1840,7 @@ Recover previous active action after BODY execution."
   (telega-ins--prompt-aux-msg
    (telega-i18n "lng_context_edit_msg") edit-msg))
 
-(defun telega-chatbuf--editing-msg ()
+(defun telega-chatbuf-editing-msg ()
   "Return message currently editing."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
            #'telega-ins--prompt-aux-edit)
@@ -1846,11 +1851,21 @@ Recover previous active action after BODY execution."
   (telega-ins--prompt-aux-msg
    (telega-i18n "lng_context_reply_msg") reply-msg 'with-username))
 
-(defun telega-chatbuf--replying-msg ()
+(defun telega-chatbuf-replying-msg ()
   "Return message currently replying."
   (and (eq (button-get telega-chatbuf--aux-button :inserter)
            #'telega-ins--prompt-aux-reply)
        (button-get telega-chatbuf--aux-button :value)))
+
+(defun telega-ins--prompt-aux-usj-button (label)
+  "Inserter for the unblock/start/join button with LABEL."
+  (telega-ins--button (concat "   " label "   ")
+    'action #'telega-chatbuf--unblock-start-join-action))
+
+(defun telega-chatbuf--prompt-aux-usj-button-p ()
+  "Return non-nil if current prompt is unblock-start-join button."
+  (and (eq (button-get telega-chatbuf--aux-button :inserter)
+           #'telega-ins--prompt-aux-usj-button)))
 
 (defun telega-chatbuf--window-scroll (window display-start)
   "Mark some messages as read while scrolling."
@@ -1867,23 +1882,22 @@ Recover previous active action after BODY execution."
                  (telega-chatbuf--need-newer-history-p))
         (telega-chatbuf--load-newer-history)))
 
-    ;; NOTE: If all chatbuf messages are read, then mark all sponsored
-    ;; messages as viewed as well
-    (when-let ((sponsored-messages 
-                (plist-get telega-chatbuf--chat :telega-sponsored-messages))
+    ;; NOTE: If all chatbuf messages are read, then mark sponsored
+    ;; message as viewed as well
+    (when-let ((sponsored-message
+                (plist-get telega-chatbuf--chat :telega-sponsored-message))
                (sponsored-views
                 (or (plist-get telega-chatbuf--chat :telega-sponsored-views) 0)))
       (when (and (telega-chatbuf--last-msg-loaded-p)
                  (pos-visible-in-window-p
                   (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
         (when (zerop sponsored-views)
-          (dolist (smsg sponsored-messages)
-            (telega--viewSponsoredMessage telega-chatbuf--chat smsg)))
+          (telega--viewSponsoredMessage telega-chatbuf--chat sponsored-message))
 
         (plist-put telega-chatbuf--chat :telega-sponsored-views
                    (1+ sponsored-views))
-        (when (> sponsored-views 9)
-          (plist-put telega-chatbuf--chat :telega-sponsored-messages nil))))
+        (when (> sponsored-views 0)
+          (plist-put telega-chatbuf--chat :telega-sponsored-message nil))))
     ))
 
 (defun telega-chatbuf--post-command ()
@@ -1919,8 +1933,7 @@ Recover previous active action after BODY execution."
   ;;   [AUX][PROMPT]
   ;;                 ^
   ;;                 `-- telega-chatbuf--input-marker
-  (when (and (not (telega-chatbuf--prompt-unblock-start-join-p))
-             (>= (point) (if (button-get telega-chatbuf--aux-button 'invisible)
+  (when (and (>= (point) (if (button-get telega-chatbuf--aux-button 'invisible)
                              telega-chatbuf--aux-button
                            telega-chatbuf--prompt-button))
              (< (point) telega-chatbuf--input-marker))
@@ -1997,100 +2010,126 @@ Recover previous active action after BODY execution."
 
     (telega--joinChat telega-chatbuf--chat)))
 
-(defun telega-chatbuf--unblock-start-join-prompt ()
-  "Return unblock-start-join button to be used in chatbuf prompt.
+(defun telega-chatbuf--prompt-aux-usj-label ()
+  "Return label for the unblock-start-join button to be used in aux prompt.
 unblock-start-join button is used for prompt if chatbuf is
 unknown, i.e. has no positions set."
   (when (or (not (append (plist-get telega-chatbuf--chat :positions) nil))
             telega-chatbuf--bot-start-parameter)
-    (when-let ((label (cond ((plist-get telega-chatbuf--chat :is_blocked)
-                             (if (telega-chat-bot-p telega-chatbuf--chat)
-                                 "RESTART BOT"
-                               "UNBLOCK"))
-                            ((telega-chat-bot-p telega-chatbuf--chat)
-                             (concat "START"
-                                     (when telega-chatbuf--bot-start-parameter
-                                       " ")
-                                     (when telega-chatbuf--bot-start-parameter
-                                       telega-chatbuf--bot-start-parameter)))
-                            ((and (not (telega-chat-private-p
-                                        telega-chatbuf--chat))
-                                  (not (telega-chat-secret-p
-                                        telega-chatbuf--chat)))
-                             "JOIN"))))
+    (cond ((plist-get telega-chatbuf--chat :is_blocked)
+           (if (telega-chat-bot-p telega-chatbuf--chat)
+               "RESTART BOT"
+             "UNBLOCK"))
+          ((telega-chat-bot-p telega-chatbuf--chat)
+           (concat "START"
+                   (when telega-chatbuf--bot-start-parameter
+                     " ")
+                   (when telega-chatbuf--bot-start-parameter
+                     telega-chatbuf--bot-start-parameter)))
+          ((and (not (telega-chat-private-p
+                      telega-chatbuf--chat))
+                (not (telega-chat-secret-p
+                      telega-chatbuf--chat)))
+           "JOIN"))))
+
+(defun telega-chatbuf-prompt-default-sender-avatar ()
+  "Return one line avatar for default message sender to the chatbuf."
+  (when (telega-chatbuf-match-p 'has-default-sender)
+    (let ((chat telega-chatbuf--chat))
       (telega-ins--as-string
-       (telega-ins--button (concat "   " label "   ")
-         'action #'telega-chatbuf--unblock-start-join-action)))))
+       (telega-ins--image
+        (telega-msg-sender-avatar-image-one-line
+         (telega-msg-sender (plist-get chat :message_sender_id))))))))
 
-(defun telega-chatbuf--prompt-unblock-start-join-p ()
-  "Return non-nil if current prompt is unblock-start-join button."
-  (button-get telega-chatbuf--prompt-button :usj-prompt-p))
+(defun telega-chatbuf-prompt-body ()
+  "Return body for the chatbuf input prompt."
+  (cond ((telega-chatbuf-match-p 'me-is-anonymous)
+         (telega-i18n "telega_chat_prompt_anonymous"))
 
-(defun telega-chatbuf--prompt-update ()
-  "Update chatbuf's prompt."
-  ;; NOTE: `telega-chatbuf--chat' will be overwritten in
-  ;; `telega-ins--as-string', so save it before
-  (let* ((chat telega-chatbuf--chat)
-         (comment-p (and telega-chatbuf--thread-msg
-                         (not (telega-chat-match-p chat 'me-is-member))))
-         (anonymous-p (and (eq 'supergroup (telega-chat--type chat 'raw))
-                           (telega--tl-get (telega-chat--supergroup chat)
-                                           :status :is_anonymous)))
-         (broadcast-p (telega-chat-match-p chat '(type channel)))
-         (usj-prompt (unless (or comment-p anonymous-p)
-                       (telega-chatbuf--unblock-start-join-prompt)))
-         (prompt (concat
-                  (when (telega-chat-match-p
-                         chat telega-chat-prompt-show-avatar-for)
-                    (telega-ins--as-string
-                     (telega-ins--image
-                      (telega-msg-sender-avatar-image-one-line chat))))
+        ((and telega-chatbuf--thread-msg
+              (not (telega-chatbuf-match-p 'me-is-member)))
+         (telega-i18n "telega_chat_prompt_comment"))
 
-                  ;; Prompt prefix
-                  (unless usj-prompt
-                    (cond (anonymous-p
-                           (telega-i18n "telega_chat_prompt_anonymous"))
-                          (comment-p
-                           (telega-i18n "telega_chat_prompt_comment"))
-                          (broadcast-p
-                           (telega-i18n "telega_chat_prompt_broadcast"))))
+        ((telega-chatbuf-match-p '(and (type channel)
+                                       (my-permission :can_post_messages)))
+         (telega-i18n "telega_chat_prompt_broadcast"))
 
-                  ;; NOTE: Prompt could be an alist
-                  ;; See https://t.me/emacs_telega/23453
-                  (let ((iprompt (or usj-prompt telega-chat-input-prompt)))
-                    (if (stringp iprompt)
-                        iprompt
-                      (let ((ptype
-                             (cond ((telega-chatbuf--replying-msg) 'reply)
-                                   ((telega-chatbuf--editing-msg) 'edit)
-                                   (t 'prompt))))
-                        (or (cdr (assq ptype iprompt))
-                            (user-error "Undefined prompt for `%S'" ptype)))))
-                  )))
+        ((telega-chatbuf-match-p 'has-default-sender)
+         "→")))
+
+(defun telega-chatbuf-prompt-chat-avatar ()
+  "Return chatbuf's avatar for the one line usage."
+  (let ((chat telega-chatbuf--chat))
+    (telega-ins--as-string
+     (telega-ins--image
+      (telega-msg-sender-avatar-image-one-line chat)))))
+
+(defun telega-chatbuf--prompt-aux-update (&optional reset)
+  "Update aux prompt to display unblock-start-join button.
+If RESET is specified, then reset aux prompt to default value."
+  (let ((usj-label
+         (when (or (not (append (plist-get telega-chatbuf--chat :positions) nil))
+                   telega-chatbuf--bot-start-parameter)
+           (cond ((and telega-chatbuf--thread-msg
+                       (not (telega-chatbuf-match-p 'me-is-member)))
+                  ;; Comment to the post
+                  nil)
+
+                 ((plist-get telega-chatbuf--chat :is_blocked)
+                  (if (telega-chat-bot-p telega-chatbuf--chat)
+                      "RESTART BOT"
+                    "UNBLOCK"))
+                 ((telega-chat-bot-p telega-chatbuf--chat)
+                  (concat "START"
+                          (when telega-chatbuf--bot-start-parameter
+                            " ")
+                          (when telega-chatbuf--bot-start-parameter
+                            telega-chatbuf--bot-start-parameter)))
+                 ((and (not (telega-chat-private-p
+                             telega-chatbuf--chat))
+                       (not (telega-chat-secret-p
+                             telega-chatbuf--chat)))
+                  "JOIN")))))
+    (cond (usj-label
+           (telega-save-excursion
+             (telega-button--update-value
+              telega-chatbuf--aux-button usj-label
+              :inserter #'telega-ins--prompt-aux-usj-button
+              'invisible nil)))
+
+          ((or reset
+               ;; NOTE: If usj button is currently in use and there no
+               ;; new label for it, this means the same as RESET
+               (and (telega-chatbuf--prompt-aux-usj-button-p)
+                    (not usj-label)))
+           (telega-save-excursion
+             (telega-button--update-value
+              telega-chatbuf--aux-button "!aa!"
+              :inserter #'telega-ins
+              'invisible t)))
+          )))
+
+(defun telega-chatbuf--prompt-update (&optional reset-aux)
+  "Update chatbuf's prompt.
+If RESET-AUX is specified, then reset aux prompt."
+  (telega-chatbuf--prompt-aux-update reset-aux)
+
+  (let ((prompt (if (telega-chatbuf--prompt-aux-usj-button-p)
+                    "\n"
+                  (format-mode-line telega-chat-prompt-format nil nil
+                                    (current-buffer)))))
     (telega-save-excursion
       (telega-button--update-value
        telega-chatbuf--prompt-button
-       (if (or usj-prompt
-               (telega-chat-match-p telega-chatbuf--chat
-                 '(or (my-permission :can_send_messages)
-                      (and (type channel)
-                           (my-permission :can_post_messages)))))
+       (if (telega-chatbuf-match-p 'can-send-or-post)
            prompt
-         (propertize prompt 'face 'shadow))
-       :usj-prompt-p usj-prompt))))
+         (propertize prompt 'face 'shadow))))))
 
 (defun telega-chatbuf--prompt-reset ()
   "Reset prompt to initial state in chat buffer."
   (let ((inhibit-read-only t)
         (buffer-undo-list t))
-    (telega-save-excursion
-      (unless (button-get telega-chatbuf--aux-button 'invisible)
-        (telega-button--update-value
-         telega-chatbuf--aux-button "!aa!"
-         :inserter 'telega-ins
-         'invisible t))
-
-      (telega-chatbuf--prompt-update))))
+    (telega-chatbuf--prompt-update 'reset)))
 
 (defun telega-chatbuf--input-draft-update (&optional force)
   "Update chatbuf's input to display draft message.
@@ -2104,7 +2143,7 @@ otherwise set draft only if chatbuf input is also draft."
           (lambda (msg &optional _ignored) (telega-msg-reply msg)))
       ;; Reset only if replying, but `:reply_to_message_id' is not
       ;; specified, otherwise keep the aux, for example editing
-      (when (telega-chatbuf--replying-msg)
+      (when (telega-chatbuf-replying-msg)
         (telega-chatbuf--prompt-reset)))
 
     ;; NOTE: update draft only if current chatbuf input is marked as
@@ -2180,7 +2219,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
           ;; Asynchronously fetch some chat info
           (telega-chatbuf--admins-fetch)
           (telega-chatbuf--pinned-messages-fetch)
-          (telega-chatbuf--sponsored-messages-fetch)
+          (telega-chatbuf--sponsored-message-fetch)
           (unless (zerop (telega--tl-get chat :video_chat :group_call_id))
             (telega-chatbuf--video-chat-fetch))
           (unless (zerop (plist-get chat :reply_markup_message_id))
@@ -2231,7 +2270,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
 
 (defun telega-chatbuf-mode-line-video-chat (&optional max-width)
   "Format [Video Chat] button for chat's group call."
-  (when (telega-chat-match-p telega-chatbuf--chat 'has-video-chat)
+  (when (telega-chatbuf-match-p 'has-video-chat)
     (let* ((active-p (telega--tl-get telega-chatbuf--chat
                                      :video_chat :has_participants))
            (display-spec (cdr (assq (if active-p 'active 'passive)
@@ -2262,7 +2301,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
 
 (defun telega-chatbuf-mode-line-discuss ()
   "Format [Discuss] button for chat buffer modeline."
-  (when (telega-chat-match-p telega-chatbuf--chat 'has-linked-chat)
+  (when (telega-chatbuf-match-p 'has-linked-chat)
     (let ((channel-p (telega-chat-channel-p telega-chatbuf--chat)))
       (telega-ins--as-string
        (telega-ins " [")
@@ -2407,7 +2446,7 @@ If message thread filtering is enabled, use it first."
 
 (defun telega-chatbuf--modeline-messages-ttl ()
   "Format TTL messages settings for the chatbuf."
-  (when-let ((ttl (plist-get telega-chatbuf--chat :message_ttl_setting)))
+  (when-let ((ttl (plist-get telega-chatbuf--chat :message_ttl)))
     (when (or (telega-chat-secret-p telega-chatbuf--chat)
               (not (zerop ttl)))
       (concat " ("
@@ -2420,8 +2459,7 @@ If message thread filtering is enabled, use it first."
                      ;; secret chats or if have
                      ;; `:can_delete_messages' admin
                      ;; permission
-                     (when (telega-chat-match-p
-                            telega-chatbuf--chat
+                     (when (telega-chatbuf-match-p
                             '(or (type secret)
                                  (my-permission :can_delete_messages)))
                        (list
@@ -2458,7 +2496,7 @@ If message thread filtering is enabled, use it first."
 (defconst telega-chatbuf--modeline-dirtiness
   '("updateUserStatus"
     "updateChatOnlineMemberCount"
-    "updateChatMessageTtlSetting"
+    "updateChatMessageTtl"
     "updateMessageMentionRead"
     "updateChatReadInbox"
     "updateChatUnreadMentionCount"
@@ -2482,6 +2520,7 @@ If message thread filtering is enabled, use it first."
 (defconst telega-chatbuf--prompt-dirtiness
   '("updateChatPhoto"
     "updateChatIsBlocked"
+    "updateChatMessageSender"
     )
   "List of dirtiness events when chatbuf prompt needs to be updated.")
 
@@ -2509,7 +2548,7 @@ Examine `:telega-dirtiness' property and update corresponding chatbuf parts."
     ;; reorders.  Why?
     (when (or prompt-p
               (and (telega-chat-order-dirty-p telega-chatbuf--chat)
-                   (telega-chatbuf--prompt-unblock-start-join-p)))
+                   (telega-chatbuf--prompt-aux-usj-button-p)))
       (telega-chatbuf--prompt-update))
     ))
 
@@ -2676,7 +2715,7 @@ Examine `:telega-dirtiness' property and update corresponding chatbuf parts."
 If WITHOUT-AUX is specified with `\\[universal-argument]', then
 instead of editing, just pop previously sent message as input."
   (interactive "P")
-  (let* ((edit-msg (telega-chatbuf--editing-msg))
+  (let* ((edit-msg (telega-chatbuf-editing-msg))
          (last-msg (telega-chatbuf--last-msg))
          (last-sent-msg
           (if (and backward (not edit-msg)
@@ -2742,8 +2781,7 @@ HOW could be `prepend' or `append', or `append-new'.
 Return last inserted ewoc node."
   (with-telega-deferred-events
     (let* ((use-date-breaks-p
-            (telega-chat-match-p telega-chatbuf--chat
-                                 telega-chat-use-date-breaks-for))
+            (telega-chatbuf-match-p telega-chat-use-date-breaks-for))
            (node (if (eq how 'prepend)
                      (ewoc--header telega-chatbuf--ewoc)
                    (or (ewoc-nth telega-chatbuf--ewoc -1)
@@ -3142,8 +3180,8 @@ use.  For example `C-u RET' will use
 
   (let ((input (telega-chatbuf-input-string))
         (imcs (telega-chatbuf--input-imcs markup-name))
-        (replying-msg (telega-chatbuf--replying-msg))
-        (editing-msg (telega-chatbuf--editing-msg))
+        (replying-msg (telega-chatbuf-replying-msg))
+        (editing-msg (telega-chatbuf-editing-msg))
         (options nil)
         (send-imcs nil))
     ;; NOTE: Allow removing captions, see
@@ -4133,6 +4171,21 @@ Use this attachment to disable/enable notification on the receiver side."
      (propertize (telega-i18n "telega_disable_webpage_preview_help")
                  'face 'shadow))))
 
+(defun telega-chatbuf-attach-send-by (msg-sender)
+  "Set sender for the following message."
+  (interactive
+   (let ((avail-senders
+          (telega--getChatAvailableMessageSenders telega-chatbuf--chat)))
+     (unless avail-senders
+       (user-error "telega: No message senders available"))
+     (list (telega-completing-read-msg-sender
+            "Send message by: " avail-senders))))
+
+  (telega-chatbuf-input-insert
+   (list :@type "telegaSendBy" :sender_id msg-sender))
+  (when (eobp)
+    (telega-momentary-display (propertize "Message" 'face 'shadow))))
+
 (defun telega-chatbuf-attach-dice (emoji)
   "Attach random dice roll message."
   (interactive (list (funcall telega-completing-read-function
@@ -4240,7 +4293,7 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
        telega-chatbuf--chat
        (list :@type "draftMessage"
              :reply_to_message_id
-             (or (plist-get (telega-chatbuf--replying-msg) :id) 0)
+             (or (plist-get (telega-chatbuf-replying-msg) :id) 0)
              :input_message_text
              (list :@type "inputMessageText"
                    :text (telega-string-fmt-text
@@ -4446,6 +4499,13 @@ then forward message copy without caption."
   (when-let ((messages (or (reverse telega-chatbuf--marked-messages)
                            (when-let ((msg-at-point (telega-msg-at (point))))
                              (list msg-at-point)))))
+    ;; NOTE: ExcludeEvery
+    (unless (seq-every-p (lambda (msg) (plist-get msg :can_be_saved)) messages)
+      (user-error "telega: %s"
+                  (telega-i18n (if (telega-chat-channel-p telega-chatbuf--chat)
+                                   "lng_error_noforwards_channel"
+                                 "lng_error_noforwards_group"))))
+
     (let ((chat (telega-completing-read-chat
                  (concat (telega-symbol 'forward) "Forward"
                          (when send-copy-p " Copy")
@@ -4548,8 +4608,7 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
                                        "telega_query_kill_message")))
           (telega-msg-delete0 msg revoke)
 
-          (if (telega-chat-match-p telega-chatbuf--chat
-                                   telega-chat-show-deleted-messages-for)
+          (if (telega-chatbuf-match-p telega-chat-show-deleted-messages-for)
               (telega-help-message 'double-delete
                   "Press %s once again to hide deleted message"
                 (substitute-command-keys (format "\\[%S]" this-command)))

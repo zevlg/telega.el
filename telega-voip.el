@@ -260,10 +260,10 @@ If ARG is not given then treat it as 1."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (let ((group-call (telega-chat-group-call chat)))
     (unless group-call
-      (user-error "Chat has no associated Voice Chat"))
+      (user-error "Chat has no associated Video Chat"))
     (when (or (not no-confirm-p)
-              (y-or-n-p "Discard this Voice Chat? "))
-      (telega--discardGroupCall group-call))))
+              (y-or-n-p "End this Video Chat? "))
+      (telega--endGroupCall group-call))))
 
 (defun telega-video-chat-record-start (chat title)
   "Start recording group call associated with CHAT."
@@ -406,7 +406,7 @@ If TITLE is not specified, ask user interactively for the new title."
       (telega-ins " ")
       (telega-ins--button (telega-i18n "lng_group_call_end")
         :value group-call
-        :action #'telega--discardGroupCall)
+        :action #'telega--endGroupCall)
       (telega-ins " ")
       (telega-ins--button "Set Title"
         :value group-call

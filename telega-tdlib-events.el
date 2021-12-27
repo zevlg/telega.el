@@ -264,6 +264,18 @@ DIRTINESS specifies additional CHAT dirtiness."
     (telega-chat--mark-dirty chat event)
   ))
 
+(defun telega--on-updateChatMessageSender (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (plist-put chat :message_sender_id
+               (plist-get event :message_sender_id))
+    (telega-chat--mark-dirty chat event)))
+
+(defun telega--on-updateChatHasProtectedContent (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (plist-put chat :has_protected_content
+               (plist-get event :has_protected_content))
+    (telega-chat--mark-dirty chat event)))
+
 (defun telega--on-updateChatReadInbox (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
         (unread-count (plist-get event :unread_count)))
@@ -428,10 +440,10 @@ NOTE: we store the number as custom chat property, to use it later."
     (plist-put chat :theme_name (plist-get event :theme_name))
     (telega-chat--mark-dirty chat event)))
 
-(defun telega--on-updateChatMessageTtlSetting (event)
+(defun telega--on-updateChatMessageTtl (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id))))
     (cl-assert chat)
-    (plist-put chat :message_ttl_setting (plist-get event :message_ttl_setting))
+    (plist-put chat :message_ttl (plist-get event :message_ttl))
 
     (telega-chat--mark-dirty chat event)))
 
@@ -592,8 +604,7 @@ NOTE: we store the number as custom chat property, to use it later."
       (when (telega-chatbuf--append-new-message-p new-msg)
         (when-let ((node (telega-chatbuf--insert-messages
                           (list new-msg) 'append-new)))
-          (when (and (telega-chat-match-p
-                      telega-chatbuf--chat telega-use-tracking-for)
+          (when (and (telega-chatbuf-match-p telega-use-tracking-for)
                      (not (telega-msg-ignored-p new-msg))
                      (not (plist-get new-msg :is_outgoing))
                      (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
@@ -688,8 +699,8 @@ Message id could be updated on this update."
       ;; In case user has active aux-button with message from EVENT,
       ;; then redisplay aux as well, see
       ;; https://t.me/emacs_telega/7243
-      (let ((aux-msg (or (telega-chatbuf--replying-msg)
-                         (telega-chatbuf--editing-msg))))
+      (let ((aux-msg (or (telega-chatbuf-replying-msg)
+                         (telega-chatbuf-editing-msg))))
         (when (and aux-msg (eq (plist-get msg :id) (plist-get aux-msg :id)))
           (cl-assert (not (button-get telega-chatbuf--aux-button 'invisible)))
           (telega-save-excursion

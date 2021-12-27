@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-12-08 Ср 16:38 -->
+<!-- 2021-12-28 Вт 00:58 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.7.100)</title>
+<title>Telega Manual (v0.7.110)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <style>
@@ -219,7 +219,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.100)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.7.110)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -503,7 +503,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.7.10.
+version greater or equal to 1.7.11.
 </p>
 
 <p>
@@ -953,7 +953,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgbe4b7e2">
+<pre class="example" id="orga1d2dcf">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -971,7 +971,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgcf06910">
+<pre class="example" id="orgea21a55">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1001,7 +1001,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgd1e0ab4">
+<pre class="example" id="org76b8990">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1102,7 +1102,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org64e372c">
+<pre class="example" id="org1f6f287">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1617,12 +1617,29 @@ See list of all available icon names in <code>telega-folder-icon-names</code>.
 Default value: 
 </p>
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Favorite"</span> . <span style="font-style: italic;">"&#9733;"</span>)
- (<span style="font-style: italic;">"Love"</span> . <span style="font-style: italic;">"&#9829;"</span>)
- (<span style="font-style: italic;">"Travel"</span> . <span style="font-style: italic;">"&#128747;"</span>)
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"All"</span> . <span style="font-style: italic;">"&#128172;"</span>)
+ (<span style="font-style: italic;">"Unread"</span> . <span style="font-style: italic;">"&#9989;"</span>)
+ (<span style="font-style: italic;">"Unmuted"</span> . <span style="font-style: italic;">"&#128276;"</span>)
+ (<span style="font-style: italic;">"Bots"</span> . <span style="font-style: italic;">"&#129302;"</span>)
+ (<span style="font-style: italic;">"Channels"</span> . <span style="font-style: italic;">"&#128226;"</span>)
+ (<span style="font-style: italic;">"Groups"</span> . <span style="font-style: italic;">"&#128101;"</span>)
+ (<span style="font-style: italic;">"Private"</span> . <span style="font-style: italic;">"&#128100;"</span>)
+ (<span style="font-style: italic;">"Custom"</span> . <span style="font-style: italic;">"&#128193;"</span>)
+ (<span style="font-style: italic;">"Setup"</span> . <span style="font-style: italic;">"&#128203;"</span>)
  (<span style="font-style: italic;">"Cat"</span> . <span style="font-style: italic;">"&#128049;"</span>)
- (<span style="font-style: italic;">"Sport"</span> . <span style="font-style: italic;">"&#127941;"</span>)
- (<span style="font-style: italic;">"Mask"</span> . <span style="font-style: italic;">"&#128567;"</span>))
+ (<span style="font-style: italic;">"Crown"</span> . <span style="font-style: italic;">"&#128081;"</span>)
+ (<span style="font-style: italic;">"Favorite"</span> . <span style="font-style: italic;">"&#11088;&#65039;"</span>)
+ (<span style="font-style: italic;">"Flower"</span> . <span style="font-style: italic;">"&#127801;"</span>)
+ (<span style="font-style: italic;">"Game"</span> . <span style="font-style: italic;">"&#127918;"</span>)
+ (<span style="font-style: italic;">"Home"</span> . <span style="font-style: italic;">"&#127968;"</span>)
+ (<span style="font-style: italic;">"Love"</span> . <span style="font-style: italic;">"&#10084;&#65039;"</span>)
+ (<span style="font-style: italic;">"Mask"</span> . <span style="font-style: italic;">"&#127917;"</span>)
+ (<span style="font-style: italic;">"Party"</span> . <span style="font-style: italic;">"&#127864;"</span>)
+ (<span style="font-style: italic;">"Sport"</span> . <span style="font-style: italic;">"&#9917;&#65039;"</span>)
+ (<span style="font-style: italic;">"Study"</span> . <span style="font-style: italic;">"&#127891;"</span>)
+ (<span style="font-style: italic;">"Trade"</span> . <span style="font-style: italic;">"&#128202;"</span>)
+ (<span style="font-style: italic;">"Travel"</span> . <span style="font-style: italic;">"&#128747;&#65039;"</span>)
+ (<span style="font-style: italic;">"Work"</span> . <span style="font-style: italic;">"&#128188;"</span>))
 </pre>
 </div></li>
 </ul>
@@ -1828,6 +1845,8 @@ administrator in the chat.</dd>
 <dt>me-is-member</dt><dd>Matches if me is member of the chat.
 Matches only basicgroup, supergroup or a channel.</dd>
 
+<dt>me-is-anonymous</dt><dd>Matches if me is anonymous in the chat.</dd>
+
 <dt>has-last-message</dt><dd>Matches if chat has last message.</dd>
 
 <dt>has-avatar</dt><dd>Matches if chat has chat photo.</dd>
@@ -1921,7 +1940,7 @@ not empty.</dd>
 
 <dt>has-favorite-messages</dt><dd>Matches if chat has favorite messages.</dd>
 
-<dt>is-public</dt><dd>Matches if chat has <code>:message_ttl_setting</code>.</dd>
+<dt>is-public</dt><dd>Matches if chat has <code>:message_ttl</code>.</dd>
 
 <dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
 
@@ -2002,16 +2021,34 @@ Each element is cons cell, where car is Chat Filter, and cdr is color.
 Default value: <code>((saved-messages))</code>
 </p></li>
 <li><p>
-User Option: <code>telega-chat-prompt-show-avatar-for</code> 
+User Option: <code>telega-chat-prompt-format</code> 
 </p>
 
 <p>
-Show chat avatar nearby prompt input for chats matching this Chat Filter. 
+Modeline compatible format for the chatbuf input prompt.
+You can use <code>telega-chatbuf-editing-msg</code> or
+<code>telega-chatbuf-replying-msg</code> in <code>:eval</code> section if you want different
+prompt when editing/replying a message. 
 </p>
 
 <p>
-Default value: <code>nil</code>
-</p></li>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-weight: bold;">:eval</span>
+  (telega-chatbuf-prompt-default-sender-avatar))
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-chatbuf-prompt-body))
+ (<span style="font-weight: bold;">:eval</span>
+  (<span style="font-weight: bold;">when</span>
+      (<span style="font-weight: bold;">and</span> telega-use-images
+       (telega-chatbuf-match-p
+        '(and has-avatar can-send-or-post)))
+    (telega-chatbuf-prompt-chat-avatar)))
+ <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
+</pre>
+</div></li>
+
 <li><p>
 User Option: <code>telega-chat-group-messages-for</code> 
 </p>
@@ -2050,7 +2087,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgeff6478">
+<pre class="example" id="orgf31cfe8">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2227,7 +2264,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org22ab11b">
+<pre class="example" id="org28b8dda">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2311,7 +2348,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org1f0717b">
+<pre class="example" id="orga3d233f">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2328,7 +2365,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org0e8e218">
+<pre class="example" id="org56e4520">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2509,6 +2546,7 @@ Use this attachment to disable/enable notification on the receiver side.</dd>
 <dt>enable-notification</dt><dd>Toggle disable-notification chat option for the subsequent chatbuf input.
 Use this attachment to disable/enable notification on the receiver side.</dd>
 <dt>disable-webpage-preview</dt><dd>Disable webpage preview for the following text message.</dd>
+<dt>send-by</dt><dd>Set sender for the following message.</dd>
 <dt>code</dt><dd>Interactively attach a code of the <code>LANGUAGE</code> into chatbuf input.
 For non-interactive code attach, use <code>telega-mnz--chatbuf-attach-internal</code>.</dd>
 </dl>
@@ -2575,7 +2613,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org88dd972">
+<pre class="example" id="orgda96eeb">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2953,7 +2991,7 @@ Default value: <code>t</code>
 <div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
 <p>
 Message filtering means to show only some messages matching filter.
-Available message filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>call</code>, <code>missed-call</code>, <code>mention</code>, <code>unread-mention</code>, <code>failed-to-send</code>, <code>pinned</code>
+Available message filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>mention</code>, <code>unread-mention</code>, <code>failed-to-send</code>, <code>pinned</code>
 </p>
 
 <p>
@@ -3168,7 +3206,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org409b0ab">
+<pre class="example" id="org6611574">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3856,7 +3894,6 @@ avatar, like: <img src="https://zevlg.github.io/telega/telega-patron-ava.png" al
 In addition:
 </p>
 <ul class="org-ul">
-<li><a href="https://promote.telegram.org">Sponsored messages</a> are disabled by default for telega patrons</li>
 <li>Display "Telega Patron Since: &lt;date&gt;" note in the patron's Chat/User description.</li>
 <li>All <a href="https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard">Emacs Stories</a> from <code>telega</code> patrons are automatically considered "Featured".</li>
 </ul>
@@ -3870,23 +3907,6 @@ me</a>.
 <p>
 <code>telega-patrons-mode</code> is enabled by default.
 </p>
-
-<p>
-Customizable options:
-</p>
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-patrons-disable-sponsored-messages</code> 
-</p>
-
-<p>
-Non-nil to disable sponsored messages for telega patrons. 
-</p>
-
-<p>
-Default value: <code>t</code>
-</p></li>
-</ul>
 </div>
 </div>
 
@@ -4036,7 +4056,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orge871036">
+<pre class="example" id="org13ebe0a">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4532,6 +4552,7 @@ Default value:
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(<span style="font-weight: bold;">and</span>
  (type channel)
+ (not unmuted)
  (not verified))
 </pre>
 </div></li>

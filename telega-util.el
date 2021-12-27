@@ -1372,6 +1372,24 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
                                prompt (mapcar #'car i18n-choices) nil t)))
     (cdr (assoc perm-choice i18n-choices))))
 
+(defun telega-completing-read-msg-sender (prompt &optional msg-senders)
+  "Read a message sender from list of MSG-SENDERS."
+  (let* ((choices (mapcar (lambda (sender)
+                            (cons (telega-ins--as-string
+                                   (telega-ins--image
+                                    (telega-msg-sender-avatar-image-one-line
+                                     sender))
+                                   (if (telega-user-p sender)
+                                       (telega-ins
+                                        "{" (telega-user-title sender 'name) "}")
+                                     (telega-ins
+                                      (telega-chat-title-with-brackets sender))))
+                                  sender))
+                          msg-senders))
+         (choice (funcall telega-completing-read-function
+                          prompt (mapcar #'car choices) nil t)))
+    (cdr (assoc choice choices))))
+  
 (defun telega-completing-titles (&optional sort-criteria)
   "Return alist of titles and senders ready for completing.
 sender is chat or user.

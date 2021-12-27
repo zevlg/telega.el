@@ -164,6 +164,10 @@
        (let ((payment-form (telega--getPaymentForm msg)))
          (message "payment-form: %S" payment-form)))
 
+      (inlineKeyboardButtonTypeUser
+       (when-let ((user (telega-user-get (plist-get kbd-type :user_id))))
+         (telega-chat-with user)))
+
       ;; TODO: other types
       )))
 
