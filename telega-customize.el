@@ -780,7 +780,10 @@ Otherwise use simple chars."
         (cons "Channels" "📢")
         (cons "Groups"   "👥")
         (cons "Private"  "👤")
-        (cons "Custom"   "📁")
+        ;; NOTE: all folders has "Custom" icon name, to avoid icon
+        ;; being displayed with folder name we exclude "Custom" from
+        ;; the list
+;        (cons "Custom"   "📁")
         (cons "Setup"    "📋")
         (cons "Cat"      "🐱")
         (cons "Crown"    "👑")
@@ -1998,7 +2001,7 @@ Install all symbol widths inside `telega-load-hook'."
                         1 0.7 telega-symbol-underline-bar)))
     alarm attachment
     bell bulp
-    chat-list
+    chat-list contact
     distance
     eye
     failed favorite flames folder

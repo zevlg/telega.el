@@ -1166,8 +1166,9 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   "Read user by his name from USERS list."
   (declare (indent 1))
   (let ((choices (mapcar (lambda (user)
-                           (list (concat telega-symbol-contact
-                                         (telega-user-title user)) user))
+                           (list (concat (telega-symbol 'contact)
+                                         (telega-user-title user))
+                                 user))
                          (or users (hash-table-values
                                     (alist-get 'user telega--info))))))
     (car (alist-get (funcall telega-completing-read-function
@@ -1400,7 +1401,7 @@ Chats in the list are sorted using SORT-CRITERIA or
   ;;  - Include only contact users
   (mapcar (lambda (msg-sender)
             (cons (if (telega-user-p msg-sender)
-                      (concat telega-symbol-contact
+                      (concat (telega-symbol 'contact)
                               (telega-user-title msg-sender))
                     (telega-chatbuf--name msg-sender))
                   msg-sender))

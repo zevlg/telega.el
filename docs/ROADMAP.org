@@ -150,8 +150,6 @@ But =telega= might sort chats by some other criteria.  Criteria might be:
 - (NOT YET) Date of last message sent by ~telega-user-me~
 - (NOT YET) Date of last mention (thanks to https://t.me/lainposter)
 
-** Chat Actions
-
 ** DONE Transient commands
 CLOSED: [2021-02-09 Вт 20:16]
 
@@ -165,6 +163,15 @@ behaviour.
 **Q**: Do we really need this?
 
 **DONE** by contrib/telega-transient.el
+
+** Chat Actions
+
+** Support for ~getRecentInlineBots~
+Fetch recent inline bots at start.  Refetch them after any inline bot
+usage.
+
+Show them along the side with ~telega-known-inline-bots~
+
 
 * telega-server as a module
 

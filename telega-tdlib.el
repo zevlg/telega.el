@@ -1004,9 +1004,9 @@ Pass REVOKE to try to delete chat history for all users."
   "Inform that SPONSORED-MSG has been viewed in the CHAT."
   (cl-assert (eq 'sponsoredMessage (telega--tl-type sponsored-msg)))
   (telega-server--send
-   (list :@type "viewSponsoredMessage"
+   (list :@type "viewMessages"
          :chat_id (plist-get chat :id)
-         :sponsored_message_id (plist-get sponsored-msg :id))))
+         :message_ids (vector (plist-get sponsored-msg :message_id)))))
 
 
 (defun telega--setAuthenticationPhoneNumber (phone-number)

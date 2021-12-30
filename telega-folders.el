@@ -105,7 +105,9 @@ correctly extract folder name."
   (let* ((ftitle (telega-tl-str filter-info :title))
          (ficon-name (telega-tl-str filter-info :icon_name))
          (ficon (cdr (assoc ficon-name telega-folder-icons-alist)))
-         (ficon-symbol (propertize (or ficon (telega-symbol 'folder))
+         (ficon-emoji (when (and ficon telega-emoji-use-images)
+                        (telega-symbol-emojify ficon)))
+         (ficon-symbol (propertize (or ficon-emoji ficon (telega-symbol 'folder))
                                    'telega-folder folder-name))
          (icon-uniq-p (= (length (cl-remove-if-not
                                   (lambda (fi)

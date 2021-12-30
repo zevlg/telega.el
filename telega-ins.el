@@ -201,6 +201,7 @@ single argument - slice number, starting from 0."
     (let* ((first-action (car actions))
            (sender (telega-msg-sender (car first-action)))
            (action (cdr first-action)))
+      ;; ARGUABLE: display sender's avatar
       ;; (telega-ins--image
       ;;  (telega-msg-sender-avatar-image-one-line sender))
       (telega-ins (telega-msg-sender-title sender) " ")
@@ -965,7 +966,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
 (defun telega-ins--contact (contact &optional no-phone)
   "One line variant inserter for CONTACT."
-  (telega-ins telega-symbol-contact " ")
+  (telega-ins (telega-symbol 'contact) " ")
   (telega-ins (telega-user-title contact 'name))
   (when (eq (telega--tl-type contact) 'user)
     (telega-ins--user-online-status contact))
@@ -2491,8 +2492,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
 
   (if-let ((user-chat (telega-chat-get (plist-get user :id) 'offline)))
       (telega-ins--with-face 'telega-blue
-        (telega-ins telega-symbol-contact))
-    (telega-ins telega-symbol-contact))
+        (telega-ins (telega-symbol 'contact)))
+    (telega-ins (telega-symbol 'contact)))
   (telega-ins " ")
 
   (telega-ins (telega-user--name user 'name))
@@ -2665,7 +2666,7 @@ Return t."
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
                           (when (memq chat-type '(basicgroup supergroup))
-                            (telega-ins telega-symbol-contact
+                            (telega-ins (telega-symbol 'contact)
                                         (telega-number-human-readable
                                          (plist-get chat-info :member_count))))))
                       ))

@@ -370,7 +370,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        ;; Now wait till [START] is pressed
        ))
     (internalLinkTypeMessage
-     (telega-tme-open-tg (plist-get tdlib-link :url)))
+     (telega-tme-open (plist-get tdlib-link :url)))
 
     (internalLinkTypeActiveSessions
      )
