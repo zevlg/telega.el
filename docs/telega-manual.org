@@ -374,7 +374,7 @@ Or with:
 The code should be put in the configuration file for Emacs, which
 usually is =init.el=, or =emacs.el=.
 
-** Running telega-server in docker                                      :new:
+** Running telega-server in docker
 :PROPERTIES:
 :CUSTOM_ID: running-telega-server-in-docker
 :END:
@@ -2017,7 +2017,7 @@ If you don't like =company-posframe=, consider option:
 
   Default value: ~t~
 
-*** Using capf for input completions                                    :new:
+*** Using capf for input completions
 :PROPERTIES:
 :CUSTOM_ID: using-capf-for-input-completions
 :END:
@@ -2198,7 +2198,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 To view recently ignored messages use
 ~M-x telega-ignored-messages RET~ command.
 
-** Favorite messages                                                    :new:
+** Favorite messages
 :PROPERTIES:
 :CUSTOM_ID: favorite-messages
 :END:
@@ -2222,7 +2222,7 @@ Root View, by pressing
 @@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) in
 the [[#root-buffer][root buffer]].
 
-** Media Controls for media messages                                    :new:
+** Media Controls for media messages
 :PROPERTIES:
 :CUSTOM_ID: media-controls-for-media-messages
 :END:
@@ -2355,7 +2355,7 @@ Or you can press @@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <s
 on the sticker message to add that sticker to the favorite stickers
 list.
 
-** Animations                                                           :new:
+** Animations
 :PROPERTIES:
 :CUSTOM_ID: animations
 :END:
@@ -3153,7 +3153,7 @@ Customizable options:
 
   Default value: ~"https://sebsauvage.net/rss-bridge/?action=display&bridge=Telegram&username=%s&format=Atom"~
 
-* Troubleshooting                                                       :new:
+* Troubleshooting
 :PROPERTIES:
 :CUSTOM_ID: troubleshooting
 :END:

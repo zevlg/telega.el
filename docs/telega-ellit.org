@@ -257,7 +257,7 @@ Or with:
 The code should be put in the configuration file for Emacs, which
 usually is =init.el=, or =emacs.el=.
 
-** Running telega-server in docker                                      :new:
+** Running telega-server in docker
 
 Pull latest =telega-server= image:
 #+begin_src shell
@@ -819,7 +819,7 @@ the chatbuf prompt.
 If you don't like =company-posframe=, consider option:
 - {{{user-option(telega-company-tooltip-always-below, 2)}}}
 
-*** Using capf for input completions                                  :new:
+*** Using capf for input completions
 
 It is possible to use standard Emacs ~capf~ (completion at point)
 functionality to perform completions in the chatbuf.  You still need
@@ -948,7 +948,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 To view recently ignored messages use
 ~M-x telega-ignored-messages RET~ command.
 
-** Favorite messages                                                    :new:
+** Favorite messages
 
 Any message in any chat can be marked with as /favorite/.  Favorite
 messages are labeled with:
@@ -965,7 +965,7 @@ Root View, by pressing
 {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} in
 the [[#root-buffer][root buffer]].
 
-** Media Controls for media messages                                  :new:
+** Media Controls for media messages
 
 Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
@@ -1046,7 +1046,7 @@ Or you can press {{{where-is(telega-msg-save,telega-msg-button-map)}}}
 on the sticker message to add that sticker to the favorite stickers
 list.
 
-** Animations                                                         :new:
+** Animations
 
 There are multiple methods you can use to attach an animation:
 - {{{kbd(C-c C-a animation RET)}}} to attach animation from the Saved
@@ -1140,7 +1140,7 @@ project.
 
 #+ELLIT-INCLUDE: ../contrib/telega-channels-export.el
 
-* Troubleshooting                                                       :new:
+* Troubleshooting
 
 ** Can't compile =telega-server=
 **TODO**

@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-12-30 Чт 18:38 -->
+<!-- 2021-12-30 Чт 19:19 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.0)</title>
@@ -233,7 +233,7 @@
 <li><a href="#installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from GNU Guix</a></li>
 <li><a href="#installing-telega-from-melpa">Installing telega from MELPA</a></li>
 <li><a href="#installing-telega-directly-from-github">Installing telega directly from GitHub</a></li>
-<li><a href="#running-telega-server-in-docker">Running telega-server in docker&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#running-telega-server-in-docker">Running telega-server in docker</a></li>
 </ul>
 </li>
 <li><a href="#getting-started">Getting started</a></li>
@@ -272,15 +272,15 @@
 <li><a href="#navigating-previous-input">Navigating previous input</a></li>
 <li><a href="#completing-input-in-chatbuf">Completing input in chatbuf</a>
 <ul>
-<li><a href="#using-capf-for-input-completions">Using capf for input completions&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#using-capf-for-input-completions">Using capf for input completions</a></li>
 </ul>
 </li>
 <li><a href="#sending-messages-via-bots">Sending messages via bots</a></li>
 <li><a href="#filtering-chat-messages-aka-shared-media">Filtering chat messages a.k.a. Shared Media</a></li>
 <li><a href="#opening-files-using-external-programs">Opening files using external programs</a></li>
 <li><a href="#client-side-messages-ignoring">Client side messages ignoring</a></li>
-<li><a href="#favorite-messages">Favorite messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
-<li><a href="#media-controls-for-media-messages">Media Controls for media messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#favorite-messages">Favorite messages</a></li>
+<li><a href="#media-controls-for-media-messages">Media Controls for media messages</a></li>
 </ul>
 </li>
 <li><a href="#video-chats">Video Chats</a></li>
@@ -288,7 +288,7 @@
 <ul>
 <li><a href="#animated-stickers">Animated stickers</a></li>
 <li><a href="#favorite-and-recently-used-stickers">Favorite and recently used stickers</a></li>
-<li><a href="#animations">Animations&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#animations">Animations</a></li>
 </ul>
 </li>
 <li><a href="#multiple-accounts">Multiple accounts</a></li>
@@ -325,7 +325,7 @@
 <li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
 </ul>
 </li>
-<li><a href="#troubleshooting">Troubleshooting&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a>
+<li><a href="#troubleshooting">Troubleshooting</a>
 <ul>
 <li><a href="#cant-compile-telega-server">Can't compile <code>telega-server</code></a></li>
 <li><a href="#invalid-tdlib-version">Invalid TDLib version</a></li>
@@ -725,7 +725,7 @@ usually is <code>init.el</code>, or <code>emacs.el</code>.
 </div>
 
 <div id="outline-container-running-telega-server-in-docker" class="outline-3">
-<h3 id="running-telega-server-in-docker"><a class="self-link" href="#running-telega-server-in-docker"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running telega-server in docker&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="running-telega-server-in-docker"><a class="self-link" href="#running-telega-server-in-docker"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Running telega-server in docker</h3>
 <div class="outline-text-3" id="text-running-telega-server-in-docker">
 <p>
 Pull latest <code>telega-server</code> image:
@@ -953,7 +953,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgbbea26a">
+<pre class="example" id="orgc8cf1d4">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -971,7 +971,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org560c414">
+<pre class="example" id="orgb30c247">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1001,7 +1001,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgfdb5e04">
+<pre class="example" id="org3d45543">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1102,7 +1102,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org654f77c">
+<pre class="example" id="org9ded2b4">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2086,7 +2086,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org5627ece">
+<pre class="example" id="org42bb387">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2263,7 +2263,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org319daec">
+<pre class="example" id="org773f066">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2347,7 +2347,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgc808058">
+<pre class="example" id="org24c4430">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2364,7 +2364,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="orgf35a53d">
+<pre class="example" id="org88cd6f8">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2612,7 +2612,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org2076b05">
+<pre class="example" id="orge4225fc">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2894,7 +2894,7 @@ Default value: <code>t</code>
 </div>
 
 <div id="outline-container-using-capf-for-input-completions" class="outline-4">
-<h4 id="using-capf-for-input-completions"><a class="self-link" href="#using-capf-for-input-completions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using capf for input completions&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h4>
+<h4 id="using-capf-for-input-completions"><a class="self-link" href="#using-capf-for-input-completions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Using capf for input completions</h4>
 <div class="outline-text-4" id="text-using-capf-for-input-completions">
 <p>
 It is possible to use standard Emacs <code>capf</code> (completion at point)
@@ -3158,7 +3158,7 @@ To view recently ignored messages use
 </div>
 
 <div id="outline-container-favorite-messages" class="outline-3">
-<h3 id="favorite-messages"><a class="self-link" href="#favorite-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Favorite messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="favorite-messages"><a class="self-link" href="#favorite-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Favorite messages</h3>
 <div class="outline-text-3" id="text-favorite-messages">
 <p>
 Any message in any chat can be marked with as <i>favorite</i>.  Favorite
@@ -3198,14 +3198,14 @@ the <a href="#root-buffer">root buffer</a>.
 </div>
 
 <div id="outline-container-media-controls-for-media-messages" class="outline-3">
-<h3 id="media-controls-for-media-messages"><a class="self-link" href="#media-controls-for-media-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Media Controls for media messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="media-controls-for-media-messages"><a class="self-link" href="#media-controls-for-media-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Media Controls for media messages</h3>
 <div class="outline-text-3" id="text-media-controls-for-media-messages">
 <p>
 Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org568e346">
+<pre class="example" id="org3ee19ca">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3406,7 +3406,7 @@ list.
 </div>
 
 <div id="outline-container-animations" class="outline-3">
-<h3 id="animations"><a class="self-link" href="#animations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Animations&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="animations"><a class="self-link" href="#animations"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Animations</h3>
 <div class="outline-text-3" id="text-animations">
 <p>
 There are multiple methods you can use to attach an animation:
@@ -4055,7 +4055,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org717da94">
+<pre class="example" id="orgc027be0">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4656,7 +4656,7 @@ Default value: <code>"https://sebsauvage.net/rss-bridge/?action=display&amp;brid
 </div>
 
 <div id="outline-container-troubleshooting" class="outline-2">
-<h2 id="troubleshooting"><a class="self-link" href="#troubleshooting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Troubleshooting&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h2>
+<h2 id="troubleshooting"><a class="self-link" href="#troubleshooting"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Troubleshooting</h2>
 <div class="outline-text-2" id="text-troubleshooting">
 </div>
 
