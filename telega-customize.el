@@ -2209,6 +2209,12 @@ You can customize its `:height' to fit width of the default face."
   "Face to display urls."
   :group 'telega-faces)
 
+(defface telega-entity-type-spoiler
+  `((t :foreground ,(face-foreground 'default)
+       :background ,(face-foreground 'default)))
+  "Face to display spoilers in the text."
+  :group 'telega-faces)
+
 (defface telega-secret-title
   '((t :foreground "#00b12c"))
   "Face to display title of secret chat in root buffer."

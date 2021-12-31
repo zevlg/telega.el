@@ -595,6 +595,7 @@ Syntax for "markdown1" and "markdown2" markups:
   2. _italic text_
   2.1) __underline text__    (only for "markdown2")
   2.2) ~strike through text~ (only for "markdown2")
+  2.3) ||spoiler text|| (only for "markdown2")
   3. `inlined code`
   4. ```<language-name-not-displayed>
       first line of multiline preformatted code

@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2021-12-30 Чт 19:19 -->
+<!-- 2021-12-31 Пт 15:35 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.0)</title>
@@ -953,7 +953,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org7428243">
+<pre class="example" id="orgbdca81a">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -971,7 +971,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orge651e35">
+<pre class="example" id="org4f8c3cc">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1001,7 +1001,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org8beedc6">
+<pre class="example" id="orgfa22f52">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1102,7 +1102,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgcbfe958">
+<pre class="example" id="orgc3c2e3c">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -2086,7 +2086,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgabe7a16">
+<pre class="example" id="org3fe5144">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2263,7 +2263,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgab0b6e8">
+<pre class="example" id="orge4c78e2">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2347,11 +2347,12 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgf0977d4">
+<pre class="example" id="orgd73194a">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
 2.2) ~strike through text~ (only for "markdown2")
+2.3) ||spoiler text|| (only for "markdown2")
 3. `inlined code`
 4. ```&lt;language-name-not-displayed&gt;
     first line of multiline preformatted code
@@ -2364,7 +2365,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="org785a872">
+<pre class="example" id="org11fb984">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2612,7 +2613,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orge98b851">
+<pre class="example" id="org7c411d0">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3205,7 +3206,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org612cfff">
+<pre class="example" id="org0750d25">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4055,7 +4056,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgb3dc55b">
+<pre class="example" id="org24dc28f">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

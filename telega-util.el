@@ -667,31 +667,31 @@ See `puny-decode-domain' for details."
                           (if (and telega-msg-contains-unread-mention
                                    (equal text (telega-user--name
                                                 (telega-user-me) 'short)))
-                              (list 'telega-entity-type-mention 'bold)
+                              '(telega-entity-type-mention bold)
                             'telega-entity-type-mention)))
       (textEntityTypeMentionName
        (telega-link-props 'user (plist-get ent-type :user_id)
                           (if (and telega-msg-contains-unread-mention
                                    (eq (plist-get ent-type :user_id)
                                        telega--me-id))
-                              (list 'telega-entity-type-mention 'bold)
+                              '(telega-entity-type-mention bold)
                             'telega-entity-type-mention)))
       (textEntityTypeHashtag
        (telega-link-props 'hashtag text))
       (textEntityTypeBold
-       (list 'face 'telega-entity-type-bold))
+       '(face telega-entity-type-bold))
       (textEntityTypeItalic
-       (list 'face 'telega-entity-type-italic))
+       '(face telega-entity-type-italic))
       (textEntityTypeUnderline
-       (list 'face 'telega-entity-type-underline))
+       '(face telega-entity-type-underline))
       (textEntityTypeStrikethrough
-       (list 'face 'telega-entity-type-strikethrough))
+       '(face telega-entity-type-strikethrough))
       (textEntityTypeCode
-       (list 'face 'telega-entity-type-code))
+       '(face telega-entity-type-code))
       (textEntityTypePre
-       (list 'face 'telega-entity-type-pre))
+       '(face telega-entity-type-pre))
       (textEntityTypePreCode
-       (list 'face 'telega-entity-type-pre))
+       '(face telega-entity-type-pre))
       (textEntityTypeUrl
        ;; - Unhexify url, using `telega-display' property to be
        ;; substituted at `telega--desurrogate-apply' time
@@ -705,13 +705,15 @@ See `puny-decode-domain' for details."
        (telega-link-props 'url (plist-get ent-type :url)
                           'telega-entity-type-texturl))
       (textEntityTypeBotCommand
-       (list 'face 'telega-entity-type-botcommand))
+       '(face telega-entity-type-botcommand))
       (textEntityTypeMediaTimestamp
        (list 'action (lambda (button)
                        (telega-msg-open-media-timestamp
                         (telega-msg-at button)
                         (plist-get ent-type :media_timestamp)))
              'face 'telega-link))
+      (textEntityTypeSpoiler
+       '(face telega-entity-type-spoiler))
       )))
 
 ;; https://core.telegram.org/bots/api#markdown-style

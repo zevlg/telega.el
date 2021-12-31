@@ -6,9 +6,9 @@
 # docker run -v $HOME/.telega:$HOME/.telega zevlg/telega-server:latest /usr/bin/telega-server
 
 ### Release image
-# docker build --build-arg tdlib_branch=1.7.0 --build-arg telega_branch=releases -f etc/Dockerfile -t zevlg/telega-server:1.7.0 .
-# docker tag $(docker images -q zevlg/telega-server:1.7.0) zevlg/telega-server:1.7.0
-# docker push zevlg/telega-server:1.7.0
+# docker build --build-arg tdlib_branch=v1.8.0 --build-arg telega_branch=release-0.8.0 -f etc/Dockerfile -t zevlg/telega-server:1.8.0 .
+# docker tag $(docker images -q zevlg/telega-server:1.8.0) zevlg/telega-server:1.8.0
+# docker push zevlg/telega-server:1.8.0
 
 FROM alpine:latest AS builder
 ARG tdlib_branch=master
@@ -17,7 +17,7 @@ ARG telega_branch=master
 RUN set +x && apk update && apk upgrade && \
     apk add --update alpine-sdk linux-headers git zlib-dev openssl-dev gperf php cmake
 
-RUN echo "TDLib 1.8.0-20278192" > tdlib-version && \
+RUN echo "TDLib 1.8.0-c0385078" > tdlib-version && \
     git clone https://github.com/tdlib/td.git && \
     cd td && \
     git checkout ${tdlib_branch} && \
