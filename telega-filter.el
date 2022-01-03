@@ -61,6 +61,7 @@
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
+(declare-function telega-chat-bot-p "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat--info "telega-chat" (chat &optional local-p))
 (declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
@@ -1305,20 +1306,33 @@ If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."
   "Matches if corresponding user is a telega patron."
   (telega-msg-sender-patron-p chat))
 
+;;; ellit-org: chat-filters
+;; - has-sponsored-message ::
+;;   {{{fundoc(telega--filter-has-sponsored-message, 2)}}}
 (define-telega-filter has-sponsored-message (chat)
-  "Matches if chat has sponsored message."
+  "Matches if chat has sponsored message.
+BE AWARE: This filter will do blocking request for every chat."
   (when (telega-chat-match-p chat '(type channel))
     (telega--getChatSponsoredMessage chat)))
 
+;;; ellit-org: chat-filters
+;; - has-protected-content ::
+;;   {{{fundoc(telega--filter-has-protected-content, 2)}}}
 (define-telega-filter has-protected-content (chat)
   "Matches if chat has protected content."
   (plist-get chat :has_protected_content))
 
+;;; ellit-org: chat-filters
+;; - has-private-forwards ::
+;;   {{{fundoc(telega--filter-has-private-forwards, 2)}}}
 (define-telega-filter has-private-forwards (chat)
   "Matches if user can't be linked in forwarded messages."
   (when-let ((user (telega-chat-user chat)))
     (plist-get (telega--full-info user) :has_private_forwards)))
 
+;;; ellit-org: chat-filters
+;; - has-default-sender ::
+;;   {{{fundoc(telega--filter-has-default-sender, 2)}}}
 (define-telega-filter has-default-sender (chat)
   "Matches if chat allows choosing a message sender."
   (plist-get chat :message_sender_id))
@@ -1328,6 +1342,15 @@ If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."
   (let ((my-perms (telega-chat-member-my-permissions chat)))
     (or (plist-get my-perms :can_send_messages)
         (plist-get my-perms :can_post_messages))))
+
+;;; ellit-org: chat-filters
+;; - is-inline-bot ::
+;;   {{{fundoc(telega--filter-is-inline-bot, 2)}}}
+(define-telega-filter is-inline-bot (chat)
+  "Matches if corresponding bot accepts inline requests."
+  (when (telega-chat-bot-p chat)
+    (when-let ((user (telega-chat-user chat 'include-bots)))
+      (telega--tl-get user :type :is_inline))))
 
 (provide 'telega-filter)
 
