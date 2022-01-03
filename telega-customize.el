@@ -2005,6 +2005,7 @@ Install all symbol widths inside `telega-load-hook'."
     distance
     eye
     failed favorite flames folder
+    game
     invoice
     leave-comment lightning lock location
     multiple-folders

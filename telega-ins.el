@@ -822,7 +822,7 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
 (defun telega-ins--game (msg &optional game-value)
   "Insert GAME."
   (let ((game (or game-value (telega--tl-get msg :content :game))))
-    (telega-ins telega-symbol-game " "
+    (telega-ins (telega-symbol 'game) " "
                 (propertize "GAME" 'face 'shadow)
                 "\n")
     (telega-ins (telega-symbol 'vertical-bar))
@@ -2427,7 +2427,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           (telega-duration-human-readable
            (telega--tl-get content :video :duration))))
        (messageGame
-        (telega-ins telega-symbol-game " ")
+        (telega-ins (telega-symbol 'game) " ")
         (let ((game (plist-get content :game)))
           (telega-ins (or (telega-tl-str game :title)
                           (telega-tl-str game :short_name)
