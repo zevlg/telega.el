@@ -179,7 +179,8 @@ Matches only if CHAR does not apper in the middle of the word."
                       members)
               (cl-remove-if-not (lambda (botname)
                                   (string-prefix-p arg botname))
-                                telega-known-inline-bots))))
+                                (seq-union telega--recent-inline-bots
+                                           telega-known-inline-bots)))))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align
      (when-let ((member (or (get-text-property 0 'telega-member arg)
@@ -201,10 +202,10 @@ Matches only if CHAR does not apper in the middle of the word."
                               (plist-get member :id))
                       "markdown1" #'telega-markup-markdown1-fmt))))
 
-     (let ((known-bot-p (member (telega-chatbuf-input-string)
-                                telega-known-inline-bots)))
-       (insert " ")
-       (when known-bot-p
+     (insert " ")
+     (let ((chatbuf-input (telega-chatbuf-input-string)))
+       (when (or (member chatbuf-input telega-known-inline-bots)
+                 (member chatbuf-input telega--recent-inline-bots))
          (telega-chatbuf-attach-inline-bot-query 'no-search))))
     ))
 

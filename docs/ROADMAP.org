@@ -166,7 +166,8 @@ behaviour.
 
 ** Chat Actions
 
-** Support for ~getRecentInlineBots~
+** DONE Support for ~getRecentInlineBots~
+CLOSED: [2022-01-02 Вс 14:24]
 Fetch recent inline bots at start.  Refetch them after any inline bot
 usage.
 

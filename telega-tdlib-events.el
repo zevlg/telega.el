@@ -27,6 +27,7 @@
 (require 'telega-tdlib)
 (require 'telega-root)
 (require 'telega-chat)
+(require 'telega-inline)
 
 (defvar tracking-buffers nil)
 (declare-function telega--authorization-ready "telega")
@@ -657,6 +658,13 @@ Message id could be updated on this update."
                     (ewoc-invalidate telega-chatbuf--ewoc before-node))
                 (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))
     (unless (plist-get new-msg :sending_state)
+      ;; NOTE: In case outgoing message is done via bot, we need to
+      ;; update recently used inline bots list
+      (when-let ((outgoing-p (plist-get new-msg :is_outgoing))
+                 (via-bot-id (plist-get new-msg :via_bot_user_id)))
+        (unless (zerop via-bot-id)
+          (telega--recent-inline-bots-fetch)))
+
       (run-hook-with-args 'telega-chat-post-message-hook new-msg))))
 
 (defun telega--on-updateMessageSendFailed (event)

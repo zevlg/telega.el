@@ -660,6 +660,14 @@ Photo and Video files have attached sticker sets."
    (list :@type "removeSavedAnimation"
          :animation input-file)))
 
+(defun telega--getRecentInlineBots (&optional callback)
+  "Return recently used inline bots."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-user-get (plist-get reply :user_ids))
+
+    (list :@type "getRecentInlineBots")
+    callback))
+
 (defun telega--resendMessage (message)
   "Resend MESSAGE."
   (telega-server--send

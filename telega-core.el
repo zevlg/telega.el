@@ -277,6 +277,9 @@ display the list.")
 (defvar telega--relogin-with-phone-number nil
   "This var is used to relogin with phone number when skipping QR auth")
 
+(defvar telega--recent-inline-bots nil
+  "List of usernames for recently used inline bots.")
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
@@ -399,6 +402,7 @@ Done when telega server is ready to receive queries."
 
   (setq telega--group-calls (make-hash-table :test 'eq))
   (setq telega-docker--container-id nil)
+  (setq telega--recent-inline-bots nil)
   )
 
 (defun telega-test-env (&optional quiet-p)

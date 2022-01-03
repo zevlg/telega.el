@@ -502,6 +502,15 @@
           (telega--getInlineQueryResults bot query for-chat nil nil
             (telega-inline-bot--gen-callback bot query for-chat)))))
 
+(defun telega--recent-inline-bots-fetch ()
+  "Update recently used bots."
+  (telega--getRecentInlineBots
+   (lambda (users)
+     (setq telega--recent-inline-bots
+           (mapcar (lambda (user)
+                     (telega-user-title user 'short))
+                   users)))))
+
 (provide 'telega-inline)
 
 ;;; telega-inline.el ends here
