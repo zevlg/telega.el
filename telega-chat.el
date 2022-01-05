@@ -1457,8 +1457,6 @@ Takes into account threads."
 (defun telega-chatbuf--last-msg-loaded-p ()
   "Return non-nil if chat's last message is shown."
   (or (memq 'newer-loaded telega-chatbuf--history-state)
-      ;; NOTE: handle gaps in the chat history
-      ;; See https://github.com/tdlib/td/issues/896
       (let ((last-chat-msg-id (telega-chatbuf--last-message-id))
             (last-chatbuf-msg-id (plist-get (telega-chatbuf--last-msg) :id)))
         (or (and last-chat-msg-id last-chatbuf-msg-id
@@ -2242,7 +2240,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
 (defun telega-chatbuf--older-history-loaded ()
   "In chatbuf set mark, that all older history has been loaded."
   (when (telega-chatbuf--need-older-history-p)
-    (message "loaded all history")
+    (message "telega: loaded all older messages")
     (setq telega-chatbuf--history-state
           (cl-pushnew 'older-loaded telega-chatbuf--history-state))
     ;; Insert thread starter message if any, because it is not
