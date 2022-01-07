@@ -823,6 +823,7 @@ Unlike other apps, Telegram doesn't track whether you tapped on a sponsored mess
 
 Telegram offers a free and unlimited service to hundreds of millions of users, which involves significant server and traffic costs. In order to remain independent and stay true to its values, Telegram developed a paid tool to promote messages with user privacy in mind. We welcome responsible advertisers at:")
 
+ ;; Errors
  ("lng_error_nocopy_group"
   :value "Sorry, copying from this group is disabled by admins.")
  ("lng_error_nocopy_channel"
@@ -831,4 +832,7 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Sorry, forwarding from this group is disabled by admins.")
  ("lng_error_noforwards_channel"
   :value "Sorry, forwarding from this channel is disabled by admins.")
+
+ ("lng_error_post_link_invalid"
+  :value "Unfortunately, you can't access this message. You are not a member of the chat where it was posted.")
  )

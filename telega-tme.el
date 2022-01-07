@@ -104,9 +104,10 @@ PARAMS is a plist with additional parameters, supported parameters are:
 
 (defun telega-tme-open-privatepost (supergroup post &optional media-timestamp)
   "Open POST in private SUPERGROUP."
-  (when-let ((chat (telega-chat-get
-                    (string-to-number (concat "-100" supergroup))
-                    'offline)))
+  (let ((chat (telega-chat-get (string-to-number (concat "-100" supergroup))
+                               'offline)))
+    (unless chat
+      (error "telega: %s" (telega-i18n "lng_error_post_link_invalid")))
     (telega-chat--goto-msg chat (telega-tme--post-msg-id post) 'highlight
       (telega-tme--media-timestamp-callback media-timestamp))))
 
