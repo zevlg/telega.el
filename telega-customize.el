@@ -236,6 +236,12 @@ Done by recentering point in the chatbuf."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-company-username-complete-nonmember-for '(type bot)
+  "Non-nil Chat Filter to complete usernames for non-mebers."
+  :package-version '(telega . "0.8.0")
+  :type 'list
+  :group 'telega)
+
 ;;; ellit-org: inline-bot-options
 ;; - {{{user-option(telega-known-inline-bots,2)}}}
 (defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")

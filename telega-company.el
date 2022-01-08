@@ -171,16 +171,29 @@ Matches only if CHAR does not apper in the middle of the word."
              ;;                                         :message_thread_id)
              ;;                              0))
              )))
-       (nconc (mapcar (lambda (member)
-                        (propertize
-                         (or (telega-msg-sender-username member 'with-@)
-                             (telega-msg-sender-title member))
-                         'telega-member member))
-                      members)
-              (cl-remove-if-not (lambda (botname)
-                                  (string-prefix-p arg botname))
-                                (seq-union telega--recent-inline-bots
-                                           telega-known-inline-bots)))))
+       (or (nconc (mapcar (lambda (member)
+                            (propertize
+                             (or (telega-msg-sender-username member 'with-@)
+                                 (telega-msg-sender-title member))
+                             'telega-member member))
+                          members)
+                  (cl-remove-if-not (lambda (botname)
+                                      (string-prefix-p arg botname 'ignore-case))
+                                    (cl-union telega--recent-inline-bots
+                                              telega-known-inline-bots
+                                              :test #'string=)))
+
+           ;; NOTE: In case there is no candidates, and `arg' starts
+           ;; some username from Main chat list, then complete it
+           (cl-remove-if-not
+            (lambda (username)
+              (and username (string-prefix-p arg username 'ignore-case)))
+            (mapcar (lambda (chat)
+                      (when (telega-chat-match-p chat
+                              telega-company-username-complete-nonmember-for)
+                        (telega-msg-sender-username chat 'with-@)))
+                    telega--ordered-chats))
+           )))
     (annotation
      ;; Use non-nil `company-tooltip-align-annotations' to align
      (when-let ((member (or (get-text-property 0 'telega-member arg)
