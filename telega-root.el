@@ -1167,7 +1167,8 @@ VIEW-FILTER is additional chat filter for this root view."
     ;; Activate VIEW-SPEC by creating ewocs specified in view-spec
     (setq telega-root--view view-spec)
     (save-excursion
-      (telega-root-view--ins-header view-spec)
+      (unless (eq telega-root-default-view-function (car view-spec))
+        (telega-root-view--ins-header view-spec))
       (setq telega-root-view--ewocs-marker (point-marker))
       (let ((ewoc-specs (nthcdr 2 view-spec))
             (need-loading-timer-p nil))
