@@ -357,12 +357,13 @@ DIRTINESS specifies additional CHAT dirtiness."
     (plist-put chat :last_message (plist-get event :last_message))
     (plist-put chat :positions (plist-get event :positions))
     ;; NOTE: `:last_message' is unset when gap is created in the chat
-    ;; Kill chatbuffer (if any) in this case, so history will be
-    ;; reloaded when chat will be opened next time.
+    ;; This case is handled in the `telega-chatbuf--last-msg-loaded-p'
     ;; See https://github.com/tdlib/td/issues/896
-    (unless (plist-get chat :last_message)
-      (with-telega-chatbuf chat
-        (kill-buffer)))
+    ;; 
+    ;; Gap can be also created if last message in the chat is deleted.
+    ;; TDLib might take some time to update chat's last message.
+    (setq telega-chatbuf--history-state
+          (delq 'newer-loaded telega-chatbuf--history-state))
 
     (telega-chat--mark-dirty chat event)
     ))
