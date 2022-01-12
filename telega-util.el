@@ -1790,7 +1790,7 @@ Only endings listed in `telega-symbols-emojify' are emojified."
            (funcall image-spec ending value))
           ((or (and telega-use-images image-spec)
                (and telega-emoji-use-images
-                    (memq ending telega-symbols-emojify)))
+                    (member ending telega-symbols-emojify)))
            (apply #'telega-symbol-emojify value image-spec))
           (t
            value))))

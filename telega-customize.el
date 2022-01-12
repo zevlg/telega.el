@@ -782,7 +782,7 @@ Otherwise use simple chars."
   (list (cons "All"      "💬")
         (cons "Unread"   "✅")
         (cons "Unmuted"  "🔔")
-        (cons "Bots"     "🤖")
+        (cons "Bots"     "🤖️")
         (cons "Channels" "📢")
         (cons "Groups"   "👥")
         (cons "Private"  "👤")
@@ -1576,24 +1576,24 @@ ellipsis."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-eye "👁"        ;\U0001F441
+(defcustom telega-symbol-eye "👁️"
   "String to use as eye symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-pin "📌"       ;\U0001F4CC
+(defcustom telega-symbol-pin "📌"
   "*String to use as pin symbol."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-custom-order (cons "↓" "↑")
+(defcustom telega-symbol-custom-order (cons "🡓" "🡑")
   "Symbols used to emphasize custom order for the chat.
 car is used if custom order is less then real chat's order.
 cdr is used if custom order is greater then real chat's order."
   :type 'cons
   :group 'telega-symbol)
 
-(defcustom telega-symbol-lock "🔒"      ;\U0001F512
+(defcustom telega-symbol-lock "🔒️"
   "*String to use as lock symbol."
   :type 'string
   :group 'telega-symbol)
@@ -1607,6 +1607,7 @@ cdr is used if custom order is greater then real chat's order."
   "*String to use as attachment symbol.
 \"📄\" is also good candidate."
   :type 'string
+  :options '("📄")
   :group 'telega-symbol)
 
 (defcustom telega-symbol-photo "📷"     ;\U0001F4F7
@@ -1691,17 +1692,17 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-verified (propertize "🅥" 'face 'telega-blue)
+(defcustom telega-symbol-verified "✴️"
   "Symbol used to emphasize verified users/groups."
   :type 'string
   :group 'telega-symbol)
 
 (defcustom telega-symbol-star (propertize "★" 'face 'error)
-  "Symbol used to emphasize stared chats."
+  "Symbol used to emphasize starred chats."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-lightning "⚡"
+(defcustom telega-symbol-lightning "⚡️"
   "Symbol used inside INSTANT VIEW buttons."
   :type 'string
   :group 'telega-symbol)
@@ -1732,9 +1733,16 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-contact "🚹"
+(defcustom telega-symbol-member "👤"
+  "Symbol used for chat members and non-contact users."
+  :type 'string
+  :options '("🧍")
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-contact "👥"
   "Symbol used for contacts."
   :type 'string
+  :options '("👥")
   :group 'telega-symbol)
 
 (defcustom telega-symbol-play "▶"
@@ -1851,7 +1859,7 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-alarm "⏲"
+(defcustom telega-symbol-alarm "⏲️"
   "*Symbol used for scheduled messages."
   :type 'string
   :group 'telega-symbol)
@@ -1861,12 +1869,12 @@ If nil, then user's online status is not displayed."
   :type 'list
   :group 'telega-symbol)
 
-(defcustom telega-symbol-folder "🖿"
+(defcustom telega-symbol-folder "📁"
   "Symbol used for Telegram folders."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-multiple-folders "🗂"
+(defcustom telega-symbol-multiple-folders "🗂️"
   "Symbol to use to denote multiple folders."
   :type 'string
   :group 'telega-symbol)
@@ -1925,7 +1933,7 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type '(or char (cons char char))
   :group 'telega)
 
-(defcustom telega-symbol-video-chat-active "🗣"
+(defcustom telega-symbol-video-chat-active "🗣️"
   "Symbol to use for non-empty video chats."
   :package-version '(telega . "0.7.90")
   :type 'string
@@ -2014,9 +2022,12 @@ Install all symbol widths inside `telega-load-hook'."
     game
     invoice
     leave-comment lightning lock location
-    multiple-folders
+    member multiple-folders
     pause phone photo pin poll play
+    reply
     video video-chat-active video-chat-passive
+
+    "⏪" "⏩"
     )
   "List of symbols to emojify if `telega-emoji-use-images' is non-nil.
 Each element is either XXX from ending of telega-symbol-XXX or list,
