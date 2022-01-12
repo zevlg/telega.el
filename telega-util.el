@@ -2070,11 +2070,13 @@ Use this if you planning to change `telega-rainbow-function'."
   "Return string describing binding of the COMMAND in the KEYMAP.
 If no keys corresponds to COMMAND, then return \"M-x COMMAND
 RET\" string."
-  (let ((keys-description (mapconcat #'key-description
-                                     (where-is-internal command keymap) ", ")))
-    (if (string-empty-p keys-description)
-        (format "M-x %S RET" command)
-      keys-description)))
+  (propertize 
+   (let ((keys-description (mapconcat #'key-description
+                                      (where-is-internal command keymap) ", ")))
+     (if (string-empty-p keys-description)
+         (format "M-x %S RET" command)
+       keys-description))
+   'face 'help-key-binding))
 
 (defun telega-xdg-open (url)
   "Open URL using \"xdg-open\" utility."

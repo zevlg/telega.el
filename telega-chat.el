@@ -4736,7 +4736,8 @@ CALLBACK is called after point is moved to the message with MSG-ID."
       (when-let ((msg-at-point (telega-msg-at (point))))
         (ring-insert telega-chatbuf--messages-pop-ring msg-at-point)
 
-        (telega-help-message 'msg-ring-pop "%s to jump back"
+        (telega-help-message 'msg-ring-pop
+            "%s to jump back"
           (telega-keys-description
            'telega-chatbuf-goto-pop-message telega-chat-mode-map))
         ))
@@ -4783,6 +4784,9 @@ CALLBACK is called after point is moved to the message with MSG-ID."
           (telega-chatbuf--goto-msg msg-id highlight)
           (when callback
             (funcall callback)))))))
+
+;; NOTE: Always show help message when jumping to message
+(put 'msg-ring-pop 'telega-help-always t)
 
 (defun telega-chat--goto-thread (chat thread-msg-id
                                       &optional reply-msg-id)
