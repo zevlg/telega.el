@@ -2189,11 +2189,17 @@ Pass all ARGS directly to `telega-ins--message0'."
 (defun telega-ins--message-deleted (msg)
   "Inserter for deleted message MSG."
   (telega-ins--with-props (list 'face 'custom-invalid)
-    (funcall telega-inserter-for-msg-button msg nil
-      (lambda (_ignoredmsg)
-        (telega-ins " ")
-        (telega-ins--with-face 'error
-          (telega-ins (telega-i18n "lng_deleted_message")))))))
+    ;; NOTE: For ignored MSG use `telega-ins--message-ignored'
+    ;; inserter.  See https://github.com/zevlg/telega.el/issues/342
+    (if (telega-msg-ignored-p msg)
+        (when telega-ignored-messages-visible
+          (telega-ins--message-ignored msg))
+
+      (funcall telega-inserter-for-msg-button msg nil
+               (lambda (_ignoredmsg)
+                 (telega-ins " ")
+                 (telega-ins--with-face 'error
+                   (telega-ins (telega-i18n "lng_deleted_message"))))))))
 
 (defun telega-ins--message-ignored (_msg)
   "Inserter for ignored message MSG in chatbuf."
