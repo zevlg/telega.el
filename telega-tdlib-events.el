@@ -1096,6 +1096,11 @@ messages."
       (setq telega-tdlib--unix-time
             (plist-put telega-tdlib--unix-time :need-update t)))
 
+    (when (and (eq option :my_id) value)
+      (setq telega--me-id value))
+    (when (and (eq option :replies_bot_chat_id) value)
+      (setq telega--replies-id value))
+
     ;; Fetch Sticker Set with animated emojis
     (when (and (eq option :animated_emoji_sticker_set_name) value)
       (telega--searchStickerSet value

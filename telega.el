@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.0
-(defconst telega-version "0.8.0")
+;; Version: 0.8.1
+(defconst telega-version "0.8.1")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.0")
 (defconst telega-tdlib-max-version nil)
@@ -248,9 +248,6 @@ please downgrade TDLib and recompile `telega-server'"
           (run-with-timer 0 nil #'warn version-error-msg))
 
       ;; Versions are ok
-      (setq telega--me-id (plist-get telega--options :my_id)
-            telega--replies-id (plist-get telega--options :replies_bot_chat_id))
-      (cl-assert telega--me-id)
       (telega--setOptions telega-options-plist)
       ;; In case language pack id has not yet been selected, then select
       ;; suggested one or fallback to "en"
