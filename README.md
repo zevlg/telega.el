@@ -1,5 +1,8 @@
 [![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![DOCKER image build](https://github.com/zevlg/telega.el/workflows/DOCKER/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1?logo=telegram)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/TDLib-v1.8.0-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.7.1-blue)](https://guix.gnu.org/packages/emacs-telega-0.7.1-1.1d28dc2/) [![Open Collective](https://img.shields.io/opencollective/backers/telega?logo=opencollective)](https://opencollective.com/telega)
 
+[![Contributors](https://opencollective.com/telega/contributors.svg?avatarHeight=32&width=600)](https://opencollective.com/telega)
+[![Backers](https://opencollective.com/telega/backers.svg?avatarHeight=32&width=600)](https://opencollective.com/telega)
+
 # ![logo](etc/telega-logo.svg) telega.el
 
 See [Telega Manual](https://zevlg.github.io/telega.el/) for
