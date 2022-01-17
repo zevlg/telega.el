@@ -607,19 +607,20 @@ Specify non-nil BAN to ban this user in this CHAT."
      (list chat (read-string "New title: " (telega-chat-title chat)))))
   (telega--setChatTitle chat title))
 
-(defun telega-chat-set-ttl (chat ttl-seconds)
-  "Set TTL setting for secret CHAT to TTL-SECONDS."
-  (interactive
-   (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
-          (ttl-table `((,(telega-i18n "lng_ttl_about_duration1") . 86400)
-                       (,(telega-i18n "lng_ttl_about_duration2") . 604800)
-                       (,(telega-i18n "telega_ttl_about_disable") . 0)))
-          (ttl (if (telega-chat-secret-p chat)
-                   (read-number "Messages TTL (seconds): ")
-                 (completing-read "Messages TTL: "
-                                  (mapcar #'car ttl-table) nil t))))
-     (list chat (or (assoc ttl ttl-table) (ceiling ttl)))))
-  (telega--setChatMessageTtl chat ttl-seconds))
+(defun telega-chat-set-ttl (chat)
+  "Interactively set CHAT's message TTL setting."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+
+  (let* ((ttl-table `((,(telega-i18n "lng_ttl_about_duration1") . 86400)
+                      (,(telega-i18n "lng_ttl_about_duration2") . 604800)
+                      (,(telega-i18n "lng_ttl_about_duration3") . 2678400)
+                      (,(telega-i18n "telega_ttl_about_disable") . 0)))
+         (ttl (if (telega-chat-secret-p chat)
+                  (ceiling (read-number "Messages TTL (seconds): "))
+                (cdr (assoc (completing-read "Messages TTL: "
+                                             (mapcar #'car ttl-table) nil t)
+                            ttl-table)))))
+    (telega--setChatMessageTtl chat ttl)))
 
 (defun telega-chat-set-custom-order (chat order)
   "For the CHAT (un)set custom ORDER."

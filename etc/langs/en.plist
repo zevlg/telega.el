@@ -492,6 +492,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "24 hours")
  ("lng_ttl_about_duration2"
   :value "7 days")
+ ("lng_ttl_about_duration3"
+  :value "1 month")
  ("telega_ttl_about_disable"
   :value "disable")
 

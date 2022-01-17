@@ -1145,8 +1145,9 @@ Requires `:can_change_info' rights."
 Message TTL is a self-destruct timer for new messages used in a
 chat. Requires can_delete_messages administrator right in basic
 groups, supergroups and channels.
-TTL must be 0, 86400 or 604800."
-  (cl-assert (or (telega-chat-secret-p chat) (memq ttl '(0 86400 604800))))
+TTL must be 0, 86400, 604800 or 2678400."
+  (cl-assert (or (telega-chat-secret-p chat)
+                 (memq ttl '(0 86400 604800 2678400))))
   (telega-server--send
    (list :@type "setChatMessageTtl"
          :chat_id (plist-get chat :id)
