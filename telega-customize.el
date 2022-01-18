@@ -1389,7 +1389,10 @@ already read message.  Set it to 0, to not take any delay."
 ;; http://0pointer.de/public/sound-naming-spec.html
 (defcustom telega-notifications-msg-args
   (list :sound-name "message-new-instant")
-  "*Additional arguments to `notifications-notify' on chat messages."
+  "*Additional arguments to `notifications-notify' on chat messages.
+Add `:actions' with value `(\"default\" \"show message\")' for
+clickable notifications. Clickable notifications does not work well
+with notify-osd, thats why actions are disabled by default."
   :type 'list
   :group 'telega-notifications)
 

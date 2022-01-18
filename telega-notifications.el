@@ -259,8 +259,7 @@ FORCE is used for testing only, should not be used in real code."
       (setq notify-args
             (append
              notify-args
-             (list :actions (list "default" "show message")
-                   :on-action `(lambda (&rest args)
+             (list :on-action `(lambda (&rest args)
                                  (x-focus-frame (telega-x-frame))
                                  (telega-chat--goto-msg
                                      (telega-chat-get ,chat-id)
