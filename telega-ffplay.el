@@ -32,7 +32,7 @@
 SUPPORT should be a list of states supported by the DESIRED-PROPERTIES.
 Currently it may contain a decoder, an encoder, or both."
   (let* ((output (shell-command-to-string (concat "ffmpeg -v quiet " option)))
-         (header-end (when (string-match (regexp-quote "-") output)
+         (header-end (when (string-match " -+$" output)
                        (match-beginning 0)))
          (additional-characters
           (when-let ((header (when header-end
