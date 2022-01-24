@@ -1367,10 +1367,14 @@ Return what BODY returns."
   "Insert space aligned to COLUMN.
 Uses `:align-to' display property."
   ;; NOTE: Use Pixel Specification for `:align-to' this will take into
-  ;; account `text-scale-mode' into account
-  (let ((nwidth (- column (telega-current-column))))
-    (telega-ins--with-props 
-        `(display (space :align-to (,(telega-chars-xwidth column))))
+  ;; account `text-scale-mode' into account.
+  ;; However, if displaying in the terminal, then use ordinary columns.
+  ;; See https://t.me/emacs_telega/32464
+  (let ((nwidth (- column (telega-current-column)))
+        (align-to (if (display-graphic-p)
+                      (list (telega-chars-xwidth column))
+                    column)))
+    (telega-ins--with-props `(display (space :align-to ,align-to))
       (telega-ins (make-string (if (> nwidth 0) nwidth 1)
                                (or space-char ?\s))))))
 
