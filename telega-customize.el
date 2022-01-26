@@ -1095,8 +1095,7 @@ enabled."
   '((:eval (telega-chatbuf-prompt-default-sender-avatar))
     (:eval (telega-chatbuf-prompt-body))
     (:eval (when (and telega-use-images
-                      (telega-chatbuf-match-p
-                       '(and has-avatar can-send-or-post)))
+                      (telega-chatbuf-match-p 'can-send-or-post))
              (telega-chatbuf-prompt-chat-avatar)))
     ">>> ")
   "*Modeline compatible format for the chatbuf input prompt.
