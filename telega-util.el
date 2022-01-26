@@ -458,15 +458,16 @@ Specify non-nil VIDEO-P if generating preview for video."
   (let* ((base-dir (if data-p
                        (telega-directory-base-uri telega-temp-dir)
                      (file-name-directory filename)))
-         (svg-size (telega-chars-xheight 1))
+         (svg-w (telega-chars-xwidth 2))
+         (svg-h (min svg-w (telega-chars-xheight 1)))
          (margin 1)                     ; margin for the mask in pixels
-         (svg (telega-svg-create svg-size svg-size))
+         (svg (telega-svg-create svg-w svg-h))
          (pclip (telega-svg-clip-path svg "pclip")))
     (telega-svg-round-square pclip margin margin
-                             (- svg-size (* 2 margin)) (- svg-size (* 2 margin))
-                             (/ svg-size 6))
+                             (- svg-w (* 2 margin)) (- svg-h (* 2 margin))
+                             (/ svg-w 6))
     (cl-destructuring-bind (x-fit y-fit w-fit h-fit)
-        (telega-svg-fit-into width height svg-size svg-size)
+        (telega-svg-fit-into width height svg-w svg-h)
       (telega-svg-embed svg (if data-p
                                 filename
                               (list (file-relative-name filename base-dir)
@@ -480,17 +481,17 @@ Specify non-nil VIDEO-P if generating preview for video."
 
     ;; Draw play triangle
     (when video-p
-      (let ((play-size (/ svg-size 3)))
-        (svg-polygon svg (list (cons (/ (- svg-size play-size) 2)
-                                     (/ (- svg-size play-size) 2))
-                               (cons (/ (- svg-size play-size) 2)
-                                     (/ (+ svg-size play-size) 2))
-                               (cons (/ (+ svg-size play-size) 2)
-                                     (/ svg-size 2)))
+      (let ((play-size (/ svg-w 3)))
+        (svg-polygon svg (list (cons (/ (- svg-w play-size) 2)
+                                     (/ (- svg-h play-size) 2))
+                               (cons (/ (- svg-w play-size) 2)
+                                     (/ (+ svg-h play-size) 2))
+                               (cons (/ (+ svg-w play-size) 2)
+                                     (/ svg-h 2)))
                      :fill "red"
                      :opacity "0.75")))
 
-    (telega-svg-image svg :scale 1.0 :width svg-size :height svg-size
+    (telega-svg-image svg :scale 1.0 :width svg-w :height svg-h
                       :ascent 'center
                       :mask 'heuristic
                       :base-uri (expand-file-name "dummy" base-dir))
