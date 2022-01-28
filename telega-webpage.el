@@ -137,6 +137,9 @@ Return nil if URL is not available for instant view."
 Keymap:
 \\{telega-webpage-mode-map}"
   :group 'telega
+  ;; Same as for `telega-chat-mode'
+  ;; See https://github.com/zevlg/telega.el/issues/347
+  (setq line-spacing 0)
   (setq-local nobreak-char-display nil)
   (setq header-line-format telega-webpage-header-line-format)
   (set-buffer-modified-p nil))

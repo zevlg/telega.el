@@ -1756,6 +1756,9 @@ Global chat bindings:
   (setq-local scroll-conservatively telega-chat-scroll-conservatively)
   (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
+  ;; NOTE: Positive `line-spacing' creates stripes in the images.
+  ;; See https://github.com/zevlg/telega.el/issues/347
+  (setq line-spacing 0)
 
   (setq telega-chatbuf--ewoc
         (ewoc-create (telega-ewoc--gen-pp #'telega-msg--pp) nil nil t))
