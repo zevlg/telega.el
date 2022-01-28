@@ -153,9 +153,9 @@ overwriting currently active one."
     (setq telega--sort-criteria criteria)
     (setq telega--sort-inverted inverted)
     (setq telega--sort-reorder-dirtiness
-          (apply #'append (lambda (criteria-sym)
-                            (get criteria-sym :telega-order-events))
-                 telega--sort-criteria))
+          (apply #'append (mapcar (lambda (criteria-sym)
+                                    (get criteria-sym :telega-order-events))
+                                  telega--sort-criteria)))
 
     ;; NOTE: compare function might do weird things, so
     ;; `copy-sequence' is used
