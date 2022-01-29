@@ -123,6 +123,11 @@
      :symbol ,(all-the-icons-faicon "instagram")
      :replace "Instagram#\\2"
      :svg-icon ("fa-brands/instagram-rgb.svg" :scale 0.85))
+   `(tiktok
+     :regexp "^https?://\\(www\\|vm\\)\\.tiktok.com/\\(.+\\)"
+     :symbol "♪"
+     :replace "TikTok#\\2"
+     :svg-icon ("fa-brands/tiktok-rgb.svg" :scale 0.85))
    )
   "Alist of patterns for URL shortening."
   :type 'alist
