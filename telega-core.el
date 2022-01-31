@@ -648,8 +648,10 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
 
 (defsubst telega-file--downloading-progress (file)
   "Return progress of FILE downloading as float from 0 to 1."
-  (color-clamp (/ (float (telega-file--downloaded-size file))
-                  (telega-file--size file))))
+  (let ((fsize (telega-file--size file)))
+    (if (zerop fsize)
+        0
+      (color-clamp (/ (float (telega-file--downloaded-size file)) fsize)))))
 
 (defun telega-file--partially-downloaded-p (file)
   "Return non-nil if FILE is partially downloaded."
