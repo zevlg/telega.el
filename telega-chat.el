@@ -50,10 +50,6 @@
 (require 'telega-filter)
 (require 'telega-modes)
 
-(eval-when-compile
-  (require 'rx)
-  (require 'pcase))                     ;`pcase-let*' and `rx'
-
 ;; shutup compiler
 (declare-function company-complete-common "company")
 (declare-function company-begin-backend "company" (backend &optional callback))
@@ -1284,6 +1280,15 @@ Chat considered unread if matches `telega-filter-unread-chats' chat filter."
 (defvar telega-chat-mode-hook nil
   "Hook run when telega chat buffer is created.")
 
+(defvar telega-chat-dnd-protocol-alist
+  '(("^file:"     . telega-chatbuf-dnd-attach)
+    ("^https?://" . telega-chatbuf-dnd-attach))
+  "The functions to call when a drop in chatbuf is made.
+See `dnd-protocol-alist' for more information.  When nil, behave
+as in other buffers.  Changing this option is effective only for
+new Chat buffers.")
+(defvar dnd-protocol-alist)
+
 (defvar telega-chatbuf-fastnav-map
   (let ((map (make-sparse-keymap)))
     ;;; ellit-org: chatbuf-fastnav-bindings
@@ -1754,6 +1759,10 @@ Global chat bindings:
   (setq-local next-line-add-newlines nil)
   (setq-local next-screen-context-lines 0) ; do not scroll if point at `eobp'
   (setq-local scroll-conservatively telega-chat-scroll-conservatively)
+  (when (featurep 'dnd)
+    (setq-local dnd-protocol-alist
+                (append telega-chat-dnd-protocol-alist dnd-protocol-alist)))
+
   (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
   ;; NOTE: Positive `line-spacing' creates stripes in the images.
@@ -3716,24 +3725,29 @@ If `\\[universal-argument]' is given, then attach live location."
 (defun telega-chatbuf--gen-input-file (filename &optional file-type
                                                 preview-p upload-ahead-callback)
   "Generate InputFile using FILENAME.
+FILENAME can also be an HTTP or HTTPS url.
 If PREVIEW-P is non-nil, then generate preview image.
 UPLOAD-AHEAD-CALLBACK is callback for file updates, when uploading
 ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
-  (setq filename (telega-file-local-copy filename))
-  (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
-                   (telega-create-image
-                    filename
-                    (when (fboundp 'imagemagick-types) 'imagemagick)
-                    nil
-                    :scale 1.0 :ascent 'center
-                    :height (telega-chars-xheight 1))))
-        (upload-ahead-file
-         (when telega-chat-upload-attaches-ahead
-           (telega-file--upload filename file-type 16 upload-ahead-callback))))
-    (list :@type (propertize "inputFileLocal"
-                             'telega-preview preview
-                             'telega-upload-ahead-file upload-ahead-file)
-          :path filename)))
+  (if (string-match-p "^https?://" filename)
+      (list :@type "inputFileRemote" :id filename)
+
+    ;; Local file
+    (setq filename (telega-file-local-copy filename))
+    (let ((preview (when (and preview-p (> (telega-chars-xheight 1) 1))
+                     (telega-create-image
+                      filename
+                      (when (fboundp 'imagemagick-types) 'imagemagick)
+                      nil
+                      :scale 1.0 :ascent 'center
+                      :height (telega-chars-xheight 1))))
+          (upload-ahead-file
+           (when telega-chat-upload-attaches-ahead
+             (telega-file--upload filename file-type 16 upload-ahead-callback))))
+      (list :@type (propertize "inputFileLocal"
+                               'telega-preview preview
+                               'telega-upload-ahead-file upload-ahead-file)
+            :path filename))))
 
 (defun telega-chatbuf-attach-file (filename &optional preview-p
                                             content-type-detect-p)
@@ -3836,6 +3850,8 @@ must be a photo in this case."
            (telega-chatbuf-attach-audio filename))
           ((string-prefix-p "video/" file-mime)
            (telega-chatbuf-attach-video filename))
+          ((string-match-p "^https?://" filename)
+           (telega-chatbuf-input-insert filename))
           (t
            (telega-chatbuf-attach-file filename (eq as-file-p 'preview))))))
 
@@ -4809,32 +4825,6 @@ CALLBACK is called after point is moved to the message with MSG-ID."
         (let ((telega-chatbuf--inhibit-reset-filter-and-thread t))
           (telega-chat--goto-msg thread-chat reply-msg-id 'highlight))))))
 
-(defun telega-chat-dnd-dispatcher (uri action)
-  "DND open function for telega.
-If called outside chat buffer, then fallback to default DND behaviour."
-  (if (not (eq major-mode 'telega-chat-mode))
-      (telega-chat-dnd-fallback uri action)
-    (pcase-let* ((`(,proto ,content) (split-string uri "://"))
-                 (real-name (thread-first content
-                              (url-unhex-string)
-                              (decode-coding-string 'utf-8))))
-      (pcase proto
-        ("file"
-         (let ((doc-p (or (not (image-type-from-file-name real-name))
-                          (y-or-n-p (telega-i18n "telega_query_dnd_photo_as_file")))))
-           (telega-chatbuf-attach-media real-name doc-p)))
-        (_
-         (goto-char (point-max))
-         (insert (concat proto "://" real-name)))))))
-
-(defun telega-chat-dnd-fallback (uri action)
-  "DND fallback function."
-  (let ((dnd-protocol-alist
-         (rassq-delete-all
-          'telega-chat-dnd-dispatcher
-          (copy-alist dnd-protocol-alist))))
-    (dnd-handle-one-url nil action uri)))
-
 
 (defconst telega-chat--message-filters
   '(("scheduled" . telega-chatbuf-filter-scheduled)
@@ -5053,6 +5043,30 @@ If point is at some message, then keep point on this message after reseting."
   (telega-describe-chat-themes telega--chat-themes telega-chatbuf--chat))
 
 
+;;; Chatbuf DND
+(defun telega-dnd--filename-icloud-p (filename)
+  "Return non-nil if FILENAME is stored remotely in iCloud."
+  (let ((fdir (file-name-directory filename))
+        (fbase (file-name-nondirectory filename)))
+    (file-exists-p (expand-file-name (concat "." fbase ".icloud") fdir))))
+
+(defun telega-chatbuf-dnd-attach (uri action)
+  "DND open function for chat buffer."
+  (cl-assert telega-chatbuf--chat)
+  (if-let ((filename (dnd-get-local-file-name uri)))
+      (cond ((file-exists-p filename)
+             (telega-chatbuf-attach-media filename))
+            ((telega-dnd--filename-icloud-p filename)
+             (error "File %S is stored in the iCloud.  Please download it first"
+                    filename))
+            (t
+             (error "File %S is inaccessible" filename)))
+
+    (cl-assert (string-match-p "https?://" uri))
+    (telega-chatbuf-attach-media uri))
+  'private)
+
+
 ;; Chat Event Log
 (defun telega-chatevent-log-filter (&rest filters)
   "Return chat event log filter.
@@ -5065,9 +5079,5 @@ FILTERS are:
          (mapcar (lambda (filter) (list filter t)) filters)))
 
 (provide 'telega-chat)
-
-;; Install DND dispatcher for telega at load time
-(let ((re (rx bol (or "file" "https" "http" "ftp"))))
-  (cl-pushnew (cons re 'telega-chat-dnd-dispatcher) dnd-protocol-alist))
 
 ;;; telega-chat.el ends here
