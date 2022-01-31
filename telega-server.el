@@ -121,6 +121,13 @@ Otherwise query user about building flags."
   (telega-test-env 'quiet)
   (when (or build-flags
             (y-or-n-p "Build `telega-server'? "))
+    ;; NOTE: check header files exists before running compilation
+    (unless (file-exists-p (expand-file-name "include/td/telegram/td_json_client.h"
+                                             telega-server-libs-prefix))
+      (user-error "TDLib is not installed into \"%s\". \
+Set `telega-server-libs-prefix' to the TDLib installion path"
+                  telega-server-libs-prefix))
+    (message "Telega: building telega-server...")
     (let ((default-directory telega--lib-directory))
       (unless build-flags
         (setq build-flags
@@ -141,7 +148,8 @@ Otherwise query user about building flags."
                         "LIBS_PREFIX=" (expand-file-name telega-server-libs-prefix) " "
                         "INSTALL_PREFIX=" (expand-file-name telega-directory) " "
                         "server-reinstall")))
-        (error "`telega-server' installation failed")))))
+        (error "`telega-server' installation failed"))
+      (message "Telega: building telega-server...DONE"))))
 
 (defun telega-server--ensure-build ()
   "Make sure telega-server is build and can run."
