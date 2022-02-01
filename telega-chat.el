@@ -142,7 +142,9 @@ Used to determine all older thread history has been loaded.")
 
 (defvar telega-chatbuf--messages-pop-ring nil
   "History of messages jumps.
-Used for `M-g x' command.")
+Used for `M-g x' command.
+Bind it to nil to avoid pushing message to the ring when jumping
+across messages.")
 (make-variable-buffer-local 'telega-chatbuf--messages-pop-ring)
 
 ;; Special variable used to set `telega-chatbuf--chat'
@@ -953,11 +955,21 @@ Specify non-nil BAN to ban this user in this CHAT."
 (defun telega-chat-with (chat-or-user)
   "Start messaging with CHAT-OR-USER."
   (interactive
-   (let* ((completion-ignore-case t)
-          (completions (telega-completing-titles))
-          (title (funcall telega-completing-read-function
-                          "Chat with: " (mapcar #'car completions) nil t)))
-     (list (cdr (assoc title completions)))))
+   ;; NOTE:
+   ;;  - Include only known chats, i.e. in Main or Archive list
+   ;;  - Include only contact users
+   (let* ((chats (telega-sort-chats
+                  telega-chat-completing-sort-criteria
+                  (telega-filter-chats
+                   telega--ordered-chats '(or main archive))))
+          (users
+           (cl-remove-if-not
+            (lambda (user)
+              (and (plist-get user :is_contact)
+                   (not (telega-chat-get (plist-get user :id) 'offline))))
+            (hash-table-values (alist-get 'user telega--info)))))
+     (list (telega-completing-read-msg-sender
+            "Chat with: " (nconc chats users)))))
 
   (when (telega-user-p chat-or-user)
     (setq chat-or-user (or (telega-chat-get (plist-get chat-or-user :id))
@@ -1220,26 +1232,27 @@ keep the point, where it is."
   (when arg
     (goto-char (point-max))))
 
-(defun telega-switch-buffer (buffer)
-  "Interactively switch to chat BUFFER."
+(defun telega-switch-buffer (chat)
+  "Interactively switch to CHAT's buffer.
+Switch only if CHAT has corresponding chatbuf."
   (interactive
    (list (progn
            (unless telega--chat-buffers-alist
              (user-error "No chatbufs to switch"))
-           (funcall
-            telega-completing-read-function
+           (telega-completing-read-msg-sender
             "Telega chat: "
             ;; NOTE: if current buffer is chatbuf, then exclude it
             ;; from the list, because it is strange if it appers first
             ;; in the list
-            (mapcar #'telega-chatbuf--name
-                    (let ((telega-sort--inhibit-order t))
-                      (telega-sort-chats
-                       telega-chat-switch-buffer-sort-criteria
-                       (delq telega-chatbuf--chat
-                             (mapcar #'car telega--chat-buffers-alist)))))
-            nil t))))
-  (switch-to-buffer buffer))
+            (let ((telega-sort--inhibit-order t))
+              (telega-sort-chats
+               telega-chat-switch-buffer-sort-criteria
+               (delq telega-chatbuf--chat
+                     (mapcar #'car telega--chat-buffers-alist))))))))
+  (let ((buffer (cdr (assq chat telega--chat-buffers-alist))))
+    (unless buffer
+      (user-error "telega: Chat has no corresponding chatbuf"))
+    (switch-to-buffer buffer)))
 
 (defun telega-switch-important-chat (chat)
   "Switch to important CHAT if any.

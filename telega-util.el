@@ -1087,21 +1087,16 @@ Return `nil' if there is no button with `cursor-sensor-functions' at POS."
         (setq pos prev))
       (telega--region-by-text-prop pos 'cursor-sensor-functions))))
 
-;; NOTE: ivy returns copy of the string given in choices, thats why we
-;; need to use 'string= as testfun in `alist-get'
 (defun telega-completing-read-chat (prompt &optional chats sort-criteria)
   "Read chat by title.
 CHATS - list of the chats to select from.  By default all chats are used.
 SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
-  (let ((choices (mapcar (lambda (chat)
-                           (list (telega-chatbuf--name chat) chat))
-                         (telega-sort-chats
-                          (or sort-criteria telega-chat-completing-sort-criteria)
-                          (telega-filter-chats (or chats telega--ordered-chats)
-                                               '(or main archive has-chatbuf))))))
-    (car (alist-get (funcall telega-completing-read-function
-                             prompt choices nil t)
-                    choices nil nil 'string=))))
+  (telega-completing-read-msg-sender
+   prompt
+   (telega-sort-chats
+    (or sort-criteria telega-chat-completing-sort-criteria)
+    (telega-filter-chats (or chats telega--ordered-chats)
+                         '(or main archive has-chatbuf)))))
 
 (defmacro telega-gen-completing-read-list (prompt items-list item-fmt-fun
                                                   item-read-fun &rest args)
@@ -1209,6 +1204,17 @@ Return a user."
     (setq folder-names (telega-folder-names)))
   (telega-gen-completing-read-list prompt folder-names #'identity
                                    #'telega-completing-read-folder))
+
+(defun telega-completing-read-folder-icon-name (prompt &optional initial-input)
+  "Read folder's icon name."
+  (funcall telega-completing-read-function prompt
+           (mapcar (lambda (icon-name)
+                     (propertize icon-name 'display
+                                 (concat (cdr (assoc icon-name
+                                                     telega-folder-icons-alist))
+                                         icon-name)))
+                   telega-folder-icon-names)
+           nil t initial-input))
 
 (defun telega-location-distance (loc1 loc2 &optional components-p)
   "Return distance in meters between locations LOC1 and LOC2.
@@ -1352,45 +1358,42 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
                                prompt (mapcar #'car i18n-choices) nil t)))
     (cdr (assoc perm-choice i18n-choices))))
 
+(defun telega-msg-sender-title-for-completion (msg-sender)
+  "Return MSG-SENDER title for completions."
+  (let* ((user-p (telega-user-p msg-sender))
+         (chat-p (not user-p)))
+    (telega-ins--as-string
+     (cond ((and chat-p (telega-chat-secret-p msg-sender))
+            (telega-ins (telega-symbol 'lock)))
+           (user-p
+            (telega-ins (telega-symbol 'member))))
+     (when user-p
+       (telega-ins "{"))
+     (when telega-use-images
+       (telega-ins--image
+        (telega-msg-sender-avatar-image-one-line msg-sender)))
+     (if user-p
+         (telega-ins--with-attrs
+             (list :face (telega-msg-sender-title-faces msg-sender))
+           (telega-ins (telega-msg-sender-title msg-sender)))
+       (telega-ins
+        (telega-chat-title-with-brackets msg-sender " ")))
+     (when user-p
+       (telega-ins "}"))
+     )))
+
+;; NOTE: ivy returns copy of the string given in choices, thats why we
+;; need to use `assoc'
 (defun telega-completing-read-msg-sender (prompt &optional msg-senders)
   "Read a message sender from list of MSG-SENDERS."
-  (let* ((choices (mapcar (lambda (sender)
-                            (cons (telega-ins--as-string
-                                   (telega-ins--image
-                                    (telega-msg-sender-avatar-image-one-line
-                                     sender))
-                                   (if (telega-user-p sender)
-                                       (telega-ins
-                                        "{" (telega-user-title sender 'name) "}")
-                                     (telega-ins
-                                      (telega-chat-title-with-brackets sender))))
+  (let* ((completion-ignore-case t)
+         (choices (mapcar (lambda (sender)
+                            (cons (telega-msg-sender-title-for-completion sender)
                                   sender))
                           msg-senders))
          (choice (funcall telega-completing-read-function
                           prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
-  
-(defun telega-completing-titles (&optional sort-criteria)
-  "Return alist of titles and senders ready for completing.
-sender is chat or user.
-Chats in the list are sorted using SORT-CRITERIA or
-`telega-chat-completing-sort-criteria' if ommited."
-  ;; NOTE:
-  ;;  - Include only known chats, i.e. in Main or Archive list
-  ;;  - Include only contact users
-  (mapcar (lambda (msg-sender)
-            (cons (if (telega-user-p msg-sender)
-                      (concat (telega-symbol 'contact)
-                              (telega-user-title msg-sender))
-                    (telega-chatbuf--name msg-sender))
-                  msg-sender))
-          (nconc
-           (telega-sort-chats
-            (or sort-criteria telega-chat-completing-sort-criteria)
-            (telega-filter-chats telega--ordered-chats '(or main archive)))
-           (cl-remove-if-not (telega--tl-prop :is_contact)
-                             (hash-table-values
-                              (alist-get 'user telega--info))))))
 
 (defun telega--animate-dots (text)
   "Animate TEXT's trailing dots.

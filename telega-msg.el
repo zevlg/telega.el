@@ -1060,12 +1060,19 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
                          (telega-chat-username msg-sender))))
     (concat (when with-prefix-p "@") username)))
 
-(defun telega-msg-sender-title (msg-sender)
-  "Return title for the message sender MSG-SENDER."
-  (if (telega-user-p msg-sender)
-      (telega-user-title msg-sender 'name)
-    (cl-assert (telega-chat-p msg-sender))
-    (telega-chat-title msg-sender)))
+(defun telega-msg-sender-title (msg-sender &optional with-avatar-p)
+  "Return title for the message sender MSG-SENDER.
+If WITH-AVATAR-P is specified, then prefix MSG-SENDER title with his
+avatar."
+  (concat (when (and with-avatar-p telega-use-images)
+            (telega-ins--as-string
+             (telega-ins--image
+              (telega-msg-sender-avatar-image-one-line msg-sender))))
+
+          (if (telega-user-p msg-sender)
+              (telega-user-title msg-sender 'name)
+            (cl-assert (telega-chat-p msg-sender))
+            (telega-chat-title msg-sender))))
 
 (defun telega-msg-sender-color (msg-sender)
   "Return color for the message sender MSG-SENDER."

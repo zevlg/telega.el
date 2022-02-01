@@ -201,11 +201,11 @@ single argument - slice number, starting from 0."
     (let* ((first-action (car actions))
            (sender (telega-msg-sender (car first-action)))
            (action (cdr first-action)))
-      ;; ARGUABLE: display sender's avatar
-      ;; (telega-ins--image
-      ;;  (telega-msg-sender-avatar-image-one-line sender))
-      (telega-ins (telega-msg-sender-title sender) " ")
+      (telega-ins--with-attrs
+          (list :face (telega-msg-sender-title-faces sender))
+        (telega-ins (telega-msg-sender-title sender t)))
       (telega-ins
+       " "
        (propertize (concat "is " (substring (plist-get action :@type) 10))
                    'face 'shadow)))))
 
@@ -264,13 +264,6 @@ instead of the sender title."
   (telega-ins (or (when prefer-username
                     (telega-msg-sender-username msg-sender 'with-@))
                   (telega-msg-sender-title msg-sender))))
-
-(defun telega-ins--username (user-id &optional fmt-type)
-  "Insert username for user denoted by USER-ID
-FMT-TYPE is passed directly to `telega-user--name' (default=`short')."
-  (unless (zerop user-id)
-    (telega-ins
-     (telega-user--name (telega-user-get user-id) (or fmt-type 'short)))))
 
 (defun telega-ins--chat-member-status (status)
   "Format chat member STATUS."
@@ -1373,7 +1366,7 @@ Special messages are determined with `telega-msg-special-p'."
   (let* ((content (plist-get msg :content))
          (sender (telega-msg-sender msg))
          (sender-name (when sender
-                        (propertize (telega-msg-sender-title sender)
+                        (propertize (telega-msg-sender-title sender t)
                                     'face 'bold))))
     (cl-case (telega--tl-type content)
       (messageWebsiteConnected
@@ -1393,7 +1386,7 @@ Special messages are determined with `telega-msg-special-p'."
            (telega-ins-i18n "lng_action_add_user"
              :from sender-name
              :user (mapconcat (lambda (user)
-                                (propertize (telega-user--name user 'name)
+                                (propertize (telega-msg-sender-title user t)
                                             'face 'bold))
                               (mapcar #'telega-user-get user-ids)
                               ", ")))))
@@ -1401,7 +1394,7 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins-i18n "lng_action_user_joined_by_link" :from sender-name))
       (messageChatDeleteMember
        (let* ((user (telega-user-get (plist-get content :user_id)))
-              (user-name (propertize (telega-user--name user 'name)
+              (user-name (propertize (telega-msg-sender-title user t)
                                      'face 'bold)))
          (if (eq sender user)
              (telega-ins-i18n "lng_action_user_left" :from sender-name)
@@ -1515,8 +1508,8 @@ Special messages are determined with `telega-msg-special-p'."
              (watcher (telega-msg-sender (plist-get content :watcher_id)))
              (distance (plist-get content :distance)))
          (telega-ins-i18n "lng_action_proximity_reached"
-           :from (propertize (telega-msg-sender-title traveler) 'face 'bold)
-           :user (propertize (telega-msg-sender-title watcher) 'face 'bold)
+           :from (propertize (telega-msg-sender-title traveler t) 'face 'bold)
+           :user (propertize (telega-msg-sender-title watcher t) 'face 'bold)
            :distance (telega-i18n (if (> distance 1000)
                                       "lng_action_proximity_distance_km"
                                     "lng_action_proximity_distance_m")
@@ -1532,18 +1525,18 @@ Special messages are determined with `telega-msg-special-p'."
          :date (telega-ins--as-string
                 (telega-ins--date-iso8601 (plist-get content :start_date)))))
       (messageVideoChatStarted
-       (telega-ins-i18n "lng_action_group_call_started"
-               :from sender-name
-               :chat (telega-i18n "lng_action_group_call_started_chat")))
+       (telega-ins-i18n "lng_action_group_call_started_group"
+         :from sender-name))
       (messageVideoChatEnded
-       (telega-ins-i18n "lng_action_group_call_finished"
-               :duration (telega-duration-human-readable
-                          (plist-get content :duration))))
-      (messageInviteVoiceChatParticipants
+       (telega-ins-i18n "lng_action_group_call_finished_group"
+         :from sender-name
+         :duration (telega-duration-human-readable
+                    (plist-get content :duration))))
+      (messageInviteVideoChatParticipants
        (telega-ins-i18n "lng_action_invite_users_many"
          :from sender-name
          :users (mapconcat (lambda (user)
-                             (propertize (telega-user-title user 'name)
+                             (propertize (telega-msg-sender-title user t)
                                          'face 'bold))
                            (mapcar #'telega-user-get
                                    (plist-get content :user_ids))
@@ -1966,23 +1959,30 @@ argument - MSG to insert additional information after header."
           (cl-ecase (telega--tl-type origin)
             (messageForwardOriginChat
              (setq sender (telega-chat-get (plist-get origin :sender_chat_id)))
+             (when telega-chat-show-avatars
+               (telega-ins--image
+                (telega-msg-sender-avatar-image-one-line sender)))
              (telega-ins "[" (telega-msg-sender-title sender) "]"))
+
             (messageForwardOriginUser
              (setq sender (telega-user-get (plist-get origin :sender_user_id)))
              (when telega-user-show-avatars
                (telega-ins--image
                 (telega-msg-sender-avatar-image-one-line sender)))
              (telega-ins "{" (telega-user-title sender 'full) "}"))
+
             ((messageForwardOriginHiddenUser messageForwardOriginMessageImport)
              (telega-ins (telega-tl-str origin :sender_name)))
+
             (messageForwardOriginChannel
              (setq sender (telega-chat-get (plist-get origin :chat_id)))
              (when telega-chat-show-avatars
                (telega-ins--image
                 (telega-msg-sender-avatar-image-one-line sender)))
-             (telega-ins (telega-chat-title-with-brackets sender " "))
-             (when-let ((signature (telega-tl-str origin :author_signature)))
-               (telega-ins " --" signature))))
+             (telega-ins (telega-chat-title-with-brackets sender " "))))
+
+          (when-let ((signature (telega-tl-str origin :author_signature)))
+            (telega-ins " --" signature))
 
           (when (and from-chat
                      (not (or (eq sender from-chat)
