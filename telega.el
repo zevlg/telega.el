@@ -361,9 +361,6 @@ string at point."
 (telega-root-auto-fill-mode 1)
 
 (run-hooks 'telega-load-hook)
-;; Load hook might install new symbols into
-;; `telega-symbol-widths'
-(telega-symbol-widths-install telega-symbol-widths)
 
 ;; For messages loaded from history
 (add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)

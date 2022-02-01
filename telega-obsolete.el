@@ -145,6 +145,10 @@
                            'telega-chat-prompt-format
                            "0.7.101")
 
+(telega-obsolete--variable 'telega-symbol-widths
+                           nil
+                           "0.8.1")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

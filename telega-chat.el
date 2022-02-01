@@ -2390,7 +2390,7 @@ If ICONS-P is non-nil, then use icons for members count."
 
                 (concat
                  (number-to-string member-count)
-                 (propertize (telega-symbol 'contact) 'face 'shadow)
+                 (propertize (telega-symbol 'member) 'face 'shadow)
                  (unless (zerop online-count)
                    (concat ", " (number-to-string online-count)
                            telega-symbol-online-status))))

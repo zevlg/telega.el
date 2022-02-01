@@ -1964,59 +1964,21 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-copyright "©"
+(defcustom telega-symbol-copyright "©️"
   "Symbol used to emphasize protected content."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-widths
-  (list
-   (list 1
-         telega-symbol-contact)
-   (list 2
-         telega-symbol-telegram
-         telega-symbol-eye
-         telega-symbol-unread
-         telega-symbol-verified
-
-         telega-symbol-checkmark
-         telega-symbol-heavy-checkmark
-         telega-symbol-ballout-empty
-         telega-symbol-ballout-check
-
-         telega-symbol-play
-         (nth 0 telega-symbol-poll-options)
-         (nth 1 telega-symbol-poll-options)
-         telega-symbol-blocked
-         telega-symbol-alarm
-         telega-symbol-folder
-         telega-symbol-multiple-folders
-         telega-symbol-keyboard
-         telega-symbol-reply
-         telega-symbol-forward
-         telega-symbol-circle
-         telega-symbol-bulp
-         telega-symbol-chat-list
-         telega-symbol-bell
-         telega-symbol-video-chat-active
-         telega-symbol-video-chat-passive
-         ))
-  "*Custom widths for some symbols, used for correct formatting.
-Use `telega-symbol-set-width' to install symbol's width.
-Install all symbol widths inside `telega-load-hook'."
-  :type 'list
-  :group 'telega-symbol)
-
 (defcustom telega-symbols-emojify
-  `((verified ,(when (image-type-available-p 'svg)
-                 '(telega-etc-file "verified.svg")))
-    (vertical-bar ,(when (image-type-available-p 'svg)
-                     '(telega-svg-create-vertical-bar)))
-    (horizontal-bar ,(when (image-type-available-p 'svg)
-                       '(telega-svg-create-horizontal-bar)))
-    (underline-bar ,(when (image-type-available-p 'svg)
-                      '(telega-svg-create-horizontal-bar
-                        1 0.7 telega-symbol-underline-bar)))
+  '((verified (when (image-type-available-p 'svg)
+                (telega-etc-file-create-image "verified.svg" 2)))
+    (vertical-bar (when (image-type-available-p 'svg)
+                    (telega-svg-create-vertical-bar)))
+    (horizontal-bar (when (image-type-available-p 'svg)
+                      (telega-svg-create-horizontal-bar)))
+    (underline-bar (when (image-type-available-p 'svg)
+                     (telega-svg-create-horizontal-bar
+                      1 0.7 telega-symbol-underline-bar)))
     alarm attachment
     bell bulp
     chat-list contact
@@ -2028,7 +1990,8 @@ Install all symbol widths inside `telega-load-hook'."
     leave-comment lightning lock location
     member multiple-folders
     pause phone photo pin poll play
-    reply
+    (reply (when (image-type-available-p 'svg)
+             (telega-etc-file-create-image "symbols/reply.svg" 2)))
     video video-chat-active video-chat-passive
 
     "⏪" "⏩"
@@ -2039,6 +2002,13 @@ where car is XXX and rest is form to evaluate to get image or a
 filename with an image to be used."
   :package-version '(telega . "0.7.1")
   :type 'list
+  :group 'telega-symbol)
+
+(defcustom telega-symbols-emojify-function nil
+  "*Function to emojify symbols not listen in the `telega-symbols-emojify'.
+Should accept single argument - a ending symbol or a string and return
+non-nil if symbol gets emojification."
+  :type 'function
   :group 'telega-symbol)
 
 

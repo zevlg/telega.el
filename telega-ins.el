@@ -674,11 +674,11 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 (defun telega-ins--ffplay-controls (msg &optional no-2x-button)
   "Insert controls for voice/video notes.
 If NO-2X-BUTTON is specified, then do not display \"2x\" button."
-  (telega-ins--button "⏪"
+  (telega-ins--button (telega-symbol "⏪")
     'action (lambda (_button)
               (telega-msg--vvnote-rewind msg -10)))
   (telega-ins " ")
-  (telega-ins--button "⏩"
+  (telega-ins--button (telega-symbol "⏩")
     'action (lambda (_button)
               (telega-msg--vvnote-rewind msg 10)))
   (telega-ins " ")
@@ -2497,9 +2497,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
     (telega-ins--image (telega-msg-sender-avatar-image-one-line user)))
 
   (if-let ((user-chat (telega-chat-get (plist-get user :id) 'offline)))
-      (telega-ins--with-face 'telega-blue
-        (telega-ins (telega-symbol 'contact)))
-    (telega-ins (telega-symbol 'contact)))
+      (telega-ins (telega-symbol 'contact))
+    (telega-ins (telega-symbol 'member)))
   (telega-ins " ")
 
   (telega-ins (telega-user--name user 'name))
@@ -2672,7 +2671,7 @@ Return t."
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
                           (when (memq chat-type '(basicgroup supergroup))
-                            (telega-ins (telega-symbol 'contact)
+                            (telega-ins (telega-symbol 'member)
                                         (telega-number-human-readable
                                          (plist-get chat-info :member_count))))))
                       ))

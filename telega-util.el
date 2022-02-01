@@ -506,30 +506,6 @@ Specify non-nil VIDEO-P if generating preview for video."
     ;; TODO: create svg
     ))
 
-;; code taken from
-;; https://emacs.stackexchange.com/questions/14420/how-can-i-fix-incorrect-character-width
-(defun telega-symbol-widths-install (symbol-widths-alist)
-  "Add symbol widths from SYMBOL-WIDTHS-ALIST to `char-width-table'.
-Use it if you have formatting issues."
-  (while (char-table-parent char-width-table)
-    (setq char-width-table (char-table-parent char-width-table)))
-  (dolist (pair symbol-widths-alist)
-    (let ((width (car pair))
-          (symbols (cdr pair))
-          (table (make-char-table nil)))
-      (dolist (sym symbols)
-        (set-char-table-range
-         table (if (stringp sym) (string-to-char sym) sym) width))
-      (optimize-char-table table)
-      (set-char-table-parent table char-width-table)
-      (setq char-width-table table))))
-
-(defun telega-symbol-set-width (symbol width)
-  "Declare that SYMBOL's width is equal to WIDTH.
-SYMBOL could be a cons cell of codepoints, specifying the range."
-  (setf (alist-get width telega-symbol-widths)
-        (cons symbol (alist-get width telega-symbol-widths))))
-
 (defun telega-time-seconds (&optional as-is)
   "Return current time as unix timestamp.
 If AS-IS is non-nil, then do not apply time adjustment using
@@ -1756,8 +1732,8 @@ integer values, then absolute value in pixels is used."
 
 (defun telega-symbol-emojify (emoji &optional image-spec)
   "Return a copy of EMOJI with  `display' property of EMOJI svg image.
-Optionally IMAGE-SPEC could be used to ommit svg create and use another image.
-IMAGE-SPEC could be image, filename or form to be evaluated returning image."
+Optionally IMAGE-SPEC could be used to ommit svg creation and use
+another image."
   ;; Possible eval a form to get real IMAGE-SPEC
   (when (and (listp image-spec)
              (not (eq 'image (car image-spec))))
@@ -1766,13 +1742,7 @@ IMAGE-SPEC could be image, filename or form to be evaluated returning image."
   (let ((image (cond ((and (listp image-spec) (eq 'image (car image-spec)))
                       image-spec)
                      (image-spec
-                      (cl-assert (stringp image-spec))
-                      (telega-create-image
-                       image-spec nil nil
-                       :scale 1.0 :ascent 'center
-                       :mask 'heuristic
-                       :width (telega-chars-xwidth
-                               (string-width emoji))))
+                      (error "Invalid image spec for the %S symbol" emoji))
                      (t
                       (telega-emoji-create-svg emoji)))))
     (propertize emoji 'rear-nonsticky '(display) 'display image)))
@@ -1788,13 +1758,15 @@ Only endings listed in `telega-symbols-emojify' are emojified."
                  (symbol-value (intern (format "telega-symbol-%s" ending)))))
         (image-spec (cdr (assoc ending telega-symbols-emojify))))
     (cond ((functionp image-spec)
-           (funcall image-spec ending value))
+           (funcall image-spec ending))
           ((or (and telega-use-images image-spec)
                (and telega-emoji-use-images
                     (member ending telega-symbols-emojify)))
            (apply #'telega-symbol-emojify value image-spec))
           (t
-           value))))
+           (or (and (functionp telega-symbols-emojify-function)
+                    (funcall telega-symbols-emojify-function ending))
+               value)))))
 
 (defun telega-emoji-has-zero-joiner-p (emoji)
   "Return non-nil if EMOJI has ZWJ char inside."
@@ -2071,7 +2043,7 @@ Use this if you planning to change `telega-rainbow-function'."
   "Return string describing binding of the COMMAND in the KEYMAP.
 If no keys corresponds to COMMAND, then return \"M-x COMMAND
 RET\" string."
-  (propertize 
+  (propertize
    (let ((keys-description (mapconcat #'key-description
                                       (where-is-internal command keymap) ", ")))
      (if (string-empty-p keys-description)
@@ -2123,6 +2095,13 @@ Used as for SVG's `:base-uri' functionality."
 Also enforces `:transform-smoothing' property to be non-nil."
   (when telega-use-images
     (apply #'create-image (nconc args (list :transform-smoothing t)))))
+
+(defun telega-etc-file-create-image (filename cwidth)
+  "Create image from etc's FILENAME.
+Width for the resulting image will be of CWIDTH chars."
+  (telega-create-image (telega-etc-file filename) nil nil
+                       :scale 1.0 :ascent 'center :mask 'heuristic
+                       :width (telega-chars-xwidth cwidth)))
 
 (defconst telega-symbol-animations
   '((dots "." ".." "...")
