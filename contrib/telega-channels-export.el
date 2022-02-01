@@ -23,7 +23,7 @@
 ;;; Commentary:
 
 ;;; ellit-org:
-;; ** /telega-channels-export.el/ -- Export Telegam channels to OPML  :new:
+;; ** /telega-channels-export.el/ -- Export Telegam channels to OPML
 ;;
 ;; Use {{{kbd(M-x telega-channels-export RET)}}} to export public
 ;; channels shown in the rootbuf (i.e. matching Active Chat Filter)

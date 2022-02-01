@@ -23,7 +23,7 @@
 ;;; Commentary:
 
 ;;; ellit-org:
-;; ** /telega-transient.el/ -- Transient (magit-like style) commands for telega  :new:
+;; ** /telega-transient.el/ -- Transient (magit-like style) commands for telega
 ;;
 ;; Use transient (magit-like style) commands in the telega.  Enable it
 ;; with:
