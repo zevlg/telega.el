@@ -1530,10 +1530,12 @@ Message is ignored if its `:ignore' option is set to non-nil."
   :type 'number
   :group 'telega-chat)
 
-(defcustom telega-completing-read-function 'ido-completing-read
+(defcustom telega-completing-read-function 'completing-read-default
   "Completing read function to use."
   :type 'function
-  :options '(ivy-completing-read helm--completing-read-default)
+  :options '(ido-completing-read
+             ivy-completing-read
+             helm--completing-read-default)
   :group 'telega)
 
 (defcustom telega-screenshot-function
