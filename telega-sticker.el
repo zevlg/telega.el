@@ -428,34 +428,34 @@ If SLICES-P is non-nil, then insert STICKER using slices."
           (delete-char 1)))
       (telega-chatbuf-sticker-insert sticker))))
 
-(defun telega-ins--sticker-list (stickers)
-  "Insert STICKERS list int current buffer."
+(defun telega-ins--sticker-list (stickers &optional column)
+  "Insert STICKERS list int current buffer.
+COLUMN specifies column to fill stickers into.  By default
+`fill-column' is used."
   (declare (indent 1))
   (seq-doseq (sticker stickers)
-    ;; (when (> (telega-current-column) (- telega-chat-fill-column 10))
-    ;;   (telega-ins "\n"))
-    (telega-button--insert 'telega-sticker sticker
-      'help-echo (let ((emoji (telega-sticker-emoji sticker)))
-                   (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
-      'action 'telega-sticker--choosen-action
-      'cursor-sensor-functions
-      (when (and (plist-get sticker :is_animated) telega-sticker-animated-play)
-        (list (telega-sticker--gen-sensor-func sticker)))
-      )
-    (when telega-sticker-set-show-emoji
-      (telega-ins (telega-sticker-emoji sticker) "  "))
-;    (redisplay)
+    (telega-ins-prefix (unless (bolp) "\n")
+      (telega-button--insert 'telega-sticker sticker
+        'help-echo (let ((emoji (telega-sticker-emoji sticker)))
+                     (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
+        'action 'telega-sticker--choosen-action
+        'cursor-sensor-functions
+        (when (and (plist-get sticker :is_animated) telega-sticker-animated-play)
+          (list (telega-sticker--gen-sensor-func sticker)))
+        )
+      (when telega-sticker-set-show-emoji
+        (telega-ins (telega-sticker-emoji sticker) "  "))
+
+      ;; NOTE: `telega-ins-prefix' will insert "\n" if next sexp
+      ;; evaluates to non-nil
+      (> (current-column) (or column (current-fill-column))))
+    ;; (redisplay)
     ))
 
 (defun telega-describe-stickerset (sset &optional for-chat)
   "Describe the sticker set.
 SSET can be either `sticker' or `stickerSetInfo'."
   (with-telega-help-win "*Telegram Sticker Set*"
-    (visual-line-mode 1)
-    ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
-    ;; of the buffer
-    (set (make-local-variable 'auto-window-vscroll) nil)
-
     (setq telega--chat for-chat)
     (setq telega-help-win--stickerset sset)
 
@@ -545,11 +545,6 @@ If FOR-PARAM is specified, then insert only if
   (cl-assert for-chat)
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Stickers*"
-      (visual-line-mode 1)
-      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
-      ;; of the buffer
-      (set (make-local-variable 'auto-window-vscroll) nil)
-
       (setq telega--chat for-chat)
 
       ;; NOTE: use callbacks for async stickers loading
@@ -566,11 +561,6 @@ If FOR-PARAM is specified, then insert only if
   "Choose sticker by EMOJI FOR-CHAT."
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Stickers*"
-      (visual-line-mode 1)
-      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
-      ;; of the buffer
-      (set (make-local-variable 'auto-window-vscroll) nil)
-
       (setq telega--chat for-chat)
       (setq telega-help-win--emoji emoji)
 
@@ -972,14 +962,13 @@ PROPS are additional properties to the animation button."
   (cl-assert for-chat)
   (let ((help-window-select window-select))
     (with-telega-help-win "*Telegram Animations*"
-      (visual-line-mode 1)
-      ;; NOTE: Non-nil `auto-window-vscroll' make C-n jump to the end
-      ;; of the buffer
-      (set (make-local-variable 'auto-window-vscroll) nil)
-
       (setq telega--chat for-chat)
 
-      (mapc 'telega-ins--animation animations))))
+      (seq-doseq (anim animations)
+        (telega-ins-prefix (unless (bolp) "\n")
+          (telega-ins--animation anim)
+          (> (current-column) (current-fill-column))))
+      )))
 
 (defun telega-animation-choose-saved (for-chat)
   "Choose saved animation FOR-CHAT."
