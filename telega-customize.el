@@ -2214,16 +2214,13 @@ filename with an image to be used."
   :group 'telega-faces)
 
 (defface telega-entity-type-code
-  '((t :family "Monospace Serif"))
-  "Face to display code.
-You can customize its `:height' to fit width of the default face.
-Use `(set-face-attribute 'telega-entity-type-code nil :height 0.83333333)'"
+  '((t :inherit fixed-pitch-serif))
+  "Face to display code."
   :group 'telega-faces)
 
 (defface telega-entity-type-pre
-  '((t :family "Monospace Serif"))
-  "Face to display text ala <pre> HTML tag.
-You can customize its `:height' to fit width of the default face."
+  '((t :inherit fixed-pitch-serif))
+  "Face to display text ala <pre> HTML tag."
   :group 'telega-faces)
 
 (defface telega-entity-type-texturl
@@ -2297,17 +2294,17 @@ You can customize its `:height' to fit width of the default face."
   :group 'telega-faces)
 
 (defface telega-webpage-header
-  '((t :family "FreeSerif" :height 1.3))
+  '((t :inherit telega-webpage-subheader :height 1.2))
   "Face to display header in webpage instant view."
   :group 'telega-faces)
 
 (defface telega-webpage-subheader
-  '((t :family "FreeSerif" :height 1.15))
+  '((t :inherit variable-pitch :weight bold :height 1.2))
   "Face to display subheader in webpage instant view."
   :group 'telega-faces)
 
 (defface telega-webpage-fixed
-  '((t :family "Monospace Serif" :height 0.85))
+  '((t :inherit fixed-pitch-serif))
   "Face to display fixed text in webpage instant view."
   :group 'telega-faces)
 
