@@ -12,7 +12,7 @@
 (defconst telega-version "0.8.2")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.0")
-(defconst telega-tdlib-max-version nil)
+(defconst telega-tdlib-max-version "1.8.0") ; c0385078
 
 (defconst telega-tdlib-releases '("1.8.0" . "1.9.0")
   "Cons cell with current and next TDLib releases.
