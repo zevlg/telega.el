@@ -601,11 +601,15 @@ squashing is not applied."
   :type 'integer
   :group 'telega-modes)
 
+(defvar telega-squash-message-mode-lighter
+  (concat " " (telega-symbol 'mode) "Squash")
+  "Lighter for the `telega-squash-message-mode'.")
+
 ;;;###autoload
 (define-minor-mode telega-squash-message-mode
   "Toggle message squashing minor mode."
   :init-value nil
-  :lighter " ◁Squash"
+  :lighter telega-squash-message-mode-lighter
   :group 'telega-modes
   (if telega-squash-message-mode
       (advice-add 'telega--sendMessage
@@ -711,7 +715,8 @@ squashing is not applied."
 (define-derived-mode telega-image-mode image-mode nil
   "Major mode to view images from chat buffer."
   (setq mode-name
-        (concat "◁Image" (when image-type (format "[%s]" image-type))))
+        (concat (telega-symbol 'mode) "Image"
+                (when image-type (format "[%s]" image-type))))
   )
 
 (defun telega-image-mode-p (buffer-name &rest _unused)
@@ -846,11 +851,15 @@ get message associated with the file."
           (telega-chat-title-with-brackets
            (telega-msg-chat (telega-edit-file-message)))))
 
+(defvar telega-edit-file-mode-lighter
+  (concat " " (telega-symbol 'mode) "Edit")
+  "Lighter for the `telega-edit-file-mode'.")
+
 ;;;###autoload
 (define-minor-mode telega-edit-file-mode
   "Minor mode to edit files from Telegram messages.
 Can be enabled only for content from editable messages."
-  :lighter " ◁Edit"
+  :lighter telega-edit-file-mode-lighter
   :map 'telega-edit-file-mode-map
 
   (if telega-edit-file-mode
@@ -995,9 +1004,13 @@ UFILE specifies Telegram file being uploading."
         (overlay-put overlay 'face 'telega-highlight-text-face))
       (goto-char (match-end 0)))))
 
+(defvar telega-highlight-text-mode-lighter
+  (concat " " (telega-symbol 'mode) "Highlight")
+  "Lighter for the `telega-highlight-text-mode'.")
+
 (define-minor-mode telega-highlight-text-mode
   "Minor mode to highlight text."
-  :lighter " ◁Highlight"
+  :lighter telega-highlight-text-mode-lighter
   (if telega-highlight-text-mode
       (progn
         (cl-assert (and (stringp telega-highlight-text-regexp)
@@ -1115,7 +1128,7 @@ Return patron info, or nil if SENDER is not a telega patron."
 
 
 ;;; ellit-org: minor-modes
-;; ** telega-my-location-mode  :new:
+;; ** telega-my-location-mode
 ;;
 ;; ~telega-my-location~ is used by =telega= to calculate distance to
 ;; me for location messages.  Also, ~telega-my-location~ is used to
@@ -1164,7 +1177,7 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
 
 
 ;;; ellit-org: minor-modes
-;; ** telega-active-locations-mode  :new:
+;; ** telega-active-locations-mode
 ;;
 ;; Minor mode to display currently active live locations in the root
 ;; buffer.

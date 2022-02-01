@@ -1720,7 +1720,7 @@ Update modeline as well."
       (telega-chatbuf--switch-in)
     (telega-chatbuf--switch-out 'focus-out)))
 
-(define-derived-mode telega-chat-mode nil "◁Chat"
+(define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
   "The mode for telega chat buffer.
 
 Message bindings (cursor on message):

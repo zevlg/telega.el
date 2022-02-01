@@ -76,6 +76,14 @@ this chat filter."
   :group 'telega-modes)
 
 ;;; ellit-org:
+;; - {{{user-option(telega-mnz-entity-types, 2)}}}
+(defcustom telega-mnz-entity-types
+  '(textEntityTypePre textEntityTypePreCode textEntityTypeCode)
+  "List of entity types for which mnz performs highlighting."
+  :type '(list symbol)
+  :group 'telega-modes)
+
+;;; ellit-org:
 ;; - {{{user-option(telega-mnz-edit-code-block, 2)}}}
 (defcustom telega-mnz-edit-code-block 'query
   "How to edit message containing mnz code blocks."
@@ -151,10 +159,6 @@ See docstring for `display-buffer' for the value meaning."
     (xml . xml-mode))
   "Alist of languages mapping to Emacs modes.
 Most of these languages available for language detection.")
-
-(defvar telega-mnz--entity-types
-  '(textEntityTypePreCode textEntityTypePre textEntityTypeCode)
-  "List of entity types for which mnz performs highlighting.")
 
 (defvar telega-mnz--inside-p nil
   "Will be bound to t when inside code block.")
@@ -240,7 +244,7 @@ ENT-TEXT is the entity text.
 Return nil if no highlighting should be done for this entity."
   (cl-assert ent)
   (cl-assert (memq (telega--tl-type (plist-get ent :type))
-                   telega-mnz--entity-types))
+                   telega-mnz-entity-types))
   ;; NOTE: use `language-detection' for `textEntityTypePre' entities
   (telega-mnz--mode-for-language
    (telega-tl-str (plist-get ent :type) :language)
@@ -261,10 +265,14 @@ Return nil if no highlighting should be done for this entity."
   (telega-mnz--formatted-text
    code (list :@type "textEntityTypePreCode" :language lang)))
 
+(defvar telega-mnz-mode-lighter
+  (concat " " (telega-symbol 'mode) "Mnz")
+  "Lighter for the `telega-mnz-mode'.")
+
 (define-minor-mode telega-mnz-mode
   "Toggle code highlight minor mode."
   :init-value nil
-  :lighter " ◁Mnz"
+  :lighter telega-mnz-mode-lighter
   :group 'telega-modes
 
   (if telega-mnz-mode
@@ -286,7 +294,7 @@ FMT-TEXT MSG ##advice-doc."
       ;; Apply mnz code blocks highlighting
       (seq-doseq (ent (plist-get fmt-text :entities))
         (when (memq (telega--tl-type (plist-get ent :type))
-                    telega-mnz--entity-types)
+                    telega-mnz-entity-types)
           (when-let* ((ent-start (plist-get ent :offset))
                       (ent-stop (+ ent-start (plist-get ent :length)))
                       (ent-text (substring new-text ent-start ent-stop))

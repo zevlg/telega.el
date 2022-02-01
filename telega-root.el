@@ -306,7 +306,7 @@ Use `telega-root-aux-inserters' to customize it.")
   "The key map for telega root buffer.")
 
 ;;; ellit-org: minor-modes
-;; ** telega-root-auto-fill-mode  :new:
+;; ** telega-root-auto-fill-mode
 ;;
 ;; Global minor mode to automatically adjust ~telega-root-fill-column~
 ;; to the width of the window displaying rootbuf.
@@ -332,8 +332,10 @@ Use `telega-root-aux-inserters' to customize it.")
                    #'telega-root-buffer-auto-fill 'local))))
 
 (define-derived-mode telega-root-mode nil
-  `("◁Root" (telega-root-auto-fill-mode
-             "[autofill]" (:eval (format "[%d]" telega-root-fill-column))))
+  '((:eval (telega-symbol 'mode))
+    "Root"
+    (telega-root-auto-fill-mode
+     "[autofill]" (:eval (format "[%d]" telega-root-fill-column))))
   "The mode for telega root buffer.
 
 Chat bindings (cursor on chat):
