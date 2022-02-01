@@ -4530,7 +4530,16 @@ then forward message copy without caption."
                          (when rm-cap-p " NewCap")
                          (when (> (length messages) 1)
                            (format " (%d marked)" (length messages)))
-                         " to: "))))
+                         " to: ")
+                 ;; NOTE: Forward only to known/comments chats we can
+                 ;; write/post to.
+                 ;; We check `(or me-is-member has-chatbuf)'
+                 ;; first, because `can-send-or-post' might fail for
+                 ;; deleted chats listed in the
+                 ;; `telega--ordered-chats'
+                 (telega-filter-chats telega--ordered-chats
+                   '(and (or me-is-member has-chatbuf)
+                         can-send-or-post)))))
       ;; NOTE: unmark all messages if forwarding marked messages
       (when telega-chatbuf--marked-messages
         (telega-chatbuf-msg-marks-toggle))

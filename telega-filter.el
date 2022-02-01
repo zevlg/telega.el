@@ -619,6 +619,7 @@ Return list of chats that matches CHAT-FILTER.
 Return only chats with non-0 order.
 If CHAT-FILTER is ommited, then active filter from
 `telega--filters' is used as CHAT-FILTER."
+  (declare (indent 1))
   (unless chat-filter
     (setq chat-filter (telega-filter-active-prepare 'with-root-view)))
 
@@ -932,14 +933,17 @@ administrator in the chat."
 (define-telega-filter me-is-member (chat)
   "Matches if me is member of the chat.
 Matches only basicgroup, supergroup or a channel."
-  (when-let ((status (telega-chat-member-my-status chat)))
-    (cl-ecase (telega--tl-type status)
-      ((chatMemberStatusAdministrator chatMemberStatusMember)
-       t)
-      ((chatMemberStatusCreator chatMemberStatusRestricted)
-       (plist-get status :is_member))
-      ((chatMemberStatusLeft chatMemberStatusBanned)
-       nil))))
+  ;; NOTE: me can only be a member of chats that have tdlib chat list
+  ;; position
+  (unless (eq (plist-get chat :positions) [])
+    (when-let ((status (telega-chat-member-my-status chat)))
+      (cl-ecase (telega--tl-type status)
+        ((chatMemberStatusAdministrator chatMemberStatusMember)
+         t)
+        ((chatMemberStatusCreator chatMemberStatusRestricted)
+         (plist-get status :is_member))
+        ((chatMemberStatusLeft chatMemberStatusBanned)
+         nil)))))
 
 ;;; ellit-org: chat-filters
 ;; - me-is-anonymous ::
@@ -1337,8 +1341,14 @@ BE AWARE: This filter will do blocking request for every chat."
   "Matches if chat allows choosing a message sender."
   (plist-get chat :message_sender_id))
 
+;;; ellit-org: chat-filters
+;; - can-send-or-post ::
+;;   {{{fundoc(telega--filter-can-send-or-post, 2)}}}
 (define-telega-filter can-send-or-post (chat)
-  "Me can send or post messages to the CHAT."
+  "Me can send or post messages to the CHAT.
+Me don't need te be a CHAT member to be able to send messages.
+Additionally apply `me-is-member' chat filter to check CHAT's
+membership."
   (let ((my-perms (telega-chat-member-my-permissions chat)))
     (or (plist-get my-perms :can_send_messages)
         (plist-get my-perms :can_post_messages))))
