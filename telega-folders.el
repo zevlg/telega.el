@@ -125,13 +125,11 @@ correctly extract folder name."
                                                 ftitle))))))
 
 (defun telega-folder-create (folder-name icon-name chats)
-  "Create new Telegram folder with name FOLDER-NAME.
-Use `\\[universal-argument]' to create folder with icon name."
+  "Create new Telegram folder with name FOLDER-NAME."
   (interactive (list (read-string "Create Folder with name: ")
-                     (when current-prefix-arg
-                       (funcall telega-completing-read-function
-                                "Folder icon name: "
-                                telega-folder-icon-names nil t))
+                     (when (y-or-n-p "Associate icon with the folder? ")
+                       (telega-completing-read-folder-icon-name
+                        "Folder icon name: "))
                      (telega-completing-read-chat-list "Chats to add")))
   ;; NOTE: Folder must contain at least 1 chat, otherwise error=400 is
   ;; returned
@@ -164,14 +162,12 @@ This won't delete any chat, just a folder."
     (telega--reorderChatFilters (nconc ordered-ids rest-ids))))
 
 (defun telega-folder-rename (folder-name new-folder-name &optional new-icon-name)
-  "Assign new name and icon to the folder with FOLDER-NAME.
-Use `\\[universal-argument]' to change folder's icon name as well."
+  "Assign new name and icon to the folder with FOLDER-NAME."
   (interactive (list (telega-completing-read-folder "Rename Folder: ")
                      (read-string "New Folder name: ")
-                     (when current-prefix-arg
-                       (funcall telega-completing-read-function
-                                "Folder icon name: "
-                                telega-folder-icon-names nil t))))
+                     (when (y-or-n-p "Associate icon with the folder? ")
+                       (telega-completing-read-folder-icon-name
+                        "Folder icon name: "))))
   (let* ((filter-info (telega-folder--chat-filter-info folder-name))
          (tdlib-cfilter (telega--getChatFilter (plist-get filter-info :id))))
     (plist-put tdlib-cfilter :title new-folder-name)
@@ -180,6 +176,13 @@ Use `\\[universal-argument]' to change folder's icon name as well."
 
     (telega--editChatFilter (plist-get filter-info :id)
                             tdlib-cfilter)))
+
+(defun telega-folder-set-icon (folder-name new-icon-name)
+  "For folder with FOLDER-NAME set new icon to NEW-ICON-NAME."
+  (interactive
+   (list (telega-completing-read-folder "Folder to set icon: ")
+         (telega-completing-read-folder-icon-name "Folder icon name: ")))
+  (telega-folder-rename folder-name folder-name new-icon-name))
 
 (defun telega-chat-add-to-folder (chat folder-name)
   "Add CHAT to the Telegram folder named FOLDER-NAME.
@@ -190,7 +193,8 @@ You can add chat to multiple folders."
        (user-error "No chat at point, move point to the chat button and repeat"))
      (list chat-at
            (telega-completing-read-folder
-            (format "Add «%s» to Folder: " (telega-chatbuf--name chat-at))))))
+            (format "Add «%s» to Folder: "
+                    (telega-msg-sender-title-for-completion chat-at))))))
 
   (let ((filter-info (telega-folder--chat-filter-info folder-name)))
     (cl-assert filter-info)

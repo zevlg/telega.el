@@ -191,6 +191,11 @@ Use `telega-root-aux-inserters' to customize it.")
     ;;   {{{fundoc(telega-folder-rename, 2)}}}
     (define-key map (kbd "R") 'telega-folder-rename)
     ;;; ellit-org: rootbuf-folder-bindings
+    ;; - {{{where-is(telega-folder-set-icon,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-folder-set-icon, 2)}}}
+    (define-key map (kbd "I") 'telega-folder-set-icon)
+
+    ;;; ellit-org: rootbuf-folder-bindings
     ;; - {{{where-is(telega-chat-add-to-folder,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-chat-add-to-folder, 2)}}}
     (define-key map (kbd "a") 'telega-chat-add-to-folder)
