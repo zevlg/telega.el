@@ -944,7 +944,15 @@ Pass REVOKE to try to delete chat history for all users."
     (nconc (list :@type "searchChatMessages"
                  :chat_id (plist-get chat :id)
                  :filter tdlib-msg-filter
-                 :message_thread_id (telega-chat-message-thread-id chat)
+                 ;; NOTE: for `searchMessagesFilterPinned' filter do
+                 ;; not set `:message_thread_id', because threads does
+                 ;; not have pinned messages, and request with thread
+                 ;; id will result in error.
+                 :message_thread_id
+                 (if (eq 'searchMessagesFilterPinned
+                         (telega--tl-type tdlib-msg-filter))
+                     0
+                   (telega-chat-message-thread-id chat))
                  :query (or query "")
                  :from_message_id from-msg-id
                  :offset offset
