@@ -4551,8 +4551,7 @@ then forward message copy without caption."
                  ;; deleted chats listed in the
                  ;; `telega--ordered-chats'
                  (telega-filter-chats telega--ordered-chats
-                   '(and (or me-is-member has-chatbuf)
-                         can-send-or-post)))))
+                   '(and (or main archive has-chatbuf) can-send-or-post)))))
       ;; NOTE: unmark all messages if forwarding marked messages
       (when telega-chatbuf--marked-messages
         (telega-chatbuf-msg-marks-toggle))
