@@ -22,7 +22,7 @@
 ;;; Commentary:
 
 ;;; ellit-org:
-;; ** /telega-adblock.el/ -- Block advertisement messages   :new:
+;; ** /telega-adblock.el/ -- Block advertisement messages
 ;;
 ;; Telegram channels often advertises another channels in annoying
 ;; manner.  Sometimes adverts has inappropriate content.  This mode
@@ -40,7 +40,8 @@
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
 ;; - {{{user-option(telega-adblock-forwarded-messages, 2)}}}
-;; - {{{user-option(telega-adblock-sponsored-messages, 2)}}}
+;; - {{{user-option(telega-adblock-sponsored-messages-from, 2)}}}
+;; - {{{user-option(telega-adblock-allow-messages-with-comments, 2)}}}
 
 ;; TODO:
 ;; - "invisible" links, example: https://t.me/botoid/1058351
@@ -68,11 +69,13 @@ Block them even if message has no links at all."
   :type 'boolean
   :group 'telega-adblock)
 
-(defcustom telega-adblock-sponsored-messages nil
-  "Non-nil to block sponsored messages.
-Applies only for chats matching `telega-adblock-for' Chat Filter.
-NOTE: Blocking sponsored messages is a TOS violation, consider
-Telegram subscription to disable sponsored messages."
+(defcustom telega-adblock-sponsored-messages-from '(or main archive)
+  "Block sponsored messages originating from chat matching this Chat Filter.
+WARN: Blocking sponsored messages is TOS violation, consider Telegram
+subscription to disable sponsored messages.
+
+By default we don't show sponsored message originating from chat we
+are already member of."
   :type 'boolean
   :group 'telega-adblock)
 
@@ -93,6 +96,13 @@ Set it to less value if you see some advert messages not being blocked."
 Set to \"1\" to put chats with ignored last message to the bottom of
 the rootbuf."
   :type '(or string null)
+  :group 'telega-adblock)
+
+(defcustom telega-adblock-allow-messages-with-comments nil
+  "Non-nil to not block messages that can be commented.
+Advertisement messages usually can't be commented, however sometimes
+event ad messages can be commented."
+  :type 'boolean
   :group 'telega-adblock)
 
 ;; TODO: allow links to known chats
@@ -224,6 +234,8 @@ an URL."
   "Return non-nil if message MSG is advert message."
   (when-let ((chat (telega-msg-chat msg 'offline)))
     (and (telega-chat-match-p chat telega-adblock-for)
+         (or (not telega-adblock-allow-messages-with-comments)
+             (not (plist-get msg :can_get_message_thread)))
          (or (and telega-adblock-forwarded-messages
                   (telega-adblock-msg-forwarded-p msg))
              ;; NOTE: message considered as advertisement if it has a link
@@ -246,8 +258,16 @@ for chats with last message blocked by adblock."
 
 (defun telega-adblock--ins-sponsored-message (orig-fun chat)
   "Advice for `telega-ins--chat-sponsored-message' ORIG-FUN."
-  (unless (and telega-adblock-sponsored-messages
-               (telega-chat-match-p chat telega-adblock-for))
+  (unless (and telega-adblock-sponsored-messages-from
+               (telega-chat-match-p chat telega-adblock-for)
+               (when-let* ((sponsored-msg
+                            (plist-get chat :telega-sponsored-message))
+                           (sponsored-chat
+                            (telega-chat-get
+                             (plist-get sponsored-msg :sponsor_chat_id)
+                             'offline)))
+                 (telega-chat-match-p sponsored-chat
+                   telega-adblock-sponsored-messages-from)))
     (funcall orig-fun chat)))
 
 ;;;###autoload
