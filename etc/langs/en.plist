@@ -422,7 +422,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_rights_about_admin_cant_edit"
   :value "You cannot edit the rights of this admin.") ; :can_be_edited
  ("lng_rights_group_manage_calls"
-  :value "Manage voice chats")
+  :value "Manage Video chats")
  ("lng_rights_group_anonymous"
   :value "Remain Anonymous")
  ("lng_rights_edit_admin"
@@ -637,51 +637,49 @@ Example: 23 y.o. designer from San Francisco")
 
  ;; Group call chats
  ("lng_group_call_starts"
-  :value "Voice Chat starts {when}")
+  :value "Video Chat starts {when}")
  ("lng_group_call_starts_in"
   :value "Starts in")
  ("lng_group_call_start_now"
   :value "Start Now")
  ("lng_group_call_edit_title_header"
-  :value "Voice chat title")
+  :value "Video chat title")
  ("lng_group_call_schedule_title"
-  :value "Schedule Voice Chat")
+  :value "Schedule Video Chat")
  ("lng_group_call_scheduled_status"
   :value "Scheduled")
 
  ("lng_group_call_title"
-  :value "Voice Chat")
+  :value "Video Chat")
  ("lng_group_call_end"
-  :value "End Voice Chat")
+  :value "End Video Chat")
  ("lng_group_call_leave_title"
-  :value "Leave voice chat")
+  :value "Leave video chat")
  ("lng_group_call_leave_sure"
-  :value "Do you want to leave this voice chat?")
+  :value "Do you want to leave this video chat?")
  ("lng_group_call_join_as_header"
-  :value "Join Voice Chat as...")
+  :value "Join Video Chat as...")
 
  ("lng_group_call_members"
   :one_value "{count} participant"
   :other_value "{count} participants")
  ("lng_action_group_call_scheduled_group"
-  :value "{from} scheduled a voice chat for {date}")
+  :value "{from} scheduled a video chat for {date}")
  ("lng_action_group_call_scheduled_channel"
-  :value "Voice chat scheduled for {date}")
- ("lng_action_group_call_started"
-  :value "{from} started {chat}")
- ("lng_action_group_call_started_chat"
-  :value "a voice chat")
- ("lng_action_group_call_finished"
-  :value "Voice chat finished ({duration})")
+  :value "Live stream scheduled for {date}")
+ ("lng_action_group_call_started_group"
+  :value "{from} started a video chat")
+ ("lng_action_group_call_finished_group"
+  :value "{from} ended the video chat ({duration})")
  ("lng_group_call_invite_done_user"
-  :value "You invited {user} to the voice chat.")
+  :value "You invited {user} to the video chat.")
  ("lng_group_call_invite_done_many"
-  :one_value "You invited **{count} member** to the voice chat."
-  :other_value "You invited **{count} members** to the voice chat.")
+  :one_value "You invited **{count} participant** to the video chat."
+  :other_value "You invited **{count} participants** to the video chat.")
  ("lng_action_invite_users_many"
   :value "{from} invited {users} to {chat}")
  ("lng_action_invite_user_chat"
-  :value "the voice chat")
+  :value "the video chat")
 
  ("lng_action_theme_changed"
   :value "{from} changed the chat theme to {emoji}")

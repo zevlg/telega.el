@@ -1352,7 +1352,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageVideoChatScheduled
               'messageVideoChatStarted
               'messageVideoChatEnded
-              'messageInviteVoiceChatParticipants
+              'messageInviteVideoChatParticipants
               'messageWebsiteConnected
               'messageChatSetTheme
               'telegaInternal)))
