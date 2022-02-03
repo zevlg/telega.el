@@ -2093,11 +2093,12 @@ Used as for SVG's `:base-uri' functionality."
                           (file-name-directory directory))
       directory)))
 
-(defun telega-create-image (&rest args)
+(defun telega-create-image (file-or-data &optional type data-p &rest props)
   "Wrapper around `create-image' that takes into account `telega-use-images'.
 Also enforces `:transform-smoothing' property to be non-nil."
   (when telega-use-images
-    (apply #'create-image (nconc args (list :transform-smoothing t)))))
+    (apply #'create-image file-or-data type data-p
+           (nconc props (list :transform-smoothing t)))))
 
 (defun telega-etc-file-create-image (filename cwidth)
   "Create image from etc's FILENAME.

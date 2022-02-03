@@ -573,8 +573,7 @@ Show message only if `telega-help-messages' is non-nil."
   (declare (indent 2))
   `(when (and telega-help-messages
               (not (get 'telega-help-messages ,help-name)))
-     (unless (get ,help-name 'telega-help-always)
-       (put 'telega-help-messages ,help-name t))
+     (put 'telega-help-messages ,help-name t)
      (message (concat "Telega: " ,fmt) ,@fmt-args)))
 
 (defsubst telega-debug (fmt &rest args)

@@ -388,7 +388,7 @@ If CALLBACK is specified, then get reply message asynchronously."
   (unless sticker
     (setq sticker (telega--tl-get msg :content :sticker)))
 
-  (if (and (plist-get sticker :is_animated)
+  (if (and (not (telega-sticker-static-p sticker))
            telega-sticker-animated-play
            (not current-prefix-arg))
       (telega-sticker--animate sticker)
@@ -417,7 +417,7 @@ If CALLBACK is specified, then get reply message asynchronously."
       (telega--clickAnimatedEmojiMessage msg
         (lambda (fs-sticker)
           (when (and (not (telega--tl-error-p fs-sticker))
-                     (plist-get fs-sticker :is_animated)
+                     (not (telega-sticker-static-p sticker))
                      telega-sticker-animated-play)
             (plist-put msg :telega-sticker-fullscreen fs-sticker)
             (telega-sticker--animate fs-sticker msg)))))

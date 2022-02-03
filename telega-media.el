@@ -628,6 +628,14 @@ Default is `:telega-image'."
 
     (unless (equal cached-image simage)
       ;; Update the image
+      ;;
+      ;; NOTE: We call `image-flush' because only
+      ;; filename in the image spec can be changed (during animation
+      ;; for example), and image caching won't notice this because
+      ;; `(sxhash cached-image)' and `(sxhash simage)' might return
+      ;; the same!
+      (when cached-image
+        (image-flush cached-image))
       (if cached-image
           (setcdr cached-image (cdr simage))
         (setq cached-image simage))

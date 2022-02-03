@@ -532,7 +532,7 @@ Play in muted mode."
              ;; sticker only if `telega-sticker-animated-play' is set
              (let ((sticker (or (plist-get content :sticker)
                                 (plist-get web-page :sticker))))
-               (when (and (plist-get sticker :is_animated)
+               (when (and (not (telega-sticker-static-p sticker))
                           telega-sticker-animated-play)
                  (telega-sticker--animate sticker))))
 

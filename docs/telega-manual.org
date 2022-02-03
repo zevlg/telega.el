@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.0)
+#+title: Telega Manual (v0.8.10)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -222,7 +222,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.0.
+version greater or equal to 1.8.1.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -667,7 +667,8 @@ Telega prefix map bindings:
      Switch to the ~ACCOUNT-NAME~.
 
 - @@html:<kbd>@@b@@html:</kbd>@@ (~telega-switch-buffer~) :: 
-     Interactively switch to chat ~BUFFER~.
+     Interactively switch to CHAT's buffer.
+     Switch only if ~CHAT~ has corresponding chatbuf.
 
 - @@html:<kbd>@@c@@html:</kbd>@@ (~telega-chat-with~) :: 
      Start messaging with ~CHAT-OR-USER~.
@@ -711,12 +712,10 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 * Root Buffer
 :PROPERTIES:
@@ -972,7 +971,6 @@ Folders.  Use @@html:<kbd>@@M-x telega-folders-migrate-custom-labels RET@@html:<
 @@html:<kbd>@@F@@html:</kbd>@@ prefix in rootbuf is used to operate on Chat Folders:
 - @@html:<kbd>@@F +@@html:</kbd>@@ (~telega-folder-create~) :: 
      Create new Telegram folder with name ~FOLDER-NAME~.
-     Use @@html:<kbd>@@C-u@@html:</kbd>@@ to create folder with icon name.
 
 - @@html:<kbd>@@F -@@html:</kbd>@@ (~telega-folder-delete~) :: 
      Delete Telegram folder with ~FOLDER-NAME~.
@@ -983,7 +981,9 @@ Folders.  Use @@html:<kbd>@@M-x telega-folders-migrate-custom-labels RET@@html:<
 
 - @@html:<kbd>@@F R@@html:</kbd>@@ (~telega-folder-rename~) :: 
      Assign new name and icon to the folder with ~FOLDER-NAME~.
-     Use @@html:<kbd>@@C-u@@html:</kbd>@@ to change folder's icon name as well.
+
+- @@html:<kbd>@@F I@@html:</kbd>@@ (~telega-folder-set-icon~) :: 
+     For folder with ~FOLDER-NAME~ set new icon to ~NEW-ICON-NAME~.
 
 - @@html:<kbd>@@F a@@html:</kbd>@@ (~telega-chat-add-to-folder~) :: 
      Add ~CHAT~ to the Telegram folder named ~FOLDER-NAME~.
@@ -1010,7 +1010,7 @@ Customizable options for Chat Folders:
     (("All" . "💬")
      ("Unread" . "✅")
      ("Unmuted" . "🔔")
-     ("Bots" . "🤖")
+     ("Bots" . "🤖️")
      ("Channels" . "📢")
      ("Groups" . "👥")
      ("Private" . "👤")
@@ -1349,8 +1349,18 @@ For other Chat Filter bindings see below.
 - has-default-sender :: 
      Matches if chat allows choosing a message sender.
 
+- can-send-or-post :: 
+     Me can send or post messages to the ~CHAT~.
+     Me don't need te be a ~CHAT~ member to be able to send messages.
+     Additionally apply ~(or main archive)~ chat filter to check ~CHAT~ is
+     known.
+
 - is-inline-bot :: 
      Matches if corresponding bot accepts inline requests.
+
+- (unread-reactions [ ~N~ ]),  (~telega-filter-by-unread-reactions~) :: 
+     Matches if chat has least ~N~ unread reactions.
+     By default ~N~ is 1.
 
 ** Customizable options making use of Chat Filters
 :PROPERTIES:
@@ -1413,8 +1423,7 @@ For other Chat Filter bindings see below.
      (:eval
       (when
           (and telega-use-images
-    	   (telega-chatbuf-match-p
-    	    '(and has-avatar can-send-or-post)))
+    	   (telega-chatbuf-match-p 'can-send-or-post))
         (telega-chatbuf-prompt-chat-avatar)))
      ">>> ")
   #+end_src
@@ -2104,7 +2113,7 @@ Customizable options for inline bots:
 :END:
 
 Message filtering means to show only some messages matching filter.
-Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =failed-to-send=, =pinned=
+Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =unread-reaction=, =failed-to-send=, =pinned=
 
 Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 
@@ -2256,27 +2265,17 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
-
-     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
-
-     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
-
-     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
-
-     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
-
-     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command
@@ -2718,7 +2717,7 @@ me]].
 
 ~telega-patrons-mode~ is enabled by default.
 
-** telega-my-location-mode                                              :new:
+** telega-my-location-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-my-location-mode
 :END:
@@ -2740,7 +2739,7 @@ Enable with ~(telega-my-location-mode 1)~ or at =telega= load time:
   (add-hook 'telega-load-hook 'telega-my-location-mode)
 #+end_src
 
-** telega-active-locations-mode                                         :new:
+** telega-active-locations-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-active-locations-mode
 :END:
@@ -2762,7 +2761,7 @@ buffer.
   Default value: ~t~
 
 
-** telega-root-auto-fill-mode                                           :new:
+** telega-root-auto-fill-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-root-auto-fill-mode
 :END:
@@ -2958,6 +2957,12 @@ Customizable options:
 
   Default value: ~t~
 
+- User Option: ~telega-mnz-entity-types~ 
+
+  List of entity types for which mnz performs highlighting. 
+
+  Default value: ~(textEntityTypePre textEntityTypePreCode textEntityTypeCode)~
+
 - User Option: ~telega-mnz-edit-code-block~ 
 
   How to edit message containing mnz code blocks. 
@@ -3081,7 +3086,7 @@ Customizable options:
 
   Default value: ~t~
 
-** /telega-transient.el/ -- Transient (magit-like style) commands for telega :new:
+** /telega-transient.el/ -- Transient (magit-like style) commands for telega
 :PROPERTIES:
 :CUSTOM_ID: telega-transientel--transient-magit-like-style-commands-for-telega
 :END:
@@ -3101,7 +3106,7 @@ Control keymaps for which to use transient with:
 
   Default value: ~(telega-prefix-map telega-sort-map telega-filter-map telega-describe-map telega-folder-map telega-voip-map telega-root-fastnav-map telega-root-view-map telega-chatbuf-fastnav-map)~
 
-** /telega-adblock.el/ -- Block advertisement messages                  :new:
+** /telega-adblock.el/ -- Block advertisement messages
 :PROPERTIES:
 :CUSTOM_ID: telega-adblockel--block-advertisement-messages
 :END:
@@ -3154,16 +3159,25 @@ Customizable options:
   Block them even if message has no links at all. 
 
   Default value: ~t~
-- User Option: ~telega-adblock-sponsored-messages~ 
+- User Option: ~telega-adblock-sponsored-messages-from~ 
 
-  Non-nil to block sponsored messages.
-  Applies only for chats matching ~telega-adblock-for~ Chat Filter.
-  NOTE: Blocking sponsored messages is a TOS violation, consider
-  Telegram subscription to disable sponsored messages. 
+  Block sponsored messages originating from chat matching this Chat Filter.
+  WARN: Blocking sponsored messages is TOS violation, consider Telegram
+  subscription to disable sponsored messages.
+
+  By default we don't show sponsored message originating from chat we
+  are already member of. 
+
+  Default value: ~(or main archive)~
+- User Option: ~telega-adblock-allow-messages-with-comments~ 
+
+  Non-nil to not block messages that can be commented.
+  Advertisement messages usually can't be commented, however sometimes
+  event ad messages can be commented. 
 
   Default value: ~nil~
 
-** /telega-channels-export.el/ -- Export Telegam channels to OPML       :new:
+** /telega-channels-export.el/ -- Export Telegam channels to OPML
 :PROPERTIES:
 :CUSTOM_ID: telega-channels-exportel--export-telegam-channels-to-opml
 :END:

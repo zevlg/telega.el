@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2022-01-03 Пн 18:07 -->
+<!-- 2022-02-03 Чт 10:00 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.0)</title>
+<title>Telega Manual (v0.8.10)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <style>
@@ -219,7 +219,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.0)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.10)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -303,9 +303,9 @@
 <li><a href="#telega-edit-file-mode">telega-edit-file-mode</a></li>
 <li><a href="#telega-highlight-text-mode">telega-highlight-text-mode</a></li>
 <li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
-<li><a href="#telega-my-location-mode">telega-my-location-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
-<li><a href="#telega-active-locations-mode">telega-active-locations-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
-<li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#telega-my-location-mode">telega-my-location-mode</a></li>
+<li><a href="#telega-active-locations-mode">telega-active-locations-mode</a></li>
+<li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
 </li>
@@ -320,9 +320,9 @@
 <li><a href="#telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</a></li>
 <li><a href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</a></li>
 <li><a href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
-<li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
-<li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
-<li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></a></li>
+<li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega</a></li>
+<li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages</a></li>
+<li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML</a></li>
 </ul>
 </li>
 <li><a href="#troubleshooting">Troubleshooting</a>
@@ -503,7 +503,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.0.
+version greater or equal to 1.8.1.
 </p>
 
 <p>
@@ -953,7 +953,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgff2b779">
+<pre class="example" id="orgbfd45e1">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -971,7 +971,7 @@ Only chats matching <b><b>all</b></b> chat filters in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org5955b18">
+<pre class="example" id="org79bee4a">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -1001,7 +1001,7 @@ Chat filter associated with a name.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orged0c9a0">
+<pre class="example" id="org8f3ac4c">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -1102,7 +1102,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orga1ffc5e">
+<pre class="example" id="org0d72880">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1157,7 +1157,8 @@ Telega prefix map bindings:
 <dl class="org-dl">
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 
-<dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactively switch to chat <code>BUFFER</code>.</dd>
+<dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactively switch to CHAT's buffer.
+Switch only if <code>CHAT</code> has corresponding chatbuf.</dd>
 
 <dt><kbd>c</kbd> (<code>telega-chat-with</code>)</dt><dd>Start messaging with <code>CHAT-OR-USER</code>.</dd>
 
@@ -1205,16 +1206,10 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 </dl>
 </div>
 </div>
@@ -1576,16 +1571,16 @@ Folders.  Use <kbd>M-x telega-folders-migrate-custom-labels RET</kbd> to migrate
 <kbd>F</kbd> prefix in rootbuf is used to operate on Chat Folders:
 </p>
 <dl class="org-dl">
-<dt><kbd>F +</kbd> (<code>telega-folder-create</code>)</dt><dd>Create new Telegram folder with name <code>FOLDER-NAME</code>.
-Use <kbd>C-u</kbd> to create folder with icon name.</dd>
+<dt><kbd>F +</kbd> (<code>telega-folder-create</code>)</dt><dd>Create new Telegram folder with name <code>FOLDER-NAME</code>.</dd>
 
 <dt><kbd>F -</kbd> (<code>telega-folder-delete</code>)</dt><dd>Delete Telegram folder with <code>FOLDER-NAME</code>.
 This won't delete any chat, just a folder.</dd>
 
 <dt><kbd>F =</kbd> (<code>telega-folders-reorder</code>)</dt><dd>Reorder Telegram folders to be in <code>ORDERED-FOLDER-NAMES</code> order.</dd>
 
-<dt><kbd>F R</kbd> (<code>telega-folder-rename</code>)</dt><dd>Assign new name and icon to the folder with <code>FOLDER-NAME</code>.
-Use <kbd>C-u</kbd> to change folder's icon name as well.</dd>
+<dt><kbd>F R</kbd> (<code>telega-folder-rename</code>)</dt><dd>Assign new name and icon to the folder with <code>FOLDER-NAME</code>.</dd>
+
+<dt><kbd>F I</kbd> (<code>telega-folder-set-icon</code>)</dt><dd>For folder with <code>FOLDER-NAME</code> set new icon to <code>NEW-ICON-NAME</code>.</dd>
 
 <dt><kbd>F a</kbd> (<code>telega-chat-add-to-folder</code>)</dt><dd>Add <code>CHAT</code> to the Telegram folder named <code>FOLDER-NAME</code>.
 You can add chat to multiple folders.</dd>
@@ -1626,7 +1621,7 @@ Default value:
 <pre class="src src-emacs-lisp">((<span style="font-style: italic;">"All"</span> . <span style="font-style: italic;">"&#128172;"</span>)
  (<span style="font-style: italic;">"Unread"</span> . <span style="font-style: italic;">"&#9989;"</span>)
  (<span style="font-style: italic;">"Unmuted"</span> . <span style="font-style: italic;">"&#128276;"</span>)
- (<span style="font-style: italic;">"Bots"</span> . <span style="font-style: italic;">"&#129302;"</span>)
+ (<span style="font-style: italic;">"Bots"</span> . <span style="font-style: italic;">"&#129302;&#65039;"</span>)
  (<span style="font-style: italic;">"Channels"</span> . <span style="font-style: italic;">"&#128226;"</span>)
  (<span style="font-style: italic;">"Groups"</span> . <span style="font-style: italic;">"&#128101;"</span>)
  (<span style="font-style: italic;">"Private"</span> . <span style="font-style: italic;">"&#128100;"</span>)
@@ -1962,7 +1957,15 @@ BE AWARE: This filter will do blocking request for every chat.</dd>
 
 <dt>has-default-sender</dt><dd>Matches if chat allows choosing a message sender.</dd>
 
+<dt>can-send-or-post</dt><dd>Me can send or post messages to the <code>CHAT</code>.
+Me don't need te be a <code>CHAT</code> member to be able to send messages.
+Additionally apply <code>(or main archive)</code> chat filter to check <code>CHAT</code> is
+known.</dd>
+
 <dt>is-inline-bot</dt><dd>Matches if corresponding bot accepts inline requests.</dd>
+
+<dt>(unread-reactions [ <code>N</code> ]),  (<code>telega-filter-by-unread-reactions</code>)</dt><dd>Matches if chat has least <code>N</code> unread reactions.
+By default <code>N</code> is 1.</dd>
 </dl>
 </div>
 </div>
@@ -2058,8 +2061,7 @@ Default value:
  (<span style="font-weight: bold;">:eval</span>
   (<span style="font-weight: bold;">when</span>
       (<span style="font-weight: bold;">and</span> telega-use-images
-       (telega-chatbuf-match-p
-        '(and has-avatar can-send-or-post)))
+       (telega-chatbuf-match-p 'can-send-or-post))
     (telega-chatbuf-prompt-chat-avatar)))
  <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
 </pre>
@@ -2103,7 +2105,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org464a2ad">
+<pre class="example" id="org51eff58">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2280,7 +2282,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgc15103d">
+<pre class="example" id="orgbc318ef">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2364,7 +2366,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orga37413d">
+<pre class="example" id="org7e586ea">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2382,7 +2384,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="orgbcdca92">
+<pre class="example" id="orge9293de">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2630,7 +2632,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orge612802">
+<pre class="example" id="org54be218">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3008,7 +3010,7 @@ Default value: <code>t</code>
 <div class="outline-text-3" id="text-filtering-chat-messages-aka-shared-media">
 <p>
 Message filtering means to show only some messages matching filter.
-Available message filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>mention</code>, <code>unread-mention</code>, <code>failed-to-send</code>, <code>pinned</code>
+Available message filters are: <code>scheduled</code>, <code>search</code>, <code>by-sender</code>, <code>hashtag</code>, <code>photo</code>, <code>photo-video</code>, <code>url</code>, <code>doc</code>, <code>file</code>, <code>gif</code>, <code>audio</code>, <code>video</code>, <code>voice-note</code>, <code>video-note</code>, <code>voice-video-note</code>, <code>chat-photo</code>, <code>mention</code>, <code>unread-mention</code>, <code>unread-reaction</code>, <code>failed-to-send</code>, <code>pinned</code>
 </p>
 
 <p>
@@ -3223,7 +3225,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org1e49d87">
+<pre class="example" id="org1faf97b">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3231,44 +3233,14 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
-Stop playing media message.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
-Rewind 10 seconds backward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
-Rewind 10 seconds forward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
-Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
-Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.</dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
+duration.</dd>
 </dl>
 
 <p>
@@ -3958,7 +3930,7 @@ me</a>.
 </div>
 
 <div id="outline-container-telega-my-location-mode" class="outline-3">
-<h3 id="telega-my-location-mode"><a class="self-link" href="#telega-my-location-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-my-location-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="telega-my-location-mode"><a class="self-link" href="#telega-my-location-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-my-location-mode</h3>
 <div class="outline-text-3" id="text-telega-my-location-mode">
 <p>
 <code>telega-my-location</code> is used by <code>telega</code> to calculate distance to
@@ -3987,7 +3959,7 @@ Enable with <code>(telega-my-location-mode 1)</code> or at <code>telega</code> l
 </div>
 
 <div id="outline-container-telega-active-locations-mode" class="outline-3">
-<h3 id="telega-active-locations-mode"><a class="self-link" href="#telega-active-locations-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-active-locations-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="telega-active-locations-mode"><a class="self-link" href="#telega-active-locations-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-active-locations-mode</h3>
 <div class="outline-text-3" id="text-telega-active-locations-mode">
 <p>
 Minor mode to display currently active live locations in the root
@@ -4027,7 +3999,7 @@ Default value: <code>t</code>
 
 
 <div id="outline-container-telega-root-auto-fill-mode" class="outline-3">
-<h3 id="telega-root-auto-fill-mode"><a class="self-link" href="#telega-root-auto-fill-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-root-auto-fill-mode&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="telega-root-auto-fill-mode"><a class="self-link" href="#telega-root-auto-fill-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-root-auto-fill-mode</h3>
 <div class="outline-text-3" id="text-telega-root-auto-fill-mode">
 <p>
 Global minor mode to automatically adjust <code>telega-root-fill-column</code>
@@ -4103,7 +4075,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org91167e9">
+<pre class="example" id="org4d204c9">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4307,6 +4279,18 @@ Non-nil to keep <code>telega-entity-type-pre</code> face on the highlighted text
 
 <p>
 Default value: <code>t</code>
+</p></li>
+
+<li><p>
+User Option: <code>telega-mnz-entity-types</code> 
+</p>
+
+<p>
+List of entity types for which mnz performs highlighting. 
+</p>
+
+<p>
+Default value: <code>(textEntityTypePre textEntityTypePreCode textEntityTypeCode)</code>
 </p></li>
 
 <li><p>
@@ -4531,7 +4515,7 @@ Default value: <code>t</code>
 </div>
 
 <div id="outline-container-telega-transientel--transient-magit-like-style-commands-for-telega" class="outline-3">
-<h3 id="telega-transientel--transient-magit-like-style-commands-for-telega"><a class="self-link" href="#telega-transientel--transient-magit-like-style-commands-for-telega"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="telega-transientel--transient-magit-like-style-commands-for-telega"><a class="self-link" href="#telega-transientel--transient-magit-like-style-commands-for-telega"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega</h3>
 <div class="outline-text-3" id="text-telega-transientel--transient-magit-like-style-commands-for-telega">
 <p>
 Use transient (magit-like style) commands in the telega.  Enable it
@@ -4564,7 +4548,7 @@ Default value: <code>(telega-prefix-map telega-sort-map telega-filter-map telega
 </div>
 
 <div id="outline-container-telega-adblockel--block-advertisement-messages" class="outline-3">
-<h3 id="telega-adblockel--block-advertisement-messages"><a class="self-link" href="#telega-adblockel--block-advertisement-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-adblock.el</i> &#x2013; Block advertisement messages&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="telega-adblockel--block-advertisement-messages"><a class="self-link" href="#telega-adblockel--block-advertisement-messages"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-adblock.el</i> &#x2013; Block advertisement messages</h3>
 <div class="outline-text-3" id="text-telega-adblockel--block-advertisement-messages">
 <p>
 Telegram channels often advertises another channels in annoying
@@ -4654,14 +4638,31 @@ Block them even if message has no links at all.
 Default value: <code>t</code>
 </p></li>
 <li><p>
-User Option: <code>telega-adblock-sponsored-messages</code> 
+User Option: <code>telega-adblock-sponsored-messages-from</code> 
 </p>
 
 <p>
-Non-nil to block sponsored messages.
-Applies only for chats matching <code>telega-adblock-for</code> Chat Filter.
-NOTE: Blocking sponsored messages is a TOS violation, consider
-Telegram subscription to disable sponsored messages. 
+Block sponsored messages originating from chat matching this Chat Filter.
+WARN: Blocking sponsored messages is TOS violation, consider Telegram
+subscription to disable sponsored messages.
+</p>
+
+<p>
+By default we don't show sponsored message originating from chat we
+are already member of. 
+</p>
+
+<p>
+Default value: <code>(or main archive)</code>
+</p></li>
+<li><p>
+User Option: <code>telega-adblock-allow-messages-with-comments</code> 
+</p>
+
+<p>
+Non-nil to not block messages that can be commented.
+Advertisement messages usually can't be commented, however sometimes
+event ad messages can be commented. 
 </p>
 
 <p>
@@ -4672,7 +4673,7 @@ Default value: <code>nil</code>
 </div>
 
 <div id="outline-container-telega-channels-exportel--export-telegam-channels-to-opml" class="outline-3">
-<h3 id="telega-channels-exportel--export-telegam-channels-to-opml"><a class="self-link" href="#telega-channels-exportel--export-telegam-channels-to-opml"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML&#xa0;&#xa0;&#xa0;<span class="tag"><span class="new">new</span></span></h3>
+<h3 id="telega-channels-exportel--export-telegam-channels-to-opml"><a class="self-link" href="#telega-channels-exportel--export-telegam-channels-to-opml"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML</h3>
 <div class="outline-text-3" id="text-telega-channels-exportel--export-telegam-channels-to-opml">
 <p>
 Use <kbd>M-x telega-channels-export RET</kbd> to export public

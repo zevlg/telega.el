@@ -72,6 +72,10 @@ Thumbnail is a smaller (and faster) version of sticker image.")
     (when (and button (eq (button-type button) 'telega-sticker))
       (button-get button :value))))
 
+(defun telega-sticker-static-p (sticker)
+  "Return non-nil if sticker is a static sticker."
+  (eq 'stickerTypeStatic (telega--tl-type (plist-get sticker :type))))
+
 (defsubst telega-sticker--file (sticker)
   "Return STICKER's file."
   (telega-file--renew sticker :sticker))
@@ -329,25 +333,22 @@ Return path to png file."
   (let* ((sfile (telega-sticker--file sticker))
          (tfile (telega-sticker--thumb-file sticker))
          (filename (or (and (or telega-sticker--use-thumbnail
-                                (plist-get sticker :is_animated))
+                                (not (telega-sticker-static-p sticker)))
                             (telega-file--downloaded-p tfile) tfile)
                        (and (telega-file--downloaded-p sfile) sfile)
                        (and (telega-file--downloaded-p tfile) tfile)))
-         (img-type (when (fboundp 'imagemagick-types) 'imagemagick))
          (img-file (or (plist-get sticker :telega-ffplay-frame-filename)
-                       (when-let ((local-path (telega--tl-get filename :local :path)))
-                         (if (or (eq img-type 'imagemagick)
-                                 (not (equal (file-name-extension local-path) "webp")))
-                             local-path
-                           (telega-sticker--webp-to-png local-path)))))
+                       (when-let ((fn (telega--tl-get filename :local :path)))
+                         (if (or (fboundp 'imagemagick-types)
+                                 (not (equal (file-name-extension fn) "webp")))
+                             fn
+                           (telega-sticker--webp-to-png fn)))))
+         (img-type (when (fboundp 'imagemagick-types) 'imagemagick))
          (cwidth-xmargin (telega-media--cwidth-xmargin
                           (plist-get sticker :width)
                           (plist-get sticker :height)
                           (car telega-sticker-size))))
-    (when (and img-file (not img-type))
-      (setq img-type (image-type-from-file-name img-file)))
-
-    (if (and img-file img-type)
+    (if img-file
         (apply #'telega-create-image img-file img-type nil
                :height (telega-chars-xheight (car telega-sticker-size))
                ;; NOTE: do not use max-width setting, it will slow
@@ -374,7 +375,7 @@ Return path to png file."
    (cons sticker (or image-create-fun #'telega-sticker--create-image))
    (if (or (and telega-sticker--use-thumbnail
                 (plist-get sticker :thumbnail))
-           (plist-get sticker :is_animated))
+           (not (telega-sticker-static-p sticker)))
        (cons (plist-get sticker :thumbnail) :file)
      (cons sticker :sticker))
    nil cache-prop))
@@ -440,7 +441,8 @@ COLUMN specifies column to fill stickers into.  By default
                      (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
         'action 'telega-sticker--choosen-action
         'cursor-sensor-functions
-        (when (and (plist-get sticker :is_animated) telega-sticker-animated-play)
+        (when (and (not (telega-sticker-static-p sticker))
+                   telega-sticker-animated-play)
           (list (telega-sticker--gen-sensor-func sticker)))
         )
       (when telega-sticker-set-show-emoji
@@ -482,9 +484,11 @@ SSET can be either `sticker' or `stickerSetInfo'."
            (lambda (sticker-set)
              (let ((stickers (plist-get sticker-set :stickers)))
                (telega-ins-fmt "%s: %d\n"
-                 (cond ((plist-get sset :is_animated) "Animated Stickers")
-                       ((plist-get sset :is_masks) "Masks")
-                       (t "Stickers"))
+                 (cl-ecase (telega--tl-type (plist-get sticker-set :sticker_type))
+                   (stickerTypeStatic   "Stickers")
+                   (stickerTypeAnimated "Animated Stickers")
+                   (stickerTypeVideo    "Video Stickers")
+                   (stickerTypeMask     "Masks"))
                  (length stickers))
                (telega-ins--sticker-list stickers))))
           (sset-id (plist-get sset :id)))
@@ -779,20 +783,28 @@ Install from https://github.com/zevlg/tgs2png"))
 
 (defun telega-sticker--animate (sticker &optional for-msg)
   "Start animating animated STICKER."
-  (cl-assert (plist-get sticker :is_animated))
+  (cl-assert (not (telega-sticker-static-p sticker)))
   (telega-file--download (plist-get sticker :sticker) 32
     (lambda (file)
       (telega-file--renew sticker :sticker)
       (when (telega-file--downloaded-p file)
-        (telega-sticker--animate-to-png file
-            (telega-chars-xheight (car telega-sticker-size))
-          #'telega-sticker--animate-callback sticker for-msg)))))
+        (cl-ecase (telega--tl-type (plist-get sticker :type))
+          (stickerTypeAnimated
+           (telega-sticker--animate-to-png file
+               (telega-chars-xheight (car telega-sticker-size))
+             #'telega-sticker--animate-callback sticker for-msg))
+
+          (stickerTypeVideo
+           (telega-ffplay-to-png (telega--tl-get file :local :path)
+               "-an -vf scale=256:256"
+             (list #'telega-sticker--animate-callback sticker for-msg)))))
+      )))
 
 (defun telega-sticker--gen-sensor-func (sticker)
   "Return sensor function to animate STICKER when entered."
   (cl-assert sticker)
   (lambda (_window _oldpos dir)
-    (when (and (plist-get sticker :is_animated)
+    (when (and (not (telega-sticker-static-p sticker))
                telega-sticker-animated-play)
       (if (eq dir 'entered)
           (telega-sticker--animate sticker)

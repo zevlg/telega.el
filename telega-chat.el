@@ -4826,9 +4826,6 @@ CALLBACK is called after point is moved to the message with MSG-ID."
           (when callback
             (funcall callback)))))))
 
-;; NOTE: Always show help message when jumping to message
-(put 'msg-ring-pop 'telega-help-always t)
-
 (defun telega-chat--goto-thread (chat thread-msg-id
                                       &optional reply-msg-id)
   "Goto reply thread THREAD-MSG."
