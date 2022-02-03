@@ -174,7 +174,8 @@ usage.
 Show them along the side with ~telega-known-inline-bots~
 
 
-* telega-server as a module
+* DONE telega-server as a module
+CLOSED: [2022-01-13 Чт 22:45]
 
 Implement telega-server as Emacs module to improve overall performance.
 
@@ -184,6 +185,9 @@ Implement telega-server as Emacs module to improve overall performance.
 
 **Q**: What are the benefits from having =telega-server= as module
 instead of process?
+
+*NOTE* Won't do.  Still will require us to fully support
+ =telega-server= as external tool.
 
 * DONE TON
   CLOSED: [2020-10-07 Ср 17:42]
@@ -201,12 +205,14 @@ CLOSED: [2020-10-07 Ср 17:42]
 CLOSED: [2020-10-07 Ср 17:42]
 *WONT't DO*
 
-** Voice Chats
+
+* Video/Voice Chats
 - Move =telega-server= bulding to CMake
 - tgvoip (as submodule for =telega=?):
   https://github.com/TelegramMessenger/tgcalls
-  
-*** Collaborative editor based on Voice Chats
+
+** Collaborative editor based on Voice Chats
+
 - *Q*: How to attach supplementary info to the voice chat (file we
   are editing right now) ?
 - Use CRDT for editing commands:
@@ -218,6 +224,14 @@ CLOSED: [2020-10-07 Ср 17:42]
 * Random Ideas
 
 Random list of ideas for telega.el
+
+** Video content automatic viewer
+Automatically goto next video message, when previous video finishes.
+
+- Make ~telega-msg-open-content~ to return process if external process
+  is spawned to show message's content.
+
+- Do logic as it is done for vvnote messages.
 
 ** Generate SVG for chat themes
 - 4 corner gradients using 4 radial gradients, see
