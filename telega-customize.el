@@ -27,6 +27,7 @@
 (require 'cus-edit)                     ; `custom-variable-type'
 (require 'dired)                        ; `dired-dwim-target'
 (require 'svg)                          ; `svg-embed-base-uri-image'
+(require 'minibuffer)                   ; `completing-read-function', `completion-styles'
 
 (defgroup telega nil
   "Telegram client."
@@ -1530,7 +1531,15 @@ Message is ignored if its `:ignore' option is set to non-nil."
   :type 'number
   :group 'telega-chat)
 
-(defcustom telega-completing-read-function 'completing-read-default
+(defcustom telega-completing-read-function
+  ;; NOTE: `flex' completion style is essential for telega, because it
+  ;; might prefix completions with the images and user won't be abale
+  ;; to complete without `flex' completion style
+  (if (or (and (boundp 'ido-mode) (symbol-value 'ido-mode))
+          (and (eq completing-read-function #'completing-read-default)
+               (not (memq 'flex completion-styles))))
+      'ido-completing-read
+    completing-read-function)
   "Completing read function to use."
   :type 'function
   :options '(ido-completing-read
