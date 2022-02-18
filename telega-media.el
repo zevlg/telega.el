@@ -629,22 +629,22 @@ Default is `:telega-image'."
     (unless (equal cached-image simage)
       ;; Update the image
       (if cached-image
-          (progn
-            ;; NOTE: We call `image-flush' because only filename in
-            ;; the image spec can be changed (during animation for
-            ;; example), and image caching won't notice this because
-            ;; `(sxhash cached-image)' and `(sxhash simage)' might
-            ;; return the same!
-            ;; 
-            ;; We do it under `condition-case' to see image spec in
-            ;; case of "Invalid image spec" error, see
-            ;; https://github.com/zevlg/telega.el/issues/349
-            (condition-case nil
-                (image-flush cached-image)
-              (error
-               (error "telega: Invalid image: %S" cached-image)))
-            (setcdr cached-image (cdr simage)))
+          (setcdr cached-image (cdr simage))
         (setq cached-image simage))
+
+      ;; NOTE: We call `image-flush' because only filename in
+      ;; the image spec can be changed (during animation for
+      ;; example), and image caching won't notice this because
+      ;; `(sxhash cached-image)' and `(sxhash simage)' might
+      ;; return the same!
+      ;; 
+      ;; We do it under `condition-case' to see image spec in
+      ;; case of "Invalid image spec" error, see
+      ;; https://github.com/zevlg/telega.el/issues/349
+      (condition-case nil
+          (image-flush cached-image)
+        (error
+         (error "telega: Invalid image: %S" cached-image)))
       (plist-put (car obj-spec) (or cache-prop :telega-image) cached-image))
     cached-image))
 
