@@ -4733,7 +4733,7 @@ Works only if `company' feature is provided."
 If called interactively then copy generated link into the kill ring."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
 
-  (let ((link (telega--replacePermanentChatInviteLink chat)))
+  (let ((link (telega--replacePrimaryChatInviteLink chat)))
     (when (called-interactively-p 'interactive)
       (kill-new link)
       (message "Invite link: %s (copied into kill ring)" link))

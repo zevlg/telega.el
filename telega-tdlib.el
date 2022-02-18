@@ -328,13 +328,13 @@ DATE is a unix timestamp."
           :for_comment (if for-comment-p t :false)))
    :link))
 
-(defun telega--replacePermanentChatInviteLink (chat)
-  "Generate a new permament invite link for a CHAT.
+(defun telega--replacePrimaryChatInviteLink (chat)
+  "Generate a new primary invite link for a CHAT.
 Available for basic groups, supergroups, and channels.
 Return generated link as string."
   (plist-get
    (telega-server--call
-    (list :@type "replacePermanentChatInviteLink"
+    (list :@type "replacePrimaryChatInviteLink"
           :chat_id (plist-get chat :id)))
    :invite_link))
 
