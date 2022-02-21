@@ -641,10 +641,11 @@ Default is `:telega-image'."
       ;; We do it under `condition-case' to see image spec in
       ;; case of "Invalid image spec" error, see
       ;; https://github.com/zevlg/telega.el/issues/349
-      (condition-case nil
-          (image-flush cached-image)
-        (error
-         (error "telega: Invalid image: %S" cached-image)))
+      (when telega-use-images
+        (condition-case nil
+            (image-flush cached-image)
+          (error
+           (error "telega: Invalid image: %S" cached-image))))
       (plist-put (car obj-spec) (or cache-prop :telega-image) cached-image))
     cached-image))
 
