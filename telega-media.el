@@ -637,15 +637,12 @@ Default is `:telega-image'."
       ;; example), and image caching won't notice this because
       ;; `(sxhash cached-image)' and `(sxhash simage)' might
       ;; return the same!
-      ;; 
-      ;; We do it under `condition-case' to see image spec in
-      ;; case of "Invalid image spec" error, see
-      ;; https://github.com/zevlg/telega.el/issues/349
+      ;;
+      ;; We do it under `ignore-errors' to avoid any image related errors
+      ;; see https://github.com/zevlg/telega.el/issues/349
+      ;; and https://t.me/emacs_telega/33101
       (when telega-use-images
-        (condition-case nil
-            (image-flush cached-image)
-          (error
-           (error "telega: Invalid image: %S" cached-image))))
+        (ignore-errors (image-flush cached-image)))
       (plist-put (car obj-spec) (or cache-prop :telega-image) cached-image))
     cached-image))
 
