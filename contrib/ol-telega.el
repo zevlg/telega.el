@@ -55,11 +55,14 @@ It could be link to a chat, message or to content opened from a
 message, file or photo."
   (let* ((msg
           (or (telega-msg-at (point))
-              (and telega-edit-file-mode
-                   telega--help-win-param)))
+              (when telega-edit-file-mode
+                telega--help-win-param)
+              (when (derived-mode-p 'telega-image-mode)
+                telega-image--message)))
          (msg-open-p
           (when msg
             (or telega-edit-file-mode
+                (derived-mode-p 'telega-image-mode)
                 (and (eq 'messageDocument
                          (telega--tl-type (plist-get msg :content)))
                      (y-or-n-p "Store link to a message's file?")))))
