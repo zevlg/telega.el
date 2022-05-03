@@ -3815,7 +3815,8 @@ This attachment can be used only in private chats."
     (telega-chatbuf-input-insert
      (nconc (list :@type "inputMessageVideo"
                   :video ifile
-                  :duration (round (telega-ffplay-get-duration i-filename)))
+                  :duration (round (telega-ffplay-get-duration i-filename))
+                  :supports_streaming t)
             (when resolution
               (list :width (car resolution) :height (cdr resolution)))
             (when ttl
