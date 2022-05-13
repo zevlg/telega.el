@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.10)
+#+title: Telega Manual (v0.8.20)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -7,6 +7,8 @@
 #+macro: user-option-ndv User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}}
 #+macro: user-option User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 #+macro: user-option1 User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc1($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
+
+#+macro: temexdoc    (eval (ellit--indented-docstring (ellit-org--fundoc (telega-match--temex-function (intern $1))) $2))
 
 #+begin_quote
 This version of the manual for bleeding edge =telega= from "master"
@@ -43,10 +45,14 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#rootbuf-fast-navigation][Rootbuf fast navigation]]
     - [[#rootbuf-view-switching][Rootbuf view switching]]
     - [[#voicevideo-calls][Voice/Video calls]]
+  - [[#telega-match-expressions][Telega Match Expressions]]
+    - [[#list-of-chat-temexes][List of Chat Temexes]]
+    - [[#list-of-message-temexes][List of Message Temexes]]
+    - [[#list-of-user-temexes][List of User Temexes]]
+    - [[#list-of-message-sender-temexes][List of Message Sender Temexes]]
+    - [[#customizable-options-making-use-of-telega-match-expressions][Customizable options making use of Telega Match Expressions]]
   - [[#chat-folders][Chat Folders]]
-  - [[#chat-filters][Chat Filters]]
-    - [[#list-of-chat-filters][List of chat filters]]
-    - [[#customizable-options-making-use-of-chat-filters][Customizable options making use of Chat Filters]]
+  - [[#filtering-chats][Filtering chats]]
   - [[#sorting-chats][Sorting chats]]
     - [[#sorting-criteria][Sorting criteria]]
     - [[#customizable-options-making-use-of-sorting-criteria][Customizable options making use of sorting criteria]]
@@ -230,7 +236,12 @@ On MacOS you can install a pre-built =TDLib= package using homebrew from
   $ brew install tdlib
 #+end_src
 
-On Linux, you will need to build =TDLib= from source.
+On Linux, you will need to build =TDLib= from source.  Use 
+[[https://tdlib.github.io/td/build.html][TDLib build instructions generator]] for comprehensive build
+instructions.
+
+In general, you need to install all [[https://github.com/tdlib/td/#dependencies][TDLib dependencies]] then get TDLib
+sources and compile them using =CMake=.
 
 To get the source:
 #+begin_src shell
@@ -425,7 +436,7 @@ Default value: "~/.telega"
 
   List of proxies.
   Format is:
-    (:server "<SERVER>" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
+    (:server "<ADDRESS>" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
 
   where PROXY-TYPE is one of:
   - (:@type "proxyTypeSocks5" :username <USER> :password <PASSWORD>)
@@ -532,30 +543,13 @@ new terms specific to =telega=.  All of them are used in the manual.
        ...
      #+end_example
 
-- Chat Filter :: 
-     S-exp expression used to match chats.
-     See [[#chat-filters][Chat Filters]] for the details.
+- Temex :: 
+     Telega Match Expression - S-expression to match telega objects such
+     as chats or messages.
+     See [[#telega-match-expressions][Telega Match Expressions]] for the details.
 
-- Active Chat Filter :: 
-     List of chat filters applied to the chat list in rootbuf.
-
-     Only chats matching **all** chat filters in the active chat filter
-     are displayed in rootbuf.  Active chat filter is displayed above the
-     chat list in rootbuf, such as:
-     #+begin_example
-       -/------------------------------(main)--------------------------------
-     #+end_example
-
-     ~(telega-filter-active)~ returns active chat filter.
-
-  - User Option: ~telega-filter-default~ 
-
-    Default chat filter to apply. 
-
-    Default value: ~main~
-
-- Custom Chat Filter :: 
-     Chat filter associated with a name.
+- [Custom] Chat Filter :: 
+     Named temex to filter chats in the rootbuf.
 
      Custom chat filters are displayed as buttons above the chat list in
      the rootbuf, such as:
@@ -564,12 +558,12 @@ new terms specific to =telega=.  All of them are used in the manual.
        [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
      #+end_example
 
-     Action for such buttons is to add corresponding chat filter to
+     Action for such buttons is to add corresponding temex to the
      active chat filter.
 
      However, buttons that corresponds to a Telegram Folder, including
-     "Main" and "Archive", substitutes folder in active chat filter with
-     new one at button.
+     "Main" and "Archive", substitutes folder in the active chat filter
+     with new one at button.
 
   - User Option: ~telega-filter-button-width~ 
 
@@ -584,19 +578,17 @@ new terms specific to =telega=.  All of them are used in the manual.
     Default value: ~(0.25 17 25)~
   - User Option: ~telega-filters-custom~ 
 
-    Alist of custom filters in form (NAME . CHAT-FILTER).
-    NAME is evaluated to get resulting string, so it could be a lisp
-    form.
+    Alist of custom filters in form (NAME . TEMEX).
+    NAME can be an i18n string, such as "lng_filters_type_groups".
     This filters are displayed as filter buttons at the top of rootbuf. 
 
     Default value: 
     #+begin_src emacs-lisp
       (("Main" . main)
-       ("Important" or mention
-        (and unread unmuted))
+       ("Important" . important)
        ("Online" and
         (not saved-messages)
-        (online-status "Online"))
+        (user online))
        ("Groups" type basicgroup supergroup)
        ("Channels" type channel)
        ("Archive" . archive))
@@ -612,6 +604,24 @@ new terms specific to =telega=.  All of them are used in the manual.
     Non-nil to show telegram folders along the side with custom filters. 
 
     Default value: ~t~
+
+- Active Chat Filter :: 
+     List of chat temexes applied to the chat list in rootbuf.
+
+     Only chats matching **all** temexes in the active chat filter
+     are displayed in rootbuf.  Active chat filter is displayed above the
+     chat list in rootbuf, such as:
+     #+begin_example
+       -/------------------------------(main)--------------------------------
+     #+end_example
+
+     ~(telega-filter-active)~ returns active chat filter.
+
+  - User Option: ~telega-filter-default~ 
+
+    Temex to filter chats by default. 
+
+    Default value: ~main~
 
 - Chat Sort Criteria :: 
      List of symbols denoting how to sort chats.
@@ -702,20 +712,22 @@ Telega prefix map bindings:
 
 - @@html:<kbd>@@u@@html:</kbd>@@ (~telega-switch-unread-chat~) :: 
      Switch to next unread message in next unread ~CHAT~.
-     Chat considered unread if matches ~telega-filter-unread-chats~ chat filter.
+     ~CHAT~ considered unread if matches ~telega-unread-chat-temex~.
 
      Customizable options:
-  - User Option: ~telega-filter-unread-chats~ 
+  - User Option: ~telega-unread-chat-temex~ 
 
-    Chat Filter for ~telega-switch-unread-chat~ command. 
+    Chat Temex for ~telega-switch-unread-chat~ command. 
 
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 * Root Buffer
 :PROPERTIES:
@@ -769,15 +781,16 @@ Important customizable options:
      Move point to the next chat with unread message.
 
 - @@html:<kbd>@@M-g i@@html:</kbd>@@ (~telega-root-next-important~) :: 
-     Move point to the next chat with important messages.
+     Move point to the next important chat.
 
-     Important message is a message matching "Important" custom
-     [[#chat-filters][chat filter]].  If there is no "Important"
-     custom chat filter, then ~(or mention (and unread unmuted))~
-     chat filter is used.
+     Chat is important if matches ~telega-important-chat-temex~
+     [[#temex][temex]].
 
 - @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-root-next-mention~) :: 
      Move point to the next chat with mention.
+
+- @@html:<kbd>@@M-g !@@html:</kbd>@@ (~telega-root-next-reaction~) :: 
+     Move point to the next chat with unread reaction.
 
 ** Rootbuf view switching
 :PROPERTIES:
@@ -816,12 +829,7 @@ view.
     Alist of topics for "topics" root view.
     Car is name of the topic, cdr is chat filter to match chats. 
 
-    Default value: 
-    #+begin_src emacs-lisp
-      (("Important" or mention
-        (and unread unmuted)))
-    #+end_src
-
+    Default value: ~(("Important" . important))~
   - User Option: ~telega-root-view-topics-folders~ 
 
     Non-nil to add Chat Folders to the list of topics.
@@ -953,6 +961,474 @@ Telegram provides nice voice/video calls.
      View calls.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then view missed calls only.
 
+* Telega Match Expressions
+:PROPERTIES:
+:CUSTOM_ID: telega-match-expressions
+:END:
+
+Telega Match Expression (temex in short) is a verbal expression to
+match TDLib objects.  Temex uses S-exp notation similar to ~rx~
+package for regexps.
+
+Primitive Temex is a named predicate returning non-nil if matches
+some object.  Primitive Temexes can be combined using ~and~, ~or~
+or ~not~ temexes, so temex is a logical combination of other
+temexes down to Primitive Temexes.
+
+~telega-match-gen-predicate~ can be used to generate predicate
+functions out of temex.
+
+Chat Temex examples:
+- ~(return t)~ :: 
+     Matches all chats.
+
+- ~(or saved-messages (type channel bot))~ :: 
+     Matches bots/channels chats or "Saved Messages" chat.
+
+- ~(and unmuted (unread 10) (mention 1))~ :: 
+     Matches unmuted chats with at least 10 unread messages and at
+     least one message with unread mention.
+
+Message Temex examples:
+- ~(sender me)~ :: 
+     Matches all messages sent by me.
+
+- ~(or (prop :contains_unread_mention) unread-reactions)~ :: 
+     Matches messages containing unread mention or reaction.
+
+- ~(and (chat (type channel)) (type text) (contains "\shello\s"))~ :: 
+     Matches channel's text messages containing "hello" word.
+
+List of temexes you can apply to any TDLib object:
+
+- (return ~RET~) :: 
+     Matches if ~RET~ is non-nil and return ~RET~ as a result.
+
+- (or ~TEMEX-LIST~...) :: 
+     Matches if any matcher in the ~TEMEX-LIST~ matches.
+
+- (and ~TEMEX-LIST~...) :: 
+     Matches if all matchers in the ~TEMEX-LIST~ matches.
+     Also matches if ~TEMEX-LIST~ is empty.
+
+- (not ~TEMEX~) :: 
+     Matches if ~TEMEX~ does not match.
+
+- (prop ~PROPERTY~) :: 
+     Matches if ~OBJ~ has non-nil ~PROPERTY~.
+
+- (call ~PREDICATE~) :: 
+     Matches if PREDICATED called with ~OBJ~ as argument returns non-nil.
+
+- (ids ~ID-LIST~...) :: 
+     Matches if OBJ's id is in the ~ID-LIST~.
+
+** List of Chat Temexes
+:PROPERTIES:
+:CUSTOM_ID: list-of-chat-temexes
+:END:
+
+Use ~telega-chat-match-p~ to match a chat.
+
+- (type ~CHAT-TYPE-LIST~), @@html:<kbd>@@/ t@@html:</kbd>@@ (~telega-filter-by-type~) :: 
+     Matches if chat type is one of ~CHAT-TYPE-LIST~.
+
+     Every chat has a type.  Type is one of:
+  - ~private~ Private chat with a Telegram user
+  - ~secret~ Secret chat with a Telegram user
+  - ~bot~ Chat with a Telegram bot
+  - ~basicgroup~ Small chat group, could be upgraded to supergroup
+  - ~supergroup~ Chat group with all the chat possibilities
+  - ~channel~ Supergroup with unlimited members, where only admins can post messages
+
+- (name ~REGEXP~) :: 
+     Matches if chat's title matches ~REGEXP~.
+
+- (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@ (~telega-filter-by-search~) :: 
+     Matches if chat maches search QUERY.
+
+- nearby, @@html:<kbd>@@/ n@@html:</kbd>@@ (~telega-filter-by-nearby~) :: 
+     Matches if chat is nearby ~telega-my-location~.
+
+- (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
+     Matches if custom filter with ~NAME~ matches.
+
+- (has-username [ ~USERNAME~ ]) :: 
+     Matches if chat has username associated with the chat.
+
+- (unread [ ~N~ ]), @@html:<kbd>@@/ u@@html:</kbd>@@ (~telega-filter-by-unread~) :: 
+     Matches if chat has least ~N~ unread messages.
+     By default ~N~ is 1.
+     Also matches chats marked as unread.
+
+- (mention [ ~N~ ]), @@html:<kbd>@@/ m@@html:</kbd>@@ (~telega-filter-by-mention~) :: 
+     Matches if chat has least ~N~ unread mentions.
+     By default ~N~ is 1.
+
+- muted :: 
+     Matches if chat has disabled notifications.
+
+- temporary-muted :: 
+     Matches if ~CHAT~ is temporary muted.
+
+- unmuted, @@html:<kbd>@@/ y@@html:</kbd>@@ (~telega-filter-by-unmuted~) :: 
+     Matches if chat has enabled notifications.
+
+- important, @@html:<kbd>@@/ i@@html:</kbd>@@ (~telega-filter-by-important~) :: 
+     Matches if chat is important.
+     Chat is important if it matches ~telega-important-chat-temex~ chat filter.
+
+- (me-is-owner [ ~OR-ADMIN~ ]) :: 
+     Matches if me is owner of the chat.
+     Only basicgroup, supergroup and channel can be owned.
+     If optional ~OR-ADMIN~ is specified, then match also if me is
+     administrator in the chat.
+
+- me-is-member :: 
+     Matches if me is member of the chat.
+     Matches only basicgroup, supergroup or a channel.
+
+- me-is-anonymous :: 
+     Matches if me is anonymous in the chat.
+
+- has-avatar :: 
+     Matches if chat has chat photo.
+     For non-nil ~ANIMATED-P~ match only if avatar is animated.
+
+- has-chatbuf, @@html:<kbd>@@/ b@@html:</kbd>@@ (~telega-filter-by-has-chatbuf~) :: 
+     Matches if chat has corresponding chatbuf.
+
+- (permission ~PERM~) :: 
+     Matches if chat has ~PERM~ set in chat permissions.
+     ~PERM~ could be one of listed in ~telega-chat--chat-permisions~.
+
+- (my-permission ~PERM~) :: 
+     Matches if me has ~PERM~ permission in the chat.
+     ~PERM~ could be one of in ~telega-chat--chat-permisions~ list or in
+     ~telega-chat--admin-permissions~ list.
+
+- verified, @@html:<kbd>@@/ v@@html:</kbd>@@ (~telega-filter-by-verified~) :: 
+     Matches if chat is verified.
+
+- (restriction ~SUFFIX-LIST~...), @@html:<kbd>@@/ r@@html:</kbd>@@ (~telega-filter-by-restriction~) :: 
+     Matches restricted chats.
+     ~SUFFIX-LIST~ is a list of suffixes to filter on.
+     Suffix can be one of:
+  - "-all"      - All platforms
+  - "-ios"      - For iOS devices
+  - "-android"  - For Android devices
+  - "-wp"       - Windows?
+
+  If ~SUFFIX-LIST~ is not specified, then match any restriction reason.
+
+  Chat restriction reason reported only if chat must be restricted
+  by current client.  See
+  [[https://github.com/tdlib/td/issues/1203][TDLib#1203]]
+
+- top, @@html:<kbd>@@/ T@@html:</kbd>@@ (~telega-filter-by-top~) :: 
+     Matches if chat is in top usage.
+
+- saved-messages :: 
+     Matches only "Saved Messages" chat.
+
+- replies-messages :: 
+     Matches only "Replies" chat.
+
+- tracking, @@html:<kbd>@@/ SPC@@html:</kbd>@@ (~telega-filter-by-tracking~) :: 
+     Matches if chat is in tracking buffers list.
+
+- last-message :: 
+     Matches if chat's last message sent by me.
+
+- (chat-list ~LIST-NAME~), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
+     Matches if chat is in chat list named ~LIST-NAME~.
+     ~LIST-NAME~ is ~main~ or ~archive~ symbol, or string naming Chat Folder.
+
+- main :: 
+     Matches if chat from "Main" chat list.
+
+- archive :: 
+     Matches if chat is archived, i.e. in "Archive" chat list.
+
+- (folder ~FOLDER-NAME~...), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
+     Matches if chat belongs to Folder named ~FOLDER-NAME~.
+
+- has-scheduled-messages :: 
+     Matches if chat has scheduled messages.
+
+- has-action-bar :: 
+     Matches if chat has active action bar.
+
+- has-reply-markup :: 
+     Matches if chat has reply markup message.
+
+- can-get-statistics :: 
+     Matches if statistics available for ~CHAT~.
+
+- has-linked-chat :: 
+     Matches if ~CHAT~ is supergroup and has linked chat.
+
+- has-discussion-group :: 
+     Matches if ~CHAT~ is a channel with a linked discussion group.
+
+- has-location :: 
+     Matches if ~CHAT~ is supergroup and has linked chat.
+
+- inactive-supergroups ,  (~telega-filter-by-inactive-supergroups~) :: 
+     Matches if ~CHAT~ is inactive supergroup.
+
+- default-disable-notification :: 
+     Matches if ~CHAT~ has non-nil default disable notification setting.
+
+- fake-or-scam :: 
+     Matches if chat is fake or scam user or group.
+
+- (has-video-chat [ ~NON-EMPTY~ ]) :: 
+     Matches if chat contains a live video chat.
+     If non-nil ~NON-EMPTY~ is specified, then match only if video chat is
+     not empty.
+
+- has-favorite-messages :: 
+     Matches if chat has favorite messages.
+
+- has-message-ttl :: 
+     Matches if chat has ~:message_ttl~.
+
+- is-broadcast-group :: 
+     Matches if chat is a broadcast group.
+
+- has-sponsored-message :: 
+     Matches if chat has sponsored message.
+     BE AWARE: This filter will do blocking request for every chat.
+
+- has-protected-content :: 
+     Matches if chat has protected content.
+
+- has-default-sender :: 
+     Matches if chat allows choosing a message sender.
+
+- can-send-or-post :: 
+     Me can send or post messages to the ~CHAT~.
+     Me don't need te be a ~CHAT~ member to be able to send messages.
+     Additionally apply ~(or main archive)~ chat filter to check ~CHAT~ is
+     known.
+
+- is-inline-bot :: 
+     Matches if corresponding bot accepts inline requests.
+
+- (unread-reactions [ ~N~ ])
+  Matches if chat has least ~N~ unread reactions.
+  By default ~N~ is 1.
+
+- (user ~USER-TEMEX~) :: 
+     Matches private chat where corresponding user matches ~USER-TEMEX~.
+
+** List of Message Temexes
+:PROPERTIES:
+:CUSTOM_ID: list-of-message-temexes
+:END:
+
+Use ~telega-msg-match-p~ to match a message.
+
+- (type ~MSG-TYPE-LIST~) :: 
+     Matches if message content type is equal to CONTENT-TYPE.
+
+     Every message has a content type.  Most notable message types
+     are: ~Text~, ~Animation~, ~Audio~, ~Document~, ~Photo~,
+     ~Sticker~, ~Video~, ~VideoNote~, ~VoiceNote~, ~Location~, etc.
+
+- seen :: 
+     Return non-nil if message has been viewed in the chat.
+
+- (unread-reactions [~N~]) :: 
+     Matches if message has at least ~N~ unread reactions.
+     By default ~N~ is 1.
+
+- has-chosen-reaction :: 
+     Matches if message has a reaction chosen by me.
+
+- is-reply :: 
+     Matches if message is a reply message.
+
+- post-with-comments :: 
+     Matches if message is a channel post that can be commented.
+
+- web-page :: 
+     Matches messages with webpage having property with ~PROPNAME~.
+
+- (outgoing [ ~ANY-STATE-P~ ]) :: 
+     Matches if message is an outgoing message.
+     This temex differs from ~(sender me)~, matching any outgoing messages,
+     including anonymous messages to channels created by me.
+
+- (ignored [ ~REASON~ ]) :: 
+     Matches if message is an ignored message.
+     If ~REASON~ is specified, then match only if has been ignored by ~REASON~
+     function.
+
+- (contains ~REGEXP~ ) :: 
+     Matches if message's text or caption contains ~REGEXP~.
+     Matching ignores case.
+
+- (chat ~CHAT-TEMEX~) :: 
+     Matches if message's chat matches ~CHAT-TEMEX~.
+
+- (sender ~SENDER-TEMEX~) :: 
+     Matches if message's sender matches ~SENDER-TEMEX~.
+
+** List of User Temexes
+:PROPERTIES:
+:CUSTOM_ID: list-of-user-temexes
+:END:
+
+Use ~telega-user-match-p~ to match a user.
+
+- deleted :: 
+     Matches if user account is deleted.
+
+- (status ~STATUS-LIST~...) :: 
+     Matches if user status is one of ~STATUS-LIST~.
+
+     Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
+     "Recently", "LastWeek", "LastMonth" or "Empty"
+
+- online
+  Matches if user is online.
+
+  Same as ~(status "Online")~ user temex.
+
+- (contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
+     Matches private chats if corresponding user is a contact.
+     If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
+
+- (groups-in-common [ ~N~ ]) :: 
+     Matches if corresponding user has at least ~N~ groups in common with me.
+     By default ~N~ is 1.
+
+- is-telega-patron :: 
+     Matches if corresponding user is a telega patron.
+
+- has-private-forwards :: 
+     Matches if user can't be linked in forwarded messages.
+
+** List of Message Sender Temexes
+:PROPERTIES:
+:CUSTOM_ID: list-of-message-sender-temexes
+:END:
+
+Use ~telega-sender-match-p~ to match a message sender.
+
+- me :: 
+     Matches if sender is me.
+
+- blocked :: 
+     Matches if sender is blocked.
+
+- (user ~USER-TEMEX~) :: 
+     Matches if sender is a user matching ~USER-TEMEX~.
+
+- (chat ~CHAT-TEMEX~) :: 
+     Matches if sender is a chat matching ~CHAT-TEMEX~.
+
+** Customizable options making use of Telega Match Expressions
+:PROPERTIES:
+:CUSTOM_ID: customizable-options-making-use-of-telega-match-expressions
+:END:
+
+- User Option: ~telega-filter-default~ 
+
+  Temex to filter chats by default. 
+
+  Default value: ~main~
+- User Option: ~telega-filters-custom~ 
+
+  Alist of custom filters in form (NAME . TEMEX).
+  NAME can be an i18n string, such as "lng_filters_type_groups".
+  This filters are displayed as filter buttons at the top of rootbuf. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (("Main" . main)
+     ("Important" . important)
+     ("Online" and
+      (not saved-messages)
+      (user online))
+     ("Groups" type basicgroup supergroup)
+     ("Channels" type channel)
+     ("Archive" . archive))
+  #+end_src
+
+- User Option: ~telega-use-tracking-for~ 
+
+  Specifies Chat Filter for chats to be tracked with tracking.el.
+  Make sure you have tracking.el loaded if this option is used.
+  Only chats with corresponding opened chatbuf are tracked.
+  Tracking notifications for telega buffers will use the
+  `telega-tracking` face. 
+
+  Default value: ~nil~
+- User Option: ~telega-rainbow-color-custom-for~ 
+
+  List of custom colors for chats.
+  Each element is cons cell, where car is Chat Filter, and cdr is color. 
+
+  Default value: ~((saved-messages))~
+- User Option: ~telega-chat-prompt-format~ 
+
+  Modeline compatible format for the chatbuf input prompt.
+  You can use ~telega-chatbuf-editing-msg~ or
+  ~telega-chatbuf-replying-msg~ in ~:eval~ section if you want different
+  prompt when editing/replying a message. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    ((:eval
+      (telega-chatbuf-prompt-default-sender-avatar))
+     (:eval
+      (telega-chatbuf-prompt-body))
+     (:eval
+      (when
+          (and telega-use-images
+    	   (telega-chatbuf-match-p 'can-send-or-post))
+        (telega-chatbuf-prompt-chat-avatar)))
+     ">>> ")
+  #+end_src
+
+- User Option: ~telega-chat-group-messages-for~ 
+
+  Chat Filter for chats where to group messages by sender. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (not
+     (or saved-messages
+         (type channel bot)))
+  #+end_src
+
+- User Option: ~telega-chat-show-deleted-messages-for~ 
+
+  Chat Filter for chats where to show deleted messages in chatbuf. 
+
+  Default value: ~nil~
+- User Option: ~telega-chat-use-date-breaks-for~ 
+
+  Chat Filter for chats where to insert date breaks.
+  Date break is a special mark separating two messages received on
+  different days. Such as:
+  #+begin_example
+    MSG1                              <--- msg sent on 27dec
+    -------(28 December 2020)------   <--- date break
+    MSG2                              <--- msg sent on 28dec
+  #+end_example
+
+  Default value: ~all~
+- User Option: ~telega-root-view-topics~ 
+
+  Alist of topics for "topics" root view.
+  Car is name of the topic, cdr is chat filter to match chats. 
+
+  Default value: ~(("Important" . important))~
+
 * Chat Folders
 :PROPERTIES:
 :CUSTOM_ID: chat-folders
@@ -1065,9 +1541,9 @@ Customizable options for Chat Folders:
 
   Default value: ~t~
 
-* Chat Filters
+* Filtering chats
 :PROPERTIES:
-:CUSTOM_ID: chat-filters
+:CUSTOM_ID: filtering-chats
 :END:
 
 Chat Filters are used to match chats, same as regexps are used to
@@ -1087,7 +1563,7 @@ filters, forming final Chat Filter.  So Chat Filter is a logical
 combination of other Chat Filters, down to primitive Chat Filters.
 
 Chat Filter examples:
-- ~all~ :: 
+- ~(return t)~ :: 
      Matches all chats
 
 - ~(or saved-messages (type channel bot))~ :: 
@@ -1104,13 +1580,12 @@ commands:
 
 - @@html:<kbd>@@/ i@@html:</kbd>@@ (~telega-filter-by-important~) :: 
      Filter important chats.
-     Important chat is a chat with unread messages and enabled notifications.
-- @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
-     Match chats by Telegram ~FOLDER~.
-- @@html:<kbd>@@/ e@@html:</kbd>@@, @@html:<kbd>@@/ :@@html:</kbd>@@ (~telega-filters-edit~) :: 
-     Edit and reapply filters list.
+- @@html:<kbd>@@/ o@@html:</kbd>@@ (~telega-filter-by-online-status~) :: 
+     Filter private chats by its user online ~STATUS~.
 - @@html:<kbd>@@/ a@@html:</kbd>@@ (~telega-filter-by-filter~) :: 
      Interactively select a Chat filter to add to active filter.
+- @@html:<kbd>@@/ e@@html:</kbd>@@, @@html:<kbd>@@/ :@@html:</kbd>@@ (~telega-filters-edit~) :: 
+     Edit and reapply filters list.
 - @@html:<kbd>@@/ DEL@@html:</kbd>@@, @@html:<kbd>@@/ d@@html:</kbd>@@ (~telega-filters-pop-last~) :: 
      Pop last ~N~ filters.
 - @@html:<kbd>@@/ !@@html:</kbd>@@ (~telega-filters-negate~) :: 
@@ -1119,354 +1594,7 @@ commands:
 - @@html:<kbd>@@/ /@@html:</kbd>@@ (~telega-filters-reset~) :: 
      Reset active filter to the ~telega-filter-default~.
 
-For other Chat Filter bindings see below.
-
-** List of chat filters
-:PROPERTIES:
-:CUSTOM_ID: list-of-chat-filters
-:END:
-
-- (any ~FILTER-LIST~...) :: 
-     Matches if any filter in ~FILTER-LIST~ matches.
-
-- (or ~FILTER-LIST~...) :: 
-     Same as ~any~
-
-- (all ~FILTER-LIST~...) :: 
-     Matches if all filters in ~FILTER-LIST~ matches.
-     Also matches if ~FILTER-LIST~ is empty.
-
-- (and ~FILTER-LIST~...) :: 
-     Same as ~all~
-
-- (not ~FILTER~) :: 
-     Matches if ~FILTER~ not maches.
-
-- (type ~CHAT-TYPE-LIST~), @@html:<kbd>@@/ t@@html:</kbd>@@ (~telega-filter-by-type~) :: 
-     Matches if chat type is one of ~CHAT-TYPE-LIST~.
-
-     Every chat has a type.  Type is one of:
-  - ~private~ Private chat with a Telegram user
-  - ~secret~ Secret chat with a Telegram user
-  - ~bot~ Chat with a Telegram bot
-  - ~basicgroup~ Small chat group, could be upgraded to supergroup
-  - ~supergroup~ Chat group with all the chat possibilities
-  - ~channel~ Supergroup with unlimited members, where only admins can post messages
-
-- (name ~REGEXP~) :: 
-     Matches if chat's title matches ~REGEXP~.
-
-- (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@ (~telega-filter-by-search~) :: 
-     Matches if chat maches search QUERY.
-
-- nearby, @@html:<kbd>@@/ n@@html:</kbd>@@ (~telega-filter-by-nearby~) :: 
-     Matches if chat is nearby ~telega-my-location~.
-
-- (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
-     Matches if custom filter with ~NAME~ matches.
-
-- pin, @@html:<kbd>@@/ P@@html:</kbd>@@, @@html:<kbd>@@/ ^@@html:</kbd>@@ (~telega-filter-by-pin~) :: 
-     Matches if chat is pinned.
-
-- (has-username [ ~USERNAME~ ]) :: 
-     Matches if chat has username associated with the chat.
-
-- has-pinned-message :: 
-     UNAVAILABLE since TDLib 1.6.10, chat has no fast way (property)
-     to get know that chat has a pinned message.  See
-     https://github.com/tdlib/td/issues/1275
-
-- (unread [ ~N~ ]), @@html:<kbd>@@/ u@@html:</kbd>@@ (~telega-filter-by-unread~) :: 
-     Matches if chat has least ~N~ unread messages.
-     By default ~N~ is 1.
-     Also matches chats marked as unread.
-
-- (mention [ ~N~ ]), @@html:<kbd>@@/ m@@html:</kbd>@@ (~telega-filter-by-mention~) :: 
-     Matches if chat has least ~N~ unread mentions.
-     By default ~N~ is 1.
-
-- unmuted, @@html:<kbd>@@/ y@@html:</kbd>@@ (~telega-filter-by-unmuted~) :: 
-     Matches if chat has enabled notifications.
-
-- (online-status ~STATUS-LIST~...), @@html:<kbd>@@/ o@@html:</kbd>@@ (~telega-filter-by-online-status~) :: 
-     Matches private chat where user status is one of ~STATUS-LIST~.
-
-     Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
-     "Recently", "LastWeek", "LastMonth" or "Empty"
-
-- verified, @@html:<kbd>@@/ v@@html:</kbd>@@ (~telega-filter-by-verified~) :: 
-     Matches if chat is verified.
-
-- (ids ~ID-LIST~...) :: 
-     Matches if chat's id is one of in ~ID-LIST~.
-
-- (me-is-owner [ ~OR-ADMIN~ ]) :: 
-     Matches if me is owner of the chat.
-     Only basicgroup, supergroup and channel can be owned.
-     If optional ~OR-ADMIN~ is specified, then match also if me is
-     administrator in the chat.
-
-- me-is-member :: 
-     Matches if me is member of the chat.
-     Matches only basicgroup, supergroup or a channel.
-
-- me-is-anonymous :: 
-     Matches if me is anonymous in the chat.
-
-- has-last-message :: 
-     Matches if chat has last message.
-
-- has-avatar :: 
-     Matches if chat has chat photo.
-
-- has-animated-avatar :: 
-     Matches if ~CHAT~ has animated chat photo.
-
-- has-chatbuf, @@html:<kbd>@@/ b@@html:</kbd>@@ (~telega-filter-by-has-chatbuf~) :: 
-     Matches if chat has corresponding chatbuf.
-
-- (permission ~PERM~) :: 
-     Matches if chat has ~PERM~ set in chat permissions.
-     ~PERM~ could be one of listed in ~telega-chat--chat-permisions~.
-
-- (my-permission ~PERM~) :: 
-     Matches if me has ~PERM~ permission in the chat.
-     ~PERM~ could be one of in ~telega-chat--chat-permisions~ list or in
-     ~telega-chat--admin-permissions~ list.
-
-- (restriction ~SUFFIX-LIST~...), @@html:<kbd>@@/ r@@html:</kbd>@@ (~telega-filter-by-restriction~) :: 
-     Matches restricted chats.
-     ~SUFFIX-LIST~ is a list of suffixes to filter on.
-     Suffix can be one of:
-  - "-all"      - All platforms
-  - "-ios"      - For iOS devices
-  - "-android"  - For Android devices
-  - "-wp"       - Windows?
-
-  If ~SUFFIX-LIST~ is not specified, then match any restriction reason.
-
-  Chat restriction reason reported only if chat must be restricted
-  by current client.  See
-  [[https://github.com/tdlib/td/issues/1203][TDLib#1203]]
-
-- (contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
-     Matches private chats if corresponding user is a contact.
-     If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
-
-- top, @@html:<kbd>@@/ T@@html:</kbd>@@ (~telega-filter-by-top~) :: 
-     Matches if chat is in top usage.
-
-- saved-messages :: 
-     Matches only "Saved Messages" chat.
-
-- replies-messages :: 
-     Matches only "Replies" chat.
-
-- tracking, @@html:<kbd>@@/ SPC@@html:</kbd>@@ (~telega-filter-by-tracking~) :: 
-     Matches if chat is in tracking buffers list.
-
-- last-message-by-me :: 
-     Matches if chat's last message sent by me.
-
-- (chat-list ~LIST-NAME~), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
-     Matches if chat is in chat list named ~LIST-NAME~.
-     ~LIST-NAME~ is ~main~ or ~archive~ symbol, or string naming Chat Folder.
-
-- (folder ~FOLDER-NAMES~...), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
-     Matches if chat belongs to some Chat Folder of ~FOLDER-NAMES~.
-
-- main :: 
-     Matches if chat from "Main" chat list.
-
-- archive :: 
-     Matches if chat is archived, i.e. in "Archive" chat list.
-
-- has-scheduled-messages :: 
-     Matches if chat has scheduled messages.
-
-- has-action-bar :: 
-     Matches if chat has active action bar.
-
-- has-reply-markup :: 
-     Matches if chat has reply markup message.
-
-- can-get-statistics :: 
-     Matches if statistics available for ~CHAT~.
-
-     Available since TDLib 1.6.9
-
-- has-linked-chat :: 
-     Matches if ~CHAT~ is supergroup and has linked chat.
-
-- has-discussion-group :: 
-     Matches if ~CHAT~ is a channel with a linked discussion group.
-
-- has-location :: 
-     Matches if ~CHAT~ is supergroup and has linked chat.
-
-- inactive-supergroups :: 
-     Matches if ~CHAT~ is inactive supergroup.
-
-- default-disable-notification :: 
-     Matches if ~CHAT~ has non-nil default disable notification setting.
-
-- temporary-muted :: 
-     Matches if ~CHAT~ is temporary muted.
-
-- fake-or-scam :: 
-     Matches if chat is fake or scam user or group.
-
-- (has-video-chat [ ~NON-EMPTY~ ]) :: 
-     Matches if chat contains a live video chat.
-     If non-nil ~NON-EMPTY~ is specified, then match only if video chat is
-     not empty.
-
-- has-favorite-messages :: 
-     Matches if chat has favorite messages.
-
-- is-public :: 
-     Matches if chat has ~:message_ttl~.
-
-- is-broadcast-group :: 
-     Matches if chat is a broadcast group.
-
-- has-groups-in-common :: 
-     Matches if corresponding user has groups in common with me.
-
-- is-telega-patron :: 
-     Matches if corresponding user is a telega patron.
-
-- has-sponsored-message :: 
-     Matches if chat has sponsored message.
-     BE AWARE: This filter will do blocking request for every chat.
-
-- has-protected-content :: 
-     Matches if chat has protected content.
-
-- has-private-forwards :: 
-     Matches if user can't be linked in forwarded messages.
-
-- has-default-sender :: 
-     Matches if chat allows choosing a message sender.
-
-- can-send-or-post :: 
-     Me can send or post messages to the ~CHAT~.
-     Me don't need te be a ~CHAT~ member to be able to send messages.
-     Additionally apply ~(or main archive)~ chat filter to check ~CHAT~ is
-     known.
-
-- is-inline-bot :: 
-     Matches if corresponding bot accepts inline requests.
-
-- (unread-reactions [ ~N~ ]),  (~telega-filter-by-unread-reactions~) :: 
-     Matches if chat has least ~N~ unread reactions.
-     By default ~N~ is 1.
-
-** Customizable options making use of Chat Filters
-:PROPERTIES:
-:CUSTOM_ID: customizable-options-making-use-of-chat-filters
-:END:
-
-- User Option: ~telega-filter-default~ 
-
-  Default chat filter to apply. 
-
-  Default value: ~main~
-- User Option: ~telega-filters-custom~ 
-
-  Alist of custom filters in form (NAME . CHAT-FILTER).
-  NAME is evaluated to get resulting string, so it could be a lisp
-  form.
-  This filters are displayed as filter buttons at the top of rootbuf. 
-
-  Default value: 
-  #+begin_src emacs-lisp
-    (("Main" . main)
-     ("Important" or mention
-      (and unread unmuted))
-     ("Online" and
-      (not saved-messages)
-      (online-status "Online"))
-     ("Groups" type basicgroup supergroup)
-     ("Channels" type channel)
-     ("Archive" . archive))
-  #+end_src
-
-- User Option: ~telega-use-tracking-for~ 
-
-  Specifies Chat Filter for chats to be tracked with tracking.el.
-  Make sure you have tracking.el loaded if this option is used.
-  Only chats with corresponding opened chatbuf are tracked.
-  Tracking notifications for telega buffers will use the
-  `telega-tracking` face. 
-
-  Default value: ~nil~
-- User Option: ~telega-rainbow-color-custom-for~ 
-
-  List of custom colors for chats.
-  Each element is cons cell, where car is Chat Filter, and cdr is color. 
-
-  Default value: ~((saved-messages))~
-- User Option: ~telega-chat-prompt-format~ 
-
-  Modeline compatible format for the chatbuf input prompt.
-  You can use ~telega-chatbuf-editing-msg~ or
-  ~telega-chatbuf-replying-msg~ in ~:eval~ section if you want different
-  prompt when editing/replying a message. 
-
-  Default value: 
-  #+begin_src emacs-lisp
-    ((:eval
-      (telega-chatbuf-prompt-default-sender-avatar))
-     (:eval
-      (telega-chatbuf-prompt-body))
-     (:eval
-      (when
-          (and telega-use-images
-    	   (telega-chatbuf-match-p 'can-send-or-post))
-        (telega-chatbuf-prompt-chat-avatar)))
-     ">>> ")
-  #+end_src
-
-- User Option: ~telega-chat-group-messages-for~ 
-
-  Chat Filter for chats where to group messages by sender. 
-
-  Default value: 
-  #+begin_src emacs-lisp
-    (not
-     (or saved-messages
-         (type channel bot)))
-  #+end_src
-
-- User Option: ~telega-chat-show-deleted-messages-for~ 
-
-  Chat Filter for chats where to show deleted messages in chatbuf. 
-
-  Default value: ~nil~
-- User Option: ~telega-chat-use-date-breaks-for~ 
-
-  Chat Filter for chats where to insert date breaks.
-  Date break is a special mark separating two messages received on
-  different days. Such as:
-  #+begin_example
-    MSG1                              <--- msg sent on 27dec
-    -------(28 December 2020)------   <--- date break
-    MSG2                              <--- msg sent on 28dec
-  #+end_example
-
-  Default value: ~all~
-- User Option: ~telega-root-view-topics~ 
-
-  Alist of topics for "topics" root view.
-  Car is name of the topic, cdr is chat filter to match chats. 
-
-  Default value: 
-  #+begin_src emacs-lisp
-    (("Important" or mention
-      (and unread unmuted)))
-  #+end_src
-
+For other chat filtering bindings see [[#list-of-chat-temexes][List of Chat Temexes]]
 
 * Sorting chats
 :PROPERTIES:
@@ -1591,7 +1719,10 @@ Important customizable options:
 
 @@html:<kbd>@@M-g@@html:</kbd>@@ prefix in chatbuf is used to jump across various chat
 messages:
-- @@html:<kbd>@@M-g d@@html:</kbd>@@, @@html:<kbd>@@M-g !@@html:</kbd>@@ (~telega-chatbuf-goto-date~) :: 
+- @@html:<kbd>@@M-g !@@html:</kbd>@@ (~telega-chatbuf-next-unread-reaction~) :: 
+     Goto next unread reaction in chat buffer.
+
+- @@html:<kbd>@@M-g d@@html:</kbd>@@ (~telega-chatbuf-goto-date~) :: 
      Goto last message before ~DATE~ timestamp.
 
 - @@html:<kbd>@@M-g <@@html:</kbd>@@ (~telega-chatbuf-history-beginning~) :: 
@@ -2205,14 +2336,14 @@ even if message has been sent by blocked sender (user or chat).
 Ignoring messages can be done by adding function into
 ~telega-msg-ignore-predicates~.  This function must accept single
 argument - message, and return non-nil if messages should be ignored.
+You can use ~telega-match-gen-predicate~ to generate message
+predicates out of [[#telega-match-expressions][Telega Match Expressions]].
 For example, to ignore messages from particular user with ~id=12345~
 you could add next code:
 
 #+begin_src emacs-lisp
   (defun my-telega-ignore-12345-user (msg)
-    (let ((sender (telega-msg-sender msg)))
-      (and (telega-user-p sender)
-  	 (= (plist-get sender :id) 12345))))
+    (telega-msg-match-p msg '(sender (ids 12345))))
 
   (add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 #+end_src
@@ -2220,7 +2351,8 @@ you could add next code:
 Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
-  (add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
+  (add-hook 'telega-msg-ignore-predicates
+  	  (telega-match-gen-predicate "msg-" '(sender blocked)))
 #+end_src
 
 To view recently ignored messages use
@@ -2265,17 +2397,27 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
+
+     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
+
+     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
+
+     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
+
+     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
+
+     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command
@@ -2584,9 +2726,9 @@ Customizable options:
 :END:
 
 Global minor mode to automatically open content for incoming
-messages.  Message automatically opens if its type is in the
-~telega-autoplay-messages~ list and message content is fully
-observable.
+messages.  Message automatically opens if it matches against
+~telega-autoplay-msg-temex~ [[#telega-match-expressions][Message
+Temex]] and message's content is fully observable.
 
 Enable with ~(telega-autoplay-mode 1)~ or at =telega= load time:
 #+begin_src emacs-lisp
@@ -2594,21 +2736,11 @@ Enable with ~(telega-autoplay-mode 1)~ or at =telega= load time:
 #+end_src
 
 Customizable options:
-- User Option: ~telega-autoplay-for~ 
+- User Option: ~telega-autoplay-msg-temex~ 
 
-  Chat Filter for chats where to automatically open content. 
+  Message Temex for messages to automatically play content for. 
 
-  Default value: ~all~
-- User Option: ~telega-autoplay-outgoing~ 
-
-  Non-nil to play outgoing messages as well. 
-
-  Default value: ~t~
-- User Option: ~telega-autoplay-messages~ 
-
-  Message to automatically play when received. 
-
-  Default value: ~(messageAnimation messageSticker messageAnimatedEmoji)~
+  Default value: ~(type Animation Sticker AnimatedEmoji)~
 
 ** telega-squash-message-mode
 :PROPERTIES:
@@ -3124,7 +3256,7 @@ To enable advertisement blocking use:
 Customizable options:
 - User Option: ~telega-adblock-for~ 
 
-  Chat Filter defines for which chats to apply adblock logic. 
+  Chat Temex to match chats for which to apply adblock logic. 
 
   Default value: 
   #+begin_src emacs-lisp
@@ -3143,7 +3275,7 @@ Customizable options:
   Default value: ~nil~
 - User Option: ~telega-adblock-verbose~ 
 
-  Non-nil to show (in echo area) reason why message is ignored. 
+  Non-nil to show (in echo area) reason why message is ignored by adblock. 
 
   Default value: ~nil~
 - User Option: ~telega-adblock-max-distance~ 
@@ -3156,7 +3288,7 @@ Customizable options:
 - User Option: ~telega-adblock-forwarded-messages~ 
 
   Non-nil to block messages forwarded from other channels.
-  Block them even if message has no links at all. 
+  Block them even if a message has no links at all. 
 
   Default value: ~t~
 - User Option: ~telega-adblock-sponsored-messages-from~ 
@@ -3169,13 +3301,16 @@ Customizable options:
   are already member of. 
 
   Default value: ~(or main archive)~
-- User Option: ~telega-adblock-allow-messages-with-comments~ 
+- User Option: ~telega-adblock-block-msg-temex~ 
 
-  Non-nil to not block messages that can be commented.
-  Advertisement messages usually can't be commented, however sometimes
-  event ad messages can be commented. 
+  Message's matching this temex will be ignored by adblock. 
 
   Default value: ~nil~
+- User Option: ~telega-adblock-allow-msg-temex~ 
+
+  Message's matching this temex will be allowed. 
+
+  Default value: ~(or is-reply post-with-comments)~
 
 ** /telega-channels-export.el/ -- Export Telegam channels to OPML
 :PROPERTIES:

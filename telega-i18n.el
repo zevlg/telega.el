@@ -172,6 +172,12 @@ Return one of: `:zero_value', `:one_value', `:two_value',
       (setq args (cddr args)))
     val))
 
+(defun telega-i18n-noerror (key)
+  "Same as `telega-i18n', but do not trigger an error if KEY is not found.
+Return KEY if KEY is unknown to i18n."
+  (or (ignore-errors (telega-i18n key))
+      key))
+
 (provide 'telega-i18n)
 
 ;;; telega-i18n.el ends here

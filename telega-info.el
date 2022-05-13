@@ -720,7 +720,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
             (telega-ins--button "Terminate"
               :value session
               :action (lambda (sess)
-                        (when (yes-or-no-p "Terminate? ")
+                        (when (yes-or-no-p
+                               (format "Terminate '%s v%s'? " app-name app-ver))
                           (telega--terminateSession (plist-get sess :id))
                           (telega-save-cursor
                             (telega-describe-active-sessions

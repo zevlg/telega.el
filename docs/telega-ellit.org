@@ -7,6 +7,8 @@
 #+MACRO: user-option User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 #+MACRO: user-option1 User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc1($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 
+#+MACRO: temexdoc    (eval (ellit--indented-docstring (ellit-org--fundoc (telega-match--temex-function (intern $1))) $2))
+
 #+ELLIT-INCLUDE: telega-note-file :eval
 
 * Contents                                                     :nohtmlexport:
@@ -118,7 +120,12 @@ On MacOS you can install a pre-built =TDLib= package using homebrew from
 $ brew install tdlib
 #+end_src
 
-On Linux, you will need to build =TDLib= from source.
+On Linux, you will need to build =TDLib= from source.  Use 
+[[https://tdlib.github.io/td/build.html][TDLib build instructions generator]] for comprehensive build
+instructions.
+
+In general, you need to install all [[https://github.com/tdlib/td/#dependencies][TDLib dependencies]] then get TDLib
+sources and compile them using =CMake=.
 
 To get the source:
 #+begin_src shell
@@ -352,14 +359,37 @@ new terms specific to =telega=.  All of them are used in the manual.
   ...
   #+end_example
 
-- Chat Filter ::
-  S-exp expression used to match chats.
-  See [[#chat-filters][Chat Filters]] for the details.
+- Temex ::
+  Telega Match Expression - S-expression to match telega objects such
+  as chats or messages.
+  See [[#telega-match-expressions][Telega Match Expressions]] for the details.
+
+- [Custom] Chat Filter ::
+  Named temex to filter chats in the rootbuf.
+
+  Custom chat filters are displayed as buttons above the chat list in
+  the rootbuf, such as:
+  #+begin_example
+  [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
+  [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
+  #+end_example
+
+  Action for such buttons is to add corresponding temex to the
+  active chat filter.
+
+  However, buttons that corresponds to a Telegram Folder, including
+  "Main" and "Archive", substitutes folder in the active chat filter
+  with new one at button.
+
+  + {{{user-option(telega-filter-button-width, 4)}}}
+  + {{{user-option(telega-filters-custom, 4)}}}
+  + {{{user-option(telega-filter-custom-expand, 4)}}}
+  + {{{user-option(telega-filter-custom-show-folders, 4)}}}
 
 - Active Chat Filter ::
-  List of chat filters applied to the chat list in rootbuf.
+  List of chat temexes applied to the chat list in rootbuf.
 
-  Only chats matching **all** chat filters in the active chat filter
+  Only chats matching **all** temexes in the active chat filter
   are displayed in rootbuf.  Active chat filter is displayed above the
   chat list in rootbuf, such as:
   #+begin_example
@@ -369,28 +399,6 @@ new terms specific to =telega=.  All of them are used in the manual.
   ~(telega-filter-active)~ returns active chat filter.
 
   - {{{user-option(telega-filter-default, 4)}}}
-
-- Custom Chat Filter ::
-  Chat filter associated with a name.
-
-  Custom chat filters are displayed as buttons above the chat list in
-  the rootbuf, such as:
-  #+begin_example
-  [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
-  [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
-  #+end_example
-
-  Action for such buttons is to add corresponding chat filter to
-  active chat filter.
-
-  However, buttons that corresponds to a Telegram Folder, including
-  "Main" and "Archive", substitutes folder in active chat filter with
-  new one at button.
-
-  + {{{user-option(telega-filter-button-width, 4)}}}
-  + {{{user-option(telega-filters-custom, 4)}}}
-  + {{{user-option(telega-filter-custom-expand, 4)}}}
-  + {{{user-option(telega-filter-custom-show-folders, 4)}}}
 
 - Chat Sort Criteria ::
   List of symbols denoting how to sort chats.
@@ -486,45 +494,39 @@ Telegram provides nice voice/video calls.
 {{{kbd(c)}}} prefix in rootbuf is used to call VoIP commands:
 #+ELLIT-INCLUDE: ../telega-root.el :label rootbuf-voip-bindings
 
-* Chat Folders
+* Telega Match Expressions
 
-#+ELLIT-INCLUDE: ../telega-folders.el :label commentary
+#+ELLIT-INCLUDE: ../telega-match.el :label commentary
 
-{{{kbd(F)}}} prefix in rootbuf is used to operate on Chat Folders:
-#+ELLIT-INCLUDE: ../telega-root.el :label rootbuf-folder-bindings
+List of temexes you can apply to any TDLib object:
 
-Customizable options for Chat Folders:
-#+ELLIT-INCLUDE: ../telega-customize.el :label folders-options
+#+ELLIT-INCLUDE: ../telega-match.el :label temex
 
-* Chat Filters
+** List of Chat Temexes
 
-#+ELLIT-INCLUDE: ../telega-filter.el :label commentary
+Use ~telega-chat-match-p~ to match a chat.
 
-{{{kbd(/)}}} prefix in rootbuf is used for some useful filtering
-commands:
+#+ELLIT-INCLUDE: ../telega-match.el :label chat-temex
 
-- {{{where-is(telega-filter-by-important,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filter-by-important, 2)}}}
-- {{{where-is(telega-filter-by-folder,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filter-by-folder, 2)}}}
-- {{{where-is(telega-filters-edit,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filters-edit, 2)}}}
-- {{{where-is(telega-filter-by-filter,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filter-by-filter, 2)}}}
-- {{{where-is(telega-filters-pop-last,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filters-pop-last, 2)}}}
-- {{{where-is(telega-filters-negate,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filters-negate, 2)}}}
-- {{{where-is(telega-filters-reset,telega-root-mode-map)}}} ::
-  {{{fundoc(telega-filters-reset, 2)}}}
+** List of Message Temexes
 
-For other Chat Filter bindings see below.
+Use ~telega-msg-match-p~ to match a message.
 
-** List of chat filters
+#+ELLIT-INCLUDE: ../telega-match.el :label msg-temex
 
-#+ELLIT-INCLUDE: ../telega-filter.el :label chat-filters
+** List of User Temexes
 
-** Customizable options making use of Chat Filters
+Use ~telega-user-match-p~ to match a user.
+
+#+ELLIT-INCLUDE: ../telega-match.el :label user-temex
+
+** List of Message Sender Temexes
+
+Use ~telega-sender-match-p~ to match a message sender.
+
+#+ELLIT-INCLUDE: ../telega-match.el :label sender-temex
+
+** Customizable options making use of Telega Match Expressions
 
 - {{{user-option(telega-filter-default, 2)}}}
 - {{{user-option(telega-filters-custom, 2)}}}
@@ -535,6 +537,40 @@ For other Chat Filter bindings see below.
 - {{{user-option(telega-chat-show-deleted-messages-for, 2)}}}
 - {{{user-option(telega-chat-use-date-breaks-for, 2)}}}
 - {{{user-option(telega-root-view-topics, 2)}}}
+
+* Chat Folders
+
+#+ELLIT-INCLUDE: ../telega-folders.el :label commentary
+
+{{{kbd(F)}}} prefix in rootbuf is used to operate on Chat Folders:
+#+ELLIT-INCLUDE: ../telega-root.el :label rootbuf-folder-bindings
+
+Customizable options for Chat Folders:
+#+ELLIT-INCLUDE: ../telega-customize.el :label folders-options
+
+* Filtering chats
+
+#+ELLIT-INCLUDE: ../telega-filter.el :label commentary
+
+{{{kbd(/)}}} prefix in rootbuf is used for some useful filtering
+commands:
+
+- {{{where-is(telega-filter-by-important,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filter-by-important, 2)}}}
+- {{{where-is(telega-filter-by-online-status,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filter-by-online-status, 2)}}}
+- {{{where-is(telega-filter-by-filter,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filter-by-filter, 2)}}}
+- {{{where-is(telega-filters-edit,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filters-edit, 2)}}}
+- {{{where-is(telega-filters-pop-last,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filters-pop-last, 2)}}}
+- {{{where-is(telega-filters-negate,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filters-negate, 2)}}}
+- {{{where-is(telega-filters-reset,telega-root-mode-map)}}} ::
+  {{{fundoc(telega-filters-reset, 2)}}}
+
+For other chat filtering bindings see [[#list-of-chat-temexes][List of Chat Temexes]]
 
 * Sorting chats
 
@@ -928,14 +964,14 @@ even if message has been sent by blocked sender (user or chat).
 Ignoring messages can be done by adding function into
 ~telega-msg-ignore-predicates~.  This function must accept single
 argument - message, and return non-nil if messages should be ignored.
+You can use ~telega-match-gen-predicate~ to generate message
+predicates out of [[#telega-match-expressions][Telega Match Expressions]].
 For example, to ignore messages from particular user with ~id=12345~
 you could add next code:
 
 #+begin_src emacs-lisp
 (defun my-telega-ignore-12345-user (msg)
-  (let ((sender (telega-msg-sender msg)))
-    (and (telega-user-p sender)
-         (= (plist-get sender :id) 12345))))
+  (telega-msg-match-p msg '(sender (ids 12345))))
 
 (add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 #+end_src
@@ -943,7 +979,8 @@ you could add next code:
 Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
-(add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
+(add-hook 'telega-msg-ignore-predicates
+          (telega-match-gen-predicate "msg-" '(sender blocked)))
 #+end_src
 
 To view recently ignored messages use

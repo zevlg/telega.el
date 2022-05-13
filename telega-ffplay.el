@@ -25,49 +25,64 @@
 
 ;;; Code:
 (require 'cl-lib)
+(require 'rx)
+
 (require 'telega-core)
 
-(defun telega-ffplay--check-ffmpeg-output (option support &rest desired-properties)
-  "Check the ffmpeg output for the OPTION for the DESIRED-PROPERTIES.
-SUPPORT should be a list of states supported by the DESIRED-PROPERTIES.
-Currently it may contain a decoder, an encoder, or both."
-  (let* ((output (shell-command-to-string (concat "ffmpeg -v quiet " option)))
-         (header-end (when (string-match " -+$" output)
-                       (match-beginning 0)))
-         (additional-characters
-          (when-let ((header (when header-end
-                               (string-trim
-                                (cadr (split-string
-                                       (substring output 0 header-end) "\n"))))))
-            (when (string-match (regexp-quote "=") header)
-              (- (match-beginning 0) 2)))))
-    (cl-remove-if-not
-     #'stringp
-     (mapcar (lambda (prop)
-               (when (string-match-p
-                      (concat (concat (if (memq 'decoder support) "D" ".")
-                                      (if (memq 'encoder support) "E" "."))
-                              (when additional-characters
-                                (cl-assert (>= additional-characters 0))
-                                (make-string additional-characters ?\.))
-                              prop)
-                      output)
-                 prop))
-             desired-properties))))
-
-(defun telega-ffplay-check-codecs (how &rest codecs)
-  "Check CODEC is available in ffmpeg.
-Return list of available codecs."
-  (apply #'telega-ffplay--check-ffmpeg-output "-codecs" how codecs))
-
-(defconst telega-ffplay--has-encoders
-  (telega-ffplay-check-codecs '(encoder) "opus" "hevc" "aac" "h264"))
+(defvar telega-ffplay-media-timestamp nil
+  "Bind this variable to start playing at the given media timestamp.")
 
 (defconst telega-ffplay-buffer-name
   (concat (unless telega-debug " ") "*ffplay telega*"))
 
-(defvar telega-ffplay-media-timestamp nil
-  "Bind this variable to start playing at the given media timestamp.")
+(defconst telega-ffplay--check-regexp
+  (rx string-start
+      space
+      (group (any ?. ?D)) ; decoder
+      (group (any ?. ?E)) ; encoder
+      (0+ (not space))
+      space
+      (group (0+ (not (any ?= space)))) ;
+      space
+      (0+ any)
+      string-end)
+  "Regexp to match output ffmpeg's output.")
+
+(defun telega-ffplay--check-ffmpeg-output (option &rest names)
+  "Check the ffmpeg output for the OPTION for the NAMES.
+Return cons cell, where car is a list of decoders and cdr is a list of
+encoders."
+  (let* ((output (shell-command-to-string (concat "ffmpeg -v quiet " option)))
+         (decoders nil)
+         (encoders nil))
+    (dolist (line (split-string output "\n" t))
+      (when (string-match telega-ffplay--check-regexp line)
+        (let ((d (match-string 1 line))
+              (e (match-string 2 line))
+              (codec (match-string 3 line))
+              (enc-list (when (string-match "(encoders: \\([^)]+\\))" line)
+                          (split-string (match-string 1 line) " " t " ")))
+              (dec-list (when (string-match "(decoders: \\([^)]+\\))" line)
+                          (split-string (match-string 1 line) " " t " "))))
+          (when (member codec names)
+            (when (string= "D" d)
+              (setq decoders (nconc decoders (cons codec dec-list))))
+            (when (string= "E" e)
+              (setq encoders (nconc encoders (cons codec enc-list))))))))
+    (cons decoders encoders)))
+
+(defconst telega-ffplay--codecs
+  (telega-ffplay--check-ffmpeg-output
+   "-codecs" "opus" "hevc" "aac" "h264" "webp" "vp9")
+  "Cons, where car is a list of encoders, and cdr is a list of decoders.")
+
+(defun telega-ffplay-has-encoder-p (codec-name)
+  "Return non-nil if ffmpeg supports CODEC-NAME as encoder."
+  (member codec-name (cdr telega-ffplay--codecs)))
+
+(defun telega-ffplay-has-decoder-p (codec-name)
+  "Return non-nil if ffmpeg supports CODEC-NAME as decoder."
+  (member codec-name (car telega-ffplay--codecs)))
 
 (defun telega-ffplay-proc ()
   "Return current ffplay process."
@@ -446,7 +461,7 @@ PNGEXT-ARGS is a string for additional arguments to pngextractor."
       proc)))
 
 (cl-defun telega-ffplay-to-png (filename ffmpeg-args callback-spec
-                                         &key seek speed)
+                                         &key seek speed vcodec)
   "Play video FILENAME extracting png images from it.
 FFMPEG-ARGS is a string for additional arguments to ffplay.
 
@@ -474,6 +489,8 @@ Return newly created proc."
          (proc (telega-ffplay-to-png--internal
                 (concat (when seek
                           (format " -ss %.2f" seek))
+                        (when vcodec
+                          (concat " -vcodec " vcodec))
                         " -i '" (expand-file-name filename) "'"
                         (when ffmpeg-args
                           (concat " " ffmpeg-args))

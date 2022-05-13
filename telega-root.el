@@ -55,6 +55,8 @@
 (declare-function telega-account-current "telega")
 (declare-function telega-account-switch "telega" (account))
 
+(defvar telega-temex-remap-alist)
+
 
 (defvar telega-root--view nil
   "Current root view spec.
@@ -253,10 +255,8 @@ Use `telega-root-aux-inserters' to customize it.")
     ;; - {{{where-is(telega-root-next-important,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-root-next-important, 2)}}}
     ;;
-    ;;   Important message is a message matching "Important" custom
-    ;;   [[#chat-filters][chat filter]].  If there is no "Important"
-    ;;   custom chat filter, then ~(or mention (and unread unmuted))~
-    ;;   chat filter is used.
+    ;;   Chat is important if matches ~telega-important-chat-temex~
+    ;;   [[#temex][temex]].
     (define-key map (kbd "i") 'telega-root-next-important)
 
     ;;; ellit-org: rootbuf-fastnav-bindings
@@ -264,12 +264,16 @@ Use `telega-root-aux-inserters' to customize it.")
     ;;   {{{fundoc(telega-root-next-mention, 2)}}}
     (define-key map (kbd "m") 'telega-root-next-mention)
     (define-key map (kbd "@") 'telega-root-next-mention)
+
+    ;;; ellit-org: rootbuf-fastnav-bindings
+    ;; - {{{where-is(telega-root-next-reaction,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-root-next-reaction, 2)}}}
+    (define-key map (kbd "!") 'telega-root-next-reaction)
     map)
   "Keymap for fast navigation commands in the rootbuf.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map [remap self-insert-command] 'ignore)
     (define-key map "n" 'telega-button-forward)
     (define-key map "p" 'telega-button-backward)
     (define-key map [?\t] 'telega-button-forward)
@@ -641,11 +645,11 @@ Keep cursor position only if CHAT is visible."
 
 (defun telega-root--global-chat-pp (chat &optional custom-inserter)
   "Display CHAT found in global public chats search."
-  (let* ((telega-chat-button-width
-          (round (* (telega-canonicalize-number telega-chat-button-width
-                                                telega-root-fill-column)
-                    1.5)))
-         (telega-filters--inhibit-list '(chat-list folder main archive)))
+  (let ((telega-chat-button-width
+         (round (* (telega-canonicalize-number telega-chat-button-width
+                                               telega-root-fill-column)
+                   1.5)))
+        (telega-temex-remap-alist '((chat-chat-list . (return t)))))
     (telega-root--chat-known-pp chat custom-inserter)))
 
 (defun telega-root--nearby-chat-known-pp (chat &optional custom-inserter)
@@ -669,8 +673,8 @@ CONTACT is some user you have exchanged contacts with."
   (let* ((user-chat
           (telega-chat-get (plist-get contact-user :id) 'offline))
          (visible-p (or (not user-chat)
-                        (let ((telega-filters--inhibit-list
-                               '(chat-list folder main archive)))
+                        (let ((telega-temex-remap-alist
+                               '((chat-chat-list . (return t)))))
                           (telega-chat-match-active-p user-chat)))))
     (when visible-p
       (telega-button--insert 'telega-user contact-user
@@ -877,16 +881,19 @@ If corresponding chat node does not exists in EWOC, then create new one."
   (telega-root-next-match-p 'unread n 'wrap))
 
 (defun telega-root-next-important (n)
-  "Move point to the next chat with important messages."
+  "Move point to the next important chat."
   (interactive "p")
-  (let ((important-filter (or (cdr (assoc "Important" telega-filters-custom))
-                              '(or mention (and unread unmuted)))))
-    (telega-root-next-match-p important-filter n 'wrap)))
+  (telega-root-next-match-p 'important n 'wrap))
 
 (defun telega-root-next-mention (n)
   "Move point to the next chat with mention."
   (interactive "p")
   (telega-root-next-match-p 'mention n 'wrap))
+
+(defun telega-root-next-reaction (n)
+  "Move point to the next chat with unread reaction."
+  (interactive "p")
+  (telega-root-next-match-p 'unread-reactions n 'wrap))
 
 
 ;;; Searching contacts, global public chats and messages
@@ -1404,6 +1411,29 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
   (telega-root--call-messages-search))
 
+(defun telega-root--blocked-chat-pp (chat)
+  "Pretty printer for blocket CHAT."
+  (when (telega-msg-sender-blocked-p chat)
+    (let ((telega-chat-button-width
+           (round (* (telega-canonicalize-number telega-chat-button-width
+                                                 telega-root-fill-column)
+                     1.5)))
+          (telega-temex-remap-alist '((chat-chat-list . (return t)))))
+      (telega-root--chat-known-pp chat))))
+
+(defun telega-view-blocked ()
+  "View blocked message senders."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-blocked
+         "Blocked Chats"
+         (list :name "blocked"
+               :sorter #'telega-chat>
+               :pretty-printer #'telega-root--blocked-chat-pp
+               :items (telega-filter-chats telega--ordered-chats
+                        '(call telega-msg-sender-blocked-p))
+               :on-chat-update #'telega-root--any-on-chat-update))))
+
 (defun telega-root--topics-on-chat-update (ewoc-name ewoc chat)
   "Handler for chat updates in \"topics\" root view."
   (let ((topic-filter (plist-get (telega-root-view--ewoc-spec ewoc-name)
@@ -1682,7 +1712,7 @@ Default Disable Notification setting"))
     (lambda (chat)
       (when (telega-chat-match-p chat (list 'folder folder-name))
         (let ((telega-tdlib--chat-list tdlib-chat-list)
-              (telega-filters--inhibit-list '(chat-list folder main archive)))
+              (telega-temex-remap-alist '((chat-chat-list . (return t)))))
           (telega-root--chat-known-pp chat))))))
 
 (defun telega-view-folders--gen-sorter (folder-name)

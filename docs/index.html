@@ -3,196 +3,12 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2022-02-03 Чт 10:00 -->
+<!-- 2022-05-13 Пт 08:49 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.10)</title>
+<title>Telega Manual (v0.8.20)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
-<style>
-  #content { max-width: 60em; margin: auto; }
-  .title  { text-align: center;
-             margin-bottom: .2em; }
-  .subtitle { text-align: center;
-              font-size: medium;
-              font-weight: bold;
-              margin-top:0; }
-  .todo   { font-family: monospace; color: red; }
-  .done   { font-family: monospace; color: green; }
-  .priority { font-family: monospace; color: orange; }
-  .tag    { background-color: #eee; font-family: monospace;
-            padding: 2px; font-size: 80%; font-weight: normal; }
-  .timestamp { color: #bebebe; }
-  .timestamp-kwd { color: #5f9ea0; }
-  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
-  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
-  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
-  .underline { text-decoration: underline; }
-  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
-  p.verse { margin-left: 3%; }
-  pre {
-    border: 1px solid #e6e6e6;
-    border-radius: 3px;
-    background-color: #f2f2f2;
-    padding: 8pt;
-    font-family: monospace;
-    overflow: auto;
-    margin: 1.2em;
-  }
-  pre.src {
-    position: relative;
-    overflow: auto;
-  }
-  pre.src:before {
-    display: none;
-    position: absolute;
-    top: -8px;
-    right: 12px;
-    padding: 3px;
-    color: #555;
-    background-color: #f2f2f299;
-  }
-  pre.src:hover:before { display: inline; margin-top: 14px;}
-  /* Languages per Org manual */
-  pre.src-asymptote:before { content: 'Asymptote'; }
-  pre.src-awk:before { content: 'Awk'; }
-  pre.src-authinfo::before { content: 'Authinfo'; }
-  pre.src-C:before { content: 'C'; }
-  /* pre.src-C++ doesn't work in CSS */
-  pre.src-clojure:before { content: 'Clojure'; }
-  pre.src-css:before { content: 'CSS'; }
-  pre.src-D:before { content: 'D'; }
-  pre.src-ditaa:before { content: 'ditaa'; }
-  pre.src-dot:before { content: 'Graphviz'; }
-  pre.src-calc:before { content: 'Emacs Calc'; }
-  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
-  pre.src-fortran:before { content: 'Fortran'; }
-  pre.src-gnuplot:before { content: 'gnuplot'; }
-  pre.src-haskell:before { content: 'Haskell'; }
-  pre.src-hledger:before { content: 'hledger'; }
-  pre.src-java:before { content: 'Java'; }
-  pre.src-js:before { content: 'Javascript'; }
-  pre.src-latex:before { content: 'LaTeX'; }
-  pre.src-ledger:before { content: 'Ledger'; }
-  pre.src-lisp:before { content: 'Lisp'; }
-  pre.src-lilypond:before { content: 'Lilypond'; }
-  pre.src-lua:before { content: 'Lua'; }
-  pre.src-matlab:before { content: 'MATLAB'; }
-  pre.src-mscgen:before { content: 'Mscgen'; }
-  pre.src-ocaml:before { content: 'Objective Caml'; }
-  pre.src-octave:before { content: 'Octave'; }
-  pre.src-org:before { content: 'Org mode'; }
-  pre.src-oz:before { content: 'OZ'; }
-  pre.src-plantuml:before { content: 'Plantuml'; }
-  pre.src-processing:before { content: 'Processing.js'; }
-  pre.src-python:before { content: 'Python'; }
-  pre.src-R:before { content: 'R'; }
-  pre.src-ruby:before { content: 'Ruby'; }
-  pre.src-sass:before { content: 'Sass'; }
-  pre.src-scheme:before { content: 'Scheme'; }
-  pre.src-screen:before { content: 'Gnu Screen'; }
-  pre.src-sed:before { content: 'Sed'; }
-  pre.src-sh:before { content: 'shell'; }
-  pre.src-sql:before { content: 'SQL'; }
-  pre.src-sqlite:before { content: 'SQLite'; }
-  /* additional languages in org.el's org-babel-load-languages alist */
-  pre.src-forth:before { content: 'Forth'; }
-  pre.src-io:before { content: 'IO'; }
-  pre.src-J:before { content: 'J'; }
-  pre.src-makefile:before { content: 'Makefile'; }
-  pre.src-maxima:before { content: 'Maxima'; }
-  pre.src-perl:before { content: 'Perl'; }
-  pre.src-picolisp:before { content: 'Pico Lisp'; }
-  pre.src-scala:before { content: 'Scala'; }
-  pre.src-shell:before { content: 'Shell Script'; }
-  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
-  /* additional language identifiers per "defun org-babel-execute"
-       in ob-*.el */
-  pre.src-cpp:before  { content: 'C++'; }
-  pre.src-abc:before  { content: 'ABC'; }
-  pre.src-coq:before  { content: 'Coq'; }
-  pre.src-groovy:before  { content: 'Groovy'; }
-  /* additional language identifiers from org-babel-shell-names in
-     ob-shell.el: ob-shell is the only babel language using a lambda to put
-     the execution function name together. */
-  pre.src-bash:before  { content: 'bash'; }
-  pre.src-csh:before  { content: 'csh'; }
-  pre.src-ash:before  { content: 'ash'; }
-  pre.src-dash:before  { content: 'dash'; }
-  pre.src-ksh:before  { content: 'ksh'; }
-  pre.src-mksh:before  { content: 'mksh'; }
-  pre.src-posh:before  { content: 'posh'; }
-  /* Additional Emacs modes also supported by the LaTeX listings package */
-  pre.src-ada:before { content: 'Ada'; }
-  pre.src-asm:before { content: 'Assembler'; }
-  pre.src-caml:before { content: 'Caml'; }
-  pre.src-delphi:before { content: 'Delphi'; }
-  pre.src-html:before { content: 'HTML'; }
-  pre.src-idl:before { content: 'IDL'; }
-  pre.src-mercury:before { content: 'Mercury'; }
-  pre.src-metapost:before { content: 'MetaPost'; }
-  pre.src-modula-2:before { content: 'Modula-2'; }
-  pre.src-pascal:before { content: 'Pascal'; }
-  pre.src-ps:before { content: 'PostScript'; }
-  pre.src-prolog:before { content: 'Prolog'; }
-  pre.src-simula:before { content: 'Simula'; }
-  pre.src-tcl:before { content: 'tcl'; }
-  pre.src-tex:before { content: 'TeX'; }
-  pre.src-plain-tex:before { content: 'Plain TeX'; }
-  pre.src-verilog:before { content: 'Verilog'; }
-  pre.src-vhdl:before { content: 'VHDL'; }
-  pre.src-xml:before { content: 'XML'; }
-  pre.src-nxml:before { content: 'XML'; }
-  /* add a generic configuration mode; LaTeX export needs an additional
-     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
-  pre.src-conf:before { content: 'Configuration File'; }
-
-  table { border-collapse:collapse; }
-  caption.t-above { caption-side: top; }
-  caption.t-bottom { caption-side: bottom; }
-  td, th { vertical-align:top;  }
-  th.org-right  { text-align: center;  }
-  th.org-left   { text-align: center;   }
-  th.org-center { text-align: center; }
-  td.org-right  { text-align: right;  }
-  td.org-left   { text-align: left;   }
-  td.org-center { text-align: center; }
-  dt { font-weight: bold; }
-  .footpara { display: inline; }
-  .footdef  { margin-bottom: 1em; }
-  .figure { padding: 1em; }
-  .figure p { text-align: center; }
-  .equation-container {
-    display: table;
-    text-align: center;
-    width: 100%;
-  }
-  .equation {
-    vertical-align: middle;
-  }
-  .equation-label {
-    display: table-cell;
-    text-align: right;
-    vertical-align: middle;
-  }
-  .inlinetask {
-    padding: 10px;
-    border: 2px solid gray;
-    margin: 10px;
-    background: #ffffcc;
-  }
-  #org-div-home-and-up
-   { text-align: right; font-size: 70%; white-space: nowrap; }
-  textarea { overflow-x: auto; }
-  .linenr { font-size: smaller }
-  .code-highlighted { background-color: #ffff00; }
-  .org-info-js_info-navigation { border-style: none; }
-  #org-info-js_console-label
-    { font-size: 10px; font-weight: bold; white-space: nowrap; }
-  .org-info-js_search-highlight
-    { background-color: #ffff00; color: #000000; font-weight: bold; }
-  .org-svg { width: 90%; }
-</style>
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
@@ -219,7 +35,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.10)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.20)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -247,13 +63,17 @@
 <li><a href="#voicevideo-calls">Voice/Video calls</a></li>
 </ul>
 </li>
-<li><a href="#chat-folders">Chat Folders</a></li>
-<li><a href="#chat-filters">Chat Filters</a>
+<li><a href="#telega-match-expressions">Telega Match Expressions</a>
 <ul>
-<li><a href="#list-of-chat-filters">List of chat filters</a></li>
-<li><a href="#customizable-options-making-use-of-chat-filters">Customizable options making use of Chat Filters</a></li>
+<li><a href="#list-of-chat-temexes">List of Chat Temexes</a></li>
+<li><a href="#list-of-message-temexes">List of Message Temexes</a></li>
+<li><a href="#list-of-user-temexes">List of User Temexes</a></li>
+<li><a href="#list-of-message-sender-temexes">List of Message Sender Temexes</a></li>
+<li><a href="#customizable-options-making-use-of-telega-match-expressions">Customizable options making use of Telega Match Expressions</a></li>
 </ul>
 </li>
+<li><a href="#chat-folders">Chat Folders</a></li>
+<li><a href="#filtering-chats">Filtering chats</a></li>
 <li><a href="#sorting-chats">Sorting chats</a>
 <ul>
 <li><a href="#sorting-criteria">Sorting criteria</a></li>
@@ -516,7 +336,14 @@ On MacOS you can install a pre-built <code>TDLib</code> package using homebrew f
 </div>
 
 <p>
-On Linux, you will need to build <code>TDLib</code> from source.
+On Linux, you will need to build <code>TDLib</code> from source.  Use 
+<a href="https://tdlib.github.io/td/build.html">TDLib build instructions generator</a> for comprehensive build
+instructions.
+</p>
+
+<p>
+In general, you need to install all <a href="https://github.com/tdlib/td/#dependencies">TDLib dependencies</a> then get TDLib
+sources and compile them using <code>CMake</code>.
 </p>
 
 <p>
@@ -804,7 +631,7 @@ User Option: <code>telega-proxies</code>
 <p>
 List of proxies.
 Format is:
-  (:server "&lt;SERVER&gt;" :port &lt;PORT&gt; :enable &lt;BOOL&gt; :type &lt;PROXY-TYPE&gt;)
+  (:server "&lt;ADDRESS&gt;" :port &lt;PORT&gt; :enable &lt;BOOL&gt; :type &lt;PROXY-TYPE&gt;)
 </p>
 
 <p>
@@ -953,68 +780,38 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgbfd45e1">
+<pre class="example" id="org09324e6">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
 </pre></dd>
 
-<dt>Chat Filter</dt><dd>S-exp expression used to match chats.
-See <a href="#chat-filters">Chat Filters</a> for the details.</dd>
+<dt>Temex</dt><dd>Telega Match Expression - S-expression to match telega objects such
+as chats or messages.
+See <a href="#telega-match-expressions">Telega Match Expressions</a> for the details.</dd>
 
-<dt>Active Chat Filter</dt><dd><p>
-List of chat filters applied to the chat list in rootbuf.
-</p>
-
-<p>
-Only chats matching <b><b>all</b></b> chat filters in the active chat filter
-are displayed in rootbuf.  Active chat filter is displayed above the
-chat list in rootbuf, such as:
-</p>
-<pre class="example" id="org79bee4a">
--/------------------------------(main)--------------------------------
-</pre>
-
-<p>
-<code>(telega-filter-active)</code> returns active chat filter.
-</p>
-
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-filter-default</code> 
-</p>
-
-<p>
-Default chat filter to apply. 
-</p>
-
-<p>
-Default value: <code>main</code>
-</p></li>
-</ul></dd>
-
-<dt>Custom Chat Filter</dt><dd><p>
-Chat filter associated with a name.
+<dt>[Custom] Chat Filter</dt><dd><p>
+Named temex to filter chats in the rootbuf.
 </p>
 
 <p>
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org8f3ac4c">
+<pre class="example" id="org73ab6d4">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
 
 <p>
-Action for such buttons is to add corresponding chat filter to
+Action for such buttons is to add corresponding temex to the
 active chat filter.
 </p>
 
 <p>
 However, buttons that corresponds to a Telegram Folder, including
-"Main" and "Archive", substitutes folder in active chat filter with
-new one at button.
+"Main" and "Archive", substitutes folder in the active chat filter
+with new one at button.
 </p>
 
 <ul class="org-ul">
@@ -1040,9 +837,8 @@ User Option: <code>telega-filters-custom</code>
 </p>
 
 <p>
-Alist of custom filters in form (NAME . CHAT-FILTER).
-NAME is evaluated to get resulting string, so it could be a lisp
-form.
+Alist of custom filters in form (NAME . TEMEX).
+NAME can be an i18n string, such as "lng<sub>filters</sub><sub>type</sub><sub>groups</sub>".
 This filters are displayed as filter buttons at the top of rootbuf. 
 </p>
 
@@ -1051,11 +847,10 @@ Default value:
 </p>
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main)
- (<span style="font-style: italic;">"Important"</span> or mention
-  (<span style="font-weight: bold;">and</span> unread unmuted))
+ (<span style="font-style: italic;">"Important"</span> . important)
  (<span style="font-style: italic;">"Online"</span> and
   (not saved-messages)
-  (online-status <span style="font-style: italic;">"Online"</span>))
+  (user online))
  (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
  (<span style="font-style: italic;">"Channels"</span> type channel)
  (<span style="font-style: italic;">"Archive"</span> . archive))
@@ -1086,6 +881,37 @@ Default value: <code>t</code>
 </p></li>
 </ul></dd>
 
+<dt>Active Chat Filter</dt><dd><p>
+List of chat temexes applied to the chat list in rootbuf.
+</p>
+
+<p>
+Only chats matching <b><b>all</b></b> temexes in the active chat filter
+are displayed in rootbuf.  Active chat filter is displayed above the
+chat list in rootbuf, such as:
+</p>
+<pre class="example" id="org1eab248">
+-/------------------------------(main)--------------------------------
+</pre>
+
+<p>
+<code>(telega-filter-active)</code> returns active chat filter.
+</p>
+
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-filter-default</code> 
+</p>
+
+<p>
+Temex to filter chats by default. 
+</p>
+
+<p>
+Default value: <code>main</code>
+</p></li>
+</ul></dd>
+
 <dt>Chat Sort Criteria</dt><dd>List of symbols denoting how to sort chats.
 See <a href="#sorting-chats">Sorting Chats</a></dd>
 
@@ -1102,7 +928,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org0d72880">
+<pre class="example" id="org097fa28">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1186,7 +1012,7 @@ If <kbd>C-u</kbd> is specified, then do not pop to root buffer.</dd>
 
 <dt><kbd>u</kbd> (<code>telega-switch-unread-chat</code>)</dt><dd><p>
 Switch to next unread message in next unread <code>CHAT</code>.
-Chat considered unread if matches <code>telega-filter-unread-chats</code> chat filter.
+<code>CHAT</code> considered unread if matches <code>telega-unread-chat-temex</code>.
 </p>
 
 <p>
@@ -1194,11 +1020,11 @@ Customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-filter-unread-chats</code> 
+User Option: <code>telega-unread-chat-temex</code> 
 </p>
 
 <p>
-Chat Filter for <code>telega-switch-unread-chat</code> command. 
+Chat Temex for <code>telega-switch-unread-chat</code> command. 
 </p>
 
 <p>
@@ -1206,10 +1032,16 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 </dl>
 </div>
 </div>
@@ -1291,17 +1123,17 @@ Default value: <code>track</code>
 <dt><kbd>M-g u</kbd> (<code>telega-root-next-unread</code>)</dt><dd>Move point to the next chat with unread message.</dd>
 
 <dt><kbd>M-g i</kbd> (<code>telega-root-next-important</code>)</dt><dd><p>
-Move point to the next chat with important messages.
+Move point to the next important chat.
 </p>
 
 <p>
-Important message is a message matching "Important" custom
-<a href="#chat-filters">chat filter</a>.  If there is no "Important"
-custom chat filter, then <code>(or mention (and unread unmuted))</code>
-chat filter is used.
+Chat is important if matches <code>telega-important-chat-temex</code>
+[BROKEN LINK: temex].
 </p></dd>
 
 <dt><kbd>M-g @</kbd>, <kbd>M-g m</kbd> (<code>telega-root-next-mention</code>)</dt><dd>Move point to the next chat with mention.</dd>
+
+<dt><kbd>M-g !</kbd> (<code>telega-root-next-reaction</code>)</dt><dd>Move point to the next chat with unread reaction.</dd>
 </dl>
 </div>
 </div>
@@ -1349,14 +1181,8 @@ Car is name of the topic, cdr is chat filter to match chats.
 </p>
 
 <p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Important"</span> or mention
-  (<span style="font-weight: bold;">and</span> unread unmuted)))
-</pre>
-</div></li>
-
+Default value: <code>(("Important" . important))</code>
+</p></li>
 <li><p>
 User Option: <code>telega-root-view-topics-folders</code> 
 </p>
@@ -1548,6 +1374,508 @@ If <kbd>C-u</kbd> is given, then view missed calls only.</dd>
 </div>
 </div>
 
+<div id="outline-container-telega-match-expressions" class="outline-2">
+<h2 id="telega-match-expressions"><a class="self-link" href="#telega-match-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Telega Match Expressions</h2>
+<div class="outline-text-2" id="text-telega-match-expressions">
+<p>
+Telega Match Expression (temex in short) is a verbal expression to
+match TDLib objects.  Temex uses S-exp notation similar to <code>rx</code>
+package for regexps.
+</p>
+
+<p>
+Primitive Temex is a named predicate returning non-nil if matches
+some object.  Primitive Temexes can be combined using <code>and</code>, <code>or</code>
+or <code>not</code> temexes, so temex is a logical combination of other
+temexes down to Primitive Temexes.
+</p>
+
+<p>
+<code>telega-match-gen-predicate</code> can be used to generate predicate
+functions out of temex.
+</p>
+
+<p>
+Chat Temex examples:
+</p>
+<dl class="org-dl">
+<dt><code>(return t)</code></dt><dd>Matches all chats.</dd>
+
+<dt><code>(or saved-messages (type channel bot))</code></dt><dd>Matches bots/channels chats or "Saved Messages" chat.</dd>
+
+<dt><code>(and unmuted (unread 10) (mention 1))</code></dt><dd>Matches unmuted chats with at least 10 unread messages and at
+least one message with unread mention.</dd>
+</dl>
+
+<p>
+Message Temex examples:
+</p>
+<dl class="org-dl">
+<dt><code>(sender me)</code></dt><dd>Matches all messages sent by me.</dd>
+
+<dt><code>(or (prop :contains_unread_mention) unread-reactions)</code></dt><dd>Matches messages containing unread mention or reaction.</dd>
+
+<dt><code>(and (chat (type channel)) (type text) (contains "\shello\s"))</code></dt><dd>Matches channel's text messages containing "hello" word.</dd>
+</dl>
+
+<p>
+List of temexes you can apply to any TDLib object:
+</p>
+
+<dl class="org-dl">
+<dt>(return <code>RET</code>)</dt><dd>Matches if <code>RET</code> is non-nil and return <code>RET</code> as a result.</dd>
+
+<dt>(or <code>TEMEX-LIST</code>&#x2026;)</dt><dd>Matches if any matcher in the <code>TEMEX-LIST</code> matches.</dd>
+
+<dt>(and <code>TEMEX-LIST</code>&#x2026;)</dt><dd>Matches if all matchers in the <code>TEMEX-LIST</code> matches.
+Also matches if <code>TEMEX-LIST</code> is empty.</dd>
+
+<dt>(not <code>TEMEX</code>)</dt><dd>Matches if <code>TEMEX</code> does not match.</dd>
+
+<dt>(prop <code>PROPERTY</code>)</dt><dd>Matches if <code>OBJ</code> has non-nil <code>PROPERTY</code>.</dd>
+
+<dt>(call <code>PREDICATE</code>)</dt><dd>Matches if PREDICATED called with <code>OBJ</code> as argument returns non-nil.</dd>
+
+<dt>(ids <code>ID-LIST</code>&#x2026;)</dt><dd>Matches if OBJ's id is in the <code>ID-LIST</code>.</dd>
+</dl>
+</div>
+
+<div id="outline-container-list-of-chat-temexes" class="outline-3">
+<h3 id="list-of-chat-temexes"><a class="self-link" href="#list-of-chat-temexes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>List of Chat Temexes</h3>
+<div class="outline-text-3" id="text-list-of-chat-temexes">
+<p>
+Use <code>telega-chat-match-p</code> to match a chat.
+</p>
+
+<dl class="org-dl">
+<dt>(type <code>CHAT-TYPE-LIST</code>), <kbd>/ t</kbd> (<code>telega-filter-by-type</code>)</dt><dd><p>
+Matches if chat type is one of <code>CHAT-TYPE-LIST</code>.
+</p>
+
+<p>
+Every chat has a type.  Type is one of:
+</p>
+<ul class="org-ul">
+<li><code>private</code> Private chat with a Telegram user</li>
+<li><code>secret</code> Secret chat with a Telegram user</li>
+<li><code>bot</code> Chat with a Telegram bot</li>
+<li><code>basicgroup</code> Small chat group, could be upgraded to supergroup</li>
+<li><code>supergroup</code> Chat group with all the chat possibilities</li>
+<li><code>channel</code> Supergroup with unlimited members, where only admins can post messages</li>
+</ul></dd>
+
+<dt>(name <code>REGEXP</code>)</dt><dd>Matches if chat's title matches <code>REGEXP</code>.</dd>
+
+<dt>(search <code>QUERY</code>), <kbd>/ s</kbd> (<code>telega-filter-by-search</code>)</dt><dd>Matches if chat maches search QUERY.</dd>
+
+<dt>nearby, <kbd>/ n</kbd> (<code>telega-filter-by-nearby</code>)</dt><dd>Matches if chat is nearby <code>telega-my-location</code>.</dd>
+
+<dt>(custom <code>NAME</code>), <kbd>/ C</kbd> (<code>telega-filter-by-custom</code>)</dt><dd>Matches if custom filter with <code>NAME</code> matches.</dd>
+
+<dt>(has-username [ <code>USERNAME</code> ])</dt><dd>Matches if chat has username associated with the chat.</dd>
+
+<dt>(unread [ <code>N</code> ]), <kbd>/ u</kbd> (<code>telega-filter-by-unread</code>)</dt><dd>Matches if chat has least <code>N</code> unread messages.
+By default <code>N</code> is 1.
+Also matches chats marked as unread.</dd>
+
+<dt>(mention [ <code>N</code> ]), <kbd>/ m</kbd> (<code>telega-filter-by-mention</code>)</dt><dd>Matches if chat has least <code>N</code> unread mentions.
+By default <code>N</code> is 1.</dd>
+
+<dt>muted</dt><dd>Matches if chat has disabled notifications.</dd>
+
+<dt>temporary-muted</dt><dd>Matches if <code>CHAT</code> is temporary muted.</dd>
+
+<dt>unmuted, <kbd>/ y</kbd> (<code>telega-filter-by-unmuted</code>)</dt><dd>Matches if chat has enabled notifications.</dd>
+
+<dt>important, <kbd>/ i</kbd> (<code>telega-filter-by-important</code>)</dt><dd>Matches if chat is important.
+Chat is important if it matches <code>telega-important-chat-temex</code> chat filter.</dd>
+
+<dt>(me-is-owner [ <code>OR-ADMIN</code> ])</dt><dd>Matches if me is owner of the chat.
+Only basicgroup, supergroup and channel can be owned.
+If optional <code>OR-ADMIN</code> is specified, then match also if me is
+administrator in the chat.</dd>
+
+<dt>me-is-member</dt><dd>Matches if me is member of the chat.
+Matches only basicgroup, supergroup or a channel.</dd>
+
+<dt>me-is-anonymous</dt><dd>Matches if me is anonymous in the chat.</dd>
+
+<dt>has-avatar</dt><dd>Matches if chat has chat photo.
+For non-nil <code>ANIMATED-P</code> match only if avatar is animated.</dd>
+
+<dt>has-chatbuf, <kbd>/ b</kbd> (<code>telega-filter-by-has-chatbuf</code>)</dt><dd>Matches if chat has corresponding chatbuf.</dd>
+
+<dt>(permission <code>PERM</code>)</dt><dd>Matches if chat has <code>PERM</code> set in chat permissions.
+<code>PERM</code> could be one of listed in <code>telega-chat--chat-permisions</code>.</dd>
+
+<dt>(my-permission <code>PERM</code>)</dt><dd>Matches if me has <code>PERM</code> permission in the chat.
+<code>PERM</code> could be one of in <code>telega-chat--chat-permisions</code> list or in
+<code>telega-chat--admin-permissions</code> list.</dd>
+
+<dt>verified, <kbd>/ v</kbd> (<code>telega-filter-by-verified</code>)</dt><dd>Matches if chat is verified.</dd>
+
+<dt>(restriction <code>SUFFIX-LIST</code>&#x2026;), <kbd>/ r</kbd> (<code>telega-filter-by-restriction</code>)</dt><dd><p>
+Matches restricted chats.
+<code>SUFFIX-LIST</code> is a list of suffixes to filter on.
+Suffix can be one of:
+</p>
+<ul class="org-ul">
+<li>"-all"      - All platforms</li>
+<li>"-ios"      - For iOS devices</li>
+<li>"-android"  - For Android devices</li>
+<li>"-wp"       - Windows?</li>
+</ul>
+
+<p>
+If <code>SUFFIX-LIST</code> is not specified, then match any restriction reason.
+</p>
+
+<p>
+Chat restriction reason reported only if chat must be restricted
+by current client.  See
+<a href="https://github.com/tdlib/td/issues/1203">TDLib#1203</a>
+</p></dd>
+
+<dt>top, <kbd>/ T</kbd> (<code>telega-filter-by-top</code>)</dt><dd>Matches if chat is in top usage.</dd>
+
+<dt>saved-messages</dt><dd>Matches only "Saved Messages" chat.</dd>
+
+<dt>replies-messages</dt><dd>Matches only "Replies" chat.</dd>
+
+<dt>tracking, <kbd>/ SPC</kbd> (<code>telega-filter-by-tracking</code>)</dt><dd>Matches if chat is in tracking buffers list.</dd>
+
+<dt>last-message</dt><dd>Matches if chat's last message sent by me.</dd>
+
+<dt>(chat-list <code>LIST-NAME</code>), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat is in chat list named <code>LIST-NAME</code>.
+<code>LIST-NAME</code> is <code>main</code> or <code>archive</code> symbol, or string naming Chat Folder.</dd>
+
+<dt>main</dt><dd>Matches if chat from "Main" chat list.</dd>
+
+<dt>archive</dt><dd>Matches if chat is archived, i.e. in "Archive" chat list.</dd>
+
+<dt>(folder <code>FOLDER-NAME</code>&#x2026;), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat belongs to Folder named <code>FOLDER-NAME</code>.</dd>
+
+<dt>has-scheduled-messages</dt><dd>Matches if chat has scheduled messages.</dd>
+
+<dt>has-action-bar</dt><dd>Matches if chat has active action bar.</dd>
+
+<dt>has-reply-markup</dt><dd>Matches if chat has reply markup message.</dd>
+
+<dt>can-get-statistics</dt><dd>Matches if statistics available for <code>CHAT</code>.</dd>
+
+<dt>has-linked-chat</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
+
+<dt>has-discussion-group</dt><dd>Matches if <code>CHAT</code> is a channel with a linked discussion group.</dd>
+
+<dt>has-location</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
+
+<dt>inactive-supergroups ,  (<code>telega-filter-by-inactive-supergroups</code>)</dt><dd>Matches if <code>CHAT</code> is inactive supergroup.</dd>
+
+<dt>default-disable-notification</dt><dd>Matches if <code>CHAT</code> has non-nil default disable notification setting.</dd>
+
+<dt>fake-or-scam</dt><dd>Matches if chat is fake or scam user or group.</dd>
+
+<dt>(has-video-chat [ <code>NON-EMPTY</code> ])</dt><dd>Matches if chat contains a live video chat.
+If non-nil <code>NON-EMPTY</code> is specified, then match only if video chat is
+not empty.</dd>
+
+<dt>has-favorite-messages</dt><dd>Matches if chat has favorite messages.</dd>
+
+<dt>has-message-ttl</dt><dd>Matches if chat has <code>:message_ttl</code>.</dd>
+
+<dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
+
+<dt>has-sponsored-message</dt><dd>Matches if chat has sponsored message.
+BE AWARE: This filter will do blocking request for every chat.</dd>
+
+<dt>has-protected-content</dt><dd>Matches if chat has protected content.</dd>
+
+<dt>has-default-sender</dt><dd>Matches if chat allows choosing a message sender.</dd>
+
+<dt>can-send-or-post</dt><dd>Me can send or post messages to the <code>CHAT</code>.
+Me don't need te be a <code>CHAT</code> member to be able to send messages.
+Additionally apply <code>(or main archive)</code> chat filter to check <code>CHAT</code> is
+known.</dd>
+
+<dt>is-inline-bot</dt><dd>Matches if corresponding bot accepts inline requests.</dd>
+
+<dt>(no term)</dt><dd>(unread-reactions [ <code>N</code> ])
+Matches if chat has least <code>N</code> unread reactions.
+By default <code>N</code> is 1.</dd>
+
+<dt>(user <code>USER-TEMEX</code>)</dt><dd>Matches private chat where corresponding user matches <code>USER-TEMEX</code>.</dd>
+</dl>
+</div>
+</div>
+
+<div id="outline-container-list-of-message-temexes" class="outline-3">
+<h3 id="list-of-message-temexes"><a class="self-link" href="#list-of-message-temexes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>List of Message Temexes</h3>
+<div class="outline-text-3" id="text-list-of-message-temexes">
+<p>
+Use <code>telega-msg-match-p</code> to match a message.
+</p>
+
+<dl class="org-dl">
+<dt>(type <code>MSG-TYPE-LIST</code>)</dt><dd><p>
+Matches if message content type is equal to CONTENT-TYPE.
+</p>
+
+<p>
+Every message has a content type.  Most notable message types
+are: <code>Text</code>, <code>Animation</code>, <code>Audio</code>, <code>Document</code>, <code>Photo</code>,
+<code>Sticker</code>, <code>Video</code>, <code>VideoNote</code>, <code>VoiceNote</code>, <code>Location</code>, etc.
+</p></dd>
+
+<dt>seen</dt><dd>Return non-nil if message has been viewed in the chat.</dd>
+
+<dt>(unread-reactions [~N~])</dt><dd>Matches if message has at least <code>N</code> unread reactions.
+By default <code>N</code> is 1.</dd>
+
+<dt>has-chosen-reaction</dt><dd>Matches if message has a reaction chosen by me.</dd>
+
+<dt>is-reply</dt><dd>Matches if message is a reply message.</dd>
+
+<dt>post-with-comments</dt><dd>Matches if message is a channel post that can be commented.</dd>
+
+<dt>web-page</dt><dd>Matches messages with webpage having property with <code>PROPNAME</code>.</dd>
+
+<dt>(outgoing [ <code>ANY-STATE-P</code> ])</dt><dd>Matches if message is an outgoing message.
+This temex differs from <code>(sender me)</code>, matching any outgoing messages,
+including anonymous messages to channels created by me.</dd>
+
+<dt>(ignored [ <code>REASON</code> ])</dt><dd>Matches if message is an ignored message.
+If <code>REASON</code> is specified, then match only if has been ignored by <code>REASON</code>
+function.</dd>
+
+<dt>(contains <code>REGEXP</code> )</dt><dd>Matches if message's text or caption contains <code>REGEXP</code>.
+Matching ignores case.</dd>
+
+<dt>(chat <code>CHAT-TEMEX</code>)</dt><dd>Matches if message's chat matches <code>CHAT-TEMEX</code>.</dd>
+
+<dt>(sender <code>SENDER-TEMEX</code>)</dt><dd>Matches if message's sender matches <code>SENDER-TEMEX</code>.</dd>
+</dl>
+</div>
+</div>
+
+<div id="outline-container-list-of-user-temexes" class="outline-3">
+<h3 id="list-of-user-temexes"><a class="self-link" href="#list-of-user-temexes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>List of User Temexes</h3>
+<div class="outline-text-3" id="text-list-of-user-temexes">
+<p>
+Use <code>telega-user-match-p</code> to match a user.
+</p>
+
+<dl class="org-dl">
+<dt>deleted</dt><dd>Matches if user account is deleted.</dd>
+
+<dt>(status <code>STATUS-LIST</code>&#x2026;)</dt><dd><p>
+Matches if user status is one of <code>STATUS-LIST</code>.
+</p>
+
+<p>
+Each element in <code>STATUS-LIST</code> is one of: "Online", "Offline",
+"Recently", "LastWeek", "LastMonth" or "Empty"
+</p></dd>
+
+<dt>(no term)</dt><dd><p>
+online
+Matches if user is online.
+</p>
+
+<p>
+Same as <code>(status "Online")</code> user temex.
+</p></dd>
+
+<dt>(contact [ <code>MUTUAL-P</code> ]), <kbd>/ c</kbd> (<code>telega-filter-by-contact</code>)</dt><dd>Matches private chats if corresponding user is a contact.
+If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
+
+<dt>(groups-in-common [ <code>N</code> ])</dt><dd>Matches if corresponding user has at least <code>N</code> groups in common with me.
+By default <code>N</code> is 1.</dd>
+
+<dt>is-telega-patron</dt><dd>Matches if corresponding user is a telega patron.</dd>
+
+<dt>has-private-forwards</dt><dd>Matches if user can't be linked in forwarded messages.</dd>
+</dl>
+</div>
+</div>
+
+<div id="outline-container-list-of-message-sender-temexes" class="outline-3">
+<h3 id="list-of-message-sender-temexes"><a class="self-link" href="#list-of-message-sender-temexes"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>List of Message Sender Temexes</h3>
+<div class="outline-text-3" id="text-list-of-message-sender-temexes">
+<p>
+Use <code>telega-sender-match-p</code> to match a message sender.
+</p>
+
+<dl class="org-dl">
+<dt>me</dt><dd>Matches if sender is me.</dd>
+
+<dt>blocked</dt><dd>Matches if sender is blocked.</dd>
+
+<dt>(user <code>USER-TEMEX</code>)</dt><dd>Matches if sender is a user matching <code>USER-TEMEX</code>.</dd>
+
+<dt>(chat <code>CHAT-TEMEX</code>)</dt><dd>Matches if sender is a chat matching <code>CHAT-TEMEX</code>.</dd>
+</dl>
+</div>
+</div>
+
+<div id="outline-container-customizable-options-making-use-of-telega-match-expressions" class="outline-3">
+<h3 id="customizable-options-making-use-of-telega-match-expressions"><a class="self-link" href="#customizable-options-making-use-of-telega-match-expressions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Customizable options making use of Telega Match Expressions</h3>
+<div class="outline-text-3" id="text-customizable-options-making-use-of-telega-match-expressions">
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-filter-default</code> 
+</p>
+
+<p>
+Temex to filter chats by default. 
+</p>
+
+<p>
+Default value: <code>main</code>
+</p></li>
+<li><p>
+User Option: <code>telega-filters-custom</code> 
+</p>
+
+<p>
+Alist of custom filters in form (NAME . TEMEX).
+NAME can be an i18n string, such as "lng<sub>filters</sub><sub>type</sub><sub>groups</sub>".
+This filters are displayed as filter buttons at the top of rootbuf. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main)
+ (<span style="font-style: italic;">"Important"</span> . important)
+ (<span style="font-style: italic;">"Online"</span> and
+  (not saved-messages)
+  (user online))
+ (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"Channels"</span> type channel)
+ (<span style="font-style: italic;">"Archive"</span> . archive))
+</pre>
+</div></li>
+
+<li><p>
+User Option: <code>telega-use-tracking-for</code> 
+</p>
+
+<p>
+Specifies Chat Filter for chats to be tracked with tracking.el.
+Make sure you have tracking.el loaded if this option is used.
+Only chats with corresponding opened chatbuf are tracked.
+Tracking notifications for telega buffers will use the
+`telega-tracking` face. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-rainbow-color-custom-for</code> 
+</p>
+
+<p>
+List of custom colors for chats.
+Each element is cons cell, where car is Chat Filter, and cdr is color. 
+</p>
+
+<p>
+Default value: <code>((saved-messages))</code>
+</p></li>
+<li><p>
+User Option: <code>telega-chat-prompt-format</code> 
+</p>
+
+<p>
+Modeline compatible format for the chatbuf input prompt.
+You can use <code>telega-chatbuf-editing-msg</code> or
+<code>telega-chatbuf-replying-msg</code> in <code>:eval</code> section if you want different
+prompt when editing/replying a message. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((<span style="font-weight: bold;">:eval</span>
+  (telega-chatbuf-prompt-default-sender-avatar))
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-chatbuf-prompt-body))
+ (<span style="font-weight: bold;">:eval</span>
+  (<span style="font-weight: bold;">when</span>
+      (<span style="font-weight: bold;">and</span> telega-use-images
+       (telega-chatbuf-match-p 'can-send-or-post))
+    (telega-chatbuf-prompt-chat-avatar)))
+ <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
+</pre>
+</div></li>
+
+<li><p>
+User Option: <code>telega-chat-group-messages-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to group messages by sender. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(not
+ (<span style="font-weight: bold;">or</span> saved-messages
+     (type channel bot)))
+</pre>
+</div></li>
+
+<li><p>
+User Option: <code>telega-chat-show-deleted-messages-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to show deleted messages in chatbuf. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-chat-use-date-breaks-for</code> 
+</p>
+
+<p>
+Chat Filter for chats where to insert date breaks.
+Date break is a special mark separating two messages received on
+different days. Such as:
+</p>
+<pre class="example" id="orgf232d98">
+MSG1                              &lt;--- msg sent on 27dec
+-------(28 December 2020)------   &lt;--- date break
+MSG2                              &lt;--- msg sent on 28dec
+</pre>
+
+<p>
+Default value: <code>all</code>
+</p></li>
+<li><p>
+User Option: <code>telega-root-view-topics</code> 
+</p>
+
+<p>
+Alist of topics for "topics" root view.
+Car is name of the topic, cdr is chat filter to match chats. 
+</p>
+
+<p>
+Default value: <code>(("Important" . important))</code>
+</p></li>
+</ul>
+</div>
+</div>
+</div>
+
 <div id="outline-container-chat-folders" class="outline-2">
 <h2 id="chat-folders"><a class="self-link" href="#chat-folders"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chat Folders</h2>
 <div class="outline-text-2" id="text-chat-folders">
@@ -1703,9 +2031,9 @@ Default value: <code>t</code>
 </div>
 </div>
 
-<div id="outline-container-chat-filters" class="outline-2">
-<h2 id="chat-filters"><a class="self-link" href="#chat-filters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Chat Filters</h2>
-<div class="outline-text-2" id="text-chat-filters">
+<div id="outline-container-filtering-chats" class="outline-2">
+<h2 id="filtering-chats"><a class="self-link" href="#filtering-chats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Filtering chats</h2>
+<div class="outline-text-2" id="text-filtering-chats">
 <p>
 Chat Filters are used to match chats, same as regexps are used to
 match strings.  Chat Filters uses S-exp notation similar to <code>rx</code>
@@ -1734,7 +2062,7 @@ combination of other Chat Filters, down to primitive Chat Filters.
 Chat Filter examples:
 </p>
 <dl class="org-dl">
-<dt><code>all</code></dt><dd>Matches all chats</dd>
+<dt><code>(return t)</code></dt><dd>Matches all chats</dd>
 
 <dt><code>(or saved-messages (type channel bot))</code></dt><dd>Matches bots/channels chats or "Saved Messages" chat</dd>
 
@@ -1752,11 +2080,10 @@ commands:
 </p>
 
 <dl class="org-dl">
-<dt><kbd>/ i</kbd> (<code>telega-filter-by-important</code>)</dt><dd>Filter important chats.
-Important chat is a chat with unread messages and enabled notifications.</dd>
-<dt><kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Match chats by Telegram <code>FOLDER</code>.</dd>
-<dt><kbd>/ e</kbd>, <kbd>/ :</kbd> (<code>telega-filters-edit</code>)</dt><dd>Edit and reapply filters list.</dd>
+<dt><kbd>/ i</kbd> (<code>telega-filter-by-important</code>)</dt><dd>Filter important chats.</dd>
+<dt><kbd>/ o</kbd> (<code>telega-filter-by-online-status</code>)</dt><dd>Filter private chats by its user online <code>STATUS</code>.</dd>
 <dt><kbd>/ a</kbd> (<code>telega-filter-by-filter</code>)</dt><dd>Interactively select a Chat filter to add to active filter.</dd>
+<dt><kbd>/ e</kbd>, <kbd>/ :</kbd> (<code>telega-filters-edit</code>)</dt><dd>Edit and reapply filters list.</dd>
 <dt><kbd>/ DEL</kbd>, <kbd>/ d</kbd> (<code>telega-filters-pop-last</code>)</dt><dd>Pop last <code>N</code> filters.</dd>
 <dt><kbd>/ !</kbd> (<code>telega-filters-negate</code>)</dt><dd>Negate last filter.
 If <kbd>C-u</kbd> is specified, then negate whole active filter.</dd>
@@ -1764,378 +2091,10 @@ If <kbd>C-u</kbd> is specified, then negate whole active filter.</dd>
 </dl>
 
 <p>
-For other Chat Filter bindings see below.
+For other chat filtering bindings see <a href="#list-of-chat-temexes">List of Chat Temexes</a>
 </p>
 </div>
-
-<div id="outline-container-list-of-chat-filters" class="outline-3">
-<h3 id="list-of-chat-filters"><a class="self-link" href="#list-of-chat-filters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>List of chat filters</h3>
-<div class="outline-text-3" id="text-list-of-chat-filters">
-<dl class="org-dl">
-<dt>(any <code>FILTER-LIST</code>&#x2026;)</dt><dd>Matches if any filter in <code>FILTER-LIST</code> matches.</dd>
-
-<dt>(or <code>FILTER-LIST</code>&#x2026;)</dt><dd>Same as <code>any</code></dd>
-
-<dt>(all <code>FILTER-LIST</code>&#x2026;)</dt><dd>Matches if all filters in <code>FILTER-LIST</code> matches.
-Also matches if <code>FILTER-LIST</code> is empty.</dd>
-
-<dt>(and <code>FILTER-LIST</code>&#x2026;)</dt><dd>Same as <code>all</code></dd>
-
-<dt>(not <code>FILTER</code>)</dt><dd>Matches if <code>FILTER</code> not maches.</dd>
-
-<dt>(type <code>CHAT-TYPE-LIST</code>), <kbd>/ t</kbd> (<code>telega-filter-by-type</code>)</dt><dd><p>
-Matches if chat type is one of <code>CHAT-TYPE-LIST</code>.
-</p>
-
-<p>
-Every chat has a type.  Type is one of:
-</p>
-<ul class="org-ul">
-<li><code>private</code> Private chat with a Telegram user</li>
-<li><code>secret</code> Secret chat with a Telegram user</li>
-<li><code>bot</code> Chat with a Telegram bot</li>
-<li><code>basicgroup</code> Small chat group, could be upgraded to supergroup</li>
-<li><code>supergroup</code> Chat group with all the chat possibilities</li>
-<li><code>channel</code> Supergroup with unlimited members, where only admins can post messages</li>
-</ul></dd>
-
-<dt>(name <code>REGEXP</code>)</dt><dd>Matches if chat's title matches <code>REGEXP</code>.</dd>
-
-<dt>(search <code>QUERY</code>), <kbd>/ s</kbd> (<code>telega-filter-by-search</code>)</dt><dd>Matches if chat maches search QUERY.</dd>
-
-<dt>nearby, <kbd>/ n</kbd> (<code>telega-filter-by-nearby</code>)</dt><dd>Matches if chat is nearby <code>telega-my-location</code>.</dd>
-
-<dt>(custom <code>NAME</code>), <kbd>/ C</kbd> (<code>telega-filter-by-custom</code>)</dt><dd>Matches if custom filter with <code>NAME</code> matches.</dd>
-
-<dt>pin, <kbd>/ P</kbd>, <kbd>/ ^</kbd> (<code>telega-filter-by-pin</code>)</dt><dd>Matches if chat is pinned.</dd>
-
-<dt>(has-username [ <code>USERNAME</code> ])</dt><dd>Matches if chat has username associated with the chat.</dd>
-
-<dt>has-pinned-message</dt><dd>UNAVAILABLE since TDLib 1.6.10, chat has no fast way (property)
-to get know that chat has a pinned message.  See
-<a href="https://github.com/tdlib/td/issues/1275">https://github.com/tdlib/td/issues/1275</a></dd>
-
-<dt>(unread [ <code>N</code> ]), <kbd>/ u</kbd> (<code>telega-filter-by-unread</code>)</dt><dd>Matches if chat has least <code>N</code> unread messages.
-By default <code>N</code> is 1.
-Also matches chats marked as unread.</dd>
-
-<dt>(mention [ <code>N</code> ]), <kbd>/ m</kbd> (<code>telega-filter-by-mention</code>)</dt><dd>Matches if chat has least <code>N</code> unread mentions.
-By default <code>N</code> is 1.</dd>
-
-<dt>unmuted, <kbd>/ y</kbd> (<code>telega-filter-by-unmuted</code>)</dt><dd>Matches if chat has enabled notifications.</dd>
-
-<dt>(online-status <code>STATUS-LIST</code>&#x2026;), <kbd>/ o</kbd> (<code>telega-filter-by-online-status</code>)</dt><dd><p>
-Matches private chat where user status is one of <code>STATUS-LIST</code>.
-</p>
-
-<p>
-Each element in <code>STATUS-LIST</code> is one of: "Online", "Offline",
-"Recently", "LastWeek", "LastMonth" or "Empty"
-</p></dd>
-
-<dt>verified, <kbd>/ v</kbd> (<code>telega-filter-by-verified</code>)</dt><dd>Matches if chat is verified.</dd>
-
-<dt>(ids <code>ID-LIST</code>&#x2026;)</dt><dd>Matches if chat's id is one of in <code>ID-LIST</code>.</dd>
-
-<dt>(me-is-owner [ <code>OR-ADMIN</code> ])</dt><dd>Matches if me is owner of the chat.
-Only basicgroup, supergroup and channel can be owned.
-If optional <code>OR-ADMIN</code> is specified, then match also if me is
-administrator in the chat.</dd>
-
-<dt>me-is-member</dt><dd>Matches if me is member of the chat.
-Matches only basicgroup, supergroup or a channel.</dd>
-
-<dt>me-is-anonymous</dt><dd>Matches if me is anonymous in the chat.</dd>
-
-<dt>has-last-message</dt><dd>Matches if chat has last message.</dd>
-
-<dt>has-avatar</dt><dd>Matches if chat has chat photo.</dd>
-
-<dt>has-animated-avatar</dt><dd>Matches if <code>CHAT</code> has animated chat photo.</dd>
-
-<dt>has-chatbuf, <kbd>/ b</kbd> (<code>telega-filter-by-has-chatbuf</code>)</dt><dd>Matches if chat has corresponding chatbuf.</dd>
-
-<dt>(permission <code>PERM</code>)</dt><dd>Matches if chat has <code>PERM</code> set in chat permissions.
-<code>PERM</code> could be one of listed in <code>telega-chat--chat-permisions</code>.</dd>
-
-<dt>(my-permission <code>PERM</code>)</dt><dd>Matches if me has <code>PERM</code> permission in the chat.
-<code>PERM</code> could be one of in <code>telega-chat--chat-permisions</code> list or in
-<code>telega-chat--admin-permissions</code> list.</dd>
-
-<dt>(restriction <code>SUFFIX-LIST</code>&#x2026;), <kbd>/ r</kbd> (<code>telega-filter-by-restriction</code>)</dt><dd><p>
-Matches restricted chats.
-<code>SUFFIX-LIST</code> is a list of suffixes to filter on.
-Suffix can be one of:
-</p>
-<ul class="org-ul">
-<li>"-all"      - All platforms</li>
-<li>"-ios"      - For iOS devices</li>
-<li>"-android"  - For Android devices</li>
-<li>"-wp"       - Windows?</li>
-</ul>
-
-<p>
-If <code>SUFFIX-LIST</code> is not specified, then match any restriction reason.
-</p>
-
-<p>
-Chat restriction reason reported only if chat must be restricted
-by current client.  See
-<a href="https://github.com/tdlib/td/issues/1203">TDLib#1203</a>
-</p></dd>
-
-<dt>(contact [ <code>MUTUAL-P</code> ]), <kbd>/ c</kbd> (<code>telega-filter-by-contact</code>)</dt><dd>Matches private chats if corresponding user is a contact.
-If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
-
-<dt>top, <kbd>/ T</kbd> (<code>telega-filter-by-top</code>)</dt><dd>Matches if chat is in top usage.</dd>
-
-<dt>saved-messages</dt><dd>Matches only "Saved Messages" chat.</dd>
-
-<dt>replies-messages</dt><dd>Matches only "Replies" chat.</dd>
-
-<dt>tracking, <kbd>/ SPC</kbd> (<code>telega-filter-by-tracking</code>)</dt><dd>Matches if chat is in tracking buffers list.</dd>
-
-<dt>last-message-by-me</dt><dd>Matches if chat's last message sent by me.</dd>
-
-<dt>(chat-list <code>LIST-NAME</code>), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat is in chat list named <code>LIST-NAME</code>.
-<code>LIST-NAME</code> is <code>main</code> or <code>archive</code> symbol, or string naming Chat Folder.</dd>
-
-<dt>(folder <code>FOLDER-NAMES</code>&#x2026;), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat belongs to some Chat Folder of <code>FOLDER-NAMES</code>.</dd>
-
-<dt>main</dt><dd>Matches if chat from "Main" chat list.</dd>
-
-<dt>archive</dt><dd>Matches if chat is archived, i.e. in "Archive" chat list.</dd>
-
-<dt>has-scheduled-messages</dt><dd>Matches if chat has scheduled messages.</dd>
-
-<dt>has-action-bar</dt><dd>Matches if chat has active action bar.</dd>
-
-<dt>has-reply-markup</dt><dd>Matches if chat has reply markup message.</dd>
-
-<dt>can-get-statistics</dt><dd><p>
-Matches if statistics available for <code>CHAT</code>.
-</p>
-
-<p>
-Available since TDLib 1.6.9
-</p></dd>
-
-<dt>has-linked-chat</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
-
-<dt>has-discussion-group</dt><dd>Matches if <code>CHAT</code> is a channel with a linked discussion group.</dd>
-
-<dt>has-location</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
-
-<dt>inactive-supergroups</dt><dd>Matches if <code>CHAT</code> is inactive supergroup.</dd>
-
-<dt>default-disable-notification</dt><dd>Matches if <code>CHAT</code> has non-nil default disable notification setting.</dd>
-
-<dt>temporary-muted</dt><dd>Matches if <code>CHAT</code> is temporary muted.</dd>
-
-<dt>fake-or-scam</dt><dd>Matches if chat is fake or scam user or group.</dd>
-
-<dt>(has-video-chat [ <code>NON-EMPTY</code> ])</dt><dd>Matches if chat contains a live video chat.
-If non-nil <code>NON-EMPTY</code> is specified, then match only if video chat is
-not empty.</dd>
-
-<dt>has-favorite-messages</dt><dd>Matches if chat has favorite messages.</dd>
-
-<dt>is-public</dt><dd>Matches if chat has <code>:message_ttl</code>.</dd>
-
-<dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
-
-<dt>has-groups-in-common</dt><dd>Matches if corresponding user has groups in common with me.</dd>
-
-<dt>is-telega-patron</dt><dd>Matches if corresponding user is a telega patron.</dd>
-
-<dt>has-sponsored-message</dt><dd>Matches if chat has sponsored message.
-BE AWARE: This filter will do blocking request for every chat.</dd>
-
-<dt>has-protected-content</dt><dd>Matches if chat has protected content.</dd>
-
-<dt>has-private-forwards</dt><dd>Matches if user can't be linked in forwarded messages.</dd>
-
-<dt>has-default-sender</dt><dd>Matches if chat allows choosing a message sender.</dd>
-
-<dt>can-send-or-post</dt><dd>Me can send or post messages to the <code>CHAT</code>.
-Me don't need te be a <code>CHAT</code> member to be able to send messages.
-Additionally apply <code>(or main archive)</code> chat filter to check <code>CHAT</code> is
-known.</dd>
-
-<dt>is-inline-bot</dt><dd>Matches if corresponding bot accepts inline requests.</dd>
-
-<dt>(unread-reactions [ <code>N</code> ]),  (<code>telega-filter-by-unread-reactions</code>)</dt><dd>Matches if chat has least <code>N</code> unread reactions.
-By default <code>N</code> is 1.</dd>
-</dl>
 </div>
-</div>
-
-<div id="outline-container-customizable-options-making-use-of-chat-filters" class="outline-3">
-<h3 id="customizable-options-making-use-of-chat-filters"><a class="self-link" href="#customizable-options-making-use-of-chat-filters"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Customizable options making use of Chat Filters</h3>
-<div class="outline-text-3" id="text-customizable-options-making-use-of-chat-filters">
-<ul class="org-ul">
-<li><p>
-User Option: <code>telega-filter-default</code> 
-</p>
-
-<p>
-Default chat filter to apply. 
-</p>
-
-<p>
-Default value: <code>main</code>
-</p></li>
-<li><p>
-User Option: <code>telega-filters-custom</code> 
-</p>
-
-<p>
-Alist of custom filters in form (NAME . CHAT-FILTER).
-NAME is evaluated to get resulting string, so it could be a lisp
-form.
-This filters are displayed as filter buttons at the top of rootbuf. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Main"</span> . main)
- (<span style="font-style: italic;">"Important"</span> or mention
-  (<span style="font-weight: bold;">and</span> unread unmuted))
- (<span style="font-style: italic;">"Online"</span> and
-  (not saved-messages)
-  (online-status <span style="font-style: italic;">"Online"</span>))
- (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"Channels"</span> type channel)
- (<span style="font-style: italic;">"Archive"</span> . archive))
-</pre>
-</div></li>
-
-<li><p>
-User Option: <code>telega-use-tracking-for</code> 
-</p>
-
-<p>
-Specifies Chat Filter for chats to be tracked with tracking.el.
-Make sure you have tracking.el loaded if this option is used.
-Only chats with corresponding opened chatbuf are tracked.
-Tracking notifications for telega buffers will use the
-`telega-tracking` face. 
-</p>
-
-<p>
-Default value: <code>nil</code>
-</p></li>
-<li><p>
-User Option: <code>telega-rainbow-color-custom-for</code> 
-</p>
-
-<p>
-List of custom colors for chats.
-Each element is cons cell, where car is Chat Filter, and cdr is color. 
-</p>
-
-<p>
-Default value: <code>((saved-messages))</code>
-</p></li>
-<li><p>
-User Option: <code>telega-chat-prompt-format</code> 
-</p>
-
-<p>
-Modeline compatible format for the chatbuf input prompt.
-You can use <code>telega-chatbuf-editing-msg</code> or
-<code>telega-chatbuf-replying-msg</code> in <code>:eval</code> section if you want different
-prompt when editing/replying a message. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-weight: bold;">:eval</span>
-  (telega-chatbuf-prompt-default-sender-avatar))
- (<span style="font-weight: bold;">:eval</span>
-  (telega-chatbuf-prompt-body))
- (<span style="font-weight: bold;">:eval</span>
-  (<span style="font-weight: bold;">when</span>
-      (<span style="font-weight: bold;">and</span> telega-use-images
-       (telega-chatbuf-match-p 'can-send-or-post))
-    (telega-chatbuf-prompt-chat-avatar)))
- <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
-</pre>
-</div></li>
-
-<li><p>
-User Option: <code>telega-chat-group-messages-for</code> 
-</p>
-
-<p>
-Chat Filter for chats where to group messages by sender. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">(not
- (<span style="font-weight: bold;">or</span> saved-messages
-     (type channel bot)))
-</pre>
-</div></li>
-
-<li><p>
-User Option: <code>telega-chat-show-deleted-messages-for</code> 
-</p>
-
-<p>
-Chat Filter for chats where to show deleted messages in chatbuf. 
-</p>
-
-<p>
-Default value: <code>nil</code>
-</p></li>
-<li><p>
-User Option: <code>telega-chat-use-date-breaks-for</code> 
-</p>
-
-<p>
-Chat Filter for chats where to insert date breaks.
-Date break is a special mark separating two messages received on
-different days. Such as:
-</p>
-<pre class="example" id="org51eff58">
-MSG1                              &lt;--- msg sent on 27dec
--------(28 December 2020)------   &lt;--- date break
-MSG2                              &lt;--- msg sent on 28dec
-</pre>
-
-<p>
-Default value: <code>all</code>
-</p></li>
-<li><p>
-User Option: <code>telega-root-view-topics</code> 
-</p>
-
-<p>
-Alist of topics for "topics" root view.
-Car is name of the topic, cdr is chat filter to match chats. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-style: italic;">"Important"</span> or mention
-  (<span style="font-weight: bold;">and</span> unread unmuted)))
-</pre>
-</div></li>
-</ul>
-</div>
-</div>
-</div>
-
 
 <div id="outline-container-sorting-chats" class="outline-2">
 <h2 id="sorting-chats"><a class="self-link" href="#sorting-chats"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Sorting chats</h2>
@@ -2282,7 +2241,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgbc318ef">
+<pre class="example" id="org6104cb6">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2302,7 +2261,9 @@ Default value: <code>all</code>
 messages:
 </p>
 <dl class="org-dl">
-<dt><kbd>M-g d</kbd>, <kbd>M-g !</kbd> (<code>telega-chatbuf-goto-date</code>)</dt><dd>Goto last message before <code>DATE</code> timestamp.</dd>
+<dt><kbd>M-g !</kbd> (<code>telega-chatbuf-next-unread-reaction</code>)</dt><dd>Goto next unread reaction in chat buffer.</dd>
+
+<dt><kbd>M-g d</kbd> (<code>telega-chatbuf-goto-date</code>)</dt><dd>Goto last message before <code>DATE</code> timestamp.</dd>
 
 <dt><kbd>M-g &lt;</kbd> (<code>telega-chatbuf-history-beginning</code>)</dt><dd>Jump to the first message in the chat history.</dd>
 
@@ -2366,7 +2327,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org7e586ea">
+<pre class="example" id="orgc1e4cd6">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2384,7 +2345,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="orge9293de">
+<pre class="example" id="orgbc27f42">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2632,7 +2593,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org54be218">
+<pre class="example" id="org8efe695">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3147,15 +3108,15 @@ even if message has been sent by blocked sender (user or chat).
 Ignoring messages can be done by adding function into
 <code>telega-msg-ignore-predicates</code>.  This function must accept single
 argument - message, and return non-nil if messages should be ignored.
+You can use <code>telega-match-gen-predicate</code> to generate message
+predicates out of <a href="#telega-match-expressions">Telega Match Expressions</a>.
 For example, to ignore messages from particular user with <code>id=12345</code>
 you could add next code:
 </p>
 
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(<span style="font-weight: bold;">defun</span> <span style="font-weight: bold;">my-telega-ignore-12345-user</span> (msg)
-  (<span style="font-weight: bold;">let</span> ((sender (telega-msg-sender msg)))
-    (<span style="font-weight: bold;">and</span> (telega-user-p sender)
-       (= (plist-get sender <span style="font-weight: bold;">:id</span>) 12345))))
+  (telega-msg-match-p msg '(sender (ids 12345))))
 
 (add-hook 'telega-msg-ignore-predicates 'my-telega-ignore-12345-user)
 </pre>
@@ -3166,7 +3127,8 @@ Or to ignore messages from blocked senders (users or chats), just add:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(add-hook 'telega-msg-ignore-predicates 'telega-msg-from-blocked-sender-p)
+<pre class="src src-emacs-lisp">(add-hook 'telega-msg-ignore-predicates
+        (telega-match-gen-predicate <span style="font-style: italic;">"msg-"</span> '(sender blocked)))
 </pre>
 </div>
 
@@ -3225,7 +3187,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org1faf97b">
+<pre class="example" id="org6a6f7e7">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3233,14 +3195,44 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.</dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
+Stop playing media message.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
+Rewind 10 seconds backward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
+Rewind 10 seconds forward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
+Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
+Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.</dd>
+duration.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
 </dl>
 
 <p>
@@ -3725,9 +3717,9 @@ Default value: <code>("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿
 <div class="outline-text-3" id="text-telega-autoplay-mode">
 <p>
 Global minor mode to automatically open content for incoming
-messages.  Message automatically opens if its type is in the
-<code>telega-autoplay-messages</code> list and message content is fully
-observable.
+messages.  Message automatically opens if it matches against
+<code>telega-autoplay-msg-temex</code> <a href="#telega-match-expressions">Message
+Temex</a> and message's content is fully observable.
 </p>
 
 <p>
@@ -3743,37 +3735,15 @@ Customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-autoplay-for</code> 
+User Option: <code>telega-autoplay-msg-temex</code> 
 </p>
 
 <p>
-Chat Filter for chats where to automatically open content. 
+Message Temex for messages to automatically play content for. 
 </p>
 
 <p>
-Default value: <code>all</code>
-</p></li>
-<li><p>
-User Option: <code>telega-autoplay-outgoing</code> 
-</p>
-
-<p>
-Non-nil to play outgoing messages as well. 
-</p>
-
-<p>
-Default value: <code>t</code>
-</p></li>
-<li><p>
-User Option: <code>telega-autoplay-messages</code> 
-</p>
-
-<p>
-Message to automatically play when received. 
-</p>
-
-<p>
-Default value: <code>(messageAnimation messageSticker messageAnimatedEmoji)</code>
+Default value: <code>(type Animation Sticker AnimatedEmoji)</code>
 </p></li>
 </ul>
 </div>
@@ -4075,7 +4045,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org4d204c9">
+<pre class="example" id="org113202b">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4089,8 +4059,7 @@ Will look like:
 
 <p>
 Can be enabled globally in all chats matching
-<code>telega-url-shorten-mode-for</code> (see below) <a href="#chat-filters">chat
-filter</a> with <code>(global-telega-url-shorten-mode 1)</code> or by adding:
+<code>telega-url-shorten-mode-for</code> (see below) [BROKEN LINK: chat-filters] with <code>(global-telega-url-shorten-mode 1)</code> or by adding:
 </p>
 
 <div class="org-src-container">
@@ -4574,7 +4543,7 @@ User Option: <code>telega-adblock-for</code>
 </p>
 
 <p>
-Chat Filter defines for which chats to apply adblock logic. 
+Chat Temex to match chats for which to apply adblock logic. 
 </p>
 
 <p>
@@ -4606,7 +4575,7 @@ User Option: <code>telega-adblock-verbose</code>
 </p>
 
 <p>
-Non-nil to show (in echo area) reason why message is ignored. 
+Non-nil to show (in echo area) reason why message is ignored by adblock. 
 </p>
 
 <p>
@@ -4631,7 +4600,7 @@ User Option: <code>telega-adblock-forwarded-messages</code>
 
 <p>
 Non-nil to block messages forwarded from other channels.
-Block them even if message has no links at all. 
+Block them even if a message has no links at all. 
 </p>
 
 <p>
@@ -4656,17 +4625,26 @@ are already member of.
 Default value: <code>(or main archive)</code>
 </p></li>
 <li><p>
-User Option: <code>telega-adblock-allow-messages-with-comments</code> 
+User Option: <code>telega-adblock-block-msg-temex</code> 
 </p>
 
 <p>
-Non-nil to not block messages that can be commented.
-Advertisement messages usually can't be commented, however sometimes
-event ad messages can be commented. 
+Message's matching this temex will be ignored by adblock. 
 </p>
 
 <p>
 Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-adblock-allow-msg-temex</code> 
+</p>
+
+<p>
+Message's matching this temex will be allowed. 
+</p>
+
+<p>
+Default value: <code>(or is-reply post-with-comments)</code>
 </p></li>
 </ul>
 </div>

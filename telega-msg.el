@@ -168,6 +168,7 @@
     (define-key map (kbd "S") 'telega-msg-save)
     (define-key map (kbd "U") 'telega-chatbuf-msg-marks-toggle)
 
+    (define-key map (kbd "!") 'telega-msg-set-reaction)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "^") 'telega-msg-pin-toggle)
     (define-key map (kbd "DEL") 'telega-msg-delete-marked-or-at-point)
@@ -225,7 +226,7 @@
                       (plist-get msg :telega-is-deleted-message))
                  #'telega-ins--message-deleted)
 
-                ((telega-msg-ignored-p msg)
+                ((telega-msg-match-p msg 'ignored)
                  (when telega-ignored-messages-visible
                    #'telega-ins--message-ignored))
 
@@ -336,6 +337,7 @@ For use by interactive commands."
       (user-error "Can't operate on internal message"))
     msg))
 
+;; TODO: use `(telega-msg-match-p msg (type xxx yy))' instead
 (defun telega-msg-type-p (msg-type msg)
   "Return non-nil if MSG is of MSG-TYPE.
 Suitable to generate msg type predicates using `apply-partially'.
@@ -343,6 +345,13 @@ Thats why MSG-TYPE argument goes first.
 MSG-TYPE can be a list of message types."
   (memq (telega--tl-type (plist-get msg :content))
         (if (listp msg-type) msg-type (list msg-type))))
+
+(defun telega-msg-chosen-reaction (msg)
+  "Return reaction chosen by me for the message MSG."
+  (telega-tl-str
+   (seq-find (telega--tl-prop :is_chosen)
+             (telega--tl-get msg :interaction_info :reactions))
+   :reaction))
 
 (defun telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG.
@@ -1014,7 +1023,7 @@ preview, having media content, can be opened with media timestamp."
 
 (defun telega-msg--track-file-uploading-progress (msg)
   "Track uploading progress for the file associated with MSG."
-  (let ((msg-file (telega-file--used-in-msg msg)))
+  (let ((msg-file (telega-msg--content-file msg)))
     (when (and msg-file (telega-file--uploading-p msg-file))
       (telega-file--upload-internal msg-file
         (lambda (_filenotused)
@@ -1153,16 +1162,6 @@ NODE - ewoc node, if known."
                        (plist-get ring-msg :id)))
           (throw 'found ind))))))
 
-(defun telega-msg-ignored-p (msg)
-  "Return non-nil if MSG is ignored.
-Return function by which MSG has been ignored."
-  (or (plist-get msg :ignored-p)
-      (when msg
-        (let ((last-ignored
-               (plist-get (telega-msg-chat msg) :telega-last-ignored)))
-          (when (eq (plist-get msg :id) (car last-ignored))
-            (cdr last-ignored))))))
-
 (defun telega-msg-ignore (msg &optional ignored-by)
   "Mark message MSG to be ignored (not viewed, notified about) in chats.
 By side effect adds MSG into `telega--ignored-messages-ring' to be viewed
@@ -1202,11 +1201,6 @@ Return function by which MSG has been ignored."
       (plist-put (telega-msg-chat msg) :telega-last-ignored
                  (cons (plist-get msg :id) ignored-p)))
     ignored-p))
-
-(defun telega-msg-from-blocked-sender-p (msg)
-  "Return non-nil if MSG is sent from blocked message sender.
-Could be used in `telega-msg-ignore-predicates'."
-  (telega-msg-sender-blocked-p (telega-msg-sender msg) 'offline))
 
 
 (defun telega-msg-unmark (msg)
@@ -1271,34 +1265,28 @@ For interactive use only."
 
 (defun telega-msg--content-file (msg)
   "For message MSG return its content file as TDLib object."
-  (let ((content (plist-get msg :content)))
-    (cl-case (telega--tl-type content)
-      (messageDocument
-       (let ((doc (telega--tl-get msg :content :document)))
-         (telega-file--renew doc :document)))
-      (messagePhoto
-       (let ((hr (telega-photo--highres (plist-get content :photo))))
-         (telega-file--renew hr :photo)))
-      (messageAudio
-       (let ((audio (telega--tl-get msg :content :audio)))
-         (telega-file--renew audio :audio)))
-      (messageVideo
-       (let ((video (telega--tl-get msg :content :video)))
-         (telega-file--renew video :video)))
-      (messageVoiceNote
-       (let ((note (telega--tl-get msg :content :voice_note)))
-         (telega-file--renew note :voice)))
-      (messageVideoNote
-       (let ((note (telega--tl-get msg :content :video_note)))
-         (telega-file--renew note :video)))
-      (messageAnimation
-       (let ((anim (telega--tl-get msg :content :animation)))
-         (telega-file--renew anim :animation)))
-      (messageSticker
-       (let ((sticker (telega--tl-get msg :content :sticker)))
-         (telega-file--renew sticker :sticker)))
-      (t (when-let ((web-page (plist-get content :web_page)))
-           (error "TODO: Save web-page"))))))
+  (let* ((content (plist-get msg :content))
+         (webpage (plist-get content :web_page))
+         (file-accessor
+          (cl-some (lambda (accessor)
+                     (cons (or (plist-get content (car accessor))
+                               (plist-get webpage (car accessor)))
+                           (cdr accessor)))
+                   '((:document   . :document)
+                     (:photo      . :photo)
+                     (:audio      . :audio)
+                     (:video      . :video)
+                     (:voice_note . :voice)
+                     (:video_note . :video)
+                     (:animation  . :animation)
+                     (:sticker    . :sticker)))))
+    (when file-accessor
+      ;; NOTE: special case for the `:photo' accessor, use highest
+      ;; resolution photo
+      (telega-file--renew (if (eq :photo (cdr file-accessor))
+                              (telega-photo--highres (car file-accessor))
+                            (car file-accessor))
+                          (cdr file-accessor)))))
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file.
@@ -1519,8 +1507,6 @@ Requires administrator rights in the chat."
           (telega-ins "\n")))
       (goto-char (point-min)))))
 
-
-;; Viewing messages diffs
 (defun telega-msg-diff-edits (msg)
   "Display edits to MSG user did."
   (interactive (list (telega-msg-at (point))))
@@ -1563,6 +1549,19 @@ Requires administrator rights in the chat."
                                 (telega-ins--content msg-new))
                                'colorize))
         ))))
+
+(defun telega-msg-set-reaction (msg &optional reaction big-p)
+  "Set or unset REACTION to the message MSG.
+If `\\[universal-argument]' is used, reaction with big animation will
+be set."
+  (interactive (let ((msg (telega-msg-for-interactive))
+                     (big-p current-prefix-arg))
+                 (list msg
+                       (telega-completing-read-msg-reaction
+                        msg (format "Set %sReaction: " (if big-p "BIG " ""))
+                        telega-msg-default-reaction)
+                       big-p)))
+  (telega--setMessageReaction msg (or reaction "") big-p))
 
 (provide 'telega-msg)
 

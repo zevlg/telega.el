@@ -1891,9 +1891,9 @@ be marked as read."
   ;; "viewMessages" will be called once
   (let* ((thread-id (telega-chat-message-thread-id chat))
          (non-viewed-messages
-          (cl-remove-if-not
+          (cl-remove-if
            (lambda (msg)
-             (not (eq thread-id (plist-get msg :telega-viewed-in-thread))))
+             (eq thread-id (plist-get msg :telega-viewed-in-thread)))
            messages)))
     ;; Mark messages with internal `:telega-viewed-in-thread' prop
     (when force
@@ -1939,6 +1939,11 @@ be marked as read."
   "Read all mentions in CHAT."
   (telega-server--send
    (list :@type "readAllChatMentions" :chat_id (plist-get chat :id))))
+
+(defun telega--readAllChatReactions (chat)
+  "Read all reactions in CHAT."
+  (telega-server--send
+   (list :@type "readAllChatReactions" :chat_id (plist-get chat :id))))
 
 (defun telega--openChat (chat)
   "Mark CHAT as opened."
@@ -2178,6 +2183,47 @@ CHAT is ordinary Telegram chat."
          :group_call_id (plist-get group-call :id)
          :enabled_start_notification
          (if (plist-get group-call :enabled_start_notification) :false t))))
+
+;;; Reactions
+(defun telega--getMessageAvailableReactions (msg &optional callback)
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (mapcar #'telega--desurrogate-apply (plist-get reply :reactions))
+
+    (list :@type "getMessageAvailableReactions"
+          :chat_id (plist-get msg :chat_id)
+          :message_id (plist-get msg :id))
+    callback))
+
+(defun telega--getMessageAddedReactions (msg reaction
+                                             &optional offset limit callback)
+  "Return reactions added for a message MSG, along with their sender."
+  (telega-server--call
+   (list :@type "getMessageAddedReactions"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :reaction reaction
+         :offset (or offset 0)
+         :limit (or limit 50))
+   callback))
+
+(defun telega--setMessageReaction (msg reaction &optional big-p)
+  "Change chosen REACTION for a message MSG.
+REACTION is an emoji string.
+BIG-P is non-nil if the reaction is added with a big animation."
+  (telega-server--send
+   (list :@type "setMessageReaction"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :reaction reaction
+         :is_big (if big-p t :false))))
+
+(defun telega--setChatAvailableReactions (chat reactions)
+  "Change REACTIONS, available in a CHAT."
+  (telega-server--send
+   (list :@type "setChatAvailableReactions"
+         :chat_id (plist-get chat :id)
+         :available_reactions (apply 'vector reactions))))
 
 (provide 'telega-tdlib)
 

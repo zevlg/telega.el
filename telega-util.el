@@ -41,6 +41,7 @@
 
 (require 'telega-core)
 (require 'telega-customize)
+(require 'telega-media)
 
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
@@ -162,6 +163,22 @@ If FACE is not specified, then `default' is used."
            (: (* (any ?\r ?\n)) string-end)))
    ""
    (or string "")))
+
+(defun telega-window-current-column (&optional window)
+  "Return current column in the window."
+  (telega-chars-in-width
+   (car (window-text-pixel-size window (line-beginning-position) (point)))))
+
+(defun telega-window-string-width (str)
+  "Return correct width in chars.
+This function is very slow comparing to `string-width', however
+returns precise value."
+  (with-temp-buffer
+    (telega-ins str)
+    (save-window-excursion
+      (set-window-dedicated-p nil nil)
+      (set-window-buffer nil (current-buffer))
+      (telega-window-current-column))))
 
 (defun telega-current-column ()
   "Same as `current-column', but take into account width of the characters."
@@ -475,7 +492,7 @@ Specify non-nil VIDEO-P if generating preview for video."
                         (format "image/%s"
                                 (if data-p
                                     "jpeg"
-                                  (image-type-from-file-name filename)))
+                                  (telega-image-supported-file-p filename t)))
                         data-p :x x-fit :y y-fit :width w-fit :height h-fit
                         :clip-path "url(#pclip)"))
 
@@ -1394,6 +1411,24 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
          (choice (funcall telega-completing-read-function
                           prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
+
+(defun telega-completing-read-msg-reaction (msg prompt &optional default-reaction)
+  "Read a reaction for the message MSG."
+  (let* ((completion-ignore-case t)
+         (available-reactions (telega--getMessageAvailableReactions msg))
+         (my-reaction (telega-msg-chosen-reaction msg))
+         (choices (if my-reaction
+                      (cons "Unset" (delete my-reaction available-reactions))
+                    (if (member default-reaction available-reactions)
+                        ;; NOTE: make `default-reaction' very first in the list
+                        (cons default-reaction
+                              (delete default-reaction available-reactions))
+                      available-reactions)))
+         (choice (funcall telega-completing-read-function
+                          prompt choices nil t)))
+    (if (equal "Unset" choice)
+        nil
+      choice)))
 
 (defun telega--animate-dots (text)
   "Animate TEXT's trailing dots.

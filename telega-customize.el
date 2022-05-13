@@ -109,7 +109,7 @@ Implies `telega-use-chat-info-database' set to non-nil."
 (defcustom telega-proxies nil
   "*List of proxies.
 Format is:
-  (:server \"<SERVER>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
+  (:server \"<ADDRESS>\" :port <PORT> :enable <BOOL> :type <PROXY-TYPE>)
 
 where PROXY-TYPE is one of:
 - (:@type \"proxyTypeSocks5\" :username <USER> :password <PASSWORD>)
@@ -649,7 +649,7 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :group 'telega-root)
 
 (defcustom telega-root-view-topics
-  '(("Important" . (or mention (and unread unmuted))))
+  '(("Important" . important))
   "Alist of topics for \"topics\" root view.
 Car is name of the topic, cdr is chat filter to match chats."
   :package-version '(telega . "0.6.23")
@@ -867,34 +867,42 @@ See https://github.com/zevlg/telega.el/issues/171"
 
 
 (defgroup telega-filter nil
-  "Customize chats filtration."
+  "Customize Chats Filters."
   :prefix "telega-filter-"
   :group 'telega)
 
 (defcustom telega-filter-default 'main
-  "*Default chat filter to apply."
+  "*Temex to filter chats by default."
   :type 'list
   :options '(all (or saved-messages pin unread))
   :group 'telega-filter)
 
-(defcustom telega-filter-unread-chats '(and main unread)
-  "*Chat Filter for `telega-switch-unread-chat' command."
+(defcustom telega-important-chat-temex
+  '(or mention
+       (and unmuted unread-reactions)
+       (and unmuted unread))
+  "*Chat Temex to match \"important\" chats."
+  :package-version '(telega . "0.8.12")
+  :type 'list
+  :group 'telega-filter)
+
+(defcustom telega-unread-chat-temex '(and main unread)
+  "*Chat Temex for `telega-switch-unread-chat' command."
   :package-version '(telega . "0.7.22")
   :type 'list
   :group 'telega-filter)
 
 (defcustom telega-filters-custom
   '(("Main" . main)
-    ("Important" . (or mention (and unread unmuted)))
-    ("Online" . (and (not saved-messages) (online-status "Online")))
+    ("Important" . important)
+    ("Online" . (and (not saved-messages) (user online)))
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
     ("Archive" . archive))
-  "*Alist of custom filters in form (NAME . CHAT-FILTER).
-NAME is evaluated to get resulting string, so it could be a lisp
-form.
+  "*Alist of custom filters in form (NAME . TEMEX).
+NAME can be an i18n string, such as \"lng_filters_type_groups\".
 This filters are displayed as filter buttons at the top of rootbuf."
-  :package-version '(telega . "0.7.57")
+  :package-version '(telega . "0.8.13")
   :type 'alist
   :group 'telega-filter)
 
@@ -942,19 +950,19 @@ min and max values for a width calculation using
 (defcustom telega-inserter-for-filter-button 'telega-ins--filter
   "Inserter for the custom filter buttons."
   :type 'function
-  :group 'telega-inserters)
+  :group 'telega-inserter)
 
 (defcustom telega-inserter-for-chat-button 'telega-ins--chat-full
   "Inserter for the chat button in root buffer."
   :type 'function
   :options '(telega-ins--chat-full-2lines)
-  :group 'telega-inserters)
+  :group 'telega-inserter)
 
 (defcustom telega-inserter-for-nearby-chat-button 'telega-ins--chat-nearby-2lines
   "Inserter for nearby chat button in rootbuf."
   :package-version '(telega . "0.6.23")
   :type 'function
-  :group 'telega-inserters)
+  :group 'telega-inserter)
 
 (defcustom telega-inserter-for-msg-button 'telega-ins--message
   "Inserter for message button in chat buffer.
@@ -1073,15 +1081,15 @@ inserts newline otherwise."
   :group 'telega-chat)
 
 (defcustom telega-chat-send-messages-async nil
-  "Non-nil to send messages in async manner, not waiter telega-server reply.
-Setting it to non-nil might introduce additional flickery in chatbuf."
+  "Non-nil to send messages in async manner, not waiting telega-server reply.
+Setting it to non-nil might introduce additional flickering in chatbuf."
   :package-version '(telega . "0.7.2")
   :type 'boolean
   :group 'telega-chat)
 
 (defcustom telega-chat-send-disable-webpage-preview nil
   "Non-nil to disable web page previews for the outgoing messages.
-There will be no way to enable web page previews untill this option is
+There will be no way to enable web page previews until this option is
 enabled."
   :package-version '(telega . "0.7.2")
   :type 'boolean
@@ -1478,9 +1486,25 @@ no longer work."
 (defcustom telega-msg-save-dir nil
   "*Directory for `telega-msg-save' without asking.
 If nil, the saved path is always asked."
-  :type 'string
+  :type '(choice (const :tag "Always ask for a directory to save to" nil)
+                 string)
   :group 'telega-msg)
 
+(defcustom telega-msg-default-reaction "👍"
+  "Default reaction for the `\\<telega-msg-button-map>\\[telega-msg-set-reaction]' command."
+  :type '(choice nil string)
+  :group 'telega-msg)
+
+(defcustom telega-msg-temex-show-reactions '(return t)
+  "Message Temex to match messages to show reactions for."
+  :package-version '(telega . "0.8.13")
+  :type 'list
+  :options '((or (chat (type private))
+                 (sender me)
+                 has-chosen-reaction))
+  :group 'telega-msg)
+
+
 (defcustom telega-photo-size-limits '(10 6 55 12)
   "*Limits image size for the photos.
 Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
@@ -1860,7 +1884,21 @@ If nil, then user's online status is not displayed."
             #b11000000
             #b11000001
             #b01111111
-            #b01111110)))
+            #b01111110))
+
+  (define-fringe-bitmap 'telega-reaction
+    (vector #b011000110
+            #b111101111
+            #b111111111
+            #b111111111
+            #b011111110
+            #b011111110
+            #b001111100
+            #b001111100
+            #b000111000
+            #b000111000
+            #b000010000
+            )))
 
 (defcustom telega-symbol-mention-mark
   (if (fboundp 'define-fringe-bitmap)
@@ -1869,6 +1907,16 @@ If nil, then user's online status is not displayed."
     (propertize "\u200B" 'face 'telega-mention-count))
   "*Symbol used to denote massages which contains unread mention."
   :package-version '(telega . "0.6.30")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-reaction-mark
+  (if (fboundp 'define-fringe-bitmap)
+      (propertize "\u200B" 'display
+                  '(left-fringe telega-reaction telega-mention-count))
+    (propertize "\u200B" 'face 'telega-mention-count))
+  "*Symbol used to denote massages which contains unread reaction."
+  :package-version '(telega . "0.8.13")
   :type 'string
   :group 'telega-symbol)
 
@@ -1978,14 +2026,19 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-reaction "💟"
+  "Symbol used to display reactions."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbols-emojify
-  '((verified (when (image-type-available-p 'svg)
+  '((verified (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "verified.svg" 2)))
-    (vertical-bar (when (image-type-available-p 'svg)
+    (vertical-bar (when (and telega-use-images (image-type-available-p 'svg))
                     (telega-svg-create-vertical-bar)))
-    (horizontal-bar (when (image-type-available-p 'svg)
+    (horizontal-bar (when (and telega-use-images (image-type-available-p 'svg))
                       (telega-svg-create-horizontal-bar)))
-    (underline-bar (when (image-type-available-p 'svg)
+    (underline-bar (when (and telega-use-images (image-type-available-p 'svg))
                      (telega-svg-create-horizontal-bar
                       1 0.7 telega-symbol-underline-bar)))
     alarm attachment
@@ -1999,7 +2052,9 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
     leave-comment lightning lock location
     member multiple-folders
     pause phone photo pin poll play
-    (reply (when (image-type-available-p 'svg)
+    (reaction (when (and telega-use-images (image-type-available-p 'svg))
+                (telega-etc-file-create-image "symbols/reaction.svg" 2)))
+    (reply (when (and telega-use-images (image-type-available-p 'svg))
              (telega-etc-file-create-image "symbols/reply.svg" 2)))
     video video-chat-active video-chat-passive
 
@@ -2398,9 +2453,9 @@ Always called, even if corresponding chat is closed at the moment."
   "Hook called when new message has been inserted into chatbuffer.
 Called with single argument - MESSAGE.
 Always called, even if corresponding chat is closed at the moment.
-Called even for messages ignored by client side filtering, to
-check message is filtered by client side filtering use
-`telega-msg-ignored-p'."
+Called even for messages ignored by client side filtering.
+To check message is filtered by client side filtering use
+`ignored' Message Temex."
   :type 'hook
   :group 'telega-hooks)
 

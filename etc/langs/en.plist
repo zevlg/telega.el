@@ -206,6 +206,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "{mouse}: Unmark all messages")
  ("telega_chat_modeline_mention_help"
   :value "{mouse}: Goto next mention")
+ ("telega_chat_modeline_reaction_help"
+  :value "{mouse}: Goto next reaction")
  ("telega_chat_modeline_pinned_msg_help"
   :value "{mouse}: Goto pinned message")
  ("telega_chat_modeline_thread_msg_help"
@@ -589,6 +591,11 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_filters_remove_sure"
   :value "This will remove the folder, chats won't be deleted.")
 
+ ("lng_filters_type_groups"
+  :value "Groups")
+ ("lng_filters_type_channels"
+  :value "Channels")
+
  ;; Comments
  ("lng_comments_open_none"
   :value "Leave a Comment")
@@ -835,4 +842,5 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
 
  ("lng_error_post_link_invalid"
   :value "Unfortunately, you can't access this message. You are not a member of the chat where it was posted.")
+
  )

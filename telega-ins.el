@@ -59,11 +59,6 @@
 (declare-function telega-chat-admin-get "telega-chat" (chat user))
 (declare-function telega-chat--update-pinned-message "telega-chat" (chat &optional offline-p old-pin-msg-id))
 
-;; telega-filter.el depends on telega-ins.el
-(declare-function telega-chat-match-p "telega-filter" (chat chat-filter))
-
-(defvar telega-filters--inhibit-list)
-
 (defun telega-button--endings-func (label)
   "Function to generate endings for the button with LABEL."
   (cond
@@ -1752,16 +1747,18 @@ Display text using FACE."
        (telega-i18n "lng_context_reply_msg") 'telega-msg-inline-reply
      ,@body))
 
-(defun telega-ins--aux-msg-one-line (msg &optional with-username remove-caption)
+(cl-defun telega-ins--aux-msg-one-line (msg &key with-username 
+                                            username-face remove-caption)
   "Insert contents for aux message MSG as one line.
 If WITH-USERNAME is non-nil then insert MSG sender as well.
+USERNAME-FACE specifies face to use for sender's title.
 if WITH-USERNAME is `unread-mention', then outline sender with
 `telega-mention-count' face.
 REMOVE-CAPTION is passed directly to `telega-ins--content-one-line'."
+  (declare (indent 1))
   (when (and with-username
-             (telega-ins--with-face (when (eq with-username 'unread-mention)
-                                      (list 'telega-entity-type-mention 'bold))
-               (telega-ins--msg-sender (telega-msg-sender msg) 'short)))
+             (telega-ins--with-face username-face
+               (telega-ins--msg-sender (telega-msg-sender msg) 'username)))
     (telega-ins "> "))
   (telega-ins--content-one-line msg remove-caption))
 
@@ -1840,9 +1837,7 @@ argument - MSG to insert additional information after header."
       (telega-ins--with-attrs (list :max twidth :align 'left :elide t)
         (unless (plist-get msg :can_be_saved)
           (telega-ins (telega-symbol 'copyright)))
-        (telega-ins--with-attrs
-            (list :face (telega-msg-sender-title-faces sender))
-
+        (telega-ins--with-face (telega-msg-sender-title-faces sender)
           ;; Message title itself
           (telega-ins (telega-msg-sender-title sender))
           (telega-ins-prefix " @"
@@ -2021,7 +2016,7 @@ argument - MSG to insert additional information after header."
              (telega-ins--aux-inline-reply
               (telega-ins--with-face 'shadow
                 (telega-ins (telega-i18n "lng_deleted_message")))))
-            ((telega-msg-ignored-p reply-to-msg)
+            ((telega-msg-match-p reply-to-msg 'ignored)
              (telega-ins--aux-inline-reply
               (telega-ins--message-ignored reply-to-msg)))
             (reply-to-msg
@@ -2031,12 +2026,14 @@ argument - MSG to insert additional information after header."
                        (lambda (_button)
                          (telega-msg-goto-highlight reply-to-msg)))
                (telega-ins--aux-inline-reply
-                (telega-ins--aux-msg-one-line
-                 reply-to-msg
-                 (if (and (plist-get msg :contains_unread_mention)
-                          (telega-me-p (telega-msg-sender reply-to-msg)))
-                     'unread-mention
-                   'with-username)))
+                (telega-ins--aux-msg-one-line reply-to-msg
+                  :with-username t
+                  :username-face
+                  (let ((maybe-me (telega-msg-sender reply-to-msg)))
+                    (when (telega-sender-match-p maybe-me 'me)
+                      (if (plist-get msg :contains_unread_mention)
+                          '(bold telega-entity-type-mention)
+                        (telega-msg-sender-title-faces maybe-me))))))
                ))
             (t
              ;; Need async request
@@ -2146,6 +2143,9 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
 
         (telega-ins-prefix "\n"
           (telega-ins--msg-sending-state-failed msg))
+        (when (telega-msg-match-p msg telega-msg-temex-show-reactions)
+          (telega-ins-prefix "\n"
+            (telega-ins--msg-reaction-list msg)))
         (telega-ins-prefix "\n"
           (telega-ins--reply-markup msg))
         (telega-ins-prefix "\n"
@@ -2184,6 +2184,8 @@ Pass all ARGS directly to `telega-ins--message0'."
 
     (when (plist-get msg :contains_unread_mention)
       (telega-ins telega-symbol-mention-mark))
+    (when (telega-msg-match-p msg 'unread-reactions)
+      (telega-ins telega-symbol-reaction-mark))
     (apply #'telega-ins--message0 msg args)))
 
 (defun telega-ins--message-no-header (msg)
@@ -2195,7 +2197,7 @@ Pass all ARGS directly to `telega-ins--message0'."
   (telega-ins--with-props (list 'face 'custom-invalid)
     ;; NOTE: For ignored MSG use `telega-ins--message-ignored'
     ;; inserter.  See https://github.com/zevlg/telega.el/issues/342
-    (if (telega-msg-ignored-p msg)
+    (if (telega-msg-match-p msg 'ignored)
         (when telega-ignored-messages-visible
           (telega-ins--message-ignored msg))
 
@@ -2598,6 +2600,7 @@ Return t."
         (title (telega-chat-title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
+        (reactions (plist-get chat :unread_reaction_count))
         (custom-order (telega-chat-uaprop chat :order))
         (muted-p (telega-chat-muted-p chat))
         (chat-type (telega-chat--type chat 'no-interpret))
@@ -2641,7 +2644,7 @@ Return t."
     ;; 1) First we format unread@mentions as string to find out its
     ;;    final length
     ;; 2) Then we insert the title as wide as possible
-    ;; 3) Then insert formatted UNREAD@MENTIONS string
+    ;; 3) Then insert formatted UNREAD@MENTIONS@REACTIONS string
     (let* ((umstring (telega-ins--as-string
                       (unless (zerop unread)
                         (telega-ins--with-face (if muted-p
@@ -2655,13 +2658,20 @@ Return t."
                                 '(telega-muted-count bold)
                               'telega-mention-count)
                           (telega-ins-fmt "@%d" mentions)))
+                      (unless (zerop reactions)
+                        (telega-ins--with-face (if muted-p
+                                                   'telega-muted-count
+                                                 'telega-unmuted-count)
+                          (telega-ins (telega-symbol 'reaction)
+;                                      (format "%d" reactions)
+                                      )))
                       ;; Mark for chats marked as unread
                       (when (and (zerop unread) (zerop mentions)
                                  (plist-get chat :is_marked_as_unread))
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
-                          (telega-ins telega-symbol-unread)))
+                          (telega-ins (telega-symbol 'unread))))
                       ;; For chats searched by
                       ;; `telega--searchPublicChats' insert number of
                       ;; members in the group
@@ -2769,7 +2779,7 @@ Return t."
                 (telega-ins--fmt-text (plist-get inmsg :text))))))
 
           (last-msg
-           (if (telega-msg-ignored-p last-msg)
+           (if (telega-msg-match-p last-msg 'ignored)
                (telega-ins--one-lined (telega-ins--message-ignored last-msg))
              (telega-ins--chat-msg-one-line chat last-msg max-width)))
 
@@ -3005,6 +3015,29 @@ Return non-nil if restrictions has been inserted."
         :inserter #'telega-ins--sponsored-message
         :action #'telega-msg-open-sponsored))
     t))
+
+(defun telega-ins--msg-reaction (_msg reaction)
+  "For the message MSG insert REACTION.
+REACTION is the `messageReaction' TDLib object."
+  (telega-ins--with-face (if (plist-get reaction :is_chosen)
+                             'telega-button-active
+                           'shadow)
+    (telega-ins-fmt "%d" (plist-get reaction :total_count))
+    (telega-ins (telega-tl-str reaction :reaction))
+    (seq-doseq (rs (plist-get reaction :recent_sender_ids))
+      (telega-ins--image
+       (telega-msg-sender-avatar-image-one-line (telega-msg-sender rs))))
+    t))
+
+(defun telega-ins--msg-reaction-list (msg)
+  "Inserter for the message's MSG reactions."
+  (let (ret)
+    (seq-doseq (reaction (telega--tl-get msg :interaction_info :reactions))
+      (when ret
+        (telega-ins "  "))
+      (telega-ins--msg-reaction msg reaction)
+      (setq ret t))
+    ret))
 
 (provide 'telega-ins)
 

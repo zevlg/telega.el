@@ -149,6 +149,20 @@
                            nil
                            "0.8.1")
 
+(telega-obsolete--variable 'telega-filter-unread-chats
+                           'telega-unread-chat-temex
+                           "0.8.20")
+
+(telega-obsolete--variable 'telega-autoplay-for
+                           'telega-autoplay-msg-temex
+                           "0.8.20")
+(telega-obsolete--variable 'telega-autoplay-outgoing
+                           'telega-autoplay-msg-temex
+                           "0.8.20")
+(telega-obsolete--variable 'telega-autoplay-messages
+                           'telega-autoplay-msg-temex
+                           "0.8.20")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

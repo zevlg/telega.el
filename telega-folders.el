@@ -194,7 +194,10 @@ You can add chat to multiple folders."
      (list chat-at
            (telega-completing-read-folder
             (format "Add «%s» to Folder: "
-                    (telega-msg-sender-title-for-completion chat-at))))))
+                    (telega-ins--as-string
+                     (telega-ins--with-attrs (list :max 20 :elide-trail 1)
+                       (telega-ins
+                        (telega-msg-sender-title-for-completion chat-at)))))))))
 
   (let ((filter-info (telega-folder--chat-filter-info folder-name)))
     (cl-assert filter-info)

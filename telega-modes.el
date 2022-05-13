@@ -455,9 +455,7 @@ Return filename of the generated icon."
          (x-focus-frame nil)
          (telega)
          ;; If there is single important chat, then switch to it
-         (let ((ichats (telega-filter-chats
-                        telega--ordered-chats
-                        '(or mention (and unread unmuted)))))
+         (let ((ichats (telega-filter-chats telega--ordered-chats 'important)))
            (when (= 1 (length ichats))
              (telega-switch-important-chat (car ichats)))))
 
@@ -473,9 +471,9 @@ Return filename of the generated icon."
 ;; ** telega-autoplay-mode
 ;;
 ;; Global minor mode to automatically open content for incoming
-;; messages.  Message automatically opens if its type is in the
-;; ~telega-autoplay-messages~ list and message content is fully
-;; observable.
+;; messages.  Message automatically opens if it matches against
+;; ~telega-autoplay-msg-temex~ [[#telega-match-expressions][Message
+;; Temex]] and message's content is fully observable.
 ;;
 ;; Enable with ~(telega-autoplay-mode 1)~ or at =telega= load time:
 ;; #+begin_src emacs-lisp
@@ -483,40 +481,27 @@ Return filename of the generated icon."
 ;; #+end_src
 ;;
 ;; Customizable options:
-;; - {{{user-option(telega-autoplay-for, 2)}}}
-;; - {{{user-option(telega-autoplay-outgoing, 2)}}}
-;; - {{{user-option(telega-autoplay-messages, 2)}}}
-(defcustom telega-autoplay-for 'all
-  "Chat Filter for chats where to automatically open content."
+;; - {{{user-option(telega-autoplay-msg-temex, 2)}}}
+(defcustom telega-autoplay-msg-temex
+  '(type Animation Sticker AnimatedEmoji)
+  "Message Temex for messages to automatically play content for."
   :type 'list
-  :group 'telega-modes)
-
-(defcustom telega-autoplay-outgoing t
-  "Non-nil to play outgoing messages as well."
-  :type 'boolean
-  :group 'telega-modes)
-
-(defcustom telega-autoplay-messages
-  '(messageAnimation messageSticker messageAnimatedEmoji)
-  "Message to automatically play when received."
-  :type 'list
+  :options '((and (not outgoing)
+                  (or (type Animation Sticker AnimatedEmoji)
+                      (web-page :animation)
+                      (web-page :sticker))))
   :group 'telega-modes)
 
 (defun telega-autoplay-on-msg (msg)
   "Automatically play contents of the message MSG.
 Play in muted mode."
-  (when (and (or (not (plist-get msg :is_outgoing))
-                 (and telega-autoplay-outgoing
-                      ;; i.e. sent successfully
-                      (not (plist-get msg :sending_state))))
-             (telega-chat-match-p (telega-msg-chat msg) telega-autoplay-for)
+  (when (and (telega-msg-match-p msg telega-autoplay-msg-temex)
              (telega-msg-observable-p msg))
     (let* ((content (plist-get msg :content))
            (content-type (telega--tl-type content))
            (web-page (plist-get content :web_page)))
-      (cond ((and (memq 'messageAnimation telega-autoplay-messages)
-                  (or (eq 'messageAnimation content-type)
-                      (plist-get web-page :animation)))
+      (cond ((or (eq 'messageAnimation content-type)
+                 (plist-get web-page :animation))
              ;; NOTE: special case for animations, animate only those
              ;; which can be animated inline, see
              ;; `telega-animation-play-inline'
@@ -525,9 +510,8 @@ Play in muted mode."
                (when (telega-animation-play-inline-p animation)
                  (telega-msg-open-animation msg animation))))
 
-            ((and (memq 'messageSticker telega-autoplay-messages)
-                  (or (eq 'messageSticker content-type)
-                      (plist-get web-page :sticker)))
+            ((or (eq 'messageSticker content-type)
+                 (plist-get web-page :sticker))
              ;; NOTE: special case for sticker messages, play animated
              ;; sticker only if `telega-sticker-animated-play' is set
              (let ((sticker (or (plist-get content :sticker)
@@ -536,7 +520,7 @@ Play in muted mode."
                           telega-sticker-animated-play)
                  (telega-sticker--animate sticker))))
 
-            ((memq content-type telega-autoplay-messages)
+            (t
              (telega-msg-open-content msg))))))
 
 ;;;###autoload
@@ -588,9 +572,9 @@ Play in muted mode."
 ;; - {{{user-option(telega-squash-message-within-seconds, 2)}}}
 (defcustom telega-squash-message-mode-for
   '(not (or saved-messages (type channel)))
-  "*Chat filter for `global-telega-squash-message-mode'.
+  "*Chat Temex for `global-telega-squash-message-mode'.
 Global squash message mode enables message squashing only in
-chats matching this chat filter."
+chats matching this chat temex."
   :type 'list
   :group 'telega-modes)
 
@@ -743,10 +727,8 @@ Could be used as condition function in `display-buffer-alist'."
   (unless telega-image--message
     (user-error "No telega message associated with the image"))
 
-  (if-let ((next-image-msg (telega-chatbuf--next-msg
-                            telega-image--message
-                            (apply-partially #'telega-msg-type-p 'messagePhoto)
-                            backward)))
+  (if-let ((next-image-msg (telega-chatbuf--next-msg telega-image--message
+                             '(type Photo) backward)))
       ;; Download highres photo
       (let* ((photo (telega--tl-get next-image-msg :content :photo))
              (hr (telega-photo--highres photo))

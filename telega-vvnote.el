@@ -51,13 +51,10 @@
   :type 'boolean
   :group 'telega-vvnote)
 
-(defun telega-vvnote-check-devices (how &rest devices)
-  "Check DEVICES is available in ffmpeg.
-Return list of available DEVICES."
-  (apply #'telega-ffplay--check-ffmpeg-output "-devices" how devices))
-
 (defconst telega-vvnote--has-audio-inputs
-  (telega-vvnote-check-devices '(encoder) "alsa" "pulse"))
+  (car (telega-ffplay--check-ffmpeg-output
+        "-devices" "alsa" "pulse"))
+  "List of audio inputs supported by telega.")
 
 (defcustom telega-vvnote-voice-record-args
   (concat (if (eq system-type 'darwin)
@@ -65,11 +62,11 @@ Return list of available DEVICES."
             ;; gnu/linux
             (concat "-f " (car telega-vvnote--has-audio-inputs)
                     " -i default"))
-          (cond ((member "opus1" telega-ffplay--has-encoders)
+          (cond ((telega-ffplay-has-encoder-p "opus")
                  ;; Try OPUS if available, results in 3 times smaller
                  ;; files then AAC version with same sound quality
                  " -strict -2 -acodec opus -ac 1 -ab 32k")
-                ((member "aac" telega-ffplay--has-encoders)
+                ((telega-ffplay-has-encoder-p "aac")
                  " -acodec aac -ac 1 -ab 96k")
                 (t
                  " -acodec mp3 -ar 44100 -ac 1 -ab 96k")))
@@ -85,11 +82,11 @@ Return list of available DEVICES."
             (concat "-f v4l2 -s 320x240 -i /dev/video0 -r 30 "
                     "-f " (car telega-vvnote--has-audio-inputs) " -i default"))
           " -vf format=yuv420p,scale=320:240,crop=240:240:40:0"
-          " -vcodec " (if (member "hevc" telega-ffplay--has-encoders)
+          " -vcodec " (if (telega-ffplay-has-encoder-p "hevc")
                           "hevc"
                         "h264")
           " -vb 300k"
-          (if (member "opus" telega-ffplay--has-encoders)
+          (if (telega-ffplay-has-encoder-p "opus")
               " -strict -2 -acodec opus -ac 1 -ab 32k"
             ;; Fallback to aac
             " -acodec aac -ac 1 -ab 96k"))
@@ -295,7 +292,7 @@ PROGRESS also can be a cons cell, where car is `paused' and cdr is
 value from 0 to 1, meaning video note is paused at given progress.
 If DATA-P is non-nil then FRAMEFILE is actually an image data.
 If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
-  (let* ((img-type (or frame-img-type (image-type-from-file-name framefile)))
+  (let* ((img-type (or frame-img-type (telega-image-supported-file-p framefile)))
          (size (telega-chars-xheight
                 (if (consp telega-video-note-height)
                     (car telega-video-note-height)
@@ -474,10 +471,10 @@ Return filename with recorded voice note."
   "Record a video note.
 Return filename with recorded video note."
   ;; Check codecs availability
-  (when (or (and (not (member "opus" telega-ffplay--has-encoders))
-                 (not (member "aac" telega-ffplay--has-encoders)))
-            (and (not (member "hevc" telega-ffplay--has-encoders))
-                 (not (member "h264" telega-ffplay--has-encoders))))
+  (when (or (and (not (telega-ffplay-has-encoder-p "opus"))
+                 (not (telega-ffplay-has-encoder-p "aac")))
+            (and (not (telega-ffplay-has-encoder-p "hevc"))
+                 (not (telega-ffplay-has-encoder-p "h264"))))
     (user-error "telega: sorry, your ffmpeg can't record video notes"))
 
   (setq telega-vvnote-video--preview

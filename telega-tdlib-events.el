@@ -247,23 +247,11 @@ DIRTINESS specifies additional CHAT dirtiness."
 (defun telega--on-updateChatPosition (event)
   (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
          (new-pos (plist-get event :position))
-         (old-pos (cl-find (plist-get new-pos :list) (plist-get chat :positions)
-                           :key (telega--tl-prop :list) :test #'equal)))
-    (if old-pos
-        ;; If new order is \"0\", then remove this position, otherwise
-        ;; modify it inplace
-        (if (equal "0" (plist-get new-pos :order))
-            (plist-put chat :positions
-                       (vconcat (seq-remove
-                                 (apply-partially #'eq old-pos)
-                                 (plist-get chat :positions))))
-          (plist-put old-pos :order (plist-get new-pos :order))
-          (plist-put old-pos :is_pinned (plist-get new-pos :is_pinned)))
-      (plist-put chat :positions (vconcat (plist-get chat :positions)
-                                          (list new-pos))))
-
-    (telega-chat--mark-dirty chat event)
-  ))
+         (chat-positions
+          (cl-delete (plist-get new-pos :list) (plist-get chat :positions)
+                     :key (telega--tl-prop :list) :test #'equal)))
+    (plist-put chat :positions (vconcat chat-positions (list new-pos)))
+    (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatMessageSender (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -612,7 +600,7 @@ NOTE: we store the number as custom chat property, to use it later."
         (when-let ((node (telega-chatbuf--insert-messages
                           (list new-msg) 'append-new)))
           (when (and (telega-chatbuf-match-p telega-use-tracking-for)
-                     (not (telega-msg-ignored-p new-msg))
+                     (not (telega-msg-match-p new-msg 'ignored))
                      (not (plist-get new-msg :is_outgoing))
                      (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
             (tracking-add-buffer (current-buffer) '(telega-tracking)))
@@ -1275,6 +1263,38 @@ messages."
   ;; "TODO: define `telega--on-updateHavePendingNotifications'"
   ;; messages in the *telega-debug*
   )
+
+
+;;; Reactions
+(defun telega--on-updateReactions (event)
+  )
+
+(defun telega--on-updateChatAvailableReactions (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :available_reactions
+               (plist-get event :available_reactions))))
+
+(defun telega--on-updateChatUnreadReactionCount (event &optional chat)
+  (unless chat
+    (setq chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+
+  (cl-assert chat)
+  (plist-put chat :unread_reaction_count
+             (plist-get event :unread_reaction_count))
+
+  (telega-chat--mark-dirty chat event))
+
+(defun telega--on-updateMessageUnreadReactions (event)
+  (with-telega--msg-update-event event (chat msg node)
+    (cl-assert chat)
+    (telega--on-updateChatUnreadReactionCount event chat)
+
+    (plist-put msg :unread_reactions (plist-get event :unread_reactions))
+    (when node
+      (with-telega-chatbuf chat
+        (telega-chatbuf--redisplay-node node)))
+    ))
 
 (provide 'telega-tdlib-events)
 

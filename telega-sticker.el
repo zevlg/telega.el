@@ -287,7 +287,7 @@ CALLBACK is called without arguments"
 (defvar telega-sticker--convert-cmd
   (if (or telega-use-docker
           (executable-find "dwebp")
-          (not (telega-ffplay-check-codecs '(decoder) "webp")))
+          (not (telega-ffplay-has-decoder-p "webp")))
       "dwebp -nofancy -mt -o %p %w"
     "ffmpeg -v quiet -i %w %p")
   "Command to convert WEBP file to PNG file.
@@ -305,14 +305,19 @@ Return path to png file."
                (format-spec telega-sticker--convert-cmd
                             (format-spec-make ?p png-filename
                                               ?w webp-filename))
-               'try-host-cmd-first)))
-        (if convert-cmd
-            (progn
-              (telega-debug "WEBP -> PNG: %s" convert-cmd)
-              (shell-command-to-string convert-cmd))
-          (telega-help-message 'no-dwebp-binary
-              "Can't find `%s' binary.  `webp' system package not installed?"
-            (car (split-string telega-sticker--convert-cmd))))))
+               'try-host-cmd-first nil 'no-error)))
+        (cond (convert-cmd
+               (telega-debug "WEBP -> PNG: %s" convert-cmd)
+               (shell-command-to-string convert-cmd))
+              ((image-type-available-p 'webp)
+               ;; NOTE: If `webp' image is supported by Emacs, use it.
+               ;; We use webp->png converter by default, because it
+               ;; gives better results, then Emacsen `webp' images.
+               (setq png-filename webp-filename))
+              (t
+               (telega-help-message 'no-dwebp-binary
+                   "Can't find `%s' binary.  `webp' system package not installed?"
+                 (car (split-string telega-sticker--convert-cmd)))))))
 
     (when (file-exists-p png-filename)
       png-filename)))
@@ -340,6 +345,7 @@ Return path to png file."
          (img-file (or (plist-get sticker :telega-ffplay-frame-filename)
                        (when-let ((fn (telega--tl-get filename :local :path)))
                          (if (or (fboundp 'imagemagick-types)
+;                                 (image-type-available-p 'webp)
                                  (not (equal (file-name-extension fn) "webp")))
                              fn
                            (telega-sticker--webp-to-png fn)))))
@@ -796,8 +802,11 @@ Install from https://github.com/zevlg/tgs2png"))
 
           (stickerTypeVideo
            (telega-ffplay-to-png (telega--tl-get file :local :path)
-               "-an -vf scale=256:256"
-             (list #'telega-sticker--animate-callback sticker for-msg)))))
+               "-pix_fmt rgba -vf scale=256:256 -an"
+             (list #'telega-sticker--animate-callback sticker for-msg)
+             ;; NOTE: We use "libvpx-vp9" to decode WEBM with alpha
+             ;; channel
+             :vcodec "libvpx-vp9"))))
       )))
 
 (defun telega-sticker--gen-sensor-func (sticker)

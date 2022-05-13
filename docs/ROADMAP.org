@@ -2,6 +2,32 @@
 #+TODO: TODO WIP DONE
 #+STARTUP: showall
 
+* telega.el 0.9.0
+** TODO Support for "Downloads API" in 1.8.2 for files rootview
+
+** M-x telega-report-bug RET
+To use ~browse-url~ to open url like
+https://github.com/zevlg/telega.el/issues/new?title=test&body=test%20here
+
+And fill body with text generated from Emacs
+
+** TODO Naming refactoring
+- Use "Chat Matcher" term for functionality to match a chat
+- Use "Message Matcher" for functionality to match a message
+- Avoid using "Chat Filter" term (as TDLib already has this term), use
+  "Custom Chat Filter" and "Active Chat Filter" for filtering
+  fuctionality using "Chat Matchers"
+
+** Inplace searching in a chatbuf
+- ~C-c C-s~ to search for next query appearance in the chatbuf.
+- ~C-c C-r~ to search for prev
+
+** Org Mode markup support
+Implement ~telega-markup-org-fmt~ to apply Org Mode markup.
+~telega-markup-org-fmt~ already member in
+~telega-chat-markup-functions~
+
+
 * telega.el Major Features
 
 ** DONE telega-patron-mode - highlight patron's avatars
@@ -58,17 +84,6 @@ Implementation details:
   https://github.com/zevlg/telega.el/blob/master/contrib/telega-dashboard.el
 - How to decide that story is viewed?
   Maybe store list of message-ids in chat's ~:client_data~?
-
-** Org Mode markup support
-
-Implement ~telega-markup-org-fmt~ to apply Org Mode markup.
-~telega-markup-org-fmt~ already member in
-~telega-chat-markup-functions~
-
-** Inplace searching in a chatbuf
-
-- ~C-c C-s~ to search for next query appearance in the chatbuf.
-- ~C-c C-r~ to search for prev
 
 ** DONE Root Views, different views for the rootbuf
 CLOSED: [2020-10-07 Ср 17:43]
@@ -133,7 +148,7 @@ CREATED: [2020-11-27 Пт]
 ** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
 
 ** DONE Stickers support in non-imagemagick Emacs
-   CLOSED: [2020-02-12 Ср 18:02]
+CLOSED: [2020-02-12 Ср 18:02]
 
 ** DONE Chat sorting
 CLOSED: [2020-02-01 Сб 12:13]

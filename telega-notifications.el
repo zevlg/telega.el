@@ -307,7 +307,7 @@ FORCE is used for testing only, should not be used in real code."
   ;;  5. Message is currently observable in a chatbuf, i.e. chatbuf
   ;;     must be selected and focused in (not having
   ;;     ~telega-chatbuf--refresh-point~)
-  (unless (or (telega-msg-ignored-p msg)
+  (unless (or (telega-msg-match-p msg 'ignored)
               (> (- (telega-time-seconds) (plist-get msg :date)) 60))
     (let ((chat (telega-msg-chat msg)))
       (unless (or (not (telega-chat-match-p chat

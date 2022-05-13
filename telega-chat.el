@@ -318,7 +318,7 @@ By default CHAT-TYPE is `any'."
 
 (defun telega-chat-muted-p (chat)
   "Return non-nil if CHAT is muted."
-  (> (telega-chat-notification-setting chat :mute_for) 0))
+  (telega-chat-match-p chat 'muted))
 
 (defun telega-chat-user (chat &optional include-bots-p)
   "For private CHAT return corresponding user.
@@ -328,7 +328,7 @@ If INCLUDE-BOTS-P is non-nil, return corresponding bot user."
     (telega-user-get (telega--tl-get chat :type :user_id))))
 
 (defun telega-chat-admin-get (chat user)
-  "Return \"chatAdministrator\" structure for the USER.
+  "Return \"chatAdministrator\" TDLib object for the USER.
 Return nil if USER not administrator in the CHAT.
 Works only for chats with active chatbuffer and fetched
 administrators list."
@@ -1005,8 +1005,10 @@ If MUTED-FOR is specified, set it as `:mute_for' notification setting."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (let ((unread-count (plist-get chat :unread_count))
         (unread-mentions-count (plist-get chat :unread_mention_count))
+        (unread-reactions-count (plist-get chat :unread_reaction_count))
         (marked-unread-p (plist-get chat :is_marked_as_unread)))
-    (if (or (> unread-count 0) (> unread-mentions-count 0) marked-unread-p)
+    (if (or (> unread-count 0) (> unread-mentions-count 0)
+            (> unread-reactions-count 0) marked-unread-p)
         (progn
           ;; Toggle chat as readed
           (when marked-unread-p
@@ -1016,7 +1018,8 @@ If MUTED-FOR is specified, set it as `:mute_for' notification setting."
              chat (list (plist-get chat :last_message)) 'force))
           ;; NOTE: reading messages can change mentions count, so
           ;; force all mentions are read
-          (telega--readAllChatMentions chat))
+          (telega--readAllChatMentions chat)
+          (telega--readAllChatReactions chat))
 
       ;; Toggle chat is unread
       (unless marked-unread-p
@@ -1259,9 +1262,7 @@ Switch only if CHAT has corresponding chatbuf."
 If `\\[universal-argument] is used, then select first chat if
 multiple chats are important."
   (interactive
-   (list (let ((ichats (telega-filter-chats
-                        telega--ordered-chats
-                        '(or mention (and unread unmuted)))))
+   (list (let ((ichats (telega-filter-chats telega--ordered-chats 'important)))
            (cond ((null ichats)
                   (user-error "No important chats"))
                  ((or (= 1 (length ichats)) current-prefix-arg)
@@ -1273,10 +1274,10 @@ multiple chats are important."
 
 (defun telega-switch-unread-chat (chat)
   "Switch to next unread message in next unread CHAT.
-Chat considered unread if matches `telega-filter-unread-chats' chat filter."
+CHAT considered unread if matches `telega-unread-chat-temex'."
   (interactive
-   (list (or (car (telega-filter-chats
-                   telega--ordered-chats telega-filter-unread-chats))
+   (list (or (car (telega-filter-chats telega--ordered-chats
+                    telega-unread-chat-temex))
              (user-error "No unread chats"))))
 
   (let ((last-msg-id (or (plist-get chat :last_read_inbox_message_id) 0)))
@@ -1305,9 +1306,12 @@ new Chat buffers.")
 (defvar telega-chatbuf-fastnav-map
   (let ((map (make-sparse-keymap)))
     ;;; ellit-org: chatbuf-fastnav-bindings
+    ;; - {{{where-is(telega-chatbuf-next-unread-reaction,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-next-unread-reaction, 2)}}}
+    (define-key map (kbd "!") 'telega-chatbuf-next-unread-reaction)
+    ;;; ellit-org: chatbuf-fastnav-bindings
     ;; - {{{where-is(telega-chatbuf-goto-date,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-goto-date, 2)}}}
-    (define-key map (kbd "!") 'telega-chatbuf-goto-date)
     (define-key map (kbd "d") 'telega-chatbuf-goto-date)
     ;;; ellit-org: chatbuf-fastnav-bindings
     ;; - {{{where-is(telega-chatbuf-history-beginning,telega-chat-mode-map)}}} ::
@@ -1505,9 +1509,10 @@ If POINT is not over some message, then view last message."
   (let ((message (or (telega-msg-at (or point (point)))
                      (telega-chatbuf--last-msg))))
     (when (and message
-               (or (plist-get message :contains_unread_mention)
-                   (> (plist-get message :id)
-                      (telega-chatbuf--last-read-inbox-msg-id))))
+               (telega-msg-match-p message
+                 '(or (prop :contains_unread_mention)
+                      unread-reactions
+                      (not seen))))
       (telega--viewMessages telega-chatbuf--chat (list message) force))))
 
 (defun telega-chatbuf--footer ()
@@ -1693,7 +1698,8 @@ If POINT is not over some message, then view last message."
 
        ;; Bot description in case chat with bot does not have any
        ;; messages
-       (when (telega-chat-match-p chat '(and (not has-last-message) (type bot)))
+       (when (telega-chat-match-p chat
+               '(and (last-message (return nil)) (type bot)))
          (when-let* ((ci (telega-chat--info chat t))
                      (fi (telega--full-info ci))
                      (desc (telega-tl-str fi :description)))
@@ -1857,7 +1863,8 @@ Recover previous active action after BODY execution."
                        (telega-help-message--cancel-aux 'aux-prompt)))
         title)
       'telega-chat-prompt
-    (telega-ins--aux-msg-one-line msg with-username)))
+    (telega-ins--aux-msg-one-line msg
+      :with-username with-username)))
 
 (defun telega-ins--prompt-aux-edit (edit-msg)
   "Inserter for EDIT-MSG in chatbuf aux prompt."
@@ -2343,10 +2350,13 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
        (telega-ins "]")))))
 
 (defun telega-chatbuf-mode-line-unread ()
-  "Format unread/mentions string for chat buffer modeline."
+  "Format unread/mentions/reactions string for chat buffer modeline."
   (let* ((unread-count (plist-get telega-chatbuf--chat :unread_count))
          (mention-count (plist-get telega-chatbuf--chat :unread_mention_count))
-         (brackets (or (> unread-count 0) (> mention-count 0))))
+         (reaction-count (plist-get telega-chatbuf--chat :unread_reaction_count))
+         (brackets (or (> unread-count 0)
+                       (> mention-count 0)
+                       (> reaction-count 0))))
     (concat
      (when brackets " (")
      (when (> unread-count 0)
@@ -2369,6 +2379,18 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
                                   'mouse-1 'telega-chatbuf-next-unread-mention))
                     'mouse-face 'mode-line-highlight
                     'help-echo (telega-i18n "telega_chat_modeline_mention_help"
+                                 :mouse "mouse-1"))))
+     (when (> reaction-count 0)
+       (concat
+        (when (or (> unread-count 0) (> mention-count 0)) " ")
+        (propertize (concat (telega-symbol 'reaction)
+                            (number-to-string reaction-count))
+                    'face 'telega-mention-count
+                    'local-map (eval-when-compile
+                                 (make-mode-line-mouse-map
+                                  'mouse-1 'telega-chatbuf-next-unread-reaction))
+                    'mouse-face 'mode-line-highlight
+                    'help-echo (telega-i18n "telega_chat_modeline_reaction_help"
                                  :mouse "mouse-1"))))
      (when brackets ")"))))
 
@@ -2524,6 +2546,8 @@ If message thread filtering is enabled, use it first."
     "updateMessageMentionRead"
     "updateChatReadInbox"
     "updateChatUnreadMentionCount"
+    "updateChatUnreadReactionCount"
+    "updateMessageUnreadReactions"
     )
   "List of dirtiness events when chatbuf modeline needs to be updated.")
 
@@ -2532,7 +2556,6 @@ If message thread filtering is enabled, use it first."
     "updateChatAction"
     "updateChatActionBar"
     "updateChatReadInbox"
-    "updateChatUnreadMentionCount"
     )
   "List of dirtiness events when chatbuf footer needs to be updated.")
 
@@ -2739,18 +2762,17 @@ Examine `:telega-dirtiness' property and update corresponding chatbuf parts."
 If WITHOUT-AUX is specified with `\\[universal-argument]', then
 instead of editing, just pop previously sent message as input."
   (interactive "P")
-  (let* ((edit-msg (telega-chatbuf-editing-msg))
+  (let* ((msg-temex '(and (prop :can_be_edited)
+                          (sender me)))
+         (edit-msg (telega-chatbuf-editing-msg))
          (last-msg (telega-chatbuf--last-msg))
          (last-sent-msg
-          (if (and backward (not edit-msg)
-                   (telega-msg-by-me-p last-msg)
-                   (plist-get last-msg :can_be_edited))
+          (if (and backward
+                   (not edit-msg)
+                   (telega-msg-match-p last-msg msg-temex))
               last-msg
             (telega-chatbuf--next-msg (or edit-msg last-msg)
-                                      (lambda (msg)
-                                        (and (telega-msg-by-me-p msg)
-                                             (plist-get msg :can_be_edited)))
-                                      backward))))
+              msg-temex backward))))
     (if last-sent-msg
         (progn
           (telega-msg-edit last-sent-msg)
@@ -2922,11 +2944,15 @@ First message in MESSAGE will be first message at the beginning."
 
 (defun telega-chatbuf--next-msg (msg predicate &optional backward-p)
   "Return message next to MSG matching PREDICATE.
+PREDICATE can be a message temex or a function.
 If BACKWARD-P is non-nil, then return previous message.
 Return nil, if not found."
   (declare (indent 1))
   (with-telega-chatbuf (telega-msg-chat msg)
-    (let* ((mnode (telega-chatbuf--node-by-msg-id (plist-get msg :id)))
+    (let* ((predicate (if (functionp predicate)
+                          predicate
+                        (telega-match-gen-predicate "msg-" predicate)))
+           (mnode (telega-chatbuf--node-by-msg-id (plist-get msg :id)))
            (mnode1 (if backward-p
                        (ewoc-prev telega-chatbuf--ewoc mnode)
                      (ewoc-next telega-chatbuf--ewoc mnode)))
@@ -3133,9 +3159,12 @@ MARKUP-NAME names a markup function from
           ;; f' behaviour)
          (t
           (when (and (or (memq (telega--tl-type attach)
-                               (list 'inputMessageAnimation 'inputMessageAudio
-                                     'inputMessageDocument 'inputMessagePhoto
-                                     'inputMessageVideo 'inputMessageVoiceNote))
+                               '(inputMessageAnimation
+                                 inputMessageAudio
+                                 inputMessageDocument
+                                 inputMessagePhoto
+                                 inputMessageVideo
+                                 inputMessageVoiceNote))
                          ;; New caption for the forwarded message?
                          (and (eq (telega--tl-type attach) 'telegaForwardMessage)
                               (plist-get attach :send_copy)
@@ -3583,6 +3612,23 @@ from message at point."
     (unless next-unread-mention-msg
       (user-error "telega: Can't fetch next unread mention message"))
     (telega-msg-goto next-unread-mention-msg 'highlight)
+    ))
+
+(defun telega-chatbuf-next-unread-reaction ()
+  "Goto next unread reaction in chat buffer."
+  (interactive)
+  (let* ((unread-reactions
+          (plist-get telega-chatbuf--chat :unread_reaction_count))
+         (reply
+          (unless (zerop unread-reactions)
+            (telega--searchChatMessages telega-chatbuf--chat
+                (list :@type "searchMessagesFilterUnreadReaction")
+                "" 0 0 1)))
+         (next-unread-reaction-msg
+          (car (append (plist-get reply :messages) nil))))
+    (unless next-unread-reaction-msg
+      (user-error "telega: No messages with unread reaction"))
+    (telega-msg-goto next-unread-reaction-msg 'highlight)
     ))
 
 (defun telega-chatbuf-next-favorite ()
@@ -4423,6 +4469,9 @@ NODE is already calculated ewoc NODE, or nil."
   (interactive (list (telega-msg-at (point))))
 
   (with-telega-chatbuf (telega-msg-chat msg)
+    ;; View the message
+    (telega--viewMessages telega-chatbuf--chat (list msg))
+
     ;; Redisplay footer in case active voice note is redisplayed
     (when (eq msg telega-chatbuf--vvnote-msg)
       (telega-chatbuf--footer-update))
@@ -4511,7 +4560,15 @@ name from `telega-msg-edit-markup-spec' and insert message text as is."
    (list :@type "telegaForwardMessage"
          :message msg
          :send_copy send-copy-p
-         :remove_caption rm-cap-p
+         :remove_caption (and rm-cap-p
+                              ;; NOTE: `:remove_caption' is used in
+                              ;; messages splitting logic, so mark
+                              ;; forwarded messages with
+                              ;; `:remove_caption' only for messages
+                              ;; having caption
+                              (telega-msg-match-p msg
+                                '(type Animation Audio Document
+                                       Photo Video VoiceNote)))
          :unmark-after-sent (telega-msg-marked-p msg)))
 
   (when (and send-copy-p rm-cap-p (eobp))
@@ -4864,6 +4921,7 @@ CALLBACK is called after point is moved to the message with MSG-ID."
     ("chat-photo" :@type "searchMessagesFilterChatPhoto")
     ("mention" :@type "searchMessagesFilterMention")
     ("unread-mention" :@type "searchMessagesFilterUnreadMention")
+    ("unread-reaction" :@type "searchMessagesFilterUnreadReaction")
     ("failed-to-send" :@type "searchMessagesFilterFailedToSend")
     ("pinned" :@type "searchMessagesFilterPinned")))
 
@@ -5069,7 +5127,7 @@ If point is at some message, then keep point on this message after reseting."
         (fbase (file-name-nondirectory filename)))
     (file-exists-p (expand-file-name (concat "." fbase ".icloud") fdir))))
 
-(defun telega-chatbuf-dnd-attach (uri action)
+(defun telega-chatbuf-dnd-attach (uri _action)
   "DND open function for chat buffer."
   (cl-assert telega-chatbuf--chat)
   (if-let ((filename (dnd-get-local-file-name uri)))

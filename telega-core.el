@@ -781,6 +781,43 @@ MSG-SENDER could be a user or a chat."
   (and msg-sender (eq 'user (telega--tl-type msg-sender))))
 
 
+;; Matching
+(defvar telega-temex-match-prefix nil)
+(declare-function telega-match-p "telega-match" (object temex))
+
+(defun telega-chat-match-p (chat temex)
+  "Return non-nil if CHAT matches TEMEX."
+  (declare (indent 1))
+  (let ((telega-temex-match-prefix "chat-"))
+    (telega-match-p chat temex)))
+
+(defun telega-user-match-p (user temex)
+  "Return non-nil if USER matches TEMEX."
+  (declare (indent 1))
+  (let ((telega-temex-match-prefix "user-"))
+    (telega-match-p user temex)))
+
+(defun telega-msg-match-p (msg temex)
+  "Return non-nil if message MSG matches TEMEX."
+  (declare (indent 1))
+  (let ((telega-temex-match-prefix "msg-"))
+    (telega-match-p msg temex)))
+
+(defun telega-sender-match-p (sender temex)
+  "Return non-nil if message SENDER matches TEMEX."
+  (declare (indent 1))
+  (let ((telega-temex-match-prefix "sender-"))
+    (telega-match-p sender temex)))
+
+(defun telega-match-gen-predicate (prefix temex)
+  "Return predicate function to match TDLib object against TEMEX.
+PREFIX is one of: \"msg-\", \"chat-\", \"user-\" or \"sender-\"."
+  (declare (indent 1))
+    (lambda (obj)
+      (let ((telega-temex-match-prefix prefix))
+        (telega-match-p obj temex))))
+
+
 ;;; Formatting
 (defun telega-fmt-eval-fill (estr attrs)
   "Fill ESTR to `:fill-column' value from ATTRS.

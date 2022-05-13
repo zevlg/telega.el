@@ -198,27 +198,6 @@ Return file object, obtained from `telega--uploadFile'."
     (telega-file--upload-internal file callback)
     file))
 
-;; TODO: use `telega-msg--content-file' instead
-(defun telega-file--used-in-msg (msg)
-  "Return File object associated with MSG.
-Return nil if no File object is associated with the message."
-  (let* ((content (plist-get msg :content))
-         (file (cl-case (telega--tl-type content)
-                 (messageDocument
-                  (telega--tl-get content :document :document))
-                 (messageAudio
-                  (telega--tl-get content :audio :audio))
-                 (messageVideo
-                  (telega--tl-get content :video :video))
-                 (messageVoiceNote
-                  (telega--tl-get content :voice_note :voice))
-                 (messageVideoNote
-                  (telega--tl-get content :video_note :video))
-                 ;; TODO: add other message types
-                 )))
-    (or (gethash (plist-get file :id) telega--files)
-        file)))
-
 
 ;;; Photos
 (defmacro telega-thumbnail--get (type thumbnails)
@@ -319,6 +298,18 @@ If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
             (telega-image-view-file tl-file for-msg)))))))
 
 
+(defun telega-image-supported-file-p (filename &optional error-if-unsupported)
+  "Same as `image-supported-file-p'.
+Trigger an error if ERROR-IF-UNSUPPORTED is specified and FILENAME is
+not natively supported."
+  (or (funcall (if (fboundp 'image-supported-file-p)
+                   'image-supported-file-p
+                 'image-type-from-file-name)
+               filename)
+      (and error-if-unsupported
+           (error "telega: \"%s\" image's format is unsupported"
+                  filename))))
+
 (defun telega-image--telega-text (img &optional slice-num)
   "Return text version for image IMG and its slice SLICE-NUM.
 Return nil if `:telega-text' is not specified in IMG."
@@ -740,7 +731,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (svg (telega-svg-create svg-xw svg-xh))
          (name (telega-msg-sender-title sender)))
     (if (telega-file-exists-p photofile)
-        (let ((img-type (image-type-from-file-name photofile))
+        (let ((img-type (telega-image-supported-file-p photofile))
               (clip (telega-svg-clip-path svg "clip")))
           (svg-circle clip (/ svg-xw 2) (/ cfull 2) (/ ch 2))
           (telega-svg-embed svg (list (file-relative-name photofile base-dir)
@@ -862,7 +853,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                                 (telega--tl-get sender :photo :small))))
       (when (telega-file--downloaded-p sender-photo)
         (let* ((photofile (telega--tl-get sender-photo :local :path))
-               (img-type (image-type-from-file-name photofile))
+               (img-type (telega-image-supported-file-p photofile))
                (clip-name (make-temp-name "user-clip"))
                (clip (telega-svg-clip-path svg clip-name))
                (sz (/ (plist-get map :height) 8))
@@ -1041,14 +1032,16 @@ Return non-nil if zoom has been changed."
     (not (= old-zoom new-zoom))))
 
 
-;;; Chat Themes
-(defun telega-chat-theme--create-svg (theme &optional cheight)
+;;; TODO: Chat Themes
+(defun telega-chat-theme--create-svg (_theme &optional _cheight)
   "Create svg for chat THEME."
-  (let ((cheight (or cheight 6))
-        (svg (telega-svg-create width height)))
-    ;; TODO: draw theme
+;;   (let ((cheight (or cheight 6))
+;; ;        (svg (telega-svg-create width height))
+;;         )
+;;     ;; TODO: draw theme
 
-    svg))
+;;     svg)
+  )
 
 (defun telega-chat-theme--create-image (theme)
   "Create image for the chat THEME."

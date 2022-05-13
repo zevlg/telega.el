@@ -116,7 +116,7 @@ Default is: `full'"
   (let ((user-p (eq (telega--tl-type user) 'user))
         (fmt-type (or fmt-type 'full))
         (name ""))
-    (if (and user-p (eq (telega-user--type user) 'deleted))
+    (if (and user-p (telega-user-match-p user 'deleted))
         ;; I18N: deleted -> Deleted Account
         (setq name (format "%s-%d" (telega-i18n "lng_deleted")
                            (plist-get user :id)))
