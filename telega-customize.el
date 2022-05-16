@@ -2047,6 +2047,8 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
     distance
     eye
     failed favorite flames folder
+    (forward (when (and telega-use-images (image-type-available-p 'svg))
+               (telega-etc-file-create-image "symbols/forward.svg" 2)))
     game
     invoice
     leave-comment lightning lock location

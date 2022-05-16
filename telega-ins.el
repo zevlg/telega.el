@@ -1777,7 +1777,7 @@ performance."
       (telega-ins-fmt " %s%d" (telega-symbol 'eye) view-count))
     (when (and fwd-count (not (zerop fwd-count)))
       (telega-ins " ")
-      (let ((fwd-count-label (concat telega-symbol-forward
+      (let ((fwd-count-label (concat (telega-symbol 'forward)
                                      (int-to-string fwd-count))))
         (if (and (telega-chat-channel-p msg-chat)
                  (telega-chat-match-p msg-chat '(me-is-owner or-admin)))
@@ -2351,7 +2351,7 @@ Pass all ARGS directly to `telega-ins--message0'."
                                          :venue_search_bot_username))))
             (telega-ins "via " (telega-user--name bot 'short))))))
      (telegaForwardMessage
-      (telega-ins telega-symbol-forward "Fwd")
+      (telega-ins (telega-symbol 'forward) "Fwd")
       (when (plist-get imc :send_copy)
         (telega-ins " Copy"))
       (when (plist-get imc :remove_caption)
