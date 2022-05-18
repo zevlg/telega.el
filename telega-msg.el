@@ -1269,9 +1269,9 @@ For interactive use only."
          (webpage (plist-get content :web_page))
          (file-accessor
           (cl-some (lambda (accessor)
-                     (cons (or (plist-get content (car accessor))
-                               (plist-get webpage (car accessor)))
-                           (cdr accessor)))
+                     (when-let ((place (or (plist-get content (car accessor))
+                                           (plist-get webpage (car accessor)))))
+                       (cons place (cdr accessor))))
                    '((:document   . :document)
                      (:photo      . :photo)
                      (:audio      . :audio)
