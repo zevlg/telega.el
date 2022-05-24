@@ -31,7 +31,7 @@ ifndef INSTALL_PREFIX
 INSTALL_PREFIX=$(HOME)/.telega
 endif
 
-$(PROG): $(SOURCES)
+$(PROG): $(SOURCES) telega-emoji.h
 	$(CC) $(CFLAGS) -o $(PROG) $(SOURCES) $(LDFLAGS)
 
 install: $(PROG)

@@ -1654,6 +1654,16 @@ struct emoji_trie zwj1[] = {{0x1f468, false, zwj2},
 {0x1f441, false, zwj1318},
 {0, true, NULL}};
 
+/*
+ * NOTE: Chars treated as emojis, but not in the emojis specification
+ * See https://t.me/tdlibchat/42441
+ */
+struct emoji_trie emoji_exceptions[] = {
+        {0x2764, false, fe0f2}, /* heart with fe0f */
+        {0x2764, true, NULL},   /* heart */
+        {0, true, NULL}
+};
+
 
 /** Emoji lookup table **/
 /* 0x231A <= X <= 0x2B55 */
@@ -1691,6 +1701,7 @@ struct emoji_match_table emoji_basic1_tables[] = {
         {0x274E, 0x274E, 0, any_emoji},
         {0x2753, 0x2755, 0, any_emoji},
         {0x2757, 0x2757, 0, any_emoji},
+        {0x2764, 0x2764, 0, emoji_exceptions},
         {0x2795, 0x2797, 0, any_emoji},
         {0x27B0, 0x27B0, 0, any_emoji},
         {0x27BF, 0x27BF, 0, any_emoji},
