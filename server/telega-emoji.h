@@ -1659,8 +1659,7 @@ struct emoji_trie zwj1[] = {{0x1f468, false, zwj2},
  * See https://t.me/tdlibchat/42441
  */
 struct emoji_trie emoji_exceptions[] = {
-        {0x2764, false, fe0f2}, /* heart with fe0f */
-        {0x2764, true, NULL},   /* heart */
+        {0x2764, true, fe0f2},  /* ❤ */
         {0, true, NULL}
 };
 
