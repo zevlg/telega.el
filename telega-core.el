@@ -70,10 +70,10 @@
     (:can_edit_messages . "lng_rights_channel_edit")
     (:can_delete_messages . "lng_rights_group_delete")
     (:can_invite_users . "lng_rights_group_invite_link")
-    (:can_pin_messages . "lng_rights_group_pin")
     (:can_restrict_members . "telega_rights_restrict_members")
+    (:can_pin_messages . "lng_rights_group_pin")
     (:can_promote_members . "telega_rights_promote_members")
-    (:can_manage_voice_chats . "lng_rights_group_manage_calls")
+    (:can_manage_video_chats . "lng_rights_group_manage_calls")
     (:is_anonymous . "lng_rights_group_anonymous")))
 
 (defconst telega-notification-scope-types

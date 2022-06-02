@@ -602,16 +602,17 @@ If CHAT-TEMEX is ommited, then active chat filter from
   ;; filter without argument
   (interactive
    (list
-    (let* ((filter-funs
+    (let* ((fprefix "telega-match--primitive-chat-")
+           (filter-funs
             (cl-remove-if
              (lambda (funsym)
                (let ((funargs (help-function-arglist funsym)))
                  (and (> (length funargs) 1)
                       (not (eq '&optional (nth 1 funargs))))))
-             (apropos-internal "^telega--filter-[a-z-]+" 'functionp)))
+             (apropos-internal (concat "^" fprefix "[a-z-]+") 'functionp)))
            (filter-names
             (mapcar (lambda (funame)
-                      (substring funame (length "telega--filter-")))
+                      (substring funame (length fprefix)))
                     (mapcar 'symbol-name filter-funs)))
            (i-filter-names
             (mapcar (lambda (funsym)

@@ -66,7 +66,7 @@ Specify TDLIB-FILTERS list to use alternative TDLib chat filters list."
   "Return chatFilterInfo corresponding to FOLDER-NAME."
   (cl-find folder-name telega-tdlib--chat-filters
            :key (lambda (fi)
-                  (telega-tl-str fi :title))
+                  (telega-tl-str fi :title 'no-props))
            :test #'equal))
 
 (defun telega-folder--tdlib-chat-list (folder-name)

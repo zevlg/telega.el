@@ -343,18 +343,22 @@ Only available for basicgroup and supergroup (including channels)."
     (plist-get (telega-chat--info chat) :status)))
 
 (defun telega-chat-member-my-permissions (chat)
-  "Return my member permissions in the CHAT."
+  "Return my member permissions in the CHAT.
+Combines chat permissions and admin/owner permissions."
   (let ((perms (copy-sequence (cddr (plist-get chat :permissions)))))
     (when-let ((status (telega-chat-member-my-status chat)))
       (cl-case (telega--tl-type status)
-        ((chatMemberStatusCreator chatMemberStatusAdministrator)
+        (chatMemberStatusCreator
          ;; NOTE: Owner of the chat has all the admins privs except
          ;; for `:is_anonymous' which is set separately
-         (let ((owner-p (eq 'chatMemberStatusCreator (telega--tl-type status))))
-           (dolist (perm-spec telega-chat--admin-permissions)
-             (plist-put perms (car perm-spec)
-                        (or owner-p (plist-get status (car perm-spec))))))
+         (dolist (perm-spec telega-chat--admin-permissions)
+           (plist-put perms (car perm-spec) t))
          (plist-put perms :is_anonymous (plist-get status :is_anonymous)))
+
+        (chatMemberStatusAdministrator
+         (telega--tl-dolist ((pname pval) (plist-get status :rights))
+           (plist-put perms pname pval)))
+
         (chatMemberStatusRestricted
          (setq perms (plist-get status :permissions)))))
     perms))
@@ -1655,7 +1659,7 @@ If POINT is not over some message, then view last message."
            'action #'telega-chatbuf-filter-cancel)
          (telega-ins " ")
          (telega-ins "Messages Filter: "
-                     (propertize (plist-get msg-filter :title) 'face 'bold))
+                     (propertize (telega-tl-str msg-filter :title) 'face 'bold))
          (when-let ((sender (plist-get msg-filter :sender)))
            (telega-ins " by ")
            (telega-ins--raw-button
@@ -4604,10 +4608,6 @@ then forward message copy without caption."
                          " to: ")
                  ;; NOTE: Forward only to known/comments chats we can
                  ;; write/post to.
-                 ;; We check `(or me-is-member has-chatbuf)'
-                 ;; first, because `can-send-or-post' might fail for
-                 ;; deleted chats listed in the
-                 ;; `telega--ordered-chats'
                  (telega-filter-chats telega--ordered-chats
                    '(and (or main archive has-chatbuf) can-send-or-post)))))
       ;; NOTE: unmark all messages if forwarding marked messages
