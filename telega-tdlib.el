@@ -1591,24 +1591,35 @@ REVOKE is always non-nil for supergroups, channels and secret chats."
 (defun telega--searchMessages (query last-msg &optional _chat-list callback)
   "Search messages by QUERY.
 Specify LAST-MSG to continue searching from LAST-MSG searched.
-If CHAT-LIST is given, then fetch chats from tdlib CHAT-LIST.
+If CHAT-LIST is given, then fetch chats from TDLib's CHAT-LIST.
 If CALLBACK is specified, then do async call and run CALLBACK
 with list of chats received."
   (with-telega-server-reply (reply)
       (append (plist-get reply :messages) nil)
 
-    (list :@type "searchMessages"
-          ;; DO NOT specify chatlist, some chat's in TDLib 1.5.4 does
-          ;; not have :chat_list property and `searchMessages' won't
-          ;; search for messages in them.  So we just search in all
-          ;; chats and then filter messages
+    (nconc (list :@type "searchMessages"
+                 :query query
+                 :offset_date (or (plist-get last-msg :date) 0)
+                 :offset_chat_id (or (plist-get last-msg :chat_id) 0)
+                 :offset_message_id (or (plist-get last-msg :id) 0)
+                 :limit 100)
+           ;; NOTE: Uncomment when chat list is fully supported
+           ;; see https://t.me/tdlibchat/42478
+           ;; (when chat-list
+           ;;   (list :chat_list chat-list))
+           )
+    callback))
 
-          ;; :chat_list chat-list
-          :query query
-          :offset_date (or (plist-get last-msg :date) 0)
-          :offset_chat_id (or (plist-get last-msg :chat_id) 0)
-          :offset_message_id (or (plist-get last-msg :id) 0)
-          :limit 100)
+(cl-defun telega--searchOutgoingDocumentMessages (&optional query &key limit callback)
+  "Search for outgoing document messages."
+  (declare (indent 1))
+  (declare (tdlib-api "1.8.3"))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :messages) nil)
+
+    (list :@type "searchOutgoingDocumentMessages"
+          :query (or query "")
+          :limit (or limit 100))
     callback))
 
 (defun telega--getMapThumbnailFile (loc &optional zoom width height scale
@@ -2198,6 +2209,9 @@ CHAT is ordinary Telegram chat."
 (defun telega--getMessageAddedReactions (msg reaction
                                              &optional offset limit callback)
   "Return reactions added for a message MSG, along with their sender."
+  (unless (plist-get msg :can_get_added_reactions)
+    (error "Can't get added reactions for the message"))
+
   (telega-server--call
    (list :@type "getMessageAddedReactions"
          :chat_id (plist-get msg :chat_id)

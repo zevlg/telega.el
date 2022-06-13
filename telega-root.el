@@ -929,6 +929,14 @@ If corresponding chat node does not exists in EWOC, then create new one."
       (telega--searchMessages query last-msg telega-tdlib--chat-list
                               #'telega-root--messages-add))))
 
+(defun telega-root--outgoing-doc-messages-search ()
+  (let* ((ewoc-spec (telega-root-view--ewoc-spec "outgoing-doc-messages"))
+         (query (plist-get ewoc-spec :search-query)))
+    (cl-assert query)
+    (telega-root-view--ewoc-loading-start "outgoing-doc-messages"
+      (telega--searchOutgoingDocumentMessages query
+        :callback #'telega-root--outgoing-doc-messages-add))))
+
 (defun telega-root--call-messages-search (&optional last-msg)
   "Search for call messages."
   (let* ((ewoc-spec (telega-root-view--ewoc-spec "messages"))
@@ -968,6 +976,9 @@ If corresponding chat node does not exists in EWOC, then create new one."
 (defun telega-root--call-messages-add (messages)
   (telega-root--messages-add0
    "messages" #'telega-root--call-messages-search messages))
+
+(defun telega-root--outgoing-doc-messages-add (messages)
+  (telega-root-view--ewoc-loading-done "outgoing-doc-messages" messages))
 
 
 ;;; Emacs runtime environment for telega
@@ -1300,6 +1311,13 @@ VIEW-FILTER is additional chat filter for this root view."
                            #'telega-root-view--ewoc-loading-done "global"))
                :on-chat-update #'telega-root--existing-on-chat-update)
 
+         (list :name "outgoing-doc-messages"
+               :pretty-printer #'telega-root--message-pp
+               :header "OUTGOING DOCUMENTS"
+               :search-query query
+               :sorter #'telega-root--messages-sorter
+               :on-message-update #'telega-root--on-message-update)
+
          (list :name "messages"
                :pretty-printer #'telega-root--message-pp
                :header "MESSAGES"
@@ -1309,6 +1327,7 @@ VIEW-FILTER is additional chat filter for this root view."
          ))
 
   (telega-root--messages-search)
+  (telega-root--outgoing-doc-messages-search)
   )
 
 (defun telega-view-contacts (query)

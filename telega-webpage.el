@@ -29,7 +29,6 @@
 ;;; Code:
 (require 'cl-lib)
 (require 'url-util)
-(require 'browse-url)                   ; browse-url-url-at-point
 (require 'visual-fill-column)
 
 (require 'telega-server)
@@ -548,12 +547,19 @@ instant view for the URL."
    (concat (string-trim-right telega-webpage--url "#.*") "#")
    url))
 
+(defun telega-url-at-point ()
+  "Return URL at point."
+  (let* ((button (button-at (point)))
+         (link (when button (button-get button :telega-link))))
+    (or (and link (eq (car link) 'url) (cdr link))
+        (thing-at-point 'url t))))
+
 (defun telega-browse-url (url &optional in-web-browser)
   "Open the URL.
 If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
 If IN-WEB-BROWSER is non-nil then force opening in web browser."
-  (interactive (list (browse-url-url-at-point)
+  (interactive (list (telega-url-at-point)
                      current-prefix-arg))
   (when (or in-web-browser
             (not (cond ((string-prefix-p "tg:" url)
