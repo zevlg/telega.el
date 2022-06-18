@@ -1697,6 +1697,14 @@ LIMIT defaults to 200."
    (list :@type "sharePhoneNumber"
          :user_id (plist-get user :id))))
 
+(defun telega--searchUserByPhoneNumber (phone-number &optional callback)
+  "Search a user by their PHONE-NUMBER."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "searchUserByPhoneNumber"
+         :phone_number phone-number)
+   callback))
+
 (defun telega--searchPublicChat (username &optional callback)
   "Search public chat with USERNAME.
 If CALLBACK is specified, call it with one argument - CHAT."

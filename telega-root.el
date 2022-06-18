@@ -1326,6 +1326,15 @@ VIEW-FILTER is additional chat filter for this root view."
                :on-message-update #'telega-root--on-message-update)
          ))
 
+  ;; NOTE: If query looks like a phone number, also search contact by
+  ;; phone number
+  (when (string-match-p "+?[0-9]+" query)
+    (telega--searchUserByPhoneNumber query
+      (lambda (user)
+        (unless (telega--tl-error-p user)
+          (with-telega-root-view-ewoc "contacts" ewoc
+            (ewoc-enter-first ewoc user))))))
+
   (telega-root--messages-search)
   (telega-root--outgoing-doc-messages-search)
   )
