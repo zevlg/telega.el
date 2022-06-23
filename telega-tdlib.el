@@ -118,6 +118,16 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
           :input_language_codes (apply #'vector language-codes))
     callback))
 
+(defun telega--getAllAnimatedEmojis (&optional callback)
+  "Return list of all supported animated emojis."
+  (with-telega-server-reply (reply)
+      (mapcar (lambda (emoji)
+                (telega--desurrogate-apply emoji))
+              (plist-get reply :emojis))
+
+    (list :@type "getAllAnimatedEmojis")
+    callback))
+
 (defun telega--setChatTitle (chat title)
   "Changes the CHAT title to TITLE."
   (telega-server--send
@@ -265,7 +275,6 @@ all messages must have same user sender."
   "Returns an HTML code for embedding the message MSG."
   ;; TDLib: Available only for messages in supergroups and channels
   ;; with a username
-  (cl-assert (telega-chat-public-p (telega-msg-chat msg) 'supergroup))
   (plist-get
    (telega-server--call
     (list :@type "getMessageEmbeddingCode"
@@ -2207,7 +2216,12 @@ CHAT is ordinary Telegram chat."
 (defun telega--getMessageAvailableReactions (msg &optional callback)
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (mapcar #'telega--desurrogate-apply (plist-get reply :reactions))
+      (let ((me (telega-user-me)))
+        (delq nil (mapcar (lambda (reaction)
+                            (when (or (not (plist-get reaction :needs_premium))
+                                      (telega-user-match-p me 'is-premium))
+                              (telega-tl-str reaction :reaction)))
+                          (plist-get reply :reactions))))
 
     (list :@type "getMessageAvailableReactions"
           :chat_id (plist-get msg :chat_id)

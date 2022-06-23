@@ -43,15 +43,13 @@
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username))
-(declare-function telega-chat-public-p "telega-chat" (chat &optional chat-type))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-describe-chat "telega-chat" (chat))
-(declare-function telega-chat-private-p "telega-chat" (chat &optional inc-bots-p))
 (declare-function telega-chat-secret-p "telega-chat" (chat))
-(declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
+(declare-function telega-chat-user "telega-chat" (chat))
 (declare-function telega-chat-brackets "telega-chat" (chat))
 (declare-function telega-chat-muted-p "telega-chat" (chat))
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chat-pinned-msg "telega-chat" (chat &optional offline-p callback))
@@ -1600,6 +1598,8 @@ Special messages are determined with `telega-msg-special-p'."
                           msg nil telega-photo-show-details))
       ('messageSticker
        (let ((sticker (plist-get content :sticker)))
+         (when (plist-get content :is_premium)
+           (telega-ins (telega-symbol 'premium)))
          (cl-case (telega--tl-type (plist-get sticker :type))
            (stickerTypeAnimated
             (telega-ins--with-face 'shadow
@@ -1927,8 +1927,8 @@ argument - MSG to insert additional information after header."
            ;; try goto message, it could work in this case
            (let ((chat (telega-chat-get chat-id)))
              (if (and (not (with-telega-chatbuf chat t))
-                      (telega-chat-channel-p chat)
-                      (not (telega-chat-public-p chat 'supergroup)))
+                      (telega-chat-match-p chat
+                        '(and (type channel) (not is-public))))
                  (error (concat
                          "Telega: " (telega-i18n "lng_channel_not_accessible")))
                (telega-chat--goto-msg chat msg-id t))))
@@ -2587,23 +2587,24 @@ If REMOVE-CAPTION is specified, then do not insert caption."
              (telega-user-online-p user))
     (telega-ins telega-symbol-online-status)))
 
-(defun telega-ins--chat (chat &optional brackets)
+(defun telega-ins--chat (chat &optional brackets ignore-width-p)
   "Inserter for CHAT button in root buffer.
 BRACKETS is cons cell of open-close brackets to use.
 By default BRACKETS is choosen according to `telega-chat-button-brackets'.
-
+If IGNORE-WIDTH-P is specified, then ignore `telega-chat-button-width'
+and insert chat as is.
 Return t."
   (unless brackets
     (setq brackets (telega-chat-brackets chat)))
 
-  (let ((curr-column (telega-current-column))
+  (let ((curr-column (unless ignore-width-p (telega-current-column)))
         (title (telega-chat-title chat))
         (unread (plist-get chat :unread_count))
         (mentions (plist-get chat :unread_mention_count))
         (reactions (plist-get chat :unread_reaction_count))
         (custom-order (telega-chat-uaprop chat :order))
         (muted-p (telega-chat-muted-p chat))
-        (chat-type (telega-chat--type chat 'no-interpret))
+        (chat-type (telega-chat--type chat))
         (chat-info (telega-chat--info chat)))
     (when (plist-get chat-info :is_verified)
       (setq title (concat title (telega-symbol 'verified))))
@@ -2684,7 +2685,7 @@ Return t."
                         (telega-ins--with-face (if muted-p
                                                    'telega-muted-count
                                                  'telega-unmuted-count)
-                          (when (memq chat-type '(basicgroup supergroup))
+                          (when (memq chat-type '(basicgroup supergroup channel))
                             (telega-ins (telega-symbol 'member)
                                         (telega-number-human-readable
                                          (plist-get chat-info :member_count))))))
@@ -2700,13 +2701,18 @@ Return t."
                ;; (string-width (or (car brackets) "["))
                ;; (string-width (or (cadr brackets) "]"))
                )))
-      (telega-ins--with-attrs (list :max title-width
+      (telega-ins--with-attrs (list :max (unless ignore-width-p title-width)
                                     :align 'left
                                     :elide t)
         (telega-ins title)
         (telega-ins--user-online-status (telega-chat-user chat)))
-      (telega-ins--move-to-column (+ curr-column 3 1 title-width))
-      (telega-ins umstring))
+      (if ignore-width-p
+          (telega-ins-prefix " "
+            (telega-ins umstring))
+
+        (cl-assert (and curr-column title-width))
+        (telega-ins--move-to-column (+ curr-column 3 1 title-width))
+        (telega-ins umstring)))
 
     (telega-ins (or (cadr brackets) "]"))
     (when (plist-get (telega-chat-position chat) :is_pinned)
@@ -2884,8 +2890,8 @@ KIND is one of: `spam', `location', `add', `block', `share' and
   (cl-ecase kind
     (spam
      (telega-ins--button
-         (if (memq (telega-chat--type chat 'no-interpret)
-                   '(basicgroup supergroup))
+         (if (memq (telega-chat--type chat)
+                   '(basicgroup supergroup channel))
              (telega-i18n "lng_report_spam_and_leave")
            (telega-i18n "lng_report_spam"))
        'action (lambda (_ignore)
@@ -3008,7 +3014,10 @@ Return non-nil if restrictions has been inserted."
   (when-let ((sponsored-msg (plist-get chat :telega-sponsored-message)))
     (telega-ins--message
      (telega-msg-create-internal
-      chat (telega-fmt-text (telega-i18n "lng_sponsored"))))
+      chat (telega-fmt-text
+            (telega-i18n (if (plist-get sponsored-msg :is_recommended)
+                             "lng_recommended"
+                           "lng_sponsored")))))
     (telega-ins "\n")
     (telega-ins--with-face 'telega-msg-sponsored
       (telega-button--insert 'telega sponsored-msg

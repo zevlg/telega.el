@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2022-05-13 Пт 08:49 -->
+<!-- 2022-06-23 Чт 20:06 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.20)</title>
+<title>Telega Manual (v0.8.40)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -35,7 +35,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.20)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.40)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -323,7 +323,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.1.
+version greater or equal to 1.8.4.
 </p>
 
 <p>
@@ -780,7 +780,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org09324e6">
+<pre class="example" id="orga3d203b">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -798,7 +798,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org73ab6d4">
+<pre class="example" id="org7c3150b">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -890,7 +890,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org1eab248">
+<pre class="example" id="org95861c1">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -928,7 +928,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org097fa28">
+<pre class="example" id="org5e661bc">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1474,6 +1474,9 @@ Every chat has a type.  Type is one of:
 
 <dt>(has-username [ <code>USERNAME</code> ])</dt><dd>Matches if chat has username associated with the chat.</dd>
 
+<dt>is-public</dt><dd>Matches if chat is a public chat.
+Chat is considered public if it has a username.</dd>
+
 <dt>(unread [ <code>N</code> ]), <kbd>/ u</kbd> (<code>telega-filter-by-unread</code>)</dt><dd>Matches if chat has least <code>N</code> unread messages.
 By default <code>N</code> is 1.
 Also matches chats marked as unread.</dd>
@@ -1561,7 +1564,7 @@ by current client.  See
 
 <dt>has-reply-markup</dt><dd>Matches if chat has reply markup message.</dd>
 
-<dt>can-get-statistics</dt><dd>Matches if statistics available for <code>CHAT</code>.</dd>
+<dt>can-get-statistics</dt><dd>Matches if statistics available for the <code>CHAT</code>.</dd>
 
 <dt>has-linked-chat</dt><dd>Matches if <code>CHAT</code> is supergroup and has linked chat.</dd>
 
@@ -1665,7 +1668,7 @@ Use <code>telega-user-match-p</code> to match a user.
 </p>
 
 <dl class="org-dl">
-<dt>deleted</dt><dd>Matches if user account is deleted.</dd>
+<dt>is-deleted</dt><dd>Matches if user account is deleted.</dd>
 
 <dt>(status <code>STATUS-LIST</code>&#x2026;)</dt><dd><p>
 Matches if user status is one of <code>STATUS-LIST</code>.
@@ -1692,6 +1695,8 @@ If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
 By default <code>N</code> is 1.</dd>
 
 <dt>is-telega-patron</dt><dd>Matches if corresponding user is a telega patron.</dd>
+
+<dt>is-premium</dt><dd>Matches if corresponding user is a Telegram Premium user.</dd>
 
 <dt>has-private-forwards</dt><dd>Matches if user can't be linked in forwarded messages.</dd>
 </dl>
@@ -1850,7 +1855,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgf232d98">
+<pre class="example" id="org1ce157d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2241,7 +2246,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org6104cb6">
+<pre class="example" id="org370e73f">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2327,7 +2332,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="orgc1e4cd6">
+<pre class="example" id="orga15c0f7">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2345,7 +2350,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="orgbc27f42">
+<pre class="example" id="org9d79562">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2502,6 +2507,7 @@ sticker sets.</dd>
 <dt>animation</dt><dd>Attach an animation.
 If <kbd>C-u</kbd> is given, then attach animation from
 a file, otherwise choose animation from list of saved animations.</dd>
+<dt>animated-emoji</dt><dd>Attach an animated <code>EMOJI</code> to the chatbuf input.</dd>
 <dt>dice</dt><dd>Attach random dice roll message.</dd>
 <dt>screenshot</dt><dd>Attach screenshot to the chatbuf input.
 If numeric prefix arg <code>N</code> is given, then take screenshot in <code>N</code> seconds.
@@ -2593,7 +2599,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org8efe695">
+<pre class="example" id="orgf4f921f">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3187,7 +3193,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org6a6f7e7">
+<pre class="example" id="org37d46dc">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4045,7 +4051,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org113202b">
+<pre class="example" id="org0ed2eaa">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.20)
+#+title: Telega Manual (v0.8.40)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -228,7 +228,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.1.
+version greater or equal to 1.8.4.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -1056,6 +1056,10 @@ Use ~telega-chat-match-p~ to match a chat.
 - (has-username [ ~USERNAME~ ]) :: 
      Matches if chat has username associated with the chat.
 
+- is-public :: 
+     Matches if chat is a public chat.
+     Chat is considered public if it has a username.
+
 - (unread [ ~N~ ]), @@html:<kbd>@@/ u@@html:</kbd>@@ (~telega-filter-by-unread~) :: 
      Matches if chat has least ~N~ unread messages.
      By default ~N~ is 1.
@@ -1163,7 +1167,7 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat has reply markup message.
 
 - can-get-statistics :: 
-     Matches if statistics available for ~CHAT~.
+     Matches if statistics available for the ~CHAT~.
 
 - has-linked-chat :: 
      Matches if ~CHAT~ is supergroup and has linked chat.
@@ -1283,7 +1287,7 @@ Use ~telega-msg-match-p~ to match a message.
 
 Use ~telega-user-match-p~ to match a user.
 
-- deleted :: 
+- is-deleted :: 
      Matches if user account is deleted.
 
 - (status ~STATUS-LIST~...) :: 
@@ -1307,6 +1311,9 @@ Use ~telega-user-match-p~ to match a user.
 
 - is-telega-patron :: 
      Matches if corresponding user is a telega patron.
+
+- is-premium :: 
+     Matches if corresponding user is a Telegram Premium user.
 
 - has-private-forwards :: 
      Matches if user can't be linked in forwarded messages.
@@ -1916,6 +1923,7 @@ Attachment types to attach with
 - animation :: Attach an animation.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach animation from
      a file, otherwise choose animation from list of saved animations.
+- animated-emoji :: Attach an animated ~EMOJI~ to the chatbuf input.
 - dice :: Attach random dice roll message.
 - screenshot :: Attach screenshot to the chatbuf input.
      If numeric prefix arg ~N~ is given, then take screenshot in ~N~ seconds.

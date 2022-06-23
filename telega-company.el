@@ -42,7 +42,6 @@
 (declare-function company-call-backend "company" (&rest args))
 
 (declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega--full-info "telega-info" (tlobj))
 
@@ -269,7 +268,7 @@ Matches only if CHAR does not apper in the middle of the word."
   (cl-assert telega-chatbuf--chat)
   (let* ((info (telega-chat--info telega-chatbuf--chat))
          (full-info (telega--full-info info)))
-    (if (eq 'bot (telega-chat--type telega-chatbuf--chat))
+    (if (telega-chatbuf-match-p '(type bot))
         (telega-company--bot-commands-list (plist-get full-info :commands))
       (apply #'nconc
              (mapcar (lambda (bot-commands)

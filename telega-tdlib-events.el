@@ -912,9 +912,12 @@ messages."
 
 (defun telega--on-updateTrendingStickerSets (event)
   "The list of trending sticker sets was updated or some of them were viewed."
-  (let ((ssets-info (telega--tl-get event :sticker_sets :sets)))
-    (setq telega--stickersets-trending
-          (append ssets-info nil))))
+  (let* ((trending-sset (plist-get event :sticker_sets))
+         (ssets-info (plist-get trending-sset :sets)))
+    (set (if (plist-get trending-sset :is_premium)
+             'telega--stickersets-trending-premium
+           'telega--stickersets-trending)
+         (append ssets-info nil))))
 
 (defun telega--on-updateRecentStickers (event)
   "Recent stickers has been updated."

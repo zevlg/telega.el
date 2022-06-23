@@ -716,10 +716,13 @@ Return sticker set."
        ;; Single sticker set
        (car sticker-sets)))))
 
-(defun telega-stickerset-trends ()
-  "Show trending stickers."
-  (interactive)
-  (let ((sticker-sets (telega--getTrendingStickerSets)))
+(defun telega-stickerset-trends (&optional premium-p)
+  "Show trending stickers.
+If prefix argument is specified, then show trends in Premium stickers."
+  (interactive "P")
+  (let ((sticker-sets (or (when premium-p
+                            telega--stickersets-trending-premium)
+                          (telega--getTrendingStickerSets))))
     (unless sticker-sets
       (user-error "No trending sticker sets"))
 

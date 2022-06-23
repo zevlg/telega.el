@@ -59,12 +59,10 @@
 (defvar telega-root--view-filter)
 
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-bot-p "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat--info "telega-chat" (chat &optional local-p))
-(declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
 (declare-function telega-chats-top "telega-chat" (category))
 (declare-function telega-chat-member-my-status "telega-chat" (chat))
 (declare-function telega-chat-member-my-permissions "telega-chat" (chat))

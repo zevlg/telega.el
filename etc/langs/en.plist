@@ -815,6 +815,8 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_restricted_send_gifs_until"
   :value "The admins of this group restricted you from posting GIFs here until {date}, {time}.")
 
+ ("lng_recommended"
+  :value "recommended")
  ("lng_sponsored"
   :value "sponsored")
  ("lng_sponsored_title"

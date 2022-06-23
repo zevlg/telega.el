@@ -67,7 +67,8 @@ PARAMS is a plist of additional parameters to the returned link."
             (when params
               (concat "?" (telega-tme-build-query-string params)))
             (when-let ((msg (unless (telega-chat-p chat-or-msg) chat-or-msg)))
-              (concat "#" (number-to-string (/ (plist-get msg :id) 1048576))))
+              (concat "#" (number-to-string
+                           (/ (plist-get msg :id) telega-msg-id-step))))
             )))
 
 (defun telega-tme-open-internal (chat-spec &optional post-spec params)
@@ -83,9 +84,9 @@ PARAMS is a plist with additional parameters, supported parameters are:
          (post-id (when post-spec (string-to-number post-spec)))
          ;; NOTE: For backward compatibility check if POST-ID is
          ;; actually a MSG-ID
-         (msg-id (when post-id (if (zerop (% post-id 1048576))
+         (msg-id (when post-id (if (zerop (% post-id telega-msg-id-step))
                                    post-id
-                                 (* post-id 1048576)))))
+                                 (* post-id telega-msg-id-step)))))
     (cond ((plist-get params :open_content)
            (cl-assert msg-id)
            (telega-msg-get chat msg-id
@@ -100,7 +101,7 @@ PARAMS is a plist with additional parameters, supported parameters are:
   "Convert POST number to the message id."
   ;; See https://github.com/tdlib/td/issues/16
   ;; msg-id = post * 1048576
-  (* (string-to-number post) 1048576))
+  (* (string-to-number post) telega-msg-id-step))
 
 (defun telega-tme-open-privatepost (supergroup post &optional media-timestamp)
   "Open POST in private SUPERGROUP."
@@ -121,8 +122,7 @@ PARAMS are additional params."
         ;; See https://core.telegram.org/bots#deep-linking for
         ;; `:start' and `:startgroup' meaning
         ((plist-get params :startgroup)
-         (let ((bot-user (telega-chat-user
-                          (telega--searchPublicChat username) 'inc-bots))
+         (let ((bot-user (telega-chat-user (telega--searchPublicChat username)))
                (chat (telega-completing-read-chat
                       ;; TODO: i18n
                       (format "Start «%s» in group: "
@@ -136,7 +136,7 @@ PARAMS are additional params."
 
         ((plist-get params :start)
          (let* ((bot-chat (telega--searchPublicChat username))
-                (bot-user (telega-chat-user bot-chat 'inc-bots)))
+                (bot-user (telega-chat-user bot-chat)))
            (telega-chat--pop-to-buffer bot-chat)
            (telega--sendBotStartMessage
             bot-user bot-chat (plist-get params :start))))
@@ -360,7 +360,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
      (let* ((bot-username (plist-get tdlib-link :bot_username))
             (bot-chat (telega--searchPublicChat bot-username))
             (bot-user (when bot-chat
-                        (telega-chat-user bot-chat 'inc-bots))))
+                        (telega-chat-user bot-chat))))
        (unless bot-user
          (error "telega: No such bot @%s" bot-username))
 

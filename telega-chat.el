@@ -271,32 +271,37 @@ without request to the server."
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
-(defun telega-chat--type (chat &optional no-interpret)
+(defun telega-chat--type (chat)
   "Return type of the CHAT.
-Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'.
-If NO-INTERPRET is specified, then return only `private',
-`secret', `basicgroup' and `supergroup' without interpretation
-them to bots or channels."
-  (let* ((chat-type (plist-get chat :type))
-         (type-sym (intern (downcase (substring (plist-get chat-type :@type) 8)))))
-    (cond ((and (not no-interpret)
-                (eq type-sym 'supergroup)
-                (plist-get chat-type :is_channel))
-           'channel)
-          ((and (not no-interpret)
-                (eq type-sym 'private)
-                (telega-user-bot-p (telega-chat-user chat 'inc-bots)))
-           'bot)
-          (t type-sym))))
+Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
+  (or (plist-get chat :telega-chat-type)
+      (let* ((chat-type (plist-get chat :type))
+             (type-sym (pcase (plist-get chat-type :@type)
+                         ("chatTypePrivate" 'private)
+                         ("chatTypeBasicGroup" 'basicgroup)
+                         ("chatTypeSupergroup" 'supergroup)
+                         ("chatTypeSecret" 'secret)))
+             (tc-type (cond ((and (eq type-sym 'supergroup)
+                                  (plist-get chat-type :is_channel))
+                             'channel)
+                            ((and (eq type-sym 'private)
+                                  (telega-user-bot-p (telega-chat-user chat)))
+                             'bot)
+                            (t type-sym))))
+        ;; NOTE: chat type won't change, so we can cache calculated
+        ;; chat type
+        (plist-put chat :telega-chat-type tc-type)
+        tc-type)))
 
 (defsubst telega-chat-bot-p (chat)
   "Return non-nil if CHAT is the chat with bot."
   (eq (telega-chat--type chat) 'bot))
 
-(defun telega-chat-private-p (chat &optional include-bots-p)
+(defun telega-chat-private-p (chat)
   "Return non-nil if CHAT is private.
-If INCLUDE-BOTS-P is non-nil, then return non-nil also for bots."
-  (eq (telega-chat--type chat include-bots-p) 'private))
+Chats with bots are also considered private, use `telega-chat-bot-p'
+to check chat with bots."
+  (memq (telega-chat--type chat) '(private bot)))
 
 (defun telega-chat-channel-p (chat)
   "Return non-nil if CHAT is channel."
@@ -304,28 +309,16 @@ If INCLUDE-BOTS-P is non-nil, then return non-nil also for bots."
 
 (defun telega-chat-secret-p (chat)
   "Return non-nil if CHAT is secret."
-  (eq (telega-chat--type chat 'no-interpret) 'secret))
-
-(defun telega-chat-public-p (chat &optional chat-type)
-  "Return non-nil if CHAT is public.
-Public chats are only chats with non-empty username.
-CHAT-TYPE is either `private', `supergroup' or `any'.
-`supergroup' type also includes channels.
-By default CHAT-TYPE is `any'."
-  (and (or (eq (or chat-type 'any) 'any)
-           (eq (telega-chat--type chat 'no-interpret) chat-type))
-       (telega-chat-username chat)))
+  (eq (telega-chat--type chat) 'secret))
 
 (defun telega-chat-muted-p (chat)
   "Return non-nil if CHAT is muted."
   (telega-chat-match-p chat 'muted))
 
-(defun telega-chat-user (chat &optional include-bots-p)
-  "For private CHAT return corresponding user.
-If CHAT is not private, return nil.
-If INCLUDE-BOTS-P is non-nil, return corresponding bot user."
-  (when (telega-chat-private-p chat include-bots-p)
-    (telega-user-get (telega--tl-get chat :type :user_id))))
+(defun telega-chat-user (chat)
+  "For private CHAT return corresponding user."
+  (when-let ((user-id (telega--tl-get chat :type :user_id)))
+    (telega-user-get user-id)))
 
 (defun telega-chat-admin-get (chat user)
   "Return \"chatAdministrator\" TDLib object for the USER.
@@ -339,7 +332,7 @@ administrators list."
 (defun telega-chat-member-my-status (chat)
   "Return my status as Chat Member Status for the CHAT.
 Only available for basicgroup and supergroup (including channels)."
-  (when (memq (telega-chat--type chat 'raw) '(basicgroup supergroup))
+  (when (memq (telega-chat--type chat) '(basicgroup supergroup channel))
     (plist-get (telega-chat--info chat) :status)))
 
 (defun telega-chat-member-my-permissions (chat)
@@ -368,28 +361,43 @@ Combines chat permissions and admin/owner permissions."
 If WITH-USERNAME-DELIM is specified, append username to the title
 delimiting with WITH-USERNAME-DELIM."
   (let* ((telega-emoji-use-images telega-chat-title-emoji-use-images)
-         (title (or (when (telega-me-p chat)
-                      (telega-i18n "lng_saved_messages"))
-                    (when (telega-replies-p chat)
-                      (telega-i18n "lng_replies_messages"))
-                    (telega-tl-str chat :title)
-                    (when-let ((chat-user (telega-chat-user chat 'inc-bots)))
-                      (telega-user-title chat-user 'name))
-                    ;; NOTE: Channels we are banned in can have empty title
-                    (format "CHAT-%d" (plist-get chat :id))))
-         (info (telega-chat--info chat 'offline)))
-    (when with-username-delim
-      (when-let ((username (telega-chat-username chat)))
-        (setq title (concat title (if (stringp with-username-delim)
-                                      with-username-delim
-                                    " ")
-                            "@" username))))
-    (when (plist-get info :is_scam)
-      (setq title (concat title " " (propertize (telega-i18n "lng_scam_badge")
-                                                'face 'error))))
-    (when (plist-get info :is_fake)
-      (setq title (concat title " " (propertize (telega-i18n "lng_fake_badge")
-                                                'face 'error))))
+         (info (telega-chat--info chat 'offline))
+         (title
+          (concat (or (when (telega-me-p chat)
+                        (telega-i18n "lng_saved_messages"))
+                      (when (telega-replies-p chat)
+                        (telega-i18n "lng_replies_messages"))
+                      (telega-tl-str chat :title)
+                      (when-let ((chat-user (telega-chat-user chat)))
+                        (telega-user-title chat-user 'name))
+                      ;; NOTE: Channels we are banned in can have empty title
+                      (format "CHAT-%d" (plist-get chat :id)))
+
+                  (when (plist-get info :is_premium)
+                    (telega-symbol 'premium))
+
+                  (when with-username-delim
+                    (when-let ((username (telega-chat-username chat)))
+                      (concat (if (stringp with-username-delim)
+                                  with-username-delim
+                                " ")
+                              "@" username)))
+                  ))
+         )
+    ;; (when with-username-delim
+    ;;   (when-let ((username (telega-chat-username chat)))
+    ;;     (setq title (concat title (if (stringp with-username-delim)
+    ;;                                   with-username-delim
+    ;;                                 " ")
+    ;;                         "@" username))))
+    ;; (when (telega-chat-match-p chat '(user is-premium))
+    ;;   (setq title (concat title (telega-symbol 'premium))))
+    ;; (when (plist-get info :is_scam)
+    ;;   (setq title (concat title " " (propertize (telega-i18n "lng_scam_badge")
+    ;;                                             'face 'error))))
+    ;; (when (plist-get info :is_fake)
+    ;;   (setq title (concat title " " (propertize (telega-i18n "lng_fake_badge")
+    ;;                                             'face 'error))))
 
     (if-let ((cctfun (cdr (cl-find chat telega-chat-title-custom-for
                                    :test #'telega-chat-match-p
@@ -456,7 +464,7 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
         (last-fetch-time (or (alist-get 'admins telega-chatbuf--fetch-alist) 0))
         (current-time (time-to-seconds)))
     (when (and (> (- current-time last-fetch-time) 60)
-               (not (telega-chat-private-p chat 'inc-bots))
+               (not (telega-chat-private-p chat))
                (not (telega-chat-secret-p chat))
                (or (not (telega-chat-channel-p chat))
                    (telega-chat-match-p chat '(me-is-owner or-admin))))
@@ -530,11 +538,6 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
                       (telega--getTopChats (symbol-name category))))
       (setf (alist-get category telega--top-chats) top))
     (caddr top)))
-
-(defun telega-chatbuf-match-p (chat-filter)
-  "Return non-nil if chatbuf matches CHAT-FILTER."
-  (cl-assert telega-chatbuf--chat)
-  (telega-chat-match-p telega-chatbuf--chat chat-filter))
 
 
 ;;; Chat buttons in root buffer
@@ -649,9 +652,10 @@ Specify non-nil BAN to ban this user in this CHAT."
     (setq chat (telega-chat-get
                 (plist-get (telega-chat--info chat) :user_id))))
 
-  (unless (eq (telega-chat--type chat 'no-interpret) 'private)
+  (unless (and (telega-chat-private-p chat)
+               (not (telega-chat-bot-p chat)))
     (error "Can call only to users"))
-  (let* ((user (telega-chat-user chat 'inc-bots))
+  (let* ((user (telega-chat-user chat))
          (full-info (telega--full-info user)))
     (when (plist-get full-info :has_private_calls)
       (error "%s can't be called due to their privacy settings"
@@ -737,7 +741,7 @@ Specify non-nil BAN to ban this user in this CHAT."
     (if telega-debug
         (format "(telega-chat-get %d)" (plist-get chat :id))
       (format "%d" (plist-get chat :id))))
-  (when (telega-chat-public-p chat)
+  (when (telega-chat-match-p chat 'is-public)
     (let ((link (concat (or (plist-get telega--options :t_me_url)
                             "https://t.me/")
                         (telega-chat-username chat))))
@@ -922,11 +926,13 @@ Specify non-nil BAN to ban this user in this CHAT."
 
   (telega-ins "\n")
   (let ((info-spec
-         (assq (telega-chat--type chat 'no-interpret)
+         (assq (telega-chat--type chat)
                '((private "User" telega-info--insert-user)
+                 (bot "Bot" telega-info--insert-user)
                  (secret "SecretChat" telega-info--insert-secretchat)
                  (basicgroup "BasicGroup" telega-info--insert-basicgroup)
-                 (supergroup "SuperGroup" telega-info--insert-supergroup)))))
+                 (supergroup "SuperGroup" telega-info--insert-supergroup)
+                 (channel "Channel" telega-info--insert-supergroup)))))
     (cl-assert info-spec)
     (telega-ins--with-face 'bold
       (telega-ins (nth 1 info-spec)))
@@ -1090,7 +1096,7 @@ Use `telega-chat-leave' to just leave the CHAT."
 
     ;; Block corresponding user, so he could not initiate any incoming
     ;; messages
-    (when (and (telega-chat-private-p chat 'include-bots)
+    (when (and (telega-chat-private-p chat)
                (not (plist-get chat :is_blocked)))
       (when (yes-or-no-p
              (concat (telega-i18n "lng_blocked_list_confirm_text"
@@ -1099,8 +1105,9 @@ Use `telega-chat-leave' to just leave the CHAT."
 
     ;; NOTE: `telega--deleteChatHistory' cannot be used in channels
     ;; and public supergroups
-    (unless (or (telega-chat-channel-p chat)
-                (telega-chat-public-p chat 'supergroup))
+    (unless (telega-chat-match-p chat
+              '(or (type channel)
+                   (and (type supergroup) is-public)))
       (when (telega-read-im-sure-p
              (telega-i18n "telega_query_delete_chat_history"
                :title (telega-chat-title chat)))
@@ -2034,38 +2041,16 @@ Recover previous active action after BODY execution."
 
   ;; NOTE: do async calls, update chatbuf prompt
   ;; on-updateUserFullInfo, on-updateBasicGroup or on-updateSupergroup
-  (if (telega-chat-private-p telega-chatbuf--chat 'include-bots)
+  (if (telega-chat-private-p telega-chatbuf--chat)
       (progn
         (telega-msg-sender-unblock telega-chatbuf--chat)
         (when (telega-chat-bot-p telega-chatbuf--chat)
           (telega--sendBotStartMessage
-           (telega-chat-user telega-chatbuf--chat 'inc-bots)
+           (telega-chat-user telega-chatbuf--chat)
            telega-chatbuf--chat telega-chatbuf--bot-start-parameter)
           (setq telega-chatbuf--bot-start-parameter nil)))
 
     (telega--joinChat telega-chatbuf--chat)))
-
-(defun telega-chatbuf--prompt-aux-usj-label ()
-  "Return label for the unblock-start-join button to be used in aux prompt.
-unblock-start-join button is used for prompt if chatbuf is
-unknown, i.e. has no positions set."
-  (when (or (not (append (plist-get telega-chatbuf--chat :positions) nil))
-            telega-chatbuf--bot-start-parameter)
-    (cond ((plist-get telega-chatbuf--chat :is_blocked)
-           (if (telega-chat-bot-p telega-chatbuf--chat)
-               "RESTART BOT"
-             "UNBLOCK"))
-          ((telega-chat-bot-p telega-chatbuf--chat)
-           (concat "START"
-                   (when telega-chatbuf--bot-start-parameter
-                     " ")
-                   (when telega-chatbuf--bot-start-parameter
-                     telega-chatbuf--bot-start-parameter)))
-          ((and (not (telega-chat-private-p
-                      telega-chatbuf--chat))
-                (not (telega-chat-secret-p
-                      telega-chatbuf--chat)))
-           "JOIN"))))
 
 (defun telega-chatbuf-prompt-default-sender-avatar ()
   "Return one line avatar for default message sender to the chatbuf."
@@ -2120,10 +2105,8 @@ If RESET is specified, then reset aux prompt to default value."
                             " ")
                           (when telega-chatbuf--bot-start-parameter
                             telega-chatbuf--bot-start-parameter)))
-                 ((and (not (telega-chat-private-p
-                             telega-chatbuf--chat))
-                       (not (telega-chat-secret-p
-                             telega-chatbuf--chat)))
+                 ((and (not (telega-chat-private-p telega-chatbuf--chat))
+                       (not (telega-chat-secret-p telega-chatbuf--chat)))
                   "JOIN")))))
     (cond (usj-label
            (telega-save-excursion
@@ -2536,7 +2519,7 @@ If message thread filtering is enabled, use it first."
                 (when (and (telega-chat-private-p telega-chatbuf--chat)
                            (not (telega-me-p telega-chatbuf--chat))
                            (telega-user-online-p
-                            (telega-chat-user telega-chatbuf--chat 'inc-bots)))
+                            (telega-chat-user telega-chatbuf--chat)))
                   telega-symbol-online-status)
                 (telega-chatbuf--modeline-messages-ttl)
                 (format-mode-line telega-chat-mode-line-format nil nil
@@ -4148,6 +4131,16 @@ a file, otherwise choose animation from list of saved animations."
   (interactive (list (telega-read-file-name "GIF File: ")))
   (telega-chatbuf-attach-animation gif-file))
 
+(defun telega-chatbuf-attach-animated-emoji (emoji)
+  "Attach an animated EMOJI to the chatbuf input."
+  (interactive (list (funcall telega-completing-read-function
+                              "Animated Emoji: "
+                              (or telega--animated-emojis
+                                  (setq telega--animated-emojis
+                                        (telega--getAllAnimatedEmojis)))
+                              nil t)))
+  (telega-chatbuf-input-insert emoji))
+
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.
 Intended to be added to `post-command-hook' in chat buffer.
@@ -4162,7 +4155,7 @@ If NO-EMPTY-SEARCH is non-nil, then do not perform empty query search."
              (uchat (telega--searchPublicChat username))
              (bot-user (and uchat
                             (telega-chat-bot-p uchat)
-                            (telega-chat-user uchat 'inc-bots)))
+                            (telega-chat-user uchat)))
              (bot (plist-get bot-user :type))
              (inline-help (telega-tl-str bot :inline_query_placeholder)))
         (when (plist-get bot :is_inline)
@@ -4660,8 +4653,8 @@ If `\\[universal-argument]' is specified, then kill
 messages (delete for me only), otherwise revoke message (delete
 for everyone).
 If chatbuf is supergroups, channels or secret chat, then always revoke."
-  (interactive (list (or (memq (telega-chat--type telega-chatbuf--chat 'raw)
-                               '(supergroup secret))
+  (interactive (list (or (memq (telega-chat--type telega-chatbuf--chat)
+                               '(supergroup channel secret))
                          (not current-prefix-arg))))
   (when-let ((marked-messages telega-chatbuf--marked-messages))
     (when (yes-or-no-p (telega-i18n (if revoke
@@ -4688,8 +4681,8 @@ If `\\[universal-argument]' REVOKE is specified, then kill
 messages (delete for me only), otherwise revoke message (delete
 for everyone).
 REVOKE forced to non-nil for supergroup, channel or a secret chat."
-  (interactive (list (or (memq (telega-chat--type telega-chatbuf--chat 'raw)
-                               '(supergroup secret))
+  (interactive (list (or (memq (telega-chat--type telega-chatbuf--chat)
+                               '(supergroup channel secret))
                          (not current-prefix-arg))))
 
   (if telega-chatbuf--marked-messages

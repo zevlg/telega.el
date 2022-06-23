@@ -33,7 +33,7 @@
 (declare-function telega-chatbuf-input-insert "telega-chat" (imc))
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
-(declare-function telega-chat-private-p "telega-chat" (chat &optional include-bots-p))
+(declare-function telega-chat-private-p "telega-chat" (chat))
 
 (defvar telega--inline-bot nil
   "BOT value for the inline results help buffer.")
@@ -82,8 +82,7 @@
              (imc (list :@type "inputMessageText"
                         :text (telega-string-fmt-text
                                (telega-tl-str kbd-button :text))))
-             (reply-msg (unless (telega-chat-private-p
-                                 (telega-msg-chat msg) 'bots)
+             (reply-msg (unless (telega-chat-private-p (telega-msg-chat msg))
                           msg)))
          (telega--sendMessage chat imc reply-msg)))
 

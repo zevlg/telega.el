@@ -252,6 +252,14 @@ Also matches if TEMEX-LIST is empty."
         (equal username chat-username))))
 
 ;;; ellit-org: chat-temex
+;; - is-public ::
+;;   {{{temexdoc(chat-is-public, 2)}}}
+(define-telega-matcher chat-is-public (chat)
+  "Matches if chat is a public chat.
+Chat is considered public if it has a username."
+  (telega-chat-match-p chat 'has-username))
+
+;;; ellit-org: chat-temex
 ;; - (unread [ ~N~ ]), {{{where-is(telega-filter-by-unread,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(chat-unread, 2)}}}
 (define-telega-matcher chat-unread (chat &optional n)
@@ -504,8 +512,8 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;; - can-get-statistics ::
 ;;   {{{temexdoc(chat-can-get-statistics, 2)}}}
 (define-telega-matcher chat-can-get-statistics (chat)
-  "Matches if statistics available for CHAT."
-  (when (eq (telega-chat--type chat 'raw) 'supergroup)
+  "Matches if statistics available for the CHAT."
+  (when (telega-chat-match-p chat '(type supergroup channel))
     (let ((full-info (telega--full-info (telega-chat--info chat))))
       (plist-get full-info :can_get_statistics))))
 
@@ -629,7 +637,7 @@ known."
 (define-telega-matcher chat-is-inline-bot (chat)
   "Matches if corresponding bot accepts inline requests."
   (when (telega-chat-bot-p chat)
-    (when-let ((user (telega-chat-user chat 'include-bots)))
+    (when-let ((user (telega-chat-user chat)))
       (telega--tl-get user :type :is_inline))))
 
 ;;; ellit-org: chat-temex
@@ -651,9 +659,9 @@ By default N is 1."
 
 ;;; User Temexes
 ;;; ellit-org: user-temex
-;; - deleted ::
-;;   {{{temexdoc(user-deleted, 2)}}}
-(define-telega-matcher user-deleted (user)
+;; - is-deleted ::
+;;   {{{temexdoc(user-is-deleted, 2)}}}
+(define-telega-matcher user-is-deleted (user)
   "Matches if user account is deleted."
   (eq (telega-user--type user) 'deleted))
 
@@ -699,6 +707,13 @@ By default N is 1."
 (define-telega-matcher user-is-telega-patron (user)
   "Matches if corresponding user is a telega patron."
   (telega-msg-sender-patron-p user))
+
+;;; ellit-org: user-temex
+;; - is-premium ::
+;;   {{{temexdoc(user-is-premium, 2)}}}
+(define-telega-matcher user-is-premium (user)
+  "Matches if corresponding user is a Telegram Premium user."
+  (plist-get user :is_premium))
 
 ;;; ellit-org: user-temex
 ;; - has-private-forwards ::

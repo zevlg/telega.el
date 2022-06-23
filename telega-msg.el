@@ -44,8 +44,7 @@
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf--modeline-update "telega-chat" ())
-(declare-function telega-chat-public-p "telega-chat" (chat &optional chat-type))
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chatevent-log-filter "telega-chat" (&rest filters))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
@@ -1346,7 +1345,13 @@ Use \\[yank] command to paste a link."
           (when (telega-msg-can-open-media-timestamp-p msg)
             (when-let ((proc (plist-get msg :telega-ffplay-proc)))
               (floor (telega-ffplay-progress proc)))))
-         (link (if (and (eq 'supergroup (telega-chat--type chat 'raw))
+         ;; NOTE: `getMessageLink' is available only for already sent
+         ;; messages in supergroups and channels, or if
+         ;; message.can_get_media_timestamp_links and a media
+         ;; timestamp link is generated. (TDLib docs)
+         (link (if (and (or (telega-chat-match-p chat '(type supergroup channel))
+                            (and (plist-get msg :can_get_media_timestamp_links)
+                                 media-timestamp))
                         (not (plist-get msg :sending_state))
                         (not (plist-get msg :scheduling_state)))
                    (telega--getMessageLink msg
@@ -1391,17 +1396,18 @@ Requires administrator rights in the chat."
       (user-error "Can't ban anonymous message sender"))
 
     (let* ((report-p
-            (when (eq 'supergroup (telega-chat--type chat))
+            (when (telega-chat-match-p chat
+                    '(type supergroup channel))
               (y-or-n-p (concat (telega-i18n "lng_report_spam") "? "))))
            (delete-all-p
-            (when (and (eq 'supergroup (telega-chat--type chat))
-                       (plist-get (telega-chat-member-my-permissions chat)
-                                  :can_delete_messages))
+            (when (telega-chat-match-p chat
+                    '(and (type supergroup channel)
+                          (my-permission :can_delete_messages)))
               (y-or-n-p (concat (telega-i18n "lng_delete_all_from") "? "))))
            (delete-msg-p
             (when (and (not delete-all-p)
-                       (plist-get (telega-chat-member-my-permissions chat)
-                                  :can_delete_messages))
+                       (telega-chat-match-p chat
+                         '(my-permission :can_delete_messages)))
               (y-or-n-p (concat (telega-i18n "lng_deleted_message") "? ")))))
       (when report-p
         (telega--reportSupergroupSpam (telega-chat--supergroup chat) msg))

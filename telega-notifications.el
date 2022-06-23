@@ -36,7 +36,7 @@
 (require 'telega-core)
 (require 'telega-util)
 
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chat-muted-p "telega-chat" (chat))
@@ -89,7 +89,7 @@ If DEFAULT-P is non-nil, then return default setting for the CHAT."
   (telega-ins--with-attrs (list :max telega-notifications-msg-body-limit
                                 :elide t)
     (let ((chat (telega-chat-get (plist-get msg :chat_id))))
-      (unless (memq (telega-chat--type chat 'raw) '(private secret))
+      (unless (telega-chat-match-p chat '(type private secret bot))
         (when (telega-ins--msg-sender (telega-msg-sender msg))
           (telega-ins ": "))))
 

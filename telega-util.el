@@ -44,7 +44,7 @@
 (require 'telega-media)
 
 (declare-function telega-root--buffer "telega-root")
-(declare-function telega-chat--type "telega-chat" (chat &optional no-interpret))
+(declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat")
 (declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
@@ -611,10 +611,8 @@ N can't be 0."
            (message (format "Fetching info about %s" (cdr link)))
            (telega--searchPublicChat (cdr link)
              (lambda (chat)
-               (if (eq (telega-chat--type chat 'no-interpret)
-                       'private)
-                   (telega-describe-user
-                    (telega-user-get (plist-get chat :id)))
+               (if-let ((user (telega-chat-user chat)))
+                   (telega-describe-user user)
                  (telega-describe-chat chat)))))))
       (hashtag
        (when telega-chatbuf--chat
@@ -1683,13 +1681,10 @@ CHEIGHT is height for the svg in characters, default=1."
         (telega-emoji--image-cache-put emoji image)))
     image))
 
-(defun telega-svg-create-vertical-bar (&optional bar-width bar-position
-                                                 bar-str color)
+(defun telega-svg-create-vertical-bar (&optional bar-width bar-position bar-str)
   "Create svg image for vertical bar.
 BAR-STR is string value for textual vertical bar, by default
 `telega-symbol-vertical-bar' is used.
-COLOR - bar color, by default `default' face foreground color is used.
-
 BAR-WIDTH and BAR-POSITION defines how vertical bar is drawn.  If
 float values then it is relative to bar width in pixels.  If
 integer values, then pixels used."
@@ -1699,7 +1694,6 @@ integer values, then pixels used."
       (let* ((xh (telega-chars-xheight 1))
              (xw (telega-chars-xwidth (string-width bar-str)))
              (svg (telega-svg-create xw xh))
-             (bar-face (or (get-text-property 0 'face bar-str) 'default))
              (bar-xpos (if (integerp bar-position)
                            bar-position
                          (round (* xw (or bar-position 0.3)))))
@@ -1710,10 +1704,10 @@ integer values, then pixels used."
         (when (< bar-xw 1)
           (setq bar-xw 1))
         (svg-rectangle svg bar-xpos 0 bar-xw xh
-                       :fill-color (or color
-                                       (telega-color-name-as-hex-2digits
-                                        (or (face-foreground bar-face)
-                                            (face-foreground 'default)))))
+                       ;; NOTE: this filling params inherits face's
+                       ;; color this svg is displayed under
+                       :fill-opacity 1
+                       :fill-rule "nonzero")
         (setq image (telega-svg-image svg :scale 1.0
                                       :width xw :height xh
                                       :ascent 'center
@@ -1722,13 +1716,10 @@ integer values, then pixels used."
         (telega-emoji--image-cache-put bar-str image)
         image)))
 
-(defun telega-svg-create-horizontal-bar (&optional bar-width bar-position
-                                                   bar-str color)
+(defun telega-svg-create-horizontal-bar (&optional bar-width bar-position bar-str)
   "Create svg image for a horizontal bar.
 BAR-STR is string value for textual horizontal bar, by default
 `telega-symbol-horizontal-bar' is used.
-COLOR - bar color, by default `default' face foreground color is used.
-
 BAR-WIDTH and BAR-POSITION defines how horizontal bar is drawn.  If
 float values then it is relative to bar height in pixels.  If
 integer values, then absolute value in pixels is used."
@@ -1736,7 +1727,7 @@ integer values, then absolute value in pixels is used."
     (setq bar-str telega-symbol-horizontal-bar))
   ;; NOTE: horizontal bars are frequently used as consecutive
   ;; characters.  However in Emacs if consecutive chars has `eq'
-  ;; `display' property it is displayed is single unit (ref: 40.16.1
+  ;; `display' property it is displayed as single unit (ref: 40.16.1
   ;; Display Specs That Replace The Text).  So we use `seq-copy' to
   ;; make `display' property for horizontal-bar differ
   (seq-copy
@@ -1744,7 +1735,6 @@ integer values, then absolute value in pixels is used."
        (let* ((xh (telega-chars-xheight 1))
               (xw (telega-chars-xwidth (string-width bar-str)))
               (svg (telega-svg-create xw xh))
-              (bar-face (or (get-text-property 0 'face bar-str) 'default))
               (bar-xw (if (integerp bar-width)
                           bar-width
                         (round (* xh (or bar-width 0.07)))))
@@ -1756,10 +1746,10 @@ integer values, then absolute value in pixels is used."
          (when (< bar-xw 1)
            (setq bar-xw 1))
          (svg-rectangle svg 0 bar-ypos xw bar-xw
-                        :fill-color (or color
-                                        (telega-color-name-as-hex-2digits
-                                         (or (face-foreground bar-face)
-                                             (face-foreground 'default)))))
+                        ;; NOTE: this filling params inherits face's
+                        ;; color this svg is displayed under
+                        :fill-opacity 1
+                        :fill-rule "nonzero")
          (setq image (telega-svg-image svg :scale 1.0
                                        :width xw :height xh
                                        :ascent 'center

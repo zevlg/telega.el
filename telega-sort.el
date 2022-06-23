@@ -259,7 +259,7 @@ See https://github.com/zevlg/telega.el/issues/165"
 (define-telega-sorter chats-in-common ("updateUserFullInfo") (chat)
   "Sort by number of chats in common.
 See https://github.com/zevlg/telega.el/issues/218"
-  (if-let ((user (telega-chat-user chat 'inc-bots)))
+  (if-let ((user (telega-chat-user chat)))
       (plist-get (telega--full-info user) :group_in_common_count)
     -10))
 

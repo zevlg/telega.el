@@ -1196,6 +1196,7 @@ different days. Such as:
     ("contact" nil telega-chatbuf-attach-contact)
     ("sticker" nil telega-chatbuf-attach-sticker)
     ("animation" nil telega-chatbuf-attach-animation)
+    ("animated-emoji" nil telega-chatbuf-attach-animated-emoji)
     ("dice" nil telega-chatbuf-attach-dice)
     ("screenshot" (lambda () telega-screenshot-function)
      telega-chatbuf-attach-screenshot)
@@ -2031,6 +2032,11 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-premium (propertize "★" 'face 'telega-blue)
+  "Symbol used to emphasize premium Telegram users."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbols-emojify
   '((verified (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "verified.svg" 2)))
@@ -2054,6 +2060,8 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
     leave-comment lightning lock location
     member multiple-folders
     pause phone photo pin poll play
+    (premium (when (and telega-use-images (image-type-available-p 'svg))
+                (telega-etc-file-create-image "symbols/premium.svg" 2)))
     (reaction (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/reaction.svg" 2)))
     (reply (when (and telega-use-images (image-type-available-p 'svg))

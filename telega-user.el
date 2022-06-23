@@ -27,7 +27,7 @@
 (require 'telega-tdlib)
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega-chat-user "telega-chat" (chat &optional include-bots-p))
+(declare-function telega-chat-user "telega-chat" (chat))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
@@ -62,7 +62,7 @@
        (telega-user-get
         (telega--tl-get member-or-user-or-chat :member_id :user_id)))
       (chat
-       (telega-chat-user member-or-user-or-chat 'include-bots))
+       (telega-chat-user member-or-user-or-chat))
       (user
        member-or-user-or-chat))))
 
@@ -138,6 +138,8 @@ Default is: `full'"
     ;; Scam/Fake/Blacklist badge, apply for users only
     ;; see https://t.me/emacs_telega/30318
     (when user-p
+      (when (plist-get user :is_premium)
+        (setq name (concat name (telega-symbol 'premium))))
       (when (plist-get user :is_scam)
         (setq name (concat name " " (propertize (telega-i18n "lng_scam_badge")
                                                 'face 'error))))
@@ -193,11 +195,7 @@ If AS-NUMBER is specified, return online status as number:
 (defun telega-describe-user--inserter (user-id)
   "Inserter for the user info buffer."
   (let ((user (telega-user-get user-id)))
-    (telega-ins "Name: ")
-    (when-let ((fn (telega-tl-str user :first_name)))
-      (telega-ins fn " "))
-    (telega-ins (telega-tl-str user :last_name))
-    (telega-ins "\n")
+    (telega-ins "Name: " (telega-user-title user 'name) "\n")
     (telega-info--insert-user user)))
 
 (defun telega-describe-user (user)

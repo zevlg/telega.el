@@ -43,6 +43,9 @@
   '(private secret basicgroup supergroup bot channel)
   "All types of chats supported by telega.")
 
+(defconst telega-msg-id-step 1048576    ; 2^20
+  "Message id difference between two consequent messages.")
+
 (defconst telega-mute-for-ever 500000000)
 
 (defconst telega-mute-for-intervals
@@ -179,6 +182,8 @@ Used by `telega-stickerset-installed-p'.")
   "List of `stickerSetInfo' for installed sticker sets.")
 (defvar telega--stickersets-trending nil
   "List of trending sticker sets info.")
+(defvar telega--stickersets-trending-premium nil
+  "List of trending Premium sticker sets info.")
 (defvar telega--stickersets-system nil
   "List of system sticker sets, such as animated dices, animated emojis.")
 (defvar telega--stickers-favorite nil
@@ -187,6 +192,8 @@ Used by `telega-stickerset-installed-p'.")
   "List of recently used stickers.")
 (defvar telega--stickers-recent-attached nil
   "List of recently attached stickers.")
+(defvar telega--animated-emojis nil
+  "List of all supported animated emojis.")
 (defvar telega--animated-emojis-stickerset-id nil
   "Id for sticker set with animated emojis.")
 
@@ -387,10 +394,12 @@ Done when telega server is ready to receive queries."
   (setq telega--stickersets-installed-ids nil)
   (setq telega--stickersets-installed nil)
   (setq telega--stickersets-trending nil)
+  (setq telega--stickersets-trending-premium nil)
   (setq telega--stickersets-system nil)
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
+  (setq telega--animated-emojis nil)
   (setq telega--animated-emojis-stickerset-id nil)
   (setq telega--animations-saved nil)
   (setq telega--chat-themes nil)
@@ -790,6 +799,11 @@ MSG-SENDER could be a user or a chat."
   (declare (indent 1))
   (let ((telega-temex-match-prefix "chat-"))
     (telega-match-p chat temex)))
+
+(defun telega-chatbuf-match-p (chat-temex)
+  "Return non-nil if chatbuf matches CHAT-TEMEX."
+  (cl-assert telega-chatbuf--chat)
+  (telega-chat-match-p telega-chatbuf--chat chat-temex))
 
 (defun telega-user-match-p (user temex)
   "Return non-nil if USER matches TEMEX."

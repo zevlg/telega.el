@@ -1294,7 +1294,7 @@ EVENT must be \"updateDeleteMessages\"."
     (when telega-active-locations-show-titles
       (telega-ins (telega-msg-sender-title user)))
     (when (or (telega-me-p user)
-              (not (telega-chat-private-p chat 'inc-bots)))
+              (not (telega-chat-private-p chat)))
       (telega-ins "→")
       (when telega-active-locations-show-avatars
         (telega-ins--image
