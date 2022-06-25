@@ -660,8 +660,8 @@ By default N is 1."
 ;;; User Temexes
 ;;; ellit-org: user-temex
 ;; - is-deleted ::
-;;   {{{temexdoc(user-is-deleted, 2)}}}
-(define-telega-matcher user-is-deleted (user)
+;;   {{{temexdoc(user-deleted, 2)}}}
+(define-telega-matcher user-deleted (user)
   "Matches if user account is deleted."
   (eq (telega-user--type user) 'deleted))
 
