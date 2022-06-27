@@ -588,7 +588,7 @@ new terms specific to =telega=.  All of them are used in the manual.
        ("Important" . important)
        ("Online" and
         (not saved-messages)
-        (user online))
+        (user is-online))
        ("Groups" type basicgroup supergroup)
        ("Channels" type channel)
        ("Archive" . archive))
@@ -722,12 +722,10 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 * Root Buffer
 :PROPERTIES:
@@ -1225,7 +1223,10 @@ Use ~telega-chat-match-p~ to match a chat.
   By default ~N~ is 1.
 
 - (user ~USER-TEMEX~) :: 
-     Matches private chat where corresponding user matches ~USER-TEMEX~.
+     Matches non-bot private chat where corresponding user matches ~USER-TEMEX~.
+
+- (bot-user ~USER-TEMEX~) :: 
+     Matches chat where corresponding bot user matches ~USER-TEMEX~.
 
 ** List of Message Temexes
 :PROPERTIES:
@@ -1298,6 +1299,7 @@ Use ~telega-user-match-p~ to match a user.
 
 - online
   Matches if user is online.
+  Does not match bots, because bots are always online.
 
   Same as ~(status "Online")~ user temex.
 
@@ -1359,7 +1361,7 @@ Use ~telega-sender-match-p~ to match a message sender.
      ("Important" . important)
      ("Online" and
       (not saved-messages)
-      (user online))
+      (user is-online))
      ("Groups" type basicgroup supergroup)
      ("Channels" type channel)
      ("Archive" . archive))
@@ -2405,27 +2407,17 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
-
-     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
-
-     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
-
-     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
-
-     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
-
-     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command

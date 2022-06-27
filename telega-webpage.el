@@ -548,11 +548,19 @@ instant view for the URL."
    url))
 
 (defun telega-url-at-point ()
-  "Return URL at point."
+  "Return URL at point.
+If called interactively copies url at point to the kill ring."
+  (interactive)
   (let* ((button (button-at (point)))
-         (link (when button (button-get button :telega-link))))
-    (or (and link (eq (car link) 'url) (cdr link))
-        (thing-at-point 'url t))))
+         (link (when button (button-get button :telega-link)))
+         (url-ap (or (and link (eq (car link) 'url) (cdr link))
+                     (thing-at-point 'url t))))
+    (if (called-interactively-p 'interactive)
+        (if (not url-ap)
+            (user-error "telega: No URL at point")
+          (kill-new url-ap)
+          (message "telega: Copied %S" url-ap))
+      url-ap)))
 
 (defun telega-browse-url (url &optional in-web-browser)
   "Open the URL.

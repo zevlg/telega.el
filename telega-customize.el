@@ -895,7 +895,7 @@ See https://github.com/zevlg/telega.el/issues/171"
 (defcustom telega-filters-custom
   '(("Main" . main)
     ("Important" . important)
-    ("Online" . (and (not saved-messages) (user online)))
+    ("Online" . (and (not saved-messages) (user is-online)))
     ("Groups" . (type basicgroup supergroup))
     ("Channels" . (type channel))
     ("Archive" . archive))

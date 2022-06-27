@@ -29,10 +29,10 @@
 ;; some object.  Primitive Temexes can be combined using ~and~, ~or~
 ;; or ~not~ temexes, so temex is a logical combination of other
 ;; temexes down to Primitive Temexes.
-;; 
+;;
 ;; ~telega-match-gen-predicate~ can be used to generate predicate
 ;; functions out of temex.
-;; 
+;;
 ;; Chat Temex examples:
 ;;   - ~(return t)~ ::
 ;;     Matches all chats.
@@ -43,7 +43,7 @@
 ;;   - ~(and unmuted (unread 10) (mention 1))~ ::
 ;;     Matches unmuted chats with at least 10 unread messages and at
 ;;     least one message with unread mention.
-;; 
+;;
 ;; Message Temex examples:
 ;;   - ~(sender me)~ ::
 ;;     Matches all messages sent by me.
@@ -652,9 +652,19 @@ By default N is 1."
 ;; - (user ~USER-TEMEX~) ::
 ;;   {{{temexdoc(chat-user, 2)}}}
 (define-telega-matcher chat-user (chat user-temex)
-  "Matches private chat where corresponding user matches USER-TEMEX."
-  (when-let ((user (telega-chat-user chat)))
-    (telega-user-match-p user user-temex)))
+  "Matches non-bot private chat where corresponding user matches USER-TEMEX."
+  (unless (telega-chat-bot-p chat)
+    (when-let ((user (telega-chat-user chat)))
+      (telega-user-match-p user user-temex))))
+
+;;; ellit-org: chat-temex
+;; - (bot-user ~USER-TEMEX~) ::
+;;   {{{temexdoc(chat-bot-user, 2)}}}
+(define-telega-matcher chat-bot-user (chat user-temex)
+  "Matches chat where corresponding bot user matches USER-TEMEX."
+  (when (telega-chat-bot-p chat)
+    (when-let ((user (telega-chat-user chat)))
+      (telega-user-match-p user user-temex))))
 
 
 ;;; User Temexes
@@ -677,11 +687,12 @@ By default N is 1."
 
 ;;; ellit-org: user-temex
 ;; - online
-;;   {{{temexdoc(user-online, 2)}}}
+;;   {{{temexdoc(user-is-online, 2)}}}
 ;;
 ;;   Same as ~(status "Online")~ user temex.
-(define-telega-matcher user-online (user)
-  "Matches if user is online."
+(define-telega-matcher user-is-online (user)
+  "Matches if user is online.
+Does not match bots, because bots are always online."
   (telega-user-match-p user '(status "Online")))
 
 ;;; ellit-org: user-temex
@@ -863,7 +874,7 @@ Matching ignores case."
   "Matches if sender is a user matching USER-TEMEX."
   (when (telega-user-p sender)
     (telega-user-match-p sender user-temex)))
-  
+
 ;;; ellit-org: sender-temex
 ;; - (chat ~CHAT-TEMEX~) ::
 ;;   {{{temexdoc(sender-chat, 2)}}}

@@ -1467,7 +1467,7 @@ Requires administrator rights in the chat."
         ;; Asynchronously fetch message viewers
         (telega--getMessageViewers msg
           (let ((buffer (current-buffer))
-                (at-point (point)))
+                (at-point (copy-marker (point) t)))
             (lambda (users)
               (when (buffer-live-p buffer)
                 (with-current-buffer buffer
