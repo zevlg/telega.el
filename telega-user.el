@@ -138,6 +138,8 @@ Default is: `full'"
     ;; Scam/Fake/Blacklist badge, apply for users only
     ;; see https://t.me/emacs_telega/30318
     (when user-p
+      (when (plist-get user :is_verified)
+        (setq name (concat name (telega-symbol 'verified))))
       (when (plist-get user :is_premium)
         (setq name (concat name (telega-symbol 'premium))))
       (when (plist-get user :is_scam)
