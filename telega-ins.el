@@ -1048,10 +1048,10 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
-  (let ((title (plist-get invoice :title))
-        (desc (plist-get invoice :description))
+  (let ((title (telega-tl-str invoice :title))
+        (desc (telega-tl-str invoice :description))
         (photo (plist-get invoice :photo))
-        (currency (plist-get invoice :currency)))
+        (currency (telega-tl-str invoice :currency)))
     (telega-ins (telega-symbol 'invoice) " ")
     (telega-ins-fmt "%.2f%s " (/ (plist-get invoice :total_amount) 100.0)
                     (or (cdr (assoc currency telega-currency-symbols-alist))
