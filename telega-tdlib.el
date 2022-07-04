@@ -426,13 +426,21 @@ FILTERS are created with `telega-chatevent-log-filter'."
          :chat_id (plist-get chat :id)
          :message_sender_id (telega--MessageSender sender))))
 
-(defun telega--getPaymentForm (msg)
-  "Return a payment form for an invoice message.
-Use it when `inlineKeyboardButtonBuy' key is pressed."
+(defun telega--getPaymentForm (invoice)
+  "Return a payment form for an INVOICE.
+INVOICE could be a message or a name from the `internalLinkTypeInvoice' link."
+  (declare (tdlib-api "1.8.4"))
   (telega-server--call
    (list :@type "getPaymentForm"
-         :chat_id (plist-get msg :chat_id)
-         :message_id (plist-get msg :id))))
+         :input_invoice
+         (cond ((telega-msg-p invoice)
+                (list :@type "inputInvoiceMessage"
+                      :chat_id (plist-get invoice :chat_id)
+                      :message_id (plist-get invoice :id)))
+               ((stringp invoice)
+                (list :@type "inputInvoiceName"
+                      :name invoice))
+               (t (error "telega: invalid invoice" invoice))))))
 
 (defun telega--sendPaymentForm (msg order-info-id shipping-id credentials)
   (telega-server--call
