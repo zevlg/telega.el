@@ -735,6 +735,16 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
         (telega-ins (telega-symbol 'eye)))
       (telega-ins-prefix " "
         (telega-ins--file-progress msg note-file)))
+
+    (let ((recognized-p (plist-get note :is_recognized)))
+      (cond (recognized-p
+             (telega-ins "\n" (telega-tl-str note :recognized_text)))
+            ((and (not recognized-p)
+                  (telega-user-match-p (telega-user-me) 'is-premium))
+             (telega-ins " ")
+             (telega-ins--button (concat "🠆A" (telega-symbol 'premium))
+               :value msg
+               :action #'telega--recognizeSpeech))))
     ))
 
 (defun telega-ins--video-note (msg &optional video-note)

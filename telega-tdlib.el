@@ -337,6 +337,13 @@ DATE is a unix timestamp."
           :for_comment (if for-comment-p t :false)))
    :link))
 
+(defun telega--recognizeSpeech (msg)
+  "Recognize speech in a voice note message MSG."
+  (telega-server--send
+   (list :@type "recognizeSpeech"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))))
+
 (defun telega--replacePrimaryChatInviteLink (chat)
   "Generate a new primary invite link for a CHAT.
 Available for basic groups, supergroups, and channels.
