@@ -742,6 +742,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Test invoice")
  ("lng_payments_invoice_label"
   :value "Invoice")
+ ("lng_action_payment_done"
+  :value "You successfully transferred {amount} to {user}")
+ ("lng_action_payment_init_recurring"
+  :value "You successfully transferred {amount} to {user} and allowed future recurring payments")
 
  ;; Searching messages
  ("lng_search_messages_from"
