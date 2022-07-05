@@ -1358,6 +1358,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageInviteVideoChatParticipants
               'messageWebsiteConnected
               'messageChatSetTheme
+              'messagePaymentSuccessful
               'telegaInternal)))
 
 (defun telega-ins--special (msg)
@@ -1559,6 +1560,20 @@ Special messages are determined with `telega-msg-special-p'."
                (t
                 (telega-ins-i18n "lng_action_theme_disabled"
                   :from sender-name)))))
+      (messagePaymentSuccessful
+       (telega-ins-i18n (if (plist-get content :is_recurring)
+                            "lng_action_payment_init_recurring"
+                          "lng_action_payment_done")
+         :amount (let ((currency (telega-tl-str content :currency)))
+                   (propertize
+                    (format "%.2f%s" (/ (plist-get content :total_amount) 100.0)
+                            (or (cdr (assoc currency telega-currency-symbols-alist))
+                                currency))
+                    'face 'bold))
+         :user (let ((from-user (telega-chat-user
+                                 (telega-chat-get
+                                  (plist-get content :invoice_chat_id)))))
+                 (propertize (telega-msg-sender-title from-user t) 'face 'bold))))
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
 
