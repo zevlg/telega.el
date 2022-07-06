@@ -1372,7 +1372,11 @@ Use \\[yank] command to paste a link."
 
   (let* ((content (plist-get msg :content))
          (msg-text (or (telega-tl-str content :text)
-                       (telega-tl-str content :caption))))
+                       (telega-tl-str content :caption)
+                       ;; See FR https://t.me/emacs_telega/34839
+                       (and (telega-msg-match-p msg '(type VoiceNote))
+                            (telega-tl-str (plist-get content :voice_note)
+                                           :recognized_text)))))
     (unless msg-text
       (user-error "Nothing to copy"))
     (kill-new msg-text)
