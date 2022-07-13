@@ -163,6 +163,10 @@
                            'telega-autoplay-msg-temex
                            "0.8.20")
 
+(telega-obsolete--variable 'telega-msg-default-reaction
+                           nil
+                           "0.8.42")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

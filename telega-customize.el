@@ -1491,11 +1491,6 @@ If nil, the saved path is always asked."
                  string)
   :group 'telega-msg)
 
-(defcustom telega-msg-default-reaction "👍"
-  "Default reaction for the `\\<telega-msg-button-map>\\[telega-msg-set-reaction]' command."
-  :type '(choice nil string)
-  :group 'telega-msg)
-
 (defcustom telega-msg-temex-show-reactions '(return t)
   "Message Temex to match messages to show reactions for."
   :package-version '(telega . "0.8.13")

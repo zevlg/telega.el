@@ -1569,7 +1569,7 @@ be set."
                  (list msg
                        (telega-completing-read-msg-reaction
                         msg (format "Set %sReaction: " (if big-p "BIG " ""))
-                        telega-msg-default-reaction)
+                        (telega-tl-str telega--options :default_reaction))
                        big-p)))
   (telega--setMessageReaction msg (or reaction "") big-p))
 
