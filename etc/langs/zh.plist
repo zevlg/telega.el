@@ -390,9 +390,4 @@
   :value "置顶消息")
  ("telega_view_deleted_chats"
   :value "最近删除的聊天")
-
- ("telega_option_sensitive_content"
-  :value "显示敏感内容")
- ("telega_option_prefer_ipv6"
-  :value "IPv6 优先")
  )

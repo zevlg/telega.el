@@ -896,9 +896,9 @@ See https://github.com/zevlg/telega.el/issues/171"
   '(("Main" . main)
     ("Important" . important)
     ("Online" . (and (not saved-messages) (user is-online)))
-    ("Groups" . (type basicgroup supergroup))
-    ("Channels" . (type channel))
-    ("Archive" . archive))
+    ("lng_filters_type_groups" . (type basicgroup supergroup))
+    ("lng_filters_type_channels" . (type channel))
+    ("lng_filters_type_no_archived" . archive))
   "*Alist of custom filters in form (NAME . TEMEX).
 NAME can be an i18n string, such as \"lng_filters_type_groups\".
 This filters are displayed as filter buttons at the top of rootbuf."

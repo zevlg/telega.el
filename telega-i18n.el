@@ -103,7 +103,11 @@ Loaded from \"etc/langs/en.plist\" in `telega-i18n-init'.")
     (telega--getLanguagePackStrings telega-language nil
       (lambda (pack-strings)
         (setq telega-i18n--strings pack-strings)
-        (telega-i18n--apply-strings)))
+        (telega-i18n--apply-strings)
+        ;; NOTE: custom filters might use i18n strings, so update
+        ;; custom filters as well
+        (let ((telega-filters--dirty t))
+          (telega-filters--redisplay))))
     ))
 
 ;; See https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html

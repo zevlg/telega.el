@@ -595,6 +595,18 @@ Example: 23 y.o. designer from San Francisco")
   :value "Groups")
  ("lng_filters_type_channels"
   :value "Channels")
+ ("lng_filters_type_bots"
+  :value "Bots")
+ ("lng_filters_type_contacts"
+  :value "Contacts")
+ ("lng_filters_type_non_contacts"
+  :value "Non-Contacts")
+ ("lng_filters_type_no_read"
+  :value "Read")
+ ("lng_filters_type_no_archived"
+  :value "Archived")
+ ("lng_filters_type_no_muted"
+  :value "Muted")
 
  ;; Comments
  ("lng_comments_open_none"
@@ -625,12 +637,12 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_context_edit_msg"
   :value "Edit")
 
- ("telega_option_sensitive_content"
-  :value "Show Sensitive Content")
+ ("lng_settings_sensitive_disable_filtering"
+  :value "Disable filtering")
  ("lng_settings_sensitive_about"
   :value "Display sensitive media in public channels on all your Telegram devices.")
- ("telega_option_prefer_ipv6"
-  :value "Prefer IPv6")
+ ("lng_connection_try_ipv6"
+  :value "Try connecting through IPv6")
 
  ;; For contrib packages
  ("telega_dashboard_telega_not_running"

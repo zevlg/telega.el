@@ -125,7 +125,7 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
          ;; `telega-symbol-chat-list'
          (name (concat (when (memq filter '(main archive))
                          (telega-symbol 'chat-list))
-                       (nth 0 custom-spec)))
+                       (telega-filter--custom-name custom-spec)))
          (chats (nthcdr 2 custom-spec))
          ;; NOTE: Folders always active
          (active-p (or (telega-filter--folder-p filter) (not (null chats))))
@@ -346,7 +346,7 @@ If FILTER is nil, then active filter is used."
 Possibly apply i18n."
   (let ((custom-name (car custom)))
     (or (when (string-prefix-p "lng_" custom-name)
-          (telega-i18n custom-name))
+          (telega-i18n-noerror custom-name))
         custom-name)))
 
 (defun telega-filter--custom-active-p (custom)
