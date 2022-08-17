@@ -2184,7 +2184,11 @@ Binds current symbol to SYM-BIND."
 (defvar telega-tdlib-max-version)
 (defun telega-docker--image-name ()
   "Return image name for suitable docker container."
-  (if (equal telega-tdlib-min-version telega-tdlib-max-version)
+  (if (and (equal telega-tdlib-min-version telega-tdlib-max-version)
+           ;; NOTE: Release version ends with ".0", to avoid cases
+           ;; like https://github.com/zevlg/telega.el/issues/370
+           (stringp telega-tdlib-min-version)
+           (string-match-p "\\.0$" telega-tdlib-min-version))
       (format "zevlg/telega-server:%s" telega-tdlib-min-version)
     "zevlg/telega-server:latest"))
 
