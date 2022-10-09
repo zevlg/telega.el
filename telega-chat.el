@@ -4796,9 +4796,7 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
   (interactive)
   (or (when (functionp telega-chat-input-complete-function)
         (funcall telega-chat-input-complete-function))
-      ;; 1) Try completing emoji to sticker
-      (call-interactively 'telega-chatbuf-attach-sticker-by-emoji)
-      ;; 2) Try all company backends for completions
+      ;; 1) Try all company backends for completions
       (if (and (boundp 'company-mode) company-mode)
           ;; Use company-mode for completion
           (when-let ((backend (telega-company--grab-backend 'backend)))
@@ -4811,8 +4809,11 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
                (cons 'telega-chatbuf-complete-at-point
                      completion-at-point-functions)))
           (completion-at-point)))
-      ;; 3) Try to complete bot's inline query
+      ;; 2) Try to complete bot's inline query
       (call-interactively 'telega-chatbuf-attach-inline-bot-query)
+      ;; 3) Try completing emoji to sticker
+      (call-interactively 'telega-chatbuf-attach-sticker-by-emoji)
+
       ;; TODO: add other completions
       ))
 
