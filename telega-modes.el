@@ -482,6 +482,7 @@ Return filename of the generated icon."
 ;;
 ;; Customizable options:
 ;; - {{{user-option(telega-autoplay-msg-temex, 2)}}}
+;; - {{{user-option(telega-autoplay-custom-emojis, 2)}}}
 (defcustom telega-autoplay-msg-temex
   '(type Animation Sticker AnimatedEmoji)
   "Message Temex for messages to automatically play content for."
@@ -492,36 +493,70 @@ Return filename of the generated icon."
                       (web-page :sticker))))
   :group 'telega-modes)
 
+(defcustom telega-autoplay-custom-emojis 10
+  "Non-nil to automatically play this number of custom emojis in the message."
+  :type '(or nil integer)
+  :group 'telega-modes)
+
+(defun telega-autoplay-custom-emojis (msg &optional force)
+  "Animate custom emojis for the message MSG."
+  (when telega-autoplay-custom-emojis
+    (when (or force (telega-msg-observable-p msg))
+      (let* ((custom-emoji-ids (telega-custom-emoji--ids-for-msg msg))
+             (custom-emoji-stickers
+              (seq-take (seq-filter
+                         (lambda (sticker)
+                           (and sticker
+                                (not (telega-sticker-static-p sticker))))
+                         (mapcar #'telega-custom-emoji-get custom-emoji-ids))
+                        telega-autoplay-custom-emojis)))
+        (dolist (custom-emoji custom-emoji-stickers)
+          (when (and (not (telega-sticker-static-p custom-emoji))
+                     telega-sticker-animated-play)
+            (telega-sticker--animate custom-emoji))))
+      )))
+
 (defun telega-autoplay-on-msg (msg)
   "Automatically play contents of the message MSG.
 Play in muted mode."
-  (when (and (telega-msg-match-p msg telega-autoplay-msg-temex)
-             (telega-msg-observable-p msg))
-    (let* ((content (plist-get msg :content))
-           (content-type (telega--tl-type content))
-           (web-page (plist-get content :web_page)))
-      (cond ((or (eq 'messageAnimation content-type)
-                 (plist-get web-page :animation))
-             ;; NOTE: special case for animations, animate only those
-             ;; which can be animated inline, see
-             ;; `telega-animation-play-inline'
-             (let ((animation (or (plist-get content :animation)
-                                  (plist-get web-page :animation))))
-               (when (telega-animation-play-inline-p animation)
-                 (telega-msg-open-animation msg animation))))
+  (when (telega-msg-observable-p msg)
+    ;; Animate custom emojis first
+    (telega-autoplay-custom-emojis msg 'observable)
 
-            ((or (eq 'messageSticker content-type)
-                 (plist-get web-page :sticker))
-             ;; NOTE: special case for sticker messages, play animated
-             ;; sticker only if `telega-sticker-animated-play' is set
-             (let ((sticker (or (plist-get content :sticker)
-                                (plist-get web-page :sticker))))
-               (when (and (not (telega-sticker-static-p sticker))
-                          telega-sticker-animated-play)
-                 (telega-sticker--animate sticker))))
+    ;; Then animate message's content itself
+    (when (telega-msg-match-p msg telega-autoplay-msg-temex)
+      (let* ((content (plist-get msg :content))
+             (content-type (telega--tl-type content))
+             (web-page (plist-get content :web_page)))
+        (cond ((or (eq 'messageAnimation content-type)
+                   (plist-get web-page :animation))
+               ;; NOTE: special case for animations, animate only those
+               ;; which can be animated inline, see
+               ;; `telega-animation-play-inline'
+               (let ((animation (or (plist-get content :animation)
+                                    (plist-get web-page :animation))))
+                 (when (telega-animation-play-inline-p animation)
+                   (telega-msg-open-animation msg animation))))
 
-            (t
-             (telega-msg-open-content msg))))))
+              ((or (eq 'messageSticker content-type)
+                   (plist-get web-page :sticker))
+               ;; NOTE: special case for sticker messages, play animated
+               ;; sticker only if `telega-sticker-animated-play' is set
+               (let ((sticker (or (plist-get content :sticker)
+                                  (plist-get web-page :sticker))))
+                 (when (and (not (telega-sticker-static-p sticker))
+                            telega-sticker-animated-play)
+                   (telega-sticker--animate sticker))))
+
+              (t
+               (telega-msg-open-content msg)))))))
+
+(defun telega-autoplay-on-msg--hover-out (msg)
+  "Handle hover leaving for the message MSG.
+Cancel downloading of the corresporting file."
+  (when (telega-msg-match-p msg telega-autoplay-msg-temex)
+    (when-let ((file (telega-msg--content-file msg)))
+      (telega--cancelDownloadFile file))))
 
 ;;;###autoload
 (define-minor-mode telega-autoplay-mode
@@ -529,10 +564,15 @@ Play in muted mode."
   :init-value nil :global t :group 'telega-modes
   (if telega-autoplay-mode
       (progn
-        (add-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)
-        (add-hook 'telega-chat-goto-message-hook 'telega-autoplay-on-msg))
-    (remove-hook 'telega-chat-goto-message-hook 'telega-autoplay-on-msg)
-    (remove-hook 'telega-chat-post-message-hook 'telega-autoplay-on-msg)))
+        (add-hook 'telega-chat-post-message-hook #'telega-autoplay-on-msg)
+        (add-hook 'telega-chat-goto-message-hook #'telega-autoplay-on-msg)
+        (add-hook 'telega-msg-hover-in-hook #'telega-autoplay-on-msg)
+        (add-hook 'telega-msg-hover-out-hook #'telega-autoplay-on-msg--hover-out))
+
+    (remove-hook 'telega-msg-hover-out-hook #'telega-autoplay-on-msg--hover-out)
+    (remove-hook 'telega-msg-hover-in-hook #'telega-autoplay-on-msg)
+    (remove-hook 'telega-chat-goto-message-hook #'telega-autoplay-on-msg)
+    (remove-hook 'telega-chat-post-message-hook #'telega-autoplay-on-msg)))
 
 
 ;;; ellit-org: minor-modes
@@ -636,7 +676,7 @@ squashing is not applied."
                    (telega-msg-by-me-p last-msg)
                    (< last-read-id (plist-get last-msg :id))
                    (plist-get last-msg :can_be_edited)
-                   (telega-msg-type-p 'messageText last-msg)
+                   (telega-msg-match-p last-msg '(type Text))
                    (zerop (plist-get last-msg :reply_to_message_id))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
@@ -1244,7 +1284,7 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
 
 (defun telega-active-locations--msg-new (new-msg)
   "Check new message NEW-MSG is a live location message."
-  (when (telega-msg-type-p 'messageLocation new-msg)
+  (when (telega-msg-match-p new-msg '(type Location))
     (telega-active-locations--check (list new-msg))))
 
 (defun telega-active-locations--msg-updated (event)
@@ -1351,7 +1391,7 @@ messages."
   (let (live-locs-updated-p)
     (dolist (loc-msg (or messages
                          (copy-sequence telega-active-location--messages)))
-      (cl-assert (telega-msg-type-p 'messageLocation loc-msg))
+      (cl-assert (telega-msg-match-p loc-msg '(type Location)))
       (let* ((loc-live-for (telega-msg-location-live-for loc-msg))
              (still-live-p (and
                             ;; NOTE: for outgoing messages examine
@@ -1390,6 +1430,63 @@ messages."
   (dolist (chat (mapcar #'car telega--chat-buffers-alist))
     (telega--searchChatRecentLocationMessages chat
       #'telega-active-locations--check)))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-recognize-voice-message-mode
+;;
+;; Minor mode to automatically recognize speech in a voice messages.
+;; Available only for the Telegram Premium users.
+;;
+;; Enable with ~(telega-recognize-voice-message-mode 1)~ or at
+;; =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-recognize-voice-message-mode)
+;; #+end_src
+;;
+;; Customizable options:
+;; - {{{user-option(telega-recognize-voice-message-temex, 2)}}}
+
+(defcustom telega-recognize-voice-message-temex nil
+  "Message Temex for messages to automatically recognize speech.
+Speech recognition is only applied to voice messages matching this
+Message Temex.  Applied only if non-nil.
+For example, to recognize speech in a voice messages only in private
+chats, use `(chat (type private))' Message Temex."
+  :type 'list
+  :group 'telega-modes)
+
+(defun telega-recognize-voice--on-msg-hover-in (msg)
+  "Automatically recognize text for the hovered in voice message MSG."
+  (when (and (telega-msg-match-p msg '(type VoiceNote))
+             (not (telega--tl-get msg :content :voice_note
+                                  :speech_recognition_result))
+             (or (not telega-recognize-voice-message-temex)
+                 (telega-msg-match-p msg telega-recognize-voice-message-temex))
+             (telega-user-match-p (telega-user-me) 'is-premium))
+    (telega--recognizeSpeech msg)))
+
+(defun telega-recognize-voice--on-msg-new (msg)
+  "Automatically recognize text for new voice message MSG.
+Recognize only if message is observable."
+  (when (telega-msg-observable-p msg)
+    (telega-recognize-voice--on-msg-hover-in msg)))
+
+;;;###autoload
+(define-minor-mode telega-recognize-voice-message-mode
+  "Global mode to automatically recognize speech in the voice messages."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-recognize-voice-message-mode
+      (progn
+        (add-hook 'telega-msg-hover-in-hook
+                  #'telega-recognize-voice--on-msg-hover-in)
+        (add-hook 'telega-chat-post-message-hook
+                  #'telega-recognize-voice--on-msg-new))
+
+    (remove-hook 'telega-chat-post-message-hook
+                 #'telega-recognize-voice--on-msg-new)
+    (remove-hook 'telega-msg-hover-in-hook
+                 #'telega-recognize-voice--on-msg-hover-in)))
 
 (provide 'telega-modes)
 

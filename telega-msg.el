@@ -39,6 +39,7 @@
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
+(declare-function telega-chatbuf--manage-point "telega-chat" (&optional point only-prompt-p))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
@@ -113,7 +114,7 @@
                   ))
     (bindings--define-key menu-map [delete]
       '(menu-item (propertize "Delete" 'face 'error)
-                  telega-msg-delete-at-down-mouse-3
+                  telega-msg-delete-marked-or-at-point
                   :help "Delete message"
                   :enable (let ((msg (telega-msg-at-down-mouse-3)))
                             (or (plist-get msg :can_be_deleted_only_for_self)
@@ -126,12 +127,12 @@
                   :enable (plist-get
                            (telega-msg-at-down-mouse-3) :can_get_message_thread)))
     (bindings--define-key menu-map [edit]
-      '(menu-item "Edit" telega-msg-edit
+      '(menu-item (telega-i18n "lng_context_edit_msg") telega-msg-edit
                   :help "Edit the message"
                   :enable (plist-get
                            (telega-msg-at-down-mouse-3) :can_be_edited)))
     (bindings--define-key menu-map [reply]
-      '(menu-item "Reply" telega-msg-reply
+      '(menu-item (telega-i18n "lng_context_reply_msg") telega-msg-reply
                   :help "Reply to the message"))
     (bindings--define-key menu-map [describe]
       '(menu-item "Describe" telega-describe-message
@@ -167,7 +168,7 @@
     (define-key map (kbd "S") 'telega-msg-save)
     (define-key map (kbd "U") 'telega-chatbuf-msg-marks-toggle)
 
-    (define-key map (kbd "!") 'telega-msg-set-reaction)
+    (define-key map (kbd "!") 'telega-msg-add-reaction)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "^") 'telega-msg-pin-toggle)
     (define-key map (kbd "DEL") 'telega-msg-delete-marked-or-at-point)
@@ -203,7 +204,18 @@
   :inserter telega-inserter-for-msg-button
   'read-only t
   'keymap telega-msg-button-map
+  'cursor-sensor-functions '(telega-msg-button--sensor-func)
   'action 'telega-msg-button--action)
+
+(defun telega-msg-button--sensor-func (_window oldpos dir)
+  "Sensor function to trigger hover in/out hook for the message at point'."
+  (when-let ((msg (telega-msg-at (if (eq dir 'entered) (point) oldpos))))
+    (unless (telega-msg-internal-p msg)
+      (if (eq dir 'entered)
+          (progn
+            (telega-chatbuf--manage-point (point))
+            (run-hook-with-args 'telega-msg-hover-in-hook msg))
+        (run-hook-with-args 'telega-msg-hover-out-hook msg)))))
 
 (defun telega-msg-button--action (button)
   "Action to take when chat BUTTON is pressed."
@@ -285,21 +297,26 @@ FMT-TEXT is formatted text, can be created with `telega-fmt-text'."
 (defun telega-msg-get (chat msg-id &optional callback)
   "Get message by CHAT-ID and MSG-ID pair.
 If CALLBACK is not specified, then do not perform request to
-telega-server, check only in cache and chat buffer.  If CALLBACK
+telega-server, check only in messages cache.  If CALLBACK
 is specified, it should accept two argument s - MESSAGE and
 optional OFFLINE-P, non-nil OFFLINE-P means no request to the
-telega-server has been done."
+telega-server has been made."
   (declare (indent 2))
-  ;; - Search in message cache
-  ;; - Search in chatbuf messages
-  ;; - Check pinned messages in the chatbuf
+  ;; - Search in the messages cache
+  ;; - [DON'T] Search in chatbuf messages
+  ;; - [DON'T] Check pinned messages in the chatbuf
   (let* ((chat-id (plist-get chat :id))
          (msg (or (gethash (cons chat-id msg-id) telega--cached-messages)
-                  (with-telega-chatbuf chat
-                    (if (eq msg-id (plist-get telega-chatbuf--thread-msg :id))
-                        telega-chatbuf--thread-msg
-                      (when-let ((node (telega-chatbuf--node-by-msg-id msg-id)))
-                        (ewoc-data node)))))))
+                  ;; NOTE: do not search in chatbuf's messages
+                  ;; messages offloaded from the cache don't get
+                  ;; updates, so they could be outdated
+                  ;;
+                  ;; (with-telega-chatbuf chat
+                  ;;   (if (eq msg-id (plist-get telega-chatbuf--thread-msg :id))
+                  ;;       telega-chatbuf--thread-msg
+                  ;;     (when-let ((node (telega-chatbuf--node-by-msg-id msg-id)))
+                  ;;       (ewoc-data node))))
+                  )))
     (if (or msg (null callback))
         (if callback
             (funcall callback msg 'offline-p)
@@ -336,21 +353,11 @@ For use by interactive commands."
       (user-error "Can't operate on internal message"))
     msg))
 
-;; TODO: use `(telega-msg-match-p msg (type xxx yy))' instead
-(defun telega-msg-type-p (msg-type msg)
-  "Return non-nil if MSG is of MSG-TYPE.
-Suitable to generate msg type predicates using `apply-partially'.
-Thats why MSG-TYPE argument goes first.
-MSG-TYPE can be a list of message types."
-  (memq (telega--tl-type (plist-get msg :content))
-        (if (listp msg-type) msg-type (list msg-type))))
-
-(defun telega-msg-chosen-reaction (msg)
+(defun telega-msg-chosen-reaction-types (msg)
   "Return reaction chosen by me for the message MSG."
-  (telega-tl-str
-   (seq-find (telega--tl-prop :is_chosen)
-             (telega--tl-get msg :interaction_info :reactions))
-   :reaction))
+  (mapcar (telega--tl-prop :type)
+          (seq-filter (telega--tl-prop :is_chosen)
+                      (telega--tl-get msg :interaction_info :reactions))))
 
 (defun telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG.
@@ -418,14 +425,18 @@ If CALLBACK is specified, then get reply message asynchronously."
 (defun telega-msg-open-animated-emoji (msg &optional clicked-p)
   "Open content for animated emoji message MSG."
   (let ((sticker (telega--tl-get msg :content :animated_emoji :sticker)))
-    (telega-sticker--animate sticker msg)
+    ;; NOTE: animated message could be a static sticker, such as in
+    ;; the https://t.me/tgbetachat/1319907
+    (when (and (not (telega-sticker-static-p sticker))
+               telega-sticker-animated-play)
+      (telega-sticker--animate sticker msg))
 
     ;; Try fullscreen animated emoji sticker as well
     (when clicked-p
       (telega--clickAnimatedEmojiMessage msg
         (lambda (fs-sticker)
           (when (and (not (telega--tl-error-p fs-sticker))
-                     (not (telega-sticker-static-p sticker))
+                     (not (telega-sticker-static-p fs-sticker))
                      telega-sticker-animated-play)
             (plist-put msg :telega-sticker-fullscreen fs-sticker)
             (telega-sticker--animate fs-sticker msg)))))
@@ -598,8 +609,8 @@ note finishes."
     ;; next voice/video message if any
     (when-let ((next-vvnote-msg
                 (telega-chatbuf--next-msg msg
-                  (apply-partially #'telega-msg-type-p
-                                   '(messageVoiceNote messageVideoNote)))))
+                  (lambda (message)
+                    (telega-msg-match-p message '(type VoiceNote VideoNote))))))
       (with-telega-chatbuf (telega-msg-chat next-vvnote-msg)
         (telega-chatbuf--goto-msg (plist-get next-vvnote-msg :id) 'highlight))
       (telega-msg-open-content next-vvnote-msg))))
@@ -776,18 +787,17 @@ non-nil."
             ;; no-op
             )
 
-           ((memq 'animation telega-open-message-as-file)
-            (telega-open-file (telega--tl-get file :local :path) msg))
-
            ((and (telega-animation-play-inline-p anim)
-                 ;; *NOT* called interactively
-                 (or (not saved-this-command)
+                 (or (not saved-this-command) ; *NOT* called interactively
                      (not saved-current-prefix-arg)))
             (plist-put msg :telega-ffplay-proc
                        ;; NOTE: "-an" for no sound
                        (telega-ffplay-to-png
                            (telega--tl-get file :local :path) "-an"
                          (list #'telega-animation--ffplay-callback anim))))
+
+           ((memq 'animation telega-open-message-as-file)
+            (telega-open-file (telega--tl-get file :local :path) msg))
 
            (t
             (telega-ffplay-run (telega--tl-get file :local :path)
@@ -902,7 +912,7 @@ non-nil."
 
 (defun telega-msg-emojis-only-p (msg)
   "Return non-nil if text message MSG contains only emojis."
-  (when (telega-msg-type-p 'messageText msg)
+  (when (telega-msg-match-p msg '(type Text))
     (let ((text (telega--tl-get msg :content :text :text)))
       (not (text-property-not-all
             0 (length text) 'telega-emoji-p t text)))))
@@ -988,8 +998,7 @@ corresponding thread."
   "Return non-nil if MSG can be opened with custom media timestamp.
 Only video, audio, video-note, voice-note or a message with web page
 preview, having media content, can be opened with media timestamp."
-  (or (telega-msg-type-p
-       '(messageVideoNote messageVoiceNote messageAudio messageVideo) msg)
+  (or (telega-msg-match-p msg '(type VideoNote VoiceNote Audio Video))
       (when-let ((web-page (telega--tl-get msg :content :web_page)))
         (or (plist-get web-page :video)
             (plist-get web-page :audio)
@@ -1297,13 +1306,13 @@ the saved animations list."
       (user-error "No file associated with message"))
 
     (cond
-     ((and (telega-msg-type-p 'messageAnimation msg)
+     ((and (telega-msg-match-p msg '(type Animation))
            (y-or-n-p "Add animation to Saved Animations? "))
       (telega--addSavedAnimation
        (list :@type "inputFileId" :id (plist-get file :id)))
       (message "telega: saved new animation"))
 
-     ((and (telega-msg-type-p 'messageSticker msg)
+     ((and (telega-msg-match-p msg '(type Sticker))
            (y-or-n-p "Add sticker to Favorite Stickers? "))
       (telega--addFavoriteSticker
        (list :@type "inputFileId" :id (plist-get file :id))))
@@ -1375,8 +1384,8 @@ Use \\[yank] command to paste a link."
                        (telega-tl-str content :caption)
                        ;; See FR https://t.me/emacs_telega/34839
                        (and (telega-msg-match-p msg '(type VoiceNote))
-                            (telega-tl-str (plist-get content :voice_note)
-                                           :recognized_text)))))
+                            (telega-tl-str (telega--tl-get content :voice_note :speech_recognition_result)
+                                           :text)))))
     (unless msg-text
       (user-error "Nothing to copy"))
     (kill-new msg-text)
@@ -1441,7 +1450,7 @@ Requires administrator rights in the chat."
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins "Sender: ")
         (telega-ins--raw-button (telega-link-props 'sender sender)
-          (telega-ins--msg-sender sender))
+          (telega-ins (telega-msg-sender-title-for-completion sender)))
         (telega-ins "\n"))
       ;; Link to the message
       (when-let ((link (ignore-errors
@@ -1450,7 +1459,8 @@ Requires administrator rights in the chat."
                          ;;              only for messages in supergroups
                          ;;   - error=6: Message is scheduled
                          ;;   ...
-                         (telega--getMessageLink msg nil for-comment-p))))
+                         (telega--getMessageLink msg
+                           :for-comment-p for-comment-p))))
         (telega-ins "Link: ")
         (telega-ins--raw-button (telega-link-props 'url link)
           (telega-ins link))
@@ -1471,7 +1481,7 @@ Requires administrator rights in the chat."
         ;; Asynchronously fetch message viewers
         (telega--getMessageViewers msg
           (let ((buffer (current-buffer))
-                (at-point (copy-marker (point) t)))
+                (at-point (copy-marker (point))))
             (lambda (users)
               (when (buffer-live-p buffer)
                 (with-current-buffer buffer
@@ -1560,18 +1570,76 @@ Requires administrator rights in the chat."
                                'colorize))
         ))))
 
-(defun telega-msg-set-reaction (msg &optional reaction big-p)
-  "Set or unset REACTION to the message MSG.
+(defun telega-msg-add-reaction (msg &optional big-p)
+  "Interactively add reaction to the message MSG.
 If `\\[universal-argument]' is used, reaction with big animation will
-be set."
-  (interactive (let ((msg (telega-msg-for-interactive))
-                     (big-p current-prefix-arg))
-                 (list msg
-                       (telega-completing-read-msg-reaction
-                        msg (format "Set %sReaction: " (if big-p "BIG " ""))
-                        (telega-tl-str telega--options :default_reaction))
-                       big-p)))
-  (telega--setMessageReaction msg (or reaction "") big-p))
+be added."
+  (interactive (list (telega-msg-for-interactive) current-prefix-arg))
+
+  (let* ((custom-label "Custom Reaction")
+         (chat-av-reactions
+          (plist-get (telega-msg-chat msg) :available_reactions))
+         (msg-av-reactions
+          (telega--getMessageAvailableReactions msg))
+         (reaction-choices
+          (cl-case (telega--tl-type chat-av-reactions)
+            (chatAvailableReactionsSome
+             (mapcar (lambda (reaction-type)
+                       (cl-assert (eq (telega--tl-type reaction-type)
+                                      'reactionTypeEmoji))
+                       (telega-tl-str reaction-type :emoji))
+                     (plist-get chat-av-reactions :reactions)))
+            (chatAvailableReactionsAll
+             telega-emoji-reaction-list)))
+         (choices (if (plist-get msg-av-reactions :allow_custom_emoji)
+                      (append reaction-choices (list custom-label))
+                    reaction-choices))
+         (choice (funcall telega-completing-read-function
+                          (format "Add %sReaction: " (if big-p "BIG " ""))
+                          choices nil t)))
+    (if (not (equal choice custom-label))
+        (telega--addMessageReaction
+         msg (list :@type "reactionTypeEmoji" :emoji choice)
+         big-p 'udate-recent)
+
+      (let ((top-av-reactions (plist-get msg-av-reactions :top_reactions))
+            (recent-av-reactions (plist-get msg-av-reactions :recent_reactions))
+            (popular-av-reactions (plist-get msg-av-reactions :popular_reactions))
+            (help-window-select t)
+            (reaction-type-action
+             (lambda (reaction-type)
+               (cl-assert (eq major-mode 'help-mode))
+               (quit-window 'kill-buffer)
+               (message "BIG: %S" big-p)
+               (telega--addMessageReaction msg reaction-type big-p
+                                           'update-recent-reactions))))
+        (with-telega-help-win "*Telegram Custom Reaction*"
+          (unless (seq-empty-p top-av-reactions)
+            (telega-ins "TOP:\n")
+            (telega-ins--available-reaction-list
+             top-av-reactions reaction-type-action)
+            (telega-ins "\n\n"))
+
+          (unless (seq-empty-p recent-av-reactions)
+            (telega-ins "RECENT:\n")
+            (telega-ins--available-reaction-list
+             recent-av-reactions reaction-type-action)
+            (telega-ins "\n\n"))
+
+          (unless (seq-empty-p popular-av-reactions)
+            (telega-ins "POPULAR:\n")
+            (telega-ins--available-reaction-list
+             popular-av-reactions reaction-type-action)
+            (telega-ins "\n\n"))
+
+          (telega-ins--custom-emoji-stickersets
+           (lambda (sticker)
+             (cl-assert (and (telega-custom-emoji-sticker-p sticker)
+                             (plist-get sticker :custom_emoji_id)))
+             (telega--addMessageReaction
+              msg (list :@type "reactionTypeCustomEmoji"
+                        :custom_emoji_id (plist-get sticker :custom_emoji_id))
+              big-p 'update-recent-reactions))))))))
 
 (provide 'telega-msg)
 

@@ -31,7 +31,7 @@
 (require 'url-util)
 (require 'visual-fill-column)
 
-(require 'telega-server)
+(require 'telega-tdlib)
 (require 'telega-ins)
 (require 'telega-media)
 (require 'telega-tme)
@@ -105,18 +105,6 @@
          (web-page (telega--tl-get msg :content :web_page)))
     (funcall 'telega-webpage--instant-view (plist-get web-page :url)
              (plist-get web-page :site_name))))
-
-(defun telega--getWebPageInstantView (url &optional partial)
-  "Return instant view for the URL.
-Return nil if URL is not available for instant view."
-  (let ((reply (telega-server--call
-                (list :@type "getWebPageInstantView"
-                      :url url
-                      :force_full (or (not partial) :false)))))
-    ;; NOTE: May result in 404 error, return nil in this case
-    (and reply
-         (eq (telega--tl-type reply) 'webPageInstantView)
-         reply)))
 
 (defvar telega-webpage-mode-map
   (let ((map (make-sparse-keymap)))

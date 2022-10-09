@@ -106,6 +106,11 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'boolean
   :group 'telega)
 
+(defcustom telega-enable-storage-optimizer nil
+  "Non-nil to automatically delete old files in background."
+  :type 'boolean
+  :group 'telega)
+  
 (defcustom telega-proxies nil
   "*List of proxies.
 Format is:
@@ -283,9 +288,11 @@ See docstring for `display-buffer' for the values."
 
 (defcustom telega-use-docker nil
   "*Non-nil to use \"docker\" to run various tools.
-Including `telega-server'."
+Including `telega-server'.
+Could be a string denoting binary to use instead of \"docker\"."
   :package-version '(telega . "0.7.40")
-  :type 'boolean
+  :type '(or boolean string)
+  :options '("podman")
   :group 'telega-docker)
 
 (defcustom telega-docker-security-opt "apparmor=unconfined"
@@ -389,7 +396,8 @@ Can be nil, in this case favorite stickers are not outlined."
   :group 'telega)
 
 (defcustom telega-sticker-animated-play
-  (or (executable-find "tgs2png") telega-use-docker)
+  (and telega-use-images
+       (or (executable-find "tgs2png") telega-use-docker))
   "Non-nil to play animated stickers inside Emacs.
 Requires `tgs2png' program from https://github.com/zevlg/tgs2png"
   :package-version '(telega . "0.7.30")
@@ -760,12 +768,11 @@ Each element is in form:
   :group 'telega-root)
 
 (defcustom telega-chat-title-custom-for
-  (list (cons 'saved-messages
+  (list (cons '(or saved-messages replies-messages)
               (lambda (title) (propertize title 'face 'bold)))
-        (cons 'replies-messages
-              (lambda (title) (propertize title 'face 'bold))))
+        )
   "Alist of custom titles for chats.
-Each element is a cons cell, where car is a Chat Filter and cdr
+Each element is a cons cell, where car is a Chat Temex and cdr
 is a function accepting title string and returning string."
   :package-version '(telega . "0.6.31")
   :type 'alist
@@ -806,6 +813,13 @@ Otherwise use simple chars."
         (cons "Trade"    "📊")          ; or 📈
         (cons "Travel"   "🛫️")          ; or ✈️
         (cons "Work"     "💼")
+        (cons "Airplane" "✈️️")
+        (cons "Book"     "📖")
+;        (cons "Light")
+        (cons "Like"     "👍")
+        (cons "Money"    "💰")
+        (cons "Note"     "🗒️")
+;        (cons "Palette")
         )
   "Alist of symbols to be used as folder icons instead of `telega-symbol-folder'.
 See list of all available icon names in `telega-folder-icon-names'."
@@ -879,10 +893,11 @@ See https://github.com/zevlg/telega.el/issues/171"
 
 (defcustom telega-important-chat-temex
   '(or mention
-       (and unmuted unread-reactions)
-       (and unmuted unread))
+       (and (or main archive has-chatbuf)
+            unmuted
+            (or unread unread-reactions)))
   "*Chat Temex to match \"important\" chats."
-  :package-version '(telega . "0.8.12")
+  :package-version '(telega . "0.8.44")
   :type 'list
   :group 'telega-filter)
 
@@ -1070,6 +1085,13 @@ Used when showing chat members list."
   "Customization for chat buffer."
   :group 'telega)
 
+(defcustom telega-chat-buffers-limit 10
+  "Limit for the number of chat buffers.
+When limit is reached, least recent non-visible chat buffer will be killed.
+Increasing this limit increases number of events telega needs to process."
+  :type 'integer
+  :group 'telega-chat)
+
 (defcustom telega-chat-ret-always-sends-message t
   "Non-nil to make `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]' always send a message.
 Otherwise
@@ -1228,6 +1250,10 @@ different days. Such as:
      (lambda ()
        (telega-chatbuf-match-p 'has-default-sender))
      telega-chatbuf-attach-send-by)
+    ("custom-emoji"
+     (lambda ()
+       (telega-user-match-p (telega-user-me) 'is-premium))
+     telega-chatbuf-attach-custom-emoji)
     )
   "*List of the attachments available for `C-c C-a' in chatbuf.
 Each element is a list of three elements:
@@ -1248,7 +1274,7 @@ COMMAND-FUNC - Command function to execute."
 
 (defcustom telega-chat-upload-attaches-ahead t
   "*Non-nil to upload attachments ahead, before message actually sent.
-Having this non-nil \"speedups\" uploading, its like files uploads instantly."
+Having this non-nil \"speedups\" uploading, it is like files uploads instantly."
   :type 'boolean
   :group 'telega-chat)
 
@@ -1279,12 +1305,6 @@ timespan, then do not group messages."
   "*Chat Filter for chats where to show deleted messages in chatbuf."
   :type 'list
   :options '((not saved-messages))
-  :group 'telega-chat)
-
-(defcustom telega-chat-delete-move-to-archive-for nil
-  "Chat Filter for chats to move to Archive on chat deletion.
-NOT YET USED."
-  :type 'boolean
   :group 'telega-chat)
 
 (defcustom telega-chat-mode-line-format
@@ -1456,14 +1476,13 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
-(defcustom telega-msg-edit-markup-spec
-  '(telega--fmt-text-markdown2 . "markdown2")
+(defcustom telega-msg-edit-markup-spec nil
   "Cons cell specifying how to format message text when editing.
 car is a function to convert message's text to markup string.
 cdr is a markup name from `telega-chat-markup-functions' to use as
 markup attachment.  Use nil to edit message as is, without using
 \"markup\" attachment type."
-  :package-version '(telega . "0.7.11")
+  :package-version '(telega . "0.8.60")
   :type 'cons
   :options '((telega--fmt-text-markdown1 . "markdown1"))
   :group 'telega-msg)
@@ -1553,7 +1572,7 @@ Message is ignored if its `:ignore' option is set to non-nil."
 
 (defcustom telega-completing-read-function
   ;; NOTE: `flex' completion style is essential for telega, because it
-  ;; might prefix completions with the images and user won't be abale
+  ;; might prefix completions with the images and user won't be able
   ;; to complete without `flex' completion style
   (if (or (and (boundp 'ido-mode) (symbol-value 'ido-mode))
           (and (eq completing-read-function #'completing-read-default)
@@ -1725,7 +1744,7 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-verified "✴️"
+(defcustom telega-symbol-verified (propertize "🟏" 'face 'telega-blue)
   "Symbol used to emphasize verified users/groups."
   :type 'string
   :group 'telega-symbol)
@@ -2280,10 +2299,10 @@ non-nil if symbol gets emojification."
 
 (defface telega-msg-heading
   '((((class color) (background light))
-     :background "gray85")
+     :background "gray85" :extend t)
     (((class color) (background dark))
-     :background "gray25")
-    (t :inherit widget-field))
+     :background "gray25" :extend t)
+    (t :inherit widget-field :extend t))
   "Face to display messages header."
   :group 'telega-faces)
 
@@ -2517,6 +2536,20 @@ See https://t.me/emacs_telega/21925"
   "Hook called when my online status changes.
 Called with single argument - ONLINE-P."
   :package-version '(telega . "0.7.20")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-msg-hover-in-hook nil
+  "Hook called when message is hovered in.
+Called with a single argument - MESSAGE."
+  :package-version '(telega . "0.8.50")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-msg-hover-out-hook nil
+  "Hook called when message is hovered out.
+Called with a single argument - MESSAGE."
+  :package-version '(telega . "0.8.50")
   :type 'hook
   :group 'telega-hooks)
 

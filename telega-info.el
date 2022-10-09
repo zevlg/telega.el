@@ -240,6 +240,22 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     ;; Clickable user's profile photos
     (telega-ins--user-profile-photos user)
 
+    ;; Status emoji stickerset
+    (when-let* ((emoji-status (plist-get user :emoji_status))
+                (emoji-sticker (telega-custom-emoji-get
+                                (plist-get emoji-status :custom_emoji_id)))
+                (sset-id (plist-get emoji-sticker :set_id)))
+      (telega-ins "Emoji Status Stickerset: ")
+      (if-let ((sset (telega-stickerset-get sset-id 'offline)))
+          (telega-ins--button (telega-stickerset-title sset)
+            :value sset
+            :action #'telega-describe-stickerset)
+
+        (telega-stickerset-get sset-id nil
+          (lambda (_sset)
+            (telega-describe-user--maybe-redisplay (plist-get user :id)))))
+      (telega-ins "\n"))
+
     (when-let ((patron (telega-msg-sender-patron-p user)))
       (telega-ins "Telega Patron Since: ")
       (telega-ins--date-full (plist-get patron :since_date))

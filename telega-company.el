@@ -30,6 +30,7 @@
 (require 'telega-tdlib)
 (require 'telega-util)
 (require 'telega-user)
+(require 'telega-emoji)
 
 (defvar company-backend)
 (defvar company-minimum-prefix-length)
@@ -63,7 +64,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;; Emoji completion
 (defun telega-company-grab-emoji ()
   (let ((cg (company-grab ":[^: _]+" nil
-                          (- (point) telega-emoji-max-length))))
+                          (- (point) telega-emoji-candidate-max-length))))
     (when cg (cons cg company-minimum-prefix-length))))
 
 (defun telega-company-emoji-annotation (emoji)
@@ -295,44 +296,6 @@ Matches only if CHAR does not apper in the middle of the word."
     ))
 
 
-;; Functionality to show company tooltip always below the point
-(defvar telega-company--chatbuf-row nil
-  "Current row in the chatbuf before showing company tooltip.
-Used when `telega-company-tooltip-always-below' is non-nil.")
-(make-variable-buffer-local 'telega-company--chatbuf-row)
-
-(defun telega-company--chatbuf-move-row (orig-show-func row &rest args)
-  "Reserve space below the point so company tooltip will be shown below.
-Only if `telega-company-tooltip-always-below' is non-nil."
-  (let (saved-chatbuf--row)
-    (when (and telega-company-tooltip-always-below
-               telega-chatbuf--chat)
-      ;; NOTE: If ROW is moved, then save original row to the
-      ;; `telega-company--chatbuf-row' to restore it later when
-      ;; tooltip hides
-      (let ((height (company--pseudo-tooltip-height)))
-        (when (< height 0)
-          (setq saved-chatbuf--row row)
-          (recenter (- (1+ company-tooltip-minimum)))
-          (setq row (1+ (company--row))))))
-
-    (apply orig-show-func row args)
-
-    ;; NOTE: Set `telega-company--chatbuf-row' *after* calling to orig
-    ;; func, because it calls `company-pseudo-tooltip-hide'
-    (setq telega-company--chatbuf-row saved-chatbuf--row)))
-
-(defun telega-company--restore-row ()
-  "Restore original point row before additional space reservation.
-Only if `telega-company-tooltip-always-below' is non-nil."
-  (when (and telega-company-tooltip-always-below
-             telega-company--chatbuf-row)
-    (cl-assert  telega-chatbuf--chat)
-    (let ((restore-row telega-company--chatbuf-row))
-      (setq telega-company--chatbuf-row nil)
-      (recenter restore-row))))
-
-
 ;; Utility functions
 (defun telega-company--grab-backend (what)
   "Return prefix or a backend for input at point.
@@ -351,12 +314,23 @@ WHAT is one of `prefix', `backend' or `prefix-and-backend'"
         (backend backend)
         (prefix-and-backend (cons prefix backend))))))
 
+;; Functionality to show company tooltip always below the point
+(defun telega-company--chatbuf-move-row (orig-show-func row &rest args)
+  "Reserve space below the point so company tooltip will be shown below.
+Only if `telega-company-tooltip-always-below' is non-nil."
+  (when (and telega-company-tooltip-always-below
+             telega-chatbuf--chat)
+    (let ((height (company--pseudo-tooltip-height)))
+      (when (< height 0)
+        (recenter (- (1+ company-tooltip-minimum)))
+        (setq row (1+ (company--row))))))
+
+  (apply orig-show-func row args))
+
 (provide 'telega-company)
 
 
 (advice-add 'company-pseudo-tooltip-show
             :around #'telega-company--chatbuf-move-row)
-(advice-add 'company-pseudo-tooltip-hide
-            :after 'telega-company--restore-row)
 
 ;;; telega-company.el ends here

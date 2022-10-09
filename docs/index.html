@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2022-06-27 Пн 13:46 -->
+<!-- 2022-10-09 Вс 16:44 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.40)</title>
+<title>Telega Manual (v0.8.60)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -35,7 +35,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.40)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.60)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -125,6 +125,7 @@
 <li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
 <li><a href="#telega-my-location-mode">telega-my-location-mode</a></li>
 <li><a href="#telega-active-locations-mode">telega-active-locations-mode</a></li>
+<li><a href="#telega-recognize-voice-message-mode">telega-recognize-voice-message-mode</a></li>
 <li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
@@ -323,7 +324,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.4.
+version greater or equal to 1.8.6.
 </p>
 
 <p>
@@ -780,7 +781,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org88221e6">
+<pre class="example" id="org55eef13">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -798,7 +799,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgefc4304">
+<pre class="example" id="org7e786b3">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -851,9 +852,9 @@ Default value:
  (<span style="font-style: italic;">"Online"</span> and
   (not saved-messages)
   (user is-online))
- (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"Channels"</span> type channel)
- (<span style="font-style: italic;">"Archive"</span> . archive))
+ (<span style="font-style: italic;">"lng_filters_type_groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"lng_filters_type_channels"</span> type channel)
+ (<span style="font-style: italic;">"lng_filters_type_no_archived"</span> . archive))
 </pre>
 </div></li>
 
@@ -890,7 +891,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org5f8fb07">
+<pre class="example" id="org7d29dfb">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -928,7 +929,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org8c20dac">
+<pre class="example" id="org69b597b">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -984,7 +985,7 @@ Telega prefix map bindings:
 <dt><kbd>a</kbd> (<code>telega-account-switch</code>)</dt><dd>Switch to the <code>ACCOUNT-NAME</code>.</dd>
 
 <dt><kbd>b</kbd> (<code>telega-switch-buffer</code>)</dt><dd>Interactively switch to CHAT's buffer.
-Switch only if <code>CHAT</code> has corresponding chatbuf.</dd>
+Switch only if <code>CHAT</code> is opened, i.e. has corresponding chatbuf.</dd>
 
 <dt><kbd>c</kbd> (<code>telega-chat-with</code>)</dt><dd>Start messaging with <code>CHAT-OR-USER</code>.</dd>
 
@@ -1252,7 +1253,7 @@ User Option: <code>telega-chat-upload-attaches-ahead</code>
 
 <p>
 Non-nil to upload attachments ahead, before message actually sent.
-Having this non-nil "speedups" uploading, its like files uploads instantly. 
+Having this non-nil "speedups" uploading, it is like files uploads instantly. 
 </p>
 
 <p>
@@ -1541,7 +1542,7 @@ by current client.  See
 
 <dt>tracking, <kbd>/ SPC</kbd> (<code>telega-filter-by-tracking</code>)</dt><dd>Matches if chat is in tracking buffers list.</dd>
 
-<dt>last-message</dt><dd>Matches if chat's last message sent by me.</dd>
+<dt>last-message</dt><dd>Matches if chat's last message matches <code>MSG-TEMEX</code>.</dd>
 
 <dt>(chat-list <code>LIST-NAME</code>), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat is in chat list named <code>LIST-NAME</code>.
 <code>LIST-NAME</code> is <code>main</code> or <code>archive</code> symbol, or string naming Chat Folder.</dd>
@@ -1549,6 +1550,8 @@ by current client.  See
 <dt>main</dt><dd>Matches if chat from "Main" chat list.</dd>
 
 <dt>archive</dt><dd>Matches if chat is archived, i.e. in "Archive" chat list.</dd>
+
+<dt>is-known</dt><dd>Matches if chat is known, i.e. in "Main" or "Archive" chat list.</dd>
 
 <dt>(folder <code>FOLDER-NAME</code>&#x2026;), <kbd>/ f</kbd> (<code>telega-filter-by-folder</code>)</dt><dd>Matches if chat belongs to Folder named <code>FOLDER-NAME</code>.</dd>
 
@@ -1591,8 +1594,7 @@ BE AWARE: This filter will do blocking request for every chat.</dd>
 
 <dt>can-send-or-post</dt><dd>Me can send or post messages to the <code>CHAT</code>.
 Me don't need te be a <code>CHAT</code> member to be able to send messages.
-Additionally apply <code>(or main archive)</code> chat filter to check <code>CHAT</code> is
-known.</dd>
+Additionally apply <code>is-known</code> chat filter to check <code>CHAT</code> is known.</dd>
 
 <dt>is-inline-bot</dt><dd>Matches if corresponding bot accepts inline requests.</dd>
 
@@ -1696,6 +1698,10 @@ By default <code>N</code> is 1.</dd>
 <dt>is-premium</dt><dd>Matches if corresponding user is a Telegram Premium user.</dd>
 
 <dt>has-private-forwards</dt><dd>Matches if user can't be linked in forwarded messages.</dd>
+
+<dt>has-emoji-status</dt><dd>Matches if corresponding user set his current emoji status.</dd>
+
+<dt>user-username</dt><dd>Matches if user's username matches <code>USERNAME-REGEXP</code>.</dd>
 </dl>
 </div>
 </div>
@@ -1753,9 +1759,9 @@ Default value:
  (<span style="font-style: italic;">"Online"</span> and
   (not saved-messages)
   (user is-online))
- (<span style="font-style: italic;">"Groups"</span> type basicgroup supergroup)
- (<span style="font-style: italic;">"Channels"</span> type channel)
- (<span style="font-style: italic;">"Archive"</span> . archive))
+ (<span style="font-style: italic;">"lng_filters_type_groups"</span> type basicgroup supergroup)
+ (<span style="font-style: italic;">"lng_filters_type_channels"</span> type channel)
+ (<span style="font-style: italic;">"lng_filters_type_no_archived"</span> . archive))
 </pre>
 </div></li>
 
@@ -1852,7 +1858,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgc357972">
+<pre class="example" id="orgb401aac">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -1969,7 +1975,12 @@ Default value:
  (<span style="font-style: italic;">"Study"</span> . <span style="font-style: italic;">"&#127891;"</span>)
  (<span style="font-style: italic;">"Trade"</span> . <span style="font-style: italic;">"&#128202;"</span>)
  (<span style="font-style: italic;">"Travel"</span> . <span style="font-style: italic;">"&#128747;&#65039;"</span>)
- (<span style="font-style: italic;">"Work"</span> . <span style="font-style: italic;">"&#128188;"</span>))
+ (<span style="font-style: italic;">"Work"</span> . <span style="font-style: italic;">"&#128188;"</span>)
+ (<span style="font-style: italic;">"Airplane"</span> . <span style="font-style: italic;">"&#9992;&#65039;&#65039;"</span>)
+ (<span style="font-style: italic;">"Book"</span> . <span style="font-style: italic;">"&#128214;"</span>)
+ (<span style="font-style: italic;">"Like"</span> . <span style="font-style: italic;">"&#128077;"</span>)
+ (<span style="font-style: italic;">"Money"</span> . <span style="font-style: italic;">"&#128176;"</span>)
+ (<span style="font-style: italic;">"Note"</span> . <span style="font-style: italic;">"&#128466;&#65039;"</span>))
 </pre>
 </div></li>
 </ul>
@@ -2243,7 +2254,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgd799dcb">
+<pre class="example" id="org2a3e003">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2329,7 +2340,7 @@ Default value: <code>(nil "markdown1" "markdown2")</code>
 <p>
 Syntax for "markdown1" and "markdown2" markups:
 </p>
-<pre class="example" id="org740bb0d">
+<pre class="example" id="orga4380df">
 1. *bold text*
 2. _italic text_
 2.1) __underline text__    (only for "markdown2")
@@ -2347,7 +2358,7 @@ Syntax for "markdown1" and "markdown2" markups:
 <p>
 Syntax for "org" markup:
 </p>
-<pre class="example" id="orgcb5d646">
+<pre class="example" id="org62a7354">
 1. *bold text*
 2. /italic text/
 3. _underline text_
@@ -2436,7 +2447,7 @@ markup attachment.  Use nil to edit message as is, without using
 </p>
 
 <p>
-Default value: <code>(telega--fmt-text-markdown2 . "markdown2")</code>
+Default value: <code>nil</code>
 </p></li>
 </ul>
 </div>
@@ -2530,6 +2541,7 @@ Use this attachment to disable/enable notification on the receiver side.</dd>
 Use this attachment to disable/enable notification on the receiver side.</dd>
 <dt>disable-webpage-preview</dt><dd>Disable webpage preview for the following text message.</dd>
 <dt>send-by</dt><dd>Set sender for the following message.</dd>
+<dt>custom-emoji</dt><dd>Interactively attach a custom emoji.</dd>
 <dt>code</dt><dd>Interactively attach a code of the <code>LANGUAGE</code> into chatbuf input.
 For non-interactive code attach, use <code>telega-mnz--chatbuf-attach-internal</code>.</dd>
 </dl>
@@ -2554,7 +2566,7 @@ User Option: <code>telega-chat-upload-attaches-ahead</code>
 
 <p>
 Non-nil to upload attachments ahead, before message actually sent.
-Having this non-nil "speedups" uploading, its like files uploads instantly. 
+Having this non-nil "speedups" uploading, it is like files uploads instantly. 
 </p>
 
 <p>
@@ -2596,7 +2608,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org136efb4">
+<pre class="example" id="org1d637ba">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2632,7 +2644,7 @@ markup attachment.  Use nil to edit message as is, without using
 </p>
 
 <p>
-Default value: <code>(telega--fmt-text-markdown2 . "markdown2")</code>
+Default value: <code>nil</code>
 </p>
 
 <p>
@@ -2677,7 +2689,7 @@ your own caption.</li>
 <div class="outline-text-3" id="text-deleting-messages">
 <p>
 To delete a message, put cursor under the message you want to delete and press
-<kbd>DEL</kbd>, <kbd>k</kbd>, <kbd>d</kbd> (<code>telega-msg-delete-marked-or-at-point</code>).
+<kbd>DEL</kbd>, <kbd>k</kbd>, <kbd>d</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;delete&gt;</kbd> (<code>telega-msg-delete-marked-or-at-point</code>).
 </p>
 
 <p>
@@ -3190,7 +3202,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgb7bfb87">
+<pre class="example" id="org9468001">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3718,6 +3730,17 @@ Message Temex for messages to automatically play content for.
 <p>
 Default value: <code>(type Animation Sticker AnimatedEmoji)</code>
 </p></li>
+<li><p>
+User Option: <code>telega-autoplay-custom-emojis</code> 
+</p>
+
+<p>
+Non-nil to automatically play this number of custom emojis in the message. 
+</p>
+
+<p>
+Default value: <code>10</code>
+</p></li>
 </ul>
 </div>
 </div>
@@ -3941,6 +3964,46 @@ Default value: <code>t</code>
 </div>
 
 
+<div id="outline-container-telega-recognize-voice-message-mode" class="outline-3">
+<h3 id="telega-recognize-voice-message-mode"><a class="self-link" href="#telega-recognize-voice-message-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-recognize-voice-message-mode</h3>
+<div class="outline-text-3" id="text-telega-recognize-voice-message-mode">
+<p>
+Minor mode to automatically recognize speech in a voice messages.
+Available only for the Telegram Premium users.
+</p>
+
+<p>
+Enable with <code>(telega-recognize-voice-message-mode 1)</code> or at
+<code>telega</code> load time:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-recognize-voice-message-mode)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-recognize-voice-message-temex</code> 
+</p>
+
+<p>
+Message Temex for messages to automatically recognize speech.
+Speech recognition is only applied to voice messages matching this
+Message Temex.  Applied only if non-nil.
+For example, to recognize speech in a voice messages only in private
+chats, use <code>(chat (type private))</code> Message Temex. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+</ul>
+</div>
+</div>
+
 <div id="outline-container-telega-root-auto-fill-mode" class="outline-3">
 <h3 id="telega-root-auto-fill-mode"><a class="self-link" href="#telega-root-auto-fill-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-root-auto-fill-mode</h3>
 <div class="outline-text-3" id="text-telega-root-auto-fill-mode">
@@ -4018,7 +4081,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgd2c298b">
+<pre class="example" id="orge89b44e">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

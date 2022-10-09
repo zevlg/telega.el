@@ -450,7 +450,7 @@ If SUFFIX-LIST is not specified, then match any restriction reason."
 ;; - last-message ::
 ;;   {{{temexdoc(chat-last-message, 2)}}}
 (define-telega-matcher chat-last-message (chat msg-temex)
-  "Matches if chat's last message sent by me."
+  "Matches if chat's last message matches MSG-TEMEX."
   (when-let ((last-msg (plist-get chat :last_message)))
     (telega-msg-match-p last-msg msg-temex)))
 
@@ -479,6 +479,13 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 (define-telega-matcher chat-archive (chat)
   "Matches if chat is archived, i.e. in \"Archive\" chat list."
   (telega-chat-match-p chat '(chat-list archive)))
+
+;;; ellit-org: chat-temex
+;; - is-known ::
+;;   {{{temexdoc(chat-is-known, 2)}}}
+(define-telega-matcher chat-is-known (chat)
+  "Matches if chat is known, i.e. in \"Main\" or \"Archive\" chat list."
+  (telega-chat-match-p chat '(or (chat-list main) (chat-list archive))))
 
 ;;; ellit-org: chat-temex
 ;; - (folder ~FOLDER-NAME~...), {{{where-is(telega-filter-by-folder,telega-root-mode-map)}}} ::
@@ -625,8 +632,7 @@ BE AWARE: This filter will do blocking request for every chat."
 (define-telega-matcher chat-can-send-or-post (chat)
   "Me can send or post messages to the CHAT.
 Me don't need te be a CHAT member to be able to send messages.
-Additionally apply `(or main archive)' chat filter to check CHAT is
-known."
+Additionally apply `is-known' chat filter to check CHAT is known."
   (let ((my-perms (telega-chat-member-my-permissions chat)))
     (or (plist-get my-perms :can_send_messages)
         (plist-get my-perms :can_post_messages))))
@@ -733,6 +739,20 @@ By default N is 1."
   "Matches if user can't be linked in forwarded messages."
   (plist-get (telega--full-info user) :has_private_forwards))
 
+;;; ellit-org: user-temex
+;; - has-emoji-status ::
+;;   {{{temexdoc(user-has-emoji-status, 2)}}}
+(define-telega-matcher user-has-emoji-status (user)
+  "Matches if corresponding user set his current emoji status."
+  (plist-get user :emoji_status))
+
+;;; ellit-org: user-temex
+;; - user-username ::
+;;   {{{temexdoc(user-username, 2)}}}
+(define-telega-matcher user-username (user username-regexp)
+  "Matches if user's username matches USERNAME-REGEXP."
+  (when-let ((username (telega-tl-str user :username)))
+    (string-match-p username-regexp username)))
 
 
 ;;; Message Temexes
@@ -774,7 +794,7 @@ By default N is 1."
 ;;   {{{temexdoc(msg-has-chosen-reaction, 2)}}}
 (define-telega-matcher msg-has-chosen-reaction (msg)
   "Matches if message has a reaction chosen by me."
-  (telega-msg-chosen-reaction msg))
+  (telega-msg-chosen-reaction-types msg))
 
 ;;; ellit-org: msg-temex
 ;; - is-reply ::

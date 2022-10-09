@@ -26,8 +26,6 @@
 ;;; Code:
 (require 'telega-tdlib)
 
-(declare-function telega-etc-file "telega-util" (filename))
-
 (defvar telega-i18n-month-names
   '((full "January" "February" "March" "April" "May" "June" "July"
            "August" "September" "October" "November" "December")
@@ -87,22 +85,23 @@ Loaded from \"etc/langs/en.plist\" in `telega-i18n-init'.")
               telega-i18n--plural-func #'telega-i18n-plural-rule-en)
         (telega-i18n--apply-strings))
 
-    ;; Setup plural code function and local strings (if any in
-    ;; etc/langs dir)
-    (let* ((pack-info (telega--getLanguagePackInfo telega-language))
-           (plural-code (plist-get pack-info :plural_code)))
-      (setq telega-i18n--strings
-            (or (ignore-errors
-                  (telega-i18n--etc-langs-strings telega-language))
-                (ignore-errors
-                  (telega-i18n--etc-langs-strings plural-code))))
-      (setq telega-i18n--plural-func
-            (cdr (assoc plural-code telega-i18n-plural-rule-functions))))
-
+    ;; Asynchronously setup plural code function and local strings (if
+    ;; any in etc/langs dir)
+    (setq telega-i18n--strings
+          (ignore-errors (telega-i18n--etc-langs-strings telega-language)))
+    (telega--getLanguagePackInfo telega-language
+      (lambda (pack-info)
+        (setq telega-i18n--plural-func
+              (cdr (assoc (plist-get pack-info :plural_code)
+                          telega-i18n-plural-rule-functions)))))
     ;; Asynchronously load `telega-language' strings
     (telega--getLanguagePackStrings telega-language nil
       (lambda (pack-strings)
-        (setq telega-i18n--strings pack-strings)
+        ;; Merge in received PACK-STRINGS
+        (dolist (pack-string pack-strings)
+          (setf (alist-get (car pack-string) telega-i18n--strings
+                           nil nil #'string=)
+                (cdr pack-string)))
         (telega-i18n--apply-strings)
         ;; NOTE: custom filters might use i18n strings, so update
         ;; custom filters as well

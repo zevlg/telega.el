@@ -8,11 +8,11 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.44
-(defconst telega-version "0.8.44")
+;; Version: 0.8.60
+(defconst telega-version "0.8.60")
 (defconst telega-server-min-version "0.7.7")
-(defconst telega-tdlib-min-version "1.8.4")
-(defconst telega-tdlib-max-version "1.8.4")
+(defconst telega-tdlib-min-version "1.8.6")
+(defconst telega-tdlib-max-version nil)
 
 (defconst telega-tdlib-releases '("1.8.0" . "1.9.0")
   "Cons cell with current and next TDLib releases.
@@ -301,7 +301,9 @@ string at point."
                           " (telega-server v"
                           (telega-server-version)
                           (when telega-use-docker
-                            (concat " [docker]"))
+                            (format " [%s]" (if (string telega-use-docker)
+                                                telega-use-docker
+                                              "docker")))
                           ")")))
     (if insert-p
         (insert version)
@@ -324,6 +326,18 @@ string at point."
                            "unknown")
               "\n")
       (insert "*Emacs*: " (let (emacs-build-time) (emacs-version)) "\n")
+      (telega-ins "*Features*: "
+                  (when (image-type-available-p 'imagemagick)
+                    "imagemagick ")
+                  (when (image-type-available-p 'svg)
+                    "svg ")
+                  (when (image-type-available-p 'webp)
+                    "webp ")
+                  (when (executable-find "ffmpeg")
+                    "ffmpeg ")
+                  (when (executable-find "tgs2png")
+                    "tgs2png ")
+                  "\n")
       (insert "*Telega*: " (telega-version) "\n")
       (when-let ((melpa-pkg (ignore-errors
                               (read (find-file-noselect
@@ -369,6 +383,7 @@ string at point."
 
 ;; For messages loaded from history
 (add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)
+(add-hook 'telega-chat-insert-message-hook #'telega-msg--custom-emojis-fetch)
 
 ;; WARN about usage of the obsolete variables
 (require 'telega-obsolete)

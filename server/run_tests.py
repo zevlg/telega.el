@@ -55,6 +55,10 @@ JSON_TO_PLIST_TESTS = TESTS + [
     # red heart, see https://t.me/tdlibchat/42441
     (True, b'"\u2764\ufe0f"', '#("\\u2764\\ufe0f" 0 2 (telega-emoji-p t telega-display "\\u2764\\ufe0f"))'),
     (True, b'"\u2764"', '#("\\u2764" 0 1 (telega-emoji-p t telega-display "\\u2764"))'),
+
+    # TODO: [wo]man shrug without trailing \ufe0f should be an emoji, as in
+    # official client
+    # (True, b'"\ud83e\udd37\u200d\u2642"', '#("\\u2764" 0 4 (telega-emoji-p t telega-display "\\U0001f937\\u200d\\u2642"))'),
 ]
 
 def run_telega(input, flag):

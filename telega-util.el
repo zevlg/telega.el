@@ -220,6 +220,14 @@ Specify EXT with leading `.'."
     (svg--def svg cp)
     cp))
 
+(defun telega-svg-image-mask (svg mask-id image img-type datap &rest args)
+  "Create an svg mask using embedded IMAGE."
+  (let ((mask (dom-node 'mask `((id . ,mask-id)
+                                ,@(svg--arguments svg args)))))
+    (svg--def svg mask)
+    (apply #'telega-svg-embed mask image img-type datap args)
+    mask))
+
 (defun telega-svg-path (svg d &rest args)
   (svg--append svg (dom-node 'path
                              `((d . ,d)
@@ -317,33 +325,36 @@ X and Y denotes left up corner."
            squircle-cubic-beziers "\n")))
     (apply #'telega-svg-path svg (concat cmd-start cmd-cb "Z") args)))
 
+(defun telega-svg-apply-outline (svg outline ratio &optional args)
+  (apply #'telega-svg-path svg
+         (mapconcat (lambda (op)
+                      (concat (symbol-name (car op))
+                              (mapconcat
+                               (lambda (pnt)
+                                 (concat (number-to-string (* ratio (car pnt)))
+                                         " "
+                                         (number-to-string
+                                          (* ratio (cadr pnt)))))
+                               (cdr op) " ")))
+                    outline "\n")
+         args))
+
 (defun telega-svg-telega-logo (svg width &rest args)
   "Draw telega triangle of WIDTH."
   (declare (indent 2))
   (let ((ratio (/ width 32.0))
-        (logo-outline '((M (0 10.1891))
-                        (l (7.9819 5.5418))
-                        (c (0.8853 -0.322) (1.8202 -0.6638) (2.599 -0.9418)
-                           (1.9609 -0.7)   (7.0539 -3.4182) (7.0539 -3.4182)
-                           (-2.5145 2.2595) (-4.6401 4.5613) (-6.55 6.8691))
-                        (L (17.5694 27))
-                        (c (0.2653 -0.9309) (0.5279 -1.8618) (0.9135 -2.9018))
-                        (C (20.4518 18.4196) (32 0) (32 0)
-                           (24.4744 2.555) (10.7087 7.5896) (7.8333 8.5782)
-                           (5.5816 9.3523) (2.1946 10.5884) (0 10.1892))
-                        (z))))
-    (apply #'telega-svg-path svg
-           (mapconcat (lambda (op)
-                        (concat (symbol-name (car op))
-                                (mapconcat
-                                 (lambda (pnt)
-                                   (concat (number-to-string (* ratio (car pnt)))
-                                           " "
-                                           (number-to-string
-                                            (* ratio (cadr pnt)))))
-                                 (cdr op) " ")))
-                      logo-outline "\n")
-           args)))
+        (outline '((M (0 10.1891))
+                   (l (7.9819 5.5418))
+                   (c (0.8853 -0.322) (1.8202 -0.6638) (2.599 -0.9418)
+                      (1.9609 -0.7)   (7.0539 -3.4182) (7.0539 -3.4182)
+                      (-2.5145 2.2595) (-4.6401 4.5613) (-6.55 6.8691))
+                   (L (17.5694 27))
+                   (c (0.2653 -0.9309) (0.5279 -1.8618) (0.9135 -2.9018))
+                   (C (20.4518 18.4196) (32 0) (32 0)
+                      (24.4744 2.555) (10.7087 7.5896) (7.8333 8.5782)
+                      (5.5816 9.3523) (2.1946 10.5884) (0 10.1892))
+                   (z))))
+    (telega-svg-apply-outline svg outline ratio args)))
 
 (defun telega-svg-round-square (svg x y width height radius &rest args)
   "In SVG at X and Y positioon draw square with round corners.
@@ -366,6 +377,26 @@ X and Y denotes left up corner."
     (apply #'svg-circle svg (- (+ x width) radius) (- (+ height y) radius) radius args)
     (apply #'svg-circle svg (+ x radius) (- (+ height y) radius) radius args)
     ))
+
+(defun telega-svg-premium-logo (svg width &rest args)
+  "Draw Telegram Premium logo."
+  (declare (indent 2))
+  (let ((ratio (/ width 16.0))
+        (outline '((M (7.9673 1.7397))
+                   (c (-0.8215 0.005) (-1.3307 3.6214) (-1.9924 4.1084)
+                      (-0.6618 0.487) (-4.266 -0.102) (-4.5151 0.681)
+                      (-0.1812 0.5691) (2.5226 2.3763) (2.5226 2.3763))
+                   (s (5.0903 -1.0188) (5.181 -0.8892))
+                   (c (0.1049 0.15) (-1.9601 1.3199) (-4.5458 2.74)
+                      (-0.3426 1.263) (-1.1017 3.0947) (-0.6124 3.4457)
+                      (0.6676 0.4789) (3.2046 -2.1477) (4.0261 -2.1524)
+                      (0.8216 -0.005) (3.3918 2.5891) (4.0535 2.1022)
+                      (0.6618 -0.487) (-1.0488 -3.714) (-0.7997 -4.4969)
+                      (0.2492 -0.7829) (3.5078 -2.4236) (3.2492 -3.2035)
+                      (-0.2586 -0.7798) (-3.852 -0.1518) (-4.5196 -0.6306)
+                      (-0.6676 -0.4789) (-1.2258 -4.0856) (-2.0474 -4.081))
+                   (z))))
+    (telega-svg-apply-outline svg outline ratio args)))
 
 (defun telega-svg-create (width height &rest args)
   "Create SVG image using `svg-create'.
@@ -579,10 +610,6 @@ N can't be 0."
       (setq comps (nconc comps (list (format "%ds" seconds)))))
     (mapconcat #'identity comps ":")))
 
-(defun telega-etc-file (filename)
-  "Return absolute path to FILENAME from etc/ directory in telega."
-  (expand-file-name (concat "etc/" filename) telega--lib-directory))
-
 (defun telega-link-props (link-type link-to &optional face)
   "Generate props for link button openable with `telega-link--button-action'."
   (cl-assert (memq link-type '(url file username user sender hashtag)))
@@ -653,60 +680,70 @@ See `puny-decode-domain' for details."
 (defun telega--entity-to-properties (entity text)
   "Convert telegram ENTITY to emacs text properties to apply to TEXT."
   (let ((ent-type (plist-get entity :type)))
-    (cl-case (telega--tl-type ent-type)
-      (textEntityTypeMention
-       (telega-link-props 'username text
-                          (if (and telega-msg-contains-unread-mention
-                                   (equal text (telega-user--name
-                                                (telega-user-me) 'short)))
-                              '(telega-entity-type-mention bold)
-                            'telega-entity-type-mention)))
-      (textEntityTypeMentionName
-       (telega-link-props 'user (plist-get ent-type :user_id)
-                          (if (and telega-msg-contains-unread-mention
-                                   (eq (plist-get ent-type :user_id)
-                                       telega--me-id))
-                              '(telega-entity-type-mention bold)
-                            'telega-entity-type-mention)))
-      (textEntityTypeHashtag
-       (telega-link-props 'hashtag text))
-      (textEntityTypeBold
-       '(face telega-entity-type-bold))
-      (textEntityTypeItalic
-       '(face telega-entity-type-italic))
-      (textEntityTypeUnderline
-       '(face telega-entity-type-underline))
-      (textEntityTypeStrikethrough
-       '(face telega-entity-type-strikethrough))
-      (textEntityTypeCode
-       '(face telega-entity-type-code))
-      (textEntityTypePre
-       '(face telega-entity-type-pre))
-      (textEntityTypePreCode
-       '(face telega-entity-type-pre))
-      (textEntityTypeUrl
-       ;; - Unhexify url, using `telega-display' property to be
-       ;; substituted at `telega--desurrogate-apply' time
-       ;; - Convert "xn--" domains to non-ascii version
-       (nconc (list 'telega-display
-                    (telega-puny-decode-url
-                     (decode-coding-string
-                      (url-unhex-string text) 'utf-8)))
-              (telega-link-props 'url text 'telega-entity-type-texturl)))
-      (textEntityTypeTextUrl
-       (telega-link-props 'url (plist-get ent-type :url)
-                          'telega-entity-type-texturl))
-      (textEntityTypeBotCommand
-       '(face telega-entity-type-botcommand))
-      (textEntityTypeMediaTimestamp
-       (list 'action (lambda (button)
-                       (telega-msg-open-media-timestamp
-                        (telega-msg-at button)
-                        (plist-get ent-type :media_timestamp)))
-             'face 'telega-link))
-      (textEntityTypeSpoiler
-       '(face telega-entity-type-spoiler))
-      )))
+    (nconc
+     (list :tl-entity-type ent-type)
+     (cl-case (telega--tl-type ent-type)
+       (textEntityTypeMention
+        (telega-link-props 'username text
+                           (if (and telega-msg-contains-unread-mention
+                                    (telega-user-match-p (telega-user-me)
+                                      (list 'username
+                                            (concat "^"
+                                                    (substring text 1) ;strip @
+                                                    "$"))))
+                               '(telega-entity-type-mention bold)
+                             'telega-entity-type-mention)))
+       (textEntityTypeMentionName
+        (telega-link-props 'user (plist-get ent-type :user_id)
+                           (if (and telega-msg-contains-unread-mention
+                                    (eq (plist-get ent-type :user_id)
+                                        telega--me-id))
+                               '(telega-entity-type-mention bold)
+                             'telega-entity-type-mention)))
+       (textEntityTypeHashtag
+        (telega-link-props 'hashtag text))
+       (textEntityTypeBold
+        '(face telega-entity-type-bold))
+       (textEntityTypeItalic
+        '(face telega-entity-type-italic))
+       (textEntityTypeUnderline
+        '(face telega-entity-type-underline))
+       (textEntityTypeStrikethrough
+        '(face telega-entity-type-strikethrough))
+       (textEntityTypeCode
+        '(face telega-entity-type-code))
+       (textEntityTypePre
+        '(face telega-entity-type-pre))
+       (textEntityTypePreCode
+        '(face telega-entity-type-pre))
+       (textEntityTypeUrl
+        ;; - Unhexify url, using `telega-display' property to be
+        ;; substituted at `telega--desurrogate-apply' time
+        ;; - Convert "xn--" domains to non-ascii version
+        (nconc (list 'telega-display
+                     (telega-puny-decode-url
+                      (decode-coding-string
+                       (url-unhex-string text) 'utf-8)))
+               (telega-link-props 'url text 'telega-entity-type-texturl)))
+       (textEntityTypeTextUrl
+        (telega-link-props 'url (plist-get ent-type :url)
+                           'telega-entity-type-texturl))
+       (textEntityTypeBotCommand
+        '(face telega-entity-type-botcommand))
+       (textEntityTypeMediaTimestamp
+        (list 'action (lambda (button)
+                        (telega-msg-open-media-timestamp
+                         (telega-msg-at button)
+                         (plist-get ent-type :media_timestamp)))
+              'face 'telega-link))
+       (textEntityTypeSpoiler
+        '(face telega-entity-type-spoiler))
+       (textEntityTypeCustomEmoji
+        (when telega-use-images
+          (when-let ((sticker (gethash (plist-get ent-type :custom_emoji_id)
+                                       telega--custom-emoji-stickers)))
+            (list 'display (telega-sticker--image sticker)))))
+       ))))
 
 ;; https://core.telegram.org/bots/api#markdown-style
 (defsubst telega--entity-to-markdown (entity-text)
@@ -737,6 +774,9 @@ Return now text with markdown syntax."
                                   (substring-no-properties text))))
       (textEntityTypeTextUrl
        (format "[%s](%s)" text (plist-get ent-type :url)))
+      (textEntityTypeCustomEmoji
+       (apply #'propertize text
+              (telega--entity-to-properties (car entity-text) text)))
       (t text))))
 
 (defsubst telega--entity-to-org (entity-text)
@@ -769,6 +809,9 @@ Return string with org mode syntax."
                                   (substring-no-properties text))))
       (textEntityTypeTextUrl
        (format "[[%s][%s]]" (plist-get ent-type :url) text))
+      (textEntityTypeCustomEmoji
+       (apply #'propertize text
+              (telega--entity-to-properties (car entity-text) text)))
       (t text))))
 
 (defun telega-string-fmt-text-length (str &optional rstart rend)
@@ -795,18 +838,27 @@ RSTART and REND specifies STR region to work on."
                              :type entity-type))
                     [])))
 
-(defun telega-string-as-markup (str markup-name markup-func)
+(defun telega-string-as-markup (str markup-name markup-func &rest markup-args)
   "From STR create string with markup named MARKUP-NAME.
-MARKUP-FUNC is function taking string and returning formattedText."
+MARKUP-NAME can be nil, in this case markup outline is not displayed,
+used by custom emojis.
+MARKUP-FUNC is function taking string and returning formattedText.
+MARKUP-ARGS additional arguments to MARKUP-FUNC."
+  (declare (indent 3))
   (concat (propertize
-           "❰" 'display (propertize (concat "<" markup-name ">")
-                                    'face 'shadow)
+           "❰" 'display (if markup-name
+                            (propertize (concat "<" markup-name ">")
+                                        'face 'shadow)
+                          "")
            'rear-nonsticky t
-           :telega-markup-start markup-func)
+           :telega-markup-start markup-func
+           :telega-markup-args markup-args)
           str
           (propertize
-           "❱" 'display (propertize (concat "</" markup-name ">")
-                                    'face 'shadow)
+           "❱" 'display (if markup-name
+                            (propertize (concat "</" markup-name ">")
+                                        'face 'shadow)
+                          "")
            'rear-nonsticky t
            :telega-markup-end markup-func)))
 
@@ -908,6 +960,16 @@ Return nil if STR does not specify an org mode link."
   (telega-fmt-text-desurrogate
    (telega--parseMarkdown (telega-fmt-text str))))
 
+(defun telega-string-split-by-tl-entity-type (text default-markup-func)
+  "Split TEXT by `:tl-entity-type'.
+Return list of list where first element is markup function, second is
+substring and rest are additional arguments to markup function."
+  (mapcar (lambda (ss)
+            (if-let ((ent-type (get-text-property 0 :tl-entity-type ss)))
+                (list #'telega-fmt-text ss ent-type)
+              (list default-markup-func ss)))
+          (telega--split-by-text-prop text :tl-entity-type)))
+
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
 Use DEFAULT-MARKUP-FUNC for strings without markup.
@@ -921,26 +983,37 @@ second is substring."
                  (text-property-not-all
                   start end :telega-markup-start nil text))
       (unless (eq start markup-start)
-        (push (list default-markup-func (substring text start markup-start))
-              result))
+        ;; Extract custom emojis (and other entity types) from
+        ;; non-markup substring
+        (seq-doseq (ret (telega-string-split-by-tl-entity-type
+                         (substring text start markup-start)
+                         default-markup-func))
+          (push ret result)))
       (let ((markup-end (text-property-not-all
                          markup-start end :telega-markup-end nil text)))
         (unless markup-end
           (user-error "Markup is non-closed"))
         (let ((markup-func (get-text-property
-                            markup-start :telega-markup-start text)))
+                            markup-start :telega-markup-start text))
+              (markup-args (get-text-property
+                            markup-start :telega-markup-args text)))
           (cl-assert (eq markup-func (get-text-property
                                       markup-end :telega-markup-end text)))
-          (push (list markup-func (substring
-                                   text (1+ markup-start) markup-end))
+          (push (nconc (list markup-func (substring
+                                          text (1+ markup-start) markup-end))
+                       markup-args)
                 result))
         ;; Skip markup-end char
         (setq start (1+ markup-end))))
 
     ;; Rest of the string
     (when (< start end)
-      (push (list default-markup-func (substring text start))
-            result))
+      ;; Extract custom emojis (and other entity types) from
+      ;; non-markup substring
+      (seq-doseq (ret (telega-string-split-by-tl-entity-type
+                       (substring text start)
+                       default-markup-func))
+        (push ret result)))
     (nreverse result)))
 
 (defun telega-string-fmt-text (text &optional default-markup-func)
@@ -1069,9 +1142,10 @@ Return text string with applied faces."
                      ent (substring-no-properties text beg end)))
              (face (plist-get props 'face)))
         (when props
-          (add-text-properties
-           beg end (nconc (list 'rear-nonsticky t)
-                          (telega-plist-del props 'face)) text))
+          (add-text-properties beg end (nconc (list 'rear-nonsticky t
+                                                    'front-sticky t)
+                                              (telega-plist-del props 'face))
+                               text))
         (when face
           (add-face-text-property beg end face 'append text))))
     text))
@@ -1094,11 +1168,12 @@ Return text string with applied faces."
     (nreverse result)))
 
 (defun telega--region-with-cursor-sensor (pos)
-  "Locate region of the button with `cursor-sensor-functions' set.
+  "Locate region of the button with `cursor-sensor-functions'.
 Return `nil' if there is no button with `cursor-sensor-functions' at POS."
-  (when (get-text-property pos 'cursor-sensor-functions)
+  (when-let ((sensor-funcs (get-text-property pos 'cursor-sensor-functions)))
     (let ((prev (previous-single-property-change pos 'cursor-sensor-functions)))
-      (when (and prev (get-text-property prev 'cursor-sensor-functions))
+      (when (and prev (eq (get-text-property prev 'cursor-sensor-functions)
+                          sensor-funcs))
         (setq pos prev))
       (telega--region-by-text-prop pos 'cursor-sensor-functions))))
 
@@ -1169,7 +1244,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (declare (indent 1))
   (unless users-list
     (setq users-list (hash-table-values (alist-get 'user telega--info))))
-  (telega-gen-completing-read-list prompt users-list #'telega-user--name
+  (telega-gen-completing-read-list prompt users-list #'telega-user-title
                                    #'telega-completing-read-user))
 
 (defvar telega-completing--chat-member-alist nil
@@ -1182,7 +1257,9 @@ Works only with `fido-mode' completion."
   (when prefix
     (setq telega-completing--chat-member-alist
           (mapcar (lambda (user)
-                    (cons (propertize (telega-user--name user) :user user)
+                    (cons (propertize
+                           (telega-msg-sender-title-for-completion user)
+                           :user user)
                           user))
                   (telega--searchChatMembers chat prefix)))
     (mapcar #'car telega-completing--chat-member-alist)))
@@ -1410,24 +1487,6 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
                           prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
 
-(defun telega-completing-read-msg-reaction (msg prompt &optional default-reaction)
-  "Read a reaction for the message MSG."
-  (let* ((completion-ignore-case t)
-         (available-reactions (telega--getMessageAvailableReactions msg))
-         (my-reaction (telega-msg-chosen-reaction msg))
-         (choices (if my-reaction
-                      (cons "Unset" (delete my-reaction available-reactions))
-                    (if (member default-reaction available-reactions)
-                        ;; NOTE: make `default-reaction' very first in the list
-                        (cons default-reaction
-                              (delete default-reaction available-reactions))
-                      available-reactions)))
-         (choice (funcall telega-completing-read-function
-                          prompt choices nil t)))
-    (if (equal "Unset" choice)
-        nil
-      choice)))
-
 (defun telega--animate-dots (text)
   "Animate TEXT's trailing dots.
 Return `nil' if there is nothing to animate and new string otherwise."
@@ -1589,98 +1648,6 @@ Save point only if SAVE-POINT is non-nil."
       (dolist (win (get-buffer-window-list))
         (set-window-point win (point))))))
 
-
-;; Emoji
-(defvar telega-emoji-alist nil)
-(defvar telega-emoji-candidates nil)
-(defvar telega-emoji-max-length 0)
-(defvar telega-emoji-svg-images nil
-  "Cache of SVG images for emojis of one char height.
-Alist with elements in form (emoji . image)")
-
-(defun telega-emoji-init ()
-  "Initialize emojis."
-  (unless telega-emoji-alist
-    (setq telega-emoji-alist
-          (nconc (with-temp-buffer
-                   (insert-file-contents (telega-etc-file "emojis.alist"))
-                   (goto-char (point-min))
-                   (read (current-buffer)))
-                 telega-emoji-custom-alist))
-    (setq telega-emoji-candidates (mapcar 'car telega-emoji-alist))
-    (setq telega-emoji-max-length
-          (apply 'max (mapcar 'length telega-emoji-candidates)))))
-
-(defun telega-emoji-name (emoji)
-  "Find EMOJI name."
-  (telega-emoji-init)
-  (car (cl-find emoji telega-emoji-alist :test 'string= :key 'cdr)))
-
-(defun telega-emoji--image-cache-get (emoji xheight)
-  "Get EMOJI from `telega-emoji-svg-images'.
-Also checks that height of the cached image equals to XHEIGHT."
-  (when-let ((cached-image (cdr (assoc emoji telega-emoji-svg-images))))
-    (when (eq xheight (plist-get (cdr cached-image) :height))
-      cached-image)))
-
-(defun telega-emoji--image-cache-put (emoji image)
-  "Put EMOJI IMAGE into `telega-emoji-svg-images' cache."
-  (let ((cached-image (assoc emoji telega-emoji-svg-images)))
-    (if cached-image
-        (setcdr cached-image image)
-      (setq telega-emoji-svg-images
-            (cons (cons emoji image) telega-emoji-svg-images)))))
-
-(defun telega-emoji-create-svg (emoji &optional cheight)
-  "Create svg image for the EMOJI.
-CHEIGHT is height for the svg in characters, default=1."
-  (let* ((emoji-cheight (or cheight 1))
-         (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
-         (xh (telega-chars-xheight emoji-cheight))
-         (image (when use-cache-p
-                  (telega-emoji--image-cache-get emoji xh))))
-    (unless image
-      (let* ((font-xh (min xh (telega-chars-xwidth (* 2 emoji-cheight))))
-             (font-size (- font-xh (/ font-xh 5)))
-             (font-y (if (> font-xh xh)
-                         font-size
-                       (cl-assert (>= xh font-xh))
-                       (+ font-size (/ (- xh font-xh) 4))))
-             (aw-chars (* (or (telega-emoji-svg-width emoji) (length emoji))
-                          (telega-chars-in-width font-xh)))
-             (xw (telega-chars-xwidth aw-chars))
-             (svg (telega-svg-create xw xh))
-             ;; NOTE: if EMOJI width matches final width, then use
-             ;; EMOJI itself as telega-text
-             (telega-text (if (= (string-width emoji) aw-chars)
-                              emoji
-                            (make-string aw-chars ?E))))
-        ;; NOTE: special case librsvg does not handles well - labels
-        ;; such as 1️⃣, for such cases `telega-emoji-svg-width' returns 1
-        (if (and (= (length emoji) 3) (string-suffix-p "️⃣" emoji))
-            (progn
-              (setq telega-text (compose-chars (aref emoji 0) ?⃣))
-              (svg-text svg "⃣"
-                        :font-family telega-emoji-font-family
-                        :font-size font-size
-                        :x 0 :y font-y)
-              (svg-text svg (substring emoji 0 1)
-                        :font-family telega-emoji-font-family
-                        :font-size font-size
-                        :x 0 :y font-y))
-          (svg-text svg emoji
-                    :font-family telega-emoji-font-family
-                    :font-size font-size
-                    :x 0 :y font-y))
-        (setq image (telega-svg-image svg :scale 1.0
-                                      :width xw :height xh
-                                      :ascent 'center
-                                      :mask 'heuristic
-                                      :telega-text telega-text)))
-      (when use-cache-p
-        (telega-emoji--image-cache-put emoji image)))
-    image))
-
 (defun telega-svg-create-vertical-bar (&optional bar-width bar-position bar-str)
   "Create svg image for vertical bar.
 BAR-STR is string value for textual vertical bar, by default
@@ -1795,37 +1762,6 @@ Only endings listed in `telega-symbols-emojify' are emojified."
            (or (and (functionp telega-symbols-emojify-function)
                     (funcall telega-symbols-emojify-function ending))
                value)))))
-
-(defun telega-emoji-has-zero-joiner-p (emoji)
-  "Return non-nil if EMOJI has ZWJ char inside."
-  (string-match-p (regexp-quote "\U0000200D") emoji))
-
-(defun telega-emoji-fitz-p (emoji)
-  "Return non-nil if EMOJI uses Fitzpatrick's modifier."
-  (and (= (length emoji) 2)
-       (memq (aref emoji 1) '(?\🏻 ?\🏼 ?\🏽 ?\🏾 ?\🏿))))
-
-(defun telega-emoji-flag-p (emoji)
-  "Return non-nil if EMOJI is a flag."
-  (and (= (length emoji) 2)
-       (>= (aref emoji 0) ?\🇦)
-       (>= (aref emoji 1) ?\🇦)
-       (<= (aref emoji 0) ?\🇿)
-       (<= (aref emoji 1) ?\🇿)))
-
-(defun telega-emoji-fe0f-p (emoji)
-  "Return non-nil if EMOJI ends with \ufe0f."
-  (and (= (length emoji) 2)
-       (= (aref emoji 1) (aref "\ufe0f" 0))))
-
-(defun telega-emoji-svg-width (emoji)
-  (if (or (telega-emoji-fitz-p emoji)
-          (telega-emoji-flag-p emoji)
-          (telega-emoji-fe0f-p emoji)
-          (telega-emoji-has-zero-joiner-p emoji)
-          (and (= (length emoji) 3) (string-suffix-p "️⃣" emoji)))
-      1
-    nil))
 
 
 (defun telega-diff-wordwise (str1 str2 &optional colorize)
@@ -2311,7 +2247,10 @@ not signal an error and just return nil."
            (mapconcat #'identity (cons program-bin (cdr cmd-args)) " "))
 
           ((and telega-use-docker (telega-server-live-p))
-           (concat "docker exec "
+           (concat (if (stringp telega-use-docker)
+                       telega-use-docker
+                     "docker")
+                   " exec"
                    " " exec-flags
                    ;; NOTE: `exec-flags' might specify its own "-u",
                    ;; for example to run commands under root with
@@ -2341,6 +2280,22 @@ not signal an error and just return nil."
                          (when (fboundp 'imagemagick-types) 'imagemagick) nil
                          :scale 1.0 :ascent 'center
                          :width size :height size)))
+
+(defun telega-completing-read-emoji-status-duration (prompt)
+  "Read duration for the custom emoji."
+  (let* ((choices (mapcar (lambda (delay)
+                            (cons (cond ((zerop delay) "Custom")
+                                        (t (telega-duration-human-readable
+                                            delay 1 " days" " hours" " minutes")))
+                                  delay))
+                          '(3600 7200 28800 172800 0)))
+         (choice (funcall telega-completing-read-function
+                          prompt (mapcar #'car choices) nil t))
+         (duration (cdr (assoc choice choices))))
+    (if (zerop duration)
+        (- (telega-read-timestamp "Timestamp: ")
+           (telega-time-seconds))
+      duration)))
 
 (provide 'telega-util)
 

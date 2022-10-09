@@ -191,9 +191,9 @@ PARTS - list of file parts to download sequentually."
 
 (defun telega-file--upload (filename &optional file-type priority callback)
   "Upload FILENAME to the cloud.
-Return file object, obtained from `telega--uploadFile'."
+Return file object, obtained from `telega--preliminaryUploadFile'."
   (declare (indent 3))
-  (let ((file (telega--uploadFile
+  (let ((file (telega--preliminaryUploadFile
                (expand-file-name filename) file-type priority)))
     (telega-file--upload-internal file callback)
     file))

@@ -735,13 +735,19 @@ Status values are hold in the `telega--status' and
 `telega--status-aux' variables."
   (telega-ins "Status")
   (when-let (account (telega-account-current))
-    (telega-ins " (")
-    (telega-ins--button (car account)
-      'face 'bold
-      'action (lambda (_ignored)
-                (call-interactively #'telega-account-switch))
-      'help "Switch to another account")
-    (telega-ins ")"))
+    (let ((user-me (telega-user-me 'offline)))
+      (telega-ins " (")
+      (when user-me
+        (telega-ins--image
+         (telega-msg-sender-avatar-image-one-line user-me)))
+      (telega-ins--button (car account)
+        'face 'bold
+        'action (lambda (_ignored)
+                  (call-interactively #'telega-account-switch))
+        'help "Switch to another account")
+      (when user-me
+        (telega-ins--user-emoji-status user-me))
+      (telega-ins ")")))
   (telega-ins ": " telega--status)
   (unless (string-empty-p telega--status-aux)
     (when (< (current-column) 30)
@@ -1007,11 +1013,7 @@ And run `telega-chatbuf--switch-out' or `telega-chatbuf--switch-in'."
       (condition-case err
           ;; NOTE: trigger switch in only if buffer gets visibility
           (when telega-chatbuf--chat
-            (telega-chatbuf--switch-in)
-
-            ;; See docstring for `telega-root-keep-cursor'
-            (when (eq telega-root-keep-cursor 'track)
-              (telega-root--keep-cursor-at-chat telega-chatbuf--chat)))
+            (telega-chatbuf--switch-in))
         (error
          (message "telega: error in `telega-chatbuf--switch-in': %S" err))))))
 
@@ -1586,6 +1588,25 @@ If `\\[universal-argument]' is given, then view missed calls only."
        ))
 
     (telega-ins "\n")
+
+    ;; Emoji status
+    (when (telega-user-match-p me-user 'is-premium)
+      (telega-ins "Emoji Status: ")
+      (telega-ins--user-emoji-status me-user)
+      (telega-ins " ")
+      (telega-ins--button "Set Emoji Status"
+        'action (lambda (_button)
+                  (let ((duration (if current-prefix-arg
+                                      (telega-completing-read-emoji-status-duration "Set emoji status for: ")
+                                    0)))
+                    (telega-sticker-choose-emoji-status
+                     (lambda (sticker)
+                       (telega--setEmojiStatus
+                        (plist-get sticker :custom_emoji_id) duration))))
+                  ;; TODO: set emoji status
+                  ))
+      (telega-ins "\n"))
+
     (telega-ins "Profile Photos: ")
     (telega-ins--button "Set Profile Photo"
       'action (lambda (_ignored)
@@ -1685,10 +1706,10 @@ LINK is cons, where car is the link description, and cdr is the url."
                 (when (plist-get telega--options
                                  :can_ignore_sensitive_content_restrictions)
                   `((:ignore_sensitive_content_restrictions
-                     ,(telega-i18n "telega_option_sensitive_content")
+                     ,(telega-i18n "lng_settings_sensitive_disable_filtering")
                      ,(telega-i18n "lng_settings_sensitive_about"))))
                 `((:prefer_ipv6
-                   ,(telega-i18n "telega_option_prefer_ipv6"))
+                   ,(telega-i18n "lng_connection_try_ipv6"))
                   (:disable_time_adjustment_protection
                    "Disable Time Adjustment Protection"
                    "Enabling this significantly reduces disk usage")
@@ -1894,7 +1915,7 @@ PREDICATE is one of `telega-file--downloading-p',
     ;; NOTE: Do not list "uploaded", because we have
     ;; no information who uploaded the file
     ;; TODO: we might have a list of files started
-    ;; uploading with `telega--uploadFile' to list
+    ;; uploading with `telega--preliminaryUploadFile' to list
     ;; them as "uploaded-by-me".
     ;("uploaded"    . telega-file--uploaded-p)
     ))

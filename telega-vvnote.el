@@ -349,13 +349,13 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
 
     ;; Draw play triangle
     (unless playing-p
-      (let ((play-size (/ size 6)))
-        (svg-polygon svg (list (cons (/ (- size play-size) 2)
-                                     (/ (- size play-size) 2))
-                               (cons (/ (- size play-size) 2)
-                                     (/ (+ size play-size) 2))
-                               (cons (/ (+ size play-size) 2)
-                                     (/ size 2)))
+      (let ((play-size (/ h 6)))
+        (svg-polygon svg (list (cons (/ (- w play-size) 2)
+                                     (/ (- h play-size) 2))
+                               (cons (/ (- w play-size) 2)
+                                     (/ (+ h play-size) 2))
+                               (cons (/ (+ w play-size) 2)
+                                     (/ h 2)))
                      :fill "red"
                      :opacity "0.5")))
 

@@ -39,6 +39,10 @@
 (defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
 
+(defun telega-etc-file (filename)
+  "Return absolute path to FILENAME from etc/ directory in telega."
+  (expand-file-name (concat "etc/" filename) telega--lib-directory))
+
 (defconst telega-chat-types
   '(private secret basicgroup supergroup bot channel)
   "All types of chats supported by telega.")
@@ -94,6 +98,13 @@
 (defconst telega-emoji-animated-fullscreen-list
   '("🎆" "🎉" "🎈" "👍" "💩" "❤" "👻" "👎" "🤮" "😂" "💸" "🎃" "🍆")
   "List of animated emojis with fullscreen support.")
+
+(defvar telega-emoji-reaction-list nil
+  "List of supported reactions, updated on `updateActiveEmojiReactions' event.")
+
+(defvar telega-default-reaction-type nil
+  "Default reaction for the messages.
+Updated on `updateDefaultReactionType' event.")
 
 ;;; Runtime variables
 (defvar telega--current-buffer nil
@@ -186,6 +197,8 @@ Used by `telega-stickerset-installed-p'.")
   "List of trending Premium sticker sets info.")
 (defvar telega--stickersets-system nil
   "List of system sticker sets, such as animated dices, animated emojis.")
+(defvar telega--stickersets-custom-emojis nil
+  "List of custom emojis sticker sets info.")
 (defvar telega--stickers-favorite nil
   "List of favorite stickers.")
 (defvar telega--stickers-recent nil
@@ -196,6 +209,8 @@ Used by `telega-stickerset-installed-p'.")
   "List of all supported animated emojis.")
 (defvar telega--animated-emojis-stickerset-id nil
   "Id for sticker set with animated emojis.")
+(defvar telega--custom-emoji-stickers nil
+  "Hash of custom_emoji_id -> sticker for the custom emojis.")
 
 (defvar telega--animations-saved nil
   "List of saved animations.")
@@ -230,6 +245,29 @@ and `:marked_as_unread_unmuted_count'")
 (defun telega-chat-buffers ()
   "Return list of all chatbufs."
   (mapcar #'cdr telega--chat-buffers-alist))
+
+(defun telega-chat-buffers-manage (&optional for-new-chatbuf)
+  "Keep number of chat buffers within `telega-chat-buffers-limit'.
+If FOR-NEW-CHATBUF is specified, then do not kill this chatbuf
+whatever conditions are."
+  ;; NOTE: never kill newly created FOR-NEW-CHATBUF chat buffer
+  (let* ((chat-buffers (delq for-new-chatbuf (telega-chat-buffers)))
+         (nbuffers-to-kill (- (length chat-buffers) telega-chat-buffers-limit)))
+    (when (> nbuffers-to-kill 0)
+      (let* ((all-buffers (buffer-list))
+             (buffers (sort chat-buffers
+                            (lambda (buf1 buf2)
+                              (< (length (memq buf1 all-buffers))
+                                 (length (memq buf2 all-buffers)))))))
+        (while (and buffers (> nbuffers-to-kill 0))
+          ;; NOTE: kill only invisible (not having a window) chat
+          ;; buffers
+          (unless (get-buffer-window (car buffers) t)
+            (telega-debug "Killing least recent %S" (car buffers))
+            (cl-decf nbuffers-to-kill)
+            (kill-buffer (car buffers)))
+          (setq buffers (cdr buffers)))
+        ))))
 
 (defvar telega--files nil
   "Files hash FILE-ID -> (list FILE UPDATE-CALBACKS..).")
@@ -396,11 +434,14 @@ Done when telega server is ready to receive queries."
   (setq telega--stickersets-trending nil)
   (setq telega--stickersets-trending-premium nil)
   (setq telega--stickersets-system nil)
+  (setq telega--stickersets-custom-emojis nil)
   (setq telega--stickers-favorite nil)
   (setq telega--stickers-recent nil)
   (setq telega--stickers-recent-attached nil)
   (setq telega--animated-emojis nil)
   (setq telega--animated-emojis-stickerset-id nil)
+  (setq telega--custom-emoji-stickers
+        (make-hash-table :size 200 :test 'equal))
   (setq telega--animations-saved nil)
   (setq telega--chat-themes nil)
   (setq telega--dice-emojis nil)
@@ -1279,14 +1320,10 @@ Return non-nil only if CHAT is nearby."
   (plist-get (telega-chat-nearby-find (plist-get chat :id)) :distance))
 
 ;; Msg part
-(defsubst telega-msg-cache (msg &optional only-if-already-in-cache)
-  "Put message MSG into messages cache `telega--cached-messages'.
-If optional ONLY-IF-ALREADY-IN-CACHE is specified, then update
-cache value to MSG only if it is already in cache."
-  (let ((msg-cache-key (cons (plist-get msg :chat_id) (plist-get msg :id))))
-    (when (or (not only-if-already-in-cache)
-              (gethash msg-cache-key telega--cached-messages))
-      (puthash msg-cache-key msg telega--cached-messages))))
+(defsubst telega-msg-cache (msg)
+  "Put message MSG into messages cache `telega--cached-messages'."
+  (puthash (cons (plist-get msg :chat_id) (plist-get msg :id)) msg
+           telega--cached-messages))
 
 (defun telega-msg-location-live-for (msg)
   "For live location message MSG return number of seconds it will last live.

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.40)
+#+title: Telega Manual (v0.8.60)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -91,6 +91,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-patrons-mode][telega-patrons-mode]]
     - [[#telega-my-location-mode][telega-my-location-mode]]
     - [[#telega-active-locations-mode][telega-active-locations-mode]]
+    - [[#telega-recognize-voice-message-mode][telega-recognize-voice-message-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
@@ -228,7 +229,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.4.
+version greater or equal to 1.8.6.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -589,9 +590,9 @@ new terms specific to =telega=.  All of them are used in the manual.
        ("Online" and
         (not saved-messages)
         (user is-online))
-       ("Groups" type basicgroup supergroup)
-       ("Channels" type channel)
-       ("Archive" . archive))
+       ("lng_filters_type_groups" type basicgroup supergroup)
+       ("lng_filters_type_channels" type channel)
+       ("lng_filters_type_no_archived" . archive))
     #+end_src
 
   - User Option: ~telega-filter-custom-expand~ 
@@ -678,7 +679,7 @@ Telega prefix map bindings:
 
 - @@html:<kbd>@@b@@html:</kbd>@@ (~telega-switch-buffer~) :: 
      Interactively switch to CHAT's buffer.
-     Switch only if ~CHAT~ has corresponding chatbuf.
+     Switch only if ~CHAT~ is opened, i.e. has corresponding chatbuf.
 
 - @@html:<kbd>@@c@@html:</kbd>@@ (~telega-chat-with~) :: 
      Start messaging with ~CHAT-OR-USER~.
@@ -873,7 +874,7 @@ view.
   - User Option: ~telega-chat-upload-attaches-ahead~ 
 
     Non-nil to upload attachments ahead, before message actually sent.
-    Having this non-nil "speedups" uploading, its like files uploads instantly. 
+    Having this non-nil "speedups" uploading, it is like files uploads instantly. 
 
     Default value: ~t~
 
@@ -1140,7 +1141,7 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat is in tracking buffers list.
 
 - last-message :: 
-     Matches if chat's last message sent by me.
+     Matches if chat's last message matches ~MSG-TEMEX~.
 
 - (chat-list ~LIST-NAME~), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
      Matches if chat is in chat list named ~LIST-NAME~.
@@ -1151,6 +1152,9 @@ Use ~telega-chat-match-p~ to match a chat.
 
 - archive :: 
      Matches if chat is archived, i.e. in "Archive" chat list.
+
+- is-known :: 
+     Matches if chat is known, i.e. in "Main" or "Archive" chat list.
 
 - (folder ~FOLDER-NAME~...), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
      Matches if chat belongs to Folder named ~FOLDER-NAME~.
@@ -1212,8 +1216,7 @@ Use ~telega-chat-match-p~ to match a chat.
 - can-send-or-post :: 
      Me can send or post messages to the ~CHAT~.
      Me don't need te be a ~CHAT~ member to be able to send messages.
-     Additionally apply ~(or main archive)~ chat filter to check ~CHAT~ is
-     known.
+     Additionally apply ~is-known~ chat filter to check ~CHAT~ is known.
 
 - is-inline-bot :: 
      Matches if corresponding bot accepts inline requests.
@@ -1320,6 +1323,12 @@ Use ~telega-user-match-p~ to match a user.
 - has-private-forwards :: 
      Matches if user can't be linked in forwarded messages.
 
+- has-emoji-status :: 
+     Matches if corresponding user set his current emoji status.
+
+- user-username :: 
+     Matches if user's username matches ~USERNAME-REGEXP~.
+
 ** List of Message Sender Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-sender-temexes
@@ -1362,9 +1371,9 @@ Use ~telega-sender-match-p~ to match a message sender.
      ("Online" and
       (not saved-messages)
       (user is-online))
-     ("Groups" type basicgroup supergroup)
-     ("Channels" type channel)
-     ("Archive" . archive))
+     ("lng_filters_type_groups" type basicgroup supergroup)
+     ("lng_filters_type_channels" type channel)
+     ("lng_filters_type_no_archived" . archive))
   #+end_src
 
 - User Option: ~telega-use-tracking-for~ 
@@ -1513,7 +1522,12 @@ Customizable options for Chat Folders:
      ("Study" . "🎓")
      ("Trade" . "📊")
      ("Travel" . "🛫️")
-     ("Work" . "💼"))
+     ("Work" . "💼")
+     ("Airplane" . "✈️️")
+     ("Book" . "📖")
+     ("Like" . "👍")
+     ("Money" . "💰")
+     ("Note" . "🗒️"))
   #+end_src
 
 
@@ -1863,7 +1877,7 @@ Important customizable options:
   markup attachment.  Use nil to edit message as is, without using
   "markup" attachment type. 
 
-  Default value: ~(telega--fmt-text-markdown2 . "markdown2")~
+  Default value: ~nil~
 
 ** Attaching media
 :PROPERTIES:
@@ -1951,6 +1965,7 @@ Attachment types to attach with
      Use this attachment to disable/enable notification on the receiver side.
 - disable-webpage-preview :: Disable webpage preview for the following text message.
 - send-by :: Set sender for the following message.
+- custom-emoji :: Interactively attach a custom emoji.
 - code :: Interactively attach a code of the ~LANGUAGE~ into chatbuf input.
      For non-interactive code attach, use ~telega-mnz--chatbuf-attach-internal~.
 
@@ -1966,7 +1981,7 @@ Customizable options for attaching media:
 - User Option: ~telega-chat-upload-attaches-ahead~ 
 
   Non-nil to upload attachments ahead, before message actually sent.
-  Having this non-nil "speedups" uploading, its like files uploads instantly. 
+  Having this non-nil "speedups" uploading, it is like files uploads instantly. 
 
   Default value: ~t~
 - User Option: ~telega-chat-markup-functions~ 
@@ -2017,7 +2032,7 @@ for such messages is controlled by:
   markup attachment.  Use nil to edit message as is, without using
   "markup" attachment type. 
 
-  Default value: ~(telega--fmt-text-markdown2 . "markdown2")~
+  Default value: ~nil~
 
   @@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) accepts
   @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to edit message as-is without using markup
@@ -2051,7 +2066,7 @@ There are few options how you can affect the way a message is forwarded:
 :END:
 
 To delete a message, put cursor under the message you want to delete and press
-@@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@k@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
+@@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@k@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <delete>@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
 with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
@@ -2741,6 +2756,11 @@ Customizable options:
   Message Temex for messages to automatically play content for. 
 
   Default value: ~(type Animation Sticker AnimatedEmoji)~
+- User Option: ~telega-autoplay-custom-emojis~ 
+
+  Non-nil to automatically play this number of custom emojis in the message. 
+
+  Default value: ~10~
 
 ** telega-squash-message-mode
 :PROPERTIES:
@@ -2892,6 +2912,31 @@ buffer.
 
   Default value: ~t~
 
+
+** telega-recognize-voice-message-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-recognize-voice-message-mode
+:END:
+
+Minor mode to automatically recognize speech in a voice messages.
+Available only for the Telegram Premium users.
+
+Enable with ~(telega-recognize-voice-message-mode 1)~ or at
+=telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-recognize-voice-message-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-recognize-voice-message-temex~ 
+
+  Message Temex for messages to automatically recognize speech.
+  Speech recognition is only applied to voice messages matching this
+  Message Temex.  Applied only if non-nil.
+  For example, to recognize speech in a voice messages only in private
+  chats, use ~(chat (type private))~ Message Temex. 
+
+  Default value: ~nil~
 
 ** telega-root-auto-fill-mode
 :PROPERTIES:

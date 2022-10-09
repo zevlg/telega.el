@@ -40,15 +40,15 @@
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat &optional no-history-load))
 (declare-function telega-chatbuf--prompt-update "telega-chat")
 
+(declare-function telega-webpage--instant-view "telega-webpage" (url &optional sitename instant-view))
+
 
 (defun telega-tme--media-timestamp-callback (media-timestamp-str)
   "Generate callback to open media message at MEDIA-TIMESTAMP."
   (when media-timestamp-str
     (lambda ()
       (let ((msg (telega-msg-at (point))))
-        (when (telega-msg-type-p
-               '(messageVideoNote messageVoiceNote messageAudio messageVideo)
-               msg)
+        (when (telega-msg-match-p msg '(type VideoNote VoiceNote Audio Video))
           (let ((telega-ffplay-media-timestamp
                  (string-to-number media-timestamp-str)))
             (telega-msg-open-content msg)))))))
@@ -259,6 +259,8 @@ Return non-nil, meaning URL has been handled."
            (telega-tme-open-group (plist-get query :invite)))
           ((string= path "addstickers")
            (telega-tme-open-stickerset (plist-get query :set)))
+          ((string= path "addemoji")
+           (telega-tme-open-stickerset (plist-get query :set)))
           ((string= path "addtheme")
            (telega-tme-open-theme (plist-get query :slug)))
           ((string= path "setlanguage")
@@ -316,6 +318,8 @@ Return non-nil if url has been handled."
                    (concat "tg:join?invite=" (match-string 1 path)))
                   ((string-match "^/addstickers/\\([a-zA-Z0-9._-]+\\)$" path)
                    (concat "tg:addstickers?set=" (match-string 1 path)))
+                  ((string-match "^/addemoji/\\([a-zA-Z0-9._-]+\\)$" path)
+                   (concat "tg:addemoji?set=" (match-string 1 path)))
                   ((string-match "^/addtheme/\\([a-zA-Z0-9._-]+\\)$" path)
                    (concat "tg:addtheme?slug=" (match-string 1 path)))
                   ((string-match "^/setlanguage/\\([a-zA-Z0-9._-]+\\)$" path)
@@ -384,6 +388,14 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
             (invite-link-info (telega--checkChatInviteLink invite-link)))
        ;; TODO
        ))
+
+    (internalLinkTypeStickerSet
+     (telega-tme-open-stickerset (telega-tl-str tdlib-link :sticker_set_name)))
+
+    (internalLinkTypeInstantView
+     (when-let* ((url (telega-tl-str tdlib-link :url))
+                 (iv (telega--getWebPageInstantView url)))
+       (telega-webpage--instant-view url "Telegra.ph" iv)))
     ))
 
 (provide 'telega-tme)

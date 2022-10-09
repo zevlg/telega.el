@@ -154,8 +154,13 @@ Set `telega-server-libs-prefix' to the TDLib installion path"
 (defun telega-server--ensure-build ()
   "Make sure telega-server is build and can run."
   (if telega-use-docker
-      (or (executable-find "docker")
-          (error "`docker' not found in exec-path"))
+      (or (executable-find (if (stringp telega-use-docker)
+                               telega-use-docker
+                             "docker"))
+          (error "`%s' not found in exec-path"
+                 (if (stringp telega-use-docker)
+                     telega-use-docker
+                   "docker")))
 
     (let ((exec-path (cons telega-directory exec-path)))
       (or (if (executable-find telega-server-command)

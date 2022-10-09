@@ -90,13 +90,13 @@ Have Stoploss 690 Satoshi." :entities []))))
   "Test info related functionality."
   (let ((user1 (telega-user-get 22220))
         (user2 (telega-user-get 22221)))
-    (should (string= (telega-user--name user1) "Vasya Pupkin @vpupkin"))
-    (should (string= (telega-user--name user1 'full) "Vasya Pupkin @vpupkin"))
-    (should (string= (telega-user--name user1 'name) "Vasya Pupkin"))
-    (should (string= (telega-user--name user1 'short) "@vpupkin"))
+    (should (string= (telega-user-title user1) "Vasya Pupkin @vpupkin"))
+    (should (string= (telega-user-title user1 'full) "Vasya Pupkin @vpupkin"))
+    (should (string= (telega-user-title user1 'name) "Vasya Pupkin"))
+    (should (string= (telega-user-title user1 'short) "@vpupkin"))
 
     ;; test fallback to 'name if username is empty
-    (should (string= (telega-user--name user2 'short) "Petya Siskin"))
+    (should (string= (telega-user-title user2 'short) "Petya Siskin"))
   ))
 
 (ert-deftest telega-filters ()
@@ -106,7 +106,7 @@ Have Stoploss 690 Satoshi." :entities []))))
   ;; NOTE: one chat (id=-1001263892563) has "0" order
   (should (= (length (telega-filter-chats telega--ordered-chats '(main)))
              (1- (length telega--ordered-chats))))
-  (should (telega-chat-match-p 10 '(not any)))
+  (should (telega-chat-match-p 10 '(not or)))
   (should (telega-chat-match-p (car telega--ordered-chats) '(type channel)))
   (should (telega-chat-match-p
            (car telega--ordered-chats) '(all (type channel) (name "chan"))))

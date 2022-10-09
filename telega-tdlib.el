@@ -90,14 +90,6 @@ If SYNC-P is specified, then set option is sync manner."
   (telega--tl-dolist ((prop-name value) options-plist)
     (telega--setOption prop-name value)))
 
-(defun telega--checkDatabaseEncryptionKey (&optional encryption-key)
-  "Set database ENCRYPTION-KEY, if any."
-  ;; NOTE: database encryption is disabled
-  ;;   consider encryption as todo in future
-  (telega-server--send
-   (list :@type "checkDatabaseEncryptionKey"
-         :encryption_key (or encryption-key ""))))
-
 (defun telega--addProxy (proxy-spec)
   "Add PROXY-SPEC to the list of proxies."
   (telega-server--send
@@ -118,6 +110,7 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
           :input_language_codes (apply #'vector language-codes))
     callback))
 
+;; TODO: remove, removed in the TDLib 1.8.5
 (defun telega--getAllAnimatedEmojis (&optional callback)
   "Return list of all supported animated emojis."
   (with-telega-server-reply (reply)
@@ -126,6 +119,23 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
               (plist-get reply :emojis))
 
     (list :@type "getAllAnimatedEmojis")
+    callback))
+
+(defun telega--getAnimatedEmoji (emoji &optional callback)
+  "Return an animated emoji corresponding to a given EMOJI."
+  (telega-server--call
+   (list :@type "getAnimatedEmoji"
+         :emoji emoji)
+   callback))
+  
+(defun telega--getCustomEmojiStickers (custom-emoji-ids &optional callback)
+  "Returns list of custom emoji stickers by their identifiers."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :stickers) nil)
+
+    (list :@type "getCustomEmojiStickers"
+          :custom_emoji_ids (apply #'vector custom-emoji-ids))
     callback))
 
 (defun telega--setChatTitle (chat title)
@@ -435,8 +445,8 @@ FILTERS are created with `telega-chatevent-log-filter'."
 
 (defun telega--getPaymentForm (invoice)
   "Return a payment form for an INVOICE.
-INVOICE could be a message or a name from the `internalLinkTypeInvoice' link."
-  (declare (tdlib-api "1.8.4"))
+INVOICE could be a message or a name from the `internalLinkTypeInvoice' link.
+TDLib 1.8.4"
   (telega-server--call
    (list :@type "getPaymentForm"
          :input_invoice
@@ -447,7 +457,7 @@ INVOICE could be a message or a name from the `internalLinkTypeInvoice' link."
                ((stringp invoice)
                 (list :@type "inputInvoiceName"
                       :name invoice))
-               (t (error "telega: invalid invoice" invoice))))))
+               (t (error "telega: invalid invoice: %S" invoice))))))
 
 (defun telega--sendPaymentForm (msg order-info-id shipping-id credentials)
   (telega-server--call
@@ -521,16 +531,21 @@ First element is the list is total number of blocked message senders."
          :delete_all_messages (if delete-all-msg-p t :false)
          :report_spam (if report-spam-p t :false))))
 
-(defun telega--getStickers (emoji &optional limit callback)
+(cl-defun telega--getStickers
+    (emoji &key chat (limit 20)
+           (tl-sticker-type '(:@type "stickerTypeRegular")) callback)
   "Return installed stickers that correspond to a given EMOJI.
 LIMIT defaults to 20."
-  (declare (indent 2))
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (append (plist-get reply :stickers) nil)
 
-    (list :@type "getStickers"
-          :emoji emoji
-          :limit (or limit 20))
+    (nconc (list :@type "getStickers"
+                 :sticker_type tl-sticker-type
+                 :emoji emoji
+                 :limit limit)
+           (when chat
+             (list :chat_id (plist-get chat :id))))
     callback))
 
 (defun telega--searchStickers (emoji &optional limit callback)
@@ -545,25 +560,35 @@ LIMIT defaults to 20."
           :limit (or limit 20))
     callback))
 
-(defun telega--getInstalledStickerSets (&optional masks-p callback)
-  "Return a list of installed sticker sets."
+(cl-defun telega--getInstalledStickerSets (&key (tl-sticker-type
+                                                 '(:@type "stickerTypeRegular"))
+                                                callback)
+  "Return a list of installed sticker sets.
+TL-STICKER-TYPE is a TL StickerType object, such as.
+By default TL-STICKER-TYPE is `(:@type \"stickerTypeRegular\")'."
   (declare (indent 1))
-  (cl-assert (not masks-p) t "installed masks not yet supported")
+  (cl-assert (member tl-sticker-type
+                     '((:@type "stickerTypeRegular")
+                       (:@type "stickerTypeCustomEmoji")))
+             "installed masks not yet supported")
   (with-telega-server-reply (reply)
       (append (plist-get reply :sets) nil)
 
     (list :@type "getInstalledStickerSets"
-          :is_masks (or masks-p :false))
+          :sticker_type tl-sticker-type)
     callback))
 
-(defun telega--getTrendingStickerSets (&optional offset limit callback)
+(cl-defun telega--getTrendingStickerSets
+    (&key (offset 0) (limit 100) callback
+          (tl-sticker-type '(:@type "stickerTypeRegular")))
   "Return a list of trending sticker sets."
   (with-telega-server-reply (reply)
       (append (plist-get reply :sets) nil)
 
     (list :@type "getTrendingStickerSets"
-          :offset (or offset 0)
-          :limit (or limit 200))
+          :sticker_type tl-sticker-type
+          :offset offset
+          :limit limit)
     callback))
 
 (defun telega--getStickerSet (set-id &optional callback)
@@ -691,6 +716,18 @@ Photo and Video files have attached sticker sets."
 
     (list :@type "getRecentInlineBots")
     callback))
+
+(defun telega--getWebPageInstantView (url &optional partial)
+  "Return instant view for the URL.
+Return nil if URL is not available for instant view."
+  (let ((reply (telega-server--call
+                (list :@type "getWebPageInstantView"
+                      :url url
+                      :force_full (or (not partial) :false)))))
+    ;; NOTE: May result in 404 error, return nil in this case
+    (and reply
+         (eq (telega--tl-type reply) 'webPageInstantView)
+         reply)))
 
 (defun telega--resendMessage (message)
   "Resend MESSAGE."
@@ -1007,10 +1044,9 @@ Pass REVOKE to try to delete chat history for all users."
    callback))
 
 (defun telega--getMessageViewers (msg &optional callback)
-  "Get MSG message viewers list."
+  "Get MSG message viewers list.
+TDLib 1.7.8"
   (declare (indent 1))
-  (declare (tdlib-api "1.7.8"))
-
   (with-telega-server-reply (reply)
       (mapcar #'telega-user-get (plist-get reply :user_ids))
 
@@ -1294,27 +1330,27 @@ New slow mode DELAY for the chat must be one of 0, 10, 30, 60,
          :chat_id (plist-get chat :id)
          :slow_mode_delay delay)))
 
-(defun telega--setTdlibParameters ()
+(defun telega--setTdlibParameters (&optional encryption-key)
   "Set the parameters for TDLib initialization."
   (telega-server--send
    (list :@type "setTdlibParameters"
-         :parameters (list :@type "tdlibParameters"
-                           :use_test_dc (if telega-use-test-dc t :false)
-                           :database_directory telega-database-dir
-                           :files_directory telega-cache-dir
-                           :use_file_database telega-use-file-database
-                           :use_chat_info_database telega-use-chat-info-database
-                           :use_message_database telega-use-message-database
-                           :use_secret_chats t
-                           :api_id (car telega-app)
-                           :api_hash (cdr telega-app)
-                           :system_language_code telega-language
-                           :device_model "Emacs"
-                           :system_version emacs-version
-                           :application_version telega-version
-                           :enable_storage_optimizer t
-                           :ignore_file_names :false
-                           ))))
+         :use_test_dc (if telega-use-test-dc t :false)
+         :database_directory telega-database-dir
+         :files_directory telega-cache-dir
+         :database_encryption_key (or encryption-key "")
+         :use_file_database telega-use-file-database
+         :use_chat_info_database telega-use-chat-info-database
+         :use_message_database telega-use-message-database
+         :use_secret_chats t
+         :api_id (car telega-app)
+         :api_hash (cdr telega-app)
+         :system_language_code telega-language
+         :device_model "Emacs"
+         :system_version emacs-version
+         :application_version telega-version
+         :enable_storage_optimizer telega-enable-storage-optimizer
+         :ignore_file_names :false
+         )))
 
 (defun telega--parseTextEntities (text parse-mode)
   "Parse TEXT using PARSE-MODE.
@@ -1387,26 +1423,47 @@ hasn't been started, i.e. request hasn't been sent to server."
          :only_if_pending (if only-if-pending t :false))
    (or callback #'ignore)))
 
+(defun telega--getSuggestedFileName (file directory)
+  "Return suggested name for saving a FILE in a given DIRECTORY.
+TDLib 1.8.3"
+  (with-telega-server-reply (reply)
+      (telega-tl-str reply :text)
+
+    (list :@type "getSuggestedFileName"
+          :file_id (plist-get file :id)
+          :directory directory)))
+
 (defun telega--deleteFile (file)
   "Delete FILE from cache."
   (telega-server--send
    (list :@type "deleteFile"
          :file_id (plist-get file :id))))
 
-(defun telega--uploadFile (filename &optional file-type priority)
+(defun telega--addFileToDownloads (file msg &optional priority callback)
+  "Add a FILE from a message MSG to the list of file downloads.
+TDLib 1.8.2"
+  (telega-server--call
+   (list :@type "addFileToDownloads"
+         :file_id (plist-get file :id)
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :priority (or priority 1))
+   callback))
+
+(defun telega--preliminaryUploadFile (filename &optional file-type priority)
   "Asynchronously upload file denoted by FILENAME.
 FILE-TYPE is one of `photo', `animation', etc
 PRIORITY is same as for `telega-file--download'."
   (telega-server--call
-   (list :@type "uploadFile"
+   (list :@type "preliminaryUploadFile"
          :file (list :@type "inputFileLocal" :path filename)
          :file_type (list :@type (format "fileType%S" (or file-type 'Unknown)))
          :priority (or priority 1))))
 
-(defun telega--cancelUploadFile (file)
+(defun telega--cancelPreliminaryUploadFile (file)
   "Stop uploading FILE."
   (telega-server--send
-   (list :@type "cancelUploadFile"
+   (list :@type "cancelPreliminaryUploadFile"
          :file_id (plist-get file :id))))
 
 (cl-defun telega--sendMessage (chat imc &optional reply-to-msg
@@ -1635,9 +1692,9 @@ with list of chats received."
     callback))
 
 (cl-defun telega--searchOutgoingDocumentMessages (&optional query &key limit callback)
-  "Search for outgoing document messages."
+  "Search for outgoing document messages.
+TDLib 1.8.3"
   (declare (indent 1))
-  (declare (tdlib-api "1.8.3"))
   (with-telega-server-reply (reply)
       (append (plist-get reply :messages) nil)
 
@@ -1904,9 +1961,9 @@ Return newly created chat."
 
 (defun telega--clickAnimatedEmojiMessage (msg &optional callback)
   "Animated emoji message has been clicked.
-Return non-nil if animated sticker need to be played."
+Return non-nil if animated sticker need to be played.
+TDLib 1.7.8"
   (declare (indent 1))
-  (declare (tdlib-api "1.7.8"))
   (telega-server--call
    (list :@type "clickAnimatedEmojiMessage"
          :chat_id (plist-get msg :chat_id)
@@ -1915,9 +1972,9 @@ Return non-nil if animated sticker need to be played."
 
 (defun telega--getInternalLinkType (link-url &optional callback)
   "Return information about the type of an internal link.
-Return nil if LINK-URL is not Telegram's internal link."
+Return nil if LINK-URL is not Telegram's internal link.
+TDLib 1.7.8"
   (declare (indent 1))
-  (declare (tdlib-api "1.7.8"))
   (with-telega-server-reply (reply)
       (unless (telega--tl-error-p reply)
         reply)
@@ -2228,19 +2285,24 @@ CHAT is ordinary Telegram chat."
          (if (plist-get group-call :enabled_start_notification) :false t))))
 
 ;;; Reactions
-(defun telega--getMessageAvailableReactions (msg &optional callback)
+(cl-defun telega--getMessageAvailableReactions (msg &optional row-size callback)
+  "Return reactions, which can be added to the message MSG.
+ROW-SIZE - Number of reaction per row, 5-25."
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (let ((me (telega-user-me)))
-        (delq nil (mapcar (lambda (reaction)
-                            (when (or (not (plist-get reaction :needs_premium))
-                                      (telega-user-match-p me 'is-premium))
-                              (telega-tl-str reaction :reaction)))
-                          (plist-get reply :reactions))))
+      reply
+      ;; (let ((me (telega-user-me)))
+      ;;   (delq nil (mapcar (lambda (reaction)
+      ;;                       (when (or (not (plist-get reaction :needs_premium))
+      ;;                                 (telega-user-match-p me 'is-premium))
+      ;;                         (telega-tl-str reaction :reaction)))
+      ;;                     (plist-get reply :reactions))))
 
-    (list :@type "getMessageAvailableReactions"
-          :chat_id (plist-get msg :chat_id)
-          :message_id (plist-get msg :id))
+    (nconc (list :@type "getMessageAvailableReactions"
+                 :chat_id (plist-get msg :chat_id)
+                 :message_id (plist-get msg :id))
+           (when row-size
+             (list :row_size row-size)))
     callback))
 
 (defun telega--getMessageAddedReactions (msg reaction
@@ -2258,23 +2320,107 @@ CHAT is ordinary Telegram chat."
          :limit (or limit 50))
    callback))
 
-(defun telega--setMessageReaction (msg reaction &optional big-p)
-  "Change chosen REACTION for a message MSG.
-REACTION is an emoji string.
-BIG-P is non-nil if the reaction is added with a big animation."
+(defun telega--ReactionType (reaction-type)
+  "Make sure REACTION-TYPE is suitable to be passed to TDLib method."
+  ;; NOTE: emoji needs to be desurrogated
+  ;; before passing to any TDLib method
+  (if (eq (telega--tl-type reaction-type) 'reactionTypeEmoji)
+      (list :@type "reactionTypeEmoji"
+            :emoji (telega-tl-str reaction-type :emoji))
+    reaction-type))
+
+(defun telega--addMessageReaction (msg tl-reaction-type &optional
+                                       big-p update-recent-reactions-p)
+  "Add a reaction to a message.
+REACTION-TYPE is a reaction to add.
+BIG-P is non-nil if the reaction is added with a big animation.
+Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
   (telega-server--send
-   (list :@type "setMessageReaction"
+   (list :@type "addMessageReaction"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
-         :reaction reaction
-         :is_big (if big-p t :false))))
+         :reaction_type (telega--ReactionType tl-reaction-type)
+         :is_big (if big-p t :false)
+         :update_recent_reactions (if update-recent-reactions-p t :false))))
 
+(defun telega--removeMessageReaction (msg tl-reaction-type)
+  "Remove a reaction from a message."
+  (telega-server--send
+   (list :@type "removeMessageReaction"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :reaction_type (telega--ReactionType tl-reaction-type))))
+  
 (defun telega--setChatAvailableReactions (chat reactions)
   "Change REACTIONS, available in a CHAT."
   (telega-server--send
    (list :@type "setChatAvailableReactions"
          :chat_id (plist-get chat :id)
          :available_reactions (apply 'vector reactions))))
+
+(defun telega--acceptTermsOfService (tos-id)
+  "Accepts Telegram terms of services."
+  (telega-server--send
+   (list :@type "acceptTermsOfService"
+         :terms_of_service_id tos-id)))
+
+;; Emoji status from TDLib 1.8.6
+(defun telega--getThemedEmojiStatuses (&optional callback)
+  "Returns up to 8 themed emoji statuses."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :emoji_statuses) nil)
+   (list :@type "getThemedEmojiStatuses")
+   callback))
+
+(defun telega--getRecentEmojiStatuses (&optional callback)
+  "Return recent emoji statuses."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :emoji_statuses) nil)
+   (list :@type "getRecentEmojiStatuses")
+   callback))
+
+(defun telega--getDefaultEmojiStatuses (&optional callback)
+  "Return default emoji statuses"
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :emoji_statuses) nil)
+   (list :@type "getDefaultEmojiStatuses")
+   callback))
+
+(defun telega--clearRecentEmojiStatuses ()
+  "Clear the list of recently used emoji statuses."
+  (telega-server--send
+   (list :@type "clearRecentEmojiStatuses")))
+  
+(defun telega--setEmojiStatus (custom-emoji-id &optional duration)
+  "Change the emoji status for me.
+DURATION of the status, in seconds.
+For Telegram Premium users only."
+  (telega-server--send
+   (list :@type "setEmojiStatus"
+         :emoji_status (when custom-emoji-id
+                         (list :@type "emojiStatus"
+                               :custom_emoji_id custom-emoji-id))
+         :duration (or duration 0))))
+
+;; 2step verification
+(defun telega--getPasswordState (&optional callback)
+  "Return the current state of 2-step verification."
+  (telega-server--call
+   (list :@type "getPasswordState")
+   callback))
+
+(defun telega--setPassword (old-password new-password new-hint
+                                         &optional new-recovery-email
+                                         callback)
+  "Change the 2-step verification password for me."
+  (telega-server--call
+   (list :@type "setPassword"
+         :old_password old-password
+         :new_password new-password
+         :new_hint (or new-hint "")
+         :set_recovery_email_address (if new-recovery-email t :false)
+         :new_recovery_email_address new-recovery-email)
+   callback))
 
 (provide 'telega-tdlib)
 

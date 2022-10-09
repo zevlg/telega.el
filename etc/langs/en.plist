@@ -631,6 +631,11 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_mute_box_tip"
   :value "Choose for how long you would like to turn off notifications for the following chat")
 
+ ("lng_in_reply_to"
+  :value "In reply to")
+ ("lng_edit_message"
+  :value "Edit message")
+
  ;; #917 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot917
  ("lng_context_reply_msg"
   :value "Reply")
@@ -861,4 +866,17 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
  ("lng_error_post_link_invalid"
   :value "Unfortunately, you can't access this message. You are not a member of the chat where it was posted.")
 
+ ;; Buttons
+ ("lng_view_button_message"
+  :value "View message")
+ ("lng_view_button_group"
+  :value "View group")
+ ("lng_view_button_channel"
+  :value "View channel")
+ ("lng_view_button_theme"
+  :value "View theme")
+ ("lng_view_button_background"
+  :value "View background")
+ ("lng_view_button_bot"
+  :value "View bot")
  )

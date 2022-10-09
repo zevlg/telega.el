@@ -350,11 +350,9 @@ DIRTINESS specifies additional CHAT dirtiness."
     ;; 
     ;; Gap can be also created if last message in the chat is deleted.
     ;; TDLib might take some time to update chat's last message.
-    (setq telega-chatbuf--history-state
-          (delq 'newer-loaded telega-chatbuf--history-state))
+    (telega-chatbuf--history-state-delete :newer-loaded)
 
-    (telega-chat--mark-dirty chat event)
-    ))
+    (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatIsMarkedAsUnread (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -486,7 +484,13 @@ NOTE: we store the number as custom chat property, to use it later."
     (dolist (chat telega--ordered-chats)
       (when-let ((last-message (plist-get chat :last_message)))
         (when (telega-msg-run-ignore-predicates last-message 'last-msg)
-          (telega-chat--update chat 'reorder))))
+          (telega-chat--update chat 'reorder))
+
+        ;; Also fetch custom emojis for the last message, because last
+        ;; message might be displayed in the rootbuf
+        (when telega-use-images
+          (telega-msg--custom-emojis-fetch last-message))
+        ))
 
     (run-hooks 'telega-chats-fetched-hook)))
 
@@ -605,7 +609,7 @@ NOTE: we store the number as custom chat property, to use it later."
                      (not (telega-msg-seen-p new-msg telega-chatbuf--chat)))
             (tracking-add-buffer (current-buffer) '(telega-tracking)))
 
-          ;; If message is visibible in some window, then mark it as read
+          ;; If message is visible in some window, then mark it as read
           ;; see https://github.com/zevlg/telega.el/issues/4
           (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
             (telega--viewMessages telega-chatbuf--chat (list new-msg)))
@@ -687,7 +691,11 @@ Message id could be updated on this update."
         (plist-put msg :content new-content)
         (when node
           (with-telega-chatbuf chat
-            (telega-chatbuf--redisplay-node node)))))))
+            (telega-chatbuf--redisplay-node node)
+
+            ;; NOTE: reactions might be updated and custom emojis
+            ;; needs to be downloaded
+            (telega-msg--custom-emojis-fetch msg)))))))
 
 (defun telega--on-updateMessageEdited (event)
   "Edited date of the message specified by EVENT has been changed."
@@ -732,7 +740,12 @@ Message id could be updated on this update."
         (telega-chatbuf--redisplay-node node)
 
         (when telega-chatbuf--thread-msg
-          (telega-chatbuf--footer-update))))))
+          (telega-chatbuf--footer-update))
+
+        ;; NOTE: reactions might be updated and custom emojis needs to
+        ;; be downloaded
+        (telega-msg--custom-emojis-fetch msg)
+        ))))
 
 (defun telega--on-updateMessageContentOpened (event)
   "The message content was opened.
@@ -891,23 +904,33 @@ messages."
 ;; Stickers updates
 (defun telega--on-updateInstalledStickerSets (event)
   "The list of installed sticker sets was updated."
-  (if (plist-get event :is_masks)
-      (telega-debug "TODO: `telega--on-updateInstalledStickerSets' is_mask=True")
+  (cl-case (telega--tl-type (plist-get event :sticker_type))
+    (stickerTypeMask
+     (telega-debug "TODO: `telega--on-updateInstalledStickerSets' for masks"))
 
-    (setq telega--stickersets-installed-ids
-          (append (plist-get event :sticker_set_ids) nil))
+    (stickerTypeRegular
+     (setq telega--stickersets-installed-ids
+           (append (plist-get event :sticker_set_ids) nil))
 
-    ;; NOTE: Refresh `telega--stickersets-installed' on next call to
-    ;; `telega-stickerset-completing-read'
-    (setq telega--stickersets-installed nil)
+     ;; NOTE: Refresh `telega--stickersets-installed' on next call to
+     ;; `telega-stickerset-completing-read'
+     (setq telega--stickersets-installed nil)
 
-    ;; Asynchronously update value for `telega--stickersets-installed'
-    ;; and download covers for these sticker sets
-    ;; (telega--getInstalledStickerSets nil
-    ;;   (lambda (ssets)
-    ;;     (setq telega--stickersets-installed ssets)
-    ;;     (dolist (sset ssets)
-    ;;       (mapc #'telega-sticker--download (plist-get sset :covers)))))
+     ;; Asynchronously update value for `telega--stickersets-installed'
+     ;; and download covers for these sticker sets
+     ;; (telega--getInstalledStickerSets
+     ;;   (lambda (ssets)
+     ;;     (setq telega--stickersets-installed ssets)
+     ;;     (dolist (sset ssets)
+     ;;       (mapc #'telega-sticker--download (plist-get sset :covers)))))
+     )
+
+    (stickerTypeCustomEmoji
+     (telega--getInstalledStickerSets
+         :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
+         :callback
+         (lambda (ssets)
+           (setq telega--stickersets-custom-emojis ssets))))
     ))
 
 (defun telega--on-updateTrendingStickerSets (event)
@@ -1066,6 +1089,14 @@ messages."
 
     (run-hooks 'telega-connection-state-hook)))
 
+(defun telega--on-updateTermsOfService (event)
+  "New terms of service must be accepted by the user."
+  (let* ((tos-id (telega-tl-str event :terms_of_service_id))
+         (tos (plist-get event :terms_of_service))
+         (tos-text (telega-tl-str tos :text)))
+    ;; TODO: query user to accept new TOS
+    ))
+
 (defun telega--on-updateOption (event)
   "Proceed with option update from telega server using EVENT."
   (let* ((option (intern (concat ":" (plist-get event :name))))
@@ -1122,21 +1153,14 @@ messages."
          (telega-debug "docker RUN: %s" devices-chown-cmd)
          (shell-command-to-string devices-chown-cmd))
 
-       (telega--setTdlibParameters))
-
-      (authorizationStateWaitEncryptionKey
-       (telega--checkDatabaseEncryptionKey)
-       ;; List of proxies, since tdlib 1.3.0
-       ;; Do it after checkDatabaseEncryptionKey,
-       ;; See https://github.com/tdlib/td/issues/456
-
-       ;; NOTE: Only `telega-proxies' setup could enable some proxy.
-       ;; See https://github.com/zevlg/telega.el/issues/233
+       ;; NOTE: Setup proxies.  Only `telega-proxies' setup enables
+       ;; some proxy.  See
+       ;; https://github.com/zevlg/telega.el/issues/233
        (telega--disableProxy)
-
        (dolist (proxy telega-proxies)
          (telega--addProxy proxy))
-       )
+
+       (telega--setTdlibParameters))
 
       (authorizationStateWaitPhoneNumber
        (if (and (not telega--relogin-with-phone-number)
@@ -1269,8 +1293,13 @@ messages."
 
 
 ;;; Reactions
-(defun telega--on-updateReactions (event)
-  )
+(defun telega--on-updateActiveEmojiReactions (event)
+  (setq telega-emoji-reaction-list
+        (mapcar #'telega--desurrogate-apply (plist-get event :emojis))))
+
+(defun telega--updateDefaultReactionType (event)
+  (setq telega-default-reaction-type
+        (plist-get event :reaction_type)))
 
 (defun telega--on-updateChatAvailableReactions (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))

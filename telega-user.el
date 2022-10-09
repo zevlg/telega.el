@@ -140,8 +140,11 @@ Default is: `full'"
     (when user-p
       (when (plist-get user :is_verified)
         (setq name (concat name (telega-symbol 'verified))))
-      (when (plist-get user :is_premium)
-        (setq name (concat name (telega-symbol 'premium))))
+      (setq name (concat name (cond ((plist-get user :emoji_status)
+                                     (telega-ins--as-string
+                                      (telega-ins--user-emoji-status user)))
+                                    ((plist-get user :is_premium)
+                                     (telega-symbol 'premium)))))
       (when (plist-get user :is_scam)
         (setq name (concat name " " (propertize (telega-i18n "lng_scam_badge")
                                                 'face 'error))))
@@ -179,7 +182,7 @@ If AS-NUMBER is specified, return online status as number:
       (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
              (colors (if chat
                          (telega-chat-color chat)
-                       (let ((user-title (telega-user--name user 'name)))
+                       (let ((user-title (telega-user-title user 'name)))
                          (list (funcall telega-rainbow-color-function
                                         user-title 'light)
                                (funcall telega-rainbow-color-function
@@ -197,7 +200,9 @@ If AS-NUMBER is specified, return online status as number:
 (defun telega-describe-user--inserter (user-id)
   "Inserter for the user info buffer."
   (let ((user (telega-user-get user-id)))
-    (telega-ins "Name: " (telega-user-title user 'name) "\n")
+    (let ((telega-user-show-relationship nil))
+      (telega-ins--user user nil 'show-phone))
+    (telega-ins "\n")
     (telega-info--insert-user user)))
 
 (defun telega-describe-user (user)
@@ -212,6 +217,10 @@ If AS-NUMBER is specified, return online status as number:
 
     (setq telega--help-win-param (plist-get user :id))
     (setq telega--help-win-inserter #'telega-describe-user--inserter)
+
+    ;; Animate emoji status, if any
+    (when-let ((emoji-status (plist-get user :emoji_status)))
+      (telega-emoji-status--animate emoji-status))
     ))
 
 (defun telega-describe-user--maybe-redisplay (user-id)

@@ -149,7 +149,8 @@ ommit image display if value is for this property is non-nil."
                            img)))
                  props)
         (telega-ins
-         (or (telega-image--telega-text img slice-num)
+         (or (plist-get props :telega-text)
+             (telega-image--telega-text img slice-num)
              ;; Otherwise use slow `image-size' to get correct
              ;; `:telega-text'
              (make-string (telega-chars-in-width
@@ -197,10 +198,14 @@ single argument - slice number, starting from 0."
       (telega-ins--with-attrs
           (list :face (telega-msg-sender-title-faces sender))
         (telega-ins (telega-msg-sender-title sender t)))
-      (telega-ins
-       " "
-       (propertize (concat "is " (substring (plist-get action :@type) 10))
-                   'face 'shadow)))))
+      (telega-ins " ")
+      (telega-ins--with-face 'shadow
+        (telega-ins "is " (substring (plist-get action :@type) 10))
+        (when-let ((progress (plist-get action :progress)))
+          (telega-ins-fmt " %d%%" progress))
+        (when-let ((emoji (telega-tl-str action :emoji)))
+          (telega-ins emoji))
+        ))))
 
 (defun telega-ins--filesize (filesize)
   "Insert FILESIZE in human readable format."
@@ -325,10 +330,12 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
-    (telega-ins (telega-user--name user 'name))
+    (telega-ins--with-face (telega-msg-sender-title-faces user)
+      (telega-ins (telega-user-title user 'name)))
     (telega-ins--user-online-status user)
     (when-let ((username (telega-tl-str user :username)))
-      (telega-ins " ")
+      (telega-ins--with-face 'shadow
+        (telega-ins " • "))
       (telega-ins--with-face 'telega-username
         (telega-ins "@" username)))
 
@@ -339,8 +346,10 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins ")"))
 
     (when show-phone-p
-      (telega-ins-prefix " +"
-        (telega-ins (plist-get user :phone_number))))
+      (when-let ((phone-number (telega-tl-str user :phone_number)))
+        (telega-ins--with-face 'shadow
+          (telega-ins " • "))
+        (telega-ins "+" phone-number)))
 
     ;; Insert (him)in<-->out(me) relationship
     (when (and telega-user-show-relationship
@@ -374,7 +383,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins (make-string off-column ?\s))
       (telega-ins "invited by ")
       (apply 'insert-text-button
-             (telega-user--name inviter-user 'name)
+             (telega-user-title inviter-user 'name)
              (telega-link-props 'user inviter-id)))
     t))
 
@@ -736,16 +745,31 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
       (telega-ins-prefix " "
         (telega-ins--file-progress msg note-file)))
 
-    (let ((recognized-p (plist-get note :is_recognized)))
-      (cond (recognized-p
-             (telega-ins "\n" (telega-tl-str note :recognized_text)))
-            ((and (not recognized-p)
-                  (telega-user-match-p (telega-user-me) 'is-premium))
-             (telega-ins " ")
-             (telega-ins--button (concat "🠆A" (telega-symbol 'premium))
-               :value msg
-               :action #'telega--recognizeSpeech))))
-    ))
+    (let ((recognition (plist-get note :speech_recognition_result)))
+      ;; NOTE: if previous recognition results in error, then also
+      ;; show the recognize button
+      (when (and (or (not recognition)
+                     (eq 'speechRecognitionResultError
+                         (telega--tl-type recognition)))
+                 (telega-user-match-p (telega-user-me) 'is-premium))
+        (telega-ins " ")
+        (telega-ins--button (concat "🠆A" (telega-symbol 'premium))
+          :value msg
+          :action #'telega--recognizeSpeech))
+
+      (when recognition
+        (telega-ins "\n")
+        (cl-ecase (telega--tl-type recognition)
+          (speechRecognitionResultPending
+           (telega-ins (telega-tl-str recognition :partial_text)
+                       "..."))
+          (speechRecognitionResultText
+           (telega-ins (telega-tl-str recognition :text)))
+          (speechRecognitionResultError
+           (telega-ins--with-face 'error
+             (telega-ins
+              (telega-tl-str (plist-get recognition :error) :message))))))
+      )))
 
 (defun telega-ins--video-note (msg &optional video-note)
   "Insert message MSG with VIDEO-NOTE content."
@@ -898,16 +922,24 @@ Return `non-nil' if WEB-PAGE has been inserted."
     ;; Additional View button
     (if (zerop (plist-get web-page :instant_view_version))
         (when-let ((title (pcase (plist-get web-page :type)
-                            ("telegram_channel" "VIEW CHANNEL")
-                            ((or "telegram_chat"
-                                 "telegram_megagroup") "VIEW GROUP")
-                            ("telegram_message" "VIEW MESSAGE")
-                            ("telegram_background" "VIEW BACKGROUND")
-                            ("telegram_user" "VIEW CHAT")
-                            ("telegram_theme" "VIEW THEME")
-                            ("telegram_voicechat" "JOIN AS LISTENER")
+                            ("telegram_channel"
+                             (telega-i18n "lng_view_button_channel"))
+                            ((or "telegram_chat" "telegram_megagroup")
+                             (telega-i18n "lng_view_button_group"))
+                            ("telegram_bot"
+                             (telega-i18n "lng_view_button_bot"))
+                            ("telegram_message"
+                             (telega-i18n "lng_view_button_message"))
+                            ("telegram_background"
+                             (telega-i18n "lng_view_button_background"))
+                            ("telegram_theme"
+                             (telega-i18n "lng_view_button_theme"))
+                            ("telegram_user"
+                             "VIEW CHAT")
+                            ("telegram_voicechat"
+                             "JOIN AS LISTENER")
                             )))
-          (telega-ins--button (concat "   " title "   ")
+          (telega-ins--button (concat "   " (upcase title) "   ")
             'action 'telega-msg-button--action))
 
       (telega-ins--button
@@ -1047,14 +1079,18 @@ Return `non-nil' if WEB-PAGE has been inserted."
 (defun telega-ins--animated-emoji-msg (msg)
   "Inserter for the \"messageAnimatedEmoji\" MSG."
   (let* ((content (plist-get msg :content))
-         (_emoji (telega-tl-str content :emoji))
+         (emoji (telega-tl-str content :emoji))
          (animated-emoji (plist-get content :animated_emoji))
          (sticker (plist-get animated-emoji :sticker))
          (fs-sticker (plist-get msg :telega-sticker-fullscreen)))
     (when (and fs-sticker
                (plist-get fs-sticker :telega-ffplay-frame-filename))
       (setq sticker fs-sticker))
-    (telega-ins--sticker-image sticker 'slices)))
+    ;; NOTE: sticker might be nil if yet unknown for a custom emoji.
+    ;; In this case we insert emoji instead
+    (if sticker
+        (telega-ins--sticker-image sticker 'slices)
+      (telega-ins emoji))))
 
 (defun telega-ins--invoice (invoice)
   "Insert invoice message MSG."
@@ -1625,11 +1661,11 @@ Special messages are determined with `telega-msg-special-p'."
        (let ((sticker (plist-get content :sticker)))
          (when (plist-get content :is_premium)
            (telega-ins (telega-symbol 'premium)))
-         (cl-case (telega--tl-type (plist-get sticker :type))
-           (stickerTypeAnimated
+         (cl-case (telega--tl-type (plist-get sticker :format))
+           (stickerFormatTgs
             (telega-ins--with-face 'shadow
               (telega-ins "Animated Sticker\n")))
-           (stickerTypeVideo
+           (stickerFormatWebm
             (telega-ins--with-face 'shadow
               (telega-ins "Video Sticker\n"))))
          (telega-ins--sticker-image sticker 'slices)))
@@ -1739,7 +1775,8 @@ has `replyMarkupShowKeyboard' type."
             (let* ((buttons-row (car rows))
                    (forced-width (when (plist-get reply-markup :resize_keyboard)
                                    (/ (- telega-chat-fill-column 10
-                                         (- (length buttons-row) 1))
+                                         (telega-current-column)
+                                         (length buttons-row))
                                       (length buttons-row)))))
               (seq-doseq (kbd-button buttons-row)
                 (telega-ins--keyboard-button kbd-button msg forced-width
@@ -1769,10 +1806,10 @@ Display text using FACE."
 
 (defmacro telega-ins--aux-inline-reply (&rest body)
   `(telega-ins--aux-inline
-       (telega-i18n "lng_context_reply_msg") 'telega-msg-inline-reply
+       (telega-i18n "lng_in_reply_to") 'telega-msg-inline-reply
      ,@body))
 
-(cl-defun telega-ins--aux-msg-one-line (msg &key with-username 
+(cl-defun telega-ins--aux-msg-one-line (msg &key with-username
                                             username-face remove-caption)
   "Insert contents for aux message MSG as one line.
 If WITH-USERNAME is non-nil then insert MSG sender as well.
@@ -1890,7 +1927,7 @@ argument - MSG to insert additional information after header."
           (when via-bot
             (telega-ins " via ")
             ;; Use custom :action for clickable @bot link
-            (telega-ins--button (telega-user--name via-bot 'short)
+            (telega-ins--button (telega-user-title via-bot 'short)
               'face 'telega-link          ;no button outline please
               :action (lambda (_msg_ignored)
                         (telega-describe-user via-bot)))))
@@ -2054,11 +2091,12 @@ argument - MSG to insert additional information after header."
                 (telega-ins--aux-msg-one-line reply-to-msg
                   :with-username t
                   :username-face
-                  (let ((maybe-me (telega-msg-sender reply-to-msg)))
-                    (when (telega-sender-match-p maybe-me 'me)
-                      (if (plist-get msg :contains_unread_mention)
-                          '(bold telega-entity-type-mention)
-                        (telega-msg-sender-title-faces maybe-me))))))
+                  (let* ((sender (telega-msg-sender reply-to-msg))
+                         (sender-faces (telega-msg-sender-title-faces sender)))
+                    (if (and (telega-sender-match-p sender 'me)
+                             (plist-get msg :contains_unread_mention))
+                        (append sender-faces '(telega-entity-type-mention))
+                      sender-faces))))
                ))
             (t
              ;; Need async request
@@ -2083,7 +2121,7 @@ argument - MSG to insert additional information after header."
       (telega-ins--with-face 'error
         (telega-ins "Failed to send: "
                     (telega-tl-str send-state :error_message)))
-      (cond ((and (telega-msg-type-p 'messagePhoto msg)
+      (cond ((and (telega-msg-match-p msg '(type Photo))
                   (equal (telega-tl-str send-state :error_message)
                          "PHOTO_INVALID_DIMENSIONS"))
              ;; NOTE: Resending as file will accomplish without errors
@@ -2374,7 +2412,7 @@ Pass all ARGS directly to `telega-ins--message0'."
                                        '(:animation_search_bot_username
                                          :photo_search_bot_username
                                          :venue_search_bot_username))))
-            (telega-ins "via " (telega-user--name bot 'short))))))
+            (telega-ins "via " (telega-user-title bot 'short))))))
      (telegaForwardMessage
       (telega-ins (telega-symbol 'forward) "Fwd")
       (when (plist-get imc :send_copy)
@@ -2402,7 +2440,6 @@ Pass all ARGS directly to `telega-ins--message0'."
      (telegaChatTheme
       (telega-ins "Theme: " (or (telega-tl-str imc :name)
                                 "disable")))
-
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      )))
@@ -2532,7 +2569,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
     (telega-ins (telega-symbol 'member)))
   (telega-ins " ")
 
-  (telega-ins (telega-user--name user 'name))
+  (telega-ins (telega-user-title user 'name))
   (telega-ins--user-online-status user)
 
   (when-let ((username (telega-tl-str user :username)))
@@ -2610,7 +2647,14 @@ If REMOVE-CAPTION is specified, then do not insert caption."
              (not (telega-user-bot-p user))
              (not (telega-me-p user))
              (telega-user-online-p user))
-    (telega-ins telega-symbol-online-status)))
+    (telega-ins (telega-symbol 'online-status))))
+
+(defun telega-ins--user-emoji-status (user)
+  "Inserter for the EMOJI-STATUS."
+  (when-let ((emoji-status (plist-get user :emoji_status)))
+    (telega-ins--image
+     (telega-emoji-status--image emoji-status) nil
+     :telega-text telega-symbol-premium)))
 
 (defun telega-ins--chat (chat &optional brackets ignore-width-p)
   "Inserter for CHAT button in root buffer.
@@ -3050,15 +3094,26 @@ Return non-nil if restrictions has been inserted."
         :action #'telega-msg-open-sponsored))
     t))
 
-(defun telega-ins--msg-reaction (_msg reaction)
-  "For the message MSG insert REACTION.
-REACTION is the `messageReaction' TDLib object."
-  (telega-ins--with-face (if (plist-get reaction :is_chosen)
+(defun telega-ins--msg-reaction-type (reaction-type)
+  "Insert REACTION-TYPE.
+REACTION-TYPE. is the `ReactionType' TDLib object."
+  (cl-case (telega--tl-type reaction-type)
+    (reactionTypeEmoji
+     (telega-ins (telega-tl-str reaction-type :emoji)))
+    (reactionTypeCustomEmoji
+     (when-let ((sticker (telega-custom-emoji-get
+                          (plist-get reaction-type :custom_emoji_id))))
+       (telega-ins--sticker-image sticker)))))
+
+(defun telega-ins--msg-reaction (msg-reaction)
+  "Insert MSG-REACTION.
+MSG-REACTION is the `messageReaction' TDLib object."
+  (telega-ins--with-face (if (plist-get msg-reaction :is_chosen)
                              'telega-button-active
                            'shadow)
-    (telega-ins-fmt "%d" (plist-get reaction :total_count))
-    (telega-ins (telega-tl-str reaction :reaction))
-    (seq-doseq (rs (plist-get reaction :recent_sender_ids))
+    (telega-ins-fmt "%d" (plist-get msg-reaction :total_count))
+    (telega-ins--msg-reaction-type (plist-get msg-reaction :type))
+    (seq-doseq (rs (plist-get msg-reaction :recent_sender_ids))
       (telega-ins--image
        (telega-msg-sender-avatar-image-one-line (telega-msg-sender rs))))
     t))
@@ -3066,12 +3121,42 @@ REACTION is the `messageReaction' TDLib object."
 (defun telega-ins--msg-reaction-list (msg)
   "Inserter for the message's MSG reactions."
   (let (ret)
-    (seq-doseq (reaction (telega--tl-get msg :interaction_info :reactions))
+    (seq-doseq (msg-reaction (telega--tl-get msg :interaction_info :reactions))
       (when ret
         (telega-ins "  "))
-      (telega-ins--msg-reaction msg reaction)
+      (telega-ins--raw-button
+          (list 'action (lambda (_button)
+                          (let ((rtype (plist-get msg-reaction :type))
+                                (big-p current-prefix-arg))
+                            (if (plist-get msg-reaction :is_chosen)
+                                (telega--removeMessageReaction msg rtype)
+                              (telega--addMessageReaction msg rtype big-p)))))
+        (telega-ins--msg-reaction msg-reaction))
       (setq ret t))
     ret))
+
+(defun telega-ins--available-reaction-list (av-reactions custom-action &optional column)
+  "Insert available reactions.
+AV-REACTIONS - list of `availableReaction' TDLib objects.
+When some reaction is chosen, CUSTOM-ACTION is called with the single
+argument of `ReactionType' type."
+  (seq-doseq (av-reaction av-reactions)
+    (telega-ins-prefix (unless (bolp) "\n")
+      (let ((reaction-type (plist-get av-reaction :type)))
+        (telega-button--insert 'telega reaction-type
+          :inserter #'telega-ins--msg-reaction-type
+          :action custom-action
+          'cursor-sensor-functions
+          (when-let ((sticker
+                      (when (eq (telega--tl-type reaction-type)
+                                'reactionTypeCustomEmoji)
+                        (telega-custom-emoji-get
+                         (plist-get reaction-type :custom_emoji_id)))))
+            (when (and (not (telega-sticker-static-p sticker))
+                       telega-sticker-animated-play)
+              (list (telega-sticker--gen-sensor-func sticker))))))
+
+      (> (current-column) (or column (current-fill-column))))))
 
 (provide 'telega-ins)
 

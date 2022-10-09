@@ -173,6 +173,8 @@ cdr is the URL."
          telega-adblock-max-distance)
      ;; 2. Link text starts chat's title
      (string-prefix-p link-text chat-title)
+     ;; 2.5 Link text contains chat's title
+     (string-match-p (regexp-quote chat-title) link-text)
      ;; 3. Link text resembles channel's username
      (and chat-username
           (<= (string-distance (downcase chat-username) link-text)
