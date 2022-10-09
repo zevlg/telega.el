@@ -1296,6 +1296,11 @@ For interactive use only."
                             (car file-accessor))
                           (cdr file-accessor)))))
 
+(defun telega-msg-resend (msg)
+  "Try to resend message MSG."
+  (interactive (list (telega-msg-for-interactive)))
+  (telega--resendMessage msg))
+
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file.
 If MSG is an animation message, then possibly add animation to
