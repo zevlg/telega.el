@@ -238,6 +238,9 @@ Specify EXT with leading `.'."
 IMAGE could be a list of two elements \\(RELATIVE-FNAME BASE-DIR\\),
 so new Emacs `svg-embed-base-uri-image' functionality could be used."
   (if (and (not datap) (fboundp 'svg-embed-base-uri-image)
+           ;; NOTE: embedding using `:base-uri' does not work under Windows
+           ;; see https://github.com/zevlg/telega.el/issues/367
+           (not (eq (framep-on-display (telega-x-frame)) 'w32))
            (listp image))
       (apply #'svg-embed-base-uri-image svg (car image) args)
     (apply #'svg-embed svg (if (listp image)
