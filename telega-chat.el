@@ -3177,12 +3177,15 @@ MARKUP-NAME names a markup function from
             (error "Message length exceedes %d limit"
                    (plist-get telega--options :message_text_length_max)))
 
-          (push (list :@type "inputMessageText"
-                      :text (telega-string-fmt-text text markup-function)
-                      :disable_web_page_preview
-                      (if disable-webpage-preview t :false)
-                      :clear_draft t)
-                result))
+          ;; NOTE: blank messages are not allowed
+          ;; see https://github.com/zevlg/telega.el/issues/359
+          (unless (string-blank-p text)
+            (push (list :@type "inputMessageText"
+                        :text (telega-string-fmt-text text markup-function)
+                        :disable_web_page_preview
+                        (if disable-webpage-preview t :false)
+                        :clear_draft t)
+                  result)))
 
          ;; Special attachment to disable web-page preview
          ((eq (telega--tl-type attach) 'telegaDisableWebpagePreview)
