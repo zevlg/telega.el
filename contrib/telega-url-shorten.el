@@ -155,7 +155,11 @@ chats matching this chat filter."
          (result-td (plist-get result 'telega-display)))
     (when (and result-td
                (eq 'textEntityTypeUrl
-                   (telega--tl-type (plist-get entity :type))))
+                   (telega--tl-type (plist-get entity :type)))
+               ;; NOTE: if copying message's content, then do not trick
+               ;; with `telega-display' property
+               ;; see https://github.com/zevlg/telega.el/issues/341
+               (not (eq this-command #'telega-msg-copy-text)))
       (when-let ((pmatch (cdr (cl-find result-td telega-url-shorten-regexps
                                        :test (lambda (res pattern)
                                                (string-match
