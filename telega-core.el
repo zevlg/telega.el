@@ -1132,7 +1132,13 @@ is visible and top is not, `button' if only BUTTON point is visible."
   ;; NOTE: BUTTON could be a real button (with value) or simple marker
   ;; for simple marker do not check top and bottom
   (cl-assert (markerp button))
-  (when-let ((bwin (get-buffer-window (marker-buffer button))))
+  (when-let* ((bwin (get-buffer-window (marker-buffer button)))
+              (frame-focused-p
+               ;; NOTE: frame must be focused, so notifications will
+               ;; popup if frame is out of focus and new message
+               ;; arrives in the opened chatbuf. See
+               ;; https://t.me/emacs_telega/36301
+               (telega-focus-state (window-frame bwin))))
     (let* ((button-p (button-get button :value))
            (top-p (when button-p
                     (pos-visible-in-window-p (button-start button) bwin)))
