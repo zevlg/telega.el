@@ -209,11 +209,13 @@ Matches only if CHAR does not apper in the middle of the word."
        (unless (or (telega-msg-sender-username member)
                    (telega-chat-p member))
          (delete-region (- (point) (length arg)) (point))
-         (telega-ins (telega-string-as-markup
-                      (format "[%s](tg://user?id=%d)"
-                              (telega-msg-sender-title member)
-                              (plist-get member :id))
-                      "markdown1" #'telega-markup-markdown1-fmt))))
+         (telega-ins
+          (propertize
+           (telega-msg-sender-title member)
+           :tl-entity-type (list :@type "textEntityTypeMentionName"
+                                 :user_id (plist-get member :id))
+           'face 'telega-entity-type-mention
+           'rear-nonsticky t))))
 
      (insert " ")
      (let ((chatbuf-input (telega-chatbuf-input-string)))

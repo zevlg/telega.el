@@ -137,23 +137,22 @@ Default is: `full'"
 
     ;; Scam/Fake/Blacklist badge, apply for users only
     ;; see https://t.me/emacs_telega/30318
-    (when user-p
-      (when (plist-get user :is_verified)
-        (setq name (concat name (telega-symbol 'verified))))
-      (setq name (concat name (cond ((plist-get user :emoji_status)
-                                     (telega-ins--as-string
-                                      (telega-ins--user-emoji-status user)))
-                                    ((plist-get user :is_premium)
-                                     (telega-symbol 'premium)))))
-      (when (plist-get user :is_scam)
-        (setq name (concat name " " (propertize (telega-i18n "lng_scam_badge")
-                                                'face 'error))))
-      (when (plist-get user :is_fake)
-        (setq name (concat name " " (propertize (telega-i18n "lng_fake_badge")
-                                                'face 'error))))
-      (when (telega-msg-sender-blocked-p user 'offline)
-        (setq name (concat name " " (propertize "BLOCKED" 'face 'error)))))
-    name))
+    (if (not user-p)
+        name
+      (concat name
+              (when (plist-get user :is_verified)
+                (telega-symbol 'verified))
+              (cond ((plist-get user :emoji_status)
+                     (telega-ins--as-string
+                      (telega-ins--user-emoji-status user)))
+                    ((plist-get user :is_premium)
+                     (telega-symbol 'premium)))
+              (when (plist-get user :is_scam)
+                (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+              (when (plist-get user :is_fake)
+                (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+              (when (telega-msg-sender-blocked-p user 'offline)
+                (telega-symbol 'blocked))))))
 
 ;; NOTE: Backward compatibility, DEPRECATED, use `telega-user-title' instead
 (defalias 'telega-user--name 'telega-user-title)

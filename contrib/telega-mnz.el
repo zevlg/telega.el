@@ -391,7 +391,7 @@ Return edited code as string."
      (not (telega--tl-get msg :can_be_edited)))
     ))
 
-(defun telega-mnz-msg-edit (msg &optional edit-as-is)
+(defun telega-mnz-msg-edit (msg &optional markup-arg)
   "Command to edit message MSG in a telega-mnz aware way."
   (interactive (list (telega-msg-at (point)) current-prefix-arg))
 
@@ -421,7 +421,7 @@ Return edited code as string."
         (ding))
 
     ;; Default behaviour
-    (telega-msg-edit msg edit-as-is)))
+    (telega-msg-edit msg markup-arg)))
 
 (defun telega-mnz--chatbuf-attach-internal (language code)
   "Attach CODE of LANGUAGE to the chatbuf input."
@@ -437,7 +437,7 @@ Return edited code as string."
       (telega-fmt-text code-text
                        (list :@type "textEntityTypePreCode"
                              :language language))))))
-  
+
 (defun telega-mnz-chatbuf-attach-code (language)
   "Interactively attach a code of the LANGUAGE into chatbuf input.
 For non-interactive code attach, use `telega-mnz--chatbuf-attach-internal'."

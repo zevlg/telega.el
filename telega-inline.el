@@ -53,7 +53,7 @@
           (telega-ins text)
           (unless (string-empty-p link)
             (telega-ins "\n")
-            (telega-ins--raw-button (telega-link-props 'url link)
+            (telega-ins--raw-button (telega-link-props 'url link 'link)
               (telega-ins link))))
 
       (message text)

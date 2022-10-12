@@ -506,7 +506,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
     (let ((link (concat (or (plist-get telega--options :t_me_url)
                             "https://t.me/")
                         "addstickers/" (plist-get sset :name))))
-      (telega-ins--raw-button (telega-link-props 'url link)
+      (telega-ins--raw-button (telega-link-props 'url link 'telega-link)
         (telega-ins link))
       (telega-ins "\n"))
     (when telega-debug
@@ -563,24 +563,7 @@ Functions to be used with:
 `telega--getRecentStickers' or `telega--searchStickerSets'.
 If FOR-PARAM is specified, then insert only if
 `telega--help-win-param' is eq to FOR-PARAM."
-  (declare (indent 1))
-  (let ((marker (point-marker)))
-    (when show-loading-p
-      (telega-ins-i18n "lng_profile_loading")
-      (telega-ins "\n"))
-
-    (lambda (&rest insert-args)
-      (let ((marker-buf (marker-buffer marker)))
-        (when (buffer-live-p marker-buf)
-          (with-current-buffer marker-buf
-            (when (or (null for-param)
-                      (eq telega--help-win-param for-param))
-              (telega-save-excursion
-                (let ((inhibit-read-only t))
-                  (goto-char marker)
-                  (when show-loading-p
-                    (delete-region marker (point-at-eol)))
-                  (apply insert-func insert-args))))))))))
+  (telega--gen-ins-continuation-callback show-loading-p insert-func for-param))
 
 (defun telega-sticker-choose-favorite-or-recent (for-chat)
   "Choose recent sticker FOR-CHAT."

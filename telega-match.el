@@ -586,7 +586,8 @@ not empty."
 ;;   {{{temexdoc(chat-has-favorite-messages, 2)}}}
 (define-telega-matcher chat-has-favorite-messages (chat)
   "Matches if chat has favorite messages."
-  (telega-chat-uaprop chat :telega-favorite-ids))
+  (cl-find (plist-get chat :id) telega--favorite-messages
+           :key (telega--tl-prop :chat_id)))
 
 ;;; ellit-org: chat-temex
 ;; - has-message-ttl ::

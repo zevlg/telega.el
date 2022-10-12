@@ -32,6 +32,9 @@
 (defvar tracking-buffers nil)
 (declare-function telega--authorization-ready "telega")
 
+(defvar telega-tdlib-min-version)
+(defvar telega-tdlib-max-version)
+
 
 (defun telega-chat--update (chat &rest dirtiness)
   "Something changed in CHAT, button needs to be updated.
@@ -663,6 +666,12 @@ Message id could be updated on this update."
         (unless (zerop via-bot-id)
           (telega--recent-inline-bots-fetch)))
 
+      ;; NOTE: Handle update for the favorite messages storage creation
+      (when (and (eq chat-id (plist-get telega--favorite-messages-storage-message :chat_id))
+                 (eq old-id (plist-get telega--favorite-messages-storage-message :id)))
+        (setq telega--favorite-messages-storage-message new-msg)
+        (message "telega: Storage for the favorite messages has been created"))
+
       (run-hook-with-args 'telega-chat-post-message-hook new-msg))))
 
 (defun telega--on-updateMessageSendFailed (event)
@@ -1135,7 +1144,36 @@ messages."
           (telega--setLocation telega-my-location)
 
         (warn (concat "telega: Option `:is_location_visible' is set, "
-                      "but `telega-my-location' is nil"))))))
+                      "but `telega-my-location' is nil"))))
+
+    (when (and (eq option :version) value)
+      ;; Validate TDLib version
+      (when-let ((version-error-msg
+                  (cond ((version< (plist-get telega--options :version)
+                                   telega-tdlib-min-version)
+                         (format "TDLib version=%s < %s (min required)\n\
+Please upgrade TDLib and recompile `telega-server'"
+                                 (plist-get telega--options :version)
+                                 telega-tdlib-min-version))
+                        ((and telega-tdlib-max-version
+                              (version< telega-tdlib-max-version
+                                        (plist-get telega--options :version)))
+                         (format "TDLib version=%s > %s (max required)\n\
+Please downgrade TDLib and recompile `telega-server'"
+                                 (plist-get telega--options :version)
+                                 telega-tdlib-max-version)))))
+        (with-telega-root-buffer
+          (save-excursion
+            (telega-ins--with-face 'error
+              (telega-ins version-error-msg))))
+        ;; NOTE: rootbuf might not be visible if `M-x telega RET' is
+        ;; started with prefix argument, so notify user with warning
+        ;; as well
+        (warn version-error-msg)
+        ;; Finally stop processing events from telega-server
+        (telega-server-kill)
+        (error version-error-msg)
+        ))))
 
 (defun telega--on-updateAuthorizationState (event)
   "Proceed with user authorization state change using EVENT."

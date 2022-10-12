@@ -1674,7 +1674,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
   "Pretty printer for link in \"settings\" root view.
 LINK is cons, where car is the link description, and cdr is the url."
   (telega-ins (car link) ": ")
-  (telega-ins--raw-button (telega-link-props 'url (cdr link))
+  (telega-ins--raw-button (telega-link-props 'url (cdr link) 'telega-link)
     (telega-ins (cdr link)))
   (telega-ins "\n"))
 
@@ -1976,7 +1976,12 @@ state kinds to show. By default all kinds are shown."
   ;; TODO: implement 2-lines message inserter
   (telega-ins "  ")
   (telega-ins--chat-msg-one-line
-   (telega-msg-chat msg) msg (- telega-root-fill-column 2)))
+   (telega-msg-chat msg) msg (- telega-root-fill-column 2))
+  (let ((fav (telega-msg-favorite-p msg)))
+    (cl-assert fav)
+    (telega-ins-prefix "\n  "
+      (telega-ins--with-face 'shadow
+        (telega-ins (plist-get fav :comment))))))
 
 (defun telega-root--favorite-message-pp (msg)
   "Pretty printer for favorite message MSG."
@@ -1990,7 +1995,11 @@ state kinds to show. By default all kinds are shown."
           :header (telega-ins--as-string (telega-ins--chat chat))
           :pretty-printer #'telega-root--favorite-message-pp
           :loading (telega--getMessages (plist-get chat :id)
-                       (telega-chat-uaprop chat :telega-favorite-ids)
+                       (mapcar (telega--tl-prop :id)
+                               (seq-filter (lambda (fav)
+                                             (eq (plist-get chat :id)
+                                                 (plist-get fav :chat_id)))
+                                           telega--favorite-messages))
                      (apply-partially #'telega-root--messages-add0
                                       ewoc-name nil))
           :sorter #'telega-root--messages-sorter

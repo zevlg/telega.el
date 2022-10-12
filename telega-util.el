@@ -617,9 +617,10 @@ N can't be 0."
   "Generate props for link button openable with `telega-link--button-action'."
   (cl-assert (memq link-type '(url file username user sender hashtag)))
 
-  (list 'action 'telega-link--button-action
-        'face (or face 'telega-link)
-        :telega-link (cons link-type link-to)))
+  (nconc (list 'action 'telega-link--button-action
+               :telega-link (cons link-type link-to))
+         (when face
+           (list 'face face))))
 
 (defun telega-link--button-action (button)
   "Browse url at point."
@@ -627,11 +628,7 @@ N can't be 0."
     (telega-debug "Action on link: %S" link)
     (cl-ecase (car link)
       (sender
-       (let ((sender (cdr link)))
-         (if (telega-user-p sender)
-             (telega-describe-user sender)
-           (cl-assert (telega-chat-p sender))
-           (telega-describe-chat sender))))
+       (telega-describe-msg-sender (cdr link)))
       (user
        (telega-describe-user (telega-user-get (cdr link))))
       (username
@@ -704,7 +701,7 @@ See `puny-decode-domain' for details."
                                '(telega-entity-type-mention bold)
                              'telega-entity-type-mention)))
        (textEntityTypeHashtag
-        (telega-link-props 'hashtag text))
+        (telega-link-props 'hashtag text 'telega-link))
        (textEntityTypeBold
         '(face telega-entity-type-bold))
        (textEntityTypeItalic
@@ -1862,6 +1859,15 @@ If REGION-P is non-nil, then make a screenshot of region."
     (when (string-prefix-p "\x89PNG" png-output)
       (write-region png-output nil tofile nil 'quiet))))
 
+(defun telega-screenshot-with-scrot (tofile &optional region-p)
+  "Make a screenshot into TOFILE using `scrot' utility.
+If REGION-P is non-nil, then make a screenshot of region."
+  (let ((scrot-cmd (concat (or (executable-find "scrot")
+                               (error "Utility `scrot' not found"))
+                           " " (when region-p "-s")
+                           " " tofile)))
+    (call-process-shell-command scrot-cmd)))
+
 (defun telega-screenshot-with-maim (tofile &optional region-p)
   "Make a screenshot into TOFILE using `maim' utility.
 If REGION-P is non-nil, then make a screenshot of region."
@@ -2299,6 +2305,32 @@ not signal an error and just return nil."
         (- (telega-read-timestamp "Timestamp: ")
            (telega-time-seconds))
       duration)))
+
+(defun telega--gen-ins-continuation-callback (show-loading-p
+                                              &optional insert-func
+                                              for-param)
+  "Generate callback to continue insertion at the point of current buffer.
+Passes all arguments directly to the INSERT-FUNC.
+If FOR-PARAM is specified, then insert only if
+`telega--help-win-param' is eq to FOR-PARAM."
+  (declare (indent 1))
+  (let ((marker (point-marker)))
+    (when show-loading-p
+      (telega-ins-i18n "lng_profile_loading")
+      (telega-ins "\n"))
+
+    (lambda (&rest insert-args)
+      (let ((marker-buf (marker-buffer marker)))
+        (when (buffer-live-p marker-buf)
+          (with-current-buffer marker-buf
+            (when (or (null for-param)
+                      (eq telega--help-win-param for-param))
+              (telega-save-excursion
+                (let ((inhibit-read-only t))
+                  (goto-char marker)
+                  (when show-loading-p
+                    (delete-region marker (point-at-eol)))
+                  (apply insert-func insert-args))))))))))
 
 (provide 'telega-util)
 

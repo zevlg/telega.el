@@ -207,15 +207,20 @@
   'cursor-sensor-functions '(telega-msg-button--sensor-func)
   'action 'telega-msg-button--action)
 
-(defun telega-msg-button--sensor-func (_window oldpos dir)
+(defun telega-msg-button--sensor-func (window oldpos dir)
   "Sensor function to trigger hover in/out hook for the message at point'."
-  (when-let ((msg (telega-msg-at (if (eq dir 'entered) (point) oldpos))))
-    (unless (telega-msg-internal-p msg)
-      (if (eq dir 'entered)
-          (progn
-            (telega-chatbuf--manage-point (point))
-            (run-hook-with-args 'telega-msg-hover-in-hook msg))
-        (run-hook-with-args 'telega-msg-hover-out-hook msg)))))
+  ;; NOTE: Run sensor logic only in focused frame, to avoid managing
+  ;; point (and viewing messages) if new message added at point in
+  ;; frame without focus
+  ;; See https://t.me/emacs_telega/36301
+  (when (telega-focus-state (window-frame window))
+    (when-let ((msg (telega-msg-at (if (eq dir 'entered) (point) oldpos))))
+      (unless (telega-msg-internal-p msg)
+        (if (eq dir 'entered)
+            (progn
+              (telega-chatbuf--manage-point (point))
+              (run-hook-with-args 'telega-msg-hover-in-hook msg))
+          (run-hook-with-args 'telega-msg-hover-out-hook msg))))))
 
 (defun telega-msg-button--action (button)
   "Action to take when chat BUTTON is pressed."
@@ -1130,6 +1135,13 @@ LOCALLY-P only used"
   (when (telega-msg-sender-blocked-p msg-sender 'locally)
     (telega--toggleMessageSenderIsBlocked msg-sender nil callback)))
 
+(defun telega-describe-msg-sender (sender)
+  "Describe a message SENDER."
+  (if (telega-user-p sender)
+      (telega-describe-user sender)
+    (cl-assert (telega-chat-p sender))
+    (telega-describe-chat sender)))
+
 (defsubst telega-msg-by-me-p (msg)
   "Return non-nil if sender of MSG is me."
   (telega-me-p (telega-msg-sender msg)))
@@ -1253,23 +1265,97 @@ For interactive use only."
 
 (defun telega-msg-favorite-p (msg)
   "Return non-nil if MSG is favorite in the chat."
-  (memq (plist-get msg :id)
-        (telega-chat-uaprop (telega-msg-chat msg) :telega-favorite-ids)))
+  (let ((chat-id (plist-get msg :chat_id))
+        (msg-id (plist-get msg :id)))
+    (seq-find (lambda (fav)
+                (and (eq chat-id (plist-get fav :chat_id))
+                     (eq msg-id (plist-get fav :id))))
+              telega--favorite-messages)))
 
-(defun telega-msg-favorite-toggle (msg)
-  "Toggle MSG being favorite in the chat."
-  (interactive (list (telega-msg-for-interactive)))
-  (let* ((msg-id (plist-get msg :id))
-         (chat (telega-msg-chat msg))
-         (fav-ids (telega-chat-uaprop chat :telega-favorite-ids)))
-    (if (memq msg-id fav-ids)
-        (setf (telega-chat-uaprop chat :telega-favorite-ids)
-              (delq msg-id fav-ids))
-      (setf (telega-chat-uaprop chat :telega-favorite-ids)
-            (sort (cons msg-id fav-ids) #'>)))
+(defun telega-msg--favorite-messages-file-fetch ()
+  "Asynchronously fetch file storing list of favorite messages."
+  (telega--searchChatMessages (telega-chat-me)
+      (list :@type "searchMessagesFilterDocument")
+      "#telega_favorite_messages" 0 0 1 nil
+    (lambda (reply)
+      (setq telega--favorite-messages-storage-message
+            (car (append (plist-get reply :messages) nil)))
+      (when telega--favorite-messages-storage-message
+        (let ((file (telega-msg--content-file
+                     telega--favorite-messages-storage-message)))
+          (cl-assert file)
+          ;; And now load associated file asynchronously
+          (telega-file--download file 32
+            (lambda (tl-file)
+              (setq telega--favorite-messages
+                    (with-temp-buffer
+                      (insert-file-contents
+                       (telega--tl-get tl-file :local :path))
+                      (goto-char (point-min))
+                      (read (current-buffer))))
+              (telega-debug "Loaded %d favorite messages"
+                            (length telega--favorite-messages))
+              )))))))
 
-    (telega-msg-redisplay msg)
-    (telega-root-view--update :on-message-update msg)))
+(defun telega-msg--favorite-messages-file-store ()
+  "Upload `telega--favorite-messages' value as file into \"Saved Messages\"."
+  (when (eq 'not-yet-fetched telega--favorite-messages-storage-message)
+    (user-error "telega: fetch favorite messages file first"))
+
+  (let ((fav-msgs-filename
+         (expand-file-name "favorite-messages.txt" telega-temp-dir)))
+    (write-region (prin1-to-string telega--favorite-messages)
+                  nil fav-msgs-filename nil 'quiet)
+
+    (if (null telega--favorite-messages-storage-message)
+        ;; No file with favorite messages yet exists, create a new one
+        (when (y-or-n-p "telega: No favorite messages storage yet, create? ")
+          (telega--sendMessage
+           (telega-chat-me)
+           (list :@type "inputMessageDocument"
+                 :document (telega-chatbuf--gen-input-file
+                            fav-msgs-filename 'Document)
+                 :caption (telega-fmt-text "#telega_favorite_messages")
+                 :disable_content_type_detection t)
+           nil nil
+           :callback (lambda (msg)
+                       (setq telega--favorite-messages-storage-message msg)
+                       ;; Wait for "updateMessageSendSucceeded" event
+                       ;; to update it
+                       )))
+
+      (when (plist-get telega--favorite-messages-storage-message :sending_state)
+        (error "telega: Storage for the favorite messages is not yet created"))
+      (with-current-buffer (find-file-noselect fav-msgs-filename nil 'raw)
+        (setq telega--help-win-param telega--favorite-messages-storage-message)
+        (telega-edit-file-save-buffer)
+        (kill-buffer)))
+      ))
+
+(defun telega-msg-favorite-toggle (msg &optional with-comment-p)
+  "Toggle MSG being favorite in the chat.
+`\\[universal-argument]' let you to specify or change comment to the
+favorite message."
+  (interactive (list (telega-msg-for-interactive)
+                     current-prefix-arg))
+  (let* ((fav (telega-msg-favorite-p msg))
+         (comment (when with-comment-p
+                    (read-string "Comment for the message: " (nth 3 fav)))))
+    (when fav
+      (setq telega--favorite-messages
+            (delq fav telega--favorite-messages)))
+
+    (when (or (not fav) comment)
+      (setq telega--favorite-messages
+            (cons (nconc (list :chat_id (plist-get msg :chat_id)
+                               :id (plist-get msg :id)
+                               :timestamp (telega-time-seconds))
+                         (when comment
+                           (list :comment comment)))
+                  telega--favorite-messages))))
+  (telega-msg--favorite-messages-file-store)
+  (telega-msg-redisplay msg)
+  (telega-root-view--update :on-message-update msg))
 
 (defun telega-msg--content-file (msg)
   "For message MSG return its content file as TDLib object."
@@ -1447,6 +1533,10 @@ Requires administrator rights in the chat."
   (with-telega-help-win "*Telegram Message Info*"
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
+      ;; We use `telega--help-win-param', to make ensure message won't
+      ;; change on async requests
+      (setq telega--help-win-param msg-id)
+
       (telega-ins "Date(ISO8601): ")
       (telega-ins--date-iso8601 (plist-get msg :date))
       (telega-ins "\n")
@@ -1454,8 +1544,9 @@ Requires administrator rights in the chat."
       (telega-ins-fmt "Message-id: %d\n" msg-id)
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins "Sender: ")
-        (telega-ins--raw-button (telega-link-props 'sender sender)
-          (telega-ins (telega-msg-sender-title-for-completion sender)))
+        (telega-ins--raw-button (list 'action #'telega-link--button-action
+                                      :telega-link (cons 'sender sender))
+          (telega-ins--msg-sender sender 'with-avatar 'with-username))
         (telega-ins "\n"))
       ;; Link to the message
       (when-let ((link (ignore-errors
@@ -1467,38 +1558,75 @@ Requires administrator rights in the chat."
                          (telega--getMessageLink msg
                            :for-comment-p for-comment-p))))
         (telega-ins "Link: ")
-        (telega-ins--raw-button (telega-link-props 'url link)
+        (telega-ins--raw-button (telega-link-props 'url link 'link)
           (telega-ins link))
         (telega-ins "\n"))
 
       (telega-ins "Internal Link: ")
       (let ((internal-link (telega-tme-internal-link-to msg)))
-        (apply 'insert-text-button internal-link
-               (telega-link-props 'url internal-link 'link)))
+        (telega-ins--raw-button (telega-link-props 'url internal-link 'link)
+          (telega-ins internal-link)))
       (telega-ins "\n")
 
-      (when telega-debug
-        (telega-ins-fmt "MsgSexp: (telega-msg-get (telega-chat-get %d) %d)\n"
-          chat-id msg-id))
+      ;; Custom emoji stickersets
+      (when-let* ((custom-emojis
+                   (mapcar #'telega-custom-emoji-get
+                           (telega-custom-emoji--ids-for-msg msg)))
+                  (sset-id-list
+                   (seq-uniq (mapcar (telega--tl-prop :set_id) custom-emojis))))
+        (telega-ins "Custom Emoji stickersets: ")
+        (seq-doseq (sset-id (delq nil sset-id-list))
+          (telega-stickerset-get sset-id nil
+            (telega--gen-ins-continuation-callback 'loading
+              (lambda (sset)
+                (telega-ins--button (telega-stickerset-title sset)
+                  :value sset
+                  :action #'telega-describe-stickerset))
+              msg-id))
+          (telega-ins " "))
+        (telega-ins "\n"))
+
+      (when (plist-get msg :can_get_added_reactions)
+        (telega-ins "Message Reactions: ")
+        ;; Asynchronously fetch added message reactions
+        (telega--getMessageAddedReactions msg
+          :callback
+          (telega--gen-ins-continuation-callback 'loading
+            (lambda (reply)
+              (let ((added-reactions (plist-get reply :reactions)))
+                (telega-ins-fmt "%d (%d shown)"
+                  (plist-get reply :total_count)
+                  (length added-reactions))
+                (seq-doseq (ar added-reactions)
+                  (telega-ins "\n")
+                  (telega-ins "  ")
+                  (telega-ins--msg-reaction-type (plist-get ar :type))
+                  (telega-ins " ")
+                  (telega-ins--raw-button
+                      (list 'action #'telega-describe-msg-sender)
+                    (telega-ins--msg-sender
+                     (telega-msg-sender (plist-get ar :sender_id))
+                     'with-avatar 'with-username)))))
+            msg-id))
+        (telega-ins "\n"))
 
       (when (plist-get msg :can_get_viewers)
-        (telega-ins "Message Viewers:\n")
+        (telega-ins "Message Viewers: ")
         ;; Asynchronously fetch message viewers
         (telega--getMessageViewers msg
-          (let ((buffer (current-buffer))
-                (at-point (copy-marker (point))))
+          (telega--gen-ins-continuation-callback 'loading
             (lambda (users)
-              (when (buffer-live-p buffer)
-                (with-current-buffer buffer
-                  (let ((inhibit-read-only t))
-                    (telega-save-cursor
-                      (goto-char at-point)
-                      (telega-ins--user-list users))))))))
+              (telega-ins-fmt "%d\n" (length users))
+              (telega-ins--user-list users))
+            msg-id))
         (telega-ins "\n"))
 
       (when telega-debug
         (let ((print-length nil))
-          (telega-ins-fmt "\nMessage: %S\n" msg)))
+          (telega-ins "\n---DEBUG---\n")
+          (telega-ins-fmt "MsgSexp: (telega-msg-get (telega-chat-get %d) %d)\n"
+            chat-id msg-id)
+          (telega-ins-fmt "Message: %S\n" msg)))
       )))
 
 (defun telega-ignored-messages ()
@@ -1647,5 +1775,9 @@ be added."
               big-p 'update-recent-reactions))))))))
 
 (provide 'telega-msg)
+
+
+;; Load favorite messages
+(add-hook 'telega-chats-fetched-hook #'telega-msg--favorite-messages-file-fetch)
 
 ;;; telega-msg.el ends here

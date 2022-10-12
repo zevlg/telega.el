@@ -366,42 +366,38 @@ If WITH-USERNAME-DELIM is specified, append username to the title
 delimiting with WITH-USERNAME-DELIM."
   (let* ((telega-emoji-use-images telega-chat-title-emoji-use-images)
          (info (telega-chat--info chat 'offline))
-         (title
-          (concat (or (when (telega-me-p chat)
-                        (telega-i18n "lng_saved_messages"))
-                      (when (telega-replies-p chat)
-                        (telega-i18n "lng_replies_messages"))
-                      (telega-tl-str chat :title)
-                      (when-let ((chat-user (telega-chat-user chat)))
-                        (telega-user-title chat-user 'name))
-                      ;; NOTE: Channels we are banned in can have empty title
-                      (format "CHAT-%d" (plist-get chat :id)))
+         (raw-title (or (when (telega-me-p chat)
+                          (telega-i18n "lng_saved_messages"))
+                        (when (telega-replies-p chat)
+                          (telega-i18n "lng_replies_messages"))
+                        (telega-tl-str chat :title)))
+         (chat-user (unless raw-title (telega-chat-user chat)))
+         (title (if chat-user
+                    (telega-user-title chat-user 'name)
+                  (concat
+                   ;; NOTE: Channels we are banned in can have empty title
+                   (or raw-title (format "CHAT-%d" (plist-get chat :id)))
+                   (when (plist-get info :is_premium)
+                     (telega-symbol 'premium))
 
-                  (when (plist-get info :is_premium)
-                    (telega-symbol 'premium))
+                   (when (plist-get info :is_scam)
+                     (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+                   (when (plist-get info :is_fake)
+                     (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+                   (when (plist-get info :is_verified)
+                     (telega-symbol 'verified))
+                   (when (telega-msg-sender-blocked-p chat 'locally)
+                     (telega-symbol 'blocked))
+                  ))))
 
-                  (when with-username-delim
-                    (when-let ((username (telega-chat-username chat)))
-                      (concat (if (stringp with-username-delim)
-                                  with-username-delim
-                                " ")
-                              "@" username)))
-                  ))
-         )
-    ;; (when with-username-delim
-    ;;   (when-let ((username (telega-chat-username chat)))
-    ;;     (setq title (concat title (if (stringp with-username-delim)
-    ;;                                   with-username-delim
-    ;;                                 " ")
-    ;;                         "@" username))))
-    ;; (when (telega-chat-match-p chat '(user is-premium))
-    ;;   (setq title (concat title (telega-symbol 'premium))))
-    ;; (when (plist-get info :is_scam)
-    ;;   (setq title (concat title " " (propertize (telega-i18n "lng_scam_badge")
-    ;;                                             'face 'error))))
-    ;; (when (plist-get info :is_fake)
-    ;;   (setq title (concat title " " (propertize (telega-i18n "lng_fake_badge")
-    ;;                                             'face 'error))))
+    ;; Add username
+    (when with-username-delim
+      (when-let ((username (telega-chat-username chat)))
+        (setq title (concat title
+                            (if (stringp with-username-delim)
+                                with-username-delim
+                              " ")
+                            "@" username))))
 
     (if-let ((cctfun (cdr (cl-find chat telega-chat-title-custom-for
                                    :test #'telega-chat-match-p
@@ -750,12 +746,13 @@ Specify non-nil BAN to ban this user in this CHAT."
                             "https://t.me/")
                         (telega-chat-username chat))))
       (insert "Public Link: ")
-      (apply #'insert-text-button link (telega-link-props 'url link 'link))
+      (telega-ins--raw-button (telega-link-props 'url link 'link)
+        (telega-ins link))
       (insert "\n")))
   (telega-ins "Internal Link: ")
   (let ((internal-link (telega-tme-internal-link-to chat)))
-    (apply 'insert-text-button internal-link
-           (telega-link-props 'url internal-link 'link)))
+    (telega-ins--raw-button (telega-link-props 'url internal-link 'link)
+      (telega-ins internal-link)))
   (telega-ins "\n")
 
   (telega-ins "Order")
@@ -1691,10 +1688,8 @@ Possibly view some messages at point."
                      (propertize (telega-tl-str msg-filter :title) 'face 'bold))
          (when-let ((sender (plist-get msg-filter :sender)))
            (telega-ins " by ")
-           (telega-ins--raw-button
-               (list 'action (lambda (_button)
-                               (telega-describe-user sender)))
-             (telega-ins (telega-user--name sender))))
+           (telega-ins--raw-button (telega-link-props 'sender sender)
+             (telega-ins--msg-sender sender 'with-avatar 'with-username)))
          (when-let ((total-count (plist-get msg-filter :total-count)))
            (telega-ins-fmt " (total: %d)" total-count))
          (telega-ins "\n"))
@@ -2778,10 +2773,10 @@ Examine `:telega-dirtiness' property and update corresponding chatbuf parts."
       (insert telega-chatbuf--input-pending))
     ))
 
-(defun telega-chatbuf-edit-next (without-aux &optional backward)
+(defun telega-chatbuf-edit-next (markup-arg &optional backward)
   "Edit message sent next to currently editing.
-If WITHOUT-AUX is specified with `\\[universal-argument]', then
-instead of editing, just pop previously sent message as input."
+MARKUP-ARG could be used to select markup to edit message.
+See `telega-msg-edit' for details."
   (interactive "P")
   (let* ((msg-temex '(and (prop :can_be_edited)
                           (sender me)))
@@ -2795,20 +2790,18 @@ instead of editing, just pop previously sent message as input."
             (telega-chatbuf--next-msg (or edit-msg last-msg)
               msg-temex backward))))
     (if last-sent-msg
-        (progn
-          (telega-msg-edit last-sent-msg)
-          (when without-aux
-            (telega-chatbuf-cancel-aux)))
+        (telega-msg-edit last-sent-msg markup-arg)
 
       (if (and edit-msg (not backward))
           (telega-chatbuf-cancel-aux 'delete-input)
         (user-error "Nothing to edit")))))
 
-(defun telega-chatbuf-edit-prev (without-aux)
+(defun telega-chatbuf-edit-prev (markup-arg)
   "Edit previously sent message.
-If `\\[universal-argument]' is given, then just copy last sent message."
+MARKUP-ARG could be used to select markup to edit message.
+See `telega-msg-edit' for details."
   (interactive "P")
-  (telega-chatbuf-edit-next without-aux 'backward))
+  (telega-chatbuf-edit-next markup-arg 'backward))
 
 (defun telega-chatbuf-beginning-of-thing (&optional arg)
   "Move backward to the beginning of the chat input or message."
@@ -3670,13 +3663,19 @@ from message at point."
     (telega-msg-goto next-unread-reaction-msg 'highlight)
     ))
 
+(defun telega-chat-favorite-messages (chat)
+  "Return entries from the `telega--favorite-messages' for the CHAT."
+  (cl-remove (plist-get chat :id) telega--favorite-messages
+             :test-not 'eq :key #'car))
+
 (defun telega-chatbuf-next-favorite ()
   "Goto next favorite message."
   (interactive)
-
-  ;; NOTE: favorite messages are sorted in id decreasing order
   (let* ((fav-ids
-          (telega-chat-uaprop telega-chatbuf--chat :telega-favorite-ids))
+          ;; NOTE: Sort favorite messages ids by id decreasing order
+          (sort (mapcar #'cadr
+                        (telega-chat-favorite-messages telega-chatbuf--chat))
+                #'>))
          (next-fav-id
           (or (cl-find (or (plist-get (telega-msg-at (point)) :id) -1)
                        fav-ids :test #'<)
@@ -4445,9 +4444,6 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
                    :text (telega-string-fmt-text
                           (telega-chatbuf-input-string)))))))
 
-  ;; NOTE: temporary move point out of prompt, so newly incoming
-  ;; messages won't get automatically read
-
   ;; If point is in the prompt, than use `:prompt-draft' or
   ;; `:prompt-empty' as value, otherwise use current point as value
   (telega-chatbuf--history-state-set
@@ -4457,19 +4453,6 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
            :prompt-draft
          :prompt-empty)
      (point)))
-
-  ;; (when (and (or focus-out-p (not (get-buffer-window)))
-  ;;            (>= (point) telega-chatbuf--input-marker))
-  ;;   (telega-chatbuf--history-state-set :newer-freezed t))
-
-  ;; ;; NOTE: temporary move point out of prompt, so newly incoming
-  ;; ;; messages won't get automatically read
-  ;; (when (and (or focus-out-p (not (get-buffer-window)))
-  ;;            (>= (point) telega-chatbuf--input-marker))
-  ;;   (setq telega-chatbuf--refresh-point (copy-marker (point) t))
-  ;;   (goto-char (ewoc-location (ewoc--footer telega-chatbuf--ewoc)))
-  ;;   (unless focus-out-p
-  ;;     (telega-buffer--hack-win-point)))
   )
 
 (defun telega-chatbuf--switch-in ()
@@ -4485,20 +4468,20 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
   (when-let ((newer-freezed (telega-chatbuf--history-state-get :newer-freezed)))
     (telega-chatbuf--history-state-delete :newer-freezed)
 
-    (cond ((eq newer-freezed :prompt-empty)
+    (cond ((or (eq newer-freezed :prompt-empty)
+               (eq newer-freezed :prompt-draft))
            ;; NOTE: chatbuf might already have an input, for example
-           ;; after taking a screenshot
+           ;; after taking a screenshot or leaving a draft
            (unless (telega-chatbuf-has-input-p)
              (telega-chatbuf-next-unread
                (lambda (button)
                  (telega-button--make-observable button 'force)))))
 
-          ((eq newer-freezed :prompt-draft)
-           ;; No-op
-           )
-
           (t
-           ;; No-op as well
+           ;; Redetect cursor sensor to hover in any message at point
+           (when-let ((chat-win (get-buffer-window)))
+             (set-window-parameter chat-win 'cursor-sensor--last-state nil)
+             (cursor-sensor--detect chat-win))
            )))
 
   ;; May affect rootbuf sorting if `chatbuf-recency' criteria is used
@@ -4560,8 +4543,9 @@ NODE is already calculated ewoc NODE, or nil."
   (interactive (list (telega-msg-at (point))))
 
   (with-telega-chatbuf (telega-msg-chat msg)
-    ;; View the message
-    (telega--viewMessages telega-chatbuf--chat (list msg))
+    ;; Force view of the message if `L' is pressed
+    (when (called-interactively-p 'interactive)
+      (telega--viewMessages telega-chatbuf--chat (list msg)))
 
     ;; Redisplay footer in case active voice note is redisplayed
     (when (eq msg telega-chatbuf--vvnote-msg)
@@ -4586,10 +4570,17 @@ NODE is already calculated ewoc NODE, or nil."
 
     (telega-help-message--cancel-aux 'reply)))
 
-(defun telega-msg-edit (msg &optional edit-as-is)
+(defconst telega-msg-edit--markup-specs
+  '(("markdown1" . telega--fmt-text-markdown1)
+    ("markdown2" . telega--fmt-text-markdown2)
+    ("org" . telega--fmt-text-org)))
+
+(defun telega-msg-edit (msg &optional markup-arg)
   "Start editing the MSG.
-If `\\[universal-argument] argument is given, then do not use markup
-name from `telega-msg-edit-markup-spec' and insert message text as is."
+If called interactively, number of `\\[universal-argument]' before
+command determines index in the `telega-chat-input-markups' of markup to
+use for editing.  For example `C-u RET' will use
+`(nth 1 telega-chat-input-markups)' markup for editing."
   (interactive (list (telega-msg-for-interactive) current-prefix-arg))
 
   (unless (plist-get msg :can_be_edited)
@@ -4617,8 +4608,13 @@ name from `telega-msg-edit-markup-spec' and insert message text as is."
     (let* ((content (plist-get msg :content))
            (orig-fmt-text (or (plist-get content :text)
                               (plist-get content :caption)))
-           (markup-str (funcall (car (or telega-msg-edit-markup-spec
-                                         '(telega--fmt-text-faces)))
+           (markup-name (if (and markup-arg (listp markup-arg))
+                            (nth (round (log (car markup-arg) 4))
+                                 telega-chat-input-markups)
+                          (car telega-chat-input-markups)))
+           (markup-fmt-text-func
+            (cdr (assoc markup-name telega-msg-edit--markup-specs)))
+           (markup-str (funcall (or markup-fmt-text-func #'telega--fmt-text-faces)
                                 orig-fmt-text)))
       ;; NOTE: Scheduling state also can be edited
       (when-let ((scheduling-state (plist-get msg :scheduling_state)))
@@ -4632,17 +4628,15 @@ name from `telega-msg-edit-markup-spec' and insert message text as is."
 
       ;; NOTE: if text does not changes, then no markup in the text,
       ;; can edit text AS-IS
-      (if (or edit-as-is
-              (null (cdr telega-msg-edit-markup-spec))
+      (if (or (null markup-fmt-text-func)
               (string= markup-str (plist-get orig-fmt-text :text)))
           ;; Insert msg text AS-IS
           (telega-ins (telega--desurrogate-apply markup-str))
 
         ;; Insert msg text as markup input attachment
-        (cl-assert (stringp (cdr telega-msg-edit-markup-spec)))
+        (cl-assert (stringp markup-name))
         (telega-chatbuf-attach-markup
-         (cdr telega-msg-edit-markup-spec)
-         (telega--desurrogate-apply markup-str))))
+         markup-name (telega--desurrogate-apply markup-str))))
 
     (telega-help-message--cancel-aux 'edit)))
 

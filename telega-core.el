@@ -224,6 +224,14 @@ Used by `telega-stickerset-installed-p'.")
 
 (defvar telega--group-calls nil "Hash table (id -> group-call).")
 
+(defvar telega--favorite-messages-storage-message 'not-yet-fetched
+  "Message where favorite messages are stored.
+Document message with the #telega_favorite_messages hashtag.")
+(defvar telega--favorite-messages nil
+  "List of favorite messages.
+Favorite message is a plist with at least `:chat_id', `:id' properties.
+`:timestamp' and `:comment' properties are also supported.")
+
 ;; Searching
 (defvar telega-search-history nil
   "List of recent search queries.")
@@ -453,6 +461,9 @@ Done when telega server is ready to receive queries."
   (setq telega--group-calls (make-hash-table :test 'eq))
   (setq telega-docker--container-id nil)
   (setq telega--recent-inline-bots nil)
+
+  (setq telega--favorite-messages-storage-message 'not-yet-fetched)
+  (setq telega--favorite-messages nil)
   )
 
 (defun telega-test-env (&optional quiet-p)

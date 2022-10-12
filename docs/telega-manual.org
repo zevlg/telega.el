@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.60)
+#+title: Telega Manual (v0.8.61)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1797,57 +1797,54 @@ and value of the:
   Each index in the list corresponds to the number of
   @@html:<kbd>@@C-u@@html:</kbd>@@ supplied before ~RET~, i.e. first element is
   used for ordinary ~RET~, second is used for ~C-u RET~, and third is for
-  ~C-u C-u RET~ and so on.  Supported markups are defined in
-  ~telega-chat-markup-functions~. 
+  ~C-u C-u RET~ and so on.  Supported markups are defined in the
+  ~telega-chat-markup-functions~.
 
-  Default value: ~(nil "markdown1" "markdown2")~
+  "markdown1" syntax is not recommended, it always treats underscore
+  as starting point of italic emphasize even inside URLs, thats why
+  "markdown1" is not included into ~telega-chat-input-markups~ by
+  default. 
 
-Syntax for "markdown1" and "markdown2" markups:
+  Default value: ~(nil "markdown2" "org")~
+
+Markup syntax table:
+|                            | markdown2                        | org                | markdown1                        |
+|----------------------------+----------------------------------+--------------------+----------------------------------|
+| *bold text*                | ~**bold text**~                  | ~*bold text*~      | ~*bold text*~                    |
+| /italic text/              | ~__italic text__~                | ~/italic text/~    | ~_italic text_~                  |
+| _underline text_           | ~__underline text__~             | ~_underline text_~ | **UNSUPPORTED**                  |
+| +strike through+           | ~~strike through~~               | ~+strike through+~ | **UNSUPPORTED**                  |
+| ~inlined code~             | ~`inlined code`~                 | ~~inlined code~~   | ~`inlined code`~                 |
+| =pre text=                 | **UNSUPPORTED**                  | ~=pre text=~       | **UNSUPPORTED**                  |
+| [[http://www.url][text]]   | ~[text](http://www.url)~         | **NOT YET**        | ~[text](http://www.url)~         |
+| [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | **NOT YET**        | ~[name](tg://user?id=<USER-ID>)~ |
+
+There is also "markdown2" (and "markdown1") syntax to insert multiline
+code blocks of specified languge:
 #+begin_example
-  1. *bold text*
-  2. _italic text_
-  2.1) __underline text__    (only for "markdown2")
-  2.2) ~strike through text~ (only for "markdown2")
-  2.3) ||spoiler text|| (only for "markdown2")
-  3. `inlined code`
-  4. ```<language-name-not-displayed>
-      first line of multiline preformatted code
-      second line
-      last line```
-  5. [link text](http://actual.url)
-  6. [username](tg://user?id=<USER-ID>)"
+  ```<language-name>
+  first line of multiline preformatted code
+  second line
+  last line```
 #+end_example
 
-Syntax for "org" markup:
+Org syntax for code blocks is **NOT YET** supported:
 #+begin_example
-  1. *bold text*
-  2. /italic text/
-  3. _underline text_
-  4. +strike through text+
-  5. =pre text=
-  6. ~code text~
-
-  ,**NOT YET**
-  7. #+begin_src <language>
-     code line
-     next code line
-     ...
-     ,#+end_src
-  8. [[http://www.url][link description text]]
-  9. [[tg://user?id=<USER-ID>][username]]
+  ,#+begin_src <language-name>
+  code line
+  next code line
+  ...
+  ,#+end_src
 #+end_example
 
 Also, you can intermix various markups, using @@html:<kbd>@@C-c C-a markup RET@@html:</kbd>@@ command.
-
-To send media, along the side with the text message, use [[#attaching-media][media
-attaching]] commands.
 
 Important customizable options:
 - User Option: ~telega-chat-input-markups~ 
 
   Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@. 
 
-  Default value: ~(nil "markdown1" "markdown2")~
+  Default value: ~(nil "markdown2" "org")~
 - User Option: ~telega-chat-ret-always-sends-message~ 
 
   Non-nil to make @@html:<kbd>@@RET@@html:</kbd>@@ always send a message.
@@ -1863,21 +1860,12 @@ Important customizable options:
 
   Default value: 
   #+begin_src emacs-lisp
-    (("markdown1" . telega-markup-markdown1-fmt)
-     ("markdown2" . telega-markup-markdown2-fmt)
+    (("markdown2" . telega-markup-markdown2-fmt)
+     ("org" . telega-markup-org-fmt)
      ("html" . telega-markup-html-fmt)
-     ("org" . telega-markup-org-fmt))
+     ("markdown1" . telega-markup-markdown1-fmt))
   #+end_src
 
-- User Option: ~telega-msg-edit-markup-spec~ 
-
-  Cons cell specifying how to format message text when editing.
-  car is a function to convert message's text to markup string.
-  cdr is a markup name from ~telega-chat-markup-functions~ to use as
-  markup attachment.  Use nil to edit message as is, without using
-  "markup" attachment type. 
-
-  Default value: ~nil~
 
 ** Attaching media
 :PROPERTIES:
@@ -1899,6 +1887,8 @@ You can attach various media into chatbuf input, using next bindings:
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Attach clipboard image to the chatbuf as photo.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach clipboard as document.
+
+Text following attached media will be a media caption.
 
 Attachment types to attach with
 @@html:<kbd>@@C-c C-a@@html:</kbd>@@ (~telega-chatbuf-attach~) defined in
@@ -1990,10 +1980,10 @@ Customizable options for attaching media:
 
   Default value: 
   #+begin_src emacs-lisp
-    (("markdown1" . telega-markup-markdown1-fmt)
-     ("markdown2" . telega-markup-markdown2-fmt)
+    (("markdown2" . telega-markup-markdown2-fmt)
+     ("org" . telega-markup-org-fmt)
      ("html" . telega-markup-html-fmt)
-     ("org" . telega-markup-org-fmt))
+     ("markdown1" . telega-markup-markdown1-fmt))
   #+end_src
 
 
@@ -2022,21 +2012,9 @@ binding.
 To edit your previously sent message press
 @@html:<kbd>@@M-p@@html:</kbd>@@ (~telega-chatbuf-edit-prev~).
 
-It is possible to edit message with markup text inside.  Formatting
-for such messages is controlled by:
-- User Option: ~telega-msg-edit-markup-spec~ 
-
-  Cons cell specifying how to format message text when editing.
-  car is a function to convert message's text to markup string.
-  cdr is a markup name from ~telega-chat-markup-functions~ to use as
-  markup attachment.  Use nil to edit message as is, without using
-  "markup" attachment type. 
-
-  Default value: ~nil~
-
-  @@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) accepts
-  @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to edit message as-is without using markup
-  attachment with markup name specified in this option.
+It is possible to edit a message using markup syntax.
+@@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) accepts
+@@html:<kbd>@@C-u@@html:</kbd>@@ prefix to specify markup syntax to be used for editing.
 
 ** Forwarding messages
 :PROPERTIES:
@@ -2120,11 +2098,12 @@ messages you planned in the past.
 You can navigate your previous chatbuf input using commands:
 - @@html:<kbd>@@M-p@@html:</kbd>@@ (~telega-chatbuf-edit-prev~) :: 
      Edit previously sent message.
-     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then just copy last sent message.
+     ~MARKUP-ARG~ could be used to select markup to edit message.
+     See ~telega-msg-edit~ for details.
 - @@html:<kbd>@@M-n@@html:</kbd>@@ (~telega-chatbuf-edit-next~) :: 
      Edit message sent next to currently editing.
-     If ~WITHOUT-AUX~ is specified with @@html:<kbd>@@C-u@@html:</kbd>@@, then
-     instead of editing, just pop previously sent message as input.
+     ~MARKUP-ARG~ could be used to select markup to edit message.
+     See ~telega-msg-edit~ for details.
 - @@html:<kbd>@@M-r@@html:</kbd>@@ (~telega-chatbuf-input-search~) :: 
      Search for REGEX in chat input history.
 

@@ -1068,7 +1068,7 @@ Set to 0 to disable description in a webpage preview."
   :type 'boolean
   :group 'telega-user)
 
-(defcustom telega-user-show-relationship t
+(defcustom telega-user-show-relationship nil
   "*Non-nil to show user relationship with me.
 Used when showing chat members list."
   :type 'boolean
@@ -1142,15 +1142,20 @@ prompt when editing/replying a message."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-input-markups '(nil "markdown1" "markdown2")
+(defcustom telega-chat-input-markups '(nil "markdown2" "org")
   "Markups to apply when sending input with `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]'.
 Each index in the list corresponds to the number of
 `\\[universal-argument]' supplied before `RET', i.e. first element is
 used for ordinary `RET', second is used for `C-u RET', and third is for
-`C-u C-u RET' and so on.  Supported markups are defined in
-`telega-chat-markup-functions'."
+`C-u C-u RET' and so on.  Supported markups are defined in the
+`telega-chat-markup-functions'.
+
+\"markdown1\" syntax is not recommended, it always treats underscore
+as starting point of italic emphasize even inside URLs, thats why
+\"markdown1\" is not included into `telega-chat-input-markups' by
+default."
   :type 'list
-  :package-version '(telega . "0.7.4")
+  :package-version '(telega . "0.8.61")
   :group 'telega-chat)
 
 (defcustom telega-chat-scroll-conservatively 101
@@ -1279,10 +1284,10 @@ Having this non-nil \"speedups\" uploading, it is like files uploads instantly."
   :group 'telega-chat)
 
 (defcustom telega-chat-markup-functions
-  '(("markdown1" . telega-markup-markdown1-fmt)
-    ("markdown2" . telega-markup-markdown2-fmt)
+  '(("markdown2" . telega-markup-markdown2-fmt)
+    ("org" . telega-markup-org-fmt)
     ("html" . telega-markup-html-fmt)
-    ("org" . telega-markup-org-fmt))
+    ("markdown1" . telega-markup-markdown1-fmt))
   "List of markups to use on `C-c C-a markup RET'."
   :type 'list
   :group 'telega-chat)
@@ -1476,17 +1481,6 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
-(defcustom telega-msg-edit-markup-spec nil
-  "Cons cell specifying how to format message text when editing.
-car is a function to convert message's text to markup string.
-cdr is a markup name from `telega-chat-markup-functions' to use as
-markup attachment.  Use nil to edit message as is, without using
-\"markup\" attachment type."
-  :package-version '(telega . "0.8.60")
-  :type 'cons
-  :options '((telega--fmt-text-markdown1 . "markdown1"))
-  :group 'telega-msg)
-
 (defcustom telega-msg-hack-on-can-get-message-thread t
   "Non-nil to hack on `:can_get_message_thread' message property.
 In case MSG has `:message_thread_id' and has no
@@ -1589,6 +1583,8 @@ Message is ignored if its `:ignore' option is set to non-nil."
 (defcustom telega-screenshot-function
   (cond ((executable-find "flameshot")
          'telega-screenshot-with-flameshot)
+        ((executable-find "scrot")
+         'telega-screenshot-with-scrot)
         ((executable-find "screencapture")
          'telega-screenshot-with-screencapture)
         ((executable-find "pngpaste")

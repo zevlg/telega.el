@@ -127,7 +127,7 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
    (list :@type "getAnimatedEmoji"
          :emoji emoji)
    callback))
-  
+
 (defun telega--getCustomEmojiStickers (custom-emoji-ids &optional callback)
   "Returns list of custom emoji stickers by their identifiers."
   (declare (indent 1))
@@ -2305,8 +2305,8 @@ ROW-SIZE - Number of reaction per row, 5-25."
              (list :row_size row-size)))
     callback))
 
-(defun telega--getMessageAddedReactions (msg reaction
-                                             &optional offset limit callback)
+(cl-defun telega--getMessageAddedReactions
+    (msg &key tl-reaction-type offset limit callback)
   "Return reactions added for a message MSG, along with their sender."
   (unless (plist-get msg :can_get_added_reactions)
     (error "Can't get added reactions for the message"))
@@ -2315,9 +2315,9 @@ ROW-SIZE - Number of reaction per row, 5-25."
    (list :@type "getMessageAddedReactions"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
-         :reaction reaction
-         :offset (or offset 0)
-         :limit (or limit 50))
+         :reaction tl-reaction-type
+         :offset (or offset "")
+         :limit (or limit 100))
    callback))
 
 (defun telega--ReactionType (reaction-type)
@@ -2350,7 +2350,7 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
          :reaction_type (telega--ReactionType tl-reaction-type))))
-  
+
 (defun telega--setChatAvailableReactions (chat reactions)
   "Change REACTIONS, available in a CHAT."
   (telega-server--send
@@ -2390,7 +2390,7 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
   "Clear the list of recently used emoji statuses."
   (telega-server--send
    (list :@type "clearRecentEmojiStatuses")))
-  
+
 (defun telega--setEmojiStatus (custom-emoji-id &optional duration)
   "Change the emoji status for me.
 DURATION of the status, in seconds.

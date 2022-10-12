@@ -625,57 +625,50 @@ controlled by number of {{{kbd(C-u)}}} pressed before {{{kbd(RET)}}}
 and value of the:
 - {{{user-option(telega-chat-input-markups, 2)}}}
 
-Syntax for "markdown1" and "markdown2" markups:
+Markup syntax table:
+|                  | markdown2                        | org                | markdown1                        |
+|------------------+----------------------------------+--------------------+----------------------------------|
+| *bold text*      | ~**bold text**~                  | ~*bold text*~      | ~*bold text*~                    |
+| /italic text/    | ~__italic text__~                | ~/italic text/~    | ~_italic text_~                  |
+| _underline text_ | ~__underline text__~             | ~_underline text_~ | **UNSUPPORTED**                  |
+| +strike through+ | ~~strike through~~               | ~+strike through+~ | **UNSUPPORTED**                  |
+| ~inlined code~   | ~`inlined code`~                 | ~~inlined code~~   | ~`inlined code`~                 |
+| =pre text=       | **UNSUPPORTED**                  | ~=pre text=~       | **UNSUPPORTED**                  |
+| [[http://www.url][text]]             | ~[text](http://www.url)~         | **NOT YET**        | ~[text](http://www.url)~         |
+| [[http://t.me/user][name]]             | ~[name](tg://user?id=<USER-ID>)~ | **NOT YET**        | ~[name](tg://user?id=<USER-ID>)~ |
+
+There is also "markdown2" (and "markdown1") syntax to insert multiline
+code blocks of specified languge:
 #+begin_example
-  1. *bold text*
-  2. _italic text_
-  2.1) __underline text__    (only for "markdown2")
-  2.2) ~strike through text~ (only for "markdown2")
-  2.3) ||spoiler text|| (only for "markdown2")
-  3. `inlined code`
-  4. ```<language-name-not-displayed>
-      first line of multiline preformatted code
-      second line
-      last line```
-  5. [link text](http://actual.url)
-  6. [username](tg://user?id=<USER-ID>)"
+```<language-name>
+first line of multiline preformatted code
+second line
+last line```
 #+end_example
 
-Syntax for "org" markup:
+Org syntax for code blocks is **NOT YET** supported:
 #+begin_example
-  1. *bold text*
-  2. /italic text/
-  3. _underline text_
-  4. +strike through text+
-  5. =pre text=
-  6. ~code text~
-
-  **NOT YET**
-  7. #+begin_src <language>
-     code line
-     next code line
-     ...
-     #+end_src
-  8. [[http://www.url][link description text]]
-  9. [[tg://user?id=<USER-ID>][username]]
+#+begin_src <language-name>
+code line
+next code line
+...
+#+end_src
 #+end_example
 
 Also, you can intermix various markups, using {{{kbd(C-c C-a markup
 RET)}}} command.
 
-To send media, along the side with the text message, use [[#attaching-media][media
-attaching]] commands.
-
 Important customizable options:
 - {{{user-option1(telega-chat-input-markups,2)}}}
 - {{{user-option(telega-chat-ret-always-sends-message,2)}}}
 - {{{user-option1(telega-chat-markup-functions,2)}}}
-- {{{user-option(telega-msg-edit-markup-spec,2)}}}
 
 ** Attaching media
 
 You can attach various media into chatbuf input, using next bindings:
 #+ELLIT-INCLUDE: ../telega-chat.el :label chatbuf-attach-bindings
+
+Text following attached media will be a media caption.
 
 Attachment types to attach with
 {{{where-is(telega-chatbuf-attach,telega-chat-mode-map)}}} defined in
@@ -719,13 +712,9 @@ binding.
 To edit your previously sent message press
 {{{where-is(telega-chatbuf-edit-prev,telega-chat-mode-map)}}}.
 
-It is possible to edit message with markup text inside.  Formatting
-for such messages is controlled by:
-- {{{user-option(telega-msg-edit-markup-spec,2)}}}
-
-  {{{where-is(telega-msg-edit,telega-msg-button-map)}}} accepts
-  {{{kbd(C-u)}}} prefix to edit message as-is without using markup
-  attachment with markup name specified in this option.
+It is possible to edit a message using markup syntax.
+{{{where-is(telega-msg-edit,telega-msg-button-map)}}} accepts
+{{{kbd(C-u)}}} prefix to specify markup syntax to be used for editing.
 
 ** Forwarding messages
 

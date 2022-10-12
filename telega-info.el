@@ -246,14 +246,13 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                                 (plist-get emoji-status :custom_emoji_id)))
                 (sset-id (plist-get emoji-sticker :set_id)))
       (telega-ins "Emoji Status Stickerset: ")
-      (if-let ((sset (telega-stickerset-get sset-id 'offline)))
-          (telega-ins--button (telega-stickerset-title sset)
-            :value sset
-            :action #'telega-describe-stickerset)
-
-        (telega-stickerset-get sset-id nil
-          (lambda (_sset)
-            (telega-describe-user--maybe-redisplay (plist-get user :id)))))
+      (telega-stickerset-get sset-id nil
+        (telega--gen-ins-continuation-callback 'loading
+          (lambda (sset)
+            (telega-ins--button (telega-stickerset-title sset)
+              :value sset
+              :action #'telega-describe-stickerset))
+          telega--help-win-param))
       (telega-ins "\n"))
 
     (when-let ((patron (telega-msg-sender-patron-p user)))
@@ -410,8 +409,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-ins "Invite link:")
       (when invite-link
         (telega-ins " ")
-        (apply 'insert-text-button
-               invite-link (telega-link-props 'url invite-link)))
+        (telega-ins--raw-button (telega-link-props 'url invite-link 'link)
+          (telega-ins invite-link)))
       (when can-generate-p
         (telega-ins " ")
         (telega-ins--button (if invite-link "Regenerate" "Generate")

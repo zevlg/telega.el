@@ -254,14 +254,16 @@ Format is:
     (telega-ins-fmt "%d %s %d"
       day (nth month (assq 'full telega-i18n-month-names)) year)))
 
-(defun telega-ins--msg-sender (msg-sender &optional prefer-username)
-  "Insert message sender.
-If PREFER-USERNAME is non-nil, then prefer using @<username>
-instead of the sender title."
-  (cl-assert msg-sender)
-  (telega-ins (or (when prefer-username
-                    (telega-msg-sender-username msg-sender 'with-@))
-                  (telega-msg-sender-title msg-sender))))
+(defun telega-ins--msg-sender (msg-sender &optional with-avatar-p with-username-p)
+  "Insert message's sender title."
+  (telega-ins--with-face (telega-msg-sender-title-faces msg-sender)
+    (telega-ins (telega-msg-sender-title msg-sender with-avatar-p)))
+  (when with-username-p
+    (when-let ((username (telega-msg-sender-username msg-sender)))
+      (telega-ins--with-face 'shadow
+        (telega-ins " • "))
+      (telega-ins--with-face 'telega-username
+        (telega-ins "@" username)))))
 
 (defun telega-ins--chat-member-status (status)
   "Format chat member STATUS."
@@ -330,20 +332,13 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
-    (telega-ins--with-face (telega-msg-sender-title-faces user)
-      (telega-ins (telega-user-title user 'name)))
-    (telega-ins--user-online-status user)
-    (when-let ((username (telega-tl-str user :username)))
-      (telega-ins--with-face 'shadow
-        (telega-ins " • "))
-      (telega-ins--with-face 'telega-username
-        (telega-ins "@" username)))
-
-    (when (and member
-               (telega-ins-prefix " ("
-                 (telega-ins--chat-member-status
-                  (plist-get member :status))))
-      (telega-ins ")"))
+    (telega-ins--msg-sender user nil 'with-username)
+    (telega-ins--with-face 'shadow
+      (when (and member
+                 (telega-ins-prefix " ("
+                   (telega-ins--chat-member-status
+                    (plist-get member :status))))
+        (telega-ins ")")))
 
     (when show-phone-p
       (when-let ((phone-number (telega-tl-str user :phone_number)))
@@ -358,7 +353,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins--user-relationship user))
     ;; Block/scam mark, without requesting
     (when (telega-msg-sender-blocked-p user 'locally)
-      (telega-ins " " telega-symbol-blocked))
+      (telega-ins " " (telega-symbol 'blocked)))
 
     (telega-ins "\n")
     (telega-ins (make-string off-column ?\s))
@@ -382,9 +377,8 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins "\n")
       (telega-ins (make-string off-column ?\s))
       (telega-ins "invited by ")
-      (apply 'insert-text-button
-             (telega-user-title inviter-user 'name)
-             (telega-link-props 'user inviter-id)))
+      (telega-ins--raw-button (telega-link-props 'user inviter-id)
+        (telega-ins--msg-sender inviter-user 'with-avatar)))
     t))
 
 (defun telega-ins--chat-member (member)
@@ -573,8 +567,8 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
                                   :elide-trail (/ telega-chat-fill-column 4))
       (if (telega-file--downloaded-p audio-file)
           (let ((local-path (telega--tl-get audio-file :local :path)))
-            (telega-ins--with-props
-                (telega-link-props 'file local-path)
+            (telega-ins--raw-button
+                (telega-link-props 'file local-path 'telega-link)
               (telega-ins (telega-short-filename local-path))))
         (telega-ins audio-name)))
     (telega-ins-fmt " (%s %s)"
@@ -628,8 +622,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins (telega-symbol 'video) " ")
     (if (telega-file--downloaded-p video-file)
         (let ((local-path (telega--tl-get video-file :local :path)))
-          (telega-ins--with-props
-              (telega-link-props 'file local-path)
+          (telega-ins--raw-button
+              (telega-link-props 'file local-path 'telega-link)
             (telega-ins (telega-short-filename local-path))))
       (telega-ins (or video-name "")))
     (telega-ins-fmt " (%dx%d %s %s)"
@@ -1235,8 +1229,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins (propertize "GIF" 'face 'shadow) " ")
     (if (telega-file--downloaded-p anim-file)
         (let ((local-path (telega--tl-get anim-file :local :path)))
-          (telega-ins--with-props
-              (telega-link-props 'file local-path)
+          (telega-ins--raw-button
+              (telega-link-props 'file local-path 'telega-link)
             (telega-ins (telega-short-filename local-path))))
       (telega-ins (telega-tl-str animation :file_name)))
     (telega-ins-fmt " (%dx%d %s %s)"
@@ -1820,7 +1814,9 @@ REMOVE-CAPTION is passed directly to `telega-ins--content-one-line'."
   (declare (indent 1))
   (when (and with-username
              (telega-ins--with-face username-face
-               (telega-ins--msg-sender (telega-msg-sender msg) 'username)))
+               (let ((sender (telega-msg-sender msg)))
+                 (telega-ins (or (telega-msg-sender-username sender 'with-@)
+                                 (telega-msg-sender-title sender))))))
     (telega-ins "> "))
   (telega-ins--content-one-line msg remove-caption))
 
@@ -1940,8 +1936,13 @@ argument - MSG to insert additional information after header."
         ;; Interaction info
         (telega-ins--msg-interaction-info msg chat)
 
-        (when (telega-msg-favorite-p msg)
-          (telega-ins " " (telega-symbol 'favorite)))
+        (when-let ((fav (telega-msg-favorite-p msg)))
+          (telega-ins " " (telega-symbol 'favorite))
+          ;; Also show comment to the favorite message
+          (telega-ins--with-face 'shadow
+            (telega-ins-prefix "("
+              (when (telega-ins (plist-get fav :comment))
+                (telega-ins ")")))))
 
         (when (numberp telega-debug)
           (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
@@ -2184,10 +2185,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                             ;; - [RESEND] button uses :action
                             ;; - via @bot link uses :action
                             (or (telega-button--action button)
-                                (if (telega-user-p sender)
-                                    (telega-describe-user sender)
-                                  (cl-assert (telega-chat-p sender))
-                                  (telega-describe-chat sender)))))
+                                (telega-describe-msg-sender sender))))
           (telega-ins--image avatar 0
                              :no-display-if (not telega-chat-show-avatars))
           (telega-ins--message-header msg chat sender addon-header-inserter)
@@ -2620,16 +2618,17 @@ If REMOVE-CAPTION is specified, then do not insert caption."
       ;;;  - Channel posts
       ;;;  - Special messages
       ;;;  - If sent by peer in private/secret chat
-      (let (sender)
-        (unless (or (telega-me-p chat)
-                    (telega-chat-channel-p chat)
-                    (telega-msg-special-p msg)
-                    (and (telega-chat-match-p chat '(type private secret))
-                         (not (telega-me-p
-                               (setq sender (telega-msg-sender msg))))))
-          (telega-ins--msg-sender (or sender (telega-msg-sender msg)) 'short)
-          (telega-ins ": ")))
-      (telega-ins--content-one-line msg))
+      (let ((sender
+             (unless (or (telega-me-p chat)
+                         (telega-chat-channel-p chat)
+                         (telega-msg-special-p msg)
+                         (and (telega-chat-match-p chat '(type private secret))
+                              (not (telega-msg-match-p msg 'outgoing))))
+               (telega-msg-sender msg))))
+        (telega-ins--aux-msg-one-line msg
+          :with-username (when sender t)
+          :username-face (when sender
+                           (telega-msg-sender-title-faces sender)))))
 
     (telega-ins--move-to-column (- telega-root-fill-column trail-width))
     (telega-ins trail)
@@ -2675,14 +2674,8 @@ Return t."
         (muted-p (telega-chat-muted-p chat))
         (chat-type (telega-chat--type chat))
         (chat-info (telega-chat--info chat)))
-    (when (plist-get chat-info :is_verified)
-      (setq title (concat title (telega-symbol 'verified))))
     (when (telega-chat-secret-p chat)
       (setq title (propertize title 'face 'telega-secret-title)))
-
-    ;; Block mark
-    (when (telega-msg-sender-blocked-p chat 'locally)
-      (setq title (concat title telega-symbol-blocked)))
 
     ;; Check for chat folder:
     ;; 1) Show icon / folder name if chat belongs exactly to single

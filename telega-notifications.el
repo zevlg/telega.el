@@ -90,8 +90,8 @@ If DEFAULT-P is non-nil, then return default setting for the CHAT."
                                 :elide t)
     (let ((chat (telega-chat-get (plist-get msg :chat_id))))
       (unless (telega-chat-match-p chat '(type private secret bot))
-        (when (telega-ins--msg-sender (telega-msg-sender msg))
-          (telega-ins ": "))))
+        (telega-ins (telega-msg-sender-title (telega-msg-sender msg)))
+        (telega-ins ": ")))
 
     (let ((telega-use-images nil))
       (telega-ins--content msg))))

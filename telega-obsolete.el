@@ -167,6 +167,10 @@
                            nil
                            "0.8.42")
 
+(telega-obsolete--variable 'telega-msg-edit-markup-spec
+                           nil
+                           "0.8.61")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

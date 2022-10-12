@@ -89,9 +89,9 @@
           (telega-ins "→")
         (telega-ins "←"))
 
-      (apply 'insert-text-button
-             (telega-user--name (telega-user-get user-id) 'name)
-             (telega-link-props 'user user-id))
+      (telega-ins--raw-button (telega-link-props 'user user-id)
+        (telega-ins--msg-sender
+         (telega-user-get user-id) 'with-avatar 'with-username))
       (telega-ins-fmt " %s"
         (substring (plist-get state :@type) 9))
       (cl-case (telega--tl-type state)
