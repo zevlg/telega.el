@@ -675,6 +675,8 @@ tdat_emojify_string(struct telega_dat* src_str, struct telega_dat* props)
                         tables = emoji_other_tables; /* flags */
                 else if (ch == 0x1F3F4)
                         tables = emoji_other_tables; /* tags */
+                else if (ch == 0x20E3)
+                        tables = emoji_other_tables; /* non-fe0f keycaps */
                 else if ((0x1F3FB <= ch) && (ch <= 0x1F3FF))
                         tables = emoji_other_tables; /* modifiers */
                 else if (ch == 0x200D)

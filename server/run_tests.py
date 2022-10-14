@@ -56,6 +56,9 @@ JSON_TO_PLIST_TESTS = TESTS + [
     (True, b'"\u2764\ufe0f"', '#("\\u2764\\ufe0f" 0 2 (telega-emoji-p t telega-display "\\u2764\\ufe0f"))'),
     (True, b'"\u2764"', '#("\\u2764" 0 1 (telega-emoji-p t telega-display "\\u2764"))'),
 
+    # Treat <digit>⃣ as emoji as in official client
+    (True, b'"3\u20e3\u20e30\u20e30\u20e30\u20e3"', '#("3\\u20e3\\u20e30\\u20e30\\u20e30\\u20e3" 0 2 (telega-emoji-p t telega-display "3\\u20e3") 3 5 (telega-emoji-p t telega-display "0\\u20e3") 5 7 (telega-emoji-p t telega-display "0\\u20e3") 7 9 (telega-emoji-p t telega-display "0\\u20e3"))')
+
     # TODO: [wo]man shrug without trailing \ufe0f should be an emoji, as in
     # official client
     # (True, b'"\ud83e\udd37\u200d\u2642"', '#("\\u2764" 0 4 (telega-emoji-p t telega-display "\\U0001f937\\u200d\\u2642"))'),

@@ -253,6 +253,7 @@ struct emoji_trie fe0f1[] = {{0xa9, false, fe0f2},
 {0x1f6e9, false, fe0f2},
 {0x1f6f0, false, fe0f2},
 {0x1f6f3, false, fe0f2},
+
 {0x23, false, fe0f209},
 {0x2a, false, fe0f209},
 {0x30, false, fe0f209},
@@ -265,6 +266,22 @@ struct emoji_trie fe0f1[] = {{0xa9, false, fe0f2},
 {0x37, false, fe0f209},
 {0x38, false, fe0f209},
 {0x39, false, fe0f209},
+{0, true, NULL}};
+
+/* NOTE: treat <digit>⃣ also as emoji as in official client */
+struct emoji_trie emoji_keycaps_no_fe0f[] = {
+{0x23, false, fe0f210},
+{0x2a, false, fe0f210},
+{0x30, false, fe0f210},
+{0x31, false, fe0f210},
+{0x32, false, fe0f210},
+{0x33, false, fe0f210},
+{0x34, false, fe0f210},
+{0x35, false, fe0f210},
+{0x36, false, fe0f210},
+{0x37, false, fe0f210},
+{0x38, false, fe0f210},
+{0x39, false, fe0f210},
 {0, true, NULL}};
 
 struct emoji_trie emoji_12_1_basic1_fe0f[] = {
@@ -1753,6 +1770,12 @@ struct emoji_match_table emoji_other_tables[] =
 {
         /* With FE0F, includes Emoji_Keycap_Sequence */
         {0xFE0F, 0xFE0F, 1, fe0f1},
+
+        /*
+         * Emoji keycap sequences without FE0F, they are treated as
+         * emojis in official client
+         */
+        {0x20E3, 0x20E3, 1, emoji_keycaps_no_fe0f},
 
         /* Flags */
         {0x1F1E6, 0x1F1FF, 0, flags1},

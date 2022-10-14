@@ -121,7 +121,7 @@ CHEIGHT is height for the svg in characters, default=1."
                             (make-string aw-chars ?E))))
         ;; NOTE: special case librsvg does not handles well - labels
         ;; such as 1️⃣, for such cases `telega-emoji-svg-width' returns 1
-        (if (and (= (length emoji) 3) (string-suffix-p "️⃣" emoji))
+        (if (telega-emoji-keycap-p emoji)
             (progn
               (setq telega-text (compose-chars (aref emoji 0) ?⃣))
               (svg-text svg "⃣"
@@ -174,12 +174,17 @@ CHEIGHT is height for the svg in characters, default=1."
   (and (= (length emoji) 2)
        (= (aref emoji 1) (aref "\ufe0f" 0))))
 
+(defun telega-emoji-keycap-p (emoji)
+  "Return non-nil if EMOJI is a keycap emoji."
+  (or (and (= (length emoji) 3) (string-suffix-p "\ufe0f⃣" emoji))
+      (and (= (length emoji) 2) (string-suffix-p "⃣" emoji))))
+
 (defun telega-emoji-svg-width (emoji)
   (if (or (telega-emoji-fitz-p emoji)
           (telega-emoji-flag-p emoji)
           (telega-emoji-fe0f-p emoji)
           (telega-emoji-has-zero-joiner-p emoji)
-          (and (= (length emoji) 3) (string-suffix-p "️⃣" emoji)))
+          (telega-emoji-keycap-p emoji))
       1
     nil))
 
