@@ -1056,9 +1056,13 @@ preview, having media content, can be opened with media timestamp."
 
 (defun telega-msg-sender (tl-obj)
   "Convert given TL-OBJ to message sender (a chat or a user).
-TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\" or
-\"messageSender\".  Return a user or a chat."
+TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\",
+\"messageSender\" or \"chatMessageSender\".  Return a user or a chat."
   (let ((sender (cl-ecase (telega--tl-type tl-obj)
+                  (chatMessageSender
+                   (when (or (not (plist-get tl-obj :needs_premium))
+                             (plist-get telega--options :is_premium))
+                     (plist-get tl-obj :sender)))
                   (sponsoredMessage
                    (list :@type "messageSenderChat"
                          :chat_id (plist-get tl-obj :sponsor_chat_id)))
@@ -1066,7 +1070,7 @@ TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\" or
                   (chatMember (plist-get tl-obj :member_id))
                   ((messageSenderUser messageSenderChat) tl-obj))))
     ;; NOTE: sender could be `nil' for internal telega messages, see
-    ;; `telega-msg-create-internal'
+    ;; `telega-msg-create-internal'.
     (when sender
       (if (eq 'messageSenderUser (telega--tl-type sender))
           (telega-user-get (plist-get sender :user_id))

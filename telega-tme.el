@@ -393,9 +393,12 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
      (telega-tme-open-stickerset (telega-tl-str tdlib-link :sticker_set_name)))
 
     (internalLinkTypeInstantView
-     (when-let* ((url (telega-tl-str tdlib-link :url))
-                 (iv (telega--getWebPageInstantView url)))
-       (telega-webpage--instant-view url "Telegra.ph" iv)))
+     (let* ((url (telega-tl-str tdlib-link :url))
+            (fallback-url (telega-tl-str tdlib-link :fallback_url))
+            (iv (telega--getWebPageInstantView url)))
+       (if iv
+           (telega-webpage--instant-view url "Telegra.ph" iv)
+         (telega-browse-url fallback-url 'in-browser))))
     ))
 
 (provide 'telega-tme)
