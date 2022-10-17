@@ -51,9 +51,14 @@ See `telega-folder-icons-alist'")
 
 (defun telega-chat-folders (chat)
   "Return list of Telegram folders CHAT is member of."
-  (cl-remove-if-not #'stringp
-                    (mapcar #'telega-chat-position--list-name
-                            (plist-get chat :positions))))
+  (let (folders)
+    (seq-doseq (pos (plist-get chat :positions))
+      ;; NOTE: zero order means "chat has no position"
+      (unless (equal "0" (plist-get pos :order))
+        (let ((list-name (telega-chat-position--list-name pos)))
+          (when (stringp list-name)
+            (setq folders (cons list-name folders))))))
+    (nreverse folders)))
 
 (defun telega-folder-names (&optional tdlib-filters)
   "Return list of names for all Telegram folders.

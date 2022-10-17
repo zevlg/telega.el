@@ -1770,18 +1770,22 @@ Default Disable Notification setting"))
       (let ((telega-tdlib--chat-list tdlib-chat-list))
         (telega-chat> chat1 chat2)))))
 
+(defun telega-root--folders-on-chat-update (ewoc-name ewoc chat)
+  "Handler for chat updates in \"folders\" root view."
+  (let ((folder-name (plist-get (telega-root-view--ewoc-spec ewoc-name)
+                                :name)))
+    (if (telega-chat-match-p chat (list 'folder folder-name))
+      (telega-root--any-on-chat-update ewoc-name ewoc chat))))
+
 (defun telega-view-folders--ewoc-spec (folder-spec)
-  (let* ((folder-name (telega-tl-str folder-spec :title))
-         (tdlib-chat-list (telega-folder--tdlib-chat-list folder-name)))
-    (cl-assert tdlib-chat-list)
+  (let ((folder-name (telega-tl-str folder-spec :title)))
     (list :name folder-name
           :pretty-printer (telega-view-folders--gen-pp folder-name)
           :header (telega-folder-format "%i%f" folder-name)
           :sorter (telega-view-folders--gen-sorter folder-name)
-          :loading (telega--getChats tdlib-chat-list
-                     (apply-partially
-                      #'telega-root-view--ewoc-loading-done folder-name))
-          :on-chat-update #'telega-root--any-on-chat-update)))
+          :items (telega-filter-chats telega--ordered-chats
+                   (list 'folder folder-name))
+          :on-chat-update #'telega-root--folders-on-chat-update)))
 
 (defun telega-view-folders ()
   "View Telegram folders."

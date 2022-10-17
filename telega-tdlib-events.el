@@ -558,6 +558,11 @@ NOTE: we store the number as custom chat property, to use it later."
       (telega-save-cursor
         (telega-filters--refresh))
 
+      ;; If folders view is active, then redisplay it, see
+      ;; https://t.me/emacs_telega/36581
+      (when (eq (car telega-root--view) #'telega-view-folders)
+        (telega-view-folders))
+
       (run-hooks 'telega-root-update-hook))
     ))
 
