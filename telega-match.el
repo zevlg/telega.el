@@ -683,6 +683,13 @@ By default N is 1."
   (eq (telega-user--type user) 'deleted))
 
 ;;; ellit-org: user-temex
+;; - is-bot ::
+;;   {{{temexdoc(user-is-bot, 2)}}}
+(define-telega-matcher user-is-bot (user)
+  "Matches if user is a bot."
+  (telega-user-bot-p user))
+
+;;; ellit-org: user-temex
 ;; - (status ~STATUS-LIST~...) ::
 ;;   {{{temexdoc(user-status, 2)}}}
 ;;
