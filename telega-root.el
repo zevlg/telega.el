@@ -871,8 +871,9 @@ If corresponding chat node does not exists in EWOC, then create new one."
               (telega-chat-match-p chat chat-filter)))
           'no-error)
          (when wrap
-           ;; Wrap from the beginning
-           (goto-char (point-min))
+           ;; Wrap from the beginning, or backwards from the end of buffer 
+           ;; if n is negative
+           (goto-char (if (> n 0) (point-min) (point-max)))
            (telega-button-forward
                (or n 1)
              (lambda (button)
