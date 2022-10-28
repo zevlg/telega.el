@@ -2257,7 +2257,10 @@ Binds current symbol to SYM-BIND."
                        (insert-file-contents cid-filename)
                        (string-trim (buffer-string)))))
                  (shell-command-to-string
-                  (format "docker ps -qf \"ancestor=%s\""
+                  (format "%s ps -qf \"ancestor=%s\""
+                          (if (stringp telega-use-docker)
+                              telega-use-docker
+                            "docker")
                           (telega-docker--image-name)))))))
     telega-docker--container-id))
 
@@ -2279,7 +2282,10 @@ Binds current symbol to SYM-BIND."
                                       ?i (telega-docker--image-name)))
      (let ((selinux-p (telega-docker--selinux-p)))
        (concat
-        (format "docker run --privileged -i -v %s:%s%s"
+        (if (stringp telega-use-docker)
+            telega-use-docker
+          "docker")
+        (format " run --privileged -i -v %s:%s%s"
                 telega-directory telega-directory
                 (if selinux-p ":z" ""))
         (when telega-docker--cidfile
