@@ -1656,7 +1656,8 @@ Or nil if translation is not needed."
                   #'telega-auto-translate--on-msg-update nil 'local)
 
         ;; Try to detect chat's language code
-        (if (not telega-chatbuf-language-code)
+        (if (and (not telega-chatbuf-language-code)
+                 (telega-chatbuf-match-p 'can-send-or-post))
             (telega-auto-translate--chatbuf-detect-language
              telega-auto-translate-probe-language-codes)
           (telega-chatbuf--prompt-update)

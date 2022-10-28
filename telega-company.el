@@ -328,7 +328,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   code blocks via ~```~ syntax.
 (defun telega-company-grab-markdown-precode ()
   "Return non-nil if chatbuf input starts source block."
-  (when-let ((cg (company-grab "^```\\([^`]*\\)" 1)))
+  (when-let ((cg (company-grab "\\(?:^\\|[^`]\\)```\\([^`\t\n ]*\\)" 1)))
     (cons cg company-minimum-prefix-length)))
 
 (defun telega-company--language-names ()
