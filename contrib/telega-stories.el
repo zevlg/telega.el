@@ -481,7 +481,7 @@ Return featured chat id, if MSG is featured."
          ;; 4. Document (File) message with attached:
          ;;    - photo/video
          ;;    - asciinema cast
-         (cl-ecase msg-type
+         (cl-case msg-type
            ((messageVideo messageAnimation)
             (let ((duration (telega--tl-get msg :content
                                             (if (eq 'messageVideo msg-type)

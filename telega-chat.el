@@ -1699,16 +1699,14 @@ Possibly view some messages at point."
 
        ;; Reply markup
        (when-let ((markup-msg (telega-chat-reply-markup-msg chat)))
-         (unless (plist-get markup-msg :telega-is-deleted-message)
+         (unless (telega-msg-match-p markup-msg 'is-deleted)
            (telega-ins--labeled (concat (telega-symbol 'keyboard) "\u00A0") nil
              (telega-ins--reply-markup markup-msg 'force))
            (telega-ins "\n")
-
            (telega-ins--with-attrs (list :min column :max column
                                          :align 'left
                                          :align-symbol fill-symbol))
-           (telega-ins "\n")
-           ))
+           (telega-ins "\n")))
 
        ;; Chat's restriction reason
        (when-let ((reason (telega-tl-str (telega-chat--info chat 'locally)
@@ -1759,13 +1757,33 @@ Update modeline as well."
       (telega-ewoc--set-footer
        telega-chatbuf--ewoc (telega-chatbuf--footer)))))
 
+(defun telega-chatbuf--check-focus-change0 (&optional new-focus-state)
+  "Debounced version of `telega-chatbuf--check-focus-change'.
+If NEW-FOCUS-STATE is specified, then focus state is forced."
+  (when (derived-mode-p 'telega-chat-mode)
+    (unless new-focus-state
+      (setq telega-chatbuf--focus-debounce-timer nil))
+    (let ((new-focus-state (or new-focus-state (telega-focus-state))))
+      (unless (eq telega-chatbuf--focus-status new-focus-state)
+        (setq telega-chatbuf--focus-status new-focus-state)
+        (if new-focus-state
+            (telega-chatbuf--switch-in)
+          (telega-chatbuf--switch-out 'focus-out))))))
+
 (defun telega-chatbuf--check-focus-change ()
   "Called when frame showing chatbuf changes its focus."
   ;; NOTE: we treat focus changes the same way as buffer switching
-  (cl-assert (eq major-mode 'telega-chat-mode))
-  (if (telega-focus-state)
-      (telega-chatbuf--switch-in)
-    (telega-chatbuf--switch-out 'focus-out)))
+  ;; However we apply debouncing logic as described in the docstring
+  ;; to `after-focus-change-function' when loosing focus, so there
+  ;; will be no instant switch-out/switch-in if focus bounces
+  (cl-assert (derived-mode-p 'telega-chat-mode))
+  (if-let ((focus-status (telega-focus-state)))
+      (telega-chatbuf--check-focus-change0 focus-status)
+    (when telega-chatbuf--focus-debounce-timer
+      (cancel-timer telega-chatbuf--focus-debounce-timer))
+    (setq telega-chatbuf--focus-debounce-timer
+          (run-with-timer telega-focus-out-debounce-internal nil
+                          #'telega-chatbuf--check-focus-change0))))
 
 (define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
   "The mode for telega chat buffer.
@@ -2177,8 +2195,11 @@ otherwise set draft only if chatbuf input is also draft."
          (draft-msg (plist-get chat :draft_message))
          (reply-msg-id (plist-get draft-msg :reply_to_message_id)))
     (if (and reply-msg-id (not (zerop reply-msg-id)))
-        (telega-msg-get chat reply-msg-id
-          (lambda (msg &optional _ignored) (telega-msg-reply msg)))
+        (unless (eq (plist-get (telega-chatbuf-replying-msg) :id)
+                    reply-msg-id)
+          (telega-msg-get chat reply-msg-id
+            (lambda (msg &optional _ignored)
+              (save-excursion (telega-msg-reply msg)))))
       ;; Reset only if replying, but `:reply_to_message_id' is not
       ;; specified, otherwise keep the aux, for example editing
       (when (telega-chatbuf-replying-msg)
@@ -2458,7 +2479,7 @@ If message thread filtering is enabled, use it first."
          (pin-msg (or thread-msg
                       (when pinned-messages
                         (nth pinned-msg-idx pinned-messages)))))
-    (when (and pin-msg (not (plist-get pin-msg :telega-is-deleted-message)))
+    (when (and pin-msg (not (telega-msg-match-p pin-msg 'is-deleted)))
       ;; NOTE: Adjust MAX-WIDTH taking into account length of the
       ;; `telega-symbol-pin'
       (setq max-width (+ (or max-width 15)
@@ -2813,6 +2834,16 @@ See `telega-msg-edit' for details."
   (when (> arg 0)
     (beginning-of-defun arg)))
 
+(defun telega-chatbuf-set-language (language-code)
+  "Associate chat with the language code."
+  (interactive
+   (list (telega-completing-read-language-code
+          (concat "Language"
+                  (when telega-chatbuf-language-code
+                    (format " (current is %S)" telega-chatbuf-language-code))
+                  ": "))))
+  (setq telega-chatbuf-language-code language-code))
+
 (defun telega-chatbuf--redisplay-node (node)
   "Redisplay NODE in chatbuffer.
 Try to keep point at its position."
@@ -2864,7 +2895,7 @@ Return last inserted ewoc node."
            )
       (unwind-protect
           (seq-doseq (msg messages)
-            (run-hook-with-args 'telega-chat-insert-message-hook msg)
+            (run-hook-with-args 'telega-chatbuf-pre-msg-insert-hook msg)
             ;; Track the uploading progress
             ;; see: https://github.com/zevlg/telega.el/issues/60
             (telega-msg--track-file-uploading-progress msg)
@@ -2905,7 +2936,12 @@ Return last inserted ewoc node."
                                (telega-ins--date-full (plist-get msg :date)))
                               '(:@type "textEntityTypeBold")))))))
 
-            (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg)))
+            (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg))
+            ;; NOTE: for outgoing message
+            ;; `telega-chatbuf-post-msg-insert-hook' will be called on
+            ;; "updateMessageSendSucceeded" event
+            (unless (plist-get msg :sending_state)
+              (run-hook-with-args 'telega-chatbuf-post-msg-insert-hook msg)))
 
         (goto-char saved-point))
 
@@ -2973,7 +3009,11 @@ Return nil, if not found."
     (let* ((predicate (if (functionp predicate)
                           predicate
                         (telega-match-gen-predicate "msg-" predicate)))
-           (mnode (telega-chatbuf--node-by-msg-id (plist-get msg :id)))
+           (mnode (if (telega-msg-internal-p msg)
+                      ;; NOTE: internal messages use same `:id' so
+                      ;; can't search by `:id'
+                      (telega-ewoc--find-by-data telega-chatbuf--ewoc msg)
+                    (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
            (mnode1 (if backward-p
                        (ewoc-prev telega-chatbuf--ewoc mnode)
                      (ewoc-next telega-chatbuf--ewoc mnode)))
@@ -3614,8 +3654,7 @@ button."
                         (lambda (button)
                           (when-let ((msg (telega-msg-at button)))
                             (and (not (telega-msg-internal-p msg))
-                                 (not (plist-get
-                                       msg :telega-is-deleted-message)))))
+                                 (not (telega-msg-match-p msg 'is-deleted)))))
                         'interactive)))
           (if button
               (when button-callback
@@ -4421,11 +4460,11 @@ If current buffer is dired, then send all marked files."
           (telega-chatbuf-attach-media file as-file-p)))
       )))
 
-(defun telega-chatbuf--switch-out (&optional _focus-out-p)
+(defun telega-chatbuf--switch-out (&optional focus-out-p)
   "Called when switching from chat buffer.
 FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
-  (telega-debug "Switch %s: %s" (propertize "OUT" 'face 'bold)
-                (buffer-name))
+  (telega-debug "Switch %s%s: %s" (propertize "OUT" 'face 'bold)
+                (if focus-out-p " (focus out)" "") (buffer-name))
 
   (when (telega-chatbuf-has-input-p)
     (when telega-chatbuf--my-action
@@ -4589,7 +4628,7 @@ use for editing.  For example `C-u RET' will use
   (with-telega-chatbuf (telega-msg-chat msg)
     ;; Allow editing deleted messages as new one
     ;; See https://github.com/zevlg/telega.el/issues/194
-    (if (plist-get msg :telega-is-deleted-message)
+    (if (telega-msg-match-p msg 'is-deleted)
         (telega-chatbuf-cancel-aux)
 
       (telega-button--update-value
@@ -4605,7 +4644,8 @@ use for editing.  For example `C-u RET' will use
 
     ;; Insert message's text or attachment caption
     ;; Possible use "markdown2" markup for the text
-    (let* ((content (plist-get msg :content))
+    (let* ((telega-inhibit-telega-display-by t)
+           (content (plist-get msg :content))
            (orig-fmt-text (or (plist-get content :text)
                               (plist-get content :caption)))
            (markup-name (if (and markup-arg (listp markup-arg))
@@ -4724,7 +4764,7 @@ then forward message copy without caption."
 
 (defun telega-msg-delete0 (msg &optional revoke)
   (cl-assert (eq (telega--tl-type msg) 'message))
-  (if (plist-get msg :telega-is-deleted-message)
+  (if (telega-msg-match-p msg 'is-deleted)
       ;; NOTE: `d' is pressed on deleted message
       ;; (`telega-chat-show-deleted-messages-for' is non-nil)
       ;; Generate pseudo-event to delete the message
@@ -4772,7 +4812,7 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
       (telega-chatbuf-marked-messages-delete revoke)
 
     (when-let ((msg (telega-msg-for-interactive)))
-      (if (plist-get msg :telega-is-deleted-message)
+      (if (telega-msg-match-p msg 'is-deleted)
           ;; Purge already deleted message
           (telega-msg-delete0 msg)
 
@@ -4890,10 +4930,7 @@ Return non-nil on success."
         (cl-assert (eq (button-type msg-button) 'telega-msg))
         (with-no-warnings
           (pulse-momentary-highlight-region
-           (button-start msg-button) (button-end msg-button))))
-
-      (run-hook-with-args
-       'telega-chat-goto-message-hook (ewoc--node-data node)))
+           (button-start msg-button) (button-end msg-button)))))
     t))
 
 (defun telega-chat--goto-msg (chat msg-id &optional highlight callback)

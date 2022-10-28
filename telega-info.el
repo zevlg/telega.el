@@ -131,10 +131,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
             telega-user-photo-size
             telega-user-photo-size)))))
 
-(defun telega-ins--user-profile-photos (user &optional redisplay-func)
+(defun telega-ins--user-profile-photos (user &optional profile-photos
+                                             redisplay-func)
   "Insert USER's profile photos."
-  (declare (indent 1))
-  (when-let ((profile-photos (telega--getUserProfilePhotos user)))
+  (declare (indent 2))
+  (when-let ((profile-photos (or profile-photos
+                                 (telega--getUserProfilePhotos user))))
     (dolist (photo profile-photos)
       ;; NOTE: For animated user profile photos, create fake animation
       ;; to be used for animation when cursor enters the photo
@@ -152,6 +154,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                                           :file (plist-get size1 :photo))
                          :animation (plist-get photo-anim :file))))
 
+      (when (> (telega-current-column) fill-column)
+        (telega-ins "\n"))
       (telega-button--insert 'telega photo
         :inserter #'telega-ins--chat-photo
         :action 'telega-photo--open
@@ -175,8 +179,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
             map))
         'help-echo (when (telega-me-p user)
                      "Press `d' to delete profile photo"))
-      (telega-ins " "))
-    (telega-ins "\n")))
+      (telega-ins " "))))
 
 (defun telega-info--insert-user (user &optional chat)
   "Insert USER info into current buffer."
@@ -238,7 +241,13 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     (telega-ins "\n")
 
     ;; Clickable user's profile photos
-    (telega-ins--user-profile-photos user)
+    (telega-ins "Profile Photos: ")
+    (telega--getUserProfilePhotos user nil nil
+      (telega--gen-ins-continuation-callback 'loading
+        (lambda (profile-photos)
+          (telega-ins-fmt "%d\n" (length profile-photos))
+          (telega-ins--user-profile-photos user profile-photos))))
+    (telega-ins "\n")
 
     ;; Status emoji stickerset
     (when-let* ((emoji-status (plist-get user :emoji_status))
@@ -304,28 +313,36 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins share-text))
       (telega-ins "\n"))
 
-    ;; Bot Commands
-    (when-let ((bot-cmds (append (plist-get full-info :commands) nil)))
-      (telega-ins "Bot commands: \n")
-      (seq-doseq (cmd bot-cmds)
-        (telega-ins "  ")
-        (telega-ins--with-attrs (list :min 10 :align 'left)
-          (telega-ins "/" (telega-tl-str cmd :command)))
-        (when-let ((cmd-descr (telega-tl-str cmd :description)))
-          (telega-ins--column nil nil
-            (telega-ins " - " cmd-descr)))
-        (telega-ins "\n"))
-      (telega-ins "\n"))
+    ;; Bot Info & Bot Commands
+    (when-let ((bot-info (plist-get full-info :bot_info)))
+      ;; TODO: insert info from BOT-INFO
+      (when-let ((bot-cmds (append (plist-get bot-info :commands) nil)))
+        (telega-ins "Bot commands: \n")
+        (seq-doseq (cmd bot-cmds)
+          (telega-ins "  ")
+          (telega-ins--with-attrs (list :min 10 :align 'left)
+            (telega-ins "/" (telega-tl-str cmd :command)))
+          (when-let ((cmd-descr (telega-tl-str cmd :description)))
+            (telega-ins--column nil nil
+              (telega-ins " - " cmd-descr)))
+          (telega-ins "\n"))
+        (telega-ins "\n")))
 
-    (when-let ((chats-in-common (telega-user--chats-in-common user)))
-      ;; I18N: profile_common_groups -> {count} chats in common
-      (telega-ins (telega-i18n "lng_profile_common_groups"
-                               :count (length chats-in-common))
-                  ":\n")
-      (dolist (chat chats-in-common)
-        (telega-ins "    ")
-        (telega-button--insert 'telega-chat chat
-          :inserter telega-inserter-for-chat-button)
+    ;; Chats common with USER
+    (let ((gic-cnt (plist-get full-info :group_in_common_count)))
+      (unless (zerop gic-cnt)
+        (telega-ins (telega-i18n "lng_profile_common_groups"
+                      :count gic-cnt)
+                    ": ")
+        (telega--getGroupsInCommon user nil
+          (telega--gen-ins-continuation-callback 'loading
+            (lambda (chats-in-common)
+              (when chats-in-common
+                (dolist (chat chats-in-common)
+                  (telega-ins "\n")
+                  (telega-ins "  ")
+                  (telega-button--insert 'telega-chat chat
+                    :inserter telega-inserter-for-chat-button))))))
         (telega-ins "\n")))
 
     ;; TODO: view shared media as thumbnails
@@ -377,9 +394,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
               (telega-ins "\n"))
             (let* ((kv (aref ekey ki))
                    (k1 (logand kv 3))
-                   (k2 (lsh (logand kv 12) -2))
-                   (k3 (lsh (logand kv 48) -4))
-                   (k4 (lsh (logand kv 192) -6)))
+                   (k2 (ash (logand kv 12) -2))
+                   (k3 (ash (logand kv 48) -4))
+                   (k4 (ash (logand kv 192) -6)))
               (dolist (kk (list k1 k2 k3 k4))
                 (telega-ins (propertize telega-symbol-square
                                         'face (nth kk efaces))))))
@@ -663,23 +680,21 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins restr-reason "\n")))
 
     (telega-ins "\n")
-    (telega-ins-fmt "Members: %d (%d online, %d admins)\n"
+    (telega-ins-fmt "Members: %d (%d online, %d admins)"
       (plist-get full-info :member_count)
       (or (plist-get chat :x-online-count) 0)
       (plist-get full-info :administrator_count))
     (when (plist-get full-info :can_get_members)
-      ;; Asynchronously fetch/insert supergroup members
+      ;; Asynchronously fetch/insert supergroup members when [Show]
+      ;; button is pressed.  Button is used to avoid implicit members
+      ;; loading, see https://t.me/emacs_telega/36426
       (telega--getSupergroupMembers supergroup nil nil nil
-        (let ((buffer (current-buffer))
-              (at-point (point)))
+        (telega--gen-ins-continuation-callback 'loading
           (lambda (members)
-            (when (buffer-live-p buffer)
-              (with-current-buffer buffer
-                (let ((inhibit-read-only t))
-                  (save-excursion
-                    (goto-char at-point)
-                    (telega-ins--chat-members members))))))
-          )))
+            (when members
+              (telega-ins "\n")
+              (telega-ins--chat-members members)))))
+      (telega-ins "\n"))
 
     (when telega-debug
       (insert "\n---DEBUG---\n")

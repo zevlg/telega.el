@@ -377,12 +377,14 @@ Used to optimize events processing in the `telega-server--parse-commands'."
   (let (cmd-val parsed-commands)
     ;; NOTE: First parse all commands, then optimize events, because
     ;; some events (such as `updateFile', `updateChatLastMessage',
-    ;; etc) can be collapsed to single event, then dispatch all the
-    ;; events left after optimization
+    ;; etc) can be collapsed to a single event (last one), then dispatch
+    ;; all the events left after optimization
     (while (setq cmd-val (telega-server--parse-cmd))
-      (setq parsed-commands (cons cmd-val parsed-commands)))
-    (dolist (cmd (cl-delete-duplicates (nreverse parsed-commands)
-                                       :test #'telega-server--commands-equal))
+      (setq parsed-commands
+            (cons cmd-val
+                  (cl-delete cmd-val parsed-commands
+                             :test #'telega-server--commands-equal))))
+    (dolist (cmd (nreverse parsed-commands))
       (apply #'telega-server--dispatch-cmd cmd))
 
     (if telega-server--idle-timer

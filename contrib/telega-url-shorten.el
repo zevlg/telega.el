@@ -40,8 +40,9 @@
 ;; [[https://zevlg.github.io/telega/telega-url-shorten.png]]
 ;;
 ;; Can be enabled globally in all chats matching
-;; ~telega-url-shorten-mode-for~ (see below) [[#chat-filters][chat
-;; filter]] with ~(global-telega-url-shorten-mode 1)~ or by adding:
+;; ~telega-url-shorten-mode-for~ [[#telega-match-expressions][chat
+;; temex]] (see below) with ~(global-telega-url-shorten-mode 1)~ or by
+;; adding:
 ;;
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
@@ -155,17 +156,14 @@ chats matching this chat filter."
          (result-td (plist-get result 'telega-display)))
     (when (and result-td
                (eq 'textEntityTypeUrl
-                   (telega--tl-type (plist-get entity :type)))
-               ;; NOTE: if copying message's content, then do not trick
-               ;; with `telega-display' property
-               ;; see https://github.com/zevlg/telega.el/issues/341
-               (not (eq this-command #'telega-msg-copy-text)))
+                   (telega--tl-type (plist-get entity :type))))
       (when-let ((pmatch (cdr (cl-find result-td telega-url-shorten-regexps
                                        :test (lambda (res pattern)
                                                (string-match
                                                 (plist-get pattern :regexp)
                                                 res))
                                        :key #'cdr))))
+        (plist-put result 'telega-display-by 'telega-url-shorten)
         (plist-put result 'telega-display
                    (concat (propertize
                             (plist-get pmatch :symbol)

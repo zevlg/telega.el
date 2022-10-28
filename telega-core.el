@@ -43,6 +43,14 @@
   "Return absolute path to FILENAME from etc/ directory in telega."
   (expand-file-name (concat "etc/" filename) telega--lib-directory))
 
+(defconst telega-spoiler-translation-table
+  (let ((table (make-char-table 'translation-table)))
+    (set-char-table-range table t ?\X)
+    (aset table ?\s ?\s)
+    (aset table ?\n ?\n)
+    table)
+  "Translation table to hide for spoiler text.")
+
 (defconst telega-chat-types
   '(private secret basicgroup supergroup bot channel)
   "All types of chats supported by telega.")
@@ -105,6 +113,45 @@
 (defvar telega-default-reaction-type nil
   "Default reaction for the messages.
 Updated on `updateDefaultReactionType' event.")
+
+(defconst telega-translate-languages-alist
+  '(("Afrikaans" . "af") ("Albanian" . "sq") ("Amharic" . "am")
+    ("Arabic" . "ar") ("Armenian" . "hy") ("Azerbaijani" . "az")
+    ("Basque" . "eu") ("Belarusian" . "be") ("Bengali" . "bn")
+    ("Bosnian" . "bs") ("Bulgarian" . "bg") ("Catalan" . "ca")
+    ("Cebuano" . "ceb") ("Chinese" . "zh")
+    ("Chinese Simplified" . "zh-CN") ("Chinese Traditional" . "zh-TW")
+    ("Chichewa" . "ny")
+    ("Corsican" . "co") ("Croatian" . "hr") ("Czech" . "cs")
+    ("Danish" . "da") ("Dutch" . "nl") ("English" . "en")
+    ("Esperanto" . "eo") ("Estonian" . "et") ("Filipino" . "tl")
+    ("Finnish" . "fi") ("French" . "fr") ("Frisian" . "fy")
+    ("Galician" . "gl") ("Georgian" . "ka") ("German" . "de")
+    ("Greek" . "el") ("Gujarati" . "gu") ("Haitian Creole" . "ht")
+    ("Hausa" . "ha") ("Hawaiian" . "haw") ("Hebrew" . "iw")
+    ("Hindi" . "hi") ("Hmong" . "hmn") ("Hungarian" . "hu")
+    ("Icelandic" . "is") ("Igbo" . "ig") ("Indonesian" . "id")
+    ("Irish" . "ga") ("Italian" . "it") ("Japanese" . "ja")
+    ("Kannada" . "kn") ("Kazakh" . "kk") ("Khmer" . "km")
+    ("Korean" . "ko") ("Kurdish (Kurmanji)" . "ku") ("Kyrgyz" . "ky")
+    ("Lao" . "lo") ("Latin" . "la") ("Latvian" . "lv")
+    ("Lithuanian" . "lt") ("Luxembourgish" . "lb") ("Macedonian" . "mk")
+    ("Malagasy" . "mg") ("Malay" . "ms") ("Malayalam" . "ml")
+    ("Maltese" . "mt") ("Maori" . "mi") ("Marathi" . "mr")
+    ("Mongolian" . "mn") ("Myanmar (Burmese)" . "my") ("Nepali" . "ne")
+    ("Norwegian" . "no") ("Pashto" . "ps") ("Persian" . "fa")
+    ("Polish" . "pl") ("Portuguese" . "pt") ("Punjabi" . "pa")
+    ("Romanian" . "ro") ("Russian" . "ru") ("Samoan" . "sm")
+    ("Scots Gaelic" . "gd") ("Serbian" . "sr") ("Sesotho" . "st")
+    ("Shona" . "sn") ("Sindhi" . "sd") ("Sinhala" . "si")
+    ("Slovak" . "sk") ("Slovenian" . "sl") ("Somali" . "so")
+    ("Spanish" . "es") ("Sundanese" . "su") ("Swahili" . "sw")
+    ("Swedish" . "sv") ("Tajik" . "tg") ("Tamil" . "ta")
+    ("Telugu" . "te") ("Thai" . "th") ("Turkish" . "tr")
+    ("Ukrainian" . "uk") ("Urdu" . "ur") ("Uzbek" . "uz")
+    ("Vietnamese" . "vi") ("Welsh" . "cy") ("Xhosa" . "xh")
+    ("Yiddish" . "yi") ("Yoruba" . "yo") ("Zulu" . "zu"))
+  "Language codes used for translations.")
 
 ;;; Runtime variables
 (defvar telega--current-buffer nil
@@ -333,6 +380,11 @@ display the list.")
 (defvar telega--recent-inline-bots nil
   "List of usernames for recently used inline bots.")
 
+(defvar telega--notification-messages-ring (make-ring 1)
+  "Ring of messages triggered notification.
+Use \\[execute-extended-command] telega-notifications-history RET to
+display the list.")
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
@@ -379,6 +431,18 @@ Could be used for fetching `admins', `pinned-messages', `reply-markup', etc.")
 (defvar telega-chatbuf--bot-start-parameter nil
   "Parameter to pass to `telega--sendBotStartMessage' when START is pressed.")
 (make-variable-buffer-local 'telega-chatbuf--bot-start-parameter)
+
+(defvar telega-chatbuf-language-code nil
+  "A two-letter ISO 639-1 language code for the chat's language.")
+(make-variable-buffer-local 'telega-chatbuf-language-code)
+
+(defvar telega-chatbuf--focus-status nil
+  "Last focus status, retrieved with `(telega-focus-state)'.")
+(make-variable-buffer-local 'telega-chatbuf--focus-status)
+
+(defvar telega-chatbuf--focus-debounce-timer nil
+  "Timer for debouncing focus status.")
+(make-variable-buffer-local 'telega-chatbuf--focus-debounce-timer)
 
 
 (defun telega--init-vars ()
@@ -464,6 +528,9 @@ Done when telega server is ready to receive queries."
 
   (setq telega--favorite-messages-storage-message 'not-yet-fetched)
   (setq telega--favorite-messages nil)
+
+  (setq telega--notification-messages-ring
+        (make-ring telega-notifications-history-ring-size))
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -736,6 +803,12 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
   (and (not (telega-file--uploading-p file))
        (< 0 (telega-file--uploading-progress file) 1)))
 
+(defvar telega-inhibit-telega-display-by nil
+  "Bind it to non-nil to inhibit `telega-display' property for non-emoji parts.
+Can be a list of symbols if you need to inhibit particular transforms.
+Use it to get/copy text ommiting text modifications from plugins, such
+at `telega-url-shorten'.")
+
 (defsubst telega--desurrogate-apply-part (part &optional keep-properties)
   "Apply PART's `telega-display'"
   (let ((part-display (get-text-property 0 'telega-display part)))
@@ -755,6 +828,18 @@ May return nil even when `telega-file--downloaded-p' returns non-nil."
                                               telega-emoji-use-images)
                                      (list 'rear-nonsticky '(display)
                                            'display (cons 'image (cdr (telega-emoji-create-svg part-display)))))))
+                 ;; Inhibit `telega-display' if created by one of the
+                 ;; plugins listen in the
+                 ;; `telega-inhibit-telega-display-by'
+                 (when (and telega-inhibit-telega-display-by
+                            (if (listp telega-inhibit-telega-display-by)
+                                (memq (plist-get part-props1 'telega-display-by)
+                                      telega-inhibit-telega-display-by)
+                              (plist-get part-props1 'telega-display-by)))
+                   (setq part-props1 (telega-plist-del
+                                      part-props1 'telega-display-by))
+                   (setq part-display part))
+
                  (apply 'propertize part-display (nconc part-props1 addon-props)))
              part-display))
           (keep-properties part)

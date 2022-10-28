@@ -655,6 +655,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
             (telega-ins "\n")
             (telega-ins--image-slices
              (telega-media--image
+              ;; TODO: use `telega-video--create-svg'
               (cons video 'telega-thumb-or-minithumb--create-image)
               (cons thumb :file)))
             (telega-ins " ")))))
@@ -1399,9 +1400,14 @@ Special messages are determined with `telega-msg-special-p'."
               "(")
   (let* ((content (plist-get msg :content))
          (sender (telega-msg-sender msg))
-         (sender-name (when sender
-                        (propertize (telega-msg-sender-title sender t)
-                                    'face 'bold))))
+         (sender-name
+          (when sender
+            (telega-ins--as-string
+             (telega-ins--raw-button
+                 (list 'action (lambda (_button)
+                                 (telega-describe-msg-sender sender)))
+               (telega-ins--with-face 'bold
+                 (telega-ins (telega-msg-sender-title sender t))))))))
     (cl-case (telega--tl-type content)
       (messageWebsiteConnected
        (telega-ins-i18n "lng_action_bot_allowed_from_domain"
@@ -1505,7 +1511,7 @@ Special messages are determined with `telega-msg-special-p'."
                              (telega-msg-redisplay msg))))))
          (telega-ins-i18n "lng_action_pinned_message"
            :from (or sender-name "Message")
-           :text (cond ((plist-get pin-msg :telega-is-deleted-message)
+           :text (cond ((telega-msg-match-p pin-msg 'is-deleted)
                         (telega-ins--as-string
                          (telega-ins--with-face 'error
                            (telega-ins (telega-i18n "lng_deleted_message")))))
@@ -1626,7 +1632,12 @@ Special messages are determined with `telega-msg-special-p'."
       (telega-ins-i18n "telega_scheduled_when_online"))
     (telega-ins "\n"))
 
-  (let ((content (plist-get msg :content)))
+  (let* ((content (plist-get msg :content))
+         (translated (plist-get msg :telega-translated))
+         (translated-replaces-p (and translated
+                                     (not (plist-get translated :loading))
+                                     (with-telega-chatbuf (telega-msg-chat msg)
+                                       telega-translate-replace-content))))
     (pcase (telega--tl-type content)
       ('messageText
        ;; NOTE: if text message is emojis only and no webpage is
@@ -1638,10 +1649,14 @@ Special messages are determined with `telega-msg-special-p'."
                                      (not (plist-get content :web_page)))
                             (telega--desurrogate-apply
                              (telega--tl-get content :text :text)))))
-         (if emojis-text
-             (telega-ins--image-slices
-                 (telega-emoji-create-svg emojis-text telega-emoji-large-height))
-           (telega-ins--fmt-text (plist-get content :text) msg)))
+         (cond (emojis-text
+                (telega-ins--image-slices
+                    (telega-emoji-create-svg
+                     emojis-text telega-emoji-large-height)))
+               ((and translated translated-replaces-p)
+                (telega-ins (telega-tl-str translated :text)))
+               (t
+                (telega-ins--fmt-text (plist-get content :text) msg))))
        (telega-ins-prefix "\n"
          (telega-ins--webpage msg)))
       ('messageDocument
@@ -1695,9 +1710,23 @@ Special messages are determined with `telega-msg-special-p'."
       (_ (telega-ins-fmt "<TODO: %S>"
                          (telega--tl-type content))))
 
-    (telega-ins-prefix "\n"
-      (telega-ins--fmt-text (plist-get content :caption) msg)))
-  )
+    (when-let ((caption (plist-get content :caption)))
+      (telega-ins-prefix "\n"
+        (if (and translated translated-replaces-p)
+            (telega-tl-str translated :text)
+          (telega-ins--fmt-text caption msg))))
+
+    ;; Translation
+    (when (and translated (not translated-replaces-p))
+      (telega-ins--with-face 'shadow
+        (telega-ins "\n")
+        (telega-ins "--- Translation to "
+                    (plist-get translated :to_language_code)
+                    " ---\n")
+        (if (plist-get translated :loading)
+            (telega-ins "Translating...")
+          (telega-ins (plist-get translated :text)))))
+    ))
 
 (defun telega-ins--keyboard-button (kbd-button msg &optional forced-width
                                                additional-action)
@@ -1706,13 +1735,15 @@ If FORCED-WIDTH is used, then enlarge/shrink button to FORCED-WIDTH chars.
 ADDITIONAL-ACTION function is called when button is pressed.
 ADDITIONAL-ACTION is called with two args kbd-button and message."
   (declare (indent 3))
-  (let ((kbdb-text (if forced-width
-                       (telega-ins--as-string
-                        (telega-ins--with-attrs (list :min forced-width
-                                                      :align 'center
-                                                      :max forced-width)
-                          (telega-ins (telega-tl-str kbd-button :text))))
-                     (telega-tl-str kbd-button :text))))
+  (let* ((text (or (telega--tl-get kbd-button :telega-translated :text)
+                   (telega-tl-str kbd-button :text)))
+         (kbdb-text (if forced-width
+                        (telega-ins--as-string
+                         (telega-ins--with-attrs (list :min forced-width
+                                                       :align 'center
+                                                       :max forced-width)
+                           (telega-ins text)))
+                      text)))
     ;; NOTE: for "buy" buttons add credit card symbol
     (when (eq 'inlineKeyboardButtonTypeBuy
               (telega--tl-type (plist-get kbd-button :type)))
@@ -1885,9 +1916,9 @@ MSG-CHAT - Chat for which to insert message header.
 MSG-SENDER - Sender of the message.
 If ADDON-INSERTER function is specified, it is called with one
 argument - MSG to insert additional information after header."
-  ;; twidth including 10 chars of date and 1 of outgoing status
+  ;; twidth including 10 chars of date
   (let* ((fwidth (- telega-chat-fill-column (telega-current-column)))
-         (twidth (+ 10 1 fwidth))
+         (twidth (+ 10 fwidth))
          (chat (or msg-chat (telega-msg-chat msg)))
          (sender (or msg-sender (telega-msg-sender msg))))
     (cl-assert sender)
@@ -1944,6 +1975,17 @@ argument - MSG to insert additional information after header."
               (when (telega-ins (plist-get fav :comment))
                 (telega-ins ")")))))
 
+        ;; Maybe pinned message?
+        (when (plist-get msg :is_pinned)
+          (telega-ins " " (telega-symbol 'pin)))
+
+        ;; Show language code if translation replaces message's content
+        (when-let ((translated (plist-get msg :telega-translated)))
+          (when (with-telega-chatbuf chat
+                  telega-translate-replace-content)
+            (telega-ins--with-face 'shadow
+              (telega-ins " [→" (plist-get translated :to_language_code) "]"))))
+
         (when (numberp telega-debug)
           (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
 
@@ -1955,10 +1997,6 @@ argument - MSG to insert additional information after header."
             (telega-ins " ")
             (telega-ins--button "RESEND"
               :action 'telega--resendMessage)))
-
-        ;; Maybe pinned message?
-        (when (plist-get msg :is_pinned)
-          (telega-ins " " (telega-symbol 'pin)))
 
         (when addon-inserter
           (cl-assert (functionp addon-inserter))
@@ -2075,7 +2113,7 @@ argument - MSG to insert additional information after header."
     ;; NOTE: If reply msg is not instantly available, then fetch it
     ;; asynchronously, cache it and then redisplay original message
     (let ((reply-to-msg (telega-msg-reply-msg msg)))
-      (cond ((plist-get reply-to-msg :telega-is-deleted-message)
+      (cond ((telega-msg-match-p reply-to-msg 'is-deleted)
              (telega-ins--aux-inline-reply
               (telega-ins--with-face 'shadow
                 (telega-ins (telega-i18n "lng_deleted_message")))))

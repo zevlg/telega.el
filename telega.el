@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "26.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.71
-(defconst telega-version "0.8.71")
+;; Version: 0.8.72
+(defconst telega-version "0.8.72")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.6")
 (defconst telega-tdlib-max-version nil)
@@ -280,7 +280,7 @@ string at point."
                           " (telega-server v"
                           (telega-server-version)
                           (when telega-use-docker
-                            (format " [%s]" (if (string telega-use-docker)
+                            (format " [%s]" (if (stringp telega-use-docker)
                                                 telega-use-docker
                                               "docker")))
                           ")")))
@@ -361,8 +361,9 @@ string at point."
 (run-hooks 'telega-load-hook)
 
 ;; For messages loaded from history
-(add-hook 'telega-chat-insert-message-hook #'telega-msg-run-ignore-predicates)
-(add-hook 'telega-chat-insert-message-hook #'telega-msg--custom-emojis-fetch)
+(add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg-run-ignore-predicates)
+(add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg--custom-emojis-fetch)
+(add-hook 'telega-chatbuf-post-msg-update-hook #'telega-msg--custom-emojis-fetch)
 
 ;; WARN about usage of the obsolete variables
 (require 'telega-obsolete)

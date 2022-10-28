@@ -86,9 +86,6 @@
     (bindings--define-key menu-map [copy-text]
       '(menu-item "Copy Text" telega-msg-copy-text
                   :help "Copy message text to the kill ring"))
-    (bindings--define-key menu-map [copy-text]
-      '(menu-item "Copy Text" telega-msg-copy-text
-                  :help "Copy message text to the kill ring"))
     (bindings--define-key menu-map [unpin]
       '(menu-item "Unpin" telega-msg-pin-toggle
                   :help "Unpin message"
@@ -126,6 +123,11 @@
                   :help "Show message's thread"
                   :enable (plist-get
                            (telega-msg-at-down-mouse-3) :can_get_message_thread)))
+    (bindings--define-key menu-map [translate]
+      '(menu-item "Translate" telega-msg-translate
+                  :help "Translate message's text"
+                  :visible (telega-msg-content-text
+                            (telega-msg-at-down-mouse-3))))
     (bindings--define-key menu-map [edit]
       '(menu-item (telega-i18n "lng_context_edit_msg") telega-msg-edit
                   :help "Edit the message"
@@ -150,7 +152,6 @@
     (define-key map (kbd "e") 'telega-msg-edit)
     (define-key map (kbd "f") 'telega-msg-forward-marked-or-at-point)
     (define-key map (kbd "i") 'telega-describe-message)
-    (define-key map (kbd "k") 'telega-msg-delete-marked-or-at-point)
     (define-key map (kbd "l") 'telega-msg-copy-link)
     ;; Marking, `telega-msg-forward' and `telega-msg-delete' can work
     ;; on list of marked messages
@@ -158,7 +159,7 @@
     (define-key map (kbd "n") 'telega-button-forward)
     (define-key map (kbd "p") 'telega-button-backward)
     (define-key map (kbd "r") 'telega-msg-reply)
-    (define-key map (kbd "t") 'telega-msg-open-thread)
+    (define-key map (kbd "t") 'telega-msg-translate)
 
     (define-key map (kbd "B") 'telega-msg-ban-sender)
     (define-key map (kbd "F") 'telega-msg-forward-marked-or-at-point-to-multiple-chats)
@@ -166,6 +167,7 @@
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "S") 'telega-msg-save)
+    (define-key map (kbd "T") 'telega-msg-open-thread)
     (define-key map (kbd "U") 'telega-chatbuf-msg-marks-toggle)
 
     (define-key map (kbd "!") 'telega-msg-add-reaction)
@@ -237,9 +239,9 @@
   "Pretty printer for MSG button."
   (let* ((chat (telega-msg-chat msg))
          (msg-inserter
-          (cond ((and (telega-chat-match-p chat
-                        telega-chat-show-deleted-messages-for)
-                      (plist-get msg :telega-is-deleted-message))
+          (cond ((and (telega-msg-match-p msg 'is-deleted)
+                      (telega-chat-match-p chat
+                        telega-chat-show-deleted-messages-for))
                  #'telega-ins--message-deleted)
 
                 ((telega-msg-match-p msg 'ignored)
@@ -477,12 +479,13 @@ If CALLBACK is specified, then get reply message asynchronously."
       (let* ((fsize (telega-file--size video-file))
              (dsize (telega-file--downloaded-size video-file))
              (duration (or (plist-get video :duration) 50))
-             ;; Size for 5 seconds of the video
-             (d5-size (/ (* 5 fsize) duration))
-             ;; Downloaded duration
-             (ddur (* duration (/ (float dsize) fsize)))
              (probe-size (plist-get video :telega-video-probe-size))
-             (open-time (plist-get video :telega-video-pending-open)))
+             (open-time (plist-get video :telega-video-pending-open))
+             ;; Size for 10 seconds of the video
+             (d5-size (/ (* 10 fsize) duration))
+             ;; Downloaded duration
+             (ddur (* duration (/ (float (- dsize (min dsize probe-size)))
+                                  fsize))))
         (when (and ;; Check for 1)
                    probe-size (> dsize (+ probe-size d5-size))
                    ;; Check for 3)
@@ -1344,7 +1347,7 @@ favorite message."
                      current-prefix-arg))
   (let* ((fav (telega-msg-favorite-p msg))
          (comment (when with-comment-p
-                    (read-string "Comment for the message: " (nth 3 fav)))))
+                    (read-string "Comment for the message: "))))
     (when fav
       (setq telega--favorite-messages
             (delq fav telega--favorite-messages)))
@@ -1465,6 +1468,22 @@ Use \\[yank] command to paste a link."
     (kill-new link)
     (message "Copied link: %s" link)))
 
+(defun telega-msg-content-text (msg &optional with-speech-recognition-p)
+  "Return message's content text or a caption.
+Return nil if message has no associated text.
+If WITH-SPEECH-RECOGNITION-P is non-nil, also examine speech
+recognition text if message is a VoiceNote message."
+  (let ((content (plist-get msg :content))
+        (telega-inhibit-telega-display-by t))
+    (or (telega-tl-str content :text)
+        (telega-tl-str content :caption)
+        ;; See FR https://t.me/emacs_telega/34839
+        (and with-speech-recognition-p
+             (telega-msg-match-p msg '(type VoiceNote))
+             (telega-tl-str
+              (telega--tl-get content :voice_note :speech_recognition_result)
+              :text)))))
+
 (defun telega-msg-copy-text (msg)
   "Copy a text of the message MSG."
   (interactive (list (telega-msg-for-interactive)))
@@ -1474,13 +1493,11 @@ Use \\[yank] command to paste a link."
                                               "lng_error_nocopy_channel"
                                             "lng_error_nocopy_group"))))
 
-  (let* ((content (plist-get msg :content))
-         (msg-text (or (telega-tl-str content :text)
-                       (telega-tl-str content :caption)
-                       ;; See FR https://t.me/emacs_telega/34839
-                       (and (telega-msg-match-p msg '(type VoiceNote))
-                            (telega-tl-str (telega--tl-get content :voice_note :speech_recognition_result)
-                                           :text)))))
+  (let* ((translated (plist-get msg :telega-translated))
+         (msg-text
+          (if (and translated (y-or-n-p "telega: Copy translation text? "))
+              (plist-get translated :text)
+            (telega-msg-content-text msg 'with-voice-note))))
     (unless msg-text
       (user-error "Nothing to copy"))
     (kill-new msg-text)
@@ -1589,6 +1606,14 @@ Requires administrator rights in the chat."
               msg-id))
           (telega-ins " "))
         (telega-ins "\n"))
+
+      (when-let ((translated (plist-get msg :telega-translated)))
+        (when (with-telega-chatbuf (telega-msg-chat msg)
+                telega-translate-replace-content)
+          (telega-ins "Original Content:\n")
+          (telega-ins--column 2 nil
+            (telega-ins (telega-msg-content-text msg 'with-speech)))
+          (telega-ins "\n")))
 
       (when (plist-get msg :can_get_added_reactions)
         (telega-ins "Message Reactions: ")
@@ -1777,6 +1802,56 @@ be added."
               msg (list :@type "reactionTypeCustomEmoji"
                         :custom_emoji_id (plist-get sticker :custom_emoji_id))
               big-p 'update-recent-reactions))))))))
+
+(defun telega-msg-translate (msg to-language-code &optional quiet)
+  "Translate message at point.
+If `\\[universal-argument]' is used, select language to translate message to.
+By default `telega-translate-to-language-default' is used."
+  (interactive (list (telega-msg-for-interactive)
+                     (if (or current-prefix-arg
+                             (not telega-translate-to-language-by-default))
+                         (telega-completing-read-language-code
+                          "Translate to language: ")
+                       telega-translate-to-language-by-default)))
+
+  (if (equal (telega--tl-get msg :telega-translated :to_language_code)
+             to-language-code)
+      ;; NOTE: Cancel translation on subsequent call if called
+      ;; interactively, i.e. QUIET is not specified
+      (unless quiet
+        (plist-put msg :telega-translated nil)
+        (telega-msg-redisplay msg))
+
+    (when-let* ((msg-text (telega-msg-content-text msg 'with-voice-note))
+                (extra (telega--translateText msg-text to-language-code
+                         :callback
+                         (lambda (reply)
+                           (let ((translated-text (telega-tl-str reply :text)))
+                             (plist-put msg :telega-translated
+                                        (list :to_language_code to-language-code
+                                              :text translated-text))
+                             (telega-msg-redisplay msg))))))
+      ;; NOTE: Also translate reply_markup buttons if any
+      (when-let ((reply-markup (plist-get msg :reply_markup))
+                 (reply-markup-type (telega--tl-type reply-markup)))
+        (when (eq reply-markup-type 'replyMarkupInlineKeyboard)
+          (seq-doseq (row (plist-get reply-markup :rows))
+            (seq-doseq (kbd-button row)
+              (telega--translateText
+                  (telega-tl-str kbd-button :text) to-language-code
+                :callback
+                (lambda (reply)
+                  (let ((translated-text (telega-tl-str reply :text)))
+                    (plist-put kbd-button :telega-translated
+                               (list :to_language_code to-language-code
+                                     :text translated-text))
+                    (telega-msg-redisplay msg))))))))
+
+      (plist-put msg :telega-translated
+                 (list :to_language_code to-language-code
+                       :loading extra))
+      (telega-msg-redisplay msg)
+      )))
 
 (provide 'telega-msg)
 

@@ -654,6 +654,7 @@ Message id could be updated on this update."
               (setq before-node (ewoc-next telega-chatbuf--ewoc before-node)))
 
             (ewoc-delete telega-chatbuf--ewoc node)
+            (run-hook-with-args 'telega-chatbuf-pre-msg-insert-hook new-msg)
             (with-telega-deferred-events
               (if before-node
                   ;; NOTE: need to redisplay next to newly created
@@ -662,7 +663,9 @@ Message id could be updated on this update."
                   (progn
                     (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
                     (ewoc-invalidate telega-chatbuf--ewoc before-node))
-                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))))))
+                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))
+            (run-hook-with-args 'telega-chatbuf-post-msg-insert-hook new-msg)
+            ))))
     (unless (plist-get new-msg :sending_state)
       ;; NOTE: In case outgoing message is done via bot, we need to
       ;; update recently used inline bots list
@@ -705,11 +708,10 @@ Message id could be updated on this update."
         (plist-put msg :content new-content)
         (when node
           (with-telega-chatbuf chat
+            (run-hook-with-args 'telega-chatbuf-pre-msg-update-hook msg)
             (telega-chatbuf--redisplay-node node)
-
-            ;; NOTE: reactions might be updated and custom emojis
-            ;; needs to be downloaded
-            (telega-msg--custom-emojis-fetch msg)))))))
+            (run-hook-with-args 'telega-chatbuf-post-msg-update-hook msg)
+            ))))))
 
 (defun telega--on-updateMessageEdited (event)
   "Edited date of the message specified by EVENT has been changed."
@@ -1108,7 +1110,24 @@ messages."
   (let* ((tos-id (telega-tl-str event :terms_of_service_id))
          (tos (plist-get event :terms_of_service))
          (tos-text (telega-tl-str tos :text)))
-    ;; TODO: query user to accept new TOS
+    (with-help-window "*Telegram Terms of Service*"
+      (telega-ins tos-text))
+    ;; TODO: check for (plist-get tos :min_user_age)
+    (if (and (not (yes-or-no-p
+                   "Accept updated Telegram ToS? "))
+             (not (yes-or-no-p
+                   "Your Telegram account will be deleted, maybe accept ToS? ")))
+        (if (telega-read-im-sure-p
+             "Delete your Telegram account by declining Telegram ToS?")
+            (telega-server--send
+             (list :@type "deleteAccount"
+                   :reason "Decline ToS update"))
+          ;; Query ToS acceptance once again
+          (telega--on-updateTermsOfService event))
+
+      (telega--acceptTermsOfService tos-id
+        (lambda (_reply)
+          (message "telega: updated Telegram ToS has been accepted"))))
     ))
 
 (defun telega--on-updateOption (event)
@@ -1143,6 +1162,12 @@ messages."
         (lambda (sset)
           (setq telega--animated-emojis-stickerset-id (plist-get sset :id))
           (telega-stickerset--ensure sset))))
+
+    ;; NOTE: use language pack suggested by server as default
+    ;; translate-to language, if not set
+    (when (and (eq option :suggested_language_pack_id) value
+               (not telega-translate-to-language-by-default))
+      (setq telega-translate-to-language-by-default value))
 
     (when (and (eq option :is_location_visible) value)
       (if telega-my-location
@@ -1340,7 +1365,7 @@ Please downgrade TDLib and recompile `telega-server'"
   (setq telega-emoji-reaction-list
         (mapcar #'telega--desurrogate-apply (plist-get event :emojis))))
 
-(defun telega--updateDefaultReactionType (event)
+(defun telega--on-updateDefaultReactionType (event)
   (setq telega-default-reaction-type
         (plist-get event :reaction_type)))
 

@@ -532,9 +532,10 @@ First element is the list is total number of blocked message senders."
          :report_spam (if report-spam-p t :false))))
 
 (cl-defun telega--getStickers
-    (emoji &key chat (limit 20)
+    (query &key chat (limit 100)
            (tl-sticker-type '(:@type "stickerTypeRegular")) callback)
-  "Return installed stickers that correspond to a given EMOJI.
+  "Return installed stickers that correspond to a given QUERY.
+QUERY could be an emoji or a keyword prefix.
 LIMIT defaults to 20."
   (declare (indent 1))
   (with-telega-server-reply (reply)
@@ -542,7 +543,7 @@ LIMIT defaults to 20."
 
     (nconc (list :@type "getStickers"
                  :sticker_type tl-sticker-type
-                 :emoji emoji
+                 :query query
                  :limit limit)
            (when chat
              (list :chat_id (plist-get chat :id))))
@@ -1145,6 +1146,7 @@ automatically be deleted."
   "Return the profile photos (`UserProfilePhotos') of a USER.
 OFFSET - number of photos to skip (default=0)
 LIMIT - limit number of photos (default=100)."
+  (declare (indent 3))
   (with-telega-server-reply (reply)
       (append (plist-get reply :photos) nil)
 
@@ -1862,6 +1864,7 @@ Distance info is stored in `telega--nearby-chats'."
 (defun telega--getGroupsInCommon (with-user &optional limit callback)
   "Return list of common chats WITH-USER.
 LIMIT - number of chats to get (default=100)"
+  (declare (indent 2))
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat-get (plist-get reply :chat_ids))
 
@@ -2358,11 +2361,13 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
          :chat_id (plist-get chat :id)
          :available_reactions (apply 'vector reactions))))
 
-(defun telega--acceptTermsOfService (tos-id)
+(defun telega--acceptTermsOfService (tos-id &optional callback)
   "Accepts Telegram terms of services."
-  (telega-server--send
+  (declare (indent 1))
+  (telega-server--call
    (list :@type "acceptTermsOfService"
-         :terms_of_service_id tos-id)))
+         :terms_of_service_id tos-id)
+   callback))
 
 ;; Emoji status from TDLib 1.8.6
 (defun telega--getThemedEmojiStatuses (&optional callback)
@@ -2420,6 +2425,26 @@ For Telegram Premium users only."
          :new_hint (or new-hint "")
          :set_recovery_email_address (if new-recovery-email t :false)
          :new_recovery_email_address new-recovery-email)
+   callback))
+
+(cl-defun telega--translateText (text to-language-code &key from-language-code callback)
+  "Translate TEXT to a language specified by TO-LANGUAGE-CODE.
+TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code.
+FROM-LANGUAGE-CODE is a two-letter ISO 639-1 language code to translate from."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "translateText"
+         :text text
+         :from_language_code from-language-code
+         :to_language_code to-language-code)
+   callback))
+
+(defun telega--setAlarm (seconds &optional callback)
+  "Succeeds after a specified amount of time has passed."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "setAlarm"
+         :seconds seconds)
    callback))
 
 (provide 'telega-tdlib)

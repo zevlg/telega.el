@@ -401,7 +401,7 @@
                             inlineQueryResultDocument
                             inlineQueryResultGame
                             inlineQueryResultVenue))
-                (unless (or (= (point) (point-at-bol))
+                (unless (or (= (point) (line-beginning-position))
                             (= (point) 1))
                   (telega-ins "\n")
                   (telega-ins--inline-delim)))

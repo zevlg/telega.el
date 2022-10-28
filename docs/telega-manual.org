@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.61)
+#+title: Telega Manual (v0.8.72)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -92,6 +92,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-my-location-mode][telega-my-location-mode]]
     - [[#telega-active-locations-mode][telega-active-locations-mode]]
     - [[#telega-recognize-voice-message-mode][telega-recognize-voice-message-mode]]
+    - [[#telega-auto-translate-mode][telega-auto-translate-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
@@ -168,7 +169,7 @@ docker]] for details.
 - =GNU Guix= _(optional, if using the Guix installation method)_
 - =libappindicator3= (optional, to show =telega= icon/info in system
   tray)
-- =dwebp= (optional, to display [[#stickers][Stickers]])
+- =dwebp= (optional, to display [[#stickers--animations][Stickers]])
 - =tgs2png= (optional, for [[#animated-stickers][Animated Stickers]]), sources are at
   https://github.com/zevlg/tgs2png
 
@@ -783,7 +784,7 @@ Important customizable options:
      Move point to the next important chat.
 
      Chat is important if matches ~telega-important-chat-temex~
-     [[#temex][temex]].
+     [[#telega-match-expressions][temex]].
 
 - @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-root-next-mention~) :: 
      Move point to the next chat with mention.
@@ -1060,7 +1061,7 @@ Use ~telega-chat-match-p~ to match a chat.
      Chat is considered public if it has a username.
 
 - (unread [ ~N~ ]), @@html:<kbd>@@/ u@@html:</kbd>@@ (~telega-filter-by-unread~) :: 
-     Matches if chat has least ~N~ unread messages.
+     Matches if chat has at least ~N~ unread messages.
      By default ~N~ is 1.
      Also matches chats marked as unread.
 
@@ -1284,6 +1285,9 @@ Use ~telega-msg-match-p~ to match a message.
 - (sender ~SENDER-TEMEX~) :: 
      Matches if message's sender matches ~SENDER-TEMEX~.
 
+- is-deleted :: 
+     Matches deleted message.
+
 ** List of User Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-user-temexes
@@ -1293,6 +1297,9 @@ Use ~telega-user-match-p~ to match a user.
 
 - is-deleted :: 
      Matches if user account is deleted.
+
+- is-bot :: 
+     Matches if user is a bot.
 
 - (status ~STATUS-LIST~...) :: 
      Matches if user status is one of ~STATUS-LIST~.
@@ -1409,6 +1416,14 @@ Use ~telega-sender-match-p~ to match a message sender.
           (and telega-use-images
     	   (telega-chatbuf-match-p 'can-send-or-post))
         (telega-chatbuf-prompt-chat-avatar)))
+     (:eval
+      (when
+          (and telega-auto-translate-mode telega-chatbuf-language-code telega-translate-to-language-by-default
+    	   (not
+    	    (equal telega-chatbuf-language-code telega-translate-to-language-by-default)))
+        (propertize
+         (format "[%s→%s]" telega-translate-to-language-by-default telega-chatbuf-language-code)
+         'face 'shadow)))
      ">>> ")
   #+end_src
 
@@ -1814,19 +1829,32 @@ Markup syntax table:
 | /italic text/              | ~__italic text__~                | ~/italic text/~    | ~_italic text_~                  |
 | _underline text_           | ~__underline text__~             | ~_underline text_~ | **UNSUPPORTED**                  |
 | +strike through+           | ~~strike through~~               | ~+strike through+~ | **UNSUPPORTED**                  |
+|                            | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~      | **UNSUPPORTED**                  |
 | ~inlined code~             | ~`inlined code`~                 | ~~inlined code~~   | ~`inlined code`~                 |
-| =pre text=                 | **UNSUPPORTED**                  | ~=pre text=~       | **UNSUPPORTED**                  |
+| =pre text=                 | ~```pre text```~                 | ~=pre text=~       | **UNSUPPORTED**                  |
 | [[http://www.url][text]]   | ~[text](http://www.url)~         | **NOT YET**        | ~[text](http://www.url)~         |
 | [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | **NOT YET**        | ~[name](tg://user?id=<USER-ID>)~ |
 
-There is also "markdown2" (and "markdown1") syntax to insert multiline
-code blocks of specified languge:
+There is also "markdown1" syntax to insert multiline code blocks of
+specified languge:
 #+begin_example
   ```<language-name>
   first line of multiline preformatted code
   second line
   last line```
 #+end_example
+
+"markdown2" backquotes syntax to insert multiline code blocks is
+controlled by:
+- User Option: ~telega-markdown2-backquotes-as-precode~ 
+
+  Non-nil for markdown1 style syntax for ```.
+  Non-nil activates syntax:
+    ```<language-name> (not displayed)
+    code code
+    ``` 
+
+  Default value: ~known~
 
 Org syntax for code blocks is **NOT YET** supported:
 #+begin_example
@@ -2044,7 +2072,7 @@ There are few options how you can affect the way a message is forwarded:
 :END:
 
 To delete a message, put cursor under the message you want to delete and press
-@@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@k@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <delete>@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
+@@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <delete>@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
 with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
@@ -2124,6 +2152,7 @@ with
 
 =telega= provides few company backends, such as:
 
+
 - telega-company-emoji :: Complete emojis via ~:<emoji>:~
      syntax. Completion is done using predefined set of emojis.
 
@@ -2137,20 +2166,28 @@ with
 
     Default value: ~t~
 
-- telega-company-telegram-emoji :: Same as ~telega-company-emoji~, but
-     uses Telegram cloud for the emojis completion.
+
+- telega-company-telegram-emoji :: Same as ~telega-company-emoji~,
+     but uses Telegram cloud for the emojis completion.
+
 
 - telega-company-username :: Complete user mentions via ~@<username>~
      syntax. Here is the screenshot, showing use of this backend:
      [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 
+
+- telega-company-hashtag :: Complete common hashtags via
+     ~#<hashtag>~ syntax.
+
+
 - telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
      syntax.  This backend does not complete if ~/<botcmd>~ syntax is
-     used in the middle of the chatbuf input, only if ~/<botcmd>~ starts
-     chatbuf input.
+     used in the middle of the chatbuf input, only if ~/<botcmd>~
+     starts chatbuf input.
 
-- telega-company-hashtag :: Complete common hashtags via ~#<hashtag>~
-     syntax.
+
+- telega-company-markdown-precode :: Complete language name for
+     code blocks via ~```~ syntax.
 
 =company-mode= setup might look like:
 #+begin_src elisp
@@ -2160,7 +2197,8 @@ with
     (set (make-local-variable 'company-backends)
          (append (list telega-emoji-company-backend
   		     'telega-company-username
-  		     'telega-company-hashtag)
+  		     'telega-company-hashtag
+  		     'telega-company-markdown-precode)
   	       (when (telega-chat-bot-p telega-chatbuf--chat)
   		 '(telega-company-botcmd))))
     (company-mode 1))
@@ -2596,8 +2634,21 @@ Enable it with ~(telega-notifications-mode 1)~ or at =telega= load time:
   (add-hook 'telega-load-hook 'telega-notifications-mode)
 #+end_src
 
-In order for message to trigger notification, few conditions should be
-satisfied.
+Message is triggered for messages matching:
+- User Option: ~telega-notifications-msg-temex~ 
+
+  Message temex to match messages that needs to be notified. 
+
+  Default value: ~(call telega-notifications-msg-notify-p)~
+
+You can use this option for custom notifications.  For example to
+trigger notification for messages containing "keyword" (in addition to
+default behaviour) you can set ~telega-notifications-msg-temex~ to
+~(or (call telega-notifications-msg-notify-p) (contains "keyword"))~
+
+By default notification triggers if
+~telega-notifications-msg-notify-p~ predicate returns non-nil.  It
+returns non-nil if next conditions are satisfied.
 
 Do *NOT* pop notification if:
 1. Me is not member of the group chat, see
@@ -2612,6 +2663,9 @@ Do *NOT* pop notification if:
 6. Message is currently observable in a chatbuf, i.e. chatbuf
    must be selected and focused in (not having
    ~telega-chatbuf--refresh-point~)
+
+To view recent notifications use
+~M-x telega-notifications-history RET~ command.
 
 See also [[#telega-alertel--notifications-using-alertel][Notifications using alert.el]]
 
@@ -2917,6 +2971,29 @@ Customizable options:
 
   Default value: ~nil~
 
+** telega-auto-translate-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-auto-translate-mode
+:END:
+
+Minor chatbuf mode to automatically translate messages in the chat
+to your native language.  Also translates chatbuf input from your
+native language to the chat's language.
+
+Customizable options:
+- User Option: ~telega-auto-translate-probe-language-codes~ 
+
+  List of language codes to probe.
+  Chat description is used to probe chat's language. 
+
+  Default value: ~nil~
+- User Option: ~telega-translate-to-language-by-default~ 
+
+  Default language code for messages translation.
+  If nil, then use language suggested by the server. 
+
+  Default value: ~nil~
+
 ** telega-root-auto-fill-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-root-auto-fill-mode
@@ -2988,8 +3065,9 @@ Will look like:
 [[https://zevlg.github.io/telega/telega-url-shorten.png]]
 
 Can be enabled globally in all chats matching
-~telega-url-shorten-mode-for~ (see below) [[#chat-filters][chat
-filter]] with ~(global-telega-url-shorten-mode 1)~ or by adding:
+~telega-url-shorten-mode-for~ [[#telega-match-expressions][chat
+temex]] (see below) with ~(global-telega-url-shorten-mode 1)~ or by
+adding:
 
 #+begin_src emacs-lisp
   (add-hook 'telega-load-hook 'global-telega-url-shorten-mode)
@@ -3315,16 +3393,6 @@ Customizable options:
   Block them even if a message has no links at all. 
 
   Default value: ~t~
-- User Option: ~telega-adblock-sponsored-messages-from~ 
-
-  Block sponsored messages originating from chat matching this Chat Filter.
-  WARN: Blocking sponsored messages is TOS violation, consider Telegram
-  subscription to disable sponsored messages.
-
-  By default we don't show sponsored message originating from chat we
-  are already member of. 
-
-  Default value: ~(or main archive)~
 - User Option: ~telega-adblock-block-msg-temex~ 
 
   Message's matching this temex will be ignored by adblock. 

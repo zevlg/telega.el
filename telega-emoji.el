@@ -391,7 +391,7 @@ Do not fetch custom emojis for ignored messages."
         :custom_emoji_id (plist-get sticker :custom_emoji_id)))
 
 (defun telega-emoji-status-list--gen-ins-callback (custom-action)
-  (let ((stickers-callback (telega-sticker-list--gen-ins-callback 'loading
+  (let ((stickers-callback (telega--gen-ins-continuation-callback 'loading
                              (lambda (stickers)
                                (telega-ins--sticker-list
                                    stickers :custom-action custom-action)))))
@@ -435,7 +435,7 @@ Do not fetch custom emojis for ignored messages."
     (cl-assert (eq (telega--tl-type (plist-get sset-info :sticker_type))
                    'stickerTypeCustomEmoji))
     (telega-ins (telega-stickerset-title sset-info 'raw) ":\n")
-    (let ((cb (telega-sticker-list--gen-ins-callback 'loading
+    (let ((cb (telega--gen-ins-continuation-callback 'loading
                 (lambda (stickers)
                   (telega-ins--sticker-list
                       stickers :custom-action custom-action)))))

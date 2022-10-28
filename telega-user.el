@@ -189,12 +189,13 @@ If AS-NUMBER is specified, return online status as number:
         (plist-put user :color colors)
         colors)))
 
-(defun telega-user--chats-in-common (with-user)
+(defun telega-user--chats-in-common (with-user &optional callback)
   "Return CHATS in common WITH-USER."
+  (declare (indent 1))
   (let ((gic-cnt (plist-get (telega--full-info with-user)
                             :group_in_common_count)))
     (unless (zerop gic-cnt)
-      (telega--getGroupsInCommon with-user))))
+      (telega--getGroupsInCommon with-user nil callback))))
 
 (defun telega-describe-user--inserter (user-id)
   "Inserter for the user info buffer."

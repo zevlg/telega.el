@@ -256,7 +256,7 @@ Use `telega-root-aux-inserters' to customize it.")
     ;;   {{{fundoc(telega-root-next-important, 2)}}}
     ;;
     ;;   Chat is important if matches ~telega-important-chat-temex~
-    ;;   [[#temex][temex]].
+    ;;   [[#telega-match-expressions][temex]].
     (define-key map (kbd "i") 'telega-root-next-important)
 
     ;;; ellit-org: rootbuf-fastnav-bindings
@@ -1614,10 +1614,11 @@ If `\\[universal-argument]' is given, then view missed calls only."
                 (let ((photo (read-file-name "Profile Photo: " nil nil t)))
                   (telega--setProfilePhoto photo))))
     (telega-ins "\n")
-    (telega-ins--user-profile-photos me-user
+    (telega-ins--user-profile-photos me-user nil
       (lambda ()
         (with-telega-root-view-ewoc "me" ewoc
           (ewoc-refresh ewoc))))
+    (telega-ins "\n")
 
     (telega-ins--labeled (concat (telega-i18n "lng_profile_bio") " ") nil
       (if-let ((bio (telega-tl-str (telega--full-info me-user) :bio)))

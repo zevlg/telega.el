@@ -392,7 +392,10 @@ Return filename of the generated icon."
                         :y (- h (/ fsz 8)))))
 
           (let ((image (telega-svg-image svg))
-                (svg-icon-file (telega-temp-name "appindicator-icon" ".svg")))
+                (svg-icon-file
+                 (expand-file-name
+                  (concat "appindicator-icon-" cached-label ".svg")
+                  telega-temp-dir)))
             (write-region (plist-get (cdr image) :data)
                           nil svg-icon-file nil 'quiet)
             ;; Cache it
@@ -565,13 +568,11 @@ Cancel downloading of the corresporting file."
   (if telega-autoplay-mode
       (progn
         (add-hook 'telega-chat-post-message-hook #'telega-autoplay-on-msg)
-        (add-hook 'telega-chat-goto-message-hook #'telega-autoplay-on-msg)
         (add-hook 'telega-msg-hover-in-hook #'telega-autoplay-on-msg)
         (add-hook 'telega-msg-hover-out-hook #'telega-autoplay-on-msg--hover-out))
 
     (remove-hook 'telega-msg-hover-out-hook #'telega-autoplay-on-msg--hover-out)
     (remove-hook 'telega-msg-hover-in-hook #'telega-autoplay-on-msg)
-    (remove-hook 'telega-chat-goto-message-hook #'telega-autoplay-on-msg)
     (remove-hook 'telega-chat-post-message-hook #'telega-autoplay-on-msg)))
 
 
@@ -902,8 +903,8 @@ Can be enabled only for content from editable messages."
             (let ((old-bufname (buffer-name))
                   (new-bufname (funcall telega-edit-file-buffer-name-function)))
               (unless (get-text-property 0 :telega-buffer-name old-bufname)
-                (setf (buffer-name)
-                      (propertize new-bufname :telega-buffer-name t)))))
+                (rename-buffer
+                 (propertize new-bufname :telega-buffer-name t)))))
           (setq mode-line-buffer-identification
                 (list (propertize
                        "%b"
@@ -1246,7 +1247,7 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
                     :after #'telega-active-locations--msg-deleted)
         (add-hook 'telega-chat-post-message-hook
                   #'telega-active-locations--msg-new)
-        (add-hook 'telega-chat-insert-message-hook
+        (add-hook 'telega-chatbuf-pre-msg-insert-hook
                   #'telega-active-locations--msg-new)
         (add-hook 'telega-chats-fetched-hook
                   #'telega-active-locations--fetch)
@@ -1263,7 +1264,7 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
                  #'telega-active-locations--check)
     (remove-hook 'telega-chat-post-message-hook
                  #'telega-active-locations--msg-new)
-    (remove-hook 'telega-chat-insert-message-hook
+    (remove-hook 'telega-chatbuf-pre-msg-insert-hook
                  #'telega-active-locations--msg-new)
     (remove-hook 'telega-chats-fetched-hook
                  #'telega-active-locations--fetch)
@@ -1487,6 +1488,191 @@ Recognize only if message is observable."
                  #'telega-recognize-voice--on-msg-new)
     (remove-hook 'telega-msg-hover-in-hook
                  #'telega-recognize-voice--on-msg-hover-in)))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-auto-translate-mode
+;;
+;; Minor chatbuf mode to automatically translate messages in the chat
+;; to your native language.  Also translates chatbuf input from your
+;; native language to the chat's language.
+;;
+;; Customizable options:
+;; - {{{user-option(telega-auto-translate-probe-language-codes, 2)}}}
+;; - {{{user-option(telega-translate-to-language-by-default, 2)}}}
+(defcustom telega-auto-translate-probe-language-codes nil
+  "List of language codes to probe.
+Chat description is used to probe chat's language."
+  :type 'list
+  :group 'telega-modes)
+
+(defun telega-auto-translate--chatbuf-translate-visible-messages ()
+  "Translate all visible messages in the chatbuf."
+  (cl-assert telega-translate-to-language-by-default)
+  (when-let ((window (get-buffer-window)))
+    (let* ((curr-msg (telega-msg-at (window-start window)))
+           (end-msg (telega-msg-at (window-end window)))
+           messages)
+      (while (not (eq curr-msg end-msg))
+        (setq messages (cons curr-msg messages))
+        (setq curr-msg (telega-chatbuf--next-msg curr-msg
+                         '(not (call telega-msg-internal-p)))))
+
+      ;; Translate 5 last messages
+      (dolist (msg (seq-take messages 5))
+        (telega-auto-translate--msg msg))
+      )))
+
+(defun telega-auto-translate--chatbuf-detect-language (language-codes)
+  "In the chatbuf detect and set its language.
+Chat description is used to detect the language."
+  (if-let* ((chat telega-chatbuf--chat)
+            (lang-code (car language-codes))
+            (chat-info (telega-chat--info telega-chatbuf--chat 'offline))
+            (full-info (telega--full-info chat-info 'offline))
+            (desc (or (telega-tl-str full-info :bio)
+                      (telega-tl-str full-info :description))))
+    (telega--translateText desc lang-code
+      :callback (lambda (reply)
+                  (let ((translated-text (telega-tl-str reply :text)))
+                    (with-telega-chatbuf chat
+                      (if (equal translated-text desc)
+                          (progn
+                            ;; NOTE: if text is the same, it means we
+                            ;; detected language
+                            (setq telega-chatbuf-language-code lang-code)
+                            (telega-chatbuf--prompt-update)
+                            (telega-auto-translate--chatbuf-translate-visible-messages))
+                        ;; Otherwise continue detecing language
+                        (telega-auto-translate--chatbuf-detect-language
+                         (cdr language-codes)))))))
+
+    ;; Set chat language by hand
+    (setq telega-chatbuf-language-code
+          (telega-completing-read-language-code
+           "Translate chat messages from: "))
+    (telega-chatbuf--prompt-update)
+    (telega-auto-translate--chatbuf-translate-visible-messages)
+    ))
+
+(defvar telega-auto-translate--pending-translations nil
+  "List of pending requests for translation.")
+(make-variable-buffer-local 'telega-auto-translate--pending-translations)
+
+(defun telega-auto-translate--chatbuf-del-pending (extra &optional cancel-p)
+  (setq telega-auto-translate--pending-translations
+        (delq extra telega-auto-translate--pending-translations))
+  (when cancel-p
+    (telega-server--callback-put extra 'ignore))
+  )
+
+(defun telega-auto-translate--chatbuf-ins-translation (text)
+  "Generate translation callback."
+  (telega--translateText text telega-chatbuf-language-code
+    :callback
+    (telega--gen-ins-continuation-callback
+        (propertize "Translating..." 'face 'shadow 'cursor-intangible t)
+      (lambda (reply)
+        (telega-auto-translate--chatbuf-del-pending (plist-get reply :@extra))
+        (telega-ins--with-props '(telega-translated t)
+          (telega-ins (if (telega--tl-error-p reply)
+                          text
+                        (telega-tl-str reply :text))))))))
+
+(defun telega-auto-translate--chatbuf-input-translate ()
+  "Translate and replace chatbuf's input.
+Return list of pending translations.
+Or nil if translation is not needed."
+  (when (and telega-auto-translate-mode
+             telega-chatbuf-language-code)
+    (let ((attaches (telega--split-by-text-prop
+                     (telega-chatbuf-input-string) 'telega-attach)))
+      (telega-chatbuf--input-delete)
+      (dolist (text attaches)
+        (if (or (get-text-property 0 'telega-attach text)
+                (get-text-property 0 'telega-translated text))
+            (insert text)
+
+          ;; Plain text, that needs to be translated
+          (setq telega-auto-translate--pending-translations
+                (cons
+                 (telega-auto-translate--chatbuf-ins-translation text)
+                 telega-auto-translate--pending-translations))))
+      telega-auto-translate--pending-translations)))
+
+(defun telega-auto-translate--chatbuf-input-send (origfun &rest args)
+  "Send chatbuf input translating text."
+  (when telega-auto-translate--pending-translations
+    (user-error "telega: still translating.. wait or cancel with `M-x telega-auto-translate-input-translate-cancel RET'"))
+  (unless (and telega-auto-translate-mode
+               (telega-auto-translate--chatbuf-input-translate))
+    (apply origfun args))
+  )
+
+(defun telega-auto-translate-input-translate-cancel ()
+  "Cancel translating chatbuf's input."
+  (interactive)
+  (let ((pending-extras telega-auto-translate--pending-translations))
+    (seq-doseq (extra pending-extras)
+      (telega-auto-translate--chatbuf-del-pending extra 'cancel))
+    (message "telega: canceled %d translations" (length pending-extras))))
+
+(defun telega-auto-translate--msg (msg)
+  (telega-msg-translate msg telega-translate-to-language-by-default 'quiet))
+
+(defun telega-auto-translate--on-msg-insert (msg)
+  "Translate observable message MSG after it has been inserted into chatbuf."
+  (when (telega-msg-observable-p msg)
+    (telega-auto-translate--msg msg)))
+
+(defun telega-auto-translate--on-msg-update (msg)
+  "Message's content has been updated, rerun translation."
+  (plist-put msg :telega-translated nil)
+  (telega-auto-translate--on-msg-insert msg))
+
+(defvar telega-auto-translate-mode-lighter
+  (concat " " (telega-symbol 'mode) "Translate")
+  "Lighter for the `telega-auto-translate-mode'.")
+
+(define-minor-mode telega-auto-translate-mode
+  "Minor mode to automatically translate chat messages."
+  :lighter telega-auto-translate-mode-lighter
+  (if telega-auto-translate-mode
+      (progn
+        (unless telega-translate-to-language-by-default
+          (setq telega-translate-to-language-by-default
+                (telega-completing-read-language-code
+                 "Translate chat messages/input to: "))
+          (telega-help-message 'translate-to-language
+              "Consider customizing `telega-translate-to-language-by-default'"))
+
+        (advice-add 'telega-chatbuf-input-send
+                    :around 'telega-auto-translate--chatbuf-input-send)
+        (add-hook 'telega-msg-hover-in-hook
+                  #'telega-auto-translate--msg nil 'local)
+        (add-hook 'telega-chatbuf-post-msg-insert-hook
+                  #'telega-auto-translate--on-msg-insert nil 'local)
+        (add-hook 'telega-chatbuf-pre-msg-update-hook
+                  #'telega-auto-translate--on-msg-update nil 'local)
+
+        ;; Try to detect chat's language code
+        (if (not telega-chatbuf-language-code)
+            (telega-auto-translate--chatbuf-detect-language
+             telega-auto-translate-probe-language-codes)
+          (telega-chatbuf--prompt-update)
+          (telega-auto-translate--chatbuf-translate-visible-messages))
+        )
+
+    (remove-hook 'telega-chatbuf-pre-msg-update-hook
+                 #'telega-auto-translate--on-msg-update 'local)
+    (remove-hook 'telega-chatbuf-post-msg-insert-hook
+                 #'telega-auto-translate--on-msg-insert 'local)
+    (remove-hook 'telega-msg-hover-in-hook
+                 #'telega-auto-translate--msg 'local)
+    (advice-remove 'telega-chatbuf-input-send
+                   'telega-auto-translate--chatbuf-input-send)
+    (telega-chatbuf--prompt-update)
+    ))
 
 (provide 'telega-modes)
 

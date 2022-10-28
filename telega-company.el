@@ -61,7 +61,14 @@ Matches only if CHAR does not apper in the middle of the word."
                   company-minimum-prefix-length)))))))
 
 
-;;; Emoji completion
+;;; ellit-org: company-backends
+;;
+;; - telega-company-emoji :: Complete emojis via ~:<emoji>:~
+;;   syntax. Completion is done using predefined set of emojis.
+;;
+;;   Customizable Options:
+;;   - {{{user-option(telega-emoji-fuzzy-match, 4)}}}
+
 (defun telega-company-grab-emoji ()
   (let ((cg (company-grab ":[^: _]+" nil
                           (- (point) telega-emoji-candidate-max-length))))
@@ -108,6 +115,10 @@ Matches only if CHAR does not apper in the middle of the word."
        (insert emoji)))
     ))
 
+;;; ellit-org: company-backends
+;;
+;; - telega-company-telegram-emoji :: Same as ~telega-company-emoji~,
+;;   but uses Telegram cloud for the emojis completion.
 (defun telega-company-telegram-emoji-gen-candidates (text)
   "Generate callback to asynchronously fetch emoji candidates for TEXT."
   ;; Replace `-' with spaces before the search, so one could use `:i-love-you'
@@ -143,7 +154,11 @@ Matches only if CHAR does not apper in the middle of the word."
     ))
 
 
-;;; Username completion for chat buffer
+;;; ellit-org: company-backends
+;;
+;; - telega-company-username :: Complete user mentions via ~@<username>~
+;;   syntax. Here is the screenshot, showing use of this backend:
+;;   [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 (defun telega-company-grab-username ()
   "Grab string starting with `@'."
   (telega-company-grab-single-char ?\@))
@@ -225,7 +240,10 @@ Matches only if CHAR does not apper in the middle of the word."
     ))
 
 
-;;; Hashtags completion for chatbuffer
+;;; ellit-org: company-backends
+;;
+;; - telega-company-hashtag :: Complete common hashtags via
+;;   ~#<hashtag>~ syntax.
 (defun telega-company-grab-hashtag ()
   "Grab string starting with `#'."
   (telega-company-grab-single-char ?\#))
@@ -250,7 +268,12 @@ Matches only if CHAR does not apper in the middle of the word."
     ))
 
 
-;;; Bot commands completion
+;;; ellit-org: company-backends
+;;
+;; - telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
+;;   syntax.  This backend does not complete if ~/<botcmd>~ syntax is
+;;   used in the middle of the chatbuf input, only if ~/<botcmd>~
+;;   starts chatbuf input.
 (defun telega-company-grab-botcmd ()
   "Return non-nil if chatbuf input starts bot command."
   (let ((cg (company-grab-line "/[^ ]*")))
@@ -272,7 +295,8 @@ Matches only if CHAR does not apper in the middle of the word."
   (let* ((info (telega-chat--info telega-chatbuf--chat))
          (full-info (telega--full-info info)))
     (if (telega-chatbuf-match-p '(type bot))
-        (telega-company--bot-commands-list (plist-get full-info :commands))
+        (telega-company--bot-commands-list
+         (telega--tl-get full-info :bot_info :commands))
       (apply #'nconc
              (mapcar (lambda (bot-commands)
                        (telega-company--bot-commands-list
@@ -295,6 +319,54 @@ Matches only if CHAR does not apper in the middle of the word."
      (all-completions arg (telega-company--bot-commands)))
     (annotation
      (get-text-property 0 'telega-annotation arg))
+    ))
+
+
+;;; ellit-org: company-backends
+;;
+;; - telega-company-markdown-precode :: Complete language name for
+;;   code blocks via ~```~ syntax.
+(defun telega-company-grab-markdown-precode ()
+  "Return non-nil if chatbuf input starts source block."
+  (when-let ((cg (company-grab "^```\\([^`]*\\)" 1)))
+    (cons cg company-minimum-prefix-length)))
+
+(defun telega-company--language-names ()
+  "Return list of all language names.
+Sort modes by usage of current Emacs session."
+  (let* ((all-buffers (buffer-list))
+         (modes
+          (seq-uniq (seq-filter #'symbolp (mapcar #'cdr auto-mode-alist))))
+         (indexed-modes
+          (mapcar (lambda (mode)
+                    (cons mode (seq-count
+                                (lambda (buffer)
+                                  (eq (buffer-local-value 'major-mode buffer)
+                                      mode))
+                                all-buffers)))
+                  modes))
+         (sorted-modes
+          (mapcar #'car (cl-sort indexed-modes #'> :key #'cdr))))
+    (delq nil (mapcar (lambda (mode)
+                        (let ((mode-name (symbol-name mode)))
+                          (when (string-suffix-p "-mode" mode-name)
+                            (substring mode-name 0 -5))))
+                      sorted-modes))))
+
+;;;###autoload
+(defun telega-company-markdown-precode (command &optional arg &rest ignored)
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'telega-company-markdown-precode))
+    (require-match 'never)
+    ;; Always match if line starts with "```"
+    (prefix (telega-company-grab-markdown-precode))
+    (sorted t)
+    (candidates
+     (all-completions arg (telega-company--language-names)))
+    (post-completion
+     (insert "\n")
+     (save-excursion (insert "\n```")))
     ))
 
 

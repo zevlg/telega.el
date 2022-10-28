@@ -256,6 +256,7 @@ FORCE is used for testing only, should not be used in real code."
          (chat-id (plist-get msg :chat_id))
          (chat (telega-chat-get chat-id)))
     (unless (and (not force) (telega-msg-seen-p msg chat))
+      (ring-insert telega--notification-messages-ring msg)
       (setq notify-args
             (append
              notify-args
@@ -291,40 +292,45 @@ FORCE is used for testing only, should not be used in real code."
                       telega-notifications--last-id)
       )))
 
+;;; ellit-org: notification-conditions
+;; Do *NOT* pop notification if:
+;;  0. Me is not member of the group chat, see
+;;     https://github.com/zevlg/telega.el/issues/224
+;;  1. Message is ignored by
+;;     [[#client-side-messages-ignoring][client side messages ignoring]]
+;;  2. Chat is muted and message does not contain unread mention or
+;;     mention notification is disabled for the chat
+;;  3. Message already has been read (see ~telega-msg-seen-p~)
+;;  4. Message is older than 1 min (to avoid popping up messages on
+;;     laptop wakeup)
+;;  5. Message is currently observable in a chatbuf, i.e. chatbuf
+;;     must be selected and focused in (not having
+;;     ~telega-chatbuf--refresh-point~)
+(defun telega-notifications-msg-notify-p (msg)
+  "Return non-nil if message MSG should pop-up notification."
+  (let ((chat (telega-msg-chat msg)))
+    (unless (or (not (telega-chat-match-p chat
+                       '(or (type private secret) me-is-member)))
+                (and (telega-chat-muted-p chat)
+                     (or (telega-chat-notification-setting
+                          chat :disable_mention_notifications)
+                         (not (plist-get msg :contains_unread_mention))))
+                (telega-msg-seen-p msg chat)
+                (and (not (with-telega-chatbuf chat
+                            telega-chatbuf--refresh-point))
+                     (telega-msg-observable-p msg chat)))
+      t)))
+
 (defun telega-notifications-chat-message (msg)
   "Function intended to be added to `telega-chat-post-message-hook'."
-  ;;; ellit-org: notification-conditions
-  ;; Do *NOT* pop notification if:
-  ;;  0. Me is not member of the group chat, see
-  ;;     https://github.com/zevlg/telega.el/issues/224
-  ;;  1. Message is ignored by
-  ;;     [[#client-side-messages-ignoring][client side messages ignoring]]
-  ;;  2. Chat is muted and message does not contain unread mention or
-  ;;     mention notification is disabled for the chat
-  ;;  3. Message already has been read (see ~telega-msg-seen-p~)
-  ;;  4. Message is older than 1 min (to avoid popping up messages on
-  ;;     laptop wakeup)
-  ;;  5. Message is currently observable in a chatbuf, i.e. chatbuf
-  ;;     must be selected and focused in (not having
-  ;;     ~telega-chatbuf--refresh-point~)
   (unless (or (telega-msg-match-p msg 'ignored)
               (> (- (telega-time-seconds) (plist-get msg :date)) 60))
-    (let ((chat (telega-msg-chat msg)))
-      (unless (or (not (telega-chat-match-p chat
-                         '(or (type private secret) me-is-member)))
-                  (and (telega-chat-muted-p chat)
-                       (or (telega-chat-notification-setting
-                            chat :disable_mention_notifications)
-                           (not (plist-get msg :contains_unread_mention))))
-                  (telega-msg-seen-p msg chat)
-                  (and (not (with-telega-chatbuf chat
-                              telega-chatbuf--refresh-point))
-                       (telega-msg-observable-p msg chat)))
-        (if (> telega-notifications-delay 0)
-            (run-with-timer telega-notifications-delay nil
-                            'telega-notifications--chat-msg0 msg)
-          ;; No delay
-          (telega-notifications--chat-msg0 msg))))))
+    (when (telega-msg-match-p msg telega-notifications-msg-temex)
+      (if (> telega-notifications-delay 0)
+          (run-with-timer telega-notifications-delay nil
+                          'telega-notifications--chat-msg0 msg)
+        ;; No delay
+        (telega-notifications--chat-msg0 msg)))))
 
 (defun telega-notifications-incoming-call (call)
   "Function intended to be added to `telega-call-incoming-hook'."
@@ -352,6 +358,19 @@ FORCE is used for testing only, should not be used in real code."
         (add-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call))
     (remove-hook 'telega-chat-post-message-hook 'telega-notifications-chat-message)
     (remove-hook 'telega-call-incoming-hook 'telega-notifications-incoming-call)))
+
+(defun telega-notifications-history ()
+  "Show notifications history, most recent notification goes first."
+  (interactive)
+  (with-help-window "*Telegram Notification Messages*"
+    (set-buffer standard-output)
+    (let ((inhibit-read-only t))
+      (dolist (msg (ring-elements telega--notification-messages-ring))
+        (telega-button--insert 'telega-msg msg
+          :inserter #'telega-ins--message-with-chat-header
+          :action #'telega-msg-goto-highlight)
+        (telega-ins "\n"))
+      (goto-char (point-min)))))
 
 (provide 'telega-notifications)
 

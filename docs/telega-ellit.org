@@ -63,7 +63,7 @@ docker]] for details.
 - =GNU Guix= _(optional, if using the Guix installation method)_
 - =libappindicator3= (optional, to show =telega= icon/info in system
   tray)
-- =dwebp= (optional, to display [[#stickers][Stickers]])
+- =dwebp= (optional, to display [[#stickers--animations][Stickers]])
 - =tgs2png= (optional, for [[#animated-stickers][Animated Stickers]]), sources are at
   https://github.com/zevlg/tgs2png
 
@@ -632,19 +632,24 @@ Markup syntax table:
 | /italic text/    | ~__italic text__~                | ~/italic text/~    | ~_italic text_~                  |
 | _underline text_ | ~__underline text__~             | ~_underline text_~ | **UNSUPPORTED**                  |
 | +strike through+ | ~~strike through~~               | ~+strike through+~ | **UNSUPPORTED**                  |
+|                  | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~    | **UNSUPPORTED**                  |
 | ~inlined code~   | ~`inlined code`~                 | ~~inlined code~~   | ~`inlined code`~                 |
-| =pre text=       | **UNSUPPORTED**                  | ~=pre text=~       | **UNSUPPORTED**                  |
+| =pre text=       | ~```pre text```~                 | ~=pre text=~       | **UNSUPPORTED**                  |
 | [[http://www.url][text]]             | ~[text](http://www.url)~         | **NOT YET**        | ~[text](http://www.url)~         |
 | [[http://t.me/user][name]]             | ~[name](tg://user?id=<USER-ID>)~ | **NOT YET**        | ~[name](tg://user?id=<USER-ID>)~ |
 
-There is also "markdown2" (and "markdown1") syntax to insert multiline
-code blocks of specified languge:
+There is also "markdown1" syntax to insert multiline code blocks of
+specified languge:
 #+begin_example
 ```<language-name>
 first line of multiline preformatted code
 second line
 last line```
 #+end_example
+
+"markdown2" backquotes syntax to insert multiline code blocks is
+controlled by:
+- {{{user-option(telega-markdown2-backquotes-as-precode, 2)}}}
 
 Org syntax for code blocks is **NOT YET** supported:
 #+begin_example
@@ -801,26 +806,7 @@ with
 
 =telega= provides few company backends, such as:
 
-- telega-company-emoji :: Complete emojis via ~:<emoji>:~
-  syntax. Completion is done using predefined set of emojis.
-
-  Customizable Options:
-  - {{{user-option(telega-emoji-fuzzy-match, 4)}}}
-
-- telega-company-telegram-emoji :: Same as ~telega-company-emoji~, but
-  uses Telegram cloud for the emojis completion.
-
-- telega-company-username :: Complete user mentions via ~@<username>~
-  syntax. Here is the screenshot, showing use of this backend:
-  [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
-
-- telega-company-botcmd :: Complete bot commands via ~/<botcmd>~
-  syntax.  This backend does not complete if ~/<botcmd>~ syntax is
-  used in the middle of the chatbuf input, only if ~/<botcmd>~ starts
-  chatbuf input.
-
-- telega-company-hashtag :: Complete common hashtags via ~#<hashtag>~
-  syntax.
+#+ELLIT-INCLUDE: ../telega-company.el :label company-backends
 
 =company-mode= setup might look like:
 #+begin_src elisp
@@ -830,7 +816,8 @@ with
   (set (make-local-variable 'company-backends)
        (append (list telega-emoji-company-backend
                      'telega-company-username
-                     'telega-company-hashtag)
+                     'telega-company-hashtag
+                     'telega-company-markdown-precode)
                (when (telega-chat-bot-p telega-chatbuf--chat)
                  '(telega-company-botcmd))))
   (company-mode 1))
@@ -1125,10 +1112,22 @@ map]].  To setup multiple accounts use:
 
 #+ELLIT-INCLUDE: ../telega-notifications.el :label commentary
 
-In order for message to trigger notification, few conditions should be
-satisfied.
+Message is triggered for messages matching:
+- {{{user-option(telega-notifications-msg-temex, 2)}}}
+
+You can use this option for custom notifications.  For example to
+trigger notification for messages containing "keyword" (in addition to
+default behaviour) you can set ~telega-notifications-msg-temex~ to
+~(or (call telega-notifications-msg-notify-p) (contains "keyword"))~
+
+By default notification triggers if
+~telega-notifications-msg-notify-p~ predicate returns non-nil.  It
+returns non-nil if next conditions are satisfied.
 
 #+ELLIT-INCLUDE: ../telega-notifications.el :label notification-conditions
+
+To view recent notifications use
+~M-x telega-notifications-history RET~ command.
 
 See also [[#telega-alertel--notifications-using-alertel][Notifications using alert.el]]
 

@@ -543,7 +543,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
         (setq telega--help-win-param sset-id)
 
         (telega-stickerset-get sset-id nil
-          (telega-sticker-list--gen-ins-callback 'loading
+          (telega--gen-ins-continuation-callback 'loading
             sticker-list-ins
             sset-id))))))
 
@@ -552,18 +552,6 @@ SSET can be either `sticker' or `stickerSetInfo'."
   (interactive (list (telega-sticker-at (point))))
   (telega-describe-stickerset
    (telega-stickerset-get (plist-get sticker :set_id))))
-
-(defun telega-sticker-list--gen-ins-callback (show-loading-p
-                                              &optional insert-func
-                                              for-param)
-  "Generate callback to be used as callback.
-Insert list of stickers at MARKER position.
-Functions to be used with:
-`telega--getStickers', `telega--getFavoriteStickers',
-`telega--getRecentStickers' or `telega--searchStickerSets'.
-If FOR-PARAM is specified, then insert only if
-`telega--help-win-param' is eq to FOR-PARAM."
-  (telega--gen-ins-continuation-callback show-loading-p insert-func for-param))
 
 (defun telega-sticker-choose-favorite-or-recent (for-chat)
   "Choose recent sticker FOR-CHAT."
@@ -576,11 +564,13 @@ If FOR-PARAM is specified, then insert only if
       ;; NOTE: use callbacks for async stickers loading
       (telega-ins "Favorite:\n")
       (telega--getFavoriteStickers
-        (telega-sticker-list--gen-ins-callback 'loading
+        (telega--gen-ins-continuation-callback 'loading
           #'telega-ins--sticker-list))
+      (telega-ins "\n")
+
       (telega-ins "\nRecent:\n")
       (telega--getRecentStickers nil
-        (telega-sticker-list--gen-ins-callback 'loading
+        (telega--gen-ins-continuation-callback 'loading
           #'telega-ins--sticker-list)))))
 
 (defun telega-sticker-choose-emoji (emoji for-chat &optional custom-emojis-only)
@@ -597,7 +587,7 @@ stickers for the EMOJI."
       (telega--getStickers emoji
         :chat for-chat
         :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
-        :callback (telega-sticker-list--gen-ins-callback 'loading
+        :callback (telega--gen-ins-continuation-callback 'loading
                     (lambda (stickers &rest args)
                       (apply #'telega-ins--sticker-list
                              (mapcar #'telega-custom-emoji-from-sticker
@@ -607,12 +597,12 @@ stickers for the EMOJI."
       (unless custom-emojis-only
         (telega-ins "\nInstalled Stickers:\n")
         (telega--getStickers emoji
-          :callback (telega-sticker-list--gen-ins-callback 'loading
+          :callback (telega--gen-ins-continuation-callback 'loading
                       #'telega-ins--sticker-list))
 
         (telega-ins "\nPublic Stickers:\n")
         (telega--searchStickers emoji nil
-          (telega-sticker-list--gen-ins-callback 'loading
+          (telega--gen-ins-continuation-callback 'loading
             #'telega-ins--sticker-list)))
     )))
 
@@ -844,7 +834,9 @@ Install from https://github.com/zevlg/tgs2png"))
 
           (stickerFormatWebm
            (telega-ffplay-to-png (telega--tl-get file :local :path)
-               "-pix_fmt rgba -vf scale=256:256 -an"
+               (format "-pix_fmt rgba -vf scale=-2:%d -an"
+                       (telega-chars-xheight
+                        (car (telega-sticker-size sticker))))
              (list #'telega-sticker--animate-callback sticker for-msg)
              ;; NOTE: We use "libvpx-vp9" to decode WEBM with alpha
              ;; channel

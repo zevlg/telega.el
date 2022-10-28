@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2022-10-12 Ср 04:27 -->
+<!-- 2022-10-28 Пт 02:50 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.61)</title>
+<title>Telega Manual (v0.8.72)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.61)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.72)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -127,6 +127,7 @@
 <li><a href="#telega-my-location-mode">telega-my-location-mode</a></li>
 <li><a href="#telega-active-locations-mode">telega-active-locations-mode</a></li>
 <li><a href="#telega-recognize-voice-message-mode">telega-recognize-voice-message-mode</a></li>
+<li><a href="#telega-auto-translate-mode">telega-auto-translate-mode</a></li>
 <li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
@@ -248,7 +249,7 @@ docker</a> for details.
 <li><code>GNU Guix</code> <span class="underline">(optional, if using the Guix installation method)</span></li>
 <li><code>libappindicator3</code> (optional, to show <code>telega</code> icon/info in system
 tray)</li>
-<li><code>dwebp</code> (optional, to display [BROKEN LINK: stickers])</li>
+<li><code>dwebp</code> (optional, to display <a href="#stickers--animations">Stickers</a>)</li>
 <li><code>tgs2png</code> (optional, for <a href="#animated-stickers">Animated Stickers</a>), sources are at
 <a href="https://github.com/zevlg/tgs2png">https://github.com/zevlg/tgs2png</a></li>
 </ul>
@@ -782,7 +783,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgb0b9786">
+<pre class="example" id="org26620db">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -800,7 +801,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org5c8328c">
+<pre class="example" id="org1fc1179">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -892,7 +893,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org68820d3">
+<pre class="example" id="org34a7fa3">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -930,7 +931,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org64e34a6">
+<pre class="example" id="org2daaa78">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1124,7 +1125,7 @@ Move point to the next important chat.
 
 <p>
 Chat is important if matches <code>telega-important-chat-temex</code>
-[BROKEN LINK: temex].
+<a href="#telega-match-expressions">temex</a>.
 </p></dd>
 
 <dt><kbd>M-g @</kbd>, <kbd>M-g m</kbd> (<code>telega-root-next-mention</code>)</dt><dd>Move point to the next chat with mention.</dd>
@@ -1473,7 +1474,7 @@ Every chat has a type.  Type is one of:
 <dt>is-public</dt><dd>Matches if chat is a public chat.
 Chat is considered public if it has a username.</dd>
 
-<dt>(unread [ <code>N</code> ]), <kbd>/ u</kbd> (<code>telega-filter-by-unread</code>)</dt><dd>Matches if chat has least <code>N</code> unread messages.
+<dt>(unread [ <code>N</code> ]), <kbd>/ u</kbd> (<code>telega-filter-by-unread</code>)</dt><dd>Matches if chat has at least <code>N</code> unread messages.
 By default <code>N</code> is 1.
 Also matches chats marked as unread.</dd>
 
@@ -1655,6 +1656,8 @@ Matching ignores case.</dd>
 <dt>(chat <code>CHAT-TEMEX</code>)</dt><dd>Matches if message's chat matches <code>CHAT-TEMEX</code>.</dd>
 
 <dt>(sender <code>SENDER-TEMEX</code>)</dt><dd>Matches if message's sender matches <code>SENDER-TEMEX</code>.</dd>
+
+<dt>is-deleted</dt><dd>Matches deleted message.</dd>
 </dl>
 </div>
 </div>
@@ -1668,6 +1671,8 @@ Use <code>telega-user-match-p</code> to match a user.
 
 <dl class="org-dl">
 <dt>is-deleted</dt><dd>Matches if user account is deleted.</dd>
+
+<dt>is-bot</dt><dd>Matches if user is a bot.</dd>
 
 <dt>(status <code>STATUS-LIST</code>&#x2026;)</dt><dd><p>
 Matches if user status is one of <code>STATUS-LIST</code>.
@@ -1817,6 +1822,14 @@ Default value:
       (<span style="font-weight: bold;">and</span> telega-use-images
        (telega-chatbuf-match-p 'can-send-or-post))
     (telega-chatbuf-prompt-chat-avatar)))
+ (<span style="font-weight: bold;">:eval</span>
+  (<span style="font-weight: bold;">when</span>
+      (<span style="font-weight: bold;">and</span> telega-auto-translate-mode telega-chatbuf-language-code telega-translate-to-language-by-default
+       (not
+        (equal telega-chatbuf-language-code telega-translate-to-language-by-default)))
+    (propertize
+     (format <span style="font-style: italic;">"[%s&#8594;%s]"</span> telega-translate-to-language-by-default telega-chatbuf-language-code)
+     'face 'shadow)))
  <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
 </pre>
 </div></li>
@@ -1859,7 +1872,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org76d1e13">
+<pre class="example" id="org40c48f9">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2255,7 +2268,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0bc10d4">
+<pre class="example" id="orga86b7e9">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2398,6 +2411,13 @@ Markup syntax table:
 </tr>
 
 <tr>
+<td class="org-left">&#xa0;</td>
+<td class="org-left"><code>¦¦spoiler¦¦</code></td>
+<td class="org-left"><code>¦¦spoiler¦¦</code></td>
+<td class="org-left"><b><b>UNSUPPORTED</b></b></td>
+</tr>
+
+<tr>
 <td class="org-left"><code>inlined code</code></td>
 <td class="org-left"><code>`inlined code`</code></td>
 <td class="org-left"><code>~inlined code~</code></td>
@@ -2406,7 +2426,7 @@ Markup syntax table:
 
 <tr>
 <td class="org-left"><code>pre text</code></td>
-<td class="org-left"><b><b>UNSUPPORTED</b></b></td>
+<td class="org-left"><code>```pre text```</code></td>
 <td class="org-left"><code>=pre text=</code></td>
 <td class="org-left"><b><b>UNSUPPORTED</b></b></td>
 </tr>
@@ -2428,10 +2448,10 @@ Markup syntax table:
 </table>
 
 <p>
-There is also "markdown2" (and "markdown1") syntax to insert multiline
-code blocks of specified languge:
+There is also "markdown1" syntax to insert multiline code blocks of
+specified languge:
 </p>
-<pre class="example" id="org1285400">
+<pre class="example" id="org890df9b">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2439,9 +2459,31 @@ last line```
 </pre>
 
 <p>
+"markdown2" backquotes syntax to insert multiline code blocks is
+controlled by:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-markdown2-backquotes-as-precode</code> 
+</p>
+
+<p>
+Non-nil for markdown1 style syntax for ```.
+Non-nil activates syntax:
+  ```&lt;language-name&gt; (not displayed)
+  code code
+  ``` 
+</p>
+
+<p>
+Default value: <code>known</code>
+</p></li>
+</ul>
+
+<p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org895a0f1">
+<pre class="example" id="orge7a5ab7">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2665,7 +2707,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgdaef589">
+<pre class="example" id="orgff6c40b">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2724,7 +2766,7 @@ your own caption.</li>
 <div class="outline-text-3" id="text-deleting-messages">
 <p>
 To delete a message, put cursor under the message you want to delete and press
-<kbd>DEL</kbd>, <kbd>k</kbd>, <kbd>d</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;delete&gt;</kbd> (<code>telega-msg-delete-marked-or-at-point</code>).
+<kbd>DEL</kbd>, <kbd>d</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;delete&gt;</kbd> (<code>telega-msg-delete-marked-or-at-point</code>).
 </p>
 
 <p>
@@ -2839,6 +2881,7 @@ with
 <code>telega</code> provides few company backends, such as:
 </p>
 
+
 <dl class="org-dl">
 <dt>telega-company-emoji</dt><dd><p>
 Complete emojis via <code>:&lt;emoji&gt;:</code>
@@ -2864,21 +2907,39 @@ enabled it will match also <code>:flag-jo:</code> and <code>:black-jocker:</code
 Default value: <code>t</code>
 </p></li>
 </ul></dd>
+</dl>
 
-<dt>telega-company-telegram-emoji</dt><dd>Same as <code>telega-company-emoji</code>, but
-uses Telegram cloud for the emojis completion.</dd>
 
+<dl class="org-dl">
+<dt>telega-company-telegram-emoji</dt><dd>Same as <code>telega-company-emoji</code>,
+but uses Telegram cloud for the emojis completion.</dd>
+</dl>
+
+
+<dl class="org-dl">
 <dt>telega-company-username</dt><dd>Complete user mentions via <code>@&lt;username&gt;</code>
 syntax. Here is the screenshot, showing use of this backend:
 <img src="https://zevlg.github.io/telega/completing-usernames.jpg" alt="completing-usernames.jpg" /></dd>
+</dl>
 
+
+<dl class="org-dl">
+<dt>telega-company-hashtag</dt><dd>Complete common hashtags via
+<code>#&lt;hashtag&gt;</code> syntax.</dd>
+</dl>
+
+
+<dl class="org-dl">
 <dt>telega-company-botcmd</dt><dd>Complete bot commands via <code>/&lt;botcmd&gt;</code>
 syntax.  This backend does not complete if <code>/&lt;botcmd&gt;</code> syntax is
-used in the middle of the chatbuf input, only if <code>/&lt;botcmd&gt;</code> starts
-chatbuf input.</dd>
+used in the middle of the chatbuf input, only if <code>/&lt;botcmd&gt;</code>
+starts chatbuf input.</dd>
+</dl>
 
-<dt>telega-company-hashtag</dt><dd>Complete common hashtags via <code>#&lt;hashtag&gt;</code>
-syntax.</dd>
+
+<dl class="org-dl">
+<dt>telega-company-markdown-precode</dt><dd>Complete language name for
+code blocks via <code>```</code> syntax.</dd>
 </dl>
 
 <p>
@@ -2891,7 +2952,8 @@ syntax.</dd>
   (set (make-local-variable 'company-backends)
        (append (list telega-emoji-company-backend
                    'telega-company-username
-                   'telega-company-hashtag)
+                   'telega-company-hashtag
+                   'telega-company-markdown-precode)
              (<span style="font-weight: bold;">when</span> (telega-chat-bot-p telega-chatbuf--chat)
                '(telega-company-botcmd))))
   (company-mode 1))
@@ -3238,7 +3300,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgb7bf7de">
+<pre class="example" id="orgad1076f">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3548,8 +3610,33 @@ Enable it with <code>(telega-notifications-mode 1)</code> or at <code>telega</co
 </div>
 
 <p>
-In order for message to trigger notification, few conditions should be
-satisfied.
+Message is triggered for messages matching:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-notifications-msg-temex</code> 
+</p>
+
+<p>
+Message temex to match messages that needs to be notified. 
+</p>
+
+<p>
+Default value: <code>(call telega-notifications-msg-notify-p)</code>
+</p></li>
+</ul>
+
+<p>
+You can use this option for custom notifications.  For example to
+trigger notification for messages containing "keyword" (in addition to
+default behaviour) you can set <code>telega-notifications-msg-temex</code> to
+<code>(or (call telega-notifications-msg-notify-p) (contains "keyword"))</code>
+</p>
+
+<p>
+By default notification triggers if
+<code>telega-notifications-msg-notify-p</code> predicate returns non-nil.  It
+returns non-nil if next conditions are satisfied.
 </p>
 
 <p>
@@ -3569,6 +3656,11 @@ laptop wakeup)</li>
 must be selected and focused in (not having
 <code>telega-chatbuf--refresh-point</code>)</li>
 </ol>
+
+<p>
+To view recent notifications use
+<code>M-x telega-notifications-history RET</code> command.
+</p>
 
 <p>
 See also <a href="#telega-alertel--notifications-using-alertel">Notifications using alert.el</a>
@@ -4040,6 +4132,47 @@ Default value: <code>nil</code>
 </div>
 </div>
 
+<div id="outline-container-telega-auto-translate-mode" class="outline-3">
+<h3 id="telega-auto-translate-mode"><a class="self-link" href="#telega-auto-translate-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-auto-translate-mode</h3>
+<div class="outline-text-3" id="text-telega-auto-translate-mode">
+<p>
+Minor chatbuf mode to automatically translate messages in the chat
+to your native language.  Also translates chatbuf input from your
+native language to the chat's language.
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-auto-translate-probe-language-codes</code> 
+</p>
+
+<p>
+List of language codes to probe.
+Chat description is used to probe chat's language. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+<li><p>
+User Option: <code>telega-translate-to-language-by-default</code> 
+</p>
+
+<p>
+Default language code for messages translation.
+If nil, then use language suggested by the server. 
+</p>
+
+<p>
+Default value: <code>nil</code>
+</p></li>
+</ul>
+</div>
+</div>
+
 <div id="outline-container-telega-root-auto-fill-mode" class="outline-3">
 <h3 id="telega-root-auto-fill-mode"><a class="self-link" href="#telega-root-auto-fill-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-root-auto-fill-mode</h3>
 <div class="outline-text-3" id="text-telega-root-auto-fill-mode">
@@ -4117,7 +4250,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgf1c6110">
+<pre class="example" id="org3fe68af">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4131,7 +4264,9 @@ Will look like:
 
 <p>
 Can be enabled globally in all chats matching
-<code>telega-url-shorten-mode-for</code> (see below) [BROKEN LINK: chat-filters] with <code>(global-telega-url-shorten-mode 1)</code> or by adding:
+<code>telega-url-shorten-mode-for</code> <a href="#telega-match-expressions">chat
+temex</a> (see below) with <code>(global-telega-url-shorten-mode 1)</code> or by
+adding:
 </p>
 
 <div class="org-src-container">
@@ -4677,24 +4812,6 @@ Block them even if a message has no links at all.
 
 <p>
 Default value: <code>t</code>
-</p></li>
-<li><p>
-User Option: <code>telega-adblock-sponsored-messages-from</code> 
-</p>
-
-<p>
-Block sponsored messages originating from chat matching this Chat Filter.
-WARN: Blocking sponsored messages is TOS violation, consider Telegram
-subscription to disable sponsored messages.
-</p>
-
-<p>
-By default we don't show sponsored message originating from chat we
-are already member of. 
-</p>
-
-<p>
-Default value: <code>(or main archive)</code>
 </p></li>
 <li><p>
 User Option: <code>telega-adblock-block-msg-temex</code> 

@@ -88,7 +88,7 @@ this chat filter."
 (defcustom telega-mnz-edit-code-block 'query
   "How to edit message containing mnz code blocks."
   :type '(choice (const :tag "Edit whole message" nil)
-                 (const :tag "Ask user what to edit" 'query)
+                 (const :tag "Ask user what to edit" query)
                  (const :tag "Always edit code block at point" t))
   :group 'telega-modes)
 

@@ -41,6 +41,7 @@
 (declare-function telega-chatbuf--prompt-update "telega-chat")
 
 (declare-function telega-webpage--instant-view "telega-webpage" (url &optional sitename instant-view))
+(declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
 
 (defun telega-tme--media-timestamp-callback (media-timestamp-str)
@@ -168,12 +169,9 @@ PARAMS are additional params."
                   (telega-chat--pop-to-buffer chat)))))
         ))
 
-(defun telega-tme-open-group (group)
-  "Join the GROUP."
-  (let* ((url (concat (or (plist-get telega--options :t_me_url)
-                          "https://t.me/")
-                      "joinchat/" group))
-         (link-check (let ((tl-obj (telega--checkChatInviteLink url)))
+(defun telega-tme-open-invite-link (url)
+  "Join the GROUP by invitation link specified by URL."
+  (let* ((link-check (let ((tl-obj (telega--checkChatInviteLink url)))
                        (when (telega--tl-error-p tl-obj)
                          (error "telega: %s" (telega-tl-str tl-obj :error)))
                        tl-obj))
@@ -256,7 +254,10 @@ Return non-nil, meaning URL has been handled."
              (setq query (telega-plist-del query :domain))
              (apply #'telega-tme-open-username username query)))
           ((string= path "join")
-           (telega-tme-open-group (plist-get query :invite)))
+           (let ((invite-link (concat (or (plist-get telega--options :t_me_url)
+                                          "https://t.me/")
+                                      "joinchat/" (plist-get query :invite))))
+             (telega-tme-open-invite-link invite-link)))
           ((string= path "addstickers")
            (telega-tme-open-stickerset (plist-get query :set)))
           ((string= path "addemoji")
@@ -384,10 +385,7 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
      )
 
     (internalLinkTypeChatInvite
-     (let* ((invite-link (plist-get tdlib-link :invite_link))
-            (invite-link-info (telega--checkChatInviteLink invite-link)))
-       ;; TODO
-       ))
+     (telega-tme-open-invite-link (plist-get tdlib-link :invite_link)))
 
     (internalLinkTypeStickerSet
      (telega-tme-open-stickerset (telega-tl-str tdlib-link :sticker_set_name)))

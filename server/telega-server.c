@@ -94,7 +94,8 @@ usage(char* prog)
 #endif /* WITH_APPINDICATOR */
         printf("\n");
         printf("usage: %s [-jp] [-L SIZE] [-l FILE] [-v LVL] [-h]\n", prog);
-        printf("\t-L SIZE    Log file size in bytes\n");
+        printf("\t-L SIZE    Log file size in bytes (default=%zu)\n",
+               logfile_size);
         printf("\t-l FILE    Log to FILE (default=stderr)\n");
         printf("\t-v LVL     Verbosity level (default=5)\n");
         printf("\t-j         Parse json from stdin and exit\n");

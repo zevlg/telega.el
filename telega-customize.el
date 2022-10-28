@@ -110,7 +110,7 @@ Implies `telega-use-chat-info-database' set to non-nil."
   "Non-nil to automatically delete old files in background."
   :type 'boolean
   :group 'telega)
-  
+
 (defcustom telega-proxies nil
   "*List of proxies.
 Format is:
@@ -277,6 +277,21 @@ Done by recentering point in the chatbuf."
   "Action value when poping to chatbuffer.
 See docstring for `display-buffer' for the values."
   :type 'cons
+  :group 'telega)
+
+(defcustom telega-translate-to-language-by-default nil
+  "Default language code for messages translation.
+If nil, then use language suggested by the server."
+  :package-version '(telega . "0.8.72")
+  :type 'string
+  :group 'telega)
+
+(defcustom telega-translate-replace-content nil
+  "Non-nil to replace message's content with the translated text.
+Original message's content can be seen with
+`\\<telega-chat-mode-map>\\[telega-describe-message]' command."
+  :package-version '(telega . "0.8.72")
+  :type 'boolean
   :group 'telega)
 
 
@@ -879,6 +894,11 @@ See https://github.com/zevlg/telega.el/issues/171"
   :type 'number
   :group 'telega)
 
+(defcustom telega-focus-out-debounce-internal 0.5
+  "Interval in seconds to debounce focus loose events."
+  :type 'number
+  :group 'telega)
+
 
 (defgroup telega-filter nil
   "Customize Chats Filters."
@@ -1128,6 +1148,15 @@ enabled."
     (:eval (when (and telega-use-images
                       (telega-chatbuf-match-p 'can-send-or-post))
              (telega-chatbuf-prompt-chat-avatar)))
+    (:eval (when (and telega-auto-translate-mode
+                      telega-chatbuf-language-code
+                      telega-translate-to-language-by-default
+                      (not (equal telega-chatbuf-language-code
+                                  telega-translate-to-language-by-default)))
+             (propertize (format "[%s→%s]"
+                                 telega-translate-to-language-by-default
+                                 telega-chatbuf-language-code)
+                         'face 'shadow)))
     ">>> ")
   "*Modeline compatible format for the chatbuf input prompt.
 You can use `telega-chatbuf-editing-msg' or
@@ -1292,6 +1321,18 @@ Having this non-nil \"speedups\" uploading, it is like files uploads instantly."
   :type 'list
   :group 'telega-chat)
 
+(defcustom telega-markdown2-backquotes-as-precode 'known
+  "Non-nil for markdown1 style syntax for ```.
+Non-nil activates syntax:
+  ```<language-name> (not displayed)
+  code code
+  ```"
+  :type '(choice (const :tag "Disabled" nil)
+                 (const :tag "Always" t)
+                 (const :tag "Always" always)
+                 (const :tag "Only for languages known by Emacs" known))
+  :group 'telega-chat)
+
 ;; See https://t.me/emacs_telega/11981
 (defcustom telega-chat-group-messages-timespan 120
   "*Maximum timespan between two messages in order to group them.
@@ -1448,11 +1489,24 @@ Used by `telega-ins--msg-notification'."
 car of each element is one of: `private', `group' or `channel'.
 rest is notification settings.
 For example:
-  '((private :mute_for 0 :show_preview t)
-    (group :mute_for 599695961 :show_preview t)
-    (channel :mute_for 540465803 :show_preview t))"
+  ((private :mute_for 0 :show_preview t)
+   (group :mute_for 599695961 :show_preview t)
+   (channel :mute_for 540465803 :show_preview t))"
   :package-version '(telega . "0.7.2")
   :type 'cons
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-msg-temex
+  '(call telega-notifications-msg-notify-p)
+  "Message temex to match messages that needs to be notified."
+  :package-version '(telega . "0.8.72")
+  :type 'list
+  :group 'telega-notifications)
+
+(defcustom telega-notifications-history-ring-size 30
+  "Size of notifications history for `telega-notifications-history' command."
+  :package-version '(telega . "0.8.72")
+  :type 'integer
   :group 'telega-notifications)
 
 
@@ -2454,14 +2508,6 @@ Called with one argument - chat."
   :type 'hook
   :group 'telega-hooks)
 
-(defcustom telega-chat-insert-message-hook nil
-  "Hook called before inserting message into chatbuf.
-Called with single argument - MESSAGE.
-This hook can be used to ignore message, see
-https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
-  :type 'hook
-  :group 'telega-hooks)
-
 (defcustom telega-chat-pre-message-hook nil
   "Hook called uppon new message arrival, before inserting into chatbuffer.
 Called with single argument - MESSAGE.
@@ -2476,12 +2522,6 @@ Always called, even if corresponding chat is closed at the moment.
 Called even for messages ignored by client side filtering.
 To check message is filtered by client side filtering use
 `ignored' Message Temex."
-  :type 'hook
-  :group 'telega-hooks)
-
-(defcustom telega-chat-goto-message-hook nil
-  "Hook called when user goes to a message.
-Called with a single argument - MESSAGE."
   :type 'hook
   :group 'telega-hooks)
 
@@ -2546,6 +2586,37 @@ Called with a single argument - MESSAGE."
   "Hook called when message is hovered out.
 Called with a single argument - MESSAGE."
   :package-version '(telega . "0.8.50")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chatbuf-pre-msg-insert-hook nil
+  "Hook called before inserting message into a chatbuf.
+Called with a single argument - MESSAGE.
+This hook can be used to ignore message, see
+https://github.com/zevlg/telega.el#configuring-client-side-messages-filtering."
+  :package-version '(telega . "0.8.72")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chatbuf-post-msg-insert-hook nil
+  "Hook called in a chatbuf after message has been inserted.
+Called with a single argument - message.
+For outgoing message hook is called only when message is successfully sent."
+  :package-version '(telega . "0.8.72")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chatbuf-pre-msg-update-hook nil
+  "Hook called in the chatbuf before message's content has been updated.
+Called with a single argument - message."
+  :package-version '(telega . "0.8.72")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chatbuf-post-msg-update-hook nil
+  "Hook called in the chatbuf after message's content has been updated.
+Called with a single argument - message."
+  :package-version '(telega . "0.8.72")
   :type 'hook
   :group 'telega-hooks)
 

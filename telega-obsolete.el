@@ -171,6 +171,13 @@
                            nil
                            "0.8.61")
 
+(telega-obsolete--variable 'telega-chat-insert-message-hook
+                           'telega-chatbuf-pre-msg-insert-hook
+                           "0.8.72")
+(telega-obsolete--variable 'telega-chat-goto-message-hook
+                           'telega-msg-hover-in-hook
+                           "0.8.72")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

@@ -182,7 +182,7 @@ returns precise value."
 
 (defun telega-current-column ()
   "Same as `current-column', but take into account width of the characters."
-  (string-width (buffer-substring (point-at-bol) (point))))
+  (string-width (buffer-substring (line-beginning-position) (point))))
 
 (defun telega-canonicalize-number (value from-value)
   "Canonicalize number VALUE.
@@ -548,13 +548,35 @@ Specify non-nil VIDEO-P if generating preview for video."
                       :base-uri (expand-file-name "dummy" base-dir))
     ))
 
-;; TODO:
-(defun telega-video--create-svg (filename data-p width height)
-  "Create image for the VIDEO."
-  (let* ((base-dir (if data-p
-                       (telega-directory-base-uri telega-temp-dir)
-                     (file-name-directory filename))))
-    ;; TODO: create svg
+(defun telega-video--create-svg (filename width height &optional data-p img-type)
+  "Create image for the VIDEO.
+With circle and triangle in the center."
+  (let* ((img-type (or img-type (telega-image-supported-file-p filename)))
+         (svg (telega-svg-create width height))
+         (play-size (/ height 8.0))
+         (xoff (/ play-size 8.0)))
+    (telega-svg-embed svg (if data-p
+                              filename
+                            (list (file-name-nondirectory filename)
+                                  (file-name-directory filename)))
+                      (format "image/%S" img-type) data-p
+                      :x 0 :y 0
+                      :width width :height height)
+    (svg-circle svg (/ width 2) (/ height 2) play-size
+                :fill "black"
+                :opacity "0.85")
+    (svg-polygon svg (list (cons (+ xoff (/ (- width play-size) 2))
+                                 (/ (- height play-size) 2))
+                           (cons (+ xoff (/ (- width play-size) 2))
+                                 (/ (+ height play-size) 2))
+                           (cons (+ xoff (/ (+ width play-size) 2))
+                                 (/ height 2)))
+                 :fill "white"
+                 :opacity "0.85")
+    (telega-svg-image svg :scale 1.0
+               :base-uri (if data-p "" filename)
+               :width width :height height
+               :ascent 'center)
     ))
 
 (defun telega-time-seconds (&optional as-is)
@@ -677,6 +699,16 @@ See `puny-decode-domain' for details."
        (puny-decode-domain (match-string 1 url))))
    url nil 'literal 1))
 
+(defun telega--spoiler-sensor-func (_window oldpos dir)
+  "Sensor function to show/hide spoilers."
+  (when-let* ((pos (if (eq dir 'entered) (point) oldpos))
+              (msg (telega-msg-at pos))
+              (ent-type (get-text-property pos :tl-entity-type)))
+    (when (eq 'textEntityTypeSpoiler (telega--tl-type ent-type))
+      (plist-put ent-type :telega-show-spoiler (eq dir 'entered))
+      (let ((cursor-sensor-inhibit t))
+        (telega-msg-redisplay msg)))))
+
 (defun telega--entity-to-properties (entity text)
   "Convert telegram ENTITY to emacs text properties to apply to TEXT."
   (let ((ent-type (plist-get entity :type)))
@@ -737,7 +769,21 @@ See `puny-decode-domain' for details."
                          (plist-get ent-type :media_timestamp)))
               'face 'telega-link))
        (textEntityTypeSpoiler
-        '(face telega-entity-type-spoiler))
+        (nconc (list 'cursor-sensor-functions '(telega--spoiler-sensor-func))
+               (unless (plist-get ent-type :telega-show-spoiler)
+                 (list 'telega-display-by 'spoiler
+                       'telega-display
+                       (with-temp-buffer
+                         (insert text)
+                         (translate-region (point-min) (point-max)
+                                           telega-spoiler-translation-table)
+                         (propertize (buffer-string)
+                                     'face 'telega-entity-type-spoiler))))
+               ;; To make `telega-msg-copy-text' keep spoilers being
+               ;; not quite visible
+               (when telega-inhibit-telega-display-by
+                 '(face telega-entity-type-spoiler))
+               ))
        (textEntityTypeCustomEmoji
         (when telega-use-images
           (when-let ((sticker (gethash (plist-get ent-type :custom_emoji_id)
@@ -880,8 +926,16 @@ Return nil if STR is not emphasised by org mode."
               (telega-entity-type-code
                '(:@type "textEntityTypeCode"))
               (telega-entity-type-strikethrough
-               '(:@type "textEntityTypeStrikethrough")))))
-      (telega-fmt-text (substring-no-properties str 1 -1) entity-type))))
+               '(:@type "textEntityTypeStrikethrough"))
+              (telega-entity-type-spoiler
+               '(:@type "textEntityTypeSpoiler"))))
+           (emphasis-size
+            (if (eq (telega--tl-type entity-type) 'textEntityTypeSpoiler)
+                2                       ; length of "||"
+              1)))
+      (telega-fmt-text
+       (substring-no-properties str emphasis-size (- emphasis-size))
+       entity-type))))
 
 (defun telega-markup-org--begin-src-fmt (_str)
   "Format org mode src block specified by STR to formattedText.
@@ -911,6 +965,13 @@ Return nil if STR does not specify an org mode link."
          (with-temp-buffer
            (save-excursion
              (insert str))
+           ;; Mark spoilers (||spoiler text||) with special
+           ;; `org-emphasis' property
+           (save-excursion
+             (while (re-search-forward "||[^|]+||" nil t)
+               (add-text-properties (match-beginning 0) (match-end 0)
+                                    '(face (telega-entity-type-spoiler)
+                                           org-emphasis t))))
            (let ((org-hide-emphasis-markers nil)
                  (org-emphasis-alist '(("*" telega-entity-type-bold)
                                        ("/" telega-entity-type-italic)
@@ -957,8 +1018,40 @@ Return nil if STR does not specify an org mode link."
           :version 1))))
 
 (defun telega-markup-markdown2-fmt (str)
-  (telega-fmt-text-desurrogate
-   (telega--parseMarkdown (telega-fmt-text str))))
+  (let ((fmt-text (telega--parseMarkdown (telega-fmt-text str)))
+        (offset-shift 0))
+    ;; Apply `telega-markdown2-backquotes-as-precode' logic
+    (when telega-markdown2-backquotes-as-precode
+      ;; Changing `textEntityTypePre' to `textEntityTypePreCode'
+      ;; modifies also text of the entity, so we shift entities by
+      ;; `offset-shift' to keep correct offset values.
+      (seq-doseq (ent (plist-get fmt-text :entities))
+        (when-let* ((ent-type (plist-get ent :type))
+                    (ent-len (plist-get ent :length))
+                    (beg (cl-incf (plist-get ent :offset) offset-shift))
+                    (end (+ beg ent-len))
+                    (pre-p (eq 'textEntityTypePre (telega--tl-type ent-type)))
+                    (text (plist-get fmt-text :text))
+                    (part (substring text beg end))
+                    (lines (split-string part "\n"))
+                    (lang-name (when (> (length lines) 1)
+                                 (car lines))))
+          (when (or (memq telega-markdown2-backquotes-as-precode '(t always))
+                    (and (eq telega-markdown2-backquotes-as-precode 'known)
+                         (fboundp (intern (concat lang-name "-mode")))))
+            ;; Do entity transformation
+            (let* ((lang-len (+ (length lang-name) 1)) ;count \n
+                   (new-len (- ent-len lang-len)))
+              (plist-put ent :type (list :@type "textEntityTypePreCode"
+                                         :language lang-name))
+              (plist-put ent :length new-len)
+              (cl-decf offset-shift lang-len)
+
+              (plist-put fmt-text :text
+                         (concat (substring text 0 beg)
+                                 (substring text (+ beg lang-len))))
+              )))))
+    (telega-fmt-text-desurrogate fmt-text)))
 
 (defun telega-string-split-by-tl-entity-type (text default-markup-func)
   "Split TEXT by `:tl-entity-type'.
@@ -2306,6 +2399,17 @@ not signal an error and just return nil."
            (telega-time-seconds))
       duration)))
 
+(defun telega-completing-read-language-code (prompt)
+  "A two-letter ISO 639-1 language code."
+  (let* ((candidates-alist
+          (mapcar (lambda (spec)
+                    (cons (concat (car spec) " (" (cdr spec) ")")
+                          (cdr spec)))
+                  telega-translate-languages-alist))
+         (lang (funcall telega-completing-read-function prompt
+                        (mapcar #'car candidates-alist) nil t)))
+    (cdr (assoc lang candidates-alist))))
+
 (defun telega--gen-ins-continuation-callback (show-loading-p
                                               &optional insert-func
                                               for-param)
@@ -2314,10 +2418,13 @@ Passes all arguments directly to the INSERT-FUNC.
 If FOR-PARAM is specified, then insert only if
 `telega--help-win-param' is eq to FOR-PARAM."
   (declare (indent 1))
-  (let ((marker (point-marker)))
+  (let ((marker (point-marker))
+        (marker-len 0))
     (when show-loading-p
-      (telega-ins-i18n "lng_profile_loading")
-      (telega-ins "\n"))
+      (if (stringp show-loading-p)
+          (telega-ins show-loading-p)
+        (telega-ins-i18n "lng_profile_loading"))
+      (setq marker-len (- (point) marker)))
 
     (lambda (&rest insert-args)
       (let ((marker-buf (marker-buffer marker)))
@@ -2325,12 +2432,41 @@ If FOR-PARAM is specified, then insert only if
           (with-current-buffer marker-buf
             (when (or (null for-param)
                       (eq telega--help-win-param for-param))
-              (telega-save-excursion
                 (let ((inhibit-read-only t))
-                  (goto-char marker)
                   (when show-loading-p
-                    (delete-region marker (point-at-eol)))
-                  (apply insert-func insert-args))))))))))
+                    (delete-region marker (+ marker marker-len)))
+                  (telega-save-excursion
+                    (goto-char marker)
+                    (apply insert-func insert-args))))))))))
+
+(defun telega-translate-region (beg end &optional choose-language-p inplace-p)
+  "Translate region using Telegram API.
+Use `\\[universal-argument]' to specify language to translate to."
+  (interactive "r\nP")
+  (let ((saved-position (when inplace-p (copy-marker (point) t)))
+        (text (buffer-substring-no-properties beg end))
+        (lang-code (if (or choose-language-p
+                           (not telega-translate-to-language-by-default))
+                       (telega-completing-read-language-code "Translate to: ")
+                     telega-translate-to-language-by-default)))
+    (telega--translateText text lang-code
+      :callback (lambda (reply)
+                  (if inplace-p
+                      (with-current-buffer (marker-buffer saved-position)
+                        (goto-char end)
+                        (insert (telega-tl-str reply :text))
+                        (goto-char saved-position)
+                        (delete-region beg end))
+                    (with-help-window "*Telegram Translation*"
+                      (insert (telega-tl-str reply :text))))
+                  (message "telega: Translating...DONE")))
+    (message "telega: Translating...")
+    ))
+
+(defun telega-translate-region-inplace (beg end &optional choose-language-p)
+  "Translate region and replace region with the translated text."
+  (interactive "r\nP")
+  (telega-translate-region beg end choose-language-p 'inplace))
 
 (provide 'telega-util)
 

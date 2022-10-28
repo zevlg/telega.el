@@ -263,7 +263,7 @@ Chat is considered public if it has a username."
 ;; - (unread [ ~N~ ]), {{{where-is(telega-filter-by-unread,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(chat-unread, 2)}}}
 (define-telega-matcher chat-unread (chat &optional n)
-  "Matches if chat has least N unread messages.
+  "Matches if chat has at least N unread messages.
 By default N is 1.
 Also matches chats marked as unread."
   (or (>= (plist-get chat :unread_count) (or n 1))
@@ -860,9 +860,7 @@ function."
 (define-telega-matcher msg-contains (msg regexp)
   "Matches if message's text or caption contains REGEXP.
 Matching ignores case."
-  (when-let* ((content (plist-get msg :content))
-              (msg-text (or (telega-tl-str content :text)
-                            (telega-tl-str content :caption))))
+  (when-let ((msg-text (telega-msg-content-text msg)))
     (let ((case-fold-search t))
       (string-match-p regexp msg-text))))
 
@@ -879,6 +877,13 @@ Matching ignores case."
 (define-telega-matcher msg-sender (msg sender-temex)
   "Matches if message's sender matches SENDER-TEMEX."
   (telega-sender-match-p (telega-msg-sender msg) sender-temex))
+
+;;; ellit-org: msg-temex
+;; - is-deleted ::
+;;   {{{temexdoc(msg-is-deleted, 2)}}}
+(define-telega-matcher msg-is-deleted (msg)
+  "Matches deleted message."
+  (plist-get msg :telega-is-deleted-message))
 
 
 ;;; ellit-org: sender-temex

@@ -40,7 +40,6 @@
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
 ;; - {{{user-option(telega-adblock-forwarded-messages, 2)}}}
-;; - {{{user-option(telega-adblock-sponsored-messages-from, 2)}}}
 ;; - {{{user-option(telega-adblock-block-msg-temex, 2)}}}
 ;; - {{{user-option(telega-adblock-allow-msg-temex, 2)}}}
 
@@ -70,16 +69,6 @@
 (defcustom telega-adblock-forwarded-messages t
   "Non-nil to block messages forwarded from other channels.
 Block them even if a message has no links at all."
-  :type 'boolean
-  :group 'telega-adblock)
-
-(defcustom telega-adblock-sponsored-messages-from '(or main archive)
-  "Block sponsored messages originating from chat matching this Chat Filter.
-WARN: Blocking sponsored messages is TOS violation, consider Telegram
-subscription to disable sponsored messages.
-
-By default we don't show sponsored message originating from chat we
-are already member of."
   :type 'boolean
   :group 'telega-adblock)
 
@@ -274,20 +263,6 @@ for chats with last message blocked by adblock."
         telega-adblock-chat-order-if-last-message-ignored)
     (apply orig-fun chat args)))
 
-(defun telega-adblock--ins-sponsored-message (orig-fun chat)
-  "Advice for `telega-ins--chat-sponsored-message' ORIG-FUN."
-  (unless (and telega-adblock-sponsored-messages-from
-               (telega-chat-match-p chat telega-adblock-for)
-               (when-let* ((sponsored-msg
-                            (plist-get chat :telega-sponsored-message))
-                           (sponsored-chat
-                            (telega-chat-get
-                             (plist-get sponsored-msg :sponsor_chat_id)
-                             'offline)))
-                 (telega-chat-match-p sponsored-chat
-                   telega-adblock-sponsored-messages-from)))
-    (funcall orig-fun chat)))
-
 ;;;###autoload
 (define-minor-mode telega-adblock-mode
   "Global mode to block ads for `telega-adblock-for' chats."
@@ -296,14 +271,10 @@ for chats with last message blocked by adblock."
       (progn
         (add-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)
         (advice-add 'telega-chat-order
-                    :around #'telega-adblock--chat-order-if-last-msg-ignored)
-        (advice-add 'telega-ins--chat-sponsored-message
-                    :around #'telega-adblock--ins-sponsored-message))
+                    :around #'telega-adblock--chat-order-if-last-msg-ignored))
 
     (advice-remove 'telega-chat-order
                    #'telega-adblock--chat-order-if-last-msg-ignored)
-    (advice-remove 'telega-ins--chat-sponsored-message
-                   #'telega-adblock--ins-sponsored-message)
     (remove-hook 'telega-msg-ignore-predicates #'telega-adblock-msg-ignore-p)))
 
 (provide 'telega-adblock)

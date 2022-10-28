@@ -592,6 +592,9 @@ To simplify client side messages filtering.
 Predicates runs in ~telega-chat-pre-message-hook~ and
 ~telega-chat-insert-message-hook~
 
+NOTE: In telega 0.8.72 ~telega-chat-insert-message-hook~ hook has been
+renamed into ~telega-chatbuf-pre-msg-insert-hook~.
+
 ** DONE Make use of ~:progressive_sizes~ in photo sizes
 CLOSED: [2021-08-03 Вт 11:34]
 

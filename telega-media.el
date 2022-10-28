@@ -743,7 +743,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
                             :clip-path "url(#clip)"))
 
       ;; Draw initials
-      (let ((fsz (/ ch 2))
+      (let ((font-size (/ ch 2))
             (colors (telega-msg-sender-color sender)))
         (svg-gradient svg "cgrad" 'linear
                       (list (cons 0 (telega-color-name-as-hex-2digits
@@ -752,13 +752,13 @@ CHEIGHT specifies avatar height in chars, default is 2."
                                       (or (nth 0 colors) "gray25")))))
         (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
         (svg-text svg (substring name 0 1)
-                  :font-size (/ ch 2)
+                  :font-size font-size
                   :font-weight "bold"
                   :fill "white"
                   :font-family "monospace"
                   ;; XXX insane X/Y calculation
-                  :x (- (/ svg-xw 2) (/ fsz 3))
-                  :y (+ (/ fsz 3) (/ cfull 2)))))
+                  :x (- (/ svg-xw 2) (/ font-size 3))
+                  :y (+ (/ font-size 3) (/ cfull 2)))))
 
     ;; XXX: Apply additional function, used by `telega-patrons-mode'
     ;; Also used to outline currently speaking users in voice chats
