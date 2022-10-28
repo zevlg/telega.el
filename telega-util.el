@@ -2285,7 +2285,7 @@ Binds current symbol to SYM-BIND."
         (if (stringp telega-use-docker)
             telega-use-docker
           "docker")
-        (format " run --privileged -i -v %s:%s%s"
+        (format " run --rm --privileged -i -v %s:%s%s"
                 telega-directory telega-directory
                 (if selinux-p ":z" ""))
         (when telega-docker--cidfile
