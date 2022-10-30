@@ -1088,6 +1088,7 @@
  (":pisces:" . "♓")
  (":pizza:" . "🍕")
  (":place-of-worship:" . "🛐")
+ (":planet:" . "🪐")
  (":play-pause:" . "⏯")
  (":point-down:" . "👇")
  (":point-left:" . "👈")
