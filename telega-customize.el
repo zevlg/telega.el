@@ -334,6 +334,14 @@ If nil, autogenerate the command according to all telega docker settings.
   :type '(or nil string)
   :group 'telega-docker)
 
+(defcustom telega-docker-run-arguments nil
+  "Additional arguments just after \"run\" command of the docker.
+For podman setup you might want to use \"--userns=keep-id\" as value
+for the `telega-docker-run-arguments'."
+  :package-version '(telega . "0.8.75")
+  :type '(or nil string)
+  :group 'telega-docker)
+
 
 (defgroup telega-emoji nil
   "Customisation for telega emojis."
