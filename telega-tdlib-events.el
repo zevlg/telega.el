@@ -897,7 +897,7 @@ messages."
       (callStateDiscarded
        (let ((discad (plist-get state :reason))
              (user (telega-user-get (plist-get call :user_id))))
-         (message "Call %s discaded: %s" (telega-user--name user)
+         (message "Call %s discarded: %s" (telega-user--name user)
                   (substring (plist-get discad :@type) 17))))
       )
 
