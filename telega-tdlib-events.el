@@ -350,7 +350,7 @@ DIRTINESS specifies additional CHAT dirtiness."
     ;; NOTE: `:last_message' is unset when gap is created in the chat
     ;; This case is handled in the `telega-chatbuf--last-msg-loaded-p'
     ;; See https://github.com/tdlib/td/issues/896
-    ;; 
+    ;;
     ;; Gap can be also created if last message in the chat is deleted.
     ;; TDLib might take some time to update chat's last message.
     (telega-chatbuf--history-state-delete :newer-loaded)
@@ -524,7 +524,7 @@ NOTE: we store the number as custom chat property, to use it later."
       (with-telega-chatbuf chat
         (telega-chatbuf--footer-update)))
     ))
-  
+
 (defun telega--on-updateGroupCallParticipant (event)
   (let ((group-call-id (plist-get event :group_call_id))
         (call-user (plist-get event :participant)))
@@ -593,12 +593,20 @@ NOTE: we store the number as custom chat property, to use it later."
     ;; `telega-msg-run-ignore-predicates' once again when this message
     ;; is inserted into chatbuf
     (if (telega-msg-run-ignore-predicates new-msg 'last-msg)
-        ;; NOTE: In case ignored message contains mention, we mark all
-        ;; chat mentions as read if there is no other mentions.
-        ;; See https://github.com/zevlg/telega.el/issues/314
-        (when (and (plist-get new-msg :contains_unread_mention)
-                   (eq 1 (plist-get chat :unread_mention_count)))
-          (telega--readAllChatMentions chat))
+        (progn
+          ;; NOTE: In case ignored message contains mention, we mark
+          ;; all chat mentions as read if there is no other mentions.
+          ;; See https://github.com/zevlg/telega.el/issues/314
+          (when (and (plist-get new-msg :contains_unread_mention)
+                     (eq 1 (plist-get chat :unread_mention_count)))
+            (telega--readAllChatMentions chat))
+          ;; NOTE: If all messages in the chat are read and ignored
+          ;; message arives, automatically read it
+          ;; See https://github.com/zevlg/telega.el/issues/381
+          (when (<= (plist-get (plist-get chat :last_message) :id)
+                    (plist-get chat :last_read_inbox_message_id))
+            (telega--viewMessages chat (list new-msg) 'force)))
+
       (plist-put new-msg :ignored-p nil))
 
     (run-hook-with-args 'telega-chat-pre-message-hook new-msg)
