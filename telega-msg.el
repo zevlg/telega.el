@@ -157,7 +157,9 @@
     ;; on list of marked messages
     (define-key map (kbd "m") 'telega-msg-mark-toggle)
     (define-key map (kbd "n") 'telega-button-forward)
+    (define-key map (kbd "<tab>") 'telega-button-forward)
     (define-key map (kbd "p") 'telega-button-backward)
+    (define-key map (kbd "<backtab>") 'telega-button-backward)
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "t") 'telega-msg-translate)
 
@@ -1772,7 +1774,6 @@ be added."
              (lambda (reaction-type)
                (cl-assert (eq major-mode 'help-mode))
                (quit-window 'kill-buffer)
-               (message "BIG: %S" big-p)
                (telega--addMessageReaction msg reaction-type big-p
                                            'update-recent-reactions))))
         (with-telega-help-win "*Telegram Custom Reaction*"
