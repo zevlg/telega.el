@@ -56,6 +56,9 @@ JSON_TO_PLIST_TESTS = TESTS + [
     (True, b'"\u2764\ufe0f"', '#("\\u2764\\ufe0f" 0 2 (telega-emoji-p t telega-display "\\u2764\\ufe0f"))'),
     (True, b'"\u2764"', '#("\\u2764" 0 1 (telega-emoji-p t telega-display "\\u2764"))'),
 
+    # Heat on fire
+    (True, b'"hello there \u2764\ufe0f\u200d\ud83d\udd25"', '#("hello there \\u2764\\ufe0f\\u200d\\ud83d\\udd25" 12 17 (telega-emoji-p t telega-display "\\u2764\\ufe0f\\u200d\\U0001f525"))'),
+
     # Treat <digit>⃣ as emoji as in official client
     (True, b'"3\u20e3\u20e30\u20e30\u20e30\u20e3"', '#("3\\u20e3\\u20e30\\u20e30\\u20e30\\u20e3" 0 2 (telega-emoji-p t telega-display "3\\u20e3") 3 5 (telega-emoji-p t telega-display "0\\u20e3") 5 7 (telega-emoji-p t telega-display "0\\u20e3") 7 9 (telega-emoji-p t telega-display "0\\u20e3"))')
 

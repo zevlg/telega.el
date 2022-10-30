@@ -1671,12 +1671,25 @@ struct emoji_trie zwj1[] = {{0x1f468, false, zwj2},
 {0x1f441, false, zwj1318},
 {0, true, NULL}};
 
+/* For heart-on-fire emoji */
+struct emoji_trie heart_on_fire_0[] = {
+        {0x1f525, true, NULL},
+        {0, true, NULL}};
+
+struct emoji_trie heart_on_fire_1[] = {
+        {0x200d, false, heart_on_fire_0},
+        {0, true, NULL}};
+
+struct emoji_trie heart_fe0f_or_on_fire[] = {
+        {0xfe0f, true, heart_on_fire_1},
+        {0, true, NULL}};
+
 /*
  * NOTE: Chars treated as emojis, but not in the emojis specification
  * See https://t.me/tdlibchat/42441
  */
 struct emoji_trie emoji_exceptions[] = {
-        {0x2764, true, fe0f2},  /* ❤ */
+        {0x2764, true, heart_fe0f_or_on_fire},  /* ❤ */
         {0, true, NULL}
 };
 
