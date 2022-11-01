@@ -895,10 +895,10 @@ messages."
                   (telega-user--name user) (plist-get err :message))))
 
       (callStateDiscarded
-       (let ((discad (plist-get state :reason))
+       (let ((discard (plist-get state :reason))
              (user (telega-user-get (plist-get call :user_id))))
          (message "Call %s discarded: %s" (telega-user--name user)
-                  (substring (plist-get discad :@type) 17))))
+                  (substring (plist-get discard :@type) 17))))
       )
 
     ;; Delete call from the list, if call is ended
