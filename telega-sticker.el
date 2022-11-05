@@ -143,7 +143,9 @@ with one argument - stickerset."
 
 (defun telega-stickerset-installed-p (sset)
   "Return non-nil if sticker set SSET is installed."
-  (member (plist-get sset :id) telega--stickersets-installed-ids))
+  (or (member (plist-get sset :id) telega--stickersets-installed-ids)
+      (cl-find (plist-get sset :id) telega--stickersets-custom-emojis
+               :key (telega--tl-prop :id) :test #'equal)))
 
 (defun telega-sticker--dice-get (dice-value &optional locally-p callback)
   "Return sticker for the DICE-VALUE.

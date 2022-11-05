@@ -603,9 +603,10 @@ NOTE: we store the number as custom chat property, to use it later."
           ;; NOTE: If all messages in the chat are read and ignored
           ;; message arives, automatically read it
           ;; See https://github.com/zevlg/telega.el/issues/381
-          (when (<= (plist-get (plist-get chat :last_message) :id)
-                    (plist-get chat :last_read_inbox_message_id))
-            (telega--viewMessages chat (list new-msg) 'force)))
+          (when-let ((last-message (plist-get chat :last_message)))
+            (when (<= (plist-get last-message :id)
+                      (plist-get chat :last_read_inbox_message_id))
+            (telega--viewMessages chat (list new-msg) 'force))))
 
       (plist-put new-msg :ignored-p nil))
 
