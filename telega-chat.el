@@ -493,16 +493,16 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
           (with-telega-chatbuf chat
             (telega-chatbuf--modeline-update)))))))
 
-(defun telega-chatbuf--sponsored-message-fetch ()
-  "Asynchronously fetch sponsored message for the chatbuf."
+(defun telega-chatbuf--sponsored-messages-fetch ()
+  "Asynchronously fetch sponsored messages for the chatbuf."
   (let* ((chat telega-chatbuf--chat)
-         (tsm-orig (plist-get chat :telega-sponsored-message)))
-    (plist-put chat :telega-sponsored-message nil)
+         (tsm-orig (plist-get chat :telega-sponsored-messages)))
+    (plist-put chat :telega-sponsored-messages nil)
     (when (telega-chat-match-p chat '(type channel))
-      (telega--getChatSponsoredMessage telega-chatbuf--chat
-        (lambda (message)
-          (plist-put chat :telega-sponsored-message message)
-          (unless (equal tsm-orig message)
+      (telega--getChatSponsoredMessages telega-chatbuf--chat
+        (lambda (reply)
+          (plist-put chat :telega-sponsored-messages reply)
+          (unless (equal tsm-orig reply)
             (with-telega-chatbuf chat
               (telega-chatbuf--footer-update))))))))
 
@@ -1586,7 +1586,13 @@ Possibly view some messages at point."
     (telega-ins--as-string
      (when compact-view-p
        (telega-ins "\n"))
-     (telega-ins--chat-sponsored-message chat)
+
+     ;; Sponsored messages
+     ;; TODO: support for `:messages_between' property of sponsored messages
+     (when-let ((sponsored-messages (plist-get chat :telega-sponsored-messages)))
+       (seq-doseq (sponsored-msg (plist-get sponsored-messages :messages))
+         (telega-ins--chat-sponsored-message chat sponsored-msg)))
+
      (telega-ins--with-props '(read-only t rear-nonsticky t front-sticky nil)
        ;; Chat action part
        (telega-ins (telega-symbol fill-symbol))
@@ -1625,7 +1631,10 @@ Possibly view some messages at point."
          (telega-ins " ")
          (telega-ins--with-attrs (list :max telega-chat-fill-column
                                        :align 'left :elide t)
-           (telega-ins "Thread: ")
+           (telega-ins (if (telega-msg-match-p thread-msg 'is-topic)
+                           (telega-i18n "lng_forum_topic_title")
+                         "Thread")
+                       ": ")
            (telega-ins--content-one-line thread-msg))
          (telega-ins "\n"))
 
@@ -1963,20 +1972,21 @@ Recover previous active action after BODY execution."
 
     ;; NOTE: If all chatbuf messages are read, then mark sponsored
     ;; message as viewed as well
-    (when-let ((sponsored-message
-                (plist-get telega-chatbuf--chat :telega-sponsored-message))
+    (when-let ((sponsored-messages
+                (plist-get telega-chatbuf--chat :telega-sponsored-messages))
                (sponsored-views
                 (or (plist-get telega-chatbuf--chat :telega-sponsored-views) 0)))
       (when (and (telega-chatbuf--last-msg-loaded-p)
                  (pos-visible-in-window-p
                   (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
         (when (zerop sponsored-views)
-          (telega--viewSponsoredMessage telega-chatbuf--chat sponsored-message))
+          (seq-doseq (sponsored-msg (plist-get sponsored-messages :messages))
+            (telega--viewSponsoredMessage telega-chatbuf--chat sponsored-msg)))
 
         (plist-put telega-chatbuf--chat :telega-sponsored-views
                    (1+ sponsored-views))
         (when (> sponsored-views 0)
-          (plist-put telega-chatbuf--chat :telega-sponsored-message nil))))
+          (plist-put telega-chatbuf--chat :telega-sponsored-messages nil))))
     ))
 
 (defun telega-chatbuf--post-command ()
@@ -2279,7 +2289,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
           ;; Asynchronously fetch some chat info
           (telega-chatbuf--admins-fetch)
           (telega-chatbuf--pinned-messages-fetch)
-          (telega-chatbuf--sponsored-message-fetch)
+          (telega-chatbuf--sponsored-messages-fetch)
           (unless (zerop (telega--tl-get chat :video_chat :group_call_id))
             (telega-chatbuf--video-chat-fetch))
           (unless (zerop (plist-get chat :reply_markup_message_id))
@@ -4191,7 +4201,7 @@ Return non-nil if input has single emoji."
   "Interactively attach a custom emoji."
   (interactive)
   (telega-custom-emoji-choose #'telega-chatbuf-custom-emoji-insert))
-  
+
 (defun telega-chatbuf-attach-sticker (fav-or-recent-p)
   "Attach a sticker.
 If `\\[universal-argument]' is given, then attach recent or
@@ -4715,11 +4725,8 @@ then forward message copy without caption."
                            (when-let ((msg-at-point (telega-msg-at (point))))
                              (list msg-at-point)))))
     ;; NOTE: ExcludeEvery
-    (unless (seq-every-p (lambda (msg) (plist-get msg :can_be_saved)) messages)
-      (user-error "telega: %s"
-                  (telega-i18n (if (telega-chat-channel-p telega-chatbuf--chat)
-                                   "lng_error_noforwards_channel"
-                                 "lng_error_noforwards_group"))))
+    (unless (seq-every-p (telega--tl-prop :can_be_forwarded) messages)
+      (user-error "telega: Forwarding is not allowed"))
 
     (let ((chat (telega-completing-read-chat
                  (concat (telega-symbol 'forward) "Forward"

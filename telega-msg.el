@@ -312,20 +312,11 @@ optional OFFLINE-P, non-nil OFFLINE-P means no request to the
 telega-server has been made."
   (declare (indent 2))
   ;; - Search in the messages cache
-  ;; - [DON'T] Search in chatbuf messages
+  ;; - [DON'T] Search in chatbuf messages, because message could be
+  ;;           offloaded from the cache and will be outdated
   ;; - [DON'T] Check pinned messages in the chatbuf
   (let* ((chat-id (plist-get chat :id))
-         (msg (or (gethash (cons chat-id msg-id) telega--cached-messages)
-                  ;; NOTE: do not search in chatbuf's messages
-                  ;; messages offloaded from the cache don't get
-                  ;; updates, so they could be outdated
-                  ;;
-                  ;; (with-telega-chatbuf chat
-                  ;;   (if (eq msg-id (plist-get telega-chatbuf--thread-msg :id))
-                  ;;       telega-chatbuf--thread-msg
-                  ;;     (when-let ((node (telega-chatbuf--node-by-msg-id msg-id)))
-                  ;;       (ewoc-data node))))
-                  )))
+         (msg (gethash (cons chat-id msg-id) telega--cached-messages)))
     (if (or msg (null callback))
         (if callback
             (funcall callback msg 'offline-p)
@@ -384,19 +375,6 @@ Return nil for deleted messages."
          (last-read-msg-id (plist-get reply-info :last_read_inbox_message_id)))
     (and last-msg-id last-read-msg-id (not (zerop last-read-msg-id))
          (< last-read-msg-id last-msg-id))))
-
-(defun telega-msg-reply-msg (msg &optional callback)
-  "Return message MSG replying to.
-If LOCALLY-P is non-nil, then do not perform any requests to telega-server.
-If CALLBACK is specified, then get reply message asynchronously."
-  (declare (indent 1))
-  (let ((reply-to-msg-id (plist-get msg :reply_to_message_id))
-        (reply-in-chat-id (plist-get msg :reply_in_chat_id)))
-    (when (zerop reply-in-chat-id)
-      (setq reply-in-chat-id (plist-get msg :chat_id)))
-    (unless (zerop reply-to-msg-id)
-      (telega-msg-get (telega-chat-get reply-in-chat-id 'offline) reply-to-msg-id
-        callback))))
 
 (defun telega-msg-goto (msg &optional highlight)
   "Goto message MSG."
@@ -486,7 +464,7 @@ If CALLBACK is specified, then get reply message asynchronously."
              ;; Size for 10 seconds of the video
              (d5-size (/ (* 10 fsize) duration))
              ;; Downloaded duration
-             (ddur (* duration (/ (float (- dsize (min dsize probe-size)))
+             (ddur (* duration (/ (float (- dsize (min dsize (or probe-size 0))))
                                   fsize))))
         (when (and ;; Check for 1)
                    probe-size (> dsize (+ probe-size d5-size))
@@ -1085,11 +1063,20 @@ TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\",
 (defun telega-msg-sender-username (msg-sender &optional with-prefix-p)
   "Return username for the message sender MSG-SENDER.
 If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
-  (when-let ((username (if (telega-user-p msg-sender)
-                           (telega-tl-str msg-sender :username)
-                         (cl-assert (telega-chat-p msg-sender))
-                         (telega-chat-username msg-sender))))
+  (when-let* ((usernames
+               (if (telega-user-p msg-sender)
+                   (plist-get msg-sender :usernames)
+                 (cl-assert (telega-chat-p msg-sender))
+                 (plist-get (telega-chat--info msg-sender 'local) :usernames)))
+              (active-usernames
+               (plist-get usernames :active_usernames))
+              (username
+               (when (> (length active-usernames) 0)
+                 ;; NOTE: from TDLib docs - the first one must be shown as the
+                 ;; primary username.
+                 (aref active-usernames 0))))
     (concat (when with-prefix-p "@") username)))
+(defalias 'telega-chat-username 'telega-msg-sender-username)
 
 (defun telega-msg-sender-title (msg-sender &optional with-avatar-p)
   "Return title for the message sender MSG-SENDER.
@@ -1444,7 +1431,7 @@ the saved animations list."
               (copy-file fpath new-fpath)
               (message (format "Wrote %s" new-fpath))))))))))
 
-(defun telega-msg-copy-link (msg &optional for-comment-p)
+(defun telega-msg-copy-link (msg &optional for-thread-p)
   "Copy link to message to kill ring.
 Use \\[yank] command to paste a link."
   (interactive (list (telega-msg-for-interactive)
@@ -1465,7 +1452,7 @@ Use \\[yank] command to paste a link."
                         (not (plist-get msg :scheduling_state)))
                    (telega--getMessageLink msg
                      :media-timestamp media-timestamp
-                     :for-comment-p for-comment-p)
+                     :for-thread-p for-thread-p)
                  (telega-tme-internal-link-to msg))))
     (kill-new link)
     (message "Copied link: %s" link)))
@@ -1549,7 +1536,7 @@ Requires administrator rights in the chat."
        (list :@type "chatMemberStatusBanned"
              :banned_until_date 0)))))
 
-(defun telega-describe-message (msg &optional for-comment-p)
+(defun telega-describe-message (msg &optional for-thread-p)
   "Show info about message at point."
   (interactive (list (telega-msg-for-interactive)
                      (when telega-chatbuf--thread-msg t)))
@@ -1579,7 +1566,7 @@ Requires administrator rights in the chat."
                          ;;   - error=6: Message is scheduled
                          ;;   ...
                          (telega--getMessageLink msg
-                           :for-comment-p for-comment-p))))
+                           :for-thread-p for-thread-p))))
         (telega-ins "Link: ")
         (telega-ins--raw-button (telega-link-props 'url link 'link)
           (telega-ins link))
@@ -1853,6 +1840,51 @@ By default `telega-translate-to-language-default' is used."
                        :loading extra))
       (telega-msg-redisplay msg)
       )))
+
+(defun telega-msg--replied-message (msg)
+  "Return message on which MSG depends."
+  (or (plist-get msg :telega-replied-message)
+      (let* ((chat-id (plist-get msg :reply_in_chat_id))
+             (content (plist-get msg :content))
+             (replied-msg-id
+              (cl-case (telega--tl-type content)
+                (messagePinMessage
+                 (plist-get content :message_id))
+                (messageGameScore
+                 (plist-get content :game_message_id))
+                (PaymentSuccessful
+                 (setq chat-id (plist-get content :invoice_chat_id))
+                 (plist-get content :invoice_message_id))
+                (t
+                 (plist-get msg :reply_to_message_id))))
+             (replied-msg
+              (unless (zerop replied-msg-id)
+                (gethash (cons (if (zerop chat-id)
+                                   (plist-get msg :chat_id)
+                                 chat-id)
+                               replied-msg-id)
+                         telega--cached-messages))))
+        (when replied-msg
+          (plist-put msg :telega-replied-message replied-msg))
+        replied-msg)))
+
+(defun telega-msg--replied-message-fetch (msg)
+  "Fetch message on which MSG depends.
+Return `loading' is replied messages starts loading."
+  (when (and (not (telega-msg--replied-message msg))
+             (or (not (zerop (plist-get msg :reply_to_message_id)))
+                 (telega-msg-match-p msg
+                   '(type PinMessage GameScore PaymentSuccessful
+                          ForumTopicEdited ForumTopicIsClosedToggled))))
+    (telega--getRepliedMessage msg
+      (lambda (replied-msg)
+        (unless (telega--tl-error-p replied-msg)
+          (telega-msg-cache replied-msg))
+        (plist-put msg :telega-replied-message replied-msg)
+        (telega-msg-redisplay msg)
+        ;; NOTE: rootbuf also might be affected
+        (telega-root-view--update :on-message-update msg)))
+    (plist-put msg :telega-replied-message 'loading)))
 
 (provide 'telega-msg)
 

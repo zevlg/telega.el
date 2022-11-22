@@ -137,6 +137,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} updated group photo")
  ("lng_action_changed_photo_channel"
   :value "Channel photo updated")
+ ("lng_action_removed_photo"
+  :value "{from} removed group photo")
+ ("lng_action_removed_photo_channel"
+  :value "Channel photo removed")
  ("lng_action_changed_video"
   :value "{from} updated group video")
  ("lng_action_changed_video_channel"
@@ -400,6 +404,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Add members")
  ("lng_rights_group_pin"
   :value "Pin messages")
+ ("lng_rights_group_topics"
+  :value "Manage topics")
  ("lng_rights_group_info"
   :value "Change group info")
  ("lng_manage_peer_exceptions"
@@ -713,9 +719,20 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} disabled the chat theme")
  ("lng_action_you_theme_disabled"
   :value "You disabled the chat theme")
-
  ("lng_action_bot_allowed_from_domain"
   :value "You allowed this bot to message you when you logged in on {domain}.")
+ ("lng_action_topic_created"
+  :value "«{topic}» was created")
+ ("lng_action_topic_closed"
+  :value "«{topic}» was closed")
+ ("lng_action_topic_reopened"
+  :value "«{topic}» was reopened")
+ ("lng_action_topic_renamed"
+  :value "{from} renamed the {link} to «{title}»")
+ ("lng_action_topic_icon_changed"
+  :value "{from} changed the {link} icon to {emoji}")
+ ("lng_forum_topic_title"
+  :value "Topic Name")
 
  ("lng_rights_gigagroup_title"
   :value "Broadcast group")
@@ -879,4 +896,18 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View background")
  ("lng_view_button_bot"
   :value "View bot")
+
+ ("lng_forwarded"
+  :value "Forwarded from {user}")
+ ("lng_forwarded_channel"
+  :value "Forwarded from {channel}")
+
+ ("lng_media_download"
+  :value "Download")
+ ("telega_media_resume_download"
+  :value "Resume Download")
+ ("lng_media_cancel"
+  :value "Cancel")
+ ("lng_media_file_title"
+  :value "Files")
  )

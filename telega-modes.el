@@ -1436,8 +1436,8 @@ messages."
 ;;; ellit-org: minor-modes
 ;; ** telega-recognize-voice-message-mode
 ;;
-;; Minor mode to automatically recognize speech in a voice messages.
-;; Available only for the Telegram Premium users.
+;; Minor mode to automatically recognize speech in a voice/video
+;; messages.  Available only for the Telegram Premium users.
 ;;
 ;; Enable with ~(telega-recognize-voice-message-mode 1)~ or at
 ;; =telega= load time:
@@ -1459,7 +1459,7 @@ chats, use `(chat (type private))' Message Temex."
 
 (defun telega-recognize-voice--on-msg-hover-in (msg)
   "Automatically recognize text for the hovered in voice message MSG."
-  (when (and (telega-msg-match-p msg '(type VoiceNote))
+  (when (and (telega-msg-match-p msg '(type VoiceNote VideoNote))
              (not (telega--tl-get msg :content :voice_note
                                   :speech_recognition_result))
              (or (not telega-recognize-voice-message-temex)

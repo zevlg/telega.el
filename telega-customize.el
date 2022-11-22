@@ -186,9 +186,13 @@ See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon"
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-use-one-line-preview-for
-  (when (fboundp 'svg-embed-base-uri-image) 'all)
-  "Chat Filter for chats where to show one-line previews for photos/videos.
+(defcustom telega-use-svg-base-uri (fboundp 'svg-embed-base-uri-image)
+  "Non-nil to use `:base-uri' SVG functionality."
+  :type 'boolean
+  :group 'telega)
+
+(defcustom telega-use-one-line-preview-for (when telega-use-svg-base-uri 'all)
+  "Chat Temex for chats where to show one-line previews for photos/videos.
 Used only if `telega-use-images' is non-nil.
 Enable it only if you have `:base-uri' SVG functionality, otherwise
 performance might suffer."

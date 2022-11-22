@@ -307,6 +307,18 @@ If message is not found, then return `nil'."
           :message_id msg-id)
     callback))
 
+(defun telega--getRepliedMessage (msg &optional callback)
+  "Returns information about a message that is replied by a given message.
+Also returns the pinned message, the game message, and the invoice
+message for messages of the types messagePinMessage, messageGameScore,
+and messagePaymentSuccessful respectively."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getRepliedMessage"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))
+   callback))
+
 (defun telega--getChatMessageByDate (chat-id date &optional callback)
   "Returns the last message sent in a chat no later than the specified DATE.
 DATE is a unix timestamp."
@@ -333,7 +345,7 @@ DATE is a unix timestamp."
           :message_ids (apply #'vector message-ids))
     callback))
 
-(cl-defun telega--getMessageLink (msg &key for-album-p for-comment-p
+(cl-defun telega--getMessageLink (msg &key for-album-p for-thread-p
                                       media-timestamp)
   "Get https link for message MSG in a supergroup or a channel."
   (declare (indent 1))
@@ -344,7 +356,7 @@ DATE is a unix timestamp."
           :message_id (plist-get msg :id)
           :media_timestamp (or media-timestamp 0)
           :for_album (if for-album-p t :false)
-          :for_comment (if for-comment-p t :false)))
+          :in_message_thread (if for-thread-p t :false)))
    :link))
 
 (defun telega--recognizeSpeech (msg)
@@ -1066,14 +1078,14 @@ TDLib 1.7.8"
          :limit (or limit 100))
    callback))
 
-(defun telega--getChatSponsoredMessage (chat &optional callback)
-  "Return a sponsored message for the CHAT."
+(defun telega--getChatSponsoredMessages (chat &optional callback)
+  "Return list of sponsored messages for the CHAT."
   (declare (indent 1))
   (with-telega-server-reply (reply)
       (unless (telega--tl-error-p reply)
         reply)
 
-    (list :@type "getChatSponsoredMessage"
+    (list :@type "getChatSponsoredMessages"
           :chat_id (plist-get chat :id))
     callback))
 

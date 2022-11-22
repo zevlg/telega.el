@@ -75,7 +75,8 @@
     (:can_add_web_page_previews . "lng_rights_chat_send_links")
     (:can_change_info . "lng_rights_group_info")
     (:can_invite_users . "lng_rights_chat_add_members")
-    (:can_pin_messages . "lng_rights_group_pin")))
+    (:can_pin_messages . "lng_rights_group_pin")
+    (:can_manage_topics . "lng_rights_group_topics")))
 
 (defconst telega-chat--admin-permissions
   '((:can_be_edited . "lng_rights_edit_admin")
@@ -87,6 +88,7 @@
     (:can_invite_users . "lng_rights_group_invite_link")
     (:can_restrict_members . "telega_rights_restrict_members")
     (:can_pin_messages . "lng_rights_group_pin")
+    (:can_manage_topics . "lng_rights_group_topics")
     (:can_promote_members . "telega_rights_promote_members")
     (:can_manage_video_chats . "lng_rights_group_manage_calls")
     (:is_anonymous . "lng_rights_group_anonymous")))
@@ -1319,11 +1321,6 @@ Return VALUE."
        (telega-chat--set-uaprops
         ,chat (plist-put (plist-get ,chat :uaprops) ,uaprop-name ,valsym))
        ,valsym)))
-
-(defsubst telega-chat-username (chat)
-  "Return CHAT's username.
-Return nil if no username is assigned to CHAT."
-  (telega-tl-str (telega-chat--info chat) :username))
 
 (defun telega-chat-position--list-name (position &optional no-props)
   "Return list name for the POSITION.

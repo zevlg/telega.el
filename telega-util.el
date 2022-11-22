@@ -237,7 +237,8 @@ Specify EXT with leading `.'."
   "Embed IMAGE possible using `svg-embed-base-uri-image'.
 IMAGE could be a list of two elements \\(RELATIVE-FNAME BASE-DIR\\),
 so new Emacs `svg-embed-base-uri-image' functionality could be used."
-  (if (and (not datap) (fboundp 'svg-embed-base-uri-image)
+  (if (and telega-use-svg-base-uri
+           (not datap)
            ;; NOTE: embedding using `:base-uri' does not work under Windows
            ;; see https://github.com/zevlg/telega.el/issues/367
            (not (eq (framep-on-display (telega-x-frame)) 'w32))

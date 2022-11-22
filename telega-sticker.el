@@ -356,7 +356,7 @@ Return path to png file."
          (img-file (or (plist-get sticker :telega-ffplay-frame-filename)
                        (when-let ((fn (telega--tl-get filename :local :path)))
                          (if (or (fboundp 'imagemagick-types)
-;                                 (image-type-available-p 'webp)
+                                 (image-type-available-p 'webp)
                                  (not (equal (file-name-extension fn) "webp")))
                              fn
                            (telega-sticker--webp-to-png fn)))))

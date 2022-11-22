@@ -591,7 +591,7 @@ Keep cursor position only if CHAT is visible."
     ;; Also, take into account width occupied by
     ;; `display-line-numbers-mode', see
     ;; https://github.com/zevlg/telega.el/issues/325
-    ;; 
+    ;;
     ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
     (let* ((win-char-width (/ (- (window-width win 'pixels)
                                  (line-number-display-width 'pixels))
@@ -871,7 +871,7 @@ If corresponding chat node does not exists in EWOC, then create new one."
               (telega-chat-match-p chat chat-filter)))
           'no-error)
          (when wrap
-           ;; Wrap from the beginning, or backwards from the end of buffer 
+           ;; Wrap from the beginning, or backwards from the end of buffer
            ;; if n is negative
            (goto-char (if (> n 0) (point-min) (point-max)))
            (telega-button-forward
@@ -1212,6 +1212,15 @@ VIEW-FILTER is additional chat filter for this root view."
           (telega-loading--timer-start))))
     ))
 
+(defun telega-root--on-update-last-message (ewoc-name ewoc msg)
+  "Message has been updated, this might affect rootview."
+  ;; NOTE: If last message is updated, update message's chat in a
+  ;; given ewoc
+  (when (telega-msg-match-p msg 'is-last)
+    (when-let* ((ewoc-spec (telega-root-view--ewoc-spec ewoc-name))
+                (on-chat-update-func (plist-get ewoc-spec :on-chat-update)))
+      (funcall on-chat-update-func ewoc-name ewoc (telega-msg-chat msg)))))
+
 (defun telega-view--root-ewoc-spec (&optional custom-inserter)
   "Return view spec for the default root view."
   (list :name "root"
@@ -1221,7 +1230,10 @@ VIEW-FILTER is additional chat filter for this root view."
                           #'telega-root--chat-known-pp)
         :sorter #'telega-chat>
         :items telega--ordered-chats
-        :on-chat-update #'telega-root--any-on-chat-update))
+        :on-chat-update #'telega-root--any-on-chat-update
+        :on-message-update (unless (eq custom-inserter #'telega-ins--chat)
+                             #'telega-root--on-update-last-message)
+        ))
 
 (defun telega-view-default (&optional func view-name custom-inserter)
   "Default root view."
@@ -1572,7 +1584,8 @@ If `\\[universal-argument]' is given, then view missed calls only."
               ((= slice-num 1)
                (telega-ins "+" (telega-tl-str me-user :phone_number)))
               ((= slice-num 2)
-               (if-let ((username (telega-tl-str me-user :username)))
+               (if-let* ((usernames (plist-get me-user :usernames))
+                         (username (plist-get usernames :editable_username)))
                    (progn
                      (telega-ins "@" username)
                      (telega-ins " ")

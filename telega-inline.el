@@ -150,7 +150,8 @@
 
            (telega-chatbuf--input-delete)
            (telega-chatbuf-input-insert
-            (concat "@" (telega-tl-str bot :username) " " (or new-query "")))
+            (concat (telega-msg-sender-username bot 'with-@)
+                    " " (or new-query "")))
            (telega-chatbuf-attach-inline-bot-query 'no-search))))
 
       (inlineKeyboardButtonTypeCallbackGame
@@ -485,7 +486,8 @@
       ;; Not found
       (unless (string-empty-p query)
         (message "telega: @%s Nothing found for %s"
-                 (plist-get bot :username) (propertize query 'face 'bold)))
+                 (telega-msg-sender-username bot)
+                 (propertize query 'face 'bold)))
       )))
 
 (defun telega-inline-bot-query (bot query for-chat)
@@ -496,7 +498,7 @@
       (telega-server--callback-put telega-chatbuf--inline-query 'ignore))
 
     (message "telega: @%s Searching for %s..."
-             (telega-tl-str bot :username) (propertize query 'face 'bold))
+             (telega-msg-sender-username bot) (propertize query 'face 'bold))
     (setq telega-chatbuf--inline-query
           (telega--getInlineQueryResults bot query for-chat nil nil
             (telega-inline-bot--gen-callback bot query for-chat)))))

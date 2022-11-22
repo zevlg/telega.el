@@ -216,7 +216,10 @@ Also matches if TEMEX-LIST is empty."
       (let ((info (telega-chat--info chat 'locally)))
         (or (string-match regexp (or (telega-tl-str info :first_name) ""))
             (string-match regexp (or (telega-tl-str info :last_name) ""))
-            (string-match regexp (or (telega-tl-str info :username) ""))))))
+            (when-let ((usernames (plist-get info :usernames)))
+              (seq-some (lambda (username)
+                          (string-match regexp username))
+                        (plist-get usernames :active_usernames)))))))
 
 ;;; ellit-org: chat-temex
 ;; - (search ~QUERY~), {{{where-is(telega-filter-by-search,telega-root-mode-map)}}} ::
@@ -605,13 +608,20 @@ not empty."
   (plist-get (telega-chat--info chat) :is_broadcast_group))
 
 ;;; ellit-org: chat-temex
-;; - has-sponsored-message ::
-;;   {{{temexdoc(chat-has-sponsored-message, 2)}}}
-(define-telega-matcher chat-has-sponsored-message (chat)
-  "Matches if chat has sponsored message.
+;; - is-forum ::
+;;   {{{temexdoc(chat-is-forum, 2)}}}
+(define-telega-matcher chat-is-forum (chat)
+  "Matches if chat is a forum group."
+  (plist-get (telega-chat--info chat) :is_forum))
+
+;;; ellit-org: chat-temex
+;; - has-sponsored-messages ::
+;;   {{{temexdoc(chat-has-sponsored-messages, 2)}}}
+(define-telega-matcher chat-has-sponsored-messages (chat)
+  "Matches if chat has sponsored messages.
 BE AWARE: This filter will do blocking request for every chat."
   (when (telega-chat-match-p chat '(type channel))
-    (telega--getChatSponsoredMessage chat)))
+    (telega--getChatSponsoredMessages chat)))
 
 ;;; ellit-org: chat-temex
 ;; - has-protected-content ::
@@ -759,7 +769,7 @@ By default N is 1."
 ;;   {{{temexdoc(user-username, 2)}}}
 (define-telega-matcher user-username (user username-regexp)
   "Matches if user's username matches USERNAME-REGEXP."
-  (when-let ((username (telega-tl-str user :username)))
+  (when-let ((username (telega-msg-sender-username user)))
     (string-match-p username-regexp username)))
 
 
@@ -818,6 +828,13 @@ By default N is 1."
   "Matches if message is a channel post that can be commented."
   (and (plist-get msg :is_channel_post)
        (plist-get msg :can_get_message_thread)))
+
+;;; ellit-org: msg-temex
+;; - is-topic ::
+;;   {{{temexdoc(msg-is-topic, 2)}}}
+(define-telega-matcher msg-is-topic (msg)
+  "Matches if message is a forum topic message."
+  (plist-get msg :is_topic_message))
 
 ;;; ellit-org: msg-temex
 ;; - web-page ::
@@ -884,6 +901,14 @@ Matching ignores case."
 (define-telega-matcher msg-is-deleted (msg)
   "Matches deleted message."
   (plist-get msg :telega-is-deleted-message))
+
+;;; ellit-org: msg-temex
+;; - is-last ::
+;;   {{{temexdoc(msg-is-last, 2)}}}
+(define-telega-matcher msg-is-last (msg)
+  "Matches if message is the last message in chat."
+  (telega-chat-match-p (telega-msg-chat msg)
+    `(last-message (ids ,(plist-get msg :id)))))
 
 
 ;;; ellit-org: sender-temex

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.72)
+#+title: Telega Manual (v0.8.80)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -230,7 +230,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.6.
+version greater or equal to 1.8.8.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -724,10 +724,12 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the ~URL~.
-     If ~URL~ can be opened directly inside telega, then do it.
+     Open the URL.
+     If URL can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
+     If IN-WEB-BROWSER is non-nil then force opening in web browser.
+
+     (fn URL &optional IN-WEB-BROWSER)
 
 * Root Buffer
 :PROPERTIES:
@@ -1204,8 +1206,11 @@ Use ~telega-chat-match-p~ to match a chat.
 - is-broadcast-group :: 
      Matches if chat is a broadcast group.
 
-- has-sponsored-message :: 
-     Matches if chat has sponsored message.
+- is-forum :: 
+     Matches if chat is a forum group.
+
+- has-sponsored-messages :: 
+     Matches if chat has sponsored messages.
      BE AWARE: This filter will do blocking request for every chat.
 
 - has-protected-content :: 
@@ -1262,6 +1267,9 @@ Use ~telega-msg-match-p~ to match a message.
 - post-with-comments :: 
      Matches if message is a channel post that can be commented.
 
+- is-topic :: 
+     Matches if message is a forum topic message.
+
 - web-page :: 
      Matches messages with webpage having property with ~PROPNAME~.
 
@@ -1287,6 +1295,9 @@ Use ~telega-msg-match-p~ to match a message.
 
 - is-deleted :: 
      Matches deleted message.
+
+- is-last :: 
+     Matches if message is the last message in chat.
 
 ** List of User Temexes
 :PROPERTIES:
@@ -2439,17 +2450,27 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
+
+     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
+
+     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
+
+     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
+
+     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
+
+     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command
@@ -2951,8 +2972,8 @@ buffer.
 :CUSTOM_ID: telega-recognize-voice-message-mode
 :END:
 
-Minor mode to automatically recognize speech in a voice messages.
-Available only for the Telegram Premium users.
+Minor mode to automatically recognize speech in a voice/video
+messages.  Available only for the Telegram Premium users.
 
 Enable with ~(telega-recognize-voice-message-mode 1)~ or at
 =telega= load time:

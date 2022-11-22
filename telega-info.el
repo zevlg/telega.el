@@ -284,7 +284,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (when (telega-ins--user-relationship user)
         (telega-ins "\n")))
 
-    (when-let ((username (telega-tl-str user :username)))
+    (when-let ((username (telega-msg-sender-username user)))
       ;; I18N: profile_username -> Username:
       (telega-ins (telega-i18n "lng_profile_username")
                   " @" username "\n"))
@@ -574,8 +574,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                   (telega-ins "\n"))))))))
 
     ;; Supergroup username
-    (let ((username (telega-tl-str supergroup :username))
-          (can-set-username-p (plist-get full-info :can_set_username)))
+    (let* ((usernames (plist-get supergroup :usernames))
+           (username (plist-get usernames :editable_username))
+           (can-set-username-p (plist-get full-info :can_set_username)))
       (when (or username can-set-username-p)
         (telega-ins "Username: ")
         (when username

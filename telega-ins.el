@@ -456,7 +456,7 @@ E-CHAR - empty char, default is non-break space."
            (telega-ins-progress-bar
             progress 1.0 10 telega-symbol-download-progress nbsp-char)
            (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char)
-           (telega-ins--button "Cancel"
+           (telega-ins--button (telega-i18n "lng_media_cancel")
              'action (lambda (_ignored)
                        (telega--cancelDownloadFile file)))))
 
@@ -467,10 +467,9 @@ E-CHAR - empty char, default is non-break space."
              (telega-ins "[")
              (telega-ins-progress-bar progress 1.0 10 (cons ?= ?⏸) nbsp-char)
              (telega-ins-fmt "%d%%]%c" (round (* progress 100)) nbsp-char))
-           (telega-ins--button
-               (concat (when (> progress 0)
-                         (format "Resume%c" nbsp-char))
-                       "Download")
+           (telega-ins--button (if (> progress 0)
+                                   (telega-i18n "telega_media_resume_download")
+                                 (telega-i18n "lng_media_download"))
              'action (lambda (_ignored)
                        (telega-file--download file 32
                          (lambda (_fileignored)
@@ -691,6 +690,36 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
     :value msg
     :action #'telega-msg--vvnote-stop))
 
+(defun telega-ins--speech-recognition-button (recognition for-msg)
+  "Insert speech recognize button."
+  ;; NOTE: if previous recognition results in error, then also show
+  ;; the recognize button
+  (when (and (or (not recognition)
+                 (eq 'speechRecognitionResultError
+                     (telega--tl-type recognition)))
+             (telega-user-match-p (telega-user-me) 'is-premium))
+    (telega-ins " ")
+    (telega-ins--button (concat "🠆A" (telega-symbol 'premium))
+      :value for-msg
+      :action #'telega--recognizeSpeech)))
+
+(defun telega-ins--speech-recognition-text (recognition)
+  "Insert results of the voice/video message recognition."
+  (cl-assert recognition)
+  (cl-ecase (telega--tl-type recognition)
+    (speechRecognitionResultPending
+     (telega-ins--with-face 'shadow
+       (telega-ins (or (telega-tl-str recognition :partial_text)
+                       "Recognizing")
+                   "...")))
+    (speechRecognitionResultText
+     (telega-ins--with-face 'shadow
+       (telega-ins (telega-tl-str recognition :text))))
+    (speechRecognitionResultError
+     (telega-ins--with-face 'error
+       (telega-ins
+        (telega-tl-str (plist-get recognition :error) :message))))))
+
 (defun telega-ins--voice-note (msg &optional voice-note)
   "Insert message MSG with VOICE-NOTE content."
   (let* ((note (or voice-note (telega--tl-get msg :content :voice_note)))
@@ -741,50 +770,44 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
         (telega-ins--file-progress msg note-file)))
 
     (let ((recognition (plist-get note :speech_recognition_result)))
-      ;; NOTE: if previous recognition results in error, then also
-      ;; show the recognize button
-      (when (and (or (not recognition)
-                     (eq 'speechRecognitionResultError
-                         (telega--tl-type recognition)))
-                 (telega-user-match-p (telega-user-me) 'is-premium))
-        (telega-ins " ")
-        (telega-ins--button (concat "🠆A" (telega-symbol 'premium))
-          :value msg
-          :action #'telega--recognizeSpeech))
-
+      (telega-ins--speech-recognition-button recognition msg)
       (when recognition
         (telega-ins "\n")
-        (cl-ecase (telega--tl-type recognition)
-          (speechRecognitionResultPending
-           (telega-ins (telega-tl-str recognition :partial_text)
-                       "..."))
-          (speechRecognitionResultText
-           (telega-ins (telega-tl-str recognition :text)))
-          (speechRecognitionResultError
-           (telega-ins--with-face 'error
-             (telega-ins
-              (telega-tl-str (plist-get recognition :error) :message))))))
-      )))
+        (telega-ins--speech-recognition-text recognition)))
+    ))
 
 (defun telega-ins--video-note (msg &optional video-note)
   "Insert message MSG with VIDEO-NOTE content."
   (let* ((note (or video-note (telega--tl-get msg :content :video_note)))
          (note-file (telega-file--renew note :video))
-         (viewed-p (telega--tl-get msg :content :is_viewed)))
+         (recognition (plist-get note :speech_recognition_result))
+         (ffplay-proc (plist-get msg :telega-ffplay-proc)))
     (telega-ins (propertize "NOTE" 'face 'shadow))
     (telega-ins-fmt " (%dx%d %s %s)"
       (plist-get note :length) (plist-get note :length)
       (file-size-human-readable (telega-file--size note-file))
       (telega-duration-human-readable (plist-get note :duration)))
+    (when (telega--tl-get msg :content :is_viewed)
+      (telega-ins (telega-symbol 'eye)))
 
     ;; ffplay controls to seek/2x/stop
-    (when (telega-ffplay-playing-p (plist-get msg :telega-ffplay-proc))
+    (when (telega-ffplay-playing-p ffplay-proc)
       (telega-ins " ")
       (telega-ins--ffplay-controls msg)
       (telega-ins " "))
 
-    (when viewed-p
-      (telega-ins (telega-symbol 'eye)))
+    (when telega-use-images
+      (when-let* ((waveform (plist-get note :waveform))
+                  (waves (telega-vvnote--waveform-decode waveform)))
+        (telega-ins " ")
+        (telega-ins--image
+         (telega-vvnote--waves-svg
+          waves (round (telega-chars-xheight
+                        telega-vvnote-waves-height-factor))
+          (plist-get note :duration) (telega-ffplay-progress ffplay-proc)))))
+
+    (telega-ins--speech-recognition-button recognition msg)
+
     (telega-ins-prefix " "
       (telega-ins--file-progress msg note-file))
 
@@ -797,7 +820,12 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
                              (cons thumb :file))))))
         (telega-ins "\n")
         (telega-ins--image-slices img)
-        (telega-ins " ")))))
+        (telega-ins " ")))
+
+    (when recognition
+      (telega-ins "\n")
+      (telega-ins--speech-recognition-text recognition))
+    ))
 
 (defun telega-ins--document-header (doc &optional no-attach-symbol)
   "Attach header for the document DOC.
@@ -1378,7 +1406,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageChatChangeTitle 'messageSupergroupChatCreate
               'messageBasicGroupChatCreate 'messageCustomServiceAction
               'messageChatSetTtl 'messageExpiredPhoto 'messageExpiredVideo
-              'messageChatChangePhoto
+              'messageChatChangePhoto 'messageChatDeletePhoto
               'messageChatUpgradeTo 'messageChatUpgradeFrom
               'messagePinMessage 'messageScreenshotTaken
               'messageGameScore
@@ -1390,7 +1418,25 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
               'messageWebsiteConnected
               'messageChatSetTheme
               'messagePaymentSuccessful
+              'messageForumTopicCreated
+              'messageForumTopicEdited
+              'messageForumTopicIsClosedToggled
               'telegaInternal)))
+
+(defun telega-ins--special-replied-msg (msg &optional _attrs)
+  "Inserter for the MSG's dependent message in context of special message."
+  (let ((replied-msg (telega-msg--replied-message msg)))
+    (cond ((or (null replied-msg) (eq replied-msg 'loading))
+           ;; NOTE: if replied message is not available right now, it
+           ;; will be fetched by `telega-msg--replied-message-fetch' later
+           (telega-ins-i18n "lng_profile_loading"))
+          ((telega--tl-error-p replied-msg)
+           (telega-ins--with-face 'error
+             (telega-ins (telega-i18n "lng_deleted_message"))))
+          (t
+           (telega-ins--with-attrs
+               (list :max 20 :align 'left :elide t)
+             (telega-ins--content-one-line replied-msg))))))
 
 (defun telega-ins--special (msg)
   "Insert special message MSG.
@@ -1481,6 +1527,11 @@ Special messages are determined with `telega-msg-special-p'."
              :from sender-name))
          (telega-ins--photo (plist-get content :photo) msg
                             '(3 1 3 1))))
+      (messageChatDeletePhoto
+       (if (plist-get msg :is_channel_post)
+           (telega-ins-i18n "lng_action_removed_photo_channel")
+         (telega-ins-i18n "lng_action_removed_photo"
+           :from sender-name)))
       (messageChatUpgradeTo
        (telega-ins-i18n "telega_action_group_upgrade_to"
          :from sender-name))
@@ -1494,40 +1545,18 @@ Special messages are determined with `telega-msg-special-p'."
          (telega-ins-i18n "lng_action_took_screenshot"
            :from sender-name)))
       (messagePinMessage
-       ;; NOTE: if pinned message as not available right now, then
-       ;; fetch is asynchronously and redisplay msg
-       (let* ((chat (telega-msg-chat msg 'offline))
-              (pin-msg-id (plist-get content :message_id))
-              (pin-msg (telega-msg-get chat pin-msg-id
-                         (lambda (pinned-msg &optional offline-p)
-                           (unless offline-p
-                             (telega-msg-cache
-                              (or pinned-msg
-                                  (list :id pin-msg-id
-                                        :chat_id (plist-get chat :id)
-                                        :telega-is-deleted-message t))))
-                           (if offline-p
-                               pinned-msg
-                             (telega-msg-redisplay msg))))))
-         (telega-ins-i18n "lng_action_pinned_message"
-           :from (or sender-name "Message")
-           :text (cond ((telega-msg-match-p pin-msg 'is-deleted)
-                        (telega-ins--as-string
-                         (telega-ins--with-face 'error
-                           (telega-ins (telega-i18n "lng_deleted_message")))))
-                       (pin-msg
-                        (telega-ins--as-string
-                         (telega-ins--with-attrs
-                             (list :max 20 :align 'left :elide t)
-                           (telega-ins--content-one-line pin-msg))))
-                       (t
-                        "...")))))
+       (telega-ins-i18n "lng_action_pinned_message"
+         :from (or sender-name "Message")
+         :text (telega-ins--as-string
+                (telega-ins--special-replied-msg msg))))
       (messageGameScore
-       (let* ((chat (telega-msg-chat msg 'offline))
-              (game-msg
-               (telega-msg-get chat (plist-get content :game_message_id)))
-              (game-title
-               (telega-tl-str (telega--tl-get game-msg :content :game) :title)))
+       ;; NOTE: if game message is not available right now, it will
+       ;; be fetched by `telega-msg--replied-message-fetch' later
+       (let* ((game-msg (telega-msg--replied-message msg))
+              (game-title (unless (eq game-msg 'loading)
+                            (telega-tl-str
+                             (telega--tl-get game-msg :content :game)
+                             :title))))
          (if game-title
              (if (telega-me-p sender)
                 (telega-ins-i18n "lng_action_game_you_scored"
@@ -1603,13 +1632,51 @@ Special messages are determined with `telega-msg-special-p'."
          :amount (let ((currency (telega-tl-str content :currency)))
                    (propertize
                     (format "%.2f%s" (/ (plist-get content :total_amount) 100.0)
-                            (or (cdr (assoc currency telega-currency-symbols-alist))
+                            (or (cdr (assoc currency
+                                            telega-currency-symbols-alist))
                                 currency))
                     'face 'bold))
          :user (let ((from-user (telega-chat-user
                                  (telega-chat-get
                                   (plist-get content :invoice_chat_id)))))
                  (propertize (telega-msg-sender-title from-user t) 'face 'bold))))
+      (messageForumTopicCreated
+       (telega-ins sender-name "→")
+       (telega-ins-i18n "lng_action_topic_created"
+         :topic (telega-ins--as-string
+                 (telega-ins--content-one-line msg))))
+       (messageForumTopicIsClosedToggled
+        (telega-ins sender-name "→")
+        (telega-ins-i18n (if (plist-get content :is_closed)
+                             "lng_action_topic_closed"
+                           "lng_action_topic_reopened")
+          :topic (telega-ins--as-string
+                  (telega-ins--special-replied-msg msg))))
+       (messageForumTopicEdited
+        (let* ((edit-icon-p (plist-get content :edit_icon_custom_emoji_id))
+               (new-icon-sticker (when edit-icon-p
+                                   (telega-custom-emoji-get
+                                    (plist-get content :icon_custom_emoji_id))))
+               (new-name (telega-tl-str content :name)))
+          (cond (new-name
+                 (telega-ins-i18n "lng_action_topic_renamed"
+                   :from sender-name
+                   :link (telega-ins--as-string
+                          (telega-ins--special-replied-msg msg))
+                   :title (telega-ins--as-string
+                           (when new-icon-sticker
+                             (telega-ins--sticker-image new-icon-sticker))
+                           (telega-ins new-name))))
+                (edit-icon-p
+                 (telega-ins-i18n "lng_action_topic_icon_changed"
+                   :from sender-name
+                   :link (telega-ins--as-string
+                          (telega-ins--special-replied-msg msg))
+                   :emoji (telega-ins--as-string
+                           (when new-icon-sticker
+                             (telega-ins--sticker-image new-icon-sticker)))))
+                (t
+                 (telega-ins "unsupported topic edit message")))))
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
 
@@ -2106,51 +2173,42 @@ argument - MSG to insert additional information after header."
 
 (defun telega-ins--msg-reply-inline (msg)
   "For message MSG insert reply header in case MSG is replying to some message."
-  ;; NOTE: Do not show reply inline if replying to thread root message.
+  ;; NOTE: Do not show reply inline if replying to thread's root message.
+  ;; If replied message is not instantly available, it will be fetched
+  ;; later by the `telega-msg--replied-message-fetch'
   (unless (or (zerop (plist-get msg :reply_to_message_id))
               (eq (plist-get telega-chatbuf--thread-msg :id)
                   (plist-get msg :reply_to_message_id)))
-    ;; NOTE: If reply msg is not instantly available, then fetch it
-    ;; asynchronously, cache it and then redisplay original message
-    (let ((reply-to-msg (telega-msg-reply-msg msg)))
-      (cond ((telega-msg-match-p reply-to-msg 'is-deleted)
+    (let ((replied-msg (telega-msg--replied-message msg)))
+      (cond ((or (null replied-msg) (eq replied-msg 'loading))
+             ;; NOTE: replied message will be fetched by the
+             ;; `telega-msg--replied-message-fetch'
+             (telega-ins--aux-inline-reply
+              (telega-ins-i18n "lng_profile_loading")))
+            ((telega--tl-error-p replied-msg)
              (telega-ins--aux-inline-reply
               (telega-ins--with-face 'shadow
                 (telega-ins (telega-i18n "lng_deleted_message")))))
-            ((telega-msg-match-p reply-to-msg 'ignored)
+            ((telega-msg-match-p replied-msg 'ignored)
              (telega-ins--aux-inline-reply
-              (telega-ins--message-ignored reply-to-msg)))
-            (reply-to-msg
+              (telega-ins--message-ignored replied-msg)))
+            (t
              (telega-ins--with-props
-                 ;; When pressed, then jump to the REPLY-TO-MSG message
+                 ;; When pressed, then jump to the REPLIED-MSG message
                  (list 'action
                        (lambda (_button)
-                         (telega-msg-goto-highlight reply-to-msg)))
+                         (telega-msg-goto-highlight replied-msg)))
                (telega-ins--aux-inline-reply
-                (telega-ins--aux-msg-one-line reply-to-msg
+                (telega-ins--aux-msg-one-line replied-msg
                   :with-username t
                   :username-face
-                  (let* ((sender (telega-msg-sender reply-to-msg))
+                  (let* ((sender (telega-msg-sender replied-msg))
                          (sender-faces (telega-msg-sender-title-faces sender)))
                     (if (and (telega-sender-match-p sender 'me)
                              (plist-get msg :contains_unread_mention))
                         (append sender-faces '(telega-entity-type-mention))
                       sender-faces))))
-               ))
-            (t
-             ;; Need async request
-             (telega-msg-reply-msg msg
-               (lambda (reply-msg &optional _offline-p)
-                 (telega-msg-cache
-                  (or reply-msg
-                      ;; NOTE: cache specially crafted
-                      ;; pseudo-message denoting deleted message
-                      (list :id (plist-get msg :reply_to_message_id)
-                            :chat_id (plist-get msg :reply_in_chat_id)
-                            :telega-is-deleted-message t)))
-                 (telega-msg-redisplay msg)))
-             (telega-ins--aux-inline-reply
-              (telega-ins-i18n "lng_profile_loading")))))))
+               ))))))
 
 (defun telega-ins--msg-sending-state-failed (msg)
   "Insert sending state failure reason for message MSG."
@@ -2442,7 +2500,7 @@ Pass all ARGS directly to `telega-ins--message0'."
         (when bot
           ;; NOTE: hide-via-bot can be only applied to @gif, @pic and @venue
           (unless (and hide-via-bot
-                       (member (plist-get bot :username)
+                       (member (telega-msg-sender-username bot)
                                (mapcar (lambda (botopt)
                                          (plist-get telega--options botopt))
                                        '(:animation_search_bot_username
@@ -2590,6 +2648,14 @@ If REMOVE-CAPTION is specified, then do not insert caption."
         (telega-ins--dice-msg msg 'one-line))
        (messageAnimatedEmoji
         (telega-ins (telega-tl-str content :emoji)))
+       (messageForumTopicCreated
+        (let* ((topic-icon (plist-get content :icon))
+               (icon-sticker (telega-custom-emoji-get
+                              (plist-get topic-icon :custom_emoji_id)))
+               (topic-name (telega-tl-str content :name)))
+          (when icon-sticker
+            (telega-ins--sticker-image icon-sticker))
+          (telega-ins topic-name)))
        (t (telega-ins--content msg))))))
 
 
@@ -2608,10 +2674,9 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   (telega-ins (telega-user-title user 'name))
   (telega-ins--user-online-status user)
 
-  (when-let ((username (telega-tl-str user :username)))
-    (telega-ins " ")
+  (telega-ins-prefix " "
     (telega-ins--with-face 'telega-username
-      (telega-ins "@" username)))
+      (telega-ins (telega-msg-sender-username user 'with-@))))
 
   (telega-ins-prefix " +"
     (telega-ins (plist-get user :phone_number)))
@@ -3109,21 +3174,20 @@ Return non-nil if restrictions has been inserted."
     (telega-ins--content sponsored-msg))
   (telega-ins "\n"))
 
-(defun telega-ins--chat-sponsored-message (chat)
+(defun telega-ins--chat-sponsored-message (chat sponsored-msg)
   "For the CHAT insert sponsored message."
-  (when-let ((sponsored-msg (plist-get chat :telega-sponsored-message)))
-    (telega-ins--message
-     (telega-msg-create-internal
-      chat (telega-fmt-text
-            (telega-i18n (if (plist-get sponsored-msg :is_recommended)
-                             "lng_recommended"
-                           "lng_sponsored")))))
-    (telega-ins "\n")
-    (telega-ins--with-face 'telega-msg-sponsored
-      (telega-button--insert 'telega sponsored-msg
-        :inserter #'telega-ins--sponsored-message
-        :action #'telega-msg-open-sponsored))
-    t))
+  (telega-ins--message
+   (telega-msg-create-internal
+    chat (telega-fmt-text
+          (telega-i18n (if (plist-get sponsored-msg :is_recommended)
+                           "lng_recommended"
+                         "lng_sponsored")))))
+  (telega-ins "\n")
+  (telega-ins--with-face 'telega-msg-sponsored
+    (telega-button--insert 'telega sponsored-msg
+      :inserter #'telega-ins--sponsored-message
+      :action #'telega-msg-open-sponsored))
+  t)
 
 (defun telega-ins--msg-reaction-type (reaction-type)
   "Insert REACTION-TYPE.

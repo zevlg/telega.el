@@ -7,10 +7,12 @@
 
 (telega--init-vars)
 (telega--info-update
- `(:@type "supergroup" :id 11110 :username "noname"
+ `(:@type "supergroup" :id 11110 :usernames (:@type "usernames" :active_usernames ["noname"] :editable_username "noname")
           :status (:@type "chatMemberStatusAdministrator")))
 (telega--info-update
- `(:@type "user" :id 22220 :first_name "Vasya" :last_name "Pupkin" :username "vpupkin"
+ `(:@type "user" :id 22220 :first_name "Vasya" :last_name "Pupkin"
+          :usernames (:@type "usernames" :active_usernames ["vpupkin"]
+                             :editable_username "vpupkin")
           :phone_number "71112233" :status (:@type "userStatusOnline" :expires 1527776835)
           :is_contact t
           :is_mutual_contact t
@@ -19,7 +21,7 @@
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
 
 (telega--info-update
- `(:@type "user" :id 22221 :first_name "Petya" :last_name "Siskin" :username ""
+ `(:@type "user" :id 22221 :first_name "Petya" :last_name "Siskin"
           :phone_number "71112234" :status (:@type "userStatusOnline" :expires 1527776836)
           :is_contact t
           :is_mutual_contact t
@@ -27,7 +29,8 @@
           :restriction_reason ""
           :have_access t :type (:@type "userTypeRegular") :language_code ""))
 (telega--info-update
- '(:@type "supergroup" :id 1263892563 :username "PremiumSignalsForward" :date 1523303192 :status (:@type "chatMemberStatusLeft") :member_count 54837 :anyone_can_invite nil :sign_messages nil :is_channel t :is_verified nil :restriction_reason ""))
+ '(:@type "supergroup" :id 1263892563
+          :username (:@type "usernames" :active_usernames ["PremiumSignalsForward"] :editable_username "PremiumSignalsForward") :date 1523303192 :status (:@type "chatMemberStatusLeft") :member_count 54837 :anyone_can_invite nil :sign_messages nil :is_channel t :is_verified nil :restriction_reason ""))
 
 (setq telega--ordered-chats
       `((:@type "chat"

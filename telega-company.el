@@ -303,7 +303,7 @@ Matches only if CHAR does not apper in the middle of the word."
                         (plist-get bot-commands :commands)
                         (let ((bot-user (telega-user-get
                                          (plist-get bot-commands :bot_user_id))))
-                          (concat "@" (telega-tl-str bot-user :username)))))
+                          (telega-msg-sender-username bot-user 'with-@))))
                      (plist-get full-info :bot_commands))))))
 
 ;;;###autoload

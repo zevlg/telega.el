@@ -26,6 +26,7 @@
 ;;; Code:
 (require 'telega-core)
 
+(declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
 
@@ -214,8 +215,7 @@ CHEIGHT is height for the svg in characters, default=1."
 
 (defun telega-custom-emoji-sticker-p (sticker)
   "Return non-nil if STICKER is a custom emoji sticker."
-  (eq (plist-get sticker :telega-create-image-function)
-      #'telega-custom-emoji--create-image))
+  (eq 'stickerTypeCustomEmoji (telega--tl-type (plist-get sticker :type))))
 
 (defun telega-custom-emoji-themed-p (sticker)
   "Return non-nil if STICKER corresponds to themed emoji status."
@@ -227,9 +227,14 @@ CHEIGHT is height for the svg in characters, default=1."
 
 (defun telega-custom-emoji--create-image (sticker img-file)
   "Create image for the custom emoji using corresponding STICKER."
-  (if (not img-file)
-      (telega-emoji-create-svg (telega-sticker-emoji sticker))
-
+  (cond
+   ((not img-file)
+    (telega-emoji-create-svg (telega-sticker-emoji sticker)))
+   ((equal "webp" (file-name-extension img-file))
+    (telega-create-image img-file nil nil
+                         :height (- (telega-chars-xheight 1) 2)
+                         :scale 1.0 :ascent 'center))
+   (t
     ;; Embed IMG-FILE into 2x1 svg with transparent background
     (let* ((w (telega-chars-xwidth 2))
            ;; NOTE: give 2 pixels gap for the height
@@ -260,32 +265,40 @@ CHEIGHT is height for the svg in characters, default=1."
                          :fill-color (face-foreground 'telega-blue)
                          :mask "url(#mask)"))
         (telega-svg-image svg :scale 1.0 :width w :height h :ascent 'center
-                          :base-uri (expand-file-name "dummy" base-dir)))))
+                          :base-uri (expand-file-name "dummy" base-dir))))))
 
 (defun telega-custom-emoji--ids-for-msg (msg)
   "Return a list of custom emoji ids extracted from the message MSG."
-  (seq-uniq
-   (delq nil
-         (nconc
-          ;; Custom emojis from message's text
-          (when-let* ((content (plist-get msg :content))
-                      (fmt-text (or (plist-get content :text)
-                                    (plist-get content :caption))))
-            (mapcar (lambda (entity)
-                      (let ((entity-type (plist-get entity :type)))
-                        (when (eq 'textEntityTypeCustomEmoji
-                                  (telega--tl-type entity-type))
-                          (plist-get entity-type :custom_emoji_id))))
-                    (plist-get fmt-text :entities)))
+  (let ((content (plist-get msg :content)))
+    (seq-uniq
+     (delq nil
+           (nconc
+            ;; Custom emojis from message's text
+            (when-let ((fmt-text (or (plist-get content :text)
+                                     (plist-get content :caption))))
+              (mapcar (lambda (entity)
+                        (let ((entity-type (plist-get entity :type)))
+                          (when (eq 'textEntityTypeCustomEmoji
+                                    (telega--tl-type entity-type))
+                            (plist-get entity-type :custom_emoji_id))))
+                      (plist-get fmt-text :entities)))
 
-          ;; Custom emojis from message's reactions
-          (mapcar (lambda (reaction)
-                    (let ((reaction-type (plist-get reaction :type)))
-                      (when (eq (telega--tl-type reaction-type)
-                                'reactionTypeCustomEmoji)
-                        (plist-get reaction-type :custom_emoji_id))))
-                  (telega--tl-get msg :interaction_info :reactions))
-          ))))
+            ;; Custom emojis from message's reactions
+            (mapcar (lambda (reaction)
+                      (let ((reaction-type (plist-get reaction :type)))
+                        (when (eq (telega--tl-type reaction-type)
+                                  'reactionTypeCustomEmoji)
+                          (plist-get reaction-type :custom_emoji_id))))
+                    (telega--tl-get msg :interaction_info :reactions))
+
+            ;; Custom emojis for special messages
+            (cl-case (telega--tl-type content)
+              (messageForumTopicCreated
+               (list (telega--tl-get content :icon :custom_emoji_id)))
+              (messageForumTopicEdited
+               (when (plist-get content :edit_icon_custom_emoji_id)
+                 (list (plist-get content :icon_custom_emoji_id)))))
+            )))))
 
 (defun telega-msg--custom-emojis-fetch (msg)
   "Asynchronously fetch custom emojis for the message MSG.
@@ -306,14 +319,8 @@ Do not fetch custom emojis for ignored messages."
         (when telega-autoplay-mode
           (telega-autoplay-custom-emojis msg))
 
-        ;; NOTE: If message is the last message in the chat, then
-        ;; redisplay chat itself, last message might be displayed in
-        ;; the rootbuf
-        (let* ((chat (telega-msg-chat msg 'offline))
-               (last-msg (plist-get chat :last_message)))
-          (when (eq (plist-get last-msg :id) (plist-get msg :id))
-            (telega-chat--update chat)))
-        ))))
+        ;; NOTE: message update might affect rootview
+        (telega-root-view--update :on-message-update msg)))))
 
 (defun telega-custom-emojis-trends ()
   "Show trending custom emojis."

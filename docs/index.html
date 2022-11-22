@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2022-10-28 Пт 02:50 -->
+<!-- 2022-11-23 Ср 01:46 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.72)</title>
+<title>Telega Manual (v0.8.80)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.72)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.80)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -326,7 +326,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.6.
+version greater or equal to 1.8.8.
 </p>
 
 <p>
@@ -783,7 +783,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org26620db">
+<pre class="example" id="org5baed4a">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -801,7 +801,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org1fc1179">
+<pre class="example" id="org33b2a85">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -893,7 +893,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org34a7fa3">
+<pre class="example" id="orgff67520">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -931,7 +931,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org2daaa78">
+<pre class="example" id="orgdd496b8">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1035,10 +1035,16 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 </dl>
 </div>
 </div>
@@ -1587,7 +1593,9 @@ not empty.</dd>
 
 <dt>is-broadcast-group</dt><dd>Matches if chat is a broadcast group.</dd>
 
-<dt>has-sponsored-message</dt><dd>Matches if chat has sponsored message.
+<dt>is-forum</dt><dd>Matches if chat is a forum group.</dd>
+
+<dt>has-sponsored-messages</dt><dd>Matches if chat has sponsored messages.
 BE AWARE: This filter will do blocking request for every chat.</dd>
 
 <dt>has-protected-content</dt><dd>Matches if chat has protected content.</dd>
@@ -1640,6 +1648,8 @@ By default <code>N</code> is 1.</dd>
 
 <dt>post-with-comments</dt><dd>Matches if message is a channel post that can be commented.</dd>
 
+<dt>is-topic</dt><dd>Matches if message is a forum topic message.</dd>
+
 <dt>web-page</dt><dd>Matches messages with webpage having property with <code>PROPNAME</code>.</dd>
 
 <dt>(outgoing [ <code>ANY-STATE-P</code> ])</dt><dd>Matches if message is an outgoing message.
@@ -1658,6 +1668,8 @@ Matching ignores case.</dd>
 <dt>(sender <code>SENDER-TEMEX</code>)</dt><dd>Matches if message's sender matches <code>SENDER-TEMEX</code>.</dd>
 
 <dt>is-deleted</dt><dd>Matches deleted message.</dd>
+
+<dt>is-last</dt><dd>Matches if message is the last message in chat.</dd>
 </dl>
 </div>
 </div>
@@ -1872,7 +1884,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org40c48f9">
+<pre class="example" id="org26572c6">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2268,7 +2280,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orga86b7e9">
+<pre class="example" id="orge7c151c">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2451,7 +2463,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org890df9b">
+<pre class="example" id="org930cc5a">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2483,7 +2495,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orge7a5ab7">
+<pre class="example" id="orgdcc7ae3">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2707,7 +2719,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgff6c40b">
+<pre class="example" id="org56ab704">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3300,7 +3312,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgad1076f">
+<pre class="example" id="org6d5feb6">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3308,14 +3320,44 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.</dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
+Stop playing media message.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
+Rewind 10 seconds backward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
+Rewind 10 seconds forward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
+Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
+Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.</dd>
+duration.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
 </dl>
 
 <p>
@@ -4096,8 +4138,8 @@ Default value: <code>t</code>
 <h3 id="telega-recognize-voice-message-mode"><a class="self-link" href="#telega-recognize-voice-message-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-recognize-voice-message-mode</h3>
 <div class="outline-text-3" id="text-telega-recognize-voice-message-mode">
 <p>
-Minor mode to automatically recognize speech in a voice messages.
-Available only for the Telegram Premium users.
+Minor mode to automatically recognize speech in a voice/video
+messages.  Available only for the Telegram Premium users.
 </p>
 
 <p>
@@ -4250,7 +4292,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org3fe68af">
+<pre class="example" id="orgd7afc77">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

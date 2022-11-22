@@ -87,7 +87,12 @@ user is fetched from server."
   (when (string-prefix-p "@" username)
     (setq username (substring username 1)))
   (let ((users (hash-table-values (alist-get 'user telega--info))))
-    (cl-find username users :key (telega--tl-prop :username) :test 'equal)))
+    (seq-find (lambda (user)
+                (let ((usernames (plist-get user :usernames)))
+                  (seq-some (lambda (active-username)
+                              (equal username active-username))
+                            (plist-get usernames :active_usernames))))
+              users)))
 
 (defun telega-user-me (&optional locally-p)
   "Return me is a user."
@@ -123,7 +128,7 @@ Default is: `full'"
 
       ;; Existing user or a contact
       (when (memq fmt-type '(full short))
-        (if-let ((un (telega-tl-str user :username)))
+        (if-let ((un (telega-msg-sender-username user)))
             (setq name (concat "@" un))
           ;; Change format in case `:username' is unavailable
           (when (eq fmt-type 'short)

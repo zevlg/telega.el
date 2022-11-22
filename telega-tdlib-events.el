@@ -489,8 +489,14 @@ NOTE: we store the number as custom chat property, to use it later."
         (when (telega-msg-run-ignore-predicates last-message 'last-msg)
           (telega-chat--update chat 'reorder))
 
-        ;; Also fetch custom emojis for the last message, because last
-        ;; message might be displayed in the rootbuf
+        ;; Also fetch dependend message and custom emojis for the last
+        ;; message, because last message might be displayed in the
+        ;; rootbuf
+        (when (telega-msg-match-p last-message
+                '(type PinMessage GameScore PaymentSuccessful
+                       ForumTopicEdited ForumTopicIsClosedToggled))
+          (telega-msg--replied-message-fetch last-message))
+
         (when telega-use-images
           (telega-msg--custom-emojis-fetch last-message))
         ))
