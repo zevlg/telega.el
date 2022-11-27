@@ -231,9 +231,10 @@ CHEIGHT is height for the svg in characters, default=1."
    ((not img-file)
     (telega-emoji-create-svg (telega-sticker-emoji sticker)))
    ((equal "webp" (file-name-extension img-file))
-    (telega-create-image img-file nil nil
-                         :height (- (telega-chars-xheight 1) 2)
-                         :scale 1.0 :ascent 'center))
+    (telega-create-image
+     img-file (when (fboundp 'imagemagick-types) 'imagemagick) nil
+     :height (- (telega-chars-xheight 1) 2)
+     :scale 1.0 :ascent 'center))
    (t
     ;; Embed IMG-FILE into 2x1 svg with transparent background
     (let* ((w (telega-chars-xwidth 2))
