@@ -1871,7 +1871,8 @@ By default `telega-translate-to-language-default' is used."
 (defun telega-msg--replied-message-fetch (msg)
   "Fetch message on which MSG depends.
 Return `loading' is replied messages starts loading."
-  (when (and (not (telega-msg--replied-message msg))
+  (when (and (not (telega-msg-internal-p msg))
+             (not (telega-msg--replied-message msg))
              (or (not (zerop (plist-get msg :reply_to_message_id)))
                  (telega-msg-match-p msg
                    '(type PinMessage GameScore PaymentSuccessful
