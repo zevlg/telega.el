@@ -1027,9 +1027,14 @@ Return nil if STR does not specify an org mode link."
       ;; modifies also text of the entity, so we shift entities by
       ;; `offset-shift' to keep correct offset values.
       (seq-doseq (ent (plist-get fmt-text :entities))
+        ;; NOTE: In emacs27 `cl-incf' with `plist-get' does not work,
+        ;; thats why we use `plist-put' instead. See
+        ;; https://t.me/emacs_ru/454836
+        (plist-put ent :offset (+ (plist-get ent :offset) offset-shift))
+
         (when-let* ((ent-type (plist-get ent :type))
                     (ent-len (plist-get ent :length))
-                    (beg (cl-incf (plist-get ent :offset) offset-shift))
+                    (beg (plist-get ent :offset))
                     (end (+ beg ent-len))
                     (pre-p (eq 'textEntityTypePre (telega--tl-type ent-type)))
                     (text (plist-get fmt-text :text))
