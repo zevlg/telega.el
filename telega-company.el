@@ -230,7 +230,9 @@ Matches only if CHAR does not apper in the middle of the word."
            :tl-entity-type (list :@type "textEntityTypeMentionName"
                                  :user_id (plist-get member :id))
            'face 'telega-entity-type-mention
-           'rear-nonsticky t))))
+           ;; NOTE: Do not use `rear-nonsticky' property, so username
+           ;; can be edited, see https://t.me/emacs_telega/38257
+           ))))
 
      (insert " ")
      (let ((chatbuf-input (telega-chatbuf-input-string)))
