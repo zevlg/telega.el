@@ -159,6 +159,10 @@ Matches only if CHAR does not apper in the middle of the word."
 ;; - telega-company-username :: Complete user mentions via ~@<username>~
 ;;   syntax. Here is the screenshot, showing use of this backend:
 ;;   [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
+;; 
+;; Customizable options:
+;; - {{{user-option(telega-company-username-show-avatars, 2)}}}
+;; - {{{user-option(telega-company-username-markup, 2)}}}
 (defun telega-company-grab-username ()
   "Grab string starting with `@'."
   (telega-company-grab-single-char ?\@))
@@ -224,16 +228,26 @@ Matches only if CHAR does not apper in the middle of the word."
        (unless (or (telega-msg-sender-username member)
                    (telega-chat-p member))
          (delete-region (- (point) (length arg)) (point))
-         (telega-ins
-          (propertize
-           (telega-msg-sender-title member)
-           :tl-entity-type (list :@type "textEntityTypeMentionName"
-                                 :user_id (plist-get member :id))
-           'face 'telega-entity-type-mention
-           ;; NOTE: Do not use `rear-nonsticky' property, so username
-           ;; can be edited, see https://t.me/emacs_telega/38257
-           ))))
 
+         (telega-ins
+          (cond ((member telega-company-username-markup
+                         '("markdown1" "markdown2"))
+                 (telega-string-as-markup
+                     (format "[%s](tg://user?id=%d)"
+                             (telega-msg-sender-title member)
+                             (plist-get member :id))
+                     telega-company-username-markup
+                     (cdr (assoc telega-company-username-markup
+                                 telega-chat-markup-functions))))
+               (t
+                (propertize
+                 (telega-msg-sender-title member)
+                 :tl-entity-type (list :@type "textEntityTypeMentionName"
+                                       :user_id (plist-get member :id))
+                 'face 'telega-entity-type-mention
+                 ;; NOTE: Do not use `rear-nonsticky' property, so username
+                 ;; can be edited, see https://t.me/emacs_telega/38257
+                 ))))))
      (insert " ")
      (let ((chatbuf-input (telega-chatbuf-input-string)))
        (when (or (member chatbuf-input telega-known-inline-bots)
