@@ -1085,25 +1085,6 @@ Set to 0 to disable description in a webpage preview."
   :group 'telega-webpage)
 
 
-(defgroup telega-company nil
-  "Customization for telega company completion."
-  :group 'telega)
-
-(defcustom telega-company-username-show-avatars telega-user-show-avatars
-  "Non-nil to show avatars in the company annotation."
-  :package-version '(telega . "0.7.44")
-  :type 'boolean
-  :group 'telega-company)
-
-(defcustom telega-company-username-markup nil
-  "Markup to use for usernames completion."
-  :package-version '(telega . "0.8.82")
-  :type '(choice (const :tag "No markup" nil)
-                 (const :tag "Markdown1" "markdown1")
-                 (const :tag "Markdown2" "markdown2"))
-  :group 'telega-company)
-
-
 (defgroup telega-user nil
   "Customization for users."
   :group 'telega)
@@ -1124,6 +1105,25 @@ Used when showing chat members list."
   :package-version '(telega . "0.6.30")
   :type 'integer
   :group 'telega-user)
+
+
+(defgroup telega-company nil
+  "Customization for telega company completion."
+  :group 'telega)
+
+(defcustom telega-company-username-show-avatars telega-user-show-avatars
+  "Non-nil to show avatars in the company annotation."
+  :package-version '(telega . "0.7.44")
+  :type 'boolean
+  :group 'telega-company)
+
+(defcustom telega-company-username-markup nil
+  "Markup to use for usernames completion."
+  :package-version '(telega . "0.8.82")
+  :type '(choice (const :tag "No markup" nil)
+                 (const :tag "Markdown1" "markdown1")
+                 (const :tag "Markdown2" "markdown2"))
+  :group 'telega-company)
 
 
 (defgroup telega-chat nil
