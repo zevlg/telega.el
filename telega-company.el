@@ -183,18 +183,21 @@ Matches only if CHAR does not apper in the middle of the word."
      (let ((members
             (telega--searchChatMembers
              telega-chatbuf--chat (substring arg 1)
-             ;; NOTE: not using "chatMembersFilterMention"
-             ;; see https://github.com/tdlib/td/issues/1393
-             ;; (list :@type "chatMembersFilterMention"
-             ;;       :message_thread_id (or (plist-get telega-chatbuf--thread-msg
-             ;;                                         :message_thread_id)
-             ;;                              0))
+             ;; NOTE: "chatMembersFilterMention" might have some
+             ;; issues (see https://github.com/tdlib/td/issues/1393).
+             ;; However, using "chatMembersFilterMention" is essential
+             ;; because of Topics feature.
+             (list :@type "chatMembersFilterMention"
+                   :message_thread_id (or (plist-get telega-chatbuf--thread-msg
+                                                     :message_thread_id)
+                                          0))
              )))
        (or (nconc (mapcar (lambda (member)
                             (propertize
                              (or (telega-msg-sender-username member 'with-@)
                                  (telega-msg-sender-title member))
-                             'telega-member member))
+                             'telega-member member
+                             'telega-input arg))
                           members)
                   (cl-remove-if-not (lambda (botname)
                                       (string-prefix-p arg botname 'ignore-case))
@@ -224,8 +227,13 @@ Matches only if CHAR does not apper in the middle of the word."
           (insert-image
            (telega-msg-sender-avatar-image-one-line member))))))
     (post-completion
-     (when-let ((member (get-text-property 0 'telega-member arg)))
-       (unless (or (telega-msg-sender-username member)
+     (when-let ((member (get-text-property 0 'telega-member arg))
+                (input (get-text-property 0 'telega-input arg)))
+       ;; NOTE: Complete by username only if username starts with
+       ;; the `input', see https://t.me/emacs_telega/38371
+       (unless (or (string-prefix-p
+                    input (or (telega-msg-sender-username member 'with-@) "")
+                    'ignore-case)
                    (telega-chat-p member))
          (delete-region (- (point) (length arg)) (point))
 
