@@ -1616,7 +1616,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
                     (telega-sticker-choose-emoji-status
                      (lambda (sticker)
                        (telega--setEmojiStatus
-                        (plist-get sticker :custom_emoji_id) duration))))
+                        (telega-custom-emoji-id sticker) duration))))
                   ;; TODO: set emoji status
                   ))
       (telega-ins "\n"))

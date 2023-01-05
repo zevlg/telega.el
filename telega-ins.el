@@ -2210,6 +2210,24 @@ argument - MSG to insert additional information after header."
                       sender-faces))))
                ))))))
 
+(defun telega-ins--msg-topic-inline (msg)
+  "Insert topic info in case MSG is a topic message."
+  (when (plist-get msg :is_topic_message)
+    (telega-ins--with-props
+        ;; When pressed, jump to original message or show info
+        ;; about original sender
+        (list :action #'telega-msg-open-thread
+              :help-echo "Open forum topic")
+      (telega-ins--with-attrs  (list :max (- telega-chat-fill-column
+                                             (telega-current-column))
+                                     :elide t
+                                     :face 'telega-msg-heading)
+        (telega-ins "| Topic: ")
+        (telega-ins "TODO (topic title)")
+        )
+      (telega-ins "\n"))
+    t))
+
 (defun telega-ins--msg-sending-state-failed (msg)
   "Insert sending state failure reason for message MSG."
   (when-let ((send-state (plist-get msg :sending_state)))
@@ -2294,7 +2312,13 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (when msg-for-replies-p
         (telega-ins--image avatar 2
                            :no-display-if (not telega-chat-show-avatars)))
+      (when (< (telega-current-column) ccol)
+        (telega-ins--move-to-column ccol))
+      (telega-ins--msg-topic-inline msg)
+      (when (< (telega-current-column) ccol)
+        (telega-ins--move-to-column ccol))
       (telega-ins--msg-reply-inline msg)
+
       (telega-ins--column ccol telega-chat-fill-column
         (telega-ins--content msg)
 

@@ -132,6 +132,11 @@ Plist with properties:
 (defvar telega-chatbuf--thread-msg nil
   "MSG that starts a thread in the chatbuf.")
 (make-variable-buffer-local 'telega-chatbuf--thread-msg)
+(defun telega-chatbuf--thread-msg-id ()
+  "Return thread id for the chatbuf."
+  (or (plist-get telega-chatbuf--thread-msg
+                 :message_thread_id)
+      0))
 (defvar telega-chatbuf--thread-info nil
   "Last thread info received by `telega--getMessageThread'.
 Used to determine all older thread history has been loaded.")
@@ -4137,13 +4142,12 @@ Uses `telega-screenshot-function' to take a screenshot."
 (defun telega-chatbuf-custom-emoji-insert (sticker &optional emoji)
   "Insert custom emoji STICKER into chatbuf.
 EMOJI - emoji string to use instead of emoji associated with the STICKER."
-  (cl-assert (and (telega-custom-emoji-sticker-p sticker)
-                  (plist-get sticker :custom_emoji_id)))
+  (cl-assert (telega-custom-emoji-sticker-p sticker))
   (telega-chatbuf-input-insert
    (propertize
     (or emoji (telega-tl-str sticker :emoji))
     :tl-entity-type (list :@type "textEntityTypeCustomEmoji"
-                          :custom_emoji_id (plist-get sticker :custom_emoji_id))
+                          :custom_emoji_id (telega-custom-emoji-id sticker))
     'display (when telega-use-images
                (telega-sticker--image sticker))
     'rear-nonsticky t)))

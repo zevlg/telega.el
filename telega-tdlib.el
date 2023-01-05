@@ -859,6 +859,20 @@ Return list of \"ChatMember\" objects."
           :limit (or limit 200))
     callback))
 
+(defun telega--toggleSupergroupHasAggressiveAntiSpamEnabled (supergroup has-aggressive-antispam-p)
+  "Toggle whether aggressive anti-spam checks are enabled in the supergroup."
+  (telega-server--send
+   (list :@type "toggleSupergroupHasAggressiveAntiSpamEnabled"
+         :supergroup_id (plist-get supergroup :id)
+         :has_aggressive_anti_spam_enabled (if has-aggressive-antispam-p t :false))))
+
+(defun telega--toggleSupergroupHasHiddenMembers (supergroup has-hidden-members-p)
+  "Toggles whether non-administrators can receive only administrators and bots."
+  (telega-server--send
+   (list :@type "toggleSupergroupHasHiddenMembers"
+         :supergroup_id (plist-get supergroup :id)
+         :has_hidden_members (if has-hidden-members-p t :false))))
+
 (defun telega--setChatMemberStatus (chat msg-sender status &optional callback)
   "Change the STATUS of a MSG-SENDER, needs appropriate privileges.
 STATUS is a tl object."
@@ -2457,6 +2471,77 @@ FROM-LANGUAGE-CODE is a two-letter ISO 639-1 language code to translate from."
   (telega-server--call
    (list :@type "setAlarm"
          :seconds seconds)
+   callback))
+
+
+;;; Topics
+(defun telegea--toggleSupergroupIsForum (supergroup forum-p)
+  "Toggle whether the supergroup is a forum.
+Requires owner privileges."
+  (telega-server--send
+   (list :@type "toggleSupergroupIsForum"
+         :supergroup_id (plist-get supergroup :id)
+         :is_forum (if forum-p t :false))))
+
+(defun telega--readAllMessageThreadMentions (chat msg-thread-id)
+  )
+
+(defun telega--readAllMessageThreadReactions (chat msg-thread-id)
+  )
+
+(defun telega--unpinAllMessageThreadMessages (chat msg-thread-id)
+  )
+
+(defun telega--createForumTopic (chat name &optional icon)
+  )
+
+(cl-defun telega--editForumTopic (chat msg-thread-id &key name icon)
+  )
+
+(defun telega--toggleForumTopicIsClosed (chat msg-thread-id closed-p)
+  )
+
+(defun telega--deleteForumTopic (chat msg-thread-id)
+  )
+
+(defun telega--getForumTopicDefaultIcons (&optional callback)
+  "Returns list of custom emojis, which can be used as forum topic icon."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-custom-emoji--ensure 
+              (plist-get reply :stickers))
+    (list :@type "getForumTopicDefaultIcons")
+    callback))
+
+(defun telega--getForumTopic (chat message-thread-id &optional callback)
+  "Return information about a forum topic."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "getForumTopic"
+         :chat_id (plist-get chat :id)
+         :message_thread_id message-thread-id)
+   callback))
+
+(defun telega--getForumTopicLink (chat message-thread-id &optional callback)
+  "Return an HTTPS link to a topic in a forum chat."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "getForumTopicLink"
+         :chat_id (plist-get chat :id)
+         :message_thread_id message-thread-id)
+   callback))
+
+(cl-defun telega--getForumTopics (chat query &key offset-date offset-message-id
+                                       offset-message-thread-id limit callback)
+  "Return found forum topics in a forum chat."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "getForumTopics"
+         :chat_id (plist-get chat :id)
+         :query query
+         :offset-date (or offset-date 0)
+         :offset-message-id (or offset-message-id 0)
+         :offset-message-thread-id (or offset-message-thread-id 0)
+         :limit (or limit 100))
    callback))
 
 (provide 'telega-tdlib)

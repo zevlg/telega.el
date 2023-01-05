@@ -2126,6 +2126,11 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-forum "🗊"
+  "Symbol used for chats as forum."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbols-emojify
   '((verified (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "verified.svg" 2)))

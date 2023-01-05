@@ -343,17 +343,30 @@ DIRTINESS specifies additional CHAT dirtiness."
     (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatLastMessage (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+  (let* ((chat-id (plist-get event :chat_id))
+         (chat (telega-chat-get chat-id 'offline))
+         (event-last-msg (plist-get event :last_message)))
     (cl-assert chat)
-    (plist-put chat :last_message (plist-get event :last_message))
+    ;; NOTE: If chat's last message is already in the message's
+    ;; cache, use it, because various logic (such as ignoring
+    ;; predicated) might be already applied to the message
+    (when event-last-msg
+      (when-let ((cached-last-msg
+                  (gethash (cons chat-id (plist-get event-last-msg :id))
+                           telega--cached-messages)))
+        (setq event-last-msg cached-last-msg)))
+
+    (plist-put chat :last_message event-last-msg)
     (plist-put chat :positions (plist-get event :positions))
+
     ;; NOTE: `:last_message' is unset when gap is created in the chat
     ;; This case is handled in the `telega-chatbuf--last-msg-loaded-p'
     ;; See https://github.com/tdlib/td/issues/896
     ;;
     ;; Gap can be also created if last message in the chat is deleted.
     ;; TDLib might take some time to update chat's last message.
-    (telega-chatbuf--history-state-delete :newer-loaded)
+    (with-telega-chatbuf chat
+      (telega-chatbuf--history-state-delete :newer-loaded))
 
     (telega-chat--mark-dirty chat event)))
 

@@ -813,6 +813,11 @@ If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."
   (interactive)
   (telega-filter-add '(last-message (sender me))))
 
+(defun telega-filter-by-is-forum ()
+  "Filter chats which are forums."
+  (interactive)
+  (telega-filter-add 'is-forum))
+
 (provide 'telega-filter)
 
 ;;; telega-filter.el ends here

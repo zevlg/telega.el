@@ -12,13 +12,13 @@ https://github.com/zevlg/telega.el/issues/new?title=test&body=test%20here
 And fill body with text generated from Emacs
 
 ** TODO Naming refactoring
-- Use "Chat Matcher" term for functionality to match a chat
-- Use "Message Matcher" for functionality to match a message
+- Use "Chat Temex" term for functionality to match a chat
+- Use "Message Temex" for functionality to match a message
 - Avoid using "Chat Filter" term (as TDLib already has this term), use
   "Custom Chat Filter" and "Active Chat Filter" for filtering
   fuctionality using "Chat Matchers"
 
-** Inplace searching in a chatbuf
+** WIP Inplace searching in a chatbuf
 - ~C-c C-s~ to search for next query appearance in the chatbuf.
 - ~C-c C-r~ to search for prev
 

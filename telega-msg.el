@@ -78,23 +78,25 @@
                   :visible (telega-msg-favorite-p (telega-msg-at-down-mouse-3))))
 
     (bindings--define-key menu-map [save]
-      '(menu-item "Save" telega-msg-save
+      '(menu-item (telega-i18n "lng_context_save_file") telega-msg-save
                   :help "Save message's media to a file"))
     (bindings--define-key menu-map [copy-link]
-      '(menu-item "Copy Link" telega-msg-copy-link
+      '(menu-item (telega-i18n "lng_context_copy_link") telega-msg-copy-link
                   :help "Copy link to the message to the kill ring"))
     (bindings--define-key menu-map [copy-text]
-      '(menu-item "Copy Text" telega-msg-copy-text
+      '(menu-item (telega-i18n "lng_context_copy_text") telega-msg-copy-text
+                  :visible (let ((msg (telega-msg-at-down-mouse-3)))
+                             (telega-msg-content-text msg 'with-voice-note))
                   :help "Copy message text to the kill ring"))
     (bindings--define-key menu-map [unpin]
-      '(menu-item "Unpin" telega-msg-pin-toggle
+      '(menu-item (telega-i18n "lng_context_unpin_msg") telega-msg-pin-toggle
                   :help "Unpin message"
                   :visible (let ((msg (telega-msg-at-down-mouse-3)))
                              (and (telega-chat-match-p (telega-msg-chat msg)
                                     '(my-permission :can_pin_messages))
                                   (plist-get msg :is_pinned)))))
     (bindings--define-key menu-map [pin]
-      '(menu-item "Pin" telega-msg-pin-toggle
+      '(menu-item (telega-i18n "lng_context_pin_msg") telega-msg-pin-toggle
                   :help "Pin message"
                   :visible (let ((msg (telega-msg-at-down-mouse-3)))
                              (and (telega-chat-match-p (telega-msg-chat msg)
@@ -110,21 +112,35 @@
                                '(my-permission :can_restrict_members)))
                   ))
     (bindings--define-key menu-map [delete]
-      '(menu-item (propertize "Delete" 'face 'error)
+      '(menu-item (propertize (telega-i18n "lng_context_delete_msg") 'face 'error)
                   telega-msg-delete-marked-or-at-point
                   :help "Delete message"
                   :enable (let ((msg (telega-msg-at-down-mouse-3)))
                             (or (plist-get msg :can_be_deleted_only_for_self)
                                 (plist-get msg :can_be_deleted_for_all_users)))
                   ))
+    (bindings--define-key menu-map [forward]
+      '(menu-item (telega-i18n "lng_context_forward_msg")
+                  telega-msg-forward-marked-or-at-point
+                  :help "Forward a message"
+                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
+                            (plist-get msg :can_be_forwarded))
+                  ))
     (bindings--define-key menu-map [s2] menu-bar-separator)
     (bindings--define-key menu-map [thread]
       '(menu-item "View Thread" telega-msg-open-thread
                   :help "Show message's thread"
-                  :enable (plist-get
-                           (telega-msg-at-down-mouse-3) :can_get_message_thread)))
+                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                             '(and (not (prop :is_topic_message))
+                                   (prop :can_get_message_thread)))))
+    (bindings--define-key menu-map [thread]
+      '(menu-item (telega-i18n "lng_replies_view_topic") telega-msg-open-thread
+                  :help "Show message in the topic's chatbuf"
+                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                             '(and (prop :is_topic_message)
+                                   (prop :can_get_message_thread)))))
     (bindings--define-key menu-map [translate]
-      '(menu-item "Translate" telega-msg-translate
+      '(menu-item (telega-i18n "lng_context_translate") telega-msg-translate
                   :help "Translate message's text"
                   :visible (telega-msg-content-text
                             (telega-msg-at-down-mouse-3))))
@@ -1784,11 +1800,10 @@ be added."
 
           (telega-ins--custom-emoji-stickersets
            (lambda (sticker)
-             (cl-assert (and (telega-custom-emoji-sticker-p sticker)
-                             (plist-get sticker :custom_emoji_id)))
+             (cl-assert (telega-custom-emoji-sticker-p sticker))
              (telega--addMessageReaction
               msg (list :@type "reactionTypeCustomEmoji"
-                        :custom_emoji_id (plist-get sticker :custom_emoji_id))
+                        :custom_emoji_id (telega-custom-emoji-id sticker))
               big-p 'update-recent-reactions))))))))
 
 (defun telega-msg-translate (msg to-language-code &optional quiet)

@@ -387,6 +387,11 @@ display the list.")
 Use \\[execute-extended-command] telega-notifications-history RET to
 display the list.")
 
+(defvar telega-chat--topics nil
+  "Hash of CHAT-ID -> topics list.")
+(defvar telega-topic--default-icons nil
+  "Cached list of topic icons which can be used by all users.")
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil

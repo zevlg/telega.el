@@ -195,9 +195,13 @@ CHEIGHT is height for the svg in characters, default=1."
   "Return cached custom emoji by CUSTOM-EMOJI-ID."
   (gethash custom-emoji-id telega--custom-emoji-stickers))
 
+(defun telega-custom-emoji-id (sticker)
+  "Return custom emoji id for the sticker of the CustomEmoji type."
+  (telega--tl-get sticker :full_type :custom_emoji_id))
+
 (defun telega-custom-emoji--ensure (sticker)
   "Ensure custom emoji STICKER is in the custom emojis cache."
-  (when-let ((custom-emoj-id (plist-get sticker :custom_emoji_id)))
+  (when-let ((ce-id (telega-custom-emoji-id sticker)))
     ;; NOTE: Use custom `telega-sticker-size' to fit them into 1 char
     ;; height
     (plist-put sticker :telega-sticker-size
@@ -205,25 +209,20 @@ CHEIGHT is height for the svg in characters, default=1."
                           (car telega-sticker-size))))
     (plist-put sticker :telega-create-image-function
                #'telega-custom-emoji--create-image)
-    (puthash custom-emoj-id sticker telega--custom-emoji-stickers)
+    (puthash ce-id sticker telega--custom-emoji-stickers)
     sticker))
 
 (defun telega-custom-emoji-from-sticker (sticker)
   "Conver STICKER to a custom emoji sticker."
-  (or (telega-custom-emoji-get (plist-get sticker :custom_emoji_id))
+  (or (telega-custom-emoji-get (telega-custom-emoji-id sticker))
       (telega-custom-emoji--ensure sticker)))
 
 (defun telega-custom-emoji-sticker-p (sticker)
-  "Return non-nil if STICKER is a custom emoji sticker."
-  (eq 'stickerTypeCustomEmoji (telega--tl-type (plist-get sticker :type))))
-
-(defun telega-custom-emoji-themed-p (sticker)
-  "Return non-nil if STICKER corresponds to themed emoji status."
-  (and (telega-custom-emoji-sticker-p sticker)
-       ;; NOTE: id in the `telega--options' is stored as number, and
-       ;; `:set_id' is a string
-       (equal (plist-get telega--options :themed_emoji_statuses_sticker_set_id)
-              (string-to-number (plist-get sticker :set_id)))))
+  "Return non-nil if STICKER is a custom emoji sticker.
+Actually return STICKER's full type info."
+  (let ((full-type (plist-get sticker :full_type)))
+    (when (eq 'stickerFullTypeCustomEmoji (telega--tl-type full-type))
+      full-type)))
 
 (defun telega-custom-emoji--create-image (sticker img-file)
   "Create image for the custom emoji using corresponding STICKER."
@@ -246,7 +245,7 @@ CHEIGHT is height for the svg in characters, default=1."
            (img-x (/ (- w img-size) 2.0))
             ;; NOTE: Colorize themed emoji with the color of the
             ;; Telegram Premium badge
-           (mask (when (telega-custom-emoji-themed-p sticker)
+           (mask (when (telega--tl-get sticker :full_type :needs_repainting)
                    (let ((node (dom-node 'mask `((id . "mask")
                                                  (x . 0)
                                                  (y . 0)
@@ -380,8 +379,7 @@ Do not fetch custom emojis for ignored messages."
           (let ((custom-emoji (car stickers)))
             (telega-custom-emoji--ensure custom-emoji)
             ;; NOTE: image could be nil if `telega-use-images' is nil
-            (when image
-              (setcdr image (cdr (telega-emoji-status--image emoji-status)))))))
+            (setq image (telega-sticker--image custom-emoji)))))
       image)))
 
 (defun telega-emoji-status--animate (emoji-status)
@@ -394,9 +392,9 @@ Do not fetch custom emojis for ignored messages."
 
 (defun telega-emoji-status-from-sticker (sticker)
   "Create emoji status from given STICKER."
-  (cl-assert (plist-get sticker :custom_emoji_id))
+  (cl-assert (telega-custom-emoji-sticker-p sticker))
   (list :@type "emojiStatus"
-        :custom_emoji_id (plist-get sticker :custom_emoji_id)))
+        :custom_emoji_id (telega-custom-emoji-id sticker)))
 
 (defun telega-emoji-status-list--gen-ins-callback (custom-action)
   (let ((stickers-callback (telega--gen-ins-continuation-callback 'loading

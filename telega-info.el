@@ -607,7 +607,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
 
       ;; Sign messages is available in channels only
       (when (telega-chat-channel-p chat)
-        (telega-ins "Sign Messages: ")
+        (telega-ins (telega-i18n "lng_edit_sign_messages") ": ")
         (telega-ins--button (if (plist-get supergroup :sign_messages)
                                 telega-symbol-heavy-checkmark
                               telega-symbol-blank-button)
@@ -616,6 +616,21 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                      supergroup (not (plist-get supergroup :sign_messages)))))
         (telega-ins "\n"))
       )
+
+    ;; Aggressive anti-spam mode
+    (when (plist-get full-info :can_toggle_aggressive_anti_spam)
+      (telega-ins (telega-i18n "lng_manage_peer_antispam") ": ")
+      (let ((anti-spam-p
+             (plist-get full-info :has_aggressive_anti_spam_enabled)))
+        (telega-ins--button (if anti-spam-p
+                                telega-symbol-heavy-checkmark
+                              telega-symbol-blank-button)
+          'action (lambda (_ignored)
+                    (telega--toggleSupergroupHasAggressiveAntiSpamEnabled
+                     supergroup (not anti-spam-p)))))
+      (telega-ins "\n")
+      (telega-ins--help-message
+       (telega-ins-i18n "lng_manage_peer_antispam_about")))
 
     ;; Slow Mode is available only for supergroups
     (unless (telega-chat-channel-p chat)
@@ -681,7 +696,20 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins restr-reason "\n")))
 
     (telega-ins "\n")
-    (telega-ins-fmt "Members: %d (%d online, %d admins)"
+    (when (plist-get full-info :can_hide_members)
+      (telega-ins (telega-i18n "lng_profile_hide_participants") ": ")
+      (let ((has-hidden-members-p (plist-get full-info :has_hidden_members)))
+        (telega-ins--button (if has-hidden-members-p
+                                telega-symbol-heavy-checkmark
+                              telega-symbol-blank-button)
+          'action (lambda (_ignored)
+                    (telega--toggleSupergroupHasHiddenMembers
+                     supergroup (not has-hidden-members-p)))))
+      (telega-ins "\n")
+      (telega-ins--help-message
+       (telega-ins-i18n "lng_profile_hide_participants_about")))
+    (telega-ins-i18n "lng_profile_participants_section")
+    (telega-ins-fmt ": %d (%d online, %d admins)"
       (plist-get full-info :member_count)
       (or (plist-get chat :x-online-count) 0)
       (plist-get full-info :administrator_count))

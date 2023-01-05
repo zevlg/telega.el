@@ -43,6 +43,7 @@
 (declare-function company-call-backend "company" (&rest args))
 
 (declare-function telega-chat--info "telega-chat" (chat))
+(declare-function telega-chatbuf--thread-msg-id "telega-chat")
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega--full-info "telega-info" (tlobj))
 
@@ -188,9 +189,7 @@ Matches only if CHAR does not apper in the middle of the word."
              ;; However, using "chatMembersFilterMention" is essential
              ;; because of Topics feature.
              (list :@type "chatMembersFilterMention"
-                   :message_thread_id (or (plist-get telega-chatbuf--thread-msg
-                                                     :message_thread_id)
-                                          0))
+                   :message_thread_id (telega-chatbuf--thread-msg-id))
              )))
        (or (nconc (mapcar (lambda (member)
                             (propertize
@@ -352,7 +351,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   code blocks via ~```~ syntax.
 (defun telega-company-grab-markdown-precode ()
   "Return non-nil if chatbuf input starts source block."
-  (when-let ((cg (company-grab "\\(?:^\\|[^`]\\)```\\([^`\t\n ]*\\)" 1)))
+  (when-let ((cg (company-grab "^```\\([^`\t\n ]*\\)" 1)))
     (cons cg company-minimum-prefix-length)))
 
 (defun telega-company--language-names ()
