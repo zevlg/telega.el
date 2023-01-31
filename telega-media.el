@@ -828,7 +828,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
          (width (plist-get map :width))
          (height (plist-get map :height))
          (map-loc (plist-get map :map-location)) ;at image center
-         (raw-map-sender (plist-get map :sender))
+         (raw-map-sender (plist-get map :sender_id))
          (map-sender (when raw-map-sender
                        (telega-msg-sender raw-map-sender)))
          (user-loc sender-loc)
@@ -941,7 +941,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
          (map-photofile (when map-photo
                           (telega--tl-get map-photo :local :path)))
          ;; NOTE: `raw-map-sender' is nil for `venue' locations
-         (raw-map-sender (plist-get map :sender))
+         (raw-map-sender (plist-get map :sender_id))
          (map-sender (when raw-map-sender
                        (telega-msg-sender raw-map-sender)))
          (width (plist-get map :width))
@@ -958,7 +958,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                      :fill-color (telega-color-name-as-hex-2digits
                                   (or (face-foreground 'shadow) "gray50"))))
 
-    ;; TODO: show other users close enough to `:sender'
+    ;; TODO: show other users close enough to `:sender_id'
 
     ;; NOTE: First draw other users
     (when (and telega-location-show-me

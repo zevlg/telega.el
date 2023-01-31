@@ -1296,8 +1296,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
                   :height (telega-chars-xheight (car telega-location-size))
                   :zoom telega-location-zoom
                   :scale telega-location-scale
-                  :sender (unless venue-p
-                            (plist-get msg :sender))))
+                  :sender_id (unless venue-p
+                               (plist-get msg :sender_id))))
       (plist-put msg :telega-map map))
 
     ;; NOTE: if location or heading changes (or initial request), then

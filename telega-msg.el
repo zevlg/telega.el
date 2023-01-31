@@ -277,8 +277,8 @@
                              (not (telega-msg-internal-p msg))
                              (not (telega-msg-special-p prev-msg))
                              ;; NOTE: Different senders might have same name
-                             (equal (plist-get msg :sender)
-                                    (plist-get prev-msg :sender))
+                             (equal (plist-get msg :sender_id)
+                                    (plist-get prev-msg :sender_id))
                              (string-prefix-p
                               (string-trim-right
                                (telega-ins--as-string
