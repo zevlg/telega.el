@@ -2453,15 +2453,16 @@ For Telegram Premium users only."
          :new_recovery_email_address new-recovery-email)
    callback))
 
-(cl-defun telega--translateText (text to-language-code &key from-language-code callback)
+(cl-defun telega--translateText (text to-language-code &key callback)
   "Translate TEXT to a language specified by TO-LANGUAGE-CODE.
-TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code.
-FROM-LANGUAGE-CODE is a two-letter ISO 639-1 language code to translate from."
+TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
   (declare (indent 2))
   (telega-server--call
    (list :@type "translateText"
-         :text text
-         :from_language_code from-language-code
+         ;; NOTE: Accepts "formattedText" as argument
+         :text (if (stringp text)
+                   (telega-fmt-text text)
+                 text)
          :to_language_code to-language-code)
    callback))
 
