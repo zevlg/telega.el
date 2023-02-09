@@ -1005,7 +1005,7 @@ Return nil if STR does not specify an org mode link."
    (telega--parseTextEntities str (list :@type "textParseModeHTML"))))
 
 (defun telega-markup-as-is-fmt (str)
-  "Format string STR to formattedTetx as is, without applying any markup."
+  "Format string STR to formattedText as is, without applying any markup."
   (telega-fmt-text (substring-no-properties str)))
 
 (defun telega-markup-markdown1-fmt (str)
