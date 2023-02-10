@@ -961,6 +961,7 @@ Return nil if STR does not specify an org mode link."
 (defun telega-markup-org-fmt (str)
   "Format string STR to formattedText using Org Mode markup."
   (let ((seen-org-emphasis nil)
+	(seen-org-link nil)
         (fmt-strings nil)
         (substrings
          (with-temp-buffer
@@ -973,6 +974,11 @@ Return nil if STR does not specify an org mode link."
                (add-text-properties (match-beginning 0) (match-end 0)
                                     '(face (telega-entity-type-spoiler)
                                            org-emphasis t))))
+	   (save-excursion
+	     (while (re-search-forward org-link-any-re nil t)
+	       (add-text-properties (match-beginning 0) (match-end 0)
+				    '(face (telega-entity-type-texturl)
+					   org-link t))))
            (let ((org-hide-emphasis-markers nil)
                  (org-emphasis-alist '(("*" telega-entity-type-bold)
                                        ("/" telega-entity-type-italic)
@@ -988,7 +994,10 @@ Return nil if STR does not specify an org mode link."
              (fmt-str (cond ((get-text-property 0 'org-emphasis str1)
                              (setq seen-org-emphasis t)
                              (telega-markup-org--emphasis-fmt str1))
-                            (seen-org-emphasis
+			    ((get-text-property 0 'org-link str1)
+			     (setq seen-org-link t)
+			     (telega-markup-org--link-fmt str1))
+                            ((or seen-org-emphasis seen-org-link)
                              ;; Trailing string
                              (cl-assert (= 1 (length substrings)))
                              (telega-markup-org-fmt str1))
