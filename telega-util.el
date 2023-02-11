@@ -978,6 +978,7 @@ Return nil if STR does not specify an org mode link."
 	     (while (re-search-forward org-link-any-re nil t)
 	       (add-text-properties (match-beginning 0) (match-end 0)
 				    '(face (telega-entity-type-texturl)
+					   org-emphasis t
 					   org-link t))))
            (let ((org-hide-emphasis-markers nil)
                  (org-emphasis-alist '(("*" telega-entity-type-bold)
@@ -991,15 +992,14 @@ Return nil if STR does not specify an org mode link."
     ;; NOTE: Traverse result collecting formatted strings
     (while substrings
       (let* ((str1 (car substrings))
-             (fmt-str (cond ((get-text-property 0 'org-emphasis str1)
+             (fmt-str (cond ((get-text-property 0 'org-link str1)
                              (setq seen-org-emphasis t)
-                             (telega-markup-org--emphasis-fmt str1))
-			    ((get-text-property 0 'org-link str1)
-			     (setq seen-org-link t)
-			     (telega-markup-org--link-fmt str1))
-                            ((or seen-org-emphasis seen-org-link)
+                             (telega-markup-org--link-fmt str1))
+			    ((get-text-property 0 'org-emphasis str1)
+			     (setq seen-org-emphasis t)
+			     (telega-markup-org--emphasis-fmt str1))
+                            (seen-org-emphasis
                              ;; Trailing string
-                             (cl-assert (= 1 (length substrings)))
                              (telega-markup-org-fmt str1))
                             (t
                              ;; Non-emphasised text
