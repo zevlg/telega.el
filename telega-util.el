@@ -961,6 +961,7 @@ Return nil if STR does not specify an org mode link."
 (defun telega-markup-org-fmt (str)
   "Format string STR to formattedText using Org Mode markup."
   (let ((seen-org-emphasis nil)
+	(seen-org-link nil)
         (fmt-strings nil)
         (substrings
          (with-temp-buffer
@@ -973,6 +974,12 @@ Return nil if STR does not specify an org mode link."
                (add-text-properties (match-beginning 0) (match-end 0)
                                     '(face (telega-entity-type-spoiler)
                                            org-emphasis t))))
+	   (save-excursion
+	     (while (re-search-forward org-link-any-re nil t)
+	       (add-text-properties (match-beginning 0) (match-end 0)
+				    '(face (telega-entity-type-texturl)
+					   org-emphasis t
+					   org-link t))))
            (let ((org-hide-emphasis-markers nil)
                  (org-emphasis-alist '(("*" telega-entity-type-bold)
                                        ("/" telega-entity-type-italic)
@@ -985,12 +992,14 @@ Return nil if STR does not specify an org mode link."
     ;; NOTE: Traverse result collecting formatted strings
     (while substrings
       (let* ((str1 (car substrings))
-             (fmt-str (cond ((get-text-property 0 'org-emphasis str1)
+             (fmt-str (cond ((get-text-property 0 'org-link str1)
                              (setq seen-org-emphasis t)
-                             (telega-markup-org--emphasis-fmt str1))
+                             (telega-markup-org--link-fmt str1))
+			    ((get-text-property 0 'org-emphasis str1)
+			     (setq seen-org-emphasis t)
+			     (telega-markup-org--emphasis-fmt str1))
                             (seen-org-emphasis
                              ;; Trailing string
-                             (cl-assert (= 1 (length substrings)))
                              (telega-markup-org-fmt str1))
                             (t
                              ;; Non-emphasised text
@@ -1005,7 +1014,7 @@ Return nil if STR does not specify an org mode link."
    (telega--parseTextEntities str (list :@type "textParseModeHTML"))))
 
 (defun telega-markup-as-is-fmt (str)
-  "Format string STR to formattedTetx as is, without applying any markup."
+  "Format string STR to formattedText as is, without applying any markup."
   (telega-fmt-text (substring-no-properties str)))
 
 (defun telega-markup-markdown1-fmt (str)

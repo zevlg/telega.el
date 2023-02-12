@@ -213,6 +213,8 @@ Have Stoploss 690 Satoshi." :entities []))))
                  '(:@type "formattedText" :text "bold" :entities [(:@type "textEntity" :offset 0 :length 4 :type (:@type "textEntityTypeBold"))])))
   (should (equal (telega-markup-org-fmt "prefix *bold* here ~code~ trailing")
                  '(:@type "formattedText" :text "prefix bold here code trailing" :entities [(:@type "textEntity" :offset 7 :length 4 :type (:@type "textEntityTypeBold")) (:@type "textEntity" :offset 17 :length 4 :type (:@type "textEntityTypeCode"))])))
+  (should (equal (telega-markup-org-fmt "*that's* a ||spoiler|| [[https://link.com][link]]")
+		 '(:@type "formattedText" :text #("that's a spoiler link" 17 21 (org-link t org-emphasis t face (telega-entity-type-texturl))) :entities [(:@type "textEntity" :offset 0 :length 6 :type (:@type "textEntityTypeBold")) (:@type "textEntity" :offset 9 :length 7 :type (:@type "textEntityTypeSpoiler")) (:@type "textEntity" :offset 17 :length 4 :type (:@type "textEntityTypeTextUrl" :url #("https://link.com" 0 16 ...)))])))
   )
 
 (ert-deftest telega-plist-del-test ()
