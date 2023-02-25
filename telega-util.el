@@ -949,7 +949,8 @@ Return nil if STR does not specify org mode source block."
 Return nil if STR does not specify an org mode link."
   (when (string-match org-link-any-re str)
     (let ((text (match-string 3 str))
-          (url (match-string 2 str)))
+          (url (or (match-string 2 str) (match-string 0 str))))
+      (cl-assert url)
       (cond ((null text)
              (telega-fmt-text url '(:@type "textEntityTypeUrl")))
             ((string-match (rx "tg://user?id=" (group (+ digit))) url)

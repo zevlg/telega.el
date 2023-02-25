@@ -234,6 +234,9 @@ Have Stoploss 690 Satoshi." :entities []))))
                                                   :entities)
                                        0)
                                  :type :@type)))
+  (should (equal "https://zevlg.github.io/telega.el/"
+                 (telega-tl-str (telega-markup-org--link-fmt "https://zevlg.github.io/telega.el/")
+                                :text)))
   )
 
 ;; Local Variables:
