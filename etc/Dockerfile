@@ -17,7 +17,7 @@ ARG telega_branch=master
 RUN set +x && apk update && apk upgrade && \
     apk add --update alpine-sdk linux-headers git zlib-dev openssl-dev gperf php cmake
 
-RUN echo "TDLib 1.8.11-3d0140b3e" > tdlib-version && \
+RUN echo "TDLib v1.8.11-1543c41" > tdlib-version && \
     git clone https://github.com/tdlib/td.git && \
     cd td && \
     git checkout ${tdlib_branch} && \
