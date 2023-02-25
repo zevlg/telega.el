@@ -227,6 +227,15 @@ Have Stoploss 690 Satoshi." :entities []))))
                  (telega-plist-del '(:delete-me 1) :delete-me)))
   )
 
+(ert-deftest telega-org-link-fmt-test ()
+  (should (equal "textEntityTypeUrl"
+                 (telega--tl-get (aref (plist-get (telega-markup-org--link-fmt
+                                                   "[[tg://user?id=12]]")
+                                                  :entities)
+                                       0)
+                                 :type :@type)))
+  )
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:

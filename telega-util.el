@@ -948,20 +948,21 @@ Return nil if STR does not specify org mode source block."
   "Format org link specified by STR to formattedText.
 Return nil if STR does not specify an org mode link."
   (when (string-match org-link-any-re str)
-    (let* ((link-text (match-string 3 str))
-           (link-url (match-string 2 str))
-           (user-id (when (string-prefix-p "tg://user?id=" link-url)
-                      (string-to-number (substring link-url 13)))))
-      (if user-id
-          (telega-fmt-text link-text (list :@type "textEntityTypeMentionName"
-                                           :user_id user-id))
-        (telega-fmt-text link-text (list :@type "textEntityTypeTextUrl"
-                                         :url link-url))))))
+    (let ((text (match-string 3 str))
+          (url (match-string 2 str)))
+      (cond ((null text)
+             (telega-fmt-text url '(:@type "textEntityTypeUrl")))
+            ((string-match (rx "tg://user?id=" (group (+ digit))) url)
+             (telega-fmt-text text (list :@type "textEntityTypeMentionName"
+                                         :user_id (string-to-number
+                                                   (match-string 1 url)))))
+            (t
+             (telega-fmt-text text (list :@type "textEntityTypeTextUrl"
+                                         :url url)))))))
 
 (defun telega-markup-org-fmt (str)
   "Format string STR to formattedText using Org Mode markup."
   (let ((seen-org-emphasis nil)
-	(seen-org-link nil)
         (fmt-strings nil)
         (substrings
          (with-temp-buffer
@@ -974,12 +975,12 @@ Return nil if STR does not specify an org mode link."
                (add-text-properties (match-beginning 0) (match-end 0)
                                     '(face (telega-entity-type-spoiler)
                                            org-emphasis t))))
-	   (save-excursion
-	     (while (re-search-forward org-link-any-re nil t)
-	       (add-text-properties (match-beginning 0) (match-end 0)
-				    '(face (telega-entity-type-texturl)
-					   org-emphasis t
-					   org-link t))))
+           (save-excursion
+             (while (re-search-forward org-link-any-re nil t)
+               (add-text-properties (match-beginning 0) (match-end 0)
+                                    '(face (telega-entity-type-texturl)
+                                           org-emphasis t
+                                           org-link t))))
            (let ((org-hide-emphasis-markers nil)
                  (org-emphasis-alist '(("*" telega-entity-type-bold)
                                        ("/" telega-entity-type-italic)
@@ -995,9 +996,9 @@ Return nil if STR does not specify an org mode link."
              (fmt-str (cond ((get-text-property 0 'org-link str1)
                              (setq seen-org-emphasis t)
                              (telega-markup-org--link-fmt str1))
-			    ((get-text-property 0 'org-emphasis str1)
-			     (setq seen-org-emphasis t)
-			     (telega-markup-org--emphasis-fmt str1))
+                            ((get-text-property 0 'org-emphasis str1)
+                             (setq seen-org-emphasis t)
+                             (telega-markup-org--emphasis-fmt str1))
                             (seen-org-emphasis
                              ;; Trailing string
                              (telega-markup-org-fmt str1))
