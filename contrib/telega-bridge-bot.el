@@ -234,7 +234,7 @@ If FORCE-UPDATE is non-nil, force update the file."
            (or
             force-update
             (time-less-p
-             (nth 5 (file-attributes file-path))
+             (file-attribute-modification-time (file-attributes file-path))
              (time-subtract (current-time) telega-bridge-bot-matrix-avatar-expires))))
       (delete-file file-path))
     (telega-bridge-bot--download-async
@@ -315,7 +315,7 @@ Return a string if STRING is non-nil."
 
 (defun telega-bridge-bot--file-id (path)
   "Return file id based on PATH and modification time seconds."
-  (let* ((mtime (nth 5 (file-attributes path)))
+  (let* ((mtime (file-attribute-modification-time (file-attributes path)))
          (mtime-seconds (float-time mtime))
          (mtime-seconds-string (number-to-string mtime-seconds)))
     (intern (secure-hash 'sha256 (concat mtime-seconds-string "-" path)))))
