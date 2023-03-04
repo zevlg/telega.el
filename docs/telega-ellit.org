@@ -1166,6 +1166,8 @@ project.
 
 #+ELLIT-INCLUDE: ../contrib/telega-channels-export.el
 
+#+ELLIT-INCLUDE: ../contrib/telega-bridge-bot.el
+
 * Troubleshooting
 
 ** Can't compile =telega-server=
