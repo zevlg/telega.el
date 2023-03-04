@@ -383,7 +383,7 @@ If FORCE-UPDATE is non-nil, force update the user info."
   "Callback for `telega-bridge-bot--download-async'.
 Will update CHAT-ID MSG-ID when download completed."
   (when-let* ((msg (telega-msg-get (list :id chat-id) msg-id))
-              (user-id (telega--tl-get msg :sender_id :user_id))
+              (user-id (telega--tl-get (telega-msg-sender msg) :id))
               (user-outdated (telega-user-get user-id))
               (user-signature (plist-get user-outdated :telega-bridge-bot-user-signature))
               (user (apply 'telega-bridge-bot--user user-signature))) ; recreate user
@@ -394,7 +394,7 @@ Will update CHAT-ID MSG-ID when download completed."
   "Update sender id and remove duplicated username in MSG."
   (when-let* ((msg-id (telega--tl-get msg :id))
               (chat-id (telega--tl-get msg :chat_id))
-              (bot-id (telega--tl-get msg :sender_id :user_id))
+              (bot-id (telega--tl-get (telega-msg-sender msg) :id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
               (content (telega--tl-get msg :content))
@@ -420,7 +420,7 @@ Will update CHAT-ID MSG-ID when download completed."
   "Update sender id and remove file caption in MSG."
   (when-let* ((msg-id (telega--tl-get msg :id))
               (chat-id (telega--tl-get msg :chat_id))
-              (bot-id (telega--tl-get msg :sender_id :user_id))
+              (bot-id (telega--tl-get (telega-msg-sender msg) :id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
               (content (telega--tl-get msg :content))
