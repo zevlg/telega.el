@@ -317,7 +317,7 @@ Return a string if STRING is non-nil."
 (defun telega-bridge-bot--user (chat-id bot-id username)
   "Return a user by CHAT-ID BOT-ID and USERNAME."
   (let* ((bot-username
-          (telega--tl-get (telega-user-get bot-id) :usernames :editable_username))
+          (telega-msg-sender-username (telega-user-get bot-id)))
          (profile-photo-path
           (telega-bridge-bot--profile-photo-path chat-id bot-id username))
          (profile-photo-id
