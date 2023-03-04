@@ -85,13 +85,7 @@
   :type 'integer
   :group 'telega-bridge-bot)
 
-(defcustom telega-bridge-bot-bridge-info-plist
-  '(-1001773572820 ; @emacs_china
-    (420415423 ; @matrix_t2bot
-     (:type :matrix :chat-id "!EGzPXoyqkJdTByDCjD:mozilla.org"))
-    -1001094615131 ; @archlinuxcn_offtopic
-    (5296957089 ; @nichi_matrix_bot
-     (:type :matrix :chat-id "!TczZJIbozgTQfqUYBA:nichi.co")))
+(defcustom telega-bridge-bot-bridge-info-plist nil
   "Associate chats and bots information."
   :type '(plist :key-type (integer :tag "Chat ID")
                 :value-type (plist :key-type (integer :tag "Bot ID")
