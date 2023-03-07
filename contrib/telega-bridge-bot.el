@@ -56,8 +56,10 @@
 ;; This is required because only user in the room can access the member info.
 
 ;;; Code:
-
 (require 'telega)
+
+;; shutup compiler
+(defvar url-http-end-of-headers)
 
 ;; Customizable variables
 (defgroup telega-bridge-bot nil
@@ -117,7 +119,7 @@
 CALLBACK is called when download finished."
   (url-retrieve
    url
-   (lambda (status path cb)
+   (lambda (_status path cb)
      (goto-char (point-min))
      (when (string-match "200 OK" (buffer-string))
        (let ((inhibit-message t))
@@ -151,12 +153,13 @@ CALLBACK-FUNC is called when fetch finished or cache exists."
          (cache
           (or (plist-get telega-bridge-bot--matrix-room-cache cache-key)
               (make-hash-table :test 'equal))))
-    (if-let* ((_ (or
-                  force-update
-                  (time-less-p
-                   (plist-get telega-bridge-bot--matrix-room-cache-last-modified-plist cache-key)
-                   (time-subtract (current-time) telega-bridge-bot-matrix-members-expires))
-                  (hash-table-empty-p cache)))
+    (if-let* ((update-p
+               (or force-update
+                   (time-less-p
+                    (plist-get telega-bridge-bot--matrix-room-cache-last-modified-plist cache-key)
+                    (time-subtract (current-time)
+                                   telega-bridge-bot-matrix-members-expires))
+                   (hash-table-empty-p cache)))
               (url-request-method "GET")
               (url-request-extra-headers '(("Content-Type" . "application/json")))
               (access-token (telega-bridge-bot--get-matrix-access-token))
@@ -167,7 +170,7 @@ CALLBACK-FUNC is called when fetch finished or cache exists."
         ;; fetch joined members asynchronously
         (url-retrieve
          url
-         (lambda (status cb-cache cb-cache-key cb-func)
+         (lambda (_status cb-cache cb-cache-key cb-func)
            (goto-char url-http-end-of-headers)
            (when-let* ((json-object-type 'hash-table)
                        (json-array-type 'list)
@@ -398,9 +401,9 @@ Will update CHAT-ID MSG-ID when download completed."
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
               (content (telega--tl-get msg :content))
-              (_ (eq (telega--tl-type content) 'messageText))
+              (text-p (eq (telega--tl-type content) 'messageText))
               (content-text (telega--tl-get content :text))
-              (_ (eq (telega--tl-type content-text) 'formattedText))
+              (fmt-text-p (eq (telega--tl-type content-text) 'formattedText))
               (content-text-text (telega--tl-get content-text :text)) ; get the msg text
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
@@ -425,7 +428,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (counterparty-type (plist-get counterparty-info :type))
               (content (telega--tl-get msg :content))
               (content-caption (telega--tl-get content :caption))
-              (_ (eq (telega--tl-type content-caption) 'formattedText))
+              (fmt-text-p (eq (telega--tl-type content-caption) 'formattedText))
               (content-caption-text (telega--tl-get content-caption :text)) ; get the msg text
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
@@ -444,13 +447,13 @@ Will update CHAT-ID MSG-ID when download completed."
   (when-let* ((msg-id (telega--tl-get msg :id))
               (chat-id (telega--tl-get msg :chat_id))
               (forward-info (telega--tl-get msg :forward_info))
-              (_ (eq (telega--tl-type forward-info) 'messageForwardInfo))
+              (fwd-info-p (eq (telega--tl-type forward-info) 'messageForwardInfo))
               (bot-id (telega--tl-get forward-info :origin :sender_user_id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
               (content (telega--tl-get msg :content))
               (content-text (telega--tl-get content :text))
-              (_ (eq (telega--tl-type content-text) 'formattedText))
+              (fmt-text-p (eq (telega--tl-type content-text) 'formattedText))
               (content-text-text (telega--tl-get content-text :text)) ; get the msg text
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
