@@ -123,7 +123,7 @@
   (when-let ((me-user (telega-user-me 'locally)))
     (if (telega-user-online-p me-user)
         telega-symbol-online-status
-      (propertize telega-symbol-online-status 'face 'shadow))))
+      (propertize telega-symbol-online-status 'face 'telega-shadow))))
 
 (defun telega-mode-line--online-status-update (event)
   (when (eq (plist-get event :user_id) telega--me-id)
@@ -192,10 +192,11 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
 
 (defun telega-mode-line-update (&rest _ignored)
   "Update value for `telega-mode-line-string'."
-  (setq telega-mode-line-string
-        (when (telega-server-live-p)
-          (format-mode-line telega-mode-line-string-format)))
-  (force-mode-line-update 'all))
+  (when telega-mode-line-mode
+    (setq telega-mode-line-string
+          (when (telega-server-live-p)
+            (format-mode-line telega-mode-line-string-format)))
+    (force-mode-line-update 'all)))
 
 ;;;###autoload
 (define-minor-mode telega-mode-line-mode
@@ -721,13 +722,63 @@ squashing is not applied."
 (require 'image-mode)
 
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
-(declare-function telega-chat-brackets "telega-chat" (chat))
-(declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
+(declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight))
+
+(defcustom telega-image-mode-mode-line-format
+  '(" → "
+    (:eval (telega-image-mode-mode-line-chat-title))
+    " "
+    (:eval (telega-image-mode-mode-line-chat-position)))
+  "Format for the modeline."
+  :type 'list
+  :group 'telega-modes)
 
 (defvar telega-image--message nil
   "Message corresponding to image currently viewed.")
 (make-variable-buffer-local 'telega-image--message)
+
+(defvar telega-image--position (cons nil nil)
+  "Position of the image message in the chat's history
+To be displayed in the modeline.")
+(make-variable-buffer-local 'telega-image--position)
+
+(defun telega-image-mode-mode-line-chat-title ()
+  (telega-chatbuf--name (telega-msg-chat telega-image--message)))
+
+(defun telega-image-mode-mode-line-chat-position ()
+  (when (and (car telega-image--position)
+             (cdr telega-image--position))
+    (format "[%d/%d]"
+            (car telega-image--position)
+            (cdr telega-image--position))))
+
+(defun telega-image-mode--update-modeline ()
+  (setq mode-line-buffer-identification
+        (list (propertized-buffer-identification "%b")
+              (format-mode-line telega-image-mode-mode-line-format nil nil
+                                (current-buffer))))
+  (force-mode-line-update))
+
+(defun telega-image-mode--chat-position-fetch ()
+  "Asynchronously fetch message's position in the chat's history."
+  (let ((buf (current-buffer)))
+    (telega--getChatMessageCount (telega-msg-chat telega-image--message)
+        '(:@type "searchMessagesFilterPhoto") nil
+      (lambda (count)
+        (with-current-buffer buf
+          (setcdr telega-image--position count)
+          (when (car telega-image--position)
+            (telega-image-mode--update-modeline)))))
+
+    (telega--getChatMessagePosition telega-image--message
+        '(:@type "searchMessagesFilterPhoto") nil
+      (lambda (count)
+        (with-current-buffer buf
+          (setcar telega-image--position count)
+          (when (cdr telega-image--position)
+            (telega-image-mode--update-modeline)))))
+    ))
 
 (defvar telega-image-mode-map
   (let ((map (make-sparse-keymap)))
@@ -742,7 +793,8 @@ squashing is not applied."
   (setq mode-name
         (concat (telega-symbol 'mode) "Image"
                 (when image-type (format "[%s]" image-type))))
-  )
+
+  (telega-image-mode--update-modeline))
 
 (defun telega-image-mode-p (buffer-name &rest _unused)
   "Return non-nil if buffer named BUFFER-NAME has `telega-image-mode' major-mode.
@@ -760,7 +812,31 @@ Could be used as condition function in `display-buffer-alist'."
                          (telega--tl-get tl-file :local :path) nil t)
      (telega-image-mode)
      (setq telega-image--message for-msg)
+     (telega-image-mode--chat-position-fetch)
      (current-buffer))))
+
+(defun telega-image-view-msg (image-msg)
+  "View image associated with the IMAGE-MSG message."
+  ;; Download highres photo
+  (let* ((photo (telega--tl-get image-msg :content :photo))
+         (hr (telega-photo--highres photo))
+         (hr-file (telega-file--renew hr :photo))
+         (oldbuffer (current-buffer)))
+    ;; Jump to corresponding message in the chatbuf on switch-in
+    (with-telega-chatbuf (telega-msg-chat image-msg)
+      (telega-chatbuf--history-state-set :goto-msg image-msg))
+
+    (telega-file--download hr-file 32
+      (lambda (tl-file)
+        (if (not (telega-file--downloaded-p tl-file))
+            ;; Show downloading progress in modeline
+            (let ((progress (telega-file--downloading-progress tl-file)))
+              (message "Downloading.. %d%%" (* progress 100)))
+
+          ;; TL-FILE Downloaded
+          (telega-image-view-file tl-file image-msg)
+          (ignore-errors
+            (kill-buffer oldbuffer)))))))
 
 (defun telega-image-next (&optional backward)
   "Show next image in chat."
@@ -770,39 +846,33 @@ Could be used as condition function in `display-buffer-alist'."
 
   (if-let ((next-image-msg (telega-chatbuf--next-msg telega-image--message
                              '(type Photo) backward)))
-      ;; Download highres photo
-      (let* ((photo (telega--tl-get next-image-msg :content :photo))
-             (hr (telega-photo--highres photo))
-             (hr-file (telega-file--renew hr :photo))
-             (oldbuffer (current-buffer)))
-        ;; Goto corresponding message in the chatbuf
-        (with-telega-chatbuf (telega-msg-chat next-image-msg)
-          (when (telega-chatbuf--goto-msg (plist-get next-image-msg :id))
-            (setq telega-chatbuf--refresh-point t)))
-
-        (telega-file--download hr-file 32
-          (lambda (tl-file)
-            (if (not (telega-file--downloaded-p tl-file))
-                ;; Show downloading progress in modeline
-                (let ((progress (telega-file--downloading-progress tl-file)))
-                  (message "Downloading.. %d%%" (* progress 100)))
-
-              ;; TL-FILE Downloaded
-              (telega-image-view-file tl-file next-image-msg)
-              (ignore-errors
-                (kill-buffer oldbuffer))))))
+      (telega-image-view-msg next-image-msg)
 
     ;; `next-image-msg' is nil (not found)
-    ;; TODO: Probably need to fetch older/newer messages from the history
-    (unless next-image-msg
-      (let* ((chat (telega-msg-chat telega-image--message))
-             (brackets (telega-chat-brackets chat)))
-        (user-error "No %s image in %s%s%s"
-                    (if backward "previous" "next")
-                    (or (car brackets) "[")
-                    (telega-chat-title chat)
-                    (or (cadr brackets) "]"))))
-    ))
+    ;; Need to fetch older/newer messages from the chat's history
+    (message "telega: %s" (telega-i18n "lng_profile_loading"))
+    (let ((chat (telega-msg-chat telega-image--message))
+          (img-msg telega-image--message)
+          (img-buffer (current-buffer)))
+      (telega--searchChatMessages chat '(:@type "searchMessagesFilterPhoto") ""
+                                  (plist-get telega-image--message :id)
+                                  (if backward 0 -2) 3 nil
+        (lambda (reply)
+          (let ((found-messages (append (plist-get reply :messages) nil)))
+            (if (or (telega--tl-error-p reply)
+                    (null found-messages)
+                    (= (plist-get img-msg :id)
+                       (plist-get (car found-messages) :id)))
+                (user-error "No %s image in %s"
+                            (if backward "previous" "next")
+                            (telega-ins--as-string
+                             (telega-ins--msg-sender chat t t t)))
+              ;; Found a message
+              (message "")
+              (with-current-buffer img-buffer
+                (telega-image-view-msg (car found-messages)))
+              )))
+        ))))
 
 (defun telega-image-prev ()
   "Show previous image in chat."
@@ -812,6 +882,8 @@ Could be used as condition function in `display-buffer-alist'."
 (defun telega-image-quit ()
   "Kill image buffer and its window."
   (interactive)
+  (with-telega-chatbuf (telega-msg-chat telega-image--message)
+    (telega-chatbuf--history-state-delete :goto-msg))
   (quit-window 'kill))
 
 
@@ -840,7 +912,6 @@ Could be used as condition function in `display-buffer-alist'."
 ;; using user option:
 ;;
 ;; - {{{user-option(telega-edit-file-buffer-name-function, 2)}}}
-(declare-function telega-chat-title-with-brackets "telega-chat" (chat &optional with-username-delim))
 (declare-function telega-chatbuf--gen-input-file "telega-chat" (filename &optional file-type preview-p upload-callback))
 
 (defcustom telega-edit-file-buffer-name-function 'telega-edit-file-buffer-name
@@ -871,7 +942,7 @@ get message associated with the file."
 (defun telega-edit-file-buffer-name ()
   "Return buffer name for a file edited with `telega-edit-file-mode'."
   (concat (buffer-name) (telega-symbol 'mode)
-          (telega-chat-title-with-brackets
+          (telega-chatbuf--name
            (telega-msg-chat (telega-edit-file-message)))))
 
 (defvar telega-edit-file-mode-lighter
@@ -1327,8 +1398,8 @@ EVENT must be \"updateDeleteMessages\"."
   "Inserter for active location message MSG in root aux."
   (let* ((user (telega-msg-sender msg))
          (chat (telega-msg-chat msg))
-         (brackets (telega-chat-brackets chat)))
-    (telega-ins (or (car brackets) "{"))
+         (brackets (telega-msg-sender-brackets chat)))
+    (telega-ins (car brackets))
     (when telega-active-locations-show-avatars
       (telega-ins--image
        (telega-msg-sender-avatar-image-one-line user)))
@@ -1341,8 +1412,8 @@ EVENT must be \"updateDeleteMessages\"."
         (telega-ins--image
          (telega-msg-sender-avatar-image-one-line chat)))
       (when telega-active-locations-show-titles
-        (telega-chat-title-with-brackets chat)))
-    (telega-ins--with-face 'shadow
+        (telega-ins--msg-sender chat nil t t)))
+    (telega-ins--with-face 'telega-shadow
       (telega-ins " Live"))
     (cl-destructuring-bind (live-for updated-ago)
         (telega-msg-location-live-for msg)
@@ -1358,7 +1429,7 @@ EVENT must be \"updateDeleteMessages\"."
         (telega-location-distance
          (telega--tl-get msg :content :location)
          telega-my-location))))
-    (telega-ins (or (cadr brackets) "}"))))
+    (telega-ins (cadr brackets))))
 
 (defun telega-ins--active-locations ()
   "Inserter for currently active live locations."
@@ -1431,6 +1502,135 @@ messages."
   (dolist (chat (mapcar #'car telega--chat-buffers-alist))
     (telega--searchChatRecentLocationMessages chat
       #'telega-active-locations--check)))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-active-video-chats-mode
+;;
+;; Minor mode to display currently active video chats in the root
+;; buffer.  Also display number of active video chats in the modeline
+;; if [[#telega-mode-line-mode][telega-mode-line-mode]] is enabled.
+;;
+;; ~telega-active-video-chats-mode~ is enabled by default.
+;;
+;; Customizable options:
+;; - {{{user-option(telega-active-video-chats-temex, 2)}}}
+
+(defcustom telega-active-video-chats-temex
+  '(and is-known (has-video-chat non-empty))
+  "Chat Temex to match chat with active video chat."
+  :type 'list
+  :group 'telega-modes)
+
+(defcustom telega-active-video-chats-mode-line-format
+  '(:eval (telega-mode-line-active-video-chats))
+  "Modeline format for active video chats for `telega-mode-line-mode'.
+Set to nil to disable active video chats in the modeline."
+  :type 'list
+  :group 'telega-modes)
+
+(defvar telega-active-video-chats--chats nil
+  "List of chats where video chat is active.")
+
+(defun telega-mode-line-active-video-chats ()
+  "Format number of active video chats for the modeline."
+  (when telega-active-video-chats--chats
+    (concat " " telega-symbol-video-chat-active
+            (propertize (int-to-string (length telega-active-video-chats--chats))
+                        'face 'bold))))
+
+(defun telega-ins--active-video-chat (chat)
+  (let* ((video-chat (plist-get chat :video_chat))
+         (has-participants-p (plist-get video-chat :has_participants))
+         (group-call (telega-group-call-get
+                         (plist-get video-chat :group_call_id))))
+    (cond ((and has-participants-p
+                group-call
+                (not (zerop (plist-get group-call :participant_count))))
+           (telega-ins (telega-symbol 'video-chat-active))
+           (telega-ins (telega-tl-str group-call :title))
+           (telega-ins " ")
+           (seq-doseq (recent-speaker (plist-get group-call :recent_speakers))
+             (telega-ins--image
+              (telega-group-call--participant-image recent-speaker)))
+           (telega-ins-fmt "/%d" (plist-get group-call :participant_count)))
+          ((null has-participants-p)
+           (telega-ins (telega-symbol 'video-chat-passive))))
+    (telega-ins " ")
+    (telega-ins "→")
+    (telega-ins " ")
+    (telega-ins--msg-sender chat t t t)
+    t))
+
+(defun telega-ins--active-video-chats ()
+  "Inserter for active video chats."
+  (unless (telega-server-live-p)
+    (setq telega-active-video-chats--chats nil))
+
+  (when telega-active-video-chats--chats
+    (telega-ins (telega-i18n "lng_call_box_groupcalls_subtitle") ": ")
+    (seq-doseq (chat telega-active-video-chats--chats)
+      (telega-ins "\n")
+      (telega-ins "    ")
+      (telega-ins--active-video-chat chat))
+    t))
+
+(defun telega-active-video-chats--on-update-chat (event)
+  "Video chat info has been updated for some chat."
+  (let ((chat (telega-chat-get (plist-get event :chat_id)))
+        (need-redisplay-p nil))
+    (if (telega-chat-match-p chat telega-active-video-chats-temex)
+        (progn
+          (cl-pushnew chat telega-active-video-chats--chats)
+          (setq need-redisplay-p t))
+
+      (setq need-redisplay-p (memq chat telega-active-video-chats--chats))
+      (setq telega-active-video-chats--chats
+            (delq chat telega-active-video-chats--chats)))
+
+    (when need-redisplay-p
+      (telega-mode-line-update)
+      (telega-root-aux-redisplay #'telega-ins--active-video-chats))))
+
+(defun telega-active-video-chats--on-update-call (_event)
+  "Group call of an active video chat has been updated."
+  (telega-root-aux-redisplay #'telega-ins--active-video-chats)
+  )
+
+(define-minor-mode telega-active-video-chats-mode
+  "Global mode to display active video chats in the root buffer."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-active-video-chats-mode
+      (progn
+        (setq telega-active-video-chats--chats
+              (telega-filter-chats telega--ordered-chats
+                telega-active-video-chats-temex))
+
+        (unless (memq telega-active-video-chats-mode-line-format
+                      telega-mode-line-string-format)
+          (setq telega-mode-line-string-format
+                (append telega-mode-line-string-format
+                        (list telega-active-video-chats-mode-line-format)))
+          (telega-mode-line-update))
+
+        (advice-add 'telega--on-updateChatVideoChat
+                    :after #'telega-active-video-chats--on-update-chat)
+        (advice-add 'telega--on-updateGroupCall
+                    :after #'telega-active-video-chats--on-update-call)
+        (telega-root-aux-append #'telega-ins--active-video-chats))
+
+    ;; Disabled
+    (setq telega-mode-line-string-format
+          (delq telega-active-video-chats-mode-line-format
+                telega-mode-line-string-format))
+    (telega-mode-line-update)
+
+    (telega-root-aux-remove #'telega-ins--active-video-chats)
+    (advice-remove 'telega--on-updateGroupCall
+                   #'telega-active-video-chats--on-update-call)
+    (advice-remove 'telega--on-updateChatVideoChat
+                   #'telega-active-video-chats--on-update-chat)
+    ))
 
 
 ;;; ellit-org: minor-modes
@@ -1571,7 +1771,7 @@ Chat description is used to detect the language."
   (telega--translateText text telega-chatbuf-language-code
     :callback
     (telega--gen-ins-continuation-callback
-        (propertize "Translating..." 'face 'shadow 'cursor-intangible t)
+        (propertize "Translating..." 'face 'telega-shadow 'cursor-intangible t)
       (lambda (reply)
         (telega-auto-translate--chatbuf-del-pending (plist-get reply :@extra))
         (telega-ins--with-props '(telega-translated t)

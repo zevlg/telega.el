@@ -639,6 +639,14 @@ END."
        (telega-save-excursion
          ,@body))))
 
+(defmacro with-telega-buffer-modify (&rest body)
+  "Run BODY inhibiting `buffer-read-only' variable."
+  `(let ((inhibit-read-only t)
+         (buffer-undo-list t))
+     (unwind-protect
+         (progn ,@body)
+       (set-buffer-modified-p nil))))
+
 (defmacro with-telega-root-buffer (&rest body)
   "Execute BODY setting current buffer to root buffer.
 Inhibits read-only flag."
@@ -941,7 +949,7 @@ MSG-SENDER could be a user or a chat."
 (defun telega-chat-match-p (chat temex)
   "Return non-nil if CHAT matches TEMEX."
   (declare (indent 1))
-  (let ((telega-temex-match-prefix "chat-"))
+  (let ((telega-temex-match-prefix 'chat))
     (telega-match-p chat temex)))
 
 (defun telega-chatbuf-match-p (chat-temex)
@@ -952,28 +960,32 @@ MSG-SENDER could be a user or a chat."
 (defun telega-user-match-p (user temex)
   "Return non-nil if USER matches TEMEX."
   (declare (indent 1))
-  (let ((telega-temex-match-prefix "user-"))
+  (let ((telega-temex-match-prefix 'user))
     (telega-match-p user temex)))
 
 (defun telega-msg-match-p (msg temex)
   "Return non-nil if message MSG matches TEMEX."
   (declare (indent 1))
-  (let ((telega-temex-match-prefix "msg-"))
+  (let ((telega-temex-match-prefix 'msg))
     (telega-match-p msg temex)))
 
 (defun telega-sender-match-p (sender temex)
   "Return non-nil if message SENDER matches TEMEX."
   (declare (indent 1))
-  (let ((telega-temex-match-prefix "sender-"))
+  (let ((telega-temex-match-prefix 'sender))
     (telega-match-p sender temex)))
 
 (defun telega-match-gen-predicate (prefix temex)
   "Return predicate function to match TDLib object against TEMEX.
-PREFIX is one of: \"msg-\", \"chat-\", \"user-\" or \"sender-\"."
+PREFIX is one of: `msg', `chat', `user' or `sender'."
   (declare (indent 1))
-    (lambda (obj)
-      (let ((telega-temex-match-prefix prefix))
-        (telega-match-p obj temex))))
+  ;; NOTE: Backward compatibily with "msg-" as prefix
+  (when (stringp prefix)
+    (setq prefix (intern (substring prefix 0 -1))))
+
+  (lambda (obj)
+    (let ((telega-temex-match-prefix prefix))
+      (telega-match-p obj temex))))
 
 
 ;;; Formatting
@@ -1330,13 +1342,18 @@ Return VALUE."
 (defun telega-chat-position--list-name (position &optional no-props)
   "Return list name for the POSITION.
 If NO-PROPS is non-nil, then remove properties from the resulting string."
-  (let ((pos-list (plist-get position :list)))
-    (if (eq (telega--tl-type pos-list) 'chatListFilter)
-        (telega-tl-str (cl-find (plist-get pos-list :chat_filter_id)
-                                telega-tdlib--chat-filters
-                                :key (telega--tl-prop :id))
-                       :title no-props)
-      (intern (downcase (substring (plist-get pos-list :@type) 8))))))
+  (let* ((pos-list (plist-get position :list))
+         (pos-list-type (plist-get pos-list :@type)))
+    (cond ((string= "chatListMain" pos-list-type)
+           'main)
+          ((string= "chatListFilter" pos-list-type)
+           (telega-tl-str (cl-find (plist-get pos-list :chat_filter_id)
+                                   telega-tdlib--chat-filters
+                                   :key (telega--tl-prop :id))
+                          :title no-props))
+          ((string= "chatListArchive" pos-list-type)
+           'archive))))
+
 
 (defsubst telega-chat-position (chat)
   "Return CHAT position in current `telega-tdlib--chat-list'."
@@ -1522,11 +1539,11 @@ If COLUMN is nil or less then current column, then current column is used."
        ,@body)))
 
 (defmacro telega-ins--help-message (&rest body)
-  "Insert help message using shadow face.
+  "Insert help message using `telega-shadow' face.
 If help message has been inserted, insert newline at the end."
   `(when telega-help-messages
      (telega-ins--labeled "  " nil
-       (telega-ins--with-face 'shadow
+       (telega-ins--with-face 'telega-shadow
          (when (progn ,@body)
            (telega-ins "\n"))))))
 

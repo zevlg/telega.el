@@ -49,6 +49,8 @@
 ;; 
 ;; - If at least one link to the url is allowed, then any text
 ;;   pointing to that url is allowed
+;; 
+;; - Block images/videos from the album of a blocked message.
 
 ;;; Code:
 (require 'rx)

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.100)
+#+title: Telega Manual (v0.8.111)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -8,7 +8,7 @@
 #+macro: user-option User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 #+macro: user-option1 User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc1($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 
-#+macro: temexdoc    (eval (ellit--indented-docstring (ellit-org--fundoc (telega-match--temex-function (intern $1))) $2))
+#+macro: temexdoc    (eval (ellit--indented-docstring (ellit-org--fundoc (telega-match--temex-function (intern $1) (intern (string-trim $2)))) $3))
 
 #+begin_quote
 This version of the manual for bleeding edge =telega= from "master"
@@ -91,6 +91,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-patrons-mode][telega-patrons-mode]]
     - [[#telega-my-location-mode][telega-my-location-mode]]
     - [[#telega-active-locations-mode][telega-active-locations-mode]]
+    - [[#telega-active-video-chats-mode][telega-active-video-chats-mode]]
     - [[#telega-recognize-voice-message-mode][telega-recognize-voice-message-mode]]
     - [[#telega-auto-translate-mode][telega-auto-translate-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
@@ -108,6 +109,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-transientel--transient-magit-like-style-commands-for-telega][/telega-transient.el/ -- Transient (magit-like style) commands for telega]]
     - [[#telega-adblockel--block-advertisement-messages][/telega-adblock.el/ -- Block advertisement messages]]
     - [[#telega-channels-exportel--export-telegam-channels-to-opml][/telega-channels-export.el/ -- Export Telegam channels to OPML]]
+    - [[#telega-bridge-botel--replace-bridge-bot-user][/telega-bridge-bot.el/ -- Replace bridge bot user.]]
   - [[#troubleshooting][Troubleshooting]]
     - [[#cant-compile-telega-server][Can't compile =telega-server=]]
     - [[#invalid-tdlib-version][Invalid TDLib version]]
@@ -230,7 +232,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.10.
+version greater or equal to 1.8.11.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -724,12 +726,10 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 * Root Buffer
 :PROPERTIES:
@@ -1434,7 +1434,7 @@ Use ~telega-sender-match-p~ to match a message sender.
     	    (equal telega-chatbuf-language-code telega-translate-to-language-by-default)))
         (propertize
          (format "[%s→%s]" telega-translate-to-language-by-default telega-chatbuf-language-code)
-         'face 'shadow)))
+         'face 'telega-shadow)))
      ">>> ")
   #+end_src
 
@@ -1805,6 +1805,16 @@ messages:
      Goto video chat associated with the chat.
      See [[#video-chats][Video Chats]] for details.
 
+- @@html:<kbd>@@M-g s@@html:</kbd>@@ (~telega-chatbuf-inplace-search~) :: 
+     Search backward in the chatbuf.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then search forward instead.
+
+- @@html:<kbd>@@M-g n@@html:</kbd>@@ (~telega-chatbuf-inplace-search-next~) :: 
+     Continue inplace searching with last search.
+
+- @@html:<kbd>@@M-g p@@html:</kbd>@@ (~telega-chatbuf-inplace-search-prev~) :: 
+     Continue searching.
+
 ** Sending ordinary messages
 :PROPERTIES:
 :CUSTOM_ID: sending-ordinary-messages
@@ -1834,17 +1844,17 @@ and value of the:
   Default value: ~(nil "markdown2" "org")~
 
 Markup syntax table:
-|                            | markdown2                        | org                | markdown1                        |
-|----------------------------+----------------------------------+--------------------+----------------------------------|
-| *bold text*                | ~**bold text**~                  | ~*bold text*~      | ~*bold text*~                    |
-| /italic text/              | ~__italic text__~                | ~/italic text/~    | ~_italic text_~                  |
-| _underline text_           | ~__underline text__~             | ~_underline text_~ | **UNSUPPORTED**                  |
-| +strike through+           | ~~strike through~~               | ~+strike through+~ | **UNSUPPORTED**                  |
-|                            | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~      | **UNSUPPORTED**                  |
-| ~inlined code~             | ~`inlined code`~                 | ~~inlined code~~   | ~`inlined code`~                 |
-| =pre text=                 | ~```pre text```~                 | ~=pre text=~       | **UNSUPPORTED**                  |
-| [[http://www.url][text]]   | ~[text](http://www.url)~         | **NOT YET**        | ~[text](http://www.url)~         |
-| [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | **NOT YET**        | ~[name](tg://user?id=<USER-ID>)~ |
+|                            | markdown2                        | org                                | markdown1                        |
+|----------------------------+----------------------------------+------------------------------------+----------------------------------|
+| *bold text*                | ~**bold text**~                  | ~*bold text*~                      | ~*bold text*~                    |
+| /italic text/              | ~__italic text__~                | ~/italic text/~                    | ~_italic text_~                  |
+| _underline text_           | ~__underline text__~             | ~_underline text_~                 | **UNSUPPORTED**                  |
+| +strike through+           | ~~strike through~~               | ~+strike through+~                 | **UNSUPPORTED**                  |
+|                            | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~                      | **UNSUPPORTED**                  |
+| ~inlined code~             | ~`inlined code`~                 | ~~inlined code~~                   | ~`inlined code`~                 |
+| =pre text=                 | ~```pre text```~                 | ~=pre text=~                       | **UNSUPPORTED**                  |
+| [[http://www.url][text]]   | ~[text](http://www.url)~         | ~[[text][http://www.url]]~         | ~[text](http://www.url)~         |
+| [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | ~[[name][tg://user?id=<USER-ID>]]~ | ~[name](tg://user?id=<USER-ID>)~ |
 
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
@@ -2062,12 +2072,12 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
-@@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
-@@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
 
 There are few options how you can affect the way a message is forwarded:
@@ -2319,10 +2329,10 @@ Chatbuf uses next bindings for message filtering:
      Cancel any message filtering.
      If point is at some message, then keep point on this message after reseting.
 
-- @@html:<kbd>@@C-c C-r@@html:</kbd>@@, @@html:<kbd>@@C-c C-s@@html:</kbd>@@ (~telega-chatbuf-filter-search~) :: 
-     Interactively search for messages in chatbuf.
-     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then search for ~QUERY~ sent
-     by some chat member, member name is queried.
+- @@html:<kbd>@@C-c C-r@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query~) :: 
+     Inplace search backward for the ~QUERY~.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, search for the messages
+     containing ~QUERY~ sent by specified sender.
 
 ** Opening files using external programs
 :PROPERTIES:
@@ -2417,7 +2427,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
   (add-hook 'telega-msg-ignore-predicates
-  	  (telega-match-gen-predicate "msg-" '(sender blocked)))
+  	  (telega-match-gen-predicate 'msg '(sender blocked)))
 #+end_src
 
 To view recently ignored messages use
@@ -2736,7 +2746,9 @@ Customizable options:
      (:eval
       (telega-mode-line-unread-unmuted))
      (:eval
-      (telega-mode-line-mentions 'messages)))
+      (telega-mode-line-mentions 'messages))
+     (:eval
+      (telega-mode-line-active-video-chats)))
   #+end_src
 
 
@@ -2977,6 +2989,29 @@ buffer.
   Non-nil to show sender/chat titles along the side with avatars. 
 
   Default value: ~t~
+
+
+** telega-active-video-chats-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-active-video-chats-mode
+:END:
+
+Minor mode to display currently active video chats in the root
+buffer.  Also display number of active video chats in the modeline
+if [[#telega-mode-line-mode][telega-mode-line-mode]] is enabled.
+
+~telega-active-video-chats-mode~ is enabled by default.
+
+Customizable options:
+- User Option: ~telega-active-video-chats-temex~ 
+
+  Chat Temex to match chat with active video chat. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (and is-known
+         (has-video-chat non-empty))
+  #+end_src
 
 
 ** telega-recognize-voice-message-mode
@@ -3455,6 +3490,44 @@ Customizable options:
   Use rsshub or rssbrdige (or whatever that supports Telegram) url. 
 
   Default value: ~"https://sebsauvage.net/rss-bridge/?action=display&bridge=Telegram&username=%s&format=Atom"~
+
+** /telega-bridge-bot.el/ -- Replace bridge bot user.
+:PROPERTIES:
+:CUSTOM_ID: telega-bridge-botel--replace-bridge-bot-user
+:END:
+
+This package advises some telega functions to replace the message bridge
+bot (like @matrix_t2bot), to make it look like the user itself.
+Currently only works for matrix bridge bot, but can be extended to other
+bridges by adding more handlers to the
+~telega-bridge-bot--counterparty-handler-plist~ .
+
+Enable it with:
+
+#+begin_src emacs-lisp
+  (require 'telega-bridge-bot)
+#+end_src
+
+and customize the ~telega-bridge-bot-bridge-info-plist~ to specify the
+relationship between the bridge bot and the chat.
+
+For example, if you want to replace the bridge bot ~@matrix_t2bot~ in the
+telegram chat ~@emacs_china~, you can set the following:
+
+#+begin_src emacs-lisp
+  (setq telega-bridge-bot-bridge-info-plist
+        '(-1001773572820 ; id of the @emacs_china
+  	(420415423 ; id of the @matrix_t2bot
+  	 ;; will fetch member info with this matrix room id
+  	 (:type :matrix :chat-id "!EGzPXoyqkJdTByDCjD:mozilla.org"))))
+#+end_src
+
+If you want download avatar from matrix, you should also set
+~telega-bridge-bot-matrix-access-token~ or set
+~telega-bridge-bot-matrix-user~ then put the access token in ~.authinfo~ ,
+the host should be ~matrix.org~ and the user should be the same as
+~telega-bridge-bot-matrix-user~.
+This is required because only user in the room can access the member info.
 
 * Troubleshooting
 :PROPERTIES:

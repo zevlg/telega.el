@@ -463,7 +463,7 @@ then this number of seconds."
   "*Alist of size coefficients used in avatar creation.
 Each element is in form:
   (CHEIGHT CIRCLE-FACTOR . MARGIN-FACTOR)
-See `telega-avatar--create-img' for more info."
+See `telega-avatar--create-image' for more info."
   :package-version '(telega . "0.5.8")
   :type 'alist
   :group 'telega)
@@ -782,15 +782,16 @@ min and max values for a width calculation using
   :type '(or number list)
   :group 'telega-root)
 
-(defcustom telega-chat-button-brackets
-  '(((type private)    "{" "}")
-    ((type basicgroup) "(" ")")
-    ((type supergroup) "[" "]")
-    ((type channel)    "<" ">")
-    (all               "[" "]"))
-  "Brackets to use for chat button.
+(defcustom telega-brackets
+  '(((chat (type private))    "{" "}")
+    ((chat (type basicgroup)) "(" ")")
+    ((chat (type supergroup)) "[" "]")
+    ((chat (type channel))    "<" ">")
+    ((user (return t))        "{" "}")
+    ((return t)               "[" "]"))
+  "Brackets to use for a message sender formatting.
 Each element is in form:
-  (<CHAT-FILTER> <OPEN-BRACKET> <CLOSE-BRACKET>)"
+  (<SENDER-TEMEX> <OPEN-BRACKET> <CLOSE-BRACKET>)"
   :type 'list
   :group 'telega-root)
 
@@ -804,12 +805,6 @@ is a function accepting title string and returning string."
   :package-version '(telega . "0.6.31")
   :type 'alist
   :group 'telega-root)
-
-(defcustom telega-chat-title-emoji-use-images telega-emoji-use-images
-  "*Non-nil to use images for emojis in chat's title.
-Otherwise use simple chars."
-  :type 'boolean
-  :group 'telega-chat)
 
 ;;; ellit-org: folders-options
 ;; - {{{user-option(telega-folder-icons-alist, 2)}}}
@@ -925,7 +920,7 @@ See https://github.com/zevlg/telega.el/issues/171"
 
 (defcustom telega-important-chat-temex
   '(or mention
-       (and (or main archive has-chatbuf)
+       (and (or is-known has-chatbuf)
             unmuted
             (or unread unread-reactions)))
   "*Chat Temex to match \"important\" chats."
@@ -1181,7 +1176,7 @@ enabled."
              (propertize (format "[%s→%s]"
                                  telega-translate-to-language-by-default
                                  telega-chatbuf-language-code)
-                         'face 'shadow)))
+                         'face 'telega-shadow)))
     ">>> ")
   "*Modeline compatible format for the chatbuf input prompt.
 You can use `telega-chatbuf-editing-msg' or
@@ -2185,6 +2180,12 @@ non-nil if symbol gets emojification."
   "Group to customize faces used by telega."
   :group 'telega)
 
+(defface telega-shadow
+  '((t :inherit shadow))
+  "Face used to display shadowed text in telega."
+  :package-version '(telega . "0.8.111")
+  :group 'telega-faces)
+
 (defface telega-link
   '((t :inherit link :underline nil))
   "Face to display various links."
@@ -2247,7 +2248,7 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-filter-button-inactive
-  '((t :inherit shadow))
+  '((t :inherit telega-shadow))
   "*Face to use for inactive custom filters."
   :group 'telega-faces)
 
@@ -2280,7 +2281,7 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-muted-count
-  `((t :inherit shadow))
+  `((t :inherit telega-shadow))
   "Face to display count of messages in muted chats."
   :group 'telega-faces)
 
@@ -2397,18 +2398,24 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-msg-inline-reply
-  '((t :inherit 'telega-msg-heading))
+  '((t :inherit telega-msg-heading))
   "Face to highlight replies to messages."
   :group 'telega-faces)
 
 (defface telega-msg-inline-forward
-  '((t :inherit 'telega-msg-heading))
+  '((t :inherit telega-msg-heading))
   "Face to highlight message forwarding header."
   :group 'telega-faces)
 
 (defface telega-msg-outgoing-status
   '((t :height 0.8))
   "Face used to display message outgoing status symbol."
+  :group 'telega-faces)
+
+(defface telega-msg-deleted
+  '((t :inherit custom-invalid :extend t))
+  "Face used to display deleted messages."
+  :package-version '(telega . "0.8.101")
   :group 'telega-faces)
 
 (defface telega-webpage-chat-link
@@ -2461,12 +2468,12 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-user-non-online-status
-  '((t :inherit shadow))
+  '((t :inherit telega-shadow))
   "Face to display user status if non-online."
   :group 'telega-faces)
 
 (defface telega-delim-face
-  '((t :inherit shadow :height 0.5))
+  '((t :inherit telega-shadow :height 0.5))
   "Face used to display horizontal delimiters."
   :group 'telega-faces)
 
@@ -2476,7 +2483,7 @@ non-nil if symbol gets emojification."
   :group 'telega-faces)
 
 (defface telega-msg-sponsored
-  '((t :inherit shadow))
+  '((t :inherit telega-shadow))
   "Face to display sponsored message."
   :group 'telega-faces)
 

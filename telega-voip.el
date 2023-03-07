@@ -334,7 +334,9 @@ SPEAKING-P if participant is speaking."
               :stroke-width (/ (nth 2 circle) (if speaking-p 5 10))
               :stroke-color (telega-color-name-as-hex-2digits
                              (face-foreground
-                              (if speaking-p 'font-lock-string-face 'shadow)
+                              (if speaking-p
+                                  'font-lock-string-face
+                                'telega-shadow)
                               nil t))
               :opacity 0.85
               :fill-opacity "0"))
@@ -392,7 +394,7 @@ If TITLE is not specified, ask user interactively for the new title."
          (can-manage-p (plist-get group-call :can_be_managed)))
     (telega-ins (telega-i18n "lng_group_call_title") ": "
                 (or (telega-tl-str group-call :title)
-                    (propertize "No title" 'face 'shadow)))
+                    (propertize "No title" 'face 'telega-shadow)))
     (telega-ins " ")
     (if (plist-get group-call :is_joined)
         (telega-ins--button "Leave"

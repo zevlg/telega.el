@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2023-01-05 Чт 16:42 -->
+<!-- 2023-03-07 Вт 20:41 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.100)</title>
+<title>Telega Manual (v0.8.111)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.100)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.111)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -126,6 +126,7 @@
 <li><a href="#telega-patrons-mode">telega-patrons-mode</a></li>
 <li><a href="#telega-my-location-mode">telega-my-location-mode</a></li>
 <li><a href="#telega-active-locations-mode">telega-active-locations-mode</a></li>
+<li><a href="#telega-active-video-chats-mode">telega-active-video-chats-mode</a></li>
 <li><a href="#telega-recognize-voice-message-mode">telega-recognize-voice-message-mode</a></li>
 <li><a href="#telega-auto-translate-mode">telega-auto-translate-mode</a></li>
 <li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode</a></li>
@@ -146,6 +147,7 @@
 <li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega</a></li>
 <li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages</a></li>
 <li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML</a></li>
+<li><a href="#telega-bridge-botel--replace-bridge-bot-user"><i>telega-bridge-bot.el</i> &#x2013; Replace bridge bot user.</a></li>
 </ul>
 </li>
 <li><a href="#troubleshooting">Troubleshooting</a>
@@ -326,7 +328,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.10.
+version greater or equal to 1.8.11.
 </p>
 
 <p>
@@ -783,7 +785,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgf5b03df">
+<pre class="example" id="org2673838">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -801,7 +803,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgdfb542b">
+<pre class="example" id="org2cbf8ff">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -893,7 +895,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org060e6bd">
+<pre class="example" id="org6d4d6f8">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -931,7 +933,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgbd239ed">
+<pre class="example" id="org04bd520">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1035,16 +1037,10 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
-Open the URL.
-If URL can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
+If <code>URL</code> can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If IN-WEB-BROWSER is non-nil then force opening in web browser.
-</p>
-
-<p>
-(fn URL &amp;optional IN-WEB-BROWSER)
-</p></dd>
+If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
 </dl>
 </div>
 </div>
@@ -1841,7 +1837,7 @@ Default value:
         (equal telega-chatbuf-language-code telega-translate-to-language-by-default)))
     (propertize
      (format <span style="font-style: italic;">"[%s&#8594;%s]"</span> telega-translate-to-language-by-default telega-chatbuf-language-code)
-     'face 'shadow)))
+     'face 'telega-shadow)))
  <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
 </pre>
 </div></li>
@@ -1884,7 +1880,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgb028773">
+<pre class="example" id="org4d99a3d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2280,7 +2276,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org7d0b7b8">
+<pre class="example" id="orgadb786e">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2326,6 +2322,13 @@ See <a href="#favorite-messages">Favorite Messages</a> for details.</dd>
 
 <dt><kbd>M-g v</kbd> (<code>telega-chatbuf-goto-video-chat</code>)</dt><dd>Goto video chat associated with the chat.
 See <a href="#video-chats">Video Chats</a> for details.</dd>
+
+<dt><kbd>M-g s</kbd> (<code>telega-chatbuf-inplace-search</code>)</dt><dd>Search backward in the chatbuf.
+If <kbd>C-u</kbd> is given, then search forward instead.</dd>
+
+<dt><kbd>M-g n</kbd> (<code>telega-chatbuf-inplace-search-next</code>)</dt><dd>Continue inplace searching with last search.</dd>
+
+<dt><kbd>M-g p</kbd> (<code>telega-chatbuf-inplace-search-prev</code>)</dt><dd>Continue searching.</dd>
 </dl>
 </div>
 </div>
@@ -2446,14 +2449,14 @@ Markup syntax table:
 <tr>
 <td class="org-left"><a href="http://www.url">text</a></td>
 <td class="org-left"><code>[text](http://www.url)</code></td>
-<td class="org-left"><b><b>NOT YET</b></b></td>
+<td class="org-left"><code>[[text][http://www.url]]</code></td>
 <td class="org-left"><code>[text](http://www.url)</code></td>
 </tr>
 
 <tr>
 <td class="org-left"><a href="http://t.me/user">name</a></td>
 <td class="org-left"><code>[name](tg://user?id=&lt;USER-ID&gt;)</code></td>
-<td class="org-left"><b><b>NOT YET</b></b></td>
+<td class="org-left"><code>[[name][tg://user?id=&lt;USER-ID&gt;]]</code></td>
 <td class="org-left"><code>[name](tg://user?id=&lt;USER-ID&gt;)</code></td>
 </tr>
 </tbody>
@@ -2463,7 +2466,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgc3c4cc5">
+<pre class="example" id="orgdf316bc">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2495,7 +2498,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org0128d77">
+<pre class="example" id="org9a4fc13">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2719,7 +2722,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgbceac73">
+<pre class="example" id="org4e2ee37">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -2751,12 +2754,12 @@ It is possible to edit a message using markup syntax.
 <p>
 To forward a message, put cursor under the message which you want to
 forward and press
-<kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
+<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;unmark&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
 press
-<kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
+<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 on one of the messages.
 </p>
 
@@ -3136,9 +3139,9 @@ Chatbuf uses next bindings for message filtering:
 <dt><kbd>C-c C-c</kbd> (<code>telega-chatbuf-filter-cancel</code>)</dt><dd>Cancel any message filtering.
 If point is at some message, then keep point on this message after reseting.</dd>
 
-<dt><kbd>C-c C-r</kbd>, <kbd>C-c C-s</kbd> (<code>telega-chatbuf-filter-search</code>)</dt><dd>Interactively search for messages in chatbuf.
-If <kbd>C-u</kbd> is given, then search for <code>QUERY</code> sent
-by some chat member, member name is queried.</dd>
+<dt><kbd>C-c C-r</kbd> (<code>telega-chatbuf-inplace-search-query</code>)</dt><dd>Inplace search backward for the <code>QUERY</code>.
+If <kbd>C-u</kbd> is given, search for the messages
+containing <code>QUERY</code> sent by specified sender.</dd>
 </dl>
 </div>
 </div>
@@ -3281,7 +3284,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 
 <div class="org-src-container">
 <pre class="src src-emacs-lisp">(add-hook 'telega-msg-ignore-predicates
-        (telega-match-gen-predicate <span style="font-style: italic;">"msg-"</span> '(sender blocked)))
+        (telega-match-gen-predicate 'msg '(sender blocked)))
 </pre>
 </div>
 
@@ -3340,7 +3343,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org67547fd">
+<pre class="example" id="org373772b">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3784,7 +3787,9 @@ Default value:
  (<span style="font-weight: bold;">:eval</span>
   (telega-mode-line-unread-unmuted))
  (<span style="font-weight: bold;">:eval</span>
-  (telega-mode-line-mentions 'messages)))
+  (telega-mode-line-mentions 'messages))
+ (<span style="font-weight: bold;">:eval</span>
+  (telega-mode-line-active-video-chats)))
 </pre>
 </div></li>
 </ul>
@@ -4162,6 +4167,44 @@ Default value: <code>t</code>
 </div>
 
 
+<div id="outline-container-telega-active-video-chats-mode" class="outline-3">
+<h3 id="telega-active-video-chats-mode"><a class="self-link" href="#telega-active-video-chats-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-active-video-chats-mode</h3>
+<div class="outline-text-3" id="text-telega-active-video-chats-mode">
+<p>
+Minor mode to display currently active video chats in the root
+buffer.  Also display number of active video chats in the modeline
+if <a href="#telega-mode-line-mode">telega-mode-line-mode</a> is enabled.
+</p>
+
+<p>
+<code>telega-active-video-chats-mode</code> is enabled by default.
+</p>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-active-video-chats-temex</code> 
+</p>
+
+<p>
+Chat Temex to match chat with active video chat. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">and</span> is-known
+     (has-video-chat non-empty))
+</pre>
+</div></li>
+</ul>
+</div>
+</div>
+
+
 <div id="outline-container-telega-recognize-voice-message-mode" class="outline-3">
 <h3 id="telega-recognize-voice-message-mode"><a class="self-link" href="#telega-recognize-voice-message-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-recognize-voice-message-mode</h3>
 <div class="outline-text-3" id="text-telega-recognize-voice-message-mode">
@@ -4320,7 +4363,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org2646d3e">
+<pre class="example" id="org3d03cee">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4937,6 +4980,56 @@ Use rsshub or rssbrdige (or whatever that supports Telegram) url.
 Default value: <code>"https://sebsauvage.net/rss-bridge/?action=display&amp;bridge=Telegram&amp;username=%s&amp;format=Atom"</code>
 </p></li>
 </ul>
+</div>
+</div>
+
+<div id="outline-container-telega-bridge-botel--replace-bridge-bot-user" class="outline-3">
+<h3 id="telega-bridge-botel--replace-bridge-bot-user"><a class="self-link" href="#telega-bridge-botel--replace-bridge-bot-user"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-bridge-bot.el</i> &#x2013; Replace bridge bot user.</h3>
+<div class="outline-text-3" id="text-telega-bridge-botel--replace-bridge-bot-user">
+<p>
+This package advises some telega functions to replace the message bridge
+bot (like @matrix<sub>t2bot</sub>), to make it look like the user itself.
+Currently only works for matrix bridge bot, but can be extended to other
+bridges by adding more handlers to the
+<code>telega-bridge-bot--counterparty-handler-plist</code> .
+</p>
+
+<p>
+Enable it with:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-bridge-bot</span>)
+</pre>
+</div>
+
+<p>
+and customize the <code>telega-bridge-bot-bridge-info-plist</code> to specify the
+relationship between the bridge bot and the chat.
+</p>
+
+<p>
+For example, if you want to replace the bridge bot <code>@matrix_t2bot</code> in the
+telegram chat <code>@emacs_china</code>, you can set the following:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">setq</span> telega-bridge-bot-bridge-info-plist
+      '(-1001773572820 <span style="font-weight: bold; font-style: italic;">; </span><span style="font-weight: bold; font-style: italic;">id of the @emacs_china</span>
+      (420415423 <span style="font-weight: bold; font-style: italic;">; </span><span style="font-weight: bold; font-style: italic;">id of the @matrix_t2bot</span>
+       <span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">will fetch member info with this matrix room id</span>
+       (<span style="font-weight: bold;">:type</span> <span style="font-weight: bold;">:matrix</span> <span style="font-weight: bold;">:chat-id</span> <span style="font-style: italic;">"!EGzPXoyqkJdTByDCjD:mozilla.org"</span>))))
+</pre>
+</div>
+
+<p>
+If you want download avatar from matrix, you should also set
+<code>telega-bridge-bot-matrix-access-token</code> or set
+<code>telega-bridge-bot-matrix-user</code> then put the access token in <code>.authinfo</code> ,
+the host should be <code>matrix.org</code> and the user should be the same as
+<code>telega-bridge-bot-matrix-user</code>.
+This is required because only user in the room can access the member info.
+</p>
 </div>
 </div>
 </div>

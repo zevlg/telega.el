@@ -40,7 +40,7 @@
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
 (declare-function telega-chatbuf--manage-point "telega-chat" (&optional point only-prompt-p))
-(declare-function telega-chatbuf--next-msg "telega-chat" (msg predicate &optional backward))
+(declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
 (declare-function telega-chat-title "telega-chat" (chat &optional with-username))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
@@ -611,10 +611,8 @@ note finishes."
              (eq 'finished (telega-ffplay-stop-reason proc)))
     ;; NOTE: ffplay exited normally (finished playing), try to play
     ;; next voice/video message if any
-    (when-let ((next-vvnote-msg
-                (telega-chatbuf--next-msg msg
-                  (lambda (message)
-                    (telega-msg-match-p message '(type VoiceNote VideoNote))))))
+    (when-let ((next-vvnote-msg (telega-chatbuf--next-msg msg
+                                  '(type VoiceNote VideoNote))))
       (with-telega-chatbuf (telega-msg-chat next-vvnote-msg)
         (telega-chatbuf--goto-msg (plist-get next-vvnote-msg :id) 'highlight))
       (telega-msg-open-content next-vvnote-msg))))
@@ -882,7 +880,7 @@ non-nil."
                     (telega-tl-str (plist-get poll :type) :explanation))
                    (label (propertize
                            (concat (telega-i18n "lng_polls_solution_title") ": ")
-                           'face 'shadow)))
+                           'face 'telega-shadow)))
           (telega-ins--labeled label nil
             (telega-ins explanation)
             (telega-ins "\n")))
@@ -1076,6 +1074,14 @@ TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\",
         (cl-assert (eq 'messageSenderChat (telega--tl-type sender)))
         (telega-chat-get (plist-get sender :chat_id))))))
 
+(defun telega-msg-sender-brackets (msg-sender)
+  "Return MSG-SENDER's brackets from `telega-brackets'."
+  (or (cdr (seq-find (lambda (bspec)
+                       (telega-sender-match-p msg-sender (car bspec)))
+                     telega-brackets))
+      (and (telega-chat-p msg-sender) '("[" "]"))
+      (progn (cl-assert (telega-user-p msg-sender)) '("{" "}"))))
+
 (defun telega-msg-sender-username (msg-sender &optional with-prefix-p)
   "Return username for the message sender MSG-SENDER.
 If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
@@ -1094,19 +1100,32 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
     (concat (when with-prefix-p "@") username)))
 (defalias 'telega-chat-username 'telega-msg-sender-username)
 
-(defun telega-msg-sender-title (msg-sender &optional with-avatar-p)
+(defun telega-msg-sender-title (msg-sender &optional with-avatar-p
+                                           with-username-p
+                                           custom-username-face)
   "Return title for the message sender MSG-SENDER.
 If WITH-AVATAR-P is specified, then prefix MSG-SENDER title with his
-avatar."
-  (concat (when (and with-avatar-p telega-use-images)
-            (telega-ins--as-string
-             (telega-ins--image
-              (telega-msg-sender-avatar-image-one-line msg-sender))))
+avatar.
+If WITH-USERNAME-P is specified, then add MSG-SENDER's username at the
+end."
+  (let ((title-faces (telega-msg-sender-title-faces msg-sender)))
+    (concat (when (and with-avatar-p telega-use-images)
+              (telega-ins--as-string
+               (telega-ins--image
+                (telega-msg-sender-avatar-image-one-line msg-sender))))
 
-          (if (telega-user-p msg-sender)
-              (telega-user-title msg-sender 'name)
-            (cl-assert (telega-chat-p msg-sender))
-            (telega-chat-title msg-sender))))
+            (propertize (if (telega-user-p msg-sender)
+                            (telega-user-title msg-sender 'name)
+                          (cl-assert (telega-chat-p msg-sender))
+                          (telega-chat-title msg-sender))
+                        'face title-faces)
+
+            (when with-username-p
+              (when-let ((username (telega-msg-sender-username
+                                    msg-sender 'with-@)))
+                (concat (propertize " • " 'face 'telega-shadow)
+                        (propertize username 'face (or custom-username-face
+                                                       title-faces))))))))
 
 (defun telega-msg-sender-color (msg-sender)
   "Return color for the message sender MSG-SENDER."
@@ -1890,8 +1909,13 @@ Return `loading' is replied messages starts loading."
              (not (telega-msg--replied-message msg))
              (or (not (zerop (plist-get msg :reply_to_message_id)))
                  (telega-msg-match-p msg
-                   '(type PinMessage GameScore PaymentSuccessful
-                          ForumTopicEdited ForumTopicIsClosedToggled))))
+                   '(type PinMessage
+                          GameScore
+                          PaymentSuccessful
+                          ForumTopicCreated
+                          ForumTopicEdited
+                          ForumTopicIsClosedToggled
+                          ForumTopicIsHiddenToggled))))
     (telega--getRepliedMessage msg
       (lambda (replied-msg)
         (unless (telega--tl-error-p replied-msg)

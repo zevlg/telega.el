@@ -590,8 +590,7 @@ If CHAT-TEMEX is ommited, then active chat filter from
     (setq chat-temex (telega-filter-active-prepare 'with-root-view)))
 
   (cl-remove-if-not
-   (lambda (chat)
-     (telega-chat-match-p chat chat-temex))
+   (telega-match-gen-predicate 'chat chat-temex)
    chat-list))
 
 (defun telega-filter-by-filter (filter-name)

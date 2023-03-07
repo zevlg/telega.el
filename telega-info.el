@@ -543,10 +543,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
           ;; Admin Permissions:
           (telega-ins
            (propertize (telega-i18n "lng_manage_peer_permissions")
-                       'face 'bold) "\n")
+                       'face 'bold)
+           "\n")
           (telega-ins
            (propertize (telega-i18n "lng_rights_edit_admin_header")
-                       'face 'shadow) "\n")
+                       'face 'telega-shadow)
+           "\n")
           (telega-ins--labeled "  " nil
             (dolist (perm-spec telega-chat--admin-permissions)
               ;; list only those permissions which has title
@@ -666,7 +668,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
             (telega-button--insert 'telega-chat
                 linked-chat
               :inserter #'telega-ins--chat)
-          (telega-ins (propertize "None" 'face 'shadow)))
+          (telega-ins (propertize "None" 'face 'telega-shadow)))
         (telega-ins " ")
         (when can-set-discussion-group-p
           (telega-ins--button (if linked-chat "Unset" "Set")

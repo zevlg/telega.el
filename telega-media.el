@@ -956,7 +956,7 @@ SENDER can be a nil, meaning venue location is to be displayed."
                           :x 0 :y 0 :width width :height height)
       (svg-rectangle svg 0 0 width height
                      :fill-color (telega-color-name-as-hex-2digits
-                                  (or (face-foreground 'shadow) "gray50"))))
+                                  (or (face-foreground 'telega-shadow) "gray50"))))
 
     ;; TODO: show other users close enough to `:sender_id'
 

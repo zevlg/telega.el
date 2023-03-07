@@ -541,7 +541,8 @@ NOTE: we store the number as custom chat property, to use it later."
 
     (when-let ((chat (telega-group-call-get-chat (plist-get new-group-call :id))))
       (with-telega-chatbuf chat
-        (telega-chatbuf--footer-update)))
+        (telega-chatbuf--footer-update)
+        (telega-chatbuf--modeline-update)))
     ))
 
 (defun telega--on-updateGroupCallParticipant (event)
@@ -1059,7 +1060,8 @@ messages."
       (when (and (not me-was-owner)
                  (telega-chat-match-p chat 'me-is-owner))
         (message "telega: me is now owner of the %s"
-                 (telega-chat-title-with-brackets chat " ")))
+                 (telega-ins--as-string
+                  (telega-ins--msg-sender chat t t t))))
 
       (telega-chat--mark-dirty chat event)
 

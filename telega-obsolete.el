@@ -178,6 +178,13 @@
                            'telega-msg-hover-in-hook
                            "0.8.72")
 
+(telega-obsolete--variable 'telega-chat-button-brackets
+                           'telega-brackets
+                           "0.8.111")
+(telega-obsolete--variable 'telega-chat-title-emoji-use-images
+                           nil
+                           "0.8.111")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

@@ -55,7 +55,7 @@
 (declare-function telega-account-current "telega")
 (declare-function telega-account-switch "telega" (account))
 
-(defvar telega-temex-remap-alist)
+(defvar telega-temex-remap-list)
 
 
 (defvar telega-root--view nil
@@ -649,7 +649,7 @@ Keep cursor position only if CHAT is visible."
          (round (* (telega-canonicalize-number telega-chat-button-width
                                                telega-root-fill-column)
                    1.5)))
-        (telega-temex-remap-alist '((chat-chat-list . (return t)))))
+        (telega-temex-remap-list '((chat chat-list . (return t)))))
     (telega-root--chat-known-pp chat custom-inserter)))
 
 (defun telega-root--nearby-chat-known-pp (chat &optional custom-inserter)
@@ -673,8 +673,8 @@ CONTACT is some user you have exchanged contacts with."
   (let* ((user-chat
           (telega-chat-get (plist-get contact-user :id) 'offline))
          (visible-p (or (not user-chat)
-                        (let ((telega-temex-remap-alist
-                               '((chat-chat-list . (return t)))))
+                        (let ((telega-temex-remap-list
+                               '((chat chat-list . (return t)))))
                           (telega-chat-match-active-p user-chat)))))
     (when visible-p
       (telega-button--insert 'telega-user contact-user
@@ -1461,7 +1461,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
            (round (* (telega-canonicalize-number telega-chat-button-width
                                                  telega-root-fill-column)
                      1.5)))
-          (telega-temex-remap-alist '((chat-chat-list . (return t)))))
+          (telega-temex-remap-list '((chat chat-list . (return t)))))
       (telega-root--chat-known-pp chat))))
 
 (defun telega-view-blocked ()
@@ -1776,7 +1776,7 @@ Default Disable Notification setting"))
     (lambda (chat)
       (when (telega-chat-match-p chat (list 'folder folder-name))
         (let ((telega-tdlib--chat-list tdlib-chat-list)
-              (telega-temex-remap-alist '((chat-chat-list . (return t)))))
+              (telega-temex-remap-list '((chat chat-list . (return t)))))
           (telega-root--chat-known-pp chat))))))
 
 (defun telega-view-folders--gen-sorter (folder-name)
@@ -1999,7 +1999,7 @@ state kinds to show. By default all kinds are shown."
   (let ((fav (telega-msg-favorite-p msg)))
     (cl-assert fav)
     (telega-ins-prefix "\n  "
-      (telega-ins--with-face 'shadow
+      (telega-ins--with-face 'telega-shadow
         (telega-ins (plist-get fav :comment))))))
 
 (defun telega-root--favorite-message-pp (msg)

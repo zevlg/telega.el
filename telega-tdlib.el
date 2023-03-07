@@ -410,16 +410,6 @@ Return nil if can't join the chat."
          :chat_id (plist-get chat :id))
    callback))
 
-(defun telega--getChatMessageCount (chat filter &optional local-p callback)
-  "Return approximate number of messages of FILTER type in the CHAT.
-Specify non-nil LOCAL-P to avoid network requests."
-  (telega-server--call
-   (list :@type "getChatMessageCount"
-         :chat_id (plist-get chat :id)
-         :filter (list :@type filter)
-         :return_local (if local-p t :false))
-   callback))
-
 (defun telega--getChatEventLog (chat &optional query from-event-id
                                      limit filters users callback)
   "Return event log for the CHAT.
@@ -1047,6 +1037,45 @@ Pass REVOKE to try to delete chat history for all users."
                  :limit (or limit telega-chat-history-limit))
            (when msg-sender
              (list :sender_id (telega--MessageSender msg-sender))))
+    callback))
+
+(defun telega--getChatMessageCount (chat tdlib-msg-filter
+                                         &optional local-p callback)
+  "Return approximate number of messages of FILTER type in the CHAT.
+Specify non-nil LOCAL-P to avoid network requests."
+  (declare (indent 3))
+  (with-telega-server-reply (reply)
+      (plist-get reply :count)
+    (list :@type "getChatMessageCount"
+          :chat_id (plist-get chat :id)
+          :filter tdlib-msg-filter
+          :return_local (if local-p t :false))
+    callback))
+
+(defun telega--getChatMessagePosition (msg tdlib-msg-filter
+                                           &optional msg-thread-id callback)
+  "Returns approximate 1-based position of a message among found messages.
+Which can be found by the specified FILTER in the chat."
+  (declare (indent 3))
+  ;; NOTE: from TDLib docs: Filter for message content;
+  ;; searchMessagesFilterEmpty, searchMessagesFilterUnreadMention,
+  ;; searchMessagesFilterUnreadReaction, and
+  ;; searchMessagesFilterFailedToSend are unsupported in this function
+  (cl-assert (or (not tdlib-msg-filter)
+                 (not (memq (telega--tl-type tdlib-msg-filter)
+                            '(searchMessagesFilterEmpty
+                              searchMessagesFilterUnreadMention
+                              searchMessagesFilterUnreadReaction
+                              searchMessagesFilterFailedToSend)))))
+  (with-telega-server-reply (reply)
+      (plist-get reply :count)
+    (list :@type "getChatMessagePosition"
+          :chat_id (plist-get msg :chat_id)
+          :message_id (plist-get msg :id)
+          :filter tdlib-msg-filter
+          :message_thread_id
+          (or msg-thread-id
+              (telega-chat-message-thread-id (telega-msg-chat msg))))
     callback))
 
 ;; Threads

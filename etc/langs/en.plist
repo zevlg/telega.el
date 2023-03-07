@@ -702,6 +702,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "Featured")
 
  ;; Group call chats
+ ("lng_call_box_groupcalls_subtitle"
+  :value "Active video chats")
+
  ("lng_group_call_starts"
   :value "Video Chat starts {when}")
  ("lng_group_call_starts_in"
@@ -755,6 +758,16 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} disabled the chat theme")
  ("lng_action_you_theme_disabled"
   :value "You disabled the chat theme")
+
+ ("lng_action_ttl_changed"
+  :value "{from} set messages to auto-delete in {duration}")
+ ("lng_action_ttl_changed_you"
+  :value "You set messages to auto-delete in {duration}")
+ ("lng_action_ttl_removed"
+  :value "{from} disabled the auto-delete timer")
+ ("lng_action_ttl_removed_you"
+  :value "You disabled the auto-delete timer")
+
  ("lng_action_bot_allowed_from_domain"
   :value "You allowed this bot to message you when you logged in on {domain}.")
  ("lng_action_topic_created"
@@ -937,7 +950,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Forwarded from {user}")
  ("lng_forwarded_channel"
   :value "Forwarded from {channel}")
-
+ ("lng_schedule_at"
+  :value "at")
  ("lng_media_download"
   :value "Download")
  ("telega_media_resume_download"
@@ -946,4 +960,10 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Cancel")
  ("lng_media_file_title"
   :value "Files")
+
+ ;; Edited
+ ("lng_edited"
+  :value "edited")
+ ("lng_edited_date"
+  :value "Edited: {date}")
  )

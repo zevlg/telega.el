@@ -7,7 +7,7 @@
 #+MACRO: user-option User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 #+MACRO: user-option1 User Option: ~$1~ {{{nl(1)}}} {{{nl($2)}}} {{{vardoc1($1, $2)}}} {{{nl(1)}}} {{{nl($2)}}} Default value: {{{eval((ellit-org-pp-code-block $1 $2), t)}}}
 
-#+MACRO: temexdoc    (eval (ellit--indented-docstring (ellit-org--fundoc (telega-match--temex-function (intern $1))) $2))
+#+MACRO: temexdoc    (eval (ellit--indented-docstring (ellit-org--fundoc (telega-match--temex-function (intern $1) (intern (string-trim $2)))) $3))
 
 #+ELLIT-INCLUDE: telega-note-file :eval
 
@@ -956,7 +956,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
 (add-hook 'telega-msg-ignore-predicates
-          (telega-match-gen-predicate "msg-" '(sender blocked)))
+          (telega-match-gen-predicate 'msg '(sender blocked)))
 #+end_src
 
 To view recently ignored messages use

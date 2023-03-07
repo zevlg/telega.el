@@ -367,7 +367,7 @@
     (when thumb-img
       (telega-ins--image thumb-img 1)
       (telega-ins " "))
-    (telega-ins--with-face 'shadow
+    (telega-ins--with-face 'telega-shadow
       (telega-ins (telega-tl-str venue :address)))
     (telega-ins "\n")
     (when thumb-img

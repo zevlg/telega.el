@@ -298,7 +298,7 @@ Keymap:
       (telega-ins "\n")
       (when photo-image
         (telega-ins--image photo-image 1))
-      (telega-ins--with-face 'shadow
+      (telega-ins--with-face 'telega-shadow
         (if author
             (telega-ins author)
           (telega-ins "Unknown author"))
@@ -321,7 +321,7 @@ Keymap:
     (pageBlockSubtitle
      (telega-webpage--ins-rt (plist-get pb :subtitle)))
     (pageBlockAuthorDate
-     (telega-ins--with-attrs (list :face 'shadow)
+     (telega-ins--with-attrs (list :face 'telega-shadow)
        (telega-ins "By ")
        (telega-webpage--ins-rt (plist-get pb :author))
        (telega-ins " • ")
@@ -346,7 +346,7 @@ Keymap:
        (telega-webpage--ins-rt (plist-get pb :text))
        (telega-ins "\n")))
     (pageBlockFooter
-     (telega-ins--with-face 'shadow
+     (telega-ins--with-face 'telega-shadow
        (telega-ins (make-string (/ telega-webpage-fill-column 2) ?-) "\n")
        (telega-webpage--ins-rt (plist-get pb :footer))))
     (pageBlockDivider
@@ -435,7 +435,7 @@ Keymap:
          :value (telega-tl-str pb :username)
          :action 'telega-tme-open-username)))
     (pageBlockCaption
-     (telega-ins--with-face 'shadow
+     (telega-ins--with-face 'telega-shadow
        (telega-webpage--ins-rt (plist-get pb :text))
        (telega-ins-prefix " --"
          (telega-webpage--ins-rt (plist-get pb :credit)))))

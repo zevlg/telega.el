@@ -292,7 +292,7 @@ so new Emacs `svg-embed-base-uri-image' functionality could be used."
       (telega-svg-path pclip cp))
     ;; progress circle
     (svg-circle svg (/ w 2) (/ h 2) (/ h 2)
-                :fill-color (or (face-foreground 'shadow) "gray50")
+                :fill-color (or (face-foreground 'telega-shadow) "gray50")
                 :fill-opacity "0.25"
                 :clip-path "url(#pclip)")
     svg))
@@ -895,7 +895,7 @@ MARKUP-ARGS additional arguments to MARKUP-FUNC."
   (concat (propertize
            "❰" 'display (if markup-name
                             (propertize (concat "<" markup-name ">")
-                                        'face 'shadow)
+                                        'face 'telega-shadow)
                           "")
            'rear-nonsticky t
            :telega-markup-start markup-func
@@ -904,7 +904,7 @@ MARKUP-ARGS additional arguments to MARKUP-FUNC."
           (propertize
            "❱" 'display (if markup-name
                             (propertize (concat "</" markup-name ">")
-                                        'face 'shadow)
+                                        'face 'telega-shadow)
                           "")
            'rear-nonsticky t
            :telega-markup-end markup-func)))
@@ -1296,7 +1296,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
    (telega-sort-chats
     (or sort-criteria telega-chat-completing-sort-criteria)
     (telega-filter-chats (or chats telega--ordered-chats)
-                         '(or main archive has-chatbuf)))))
+                         '(or is-known has-chatbuf)))))
 
 (defmacro telega-gen-completing-read-list (prompt items-list item-fmt-fun
                                                   item-read-fun &rest args)
@@ -1332,7 +1332,7 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   "Read multiple chats from CHATS-LIST."
   (setq chats-list
         (telega-filter-chats (or chats-list telega--ordered-chats)
-                             '(or main archive)))
+                             '(or is-known has-chatbuf)))
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
                                    #'telega-completing-read-chat sort-criteria))
 
@@ -1562,27 +1562,12 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
 
 (defun telega-msg-sender-title-for-completion (msg-sender)
   "Return MSG-SENDER title for completions."
-  (let* ((user-p (telega-user-p msg-sender))
-         (chat-p (not user-p)))
-    (telega-ins--as-string
-     (cond ((and chat-p (telega-chat-secret-p msg-sender))
-            (telega-ins (telega-symbol 'lock)))
-           (user-p
-            (telega-ins (telega-symbol 'member))))
-     (when user-p
-       (telega-ins "{"))
-     (when telega-use-images
-       (telega-ins--image
-        (telega-msg-sender-avatar-image-one-line msg-sender)))
-     (if user-p
-         (telega-ins--with-attrs
-             (list :face (telega-msg-sender-title-faces msg-sender))
-           (telega-ins (telega-msg-sender-title msg-sender)))
-       (telega-ins
-        (telega-chat-title-with-brackets msg-sender " ")))
-     (when user-p
-       (telega-ins "}"))
-     )))
+  (telega-ins--as-string
+   (if (telega-user-p msg-sender)
+       (telega-ins--msg-sender msg-sender t t t)
+     (telega-ins--chat msg-sender nil 'raw
+                       (telega-msg-sender-title
+                        msg-sender nil t 'telega-username)))))
 
 ;; NOTE: ivy returns copy of the string given in choices, thats why we
 ;; need to use `assoc'
