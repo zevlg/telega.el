@@ -2472,27 +2472,17 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
-
-     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
-
-     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
-
-     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
-
-     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
-
-     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command
@@ -3496,11 +3486,11 @@ Customizable options:
 :CUSTOM_ID: telega-bridge-botel--replace-bridge-bot-user
 :END:
 
-This package advises some telega functions to replace the message bridge
-bot (like @matrix_t2bot), to make it look like the user itself.
-Currently only works for matrix bridge bot, but can be extended to other
-bridges by adding more handlers to the
-~telega-bridge-bot--counterparty-handler-plist~ .
+This package advises some telega functions to replace the message
+bridge bot (like [[https://t.me/matrix_t2bot][~@matrix_t2bot~]]), to
+make it look like the user itself.  Currently only works for matrix
+bridge bot, but can be extended to other bridges by adding more
+handlers to the ~telega-bridge-bot--counterparty-handler-plist~ .
 
 Enable it with:
 
@@ -3511,8 +3501,9 @@ Enable it with:
 and customize the ~telega-bridge-bot-bridge-info-plist~ to specify the
 relationship between the bridge bot and the chat.
 
-For example, if you want to replace the bridge bot ~@matrix_t2bot~ in the
-telegram chat ~@emacs_china~, you can set the following:
+For example, if you want to replace the bridge bot
+[[https://t.me/matrix_t2bot][~@matrix_t2bot~]] in the Telegram chat
+[[https://t.me/emacs_china][~@emacs_china~]], you can set the following:
 
 #+begin_src emacs-lisp
   (setq telega-bridge-bot-bridge-info-plist

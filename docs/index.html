@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2023-03-07 Вт 20:41 -->
+<!-- 2023-03-08 Ср 11:39 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.111)</title>
@@ -785,7 +785,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org2673838">
+<pre class="example" id="orgabf17c4">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -803,7 +803,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org2cbf8ff">
+<pre class="example" id="org3a85d7e">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -895,7 +895,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org6d4d6f8">
+<pre class="example" id="orge0a0e87">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -933,7 +933,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org04bd520">
+<pre class="example" id="org6e7f4f7">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1880,7 +1880,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org4d99a3d">
+<pre class="example" id="org6059517">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2276,7 +2276,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgadb786e">
+<pre class="example" id="org2a7d424">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2466,7 +2466,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgdf316bc">
+<pre class="example" id="orgc29e053">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2498,7 +2498,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org9a4fc13">
+<pre class="example" id="orgf3be9ee">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2722,7 +2722,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="org4e2ee37">
+<pre class="example" id="org53d6bdc">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3343,7 +3343,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org373772b">
+<pre class="example" id="orgb2653b4">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3351,44 +3351,14 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
-Stop playing media message.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
-Rewind 10 seconds backward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
-Rewind 10 seconds forward.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
-Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
-Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.</dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.
-</p>
-
-<p>
-(fn MSG)
-</p></dd>
+duration.</dd>
 </dl>
 
 <p>
@@ -4363,7 +4333,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org3d03cee">
+<pre class="example" id="orgdcd7475">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4987,11 +4957,11 @@ Default value: <code>"https://sebsauvage.net/rss-bridge/?action=display&amp;brid
 <h3 id="telega-bridge-botel--replace-bridge-bot-user"><a class="self-link" href="#telega-bridge-botel--replace-bridge-bot-user"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-bridge-bot.el</i> &#x2013; Replace bridge bot user.</h3>
 <div class="outline-text-3" id="text-telega-bridge-botel--replace-bridge-bot-user">
 <p>
-This package advises some telega functions to replace the message bridge
-bot (like @matrix<sub>t2bot</sub>), to make it look like the user itself.
-Currently only works for matrix bridge bot, but can be extended to other
-bridges by adding more handlers to the
-<code>telega-bridge-bot--counterparty-handler-plist</code> .
+This package advises some telega functions to replace the message
+bridge bot (like <a href="https://t.me/matrix_t2bot"><code>@matrix_t2bot</code></a>), to
+make it look like the user itself.  Currently only works for matrix
+bridge bot, but can be extended to other bridges by adding more
+handlers to the <code>telega-bridge-bot--counterparty-handler-plist</code> .
 </p>
 
 <p>
@@ -5009,8 +4979,9 @@ relationship between the bridge bot and the chat.
 </p>
 
 <p>
-For example, if you want to replace the bridge bot <code>@matrix_t2bot</code> in the
-telegram chat <code>@emacs_china</code>, you can set the following:
+For example, if you want to replace the bridge bot
+<a href="https://t.me/matrix_t2bot"><code>@matrix_t2bot</code></a> in the Telegram chat
+<a href="https://t.me/emacs_china"><code>@emacs_china</code></a>, you can set the following:
 </p>
 
 <div class="org-src-container">

@@ -3,6 +3,8 @@
 #+STARTUP: showall
 
 * telega.el 0.9.0
+** Support for Telegram Forums
+
 ** TODO Support for "Downloads API" in 1.8.2 for files rootview
 
 ** M-x telega-report-bug RET
@@ -18,15 +20,16 @@ And fill body with text generated from Emacs
   "Custom Chat Filter" and "Active Chat Filter" for filtering
   fuctionality using "Chat Matchers"
 
-** WIP Inplace searching in a chatbuf
+** DONE Inplace searching in a chatbuf
+CLOSED: [2023-03-08 Ср 00:49]
 - ~C-c C-s~ to search for next query appearance in the chatbuf.
 - ~C-c C-r~ to search for prev
 
-** Org Mode markup support
+** DONE Org Mode markup support
+CLOSED: [2023-03-08 Ср 00:49]
 Implement ~telega-markup-org-fmt~ to apply Org Mode markup.
 ~telega-markup-org-fmt~ already member in
 ~telega-chat-markup-functions~
-
 
 * telega.el Major Features
 

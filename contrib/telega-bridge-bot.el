@@ -22,11 +22,11 @@
 ;;; ellit-org:
 ;; ** /telega-bridge-bot.el/ -- Replace bridge bot user.
 ;;
-;; This package advises some telega functions to replace the message bridge
-;; bot (like @matrix_t2bot), to make it look like the user itself.
-;; Currently only works for matrix bridge bot, but can be extended to other
-;; bridges by adding more handlers to the
-;; ~telega-bridge-bot--counterparty-handler-plist~ .
+;; This package advises some telega functions to replace the message
+;; bridge bot (like [[https://t.me/matrix_t2bot][~@matrix_t2bot~]]), to
+;; make it look like the user itself.  Currently only works for matrix
+;; bridge bot, but can be extended to other bridges by adding more
+;; handlers to the ~telega-bridge-bot--counterparty-handler-plist~ .
 ;;
 ;; Enable it with:
 ;;
@@ -37,8 +37,9 @@
 ;; and customize the ~telega-bridge-bot-bridge-info-plist~ to specify the
 ;; relationship between the bridge bot and the chat.
 ;;
-;; For example, if you want to replace the bridge bot ~@matrix_t2bot~ in the
-;; telegram chat ~@emacs_china~, you can set the following:
+;; For example, if you want to replace the bridge bot
+;; [[https://t.me/matrix_t2bot][~@matrix_t2bot~]] in the Telegram chat
+;; [[https://t.me/emacs_china][~@emacs_china~]], you can set the following:
 ;;
 ;; #+begin_src emacs-lisp
 ;; (setq telega-bridge-bot-bridge-info-plist
