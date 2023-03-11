@@ -484,31 +484,12 @@ Will update CHAT-ID MSG-ID when download completed."
         (plist-put msg :telega-bridge-bot-modified t)))))
 
 
-(defun telega-msg--replied-message-fetch! (msg)
-  "Advice function for `telega-msg--replied-message-fetch'.
-Fetch message on which MSG depends.
-Return `loading' is replied messages starts loading."
-  (when (and (not (telega-msg-internal-p msg))
-             (not (telega-msg--replied-message msg))
-             (or (not (zerop (plist-get msg :reply_to_message_id)))
-                 (telega-msg-match-p msg
-                   '(type PinMessage GameScore PaymentSuccessful
-                          ForumTopicEdited ForumTopicIsClosedToggled))))
-    (telega--getRepliedMessage msg
-      (lambda (replied-msg)
-        (unless (telega--tl-error-p replied-msg)
-          (telega-msg-cache replied-msg))
-        ;; XXX: added by telega-bridge-bot
-        (telega-bridge-bot--update-msg replied-msg)
-        (plist-put msg :telega-replied-message replied-msg)
-        (telega-msg-redisplay msg)
-        ;; NOTE: rootbuf also might be affected
-        (telega-root-view--update :on-message-update msg)))
-    (plist-put msg :telega-replied-message 'loading)))
 
 (advice-add 'telega-ins--aux-msg-one-line :before #'telega-bridge-bot--update-msg)
 (advice-add 'telega-msg--pp :before #'telega-bridge-bot--update-msg)
-(advice-add 'telega-msg--replied-message-fetch :override #'telega-msg--replied-message-fetch!)
+(advice-add 'telega-msg--replied-message-fetch-callback :before
+            (lambda (_msg replied-msg)
+              (telega-bridge-bot--update-msg replied-msg)))
 
 (provide 'telega-bridge-bot)
 ;;; telega-bridge-bot.el ends here

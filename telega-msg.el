@@ -1917,14 +1917,17 @@ Return `loading' is replied messages starts loading."
                           ForumTopicIsClosedToggled
                           ForumTopicIsHiddenToggled))))
     (telega--getRepliedMessage msg
-      (lambda (replied-msg)
-        (unless (telega--tl-error-p replied-msg)
-          (telega-msg-cache replied-msg))
-        (plist-put msg :telega-replied-message replied-msg)
-        (telega-msg-redisplay msg)
-        ;; NOTE: rootbuf also might be affected
-        (telega-root-view--update :on-message-update msg)))
+      (apply-partially #'telega-msg--replied-message-fetch-callback msg))
     (plist-put msg :telega-replied-message 'loading)))
+
+(defun telega-msg--replied-message-fetch-callback (msg replied-msg)
+  "Callback when the REPLIED-MSG of the MSG is fetched."
+  (unless (telega--tl-error-p replied-msg)
+    (telega-msg-cache replied-msg))
+  (plist-put msg :telega-replied-message replied-msg)
+  (telega-msg-redisplay msg)
+  ;; NOTE: rootbuf also might be affected
+  (telega-root-view--update :on-message-update msg))
 
 (provide 'telega-msg)
 
