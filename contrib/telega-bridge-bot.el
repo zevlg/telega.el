@@ -331,8 +331,13 @@ Return a string if STRING is non-nil."
            :@type "user"
            :id bot-id
            :telega-bridge-bot-user-signature (list chat-id bot-id username)
-           :first_name (concat username " @" bot-username)
+           :first_name username
            :last_name ""
+           :usernames
+           (list
+            :@type
+            "usernames"
+            :active_usernames (vector bot-username))
            :type '(:@type "userTypeRegular"))))
     (if (file-exists-p profile-photo-path)
         (append
@@ -483,9 +488,29 @@ Will update CHAT-ID MSG-ID when download completed."
       (when bridge-sender
         (plist-put msg :telega-bridge-bot-modified t)))))
 
+(defun telega-ins--aux-msg-one-line! (fun &rest args)
+  "Advice function for `telega-ins--aux-msg-one-line'.
+FUN is the original function,
+ARGS is the arguments passed the the FUN."
+  (let ((msg (car args)))
+    ;; update msg first
+    (telega-bridge-bot--update-msg msg)
+    (if-let* ((modified? (plist-get msg :telega-bridge-bot-modified))
+              (sender (telega-msg-sender msg))
+              (sender-name
+               (concat
+                (telega-user-title sender 'name) " "
+                (telega-msg-sender-username sender 'with-@))))
+        ;; if msg sender is a bridge bot then we want to display
+        ;; the user title and the username in one line message
+        (cl-letf (((symbol-function 'telega-msg-sender-username)
+                   (lambda (&rest _) sender-name)))
+          (apply fun args))
+      (apply fun args))))
+
 
 
-(advice-add 'telega-ins--aux-msg-one-line :before #'telega-bridge-bot--update-msg)
+(advice-add 'telega-ins--aux-msg-one-line :around #'telega-ins--aux-msg-one-line!)
 (advice-add 'telega-msg--pp :before #'telega-bridge-bot--update-msg)
 (advice-add 'telega-msg--replied-message-fetch-callback :before
             (lambda (_msg replied-msg)
