@@ -1548,8 +1548,8 @@ Return a chat."
 
 (defun telega-completing-read-permission (prompt &optional permissions)
   "Read a permission from PERMISSIONS list completing user input.
-If PERMISSIONS is ommited, then `telega-chat--chat-permisions' is used."
-  (let* ((raw-perms (or permissions telega-chat--chat-permisions))
+If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
+  (let* ((raw-perms (or permissions telega-chat--chat-permissions))
          (i18n-choices (cl-remove
                         nil (mapcar (lambda (perm-spec)
                                       (when (cdr perm-spec)

@@ -308,7 +308,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-ins--labeled (concat (telega-i18n "lng_profile_bio") " ") nil
         (telega-ins bio))
       (telega-ins "\n"))
-    (when-let ((share-text (telega-tl-str full-info :share_text)))
+    (when-let ((share-text (telega-tl-str full-info :short_description)))
       (telega-ins--labeled "Share text: " nil
         (telega-ins share-text))
       (telega-ins "\n"))

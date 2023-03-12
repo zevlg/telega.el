@@ -2142,6 +2142,8 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
     distance
     eye
     failed favorite flames folder
+    (forum (when (and telega-use-images (image-type-available-p 'svg))
+             (telega-etc-file-create-image "symbols/forum.svg" 2)))
     (forward (when (and telega-use-images (image-type-available-p 'svg))
                (telega-etc-file-create-image "symbols/forward.svg" 2)))
     game

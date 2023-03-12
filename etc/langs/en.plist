@@ -403,6 +403,13 @@ Example: 23 y.o. designer from San Francisco")
   :value "Send messages")
  ("lng_rights_chat_send_media"
   :value "Send media")
+ ("lng_rights_chat_music" :value "Music")
+ ("lng_rights_chat_files" :value "Files")
+ ("lng_rights_chat_photos" :value "Photos")
+ ("lng_rights_chat_videos" :value "Video files")
+ ("lng_rights_chat_video_messages" :value "Video messages")
+ ("lng_rights_chat_voice_messages" :value "Voice messages"))
+
  ("lng_rights_chat_send_stickers"
   :value "Send stickers & GIFs")
  ("lng_rights_chat_send_links"
@@ -873,6 +880,12 @@ Example: 23 y.o. designer from San Francisco")
   :value "The admins of this group have restricted you from posting media here.")
  ("lng_restricted_send_media_until"
   :value "The admins of this group restricted you from posting media content here until {date}, {time}.")
+ ("lng_restricted_send_gifs"
+  :value "The admins of this group have restricted your ability to send GIFs.")
+ ("lng_restricted_send_gifs_until"
+  :value "The admins of this group have restricted your ability to send GIFs until {date}, {time}.")
+ ;; TODO: other media types
+
  ("lng_restricted_send_polls_all"
   :value "Posting polls isn't allowed in this group.")
  ("lng_restricted_send_gifs_all"
@@ -966,4 +979,11 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "edited")
  ("lng_edited_date"
   :value "Edited: {date}")
+
+ ("lng_mediaview_today"
+  :value "today at {time}")
+ ("lng_mediaview_yesterday"
+  :value "yesterday at {time}")
+ ("lng_mediaview_date_time"
+  :value "{date} at {time}")
  )

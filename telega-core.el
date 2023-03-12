@@ -67,9 +67,20 @@
 (defconst telega--slow-mode-delays '(0 10 30 60 300 900 3600)
   "List of allowed slow mode delays.")
 
-(defconst telega-chat--chat-permisions
-  '((:can_send_messages . "lng_rights_chat_send_text")
-    (:can_send_media_messages . "lng_rights_chat_send_media")
+(defconst telega-chat--chat-media-permissions
+  '((:can_send_audios . "lng_rights_chat_music")
+    (:can_send_documents . "lng_rights_chat_files")
+    (:can_send_photos . "lng_rights_chat_photos")
+    (:can_send_videos . "lng_rights_chat_videos")
+    (:can_send_video_notes . "lng_rights_chat_video_messages")
+    (:can_send_voice_notes . "lng_rights_chat_voice_messages")))
+
+(defconst telega-chat--chat-permissions
+  `((:can_send_basic_messages . "lng_rights_chat_send_text")
+
+    ;; Media, "lng_rights_chat_send_media"
+    ,@telega-chat--chat-media-permissions
+
     (:can_send_polls . "lng_rights_chat_send_polls")
     (:can_send_other_messages . "lng_rights_chat_send_stickers")
     (:can_add_web_page_previews . "lng_rights_chat_send_links")
@@ -641,11 +652,8 @@ END."
 
 (defmacro with-telega-buffer-modify (&rest body)
   "Run BODY inhibiting `buffer-read-only' variable."
-  `(let ((inhibit-read-only t)
-         (buffer-undo-list t))
-     (unwind-protect
-         (progn ,@body)
-       (set-buffer-modified-p nil))))
+  `(with-silent-modifications
+     ,@body))
 
 (defmacro with-telega-root-buffer (&rest body)
   "Execute BODY setting current buffer to root buffer.
@@ -673,9 +681,8 @@ Inhibits read-only flag."
                        (cdr (assq ,chatsym telega--chat-buffers-alist)))))
        (when (buffer-live-p ,bufsym)
          (with-current-buffer ,bufsym
-           (let ((inhibit-read-only t)
-                 (buffer-undo-list t))
-             ,@body))))))
+           (with-telega-buffer-modify
+            ,@body))))))
 
 (defmacro with-telega-help-win (buffer-or-name &rest body)
   "Execute BODY in help BUFFER-OR-NAME."

@@ -736,14 +736,14 @@ CHAT-TYPE is one of `has-username' or `location-based'."
 (defun telega-filter-by-permission (perm)
   "Filter chats by allowed permission PERM."
   (interactive (list (telega-completing-read-permission
-                      "Chat permission: " telega-chat--chat-permisions)))
+                      "Chat permission: " telega-chat--chat-permissions)))
   (telega-filter-add (list 'permission perm)))
 
 (defun telega-filter-by-my-permission (perm)
   "Filter chats by allowed permission PERM for me."
   (interactive (list (telega-completing-read-permission
                       "Chat permission: "
-                      (append telega-chat--chat-permisions
+                      (append telega-chat--chat-permissions
                               telega-chat--admin-permissions))))
   (telega-filter-add (list 'my-permission perm)))
 

@@ -1655,11 +1655,13 @@ Requires administrator rights in the chat."
                   (telega-ins "  ")
                   (telega-ins--msg-reaction-type (plist-get ar :type))
                   (telega-ins " ")
-                  (telega-ins--raw-button
-                      (list 'action #'telega-describe-msg-sender)
-                    (telega-ins--msg-sender
-                     (telega-msg-sender (plist-get ar :sender_id))
-                     'with-avatar 'with-username)))))
+                  (telega-ins--msg-sender
+                   (telega-msg-sender (plist-get ar :sender_id))
+                   'with-avatar 'with-username 'with-brackets)
+                  (telega-ins--move-to-column 42)
+                  (telega-ins " ")
+                  (telega-ins--date-relative (plist-get ar :date))
+                  )))
             msg-id))
         (telega-ins "\n"))
 
@@ -1668,9 +1670,17 @@ Requires administrator rights in the chat."
         ;; Asynchronously fetch message viewers
         (telega--getMessageViewers msg
           (telega--gen-ins-continuation-callback 'loading
-            (lambda (users)
-              (telega-ins-fmt "%d\n" (length users))
-              (telega-ins--user-list users))
+            (lambda (viewers)
+              (telega-ins-fmt "%d" (length viewers))
+              (seq-doseq (viewer viewers)
+                (telega-ins "\n")
+                (telega-ins "  ")
+                (telega-ins--msg-sender
+                 (telega-user-get (plist-get viewer :user_id))
+                 'with-avatar 'with-username 'with-brackets)
+                (telega-ins--move-to-column 40)
+                (telega-ins " ")
+                (telega-ins--date-relative (plist-get viewer :view_date))))
             msg-id))
         (telega-ins "\n"))
 

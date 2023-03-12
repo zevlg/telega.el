@@ -1441,9 +1441,8 @@ EVENT must be \"updateDeleteMessages\"."
     (telega-ins (telega-symbol 'location) "Locations: ")
 
     (dolist (loc-msg telega-active-location--messages)
-      (unless (eq loc-msg (car telega-active-location--messages))
-        (telega-ins "\n"))
-      (telega-ins--move-to-column 14)
+      (telega-ins "\n")
+      (telega-ins "    ")
       (telega-ins--with-face (when (telega-me-p (telega-msg-sender loc-msg))
                                'bold)
       (telega-button--insert 'telega-msg loc-msg

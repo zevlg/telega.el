@@ -133,10 +133,10 @@ CLOSED: [2020-12-20 Вс 01:50]
 
 ** Searching Messages in chat
 - [X] Shared Media, see chatbuf messages filtering
-- [ ] Interactive searching to resemble searching in official client
+- [X] Interactive searching to resemble searching in official client
 - [ ] Importing/Exporting files using "Saved Messages"
 
-** Full integration for Transalation Platform
+** Full integration for Translation Platform
 
 ** TODO Use Notifications API
 CREATED: [2020-11-27 Пт]

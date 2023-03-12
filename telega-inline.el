@@ -93,7 +93,7 @@
        (let* ((url-info (telega--getLoginUrlInfo msg kbd-type))
               (url (or (plist-get url-info :url)
                        (plist-get kbd-type :url))))
-         (when (or (plist-get url-info :skip_confirm)
+         (when (or (plist-get url-info :skip_confirmation)
                    (not (memq telega-inline-login-url-action
                               '(query-all query-open)))
                    (y-or-n-p

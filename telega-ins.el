@@ -252,6 +252,27 @@ Format is:
     (telega-ins-fmt "%d %s %d"
       day (nth month (assq 'full telega-i18n-month-names)) year)))
 
+(defun telega-ins--date-relative (timestamp)
+  "Insert relative date for the timestamp."
+  (let* ((dtime (decode-time timestamp))
+         (today00 (telega--time-at00 (telega-time-seconds)))
+         (tomorrow00 (+ today00 (* 24 3600)))
+         (yesterday00 (- today00 (* 24 3600)))
+         (formatted-time (format "%02d:%02d" (nth 2 dtime) (nth 1 dtime))))
+    (cond ((and (> timestamp yesterday00)
+                (< timestamp today00))
+           (telega-ins-i18n "lng_mediaview_yesterday"
+             :time formatted-time))
+          ((and (> timestamp today00)
+                (< timestamp tomorrow00))
+           (telega-ins-i18n "lng_mediaview_today"
+             :time formatted-time))
+          (t
+           (telega-ins-i18n "lng_mediaview_date_time"
+             :date (telega-ins--as-string (telega-ins--date-full timestamp))
+             :time formatted-time)))
+    ))
+
 (defun telega-ins--msg-sender (msg-sender &optional with-avatar-p
                                           with-username-p with-brackets-p)
   "Insert message's sender title."
@@ -2923,6 +2944,8 @@ Return t."
     (telega-ins (cadr brackets))
     (when (plist-get (telega-chat-position chat) :is_pinned)
       (telega-ins (telega-symbol 'pin)))
+    (when (telega-chat-match-p chat 'is-forum)
+      (telega-ins (telega-symbol 'forum)))
     (when (telega-chat-match-p chat 'has-video-chat)
       (telega-ins (telega-symbol
                    (if (telega--tl-get chat :video_chat :has_participants)
@@ -3178,12 +3201,17 @@ Return non-nil if restrictions has been inserted."
              (until-time (unless (zerop until)
                            (format-time-string "%H:%M" until)))
              (perms (plist-get my-status :permissions)))
-        (cond ((not (plist-get perms :can_send_messages))
+        (cond ((not (plist-get perms :can_send_basic_messages))
                (if (and until-date until-time)
                    (telega-ins-i18n "lng_restricted_send_message_until"
                      :date until-date :time until-time)
                  (telega-ins-i18n "lng_restricted_send_message")))
-              ((not (plist-get perms :can_send_media_messages))
+              ((or (not (plist-get perms :can_send_audios))
+                   (not (plist-get perms :can_send_documents))
+                   (not (plist-get perms :can_send_photos))
+                   (not (plist-get perms :can_send_videos))
+                   (not (plist-get perms :can_send_video_notes))
+                   (not (plist-get perms :can_send_voice_notes)))
                (if (and until-date until-time)
                    (telega-ins-i18n "lng_restricted_send_media_until"
                      :date until-date :time until-time)

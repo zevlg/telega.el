@@ -1101,10 +1101,11 @@ Which can be found by the specified FILTER in the chat."
 
 (defun telega--getMessageViewers (msg &optional callback)
   "Get MSG message viewers list.
-TDLib 1.7.8"
+TDLib 1.8.12:
+  getMessageViewers chat_id:int53 message_id:int53 = MessageViewers;"
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (mapcar #'telega-user-get (plist-get reply :user_ids))
+      (append (plist-get reply :viewers) nil)
 
     (list :@type "getMessageViewers"
           :chat_id (plist-get msg :chat_id)

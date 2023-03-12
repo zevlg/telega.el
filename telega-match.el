@@ -375,7 +375,7 @@ For non-nil ANIMATED-P match only if avatar is animated."
 ;;   {{{temexdoc(chat, permission, 2)}}}
 (define-telega-matcher chat permission (chat perm)
   "Matches if chat has PERM set in chat permissions.
-PERM could be one of listed in `telega-chat--chat-permisions'."
+PERM could be one of listed in `telega-chat--chat-permissions'."
   (plist-get (plist-get chat :permissions) perm))
 
 ;;; ellit-org: chat-temex
@@ -383,7 +383,7 @@ PERM could be one of listed in `telega-chat--chat-permisions'."
 ;;   {{{temexdoc(chat, my-permission, 2)}}}
 (define-telega-matcher chat my-permission (chat perm)
   "Matches if me has PERM permission in the chat.
-PERM could be one of in `telega-chat--chat-permisions' list or in
+PERM could be one of in `telega-chat--chat-permissions' list or in
 `telega-chat--admin-permissions' list."
   (plist-get (telega-chat-member-my-permissions chat) perm))
 
@@ -661,7 +661,7 @@ BE AWARE: This filter will do blocking request for every chat."
 Me don't need te be a CHAT member to be able to send messages.
 Additionally apply `is-known' chat filter to check CHAT is known."
   (let ((my-perms (telega-chat-member-my-permissions chat)))
-    (or (plist-get my-perms :can_send_messages)
+    (or (plist-get my-perms :can_send_basic_messages)
         (plist-get my-perms :can_post_messages))))
 
 ;;; ellit-org: chat-temex
