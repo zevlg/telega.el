@@ -744,12 +744,12 @@ Specify non-nil BAN to ban this user in this CHAT."
                             "https://t.me/")
                         (telega-chat-username chat))))
       (insert "Public Link: ")
-      (telega-ins--raw-button (telega-link-props 'url link 'link)
+      (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
         (telega-ins link))
       (insert "\n")))
   (telega-ins "Internal Link: ")
   (let ((internal-link (telega-tme-internal-link-to chat)))
-    (telega-ins--raw-button (telega-link-props 'url internal-link 'link)
+    (telega-ins--raw-button (telega-link-props 'url internal-link 'face 'link)
       (telega-ins internal-link)))
   (telega-ins "\n")
 
@@ -1720,7 +1720,8 @@ Possibly view some messages at point."
                      (propertize (telega-tl-str msg-filter :title) 'face 'bold))
          (when-let ((sender (plist-get msg-filter :sender)))
            (telega-ins " by ")
-           (telega-ins--raw-button (telega-link-props 'sender sender)
+           (telega-ins--raw-button
+               (telega-link-props 'sender sender 'type 'telega)
              (telega-ins--msg-sender
               sender 'with-avatar 'with-username 'with-brackets)))
          (when-let ((total-count (plist-get msg-filter :total-count)))

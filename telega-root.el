@@ -1689,7 +1689,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
   "Pretty printer for link in \"settings\" root view.
 LINK is cons, where car is the link description, and cdr is the url."
   (telega-ins (car link) ": ")
-  (telega-ins--raw-button (telega-link-props 'url (cdr link) 'telega-link)
+  (telega-ins--raw-button (telega-link-props 'url (cdr link) 'face 'telega-link)
     (telega-ins (cdr link)))
   (telega-ins "\n"))
 

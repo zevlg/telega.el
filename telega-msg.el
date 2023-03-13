@@ -1589,7 +1589,7 @@ Requires administrator rights in the chat."
       (telega-ins-fmt "Message-id: %d\n" msg-id)
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins "Sender: ")
-        (telega-ins--raw-button (telega-link-props 'sender sender)
+        (telega-ins--raw-button (telega-link-props 'sender sender 'type 'telega)
           (telega-ins--msg-sender
            sender 'with-avatar 'with-username 'with-brackets))
         (telega-ins "\n"))
@@ -1603,13 +1603,14 @@ Requires administrator rights in the chat."
                          (telega--getMessageLink msg
                            :for-thread-p for-thread-p))))
         (telega-ins "Link: ")
-        (telega-ins--raw-button (telega-link-props 'url link 'link)
+        (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
           (telega-ins link))
         (telega-ins "\n"))
 
       (telega-ins "Internal Link: ")
       (let ((internal-link (telega-tme-internal-link-to msg)))
-        (telega-ins--raw-button (telega-link-props 'url internal-link 'link)
+        (telega-ins--raw-button
+            (telega-link-props 'url internal-link 'face 'link)
           (telega-ins internal-link)))
       (telega-ins "\n")
 

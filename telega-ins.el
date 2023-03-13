@@ -404,7 +404,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins "\n")
       (telega-ins (make-string off-column ?\s))
       (telega-ins "invited by ")
-      (telega-ins--raw-button (telega-link-props 'user inviter-id)
+      (telega-ins--raw-button (telega-link-props 'user inviter-id 'type 'telega)
         (telega-ins--msg-sender inviter-user 'with-avatar)))
     t))
 
@@ -594,7 +594,7 @@ If MUSIC-SYMBOL is specified, use it instead of play/pause."
       (if (telega-file--downloaded-p audio-file)
           (let ((local-path (telega--tl-get audio-file :local :path)))
             (telega-ins--raw-button
-                (telega-link-props 'file local-path 'telega-link)
+                (telega-link-props 'file local-path 'face 'telega-link)
               (telega-ins (telega-short-filename local-path))))
         (telega-ins audio-name)))
     (telega-ins-fmt " (%s %s)"
@@ -649,7 +649,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (if (telega-file--downloaded-p video-file)
         (let ((local-path (telega--tl-get video-file :local :path)))
           (telega-ins--raw-button
-              (telega-link-props 'file local-path 'telega-link)
+              (telega-link-props 'file local-path 'face 'telega-link)
             (telega-ins (telega-short-filename local-path))))
       (telega-ins (or video-name "")))
     (telega-ins-fmt " (%dx%d %s %s)"
@@ -1286,7 +1286,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (if (telega-file--downloaded-p anim-file)
         (let ((local-path (telega--tl-get anim-file :local :path)))
           (telega-ins--raw-button
-              (telega-link-props 'file local-path 'telega-link)
+              (telega-link-props 'file local-path 'face 'telega-link)
             (telega-ins (telega-short-filename local-path))))
       (telega-ins (telega-tl-str animation :file_name)))
     (telega-ins-fmt " (%dx%d %s %s)"

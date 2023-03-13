@@ -508,7 +508,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
     (let ((link (concat (or (plist-get telega--options :t_me_url)
                             "https://t.me/")
                         "addstickers/" (plist-get sset :name))))
-      (telega-ins--raw-button (telega-link-props 'url link 'telega-link)
+      (telega-ins--raw-button (telega-link-props 'url link 'face 'telega-link)
         (telega-ins link))
       (telega-ins "\n"))
     (when telega-debug

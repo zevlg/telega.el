@@ -426,7 +426,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-ins "Invite link:")
       (when invite-link
         (telega-ins " ")
-        (telega-ins--raw-button (telega-link-props 'url invite-link 'link)
+        (telega-ins--raw-button (telega-link-props 'url invite-link 'face 'link)
           (telega-ins invite-link)))
       (when can-generate-p
         (telega-ins " ")

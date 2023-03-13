@@ -636,15 +636,13 @@ N can't be 0."
       (setq comps (nconc comps (list (format "%ds" seconds)))))
     (mapconcat #'identity comps ":")))
 
-(defun telega-link-props (link-type link-to &optional face)
+(defun telega-link-props (link-type link-to &rest props)
   "Generate props for link button openable with `telega-link--button-action'."
   (cl-assert (memq link-type '(url file username user sender hashtag)))
 
-  (nconc (list 'type 'telega
-               'action 'telega-link--button-action
+  (nconc (list 'action 'telega-link--button-action
                :telega-link (cons link-type link-to))
-         (when face
-           (list 'face face))))
+         props))
 
 (defun telega-link--button-action (button)
   "Browse url at point."
@@ -719,6 +717,7 @@ See `puny-decode-domain' for details."
      (cl-case (telega--tl-type ent-type)
        (textEntityTypeMention
         (telega-link-props 'username text
+                           'face
                            (if (and telega-msg-contains-unread-mention
                                     (telega-user-match-p (telega-user-me)
                                       (list 'username
@@ -729,13 +728,14 @@ See `puny-decode-domain' for details."
                              'telega-entity-type-mention)))
        (textEntityTypeMentionName
         (telega-link-props 'user (plist-get ent-type :user_id)
+                           'face
                            (if (and telega-msg-contains-unread-mention
                                     (eq (plist-get ent-type :user_id)
                                         telega--me-id))
                                '(telega-entity-type-mention bold)
                              'telega-entity-type-mention)))
        (textEntityTypeHashtag
-        (telega-link-props 'hashtag text 'telega-link))
+        (telega-link-props 'hashtag text 'face 'telega-link))
        (textEntityTypeBold
         '(face telega-entity-type-bold))
        (textEntityTypeItalic
@@ -758,10 +758,10 @@ See `puny-decode-domain' for details."
                      (telega-puny-decode-url
                       (decode-coding-string
                        (url-unhex-string text) 'utf-8)))
-               (telega-link-props 'url text 'telega-entity-type-texturl)))
+               (telega-link-props 'url text 'face 'telega-entity-type-texturl)))
        (textEntityTypeTextUrl
         (telega-link-props 'url (plist-get ent-type :url)
-                           'telega-entity-type-texturl))
+                           'face 'telega-entity-type-texturl))
        (textEntityTypeBotCommand
         '(face telega-entity-type-botcommand))
        (textEntityTypeMediaTimestamp

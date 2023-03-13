@@ -89,7 +89,7 @@
           (telega-ins "→")
         (telega-ins "←"))
 
-      (telega-ins--raw-button (telega-link-props 'user user-id)
+      (telega-ins--raw-button (telega-link-props 'user user-id 'type 'telega)
         (telega-ins--msg-sender
          (telega-user-get user-id) 'with-avatar 'with-username))
       (telega-ins-fmt " %s"
