@@ -569,9 +569,9 @@ Return non-nil if all tests are passed."
   (cl-assert (fboundp 'cursor-intangible-mode) nil
              "Emacs with `cursor-intangible-mode' is required")
 
-  ;; For now stick with at least 26.1 Emacs
-  (cl-assert (string-version-lessp "26.0" emacs-version) nil
-             (format "At least Emacs 26.0 is required, but you have %s"
+  ;; For now stick with at least 27.1 Emacs
+  (cl-assert (string-version-lessp "27.0" emacs-version) nil
+             (format "At least Emacs 27.0 is required, but you have %s"
                      emacs-version))
 
   ;; imagemagick for images NOT required, we have now fallback in case

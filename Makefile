@@ -16,7 +16,7 @@ test_el: test.el
 	         -f telega-run-tests
 
 test_server:
-	$(MAKE) -C server $@
+	$(MAKE) -C server test
 
 test: test_el test_server
 
