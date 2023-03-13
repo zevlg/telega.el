@@ -197,6 +197,9 @@ Have Stoploss 690 Satoshi." :entities []))))
                  "102 votes"))
   (should (equal (telega-i18n "lng_action_user_joined" :from #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\"" 0 35 (face bold)))
                  #("'S'Т'А'N'&'S'L'А'\\/' \"Р\"Е\"Т\"R\"О\"\\/\" joined the group" 0 35 (face bold))))
+
+  (should (equal (telega-i18n "telega_last_entry")
+                 "Last i18n Entry"))
   )
 
 (ert-deftest telega-utils ()

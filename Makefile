@@ -11,10 +11,14 @@ server-reinstall:
 	$(MAKE) -C server clean
 	$(MAKE) -C server install
 
-test: test.el
+test_el: test.el
 	$(EMACS) -batch -L . -l etc/telega-make \
 	         -f telega-run-tests
+
+test_server:
 	$(MAKE) -C server $@
+
+test: test_el test_server
 
 EL_SOURCES=$(wildcard telega*.el)
 ELC_FILES=$(patsubst %.el,%.elc,$(EL_SOURCES))

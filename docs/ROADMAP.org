@@ -488,7 +488,11 @@ CLOSED: [2020-10-07 Ср 17:21]
 "лишние" пикселы, которые остались от деления height на размер высоту
 линии.
 
-** Voice messages recognition
+** DONE Voice messages recognition
+CLOSED: [2023-03-12 Вс 22:54]
+
+*WON'T DO*: Use Telegram Premium feature to recognize voice/video
+messages.
 
 Use https://t.me/voicybot to recognize audio messages
 

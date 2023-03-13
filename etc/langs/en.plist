@@ -986,4 +986,7 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "yesterday at {time}")
  ("lng_mediaview_date_time"
   :value "{date} at {time}")
+
+ ("telega_last_entry"
+  :value "Last i18n Entry")
  )
