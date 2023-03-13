@@ -1589,9 +1589,9 @@ Requires administrator rights in the chat."
       (telega-ins-fmt "Message-id: %d\n" msg-id)
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins "Sender: ")
-        (telega-ins--raw-button (list 'action #'telega-link--button-action
-                                      :telega-link (cons 'sender sender))
-          (telega-ins--msg-sender sender 'with-avatar 'with-username))
+        (telega-ins--raw-button (telega-link-props 'sender sender)
+          (telega-ins--msg-sender
+           sender 'with-avatar 'with-username 'with-brackets))
         (telega-ins "\n"))
       ;; Link to the message
       (when-let ((link (ignore-errors

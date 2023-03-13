@@ -640,7 +640,8 @@ N can't be 0."
   "Generate props for link button openable with `telega-link--button-action'."
   (cl-assert (memq link-type '(url file username user sender hashtag)))
 
-  (nconc (list 'action 'telega-link--button-action
+  (nconc (list 'type 'telega
+               'action 'telega-link--button-action
                :telega-link (cons link-type link-to))
          (when face
            (list 'face face))))

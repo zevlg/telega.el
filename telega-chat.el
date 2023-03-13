@@ -51,7 +51,7 @@
 (require 'telega-modes)
 
 ;; shutup compiler
-(declare-function company-complete-common "company")
+(declare-function company-complete "company")
 (declare-function company-begin-backend "company" (backend &optional callback))
 (declare-function company-call-backend "company" (&rest args))
 
@@ -1721,7 +1721,8 @@ Possibly view some messages at point."
          (when-let ((sender (plist-get msg-filter :sender)))
            (telega-ins " by ")
            (telega-ins--raw-button (telega-link-props 'sender sender)
-             (telega-ins--msg-sender sender 'with-avatar 'with-username)))
+             (telega-ins--msg-sender
+              sender 'with-avatar 'with-username 'with-brackets)))
          (when-let ((total-count (plist-get msg-filter :total-count)))
            (telega-ins-fmt " (total: %d)" total-count))
          (telega-ins "\n"))

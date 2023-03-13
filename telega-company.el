@@ -87,7 +87,7 @@ Matches only if CHAR does not apper in the middle of the word."
             emoji)))
 
 ;;;###autoload
-(defun telega-company-emoji (command &optional arg &rest ignored)
+(defun telega-company-emoji (command &optional arg &rest _ignored)
   "Backend for `company' to complete emojis."
   (interactive (list 'interactive))
   (cl-case command
@@ -136,7 +136,7 @@ Matches only if CHAR does not apper in the middle of the word."
                               emojis)))))))
 
 ;;;###autoload
-(defun telega-company-telegram-emoji (command &optional arg &rest ignored)
+(defun telega-company-telegram-emoji (command &optional arg &rest _ignored)
   "Backend for `company' to complete emojis using `searchEmojis' TDLib method."
   (interactive (list 'interactive))
   (cl-case command
@@ -169,7 +169,7 @@ Matches only if CHAR does not apper in the middle of the word."
   (telega-company-grab-single-char ?\@))
 
 ;;;###autoload
-(defun telega-company-username (command &optional arg &rest ignored)
+(defun telega-company-username (command &optional arg &rest _ignored)
   "Backend for `company' to complete usernames."
   (interactive (list 'interactive))
   (cl-case command
@@ -272,7 +272,7 @@ Matches only if CHAR does not apper in the middle of the word."
   (telega-company-grab-single-char ?\#))
 
 ;;;###autoload
-(defun telega-company-hashtag (command &optional arg &rest ignored)
+(defun telega-company-hashtag (command &optional arg &rest _ignored)
   "Backend for `company' to complete recent hashtags."
   (interactive (list 'interactive))
   (cl-case command
@@ -330,7 +330,7 @@ Matches only if CHAR does not apper in the middle of the word."
                      (plist-get full-info :bot_commands))))))
 
 ;;;###autoload
-(defun telega-company-botcmd (command &optional arg &rest ignored)
+(defun telega-company-botcmd (command &optional arg &rest _ignored)
   (interactive (list 'interactive))
   (cl-case command
     (interactive (company-begin-backend 'telega-company-botcmd))
@@ -377,7 +377,7 @@ Sort modes by usage of current Emacs session."
                       sorted-modes))))
 
 ;;;###autoload
-(defun telega-company-markdown-precode (command &optional arg &rest ignored)
+(defun telega-company-markdown-precode (command &optional arg &rest _ignored)
   (interactive (list 'interactive))
   (cl-case command
     (interactive (company-begin-backend 'telega-company-markdown-precode))

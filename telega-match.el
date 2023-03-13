@@ -335,7 +335,7 @@ administrator in the chat."
 Matches only basicgroup, supergroup or a channel."
   ;; NOTE: me can only be a member of chats that have tdlib chat list
   ;; position
-  (unless (eq (plist-get chat :positions) [])
+  (unless (seq-empty-p (plist-get chat :positions))
     (when-let ((status (telega-chat-member-my-status chat)))
       (cl-ecase (telega--tl-type status)
         ((chatMemberStatusAdministrator chatMemberStatusMember)
