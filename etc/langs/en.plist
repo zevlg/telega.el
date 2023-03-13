@@ -408,7 +408,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_rights_chat_photos" :value "Photos")
  ("lng_rights_chat_videos" :value "Video files")
  ("lng_rights_chat_video_messages" :value "Video messages")
- ("lng_rights_chat_voice_messages" :value "Voice messages"))
+ ("lng_rights_chat_voice_messages" :value "Voice messages")
 
  ("lng_rights_chat_send_stickers"
   :value "Send stickers & GIFs")
