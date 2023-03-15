@@ -462,6 +462,12 @@ Could be used for fetching `admins', `pinned-messages', `reply-markup', etc.")
   "Timer for debouncing focus status.")
 (make-variable-buffer-local 'telega-chatbuf--focus-debounce-timer)
 
+(defvar telega-chatbuf--history-state-plist nil
+  "Plist containing different state of history loading.
+Could contain `:loading', `:older-loaded', `:newer-freezed' or
+`:newer-loaded' elements.")
+(make-variable-buffer-local 'telega-chatbuf--history-state-plist)
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -1428,6 +1434,20 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   (and (telega-chatbuf-has-input-p)
        (get-text-property telega-chatbuf--input-marker :draft-input-p)
        (get-text-property (1- (point-max)) :draft-input-p)))
+
+(defmacro telega-chatbuf--history-state-get (state)
+  "Check chatbuf's history state contains STATUS."
+  `(plist-get telega-chatbuf--history-state-plist ,state))
+
+(defmacro telega-chatbuf--history-state-set (state value)
+  "Push STATUS into chatbuf's history state."
+  `(setq telega-chatbuf--history-state-plist
+         (plist-put telega-chatbuf--history-state-plist ,state ,value)))
+
+(defmacro telega-chatbuf--history-state-delete (state)
+  "Remove STATUS from chatbuf's history state."
+  `(setq telega-chatbuf--history-state-plist
+         (telega-plist-del telega-chatbuf--history-state-plist ,state)))
 
 (defmacro telega-chat-nearby-find (chat-id)
   "Find nearby chat in `telega--nearby-chats' by CHAT-ID."

@@ -99,12 +99,6 @@ only when this button is invisible.")
 Actual value is `:@extra` value of the call to load history.")
 (make-variable-buffer-local 'telega-chatbuf--history-loading)
 
-(defvar telega-chatbuf--history-state-plist nil
-  "Plist containing different state of history loading.
-Could contain `:loading', `:older-loaded', `:newer-freezed' or
-`:newer-loaded' elements.")
-(make-variable-buffer-local 'telega-chatbuf--history-state-plist)
-
 (defvar telega-chatbuf--vvnote-msg nil
   "Active (playing/paused) voice/video note message for the chatbuf.")
 (make-variable-buffer-local 'telega-chatbuf--vvnote-msg)
@@ -1484,20 +1478,6 @@ Used in chatbuf footer."
         'action (lambda (_ignored)
                   (telega-ffplay-stop)))
       (telega-ins "]"))))
-
-(defmacro telega-chatbuf--history-state-get (state)
-  "Check chatbuf's history state contains STATUS."
-  `(plist-get telega-chatbuf--history-state-plist ,state))
-
-(defmacro telega-chatbuf--history-state-set (state value)
-  "Push STATUS into chatbuf's history state."
-  `(setq telega-chatbuf--history-state-plist
-         (plist-put telega-chatbuf--history-state-plist ,state ,value)))
-
-(defmacro telega-chatbuf--history-state-delete (state)
-  "Remove STATUS from chatbuf's history state."
-  `(setq telega-chatbuf--history-state-plist
-         (telega-plist-del telega-chatbuf--history-state-plist ,state)))
 
 (defun telega-chatbuf--first-msg ()
   "Return first message inserted in chat buffer."
