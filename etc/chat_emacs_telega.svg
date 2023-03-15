@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="136"
+   height="20"
+   id="svg3482"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="chat_emacs_telega.svg">
+  <metadata
+     id="metadata3514">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs3512">
+    <linearGradient
+       id="b-3"
+       x1="160.008"
+       y1="40.007999"
+       x2="100.008"
+       y2="180"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         stop-color="#37aee2"
+         offset="0"
+         id="stop7" />
+      <stop
+         stop-color="#1e96c8"
+         offset="1"
+         id="stop9" />
+    </linearGradient>
+    <linearGradient
+       id="w"
+       x1="123.64119"
+       y1="131.02763"
+       x2="146.52715"
+       y2="174.70815"
+       gradientTransform="scale(1.0919081,0.91582798)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         stop-color="#eff7fc"
+         offset="0"
+         id="stop12" />
+      <stop
+         stop-color="#fff"
+         offset="1"
+         id="stop14" />
+    </linearGradient>
+  </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="2560"
+     inkscape:window-height="1357"
+     id="namedview3510"
+     showgrid="false"
+     inkscape:zoom="10.360652"
+     inkscape:cx="64.076678"
+     inkscape:cy="10"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg3482" />
+  <linearGradient
+     id="b"
+     x2="0"
+     y2="100%">
+    <stop
+       offset="0"
+       stop-color="#bbb"
+       stop-opacity=".1"
+       id="stop3485" />
+    <stop
+       offset="1"
+       stop-opacity=".1"
+       id="stop3487" />
+  </linearGradient>
+  <mask
+     id="a">
+    <rect
+       width="92"
+       height="20"
+       rx="3"
+       fill="#fff"
+       id="rect3490" />
+  </mask>
+  <path
+     style="fill:#b3b3b3;fill-opacity:1"
+     d="m 4.4665612,-1e-6 C 1.9920881,-10e-7 3e-6,2.0033391 3e-6,4.4917932 l 0,11.0164128 C 3e-6,17.99666 1.9920881,20 4.4665612,20 l 67.1289418,0 0,-20.000001 z"
+     id="rect3428-7"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="ssssccs" />
+  <path
+     style="fill:#2da5d8;fill-opacity:1"
+     d="M 130.51004,0.04465302 C 133.55148,0.04465302 136,2.0390477 136,4.51639 l 0,10.96722 c 0,2.477342 -2.44852,4.471736 -5.48996,4.471736 l -82.51004,0 0,-19.91069298 z"
+     id="rect3428"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="ssssccs" />
+  <g
+     id="g3360"
+     transform="matrix(0.06629213,0,0,0.06666667,3.049441,1.9666658)">
+    <circle
+       r="120"
+       id="circle16"
+       cy="120"
+       cx="120"
+       style="fill:url(#b-3)" />
+    <path
+       id="path18"
+       d="m 98,175 c -3.8876,0 -3.227,-1.4679 -4.5678,-5.1695 L 82,132.2059 170,80"
+       inkscape:connector-curvature="0"
+       style="fill:#c8daea" />
+    <path
+       id="path20"
+       d="m 98,175 c 3,0 4.3255,-1.372 6,-3 l 16,-15.558 -19.958,-12.035"
+       inkscape:connector-curvature="0"
+       style="fill:#a9c9dd" />
+    <path
+       id="path22"
+       d="m 100.04,144.41 48.36,35.729 c 5.5185,3.0449 9.5014,1.4684 10.876,-5.1235 l 19.685,-92.763 c 2.0154,-8.0802 -3.0801,-11.745 -8.3594,-9.3482 l -115.59,44.571 c -7.8901,3.1647 -7.8441,7.5666 -1.4382,9.528 l 29.663,9.2583 68.673,-43.325 c 3.2419,-1.9659 6.2173,-0.90899 3.7752,1.2584"
+       style="fill:url(#w)"
+       inkscape:connector-curvature="0" />
+  </g>
+  <g
+     id="g3396"
+     transform="translate(0,-0.48259513)">
+    <text
+       transform="scale(0.99718703,1.0028209)"
+       sodipodi:linespacing="125%"
+       id="text3385-4"
+       y="14.103978"
+       x="21.685167"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.875px;line-height:125%;font-family:'Trebuchet MS';-inkscape-font-specification:'Trebuchet MS';letter-spacing:0px;word-spacing:0px;fill:#4d4d4d;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="14.103978"
+         x="21.685167"
+         id="tspan3387-3"
+         sodipodi:role="line">chat</tspan></text>
+    <text
+       transform="scale(0.99718702,1.0028209)"
+       sodipodi:linespacing="125%"
+       id="text3385"
+       y="13.360877"
+       x="21.685167"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.875px;line-height:125%;font-family:'Trebuchet MS';-inkscape-font-specification:'Trebuchet MS';letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="13.360877"
+         x="21.685167"
+         id="tspan3387"
+         sodipodi:role="line">chat</tspan></text>
+  </g>
+  <g
+     id="g3402"
+     transform="translate(0.5,0)">
+    <text
+       sodipodi:linespacing="125%"
+       id="text3374-3"
+       y="13.864697"
+       x="50.420166"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.875px;line-height:125%;font-family:'Trebuchet MS';-inkscape-font-specification:'Trebuchet MS';letter-spacing:0px;word-spacing:0px;fill:#4d4d4d;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="13.864697"
+         x="50.420166"
+         id="tspan3376-3"
+         sodipodi:role="line">@emacs_telega</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3374"
+       y="13.160094"
+       x="50.420166"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11.875px;line-height:125%;font-family:'Trebuchet MS';-inkscape-font-specification:'Trebuchet MS';letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       xml:space="preserve"><tspan
+         y="13.160094"
+         x="50.420166"
+         id="tspan3376"
+         sodipodi:role="line">@emacs_telega</tspan></text>
+  </g>
+</svg>

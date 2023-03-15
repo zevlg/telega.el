@@ -1,0 +1,24 @@
+<!--- Use M-x telega-report-bug RET or fill this by hand -->
+
+<!--- Provide a general summary of the issue in the Title above -->
+
+## Telega Setup
+*OS*: <!--- `uname -a` -->
+*Emacs*: <!--- M-x emacs-version -->
+*Telega*: <!--- M-x telega-version -->
+
+<!--- Specify installation method as MELPA / GNU Guix / git / Other -->
+
+## Current Behavior
+<!--- Tell us what happens instead of the expected behavior. -->
+
+## Steps to Reproduce
+<!--- Provide an unambiguous set of steps to reproduce this issue. -->
+<!--- Include code to reproduce, if relevant. -->
+1.
+2.
+3.
+
+## Possible Solution
+<!--- Not obligatory, but suggest a fix/reason for the issue. -->
+<!--- Delete this section if you have no idea. -->
