@@ -255,8 +255,8 @@ If FORCE-UPDATE is non-nil, force update the file."
 
 (defun telega-bridge-bot--matrix-file-spliter (text)
   "Split TEXT into username and message."
-  ;; split with " sent a file: " or " sent an image: "
-  (split-string text " sent \\(a file\\|an image\\): "))
+  ;; Split with file type prefix
+  (split-string text " sent \\(a file\\|an image\\|a video\\): "))
 
 
 ;;; bridge
