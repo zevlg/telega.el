@@ -63,7 +63,7 @@
 ;; single vector, see `magit-diff' as example
 (defmacro telega-transient-define-prefix-by-keymap (name label keymap)
   (declare (indent 2))
-  `(transient-define-prefix ,name
+  `(transient-define-prefix ,name nil
      ,(format "Transient command for `%S' keymap." keymap)
      [,label
       ,@(mapcar (lambda (kf)
