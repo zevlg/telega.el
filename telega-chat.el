@@ -4276,16 +4276,6 @@ a file, otherwise choose animation from list of saved animations."
   (interactive (list (telega-read-file-name "GIF File: ")))
   (telega-chatbuf-attach-animation gif-file))
 
-(defun telega-chatbuf-attach-animated-emoji (emoji)
-  "Attach an animated EMOJI to the chatbuf input."
-  (interactive (list (funcall telega-completing-read-function
-                              "Animated Emoji: "
-                              (or telega--animated-emojis
-                                  (setq telega--animated-emojis
-                                        (telega--getAllAnimatedEmojis)))
-                              nil t)))
-  (telega-chatbuf-input-insert emoji))
-
 (defun telega-chatbuf-attach-inline-bot-query (&optional no-empty-search)
   "Popup results with inline bot query.
 Intended to be added to `post-command-hook' in chat buffer.
