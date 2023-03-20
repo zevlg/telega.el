@@ -110,17 +110,6 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
           :input_language_codes (apply #'vector language-codes))
     callback))
 
-;; TODO: remove, removed in the TDLib 1.8.5
-(defun telega--getAllAnimatedEmojis (&optional callback)
-  "Return list of all supported animated emojis."
-  (with-telega-server-reply (reply)
-      (mapcar (lambda (emoji)
-                (telega--desurrogate-apply emoji))
-              (plist-get reply :emojis))
-
-    (list :@type "getAllAnimatedEmojis")
-    callback))
-
 (defun telega--getAnimatedEmoji (emoji &optional callback)
   "Return an animated emoji corresponding to a given EMOJI."
   (telega-server--call

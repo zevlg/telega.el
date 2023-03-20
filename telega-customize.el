@@ -1272,7 +1272,6 @@ different days. Such as:
     ("contact" nil telega-chatbuf-attach-contact)
     ("sticker" nil telega-chatbuf-attach-sticker)
     ("animation" nil telega-chatbuf-attach-animation)
-    ("animated-emoji" nil telega-chatbuf-attach-animated-emoji)
     ("dice" nil telega-chatbuf-attach-dice)
     ("screenshot" (lambda () telega-screenshot-function)
      telega-chatbuf-attach-screenshot)
