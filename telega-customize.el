@@ -321,9 +321,11 @@ Set to \"apparmor=unconfined\" if you use `telega-appindicator-mode'."
   :type 'string
   :group 'telega-docker)
 
-(defcustom telega-docker-volumes nil
+;; NOTE: see https://t.me/emacs_telega/39721
+;; for Debian 11 running telega-server under docker
+(defcustom telega-docker-volumes '("/usr/share/X11/xkb")
   "List of additional volumes to attach."
-  :package-version '(telega . "0.7.40")
+  :package-version '(telega . "0.8.121")
   :type 'list
   :group 'telega-docker)
 
