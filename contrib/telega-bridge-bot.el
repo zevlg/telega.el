@@ -243,15 +243,15 @@ If FORCE-UPDATE is non-nil, force update the file."
 (defun telega-bridge-bot--matrix-text-spliter (text)
   "Split TEXT into username and message."
   (let* ((name-and-body (split-string text ": "))
-         (name (car name-and-body)))
-    (if (string-equal name "matterbridge")
-        (let* ((body (string-join (cdr name-and-body) ": ")))
-          ;; get the username in []
-          (when (string-match "^\\[\\(.*?\\)\\]" body)
-            (list
-             (concat (match-string 1 body) " <matterbridge>") ; username
-             (substring body (+ (match-end 0) 1))))) ; message
-      name-and-body)))
+         (name (car name-and-body))
+         (body (string-join (cdr name-and-body) ": ")))
+    (if (and (string-equal name "matterbridge")
+             (string-match "^\\[\\(.*?\\)\\]" body))
+        ;; get the username in []
+        (list
+         (concat (match-string 1 body) " <matterbridge>") ; username
+         (substring body (+ (match-end 0) 1))) ; message
+      (list name body))))
 
 (defun telega-bridge-bot--matrix-file-spliter (text)
   "Split TEXT into username and message."
