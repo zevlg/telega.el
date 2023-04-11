@@ -1428,28 +1428,38 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
 (defun telega-msg-special-p (msg)
   "Return non-nil if MSG is special."
   (memq (telega--tl-type (plist-get msg :content))
-        (list 'messageContactRegistered 'messageChatAddMembers
-              'messageChatJoinByLink 'messageChatDeleteMember
-              'messageChatChangeTitle 'messageSupergroupChatCreate
-              'messageBasicGroupChatCreate 'messageCustomServiceAction
-              'messageChatSetTtl 'messageExpiredPhoto 'messageExpiredVideo
-              'messageChatChangePhoto 'messageChatDeletePhoto
-              'messageChatUpgradeTo 'messageChatUpgradeFrom
-              'messagePinMessage 'messageScreenshotTaken
-              'messageGameScore
-              'messageProximityAlertTriggered
-              'messageVideoChatScheduled
-              'messageVideoChatStarted
-              'messageVideoChatEnded
-              'messageInviteVideoChatParticipants
-              'messageWebsiteConnected
-              'messageChatSetTheme
-              'messageChatSetMessageAutoDeleteTime
-              'messagePaymentSuccessful
-              'messageForumTopicCreated
-              'messageForumTopicEdited
-              'messageForumTopicIsClosedToggled
-              'telegaInternal)))
+        '(messageContactRegistered
+          messageChatAddMembers
+          messageChatJoinByLink
+          messageChatJoinByRequest
+          messageChatDeleteMember
+          messageChatChangeTitle
+          messageSupergroupChatCreate
+          messageBasicGroupChatCreate
+          messageCustomServiceAction
+          messageChatSetTtl
+          messageExpiredPhoto
+          messageExpiredVideo
+          messageChatChangePhoto
+          messageChatDeletePhoto
+          messageChatUpgradeTo
+          messageChatUpgradeFrom
+          messagePinMessage
+          messageScreenshotTaken
+          messageGameScore
+          messageProximityAlertTriggered
+          messageVideoChatScheduled
+          messageVideoChatStarted
+          messageVideoChatEnded
+          messageInviteVideoChatParticipants
+          messageWebsiteConnected
+          messageChatSetTheme
+          messageChatSetMessageAutoDeleteTime
+          messagePaymentSuccessful
+          messageForumTopicCreated
+          messageForumTopicEdited
+          messageForumTopicIsClosedToggled
+          telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
   "Inserter for the MSG's dependent message in context of special message."
@@ -1506,6 +1516,8 @@ Special messages are determined with `telega-msg-special-p'."
                               ", ")))))
       (messageChatJoinByLink
        (telega-ins-i18n "lng_action_user_joined_by_link" :from sender-name))
+      (messageChatJoinByRequest
+       (telega-ins-i18n "lng_action_user_joined_by_request" :from sender-name))
       (messageChatDeleteMember
        (let* ((user (telega-user-get (plist-get content :user_id)))
               (user-name (propertize (telega-msg-sender-title user t)

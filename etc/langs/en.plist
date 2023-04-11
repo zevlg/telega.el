@@ -160,6 +160,12 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} joined the group")
  ("lng_action_user_joined_by_link"
   :value "{from} joined the group via invite link")
+ ("lng_action_user_joined_by_request"
+  :value "{from} was accepted to the group")
+ ("lng_action_you_joined_by_request"
+  :value "Your request to join the group was approved")
+ ("lng_action_you_joined_by_request_channel"
+  :value "Your request to join the channel was approved")
  ("lng_action_user_left"
   :value "{from} left the group")
  ("lng_action_add_user"
