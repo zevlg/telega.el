@@ -18,6 +18,12 @@ CFLAGS+=-DWITH_APPINDICATOR
 CFLAGS+=`pkg-config --cflags appindicator3-0.1`
 LDFLAGS+=`pkg-config --libs appindicator3-0.1`
 SOURCES+=telega-appindicator.c
+else ifeq ($(shell pkg-config --exists ayatana-appindicator3-0.1 && echo yes), yes)
+CFLAGS+=-DWITH_APPINDICATOR
+CFLAGS+=-DWITH_AYATANA_APPINDICATOR
+CFLAGS+=`pkg-config --cflags ayatana-appindicator3-0.1`
+LDFLAGS+=`pkg-config --libs ayatana-appindicator3-0.1`
+SOURCES+=telega-appindicator.c
 endif
 
 ifdef WITH_VOIP
