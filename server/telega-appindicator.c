@@ -34,7 +34,11 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#ifdef WITH_AYATANA_APPINDICATOR
+#include <libayatana-appindicator/app-indicator.h>
+#else
 #include <libappindicator/app-indicator.h>
+#endif
 
 extern void telega_output_json(const char* otype, const char* json);
 
