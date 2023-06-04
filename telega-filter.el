@@ -61,7 +61,7 @@
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-bot-p "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-title "telega-chat" (chat))
 (declare-function telega-chat--info "telega-chat" (chat &optional local-p))
 (declare-function telega-chats-top "telega-chat" (category))
 (declare-function telega-chat-member-my-status "telega-chat" (chat))
@@ -109,13 +109,21 @@ If t, then all custom filters are dirty.")
     map)
   "Keymap for filtering commands.")
 
+(defvar telega-filter-button-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map button-map)
+    (define-key map (kbd "r") 'telega-filter-read-all)
+    map)
+  "The key map for filter buttons.")
+
 (define-button-type 'telega-filter
   :supertype 'telega
   :inserter telega-inserter-for-filter-button
   :help-echo (lambda (custom)
                (format "Filter (custom \"%s\") expands to: %s"
                        (nth 0 custom) (nth 1 custom)))
-  'action #'telega-filter-button--action)
+  'action #'telega-filter-button--action
+  'keymap telega-filter-button-map)
 
 (defun telega-ins--filter (custom-spec)
   "Inserter for the custom filter button specified by CUSTOM-SPEC.
@@ -197,6 +205,23 @@ otherwise toggle custom filter in the active chat filters."
         (if (member fspec (telega-filter-active))
             (telega-filters-push (delete fspec (telega-filter-active)))
           (telega-filter-add fspec))))))
+
+(defun telega-filter-read-all (custom-filter)
+  "Read all messages in all chats from active filter."
+  (interactive (let ((button (button-at (point))))
+                 (when (and button (eq (button-type button) 'telega-filter))
+                   (list (button-get button :value)))))
+
+  (when (telega-filter--folder-p (nth 1 custom-filter))
+    (let* ((folder-chats (telega-filter-chats
+                             telega--ordered-chats (nth 1 custom-filter)))
+           (unread-chats (telega-filter-chats folder-chats 'unread))
+           (nchats (length unread-chats)))
+      (when (and (> nchats 0)
+                 (y-or-n-p (format "telega: Read all %d chats from «%s»? "
+                                   nchats (nth 0 custom-filter))))
+        (telega--readChatList
+         (telega-folder--tdlib-chat-list (nth 0 custom-filter)))))))
 
 (defun telega-filter-active (&optional with-root-view-filter)
   "Return active filter.
@@ -280,7 +305,7 @@ If FILTER is nil, then active filter is used."
           ((and telega-filter-custom-one-liners
                 folder-p
                 (equal (nth 1 custom-filter)
-                       (telega-tl-str (car telega-tdlib--chat-filters) :title)))
+                       (telega-tl-str (car telega-tdlib--chat-folders) :title)))
            (insert "\n"))
           ((zerop ccolumn)
            ;; no-op
@@ -372,13 +397,13 @@ Actually return active chat filter corresponding to CUSTOM filter."
 
 (defun telega-filters--refresh ()
   "Refresh `telega-filters--ewoc' contents.
-Used when `updateChatFilters' is received."
+Used when `updateChatFolders' is received."
   (telega-ewoc--clean telega-filters--ewoc)
 
   (dolist (custom (append telega-filters-custom
                           (when telega-filter-custom-show-folders
                             (mapcar #'telega-filter--custom-folder-spec
-                                    telega-tdlib--chat-filters))))
+                                    telega-tdlib--chat-folders))))
     (ewoc-enter-last telega-filters--ewoc
                      (cons (car custom)
                            (cons (cdr custom)

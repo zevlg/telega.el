@@ -35,7 +35,7 @@
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-color "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-title "telega-chat" (chat))
 
 (declare-function telega-msg-redisplay "telega-msg" (msg))
 
@@ -217,13 +217,16 @@ Thumbnail TYPE and its sizes:
 (defun telega-photo--highres (photo)
   "Return thumbnail of highest resolution for the PHOTO.
 Return thumbnail that can be downloaded."
-  (cl-some (lambda (tn)
-             (let ((tn-file (telega-file--renew tn :photo)))
-               (when (or (telega-file--downloaded-p tn-file)
-                         (telega-file--can-download-p tn-file))
-                 tn)))
-           ;; From highest res to lower
-           (reverse (plist-get photo :sizes))))
+  (or (cl-some (lambda (tn)
+                 (let ((tn-file (telega-file--renew tn :photo)))
+                   (when (or (telega-file--downloaded-p tn-file)
+                             (telega-file--can-download-p tn-file))
+                     tn)))
+               ;; From highest res to lower
+               (reverse (plist-get photo :sizes)))
+
+      ;; Fallback to the very first thumbnail
+      (aref (plist-get photo :sizes) 0)))
 
 (defun telega-photo--thumb (photo)
   "While downloading best photo, get small thumbnail for the PHOTO."
@@ -279,7 +282,10 @@ By default LIMITS is `telega-photo-size-limits'."
                             (plist-get thumb :progressive_sizes)))
                    )
           (setq ret thumb))))
-    ret))
+
+    (or ret
+        ;; Fallback to the very first thumbnail
+        (aref (plist-get photo :sizes) 0))))
 
 (defun telega-photo--open (photo &optional for-msg)
   "Download highres PHOTO asynchronously and open it as a file.
@@ -327,8 +333,10 @@ Return nil if `:telega-text' is not specified in IMG."
 
 (defun telega-media--cheight-for-limits (width height limits)
   "Calculate cheight for image of WIDTHxHEIGHT size fitting into LIMITS."
-  (let ((ratio (min (/ (float (telega-chars-xwidth (nth 2 limits))) width)
-                    (/ (float (telega-chars-xheight (nth 3 limits))) height))))
+  (let* ((width (or width (nth 0 limits)))
+         (height (or height (nth 1 limits)))
+         (ratio (min (/ (float (telega-chars-xwidth (nth 2 limits))) width)
+                     (/ (float (telega-chars-xheight (nth 3 limits))) height))))
     (if (< ratio 1.0)
         (telega-chars-in-height (floor (* height ratio)))
 
@@ -694,16 +702,13 @@ Default is `:telega-image'."
 (defun telega-avatar--title-text (sender)
   "Create textual avatar for the SENDER (chat or user).
 Return string of width 3."
-  (let ((title (telega-msg-sender-title sender))
-        (title-faces (telega-msg-sender-title-faces sender)))
+  (let ((title (telega-msg-sender-title sender)))
     (if telega-avatar-text-compose-chars
         (concat (propertize (compose-chars (aref telega-symbol-circle 0)
                                            (aref title 0))
-                            'face title-faces)
+                            'face (telega-msg-sender-title-faces sender))
                 " ")
-      (concat "("
-              (propertize (substring title 0 1) 'face title-faces)
-              ")"))))
+      (concat "(" (substring title 0 1) ")"))))
 
 (defun telega-avatar--create-image (sender file &optional cheight addon-function)
   "Create SENDER (char or user) avatar image.
@@ -1052,6 +1057,25 @@ Return non-nil if zoom has been changed."
                       :height (alist-get 'height (nth 1 svg))
                       :ascent 'center
                       :base-uri (expand-file-name "dummy" base-dir))))
+
+
+;;; Media layout
+(defun telega-media-layout--ratio (w h)
+  (/ (float w) h))
+
+(defun telega-media-layout--proportion (w h)
+  (let ((ratio (telega-media-layout--ratio w h)))
+    (cond ((> ratio 1.2) 'w)
+          ((< ratio 0.8) 'n)
+          (t 'q))))
+
+(defun telega-media-layout--for-images (sizes)
+  "Return layout for the list of the photo SIZES.
+Return list of rows."
+  (let ((n (length sizes)))
+    (cond ((= 1 n)
+           )
+          )))
 
 (provide 'telega-media)
 

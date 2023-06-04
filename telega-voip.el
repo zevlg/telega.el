@@ -90,8 +90,9 @@
         (telega-ins "←"))
 
       (telega-ins--raw-button (telega-link-props 'user user-id 'type 'telega)
-        (telega-ins--msg-sender
-         (telega-user-get user-id) 'with-avatar 'with-username))
+        (telega-ins--msg-sender (telega-user-get user-id)
+          :with-avatar-p t
+          :with-username-p t))
       (telega-ins-fmt " %s"
         (substring (plist-get state :@type) 9))
       (cl-case (telega--tl-type state)

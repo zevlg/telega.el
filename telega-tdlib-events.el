@@ -28,6 +28,7 @@
 (require 'telega-root)
 (require 'telega-chat)
 (require 'telega-inline)
+(require 'telega-topic)
 
 (defvar tracking-buffers nil)
 (declare-function telega--authorization-ready "telega")
@@ -142,24 +143,21 @@ DIRTINESS specifies additional CHAT dirtiness."
 (defun telega--on-updateChatAction (event)
   "Some message sender has actions on chat."
   (let* ((chat-id (plist-get event :chat_id))
-         (chat-actions (gethash chat-id telega--actions))
          (msg-thread-id (plist-get event :message_thread_id))
+         (action-id (cons chat-id msg-thread-id))
+         (chat-actions (gethash action-id telega--actions))
          (sender (plist-get event :sender_id))
          (user-action (assoc sender chat-actions))
          (action (plist-get event :action))
          (cancel-p (eq (telega--tl-type action) 'chatActionCancel)))
-    ;; Make thread id be part of action, will be examined at insert
-    ;; time
-    (when msg-thread-id
-      (plist-put action :message_thread_id msg-thread-id))
     (cond (cancel-p
            (let ((new-chat-actions (assoc-delete-all sender chat-actions)))
              (if new-chat-actions
-                 (puthash chat-id new-chat-actions telega--actions)
-               (remhash chat-id telega--actions))))
+                 (puthash action-id new-chat-actions telega--actions)
+               (remhash action-id telega--actions))))
           (user-action
            (setcdr user-action action))
-          (t (puthash chat-id (cons (cons sender action) chat-actions)
+          (t (puthash action-id (cons (cons sender action) chat-actions)
                       telega--actions)))
 
     (let ((chat (telega-chat-get chat-id)))
@@ -196,6 +194,10 @@ DIRTINESS specifies additional CHAT dirtiness."
   "New chat has been loaded or created."
   (let ((chat (telega-chat--ensure (plist-get event :chat))))
     (telega-chat--mark-dirty chat event)
+
+    ;; Asynchronously fetch all topics
+    (when (telega-chat-match-p chat 'is-forum)
+      (telega-chat--topics-fetch chat))
 
     (run-hook-with-args 'telega-chat-created-hook chat)))
 
@@ -547,7 +549,7 @@ NOTE: we store the number as custom chat property, to use it later."
 
 (defun telega--on-updateGroupCallParticipant (event)
   (let ((group-call-id (plist-get event :group_call_id))
-        (call-user (plist-get event :participant)))
+        (_call-user (plist-get event :participant)))
     (when-let ((chat (telega-group-call-get-chat group-call-id)))
       (with-telega-chatbuf chat
         ;; TODO: video-chats
@@ -557,15 +559,15 @@ NOTE: we store the number as custom chat property, to use it later."
 
 
 ;; Chat filters
-(defun telega--on-updateChatFilters (event)
+(defun telega--on-updateChatFolders (event)
   "List of chat filters has been updated."
   ;; NOTE: collect folders with changed names and update all chats in
   ;; that folders.  Because folder name might be displayed along the
   ;; side with chat's title in the rootbuf
-  (let* ((new-tdlib-filters (append (plist-get event :chat_filters) nil))
-         (new-names (seq-difference (telega-folder-names new-tdlib-filters)
+  (let* ((new-tdlib-folders (append (plist-get event :chat_folders) nil))
+         (new-names (seq-difference (telega-folder-names new-tdlib-folders)
                                     (telega-folder-names))))
-    (setq telega-tdlib--chat-filters new-tdlib-filters)
+    (setq telega-tdlib--chat-folders new-tdlib-folders)
 
     (dolist (folder-name new-names)
       (dolist (fchat (telega-filter-chats
@@ -588,9 +590,6 @@ NOTE: we store the number as custom chat property, to use it later."
 
 
 ;; Messages updates
-(defun telega-msg-id= (msg1 msg2)
-  (= (plist-get msg1 :id) (plist-get msg2 :id)))
-
 (defun telega-message--update (msg)
   "Message MSG has been updated."
   (when (plist-get msg :is_pinned)
@@ -626,7 +625,9 @@ NOTE: we store the number as custom chat property, to use it later."
           (when-let ((last-message (plist-get chat :last_message)))
             (when (<= (plist-get last-message :id)
                       (plist-get chat :last_read_inbox_message_id))
-            (telega--viewMessages chat (list new-msg) 'force))))
+            (telega--viewMessages chat (list new-msg)
+              :source '(:@type "messageSourceChatHistory")
+              :force t))))
 
       (plist-put new-msg :ignored-p nil))
 
@@ -648,8 +649,8 @@ NOTE: we store the number as custom chat property, to use it later."
 
           ;; If message is visible in some window, then mark it as read
           ;; see https://github.com/zevlg/telega.el/issues/4
-          (when (telega-msg-observable-p new-msg telega-chatbuf--chat node)
-            (telega--viewMessages telega-chatbuf--chat (list new-msg)))
+          (when (telega-chatbuf--msg-observable-p new-msg node)
+            (telega-chatbuf--msg-view new-msg))
           )))
     ;; NOTE: Trigger `telega-chat-post-message-hook' for outgoing
     ;; messages, only when message is successfully sent
@@ -1045,10 +1046,9 @@ messages."
 (defun telega--on-updateSupergroup (event)
   "Handle supergroup update EVENT."
   (let* ((supergroup (plist-get event :supergroup))
-         (old-my-status
-          (plist-get (telega--info 'supergroup (plist-get supergroup :id)
-                                   'locally)
-                     :status))
+         (old-supergroup (telega--info 'supergroup (plist-get supergroup :id)
+                                       'locally))
+         (old-my-status (plist-get old-supergroup :status))
          (me-was-owner (and old-my-status
                             (eq 'chatMemberStatusCreator
                                 (telega--tl-type old-my-status)))))
@@ -1056,12 +1056,20 @@ messages."
 
     (when-let ((chat (cl-find supergroup telega--ordered-chats
                               :test 'eq :key 'telega-chat--supergroup)))
+      ;; If :is_forum state is toggled, then update topics as well
+      (unless (eq (plist-get old-supergroup :is_forum)
+                  (plist-get supergroup :is_forum))
+        (telega-chat--topics-fetch chat))
+
       ;; NOTE: notify if someone transferred ownership to me
       (when (and (not me-was-owner)
                  (telega-chat-match-p chat 'me-is-owner))
         (message "telega: me is now owner of the %s"
                  (telega-ins--as-string
-                  (telega-ins--msg-sender chat t t t))))
+                  (telega-ins--msg-sender chat
+                    :with-avatar-p t
+                    :with-username-p t
+                    :with-brackets-p t))))
 
       (telega-chat--mark-dirty chat event)
 
@@ -1071,6 +1079,7 @@ messages."
         (unless (equal old-my-status (plist-get supergroup :status))
           (telega-chatbuf--footer-update))
         (telega-chatbuf--prompt-update)))
+
     ))
 
 (defun telega--on-updateSupergroupFullInfo (event)
@@ -1366,7 +1375,8 @@ Please downgrade TDLib and recompile `telega-server'"
   (with-telega--msg-update-event event (chat msg node)
     (when (and telega-sticker-animated-play
                node
-               (telega-msg-observable-p msg chat node))
+               (with-telega-chatbuf chat
+                 (telega-chatbuf--msg-observable-p msg node)))
       (let ((fs-sticker (plist-get event :sticker)))
         (plist-put msg :telega-sticker-fullscreen fs-sticker)
         (telega-sticker--animate fs-sticker msg)
@@ -1424,6 +1434,14 @@ Please downgrade TDLib and recompile `telega-server'"
     (when node
       (with-telega-chatbuf chat
         (telega-chatbuf--redisplay-node node)))
+    ))
+
+(defun telega--on-updateAddChatMembersPrivacyForbidden (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id)))
+        (users (mapcar #'telega-user-get (plist-get event :user_ids))))
+    (plist-put chat :telega-add-member-forbidden-users users)
+    (with-telega-chatbuf chat
+      (telega-chatbuf--footer-update))
     ))
 
 (provide 'telega-tdlib-events)

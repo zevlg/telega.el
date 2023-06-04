@@ -262,6 +262,12 @@ all messages must have same user sender."
    (list :@type "closeSecretChat"
          :secret_chat_id (plist-get secretchat :id))))
 
+(defun telega-chat-message-thread-id (chat)
+  "Return current message_thread_id for the CHAT."
+  (or (with-telega-chatbuf chat
+        (plist-get telega-chatbuf--thread-msg :message_thread_id))
+      0))
+
 (defun telega--sendChatAction (chat action)
   "Send ACTION on CHAT."
   (telega-server--send
@@ -1237,12 +1243,6 @@ Empty string to unset username."
    (list :@type "setUsername"
          :username (or username ""))))
 
-(defun telega-chat-message-thread-id (chat)
-  "Return current message_thread_id for the CHAT."
-  (or (with-telega-chatbuf chat
-        (plist-get telega-chatbuf--thread-msg :message_thread_id))
-      0))
-
 (defun telega--setChatPhoto (chat filename &optional callback)
   "Changes the photo of a CHAT.
 Requires `:can_change_info' rights."
@@ -1319,43 +1319,90 @@ it is automatically removed from another one if needed."
          :chat_list tdlib-chat-list)
    (or callback 'ignore)))
 
-(defun telega--getChatFilter (filter-id)
+(defun telega--getChatFolder (folder-id)
   (telega-server--call
-   (list :@type "getChatFilter"
-         :chat_filter_id filter-id)))
+   (list :@type "getChatFolder"
+         :chat_folder_id folder-id)))
 
-(defun telega--createChatFilter (chat-filter &optional callback)
-  "Create new CHAT-FILTER.
-Return ChatFilterInfo."
+(defun telega--createChatFolder (chat-folder &optional callback)
+  "Create new CHAT-FOLDER.
+Return chatFolderInfo."
   (telega-server--call
-   (list :@type "createChatFilter"
-         :filter chat-filter)
+   (list :@type "createChatFolder"
+         :folder chat-folder)
    callback))
 
-(defun telega--editChatFilter (filter-id new-chat-filter &optional callback)
+(defun telega--editChatFolder (folder-id new-chat-folder &optional callback)
   (declare (indent 2))
   (telega-server--call
-   (list :@type "editChatFilter"
-         :chat_filter_id filter-id
-         :filter new-chat-filter)
+   (list :@type "editChatFolder"
+         :chat_folder_id folder-id
+         :folder new-chat-folder)
    (or callback 'ignore)))
 
-(defun telega--deleteChatFilter (filter-id)
+(defun telega--deleteChatFolder (folder-id &optional leave-chats)
   (telega-server--send
-   (list :@type "deleteChatFilter"
-         :chat_filter_id filter-id)))
+   (list :@type "deleteChatFolder"
+         :chat_folder_id folder-id
+         :leave_chat_ids (seq-into (mapcar (telega--tl-prop :id) leave-chats)
+                                   'vector))))
 
-(defun telega--reorderChatFilters (filter-ids)
+(defun telega--reorderChatFolders (folder-ids)
   (telega-server--send
-   (list :@type "reorderChatFilters"
-         :chat_filter_ids (seq-into filter-ids 'vector))))
+   (list :@type "reorderChatFolders"
+         :chat_folder_ids (seq-into folder-ids 'vector))))
 
-(defun telega--getRecommendedChatFilters (&optional callback)
-  "Return recommended chat filters for the current user."
+(defun telega--getChatFolderChatsToLeave (folder-id &optional callback)
+  "Return chats suggested to leave when folder with FOLDER-ID is deleted."
   (with-telega-server-reply (reply)
-      (append (plist-get reply :chat_filters) nil)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+  
+    (list :@type "getChatFolderChatsToLeave"
+          :chat_folder_id folder-id)
+    callback))
 
-    (list :@type "getRecommendedChatFilters")
+(defun telega--getRecommendedChatFolders (&optional callback)
+  "Return recommended chat folders for the current user."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :chat_folders) nil)
+
+    (list :@type "getRecommendedChatFolders")
+    callback))
+
+(defun telega--getChatsForChatFolderInviteLink (folder-id &optional callback)
+  "Return chats from folder identified by FOLDER-ID suitable for invite link."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "getChatsForChatFolderInviteLink"
+          :chat_folder_id folder-id)
+    callback))
+
+(defun telega--createChatFolderInviteLink (folder-id name chats
+                                                     &optional callback)
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "createChatFolderInviteLink"
+          :chat_folder_id folder-id
+          :name name
+          :chat_ids (seq-into (mapcar (telega--tl-prop :id) chats) 'vector))
+    callback))
+
+(defun telega--getChatFolderInviteLinks (folder-id &optional callback)
+  "Return invite links created by me user for a shareable chat folder."
+  (with-telega-server-reply (reply)
+      reply
+
+    (list :@type "getChatFolderInviteLinks"
+          :chat_folder_id folder-id)
+    callback))
+
+(defun telega--checkChatFolderInviteLink (invite-link &optional callback)
+  (with-telega-server-reply (reply)
+      reply
+    (list :@type "checkChatFolderInviteLink"
+          :invite_link invite-link)
     callback))
 
 (defun telega--setChatDiscussionGroup (chat discussion-chat)
@@ -1991,14 +2038,15 @@ REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
    (list :@type "removeChatActionBar"
          :chat_id (plist-get chat :id))))
 
-(defun telega--createPrivateChat (user)
+(defun telega--createPrivateChat (user &optional callback)
   "Create private chat with USER.
 Return newly created chat."
-  (telega-chat-get
-   (plist-get
-    (telega-server--call
-     (list :@type "createPrivateChat"
-           :user_id (plist-get user :id))) :id)))
+  (with-telega-server-reply (reply)
+      (telega-chat-get (plist-get reply :id))
+
+    (list :@type "createPrivateChat"
+           :user_id (plist-get user :id))
+    callback))
 
 (defun telega--openMessageContent (msg)
   "Open content of the message MSG."
@@ -2018,6 +2066,15 @@ TDLib 1.7.8"
          :message_id (plist-get msg :id))
    callback))
 
+(defun telega--getInternalLink (tdlib-link-type &optional internal-p)
+  "Return http or tg link to the TDLIB-LINK-TYPE."
+  (with-telega-server-reply (reply)
+      (plist-get reply :url)
+
+    (list :@type "getInternalLink"
+          :type tdlib-link-type
+          :is_http (if internal-p :false t))))
+
 (defun telega--getInternalLinkType (link-url &optional callback)
   "Return information about the type of an internal link.
 Return nil if LINK-URL is not Telegram's internal link.
@@ -2031,10 +2088,21 @@ TDLib 1.7.8"
           :link link-url)
     callback))
 
-(defun telega--viewMessages (chat messages &optional force)
+(defun telega--getExternalLinkInfo (link-url &optional callback)
+  ;; --> LoginUrlInfo
+  "Return action to be done when the current user clicks an external link."
+  ;; NOTE from TDLib docs: Don't use this method for links from secret
+  ;; chats if web page preview is disabled in secret chats
+  (telega-server--call
+   (list :@type "getExternalLinkInfo"
+         :link link-url)
+   callback))
+
+(cl-defun telega--viewMessages (chat messages &key source force)
   "Mark CHAT's MESSAGES as read.
 Use non-nil value for FORCE, if messages in closed chats should
 be marked as read."
+  (declare (indent 2))
   ;; NOTE: we mark messages with internal `:telega-viewed-in-thread', so
   ;; "viewMessages" will be called once
   (let* ((thread-id (telega-chat-message-thread-id chat))
@@ -2052,9 +2120,9 @@ be marked as read."
       (telega-server--send
        (list :@type "viewMessages"
              :chat_id (plist-get chat :id)
-             :message_thread_id (telega-chat-message-thread-id chat)
              :message_ids (cl-map #'vector (telega--tl-prop :id)
                                   non-viewed-messages)
+             :source (or source '(:@type "messageSourceOther"))
              :force_read (if force t :false))))))
 
 (defun telega--toggleChatIsPinned (chat)
@@ -2066,6 +2134,12 @@ be marked as read."
          :is_pinned (if (plist-get (telega-chat-position chat) :is_pinned)
                         :false
                       t))))
+
+(defun telega--readChatList (tdlib-chat-list)
+  "Mark all chats in the TDLIB-CHAT-LIST as read."
+  (telega-server--send
+   (list :@type "readChatList"
+         :chat_list tdlib-chat-list)))
 
 (defun telega--toggleChatHasProtectedContent (chat)
   "Toogle ability of users to save, forward, or copy CHAT content."

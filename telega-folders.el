@@ -65,11 +65,11 @@ See `telega-folder-icons-alist'")
 Specify TDLIB-FILTERS list to use alternative TDLib chat filters list."
   (mapcar (lambda (fi)
             (telega-tl-str fi :title))
-          (or tdlib-filters telega-tdlib--chat-filters)))
+          (or tdlib-filters telega-tdlib--chat-folders)))
 
-(defun telega-folder--chat-filter-info (folder-name)
-  "Return chatFilterInfo corresponding to FOLDER-NAME."
-  (cl-find folder-name telega-tdlib--chat-filters
+(defun telega-folder--chat-folder-info (folder-name)
+  "Return chatFolderInfo corresponding to FOLDER-NAME."
+  (cl-find folder-name telega-tdlib--chat-folders
            :key (lambda (fi)
                   (telega-tl-str fi :title 'no-props))
            :test #'equal))
@@ -86,11 +86,11 @@ Return nil if folder with FOLDER-NAME is not known by TDLib."
         (when-let ((real-folder-name
                     (get-text-property 0 'telega-folder folder-name)))
           (setq folder-name real-folder-name))
-        (when-let ((fi (telega-folder--chat-filter-info folder-name)))
-          (list :@type "chatListFilter"
-                :chat_filter_id (plist-get fi :id))))))
+        (when-let ((fi (telega-folder--chat-folder-info folder-name)))
+          (list :@type "chatListFolder"
+                :chat_folder_id (plist-get fi :id))))))
 
-(defun telega-folder-format (fmt-spec folder-name &optional filter-info)
+(defun telega-folder-format (fmt-spec folder-name &optional folder-info)
   "Format a folder of FOLDER-NAME using FMT-SPEC.
 FMT-SPEC is a string containing:
 %I - Replaced with folder's icon from `telega-folder-icon-names' or
@@ -105,21 +105,22 @@ In case icon is used in the formatting, it is propertized with
 `telega-folder' property having value of FOLDER-NAME.  This
 property is used in `telega-folder--tdlib-chat-list' to
 correctly extract folder name."
-  (unless filter-info
-    (setq filter-info (telega-folder--chat-filter-info folder-name)))
-  (let* ((ftitle (telega-tl-str filter-info :title))
-         (ficon-name (telega-tl-str filter-info :icon_name))
+  (unless folder-info
+    (setq folder-info (telega-folder--chat-folder-info folder-name)))
+  (let* ((ftitle (telega-tl-str folder-info :title))
+         (ficon-name (telega-tl-str (plist-get folder-info :icon) :name))
          (ficon (cdr (assoc ficon-name telega-folder-icons-alist)))
          (ficon-emoji (when (and ficon telega-emoji-use-images)
                         (telega-symbol-emojify ficon)))
          (ficon-symbol (propertize (or ficon-emoji ficon (telega-symbol 'folder))
                                    'telega-folder folder-name))
-         (icon-uniq-p (= (length (cl-remove-if-not
-                                  (lambda (fi)
-                                    (equal ficon-name
-                                           (telega-tl-str fi :icon_name)))
-                                  telega-tdlib--chat-filters))
-                         1)))
+         (icon-uniq-p
+          (= (length (cl-remove-if-not
+                      (lambda (fi)
+                        (equal ficon-name
+                               (telega-tl-str (plist-get fi :icon) :name)))
+                      telega-tdlib--chat-folders))
+             1)))
     (format-spec fmt-spec
                  (format-spec-make ?i ficon-symbol
                                    ?I (if ficon ficon-symbol "")
@@ -139,32 +140,32 @@ correctly extract folder name."
   ;; NOTE: Folder must contain at least 1 chat, otherwise error=400 is
   ;; returned
   (when chats
-    (telega--createChatFilter
-     (nconc (list :@type "chatFilter"
+    (telega--createChatFolder
+     (nconc (list :@type "chatFolder"
                   :title folder-name
                   :included_chat_ids (cl-map 'vector (telega--tl-prop :id) chats))
             (when icon-name
-              (list :icon_name icon-name))))))
+              (list :icon (list :@type "chatFolderIcon" :name icon-name)))))))
 
 (defun telega-folder-delete (folder-name)
   "Delete Telegram folder with FOLDER-NAME.
 This won't delete any chat, just a folder."
   (interactive (list (telega-completing-read-folder "Delete Folder: ")))
   (when (y-or-n-p (format "Delete Folder \"%s\"? " folder-name))
-    (telega--deleteChatFilter
-     (plist-get (telega-folder--chat-filter-info folder-name) :id))))
+    (telega--deleteChatFolder
+     (plist-get (telega-folder--chat-folder-info folder-name) :id))))
 
 (defun telega-folders-reorder (ordered-folder-names)
   "Reorder Telegram folders to be in ORDERED-FOLDER-NAMES order."
   (interactive (list (telega-completing-read-folder-list "Reorder Folders")))
   (let* ((ordered-ids (mapcar (telega--tl-prop :id)
-                              (mapcar #'telega-folder--chat-filter-info
+                              (mapcar #'telega-folder--chat-folder-info
                                       ordered-folder-names)))
          (rest-ids (cl-remove-if (lambda (cl-id)
                                    (memq cl-id ordered-ids))
                                  (mapcar (telega--tl-prop :id)
-                                         telega-tdlib--chat-filters))))
-    (telega--reorderChatFilters (nconc ordered-ids rest-ids))))
+                                         telega-tdlib--chat-folders))))
+    (telega--reorderChatFolders (nconc ordered-ids rest-ids))))
 
 (defun telega-folder-rename (folder-name new-folder-name &optional new-icon-name)
   "Assign new name and icon to the folder with FOLDER-NAME."
@@ -173,14 +174,14 @@ This won't delete any chat, just a folder."
                      (when (y-or-n-p "Associate icon with the folder? ")
                        (telega-completing-read-folder-icon-name
                         "Folder icon name: "))))
-  (let* ((filter-info (telega-folder--chat-filter-info folder-name))
-         (tdlib-cfilter (telega--getChatFilter (plist-get filter-info :id))))
-    (plist-put tdlib-cfilter :title new-folder-name)
+  (let* ((folder-info (telega-folder--chat-folder-info folder-name))
+         (tdlib-folder (telega--getChatFolder (plist-get folder-info :id))))
+    (plist-put tdlib-folder :title new-folder-name)
     (when new-icon-name
-      (plist-put tdlib-cfilter :icon_name new-icon-name))
+      (plist-put tdlib-folder
+                 :icon (list :@type "chatFolderIcon" :name new-icon-name)))
 
-    (telega--editChatFilter (plist-get filter-info :id)
-                            tdlib-cfilter)))
+    (telega--editChatFolder (plist-get folder-info :id) tdlib-folder)))
 
 (defun telega-folder-set-icon (folder-name new-icon-name)
   "For folder with FOLDER-NAME set new icon to NEW-ICON-NAME."
@@ -204,11 +205,11 @@ You can add chat to multiple folders."
                        (telega-ins
                         (telega-msg-sender-title-for-completion chat-at)))))))))
 
-  (let ((filter-info (telega-folder--chat-filter-info folder-name)))
-    (cl-assert filter-info)
+  (let ((folder-info (telega-folder--chat-folder-info folder-name)))
+    (cl-assert folder-info)
     (telega--addChatToList
-     chat (list :@type "chatListFilter"
-                :chat_filter_id (plist-get filter-info :id)))))
+     chat (list :@type "chatListFolder"
+                :chat_folder_id (plist-get folder-info :id)))))
 
 (defun telega-chat-remove-from-folder (chat folder-name)
   "Remove CHAT from the folder named FOLDER-NAME."
@@ -222,23 +223,22 @@ You can add chat to multiple folders."
             (telega-chat-folders chat-at)))))
 
   (let* ((chat-id (plist-get chat :id))
-         (filter-info (telega-folder--chat-filter-info folder-name))
-         (tdlib-cfilter (telega--getChatFilter (plist-get filter-info :id)))
-         (inc-cids (append (plist-get tdlib-cfilter :included_chat_ids) nil))
-         (exc-cids (append (plist-get tdlib-cfilter :excluded_chat_ids) nil)))
-    (cl-assert tdlib-cfilter)
+         (folder-info (telega-folder--chat-folder-info folder-name))
+         (tdlib-folder (telega--getChatFolder (plist-get folder-info :id)))
+         (inc-cids (append (plist-get tdlib-folder :included_chat_ids) nil))
+         (exc-cids (append (plist-get tdlib-folder :excluded_chat_ids) nil)))
+    (cl-assert tdlib-folder)
 
-    ;; NOTE: Fix `tdlib-cfilter's `:title' in case it contains
+    ;; NOTE: Fix `tdlib-folder's `:title' in case it contains
     ;; surropagated pairs, to avoid error with code=400
-    (plist-put tdlib-cfilter :title folder-name)
+    (plist-put tdlib-folder :title folder-name)
 
     (if (memq chat-id inc-cids)
-        (plist-put tdlib-cfilter :included_chat_ids
+        (plist-put tdlib-folder :included_chat_ids
                    (vconcat (delq chat-id inc-cids)))
-      (plist-put tdlib-cfilter :excluded_chat_ids
+      (plist-put tdlib-folder :excluded_chat_ids
                  (vconcat (cl-pushnew chat-id exc-cids))))
-    (telega--editChatFilter (plist-get filter-info :id)
-                            tdlib-cfilter)))
+    (telega--editChatFolder (plist-get folder-info :id) tdlib-folder)))
 
 
 ;; Migration from deprecated custom chat labels into Chat Folders

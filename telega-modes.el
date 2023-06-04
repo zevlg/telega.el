@@ -722,7 +722,7 @@ squashing is not applied."
 ;; press {{{kbd(RET)}}} on the message with photo.
 (require 'image-mode)
 
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-title "telega-chat" (chat))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight))
 
@@ -745,7 +745,8 @@ To be displayed in the modeline.")
 (make-variable-buffer-local 'telega-image--position)
 
 (defun telega-image-mode-mode-line-chat-title ()
-  (telega-chatbuf--name (telega-msg-chat telega-image--message)))
+  (substring-no-properties
+   (telega-chatbuf--name (telega-msg-chat telega-image--message))))
 
 (defun telega-image-mode-mode-line-chat-position ()
   (when (and (car telega-image--position)
@@ -794,8 +795,7 @@ To be displayed in the modeline.")
   (setq mode-name
         (concat (telega-symbol 'mode) "Image"
                 (when image-type (format "[%s]" image-type))))
-
-  (telega-image-mode--update-modeline))
+  )
 
 (defun telega-image-mode-p (buffer-name &rest _unused)
   "Return non-nil if buffer named BUFFER-NAME has `telega-image-mode' major-mode.
@@ -813,7 +813,13 @@ Could be used as condition function in `display-buffer-alist'."
                          (telega--tl-get tl-file :local :path) nil t)
      (telega-image-mode)
      (setq telega-image--message for-msg)
-     (telega-image-mode--chat-position-fetch)
+     (telega-image-mode--update-modeline)
+
+     ;; NOTE: fetch chat position only for "Photo" messages, to avoid
+     ;; 400 errors
+     (when (telega-msg-match-p for-msg '(type Photo))
+       (telega-image-mode--chat-position-fetch))
+
      (current-buffer))))
 
 (defun telega-image-view-msg (image-msg)
@@ -862,12 +868,14 @@ Could be used as condition function in `display-buffer-alist'."
           (let ((found-messages (append (plist-get reply :messages) nil)))
             (if (or (telega--tl-error-p reply)
                     (null found-messages)
-                    (= (plist-get img-msg :id)
-                       (plist-get (car found-messages) :id)))
+                    (telega-msg-id= img-msg (car found-messages)))
                 (user-error "No %s image in %s"
                             (if backward "previous" "next")
                             (telega-ins--as-string
-                             (telega-ins--msg-sender chat t t t)))
+                             (telega-ins--msg-sender chat
+                               :with-avatar-p t
+                               :with-username-p t
+                               :with-brackets-p t)))
               ;; Found a message
               (message "")
               (with-current-buffer img-buffer
@@ -1200,10 +1208,7 @@ Return patron info, or nil if SENDER is not a telega patron."
 (defun telega-patrons--avatar-title-text (origfun sender)
   "Emphasize text variant avatar for patronns."
   (if-let ((patron (telega-msg-sender-patron-p sender)))
-      (concat "⸨"
-              (propertize (substring (telega-msg-sender-title sender) 0 1)
-                          'face (telega-msg-sender-title-faces sender))
-              "⸩")
+      (concat "⸨" (substring (telega-msg-sender-title sender) 0 1) "⸩")
     (funcall origfun sender)))
 
 (define-minor-mode telega-patrons-mode
@@ -1258,6 +1263,9 @@ Return patron info, or nil if SENDER is not a telega patron."
          (lambda (messages)
            (dolist (msg messages)
              (telega--editMessageLiveLocation msg telega-my-location))))
+
+        ;; Also update all active live locations in the rootbuf
+        (telega-active-locations--check)
         ))))
 
 (define-minor-mode telega-my-location-mode
@@ -1405,7 +1413,7 @@ EVENT must be \"updateDeleteMessages\"."
       (telega-ins--image
        (telega-msg-sender-avatar-image-one-line user)))
     (when telega-active-locations-show-titles
-      (telega-ins (telega-msg-sender-title user)))
+      (telega-ins--msg-sender user))
     (when (or (telega-me-p user)
               (not (telega-chat-private-p chat)))
       (telega-ins "→")
@@ -1413,7 +1421,9 @@ EVENT must be \"updateDeleteMessages\"."
         (telega-ins--image
          (telega-msg-sender-avatar-image-one-line chat)))
       (when telega-active-locations-show-titles
-        (telega-ins--msg-sender chat nil t t)))
+        (telega-ins--msg-sender chat
+          :with-username-p t
+          :with-brackets-p t)))
     (telega-ins--with-face 'telega-shadow
       (telega-ins " Live"))
     (cl-destructuring-bind (live-for updated-ago)
@@ -1559,7 +1569,18 @@ Set to nil to disable active video chats in the modeline."
     (telega-ins " ")
     (telega-ins "→")
     (telega-ins " ")
-    (telega-ins--msg-sender chat t t t)
+    (telega-ins--msg-sender chat
+      :with-avatar-p t
+      :with-username-p t
+      :with-brackets-p t)
+    ;; Button to hide this video chat
+    (telega-ins " ")
+    (telega-ins--button (propertize "✕" 'face 'bold)
+      'action (lambda (_button)
+                (setq telega-active-video-chats--chats
+                      (delq chat telega-active-video-chats--chats))
+                (telega-mode-line-update)
+                (telega-root-aux-redisplay #'telega-ins--active-video-chats)))
     t))
 
 (defun telega-ins--active-video-chats ()
@@ -1874,6 +1895,91 @@ Or nil if translation is not needed."
                    'telega-auto-translate--chatbuf-input-send)
     (telega-chatbuf--prompt-update)
     ))
+
+
+;;; ellit-org: minor-modes
+;; ** TODO telega-play-media-sequence-mode
+;;
+;; Play media content in subsequent manner.
+(defconst telega-play-media-sequence--type-definitions
+  '((audio (type Audio) (:@type "searchMessagesFilterAudio"))
+    (video (type Video) (:@type "searchMessagesFilterVideo"))
+    (voice-note (type VoiceNote) (:@type "searchMessagesFilterVoiceNote"))
+    (video-note (type VideoNote) (:@type "searchMessagesFilterVideoNote"))
+    (voice-and-video-note (type VoiceNote VideoNote)
+                          (:@type "searchMessagesFilterVoiceAndVideoNote"))
+    (animation (type Animation) (:@type "searchMessagesFilterAnimation")))
+  "Definitions for the media sequences.")
+
+(defcustom telega-play-media-sequence-types
+  '(audio video voice-and-video-note)
+  "List of media sequence types to play sequentially."
+  :type '(repeat (choice (const :tag "Audio" audio)
+                         (const :tag "Video" video)
+                         (const :tag "Voice Note" voice-note)
+                         (const :tag "Video Note" video-note)
+                         (const :tag "Voice or Video Note" voice-and-video-note)
+                         (const :tag "Animation" animation)))
+  :group 'telega-modes)
+
+(defcustom telega-play-media-sequence-once-types
+  '(voice-and-video-note)
+  "List of media sequences for one shot sequential play."
+  :type '(repeat (choice (const :tag "Audio" audio)
+                         (const :tag "Video" video)
+                         (const :tag "Voice Note" voice-note)
+                         (const :tag "Video Note" video-note)
+                         (const :tag "Voice or Video Note" voice-and-video-note)
+                         (const :tag "Animation" animation)))
+  :group 'telega-modes)
+
+(defun telega-play-media-sequence-msg-match-p (msg sequence-type)
+  "Return non-nil if a message MSG matches SEQUENCE-TYPE."
+  (let ((msg-temex (nth 1 (assq sequence-type
+                                telega-play-media-sequence--type-definitions))))
+    (telega-msg-match-p msg msg-temex)))
+
+(defvar telega-play-media-sequence--once-p nil)
+(make-variable-buffer-local 'telega-play-media-sequence--once-p)
+
+(defvar telega-play-media-sequence--current-type nil)
+(make-variable-buffer-local 'telega-play-media-sequence--current-type)
+
+(defvar telega-play-media-sequence-mode-lighter
+  (concat " " (telega-symbol 'mode) "Media Sequence")
+  "Lighter for the `telega-play-media-sequence-mode'.")
+
+(define-minor-mode telega-play-media-sequence-mode
+  "Minor mode to play media messages sequentially."
+  :lighter telega-play-media-sequence-mode-lighter
+  )
+
+(defun telega-play-media-sequence-once (_sequence-type)
+  "Play media SEQUENCE-TYPE once."
+  (if telega-play-media-sequence-mode
+      ;; todo
+  ))
+
+;; Advice for 
+(defun telega-play-media-sequence-mode--player-sentinel (proc)
+  (when-let* ((proc-plist (process-plist proc))
+              (msg (plist-get proc-plist :message)))
+    (with-telega-chatbuf (telega-msg-chat msg)
+      (when telega-play-media-sequence-mode
+        ;; todo
+        ))))
+
+;; Advice for the `telega-msg--
+(defun telega-play-media-sequence--player-run (origfun filename &optional msg
+                                                       done-callback)
+  (let ((_proc (apply origfun filename msg done-callback)))
+    ;; TODO
+    t
+    ))
+
+;; Advice for the `telega-msg-voice-note--ffplay-callback'
+
+;; Advice for the `telega-msg-video-note--ffplay-callback'
 
 (provide 'telega-modes)
 

@@ -526,6 +526,12 @@ Use ~telega-sender-match-p~ to match a message sender.
 
 #+ELLIT-INCLUDE: ../telega-match.el :label sender-temex
 
+** List of Forum Topic Temexes
+
+Use ~telega-topic-match-p~ to match a forum's topic.
+
+#+ELLIT-INCLUDE: ../telega-match.el :label topic-temex
+
 ** Customizable options making use of Telega Match Expressions
 
 - {{{user-option(telega-filter-default, 2)}}}
@@ -665,7 +671,7 @@ RET)}}} command.
 
 Important customizable options:
 - {{{user-option1(telega-chat-input-markups,2)}}}
-- {{{user-option(telega-chat-ret-always-sends-message,2)}}}
+- {{{user-option(telega-chat-send-message-on-ret,2)}}}
 - {{{user-option1(telega-chat-markup-functions,2)}}}
 
 ** Attaching media

@@ -458,6 +458,34 @@ Do not fetch custom emojis for ignored messages."
       (telega-ins--custom-emoji-stickersets custom-action)
       )))
 
+
+;;; Emojis using stickers
+(defvar telega-emoji--emojis-sticker-set nil
+  "StickerSet used to lookup emojis in it.")
+
+(defun telega-emoji-from-sticker (emoji &optional cheight)
+  "Create image "
+  (unless cheight
+    (setq cheight 1))
+
+  (if-let ((sticker (cl-find emoji (plist-get telega-emoji--emojis-sticker-set
+                                              :stickers)
+                             :key #'telega-sticker-emoji
+                             :test #'equal)))
+      (telega-sticker--image
+       sticker
+       (lambda (sticker-arg &optional file)
+         (let ((telega-sticker-size (cons cheight (* 2 cheight))))
+           (telega-sticker--create-image sticker-arg file)))
+       (intern (format ":telega-emoji-%d" cheight)))
+
+    ;; Fallback to svg version
+    (telega-emoji-create-svg emoji cheight)))
+
+(defun telega-emoji-create-image (emoji &optional cheight)
+  "Create image for the EMOJI."
+  )
+
 (provide 'telega-emoji)
 
 ;;; telega-emoji.el ends here

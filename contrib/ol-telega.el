@@ -81,11 +81,14 @@ message, file or photo."
        :description
        (concat (telega-symbol 'telegram)
                (if (telega-chat-p chat-or-msg)
-                   (telega-chat-title-with-brackets chat-or-msg)
+                 (telega-ins--as-string
+                  (telega-ins--msg-sender chat-or-msg
+                    :with-brackets-p t))
+
                  (cl-assert (telega-msg-p chat-or-msg))
                  (telega-ins--as-string
                   (telega-ins--msg-sender
-                   (telega-msg-sender chat-or-msg) 'short)
+                   (telega-msg-sender chat-or-msg))
                   (telega-ins ": ")
                   (telega-ins--with-attrs
                       (list :max 20 :align 'left :elide t)

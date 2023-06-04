@@ -35,7 +35,7 @@
 (declare-function telega-root-view--redisplay "telega-root")
 
 (declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-title "telega-chat" (chat))
 
 (defvar telega-sort-criteria-alist nil)
 (defvar telega-sort--inhibit-order nil

@@ -239,19 +239,6 @@ Each element is cons cell, where car is Chat Filter, and cdr is color."
   :type 'list
   :group 'telega)
 
-(defcustom telega-company-tooltip-always-below t
-  "Non-nil to show company tooltip always below the point.
-Done by recentering point in the chatbuf."
-  :package-version '(telega . "0.7.47")
-  :type 'boolean
-  :group 'telega)
-
-(defcustom telega-company-username-complete-nonmember-for '(type bot)
-  "Non-nil Chat Filter to complete usernames for non-mebers."
-  :package-version '(telega . "0.8.0")
-  :type 'list
-  :group 'telega)
-
 ;;; ellit-org: inline-bot-options
 ;; - {{{user-option(telega-known-inline-bots,2)}}}
 (defcustom telega-known-inline-bots '("@gif" "@youtube" "@pic")
@@ -772,42 +759,6 @@ Insert MUST return non-nil if something has been inserted."
   :type '(repeat function)
   :group 'telega-root)
 
-(defcustom telega-chat-button-width '(0.35 15 48)
-  "*Width for the chat buttons in root buffer.
-If integer, then use this number of chars.
-If float in range (0..1), then occupy this percents of
-`telega-root-fill-column' chars, but not less then 10 chars.
-If list, where first element is float, then use 1 and 2 list values as
-min and max values for a width calculation using
- `telega-canonicalize-number'."
-  :package-version '(telega . "0.7.41")
-  :type '(or number list)
-  :group 'telega-root)
-
-(defcustom telega-brackets
-  '(((chat (type private))    "{" "}")
-    ((chat (type basicgroup)) "(" ")")
-    ((chat (type supergroup)) "[" "]")
-    ((chat (type channel))    "<" ">")
-    ((user (return t))        "{" "}")
-    ((return t)               "[" "]"))
-  "Brackets to use for a message sender formatting.
-Each element is in form:
-  (<SENDER-TEMEX> <OPEN-BRACKET> <CLOSE-BRACKET>)"
-  :type 'list
-  :group 'telega-root)
-
-(defcustom telega-chat-title-custom-for
-  (list (cons '(or saved-messages replies-messages)
-              (lambda (title) (propertize title 'face 'bold)))
-        )
-  "Alist of custom titles for chats.
-Each element is a cons cell, where car is a Chat Temex and cdr
-is a function accepting title string and returning string."
-  :package-version '(telega . "0.6.31")
-  :type 'alist
-  :group 'telega-root)
-
 ;;; ellit-org: folders-options
 ;; - {{{user-option(telega-folder-icons-alist, 2)}}}
 (defcustom telega-folder-icons-alist
@@ -873,6 +824,97 @@ When determining which chat folder to use in
 `telega-chat-folders-format', these folders are excluded, if
 single folder is left, then it is used in the formatting."
   :package-version '(telega . "0.6.30")
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-chat-title-custom-for
+  (list (cons '(or saved-messages replies-messages)
+              (lambda (title) (propertize title 'face 'bold)))
+        )
+  "Alist of custom titles for chats.
+Each element is a cons cell, where car is a Chat Temex and cdr
+is a function accepting title string and returning string."
+  :package-version '(telega . "0.6.31")
+  :type 'alist
+  :group 'telega-root)
+
+(defcustom telega-chat-button-width '(0.35 15 48)
+  "*Width for the chat buttons in root buffer.
+If integer, then use this number of chars.
+If float in range (0..1), then occupy this percents of
+`telega-root-fill-column' chars, but not less then 10 chars.
+If list, where first element is float, then use 1 and 2 list values as
+min and max values for a width calculation using
+ `telega-canonicalize-number'."
+  :package-version '(telega . "0.7.41")
+  :type '(or number list)
+  :group 'telega-root)
+
+(defcustom telega-chat-button-format-plist
+  (list :with-folder-format telega-chat-folder-format
+        :with-unread-trail-p t
+        :with-status-icons-trail-p t)
+  "Plist specifies formatting for a chat button in the rootbuf.
+Possible arguments:
+`:with-folder-format'   - To show folder as prefix inside brackets.
+`:with-username-p'      - To show username along with title.
+                          Could be a face to be used for username.
+`:with-title-faces-p'   - To use chat specific colors for title.
+`:with-unread-trail-p'  - To show unread messages status inside brackets.
+`:with-members-trail-p' - To show members trail inside brackets.
+`:with-status-icons-trail-p' - To show status icons outside brackets."
+  :package-version '(telega . "0.8.121")
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-chat-button-format-temex nil
+  "Non-nil to use temex instead of `telega-chat-button-format-plist'.
+This temex should return plist in the
+`telega-chat-button-default-format' form as a result of matching.  So
+different chats could have different formatting."
+  :package-version '(telega . "0.8.121")
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-topic-button-format-plist
+  (list :prefix-spaces 2
+        :with-unread-trail-p t
+        :with-status-icons-trail-p t)
+  "Plist specifies formatting for a chat button in the rootbuf.
+Possible arguments:
+`:prefix-spaces'        - Number of spaces in the prefix.
+`:with-brackets-p'      - To show topic `telega-symbol-topic-brackets'.
+`:with-title-faces-p'   - To use topic specific colors for title.
+`:with-unread-trail-p'  - To show unread messages status inside brackets.
+`:with-status-icons-trail-p' - To show status icons outside brackets."
+  :package-version '(telega . "0.8.121")
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-topic-button-format-temex nil
+  "Non-nil to use temex instead of `telega-topic-button-format-plist'.
+This temex should return plist in the
+`telega-topic-button-default-format' form as a result of matching.  So
+different topics could have different formatting."
+  :package-version '(telega . "0.8.121")
+  :type 'list
+  :group 'telega-root)
+
+(defcustom telega-topic-button-sort-by-recency t
+  "Non-nil to sort topic buttons in the rootbuf by last message recency."
+  :type 'boolean
+  :group 'telega-root)
+
+(defcustom telega-brackets
+  '(((chat (type private))    "{" "}")
+    ((chat (type basicgroup)) "(" ")")
+    ((chat (type supergroup)) "[" "]")
+    ((chat (type channel))    "<" ">")
+    ((user (return t))        "{" "}")
+    ((return t)               "[" "]"))
+  "Brackets to use for a message sender formatting.
+Each element is in form:
+  (<SENDER-TEMEX> <OPEN-BRACKET> <CLOSE-BRACKET>)"
   :type 'list
   :group 'telega-root)
 
@@ -1027,6 +1069,12 @@ See `telega-ins--message' for NO-HEADER argument."
   :options '(telega-ins--root-contact)
   :group 'telega-inserter)
 
+(defcustom telega-inserter-for-topic-button 'telega-ins--topic-full
+  "Inserter for the topic button in the root buffer."
+  :type 'function
+  :options '(telega-ins--topic-full-2lines)
+  :group 'telega-inserter)
+
 
 (defgroup telega-webpage nil
   "Customization for instant view webpage rendering."
@@ -1086,6 +1134,13 @@ Set to 0 to disable description in a webpage preview."
   "Customization for users."
   :group 'telega)
 
+(defcustom telega-user-completing-temex
+  '(or contact (chat (return t)))
+  "Only users matching this user temex are listed for completion."
+  :package-version '(telega . "0.8.121")
+  :type 'list
+  :group 'telega-user)
+
 (defcustom telega-user-show-avatars telega-use-images
   "Non-nil to show avatars for the users."
   :type 'boolean
@@ -1108,6 +1163,13 @@ Used when showing chat members list."
   "Customization for telega company completion."
   :group 'telega)
 
+(defcustom telega-company-tooltip-always-below t
+  "Non-nil to show company tooltip always below the point.
+Done by recentering point in the chatbuf."
+  :package-version '(telega . "0.7.47")
+  :type 'boolean
+  :group 'telega-company)
+
 (defcustom telega-company-username-show-avatars telega-user-show-avatars
   "Non-nil to show avatars in the company annotation."
   :package-version '(telega . "0.7.44")
@@ -1122,6 +1184,19 @@ Used when showing chat members list."
                  (const :tag "Markdown2" "markdown2"))
   :group 'telega-company)
 
+(defcustom telega-company-username-complete-nonmember-for '(type bot)
+  "Non-nil Chat Filter to complete usernames for non-mebers."
+  :package-version '(telega . "0.8.0")
+  :type 'list
+  :group 'telega-company)
+
+(defcustom telega-company-username-prefer-username t
+  "Non-nil to prefer username for the username completion.
+Set to nil to complete user to a username or full name depending on input."
+  :package-version '(telega . "0.8.121")
+  :type 'boolean
+  :group 'telega-company)
+
 
 (defgroup telega-chat nil
   "Customization for chat buffer."
@@ -1134,14 +1209,14 @@ Increasing this limit increases number of events telega needs to process."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-ret-always-sends-message t
-  "Non-nil to make `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]' always send a message.
-Otherwise
-`\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]'
-sends a message only if point is at the end of the chatbuf input or
-inserts newline otherwise."
-  :package-version '(telega . "0.7.2")
-  :type 'boolean
+(defcustom telega-chat-send-message-on-ret 'always
+  "Customization for `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]' behaviour."
+  :type '(choice
+          (const :tag "Always send a message" always)
+          (const :tag "Send message if point at the end of prompt" if-at-the-end)
+          (const :tag "Send message if C-u is specified \
+or point at the end of prompt" if-at-the-end-or-C-u))
+  :package-version '(telega . "0.8.121")
   :group 'telega-chat)
 
 (defcustom telega-chat-send-messages-async nil
@@ -1589,10 +1664,10 @@ If nil, the saved path is always asked."
   :group 'telega-msg)
 
 
-(defcustom telega-photo-size-limits '(10 6 55 12)
+(defcustom telega-photo-size-limits '(8 3 55 12)
   "*Limits image size for the photos.
 Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
-  :package-version '(telega . "0.6.30")
+  :package-version '(telega . "0.8.120")
   :type '(list integer integer integer integer)
   :group 'telega)
 
@@ -1917,6 +1992,13 @@ Third - for selected incorrect option."
   :type 'list
   :group 'telega-symbol)
 
+(defcustom telega-symbol-topic-brackets
+  (cons (compose-chars ?\⟦ ?\s)
+        (compose-chars ?\⟧ ?\s))
+  "Symbols used to emphasize topics."
+  :type 'cons
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
   "Symbols used to emphasize attachment in chat buffer input."
   :type 'cons
@@ -2107,7 +2189,7 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-copyright "©️"
+(defcustom telega-symbol-copyright "©"
   "Symbol used to emphasize protected content."
   :type 'string
   :group 'telega-symbol)
@@ -2490,6 +2572,11 @@ non-nil if symbol gets emojification."
   "Face to display sponsored message."
   :group 'telega-faces)
 
+(defface telega-topic-button
+  '((t :inherit telega-shadow))
+  "Face to display topic button in the rootbuf."
+  :group 'telega-faces)
+
 
 (defgroup telega-hooks nil
   "Group to customize hooks used by telega."
@@ -2657,6 +2744,12 @@ Called with a single argument - message."
   "Hook called in the chatbuf after message's content has been updated.
 Called with a single argument - message."
   :package-version '(telega . "0.8.72")
+  :type 'hook
+  :group 'telega-hooks)
+
+(defcustom telega-chatbuf-kill-hook nil
+  "Hook called when chatbuf is killed."
+  :package-version '(telega . "0.8.121")
   :type 'hook
   :group 'telega-hooks)
 

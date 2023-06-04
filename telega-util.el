@@ -45,7 +45,6 @@
 
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-chat--type "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat")
 (declare-function telega-chatbuf--name "telega-chat" (chat))
 (declare-function telega-describe-chat "telega-chat" (chat))
 (declare-function telega-folder-names "telega-folders")
@@ -402,6 +401,23 @@ X and Y denotes left up corner."
                    (z))))
     (telega-svg-apply-outline svg outline ratio args)))
 
+(defun telega-svg-forum-topic-icon (svg width &rest args)
+  "Draw icon for a forum topic."
+  (declare (indent 2))
+  (let ((ratio (/ width 32.0))
+        (outline '((M (16.013 3.6908))
+                   (C (8.426 3.1848)
+                      (0.3523 10.7055)
+                      (3.307 18.4956))
+                   (c (0.6111 2.1934)
+                      (2.5766 3.9355) (3.9238 5.39) (-0.8542 1.6842)
+                      (-2.045 3.1894) (-3.4501 4.4478) (3.0964 0.006)
+                      (6.2267 -0.6528) (8.953 -2.1524) (7.2454 1.9045)
+                      (16.545 -2.9693) (16.584 -11.0625) (0.028 -6.8663)
+                      (-6.9149 -11.585) (-13.3046 -11.4277))
+                   (z))))
+    (telega-svg-apply-outline svg outline ratio args)))
+
 (defun telega-svg-create (width height &rest args)
   "Create SVG image using `svg-create'.
 Addresses some issues telega got with pure `svg-create' usage."
@@ -497,6 +513,45 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
                   :x (- (/ xw 2) (/ font-size 1.75))
                   :y (+ (/ font-size 3) (/ xh 2)))))
 
+    (telega-svg-image svg :scale 1.0
+                      :width xw :height xh
+                      :ascent 'center)))
+
+(defconst telega-spoiler-turbulence-attrs
+  '((baseFrequency . "0.1 0.1") (numOctaves . "2"))
+  "Attributes to the \"feTurbulence\" node.")
+(defconst telega-spoiler-displacement-attrs
+  '((scale . "80"))
+  "Attributes to the \"feDisplacementMap\" node.")
+
+(defun telega-spoiler-create-svg (minithumb &optional width height limits)
+  "Create svg image for MINITHUMB that has spoiler."
+  (let* ((width (or width (plist-get minithumb :width)))
+         (height (or height (plist-get minithumb :height)))
+         (cheight (telega-media--cheight-for-limits width height limits))
+         (cwidth-xmargin (telega-media--cwidth-xmargin width height cheight))
+         (xh (telega-chars-xheight cheight))
+         (xw (telega-chars-xwidth (car cwidth-xmargin)))
+         (svg (telega-svg-create xw xh)))
+    (svg--append
+     svg
+     (dom-node 'filter
+               `((id . "noise"))
+               (dom-node 'feTurbulence
+                         `((type . "turbulence")
+                           (result . "NOISE")
+                           ,@telega-spoiler-turbulence-attrs))
+               (dom-node 'feDisplacementMap
+                         `((in . "SourceGraphic")
+                           (in2 . "NOISE")
+                           (xChannelSelector . "R")
+                           (yChannelSelector . "G")
+                           ,@telega-spoiler-displacement-attrs))
+               ))
+    (svg-embed svg (base64-decode-string (plist-get minithumb :data))
+               "image/jpeg" t
+               :x 0 :y 0 :width xw :height xh
+               :filter "url(#noise)")
     (telega-svg-image svg :scale 1.0
                       :width xw :height xh
                       :ascent 'center)))
@@ -599,9 +654,12 @@ If AS-IS is non-nil, then do not apply time adjustment using
 
 (defun telega-number-human-readable (num)
   "Convert METERS to human readable string."
-  (if (and telega-use-short-numbers (>= num 1000))
-      (format "%.1fk" (/ num 1000.0))
-    (number-to-string num)))
+  (cond ((and telega-use-short-numbers (>= num 1000000))
+         (format "%.1fM" (/ num 1000000.0)))
+        ((and telega-use-short-numbers (>= num 1000))
+         (format "%.1fk" (/ num 1000.0)))
+        (t
+         (number-to-string num))))
 
 (defun telega-duration-human-readable (seconds &optional n
                                                day-label hour-label min-label)
@@ -1079,7 +1137,17 @@ substring and rest are additional arguments to markup function."
             (if-let ((ent-type (get-text-property 0 :tl-entity-type ss)))
                 (list #'telega-fmt-text ss ent-type)
               (list default-markup-func ss)))
-          (telega--split-by-text-prop text :tl-entity-type)))
+          (telega--split-by-text-prop text :tl-entity-type
+            ;; NOTE: if markup is applied, then ignore all tl entity
+            ;; types except for custom emojis, so you can cut&paste
+            ;; text already having entity-type and apply new markup to
+            ;; it
+            (unless (eq default-markup-func #'telega-markup-as-is-fmt)
+              (lambda (tl-entity)
+                (when tl-entity
+                  (eq (telega--tl-type tl-entity)
+                      'textEntityTypeCustomEmoji))))
+            )))
 
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
@@ -1269,13 +1337,26 @@ Return text string with applied faces."
     (when (> end beg)
       (cons beg end))))
 
-(defun telega--split-by-text-prop (string prop)
-  "Split STRING by property PROP changes."
-  (let ((start 0) end result)
-    (while (and (> (length string) start)
-                (setq end (next-single-char-property-change start prop string)))
-      (push (substring string start end) result)
-      (setq start end))
+(defun telega--split-by-text-prop (string prop &optional value-predicate)
+  "Split STRING by property PROP changes.
+If VALUE-PREDICATE is specified, then split in the places where
+VALUE-PREDICATE returns non-nil for the PROP value."
+  (declare (indent 2))
+  (let ((finish (length string))
+        (start 0) (pos 0) end result
+        prev-value curr-value)
+    (while (and (> finish pos)
+                (setq end (next-single-char-property-change pos prop string)))
+      (setq pos end)
+
+      (when (or (null value-predicate)
+                (funcall value-predicate
+                         (setq curr-value (get-text-property pos prop string)))
+                prev-value
+                (= pos finish))
+        (setq prev-value curr-value)
+        (push (substring string start end) result)
+        (setq start end)))
     (nreverse result)))
 
 (defun telega--region-with-cursor-sensor (pos)
@@ -1337,15 +1418,17 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
                                    #'telega-completing-read-chat sort-criteria))
 
-(defun telega-completing-read-user (prompt &optional users)
+(defun telega-completing-read-user (prompt &optional users temex)
   "Read user by his name from USERS list."
   (declare (indent 1))
   (let ((choices (mapcar (lambda (user)
-                           (list (concat (telega-symbol 'contact)
-                                         (telega-user-title user))
+                           (list (telega-msg-sender-title-for-completion user)
                                  user))
-                         (or users (hash-table-values
-                                    (alist-get 'user telega--info))))))
+                         (cl-remove-if-not
+                          (telega-match-gen-predicate 'user
+                            (or temex telega-user-completing-temex))
+                          (or users (hash-table-values
+                                     (alist-get 'user telega--info)))))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))
@@ -1565,10 +1648,19 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
   "Return MSG-SENDER title for completions."
   (telega-ins--as-string
    (if (telega-user-p msg-sender)
-       (telega-ins--msg-sender msg-sender t t t)
-     (telega-ins--chat msg-sender nil 'raw
-                       (telega-msg-sender-title
-                        msg-sender nil t 'telega-username)))))
+       (telega-ins--msg-sender msg-sender
+         :with-avatar-p t
+         :with-username-p t
+         :with-brackets-p t)
+
+     (let ((telega-chat-button-width nil)
+           (telega-chat-button-format-plist
+            (list :with-folder-format telega-chat-folder-format
+                  :with-title-faces-p t
+                  :with-username-p 'telega-username
+                  :with-unread-trail-p t
+                  :with-status-icons-trail-p t)))
+       (telega-ins--chat msg-sender)))))
 
 ;; NOTE: ivy returns copy of the string given in choices, thats why we
 ;; need to use `assoc'
@@ -2131,7 +2223,8 @@ Emacs does not respect buffer local nil value for
 `switch-to-buffer-preserve-window-point', so we hack window point
 in `(window-prev-buffers)' to achive behaviour for nil-valued
 `switch-to-buffer-preserve-window-point'."
-  (when (version< emacs-version "28.1.0")
+  (unless switch-to-buffer-preserve-window-point
+  ;(when (version< emacs-version "28.1.0")
     (cl-assert (not (get-buffer-window)))
     (when-let ((entry (assq (current-buffer) (window-prev-buffers))))
       (setf (nth 2 entry)

@@ -206,10 +206,12 @@ Used for optimisations.")
 (defvar telega--status-aux
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
+(defvar telega--chat-topics nil "Hash table (id -> topics list) for forums chats.")
 (defvar telega--cached-messages nil
   "Hash table ((chat-id . msg-id) -> msg) of cached messages.
 Such as pinned, replies, etc.")
-(defvar telega--actions nil "Hash table (chat-id -> alist-of-user-actions).")
+(defvar telega--actions nil
+  "Hash table ((chat-id . msg-thread-id) -> alist-of-user-actions).")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
 (defvar telega--filtered-chats nil
   "Chats filtered by currently active filters.
@@ -361,8 +363,8 @@ alist where key is one of:
 \"notificationSettingsScopeGroupChats\",
 \"notificationSettingsScopeChannelChats\".")
 
-(defvar telega-tdlib--chat-filters nil
-  "List of chat filters received from TDLib.")
+(defvar telega-tdlib--chat-folders nil
+  "List of chat folders received from TDLib.")
 (defvar telega-tdlib--chat-list nil
   "Active tdlib chat list used for ordering.")
 (defvar telega-tdlib--unix-time nil
@@ -398,8 +400,6 @@ display the list.")
 Use \\[execute-extended-command] telega-notifications-history RET to
 display the list.")
 
-(defvar telega-chat--topics nil
-  "Hash of CHAT-ID -> topics list.")
 (defvar telega-topic--default-icons nil
   "Cached list of topic icons which can be used by all users.")
 
@@ -483,6 +483,7 @@ Done when telega server is ready to receive queries."
         (list :message_caption_length_max 1024
               :message_text_length_max 4096))
   (setq telega--chats (make-hash-table :test #'eq))
+  (setq telega--chat-topics (make-hash-table :test #'eq))
   (setq telega--cached-messages (make-hash-table :test #'equal))
   (setq telega--top-chats nil)
 
@@ -494,7 +495,7 @@ Done when telega server is ready to receive queries."
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--dirty-chats nil)
-  (setq telega--actions (make-hash-table :test 'eq))
+  (setq telega--actions (make-hash-table :test 'equal))
   (setq telega--filters nil)
   (setq telega--undo-filters nil)
   (setq telega--sort-criteria nil)
@@ -542,7 +543,7 @@ Done when telega server is ready to receive queries."
   (setq telega--chat-themes nil)
   (setq telega--dice-emojis nil)
 
-  (setq telega-tdlib--chat-filters nil)
+  (setq telega-tdlib--chat-folders nil)
   (setq telega-tdlib--chat-list nil)
   (setq telega-tdlib--unix-time nil)
 
@@ -988,6 +989,12 @@ MSG-SENDER could be a user or a chat."
   (let ((telega-temex-match-prefix 'sender))
     (telega-match-p sender temex)))
 
+(defun telega-topic-match-p (topic temex)
+  "Return non-nil if TOPIC matches TEMEX."
+  (declare (indent 1))
+  (let ((telega-temex-match-prefix 'topic))
+    (telega-match-p topic temex)))
+
 (defun telega-match-gen-predicate (prefix temex)
   "Return predicate function to match TDLib object against TEMEX.
 PREFIX is one of: `msg', `chat', `user' or `sender'."
@@ -1029,17 +1036,14 @@ Return list of strings."
          (elide-str (or (plist-get attrs :elide-string) telega-symbol-eliding))
          (elide-trail (or (plist-get attrs :elide-trail) 0))
          (estr-trail (if (> elide-trail 0) (substring estr (- elide-trail)) ""))
-         (estr-lead (truncate-string-to-width
-                     estr (- max (string-width elide-str) elide-trail))))
+         (lead-width (- max (string-width elide-str) (string-width estr-trail)))
+         (estr-lead (truncate-string-to-width estr lead-width)))
+    ;; Correct `estr-lead' in case of multibyte chars, because
+    ;; `truncate-string-to-width' does not always do its job right
+    (while (and (not (string-empty-p estr-lead))
+                (< lead-width (string-width estr-lead)))
+      (setq estr-lead (substring estr-lead 0 -1)))
     (concat estr-lead elide-str estr-trail)))
-    ;;      result)
-    ;; ;; Correct truncstr in case of multibyte chars
-    ;; (while (and (not (string-empty-p estr-lead))
-    ;;             (< max (string-width
-    ;;                     (setq result (concat estr-lead elide-str estr-trail)))))
-    ;;   (setq estr-lead (substring estr-lead 0 -1)))
-
-    ;; result))
 
 (defun telega-fmt-eval-align (estr attrs)
   "Apply `:min', `:align' and `:align-symbol' properties from ATTRS to ESTR.
@@ -1359,9 +1363,9 @@ If NO-PROPS is non-nil, then remove properties from the resulting string."
          (pos-list-type (plist-get pos-list :@type)))
     (cond ((string= "chatListMain" pos-list-type)
            'main)
-          ((string= "chatListFilter" pos-list-type)
-           (telega-tl-str (cl-find (plist-get pos-list :chat_filter_id)
-                                   telega-tdlib--chat-filters
+          ((string= "chatListFolder" pos-list-type)
+           (telega-tl-str (cl-find (plist-get pos-list :chat_folder_id)
+                                   telega-tdlib--chat-folders
                                    :key (telega--tl-prop :id))
                           :title no-props))
           ((string= "chatListArchive" pos-list-type)
@@ -1468,6 +1472,9 @@ Return non-nil only if CHAT is nearby."
   (plist-get (telega-chat-nearby-find (plist-get chat :id)) :distance))
 
 ;; Msg part
+(defun telega-msg-id= (msg1 msg2)
+  (= (plist-get msg1 :id) (plist-get msg2 :id)))
+
 (defsubst telega-msg-cache (msg)
   "Put message MSG into messages cache `telega--cached-messages'."
   (puthash (cons (plist-get msg :chat_id) (plist-get msg :id)) msg
@@ -1493,7 +1500,7 @@ Return list of two values - (LIVE-FOR UPDATED-AGO)."
 (defun telega-ins (&rest args)
   "Insert all strings in ARGS.
 Return non-nil if something has been inserted."
-  (< (prog1 (point) (apply 'insert (cl-remove-if 'null args))) (point)))
+  (< (prog1 (point) (apply #'insert (delq nil args))) (point)))
 
 (defmacro telega-ins-fmt (fmt &rest args)
   "Insert string formatted by FMT and ARGS.
@@ -1521,9 +1528,12 @@ Return t."
 (defmacro telega-ins--one-lined (&rest body)
   "Execute BODY making insertation one-lined.
 It makes one line by replacing all newlines by spaces."
-  `(telega-ins
-    (replace-regexp-in-string
-     "\n" " " (telega-ins--as-string ,@body))))
+  (let ((startsym (gensym "start"))
+        (result (gensym "result")))
+    `(let ((,startsym (point))
+           (,result (progn ,@body)))
+       (replace-regexp-in-region "\n" " " ,startsym (point))
+       ,result)))
 
 (defmacro telega-ins--with-attrs (attrs &rest body)
   "Execute inserters BODY applying ATTRS after insertation.
@@ -1535,8 +1545,15 @@ Return t."
 (defmacro telega-ins--with-face (face &rest body)
   "Execute BODY highlighting result with FACE."
   (declare (indent 1))
-  `(telega-ins--with-attrs (list :face ,face)
-     ,@body))
+  (let ((startsym (gensym "start"))
+        (facesym (gensym "face"))
+        (result (gensym "result")))
+    `(let ((,startsym (point))
+           (,facesym ,face)
+           (,result (progn ,@body)))
+       (when ,facesym
+         (add-face-text-property ,startsym (point) ,facesym 'append))
+       ,result)))
 
 (defmacro telega-ins--column (column fill-col &rest body)
   "Execute BODY at COLUMN filling to FILL-COL.
@@ -1598,7 +1615,8 @@ Return what BODY returns."
        (when (progn ,@body)
          (save-excursion
            (goto-char ,spnt-sym)
-           (telega-ins ,prefix))))))
+           (telega-ins ,prefix))
+         t))))
 
 (defun telega-ins--move-to-column (column &optional space-char)
   "Insert space aligned to COLUMN.

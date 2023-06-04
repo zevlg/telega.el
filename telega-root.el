@@ -568,6 +568,20 @@ Keep cursor position only if CHAT is visible."
     (with-telega-root-view-ewoc "root" root-ewoc
       (when-let ((node (telega-ewoc--find-by-data root-ewoc chat)))
         (goto-char (ewoc-location node))
+
+        ;; NOTE: if chatbuf is opened with topic, then try to find
+        ;; corresponding topic button next to the chat button
+        (when-let ((topic (with-telega-chatbuf chat
+                            (telega-msg-topic telega-chatbuf--thread-msg)))
+                   (topics-shown-p
+                    (save-excursion
+                      (telega-button-forward 1)
+                      (telega-topic-at (point)))))
+          (telega-button-forward 1
+            (lambda (button)
+              (eq (telega-topic-at button)
+                  topic))))
+
         (unless (get-buffer-window)
           (telega-buffer--hack-win-point))
         (dolist (win (get-buffer-window-list))
@@ -626,12 +640,48 @@ Keep cursor position only if CHAT is visible."
 
 
 ;;; Pretty Printers for root view ewocs
+(defun telega-chat-button-toggle-view (chat)
+  "Toogle view for CHAT button."
+  (interactive (list (telega-chat-at (point))))
+  (if (telega-chat-match-p chat 'is-forum)
+      (progn
+        (plist-put chat :telega-topics-visible
+                   (not (plist-get chat :telega-topics-visible)))
+        (telega-root-view--update :on-chat-update chat))
+
+    ;; TODO: toogle preview for the last message
+    ))
+
+(defun telega-chat-button-action (chat)
+  "Action to take when CHAT button is pushed in the rootbuf.
+If `\\[universal-argument]' is specified, then open chat in a preview mode."
+  (with-current-buffer (telega-chat--pop-to-buffer chat)
+    ;; Possibly need to toggle preview mode depending on
+    ;; universal-argument
+    (cond ((and current-prefix-arg (not telega-chat-preview-mode))
+           (telega-chat-preview-mode 1))
+          ((and (not current-prefix-arg) telega-chat-preview-mode)
+           (telega-chat-preview-mode 0)))
+    ))
+
+(defun telega-topic-button-action (topic)
+  "Action to take when TOPIC button is pushed in the rootbuf.
+If `\\[universal-argument]' is specified, then open topic in a preview mode."
+  (telega-chat--goto-thread
+   (telega-topic-chat topic)
+   (plist-get (plist-get topic :last_message) :id)
+   (plist-get topic :last_read_outbox_message_id)))
+
 (defun telega-root--chat-pp (chat &optional custom-inserter custom-action)
   "Pretty printer for any CHAT button."
   (telega-button--insert 'telega-chat chat
     :inserter (or custom-inserter
                   telega-inserter-for-chat-button)
-    :action (or custom-action #'telega-chat--pop-to-buffer))
+    :action (or custom-action #'telega-chat-button-action))
+
+  ;; Insert topics buttons
+  (telega-ins--chat-topics chat)
+
   (unless (= (char-before) ?\n)
     (insert "\n")))
 
@@ -649,6 +699,11 @@ Keep cursor position only if CHAT is visible."
          (round (* (telega-canonicalize-number telega-chat-button-width
                                                telega-root-fill-column)
                    1.5)))
+        (telega-chat-button-format-plist
+         (list :with-title-faces-p nil
+               :with-username-p 'telega-username
+               :with-members-trail-p t
+               :with-status-icons-trail-p t))
         (telega-temex-remap-list '((chat chat-list . (return t)))))
     (telega-root--chat-known-pp chat custom-inserter)))
 
@@ -1231,8 +1286,9 @@ VIEW-FILTER is additional chat filter for this root view."
         :sorter #'telega-chat>
         :items telega--ordered-chats
         :on-chat-update #'telega-root--any-on-chat-update
-        :on-message-update (unless (eq custom-inserter #'telega-ins--chat)
-                             #'telega-root--on-update-last-message)
+        :on-message-update
+        (unless (eq custom-inserter #'telega-ins--chat-compact)
+          #'telega-root--on-update-last-message)
         ))
 
 (defun telega-view-default (&optional func view-name custom-inserter)
@@ -1254,7 +1310,7 @@ VIEW-FILTER is additional chat filter for this root view."
   "Compact view for the rootbuf."
   (interactive)
   (telega-view-default
-   'telega-view-compact "Compact" #'telega-ins--chat))
+   'telega-view-compact "Compact" #'telega-ins--chat-compact))
 
 (defun telega-view-one-line ()
   "View chat list as one line."
@@ -1308,7 +1364,7 @@ VIEW-FILTER is additional chat filter for this root view."
                :on-chat-update #'telega-root--existing-on-chat-update)
          (list :name "contacts"
                :pretty-printer #'telega-root--contact-pp
-               :header "CONTACTS"
+               :header (upcase (telega-i18n "lng_contacts_header"))
                :search-query query
                :sorter #'telega-user-cmp-by-status
                :loading (telega--searchContacts query nil
@@ -1335,7 +1391,7 @@ VIEW-FILTER is additional chat filter for this root view."
 
          (list :name "messages"
                :pretty-printer #'telega-root--message-pp
-               :header "MESSAGES"
+               :header (upcase (telega-i18n "lng_settings_messages"))
                :search-query query
                :sorter #'telega-root--messages-sorter
                :on-message-update #'telega-root--on-message-update)
@@ -1521,9 +1577,10 @@ If `\\[universal-argument]' is given, then view missed calls only."
            ewoc-specs-for-folders)
        ,(when telega-root-view-topics-other-chats
           (let ((other-filter
-                 `(not (any ,@(mapcar 'cdr telega-root-view-topics)
-                            ,@(when telega-root-view-topics-folders
-                                (list (cons 'folder folder-names)))))))
+                 `(not (or ,@(mapcar 'cdr telega-root-view-topics)
+                           ,@(when telega-root-view-topics-folders
+                               (mapcar (apply-partially #'list 'folder)
+                                       folder-names))))))
             (list :name "topics-other-chats"
                   :topic-filter other-filter
                   :header "OTHER CHATS"
@@ -1808,7 +1865,7 @@ Default Disable Notification setting"))
   (telega-root-view--apply
    (nconc (list 'telega-view-folders "Folders")
           (mapcar #'telega-view-folders--ewoc-spec
-                  telega-tdlib--chat-filters))))
+                  telega-tdlib--chat-folders))))
 
 ;; "Recently Deleted Chats" root view
 (defun telega-root--deleted-chat-pp (chat)
@@ -2011,7 +2068,14 @@ state kinds to show. By default all kinds are shown."
   "Create ewoc for favorite messages in the CHAT."
   (let ((ewoc-name (symbol-name (gensym "fav-ewoc"))))
     (list :name ewoc-name
-          :header (telega-ins--as-string (telega-ins--chat chat))
+          :header (telega-ins--as-string
+                   (let ((telega-chat-button-format-plist
+                          (list :with-folder-format telega-chat-folder-format
+                                :with-title-faces-p t
+                                :with-username-p 'telega-username
+                                :with-unread-trail-p t
+                                :with-status-icons-trail-p t)))
+                     (telega-ins--chat chat)))
           :pretty-printer #'telega-root--favorite-message-pp
           :loading (telega--getMessages (plist-get chat :id)
                        (mapcar (telega--tl-prop :id)

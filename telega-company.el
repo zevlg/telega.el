@@ -160,7 +160,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;; - telega-company-username :: Complete user mentions via ~@<username>~
 ;;   syntax. Here is the screenshot, showing use of this backend:
 ;;   [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
-;; 
+;;
 ;; Customizable options:
 ;; - {{{user-option(telega-company-username-show-avatars, 2)}}}
 ;; - {{{user-option(telega-company-username-markup, 2)}}}
@@ -221,23 +221,25 @@ Matches only if CHAR does not apper in the middle of the word."
                             (telega-user--by-username arg))))
        (telega-ins--as-string
         (telega-ins "  ")
-        (telega-ins (telega-msg-sender-title member))
-        (when telega-company-username-show-avatars
-          (insert-image
-           (telega-msg-sender-avatar-image-one-line member))))))
+        (telega-ins--msg-sender member
+          :with-avatar-p telega-company-username-show-avatars))))
     (post-completion
-     (when-let ((member (get-text-property 0 'telega-member arg))
-                (input (get-text-property 0 'telega-input arg)))
-       ;; NOTE: Complete by username only if username starts with
-       ;; the `input', see https://t.me/emacs_telega/38371
-       (unless (or (string-prefix-p
-                    input (or (telega-msg-sender-username member 'with-@) "")
-                    'ignore-case)
-                   (telega-chat-p member))
+     (when-let* ((input (get-text-property 0 'telega-input arg))
+                 (member (get-text-property 0 'telega-member arg))
+                 (username (or (telega-msg-sender-username member 'with-@) "")))
+       ;; NOTE: Complete by username only if username starts with the
+       ;; `input', see https://t.me/emacs_telega/38371
+       ;; Behaviour is controlled by
+       ;; `telega-company-username-prefer-username' user option
+       (unless (telega-chat-p member)
          (delete-region (- (point) (length arg)) (point))
 
          (telega-ins
-          (cond ((member telega-company-username-markup
+          (cond ((and telega-company-username-prefer-username
+                      (not (string-empty-p username)))
+                 username)
+
+                ((member telega-company-username-markup
                          '("markdown1" "markdown2"))
                  (telega-string-as-markup
                      (format "[%s](tg://user?id=%d)"
@@ -351,7 +353,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   code blocks via ~```~ syntax.
 (defun telega-company-grab-markdown-precode ()
   "Return non-nil if chatbuf input starts source block."
-  (when-let ((cg (company-grab "^```\\([^`\t\n ]*\\)" 1)))
+  (when-let ((cg (company-grab "```\\([^`\t\n ]*\\)" 1)))
     (cons cg company-minimum-prefix-length)))
 
 (defun telega-company--language-names ()

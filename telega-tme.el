@@ -197,10 +197,8 @@ PARAMS are additional params."
 
 (defun telega-tme-open-stickerset (setname)
   "Open sticker set with SETNAME."
-  (let ((sset (telega--searchStickerSet setname)))
-    (unless sset
-      (user-error "No such sticker set: %s" setname))
-    (telega-describe-stickerset sset)))
+  (message "telega: Searching for %S stickerset.." setname)
+  (telega--searchStickerSet setname #'telega-describe-stickerset))
 
 (defun telega-tme-open-theme (_slug)
   (user-error "`telega-tme-open-theme' not yet implemented"))
@@ -339,6 +337,8 @@ Return non-nil if url has been handled."
                    (concat "tg:privatepost?channel=" (match-string 1 path)
                            "&post=" (match-string 2 path)
                            (when query (concat "&" query))))
+                  ((string-match "^/addlist/\\([a-zA-Z0-9._-]+\\)$" path)
+                   (concat "tg:addlist?slug=" (match-string 1 path)))
                   ((string-match "^/\\+\\([^/]+\\)$" path)
                    (concat "tg:join?invite=" (match-string 1 path)))
                   ((string-match
@@ -397,6 +397,10 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        (if iv
            (telega-webpage--instant-view url "Telegra.ph" iv)
          (telega-browse-url fallback-url 'in-browser))))
+
+    (internalLinkTypeChatFolderInvite
+     ;; TODO
+     )
     ))
 
 (provide 'telega-tme)

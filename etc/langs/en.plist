@@ -31,7 +31,7 @@
  ("lng_month11_small" :value "Nov")
  ("lng_month12" :value "December")
  ("lng_month12_small" :value "Dec")
-  
+
  ("lng_profile_loading"
   :value "Loading...")
 
@@ -153,6 +153,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} pinned «{text}»")
  ("lng_pinned_notify"
   :value "Notify all members")
+ ("lng_pinned_also_for_other"
+  :value "Also pin for {user}")
 
  ("lng_action_user_registered"
   :value "{from} joined Telegram")
@@ -446,7 +448,7 @@ Example: 23 y.o. designer from San Francisco")
   :value "Delete messages")
  ;; lng_rights_group_info
  ("lng_rights_group_ban"
-  :value "Ban users") 
+  :value "Ban users")
  ("lng_rights_group_invite_link"
   :value "Invite users via link")
  ("lng_rights_add_admins"
@@ -696,6 +698,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Forward")
  ("lng_context_delete_msg"
   :value "Delete")
+ ("lng_context_disable_spoiler"
+  :value "Remove Spoiler")
 
  ("lng_settings_sensitive_disable_filtering"
   :value "Disable filtering")
@@ -793,8 +797,16 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} renamed the {link} to «{title}»")
  ("lng_action_topic_icon_changed"
   :value "{from} changed the {link} icon to {emoji}")
+
  ("lng_forum_topic_title"
   :value "Topic Name")
+ ("lng_forum_show_topics_list"
+  :value "Show Topics List")
+ ("lng_forum_topic_created_body"
+  :value "Send a message
+to start the topic.")
+ ("lng_action_topic_placeholder"
+  :value "topic")
 
  ("lng_rights_gigagroup_title"
   :value "Broadcast group")
@@ -964,6 +976,12 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View background")
  ("lng_view_button_bot"
   :value "View bot")
+ ("lng_view_button_user"
+  :value "Send message")
+ ("lng_view_button_voice_chat_channel"
+  :value "Live stream")
+ ("lng_view_button_request_join"
+  :value "Request to Join")
 
  ("lng_forwarded"
   :value "Forwarded from {user}")
@@ -992,6 +1010,23 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "yesterday at {time}")
  ("lng_mediaview_date_time"
   :value "{date} at {time}")
+
+ ;; Used in global search rootview
+ ("lng_contacts_header"
+  :value "Contacts")
+ ("lng_settings_messages"
+  :value "Messages")
+
+ ("lng_via_link_send"
+  :value "Send Invite Link")
+ ("lng_via_link_group_many"
+  :one_value "**{count} user** restricts adding them to groups.
+You can send them an invite link as message instead."
+  :other_value "**{count} users** restrict adding them to groups.
+You can send them an invite link as message instead.")
+ ("lng_via_link_cant_many"
+  :one_value "**{count} user** can only be invited via link, but you don't have permission to share invite links to this group."
+  :other_value "**{count} users** can only be invited via link, but you don't have permission to share invite links to this group.")
 
  ("telega_last_entry"
   :value "Last i18n Entry")

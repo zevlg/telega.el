@@ -185,6 +185,10 @@
                            nil
                            "0.8.111")
 
+(telega-obsolete--variable 'telega-chat-ret-always-sends-message
+                           'telega-chat-send-message-on-ret
+                           "0.8.140")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

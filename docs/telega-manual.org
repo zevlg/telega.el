@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.111)
+#+title: Telega Manual (v0.8.140)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -50,6 +50,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#list-of-message-temexes][List of Message Temexes]]
     - [[#list-of-user-temexes][List of User Temexes]]
     - [[#list-of-message-sender-temexes][List of Message Sender Temexes]]
+    - [[#list-of-forum-topic-temexes][List of Forum Topic Temexes]]
     - [[#customizable-options-making-use-of-telega-match-expressions][Customizable options making use of Telega Match Expressions]]
   - [[#chat-folders][Chat Folders]]
   - [[#filtering-chats][Filtering chats]]
@@ -94,6 +95,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-active-video-chats-mode][telega-active-video-chats-mode]]
     - [[#telega-recognize-voice-message-mode][telega-recognize-voice-message-mode]]
     - [[#telega-auto-translate-mode][telega-auto-translate-mode]]
+    - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
@@ -232,7 +234,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.11.
+version greater or equal to 1.8.14.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -1006,6 +1008,9 @@ List of temexes you can apply to any TDLib object:
 - (return ~RET~) :: 
      Matches if ~RET~ is non-nil and return ~RET~ as a result.
 
+- (eval ~SEXP~) :: 
+     Matches if ~SEXP~ evaluates to non-nil, return result of evaluation.
+
 - (or ~TEMEX-LIST~...) :: 
      Matches if any matcher in the ~TEMEX-LIST~ matches.
 
@@ -1106,11 +1111,11 @@ Use ~telega-chat-match-p~ to match a chat.
 
 - (permission ~PERM~) :: 
      Matches if chat has ~PERM~ set in chat permissions.
-     ~PERM~ could be one of listed in ~telega-chat--chat-permisions~.
+     ~PERM~ could be one of listed in ~telega-chat--chat-permissions~.
 
 - (my-permission ~PERM~) :: 
      Matches if me has ~PERM~ permission in the chat.
-     ~PERM~ could be one of in ~telega-chat--chat-permisions~ list or in
+     ~PERM~ could be one of in ~telega-chat--chat-permissions~ list or in
      ~telega-chat--admin-permissions~ list.
 
 - verified, @@html:<kbd>@@/ v@@html:</kbd>@@ (~telega-filter-by-verified~) :: 
@@ -1347,6 +1352,9 @@ Use ~telega-user-match-p~ to match a user.
 - user-username :: 
      Matches if user's username matches ~USERNAME-REGEXP~.
 
+- user-chat :: 
+     Matches if me has private chat with ~USER~ matching ~CHAT-TEMEX~.
+
 ** List of Message Sender Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-sender-temexes
@@ -1365,6 +1373,52 @@ Use ~telega-sender-match-p~ to match a message sender.
 
 - (chat ~CHAT-TEMEX~) :: 
      Matches if sender is a chat matching ~CHAT-TEMEX~.
+
+** List of Forum Topic Temexes
+:PROPERTIES:
+:CUSTOM_ID: list-of-forum-topic-temexes
+:END:
+
+Use ~telega-topic-match-p~ to match a forum's topic.
+
+- (last-message ~MSG-TEMEX~) :: 
+     Matches if topic's last message matches ~MSG-TEMEX~.
+
+- (mention [ ~N~ ]) :: 
+     Matches if topic has least ~N~ unread mentions.
+     By default ~N~ is 1.
+
+- (unread-reactions [ ~N~ ]) :: 
+     Matches if topic has least ~N~ unread reactions.
+     By default ~N~ is 1.
+
+- muted :: 
+     Matches if topic has disabled notifications.
+
+- temporary-muted :: 
+     Matches if topic is temporary muted.
+
+- (creator ~SENDER-TEMEX~) :: 
+     Matches if topic's creator matches ~SENDER-TEMEX~.
+
+- (chat ~CHAT-TEMEX~) :: 
+     Matches if topic's chat matches ~CHAT-TEMEX~.
+
+- is-general :: 
+     Matches if topic is a general topic in a chat.
+
+- is-outgoing :: 
+     Matches if topic has been created by me.
+
+- is-closed :: 
+     Matches if topic is closed.
+
+- is-hidden :: 
+     Matches if topic is hidden.
+     for General topic only.
+
+- is-most-recent :: 
+     Matches if last message in the chat is made to topic.
 
 ** Customizable options making use of Telega Match Expressions
 :PROPERTIES:
@@ -1894,15 +1948,11 @@ Important customizable options:
   Markups to apply when sending input with @@html:<kbd>@@RET@@html:</kbd>@@. 
 
   Default value: ~(nil "markdown2" "org")~
-- User Option: ~telega-chat-ret-always-sends-message~ 
+- User Option: ~telega-chat-send-message-on-ret~ 
 
-  Non-nil to make @@html:<kbd>@@RET@@html:</kbd>@@ always send a message.
-  Otherwise
-  @@html:<kbd>@@RET@@html:</kbd>@@
-  sends a message only if point is at the end of the chatbuf input or
-  inserts newline otherwise. 
+  Customization for @@html:<kbd>@@RET@@html:</kbd>@@ behaviour. 
 
-  Default value: ~t~
+  Default value: ~always~
 - User Option: ~telega-chat-markup-functions~ 
 
   List of markups to use on ~C-c C-a markup RET~. 
@@ -1978,7 +2028,6 @@ Attachment types to attach with
 - animation :: Attach an animation.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach animation from
      a file, otherwise choose animation from list of saved animations.
-- animated-emoji :: Attach an animated ~EMOJI~ to the chatbuf input.
 - dice :: Attach random dice roll message.
 - screenshot :: Attach screenshot to the chatbuf input.
      If numeric prefix arg ~N~ is given, then take screenshot in ~N~ seconds.
@@ -2694,8 +2743,7 @@ Do *NOT* pop notification if:
 5. Message is older than 1 min (to avoid popping up messages on
    laptop wakeup)
 6. Message is currently observable in a chatbuf, i.e. chatbuf
-   must be selected and focused in (not having
-   ~telega-chatbuf--refresh-point~)
+   must be selected and focused.
 
 To view recent notifications use
 ~M-x telega-notifications-history RET~ command.
@@ -3051,6 +3099,13 @@ Customizable options:
   If nil, then use language suggested by the server. 
 
   Default value: ~nil~
+
+** TODO telega-play-media-sequence-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-play-media-sequence-mode
+:END:
+
+Play media content in subsequent manner.
 
 ** telega-root-auto-fill-mode
 :PROPERTIES:

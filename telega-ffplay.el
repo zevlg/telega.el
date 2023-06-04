@@ -516,7 +516,7 @@ Return newly created proc."
       (when done-callback
         (funcall done-callback)))))
 
-(defun telega-video-player-run (filename &optional done-callback)
+(defun telega-video-player-run (filename &optional msg done-callback)
   "Start playing video FILENAME with `telega-video-player-command' command.
 DONE-CALLBACK - callback to call, when done viewing video."
   (unless telega-video-player-command
@@ -532,7 +532,8 @@ DONE-CALLBACK - callback to call, when done viewing video."
                       (append player-cmd-args (list filename)))))
     (telega-debug "video-player RUN: %s %s" video-player-cmd filename)
 
-    (set-process-plist proc (list :done-callback done-callback))
+    (set-process-plist proc (list :done-callback done-callback
+                                  :message msg))
     (set-process-query-on-exit-flag proc nil)
     (set-process-sentinel proc 'telega-video-player--sentinel)
     proc))

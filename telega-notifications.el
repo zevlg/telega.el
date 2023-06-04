@@ -38,7 +38,7 @@
 
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-title "telega-chat" (chat))
 (declare-function telega-chat-muted-p "telega-chat" (chat))
 
 
@@ -90,7 +90,7 @@ If DEFAULT-P is non-nil, then return default setting for the CHAT."
                                 :elide t)
     (let ((chat (telega-chat-get (plist-get msg :chat_id))))
       (unless (telega-chat-match-p chat '(type private secret bot))
-        (telega-ins (telega-msg-sender-title (telega-msg-sender msg)))
+        (telega-ins--msg-sender (telega-msg-sender msg))
         (telega-ins ": ")))
 
     (let ((telega-use-images nil))
@@ -273,7 +273,9 @@ FORCE is used for testing only, should not be used in real code."
                                     "📅 ")
                                   (if (telega-me-p chat)
                                       (telega-i18n "lng_notification_reminder")
-                                    (telega-chat-title chat 'with-username)))
+                                    (telega-ins--as-string
+                                     (telega-ins--msg-sender chat
+                                       :with-username-p t))))
                    :body (if (telega-chat-notification-setting chat :show_preview)
                              (telega-ins--as-string
                               (funcall telega-inserter-for-msg-notification msg))
@@ -304,8 +306,7 @@ FORCE is used for testing only, should not be used in real code."
 ;;  4. Message is older than 1 min (to avoid popping up messages on
 ;;     laptop wakeup)
 ;;  5. Message is currently observable in a chatbuf, i.e. chatbuf
-;;     must be selected and focused in (not having
-;;     ~telega-chatbuf--refresh-point~)
+;;     must be selected and focused.
 (defun telega-notifications-msg-notify-p (msg)
   "Return non-nil if message MSG should pop-up notification."
   (let ((chat (telega-msg-chat msg)))
@@ -316,9 +317,9 @@ FORCE is used for testing only, should not be used in real code."
                           chat :disable_mention_notifications)
                          (not (plist-get msg :contains_unread_mention))))
                 (telega-msg-seen-p msg chat)
-                (and (not (with-telega-chatbuf chat
-                            telega-chatbuf--refresh-point))
-                     (telega-msg-observable-p msg chat)))
+                (with-telega-chatbuf chat
+                  (and (telega-chatbuf--msg-observable-p msg chat)
+                       (not (telega-chatbuf--history-state-get :newer-freezed)))))
       t)))
 
 (defun telega-notifications-chat-message (msg)

@@ -79,9 +79,11 @@ Have Stoploss 690 Satoshi." :entities []))))
 (dolist (chat telega--ordered-chats)
   (puthash (plist-get chat :id) chat telega--chats))
 
-(setq telega-tdlib--chat-filters
-      '((:@type "chatFilterInfo" :id 2 :title "Emacs" :icon_name "")
-        (:@type "chatFilterInfo" :id 3 :title #("\ud83d\ude39\ud83d\ude39\ud83d\ude39" 0 2 (telega-display "😹" telega-emoji-p t) 2 4 (telega-display "😹" telega-emoji-p t) 4 6 (telega-display "😹" telega-emoji-p t)) :icon_name "")))
+(setq telega-tdlib--chat-folders
+      '((:@type "chatFolderInfo" :id 2 :title "Emacs"
+                :icon (list :@type "chatFolderIcon" :name ""))
+        (:@type "chatFolderInfo" :id 3 :title #("\ud83d\ude39\ud83d\ude39\ud83d\ude39" 0 2 (telega-display "😹" telega-emoji-p t) 2 4 (telega-display "😹" telega-emoji-p t) 4 6 (telega-display "😹" telega-emoji-p t))
+                :icon (list :@type "chatFolderIcon" :name ""))))
 
 
 ;; Tests
@@ -122,7 +124,7 @@ Have Stoploss 690 Satoshi." :entities []))))
                  '(:@type "chatListMain")))
   (let* ((telega--filters '(((chat-list "😹😹😹")) (main))))
     (should (equal (telega-filter-active-tdlib-chat-list)
-                   '(:@type "chatListFilter" :chat_filter_id 3))))
+                   '(:@type "chatListFolder" :chat_folder_id 3))))
 
   ;; TODO: add more filter tests
   )

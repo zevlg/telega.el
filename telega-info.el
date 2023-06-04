@@ -456,8 +456,10 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins descr "\n")))
 
     (telega-ins "\n")
-    (telega-ins-fmt "Members: %d users (%d online, %d admins)\n"
+    (telega-ins-i18n "lng_profile_participants_section")
+    (telega-ins-fmt ": %d%s (%d online, %d admins)\n"
       (plist-get basicgroup :member_count)
+      (telega-symbol 'member)
       (or (plist-get chat :x-online-count) 0)
       (length (cl-remove-if-not
                (lambda (member)
@@ -711,8 +713,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-ins--help-message
        (telega-ins-i18n "lng_profile_hide_participants_about")))
     (telega-ins-i18n "lng_profile_participants_section")
-    (telega-ins-fmt ": %d (%d online, %d admins)"
+    (telega-ins-fmt ": %d%s (%d online, %d admins)"
       (plist-get full-info :member_count)
+      (telega-symbol 'member)
       (or (plist-get chat :x-online-count) 0)
       (plist-get full-info :administrator_count))
     (when (plist-get full-info :can_get_members)

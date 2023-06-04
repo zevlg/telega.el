@@ -340,8 +340,15 @@ Used to optimize events processing in the `telega-server--parse-commands'."
            (updateFile
             (eq (telega--tl-get cmd1-value :file :id)
                 (telega--tl-get cmd2-value :file :id)))
-           ((updateChatLastMessage
-             updateChatReadInbox
+           (updateChatLastMessage
+            ;; NOTE: Collapse only if `:last_message' is provided in
+            ;; both events, so history gaps won't collapse into
+            ;; consequent `updateChatLastMessage'
+            (and (eq (plist-get cmd1-value :chat_id)
+                     (plist-get cmd2-value :chat_id))
+                 (plist-get cmd1-value :last_message)
+                 (plist-get cmd2-value :last_message)))
+           ((updateChatReadInbox
              updateChatReadOutbox
              updateChatUnreadMentionCount
              updateChatOnlineMemberCount
@@ -367,7 +374,7 @@ Used to optimize events processing in the `telega-server--parse-commands'."
                    (plist-get cmd2-value :chat_list)))
            )
          (progn
-           (telega-debug "Collapsed events: %S" value-type)
+           (telega-debug "Collapsing: %S into %S" cmd2-value cmd1-value)
            t)
          )))
 

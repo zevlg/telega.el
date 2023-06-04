@@ -42,7 +42,7 @@
 (declare-function telega-chatbuf--manage-point "telega-chat" (&optional point only-prompt-p))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
-(declare-function telega-chat-title "telega-chat" (chat &optional with-username))
+(declare-function telega-chat-title "telega-chat" (chat))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf--modeline-update "telega-chat" ())
 (declare-function telega-chat--type "telega-chat" (chat))
@@ -454,7 +454,7 @@ Return nil for deleted messages."
         (telega-open-file (telega--tl-get file :local :path) msg))
 
     (telega-video-player-run
-     (telega--tl-get file :local :path) done-callback)))
+     (telega--tl-get file :local :path) msg done-callback)))
 
 (defun telega-msg--play-video-incrementally (msg _file)
   "Start playing video FILE while still downloading FILE."
@@ -1100,32 +1100,16 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
     (concat (when with-prefix-p "@") username)))
 (defalias 'telega-chat-username 'telega-msg-sender-username)
 
-(defun telega-msg-sender-title (msg-sender &optional with-avatar-p
-                                           with-username-p
-                                           custom-username-face)
-  "Return title for the message sender MSG-SENDER.
-If WITH-AVATAR-P is specified, then prefix MSG-SENDER title with his
-avatar.
-If WITH-USERNAME-P is specified, then add MSG-SENDER's username at the
-end."
-  (let ((title-faces (telega-msg-sender-title-faces msg-sender)))
-    (concat (when (and with-avatar-p telega-use-images)
-              (telega-ins--as-string
-               (telega-ins--image
-                (telega-msg-sender-avatar-image-one-line msg-sender))))
+(defun telega-msg-sender-title (msg-sender)
+  "Return title for the message sender MSG-SENDER."
+  (telega-ins--as-string
+   (telega-ins--msg-sender msg-sender)))
 
-            (propertize (if (telega-user-p msg-sender)
-                            (telega-user-title msg-sender 'name)
-                          (cl-assert (telega-chat-p msg-sender))
-                          (telega-chat-title msg-sender))
-                        'face title-faces)
-
-            (when with-username-p
-              (when-let ((username (telega-msg-sender-username
-                                    msg-sender 'with-@)))
-                (concat (propertize " • " 'face 'telega-shadow)
-                        (propertize username 'face (or custom-username-face
-                                                       title-faces))))))))
+(defun telega-msg-sender-title--special (msg-sender)
+  "Return title for message sender MSG-SENDER to be used in special messages."
+  (telega-ins--as-string
+   (telega-ins--with-face 'bold
+     (telega-ins--msg-sender msg-sender :with-avatar-p t))))
 
 (defun telega-msg-sender-color (msg-sender)
   "Return color for the message sender MSG-SENDER."
@@ -1190,16 +1174,10 @@ LOCALLY-P only used"
   (with-telega-chatbuf (telega-msg-chat msg)
     (memq msg telega-chatbuf--marked-messages)))
 
-(defun telega-msg-observable-p (msg &optional chat node)
-  "Return non-nil if MSG is observable in chatbuffer.
-CHAT - chat to search message for.
-NODE - ewoc node, if known."
-  (unless chat (setq chat (telega-msg-chat msg)))
-  (with-telega-chatbuf chat
-    (unless node
-      (setq node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
-    (when node
-      (telega-button--observable-p (ewoc-location node)))))
+(defun telega-msg-observable-p (msg &optional chat)
+  "Return non-nil if MSG is observable in a chatbuffer."
+  (with-telega-chatbuf (or chat (telega-msg-chat msg))
+    (telega-chatbuf--msg-observable-p msg)))
 
 ;;; Ignoring messages
 (defun telega--ignored-messages-ring-index (msg)
@@ -1284,14 +1262,23 @@ For interactive use only."
   (if (plist-get msg :is_pinned)
       (telega--unpinChatMessage msg)
 
-    (let* ((for-self-only
+    (let* ((chat (telega-msg-chat msg))
+           (chat-private-p (telega-chat-private-p chat))
+           (for-self-only
             (or (telega-me-p (telega-msg-chat msg))
-                (when (telega-chat-private-p (telega-msg-chat msg))
-                  (y-or-n-p "Pin message for me only? "))))
-           (notify (unless for-self-only
-                     (y-or-n-p (concat "Pin message.  "
-                                       (telega-i18n "lng_pinned_notify")
-                                       "? ")))))
+                (when chat-private-p
+                  (not (y-or-n-p (concat 
+                                  (telega-i18n "lng_pinned_also_for_other"
+                                    :user (telega-ins--as-string
+                                           (telega-ins--msg-sender chat
+                                             :with-avatar-p t)))
+                                  "? "))))))
+           ;; NOTE: always notify on private chats
+           (notify (or chat-private-p
+                       (unless for-self-only
+                         (y-or-n-p (concat "Pin message.  "
+                                           (telega-i18n "lng_pinned_notify")
+                                           "? "))))))
       (telega--pinChatMessage msg (not notify) for-self-only))))
 
 (defun telega-msg-favorite-p (msg)
@@ -1398,9 +1385,9 @@ favorite message."
                                            (plist-get webpage (car accessor)))))
                        (cons place (cdr accessor))))
                    '((:document   . :document)
+                     (:video      . :video)
                      (:photo      . :photo)
                      (:audio      . :audio)
-                     (:video      . :video)
                      (:voice_note . :voice)
                      (:video_note . :video)
                      (:animation  . :animation)
@@ -1590,8 +1577,10 @@ Requires administrator rights in the chat."
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins "Sender: ")
         (telega-ins--raw-button (telega-link-props 'sender sender 'type 'telega)
-          (telega-ins--msg-sender
-           sender 'with-avatar 'with-username 'with-brackets))
+          (telega-ins--msg-sender sender
+            :with-avatar-p t
+            :with-username-p 'telega-username
+            :with-brackets-p t))
         (telega-ins "\n"))
       ;; Link to the message
       (when-let ((link (ignore-errors
@@ -1657,8 +1646,10 @@ Requires administrator rights in the chat."
                   (telega-ins--msg-reaction-type (plist-get ar :type))
                   (telega-ins " ")
                   (telega-ins--msg-sender
-                   (telega-msg-sender (plist-get ar :sender_id))
-                   'with-avatar 'with-username 'with-brackets)
+                      (telega-msg-sender (plist-get ar :sender_id))
+                   :with-avatar-p t
+                   :with-username-p t
+                   :with-brackets-p t)
                   (telega-ins--move-to-column 42)
                   (telega-ins " ")
                   (telega-ins--date-relative (plist-get ar :date))
@@ -1678,7 +1669,9 @@ Requires administrator rights in the chat."
                 (telega-ins "  ")
                 (telega-ins--msg-sender
                  (telega-user-get (plist-get viewer :user_id))
-                 'with-avatar 'with-username 'with-brackets)
+                 :with-avatar-p t
+                 :with-username-p t
+                 :with-brackets-p t)
                 (telega-ins--move-to-column 40)
                 (telega-ins " ")
                 (telega-ins--date-relative (plist-get viewer :view_date))))
@@ -1885,6 +1878,15 @@ By default `telega-translate-to-language-default' is used."
                        :loading extra))
       (telega-msg-redisplay msg)
       )))
+
+(defun telega-msg-remove-spoiler (msg)
+  "Remove spoiled for the message MSG."
+  (interactive (list (telega-msg-for-interactive)))
+  (let ((content (plist-get msg :content)))
+    (when (and (plist-get content :has_spoiler)
+               (not (plist-get content :telega-spoiler-removed)))
+      (plist-put content :telega-spoiler-removed t)
+      (telega-msg-redisplay msg))))
 
 (defun telega-msg--replied-message (msg)
   "Return message on which MSG depends."

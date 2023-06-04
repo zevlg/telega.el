@@ -138,15 +138,23 @@ Takes `telega-temex-remap-alist' into account."
   ret)
 
 ;;; ellit-org: temex
+;; - (eval ~SEXP~) ::
+;;   {{{temexdoc(nil, eval, 2)}}}
+(define-telega-matcher nil eval (_object sexp)
+  "Matches if SEXP evaluates to non-nil, return result of evaluation."
+  (eval sexp))
+
+;;; ellit-org: temex
 ;; - (or ~TEMEX-LIST~...) ::
 ;;   {{{temexdoc(nil, or, 2)}}}
 (define-telega-matcher nil or (obj &rest temex-list)
   "Matches if any matcher in the TEMEX-LIST matches."
-  (catch 'or--break
-    (seq-doseq (temex temex-list)
-      (when-let ((ret (telega-match-p obj temex)))
-        (throw 'or--break ret)))
-    nil))
+  (let ((result nil))
+    (while temex-list
+      (when (setq result (telega-match-p obj (car temex-list)))
+        (setq temex-list nil))
+      (setq temex-list (cdr temex-list)))
+    result))
 
 ;;; ellit-org: temex
 ;; - (and ~TEMEX-LIST~...) ::
@@ -154,11 +162,12 @@ Takes `telega-temex-remap-alist' into account."
 (define-telega-matcher nil and (obj &rest temex-list)
   "Matches if all matchers in the TEMEX-LIST matches.
 Also matches if TEMEX-LIST is empty."
-  (catch 'and--break
-    (seq-doseq (temex temex-list)
-      (unless (telega-match-p obj temex)
-        (throw 'and--break nil)))
-    t))
+  (let ((result t))
+    (while temex-list
+      (unless (setq result (telega-match-p obj (car temex-list)))
+        (setq temex-list nil))
+      (setq temex-list (cdr temex-list)))
+    result))
 
 ;; NOTE: For backward compatibility, `all' as alias for `and'
 ;; In new code use `(return t)' temex
@@ -474,9 +483,9 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
            (setq item '(:@type "chatListArchive")
                  key (telega--tl-prop :list)))
           (t
-           (when-let ((fi (telega-folder--chat-filter-info list-name)))
+           (when-let ((fi (telega-folder--chat-folder-info list-name)))
              (setq item (plist-get fi :id)
-                   key (telega--tl-prop :list :chat_filter_id)))))
+                   key (telega--tl-prop :list :chat_folder_id)))))
     (when-let ((pos (cl-find item (plist-get chat :positions)
                              :key key
                              :test #'equal)))
@@ -788,6 +797,14 @@ By default N is 1."
   (when-let ((username (telega-msg-sender-username user)))
     (string-match-p username-regexp username)))
 
+;;; ellit-org: user-temex
+;; - user-chat ::
+;;   {{{temexdoc(user, chat, 2)}}}
+(define-telega-matcher user chat (user chat-temex)
+  "Matches if me has private chat with USER matching CHAT-TEMEX."
+  (when-let ((chat (telega-chat-get (plist-get user :id) 'offline)))
+    (telega-chat-match-p chat chat-temex)))
+
 
 ;;; Message Temexes
 ;;; ellit-org: msg-temex
@@ -956,6 +973,113 @@ Matching ignores case."
   "Matches if sender is a chat matching CHAT-TEMEX."
   (when (telega-chat-p sender)
     (telega-chat-match-p sender chat-temex)))
+
+
+;;; Topic matchers
+(defconst telega-match-topic-as-chat-filters
+  '(last-message mention unread-reactions muted temporary-muted)
+  "List of Chat Temexes suitable for topics as well.")
+
+;;; ellit-org: topic-temex
+;; - (last-message ~MSG-TEMEX~) ::
+;;   {{{temexdoc(topic, last-message, 2)}}}
+(define-telega-matcher topic last-message (topic msg-temex)
+  "Matches if topic's last message matches MSG-TEMEX."
+  ;; NOTE: topic has same `:last_message' property as chat, so this
+  ;; will work
+  (telega-chat-match-p topic `(last-message ,msg-temex)))
+
+;;; ellit-org: topic-temex
+;; - (mention [ ~N~ ]) ::
+;;   {{{temexdoc(topic, mention, 2)}}}
+(define-telega-matcher topic mention (topic &optional n)
+  "Matches if topic has least N unread mentions.
+By default N is 1."
+  ;; NOTE: topic has same `:unread_mention_count' property as chat, so
+  ;; this will work
+  (telega-chat-match-p topic `(mention ,n)))
+
+;;; ellit-org: topic-temex
+;; - (unread-reactions [ ~N~ ]) ::
+;;   {{{temexdoc(topic, unread-reactions, 2)}}}
+(define-telega-matcher topic unread-reactions (topic &optional n)
+  "Matches if topic has least N unread reactions.
+By default N is 1."
+  ;; NOTE: topic has same `:unread_reaction_count' property as chat,
+  ;; so this will work
+  (telega-chat-match-p topic `(unread-reactions , n)))
+
+;;; ellit-org: topic-temex
+;; - muted ::
+;;   {{{temexdoc(topic, muted, 2)}}}
+(define-telega-matcher topic muted (topic)
+  "Matches if topic has disabled notifications."
+  ;; NOTE: topic has same `:notification_settings' property as chat,
+  ;; so this will work
+  (telega-chat-match-p topic 'muted))
+
+;;; ellit-org: topic-temex
+;; - temporary-muted ::
+;;   {{{temexdoc(topic, temporary-muted, 2)}}}
+(define-telega-matcher topic temporary-muted (topic)
+  "Matches if topic is temporary muted."
+  ;; NOTE: topic has same `:notification_settings' property as chat,
+  ;; so this will work
+  (telega-chat-match-p topic 'temporary-muted))
+
+;;; ellit-org: topic-temex
+;; - (creator ~SENDER-TEMEX~) ::
+;;   {{{temexdoc(topic, creator, 2)}}}
+(define-telega-matcher topic creator (topic sender-temex)
+  "Matches if topic's creator matches SENDER-TEMEX."
+  (telega-sender-match-p
+      (telega-msg-sender (telega--tl-get topic :info :creator_id))
+    sender-temex))
+
+;;; ellit-org: topic-temex
+;; - (chat ~CHAT-TEMEX~) ::
+;;   {{{temexdoc(topic, chat, 2)}}}
+(define-telega-matcher topic chat (topic chat-temex)
+  "Matches if topic's chat matches CHAT-TEMEX."
+  (telega-chat-match-p (telega-topic-chat topic) chat-temex))
+
+;;; ellit-org: topic-temex
+;; - is-general ::
+;;   {{{temexdoc(topic, is-general, 2)}}}
+(define-telega-matcher topic is-general (topic)
+  "Matches if topic is a general topic in a chat."
+  (telega--tl-get topic :info :is_general))
+
+;;; ellit-org: topic-temex
+;; - is-outgoing ::
+;;   {{{temexdoc(topic, is-outgoing, 2)}}}
+(define-telega-matcher topic is-outgoing (topic)
+  "Matches if topic has been created by me."
+  (telega--tl-get topic :info :is_outgoing))
+
+;;; ellit-org: topic-temex
+;; - is-closed ::
+;;   {{{temexdoc(topic, is-closed, 2)}}}
+(define-telega-matcher topic is-closed (topic)
+  "Matches if topic is closed."
+  (telega--tl-get topic :info :is_closed))
+
+;;; ellit-org: topic-temex
+;; - is-hidden ::
+;;   {{{temexdoc(topic, is-hidden, 2)}}}
+(define-telega-matcher topic is-hidden (topic)
+  "Matches if topic is hidden.
+for General topic only."
+  (telega--tl-get topic :info :is_hidden))
+
+;;; ellit-org: topic-temex
+;; - is-most-recent ::
+;;   {{{temexdoc(topic, is-most-recent, 2)}}}
+(define-telega-matcher topic is-most-recent (topic)
+  "Matches if last message in the chat is made to topic."
+  (when-let ((topic-msg (plist-get topic :last_message))
+             (chat-msg (plist-get (telega-topic-chat topic) :last_message)))
+    (telega-msg-id= topic-msg chat-msg)))
 
 (provide 'telega-match)
 
