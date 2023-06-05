@@ -10,7 +10,11 @@
 # docker tag $(docker images -q zevlg/telega-server:1.8.0) zevlg/telega-server:1.8.0
 # docker push zevlg/telega-server:1.8.0
 
-FROM alpine:latest AS builder
+# NOTE: We use alpine:3.13 because latest image does not have
+# libappindicator-dev and, also due to
+# https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0#faccessat2
+
+FROM alpine:3.13 AS builder
 ARG tdlib_branch=master
 ARG telega_branch=master
 
@@ -61,7 +65,7 @@ RUN cd /telega-server && \
 #     apk add --update bash
 
 # second stage
-FROM alpine:latest
+FROM alpine:3.13
 
 # - psmisc (with killall tool) used to kill ffmpeg processes
 # - libqrencode (with qrencode tool) used for QR code auth method
