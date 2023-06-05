@@ -38,6 +38,7 @@ jobs:
           tags: zevlg/telega-server:latest
 
   docker-arm64:
+    if: false
     runs-on: ubuntu-latest
     steps:
       -
