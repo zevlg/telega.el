@@ -86,6 +86,9 @@
                           msg)))
          (telega--sendMessage chat imc reply-msg)))
 
+      (keyboardButtonTypeRequestPhoneNumber
+       (telega-chat-share-my-contact (telega-msg-chat msg)))
+
       (inlineKeyboardButtonTypeUrl
        (telega-browse-url (plist-get kbd-type :url)))
 
