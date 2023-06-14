@@ -1529,10 +1529,15 @@ Return t."
   "Execute BODY making insertation one-lined.
 It makes one line by replacing all newlines by spaces."
   (let ((startsym (gensym "start"))
+        (endsym (gensym "end"))
         (result (gensym "result")))
     `(let ((,startsym (point))
-           (,result (progn ,@body)))
-       (replace-regexp-in-region "\n" " " ,startsym (point))
+           (,result (progn ,@body))
+           (,endsym (point)))
+       (save-excursion
+         (goto-char ,startsym)
+         (while (search-forward "\n" ,endsym 'noerror)
+           (replace-match " ")))
        ,result)))
 
 (defmacro telega-ins--with-attrs (attrs &rest body)
