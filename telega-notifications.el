@@ -318,7 +318,7 @@ FORCE is used for testing only, should not be used in real code."
                          (not (plist-get msg :contains_unread_mention))))
                 (telega-msg-seen-p msg chat)
                 (with-telega-chatbuf chat
-                  (and (telega-chatbuf--msg-observable-p msg chat)
+                  (and (telega-chatbuf--msg-observable-p msg)
                        (not (telega-chatbuf--history-state-get :newer-freezed)))))
       t)))
 
