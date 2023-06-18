@@ -410,7 +410,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (text-p (eq (telega--tl-type content) 'messageText))
               (content-text (telega--tl-get content :text))
               (fmt-text-p (eq (telega--tl-type content-text) 'formattedText))
-              (content-text-text (telega--tl-get content-text :text)) ; get the msg text
+              (content-text-text (telega-tl-str content-text :text 'no-props)) ; get the msg text without format
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
                         counterparty-type :text-spliter))
@@ -435,7 +435,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (content (telega--tl-get msg :content))
               (content-caption (telega--tl-get content :caption))
               (fmt-text-p (eq (telega--tl-type content-caption) 'formattedText))
-              (content-caption-text (telega--tl-get content-caption :text)) ; get the msg text
+              (content-caption-text (telega-tl-str content-caption :text 'no-props)) ; get the msg text without format
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
                         counterparty-type :file-spliter))
@@ -460,7 +460,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (content (telega--tl-get msg :content))
               (content-text (telega--tl-get content :text))
               (fmt-text-p (eq (telega--tl-type content-text) 'formattedText))
-              (content-text-text (telega--tl-get content-text :text)) ; get the msg text
+              (content-text-text (telega-tl-str content-text :text 'no-props)); get the msg text without format
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
                         counterparty-type :text-spliter))
