@@ -221,7 +221,8 @@ If FORCE-UPDATE is non-nil, force update the file."
   "Fetch user of the CHAT-ID MSG-ID pair in MEMBERS with DISPLAY-NAME.
 User avatar file will be saved to FILE-PATH.
 If FORCE-UPDATE is non-nil, force update the file."
-  (when-let* ((avatar-url (gethash display-name members))
+  (when-let* ((name (telega--desurrogate-apply display-name 'no-props))
+              (avatar-url (gethash name members))
               (mxc-id (telega-bridge-bot--matrix-mxc-id avatar-url))
               (url (format telega-bridge-bot--matrix-media-thumbnail-endpoint
                            telega-bridge-bot--matrix-host
@@ -392,9 +393,9 @@ If FORCE-UPDATE is non-nil, force update the user info."
   "Callback for `telega-bridge-bot--download-async'.
 Will update CHAT-ID MSG-ID when download completed."
   (when-let* ((msg (telega-msg-get (list :id chat-id) msg-id))
-              (user-id (telega--tl-get (telega-msg-sender msg) :id))
-              (user-outdated (telega-user-get user-id))
+              (user-outdated (telega-msg-sender msg))
               (user-signature (plist-get user-outdated :telega-bridge-bot-user-signature))
+              (user-id (apply 'telega-bridge-bot--user-id user-signature))
               (user (apply 'telega-bridge-bot--user user-signature))) ; recreate user
     (puthash user-id user (alist-get 'user telega--info))
     (telega-msg-redisplay msg)))
@@ -410,7 +411,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (text-p (eq (telega--tl-type content) 'messageText))
               (content-text (telega--tl-get content :text))
               (fmt-text-p (eq (telega--tl-type content-text) 'formattedText))
-              (content-text-text (telega-tl-str content-text :text 'no-props)) ; get the msg text without format
+              (content-text-text (telega--tl-get content-text :text)) ; get the msg text
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
                         counterparty-type :text-spliter))
@@ -421,6 +422,9 @@ Will update CHAT-ID MSG-ID when download completed."
       ;; replace sender
       (plist-put msg :sender_id (list :@type "messageSenderUser" :user_id sender-id))
       ;; remove duplicated username in body
+      ;; we don't use body directly here
+      ;; because then we only need to make sure the name is correct
+      ;; makes it easier to write the split function
       (plist-put
        content :text
        (telega-bridge-bot--remove-username content-text body)))))
@@ -435,7 +439,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (content (telega--tl-get msg :content))
               (content-caption (telega--tl-get content :caption))
               (fmt-text-p (eq (telega--tl-type content-caption) 'formattedText))
-              (content-caption-text (telega-tl-str content-caption :text 'no-props)) ; get the msg text without format
+              (content-caption-text (telega--tl-get content-caption :text)) ; get the msg text
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
                         counterparty-type :file-spliter))
@@ -460,7 +464,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (content (telega--tl-get msg :content))
               (content-text (telega--tl-get content :text))
               (fmt-text-p (eq (telega--tl-type content-text) 'formattedText))
-              (content-text-text (telega-tl-str content-text :text 'no-props)); get the msg text without format
+              (content-text-text (telega--tl-get content-text :text)) ; get the msg text
               (spliter (telega--tl-get
                         telega-bridge-bot--counterparty-handler-plist
                         counterparty-type :text-spliter))
