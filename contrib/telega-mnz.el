@@ -204,8 +204,8 @@ Most of these languages available for language detection.")
           (prog1 ret
             (kill-buffer (get-buffer "*Telega Mnz Fontification*")))))
 
-    (error (format "!<<Error during code block fontification>>!\n%s\n%s"
-                   (prin1-to-string text) text))))
+    (error (message "telega-mnz: Error during code block fontification")
+           text)))
 
 (defun telega-mnz--language-for-mode (mode)
   "Return language string for Emacs major MODE."
