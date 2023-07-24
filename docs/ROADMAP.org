@@ -2,18 +2,34 @@
 #+TODO: TODO WIP DONE
 #+STARTUP: showall
 
-* telega.el 0.9.0
-** Support for Telegram Forums
+* telega.el 0.9.0 [2/9]
+** WIP Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
+
+** WIP Support for Telegram Forums
+
+** TODO Support for Telegram Stories, since 1.8.15 [/]
+- [ ] Manage close friends list
+- [ ] Telegram Stories in the dashboard
+
+** TODO Use Notifications API
+CREATED: [2020-11-27 Пт]
+
+- Docs: https://core.telegram.org/tdlib/notification-api/
+
+- Enable Notifications API by setting option
+  #+begin_src emacslisp
+  (telega--setOption :notification_group_count_max 2)
+  #+end_src
 
 ** TODO Support for "Downloads API" in 1.8.2 for files rootview
 
-** M-x telega-report-bug RET
+** TODO M-x telega-report-bug RET
 To use ~browse-url~ to open url like
 https://github.com/zevlg/telega.el/issues/new?title=test&body=test%20here
 
 And fill body with text generated from Emacs
 
-** TODO Naming refactoring
+** WIP Naming refactoring
 - Use "Chat Temex" term for functionality to match a chat
 - Use "Message Temex" for functionality to match a message
 - Avoid using "Chat Filter" term (as TDLib already has this term), use
@@ -31,8 +47,7 @@ Implement ~telega-markup-org-fmt~ to apply Org Mode markup.
 ~telega-markup-org-fmt~ already member in
 ~telega-chat-markup-functions~
 
-* telega.el Major Features
-
+* telega.el Major Features [9/9]
 ** DONE telega-patron-mode - highlight patron's avatars
 CLOSED: [2021-01-23 Сб 01:14]
 
@@ -137,18 +152,6 @@ CLOSED: [2020-12-20 Вс 01:50]
 - [ ] Importing/Exporting files using "Saved Messages"
 
 ** Full integration for Translation Platform
-
-** TODO Use Notifications API
-CREATED: [2020-11-27 Пт]
-
-- Docs: https://core.telegram.org/tdlib/notification-api/
-
-- Enable Notifications API by setting option
-  #+begin_src emacslisp
-  (telega--setOption :notification_group_count_max 2)
-  #+end_src
-
-** Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
 
 ** DONE Stickers support in non-imagemagick Emacs
 CLOSED: [2020-02-12 Ср 18:02]

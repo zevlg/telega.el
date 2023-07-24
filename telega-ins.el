@@ -1258,6 +1258,11 @@ Return `non-nil' if WEB-PAGE has been inserted."
                                       "lng_polls_answers_count"
                                     "lng_polls_votes_count")
                                   :count (plist-get poll :total_voter_count)))
+    (when-let ((recent-voters (append (plist-get poll :recent_voter_ids) nil)))
+      (telega-ins " ")
+      (seq-doseq (rv recent-voters)
+        (telega-ins--image (telega-msg-sender-avatar-image-one-line
+                            (telega-msg-sender rv)))))
     (when closed-p
         (telega-ins ", " (propertize "closed" 'face 'error)))
     (when (and (not closed-p) (plist-get msg :can_be_edited))
@@ -2308,9 +2313,9 @@ argument - MSG to insert additional information after header."
   ;; NOTE: Do not show reply inline if replying to thread's root message.
   ;; If replied message is not instantly available, it will be fetched
   ;; later by the `telega-msg--replied-message-fetch'
-  (unless (or (zerop (plist-get msg :reply_to_message_id))
+  (unless (or (not (telega-msg-match-p msg 'is-reply))
               (eq (plist-get telega-chatbuf--thread-msg :id)
-                  (plist-get msg :reply_to_message_id)))
+                  (telega--tl-get msg :reply_to :message_id)))
     (let ((replied-msg (telega-msg--replied-message msg)))
       (cond ((or (null replied-msg) (eq replied-msg 'loading))
              ;; NOTE: replied message will be fetched by the

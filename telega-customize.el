@@ -285,6 +285,25 @@ Original message's content can be seen with
   :type 'boolean
   :group 'telega)
 
+(defconst telega-tdlib-network-type-alist
+  '((nil . (:@type "networkTypeNone"))
+    (mobile . (:@type "networkTypeMobile"))
+    (roaming-mobile . (:@type "networkTypeMobileRoaming"))
+    (wi-fi . (:@type "networkTypeWiFi"))
+    (other . (:@type "networkTypeOther")))
+  "Network types.")
+
+(defcustom telega-network-type 'other
+  "Network type to use by default.
+Use `M-x telega-set-network-type RET' to change it while telega is
+running."
+  :type `(choice ,@(mapcar (lambda (nt)
+                             (list 'const :tag
+                                   (substring (plist-get (cdr nt) :@type) 11)
+                                   (car nt)))
+                           telega-tdlib-network-type-alist))
+  :group 'telega)
+
 
 ;;; Docker support
 (defgroup telega-docker nil
@@ -1684,22 +1703,6 @@ Inlined photos are displayed, when sending messages via bots, for
 example @gif `TAB' will popup buffer with inlined photos. "
   :package-version '(telega . "0.7.5")
   :type '(list integer integer integer integer)
-  :group 'telega)
-
-(defcustom telega-auto-download
-  '((photo all)
-    (video opened)
-    (file opened)
-    (voice-message opened)
-    (video-message opened)
-    (web-page opened)
-    (instant-view opened))
-  "*Alist in form (KIND . FILTER-SPEC).
-To denote for which chats to automatically download media content.
-KIND is one of `photo', `video', `file', `voice-message',
-`video-message', `web-page', `instant-view'.
-NOT USED"
-  :type 'boolean
   :group 'telega)
 
 (defcustom telega-ignored-messages-visible nil

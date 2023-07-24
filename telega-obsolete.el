@@ -189,6 +189,10 @@
                            'telega-chat-send-message-on-ret
                            "0.8.140")
 
+(telega-obsolete--variable 'telega-auto-download
+                           'telega-auto-download-settings-alist
+                           "0.8.150")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

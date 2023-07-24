@@ -5381,7 +5381,11 @@ If `\\[universal-argument]' is given, then search forward instead."
 (defun telega-chatbuf-inplace-search-query (query &optional by-sender-p forward-p)
   "Inplace search backward for the QUERY.
 If `\\[universal-argument]' is given, search for the messages
-containing QUERY sent by specified sender."
+containing QUERY sent by specified sender.
+To navigate across searching results use
+`\\<telega-chat-mode-map>\\[telega-chatbuf-inplace-search-prev]' and
+`\\<telega-chat-mode-map>\\[telega-chatbuf-inplace-search-next]'
+bindings."
   (interactive "sTelega-search (backward): \nP")
   (let ((by-sender (when by-sender-p
                      (telega-completing-read-chat-member

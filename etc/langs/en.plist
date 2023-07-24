@@ -1030,4 +1030,11 @@ You can send them an invite link as message instead.")
 
  ("telega_last_entry"
   :value "Last i18n Entry")
+
+ ;; Stories
+ ("lng_contacts_stories_status"
+  :one_value "{count} story"
+  :other_value "{count} stories")
+ ("lng_forwarded_story"
+  :value "Story from {user}")
  )

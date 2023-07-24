@@ -693,6 +693,13 @@ If `\\[universal-argument]' is specified, then open topic in a preview mode."
     (when visible-p
       (telega-root--chat-pp chat custom-inserter custom-action))))
 
+(defun telega-root--global-chat-button-action (chat)
+  "Action to take when global CHAT is opened.
+Adds CHAT to recently found chats list."
+  (unless (telega-chat-match-p chat 'is-known)
+    (telega--addRecentlyFoundChat chat))
+  (telega-chat-button-action chat))
+
 (defun telega-root--global-chat-pp (chat &optional custom-inserter)
   "Display CHAT found in global public chats search."
   (let ((telega-chat-button-width
@@ -705,7 +712,8 @@ If `\\[universal-argument]' is specified, then open topic in a preview mode."
                :with-members-trail-p t
                :with-status-icons-trail-p t))
         (telega-temex-remap-list '((chat chat-list . (return t)))))
-    (telega-root--chat-known-pp chat custom-inserter)))
+    (telega-root--chat-known-pp chat custom-inserter
+                                #'telega-root--global-chat-button-action)))
 
 (defun telega-root--nearby-chat-known-pp (chat &optional custom-inserter)
   "Pretty printers for known CHAT, that is in nearby list."
@@ -803,6 +811,8 @@ Status values are hold in the `telega--status' and
       (when user-me
         (telega-ins--user-emoji-status user-me))
       (telega-ins ")")))
+  (unless (eq 'other telega-network-type)
+    (telega-ins-fmt " [%S]" telega-network-type))
   (telega-ins ": " telega--status)
   (unless (string-empty-p telega--status-aux)
     (when (< (current-column) 30)
@@ -1372,6 +1382,15 @@ VIEW-FILTER is additional chat filter for this root view."
                            #'telega-root-view--ewoc-loading-done "contacts"))
                :on-chat-update #'telega-root--contact-on-chat-update
                :on-user-update #'telega-root--contact-on-user-update)
+         (list :name "recent"
+               :pretty-printer #'telega-root--global-chat-pp
+               :header "RECENT"
+               :search-query query
+               :sorter #'telega-chat>
+               :loading (telega--searchRecentlyFoundChats query nil
+                          (apply-partially
+                           #'telega-root-view--ewoc-loading-done "recent"))
+               :on-chat-update #'telega-root--existing-on-chat-update)
          (list :name "global"
                :pretty-printer #'telega-root--global-chat-pp
                :header "GLOBAL CHATS"

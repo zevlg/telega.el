@@ -1560,6 +1560,12 @@ PRIORITY is same as for `telega-file--download'."
    (list :@type "cancelPreliminaryUploadFile"
          :file_id (plist-get file :id))))
 
+(defun telega-msg--tl-messageReplyToMessage (reply-to-msg)
+  "Create messageReplyToMessage structure from message MSG."
+  (list :@type "messageReplyToMessage"
+        :chat_id (plist-get reply-to-msg :chat_id)
+        :message_id (plist-get reply-to-msg :id)))
+
 (cl-defun telega--sendMessage (chat imc &optional reply-to-msg
                                     options &key reply-markup callback sync-p)
   "Send the message content represented by IMC to CHAT.
@@ -1573,7 +1579,7 @@ message uppon message is created."
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :input_message_content imc)
           (when reply-to-msg
-            (list :reply_to_message_id (plist-get reply-to-msg :id)))
+            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
           (when options
             (list :options options))
           (when reply-markup
@@ -1591,7 +1597,7 @@ message uppon message is created."
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :input_message_contents (apply 'vector imcs))
           (when reply-to-msg
-            (list :reply_to_message_id (plist-get reply-to-msg :id)))
+            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
           (when options
             (list :options options)))
    (or callback (unless sync-p #'ignore))))
@@ -1620,7 +1626,7 @@ message uppon message is created."
                 :query_id (plist-get imc :query-id)
                 :result_id (plist-get imc :result-id))
           (when reply-to-msg
-            (list :reply_to_message_id (plist-get reply-to-msg :id)))
+            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
           (when options
             (list :options options))
           (when (plist-get imc :hide-via-bot)
@@ -2489,24 +2495,34 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
    callback))
 
 ;; Emoji status from TDLib 1.8.6
+
+;; NOTE: Since TDLib 1.8.15 API changed to return `:custom_emoji_ids'
+;; instead of `:emoji_statuses', so we wrap them into emoji status
+;; alike structure
+(defun telega--custom-emoji-id-wrap-into-emoji-status (custom-emoji-id)
+  (list :custom_emoji_id custom-emoji-id))
+
 (defun telega--getThemedEmojiStatuses (&optional callback)
   "Returns up to 8 themed emoji statuses."
   (with-telega-server-reply (reply)
-      (append (plist-get reply :emoji_statuses) nil)
+      (mapcar #'telega--custom-emoji-id-wrap-into-emoji-status
+              (plist-get reply :custom_emoji_ids))
    (list :@type "getThemedEmojiStatuses")
    callback))
 
 (defun telega--getRecentEmojiStatuses (&optional callback)
   "Return recent emoji statuses."
   (with-telega-server-reply (reply)
-      (append (plist-get reply :emoji_statuses) nil)
+      (mapcar #'telega--custom-emoji-id-wrap-into-emoji-status
+              (plist-get reply :custom_emoji_ids))
    (list :@type "getRecentEmojiStatuses")
    callback))
 
 (defun telega--getDefaultEmojiStatuses (&optional callback)
   "Return default emoji statuses"
   (with-telega-server-reply (reply)
-      (append (plist-get reply :emoji_statuses) nil)
+      (mapcar #'telega--custom-emoji-id-wrap-into-emoji-status
+              (plist-get reply :custom_emoji_ids))
    (list :@type "getDefaultEmojiStatuses")
    callback))
 
@@ -2521,10 +2537,13 @@ DURATION of the status, in seconds.
 For Telegram Premium users only."
   (telega-server--send
    (list :@type "setEmojiStatus"
-         :emoji_status (when custom-emoji-id
-                         (list :@type "emojiStatus"
-                               :custom_emoji_id custom-emoji-id))
-         :duration (or duration 0))))
+         :emoji_status
+         (when custom-emoji-id
+           (list :@type "emojiStatus"
+                 :custom_emoji_id custom-emoji-id
+                 :expiration_date (if duration
+                                      (+ (telega-time-seconds) duration)
+                                    0))))))
 
 ;; 2step verification
 (defun telega--getPasswordState (&optional callback)
@@ -2566,6 +2585,28 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
    (list :@type "setAlarm"
          :seconds seconds)
    callback))
+
+(defun telega--setNetworkType (tdlib-network-type &optional callback)
+  (telega-server--call
+   (list :@type "setNetworkType"
+         :type tdlib-network-type)
+   (or callback 'ignore)))
+
+;; Autodownload
+(defun telega--getAutoDownloadSettingsPresets (&optional callback)
+  "Return auto-download settings presets for me."
+  (telega-server--call
+   (list :@type "getAutoDownloadSettingsPresets")
+   callback))
+
+(defun telega--setAutoDownloadSettings (settings &optional tdlib-network-type)
+  "Set auto-download SETTINGS for the TDLIB-NETWORK-TYPE."
+  (telega-server--send
+   (nconc (list :@type "setAutoDownloadSettings"
+                :settings settings)
+          (when tdlib-network-type
+            (list :type tdlib-network-type)))
+   ))
 
 
 ;;; Topics
@@ -2636,6 +2677,40 @@ Requires owner privileges."
          :offset-message-id (or offset-message-id 0)
          :offset-message-thread-id (or offset-message-thread-id 0)
          :limit (or limit 100))
+   callback))
+
+(defun telega--searchRecentlyFoundChats (query &optional limit callback)
+  "Searches for the specified query in the title of recently found chats."
+  (declare (indent 2))
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "searchRecentlyFoundChats"
+          :query query
+          :limit (or limit 50))
+    callback))
+
+(defun telega--addRecentlyFoundChat (chat)
+  "Add a CHAT to the list of recently found chats."
+  (telega-server--send
+   (list :@type "addRecentlyFoundChat"
+         :chat_id (plist-get chat :id))))
+
+(defun telega--removeRecentlyFoundChat (chat)
+  "Remove a CHAT from the list of recently found chats."
+  (telega-server--send
+   (list :@type "removeRecentlyFoundChat"
+         :chat_id (plist-get chat :id))))
+
+(defun telega--clearRecentlyFoundChats ()
+  (telega-server--send
+   '(:@type "clearRecentlyFoundChats")))
+
+(defun telega--getRecentlyOpenedChats (&optional limit callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getRecentlyOpenedChats"
+         :limit (or limit 50))
    callback))
 
 (provide 'telega-tdlib)

@@ -748,15 +748,38 @@ Does not match bots, because bots are always online."
 ;; - (contact [ ~MUTUAL-P~ ]), {{{where-is(telega-filter-by-contact,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(user, contact, 2)}}}
 (define-telega-matcher user contact (user &optional mutual-p)
-  "Matches private chats if corresponding user is a contact.
+  "Matches if user is in my contacts list.
 If MUTUAL-P is non-nil, then mach only if contact is mutual."
   (plist-get user (if mutual-p :is_mutual_contact :is_contact)))
+
+;;; ellit-org: user-temex
+;; - is-close-friend
+;;   {{{temexdoc(user, is-close-friend, 2)}}}
+(define-telega-matcher user is-close-friend (user)
+  "Matches if user is my close friend."
+  (plist-get user :is_close_friend))
+
+;;; ellit-org: user-temex
+;; - (has-active-stories [ ~UNREAD-P~ ])
+;;   {{{temexdoc(user, has-active-stories 2)}}}
+(define-telega-matcher user has-active-stories (user &optional unread-p)
+  "Matches if user has non-expired stories available to you.
+If UNREAD-P is non-nil then match only if there is at least one unread
+non-expired story."
+  (plist-get user (if unread-p :has_unread_active_stories :has_active_stories)))
+
+;;; ellit-org: user-temex
+;; - has-pinned-stories
+;;   {{{temexdoc(user, has-pinned-stories 2)}}}
+(define-telega-matcher user has-pinned-stories (user)
+  "Matches if user has pinned stories."
+  (plist-get (telega--full-info user) :has_pinned_stories))
 
 ;;; ellit-org: user-temex
 ;; - (groups-in-common [ ~N~ ]) ::
 ;;   {{{temexdoc(user, groups-in-common, 2)}}}
 (define-telega-matcher user groups-in-common (user &optional n)
-  "Matches if corresponding user has at least N groups in common with me.
+  "Matches if user has at least N groups in common with me.
 By default N is 1."
   (>= (plist-get (telega--full-info user) :group_in_common_count)
       (or n 1)))
@@ -852,7 +875,7 @@ By default N is 1."
 ;;   {{{temexdoc(msg, is-reply, 2)}}}
 (define-telega-matcher msg is-reply (msg)
   "Matches if message is a reply message."
-  (not (zerop (plist-get msg :reply_to_message_id))))
+  (plist-get msg :reply_to))
 
 ;;; ellit-org: msg-temex
 ;; - post-with-comments ::

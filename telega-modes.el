@@ -678,9 +678,10 @@ squashing is not applied."
                    ;; Checking for 1. 2. 3. 4. and 5.
                    (telega-msg-by-me-p last-msg)
                    (< last-read-id (plist-get last-msg :id))
-                   (plist-get last-msg :can_be_edited)
-                   (telega-msg-match-p last-msg '(type Text))
-                   (zerop (plist-get last-msg :reply_to_message_id))
+                   (telega-msg-match-p last-msg
+                     '(and (prop :can_be_edited)
+                           (not is-reply)
+                           (type Text)))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
                    ;; Check for 8.
@@ -1898,6 +1899,100 @@ Or nil if translation is not needed."
 
 
 ;;; ellit-org: minor-modes
+;;
+;; ** telega-auto-download-mode (WIP)
+;;
+;; Global minor mode to automatically download media files.
+;; Auto-download settings depends on network type currently used by
+;; =telega=.
+;;
+;; You can modify auto-download settings by changing network type with
+;; {{{kbd(M-x telega-set-network-type RET)}}} command.
+;;
+;; Enable auto-download with ~(telega-auto-download-mode 1)~ or at
+;; =telega= load time:
+;; #+begin_src emacs-lisp
+;; (add-hook 'telega-load-hook 'telega-auto-download-mode)
+;; #+end_src
+;;
+;; Customizable options:
+;; - {{{user-option(telega-auto-download-settings-alist, 2)}}}
+(defconst telega-auto-download--disabled-preset
+  '(:@type "autoDownloadSettings" :is_auto_download_enabled :false)
+  "Auto download settings for the `:disabled' preset.")
+
+(defvar telega-auto-download--tdlib-presets nil
+  "Auto-download presets fetched with `getAutoDownloadSettingsPresets'.")
+
+(defvar telega-auto-download-settings nil
+  "Current auto download settings.
+TDLib's autoDownloadSettings structure.")
+
+(defcustom telega-auto-download-settings-alist
+  '((roaming-mobile . :disabled)
+    (mobile . :low)
+    (wi-fi . :medium)
+    (other . :high))
+  "Alist with auto-download settings for different network types.
+car of the item is the network type symbol from
+`telega-tdlib-network-type-alist', cdr is auto-download setting.
+Auto-download setting could be one of `:disabled', `:low', `:medium'
+or `:high' keyword denoting auto download preset or a plist with
+TDLib's autoDownloadSettings structure."
+  :type 'alist
+  :group 'telega-modes)
+
+(defun telega-auto-download--apply-settings (settings &optional tl-network-type)
+  "Apply auto-downloading SETTINGS for the TL-NETWORK-TYPE."
+  (let ((tl-settings
+         (cond ((memq settings '(:low :medium :high))
+                (plist-get telega-auto-download--tdlib-presets settings))
+               ((memq settings '(:disabled nil))
+                telega-auto-download--disabled-preset)
+               ((listp settings)
+                settings))))
+    (if (not tl-settings)
+        (warn "telega: unknown auto download settings %S for %S network type"
+              settings tl-network-type)
+
+      (telega--setAutoDownloadSettings tl-settings tl-network-type))))
+
+(defun telega-auto-download--start ()
+  "Start auto downloading mode."
+  (if telega-auto-download--tdlib-presets
+      (when telega-auto-download-mode
+        (dolist (auto-download-settings telega-auto-download-settings-alist)
+          (telega-auto-download--apply-settings
+           (cdr auto-download-settings)
+           (alist-get (car auto-download-settings)
+                      telega-tdlib-network-type-alist))))
+
+    (telega--getAutoDownloadSettingsPresets
+     (lambda (reply)
+       (setq telega-auto-download--tdlib-presets reply)
+       (telega-auto-download--start)))))
+
+;;;###autoload
+(define-minor-mode telega-auto-download-mode
+  "Global mode to automatically download media files."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-auto-download-mode
+      (progn
+        (add-hook 'telega-ready-hook
+                  #'telega-auto-download--start)
+        (when (telega-server-live-p)
+          (telega-auto-download--start))
+        )
+
+    (when (telega-server-live-p)
+      (telega-auto-download--apply-settings
+       telega-auto-download--disabled-preset))
+    (remove-hook 'telega-ready-hook
+                 #'telega-auto-download--start)
+    ))
+
+
+;;; ellit-org: minor-modes
 ;; ** TODO telega-play-media-sequence-mode
 ;;
 ;; Play media content in subsequent manner.
@@ -1960,7 +2055,7 @@ Or nil if translation is not needed."
       ;; todo
   ))
 
-;; Advice for 
+;; Advice for
 (defun telega-play-media-sequence-mode--player-sentinel (proc)
   (when-let* ((proc-plist (process-plist proc))
               (msg (plist-get proc-plist :message)))

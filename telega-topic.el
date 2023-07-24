@@ -50,7 +50,6 @@
            (xw (telega-chars-xwidth (* 2 cheight)))
            (svg (telega-svg-create xw xh))
            (title (telega-tl-str (plist-get topic :info) :name))
-           (title1 (substring title 0 1))
            (color1 (telega-color-name-as-hex-2digits
                     (or (funcall telega-rainbow-color-function title 'light)
                         "gray25")))
@@ -65,7 +64,7 @@
         :stroke-color color1
         :gradient "cgrad")
 
-      (svg-text svg title1
+      (svg-text svg (substring title 0 1)
                 :font-size font-size
                 :font-weight "bold"
                 :fill "white"
@@ -78,7 +77,6 @@
                         :width xw :height xh
                         :ascent 'center
                         :mask 'heuristic
-                        :telega-text (concat "(" title1 ")")
                         ))))
 
 (defun telega-topic-msg-thread-id (topic)

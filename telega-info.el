@@ -577,10 +577,10 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                   (telega-ins " " (telega-i18n (cdr perm-spec)))
                   (telega-ins "\n"))))))))
 
-    ;; Supergroup username
+    ;; Supergroup username, only owner can set/change group's username
     (let* ((usernames (plist-get supergroup :usernames))
            (username (plist-get usernames :editable_username))
-           (can-set-username-p (plist-get full-info :can_set_username)))
+           (can-set-username-p (telega-chat-match-p chat 'me-is-owner)))
       (when (or username can-set-username-p)
         (telega-ins "Username: ")
         (when username

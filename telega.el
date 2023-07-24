@@ -1,6 +1,6 @@
 ;;; telega.el --- Telegram client (unofficial)  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2016-2022 by Zajcev Evgeny
+;; Copyright (C) 2016-2023 by Zajcev Evgeny
 ;; Copyright (C) 2019-2020 by Brett Gilio
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
@@ -8,10 +8,10 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.141
-(defconst telega-version "0.8.141")
+;; Version: 0.8.150
+(defconst telega-version "0.8.150")
 (defconst telega-server-min-version "0.7.7")
-(defconst telega-tdlib-min-version "1.8.14")
+(defconst telega-tdlib-min-version "1.8.15")
 (defconst telega-tdlib-max-version nil)
 
 (defconst telega-tdlib-releases '("1.8.0" . "1.9.0")
@@ -176,6 +176,26 @@ can't write to `telega-server-logfile'" logfile-dir)))
 
     (telega nil)))
 
+(defun telega-set-network-type (network-type)
+  "Interactively change network type.
+Can be called even if telega is not running.
+Modifies `telega-network-type' by side-effect."
+  (interactive
+   (let* ((choices (mapcar (lambda (nt)
+                             (list (substring (plist-get (cdr nt) :@type) 11)
+                                   (car nt)))
+                           telega-tdlib-network-type-alist))
+          (choice (funcall telega-completing-read-function
+                           "Set Network Type: " choices nil t))
+          (network-type (car (alist-get choice choices nil nil 'string=))))
+     (list network-type)))
+
+  (setq telega-network-type network-type)
+  (when (telega-server-live-p)
+    (let ((tdlib-network-type
+           (alist-get network-type telega-tdlib-network-type-alist)))
+      (telega--setNetworkType tdlib-network-type))))
+
 ;;;###autoload
 (defun telega (&optional arg)
   "Start telega.el Telegram client.
@@ -206,7 +226,12 @@ If `\\[universal-argument]' is specified, then do not pop to root buffer."
 
       (telega-server--ensure-build)
       (telega-server--start)
-      (telega-i18n-init))
+      (telega-i18n-init)
+
+      ;; For telega-auto-download-mode and network statistics
+      (unless (eq 'other telega-network-type)
+        (telega-set-network-type telega-network-type))
+      )
 
     (unless arg
       (pop-to-buffer-same-window telega-root-buffer-name))))

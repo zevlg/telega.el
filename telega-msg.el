@@ -895,8 +895,8 @@ non-nil."
                 (telega-i18n "lng_polls_votes_count"
                   :count (plist-get popt :voter_count)))
               (when-let* ((voters-reply (telega--getPollVoters msg popt-id))
-                          (voters (mapcar #'telega-user-get
-                                          (plist-get voters-reply :user_ids))))
+                          (voters (mapcar #'telega-msg-sender
+                                          (plist-get voters-reply :senders))))
                 (telega-ins--user-list voters)
                 (telega-ins "\n"))
               (telega-ins "\n")
@@ -1019,9 +1019,10 @@ preview, having media content, can be opened with media timestamp."
              (plist-get msg :id)))
 
     ;; NOTE: timestamp might refer media in the reply to message
-    (let ((reply-to-msg-id (plist-get msg :reply_to_message_id))
-          (reply-in-chat-id (or (plist-get msg :reply_in_chat_id)
-                                (plist-get msg :chat_id))))
+    (let* ((reply-to (plist-get msg :reply_to))
+           (reply-to-msg-id (plist-get reply-to :message_id))
+           (reply-in-chat-id (or (plist-get reply-to :chat_id)
+                                 (plist-get msg :chat_id))))
       (unless (and reply-in-chat-id reply-to-msg-id)
         (error "telega: no media message is associated with timestamp"))
 
@@ -1891,7 +1892,7 @@ By default `telega-translate-to-language-default' is used."
 (defun telega-msg--replied-message (msg)
   "Return message on which MSG depends."
   (or (plist-get msg :telega-replied-message)
-      (let* ((chat-id (plist-get msg :reply_in_chat_id))
+      (let* ((chat-id (plist-get msg :chat_id))
              (content (plist-get msg :content))
              (replied-msg-id
               (cl-case (telega--tl-type content)
@@ -1903,13 +1904,14 @@ By default `telega-translate-to-language-default' is used."
                  (setq chat-id (plist-get content :invoice_chat_id))
                  (plist-get content :invoice_message_id))
                 (t
-                 (plist-get msg :reply_to_message_id))))
+                 (when-let ((reply-to (plist-get msg :reply_to)))
+                   (when-let ((reply-chat-id (plist-get reply-to :chat_id)))
+                     (when reply-chat-id
+                       (setq chat-id reply-chat-id)))
+                   (plist-get reply-to :message_id)))))
              (replied-msg
-              (unless (zerop replied-msg-id)
-                (gethash (cons (if (zerop chat-id)
-                                   (plist-get msg :chat_id)
-                                 chat-id)
-                               replied-msg-id)
+              (unless (or (null replied-msg-id) (zerop replied-msg-id))
+                (gethash (cons chat-id replied-msg-id)
                          telega--cached-messages))))
         (when replied-msg
           (plist-put msg :telega-replied-message replied-msg))
@@ -1920,9 +1922,9 @@ By default `telega-translate-to-language-default' is used."
 Return `loading' is replied messages starts loading."
   (when (and (not (telega-msg-internal-p msg))
              (not (telega-msg--replied-message msg))
-             (or (not (zerop (plist-get msg :reply_to_message_id)))
-                 (telega-msg-match-p msg
-                   '(type PinMessage
+             (telega-msg-match-p msg
+               '(or is-reply
+                    (type PinMessage
                           GameScore
                           PaymentSuccessful
                           ForumTopicCreated
