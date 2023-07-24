@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2023-06-04 Вс 22:43 -->
+<!-- 2023-07-24 Пн 19:02 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.140)</title>
+<title>Telega Manual (v0.8.150)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.140)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.150)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -130,6 +130,7 @@
 <li><a href="#telega-active-video-chats-mode">telega-active-video-chats-mode</a></li>
 <li><a href="#telega-recognize-voice-message-mode">telega-recognize-voice-message-mode</a></li>
 <li><a href="#telega-auto-translate-mode">telega-auto-translate-mode</a></li>
+<li><a href="#telega-auto-download-mode-wip">telega-auto-download-mode (WIP)</a></li>
 <li><a href="#telega-play-media-sequence-mode"><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</a></li>
 <li><a href="#telega-root-auto-fill-mode">telega-root-auto-fill-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
@@ -330,7 +331,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.14.
+version greater or equal to 1.8.15.
 </p>
 
 <p>
@@ -787,7 +788,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org4926bf8">
+<pre class="example" id="org9510285">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -805,7 +806,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org751874e">
+<pre class="example" id="orgb9919de">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -897,7 +898,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orge985994">
+<pre class="example" id="org0e5650a">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -935,7 +936,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org8d38021">
+<pre class="example" id="orgbad7177">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1705,10 +1706,21 @@ Does not match bots, because bots are always online.
 Same as <code>(status "Online")</code> user temex.
 </p></dd>
 
-<dt>(contact [ <code>MUTUAL-P</code> ]), <kbd>/ c</kbd> (<code>telega-filter-by-contact</code>)</dt><dd>Matches private chats if corresponding user is a contact.
+<dt>(contact [ <code>MUTUAL-P</code> ]), <kbd>/ c</kbd> (<code>telega-filter-by-contact</code>)</dt><dd>Matches if user is in my contacts list.
 If <code>MUTUAL-P</code> is non-nil, then mach only if contact is mutual.</dd>
 
-<dt>(groups-in-common [ <code>N</code> ])</dt><dd>Matches if corresponding user has at least <code>N</code> groups in common with me.
+<dt>(no term)</dt><dd>is-close-friend
+Matches if user is my close friend.</dd>
+
+<dt>(no term)</dt><dd>(has-active-stories [ <code>UNREAD-P</code> ])
+Matches if user has non-expired stories available to you.
+If <code>UNREAD-P</code> is non-nil then match only if there is at least one unread
+non-expired story.</dd>
+
+<dt>(no term)</dt><dd>has-pinned-stories
+Matches if user has pinned stories.</dd>
+
+<dt>(groups-in-common [ <code>N</code> ])</dt><dd>Matches if user has at least <code>N</code> groups in common with me.
 By default <code>N</code> is 1.</dd>
 
 <dt>is-telega-patron</dt><dd>Matches if corresponding user is a telega patron.</dd>
@@ -1924,7 +1936,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0cd30bc">
+<pre class="example" id="org8eefb52">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2320,7 +2332,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="orgf11b713">
+<pre class="example" id="org17dc2d7">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2510,7 +2522,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgd703988">
+<pre class="example" id="orgd0b8668">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2542,7 +2554,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org3dba458">
+<pre class="example" id="orgda5aa99">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2761,7 +2773,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgd74acce">
+<pre class="example" id="orgb95a31f">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3180,7 +3192,11 @@ If point is at some message, then keep point on this message after reseting.</dd
 
 <dt><kbd>C-c C-r</kbd> (<code>telega-chatbuf-inplace-search-query</code>)</dt><dd>Inplace search backward for the <code>QUERY</code>.
 If <kbd>C-u</kbd> is given, search for the messages
-containing <code>QUERY</code> sent by specified sender.</dd>
+containing <code>QUERY</code> sent by specified sender.
+To navigate across searching results use
+<kbd>M-g p</kbd> and
+<kbd>M-g n</kbd>
+bindings.</dd>
 </dl>
 </div>
 </div>
@@ -3382,7 +3398,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org04abae6">
+<pre class="example" id="org8ba2f17">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3812,7 +3828,8 @@ Default value:
 Global minor mode to display <code>telega</code> status in system tray.  This
 mode requires appindicator support in the <code>telega-server</code>.  To add
 appindicator support to <code>telega-server</code>, please install
-<code>libappindicator3-dev</code> system package and rebuild <code>telega-server</code>
+<code>libappindicator3-dev</code> or <code>libayatana-appindicator3-dev</code>
+system package and rebuild <code>telega-server</code>
 with {{{kbd(M-x telega-server-build RET}}}.
 </p>
 
@@ -4294,6 +4311,62 @@ Default value: <code>nil</code>
 </div>
 </div>
 
+
+<div id="outline-container-telega-auto-download-mode-wip" class="outline-3">
+<h3 id="telega-auto-download-mode-wip"><a class="self-link" href="#telega-auto-download-mode-wip"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-auto-download-mode (WIP)</h3>
+<div class="outline-text-3" id="text-telega-auto-download-mode-wip">
+<p>
+Global minor mode to automatically download media files.
+Auto-download settings depends on network type currently used by
+<code>telega</code>.
+</p>
+
+<p>
+You can modify auto-download settings by changing network type with
+<kbd>M-x telega-set-network-type RET</kbd> command.
+</p>
+
+<p>
+Enable auto-download with <code>(telega-auto-download-mode 1)</code> or at
+<code>telega</code> load time:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(add-hook 'telega-load-hook 'telega-auto-download-mode)
+</pre>
+</div>
+
+<p>
+Customizable options:
+</p>
+<ul class="org-ul">
+<li><p>
+User Option: <code>telega-auto-download-settings-alist</code> 
+</p>
+
+<p>
+Alist with auto-download settings for different network types.
+car of the item is the network type symbol from
+<code>telega-tdlib-network-type-alist</code>, cdr is auto-download setting.
+Auto-download setting could be one of <code>:disabled</code>, <code>:low</code>, <code>:medium</code>
+or <code>:high</code> keyword denoting auto download preset or a plist with
+TDLib's autoDownloadSettings structure. 
+</p>
+
+<p>
+Default value: 
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">((roaming-mobile . <span style="font-weight: bold;">:disabled</span>)
+ (mobile . <span style="font-weight: bold;">:low</span>)
+ (wi-fi . <span style="font-weight: bold;">:medium</span>)
+ (other . <span style="font-weight: bold;">:high</span>))
+</pre>
+</div></li>
+</ul>
+</div>
+</div>
+
+
 <div id="outline-container-telega-play-media-sequence-mode" class="outline-3">
 <h3 id="telega-play-media-sequence-mode"><a class="self-link" href="#telega-play-media-sequence-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</h3>
 <div class="outline-text-3" id="text-telega-play-media-sequence-mode">
@@ -4380,7 +4453,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="orgf346906">
+<pre class="example" id="org48d460c">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

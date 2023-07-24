@@ -761,7 +761,7 @@ If MUTUAL-P is non-nil, then mach only if contact is mutual."
 
 ;;; ellit-org: user-temex
 ;; - (has-active-stories [ ~UNREAD-P~ ])
-;;   {{{temexdoc(user, has-active-stories 2)}}}
+;;   {{{temexdoc(user, has-active-stories, 2)}}}
 (define-telega-matcher user has-active-stories (user &optional unread-p)
   "Matches if user has non-expired stories available to you.
 If UNREAD-P is non-nil then match only if there is at least one unread
@@ -770,7 +770,7 @@ non-expired story."
 
 ;;; ellit-org: user-temex
 ;; - has-pinned-stories
-;;   {{{temexdoc(user, has-pinned-stories 2)}}}
+;;   {{{temexdoc(user, has-pinned-stories, 2)}}}
 (define-telega-matcher user has-pinned-stories (user)
   "Matches if user has pinned stories."
   (plist-get (telega--full-info user) :has_pinned_stories))

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.140)
+#+title: Telega Manual (v0.8.150)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -95,6 +95,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-active-video-chats-mode][telega-active-video-chats-mode]]
     - [[#telega-recognize-voice-message-mode][telega-recognize-voice-message-mode]]
     - [[#telega-auto-translate-mode][telega-auto-translate-mode]]
+    - [[#telega-auto-download-mode-wip][telega-auto-download-mode (WIP)]]
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
     - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
@@ -234,7 +235,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.14.
+version greater or equal to 1.8.15.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
@@ -1330,11 +1331,22 @@ Use ~telega-user-match-p~ to match a user.
   Same as ~(status "Online")~ user temex.
 
 - (contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
-     Matches private chats if corresponding user is a contact.
+     Matches if user is in my contacts list.
      If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
+- is-close-friend
+  Matches if user is my close friend.
+
+- (has-active-stories [ ~UNREAD-P~ ])
+  Matches if user has non-expired stories available to you.
+  If ~UNREAD-P~ is non-nil then match only if there is at least one unread
+  non-expired story.
+
+- has-pinned-stories
+  Matches if user has pinned stories.
+
 - (groups-in-common [ ~N~ ]) :: 
-     Matches if corresponding user has at least ~N~ groups in common with me.
+     Matches if user has at least ~N~ groups in common with me.
      By default ~N~ is 1.
 
 - is-telega-patron :: 
@@ -2382,6 +2394,10 @@ Chatbuf uses next bindings for message filtering:
      Inplace search backward for the ~QUERY~.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, search for the messages
      containing ~QUERY~ sent by specified sender.
+     To navigate across searching results use
+     @@html:<kbd>@@M-g p@@html:</kbd>@@ and
+     @@html:<kbd>@@M-g n@@html:</kbd>@@
+     bindings.
 
 ** Opening files using external programs
 :PROPERTIES:
@@ -2798,7 +2814,8 @@ Customizable options:
 Global minor mode to display =telega= status in system tray.  This
 mode requires appindicator support in the =telega-server=.  To add
 appindicator support to =telega-server=, please install
-=libappindicator3-dev= system package and rebuild =telega-server=
+=libappindicator3-dev= or =libayatana-appindicator3-dev=
+system package and rebuild =telega-server=
 with {{{kbd(M-x telega-server-build RET}}}.
 
 Screenshot of system tray with enabled =telega= appindicator:
@@ -3099,6 +3116,44 @@ Customizable options:
   If nil, then use language suggested by the server. 
 
   Default value: ~nil~
+
+
+** telega-auto-download-mode (WIP)
+:PROPERTIES:
+:CUSTOM_ID: telega-auto-download-mode-wip
+:END:
+
+Global minor mode to automatically download media files.
+Auto-download settings depends on network type currently used by
+=telega=.
+
+You can modify auto-download settings by changing network type with
+@@html:<kbd>@@M-x telega-set-network-type RET@@html:</kbd>@@ command.
+
+Enable auto-download with ~(telega-auto-download-mode 1)~ or at
+=telega= load time:
+#+begin_src emacs-lisp
+  (add-hook 'telega-load-hook 'telega-auto-download-mode)
+#+end_src
+
+Customizable options:
+- User Option: ~telega-auto-download-settings-alist~ 
+
+  Alist with auto-download settings for different network types.
+  car of the item is the network type symbol from
+  ~telega-tdlib-network-type-alist~, cdr is auto-download setting.
+  Auto-download setting could be one of ~:disabled~, ~:low~, ~:medium~
+  or ~:high~ keyword denoting auto download preset or a plist with
+  TDLib's autoDownloadSettings structure. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    ((roaming-mobile . :disabled)
+     (mobile . :low)
+     (wi-fi . :medium)
+     (other . :high))
+  #+end_src
+
 
 ** TODO telega-play-media-sequence-mode
 :PROPERTIES:
