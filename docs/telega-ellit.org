@@ -158,6 +158,22 @@ into =/usr/local/lib=.  If you have TDLib installed in other location,
 don't forget to modify ~telega-server-libs-prefix~ before starting
 =telega=.
 
+For Linux users, make sure ~/usr/local/lib~ is in your ldconfig cache,
+otherwise telega server build will fail.
+
+** Updating telega and TDLib
+
+If you use =telega= from master and update it from time to time it
+might ask you to update/rebuild TDLib and =telega-server=.  To update
+TDLib and rebuild telega-server do next:
+
+1. Fetch, rebuild and reinstall updated TDLib as described above
+2. On Linux run =$ sudo ldconfig= to refresh ldconfig cache
+3. Run =$ make server-reinstall= in the =telega.el= sources directory
+   to rebuild and reinstall =telega-server=
+
+Now you are ready to run updated =telega=.
+
 ** Installing telega and TDLib from [[https://guix.gnu.org/][GNU Guix]]
 
 =telega= and =TDLib= are both available in GNU Guix. If you have a
@@ -1164,7 +1180,7 @@ project.
 
 #+ELLIT-INCLUDE: ../contrib/telega-dashboard.el
 
-#+ELLIT-INCLUDE: ../contrib/telega-stories.el
+#+ELLIT-INCLUDE: ../contrib/telega-emacs-stories.el
 
 #+ELLIT-INCLUDE: ../contrib/telega-transient.el
 

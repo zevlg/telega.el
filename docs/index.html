@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2023-07-24 Пн 19:02 -->
+<!-- 2023-08-06 Вс 13:21 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Telega Manual (v0.8.150)</title>
@@ -47,6 +47,7 @@
 <li><a href="#linux-users">Linux users</a></li>
 <li><a href="#windows-10-users">Windows 10 users</a></li>
 <li><a href="#building-tdlib">Building TDLib</a></li>
+<li><a href="#updating-telega-and-tdlib">Updating telega and TDLib</a></li>
 <li><a href="#installing-telega-and-tdlib-from-gnu-guix">Installing telega and TDLib from GNU Guix</a></li>
 <li><a href="#installing-telega-from-melpa">Installing telega from MELPA</a></li>
 <li><a href="#installing-telega-directly-from-github">Installing telega directly from GitHub</a></li>
@@ -146,7 +147,7 @@
 <li><a href="#telega-live-locationel--manage-live-location-in-telega-using-geoel"><i>telega-live-location.el</i> &#x2013; Manage live location in Telega using geo.el</a></li>
 <li><a href="#telega-mnzel--display-emacs-content-inside-telega-messages"><i>telega-mnz.el</i> &#x2013; Display Emacs content inside Telega messages.</a></li>
 <li><a href="#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard"><i>telega-dashboard.el</i> &#x2013; Important telega chats in the Emacs dashboard</a></li>
-<li><a href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
+<li><a href="#telega-emacs-storiesel--display-emacs-stories-in-the-dashboard"><i>telega-emacs-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</a></li>
 <li><a href="#telega-transientel--transient-magit-like-style-commands-for-telega"><i>telega-transient.el</i> &#x2013; Transient (magit-like style) commands for telega</a></li>
 <li><a href="#telega-adblockel--block-advertisement-messages"><i>telega-adblock.el</i> &#x2013; Block advertisement messages</a></li>
 <li><a href="#telega-channels-exportel--export-telegam-channels-to-opml"><i>telega-channels-export.el</i> &#x2013; Export Telegam channels to OPML</a></li>
@@ -401,6 +402,33 @@ It will install headers to <code>/usr/local/include</code> and library itself
 into <code>/usr/local/lib</code>.  If you have TDLib installed in other location,
 don't forget to modify <code>telega-server-libs-prefix</code> before starting
 <code>telega</code>.
+</p>
+
+<p>
+For Linux users, make sure <code>/usr/local/lib</code> is in your ldconfig cache,
+otherwise telega server build will fail.
+</p>
+</div>
+</div>
+
+<div id="outline-container-updating-telega-and-tdlib" class="outline-3">
+<h3 id="updating-telega-and-tdlib"><a class="self-link" href="#updating-telega-and-tdlib"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Updating telega and TDLib</h3>
+<div class="outline-text-3" id="text-updating-telega-and-tdlib">
+<p>
+If you use <code>telega</code> from master and update it from time to time it
+might ask you to update/rebuild TDLib and <code>telega-server</code>.  To update
+TDLib and rebuild telega-server do next:
+</p>
+
+<ol class="org-ol">
+<li>Fetch, rebuild and reinstall updated TDLib as described above</li>
+<li>On Linux run <code>$ sudo ldconfig</code> to refresh ldconfig cache</li>
+<li>Run <code>$ make server-reinstall</code> in the <code>telega.el</code> sources directory
+to rebuild and reinstall <code>telega-server</code></li>
+</ol>
+
+<p>
+Now you are ready to run updated <code>telega</code>.
 </p>
 </div>
 </div>
@@ -788,7 +816,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org9510285">
+<pre class="example" id="orgf1177ff">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -806,7 +834,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgb9919de">
+<pre class="example" id="orga0c83c1">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -898,7 +926,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org0e5650a">
+<pre class="example" id="org35444d9">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -936,7 +964,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgbad7177">
+<pre class="example" id="org70b8336">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1936,7 +1964,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org8eefb52">
+<pre class="example" id="org4d6420d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2332,7 +2360,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org17dc2d7">
+<pre class="example" id="org46e22c9">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2522,7 +2550,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgd0b8668">
+<pre class="example" id="org4d13229">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2554,7 +2582,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgda5aa99">
+<pre class="example" id="org1a7e8aa">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2773,7 +2801,7 @@ reply/edit and press
 <p>
 Aux prompt will be show just above the chatbuf prompt, such as:
 </p>
-<pre class="example" id="orgb95a31f">
+<pre class="example" id="org3c9fe5e">
 [✕]| Reply: @demash&gt; Trying to install telega  M-x packag…
 (T)&gt;&gt;&gt;
 </pre>
@@ -3398,7 +3426,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org8ba2f17">
+<pre class="example" id="org4d9a0c9">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4453,7 +4481,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org48d460c">
+<pre class="example" id="org7fd99aa">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
@@ -4768,9 +4796,9 @@ Default value: <code>telega-ins--chat-full</code>
 </div>
 </div>
 
-<div id="outline-container-telega-storiesel--display-emacs-stories-in-the-dashboard" class="outline-3">
-<h3 id="telega-storiesel--display-emacs-stories-in-the-dashboard"><a class="self-link" href="#telega-storiesel--display-emacs-stories-in-the-dashboard"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
-<div class="outline-text-3" id="text-telega-storiesel--display-emacs-stories-in-the-dashboard">
+<div id="outline-container-telega-emacs-storiesel--display-emacs-stories-in-the-dashboard" class="outline-3">
+<h3 id="telega-emacs-storiesel--display-emacs-stories-in-the-dashboard"><a class="self-link" href="#telega-emacs-storiesel--display-emacs-stories-in-the-dashboard"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><i>telega-emacs-stories.el</i> &#x2013; Display Emacs Stories in the dashboard</h3>
+<div class="outline-text-3" id="text-telega-emacs-storiesel--display-emacs-stories-in-the-dashboard">
 <p>
 Emacs Stories: share your Emacs experience with other Emacs users.
 </p>
@@ -4781,17 +4809,17 @@ dashboard.  Enable it with:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-stories</span>)
-(telega-stories-mode 1)
+<pre class="src src-emacs-lisp">(<span style="font-weight: bold;">require</span> '<span style="font-weight: bold; text-decoration: underline;">telega-emacs-stories</span>)
+(telega-emacs-stories-mode 1)
 <span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">"Emacs Stories" rootview</span>
 (define-key telega-root-mode-map (kbd <span style="font-style: italic;">"v e"</span>) 'telega-view-emacs-stories)
 <span style="font-weight: bold; font-style: italic;">;; </span><span style="font-weight: bold; font-style: italic;">Emacs Dashboard</span>
-(add-to-list 'dashboard-items '(telega-stories . 5))
+(add-to-list 'dashboard-items '(telega-emacs-stories . 5))
 </pre>
 </div>
 
 <p>
-Apart from dashboard, <code>telega-stories</code> provides "Emacs Stories"
+Apart from dashboard, <code>telega-emacs-stories</code> provides "Emacs Stories"
 <a href="https://zevlg.github.io/telega.el/#rootbuf-view-switching">Root
 View</a>.  To enable this view execute <kbd>M-x telega-view-emacs-stories RET</kbd> in the root buffer.
 </p>
@@ -4799,7 +4827,7 @@ View</a>.  To enable this view execute <kbd>M-x telega-view-emacs-stories RET</k
 <p>
 If you see inappropriate content in some Emacs Story, please report
 this story by pressing
-<kbd>!</kbd> (<code>telega-stories-msg-report</code>) on
+<kbd>!</kbd> (<code>telega-emacs-stories-msg-report</code>) on
 the story.
 </p>
 
@@ -4809,7 +4837,7 @@ image property support.
 </p>
 
 <p>
-Screenshots of <code>telega-stories</code> in action:
+Screenshots of <code>telega-emacs-stories</code> in action:
 <img src="https://zevlg.github.io/telega/emacs-stories-dashboard.png" alt="emacs-stories-dashboard.png" />
 </p>
 
@@ -4823,7 +4851,7 @@ Customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-stories-show</code> 
+User Option: <code>telega-emacs-stories-show</code> 
 </p>
 
 <p>
@@ -4834,18 +4862,18 @@ Show <code>all</code> or only <code>unread</code> stories.
 Default value: <code>unread</code>
 </p></li>
 <li><p>
-User Option: <code>telega-stories-height</code> 
+User Option: <code>telega-emacs-stories-height</code> 
 </p>
 
 <p>
-Height in chars for Emacs Stories buttons 
+Height in chars for Emacs Stories buttons. 
 </p>
 
 <p>
 Default value: <code>6</code>
 </p></li>
 <li><p>
-User Option: <code>telega-stories-notify-if</code> 
+User Option: <code>telega-emacs-stories-notify-if</code> 
 </p>
 
 <p>
@@ -4856,7 +4884,7 @@ Pop notification on new story if stories chat matches this Chat Filter.
 Default value: <code>(not unmuted)</code>
 </p></li>
 <li><p>
-User Option: <code>telega-stories-preload-content</code> 
+User Option: <code>telega-emacs-stories-preload-content</code> 
 </p>
 
 <p>
@@ -4867,7 +4895,7 @@ Preload content when Emacs Story is inserted, so can be viewed instantly.
 Default value: <code>t</code>
 </p></li>
 <li><p>
-User Option: <code>telega-stories-root-view-count</code> 
+User Option: <code>telega-emacs-stories-root-view-count</code> 
 </p>
 
 <p>
@@ -4878,7 +4906,7 @@ Number of Emacs Stories to show in "Emacs Stories" rootview.
 Default value: <code>12</code>
 </p></li>
 <li><p>
-User Option: <code>telega-stories-root-view-keep-viewed</code> 
+User Option: <code>telega-emacs-stories-root-view-keep-viewed</code> 
 </p>
 
 <p>
