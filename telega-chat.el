@@ -26,6 +26,13 @@
 ;; to send.  Press
 ;; {{{where-is(telega-describe-message,telega-msg-button-map)}}} to
 ;; get detailed description of the message at point.
+;; 
+;; Note for
+;; [[https://en.wikipedia.org/wiki/Right-to-left_script][RTL]] users:
+;; unlike rootbuf, chatbufs disables bidirectional display reordering
+;; by default, so RTL text will look reversed in chatbufs.  To enable
+;; bidi in chatbufs customize your
+;; ~telega-chat-bidi-display-reordering~ user option.
 
 ;;; Code:
 (require 'cl-lib)

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.150)
+#+title: Telega Manual (v0.8.151)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1827,6 +1827,13 @@ consists of a list of chat messages and an input for your messages
 to send.  Press
 @@html:<kbd>@@i@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <describe>@@html:</kbd>@@ (~telega-describe-message~) to
 get detailed description of the message at point.
+
+Note for
+[[https://en.wikipedia.org/wiki/Right-to-left_script][RTL]] users:
+unlike rootbuf, chatbufs disables bidirectional display reordering
+by default, so RTL text will look reversed in chatbufs.  To enable
+bidi in chatbufs customize your
+~telega-chat-bidi-display-reordering~ user option.
 
 Important customizable options:
 - User Option: ~telega-chat-fill-column~ 
