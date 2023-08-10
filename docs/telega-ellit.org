@@ -653,7 +653,7 @@ Markup syntax table:
 | *bold text*      | ~**bold text**~                  | ~*bold text*~                      | ~*bold text*~                    |
 | /italic text/    | ~__italic text__~                | ~/italic text/~                    | ~_italic text_~                  |
 | _underline text_ | ~__underline text__~             | ~_underline text_~                 | **UNSUPPORTED**                  |
-| +strike through+ | ~~strike through~~               | ~+strike through+~                 | **UNSUPPORTED**                  |
+| +strike through+ | ~~~strike through~~~             | ~+strike through+~                 | **UNSUPPORTED**                  |
 |                  | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~                      | **UNSUPPORTED**                  |
 | ~inlined code~   | ~`inlined code`~                 | ~~inlined code~~                   | ~`inlined code`~                 |
 | =pre text=       | ~```pre text```~                 | ~=pre text=~                       | **UNSUPPORTED**                  |
