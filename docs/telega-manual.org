@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.151)
+#+title: Telega Manual (v0.8.152)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1287,8 +1287,11 @@ Use ~telega-msg-match-p~ to match a message.
 - has-chosen-reaction :: 
      Matches if message has a reaction chosen by me.
 
-- is-reply :: 
-     Matches if message is a reply message.
+- is-reply-to-msg :: 
+     Matches if message is a reply to some message.
+
+- is-reply-to-story :: 
+     Matches if message is a reply to a story.
 
 - post-with-comments :: 
      Matches if message is a channel post that can be commented.
@@ -1482,7 +1485,7 @@ Use ~telega-topic-match-p~ to match a forum's topic.
 
 - User Option: ~telega-use-tracking-for~ 
 
-  Specifies Chat Filter for chats to be tracked with tracking.el.
+  Specifies Chat Temex for chats to be tracked with tracking.el.
   Make sure you have tracking.el loaded if this option is used.
   Only chats with corresponding opened chatbuf are tracked.
   Tracking notifications for telega buffers will use the
@@ -3597,7 +3600,7 @@ Customizable options:
 
   Message's matching this temex will be allowed. 
 
-  Default value: ~(or is-reply post-with-comments)~
+  Default value: ~(or is-reply-to-msg is-reply-to-story post-with-comments)~
 
 ** /telega-channels-export.el/ -- Export Telegam channels to OPML
 :PROPERTIES:
