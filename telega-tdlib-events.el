@@ -29,6 +29,7 @@
 (require 'telega-chat)
 (require 'telega-inline)
 (require 'telega-topic)
+(require 'telega-story)
 
 (defvar tracking-buffers nil)
 (declare-function telega--authorization-ready "telega")
@@ -922,12 +923,17 @@ messages."
        (let ((err (plist-get state :error))
              (user (telega-user-get (plist-get call :user_id))))
          (message "Error[%d] calling %s: %s" (plist-get err :code)
-                  (telega-user--name user) (plist-get err :message))))
+                  (telega-msg-sender-title user
+                    :with-avatar-p t
+                    :with-username-p t)
+                  (plist-get err :message))))
 
       (callStateDiscarded
        (let ((discard (plist-get state :reason))
              (user (telega-user-get (plist-get call :user_id))))
-         (message "Call %s discarded: %s" (telega-user--name user)
+         (message "Call %s discarded: %s" (telega-msg-sender-title user
+                                            :with-avatar-p t
+                                            :with-username-p t)
                   (substring (plist-get discard :@type) 17))))
       )
 
@@ -1442,6 +1448,43 @@ Please downgrade TDLib and recompile `telega-server'"
     (plist-put chat :telega-add-member-forbidden-users users)
     (with-telega-chatbuf chat
       (telega-chatbuf--footer-update))
+    ))
+
+;; Stories
+(defun telega--on-updateStory (event)
+  (telega-story--ensure (plist-get event :story)))
+
+(defun telega--on-updateStoryDeleted (event)
+  "A story became inaccessible."
+  (let* ((chat-id (plist-get event :story_sender_chat_id))
+         (story-id (plist-get event :story_id))
+         (story (telega-story-get chat-id story-id 'offline)))
+    (unless story
+      (setq story (list :sender_chat_id chat-id
+                        :id story-id)))
+
+    (setf (telega-story-deleted-p story) t)
+    (telega-story--ensure story)))
+
+(defun telega--on-updateChatActiveStories (event)
+  "The list of active stories posted by a specific chat has changed."
+  (let* ((active-stories (plist-get event :active_stories))
+         (chat-id (plist-get active-stories :chat_id)))
+    (puthash chat-id active-stories telega--chat-active-stories)
+
+    (with-telega-chatbuf (telega-chat-get chat-id)
+      (telega-chatbuf--footer-update))))
+
+(defun telega--on-updateStoryListChatCount (event)
+  "Number of chats in a story list has changed."
+  (let ((story-list (plist-get event :story_list))
+        (chat-count (plist-get event :chat_count)))
+
+    (plist-put telega--story-list-chat-count
+               (cl-ecase (telega--tl-type story-list)
+                 (storyListMain 'main)
+                 (storyListArchive 'archive))
+               chat-count)
     ))
 
 (provide 'telega-tdlib-events)

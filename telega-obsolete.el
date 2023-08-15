@@ -193,6 +193,11 @@
                            'telega-auto-download-settings-alist
                            "0.8.150")
 
+;; By https://github.com/zevlg/telega.el/issues/423
+(telega-obsolete--variable 'telega-company-username-prefer-username
+                           'telega-company-username-prefer-name
+                           "0.8.152")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

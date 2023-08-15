@@ -345,17 +345,20 @@ Return non-nil if url has been handled."
                     (eval-when-compile
                       (rx (and line-start "/"
                                (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))
-                               (? "/" (group (1+ digit))))))
+                               (? "/" (group (1+ digit)))
+                               line-end)))
                     path)
                    (concat "tg:resolve?domain=" (match-string 1 path)
                            (when (match-string 2 path)
                              (concat "&post=" (match-string 2 path)))
-                           (when query (concat "&" query)))))))
-      (cond (just-convert tg)
+                           (when query (concat "&" query))))))
+           (tdlib-link (unless tg
+                         (telega--getInternalLinkType url))))
+      (cond (just-convert (or tg tdlib-link))
             (tg (telega-tme-open-tg tg) t)
-            (t
-             (telega-debug "WARN: Can't open \"%s\" internally" url)
-             nil)))))
+            (tdlib-link (telega-tme-open-tdlib-link tdlib-link) t)
+            (t (telega-debug "WARN: Can't open \"%s\" internally" url)
+               nil)))))
 
 (defun telega-tme-open-tdlib-link (tdlib-link)
   "Open TDLib's internal link.
@@ -376,7 +379,14 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        ;; Now wait till [START] is pressed
        ))
     (internalLinkTypeMessage
-     (telega-tme-open (plist-get tdlib-link :url)))
+     (let* ((msg-info (telega--getMessageLinkInfo (plist-get tdlib-link :url)))
+            (chat-id (plist-get msg-info :chat_id))
+            (thread-id (plist-get msg-info :message_thread_id))
+            (msg (plist-get msg-info :message)))
+       (if (zerop thread-id)
+           (telega-msg-goto-highlight msg)
+         (telega-chat--goto-thread (telega-chat-get chat-id) thread-id
+                                   (plist-get msg :id)))))
 
     (internalLinkTypeActiveSessions
      )
@@ -401,6 +411,13 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
     (internalLinkTypeChatFolderInvite
      ;; TODO
      )
+
+    (internalLinkTypeStory
+     (let* ((chat (telega--searchPublicChat
+                      (plist-get tdlib-link :story_sender_username)))
+            (story (telega--getStory
+                       (plist-get chat :id) (plist-get tdlib-link :story_id))))
+       (telega-story-open story)))
     ))
 
 (provide 'telega-tme)

@@ -95,13 +95,13 @@ Have Stoploss 690 Satoshi." :entities []))))
   "Test info related functionality."
   (let ((user1 (telega-user-get 22220))
         (user2 (telega-user-get 22221)))
-    (should (string= (telega-user-title user1) "Vasya Pupkin @vpupkin"))
-    (should (string= (telega-user-title user1 'full) "Vasya Pupkin @vpupkin"))
-    (should (string= (telega-user-title user1 'name) "Vasya Pupkin"))
-    (should (string= (telega-user-title user1 'short) "@vpupkin"))
+    (should (string= (telega-user-title user1 'full-name) "Vasya Pupkin"))
+    (should (string= (telega-user-title user1 'first-name) "Vasya"))
+    (should (string= (telega-user-title user1 'last-name) "Pupkin"))
+    (should (string= (telega-user-title user1 'username) "@vpupkin"))
 
-    ;; test fallback to 'name if username is empty
-    (should (string= (telega-user-title user2 'short) "Petya Siskin"))
+    ;; If no username is specified, `telega-user-title' must return nil
+    (should (eq (telega-user-title user2 'username) nil))
   ))
 
 (ert-deftest telega-filters ()

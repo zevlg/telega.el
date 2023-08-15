@@ -99,7 +99,8 @@ the rootbuf."
   :options '((contains "#advert"))
   :group 'telega-adblock)
 
-(defcustom telega-adblock-allow-msg-temex '(or is-reply post-with-comments)
+(defcustom telega-adblock-allow-msg-temex
+  '(or is-reply-to-msg is-reply-to-story post-with-comments)
   "Message's matching this temex will be allowed."
   :type 'list
   :group 'telega-adblock)

@@ -113,8 +113,8 @@
                                  :domain (propertize
                                           (telega-tl-str url-info :domain)
                                           'face 'bold)
-                                 :user (telega-user--name
-                                        (telega-user-get telega--me-id)))
+                                 :user (telega-msg-sender-title (telega-user-me)
+                                         :with-username-p t))
                                "? ")))
              (let ((write-p (when (and (memq telega-inline-login-url-action
                                              '(query-all
@@ -123,10 +123,11 @@
                               (y-or-n-p
                                (concat (telega-i18n "lng_url_auth_allow_messages"
                                          :bot (propertize
-                                               (telega-user--name
+                                               (telega-msg-sender-title
                                                 (telega-user-get
                                                  (plist-get
-                                                  url-info :bot_user_id)))
+                                                  url-info :bot_user_id))
+                                                :with-username-p t)
                                                'face 'bold))
                                        "? ")))))
                (setq url (plist-get (telega--getLoginUrl msg kbd-type write-p)
@@ -512,7 +513,7 @@
    (lambda (users)
      (setq telega--recent-inline-bots
            (mapcar (lambda (user)
-                     (telega-user-title user 'short))
+                     (telega-user-title user 'username))
                    users)))))
 
 (provide 'telega-inline)

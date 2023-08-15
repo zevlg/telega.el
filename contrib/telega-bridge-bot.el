@@ -502,9 +502,8 @@ ARGS is the arguments passed the the FUN."
     (if-let* ((modified? (plist-get msg :telega-bridge-bot-modified))
               (sender (telega-msg-sender msg))
               (sender-name
-               (concat
-                (telega-user-title sender 'name) " "
-                (telega-msg-sender-username sender 'with-@))))
+               (when (telega-user-p sender)
+                 (telega-user-title sender 'full-name-and-username))))
         ;; if msg sender is a bridge bot then we want to display
         ;; the user title and the username in one line message
         (cl-letf (((symbol-function 'telega-msg-sender-username)

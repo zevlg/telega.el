@@ -998,6 +998,28 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
  ("lng_media_file_title"
   :value "Files")
 
+ ;; media types
+ ("lng_in_dlg_photo"
+  :value "Photo")
+ ("lng_in_dlg_video"
+  :value "Video")
+ ("lng_in_dlg_file"
+  :value "File")
+ ("lng_in_dlg_audio_file"
+  :value "Audio file")
+ ("lng_in_dlg_sticker"
+  :value "Sticker")
+ ("lng_in_dlg_audio"
+  :value "Voice message")
+ ("lng_in_dlg_video_message"
+  :value "Video message")
+ ("lng_in_dlg_contact"
+  :value "Contact")
+ ("lng_in_dlg_story"
+  :value "Story")
+ ("lng_in_dlg_story_expired"
+  :value "Expired story")
+
  ;; Edited
  ("lng_edited"
   :value "edited")
@@ -1032,9 +1054,17 @@ You can send them an invite link as message instead.")
   :value "Last i18n Entry")
 
  ;; Stories
+ ("lng_stories_my_name"
+  :value "My Story")
+ ("lng_view_button_story"
+  :value "View story")
  ("lng_contacts_stories_status"
   :one_value "{count} story"
   :other_value "{count} stories")
  ("lng_forwarded_story"
   :value "Story from {user}")
+ ("lng_forwarded_story_expired"
+  :value "This story has expired.")
+ ("lng_deleted_story"
+  :value "Deleted story")
  )

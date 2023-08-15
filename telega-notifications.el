@@ -345,7 +345,9 @@ FORCE is used for testing only, should not be used in real code."
                         :timeout 0
                         ;; I18N: lng_call_incoming
                         :title "Incoming call"
-                        :body (format "from %s" (telega-user--name user)))))
+                        :body (format "from %s" (telega-msg-sender-title user
+                                                  :with-avatar-p t
+                                                  :with-username-p t)))))
     (telega-notifications--notify
      (nconc notargs telega-notifications-call-args))))
 

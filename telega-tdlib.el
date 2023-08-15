@@ -2104,6 +2104,13 @@ TDLib 1.7.8"
          :link link-url)
    callback))
 
+(defun telega--getMessageLinkInfo (msg-url &optional callback)
+  "Return information about a public or private message link."
+  (telega-server--call
+   (list :@type "getMessageLinkInfo"
+         :url msg-url)
+   callback))
+
 (cl-defun telega--viewMessages (chat messages &key source force)
   "Mark CHAT's MESSAGES as read.
 Use non-nil value for FORCE, if messages in closed chats should
@@ -2712,6 +2719,78 @@ Requires owner privileges."
    (list :@type "getRecentlyOpenedChats"
          :limit (or limit 50))
    callback))
+
+;;; Stories
+(defun telega--getStory (chat-id story-id &optional only-local-p callback)
+  "Returns a story denoted by CHAT-ID and STORY-ID."
+  (declare (indent 3))
+  (with-telega-server-reply (reply)
+      (progn
+        (when (telega--tl-error-p reply)
+          (plist-put reply :sender_chat_id chat-id)
+          (plist-put reply :id story-id)
+          (setf (telega-story-deleted-p reply) t))
+        (telega-story--ensure reply 'no-root-update))
+
+    (list :@type "getStory"
+          :story_sender_chat_id chat-id
+          :story_id story-id
+          :only_local (if only-local-p t :false))
+    callback))
+
+(defun telega--setStoryPrivacySettings (my-story story-privacy-settings)  
+  "Change privacy settings of a previously sent MY-STORY."
+  (telega-server--send
+   (list :@type "setStoryPrivacySettings"
+         :story_id (plist-get my-story :id)
+         :privacy_settings story-privacy-settings)))
+
+(defun telega--toggleStoryIsPinned (my-story &optional pinned-p)
+  "Toggle whether a MY-STORY is accessible after expiration."
+  (telega-server--send
+   (list :@type "toggleStoryIsPinned"
+         :story_id (plist-get my-story :id)
+         :is_pinned (if pinned-p t :false))))
+
+(defun telega--deleteStory (story)
+  "Delete a previously sent STORY."
+  (telega-server--send
+   (list :@type "deleteStory"
+         :story_id (plist-get story :id))))
+
+(defun telega--getStoryNotificationSettingsExceptions (&optional callback)
+  "Return list of chats with non-default notification settings for stories."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    '(:@type "getStoryNotificationSettingsExceptions")
+    callback))
+
+(defun telega--loadActiveStories (story-list)
+  "Loads more active stories from a story list.
+The loaded stories will be sent through updates."
+  (telega-server--send
+   (list :@type "loadActiveStories"
+         :story_list story-list)))
+
+(defun telega--getChatActiveStories (chat &optional callback)
+  "Return the list of active stories posted by the given chat."
+  (telega-server--call
+   (list :@type "getChatActiveStories"
+         :chat_id (plist-get chat :id))
+   callback))
+
+(defun telega--openStory (story)
+  (telega-server--call
+   (list :@type "openStory"
+         :story_sender_chat_id (plist-get story :sender_chat_id)
+         :story_id (plist-get story :id))))
+
+(defun telega--closeStory (story)
+  (telega-server--call
+   (list :@type "closeStory"
+         :story_sender_chat_id (plist-get story :sender_chat_id)
+         :story_id (plist-get story :id))))
 
 (provide 'telega-tdlib)
 

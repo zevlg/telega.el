@@ -443,7 +443,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     (when-let ((creator-id (plist-get full-info :creator_user_id))
                (creator (unless (zerop creator-id)
                           (telega-user-get creator-id))))
-      (telega-ins "Created: " (telega-user--name creator) "  ")
+      (telega-ins "Created: ")
+      (telega-ins--msg-sender creator
+        :with-avatar-p t
+        :with-username-p t
+        :with-brackets-p t)
+      (telega-ins "  ")
       (when-let ((creator-member
                   (cl-find creator members :key #'telega-msg-sender)))
         (telega-ins--date (plist-get creator-member :joined_chat_date))

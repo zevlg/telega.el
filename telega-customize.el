@@ -165,7 +165,7 @@ Resulting string must be no longer then 8 chars. Format specifiers:
   :group 'telega)
 
 (defcustom telega-use-tracking-for nil
-  "*Specifies Chat Filter for chats to be tracked with tracking.el.
+  "*Specifies Chat Temex for chats to be tracked with tracking.el.
 Make sure you have tracking.el loaded if this option is used.
 Only chats with corresponding opened chatbuf are tracked.
 Tracking notifications for telega buffers will use the
@@ -1209,11 +1209,14 @@ Done by recentering point in the chatbuf."
   :type 'list
   :group 'telega-company)
 
-(defcustom telega-company-username-prefer-username t
-  "Non-nil to prefer username for the username completion.
-Set to nil to complete user to a username or full name depending on input."
-  :package-version '(telega . "0.8.121")
-  :type 'boolean
+(defcustom telega-company-username-prefer-name '(username first-name last-name)
+  "Preferred formatting argument to the `telega-user-title' to complete user.
+Frist giving non-nil result will be used."
+  :package-version '(telega . "0.8.152")
+  :type '(list (choice (const :tag "Username" username)
+                       (const :tag "First Name" first-name)
+                       (const :tag "Last Name" last-name)
+                       (const :tag "Full Name" full-name)))
   :group 'telega-company)
 
 
@@ -1469,16 +1472,21 @@ timespan, then do not group messages."
   :group 'telega-chat)
 
 (defcustom telega-chat-mode-line-format
-  '((:eval (telega-chatbuf-mode-line-video-chat 20))
+  '(
+    ;; NOTE: Truncate buffer name to 32 chars
+    (-32 (:eval (propertized-buffer-identification "%b")))
+    (:eval (telega-chatbuf-mode-line-online-status))
+    (:eval (telega-chatbuf-mode-line-messages-ttl))
+    (:eval (telega-chatbuf-mode-line-video-chat 20))
     (:eval (telega-chatbuf-mode-line-discuss))
     (:eval (telega-chatbuf-mode-line-unread))
     (:eval (telega-chatbuf-mode-line-marked))
     (:eval (telega-chatbuf-mode-line-members 'use-icons))
     (:eval (telega-chatbuf-mode-line-pinned-or-thread-msg 20))
     (:eval (telega-chatbuf-mode-line-messages-filter)))
-  "Additional mode line format for chat buffer identification.
+  "Mode line format for chat buffer identification.
 See `mode-line-buffer-identification'."
-  :package-version '(telega . "0.7.35")
+  :package-version '(telega . "0.8.151")
   :type 'sexp
   :group 'telega-chat)
 

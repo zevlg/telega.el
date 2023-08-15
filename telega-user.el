@@ -110,57 +110,56 @@ user is fetched from server."
   "Return non-nil if USER is bot."
   (eq (telega-user--type user) 'bot))
 
-(defun telega-user-title (user &optional fmt-type)
-  "Return name for the USER.
+(defun telega-user-title (user fmt-type)
+  "Return formatted title for the USER.
 Format name using FMT-TYPE, one of:
-  `name' - Uses only first and last names
-  `short' - Uses username if set, name otherwise
-  `full' - Uses all available namings
-Default is: `full'"
+  `first-name' - Uses only first name.
+  `last-name' - Uses only last name.
+  `full-name' - Uses only first and last name.
+  `username' - Uses username only.
+Return nil if given FMT-TYPE is not available."
   ;; NOTE: USER might be of "contact" type
-  (let ((user-p (eq (telega--tl-type user) 'user))
-        (fmt-type (or fmt-type 'full))
-        (name ""))
-    (if (and user-p (telega-user-match-p user 'is-deleted))
-        ;; I18N: deleted -> Deleted Account
-        (setq name (format "%s-%d" (telega-i18n "lng_deleted")
-                           (plist-get user :id)))
+  (let* ((user-p (eq (telega--tl-type user) 'user))
+         (name (cond ((and user-p (telega-user-match-p user 'is-deleted))
+                      ;; I18N: deleted -> Deleted Account
+                      (format "%s-%d" (telega-i18n "lng_deleted")
+                              (plist-get user :id)))
+                     ((eq fmt-type 'first-name)
+                      (telega-tl-str user :first_name))
+                     ((eq fmt-type 'last-name)
+                      (telega-tl-str user :last_name))
+                     ((eq fmt-type 'full-name)
+                      (let ((first-name (telega-tl-str user :first_name))
+                            (last-name (telega-tl-str user :last_name)))
+                        (concat first-name
+                                (when first-name
+                                  " ")
+                                last-name)))
+                     ((eq fmt-type 'username)
+                      (when-let ((un (telega-msg-sender-username user)))
+                        (concat "@" un)))
+                     (t
+                      (error "Invalid FMT-TYPE for `telega-user-title': %S"
+                             fmt-type)))))
 
-      ;; Existing user or a contact
-      (when (memq fmt-type '(full short))
-        (if-let ((un (telega-msg-sender-username user)))
-            (setq name (concat "@" un))
-          ;; Change format in case `:username' is unavailable
-          (when (eq fmt-type 'short)
-            (setq fmt-type 'name))))
-      (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (when-let ((ln (telega-tl-str user :last_name)))
-          (setq name (concat ln (if (string-empty-p name) "" " ") name))))
-      (when (or (memq fmt-type '(full name)) (string-empty-p name))
-        (when-let ((fn (telega-tl-str user :first_name)))
-          (setq name (concat fn (if (string-empty-p name) "" " ") name)))))
-
-    ;; Scam/Fake/Blacklist badge, apply for users only
-    ;; see https://t.me/emacs_telega/30318
-    (if (not user-p)
-        name
-      (concat name
-              (when (plist-get user :is_verified)
-                (telega-symbol 'verified))
-              (cond ((plist-get user :emoji_status)
-                     (telega-ins--as-string
-                      (telega-ins--user-emoji-status user)))
-                    ((plist-get user :is_premium)
-                     (telega-symbol 'premium)))
-              (when (plist-get user :is_scam)
-                (propertize (telega-i18n "lng_scam_badge") 'face 'error))
-              (when (plist-get user :is_fake)
-                (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-              (when (telega-msg-sender-blocked-p user 'offline)
-                (telega-symbol 'blocked))))))
-
-;; NOTE: Backward compatibility, DEPRECATED, use `telega-user-title' instead
-(defalias 'telega-user--name 'telega-user-title)
+    (if (and user-p name)
+        ;; Scam/Fake/Blacklist badge, apply for users only
+        ;; see https://t.me/emacs_telega/30318
+        (concat name
+                (when (plist-get user :is_verified)
+                  (telega-symbol 'verified))
+                (cond ((plist-get user :emoji_status)
+                       (telega-ins--as-string
+                        (telega-ins--user-emoji-status user)))
+                      ((plist-get user :is_premium)
+                       (telega-symbol 'premium)))
+                (when (plist-get user :is_scam)
+                  (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+                (when (plist-get user :is_fake)
+                  (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+                (when (telega-msg-sender-blocked-p user 'offline)
+                  (telega-symbol 'blocked)))
+      name)))
 
 (defun telega-user--seen (user &optional as-number)
   "Return last seen status for the USER.
@@ -186,7 +185,7 @@ If AS-NUMBER is specified, return online status as number:
       (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
              (colors (if chat
                          (telega-chat-color chat)
-                       (let ((user-title (telega-user-title user 'name)))
+                       (let ((user-title (telega-user-title user 'full-name)))
                          (list (funcall telega-rainbow-color-function
                                         user-title 'light)
                                (funcall telega-rainbow-color-function
@@ -247,7 +246,9 @@ If UNBLOCK-P is specified, then unblock USER."
       (telega-msg-sender-unblock user)
     (when (yes-or-no-p
            (telega-i18n "lng_blocked_list_confirm_text"
-             :name (telega-user--name user)))
+             :name (telega-msg-sender-title user
+                     :with-avatar-p t
+                     :with-username-p t)))
       (telega-msg-sender-block user))))
 
 (defun telega-user> (user1 user2)
@@ -321,7 +322,7 @@ Return non-nil if USER1 > USER2."
       (telega-ins "\n")
 
       (telega-ins "\n--- Telegram User Info ---\n")
-      (telega-ins "Name: " (telega-user--name user 'name) "\n")
+      (telega-ins "Name: " (telega-user-title user 'full-name) "\n")
       (telega-info--insert-user user))
     )
 

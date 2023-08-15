@@ -224,39 +224,40 @@ Matches only if CHAR does not apper in the middle of the word."
         (telega-ins--msg-sender member
           :with-avatar-p telega-company-username-show-avatars))))
     (post-completion
-     (when-let* ((input (get-text-property 0 'telega-input arg))
-                 (member (get-text-property 0 'telega-member arg))
-                 (username (or (telega-msg-sender-username member 'with-@) "")))
-       ;; NOTE: Complete by username only if username starts with the
-       ;; `input', see https://t.me/emacs_telega/38371
-       ;; Behaviour is controlled by
-       ;; `telega-company-username-prefer-username' user option
-       (unless (telega-chat-p member)
+     (when-let ((input (get-text-property 0 'telega-input arg))
+                (member (get-text-property 0 'telega-member arg)))
+       ;; Name you get after completion is controlled by
+       ;; `telega-company-username-prefer-name' user option
+       (when (telega-user-p member)
          (delete-region (- (point) (length arg)) (point))
+         (when-let* ((fmt-names telega-company-username-prefer-name)
+                     (name (let ((tmp-name nil))
+                             (while (and fmt-names (not tmp-name))
+                               (setq tmp-name (telega-user-title
+                                               member (car fmt-names))
+                                     fmt-names (cdr fmt-names)))
+                             tmp-name)))
+           (telega-ins
+            (cond ((string-prefix-p "@" name)
+                   name)
 
-         (telega-ins
-          (cond ((and telega-company-username-prefer-username
-                      (not (string-empty-p username)))
-                 username)
-
-                ((member telega-company-username-markup
-                         '("markdown1" "markdown2"))
-                 (telega-string-as-markup
-                     (format "[%s](tg://user?id=%d)"
-                             (telega-msg-sender-title member)
-                             (plist-get member :id))
-                     telega-company-username-markup
-                     (cdr (assoc telega-company-username-markup
-                                 telega-chat-markup-functions))))
-               (t
-                (propertize
-                 (telega-msg-sender-title member)
-                 :tl-entity-type (list :@type "textEntityTypeMentionName"
-                                       :user_id (plist-get member :id))
-                 'face 'telega-entity-type-mention
-                 ;; NOTE: Do not use `rear-nonsticky' property, so username
-                 ;; can be edited, see https://t.me/emacs_telega/38257
-                 ))))))
+                  ((member telega-company-username-markup
+                           '("markdown1" "markdown2"))
+                   (telega-string-as-markup
+                       (format "[%s](tg://user?id=%d)"
+                               name (plist-get member :id))
+                       telega-company-username-markup
+                       (cdr (assoc telega-company-username-markup
+                                   telega-chat-markup-functions))))
+                  (t
+                   (propertize
+                    name
+                    :tl-entity-type (list :@type "textEntityTypeMentionName"
+                                          :user_id (plist-get member :id))
+                    'face 'telega-entity-type-mention
+                    ;; NOTE: Do not use `rear-nonsticky' property, so username
+                    ;; can be edited, see https://t.me/emacs_telega/38257
+                    )))))))
      (insert " ")
      (let ((chatbuf-input (telega-chatbuf-input-string)))
        (when (or (member chatbuf-input telega-known-inline-bots)

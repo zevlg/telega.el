@@ -34,6 +34,7 @@
 (require 'telega-vvnote)
 (require 'telega-util)
 (require 'telega-tme)
+(require 'telega-story)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -444,6 +445,14 @@ Return nil for deleted messages."
             (plist-put msg :telega-sticker-fullscreen fs-sticker)
             (telega-sticker--animate fs-sticker msg)))))
     ))
+
+(defun telega-msg-open-story (msg)
+  "Open content for the forwarded story message MSG."
+  (let* ((content (plist-get msg :content))
+         (chat-id (plist-get content :story_sender_chat_id))
+         (story-id (plist-get content :story_id))
+         (story (telega-story-get chat-id story-id)))
+    (telega-story-open story msg)))
 
 (defun telega-msg--play-video (msg file &optional done-callback)
   "Start playing video FILE for MSG."
@@ -973,6 +982,8 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
       (telega-user-get (telega--tl-get msg :content :user_id))))
     (messageAnimatedEmoji
      (telega-msg-open-animated-emoji msg clicked-p))
+    (messageStory
+     (telega-msg-open-story msg))
 
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
@@ -1101,10 +1112,12 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
     (concat (when with-prefix-p "@") username)))
 (defalias 'telega-chat-username 'telega-msg-sender-username)
 
-(defun telega-msg-sender-title (msg-sender)
-  "Return title for the message sender MSG-SENDER."
+(defun telega-msg-sender-title (msg-sender &rest args)
+  "Return title for the message sender MSG-SENDER.
+ARGS are passed directly to `telega-ins--msg-sender'."
+  (declare (indent 1))
   (telega-ins--as-string
-   (telega-ins--msg-sender msg-sender)))
+   (apply #'telega-ins--msg-sender msg-sender args)))
 
 (defun telega-msg-sender-title--special (msg-sender)
   "Return title for message sender MSG-SENDER to be used in special messages."
@@ -1919,11 +1932,11 @@ By default `telega-translate-to-language-default' is used."
 
 (defun telega-msg--replied-message-fetch (msg)
   "Fetch message on which MSG depends.
-Return `loading' is replied messages starts loading."
+Return `loading' if replied message starts loading."
   (when (and (not (telega-msg-internal-p msg))
              (not (telega-msg--replied-message msg))
              (telega-msg-match-p msg
-               '(or is-reply
+               '(or is-reply-to-msg
                     (type PinMessage
                           GameScore
                           PaymentSuccessful
@@ -1943,6 +1956,37 @@ Return `loading' is replied messages starts loading."
   (telega-msg-redisplay msg)
   ;; NOTE: rootbuf also might be affected
   (telega-root-view--update :on-message-update msg))
+
+(defun telega-msg--replied-story (msg)
+  "Return a story message MSG is replying."
+  (or (plist-get msg :telega-replied-story)
+      (when-let* ((reply-to (plist-get msg :reply_to))
+                  (chat-id (plist-get reply-to :story_sender_chat_id))
+                  (story-id (plist-get reply-to :story_id))
+                  (replied-story (gethash (cons chat-id story-id)
+                                          telega--cached-stories)))
+        (plist-put msg :telega-replied-story replied-story)
+        replied-story)))
+
+(defun telega-msg--replied-story-fetch (msg)
+  "Fetch a story message MSG is replying.
+Return `loading' if replied story starts loading."
+  (when (and (not (telega-msg-internal-p msg))
+             (not (telega-msg--replied-story msg))
+             (telega-msg-match-p msg 'is-reply-to-story))
+    (when-let* ((reply-to (plist-get msg :reply_to))
+                (chat-id (plist-get reply-to :story_sender_chat_id))
+                (story-id (plist-get reply-to :story_id)))
+      (telega--getStory chat-id story-id nil
+        (apply-partially #'telega-msg--replied-story-fetch-callback msg))
+      (plist-put msg :telega-replied-story 'loading))))
+
+(defun telega-msg--replied-story-fetch-callback (msg replied-story)
+  "Callback when the REPLIED-STORY for the MSG has been fetched."
+  (plist-put msg :telega-replied-story replied-story)
+  (telega-msg-redisplay msg)
+  ;; NOTE: rootbuf also might be affected
+  (telega-root-view--update :on-story-update replied-story))
 
 (provide 'telega-msg)
 

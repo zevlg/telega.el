@@ -137,7 +137,9 @@ Discard active call if any."
   (when (or force
             (not telega-voip--active-call)
             (y-or-n-p (format "Active call will be discarded, call %s? "
-                              (telega-user--name user 'name))))
+                              (telega-msg-sender-title user
+                                :with-avatar-p t
+                                :with-username-p t))))
     (when telega-voip--active-call
       (telega-voip-discard telega-voip--active-call)
       (setq telega-voip--active-call nil))

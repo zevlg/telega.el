@@ -871,11 +871,20 @@ By default N is 1."
   (telega-msg-chosen-reaction-types msg))
 
 ;;; ellit-org: msg-temex
-;; - is-reply ::
-;;   {{{temexdoc(msg, is-reply, 2)}}}
-(define-telega-matcher msg is-reply (msg)
-  "Matches if message is a reply message."
-  (plist-get msg :reply_to))
+;; - is-reply-to-msg ::
+;;   {{{temexdoc(msg, is-reply-to-msg, 2)}}}
+(define-telega-matcher msg is-reply-to-msg (msg)
+  "Matches if message is a reply to some message."
+  (when-let ((reply-to (plist-get msg :reply_to)))
+    (eq 'messageReplyToMessage (telega--tl-type reply-to))))
+
+;;; ellit-org: msg-temex
+;; - is-reply-to-story ::
+;;   {{{temexdoc(msg, is-reply-to-story, 2)}}}
+(define-telega-matcher msg is-reply-to-story (msg)
+  "Matches if message is a reply to a story."
+  (when-let ((reply-to (plist-get msg :reply_to)))
+    (eq 'messageReplyToStory (telega--tl-type reply-to))))
 
 ;;; ellit-org: msg-temex
 ;; - post-with-comments ::

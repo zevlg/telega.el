@@ -207,9 +207,17 @@ Used for optimisations.")
   "Aux status used for long requests, such as fetching chats/searching/etc")
 (defvar telega--chats nil "Hash table (id -> chat) for all chats.")
 (defvar telega--chat-topics nil "Hash table (id -> topics list) for forums chats.")
+(defvar telega--story-list-chat-count nil
+  "Plist with number of chats having active stories.
+Props are `main' and `archive'.")
+(defvar telega--chat-active-stories nil
+  "Hash table (chat-id -> chatActiveStories) for chat's stories.")
+
 (defvar telega--cached-messages nil
   "Hash table ((chat-id . msg-id) -> msg) of cached messages.
 Such as pinned, replies, etc.")
+(defvar telega--cached-stories nil
+  "Hash table ((chat-id . story-id) -> story) of cached stories.")
 (defvar telega--actions nil
   "Hash table ((chat-id . msg-thread-id) -> alist-of-user-actions).")
 (defvar telega--ordered-chats nil "Ordered list of all chats.")
@@ -434,6 +442,9 @@ Actual value is `:@extra` value of the call to inline bot.")
 Asynchronously loaded when chatbuf is created.")
 (make-variable-buffer-local 'telega-chatbuf--administrators)
 
+(defvar telega-chatbuf--active-stories-hidden nil
+  "Non-nil if active stories should not be displayed in the footer.")
+(make-variable-buffer-local 'telega-chatbuf--active-stories-hidden)
 (defvar telega-chatbuf--video-chat-hidden nil
   "Non-nil if non-empty video chat is displayed in modeline instead of footer.")
 (make-variable-buffer-local 'telega-chatbuf--video-chat-hidden)
@@ -484,7 +495,9 @@ Done when telega server is ready to receive queries."
               :message_text_length_max 4096))
   (setq telega--chats (make-hash-table :test #'eq))
   (setq telega--chat-topics (make-hash-table :test #'eq))
+  (setq telega--chat-active-stories (make-hash-table :test #'eq))
   (setq telega--cached-messages (make-hash-table :test #'equal))
+  (setq telega--cached-stories (make-hash-table :test #'equal))
   (setq telega--top-chats nil)
 
   (setq telega--search-chats nil)
@@ -515,6 +528,7 @@ Done when telega server is ready to receive queries."
         (make-ring telega-ignored-messages-ring-size))
   (setq telega--unread-message-count nil)
   (setq telega--unread-chat-count nil)
+  (setq telega--story-list-chat-count nil)
 
   (setq telega--files (make-hash-table :test 'eq))
   (setq telega--files-updates (make-hash-table :test 'eq))

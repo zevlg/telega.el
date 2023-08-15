@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.151
-(defconst telega-version "0.8.151")
+;; Version: 0.8.152
+(defconst telega-version "0.8.152")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.15")
 (defconst telega-tdlib-max-version nil)
@@ -61,6 +61,7 @@ Used for manual generation.")
 (require 'telega-notifications)
 (require 'telega-modes)
 (require 'telega-i18n)
+(require 'telega-story)
 (require 'telega-tdlib)
 (require 'telega-tdlib-events)
 
@@ -383,19 +384,22 @@ string at point."
 (telega-patrons-mode 1)
 (telega-active-locations-mode 1)
 (telega-active-video-chats-mode 1)
+(telega-active-stories-mode 1)
 
 ;; Enable root auto fill mode by default
 (telega-root-auto-fill-mode 1)
 
-(run-hooks 'telega-load-hook)
-
 ;; For messages loaded from history
 (add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg-run-ignore-predicates)
 (add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg--replied-message-fetch)
+(add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg--replied-story-fetch)
+(add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg--story-fetch)
 (add-hook 'telega-chatbuf-pre-msg-insert-hook #'telega-msg--custom-emojis-fetch)
 (add-hook 'telega-chatbuf-post-msg-update-hook #'telega-msg--custom-emojis-fetch)
 
 ;; WARN about usage of the obsolete variables
 (require 'telega-obsolete)
+
+(run-hooks 'telega-load-hook)
 
 ;;; telega.el ends here

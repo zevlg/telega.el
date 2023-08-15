@@ -1649,7 +1649,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
         (telega-ins " ")
         (cond ((= slice-num 0)
                (telega-ins--with-face 'bold
-                 (telega-ins (telega-user--name me-user 'name)))
+                 (telega-ins (telega-user-title me-user 'full-name)))
                (telega-ins " ")
                (telega-ins--button "Change"
                  'action (lambda (_button)

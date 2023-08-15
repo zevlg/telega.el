@@ -511,14 +511,12 @@ CHEIGHT is the height in chars (default=1)."
            (telega-thumb--create-image
             thumb thumb-file thumb-cheight)))))
 
-(defun telega-msg--preview-photo-image (msg)
-  "Return one line preview for the photo message MSG.
+(defun telega-msg--preview-photo-image (photo &optional for-chat)
+  "Return one line preview for the PHOTO.
 Return nil if preview image is unavailable."
   (when (and telega-use-images
-             (telega-chat-match-p (telega-msg-chat msg 'offline)
-                                  telega-use-one-line-preview-for))
-    (let* ((photo (telega--tl-get msg :content :photo))
-           (best (telega-photo--best photo '(1 1 1 1)))
+             (telega-chat-match-p for-chat telega-use-one-line-preview-for))
+    (let* ((best (telega-photo--best photo '(1 1 1 1)))
            (minithumb (plist-get photo :minithumbnail))
            (cached-preview
             (plist-get photo :telega-preview-1))
@@ -540,14 +538,12 @@ Return nil if preview image is unavailable."
       (plist-put photo :telega-preview-1 preview-new)
       (cdr preview-new))))
 
-(defun telega-msg--preview-video-image (msg)
-  "Return one line preview for the video message MSG..
+(defun telega-msg--preview-video-image (video &optional for-chat)
+  "Return one line preview for the VIDEO.
 Return nil if preview image is unavailable."
   (when (and telega-use-images
-             (telega-chat-match-p (telega-msg-chat msg 'offline)
-                                  telega-use-one-line-preview-for))
-    (let* ((video (telega--tl-get msg :content :video))
-           (thumb (plist-get video :thumbnail))
+             (telega-chat-match-p for-chat telega-use-one-line-preview-for))
+    (let* ((thumb (plist-get video :thumbnail))
            (minithumb (plist-get video :minithumbnail))
            (cached-preview
             (plist-get video :telega-preview-1))

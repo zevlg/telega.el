@@ -371,7 +371,7 @@ Combines chat permissions and admin/owner permissions."
                         (telega-tl-str chat :title)))
          (chat-user (unless raw-title (telega-chat-user chat)))
          (title (if chat-user
-                    (telega-user-title chat-user 'name)
+                    (telega-user-title chat-user 'full-name)
                   (concat
                    ;; NOTE: Channels we are banned in can have empty title
                    (or raw-title (format "CHAT-%d" (plist-get chat :id)))
@@ -640,9 +640,14 @@ Specify non-nil BAN to ban this user in this CHAT."
          (full-info (telega--full-info user)))
     (when (plist-get full-info :has_private_calls)
       (error "%s can't be called due to their privacy settings"
-             (telega-user--name user)))
+             (telega-msg-sender-title user
+               :with-avatar-p t
+               :with-username-p t)))
     (unless (plist-get full-info :can_be_called)
-      (error "%s can't be called" (telega-user--name user)))
+      (error "%s can't be called"
+             (telega-msg-sender-title user
+               :with-avatar-p t
+               :with-username-p t)))
 
     (telega-voip-call user)))
 
@@ -1172,15 +1177,20 @@ Return newly created chat."
                 'canTransferOwnershipResultOk)
       (user-error (concat
                    (telega-i18n "lng_rights_transfer_check_about"
-                     :user (telega-user--name to-user)) "\n"
-                     (telega-i18n "lng_rights_transfer_check_session") "\n"
-                     (telega-i18n "lng_rights_transfer_check_password") "\n"
-                     (telega-i18n "lng_rights_transfer_check_later"))))
+                     :user (telega-msg-sender-title to-user
+                             :with-avatar-p t
+                             :with-username-p t))
+                   "\n"
+                   (telega-i18n "lng_rights_transfer_check_session") "\n"
+                   (telega-i18n "lng_rights_transfer_check_password") "\n"
+                   (telega-i18n "lng_rights_transfer_check_later"))))
 
     (unless (telega-read-im-sure-p
              (concat (telega-i18n "lng_rights_transfer_about"
                        :group (telega-chat-title chat)
-                       :user (telega-user--name to-user))
+                       :user (telega-msg-sender-title to-user
+                               :with-avatar-p t
+                               :with-username-p t))
                      "\n"
                      (telega-i18n "lng_rights_transfer_sure") "?"))
       (user-error "Ownership transfer canceled"))
@@ -1195,7 +1205,9 @@ Return newly created chat."
              (telega-i18n (if (telega-chat-channel-p chat)
                               "lng_rights_transfer_done_channel"
                             "lng_rights_transfer_done_group")
-               :user (telega-user--name to-user)))))))
+               :user (telega-msg-sender-title to-user
+                       :with-avatar-p t
+                       :with-username-p t)))))))
     ))
 
 (defun telega-chat-set-description (chat descr)
@@ -1473,7 +1485,8 @@ Used in chatbuf footer."
           (telega-ins (telega-symbol 'play)))
         (telega-ins " ")
         (if sender
-            (telega-ins (telega-user--name sender))
+            (telega-ins (telega-msg-sender-title sender
+                          :with-username-p t))
           (telega-ins (telega-chat-title (telega-msg-chat msg)))))
       (telega-ins " ")
       (telega-ins--button "stop"
@@ -1580,6 +1593,7 @@ Possibly view some messages at point."
   ;; --(actions part)---------------[additional status]--
   ;; [x] Messages Filter: <FILTER> (total: MSG-COUNT)
   ;; [x] Action Bar: [ action ] [ bar ] [ buttons ]
+  ;; [x] Active Stories: [story] [story] ..
   ;; [x] Voice Chat: <Title> [Join] [Leave] [Show]
   ;;     5 participants: (A) (B) <-- recent speakers
   ;; [x] Users restricted adding them to group:
@@ -1606,6 +1620,8 @@ Possibly view some messages at point."
                       (display-spec (cdr (assq (if active-p 'active 'passive)
                                                telega-video-chat-display))))
                  (memq 'footer display-spec))))
+         (active-stories-visible-p
+          (not telega-chatbuf--active-stories-hidden))
          (msg-filter telega-chatbuf--msg-filter)
          (thread-msg telega-chatbuf--thread-msg)
          (actions (telega-chat--actions chat (plist-get thread-msg :id)))
@@ -1737,6 +1753,11 @@ Possibly view some messages at point."
          (telega-ins "\n"))
        ;; Action Bar
        (when (telega-ins--chat-action-bar chat)
+         (telega-ins "\n"))
+
+       ;; Active Stories
+       (when (and active-stories-visible-p
+                  (telega-ins--chat-active-stories chat))
          (telega-ins "\n"))
 
        ;; List of users that restricts adding them to the group
@@ -2628,7 +2649,15 @@ If message thread filtering is enabled, use it first."
          :with-username-p t))
      (telega-ins "]"))))
 
-(defun telega-chatbuf--modeline-messages-ttl ()
+(defun telega-chatbuf-mode-line-online-status ()
+  "Format online status for the private chatbuf."
+  (when (and (telega-chat-private-p telega-chatbuf--chat)
+             (not (telega-me-p telega-chatbuf--chat))
+             (telega-user-online-p
+              (telega-chat-user telega-chatbuf--chat)))
+    (telega-symbol 'online-status)))
+
+(defun telega-chatbuf-mode-line-messages-ttl ()
   "Format TTL messages settings for the chatbuf."
   (when-let ((ttl (plist-get telega-chatbuf--chat :message_ttl)))
     (when (or (telega-chat-secret-p telega-chatbuf--chat)
@@ -2665,16 +2694,8 @@ If message thread filtering is enabled, use it first."
          (telega-emoji-use-images (unless mode-line-smaller-p
                                     telega-emoji-use-images)))
     (setq mode-line-buffer-identification
-          (list (propertized-buffer-identification "%b")
-                ;; Online status
-                (when (and (telega-chat-private-p telega-chatbuf--chat)
-                           (not (telega-me-p telega-chatbuf--chat))
-                           (telega-user-online-p
-                            (telega-chat-user telega-chatbuf--chat)))
-                  (telega-symbol 'online-status))
-                (telega-chatbuf--modeline-messages-ttl)
-                (format-mode-line telega-chat-mode-line-format nil nil
-                                  (current-buffer)))))
+          (format-mode-line telega-chat-mode-line-format nil nil
+                            (current-buffer))))
   (force-mode-line-update))
 
 (defconst telega-chatbuf--modeline-dirtiness
@@ -3953,7 +3974,9 @@ If `\\[universal-argument]' is given, then attach live location."
    (with-telega-chatbuf-action "ChoosingContact"
      (let* ((contacts (telega--getContacts))
             (names-alist (mapcar (lambda (user)
-                                   (cons (telega-user--name user 'full)
+                                   (cons (telega-msg-sender-title user
+                                           :with-avatar-p t
+                                           :with-username-p t)
                                          user))
                                  contacts))
             (name (funcall telega-completing-read-function

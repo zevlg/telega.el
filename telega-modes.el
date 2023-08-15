@@ -680,7 +680,8 @@ squashing is not applied."
                    (< last-read-id (plist-get last-msg :id))
                    (telega-msg-match-p last-msg
                      '(and (prop :can_be_edited)
-                           (not is-reply)
+                           (not is-reply-to-msg)
+                           (not is-reply-to-story)
                            (type Text)))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :web_page))
@@ -818,7 +819,7 @@ Could be used as condition function in `display-buffer-alist'."
 
      ;; NOTE: fetch chat position only for "Photo" messages, to avoid
      ;; 400 errors
-     (when (telega-msg-match-p for-msg '(type Photo))
+     (when (and for-msg (telega-msg-match-p for-msg '(type Photo)))
        (telega-image-mode--chat-position-fetch))
 
      (current-buffer))))
@@ -892,8 +893,9 @@ Could be used as condition function in `display-buffer-alist'."
 (defun telega-image-quit ()
   "Kill image buffer and its window."
   (interactive)
-  (with-telega-chatbuf (telega-msg-chat telega-image--message)
-    (telega-chatbuf--history-state-delete :goto-msg))
+  (when telega-image--message
+    (with-telega-chatbuf (telega-msg-chat telega-image--message)
+      (telega-chatbuf--history-state-delete :goto-msg)))
   (quit-window 'kill))
 
 

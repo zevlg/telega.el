@@ -1438,7 +1438,8 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (declare (indent 1))
   (unless users-list
     (setq users-list (hash-table-values (alist-get 'user telega--info))))
-  (telega-gen-completing-read-list prompt users-list #'telega-user-title
+  (telega-gen-completing-read-list prompt users-list
+                                   #'telega-msg-sender-title-for-completion
                                    #'telega-completing-read-user))
 
 (defvar telega-completing--chat-member-alist nil
