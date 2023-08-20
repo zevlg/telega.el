@@ -38,7 +38,7 @@
 
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
-(declare-function telega-chat-title "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 (declare-function telega-chat-muted-p "telega-chat" (chat))
 
 

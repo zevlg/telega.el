@@ -35,7 +35,7 @@
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-chat-color "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 
 (declare-function telega-msg-redisplay "telega-msg" (msg))
 

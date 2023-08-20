@@ -1531,7 +1531,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
 (defun telega-root--blocked-chat-pp (chat)
   "Pretty printer for blocket CHAT."
-  (when (telega-msg-sender-blocked-p chat)
+  (when (telega-chat-match-p chat 'is-blocked)
     (let ((telega-chat-button-width
            (round (* (telega-canonicalize-number telega-chat-button-width
                                                  telega-root-fill-column)
@@ -1548,8 +1548,7 @@ If `\\[universal-argument]' is given, then view missed calls only."
          (list :name "blocked"
                :sorter #'telega-chat>
                :pretty-printer #'telega-root--blocked-chat-pp
-               :items (telega-filter-chats telega--ordered-chats
-                        '(call telega-msg-sender-blocked-p))
+               :items (telega-filter-chats telega--ordered-chats 'is-blocked)
                :on-chat-update #'telega-root--any-on-chat-update))))
 
 (defun telega-root--topics-on-chat-update (ewoc-name ewoc chat)

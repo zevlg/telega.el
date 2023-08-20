@@ -61,7 +61,7 @@
 (declare-function telega-chat-muted-p "telega-chat"  (chat))
 (declare-function telega-chat-channel-p "telega-chat" (chat))
 (declare-function telega-chat-bot-p "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 (declare-function telega-chat--info "telega-chat" (chat &optional local-p))
 (declare-function telega-chats-top "telega-chat" (category))
 (declare-function telega-chat-member-my-status "telega-chat" (chat))

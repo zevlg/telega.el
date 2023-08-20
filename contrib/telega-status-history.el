@@ -113,7 +113,9 @@ USERS - list of the users to collect info about."
   (with-temp-buffer
     (insert "Interval")
     (dolist (user users)
-      (insert "\t" (substring-no-properties (telega-user-title user 'short))))
+      (insert "\t" (substring-no-properties
+                    (or (telega-user-title user 'username)
+                        (telega-user-title user 'full-name)))))
     (insert "\n")
 
     ;; Insert rows

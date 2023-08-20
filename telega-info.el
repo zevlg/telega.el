@@ -59,7 +59,7 @@
 
 
 ;; FullInfo
-(defun telega--full-info (tlobj &optional offline-p _callback)
+(defun telega--full-info (tlobj &optional _callback)
   "Get FullInfo for the TLOBJ.
 TLOBJ could be one of: user, basicgroup or supergroup.
 If OFFLINE-P is non-nil, then do not send a request to telega-server."
@@ -67,7 +67,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
          (tlobj-id (plist-get tlobj :id))
          (fi-hash (cdr (assq tlobj-type telega--full-info)))
          (full-info (gethash tlobj-id fi-hash)))
-    (when (and (not full-info) (not offline-p))
+    (when (and (not full-info) (not telega-full-info-offline-p))
       (setq full-info
             (telega-server--call
              (cl-ecase tlobj-type
@@ -193,7 +193,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins (telega-i18n "lng_fake_badge") " "))
       (when (plist-get user :is_scam)
         (telega-ins (telega-i18n "lng_scam_badge") " "))
-      (when (telega-msg-sender-blocked-p user 'offline)
+      (when (telega-user-match-p user 'is-blocked)
         (telega-ins "BLOCKED "))))
 
   ;; Buttons line
@@ -220,8 +220,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                  (telega--createNewSecretChat user))))
     (telega-ins " "))
 
-  (let ((full-info (telega--full-info user))
-        (user-blocked-p (telega-msg-sender-blocked-p user)))
+  (let* ((telega-full-info-offline-p nil)
+         (full-info (telega--full-info user))
+         (user-blocked-p (telega-user-match-p user 'is-blocked)))
     (when (plist-get full-info :can_be_called)
       (telega-ins--button (concat telega-symbol-phone "Call")
         :value user
@@ -236,8 +237,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                     ;; I18N: profile_block_user -> Block User
                     (telega-i18n "lng_profile_block_user")))
         'action (lambda (_ignored)
-                  (telega--toggleMessageSenderIsBlocked
-                   user (not user-blocked-p)))))
+                  (if user-blocked-p
+                      (telega-msg-sender-unblock user)
+                    (telega-msg-sender-block user)))))
     (telega-ins "\n")
 
     ;; Clickable user's profile photos
@@ -1005,9 +1007,11 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
     (telega-ins--with-face '(telega-webpage-header underline)
       (telega-ins-i18n "lng_settings_privacy_title"))
     (telega-ins "\n")
-    ;; NOTE: car of `telega--getBlockedMessageSenders' is total number
-    ;; of blocked senders
-    (when-let ((blocked-senders (cdr (telega--getBlockedMessageSenders))))
+    ;; NOTE: senders are only cddr of the reply from
+    ;; `telega--getBlockedMessageSenders',
+    ;; see comments in the `telega--on-blocked-senders-load'
+    (when-let ((blocked-senders
+                (cddr (telega--getBlockedMessageSenders 'blockListMain))))
       ;; I18N: blocked_list_title -> Blocked Users
       (telega-ins (telega-i18n "lng_blocked_list_title") ":" "\n")
       (dolist (msg-sender blocked-senders)

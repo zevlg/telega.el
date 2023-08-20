@@ -8,10 +8,10 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.152
-(defconst telega-version "0.8.152")
+;; Version: 0.8.160
+(defconst telega-version "0.8.160")
 (defconst telega-server-min-version "0.7.7")
-(defconst telega-tdlib-min-version "1.8.15")
+(defconst telega-tdlib-min-version "1.8.16")
 (defconst telega-tdlib-max-version nil)
 
 (defconst telega-tdlib-releases '("1.8.0" . "1.9.0")
@@ -271,8 +271,11 @@ Works only if current state is `authorizationStateWaitCode'."
                 (alist-get (car scope-type) telega-notifications-defaults)))
       (apply #'telega--setScopeNotificationSettings (cdr scope-type) settings)))
 
-  ;; Fetch blocked users
-  (telega--getBlockedMessageSenders 0 #'telega--on-blocked-senders-load)
+  ;; Fetch blocked users for all block lists
+  (telega--getBlockedMessageSenders 'blockListMain 0
+    #'telega--on-blocked-senders-load)
+  (telega--getBlockedMessageSenders 'blockListStories 0
+    #'telega--on-blocked-senders-load)
 
   ;; NOTE: telega--scope-notification-alist will be updated upon
   ;; `updateScopeNotificationSettings' event

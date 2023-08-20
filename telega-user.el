@@ -110,13 +110,14 @@ user is fetched from server."
   "Return non-nil if USER is bot."
   (eq (telega-user--type user) 'bot))
 
-(defun telega-user-title (user fmt-type)
+(defun telega-user-title (user fmt-type &optional no-badges)
   "Return formatted title for the USER.
 Format name using FMT-TYPE, one of:
   `first-name' - Uses only first name.
   `last-name' - Uses only last name.
   `full-name' - Uses only first and last name.
   `username' - Uses username only.
+Non-nil NO-BADGES to not attach any badges for the user title.
 Return nil if given FMT-TYPE is not available."
   ;; NOTE: USER might be of "contact" type
   (let* ((user-p (eq (telega--tl-type user) 'user))
@@ -142,10 +143,11 @@ Return nil if given FMT-TYPE is not available."
                       (error "Invalid FMT-TYPE for `telega-user-title': %S"
                              fmt-type)))))
 
-    (if (and user-p name)
+    (if (and (not no-badges) user-p name)
         ;; Scam/Fake/Blacklist badge, apply for users only
         ;; see https://t.me/emacs_telega/30318
         (concat name
+                ;; Badges
                 (when (plist-get user :is_verified)
                   (telega-symbol 'verified))
                 (cond ((plist-get user :emoji_status)
@@ -157,7 +159,7 @@ Return nil if given FMT-TYPE is not available."
                   (propertize (telega-i18n "lng_scam_badge") 'face 'error))
                 (when (plist-get user :is_fake)
                   (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-                (when (telega-msg-sender-blocked-p user 'offline)
+                (when (telega-user-match-p user 'is-blocked)
                   (telega-symbol 'blocked)))
       name)))
 

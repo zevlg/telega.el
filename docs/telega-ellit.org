@@ -978,7 +978,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
 (add-hook 'telega-msg-ignore-predicates
-          (telega-match-gen-predicate 'msg '(sender blocked)))
+          (telega-match-gen-predicate 'msg '(sender is-blocked)))
 #+end_src
 
 To view recently ignored messages use

@@ -68,7 +68,7 @@
 
 ;; telega-info.el depends on telega-chat.el
 (declare-function telega--info "telega-info" (tlobj-type tlobj-id &optional locally-p))
-(declare-function telega--full-info "telega-info" (tlobj &optional offline-p _callback))
+(declare-function telega--full-info "telega-info" (tlobj &optional _callback))
 
 ;; telega-root.el depends on telega-chat.el
 (declare-function telega--check-buffer-switch "telega-root")
@@ -361,8 +361,10 @@ Combines chat permissions and admin/owner permissions."
          (setq perms (plist-get status :permissions)))))
     perms))
 
-(defun telega-chat-title (chat)
-  "Return title for the CHAT."
+(defun telega-chat-title (chat &optional no-badges)
+  "Return title for the CHAT.
+If NO-BADGES is specified, then do not attach any chat badges at the
+end of the title."
   (let* ((info (telega-chat--info chat 'offline))
          (raw-title (or (when (telega-me-p chat)
                           (telega-i18n "lng_saved_messages"))
@@ -370,23 +372,26 @@ Combines chat permissions and admin/owner permissions."
                           (telega-i18n "lng_replies_messages"))
                         (telega-tl-str chat :title)))
          (chat-user (unless raw-title (telega-chat-user chat)))
-         (title (if chat-user
+         (title0 (if chat-user
                     (telega-user-title chat-user 'full-name)
-                  (concat
-                   ;; NOTE: Channels we are banned in can have empty title
-                   (or raw-title (format "CHAT-%d" (plist-get chat :id)))
-                   (when (plist-get info :is_premium)
-                     (telega-symbol 'premium))
-
-                   (when (plist-get info :is_scam)
-                     (propertize (telega-i18n "lng_scam_badge") 'face 'error))
-                   (when (plist-get info :is_fake)
-                     (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-                   (when (plist-get info :is_verified)
-                     (telega-symbol 'verified))
-                   (when (telega-msg-sender-blocked-p chat 'locally)
-                     (telega-symbol 'blocked))
-                  ))))
+                  ;; NOTE: Channels we are banned in can have empty title
+                  (or raw-title (format "CHAT-%d" (plist-get chat :id)))))
+         (title
+          (if no-badges
+              title0
+            (concat title0
+                    ;; Badges
+                    (when (plist-get info :is_premium)
+                      (telega-symbol 'premium))
+                    (when (plist-get info :is_scam)
+                      (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+                    (when (plist-get info :is_fake)
+                      (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+                    (when (plist-get info :is_verified)
+                      (telega-symbol 'verified))
+                    (when (telega-chat-match-p chat 'is-blocked)
+                      (telega-symbol 'blocked))
+                    ))))
 
     (if-let ((cctfun (cdr (cl-find chat telega-chat-title-custom-for
                                    :test #'telega-chat-match-p
@@ -636,7 +641,8 @@ Specify non-nil BAN to ban this user in this CHAT."
   (unless (and (telega-chat-private-p chat)
                (not (telega-chat-bot-p chat)))
     (error "Can call only to users"))
-  (let* ((user (telega-chat-user chat))
+  (let* ((telega-full-info-offline-p nil)
+         (user (telega-chat-user chat))
          (full-info (telega--full-info user)))
     (when (plist-get full-info :has_private_calls)
       (error "%s can't be called due to their privacy settings"
@@ -671,7 +677,7 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins--image chat-ava 0
                        :no-display-if (not telega-chat-show-avatars))
     (telega-ins--msg-sender chat :with-username-p 'telega-username)
-    (when (telega-msg-sender-blocked-p chat)
+    (when (telega-chat-match-p chat 'is-blocked)
       (telega-ins--with-face 'error
         (telega-ins " " telega-symbol-blocked "BLOCKED")))
     (telega-ins "\n")
@@ -1091,7 +1097,7 @@ Use `telega-chat-leave' to just leave the CHAT."
     ;; Block corresponding user, so he could not initiate any incoming
     ;; messages
     (when (and (telega-chat-private-p chat)
-               (not (plist-get chat :is_blocked)))
+               (not (telega-chat-match-p chat '(is-blocked blockListMain))))
       (when (yes-or-no-p
              (concat (telega-i18n "lng_blocked_list_confirm_text"
                        :name (telega-chat-title chat))
@@ -1213,6 +1219,7 @@ Return newly created chat."
 (defun telega-chat-set-description (chat descr)
   "Update CHAT's description."
   (interactive (let* ((chat (or telega-chatbuf--chat (telega-chat-at (point))))
+                      (telega-full-info-offline-p nil)
                       (full-info (telega--full-info (telega-chat--info chat))))
                  (list chat
                        (read-string "Description: "
@@ -2198,6 +2205,7 @@ Recover previous active action after BODY execution."
 (defun telega-chatbuf-prompt-bot-menu-button ()
   "Return line for bot's menu button."
   (when-let* ((info (telega-chat--info telega-chatbuf--chat 'offline))
+              (telega-full-info-offline-p nil)
               (full-info (telega--full-info info))
               (bot-info (plist-get full-info :bot_info))
               (menu-button (plist-get bot-info :menu_button)))
@@ -2246,7 +2254,7 @@ If RESET is specified, then reset aux prompt to default value."
                   ;; Comment to the post
                   nil)
 
-                 ((plist-get telega-chatbuf--chat :is_blocked)
+                 ((telega-chat-match-p telega-chatbuf--chat 'is-blocked)
                   (if (telega-chat-bot-p telega-chatbuf--chat)
                       "RESTART BOT"
                     "UNBLOCK"))
@@ -3866,7 +3874,8 @@ from message at point."
 (defun telega-chat-linked-chat (chat)
   "Return linked chat for the CHAT.
 Return nil if CHAT has no linked chat."
-  (let ((supergroup (telega-chat--info chat)))
+  (let ((supergroup (telega-chat--info chat))
+        (telega-full-info-offline-p nil))
     (when (plist-get supergroup :has_linked_chat)
       (telega-chat-get
        (plist-get (telega--full-info supergroup) :linked_chat_id) 'offline))))
@@ -4541,6 +4550,7 @@ See `telega-chat-attach-commands' for available attachment types."
                          (concat (telega-i18n "lng_via_link_send") ": "))))
 
   (let* ((chatbuf-info (telega-chat--info telega-chatbuf--chat))
+         (telega-full-info-offline-p nil)
          (chatbuf-full-info (telega--full-info chatbuf-info))
          (chatbuf-link (plist-get chatbuf-full-info :invite_link))
          (invite-link (plist-get chatbuf-link :invite_link))

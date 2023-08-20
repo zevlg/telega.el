@@ -708,6 +708,17 @@ By default N is 1."
     (when-let ((user (telega-chat-user chat)))
       (telega-user-match-p user user-temex))))
 
+;;; ellit-org: chat-temex
+;; - (is-blocked [ ~BLOCK-LIST~ ]) ::
+;;   {{{temexdoc(chat, is-blocked, 2)}}}
+(define-telega-matcher chat is-blocked (chat &optional block-list)
+  "Matches chat if chat is blocked in by the BLOCK-LIST.
+BLOCK-LIST is one of `blockListMain' or `blockListStories'.
+By default `blockListMain' is used."
+  (when-let ((chat-block-list (plist-get chat :block_list)))
+    (eq (telega--tl-type chat-block-list)
+        (or block-list 'blockListMain))))
+
 
 ;;; User Temexes
 ;;; ellit-org: user-temex
@@ -827,6 +838,21 @@ By default N is 1."
   "Matches if me has private chat with USER matching CHAT-TEMEX."
   (when-let ((chat (telega-chat-get (plist-get user :id) 'offline)))
     (telega-chat-match-p chat chat-temex)))
+
+;;; ellit-org: user-temex
+;; - (is-blocked [ ~BLOCK-LIST~ ]) ::
+;;   {{{temexdoc(user, is-blocked, 2)}}}
+(define-telega-matcher user is-blocked (user &optional block-list)
+  "Matches user blocked by the BLOCK-LIST.
+BLOCK-LIST is one of `blockListMain' or `blockListStories'.
+By default `blockListMain' is used."
+  (let* ((block-list (or block-list 'blockListMain))
+         (blocked-user-ids
+          (cdr (alist-get block-list telega--blocked-user-ids-alist))))
+    (or (memq (plist-get user :id) (cdr blocked-user-ids))
+        (when-let ((user-block-list
+                    (plist-get (telega--full-info user) :block_list)))
+          (eq (telega--tl-type user-block-list) block-list)))))
 
 
 ;;; Message Temexes
@@ -984,11 +1010,16 @@ Matching ignores case."
   (eq telega--me-id (plist-get sender :id)))
 
 ;;; ellit-org: sender-temex
-;; - blocked ::
-;;   {{{temexdoc(sender, blocked, 2)}}}
-(define-telega-matcher sender blocked (sender)
-  "Matches if sender is blocked."
-  (telega-msg-sender-blocked-p sender 'locally))
+;; - (is-blocked [ ~BLOCK-LIST~ ])::
+;;   {{{temexdoc(sender, is-blocked, 2)}}}
+(define-telega-matcher sender is-blocked (sender &optional block-list)
+  "Matches if sender is blocked in the BLOCK-LIST.
+BLOCK-LIST is one of `blockListMain', `blockListStories'.
+By default `blockListMain' is used."
+  (if (telega-user-p sender)
+      (telega-user-match-p sender `(is-blocked ,block-list))
+    (cl-assert (telega-chat-p sender))
+    (telega-chat-match-p sender `(is-blocked ,block-list))))
 
 ;;; ellit-org: sender-temex
 ;; - (user ~USER-TEMEX~) ::

@@ -42,7 +42,7 @@
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-color "telega-chat" (chat))
-(declare-function telega-chat-title "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 (declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
 (declare-function telega-describe-chat "telega-chat" (chat))
 (declare-function telega-chat-secret-p "telega-chat" (chat))
@@ -278,6 +278,7 @@ Format is:
                                              with-avatar-p
                                              with-username-p
                                              with-brackets-p
+                                             (with-badges-p t)
                                              (with-title-faces-p t)
                                              (trail-delim " ")
                                              trail-inserter)
@@ -285,9 +286,9 @@ Format is:
   (declare (indent 1))
   (let* ((chat-p (telega-chat-p msg-sender))
          (title (if chat-p
-                    (telega-chat-title msg-sender)
+                    (telega-chat-title msg-sender (not with-badges-p))
                   (cl-assert (telega-user-p msg-sender))
-                  (telega-user-title msg-sender 'full-name)))
+                  (telega-user-title msg-sender 'full-name (not with-badges-p))))
          (title-faces (when with-title-faces-p
                         (telega-msg-sender-title-faces msg-sender)))
          (brackets (when with-brackets-p
@@ -409,7 +410,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
       (telega-ins " ")
       (telega-ins--user-relationship user))
     ;; Block/scam mark, without requesting
-    (when (telega-msg-sender-blocked-p user 'locally)
+    (when (telega-user-match-p user 'is-blocked)
       (telega-ins " " (telega-symbol 'blocked)))
 
     (telega-ins "\n")
@@ -2897,7 +2898,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
     (telega-ins (plist-get user :phone_number)))
 
   (telega-ins-prefix " "
-    (when (telega-msg-sender-blocked-p user 'offline)
+    (when (telega-user-match-p user 'is-blocked)
       (telega-ins--with-face 'error
         (telega-ins telega-symbol-blocked "BLOCKED"))))
   )

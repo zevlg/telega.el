@@ -227,10 +227,14 @@ Used to calculate numbers displayed in custom filter buttons.")
 (defvar telega-deleted-chats nil
   "List of recently deleted chats.
 Used for \"Recently Deleted Chats\" rootview.")
-(defvar telega--blocked-user-ids (list 0)
-  "List of IDs for blocked users.
+(defvar telega--blocked-user-ids-alist '((blockListMain . (0))
+                                         (blockListStories . (0)))
+  "Alist of blocked users.
+car of the element is block list, one of `blockListMain' or
+`blockListStories', cdr is a list of user ids in that block list.
 Used to avoid fetching user's full-info to find out that user is blocked.
-CAR of the list is current offset for `telega--getBlockedMessageSenders'.")
+CAR of the user ids list is current offset for
+`telega--getBlockedMessageSenders'.")
 
 (defvar telega--dirty-chats nil
   "List of chats that need to be updated with `telega-chat--update'.
@@ -244,6 +248,10 @@ Dirtiness types are stored in the `:telega-dirtiness' chat's property.")
 
 (defvar telega--info nil "Alist of (TYPE . INFO-TABLE).")
 (defvar telega--full-info nil "Alist of (TYPE . FULL-INFO-TABLE).")
+
+(defvar telega-full-info-offline-p t
+  "Non-nil to not request telega-server in case full info is not available.
+Bind to nil to ensure full info is actualized.")
 
 (defvar telega--top-chats nil
   "Alist of (CATEGORY LAST-UPDATE-TIME ..)
@@ -504,7 +512,9 @@ Done when telega server is ready to receive queries."
   (setq telega--nearby-chats nil)
 
   (setq telega-deleted-chats nil)
-  (setq telega--blocked-user-ids (list 0))
+  (setq telega--blocked-user-ids-alist
+        (list (cons 'blockListMain (list 0))
+              (cons 'blockListStories (list 0))))
   (setq telega--ordered-chats nil)
   (setq telega--filtered-chats nil)
   (setq telega--dirty-chats nil)

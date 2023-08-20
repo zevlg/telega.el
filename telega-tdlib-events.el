@@ -175,17 +175,23 @@ DIRTINESS specifies additional CHAT dirtiness."
         (ufi (cdr (assq 'user telega--full-info))))
     (puthash user-id (plist-get event :user_full_info) ufi)
 
-    ;; Possibly update `telega--blocked-user-ids', keeping
-    ;; `telega--blocked-user-ids' in sync with update events
+    ;; Possibly update `telega--blocked-user-ids-alist', keeping
+    ;; `telega--blocked-user-ids-alist' in sync with update events
     ;; see https://github.com/tdlib/td/issues/1669
-    (if (telega--tl-get event :user_full_info :is_blocked)
-        (unless (memq user-id telega--blocked-user-ids)
-          (setq telega--blocked-user-ids
-                (append telega--blocked-user-ids (list user-id))))
-      (when (memq user-id telega--blocked-user-ids)
-        (setq telega--blocked-user-ids
-              (cons (car telega--blocked-user-ids)
-                    (delq user-id (cdr telega--blocked-user-ids))))))
+
+    ;; 1. First remove user from all block lists
+    (dolist (blocked-user-list telega--blocked-user-ids-alist)
+      (when (memq user-id (cdr blocked-user-list))
+        (setcdr blocked-user-list
+                (delq user-id (cdr blocked-user-list)))))
+
+    ;; 2. Then add it to the block list from event
+    (when-let* ((block-list (telega--tl-get event :user_full_info :block_list))
+                (blocked-user-list
+                 (assoc block-list telega--blocked-user-ids-alist)))
+      (unless (memq user-id (cdr blocked-user-list))
+        (setcdr blocked-user-list
+                (append (cdr blocked-user-list) (list user-id)))))
 
     (telega-user--update (telega-user-get user-id) event)))
 
@@ -381,12 +387,12 @@ DIRTINESS specifies additional CHAT dirtiness."
 
     (telega-chat--mark-dirty chat event)))
 
-(defun telega--on-updateChatIsBlocked (event)
+(defun telega--on-updateChatBlockList (event)
   "Chat/User has been blocked/unblocked."
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
-    (plist-put chat :is_blocked
-               (plist-get event :is_blocked))
+    (plist-put chat :block_list
+               (plist-get event :block_list))
 
     (telega-chat--mark-dirty chat event)))
 
@@ -470,20 +476,27 @@ NOTE: we store the number as custom chat property, to use it later."
                               :test 'eq :key #'telega-chat--info)))
       (telega-chat--mark-dirty chat event))))
 
-(defun telega--on-blocked-senders-load (senders)
-  ;; NOTE: car of the senders is total number of blocked senders
-  (setq senders (cdr senders))
-  (when senders
-    (cl-incf (car telega--blocked-user-ids) (length senders))
-    (setq telega--blocked-user-ids
-          (append telega--blocked-user-ids
-                  (mapcar (telega--tl-prop :id)
-                          (cl-remove-if-not #'telega-user-p senders))))
+(defun telega--on-blocked-senders-load (reply)
+  ;; NOTE:
+  ;;  - first element of the REPLY is a block-list
+  ;;  - second element of the REPLY is a total number of blocked
+  ;;    senders in a block-lis
+  ;;  - rest is the message senders ids
+  (let* ((block-list (car reply))
+         (_total-senders (cadr reply))
+         (senders (cddr reply))
+         (blocked-user-ids
+          (alist-get block-list telega--blocked-user-ids-alist)))
+    (when senders
+      (cl-incf (car blocked-user-ids) (length senders))
+      (setcdr blocked-user-ids
+              (mapcar (telega--tl-prop :id)
+                      (cl-remove-if-not #'telega-user-p senders)))
 
-    ;; Continue fetching blocked users
-    (telega--getBlockedMessageSenders
-     (car telega--blocked-user-ids) #'telega--on-blocked-senders-load)
-    ))
+      ;; Continue fetching blocked users
+      (telega--getBlockedMessageSenders block-list (car blocked-user-ids)
+        #'telega--on-blocked-senders-load)
+      )))
 
 (defun telega--on-initial-chats-load (tl-ok)
   "Process initially loaded chats, or continue loading chats."

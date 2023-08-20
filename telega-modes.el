@@ -724,7 +724,7 @@ squashing is not applied."
 ;; press {{{kbd(RET)}}} on the message with photo.
 (require 'image-mode)
 
-(declare-function telega-chat-title "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--goto-msg "telega-chat" (msg-id &optional highlight))
 

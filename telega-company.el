@@ -234,7 +234,7 @@ Matches only if CHAR does not apper in the middle of the word."
                      (name (let ((tmp-name nil))
                              (while (and fmt-names (not tmp-name))
                                (setq tmp-name (telega-user-title
-                                               member (car fmt-names))
+                                               member (car fmt-names) 'raw)
                                      fmt-names (cdr fmt-names)))
                              tmp-name)))
            (telega-ins
@@ -319,6 +319,7 @@ Matches only if CHAR does not apper in the middle of the word."
 (defun telega-company--bot-commands ()
   (cl-assert telega-chatbuf--chat)
   (let* ((info (telega-chat--info telega-chatbuf--chat))
+         (telega-full-info-offline-p nil)
          (full-info (telega--full-info info)))
     (if (telega-chatbuf-match-p '(type bot))
         (telega-company--bot-commands-list

@@ -43,14 +43,14 @@
 (declare-function telega-chatbuf--manage-point "telega-chat" (&optional point only-prompt-p))
 (declare-function telega-chatbuf--next-msg "telega-chat" (msg msg-temex &optional backward))
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
-(declare-function telega-chat-title "telega-chat" (chat))
+(declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
 (declare-function telega-chatbuf--modeline-update "telega-chat" ())
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chatevent-log-filter "telega-chat" (&rest filters))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
-(declare-function telega--full-info "telega-info" (tlobj &optional offline-p _callback))
+(declare-function telega--full-info "telega-info" (tlobj &optional _callback))
 
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
@@ -1145,24 +1145,13 @@ ARGS are passed directly to `telega-ins--msg-sender'."
              (when foreground
                (list (list :foreground foreground)))))))
 
-(defun telega-msg-sender-blocked-p (msg-sender &optional offline-p)
-  "Return non-nil if message sender MSG-SENDER is blocked.
-LOCALLY-P only used"
-  (if (telega-user-p msg-sender)
-      (or (memq (plist-get msg-sender :id) (cdr telega--blocked-user-ids))
-          (plist-get (telega--full-info msg-sender offline-p) :is_blocked))
-    (cl-assert (telega-chat-p msg-sender))
-    (plist-get msg-sender :is_blocked)))
-
 (defun telega-msg-sender-block (msg-sender &optional callback)
   "Block the message sender MSG-SENDER."
-  (unless (telega-msg-sender-blocked-p msg-sender 'locally)
-    (telega--toggleMessageSenderIsBlocked msg-sender t callback)))
+  (telega--setMessageSenderBlockList msg-sender 'blockListMain callback))
 
 (defun telega-msg-sender-unblock (msg-sender &optional callback)
-  "Unblock the chat."
-  (when (telega-msg-sender-blocked-p msg-sender 'locally)
-    (telega--toggleMessageSenderIsBlocked msg-sender nil callback)))
+  "Unblock the MSG-SENDER."
+  (telega--setMessageSenderBlockList msg-sender nil callback))
 
 (defun telega-describe-msg-sender (sender)
   "Describe a message SENDER."

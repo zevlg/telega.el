@@ -497,23 +497,27 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
    (list :@type "getSuitableDiscussionChats")
    callback))
 
-(defun telega--toggleMessageSenderIsBlocked (msg-sender blocked-p
-                                                        &optional callback)
-  "Toggle block state of a CHAT."
+(defun telega--setMessageSenderBlockList (msg-sender block-list
+                                                     &optional callback)
+  "Set Toggle block state of a CHAT."
   (telega-server--call
-   (list :@type "toggleMessageSenderIsBlocked"
+   (list :@type "setMessageSenderBlockList"
          :sender_id (telega--MessageSender msg-sender)
-         :is_blocked (if blocked-p t :false))
+         :block_list (when block-list
+                       (list :@type (symbol-name block-list))))
    (or callback #'ignore)))
 
-(defun telega--getBlockedMessageSenders (&optional offset callback)
+(defun telega--getBlockedMessageSenders (block-list &optional offset callback)
   "Get list of chats blocked by me.
+BLOCK-LIST is one of `blockListMain' or `blockListStories'.
 First element is the list is total number of blocked message senders."
+  (declare (indent 2))
   (with-telega-server-reply (reply)
-      (cons (plist-get reply :total_count)
+      (nconc (list block-list (plist-get reply :total_count))
             (mapcar #'telega-msg-sender (plist-get reply :senders)))
 
     (list :@type "getBlockedMessageSenders"
+          :block_list (list :@type (symbol-name block-list))
           :offset (or offset 0)
           :limit 100)
     callback))
