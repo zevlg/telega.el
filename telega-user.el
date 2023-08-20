@@ -132,7 +132,7 @@ Return nil if given FMT-TYPE is not available."
                       (let ((first-name (telega-tl-str user :first_name))
                             (last-name (telega-tl-str user :last_name)))
                         (concat first-name
-                                (when first-name
+                                (when (and first-name last-name)
                                   " ")
                                 last-name)))
                      ((eq fmt-type 'username)
