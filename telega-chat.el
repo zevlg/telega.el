@@ -26,7 +26,7 @@
 ;; to send.  Press
 ;; {{{where-is(telega-describe-message,telega-msg-button-map)}}} to
 ;; get detailed description of the message at point.
-;; 
+;;
 ;; Note for
 ;; [[https://en.wikipedia.org/wiki/Right-to-left_script][RTL]] users:
 ;; unlike rootbuf, chatbufs disables bidirectional display reordering
@@ -1538,24 +1538,30 @@ Takes into account threads."
             ;; Or no messages in the chat at all
             (and (not last-chat-msg-id) (not last-chatbuf-msg-id))))))
 
-(defun telega-chatbuf--thread-last-read-inbox-msg-id ()
-  "Return `last_read_inbox_message_id' for the current thread in the chatbuf."
-  (let ((topic (telega-msg-topic telega-chatbuf--thread-msg)))
-    (or (plist-get topic :last_read_inbox_message_id)
-        (telega--tl-get telega-chatbuf--thread-msg :interaction_info
-                        :reply_info :last_read_inbox_message_id))))
-
 (defun telega-chatbuf--last-read-inbox-msg-id ()
   "Return last read inbox message id.
 Takes into account `telega-chatbuf--thread-msg'."
-  ;; NOTE: `:last_read_inbox_message_id'==0 in thread means nothing
-  ;; has been read in this thread yet
-  (let ((thread-last-read-msg-id
-         (telega-chatbuf--thread-last-read-inbox-msg-id)))
-    (or (when thread-last-read-msg-id
-          (if (zerop thread-last-read-msg-id)
-              (plist-get telega-chatbuf--thread-msg :id)
-            thread-last-read-msg-id))
+  (let ((topic (telega-msg-topic telega-chatbuf--thread-msg)))
+    (or (cond (topic
+               ;; NOTE: `:last_read_inbox_message_id' in topics are
+               ;; not yet support for TDLib, so always use chat's
+               ;; value for topics
+               (cl-assert (= 0 (plist-get topic :last_read_inbox_message_id)))
+               ;; Fallback to chat's value
+               nil)
+
+              (telega-chatbuf--thread-msg
+               ;; NOTE: `:last_read_inbox_message_id'==0 in thread
+               ;; means nothing has been read in this thread yet
+               (when-let ((thread-last-read-msg-id
+                           (telega--tl-get telega-chatbuf--thread-msg
+                                           :interaction_info
+                                           :reply_info
+                                           :last_read_inbox_message_id)))
+                 (if (zerop thread-last-read-msg-id)
+                     (plist-get telega-chatbuf--thread-msg :id)
+                   thread-last-read-msg-id))
+               ))
         (plist-get telega-chatbuf--chat :last_read_inbox_message_id))))
 
 (defun telega-chatbuf--msg-observable-p (msg &optional node)
@@ -1676,18 +1682,20 @@ Possibly view some messages at point."
        (telega-ins (telega-symbol fill-symbol))
        (telega-ins "\n")
 
-       ;; Message thread
+       ;; Message thread or Topic
        (when thread-msg
          (telega-ins--button (propertize "✕" 'face 'bold)
            'action #'telega-chatbuf-filter-cancel)
          (telega-ins " ")
          (telega-ins--with-attrs (list :max telega-chat-fill-column
                                        :align 'left :elide t)
-           (telega-ins (if (telega-msg-match-p thread-msg 'is-topic)
-                           (telega-i18n "lng_forum_topic_title")
-                         "Thread")
-                       ": ")
-           (telega-ins--content-one-line thread-msg))
+           (if-let ((topic (telega-msg-topic thread-msg)))
+               (progn
+                 (telega-ins (telega-i18n "lng_forum_topic_title") ": ")
+                 (telega-ins--topic-title topic 'with-icon))
+
+             (telega-ins "Thread: ")
+             (telega-ins--content-one-line thread-msg)))
          (telega-ins "\n"))
 
        ;; Group Call section
@@ -2354,12 +2362,15 @@ otherwise set draft only if chatbuf input is also draft."
         (telega-chatbuf--newer-history-loaded)
         (telega-chatbuf--older-history-loaded)
         (goto-char (point-min)))
+
       ;; NOTE: if thread loads from the first message, then insert
       ;; thread starter message
-      (let ((thread-last-read-msg-id
-             (telega-chatbuf--thread-last-read-inbox-msg-id)))
-        (when (and thread-last-read-msg-id
-                  (zerop thread-last-read-msg-id))
+      (when-let ((thread-last-read-msg-id
+                  (telega--tl-get telega-chatbuf--thread-msg
+                                  :interaction_info
+                                  :reply_info
+                                  :last_read_inbox_message_id)))
+        (when (zerop thread-last-read-msg-id)
           (telega-chatbuf--older-history-loaded)
           (goto-char (point-min))))
 
@@ -2510,7 +2521,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
 
 (defun telega-chatbuf-mode-line-unread ()
   "Format unread/mentions/reactions string for chat buffer modeline."
-  (let* ((unread-count 
+  (let* ((unread-count
           (or (plist-get telega-chatbuf--thread-info :unread_message_count)
               (plist-get telega-chatbuf--chat :unread_count)))
          (mention-count (plist-get telega-chatbuf--chat :unread_mention_count))
@@ -5413,7 +5424,7 @@ If `\\[universal-argument]' is given, then search forward instead."
                     (eq (plist-get next-msg :id) (plist-get msg :id)))
                 (message "telega: \"%s\" not found"
                          (plist-get isearch-filter :query))
-              
+
               (message "")
               (telega-msg-goto-highlight next-msg))))
         ))))
