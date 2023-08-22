@@ -748,21 +748,23 @@ markup has been used."
          :message_id (plist-get message :id))))
 
 (cl-defun telega--searchChatMembers (chat query &optional members-filter
-                                          &key limit as-member-p)
+                                          &key limit as-member-p callback)
   "Search CHAT members by QUERY.
 MEMBERS-FILTER is TDLib's \"ChatMembersFilter\".
-LIMIT by default is 50.
+LIMIT by default is 200.
 If AS-MEMBER-P is non-nil, then return \"chatMember\" structs instead
 of message sender."
-  (let ((reply (telega-server--call
-                (nconc (list :@type "searchChatMembers"
-                             :chat_id (plist-get chat :id)
-                             :query query
-                             :limit (or limit 50))
-                       (when members-filter
-                         (list :filter members-filter))))))
-    (mapcar (if as-member-p #'identity #'telega-msg-sender)
-            (plist-get reply :members))))
+  (declare (indent 3))
+  (with-telega-server-reply (reply)
+      (mapcar (if as-member-p #'identity #'telega-msg-sender)
+              (plist-get reply :members))
+    (nconc (list :@type "searchChatMembers"
+                 :chat_id (plist-get chat :id)
+                 :query query
+                 :limit (or limit 200))
+           (when members-filter
+             (list :filter members-filter)))
+    callback))
 
 (defun telega--getChatAdministrators (chat &optional callback)
   "Return a list of administrators for the CHAT."
