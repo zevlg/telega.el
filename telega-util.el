@@ -818,7 +818,7 @@ See `puny-decode-domain' for details."
                        (url-unhex-string text) 'utf-8)))
                (telega-link-props 'url text 'face 'telega-entity-type-texturl)))
        (textEntityTypeTextUrl
-        (telega-link-props 'url (plist-get ent-type :url)
+        (telega-link-props 'url (telega-tl-str ent-type :url)
                            'face 'telega-entity-type-texturl))
        (textEntityTypeBotCommand
         '(face telega-entity-type-botcommand))
@@ -879,7 +879,7 @@ Return now text with markdown syntax."
         (replace-regexp-in-string (regexp-quote " ") "%20"
                                   (substring-no-properties text))))
       (textEntityTypeTextUrl
-       (format "[%s](%s)" text (plist-get ent-type :url)))
+       (format "[%s](%s)" text (telega-tl-str ent-type :url)))
       (textEntityTypeCustomEmoji
        (apply #'propertize text
               (telega--entity-to-properties (car entity-text) text)))
@@ -914,7 +914,7 @@ Return string with org mode syntax."
         (replace-regexp-in-string (regexp-quote " ") "%20"
                                   (substring-no-properties text))))
       (textEntityTypeTextUrl
-       (format "[[%s][%s]]" (plist-get ent-type :url) text))
+       (format "[[%s][%s]]" (telega-tl-str ent-type :url) text))
       (textEntityTypeCustomEmoji
        (apply #'propertize text
               (telega--entity-to-properties (car entity-text) text)))

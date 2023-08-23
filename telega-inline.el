@@ -46,18 +46,18 @@
 (defun telega--on-callbackQueryAnswer (reply)
   "Handle callback reply answer."
   (let ((text (telega-tl-str reply :text))
-        (link (plist-get reply :url)))
+        (link (telega-tl-str reply :url)))
     (if (plist-get reply :show_alert)
         ;; Popup message from the bot
         (with-telega-help-win "*Callback Alert*"
           (telega-ins text)
-          (unless (string-empty-p link)
+          (when link
             (telega-ins "\n")
             (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
               (telega-ins link))))
 
       (message text)
-      (unless (string-empty-p link)
+      (when link
         (telega-browse-url link)))))
 
 (defun telega--getCallbackQueryAnswer (msg payload)
@@ -90,7 +90,7 @@
        (telega-chat-share-my-contact (telega-msg-chat msg)))
 
       (inlineKeyboardButtonTypeUrl
-       (telega-browse-url (plist-get kbd-type :url)))
+       (telega-browse-url (telega-tl-str kbd-type :url)))
 
       (inlineKeyboardButtonTypeLoginUrl
        (let* ((url-info (telega--getLoginUrlInfo msg kbd-type))
@@ -180,7 +180,7 @@
   (let ((kbd-type (plist-get kbd-button :type)))
     (cl-case (telega--tl-type kbd-type)
       ((inlineKeyboardButtonTypeUrl inlineKeyboardButtonTypeLoginUrl)
-       (plist-get kbd-type :url))
+       (telega-tl-str kbd-type :url))
       )))
 
 

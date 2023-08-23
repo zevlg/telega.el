@@ -379,7 +379,8 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        ;; Now wait till [START] is pressed
        ))
     (internalLinkTypeMessage
-     (let* ((msg-info (telega--getMessageLinkInfo (plist-get tdlib-link :url)))
+     (let* ((msg-info (telega--getMessageLinkInfo
+                       (telega-tl-str tdlib-link :url)))
             (chat-id (plist-get msg-info :chat_id))
             (thread-id (plist-get msg-info :message_thread_id))
             (msg (plist-get msg-info :message)))

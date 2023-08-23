@@ -103,7 +103,7 @@
   "Open instant view when BUTTON is pressed."
   (let* ((msg (button-get button :value))
          (web-page (telega--tl-get msg :content :web_page)))
-    (funcall 'telega-webpage--instant-view (plist-get web-page :url)
+    (funcall 'telega-webpage--instant-view (telega-tl-str web-page :url)
              (plist-get web-page :site_name))))
 
 (defvar telega-webpage-mode-map
@@ -144,9 +144,11 @@ Keymap:
 
 (defun telega-webpage-goto-anchor (name)
   "Goto at anchor NAME position."
-  (let ((anchor (cdr (assoc name telega-webpage--anchors))))
+  ;; NOTE: NAME could be a hex encoded utf-8 string
+  (let* ((dec-name (decode-coding-string (url-unhex-string name) 'utf-8))
+         (anchor (cdr (assoc dec-name telega-webpage--anchors))))
     (unless anchor
-      (error (format "Anchor \"#%s\" not found" name)))
+      (error (format "Anchor \"#%s\" not found" dec-name)))
     (goto-char anchor)))
 
 (defun telega-webpage--ins-pb-details (pb)
@@ -204,13 +206,10 @@ Keymap:
   "Insert RichText RT."
   (cl-ecase (telega--tl-type rt)
     (richTextAnchor
-     (telega-webpage--add-anchor (plist-get rt :name))
-     (when-let ((anchor-rt (plist-get rt :text)))
-       ;; NOTE: compatibility with TDLib 1.6.0
-       (telega-webpage--ins-rt anchor-rt)))
+     (telega-webpage--add-anchor (telega-tl-str rt :name)))
     (richTextReference
      ;; TDLib 1.6.2
-     (let ((ref-url (plist-get rt :url)))
+     (let ((ref-url (telega-tl-str rt :url)))
        (telega-ins--raw-button
            (list 'face 'telega-link
                  'action #'telega-button--action
@@ -220,7 +219,7 @@ Keymap:
          (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextAnchorLink
      ;; TDLib 1.6.2
-     (let ((anchor (plist-get rt :name)))
+     (let ((anchor (telega-tl-str rt :anchor_name)))
        (telega-ins--raw-button
            (list 'face 'telega-link
                  'action #'telega-button--action
@@ -254,7 +253,7 @@ Keymap:
      (telega-ins--with-attrs (list :face 'telega-webpage-fixed)
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextUrl
-     (let ((url (plist-get rt :url)))
+     (let ((url (telega-tl-str rt :url)))
        (telega-ins--raw-button
            (list 'face 'telega-link
                  'action #'telega-button--action
@@ -283,7 +282,7 @@ Keymap:
   (let* ((pb-photo (plist-get pageblock :photo))
          (photo-image (when pb-photo
                         (telega-photo--image pb-photo (list 10 3 10 3))))
-         (url (plist-get pageblock :url))
+         (url (telega-tl-str pageblock :url))
          (title (plist-get pageblock :title))
          (author (plist-get pageblock :author))
          (publish-date (plist-get pageblock :publish_date)))
@@ -395,7 +394,7 @@ Keymap:
     (pageBlockEmbedded
      (telega-button--insert 'telega pb
        :inserter (lambda (pb-embedded)
-                   (let ((url (plist-get pb-embedded :url))
+                   (let ((url (telega-tl-str pb-embedded :url))
                          (html (plist-get pb-embedded :html))
                          (poster-photo (plist-get pb-embedded :poster_photo)))
                      (when (telega-ins--with-face '(bold telega-link)
@@ -413,9 +412,8 @@ Keymap:
                         (plist-get pb-embedded :caption)))
                      ))
        :action (lambda (pb-embedded)
-                 (let ((url (plist-get pb-embedded :url)))
-                   (unless (string-empty-p url)
-                     (telega-browse-url url))))))
+                 (when-let ((url (telega-tl-str pb-embedded :url)))
+                   (telega-browse-url url)))))
     (pageBlockEmbeddedPost
      (telega-ins "<TODO: pageBlockEmbeddedPost>\n"))
     (pageBlockCollage
@@ -458,8 +456,8 @@ Keymap:
      (telega-button--insert 'telega pb
        :inserter 'telega-webpage--ins-related-article
        :action (lambda (_pbignored)
-                 (telega-browse-url (plist-get pb :url)))
-       :help-echo (concat "URL: " (plist-get pb :url))))
+                 (telega-browse-url (telega-tl-str pb :url)))
+       :help-echo (concat "URL: " (telega-tl-str pb :url))))
     (pageBlockRelatedArticles
      (telega-ins--with-face '(telega-msg-heading bold)
        (when (telega-webpage--ins-rt (plist-get pb :header))
@@ -499,9 +497,7 @@ instant view for the URL."
         telega-webpage--iv (or instant-view
                                (telega--getWebPageInstantView url)
                                (error "Can't instant view the URL: %s" url))
-        ;; IV.url can differ from URL, we use IV.url for the correct
-        ;; anchors handling. See docs for "td-api.tl:webPageInstantView"
-        telega-webpage--url (or (plist-get telega-webpage--iv :url) url)
+        telega-webpage--url url
         telega-webpage--anchors nil)
   (telega-webpage--history-push)
 
@@ -521,6 +517,11 @@ instant view for the URL."
     (visual-line-mode 1)
     (setq visual-fill-column-width telega-webpage-fill-column)
     (visual-fill-column-mode 1))
+
+  (when (plist-get telega-webpage--iv :is_rtl)
+    ;; Force RTL display
+    (setq bidi-display-reordering t
+          bidi-paragraph-direction 'right-to-left))
 
   (let ((anchor (string-trim-left url "[^#]*#?")))
     (unless (string-empty-p anchor)

@@ -2081,7 +2081,7 @@ TDLib 1.7.8"
 (defun telega--getInternalLink (tdlib-link-type &optional internal-p)
   "Return http or tg link to the TDLIB-LINK-TYPE."
   (with-telega-server-reply (reply)
-      (plist-get reply :url)
+      (telega-tl-str reply :url)
 
     (list :@type "getInternalLink"
           :type tdlib-link-type

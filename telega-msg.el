@@ -864,7 +864,7 @@ non-nil."
         ((and (string= "photo" (plist-get web-page :type))
               (plist-get web-page :photo))
          (telega-msg-open-photo msg (plist-get web-page :photo)))
-        (t (when-let ((url (plist-get web-page :url)))
+        (t (when-let ((url (telega-tl-str web-page :url)))
              (telega-browse-url url)))))
 
 (defun telega-msg-open-game (msg)
