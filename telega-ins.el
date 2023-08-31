@@ -355,7 +355,7 @@ Format is:
               ;; I18N: lng_status_lastseen_now
               "last seen just now")
              ((< online-dur (* 3 24 60 60))
-              (format "last seen in %s"
+              (format "last seen %s ago"
                       (telega-duration-human-readable online-dur 1)))
              ((eq status 'userStatusRecently)
               ;; I18N: lng_status_recently
