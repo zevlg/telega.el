@@ -241,7 +241,7 @@ version greater or equal to 1.8.16.
 On MacOS you can install a pre-built =TDLib= package using homebrew from
 [[https://brew.sh][brew.sh]].  Just run:
 #+begin_src shell
-  $ brew install tdlib
+  $ brew install tdlib --HEAD
 #+end_src
 
 On Linux, you will need to build =TDLib= from source.  Use 
