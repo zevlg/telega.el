@@ -1021,8 +1021,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
               ((plist-get web-page :voice_note)
                (telega-ins--voice-note msg (plist-get web-page :voice_note))
                (telega-ins "\n"))
-              ((and (not (zerop (plist-get web-page :story_sender_chat_id)))
-                    (not (zerop (plist-get web-page :story_id))))
+              ((and (not (telega-zerop (plist-get web-page :story_sender_chat_id)))
+                    (not (telega-zerop (plist-get web-page :story_id))))
                (telega-ins--story-content
                 (telega-story-get
                  (plist-get web-page :story_sender_chat_id)
