@@ -41,9 +41,10 @@
 (declare-function company-grab "company" (regexp &optional expression limit))
 (declare-function company-grab-line "company" (regexp &optional expression))
 (declare-function company-call-backend "company" (&rest args))
+(declare-function company-other-backend "company" (&optional backend))
 
 (declare-function telega-chat--info "telega-chat" (chat))
-(declare-function telega-chatbuf--thread-msg-id "telega-chat")
+(declare-function telega-chatbuf--message-thread-id "telega-chat")
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
 (declare-function telega--full-info "telega-info" (tlobj))
 
@@ -68,10 +69,10 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   syntax. Completion is done using predefined set of emojis.
 ;;
 ;;   Customizable Options:
-;;   - {{{user-option(telega-emoji-fuzzy-match, 4)}}}
+;;   - {{{user-option(telega-company-emoji-fuzzy-match, 4)}}}
 
 (defun telega-company-grab-emoji ()
-  (let ((cg (company-grab ":[^: _]+" nil
+  (let ((cg (company-grab "\\(?:^\\|[[:space:]]\\)\\(:[^: _]+\\)" 1
                           (- (point) telega-emoji-candidate-max-length))))
     (when cg (cons cg company-minimum-prefix-length))))
 
@@ -98,15 +99,19 @@ Matches only if CHAR does not apper in the middle of the word."
     ;; Always match if having `:'
     (prefix (telega-company-grab-emoji))
     ;; No caching for fuzzy matching, otherwise it won't work
-    (no-cache telega-emoji-fuzzy-match)
+    (no-cache telega-company-emoji-fuzzy-match)
     (candidates
-     (cl-remove-if-not
-      (lambda (en)
-        (or (string-prefix-p arg en)
-            (and telega-emoji-fuzzy-match
-                 (string-match-p
-                  (regexp-quote (concat "-" (substring arg 1))) en))))
-      telega-emoji-candidates))
+     (or (cl-remove-if-not
+          (lambda (en)
+            (or (string-prefix-p arg en)
+                (and telega-company-emoji-fuzzy-match
+                     (string-match-p
+                      (regexp-quote (concat "-" (substring arg 1))) en))))
+          telega-emoji-candidates)
+
+         ;; NOTE: Pass control to other emoji completion backend if no
+         ;; candidates
+         (company-other-backend)))
     (annotation
      (telega-company-emoji-annotation
       (cdr (assoc arg telega-emoji-alist))))
@@ -145,7 +150,12 @@ Matches only if CHAR does not apper in the middle of the word."
     (sorted t)
     ;; Always match if having `:'
     (prefix (telega-company-grab-emoji))
-    (candidates (telega-company-telegram-emoji-gen-candidates arg))
+    (candidates
+     (or (telega-company-telegram-emoji-gen-candidates arg)
+
+         ;; NOTE: Pass control to other emoji completion backend if no
+         ;; candidates
+         (company-other-backend)))
     (annotation
      (telega-company-emoji-annotation (get-text-property 0 'emoji arg)))
     (post-completion
@@ -162,6 +172,7 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 ;;
 ;; Customizable options:
+;; - {{{user-option(telega-company-username-prefer-name, 2)}}}
 ;; - {{{user-option(telega-company-username-show-avatars, 2)}}}
 ;; - {{{user-option(telega-company-username-markup, 2)}}}
 (defun telega-company-grab-username ()
@@ -189,7 +200,7 @@ Matches only if CHAR does not apper in the middle of the word."
              ;; However, using "chatMembersFilterMention" is essential
              ;; because of Topics feature.
              (list :@type "chatMembersFilterMention"
-                   :message_thread_id (telega-chatbuf--thread-msg-id))
+                   :message_thread_id (telega-chatbuf--message-thread-id))
              )))
        (or (nconc (mapcar (lambda (member)
                             (propertize
@@ -340,8 +351,10 @@ Matches only if CHAR does not apper in the middle of the word."
     (interactive (company-begin-backend 'telega-company-botcmd))
     (require-match 'never)
     (sorted t)
-    ;; Always match if having `/'
-    (prefix (telega-company-grab-botcmd))
+    ;; Complete only if chatbuf has corresponding bot
+    (prefix
+     (when (telega-chatbuf-match-p '(type bot))
+       (telega-company-grab-botcmd)))
     (candidates
      (all-completions arg (telega-company--bot-commands)))
     (annotation
@@ -405,10 +418,7 @@ WHAT is one of `prefix', `backend' or `prefix-and-backend'"
          (backend (cl-find-if (lambda (b)
                                 (let ((company-backend b))
                                   (setq prefix (company-call-backend 'prefix))))
-                              (list 'telega-company-username
-                                    telega-emoji-company-backend
-                                    'telega-company-hashtag
-                                    'telega-company-botcmd))))
+                              telega-company-backends)))
     (when prefix
       (cl-ecase what
         (prefix prefix)

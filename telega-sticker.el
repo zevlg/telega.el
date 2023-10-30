@@ -30,6 +30,7 @@
 (require 'telega-tdlib)
 (require 'telega-util)
 (require 'telega-media)
+(require 'telega-ffplay)
 
 ;; shutup compiler
 (defvar ido-matches)
@@ -247,9 +248,9 @@ CALLBACK is called without arguments"
   "Draw STICKER outline path to the SVG."
   (declare (indent 2))
   (cl-assert (plist-get sticker :outline))
-  (let ((factor (cons (/ (float (dom-attr svg 'width))
+  (let ((factor (cons (/ (float (telega-svg-width svg))
                          (plist-get sticker :width))
-                      (/ (float (dom-attr svg 'height))
+                      (/ (float (telega-svg-height svg))
                          (plist-get sticker :height)))))
     (seq-doseq (outline-path (plist-get sticker :outline))
       (apply #'telega-sticker--svg-outline-path
@@ -564,13 +565,13 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (setq telega--chat for-chat)
 
       ;; NOTE: use callbacks for async stickers loading
-      (telega-ins "Favorite:\n")
+      (telega-ins (telega-i18n "lng_mac_touchbar_favorite_stickers") ":\n")
       (telega--getFavoriteStickers
         (telega--gen-ins-continuation-callback 'loading
           #'telega-ins--sticker-list))
       (telega-ins "\n")
 
-      (telega-ins "\nRecent:\n")
+      (telega-ins "\n" (telega-i18n "lng_recent_stickers") ":\n")
       (telega--getRecentStickers nil
         (telega--gen-ins-continuation-callback 'loading
           #'telega-ins--sticker-list)))))
@@ -597,13 +598,16 @@ stickers for the EMOJI."
                              args))))
 
       (unless custom-emojis-only
+        (telega-ins "\n")
         (telega-ins "\nInstalled Stickers:\n")
         (telega--getStickers emoji
           :callback (telega--gen-ins-continuation-callback 'loading
                       #'telega-ins--sticker-list))
 
+        (telega-ins "\n")
         (telega-ins "\nPublic Stickers:\n")
-        (telega--searchStickers emoji nil
+        (telega--searchStickers emoji
+          :callback
           (telega--gen-ins-continuation-callback 'loading
             #'telega-ins--sticker-list)))
     )))

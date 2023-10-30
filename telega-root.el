@@ -513,7 +513,8 @@ EWOC-SPEC is plist with keyword elements:
                             (plist-get ewoc-spec :header))
                            (or (plist-get ewoc-spec :footer)
                                (when (plist-get ewoc-spec :loading)
-                                 "Loading..\n"))
+                                 (concat (telega-i18n "lng_profile_loading")
+                                         "\n")))
                            'no-sep)))
     (setq telega-root-view--ewocs-alist
           (append telega-root-view--ewocs-alist
@@ -556,7 +557,7 @@ ITEMS is a list of loaded items to be added into ewoc."
       (telega-save-cursor
         (telega-ewoc--set-footer ewoc "")
 
-        (dolist (item (sort items (telega-root-view--ewoc-sorter ewoc-name)))
+        (seq-doseq (item (sort items (telega-root-view--ewoc-sorter ewoc-name)))
           (ewoc-enter-last ewoc item)))
 
       (run-hooks 'telega-root-update-hook))))
@@ -571,16 +572,11 @@ Keep cursor position only if CHAT is visible."
 
         ;; NOTE: if chatbuf is opened with topic, then try to find
         ;; corresponding topic button next to the chat button
-        (when-let ((topic (with-telega-chatbuf chat
-                            (telega-msg-topic telega-chatbuf--thread-msg)))
-                   (topics-shown-p
-                    (save-excursion
-                      (telega-button-forward 1)
-                      (telega-topic-at (point)))))
-          (telega-button-forward 1
-            (lambda (button)
-              (eq (telega-topic-at button)
-                  topic))))
+        (when-let* ((topic (with-telega-chatbuf chat
+                             (telega-chatbuf--thread-topic)))
+                    (topics-ewoc (button-get (button-at (point)) :topics-ewoc))
+                    (topic-node (telega-ewoc--find-by-data topics-ewoc topic)))
+          (goto-char (ewoc-location topic-node)))
 
         (unless (get-buffer-window)
           (telega-buffer--hack-win-point))
@@ -655,35 +651,56 @@ Keep cursor position only if CHAT is visible."
 (defun telega-chat-button-action (chat)
   "Action to take when CHAT button is pushed in the rootbuf.
 If `\\[universal-argument]' is specified, then open chat in a preview mode."
-  (with-current-buffer (telega-chat--pop-to-buffer chat)
+  ;; NOTE: load chat history only after toggling preview mode, it
+  ;; might affect how initial history is loaded, ref
+  ;; `telega-chat-preview-mode-from-last-message'
+  (with-current-buffer (telega-chat--pop-to-buffer chat :no-history-load)
     ;; Possibly need to toggle preview mode depending on
     ;; universal-argument
     (cond ((and current-prefix-arg (not telega-chat-preview-mode))
            (telega-chat-preview-mode 1))
+
           ((and (not current-prefix-arg) telega-chat-preview-mode)
            (telega-chat-preview-mode 0)))
-    ))
+
+    ;; NOTE: load history only if there is no messages yet, i.e. new
+    ;; chatbuf has been created
+    (unless (or telega-chatbuf--history-loading
+                (telega-chatbuf--last-msg))
+      (telega-chatbuf--load-initial-history))))
 
 (defun telega-topic-button-action (topic)
   "Action to take when TOPIC button is pushed in the rootbuf.
 If `\\[universal-argument]' is specified, then open topic in a preview mode."
-  (telega-chat--goto-thread
-   (telega-topic-chat topic)
-   (plist-get (plist-get topic :last_message) :id)
-   (plist-get topic :last_read_outbox_message_id)))
+  (telega-topic-goto topic (plist-get topic :last_read_outbox_message_id)))
+
+(defun telega-root--chat-topic-pp (topic &optional custom-topic-inserter)
+  "Pretty printer for TOPIC button."
+  (telega-button--insert 'telega-topic topic
+    :inserter (or custom-topic-inserter
+                  telega-inserter-for-topic-button)
+    :action #'telega-topic-button-action)
+  (telega-ins "\n"))
 
 (defun telega-root--chat-pp (chat &optional custom-inserter custom-action)
   "Pretty printer for any CHAT button."
-  (telega-button--insert 'telega-chat chat
-    :inserter (or custom-inserter
-                  telega-inserter-for-chat-button)
-    :action (or custom-action #'telega-chat-button-action))
+  (let ((chat-button (telega-button--insert 'telega-chat chat
+                       :inserter (or custom-inserter
+                                     telega-inserter-for-chat-button)
+                       :action (or custom-action #'telega-chat-button-action))))
+    (telega-ins "\n")
 
-  ;; Insert topics buttons
-  (telega-ins--chat-topics chat)
-
-  (unless (= (char-before) ?\n)
-    (insert "\n")))
+    (when-let ((topics-ewoc (when (plist-get chat :telega-topics-visible)
+                              (ewoc-create #'telega-root--chat-topic-pp
+                                           nil nil 'no-sep))))
+      (button-put chat-button :topics-ewoc topics-ewoc)
+      (seq-doseq (topic (telega-chat-topics chat))
+        (ewoc-enter-last topics-ewoc topic))
+      ;; NOTE: `ewoc-enter-last' inserts under `save-excursion', but
+      ;; we need point to move forward.  So, move point to the end of
+      ;; the topic ewocs making topics ewoc part of the chat node
+      (goto-char (ewoc-location (ewoc--footer topics-ewoc))))
+    ))
 
 (defun telega-root--chat-known-pp (chat &optional custom-inserter custom-action)
   "Pretty printer for known CHAT button."
@@ -992,65 +1009,59 @@ If corresponding chat node does not exists in EWOC, then create new one."
                           telega-status-animate-interval
                           #'telega-root--loading-animate))))
 
-(defun telega-root--messages-search (&optional last-msg)
-  "Search for messages."
+(defun telega-root--found-messages-add (ewoc-name search-func found-messages)
+  "Add FOUND-MESSAGES to the EWOC-NAME ewoc."
+  (telega-root-view--ewoc-loading-done
+   ewoc-name (plist-get found-messages :messages))
+
+  ;; NOTE: if `next_offset' is non-empty, then more messages are
+  ;; available
+  (when-let ((next-offset (telega-tl-str found-messages :next_offset)))
+    (with-telega-root-view-ewoc ewoc-name ewoc
+      (telega-save-cursor
+        (telega-ewoc--set-footer ewoc
+          (telega-ins--as-string
+           (telega-ins--button "Load More"
+             :value next-offset
+             :action search-func)))))))
+
+(defun telega-root--messages-search (&optional offset)
+  "Search for messages in all chats."
   (let* ((ewoc-spec (telega-root-view--ewoc-spec "messages"))
          (query (plist-get ewoc-spec :search-query)))
     (cl-assert query)
     (telega-root-view--ewoc-loading-start "messages"
-      (telega--searchMessages query last-msg telega-tdlib--chat-list
-                              #'telega-root--messages-add))))
+      (telega--searchMessages query
+        :chat-list telega-tdlib--chat-list
+        :offset offset
+        :callback (apply-partially
+                   #'telega-root--found-messages-add
+                   "messages"
+                   #'telega-root--messages-search)))))
 
-(defun telega-root--outgoing-doc-messages-search ()
+(defun telega-root--outgoing-doc-messages-search (&optional _offset)
   (let* ((ewoc-spec (telega-root-view--ewoc-spec "outgoing-doc-messages"))
          (query (plist-get ewoc-spec :search-query)))
     (cl-assert query)
     (telega-root-view--ewoc-loading-start "outgoing-doc-messages"
       (telega--searchOutgoingDocumentMessages query
-        :callback #'telega-root--outgoing-doc-messages-add))))
+        :callback (apply-partially
+                   #'telega-root--found-messages-add
+                   "outgoing-doc-messages"
+                   #'telega-root--outgoing-doc-messages-search)))))
 
-(defun telega-root--call-messages-search (&optional last-msg)
+(defun telega-root--call-messages-search (&optional offset)
   "Search for call messages."
   (let* ((ewoc-spec (telega-root-view--ewoc-spec "messages"))
          (only-missed-p (plist-get ewoc-spec :only-missed-p)))
     (telega-root-view--ewoc-loading-start "messages"
-      (telega--searchCallMessages last-msg nil only-missed-p
-        #'telega-root--call-messages-add))))
-
-(defun telega-root--messages-add0 (ewoc-name search-func messages)
-  "Add MESSAGES to the EWOC-NAME ewoc."
-  (telega-root-view--ewoc-loading-done ewoc-name messages)
-
-  ;; If none of the messages is visible (according to active
-  ;; filters) and last-msg is available, then fetch more messages
-  ;; automatically.
-  ;; Otherwise, when at least one message is display, show
-  ;; "Load More" button
-  (when search-func
-    (when-let ((last-msg (car (last messages))))
-      (with-telega-root-view-ewoc ewoc-name ewoc
-        (if (telega-ewoc--empty-p ewoc)
-            ;; no nodes visible, fetch next automatically
-            (funcall search-func last-msg)
-
-          (telega-save-cursor
-            (telega-ewoc--set-footer
-             ewoc (telega-ins--as-string
-                   (telega-ins--button "Load More"
-                     :value last-msg
-                     :action search-func)))))
-        ))))
-
-(defun telega-root--messages-add (messages)
-  (telega-root--messages-add0
-   "messages" #'telega-root--messages-search messages))
-
-(defun telega-root--call-messages-add (messages)
-  (telega-root--messages-add0
-   "messages" #'telega-root--call-messages-search messages))
-
-(defun telega-root--outgoing-doc-messages-add (messages)
-  (telega-root-view--ewoc-loading-done "outgoing-doc-messages" messages))
+      (telega--searchCallMessages
+        :offset offset
+        :only-missed-p only-missed-p
+        :callback (apply-partially
+                   #'telega-root--found-messages-add
+                   "messages"
+                   #'telega-root--call-messages-search)))))
 
 
 ;;; Emacs runtime environment for telega
@@ -2101,8 +2112,8 @@ state kinds to show. By default all kinds are shown."
                                              (eq (plist-get chat :id)
                                                  (plist-get fav :chat_id)))
                                            telega--favorite-messages))
-                     (apply-partially #'telega-root--messages-add0
-                                      ewoc-name nil))
+                     (apply-partially #'telega-root-view--ewoc-loading-done
+                                      ewoc-name))
           :sorter #'telega-root--messages-sorter
           :on-message-update #'telega-root--on-message-update)))
 

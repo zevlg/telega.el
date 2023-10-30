@@ -289,7 +289,19 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     (when-let ((username (telega-msg-sender-username user)))
       ;; I18N: profile_username -> Username:
       (telega-ins (telega-i18n "lng_profile_username")
-                  " @" username "\n"))
+                  " @" username)
+
+      ;; Also insert other usernames
+      (let ((other-usernames
+             (seq-rest (telega--tl-get user :usernames :active_usernames))))
+        (unless (seq-empty-p other-usernames)
+          (telega-ins--with-face 'telega-shadow
+            (telega-ins " " (telega-i18n "lng_info_usernames_label") " "))
+          (telega-ins--sequence (other-username other-usernames)
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins ", "))
+            (telega-ins "@" other-username))))
+      (telega-ins "\n"))
     (when-let ((phone (telega-tl-str user :phone_number)))
       ;; I18N: profile_mobile_number -> Phone:
       (telega-ins (telega-i18n "lng_profile_mobile_number")
@@ -301,7 +313,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
           ((plist-get user :telega-last-online)
            (telega-ins "in " (telega-duration-human-readable
                               (- (telega-time-seconds)
-                                 (plist-get user :telega-last-online)) 1)))
+                                 (plist-get user :telega-last-online))
+                              1 'long)))
           (t (telega-ins (telega-user--seen user))))
     (telega-ins "\n")
 
@@ -477,10 +490,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     ))
 
 (defun telega-info--insert-supergroup (supergroup chat)
-  (let* ((full-info (telega--full-info supergroup))
+  (let* ((telega-full-info-offline-p nil)
+         (full-info (telega--full-info supergroup))
          (member-status (plist-get supergroup :status))
          (my-perms (telega-chat-member-my-permissions chat))
          (member-status-name (plist-get member-status :@type)))
+    (cl-assert full-info)
     ;; Scam status first
     (when (telega-ins-prefix telega-symbol-blocked
             (telega-ins--with-face 'error
@@ -561,13 +576,12 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
           (telega-ins--labeled "  " nil
             (dolist (perm-spec telega-chat--admin-permissions)
               ;; list only those permissions which has title
-              ;; NOTE: special permissions applies for channels only -
-              ;; `:can_post_messages' and `:can_edit_messages'
+              ;; NOTE: special permissions applies for channels only,
+              ;; defined by `telega-chat--admin-permissions-for-channels'
               (when (and (cdr perm-spec)
                          (or channel-p
                              (not (memq (car perm-spec)
-                                        '(:can_post_messages
-                                          :can_edit_messages)))))
+                                        telega-chat--admin-permissions-for-channels))))
                 (let ((perm-value (plist-get my-perms (car perm-spec))))
                   (if (and can-edit-p
                            (or (not owner-p) (eq :is_anonymous (car perm-spec))))
@@ -744,19 +758,88 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (insert (propertize "Full-Info: " 'face 'bold)
               (format "%S" full-info) "\n"))))
 
-(defun telega-describe-connected-websites ()
-  "Describe connected websites."
+(defun telega-describe-connected-websites (&optional websites)
+  "Describe connected WEBSITES."
   (interactive)
-  (error "`telega-describe-connected-websites' is not implemented."))
+  (with-telega-help-win "*Telega Connected Websites*"
+    ;; Title
+    (telega-ins--with-face 'bold
+      (telega-ins "* " (telega-i18n "lng_settings_connected_title")
+                  ": " (if websites
+                           (number-to-string (length websites))
+                         (telega-i18n "lng_profile_loading"))))
+    (if (not websites)
+        (telega--getConnectedWebsites 'telega-describe-connected-websites)
+
+      (telega-ins " ")
+      (telega-ins--button (telega-i18n "lng_settings_disconnect_all")
+        'action (lambda (_ignore)
+                  (when (yes-or-no-p
+                         (concat (telega-i18n "lng_settings_disconnect_all_sure")
+                                 " "))
+                    (telega--disconnectAllWebsites)
+                    (telega-describe-connected-websites))))
+      (telega-ins "\n")
+      (telega-ins--help-message
+       (telega-ins-i18n "lng_settings_logged_in_description"))
+      (telega-ins "\n")
+
+      (telega-ins--with-face 'bold
+        (telega-ins "* " (telega-i18n "lng_settings_logged_in_title") "\n\n"))
+
+      (dolist (website websites)
+        (let ((bot-user (telega-user-get (plist-get website :bot_user_id))))
+          (telega-ins--raw-button
+              (telega-link-props 'sender bot-user 'type 'telega)
+            (telega-ins--msg-sender bot-user
+              :with-avatar-p 2
+              :with-username-p 'telega-username)))
+        (let ((domain (telega-tl-str website :domain_name)))
+          (telega-ins domain)
+          (telega-ins " ")
+          (telega-ins--button (telega-i18n "lng_settings_disconnect")
+            'action (lambda (_ignore)
+                      (when (yes-or-no-p
+                             (concat (telega-i18n "lng_settings_disconnect_sure"
+                                       :domain domain)
+                                     " "))
+                        (telega--disconnectWebsite (plist-get website :id))
+                        (telega-describe-connected-websites))))
+          (telega-ins "\n"))
+        (telega-ins (telega-i18n "lng_sessions_browser") ": "
+                    (telega-tl-str website :browser)
+                    " (" (telega-tl-str website :platform) ")"
+                    "\n")
+        (telega-ins (telega-i18n "lng_sessions_ip") ": "
+                    (telega-tl-str website :ip_address) "\n")
+        (telega-ins (telega-i18n "lng_sessions_location") ": "
+                    (telega-tl-str website :location) "\n")
+        (telega-ins--help-message
+         (telega-ins-i18n "lng_sessions_location_about"))
+        (telega-ins "Login: ")
+        (telega-ins--date (plist-get website :log_in_date))
+        (telega-ins ", Last: ")
+        (telega-ins--date (plist-get website :last_active_date))
+        (telega-ins "\n")
+        
+        (telega-ins--inline-delim)
+        (telega-ins "\n")))
+    ))
 
 (defun telega-describe-active-sessions (&optional sessions)
   "Describe active SESSIONS."
   (interactive)
   (with-telega-help-win "*Telega Active Sessions*"
+    ;; Title
+    (telega-ins--with-face 'bold
+      (telega-ins "* " (telega-i18n "lng_settings_sessions_title")
+                  ": " (if sessions
+                           (number-to-string (length sessions))
+                         (telega-i18n "lng_profile_loading"))
+                  "\n\n"))
+
     (if (not sessions)
-        (progn
-          (telega-ins-i18n "lng_profile_loading")
-          (telega--getActiveSessions 'telega-describe-active-sessions))
+        (telega--getActiveSessions 'telega-describe-active-sessions)
 
       (dolist (session sessions)
         (let ((app-name (plist-get session :application_name))
@@ -765,10 +848,10 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
               (official-p (plist-get session :is_official_application))
               (current-p (plist-get session :is_current))
               (device (plist-get session :device_model))
-              (platform (plist-get session :platform))
-              (sys-ver (plist-get session :system_version))
-              (ip (plist-get session :ip))
-              (country (plist-get session :country))
+              (platform (telega-tl-str session :platform))
+              (sys-ver (telega-tl-str session :system_version))
+              (ip (plist-get session :ip_address))
+              (location (telega-tl-str session :location))
               (login-ts (plist-get session :log_in_date))
               (last-ts (plist-get session :last_active_date)))
           (telega-ins app-name " v" app-ver " ")
@@ -780,7 +863,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
           ;; see https://github.com/zevlg/telega.el/issues/113
           (if current-p
               (progn
-                (telega-ins (propertize " (current)" 'face 'bold))
+                (telega-ins " ")
+                (telega-ins--with-face 'bold
+                  (telega-ins "(" (telega-i18n "lng_sessions_header") ")"))
                 (telega-ins " ")
                 (telega-ins--button "Logout"
                   'action (lambda (_ignore)
@@ -788,7 +873,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                               (telega-logout)))))
 
             (telega-ins " ")
-            (telega-ins--button "Terminate"
+            (telega-ins--button (telega-i18n "lng_sessions_terminate")
               :value session
               :action (lambda (sess)
                         (when (yes-or-no-p
@@ -799,13 +884,24 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                              (delq sess sessions)))))))
           (telega-ins "\n")
 
-          (telega-ins-fmt "%s, %s %s\n" device platform sys-ver)
-          (telega-ins-fmt "%s %s\n" ip country)
+          (telega-ins (telega-i18n "lng_sessions_system") ": "
+                      device ", " platform (when platform " ") sys-ver "\n")
+          (telega-ins (telega-i18n "lng_sessions_ip") ": " ip "\n")
+          (telega-ins (telega-i18n "lng_sessions_location") ": " location "\n")
+          (telega-ins--help-message
+           (telega-ins-i18n "lng_sessions_location_about"))
           (telega-ins "Login: ")
           (telega-ins--date login-ts)
           (telega-ins ", Last: ")
           (telega-ins--date last-ts)
           (telega-ins "\n")
+          (when (plist-get session :is_password_pending)
+            (telega-ins--with-face 'error
+              (telega-ins-i18n "lng_sessions_incomplete"))
+            (telega-ins "\n")
+            (telega-ins--help-message
+             (telega-ins-i18n "lng_sessions_incomplete_about")))
+          (telega-ins--inline-delim)
           (telega-ins "\n"))))))
 
 

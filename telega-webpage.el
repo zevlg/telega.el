@@ -153,8 +153,7 @@ Keymap:
 
 (defun telega-webpage--ins-pb-details (pb)
   "Inserter for `pageBlockDetails' page block PB."
-  (let ((open-p (not (plist-get pb :is_closed)))
-        (telega--current-buffer (current-buffer)))
+  (let ((open-p (not (plist-get pb :is_closed))))
     (telega-ins (funcall (if open-p 'cdr 'car)
                          telega-symbol-webpage-details)
                 " ")
@@ -199,8 +198,7 @@ Keymap:
 (defun telega-webpage--add-anchor (name)
   "Add anchor with the NAME to point at POS position."
   (setf (alist-get name telega-webpage--anchors nil nil 'equal)
-        (with-current-buffer telega--current-buffer
-          (point-marker))))
+        (point-marker)))
 
 (defun telega-webpage--ins-rt (rt)
   "Insert RichText RT."
@@ -501,16 +499,15 @@ instant view for the URL."
         telega-webpage--anchors nil)
   (telega-webpage--history-push)
 
-  (let ((buffer-read-only nil)
-        (telega--current-buffer (current-buffer)))
+  (with-telega-buffer-modify
     (erase-buffer)
-    (mapc 'telega-webpage--ins-pb
+    (mapc #'telega-webpage--ins-pb
           (plist-get telega-webpage--iv :page_blocks))
     (when telega-debug
       (telega-ins-fmt "\n---DEBUG---\n%S" telega-webpage--iv))
     (goto-char (point-min)))
 
-  (unless (eq major-mode 'telega-webpage-mode)
+  (unless (derived-mode-p 'telega-webpage-mode)
     (telega-webpage-mode)
 
     (cursor-sensor-mode 1)

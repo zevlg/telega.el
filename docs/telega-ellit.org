@@ -114,11 +114,12 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 large amount of memory to be built.  Make sure you are using TDLib
 version greater or equal to {{{eval(telega-tdlib-min-version, t)}}}.
 
-On MacOS you can install a pre-built =TDLib= package using homebrew from
-[[https://brew.sh][brew.sh]].  Just run:
-#+begin_src shell
-$ brew install tdlib
-#+end_src
+On MacOS you can install a pre-built =TDLib= package using homebrew
+from [[https://brew.sh][brew.sh]].  Just run:
+{{{eval((if (equal telega-tdlib-max-version (car
+telega-tdlib-releases)) "#+begin_src shell\n$ brew install
+tdlib\n#+end_src" "#+begin_src shell\n$ brew install tdlib
+--HEAD\n#+end_src"), t)}}}
 
 On Linux, you will need to build =TDLib= from source.  Use 
 [[https://tdlib.github.io/td/build.html][TDLib build instructions generator]] for comprehensive build
@@ -548,6 +549,15 @@ Use ~telega-topic-match-p~ to match a forum's topic.
 
 #+ELLIT-INCLUDE: ../telega-match.el :label topic-temex
 
+** List of Story Temexes
+
+Story Temexes are used to match Telegram Stories posted by users or
+channels.
+
+Use ~telega-story-match-p~ to match a story.
+
+#+ELLIT-INCLUDE: ../telega-match.el :label story-temex
+
 ** Customizable options making use of Telega Match Expressions
 
 - {{{user-option(telega-filter-default, 2)}}}
@@ -830,21 +840,20 @@ with
 
 #+ELLIT-INCLUDE: ../telega-company.el :label company-backends
 
-=company-mode= setup might look like:
+List of company backends to be used for user input completion is
+controlled by:
+- {{{user-option(telega-company-backends, 2)}}}
+
+You can use completion without enabling =company-mode= in the chat
+buffers, by explicitly pressing
+{{{where-is(telega-chatbuf-complete-or-next-link,telega-chat-mode-map)}}}
+to perform completion at point.
+
+On the other hand, =company-mode= detects input context and pops up
+completion candidates if completion at point is available.  To enable
+=company-mode= in chat buffers use:
 #+begin_src elisp
-(setq telega-emoji-company-backend 'telega-company-emoji)
-
-(defun my-telega-chat-mode ()
-  (set (make-local-variable 'company-backends)
-       (append (list telega-emoji-company-backend
-                     'telega-company-username
-                     'telega-company-hashtag
-                     'telega-company-markdown-precode)
-               (when (telega-chat-bot-p telega-chatbuf--chat)
-                 '(telega-company-botcmd))))
-  (company-mode 1))
-
-(add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
+(add-hook 'telega-chat-mode-hook 'company-mode)
 #+end_src
 
 Consider also using =company-posframe= Emacs package (in MELPA), so
@@ -908,6 +917,18 @@ Available message filters are: {{{eval((mapconcat (lambda (mf) (concat
 
 Chatbuf uses next bindings for message filtering:
 #+ELLIT-INCLUDE: ../telega-chat.el :label chatbuf-filtering-bindings
+
+** Inplace searching in text messages or media captions
+Use
+{{{where-is(telega-chatbuf-inplace-search-query,telega-chat-mode-map)}}}
+or {{{where-is(telega-chatbuf-inplace-search-query-forward,telega-chat-mode-map)}}}
+to start searching while keeping history without applied filter,
+i.e. you can see surrounding messages.
+
+Use {{{where-is(telega-chatbuf-inplace-search,telega-chat-mode-map)}}}
+or
+{{{where-is(telega-chatbuf-inplace-search-next,telega-chat-mode-map)}}}
+to continue searching.
 
 ** Opening files using external programs
 
@@ -1030,6 +1051,9 @@ To reference a given moment in a media message (or in a reply to media
 message) use ~[HH:]MM:SS]~ syntax in the message's body/caption.  Such
 timestamp marks will be automatically emphasised with a media
 timestamp text entity.
+
+** Forums and Topics
+#+ELLIT-INCLUDE: ../telega-topic.el :label commentary
 
 * Video Chats
 

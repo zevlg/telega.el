@@ -52,6 +52,9 @@
 ;; [[https://github.com/domtronn/all-the-icons.el][all-the-icons]]
 ;; Emacs package.
 
+;; TODO: Use custom emoji stickers from various set of stickeset, such as:
+;;  - https://t.me/addemoji/logos_td
+
 ;;; Code:
 (require 'cl-lib)
 (require 'telega)

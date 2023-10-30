@@ -185,21 +185,21 @@ Also matches if TEMEX-LIST is empty."
 ;; - (prop ~PROPERTY~) ::
 ;;   {{{temexdoc(nil, prop, 2)}}}
 (define-telega-matcher nil prop (obj property)
-  "Matches if OBJ has non-nil PROPERTY."
+  "Matches if given TDLib object has non-nil PROPERTY."
   (plist-get obj property))
 
 ;;; ellit-org: temex
 ;; - (call ~PREDICATE~) ::
 ;;   {{{temexdoc(nil, call, 2)}}}
 (define-telega-matcher nil call (obj predicate)
-  "Matches if PREDICATED called with OBJ as argument returns non-nil."
+  "Matches if PREDICATE called with TDLib object as argument returns non-nil."
   (funcall predicate obj))
 
 ;;; ellit-org: temex
 ;; - (ids ~ID-LIST~...) ::
 ;;   {{{temexdoc(nil, ids, 2)}}}
 (define-telega-matcher nil ids (obj &rest id-list)
-  "Matches if OBJ's id is in the ID-LIST."
+  "Matches if TDLib object's id is in the ID-LIST."
   (memq (plist-get obj :id) id-list))
 
 
@@ -261,7 +261,8 @@ Also matches if TEMEX-LIST is empty."
 ;; - (has-username [ ~USERNAME~ ]) ::
 ;;   {{{temexdoc(chat, has-username, 2)}}}
 (define-telega-matcher chat has-username (chat &optional username)
-  "Matches if chat has username associated with the chat."
+  "Matches if chat has username associated with the chat.
+If USERNAME is specified, then match only if chat has exact USERNAME."
   (when-let ((chat-username (telega-chat-username chat)))
     (or (not username)
         (equal username chat-username))))
@@ -303,7 +304,7 @@ By default N is 1."
 ;; - temporary-muted ::
 ;;   {{{temexdoc(chat, temporary-muted, 2)}}}
 (define-telega-matcher chat temporary-muted (chat)
-  "Matches if CHAT is temporary muted."
+  "Matches if chat is temporary muted."
   (let ((muted-for (telega-chat-notification-setting chat :mute_for)))
     (and (> muted-for 0)
          (< muted-for telega-mute-for-ever))))
@@ -362,7 +363,7 @@ Matches only basicgroup, supergroup or a channel."
   (plist-get (telega-chat-member-my-status chat) :is_anonymous))
 
 ;;; ellit-org: chat-temex
-;; - has-avatar ::
+;; - (has-avatar [ ~ANIMATED-P~ ])::
 ;;   {{{temexdoc(chat, has-avatar, 2)}}}
 (define-telega-matcher chat has-avatar (chat &optional animated-p)
   "Matches if chat has chat photo.
@@ -462,10 +463,10 @@ If SUFFIX-LIST is not specified, then match any restriction reason."
     (member (buffer-name) tracking-buffers)))
 
 ;;; ellit-org: chat-temex
-;; - last-message ::
+;; - (last-message ~MSG-TEMEX~)::
 ;;   {{{temexdoc(chat, last-message, 2)}}}
 (define-telega-matcher chat last-message (chat msg-temex)
-  "Matches if chat's last message matches MSG-TEMEX."
+  "Matches if chat has last message and last message matches MSG-TEMEX."
   (when-let ((last-msg (plist-get chat :last_message)))
     (telega-msg-match-p last-msg msg-temex)))
 
@@ -516,7 +517,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
             (plist-get chat :positions)))
 
 ;;; ellit-org: chat-temex
-;; - (folder ~FOLDER-NAME~...), {{{where-is(telega-filter-by-folder,telega-root-mode-map)}}} ::
+;; - (folder ~FOLDER-NAME~), {{{where-is(telega-filter-by-folder,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(chat, folder, 2)}}}
 (define-telega-matcher chat folder (chat folder-name)
   "Matches if chat belongs to Folder named FOLDER-NAME."
@@ -547,7 +548,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;; - can-get-statistics ::
 ;;   {{{temexdoc(chat, can-get-statistics, 2)}}}
 (define-telega-matcher chat can-get-statistics (chat)
-  "Matches if statistics available for the CHAT."
+  "Matches if statistics available for the chat."
   (when (telega-chat-match-p chat '(type supergroup channel))
     (let ((full-info (telega--full-info (telega-chat--info chat))))
       (plist-get full-info :can_get_statistics))))
@@ -556,28 +557,28 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;; - has-linked-chat ::
 ;;   {{{temexdoc(chat, has-linked-chat, 2)}}}
 (define-telega-matcher chat has-linked-chat (chat)
-  "Matches if CHAT is supergroup and has linked chat."
+  "Matches if chat is a supergroup and has a linked chat."
   (plist-get (telega-chat--info chat) :has_linked_chat))
 
 ;;; ellit-org: chat-temex
 ;; - has-discussion-group ::
 ;;   {{{temexdoc(chat, has-discussion-group, 2)}}}
 (define-telega-matcher chat has-discussion-group (chat)
-  "Matches if CHAT is a channel with a linked discussion group."
+  "Matches if chat is a channel with a linked discussion group."
   (telega-chat-match-p chat '(and (type channel) has-linked-chat)))
 
 ;;; ellit-org: chat-temex
 ;; - has-location ::
 ;;   {{{temexdoc(chat, has-location, 2)}}}
 (define-telega-matcher chat has-location (chat)
-  "Matches if CHAT is supergroup and has linked chat."
+  "Matches if chat is a location-based supergroup."
   (plist-get (telega-chat--info chat) :has_location))
 
 ;;; ellit-org: chat-temex
 ;; - inactive-supergroups , {{{where-is(telega-filter-by-inactive-supergroups,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(chat, inactive-supergroups, 2)}}}
 (define-telega-matcher chat inactive-supergroups (chat)
-  "Matches if CHAT is inactive supergroup."
+  "Matches if chat is an inactive supergroup."
   (memq chat telega--search-chats))
 
 ;;; ellit-org: chat-temex
@@ -621,9 +622,10 @@ not empty."
 ;; - has-message-ttl ::
 ;;   {{{temexdoc(chat, has-message-ttl, 2)}}}
 (define-telega-matcher chat has-message-ttl (chat)
-  "Matches if chat has `:message_ttl'."
-  (when-let ((msg-ttl (plist-get chat :message_ttl)))
-    (> msg-ttl 0)))
+  "Matches if chat has enabled message auto-delete or self-destruct timer.
+Return auto-deletion timer value."
+  (when-let ((msg-ttl (plist-get chat :message_auto_delete_time)))
+    (and (> msg-ttl 0) msg-ttl)))
 
 ;;; ellit-org: chat-temex
 ;; - is-broadcast-group ::
@@ -666,9 +668,10 @@ BE AWARE: This filter will do blocking request for every chat."
 ;; - can-send-or-post ::
 ;;   {{{temexdoc(chat, can-send-or-post, 2)}}}
 (define-telega-matcher chat can-send-or-post (chat)
-  "Me can send or post messages to the CHAT.
-Me don't need te be a CHAT member to be able to send messages.
-Additionally apply `is-known' chat filter to check CHAT is known."
+  "Matches if you can send or post messages to the chat.
+You don't need te be a chat member to be able to send messages.
+Chat might not be known (i.e. in your Main or Archive list) to post
+messages into it. Use `is-known' chat temex to check chat is known."
   (let ((my-perms (telega-chat-member-my-permissions chat)))
     (or (plist-get my-perms :can_send_basic_messages)
         (plist-get my-perms :can_post_messages))))
@@ -683,12 +686,51 @@ Additionally apply `is-known' chat filter to check CHAT is known."
       (telega--tl-get user :type :is_inline))))
 
 ;;; ellit-org: chat-temex
-;; - (unread-reactions [ ~N~ ])
+;; - (unread-reactions [ ~N~ ]) ::
 ;;   {{{temexdoc(chat, unread-reactions, 2)}}}
 (define-telega-matcher chat unread-reactions (chat &optional n)
   "Matches if chat has least N unread reactions.
 By default N is 1."
   (>= (or (plist-get chat :unread_reaction_count) 0) (or n 1)))
+
+;;; ellit-org: chat-temex
+;; - (has-active-stories [ ~UNREAD-P~ ]) ::
+;;   {{{temexdoc(chat, has-active-stories, 2)}}}
+(define-telega-matcher chat has-active-stories (chat &optional unread-p)
+  "Matches if chat has non-expired stories available to you.
+If UNREAD-P is non-nil then match only if there is at least one unread
+non-expired story."
+  (plist-get (telega-chat--info chat) (if unread-p
+                                          :has_unread_active_stories
+                                        :has_active_stories)))
+
+;;; ellit-org: chat-temex
+;; - (active-stories-list ~LIST~) ::
+;;   {{{temexdoc(chat, active-stories-list, 2)}}}
+(define-telega-matcher chat active-stories-list (chat list)
+  "Matches if chat's active stories belongs to LIST.
+LIST is one of `main' or `archive'."
+  (when-let* ((active-stories (telega-chat--active-stories chat))
+              (list-type (telega--tl-get active-stories :list :@type)))
+    (cl-ecase list
+      (main (equal list-type "storyListMain"))
+      (archive (equal list-type "storyListArchive")))))
+
+;;; ellit-org: chat-temex
+;; - has-pinned-stories ::
+;;   {{{temexdoc(chat, has-pinned-stories, 2)}}}
+(define-telega-matcher chat has-pinned-stories (chat)
+  "Matches if channel chat has pinned stories."
+  (when (telega-chat-match-p chat '(type channel))
+    (let ((full-info (telega--full-info (telega-chat--info chat))))
+      (plist-get full-info :has_pinned_stories))))
+
+;;; ellit-org: chat-temex
+;; - can-send-stories ::
+;;   {{{temexdoc(chat, can-send-stories, 2)}}}
+(define-telega-matcher chat can-send-stories (chat)
+  "Matches if you can post a story into chat."
+  (memq chat telega--search-chats))
 
 ;;; ellit-org: chat-temex
 ;; - (user ~USER-TEMEX~) ::
@@ -746,7 +788,7 @@ By default `blockListMain' is used."
   (member (telega-user--seen user) status-list))
 
 ;;; ellit-org: user-temex
-;; - online
+;; - online ::
 ;;   {{{temexdoc(user, is-online, 2)}}}
 ;;
 ;;   Same as ~(status "Online")~ user temex.
@@ -764,23 +806,14 @@ If MUTUAL-P is non-nil, then mach only if contact is mutual."
   (plist-get user (if mutual-p :is_mutual_contact :is_contact)))
 
 ;;; ellit-org: user-temex
-;; - is-close-friend
+;; - is-close-friend ::
 ;;   {{{temexdoc(user, is-close-friend, 2)}}}
 (define-telega-matcher user is-close-friend (user)
   "Matches if user is my close friend."
   (plist-get user :is_close_friend))
 
 ;;; ellit-org: user-temex
-;; - (has-active-stories [ ~UNREAD-P~ ])
-;;   {{{temexdoc(user, has-active-stories, 2)}}}
-(define-telega-matcher user has-active-stories (user &optional unread-p)
-  "Matches if user has non-expired stories available to you.
-If UNREAD-P is non-nil then match only if there is at least one unread
-non-expired story."
-  (plist-get user (if unread-p :has_unread_active_stories :has_active_stories)))
-
-;;; ellit-org: user-temex
-;; - has-pinned-stories
+;; - has-pinned-stories ::
 ;;   {{{temexdoc(user, has-pinned-stories, 2)}}}
 (define-telega-matcher user has-pinned-stories (user)
   "Matches if user has pinned stories."
@@ -824,7 +857,7 @@ By default N is 1."
   (plist-get user :emoji_status))
 
 ;;; ellit-org: user-temex
-;; - user-username ::
+;; - (username [ ~USERNAME-REGEXP~ ]) ::
 ;;   {{{temexdoc(user, username, 2)}}}
 (define-telega-matcher user username (user username-regexp)
   "Matches if user's username matches USERNAME-REGEXP."
@@ -832,7 +865,7 @@ By default N is 1."
     (string-match-p username-regexp username)))
 
 ;;; ellit-org: user-temex
-;; - user-chat ::
+;; - (chat ~CHAT-TEMEX~) ::
 ;;   {{{temexdoc(user, chat, 2)}}}
 (define-telega-matcher user chat (user chat-temex)
   "Matches if me has private chat with USER matching CHAT-TEMEX."
@@ -864,7 +897,7 @@ By default `blockListMain' is used."
 ;;   are: ~Text~, ~Animation~, ~Audio~, ~Document~, ~Photo~,
 ;;   ~Sticker~, ~Video~, ~VideoNote~, ~VoiceNote~, ~Location~, etc.
 (define-telega-matcher msg type (msg &rest msg-type-list)
-  "Matches if message content type is equal to CONTENT-TYPE."
+  "Matches if message's content type is one of MSG-TYPE-LIST."
   (memq (intern (substring (telega--tl-get msg :content :@type)
                            ;; Strip "Message" prefix
                            7))
@@ -882,7 +915,7 @@ By default `blockListMain' is used."
             (plist-get chat :last_read_inbox_message_id)))))
 
 ;;; ellit-org: msg-temex
-;; - (unread-reactions [~N~]) ::
+;; - (unread-reactions [ ~N~ ]) ::
 ;;   {{{temexdoc(msg, unread-reactions, 2)}}}
 (define-telega-matcher msg unread-reactions (msg &optional n)
   "Matches if message has at least N unread reactions.
@@ -928,11 +961,24 @@ By default N is 1."
   (plist-get msg :is_topic_message))
 
 ;;; ellit-org: msg-temex
-;; - web-page ::
+;; - is-thread ::
+;;   {{{temexdoc(msg, is-thread, 2)}}}
+(define-telega-matcher msg is-thread (msg)
+  "Matches if message belongs to or starts a messages thread."
+  (and (not (plist-get msg :is_topic_message))
+       (or (plist-get msg :can_get_message_thread)
+           (not (telega-zerop (plist-get msg :message_thread_id))))))
+
+;;; ellit-org: msg-temex
+;; - (web-page [ ~PROPNAME~ ]) ::
 ;;   {{{temexdoc(msg, web-page, 2)}}}
-(define-telega-matcher msg web-page (msg propname)
-  "Matches messages with webpage having property with PROPNAME."
-  (telega--tl-get msg :content :web_page propname))
+(define-telega-matcher msg web-page (msg &optional propname)
+  "Matches messages with a webpage preview.
+If PROPNAME is specified, then match only message with a webpage
+having PROPNAME property."
+  (when-let ((web-page (telega--tl-get msg :content :web_page)))
+    (or (null propname)
+        (plist-get web-page propname))))
 
 ;;; ellit-org: msg-temex
 ;; - (outgoing [ ~ANY-STATE-P~ ]) ::
@@ -1010,7 +1056,7 @@ Matching ignores case."
   (eq telega--me-id (plist-get sender :id)))
 
 ;;; ellit-org: sender-temex
-;; - (is-blocked [ ~BLOCK-LIST~ ])::
+;; - (is-blocked [ ~BLOCK-LIST~ ]) ::
 ;;   {{{temexdoc(sender, is-blocked, 2)}}}
 (define-telega-matcher sender is-blocked (sender &optional block-list)
   "Matches if sender is blocked in the BLOCK-LIST.
@@ -1143,6 +1189,48 @@ for General topic only."
   (when-let ((topic-msg (plist-get topic :last_message))
              (chat-msg (plist-get (telega-topic-chat topic) :last_message)))
     (telega-msg-id= topic-msg chat-msg)))
+
+
+;;; ellit-org: story-temex
+;; - (chat ~CHAT-TEMEX~) ::
+;;   {{{temexdoc(story, chat, 2)}}}
+(define-telega-matcher story chat (story chat-temex)
+  "Matches if story is sent by CHAT matching CHAT-TEMEX."
+  (when-let ((chat (telega-story-chat story 'offline)))
+    (telega-chat-match-p chat chat-temex)))
+
+;;; ellit-org: story-temex
+;; - (contains ~REGEXP~) ::
+;;   {{{temexdoc(story, contains, 2)}}}
+(define-telega-matcher story contains (story regexp)
+  "Matches if story's caption contains REGEXP."
+  (when-let ((caption (telega-tl-str story :caption)))
+    (let ((case-fold-search t))
+      (string-match-p regexp caption))))
+
+;;; ellit-org: story-temex
+;; - seen ::
+;;   {{{temexdoc(story, seen, 2)}}}
+(define-telega-matcher story seen (story)
+  "Matches if story has been viewed."
+  (when-let* ((chat (telega-story-chat story))
+              (active-stories (telega-chat--active-stories chat)))
+    (<= (plist-get story :id)
+        (plist-get active-stories :max_read_story_id))))
+
+;;; ellit-org: story-temex
+;; - is-video ::
+;;   {{{temexdoc(story, is-video, 2)}}}
+(define-telega-matcher story is-video (story)
+  "Matches if story has video content."
+  (eq 'storyContentVideo (telega--tl-type (plist-get story :content))))
+
+;;; ellit-org: story-temex
+;; - is-photo ::
+;;   {{{temexdoc(story, is-photo, 2)}}}
+(define-telega-matcher story is-photo (story)
+  "Matches if story has photo content."
+  (eq 'storyContentPhoto (telega--tl-type (plist-get story :content))))
 
 (provide 'telega-match)
 

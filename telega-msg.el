@@ -45,7 +45,7 @@
 (declare-function telega-chatbuf--activate-vvnote-msg "telega-chat" (msg))
 (declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 (declare-function telega-chatbuf--node-by-msg-id "telega-chat" (msg-id))
-(declare-function telega-chatbuf--modeline-update "telega-chat" ())
+(declare-function telega-chatbuf--chat-update "telega-chat" (&rest dirtiness))
 (declare-function telega-chat--type "telega-chat" (chat))
 (declare-function telega-chatevent-log-filter "telega-chat" (&rest filters))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
@@ -128,18 +128,18 @@
                             (plist-get msg :can_be_forwarded))
                   ))
     (bindings--define-key menu-map [s2] menu-bar-separator)
+    (bindings--define-key menu-map [topic]
+      '(menu-item (telega-i18n "lng_replies_view_topic")
+                  telega-msg-open-thread-or-topic
+                  :help "Show message's topic"
+                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                             'is-topic)))
     (bindings--define-key menu-map [thread]
-      '(menu-item "View Thread" telega-msg-open-thread
+      '(menu-item (telega-i18n "lng_replies_view_thread")
+                  telega-msg-open-thread-or-topic
                   :help "Show message's thread"
                   :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                             '(and (not (prop :is_topic_message))
-                                   (prop :can_get_message_thread)))))
-    (bindings--define-key menu-map [thread]
-      '(menu-item (telega-i18n "lng_replies_view_topic") telega-msg-open-thread
-                  :help "Show message in the topic's chatbuf"
-                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                             '(and (prop :is_topic_message)
-                                   (prop :can_get_message_thread)))))
+                             'is-thread)))
     (bindings--define-key menu-map [translate]
       '(menu-item (telega-i18n "lng_context_translate") telega-msg-translate
                   :help "Translate message's text"
@@ -161,7 +161,7 @@
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
-    (define-key map [remap self-insert-command] 'ignore)
+;    (define-key map [remap self-insert-command] 'ignore)
 
     (define-key map (kbd "SPC") 'scroll-up-command)
     (define-key map (kbd "c") 'telega-msg-copy-text)
@@ -186,7 +186,7 @@
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
     (define-key map (kbd "S") 'telega-msg-save)
-    (define-key map (kbd "T") 'telega-msg-open-thread)
+    (define-key map (kbd "T") 'telega-msg-open-thread-or-topic)
     (define-key map (kbd "U") 'telega-chatbuf-msg-marks-toggle)
 
     (define-key map (kbd "!") 'telega-msg-add-reaction)
@@ -223,25 +223,14 @@
 (define-button-type 'telega-msg
   :supertype 'telega
   :inserter telega-inserter-for-msg-button
-  'read-only t
-  'keymap telega-msg-button-map
-  'cursor-sensor-functions '(telega-msg-button--sensor-func)
-  'action 'telega-msg-button--action)
 
-(defun telega-msg-button--sensor-func (window oldpos dir)
-  "Sensor function to trigger hover in/out hook for the message at point'."
-  ;; NOTE: Run sensor logic only in focused frame, to avoid managing
-  ;; point (and viewing messages) if new message added at point in
-  ;; frame without focus
-  ;; See https://t.me/emacs_telega/36301
-  (when (telega-focus-state (window-frame window))
-    (when-let ((msg (telega-msg-at (if (eq dir 'entered) (point) oldpos))))
-      (unless (telega-msg-internal-p msg)
-        (if (eq dir 'entered)
-            (progn
-              (telega-chatbuf--manage-point (point))
-              (run-hook-with-args 'telega-msg-hover-in-hook msg))
-          (run-hook-with-args 'telega-msg-hover-out-hook msg))))))
+  ;; NOTE: To make input method works under message buttons,
+  ;; See `quail-input-method' for details
+  'read-only t
+  'front-sticky t
+
+  'keymap telega-msg-button-map
+  'action 'telega-msg-button--action)
 
 (defun telega-msg-button--action (button)
   "Action to take when chat BUTTON is pressed."
@@ -253,54 +242,6 @@
     (if custom-action
         (funcall custom-action msg)
       (telega-msg-open-content msg 'clicked))))
-
-(defun telega-msg--pp (msg)
-  "Pretty printer for MSG button."
-  (let* ((chat (telega-msg-chat msg))
-         (msg-inserter
-          (cond ((and (telega-msg-match-p msg 'is-deleted)
-                      (telega-chat-match-p chat
-                        telega-chat-show-deleted-messages-for))
-                 #'telega-ins--message-deleted)
-
-                ((telega-msg-match-p msg 'ignored)
-                 (when telega-ignored-messages-visible
-                   #'telega-ins--message-ignored))
-
-                ;; NOTE: check for messages grouping by sender
-                ((and (telega-chat-match-p chat telega-chat-group-messages-for)
-                      (> (point) 3)
-                      (when-let ((prev-msg (telega-msg-at (- (point) 2)))
-                                 (trim-regexp (rx (1+ (or " " "\n")))))
-                        ;; Only if MSG's header is pretty the same as
-                        ;; for PREV-MSG
-                        (and (not (telega-msg-internal-p prev-msg))
-                             (not (telega-msg-internal-p msg))
-                             (not (telega-msg-special-p prev-msg))
-                             ;; NOTE: Different senders might have same name
-                             (equal (plist-get msg :sender_id)
-                                    (plist-get prev-msg :sender_id))
-                             (string-prefix-p
-                              (string-trim-right
-                               (telega-ins--as-string
-                                (telega-ins--message-header msg chat))
-                               trim-regexp)
-                              (string-trim-right
-                               (telega-ins--as-string
-                                (telega-ins--message-header prev-msg chat))
-                               trim-regexp)))))
-                 #'telega-ins--message-no-header)
-
-                (t telega-inserter-for-msg-button)))
-         (telega--current-buffer (current-buffer)))
-    (when msg-inserter
-      (telega-button--insert 'telega-msg msg
-        :inserter msg-inserter)
-      ;; Compact view inserter for media messages don't need newline
-      (if telega-chatbuf--messages-compact-view
-          (when (>= (current-column) telega-chat-fill-column)
-            (telega-ins "\n"))
-        (telega-ins "\n")))))
 
 (defun telega-msg-create-internal (chat fmt-text)
   "Create message for internal use.
@@ -503,7 +444,7 @@ Return nil for deleted messages."
               (plist-put video :telega-video-probe-size nil)
 
             ;; NOTE: By canceling downloading process we fix
-            ;; filename, so file won't be update at video player start
+            ;; filename, so file won't be updated at video player start
             ;; time.  After video player is started, we continue
             ;; downloading process, canceling it only on video player
             ;; exit
@@ -522,7 +463,7 @@ Return nil for deleted messages."
 
 (defun telega-msg-open-video (msg &optional video)
   "Open content for video message MSG."
-  (cl-assert (or (not video)
+  (cl-assert (or (and msg (not video))
                  (eq video (telega--tl-get msg :content :web_page :video))))
 
   (let* ((video (or video (telega--tl-get msg :content :video)))
@@ -988,24 +929,27 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
 
-(defun telega-msg-open-thread (msg)
-  "Open thread initiated by MSG.
-MSG could be a channel post, in this case open thread in discussion group.
+(defun telega-msg-open-thread-or-topic (msg)
+  "View message MSG in the topic or thread.
+MSG could be a channel post, in this case open thread in the
+discussion group.
 Or MSG could be in supergroup, then filter messages to the
-corresponding thread."
+corresponding thread or topic."
   (interactive (list (telega-msg-for-interactive)))
-  (let ((thread-msg-id (cond ((plist-get msg :can_get_message_thread)
-                              (plist-get msg :id))
-                             ((and telega-msg-hack-on-can-get-message-thread
-                                   (plist-get msg :message_thread_id))
-                              (plist-get msg :message_thread_id))
-                             (t
-                              (user-error "Can't get message thread"))))
-        (reply-msg-id (when (and (not (plist-get msg :can_get_message_thread))
-                                 telega-msg-hack-on-can-get-message-thread)
-                        (plist-get msg :id))))
-    (telega-chat--goto-thread
-     (telega-msg-chat msg 'offline) thread-msg-id reply-msg-id)))
+  (cond ((telega-msg-match-p msg 'is-topic)
+         (telega-topic-goto
+          (telega-topic-get (telega-msg-chat msg 'offline)
+                            (plist-get msg :message_thread_id))
+          (plist-get msg :id)))
+
+        ((telega-msg-match-p msg 'post-with-comments)
+         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
+                                   (plist-get msg :id)))
+
+        ((telega-msg-match-p msg 'is-thread)
+         (telega-chat--goto-thread (telega-msg-chat msg 'offline)
+                                   (plist-get msg :message_thread_id)
+                                   (plist-get msg :id)))))
 
 (defun telega-msg-can-open-media-timestamp-p (msg)
   "Return non-nil if MSG can be opened with custom media timestamp.
@@ -1241,8 +1185,8 @@ Return function by which MSG has been ignored."
     (when (telega-msg-marked-p msg)
       (setq telega-chatbuf--marked-messages
             (delq msg telega-chatbuf--marked-messages))
-    (telega-chatbuf--modeline-update)
-    (telega-msg-redisplay msg))))
+    (telega-msg-redisplay msg)
+    (telega-chatbuf--chat-update "marked-messages"))))
 
 (defun telega-msg-mark-toggle (msg)
   "Toggle mark of the message MSG."
@@ -1253,10 +1197,14 @@ Return function by which MSG has been ignored."
               (delq msg telega-chatbuf--marked-messages))
       (setq telega-chatbuf--marked-messages
             (push msg telega-chatbuf--marked-messages)))
-    (telega-chatbuf--modeline-update)
-
     (telega-msg-redisplay msg)
-    (telega-button-forward 1 'telega-msg-at)))
+    ;; NOTE: on last message don't move point to the prompt, because
+    ;; after marking messages some message command is expected (for
+    ;; example forwarwarding)
+    (unless (= (plist-get msg :id) (telega-chatbuf--last-message-id))
+      (telega-button-forward 1 'telega-msg-at))
+    
+    (telega-chatbuf--chat-update "marked-messages")))
 
 (defun telega-msg-pin-toggle (msg)
   "Toggle pin state of the message MSG.
@@ -1296,27 +1244,30 @@ For interactive use only."
 (defun telega-msg--favorite-messages-file-fetch ()
   "Asynchronously fetch file storing list of favorite messages."
   (telega--searchChatMessages (telega-chat-me)
-      (list :@type "searchMessagesFilterDocument")
-      "#telega_favorite_messages" 0 0 1 nil
+      '(:@type "searchMessagesFilterDocument") 0 0
+    :query "#telega_favorite_messages"
+    :limit 1
+    :callback
     (lambda (reply)
-      (setq telega--favorite-messages-storage-message
-            (car (append (plist-get reply :messages) nil)))
-      (when telega--favorite-messages-storage-message
-        (let ((file (telega-msg--content-file
-                     telega--favorite-messages-storage-message)))
-          (cl-assert file)
-          ;; And now load associated file asynchronously
-          (telega-file--download file 32
-            (lambda (tl-file)
-              (setq telega--favorite-messages
-                    (with-temp-buffer
-                      (insert-file-contents
-                       (telega--tl-get tl-file :local :path))
-                      (goto-char (point-min))
-                      (read (current-buffer))))
-              (telega-debug "Loaded %d favorite messages"
-                            (length telega--favorite-messages))
-              )))))))
+      (let ((messages (plist-get reply :messages)))
+        (unless (seq-empty-p messages)
+          (setq telega--favorite-messages-storage-message
+                (seq-first messages))
+          (let ((file (telega-msg--content-file
+                       telega--favorite-messages-storage-message)))
+            (cl-assert file)
+            ;; And now load associated file asynchronously
+            (telega-file--download file 32
+              (lambda (tl-file)
+                (setq telega--favorite-messages
+                      (with-temp-buffer
+                        (insert-file-contents
+                         (telega--tl-get tl-file :local :path))
+                        (goto-char (point-min))
+                        (read (current-buffer))))
+                (telega-debug "Loaded %d favorite messages"
+                              (length telega--favorite-messages))
+                ))))))))
 
 (defun telega-msg--favorite-messages-file-store ()
   "Upload `telega--favorite-messages' value as file into \"Saved Messages\"."
@@ -1406,7 +1357,7 @@ favorite message."
 (defun telega-msg-resend (msg)
   "Try to resend message MSG."
   (interactive (list (telega-msg-for-interactive)))
-  (telega--resendMessage msg))
+  (telega--resendMessages msg))
 
 (defun telega-msg-save (msg)
   "Save messages's MSG media content to a file.
@@ -1460,7 +1411,7 @@ the saved animations list."
   "Copy link to message to kill ring.
 Use \\[yank] command to paste a link."
   (interactive (list (telega-msg-for-interactive)
-                     (when telega-chatbuf--thread-msg t)))
+                     (when telega-chatbuf--thread t)))
   (let* ((chat (telega-msg-chat msg 'offline))
          (media-timestamp
           (when (telega-msg-can-open-media-timestamp-p msg)
@@ -1564,7 +1515,7 @@ Requires administrator rights in the chat."
 (defun telega-describe-message (msg &optional for-thread-p)
   "Show info about message at point."
   (interactive (list (telega-msg-for-interactive)
-                     (when telega-chatbuf--thread-msg t)))
+                     (when telega-chatbuf--thread t)))
   (with-telega-help-win "*Telegram Message Info*"
     (let ((chat-id (plist-get msg :chat_id))
           (msg-id (plist-get msg :id)))
@@ -1882,8 +1833,18 @@ By default `telega-translate-to-language-default' is used."
       (telega-msg-redisplay msg)
       )))
 
-(defun telega-msg-remove-spoiler (msg)
-  "Remove spoiled for the message MSG."
+(defun telega-msg-remove-text-spoiler (msg)
+  "Show spoiler text entity at point."
+  (interactive (list (telega-msg-for-interactive)))
+
+  (when-let ((ent-type (get-text-property (point) :tl-entity-type)))
+    (when (eq 'textEntityTypeSpoiler (telega--tl-type ent-type))
+      (plist-put ent-type :telega-show-spoiler t)
+      (let ((cursor-sensor-inhibit t))
+        (telega-msg-redisplay msg)))))
+
+(defun telega-msg-remove-media-spoiler (msg)
+  "Remove spoiler for the media message MSG."
   (interactive (list (telega-msg-for-interactive)))
   (let ((content (plist-get msg :content)))
     (when (and (plist-get content :has_spoiler)

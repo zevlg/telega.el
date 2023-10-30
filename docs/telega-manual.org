@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.160)
+#+title: Telega Manual (v0.8.200)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -52,6 +52,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#list-of-user-temexes][List of User Temexes]]
     - [[#list-of-message-sender-temexes][List of Message Sender Temexes]]
     - [[#list-of-forum-topic-temexes][List of Forum Topic Temexes]]
+    - [[#list-of-story-temexes][List of Story Temexes]]
     - [[#customizable-options-making-use-of-telega-match-expressions][Customizable options making use of Telega Match Expressions]]
   - [[#chat-folders][Chat Folders]]
   - [[#filtering-chats][Filtering chats]]
@@ -71,10 +72,12 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
       - [[#using-capf-for-input-completions][Using capf for input completions]]
     - [[#sending-messages-via-bots][Sending messages via bots]]
     - [[#filtering-chat-messages-aka-shared-media][Filtering chat messages a.k.a. Shared Media]]
+    - [[#inplace-searching-in-text-messages-or-media-captions][Inplace searching in text messages or media captions]]
     - [[#opening-files-using-external-programs][Opening files using external programs]]
     - [[#client-side-messages-ignoring][Client side messages ignoring]]
     - [[#favorite-messages][Favorite messages]]
     - [[#media-controls-for-media-messages][Media Controls for media messages]]
+    - [[#forums-and-topics][Forums and Topics]]
   - [[#video-chats][Video Chats]]
   - [[#stickers--animations][Stickers / Animations]]
     - [[#animated-stickers][Animated stickers]]
@@ -236,12 +239,12 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.16.
+version greater or equal to 1.8.18.
 
-On MacOS you can install a pre-built =TDLib= package using homebrew from
-[[https://brew.sh][brew.sh]].  Just run:
+On MacOS you can install a pre-built =TDLib= package using homebrew
+from [[https://brew.sh][brew.sh]].  Just run:
 #+begin_src shell
-  $ brew install tdlib
+  $ brew install tdlib --HEAD
 #+end_src
 
 On Linux, you will need to build =TDLib= from source.  Use 
@@ -1043,13 +1046,13 @@ List of temexes you can apply to any TDLib object:
      Matches if ~TEMEX~ does not match.
 
 - (prop ~PROPERTY~) :: 
-     Matches if ~OBJ~ has non-nil ~PROPERTY~.
+     Matches if given TDLib object has non-nil ~PROPERTY~.
 
 - (call ~PREDICATE~) :: 
-     Matches if PREDICATED called with ~OBJ~ as argument returns non-nil.
+     Matches if ~PREDICATE~ called with TDLib object as argument returns non-nil.
 
 - (ids ~ID-LIST~...) :: 
-     Matches if OBJ's id is in the ~ID-LIST~.
+     Matches if TDLib object's id is in the ~ID-LIST~.
 
 ** List of Chat Temexes
 :PROPERTIES:
@@ -1083,6 +1086,7 @@ Use ~telega-chat-match-p~ to match a chat.
 
 - (has-username [ ~USERNAME~ ]) :: 
      Matches if chat has username associated with the chat.
+     If ~USERNAME~ is specified, then match only if chat has exact ~USERNAME~.
 
 - is-public :: 
      Matches if chat is a public chat.
@@ -1101,7 +1105,7 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat has disabled notifications.
 
 - temporary-muted :: 
-     Matches if ~CHAT~ is temporary muted.
+     Matches if chat is temporary muted.
 
 - unmuted, @@html:<kbd>@@/ y@@html:</kbd>@@ (~telega-filter-by-unmuted~) :: 
      Matches if chat has enabled notifications.
@@ -1123,9 +1127,9 @@ Use ~telega-chat-match-p~ to match a chat.
 - me-is-anonymous :: 
      Matches if me is anonymous in the chat.
 
-- has-avatar :: 
-     Matches if chat has chat photo.
-     For non-nil ~ANIMATED-P~ match only if avatar is animated.
+- (has-avatar [ ~ANIMATED-P~ ])::
+  Matches if chat has chat photo.
+  For non-nil ~ANIMATED-P~ match only if avatar is animated.
 
 - has-chatbuf, @@html:<kbd>@@/ b@@html:</kbd>@@ (~telega-filter-by-has-chatbuf~) :: 
      Matches if chat has corresponding chatbuf.
@@ -1169,8 +1173,8 @@ Use ~telega-chat-match-p~ to match a chat.
 - tracking, @@html:<kbd>@@/ SPC@@html:</kbd>@@ (~telega-filter-by-tracking~) :: 
      Matches if chat is in tracking buffers list.
 
-- last-message :: 
-     Matches if chat's last message matches ~MSG-TEMEX~.
+- (last-message ~MSG-TEMEX~)::
+  Matches if chat has last message and last message matches ~MSG-TEMEX~.
 
 - (chat-list ~LIST-NAME~), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
      Matches if chat is in chat list named ~LIST-NAME~.
@@ -1185,7 +1189,7 @@ Use ~telega-chat-match-p~ to match a chat.
 - is-known :: 
      Matches if chat is known, i.e. in "Main" or "Archive" chat list.
 
-- (folder ~FOLDER-NAME~...), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
+- (folder ~FOLDER-NAME~), @@html:<kbd>@@/ f@@html:</kbd>@@ (~telega-filter-by-folder~) :: 
      Matches if chat belongs to Folder named ~FOLDER-NAME~.
 
 - has-scheduled-messages :: 
@@ -1198,19 +1202,19 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat has reply markup message.
 
 - can-get-statistics :: 
-     Matches if statistics available for the ~CHAT~.
+     Matches if statistics available for the chat.
 
 - has-linked-chat :: 
-     Matches if ~CHAT~ is supergroup and has linked chat.
+     Matches if chat is a supergroup and has a linked chat.
 
 - has-discussion-group :: 
-     Matches if ~CHAT~ is a channel with a linked discussion group.
+     Matches if chat is a channel with a linked discussion group.
 
 - has-location :: 
-     Matches if ~CHAT~ is supergroup and has linked chat.
+     Matches if chat is a location-based supergroup.
 
 - inactive-supergroups ,  (~telega-filter-by-inactive-supergroups~) :: 
-     Matches if ~CHAT~ is inactive supergroup.
+     Matches if chat is an inactive supergroup.
 
 - default-disable-notification :: 
      Matches if ~CHAT~ has non-nil default disable notification setting.
@@ -1227,7 +1231,8 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat has favorite messages.
 
 - has-message-ttl :: 
-     Matches if chat has ~:message_ttl~.
+     Matches if chat has enabled message auto-delete or self-destruct timer.
+     Return auto-deletion timer value.
 
 - is-broadcast-group :: 
      Matches if chat is a broadcast group.
@@ -1246,16 +1251,32 @@ Use ~telega-chat-match-p~ to match a chat.
      Matches if chat allows choosing a message sender.
 
 - can-send-or-post :: 
-     Me can send or post messages to the ~CHAT~.
-     Me don't need te be a ~CHAT~ member to be able to send messages.
-     Additionally apply ~is-known~ chat filter to check ~CHAT~ is known.
+     Matches if you can send or post messages to the chat.
+     You don't need te be a chat member to be able to send messages.
+     Chat might not be known (i.e. in your Main or Archive list) to post
+     messages into it. Use ~is-known~ chat temex to check chat is known.
 
 - is-inline-bot :: 
      Matches if corresponding bot accepts inline requests.
 
-- (unread-reactions [ ~N~ ])
-  Matches if chat has least ~N~ unread reactions.
-  By default ~N~ is 1.
+- (unread-reactions [ ~N~ ]) :: 
+     Matches if chat has least ~N~ unread reactions.
+     By default ~N~ is 1.
+
+- (has-active-stories [ ~UNREAD-P~ ]) :: 
+     Matches if chat has non-expired stories available to you.
+     If ~UNREAD-P~ is non-nil then match only if there is at least one unread
+     non-expired story.
+
+- (active-stories-list ~LIST~) :: 
+     Matches if chat's active stories belongs to ~LIST~.
+     ~LIST~ is one of ~main~ or ~archive~.
+
+- has-pinned-stories :: 
+     Matches if channel chat has pinned stories.
+
+- can-send-stories :: 
+     Matches if you can post a story into chat.
 
 - (user ~USER-TEMEX~) :: 
      Matches non-bot private chat where corresponding user matches ~USER-TEMEX~.
@@ -1276,7 +1297,7 @@ Use ~telega-chat-match-p~ to match a chat.
 Use ~telega-msg-match-p~ to match a message.
 
 - (type ~MSG-TYPE-LIST~) :: 
-     Matches if message content type is equal to CONTENT-TYPE.
+     Matches if message's content type is one of ~MSG-TYPE-LIST~.
 
      Every message has a content type.  Most notable message types
      are: ~Text~, ~Animation~, ~Audio~, ~Document~, ~Photo~,
@@ -1285,7 +1306,7 @@ Use ~telega-msg-match-p~ to match a message.
 - seen :: 
      Return non-nil if message has been viewed in the chat.
 
-- (unread-reactions [~N~]) :: 
+- (unread-reactions [ ~N~ ]) :: 
      Matches if message has at least ~N~ unread reactions.
      By default ~N~ is 1.
 
@@ -1304,8 +1325,13 @@ Use ~telega-msg-match-p~ to match a message.
 - is-topic :: 
      Matches if message is a forum topic message.
 
-- web-page :: 
-     Matches messages with webpage having property with ~PROPNAME~.
+- is-thread :: 
+     Matches if message belongs to or starts a messages thread.
+
+- (web-page [ ~PROPNAME~ ]) :: 
+     Matches messages with a webpage preview.
+     If ~PROPNAME~ is specified, then match only message with a webpage
+     having ~PROPNAME~ property.
 
 - (outgoing [ ~ANY-STATE-P~ ]) :: 
      Matches if message is an outgoing message.
@@ -1352,26 +1378,21 @@ Use ~telega-user-match-p~ to match a user.
      Each element in ~STATUS-LIST~ is one of: "Online", "Offline",
      "Recently", "LastWeek", "LastMonth" or "Empty"
 
-- online
-  Matches if user is online.
-  Does not match bots, because bots are always online.
+- online :: 
+     Matches if user is online.
+     Does not match bots, because bots are always online.
 
-  Same as ~(status "Online")~ user temex.
+     Same as ~(status "Online")~ user temex.
 
 - (contact [ ~MUTUAL-P~ ]), @@html:<kbd>@@/ c@@html:</kbd>@@ (~telega-filter-by-contact~) :: 
      Matches if user is in my contacts list.
      If ~MUTUAL-P~ is non-nil, then mach only if contact is mutual.
 
-- is-close-friend
-  Matches if user is my close friend.
+- is-close-friend :: 
+     Matches if user is my close friend.
 
-- (has-active-stories [ ~UNREAD-P~ ])
-  Matches if user has non-expired stories available to you.
-  If ~UNREAD-P~ is non-nil then match only if there is at least one unread
-  non-expired story.
-
-- has-pinned-stories
-  Matches if user has pinned stories.
+- has-pinned-stories :: 
+     Matches if user has pinned stories.
 
 - (groups-in-common [ ~N~ ]) :: 
      Matches if user has at least ~N~ groups in common with me.
@@ -1389,10 +1410,10 @@ Use ~telega-user-match-p~ to match a user.
 - has-emoji-status :: 
      Matches if corresponding user set his current emoji status.
 
-- user-username :: 
+- (username [ ~USERNAME-REGEXP~ ]) :: 
      Matches if user's username matches ~USERNAME-REGEXP~.
 
-- user-chat :: 
+- (chat ~CHAT-TEMEX~) :: 
      Matches if me has private chat with ~USER~ matching ~CHAT-TEMEX~.
 
 - (is-blocked [ ~BLOCK-LIST~ ]) :: 
@@ -1410,10 +1431,10 @@ Use ~telega-sender-match-p~ to match a message sender.
 - me :: 
      Matches if sender is me.
 
-- (is-blocked [ ~BLOCK-LIST~ ])::
-  Matches if sender is blocked in the ~BLOCK-LIST~.
-  ~BLOCK-LIST~ is one of ~blockListMain~, ~blockListStories~.
-  By default ~blockListMain~ is used.
+- (is-blocked [ ~BLOCK-LIST~ ]) :: 
+     Matches if sender is blocked in the ~BLOCK-LIST~.
+     ~BLOCK-LIST~ is one of ~blockListMain~, ~blockListStories~.
+     By default ~blockListMain~ is used.
 
 - (user ~USER-TEMEX~) :: 
      Matches if sender is a user matching ~USER-TEMEX~.
@@ -1466,6 +1487,31 @@ Use ~telega-topic-match-p~ to match a forum's topic.
 
 - is-most-recent :: 
      Matches if last message in the chat is made to topic.
+
+** List of Story Temexes
+:PROPERTIES:
+:CUSTOM_ID: list-of-story-temexes
+:END:
+
+Story Temexes are used to match Telegram Stories posted by users or
+channels.
+
+Use ~telega-story-match-p~ to match a story.
+
+- (chat ~CHAT-TEMEX~) :: 
+     Matches if story is sent by CHAT matching ~CHAT-TEMEX~.
+
+- (contains ~REGEXP~) :: 
+     Matches if story's caption contains ~REGEXP~.
+
+- seen :: 
+     Matches if story has been viewed.
+
+- is-video :: 
+     Matches if story has video content.
+
+- is-photo :: 
+     Matches if story has photo content.
 
 ** Customizable options making use of Telega Match Expressions
 :PROPERTIES:
@@ -1528,6 +1574,8 @@ Use ~telega-topic-match-p~ to match a forum's topic.
           (and telega-use-images
     	   (telega-chatbuf-match-p 'can-send-or-post))
         (telega-chatbuf-prompt-chat-avatar)))
+     (:eval
+      (telega-chatbuf-prompt-topic 25))
      (:eval
       (when
           (and telega-auto-translate-mode telega-chatbuf-language-code telega-translate-to-language-by-default
@@ -1887,7 +1935,6 @@ messages:
 
 - @@html:<kbd>@@M-g r@@html:</kbd>@@, @@html:<kbd>@@M-g >@@html:</kbd>@@ (~telega-chatbuf-read-all~) :: 
      Jump to the last message in the chat history and mark all messages as read.
-     If @@html:<kbd>@@C-u@@html:</kbd>@@ is used, then reset active messages filter.
 
 - @@html:<kbd>@@M-g @@@html:</kbd>@@, @@html:<kbd>@@M-g m@@html:</kbd>@@ (~telega-chatbuf-next-unread-mention~) :: 
      Goto next unread mention in chat buffer.
@@ -2047,9 +2094,12 @@ Attachment types to attach with
 @@html:<kbd>@@C-c C-a@@html:</kbd>@@ (~telega-chatbuf-attach~) defined in
 ~telega-chat-attach-commands~ user option:
 - photo :: Attach ~FILENAME~ as photo to the chatbuf input.
+- video :: Attach ~FILENAME~ as video to the chatbuf input.
+- audio :: Attach ~FILENAME~ as audio to the chatbuf input.
+- spoiler-photo :: Attach photo marked with spoiler.
+- spoiler-video :: Attach video marked with spoiler.
 - self-destruct-photo :: Attach a file as self destructing photo.
      This attachment can be used only in private chats.
-- video :: Attach ~FILENAME~ as video to the chatbuf input.
 - self-destruct-video :: Attach a file as self destructing video.
      This attachment can be used only in private chats.
 - video-note :: Attach a (circled) video note to the chatbuf input.
@@ -2057,7 +2107,6 @@ Attachment types to attach with
      video-note.  Otherwise record video note inplace.
      ~telega-vvnote-video-record-args~ is used as arguments to ffmpeg to
      record video notes.
-- audio :: Attach ~FILENAME~ as audio to the chatbuf input.
 - voice-note :: Attach a voice note to the chatbuf input.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach existing file as
      voice-note.  Otherwise record voice note inplace.
@@ -2281,7 +2330,7 @@ with
      syntax. Completion is done using predefined set of emojis.
 
      Customizable Options:
-  - User Option: ~telega-emoji-fuzzy-match~ 
+  - User Option: ~telega-company-emoji-fuzzy-match~ 
 
     Non-nil to use fuzzy prefix matching.
     For example without fuzzy matches, prefix ~:jo~ will match only
@@ -2300,6 +2349,12 @@ with
      [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 
 Customizable options:
+- User Option: ~telega-company-username-prefer-name~ 
+
+  Preferred formatting argument to the ~telega-user-title~ to complete user.
+  Frist giving non-nil result will be used. 
+
+  Default value: ~(username first-name last-name)~
 - User Option: ~telega-company-username-show-avatars~ 
 
   Non-nil to show avatars in the company annotation. 
@@ -2325,21 +2380,25 @@ Customizable options:
 - telega-company-markdown-precode :: Complete language name for
      code blocks via ~```~ syntax.
 
-=company-mode= setup might look like:
+List of company backends to be used for user input completion is
+controlled by:
+- User Option: ~telega-company-backends~ 
+
+  Company backends to use in chat buffers.
+  Set to nil to disable company completions in chat buffers. 
+
+  Default value: ~(telega-company-emoji telega-company-telegram-emoji telega-company-username telega-company-hashtag telega-company-markdown-precode telega-company-botcmd)~
+
+You can use completion without enabling =company-mode= in the chat
+buffers, by explicitly pressing
+@@html:<kbd>@@TAB@@html:</kbd>@@ (~telega-chatbuf-complete-or-next-link~)
+to perform completion at point.
+
+On the other hand, =company-mode= detects input context and pops up
+completion candidates if completion at point is available.  To enable
+=company-mode= in chat buffers use:
 #+begin_src elisp
-  (setq telega-emoji-company-backend 'telega-company-emoji)
-
-  (defun my-telega-chat-mode ()
-    (set (make-local-variable 'company-backends)
-         (append (list telega-emoji-company-backend
-  		     'telega-company-username
-  		     'telega-company-hashtag
-  		     'telega-company-markdown-precode)
-  	       (when (telega-chat-bot-p telega-chatbuf--chat)
-  		 '(telega-company-botcmd))))
-    (company-mode 1))
-
-  (add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
+  (add-hook 'telega-chat-mode-hook 'company-mode)
 #+end_src
 
 Consider also using =company-posframe= Emacs package (in MELPA), so
@@ -2422,15 +2481,16 @@ Customizable options for inline bots:
 :END:
 
 Message filtering means to show only some messages matching filter.
-Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =unread-reaction=, =failed-to-send=, =pinned=
+Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =topic=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =unread-reaction=, =failed-to-send=, =pinned=
 
 Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 
      Enable chat message filtering ~MSG-FILTER~.
 
 - @@html:<kbd>@@C-c C-c@@html:</kbd>@@ (~telega-chatbuf-filter-cancel~) :: 
-     Cancel any message filtering.
+     Cancel current messages filtering.
      If point is at some message, then keep point on this message after reseting.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then cancel thread filtering as well.
 
 - @@html:<kbd>@@C-c C-r@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query~) :: 
      Inplace search backward for the ~QUERY~.
@@ -2440,6 +2500,27 @@ Chatbuf uses next bindings for message filtering:
      @@html:<kbd>@@M-g p@@html:</kbd>@@ and
      @@html:<kbd>@@M-g n@@html:</kbd>@@
      bindings.
+
+- @@html:<kbd>@@C-c C-s@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query-forward~) :: 
+     Inplace search forward for the ~QUERY~.
+     If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, search for the messages
+     containing ~QUERY~ sent by specified sender.
+
+** Inplace searching in text messages or media captions
+:PROPERTIES:
+:CUSTOM_ID: inplace-searching-in-text-messages-or-media-captions
+:END:
+
+Use
+@@html:<kbd>@@C-c C-r@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query~)
+or @@html:<kbd>@@C-c C-s@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query-forward~)
+to start searching while keeping history without applied filter,
+i.e. you can see surrounding messages.
+
+Use @@html:<kbd>@@M-g s@@html:</kbd>@@ (~telega-chatbuf-inplace-search~)
+or
+@@html:<kbd>@@M-g n@@html:</kbd>@@ (~telega-chatbuf-inplace-search-next~)
+to continue searching.
 
 ** Opening files using external programs
 :PROPERTIES:
@@ -2599,6 +2680,16 @@ To reference a given moment in a media message (or in a reply to media
 message) use ~[HH:]MM:SS]~ syntax in the message's body/caption.  Such
 timestamp marks will be automatically emphasised with a media
 timestamp text entity.
+
+** Forums and Topics
+:PROPERTIES:
+:CUSTOM_ID: forums-and-topics
+:END:
+
+Telegram allows creating forums with multiple distinct topics.  Use
+@@html:<kbd>@@M-x telega-chat-create RET forum RET@@html:</kbd>@@ to create forums.
+
+NOTE: forums and topics are not fully supported by =telega= at moment.
 
 * Video Chats
 :PROPERTIES:
@@ -3247,6 +3338,53 @@ Creating links to a message content is very useful in conjuction
 with [[#telega-edit-file-mode][Edit File Mode]], so you can store
 your Org mode files in Telegram Cloud and create links to them in
 Roam manner.
+
+Customizable options:
+
+- User Option: ~org-telega-chat-link-format~ 
+
+  Description format for link to a chat.
+  Format spec:
+  %u - chat username if any, %t otherwise.
+  %t - chat title with brackets. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    #("◀%t" 0 1
+      (face
+       (italic telega-blue)))
+  #+end_src
+
+- User Option: ~org-telega-msg-link-format~ 
+
+  Description format for link to a message.
+  Format spec:
+  %u - user username if any, %t otherwise.
+  %t - user title without brackets.
+  %m - one line message body. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    #("◀%u> %>.32m" 0 1
+      (face
+       (italic telega-blue)))
+  #+end_src
+
+- User Option: ~org-telega-file-link-format~ 
+
+  Description format for link to a message to open message's media file.
+  Format spec:
+  %u - user username if any, %t otherwise.
+  %t - user title without brackets.
+  %m - one line message body. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    #("◀📎%u> %>.32m" 0 1
+      (face
+       (italic telega-blue)))
+  #+end_src
+
 
 ** /telega-status-history.el/ -- Global minore mode to save user's online status history
 :PROPERTIES:

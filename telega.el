@@ -8,10 +8,10 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.163
-(defconst telega-version "0.8.163")
+;; Version: 0.8.200
+(defconst telega-version "0.8.200")
 (defconst telega-server-min-version "0.7.7")
-(defconst telega-tdlib-min-version "1.8.16")
+(defconst telega-tdlib-min-version "1.8.18")
 (defconst telega-tdlib-max-version nil)
 
 (defconst telega-tdlib-releases '("1.8.0" . "1.9.0")
@@ -258,7 +258,9 @@ Works only if current state is `authorizationStateWaitCode'."
 
 (defun telega--authorization-ready ()
   "Called when tdlib is ready to receive queries."
-  (telega--setOptions telega-options-plist)
+  (telega--tl-dolist ((prop-name value) telega-options-plist)
+    (telega--setOption prop-name value))
+
   ;; In case language pack id has not yet been selected, then select
   ;; suggested one or fallback to "en"
   (unless (plist-get telega--options :language_pack_id)

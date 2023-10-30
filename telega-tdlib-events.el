@@ -277,6 +277,12 @@ DIRTINESS specifies additional CHAT dirtiness."
                (plist-get event :has_protected_content))
     (telega-chat--mark-dirty chat event)))
 
+(defun telega--on-updateChatIsTranslatable (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (plist-put chat :is_translatable
+               (plist-get event :is_translatable))
+    (telega-chat--mark-dirty chat event)))
+
 (defun telega--on-updateChatReadInbox (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
         (unread-count (plist-get event :unread_count)))
@@ -406,6 +412,14 @@ NOTE: we store the number as custom chat property, to use it later."
 
     (telega-chat--mark-dirty chat event)))
 
+(defun telega--on-updateForumTopicInfo (event)
+  (let* ((new-info (plist-get event :info))
+         (chat (telega-chat-get (plist-get event :chat_id) 'offline))
+         (topic (telega-topic-get chat (plist-get new-info :message_thread_id))))
+    (plist-put topic :info new-info)
+
+    (telega-chat--mark-dirty chat event)))
+
 (defun telega--on-updateChatDraftMessage (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
         (draft-msg (plist-get event :draft_message)))
@@ -423,14 +437,6 @@ NOTE: we store the number as custom chat property, to use it later."
     (with-telega-chatbuf chat
       (telega-chatbuf--input-draft-update))
     ))
-
-(defun telega--on-updateChatChatList (event)
-  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline))
-        (chat-list (plist-get event :chat_list)))
-    (cl-assert chat)
-    (plist-put chat :chat_list chat-list)
-
-    (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatHasScheduledMessages (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
@@ -458,10 +464,11 @@ NOTE: we store the number as custom chat property, to use it later."
     (plist-put chat :theme_name (plist-get event :theme_name))
     (telega-chat--mark-dirty chat event)))
 
-(defun telega--on-updateChatMessageTtl (event)
+(defun telega--on-updateChatMessageAutoDeleteTime (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id))))
     (cl-assert chat)
-    (plist-put chat :message_ttl (plist-get event :message_ttl))
+    (plist-put chat :message_auto_delete_time
+               (plist-get event :message_auto_delete_time))
 
     (telega-chat--mark-dirty chat event)))
 
@@ -556,9 +563,7 @@ NOTE: we store the number as custom chat property, to use it later."
     (telega-group-call--ensure new-group-call)
 
     (when-let ((chat (telega-group-call-get-chat (plist-get new-group-call :id))))
-      (with-telega-chatbuf chat
-        (telega-chatbuf--footer-update)
-        (telega-chatbuf--modeline-update)))
+      (telega-chat--mark-dirty chat event))
     ))
 
 (defun telega--on-updateGroupCallParticipant (event)
@@ -697,17 +702,20 @@ Message id could be updated on this update."
                         (> new-id (plist-get (ewoc-data before-node) :id)))
               (setq before-node (ewoc-next telega-chatbuf--ewoc before-node)))
 
-            (ewoc-delete telega-chatbuf--ewoc node)
             (run-hook-with-args 'telega-chatbuf-pre-msg-insert-hook new-msg)
-            (with-telega-deferred-events
-              (if before-node
-                  ;; NOTE: need to redisplay next to newly created
-                  ;; node, in case `telega-chat-group-messages-for' is
-                  ;; used, see https://github.com/zevlg/telega.el/issues/159
-                  (progn
-                    (ewoc-enter-before telega-chatbuf--ewoc before-node new-msg)
-                    (ewoc-invalidate telega-chatbuf--ewoc before-node))
-                (ewoc-enter-last telega-chatbuf--ewoc new-msg)))
+            (ewoc-set-data node new-msg)
+            (telega-ewoc--move-node telega-chatbuf--ewoc node before-node
+                                    'save-point)
+            (when before-node
+              ;; NOTE: need to redisplay next to newly created
+              ;; node, in case `telega-chat-group-messages-for' is
+              ;; used, see https://github.com/zevlg/telega.el/issues/159
+              (ewoc-invalidate telega-chatbuf--ewoc before-node))
+
+            ;; Automatically view all outgoing messages
+            (when (plist-get new-msg :is_outgoing)
+              (telega-chatbuf--msg-view new-msg))
+
             (run-hook-with-args 'telega-chatbuf-post-msg-insert-hook new-msg)
             ))))
     (unless (plist-get new-msg :sending_state)
@@ -733,9 +741,9 @@ Message id could be updated on this update."
   ;; content with new(failed) state
   (telega--on-updateMessageSendSucceeded event)
 
-  (let ((err-code (plist-get event :error_code))
-        (err-msg (plist-get event :error_message)))
-    (message "telega: Failed to send message: %d %s" err-code err-msg)
+  (let ((err (plist-get event :error)))
+    (message "telega: Failed to send message: %d %s"
+             (plist-get err :code) (telega-tl-str err :message))
     ))
 
 (defun telega--on-updateMessageContent (event)
@@ -795,17 +803,18 @@ Message id could be updated on this update."
   "Message interaction info has been changed."
   (with-telega--msg-update-event event (chat msg node)
     (plist-put msg :interaction_info (plist-get event :interaction_info))
-    (when node
-      (with-telega-chatbuf chat
+    (with-telega-chatbuf chat
+      (when node
         (telega-chatbuf--redisplay-node node)
 
-        (when telega-chatbuf--thread-msg
-          (telega-chatbuf--footer-update))
-
         ;; NOTE: reactions might be updated and custom emojis needs to
-        ;; be downloaded
-        (telega-msg--custom-emojis-fetch msg)
-        ))))
+        ;; be downloaded.
+        (telega-msg--custom-emojis-fetch msg))
+
+      (when-let ((thread-msg (telega-chatbuf--thread-msg)))
+        (when (= (plist-get event :message_id) (plist-get thread-msg :id))
+          (telega-chatbuf--chat-update "thread")))
+      )))
 
 (defun telega--on-updateMessageContentOpened (event)
   "The message content was opened.
@@ -819,6 +828,9 @@ messages."
          (plist-put content :is_listened t))
         (messageVideoNote
          (plist-put content :is_viewed t))
+        ;; TODO: Check self-destruct type and probably start self-destruct
+        ;; timer
+        ;; ((messagePhoto messageVideo)
         (t
          ;; Nothing to update
          (setq node nil))))
@@ -1102,9 +1114,10 @@ messages."
     ))
 
 (defun telega--on-updateSupergroupFullInfo (event)
-  (let ((supergroup-id (plist-get event :supergroup_id))
-        (supergroup-fi (plist-get event :supergroup_full_info))
-        (fi-table (cdr (assq 'supergroup telega--full-info))))
+  (let* ((supergroup-id (plist-get event :supergroup_id))
+         (supergroup-fi (plist-get event :supergroup_full_info))
+         (fi-table (cdr (assq 'supergroup telega--full-info)))
+         (old-supergroup-fi (gethash supergroup-id fi-table)))
     (puthash supergroup-id supergroup-fi fi-table)
 
     ;; NOTE: if slow delay expiration changes, then save timestamp of
@@ -1128,7 +1141,11 @@ messages."
       (with-telega-chatbuf chat
         (unless (equal (plist-get supergroup-fi :administrator_count)
                        (length telega-chatbuf--administrators))
-          (telega-chatbuf--admins-fetch)))
+          (telega-chatbuf--admins-fetch))
+
+        (unless (equal (plist-get old-supergroup-fi :has_pinned_stories)
+                       (plist-get supergroup-fi :has_pinned_stories))
+          (telega-chatbuf--pinned-stories-fetch)))
       )))
 
 (defun telega--on-updateUnreadMessageCount (event)
@@ -1482,11 +1499,10 @@ Please downgrade TDLib and recompile `telega-server'"
 (defun telega--on-updateChatActiveStories (event)
   "The list of active stories posted by a specific chat has changed."
   (let* ((active-stories (plist-get event :active_stories))
-         (chat-id (plist-get active-stories :chat_id)))
-    (puthash chat-id active-stories telega--chat-active-stories)
+         (chat (telega-chat-get (plist-get active-stories :chat_id) 'offline)))
+    (setf (telega-chat--active-stories chat) active-stories)
 
-    (with-telega-chatbuf (telega-chat-get chat-id)
-      (telega-chatbuf--footer-update))))
+    (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateStoryListChatCount (event)
   "Number of chats in a story list has changed."

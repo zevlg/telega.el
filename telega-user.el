@@ -46,7 +46,12 @@
 (define-button-type 'telega-user
   :supertype 'telega
   :inserter #'telega-ins--user
+
+  ;; NOTE: To make input method works under message buttons,
+  ;; See `quail-input-method' for details
   'read-only t
+  'front-sticky t
+
   'keymap telega-user-button-map
   'action #'telega-user-button--action)
 

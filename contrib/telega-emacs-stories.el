@@ -289,29 +289,28 @@ or from the beginning."
                                )))
       (telega--searchChatMessages telega-emacs-stories--chat
           (list :@type filter-type)
-          (if (string= "searchMessagesFilterUrl" filter-type)
-              "asciinema.org"
-            "")
           (or from-msg-id
               (plist-get (car (last telega-emacs-stories--all-messages)) :id)
               0)
           0                             ; offset
-          (max telega-emacs-stories--dashboard-list-size
-               telega-emacs-stories-root-view-count)
-          nil
+        :query (when (string= "searchMessagesFilterUrl" filter-type)
+                 "asciinema.org")
+        :limit (max telega-emacs-stories--dashboard-list-size
+                    telega-emacs-stories-root-view-count)
+        :callback
         (lambda (reply)
-          (let ((stories-array (plist-get reply :messages)))
+          (let ((story-messages (plist-get reply :messages)))
             (telega-debug "Emacs Stories: fetched %d stories for %S"
-                          (length stories-array) filter-type)
-            (seq-doseq (story stories-array)
+                          (length story-messages) filter-type)
+            (seq-doseq (story story-messages)
               (telega-emacs-stories--on-new-message story 'no-notify))
 
             ;; NOTE: If searched got some messages and there is still
             ;; not enough story messages, then search for older
             ;; messages starting from oldest viewed message
-            (when (> (length stories-array) 0)
+            (unless (seq-empty-p story-messages)
               (let* ((last-fetched-story
-                      (aref stories-array (1- (length stories-array))))
+                      (aref story-messages (1- (length story-messages))))
                      (continue-from-msg-id
                       (apply #'min (plist-get last-fetched-story :id)
                              (telega-chat-uaprop
@@ -583,9 +582,9 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
                        (0.5 . "#ff543e") (1 . "#c837ab")))))
 
     (telega-svg-squircle svg 0 0 size size
-                         :stroke-width (if viewed-p sw-passive sw-active)
-                         :stroke-color (if viewed-p passive-color "url(#a)")
-                         :fill-color "none")
+      :stroke-width (if viewed-p sw-passive sw-active)
+      :stroke-color (if viewed-p passive-color "url(#a)")
+      :fill-color "none")
     (let ((c-off (* sw-passive 3))
           (c-sz (- size (* sw-passive 6))))
       ;; outline

@@ -43,6 +43,8 @@
   :value "Discussion started")
  ("lng_replies_view_topic"
   :value "View in Topic")
+ ("lng_replies_view_thread"
+  :value "View Thread")
  ("lng_profile_settings_section"
   :value "Settings")
  ("lng_profile_participants_section"
@@ -68,6 +70,12 @@ Example: 23 y.o. designer from San Francisco")
   :zero_value "No groups in common"
   :one_value "{count} group in common"
   :other_value "{count} groups in common")
+ ("lng_settings_upload"
+  :value "Set Profile Photo")
+ ("lng_profile_restart_bot"
+  :value "Restart bot")
+ ("lng_profile_set_group_photo"
+  :value "Set Photo")
 
  ("lng_scam_badge"
   :value "SCAM")
@@ -104,6 +112,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.")
  ("lng_polls_solution_title"
   :value "Explanation")
+ ("lng_polls_view_results"
+ :value "View results")
 
  ("lng_deleted"
   :value "Deleted Account")
@@ -318,6 +328,15 @@ Example: 23 y.o. designer from San Francisco")
   :value "last seen just now")
  ("lng_status_recently"
   :value "last seen recently")
+ ("lng_status_lastseen_minutes"
+  :one_value "last seen {count} minute ago"
+  :other_value "last seen {count} minutes ago")
+ ("lng_status_lastseen_hours"
+  :one_value "last seen {count} hour ago"
+  :other_value "last seen {count} hours ago")
+
+ ("lng_status_lastseen_yesterday"
+  :value "last seen yesterday at {time}")
  ("lng_status_lastseen_today"
   :value "last seen today at {time}")
  ("lng_status_lastseen_date_time"
@@ -344,6 +363,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Block user")
  ("lng_new_contact_share"
   :value "Share my phone number")
+ ("lng_new_contact_from_request_group"
+  :value "{user} is an admin of {name}, a group you requested to join.")
+ ("lng_new_contact_from_request_channel"
+  :value "{user} is an admin of {name}, a channel you requested to join.")
  ("lng_blocked_list_confirm_text"
   :value "Do you want to block {name} from messaging and calling you on Telegram?")
 
@@ -353,6 +376,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Discuss")
  ("lng_channel_not_accessible"
   :value "Sorry, this channel is not accessible.")
+ ("lng_profile_view_discussion"
+  :value "View discussion")
 
  ("telega_scheduled"
   :value "Scheduled")
@@ -440,6 +465,12 @@ Example: 23 y.o. designer from San Francisco")
   :value "Telegram will filter more spam but may occasionally affect ordinary messages. You can report False Positives in Recent Actions.")
  ("lng_manage_peer_members"
   :value "Members")
+ ("lng_manage_messages_ttl_title"
+  :value "Auto-delete messages")
+ ("lng_context_auto_delete_in"
+  :value "auto-deletes in {duration}")
+ ("lng_ttl_about_tooltip_channel"
+  :value "New messages in this chat will be automatically deleted after {duration}.")
 
  ;; Screenshot #5571 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5571
  ("lng_rights_edit_admin_header"
@@ -484,6 +515,17 @@ Example: 23 y.o. designer from San Francisco")
   :value "Delete messages of others")
  ("lng_channel_add_members"
   :value "Add members")
+
+ ;; Manage Stories 3/3
+ ("lng_rights_channel_manage_stories"
+  :value "Manage stories")
+ ("lng_rights_channel_post_stories"
+  :value "Post stories")
+ ("lng_rights_channel_edit_stories"
+  :value "Edit stories of others")
+ ("lng_rights_channel_delete_stories"
+  :value "Delete stories of others")
+
  ;; lng_rights_add_admins
 
  ;; Help messages
@@ -532,8 +574,6 @@ Example: 23 y.o. designer from San Francisco")
   :value "7 days")
  ("lng_ttl_about_duration3"
   :value "1 month")
- ("telega_ttl_about_disable"
-  :value "disable")
 
  ;; Calls
  ("lng_call_error_not_available"
@@ -807,9 +847,11 @@ Example: 23 y.o. designer from San Francisco")
 to start the topic.")
  ("lng_action_topic_placeholder"
   :value "topic")
+ ("lng_info_topic_title"
+  :value "Topic Info")
+ ("lng_topic_author_badge"
+  :value "Topic Creator")
 
- ("lng_rights_gigagroup_title"
-  :value "Broadcast group")
  ("lng_rights_gigagroup_about"
   :value "Broadcast groups can have over 200,000 members, but only admins can send messages in them.")
  ("lng_gigagroup_convert_feature1"
@@ -846,6 +888,13 @@ to start the topic.")
  ("lng_group_invite_qr_copied"
   :value "QR Code copied to clipboard.")
 
+ ("lng_group_invite_join"
+  :value "Join")
+ ("lng_group_request_to_join"
+  :value "Request to Join")
+ ("lng_group_request_about_channel"
+  :value "This channel accepts new subscribers only after they are approved by its admins.")
+
  ("lng_payments_invoice_label_test"
   :value "Test invoice")
  ("lng_payments_invoice_label"
@@ -873,6 +922,8 @@ to start the topic.")
   :one_value "Stop sharing live location?"
   :other_value "Stop sharing live location in {count} chats?")
 
+ ("lng_bot_start"
+  :value "Start")
  ("lng_bot_description"
   :value "What can this bot do?")
 
@@ -982,6 +1033,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Live stream")
  ("lng_view_button_request_join"
   :value "Request to Join")
+ ("lng_unblock_button"
+  :value "Unblock")
 
  ("lng_forwarded"
   :value "Forwarded from {user}")
@@ -997,6 +1050,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Cancel")
  ("lng_media_file_title"
   :value "Files")
+ ("lng_media_save_progress"
+ :value "{ready} of {total} {mb}")
 
  ;; media types
  ("lng_in_dlg_photo"
@@ -1032,6 +1087,20 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "yesterday at {time}")
  ("lng_mediaview_date_time"
   :value "{date} at {time}")
+ ("lng_mediaview_profile_photo"
+  :value "Profile Photo")
+
+ ("lng_mediaview_hours_ago"
+  :one_value "{count} hour ago"
+  :other_value "{count} hours ago")
+ ("lng_mediaview_minutes_ago"
+  :one_value "{count} minute ago"
+  :other_value "{count} minutes ago")
+ ("lng_mediaview_just_now"
+  :value "just now")
+
+ ("lng_mediaview_saved_to"
+  :value "Image was saved to your {downloads} folder")
 
  ;; Used in global search rootview
  ("lng_contacts_header"
@@ -1067,4 +1136,142 @@ You can send them an invite link as message instead.")
   :value "This story has expired.")
  ("lng_deleted_story"
   :value "Deleted story")
+ ("lng_stories_row_count"
+  :one_value "{count} Story" :other_value "{count} Stories")
+
+ ("lng_info_user_title"
+  :value "User Info")
+ ("lng_info_bot_title"
+  :value "Bot Info")
+ ("lng_info_channel_title"
+  :value "Channel Info")
+ ("lng_info_usernames_label"
+  :value "also")
+
+ ;; For formatting human readable dates
+ ("lng_seconds"
+  :one_value "{count} second" :other_value "{count} seconds")
+ ("lng_minutes"
+  :one_value "{count} minute" :other_value "{count} minutes")
+ ("lng_hours"
+  :one_value "{count} hour" :other_value "{count} hours")
+ ("lng_days"
+  :one_value "{count} day" :other_value "{count} days")
+ ("lng_weeks"
+  :one_value "{count} week" :other_value "{count} weeks")
+ ("lng_months"
+  :one_value "{count} month" :other_value "{count} months")
+ ("lng_years"
+  :one_value "{count} year" :other_value "{count} years")
+
+ ("lng_seconds_tiny"
+  :one_value "{count}s" :other_value "{count}s")
+ ("lng_minutes_tiny"
+  :one_value "{count}m" :other_value "{count}m")
+ ("lng_hours_tiny"
+  :one_value "{count}h" :other_value "{count}h")
+ ("lng_days_tiny"
+  :one_value "{count}d" :other_value "{count}d")
+ ("lng_weeks_tiny"
+  :one_value "{count}w" :other_value "{count}w")
+ ("lng_months_tiny"
+  :one_value "{count}m" :other_value "{count}m")
+ ("lng_years_tiny"
+  :one_value "{count}y" :other_value "{count}y")
+
+ ("lng_attach_photo"
+  :value "Photo")
+
+ ;; Sessions
+ ("lng_settings_sessions_title"
+  :value "Active sessions")
+ ("lng_settings_reset_one_sure"
+  :value "Do you want to terminate this session?")
+
+ ("lng_sessions_header"
+  :value "This device")
+ ("lng_sessions_ip"
+  :value "IP address")
+ ("lng_sessions_location"
+  :value "Location")
+ ("lng_sessions_location_about"
+  :value "This location estimate is based on the IP address and may not always be accurate.")
+ ("lng_sessions_system"
+  :value "System version")
+ ("lng_sessions_terminate"
+  :value "Terminate Session")
+ ("lng_sessions_incomplete"
+  :value "Incomplete login attempts")
+ ("lng_sessions_incomplete_about"
+  :value "The devices above have no access to your messages. The code was entered correctly, but no correct password was given.")
+
+ ;; Connected websites
+ ("lng_sessions_browser"
+ :value "Browser")
+ ("lng_settings_connected_title"
+  :value "Connected websites")
+ ("lng_settings_logged_in_title"
+  :value "Logged in with Telegram")
+ ("lng_settings_logged_in_description"
+  :value "You can log in on websites that support signing in with Telegram.")
+ ("lng_settings_disconnect"
+  :value "Disconnect")
+ ("lng_settings_disconnect_sure"
+  :value "Are you sure you want to disconnect {domain}?")
+ ("lng_settings_disconnect_all"
+  :value "Disconnect all websites")
+ ("lng_settings_disconnect_all_sure"
+  :value "Are you sure you want to disconnect all websites where you logged in with Telegram?")
+
+ ("lng_settings_ttl_title"
+  :value "Auto-Delete Messages")
+ ("lng_settings_ttl_after_subtitle"
+  :value "Self-destruct timer")
+ ("lng_settings_ttl_after_off"
+  :value "Off")
+ ("lng_settings_ttl_after_custom"
+  :value "Set Custom Time")
+ ("lng_settings_ttl_after"
+  :value "After {after_duration}")
+ ("lng_settings_ttl_after_days"
+  :one_value "{count} day"
+  :other_value "{count} days")
+
+ ("lng_manage_messages_ttl_never"
+  :value "Off")
+ ("lng_manage_messages_ttl_after_custom"
+  :value "Custom")
+
+ ("lng_ttl_edit_about_channel"
+  :value "Automatically delete new messages sent in this channel after a certain period of time.")
+ ("lng_ttl_edit_about"
+  :value "Automatically delete new messages for you and {user} after a certain period of time.")
+ ("lng_ttl_edit_about_group"
+  :value "Automatically delete new messages sent in this chat after a certain period of time.")
+
+ ;; Boosts
+ ("lng_view_button_boost"
+  :value "Boost")
+ ("lng_boost_channel_button"
+  :value "Boost Channel")
+ ("lng_boost_channel_you_title"
+  :value "You boosted {channel}!")
+
+ ;; Stickers
+ ("lng_mac_touchbar_favorite_stickers"
+  :value "Favorite stickers")
+ ("lng_recent_stickers"
+  :value "Recently used")
+
+ ;; Prompt helpers
+ ("lng_message_ph"
+  :value "Write a message...")
+ ("lng_send_anonymous_ph"
+  :value "Send anonymously...")
+ ("lng_broadcast_ph"
+  :value "Broadcast a message...")
+ ("lng_broadcast_silent_ph"
+  :value "Silent broadcast...")
+ ("lng_story_reply_ph"
+  :value "Reply privately...")
  )

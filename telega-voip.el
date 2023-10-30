@@ -234,9 +234,9 @@ If ARG is not given then treat it as 1."
            (when (y-or-n-p "Start already scheduled Voice Chat? ")
              (telega--startScheduledGroupCall group-call)))
           (group-call
-           (user-error "Voice Chat already running"))
+           (user-error "Video Chat already running"))
           (t
-           (telega--createVoiceChat chat
+           (telega--createVideoChat chat
                (read-string
                 (concat (telega-i18n "lng_group_call_edit_title_header")
                         ": ")))))))
@@ -255,7 +255,7 @@ If ARG is not given then treat it as 1."
         (title (read-string
                 (concat (telega-i18n "lng_group_call_edit_title_header")
                         ": "))))
-    (telega--createVoiceChat chat title
+    (telega--createVideoChat chat title
       :start-time start-time)))
 
 (defun telega-video-chat-discard (chat &optional no-confirm-p)
@@ -287,15 +287,6 @@ If ARG is not given then treat it as 1."
     (unless (and group-call (plist-get group-call :can_be_managed))
       (user-error "Can't stop recording"))
     (telega--endGroupCallRecording group-call)))
-
-(defun telega-video-chat-toggle-footer (chat)
-  "Toggle video chat visibility in CHAT's footer/modeline."
-  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
-  (with-telega-chatbuf chat
-    (setq telega-chatbuf--video-chat-hidden
-          (not telega-chatbuf--video-chat-hidden))
-    (telega-chatbuf--footer-update)
-    (telega-chatbuf--modeline-update)))
 
 (defun telega-group-call--ensure (group-call)
   "Ensure GROUP-CALL is in the `telega--group-calls'.

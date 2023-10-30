@@ -809,6 +809,12 @@ supergroups and channels and receives CHANNELS_TOO_MUCH error."
   (setq telega--search-chats (telega--getInactiveSupergroupChats))
   (telega-filter-add 'inactive-supergroups))
 
+(defun telega-filter-by-can-send-stories ()
+  "Filter chats you can post stories to."
+  (interactive)
+  (setq telega--search-chats (telega--getChatsToSendStories))
+  (telega-filter-add 'can-send-stories))
+
 (defun telega-filter-by-has-video-chat (including-empty-p)
   "Filter chats with started video chat.
 If INCLUDING-EMPTY-P is non-nil, then keep also empty video chats."

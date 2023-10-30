@@ -254,7 +254,7 @@
 (defun telega-ins--inline-audio (qr)
   "Inserter for `inlineQueryResultAudio' QR."
   (let ((audio (plist-get qr :audio)))
-    (telega-ins--audio nil audio telega-symbol-audio)
+    (telega-ins--audio nil audio (telega-symbol 'audio))
     (telega-ins "\n")))
 
 (defun telega-ins--inline-voice-note (qr)

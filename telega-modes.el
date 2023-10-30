@@ -80,13 +80,13 @@
 (defun telega-mode-line-logo-image ()
   "Return telega logo image to be used in modeline."
   (let* ((box-line-width-raw
-          (plist-get (face-attribute 'mode-line :box) :line-width))
+          (plist-get (face-attribute telega--default-face :box) :line-width))
          (box-line-width
           (if (consp box-line-width-raw)
               (car box-line-width-raw)
             (or box-line-width-raw 0)))
          (mode-line-height
-          (+ (telega-chars-xheight 1 'mode-line)
+          (+ (telega-chars-xheight 1)
              ;; NOTE: height adjustment only needed if box-line-width
              ;; is negative. See https://t.me/emacs_telega/26677
              (if (< box-line-width 0)
@@ -195,7 +195,7 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
   (when telega-mode-line-mode
     (setq telega-mode-line-string
           (when (telega-server-live-p)
-            (format-mode-line telega-mode-line-string-format)))
+            (telega-format-mode-line telega-mode-line-string-format)))
     (force-mode-line-update 'all)))
 
 ;;;###autoload
@@ -760,8 +760,7 @@ To be displayed in the modeline.")
 (defun telega-image-mode--update-modeline ()
   (setq mode-line-buffer-identification
         (list (propertized-buffer-identification "%b")
-              (format-mode-line telega-image-mode-mode-line-format nil nil
-                                (current-buffer))))
+              (telega-format-mode-line telega-image-mode-mode-line-format)))
   (force-mode-line-update))
 
 (defun telega-image-mode--chat-position-fetch ()
@@ -863,9 +862,12 @@ Could be used as condition function in `display-buffer-alist'."
     (let ((chat (telega-msg-chat telega-image--message))
           (img-msg telega-image--message)
           (img-buffer (current-buffer)))
-      (telega--searchChatMessages chat '(:@type "searchMessagesFilterPhoto") ""
-                                  (plist-get telega-image--message :id)
-                                  (if backward 0 -2) 3 nil
+      (telega--searchChatMessages chat
+          '(:@type "searchMessagesFilterPhoto")
+          (plist-get telega-image--message :id)
+          (if backward 0 -2)
+        :limit 3
+        :callback
         (lambda (reply)
           (let ((found-messages (append (plist-get reply :messages) nil)))
             (if (or (telega--tl-error-p reply)
@@ -1182,7 +1184,7 @@ Return patron info, or nil if SENDER is not a telega patron."
                (lambda (svg circle)
                  (when addon-fun
                    (funcall addon-fun svg circle))
-                 (let* ((svg-w (dom-attr svg 'width))
+                 (let* ((svg-w (telega-svg-width svg))
                         (cx (nth 0 circle))
                         (cy (nth 1 circle))
                         (cr (nth 2 circle))
@@ -1433,9 +1435,9 @@ EVENT must be \"updateDeleteMessages\"."
     (cl-destructuring-bind (live-for updated-ago)
         (telega-msg-location-live-for msg)
       (telega-ins-fmt " for %s"
-        (telega-duration-human-readable live-for 1))
+        (telega-duration-human-readable live-for 1 'long))
       (telega-ins-fmt " (%s ago)"
-        (telega-duration-human-readable updated-ago 1)))
+        (telega-duration-human-readable updated-ago 1 'long)))
 
     (when (and (not (telega-me-p user)) telega-my-location)
       (telega-ins " " (telega-symbol 'distance))

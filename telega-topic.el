@@ -19,9 +19,12 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Commentary:
-
+;;; ellit-org: commentary
 ;;
+;; Telegram allows creating forums with multiple distinct topics.  Use
+;; {{{kbd(M-x telega-chat-create RET forum RET)}}} to create forums.
+;; 
+;; NOTE: forums and topics are not fully supported by =telega= at moment.
 
 ;;; Code:
 (require 'telega-core)
@@ -50,24 +53,31 @@
            (xw (telega-chars-xwidth (* 2 cheight)))
            (svg (telega-svg-create xw xh))
            (title (telega-tl-str (plist-get topic :info) :name))
-           (color1 (telega-color-name-as-hex-2digits
-                    (or (funcall telega-rainbow-color-function title 'light)
-                        "gray25")))
-           (color2 (telega-color-name-as-hex-2digits
-                    (or (funcall telega-rainbow-color-function title 'dark)
-                        "gray75")))
-           (font-size (/ xh 2)))
-      (svg-gradient svg "cgrad" 'linear
-                    (list (cons 0 color2) (cons xh color1)))
-      (telega-svg-forum-topic-icon svg xw
-        :stroke-width (/ xh 20.0)
-        :stroke-color color1
-        :gradient "cgrad")
+           (general-p (telega-topic-match-p topic 'is-general))
+           (badge (if general-p "#" (substring title 0 1)))
+           (font-size (if general-p xh (/ xh 2))))
+      (unless general-p
+        ;; Draw topic icon
+        (let ((color1 (telega-color-name-as-hex-2digits
+                       (or (funcall telega-rainbow-color-function title 'light)
+                           "gray25")))
+              (color2 (telega-color-name-as-hex-2digits
+                       (or (funcall telega-rainbow-color-function title 'dark)
+                           "gray75"))))
+          (svg-gradient svg "cgrad" 'linear
+                        (list (cons 0 color2) (cons xh color1)))
+          (telega-svg-forum-topic-icon svg xw
+            :stroke-width (/ xh 20.0)
+            :stroke-color color1
+            :gradient "cgrad")))
 
-      (svg-text svg (substring title 0 1)
+      (svg-text svg badge
                 :font-size font-size
                 :font-weight "bold"
-                :fill "white"
+                :fill (if general-p
+                          (telega-color-name-as-hex-2digits
+                           (face-foreground 'telega-shadow nil t))
+                        "white")
                 :font-family "monospace"
                 ;; XXX insane X/Y calculation
                 :x (- (/ xw 2) (/ font-size 3))
@@ -159,24 +169,67 @@
     (when (and button (eq (button-type button) 'telega-topic))
       (button-get button :value))))
 
+(defun telega-topic-goto (topic &optional reply-msg-id)
+  "Open TOPIC in a chatbuf."
+  (let* ((topic-chat (telega-topic-chat topic))
+         (buffer (telega-chatbuf--get-create topic-chat :no-history)))
+    ;; NOTE: pop to buffer after starting filtering by topic, to make
+    ;; `telega-root--keep-cursor-at-chat' to the job for keeping
+    ;; cursor at topic position
+    (with-current-buffer buffer
+      (unless (eq topic (telega-chatbuf--thread-topic))
+        (telega-chatbuf-filter-by-topic topic (when reply-msg-id :no-history))
+        (when reply-msg-id
+          (let ((telega-chatbuf--inhibit-filter-reset '(thread)))
+            (telega-chat--goto-msg topic-chat reply-msg-id 'highlight)))))
+
+    (telega-chat--pop-to-buffer topic-chat :no-history)))
+
 (defun telega-describe-topic (topic)
   "Show info about TOPIC."
   (interactive (list (telega-topic-at (point))))
   (with-telega-help-win "*Telegram Topic Info*"
-    (telega-ins--topic-title topic 'with-icon)
-    (telega-ins "\n")
-    (telega-ins "Chat: ")
-    (telega-button--insert 'telega-chat (telega-topic-chat topic)
-      :inserter #'telega-ins--chat
-      :action #'telega-chat-button-action)
-    (telega-ins "\n")
+    (let ((chat (telega-topic-chat topic))
+          (topic-info (plist-get topic :info)))
+      (telega-ins--with-face 'telega-shadow
+        (telega-ins (telega-symbol 'topic))
+        (telega-ins--topic-title topic 'with-icon))
+      (telega-ins " ")
+      ;; TODO: [Open] button
+      ;; (telega-ins--button "Open"
+      ;;                     )
 
-    (let ((topic-info (plist-get topic :info)))
+      (telega-ins "\n")
+      (telega-ins "Chat: ")
+      (telega-button--insert 'telega-chat chat
+        :inserter #'telega-ins--chat
+        :action #'telega-chat-button-action)
+      (telega-ins "\n")
+      (telega-ins "Created: ")
+      (telega-ins--date-iso8601 (plist-get topic-info :creation_date))
+      (telega-ins "\n")
+      (telega-ins (telega-i18n "lng_topic_author_badge") ": ")
+      (telega-ins--msg-sender
+          (telega-msg-sender (plist-get topic-info :creator_id))
+        :with-avatar-p t
+        :with-username-p t
+        :with-brackets-p t)
+      (telega-ins "\n")
+      
+      (telega-ins "\n")
+
       (telega-ins-fmt "Message-Thread-Id: %S\n"
         (plist-get topic-info :message_thread_id))
-      )
-    ;; TODO: more fields
-    ))
+
+      ;; TODO: more fields
+
+      (when telega-debug
+        (let ((print-length nil))
+          (telega-ins "\n---DEBUG---\n")
+          (telega-ins-fmt "TopicSexp: (telega-topic-get (telega-chat-get %d) %d)\n"
+            (plist-get chat :id) (plist-get topic-info :message_thread_id))
+          ))
+      )))
 
 (defun telega-msg-show-topic-info (msg)
   "Show MSG's topic info."

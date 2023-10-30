@@ -32,6 +32,7 @@
 (require 'telega-tdlib)
 (require 'telega-i18n)
 (require 'telega-sticker)
+(require 'telega-util)
 
 ;; telega-chat.el depends on telega-tme.el
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
@@ -171,16 +172,15 @@ PARAMS are additional params."
 
 (defun telega-tme-open-invite-link (url)
   "Join the GROUP by invitation link specified by URL."
-  (let* ((link-check (let ((tl-obj (telega--checkChatInviteLink url)))
-                       (when (telega--tl-error-p tl-obj)
-                         (error "telega: %s" (telega-tl-str tl-obj :error)))
-                       tl-obj))
-         (chat-id (plist-get link-check :chat_id))
-         (chat (when link-check
+  (let* ((invite-link (let ((tl-obj (telega--checkChatInviteLink url)))
+                        (when (telega--tl-error-p tl-obj)
+                          (error "telega: %s" (telega-tl-str tl-obj :error)))
+                        tl-obj))
+         (chat-id (plist-get invite-link :chat_id))
+         (chat (when invite-link
                  (if (zerop chat-id)
-                     ;; Can only join by link
-                     (when (y-or-n-p (format "Join \"%s\"? "
-                                             (telega-tl-str link-check :title)))
+                     ;; Can only join (or request to join) by link
+                     (when (telega-join-invite-link-y-or-n-p invite-link)
                        (telega--joinChatByInviteLink url))
 
                    ;; Can preview messages before deciding to join
@@ -213,6 +213,7 @@ PARAMS are additional params."
                                (plist-get lang-pack :native_name)
                                "? "))
       (setq telega-language lang)
+      (telega--setOption :language_pack_id lang 'sync)
       (telega-i18n-init))))
 
 (defun telega-tme-parse-query-string (query-string)
@@ -321,8 +322,6 @@ Return non-nil if url has been handled."
                    (concat "tg:addemoji?set=" (match-string 1 path)))
                   ((string-match "^/addtheme/\\([a-zA-Z0-9._-]+\\)$" path)
                    (concat "tg:addtheme?slug=" (match-string 1 path)))
-                  ((string-match "^/setlanguage/\\([a-zA-Z0-9._-]+\\)$" path)
-                   (concat "tg:setlanguage?lang=" (match-string 1 path)))
                   ((string-match "^/share/url$" path)
                    (concat "tg:msg_url?" query))
                   ((string-match "^/\\(socks\\|proxy\\)$" path)
@@ -341,17 +340,19 @@ Return non-nil if url has been handled."
                    (concat "tg:addlist?slug=" (match-string 1 path)))
                   ((string-match "^/\\+\\([^/]+\\)$" path)
                    (concat "tg:join?invite=" (match-string 1 path)))
-                  ((string-match
-                    (eval-when-compile
-                      (rx (and line-start "/"
-                               (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))
-                               (? "/" (group (1+ digit)))
-                               line-end)))
-                    path)
+                  ((and just-convert
+                        (string-match
+                         (eval-when-compile
+                           (rx (and line-start "/"
+                                    (group (1+ (regexp "[a-zA-Z0-9\\.\\_]")))
+                                    (? "/" (group (1+ digit)))
+                                    line-end)))
+                         path))
                    (concat "tg:resolve?domain=" (match-string 1 path)
                            (when (match-string 2 path)
                              (concat "&post=" (match-string 2 path)))
-                           (when query (concat "&" query))))))
+                           (when query (concat "&" query))))
+                  ))
            (tdlib-link (unless tg
                          (telega--getInternalLinkType url))))
       (cond (just-convert (or tg tdlib-link))
@@ -364,6 +365,13 @@ Return non-nil if url has been handled."
   "Open TDLib's internal link.
 To convert url to TDLib link, use `telega--getInternalLinkType'."
   (cl-ecase (telega--tl-type tdlib-link)
+    ;; TODO: add other link types
+
+    (internalLinkTypePublicChat
+     (when-let* ((username (plist-get tdlib-link :chat_username))
+                 (chat (telega--searchPublicChat username)))
+       (telega-chat--pop-to-buffer chat)))
+
     (internalLinkTypeBotStart
      (let* ((bot-username (plist-get tdlib-link :bot_username))
             (bot-chat (telega--searchPublicChat bot-username))
@@ -375,9 +383,15 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
        (telega-chat--pop-to-buffer bot-chat)
        (setq telega-chatbuf--bot-start-parameter
              (telega-tl-str tdlib-link :start_parameter))
-       (telega-chatbuf--prompt-update)
+       (telega-chatbuf--chat-update "bot-start-parameter")
        ;; Now wait till [START] is pressed
        ))
+
+    ;; (internalLinkTypeAttachmentMenuBot
+    ;;  (let ((url
+    ;;         getAttachmentMenuBot
+    ;;  (telega-browse-url (telega-tl-str tdlib-link :url)))
+
     (internalLinkTypeMessage
      (let* ((msg-info (telega--getMessageLinkInfo
                        (telega-tl-str tdlib-link :url)))
@@ -388,12 +402,6 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
            (telega-msg-goto-highlight msg)
          (telega-chat--goto-thread (telega-chat-get chat-id) thread-id
                                    (plist-get msg :id)))))
-
-    (internalLinkTypeActiveSessions
-     )
-
-    (internalLinkTypeVoiceChat
-     )
 
     (internalLinkTypeChatInvite
      (telega-tme-open-invite-link (plist-get tdlib-link :invite_link)))
@@ -409,9 +417,27 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
            (telega-webpage--instant-view url "Telegra.ph" iv)
          (telega-browse-url fallback-url 'in-browser))))
 
-    (internalLinkTypeChatFolderInvite
-     ;; TODO
-     )
+    (internalLinkTypeChatBoost
+     (let* ((info (telega--getChatBoostLinkInfo (telega-tl-str tdlib-link :url)))
+            (chat (telega-chat-get (plist-get info :chat_id)))
+            (title (telega-ins--as-string
+                    (telega-ins--msg-sender chat
+                      :with-avatar-p t
+                      :with-username-p 'username
+                      :with-brackets-p t)))
+            (status (telega--getChatBoostStatus chat)))
+       (when (y-or-n-p (concat (telega-i18n "lng_boost_channel_button")
+                               " " title
+                               (format " [%d/%d]"
+                                       (plist-get status :boost_count)
+                                       (plist-get status :next_level_boost_count))
+                               "? "))
+         (telega--boostChat chat)
+         (message "telega: %s" (telega-i18n "lng_boost_channel_you_title"
+                                 :channel title)))))
+
+    (internalLinkTypeLanguagePack
+     (telega-tme-open-lang (telega-tl-str tdlib-link :language_pack_id)))
 
     (internalLinkTypeStory
      (let* ((chat (telega--searchPublicChat

@@ -29,6 +29,7 @@
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat--ensure "telega-chat" (chat))
+(declare-function telega-chatbuf--message-thread-id "telega-chat")
 (declare-function telega-stickerset--ensure "telega-sticker" (sset))
 (declare-function telega-user-get "telega-user" (user-id))
 (declare-function telega-file--ensure "telega-media" (file))
@@ -84,11 +85,6 @@ If SYNC-P is specified, then set option is sync manner."
                                            (t (error "Unknown value type: %S"
                                                      (type-of val))))
                               :value (or val :false)))))
-
-(defun telega--setOptions (options-plist)
-  "Send custom OPTIONS-PLIST to server."
-  (telega--tl-dolist ((prop-name value) options-plist)
-    (telega--setOption prop-name value)))
 
 (defun telega--addProxy (proxy-spec)
   "Add PROXY-SPEC to the list of proxies."
@@ -158,17 +154,19 @@ Return (or call the CALLBACK with) newly created chat."
           :title title)
     callback))
 
-(defun telega--createNewSupergroupChat (title &optional channel-p description
-                                              location callback)
+(cl-defun telega--createNewSupergroupChat (title &key forum-p channel-p
+                                                 description location callback)
   "Create new supergroup with TITLE.
 Specify non-nil CHANNEL-P to create new channel.
 Specify LOCATION to create location-based supergroup.
 Return (or call the CALLBACK with) newly created chat."
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (telega-chat-get (plist-get reply :id))
 
     (nconc (list :@type "createNewSupergroupChat"
                  :title title
+                 :is_forum (if forum-p t :false)
                  :is_channel (if channel-p t :false))
            (when description
              (list :description description))
@@ -265,7 +263,7 @@ all messages must have same user sender."
 (defun telega-chat-message-thread-id (chat)
   "Return current message_thread_id for the CHAT."
   (or (with-telega-chatbuf chat
-        (plist-get telega-chatbuf--thread-msg :message_thread_id))
+        (telega-chatbuf--message-thread-id))
       0))
 
 (defun telega--sendChatAction (chat action)
@@ -550,16 +548,37 @@ LIMIT defaults to 20."
              (list :chat_id (plist-get chat :id))))
     callback))
 
-(defun telega--searchStickers (emoji &optional limit callback)
+(cl-defun telega--getAllStickerEmojis (query &key chat
+                                             (tl-sticker-type
+                                              '(:@type "stickerTypeRegular"))
+                                             only-main-p
+                                             callback)
+  "Return unique emoji that correspond to installed stickers."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :stickers) nil)
+
+    (nconc (list :@type "getAllStickerEmojis"
+                 :query query
+                 :sticker_type tl-sticker-type
+                 :return_only_main_emoji (if only-main-p t :false))
+           (when chat
+             (list :chat_id (plist-get chat :id))))
+    callback))
+
+(cl-defun telega--searchStickers (emoji &key (tl-sticker-type
+                                              '(:@type "stickerTypeRegular"))
+                                        limit callback)
   "Search for the public stickers that correspond to a given EMOJI.
 LIMIT defaults to 20."
-  (declare (indent 2))
+  (declare (indent 1))
   (with-telega-server-reply (reply)
       (append (plist-get reply :stickers) nil)
 
     (list :@type "searchStickers"
-          :emoji emoji
-          :limit (or limit 20))
+          :emojis emoji
+          :sticker_type tl-sticker-type
+          :limit (or limit 100))
     callback))
 
 (cl-defun telega--getInstalledStickerSets (&key (tl-sticker-type
@@ -731,12 +750,12 @@ Return nil if URL is not available for instant view."
          (eq (telega--tl-type reply) 'webPageInstantView)
          reply)))
 
-(defun telega--resendMessage (message)
-  "Resend MESSAGE."
+(defun telega--resendMessages (&rest messages)
+  "Resend MESSAGES."
   (telega-server--send
    (list :@type "resendMessages"
-         :chat_id (plist-get message :chat_id)
-         :message_ids (vector (plist-get message :id)))))
+         :chat_id (plist-get (car messages) :chat_id)
+         :message_ids (cl-map 'vector (telega--tl-prop :id) messages))))
 
 (defun telega--deleteChatReplyMarkup (message)
   "Deletes the default reply markup from a chat.
@@ -937,6 +956,22 @@ CHAT must be supergroup or channel."
   (telega-server--send
    (list :@type "XXXXterminateAllOtherSessions")))
 
+(defun telega--getConnectedWebsites (&optional callback)
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :websites) nil)
+
+    (list :@type "getConnectedWebsites")
+    callback))
+
+(defun telega--disconnectWebsite (website-id)
+  (telega-server--send
+   (list :@type "disconnectWebsite"
+         :website_id website-id)))
+
+(defun telega--disconnectAllWebsites ()
+  (telega-server--send
+   (list :@type "disconnectAllWebsites")))
+
 (defun telega--getProxies (&optional callback)
   "Return list of currently registered proxies."
   (with-telega-server-reply (reply)
@@ -1013,11 +1048,11 @@ Pass REVOKE to try to delete chat history for all users."
           :chat_id (plist-get chat :id))
     callback))
 
-(defun telega--searchChatMessages (chat tdlib-msg-filter
-                                        query from-msg-id offset
-                                        &optional limit msg-sender callback)
+(cl-defun telega--searchChatMessages (chat tdlib-msg-filter
+                                           from-msg-id offset
+                                           &key query limit sender callback)
   "Search messages in CHAT by QUERY."
-  (declare (indent 7))
+  (declare (indent 4))
   (cl-assert (and tdlib-msg-filter from-msg-id offset))
   (telega-server--call
     (nconc (list :@type "searchChatMessages"
@@ -1036,8 +1071,8 @@ Pass REVOKE to try to delete chat history for all users."
                  :from_message_id from-msg-id
                  :offset offset
                  :limit (or limit telega-chat-history-limit))
-           (when msg-sender
-             (list :sender_id (telega--MessageSender msg-sender))))
+           (when sender
+             (list :sender_id (telega--MessageSender sender))))
     callback))
 
 (defun telega--getChatMessageCount (chat tdlib-msg-filter
@@ -1080,14 +1115,14 @@ Which can be found by the specified FILTER in the chat."
     callback))
 
 ;; Threads
-(defun telega--getMessageThreadHistory (chat msg from-msg-id offset
+(defun telega--getMessageThreadHistory (chat thread-msg-id from-msg-id offset
                                              &optional limit callback)
   "Return messages in a message thread of a message."
   (declare (indent 5))
   (telega-server--call
    (list :@type "getMessageThreadHistory"
          :chat_id (plist-get chat :id)
-         :message_id (plist-get msg :id)
+         :message_id thread-msg-id
          :from_message_id from-msg-id
          :offset offset
          :limit (or limit telega-chat-history-limit))
@@ -1261,18 +1296,20 @@ Requires `:can_change_info' rights."
                                    :path (expand-file-name filename))))
    (or callback 'ignore)))
 
-(defun telega--setChatMessageTtl (chat ttl)
-  "Changes CHAT's message TTL.
-Message TTL is a self-destruct timer for new messages used in a
-chat. Requires can_delete_messages administrator right in basic
-groups, supergroups and channels.
-TTL must be 0, 86400, 604800 or 2678400."
+(defun telega--setChatMessageAutoDeleteTime (chat auto-delete-seconds)
+  "Change the message auto-delete time in a CHAT.
+For secret chats change self-destruct time.  Requires
+`:can_change_info' administrator right in basic groups, supergroups
+and channels.
+AUTO-DELETE-SECONDS must be from 0 up to 365 * 86400 and be divisible
+by 86400."
   (cl-assert (or (telega-chat-secret-p chat)
-                 (memq ttl '(0 86400 604800 2678400))))
+                 (and (<= 0 auto-delete-seconds (* 365 86400))
+                      (= (% auto-delete-seconds 86400) 0))))
   (telega-server--send
-   (list :@type "setChatMessageTtl"
+   (list :@type "setChatMessageAutoDeleteTime"
          :chat_id (plist-get chat :id)
-         :ttl ttl)))
+         :message_auto_delete_time auto-delete-seconds)))
 
 (defun telega--setChatPermissions (chat &rest permissions)
   "Set CHAT's permission with updated values from PERMISSIONS."
@@ -1362,7 +1399,7 @@ Return chatFolderInfo."
   "Return chats suggested to leave when folder with FOLDER-ID is deleted."
   (with-telega-server-reply (reply)
       (mapcar #'telega-chat-get (plist-get reply :chat_ids))
-  
+
     (list :@type "getChatFolderChatsToLeave"
           :chat_folder_id folder-id)
     callback))
@@ -1775,39 +1812,43 @@ REVOKE is always non-nil for supergroups, channels and secret chats."
          :chat_id (plist-get chat :id)
          :sender_id (telega--MessageSender sender))))
 
-(defun telega--searchMessages (query last-msg &optional _chat-list callback)
+(cl-defun telega--searchMessages (query &key offset (limit 100)
+                                         chat-list tl-msg-filter
+                                        (min-date 0) (max-date 0)
+                                        callback)
   "Search messages by QUERY.
-Specify LAST-MSG to continue searching from LAST-MSG searched.
+OFFSET is th offset of the first entry to return as received from the
+previous request.
 If CHAT-LIST is given, then fetch chats from TDLib's CHAT-LIST.
 If CALLBACK is specified, then do async call and run CALLBACK
-with list of chats received."
-  (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
-
-    (nconc (list :@type "searchMessages"
-                 :query query
-                 :offset_date (or (plist-get last-msg :date) 0)
-                 :offset_chat_id (or (plist-get last-msg :chat_id) 0)
-                 :offset_message_id (or (plist-get last-msg :id) 0)
-                 :limit 100)
-           ;; NOTE: Uncomment when chat list is fully supported
-           ;; see https://t.me/tdlibchat/42478
-           ;; (when chat-list
-           ;;   (list :chat_list chat-list))
-           )
-    callback))
+with list of chats received.
+Return FoundMessages TL structure."
+  (declare (indent 1))
+  (telega-server--call
+   (nconc (list :@type "searchMessages"
+                :query query
+                :offset (or offset "")
+                :min_date min-date
+                :max-date max-date
+                :limit limit)
+          (when tl-msg-filter
+            (list :filter tl-msg-filter))
+          ;; NOTE: Uncomment when chat list is fully supported
+          ;; see https://t.me/tdlibchat/42478
+          (when chat-list
+            ;;   (list :chat_list chat-list)
+            ))
+   callback))
 
 (cl-defun telega--searchOutgoingDocumentMessages (&optional query &key limit callback)
   "Search for outgoing document messages.
-TDLib 1.8.3"
+Return FoundMessages TL structure."
   (declare (indent 1))
-  (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
-
-    (list :@type "searchOutgoingDocumentMessages"
-          :query (or query "")
-          :limit (or limit 100))
-    callback))
+  (telega-server--call
+   (list :@type "searchOutgoingDocumentMessages"
+         :query (or query "")
+         :limit (or limit 100))
+   callback))
 
 (defun telega--getMapThumbnailFile (loc &optional zoom width height scale
                                         chat callback)
@@ -2122,6 +2163,7 @@ TDLib 1.7.8"
 Use non-nil value for FORCE, if messages in closed chats should
 be marked as read."
   (declare (indent 2))
+  (cl-assert chat)
   ;; NOTE: we mark messages with internal `:telega-viewed-in-thread', so
   ;; "viewMessages" will be called once
   (let* ((thread-id (telega-chat-message-thread-id chat))
@@ -2313,18 +2355,16 @@ If OPTION-IDS is not specified, then retract the voice."
           (when connection-id
             :connection_id connection-id))))
 
-(defun telega--searchCallMessages (&optional from-msg limit
-                                             only-missed-p callback)
-  "Search for call messages."
-  (declare (indent 3))
-  (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
-
-    (list :@type "searchCallMessages"
-          :from_message_id (or (plist-get from-msg :id) 0)
-          :limit (or limit 100)
-          :only_missed (if only-missed-p t :false))
-    callback))
+(cl-defun telega--searchCallMessages (&key offset (limit 100)
+                                           only-missed-p callback)
+  "Search for call messages.
+Return FoundMessages TL structure."
+  (telega-server--call
+   (list :@type "searchCallMessages"
+         :offset (or offset "")
+         :limit limit
+         :only_missed (if only-missed-p t :false))
+   callback))
 
 ;; Group Calls section
 (defun telega--getGroupCall (group-call-id &optional callback)
@@ -2342,7 +2382,8 @@ If OPTION-IDS is not specified, then retract the voice."
          :group_call_id (plist-get group-call :id)
          :limit (or limit 100))))
 
-(cl-defun telega--createVoiceChat (chat title &key (start-time 0) callback)
+(cl-defun telega--createVideoChat (chat title &key (start-time 0)
+                                        rtmp-stream-p callback)
   "Create a voice chat (a group call bound to a chat).
 Available only for basic groups and supergroups.
 Return an ID of group call."
@@ -2350,10 +2391,11 @@ Return an ID of group call."
   (with-telega-server-reply (reply)
       (plist-get reply :id)
 
-    (list :@type "createVoiceChat"
+    (list :@type "createVideoChat"
           :chat_id (plist-get chat :id)
           :title title
-          :start_date start-time)
+          :start_date start-time
+          :is_rtmp_stream (if rtmp-stream-p t :false))
     callback))
 
 (defun telega--setGroupCallTitle (group-call title)
@@ -2401,14 +2443,14 @@ Return an ID of group call."
    (list :@type "endGroupCallRecording"
          :group_call_id (plist-get group-call :id))))
 
-(defun telega--getVoiceChatAvailableParticipants (chat &optional callback)
+(defun telega--getVideoChatAvailableParticipants (chat &optional callback)
   "Get list of message senders, which can be used as voice chat alias.
 CHAT is ordinary Telegram chat."
   (declare (indent 1))
   (with-telega-server-reply (reply)
       (mapcar #'telega-msg-sender (plist-get reply :senders))
 
-    (list :@type "getVoiceChatAvailableParticipants"
+    (list :@type "getVideoChatAvailableParticipants"
           :chat_id (plist-get chat :id))
     callback))
 
@@ -2655,7 +2697,7 @@ Requires owner privileges."
 (defun telega--getForumTopicDefaultIcons (&optional callback)
   "Returns list of custom emojis, which can be used as forum topic icon."
   (with-telega-server-reply (reply)
-      (mapcar #'telega-custom-emoji--ensure 
+      (mapcar #'telega-custom-emoji--ensure
               (plist-get reply :stickers))
     (list :@type "getForumTopicDefaultIcons")
     callback))
@@ -2744,7 +2786,7 @@ Requires owner privileges."
           :only_local (if only-local-p t :false))
     callback))
 
-(defun telega--setStoryPrivacySettings (my-story story-privacy-settings)  
+(defun telega--setStoryPrivacySettings (my-story story-privacy-settings)
   "Change privacy settings of a previously sent MY-STORY."
   (telega-server--send
    (list :@type "setStoryPrivacySettings"
@@ -2781,9 +2823,19 @@ The loaded stories will be sent through updates."
 
 (defun telega--getChatActiveStories (chat &optional callback)
   "Return the list of active stories posted by the given chat."
+  (declare (indent 1))
   (telega-server--call
    (list :@type "getChatActiveStories"
          :chat_id (plist-get chat :id))
+   callback))
+
+(defun telega--getChatPinnedStories (chat &optional from-story-id limit callback)
+  (declare (indent 3))
+  (telega-server--call
+   (list :@type "getChatPinnedStories"
+         :chat_id (plist-get chat :id)
+         :from_story_id (or from-story-id 0)
+         :limit (or limit 100))
    callback))
 
 (defun telega--openStory (story)
@@ -2797,6 +2849,59 @@ The loaded stories will be sent through updates."
    (list :@type "closeStory"
          :story_sender_chat_id (plist-get story :sender_chat_id)
          :story_id (plist-get story :id))))
+
+(defun telega--activateStoryStealthMode ()
+  "Activate stealth mode.
+Mode activates for
+`:story_stealth_mode_past_period' (`telega--options') seconds."
+  (telega-server--send
+   '(:@type "activateStoryStealthMode")))
+
+(defun telega--getChatsToSendStories (&optional callback)
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    '(:@type "getChatsToSendStories")
+    callback))
+
+(defun telega--canSendStory (chat &optional callback)
+  (telega-server--call
+   (list :@type "canSendStory"
+         :chat_id (plist-get chat :id))
+   callback))
+
+;;; Boosts
+(defun telega--getChatBoostStatus (chat &optional callback)
+  (telega-server--call
+   (list :@type "getChatBoostStatus"
+         :chat_id (plist-get chat :id))
+   callback))
+
+(defun telega--canBoostChat (chat &optional callback)
+  (telega-server--call
+   (list :@type "canBoostChat"
+         :chat_id (plist-get chat :id))
+   callback))
+
+(defun telega--boostChat (chat)
+  (telega-server--send
+   (list :@type "boostChat"
+         :chat_id (plist-get chat :id))))
+
+(defun telega--getChatBoostLinkInfo (url &optional callback)
+  (telega-server--call
+   (list :@type "getChatBoostLinkInfo"
+         :url url)
+   callback))
+
+(cl-defun telega--getChatBoosts (chat &key offset limit callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getChatBoosts"
+         :chat_id (plist-get chat :id)
+         :offset (or offset "")
+         :limit (or limit 100))
+   callback))
 
 (provide 'telega-tdlib)
 

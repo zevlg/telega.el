@@ -511,42 +511,59 @@ CHEIGHT is the height in chars (default=1)."
            (telega-thumb--create-image
             thumb thumb-file thumb-cheight)))))
 
-(defun telega-msg--preview-photo-image (photo &optional for-chat)
-  "Return one line preview for the PHOTO.
+(defvar telega-preview--create-svg-one-line-function nil
+  "Bind this to alter `telega-photo-preview--create-image-one-line' and
+`telega-video-preview--create-image-one-line' behaviour.")
+
+(defvar telega-preview--inhibit-cached-preview nil
+  "Bind to non-nil to inhibit cached preview image in
+`telega-photo-preview--create-image-one-line' and
+`telega-video-preview--create-image-one-line'.")
+
+(defun telega-photo-preview--create-image-one-line (photo &optional for-chat)
+  "Return one line preview image for the PHOTO.
 Return nil if preview image is unavailable."
   (when (and telega-use-images
              (telega-chat-match-p for-chat telega-use-one-line-preview-for))
-    (let* ((best (telega-photo--best photo '(1 1 1 1)))
+    (let* ((create-svg-fun (or telega-preview--create-svg-one-line-function
+                               #'telega-photo-preview--create-svg-one-line))
+           (best (telega-photo--best photo '(1 1 1 1)))
            (minithumb (plist-get photo :minithumbnail))
-           (cached-preview
-            (plist-get photo :telega-preview-1))
+           (cached-preview (unless telega-preview--inhibit-cached-preview
+                             (plist-get photo :telega-preview-1)))
            (preview-new
             (cond ((and (telega-file--downloaded-p (plist-get best :photo))
                         (not (eq 'best (car cached-preview))))
                    (cons 'best
-                         (telega-preview-one-line-create-svg
-                          (telega--tl-get best :photo :local :path) nil
-                          (plist-get best :width) (plist-get best :height))))
+                         (funcall create-svg-fun
+                                  (telega--tl-get best :photo :local :path)
+                                  nil
+                                  (plist-get best :width)
+                                  (plist-get best :height))))
                   (cached-preview
                    cached-preview)
                   (minithumb
                    (cons 'mini
-                         (telega-preview-one-line-create-svg
-                          (base64-decode-string (plist-get minithumb :data)) t
-                          (plist-get minithumb :width)
-                          (plist-get minithumb :height)))))))
+                         (funcall create-svg-fun
+                                  (base64-decode-string
+                                   (plist-get minithumb :data))
+                                  t
+                                  (plist-get minithumb :width)
+                                  (plist-get minithumb :height)))))))
       (plist-put photo :telega-preview-1 preview-new)
       (cdr preview-new))))
 
-(defun telega-msg--preview-video-image (video &optional for-chat)
+(defun telega-video-preview--create-image-one-line (video &optional for-chat)
   "Return one line preview for the VIDEO.
 Return nil if preview image is unavailable."
   (when (and telega-use-images
              (telega-chat-match-p for-chat telega-use-one-line-preview-for))
-    (let* ((thumb (plist-get video :thumbnail))
+    (let* ((create-svg-fun (or telega-preview--create-svg-one-line-function
+                               #'telega-video-preview--create-svg-one-line))
+           (thumb (plist-get video :thumbnail))
            (minithumb (plist-get video :minithumbnail))
-           (cached-preview
-            (plist-get video :telega-preview-1))
+           (cached-preview (unless telega-preview--inhibit-cached-preview
+                             (plist-get video :telega-preview-1)))
            (preview-new
             (cond ((and thumb
                         (memq (telega--tl-type (plist-get thumb :format))
@@ -554,19 +571,21 @@ Return nil if preview image is unavailable."
                         (telega-file--downloaded-p (plist-get thumb :file))
                         (not (eq 'best (car cached-preview))))
                    (cons 'best
-                         (telega-preview-one-line-create-svg
-                          (telega--tl-get thumb :file :local :path) nil
-                          (plist-get thumb :width) (plist-get thumb :height)
-                          'video)))
+                         (funcall create-svg-fun
+                                  (telega--tl-get thumb :file :local :path)
+                                  nil
+                                  (plist-get thumb :width)
+                                  (plist-get thumb :height))))
                   (cached-preview
                    cached-preview)
                   (minithumb
                    (cons 'mini
-                         (telega-preview-one-line-create-svg
-                          (base64-decode-string (plist-get minithumb :data)) t
-                          (plist-get minithumb :width)
-                          (plist-get minithumb :height)
-                          'video))))))
+                         (funcall create-svg-fun
+                                  (base64-decode-string
+                                   (plist-get minithumb :data))
+                                  t
+                                  (plist-get minithumb :width)
+                                  (plist-get minithumb :height)))))))
       (plist-put video :telega-preview-1 preview-new)
       (cdr preview-new))))
 
@@ -819,6 +838,28 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
   (telega-msg-sender-avatar-image
    msg-sender (or create-image-fun #'telega-avatar--create-image-three-lines)
    force-update (or cache-prop :telega-avatar-3)))
+
+(defun telega-chat-photo-info-image-one-line (chat-photo-info
+                                              &optional force-update)
+  "Create image for chatPhotoInfo TL structure."
+  (let* ((cheight 1)
+         (create-image-fun
+          (lambda (_photoignored &optional _fileignored)
+            (let ((small-file (plist-get chat-photo-info :small)))
+              (cond ((telega-file--downloaded-p small-file)
+                     ;; From TDLib docs: @small A small (160x160)
+                     ;; chat photo variant in JPEG format.
+                     (telega-media--create-image small-file 160 160 cheight))
+                    ((plist-get chat-photo-info :minithumbnail)
+                     (telega-minithumb--create-image
+                      (plist-get chat-photo-info :minithumbnail) cheight))
+                    (t
+                     ;; TODO: Fallback to svg rendering
+                     ))))))
+    (telega-media--image
+     (cons chat-photo-info create-image-fun)
+     (cons chat-photo-info :small)
+     force-update)))
 
 
 ;; Location

@@ -519,6 +519,7 @@ Return newly created proc."
 (defun telega-video-player-run (filename &optional msg done-callback)
   "Start playing video FILENAME with `telega-video-player-command' command.
 DONE-CALLBACK - callback to call, when done viewing video."
+  (declare (indent 2))
   (unless telega-video-player-command
     (user-error "telega: `telega-video-player-command' is unset"))
 

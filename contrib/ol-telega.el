@@ -33,10 +33,17 @@
 ;; with [[#telega-edit-file-mode][Edit File Mode]], so you can store
 ;; your Org mode files in Telegram Cloud and create links to them in
 ;; Roam manner.
+;; 
+;; Customizable options:
+;;
+;; - {{{user-option(org-telega-chat-link-format, 2)}}}
+;; - {{{user-option(org-telega-msg-link-format, 2)}}}
+;; - {{{user-option(org-telega-file-link-format, 2)}}}
 
 ;;; Code:
 (require 'cl-lib)
 (require 'org)
+(require 'format-spec)
 ;; Emacs26 has `org-store-link-props' instead of `org-link-store-props'
 (eval-when-compile
   (when (and (not (fboundp 'org-link-store-props))
@@ -44,6 +51,37 @@
     (defalias 'org-link-store-props 'org-store-link-props)))
 
 (require 'telega)
+
+(defcustom org-telega-chat-link-format
+  (concat telega-symbol-telegram "%t")
+  "Description format for link to a chat.
+Format spec:
+%u - chat username if any, %t otherwise.
+%t - chat title with brackets."
+  :group 'org-link
+  :type 'string)
+
+(defcustom org-telega-msg-link-format
+  (concat telega-symbol-telegram
+          "%u" telega-symbol-sender-and-text-delim " %>.32m")
+  "Description format for link to a message.
+Format spec:
+%u - user username if any, %t otherwise.
+%t - user title without brackets.
+%m - one line message body."
+  :group 'org-link
+  :type 'string)
+
+(defcustom org-telega-file-link-format
+  (concat telega-symbol-telegram telega-symbol-attachment
+          "%u" telega-symbol-sender-and-text-delim " %>.32m")
+  "Description format for link to a message to open message's media file.
+Format spec:
+%u - user username if any, %t otherwise.
+%t - user title without brackets.
+%m - one line message body."
+  :group 'org-link
+  :type 'string)
 
 (defun org-telega-follow-link (link)
   "Follow a telegram LINK to chat or message."
@@ -79,20 +117,30 @@ message, file or photo."
       (org-link-store-props
        :type "telega" :link org-link
        :description
-       (concat (telega-symbol 'telegram)
-               (if (telega-chat-p chat-or-msg)
-                 (telega-ins--as-string
-                  (telega-ins--msg-sender chat-or-msg
-                    :with-brackets-p t))
+       (if (telega-chat-p chat-or-msg)
+           ;; Link to a chat
+           (let ((chat-title (telega-msg-sender-title chat-or-msg
+                               :with-brackets-p t)))
+             (format-spec org-telega-chat-link-format
+                          (format-spec-make
+                           ?u (or (telega-msg-sender-username chat-or-msg
+                                                              'with-@)
+                                  chat-title)
+                           ?t chat-title)))
 
-                 (cl-assert (telega-msg-p chat-or-msg))
-                 (telega-ins--as-string
-                  (telega-ins--msg-sender
-                   (telega-msg-sender chat-or-msg))
-                  (telega-ins ": ")
-                  (telega-ins--with-attrs
-                      (list :max 20 :align 'left :elide t)
-                    (telega-ins--content-one-line chat-or-msg))))))
+         ;; Link to a message or file
+         (let* ((sender (telega-msg-sender msg))
+                (sender-title (telega-msg-sender-title sender
+                                :with-badges-p nil)))
+           (format-spec (if msg-open-p
+                            org-telega-file-link-format
+                          org-telega-msg-link-format)
+                        (format-spec-make
+                         ?u (or (telega-msg-sender-username sender 'with-@)
+                                sender-title)
+                         ?t sender-title
+                         ?m (telega-ins--as-string
+                             (telega-ins--content-one-line chat-or-msg)))))))
       org-link)))
 
 (defun org-telega-complete-link ()

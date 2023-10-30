@@ -198,6 +198,15 @@
                            'telega-company-username-prefer-name
                            "0.8.152")
 
+;; `telega-company-emoji' and `telega-company-telegram-emoji' backends
+;; bypasses control to other backends if fails to complete
+(telega-obsolete--variable 'telega-emoji-company-backend
+                           nil
+                           "0.8.170")
+(telega-obsolete--variable 'telega-emoji-fuzzy-match
+                           'telega-company-emoji-fuzzy-match
+                           "0.8.170")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)
