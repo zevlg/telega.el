@@ -515,7 +515,7 @@ ARGS is the arguments passed the the FUN."
 
 
 (advice-add 'telega-ins--aux-msg-one-line :around #'telega-ins--aux-msg-one-line!)
-(advice-add 'telega-msg--pp :before #'telega-bridge-bot--update-msg)
+(advice-add 'telega-chatbuf-msg--pp :before #'telega-bridge-bot--update-msg)
 (advice-add 'telega-msg--replied-message-fetch-callback :before
             (lambda (_msg replied-msg)
               (telega-bridge-bot--update-msg replied-msg)))
