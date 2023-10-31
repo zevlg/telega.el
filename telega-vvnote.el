@@ -36,7 +36,7 @@
 
 (defcustom telega-vvnote-waves-colors '("#006600" . "#229922")
   "Colors to display voice note waves."
-  :type 'cons
+  :type '(cons color color)
   :group 'telega-vvnote)
 
 (defcustom telega-vvnote-play-speed 1

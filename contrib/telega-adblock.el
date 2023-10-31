@@ -65,7 +65,7 @@
                                     (not unmuted)
                                     (not verified))
   "Chat Temex to match chats for which to apply adblock logic."
-  :type 'list
+  :type 'telega-chat-temex
   :group 'telega-adblock)
 
 (defcustom telega-adblock-forwarded-messages t
@@ -90,19 +90,20 @@ Set it to less value if you see some advert messages not being blocked."
   "Custom chat order for chats with last message being ignored by adblock.
 Set to \"1\" to put chats with ignored last message to the bottom of
 the rootbuf."
-  :type '(or string null)
+  :type '(choice (const :tag "Unchanged" nil)
+                 (string :tag "Custom order"))
   :group 'telega-adblock)
 
 (defcustom telega-adblock-block-msg-temex nil
   "Message's matching this temex will be ignored by adblock."
-  :type 'list
+  :type 'telega-msg-temex
   :options '((contains "#advert"))
   :group 'telega-adblock)
 
 (defcustom telega-adblock-allow-msg-temex
   '(or is-reply-to-msg is-reply-to-story post-with-comments)
   "Message's matching this temex will be allowed."
-  :type 'list
+  :type 'telega-msg-temex
   :group 'telega-adblock)
 
 ;; TODO: allow links to known chats

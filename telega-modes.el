@@ -62,7 +62,7 @@
     (:eval (telega-mode-line-unread-unmuted))
     (:eval (telega-mode-line-mentions 'messages)))
   "Format in mode-line-format for `telega-mode-line-string'."
-  :type 'list
+  :type 'sexp
   :group 'telega-modes)
 
 (defvar telega-mode-line-string ""
@@ -287,7 +287,7 @@ labels are not supported by XEMBED based system trays, such as
 Alist with `offline', `online' or `connecting' as key, and value in form
 (CIRCLE-COLOR TRIANGLE-COLOR ONLINE-CIRCLE-COLOR)."
   :package-version '(telega . "0.7.34")
-  :type 'list
+  :type '(alist :key-type symbol :value-type (repeat string))
   :group 'telega-modes)
 
 (defcustom telega-appindicator-show-account-name t
@@ -311,7 +311,7 @@ Applied only if `telega-appindicator-use-label' is non-nil."
 Use this labels instead of plain number.
 Set to nil to use plain number."
   :package-version '(telega . "0.7.2")
-  :type 'list
+  :type '(repeat string)
   :group 'telega-modes)
 
 (defvar telega-appindicator--cached-icons nil
@@ -491,7 +491,7 @@ Return filename of the generated icon."
 (defcustom telega-autoplay-msg-temex
   '(type Animation Sticker AnimatedEmoji)
   "Message Temex for messages to automatically play content for."
-  :type 'list
+  :type 'telega-msg-temex
   :options '((and (not outgoing)
                   (or (type Animation Sticker AnimatedEmoji)
                       (web-page :animation)
@@ -500,7 +500,8 @@ Return filename of the generated icon."
 
 (defcustom telega-autoplay-custom-emojis 10
   "Non-nil to automatically play this number of custom emojis in the message."
-  :type '(or nil integer)
+  :type '(choice (const :tag "Autoplay Disabled" nil)
+                 integer)
   :group 'telega-modes)
 
 (defun telega-autoplay-custom-emojis (msg &optional force)
@@ -618,7 +619,7 @@ Cancel downloading of the corresporting file."
   "*Chat Temex for `global-telega-squash-message-mode'.
 Global squash message mode enables message squashing only in
 chats matching this chat temex."
-  :type 'list
+  :type 'telega-chat-temex
   :group 'telega-modes)
 
 (defcustom telega-squash-message-within-seconds 60
@@ -734,7 +735,7 @@ squashing is not applied."
     " "
     (:eval (telega-image-mode-mode-line-chat-position)))
   "Format for the modeline."
-  :type 'list
+  :type 'sexp
   :group 'telega-modes)
 
 (defvar telega-image--message nil
@@ -1535,14 +1536,14 @@ messages."
 (defcustom telega-active-video-chats-temex
   '(and is-known (has-video-chat non-empty))
   "Chat Temex to match chat with active video chat."
-  :type 'list
+  :type 'telega-chat-temex
   :group 'telega-modes)
 
 (defcustom telega-active-video-chats-mode-line-format
   '(:eval (telega-mode-line-active-video-chats))
   "Modeline format for active video chats for `telega-mode-line-mode'.
 Set to nil to disable active video chats in the modeline."
-  :type 'list
+  :type 'sexp
   :group 'telega-modes)
 
 (defvar telega-active-video-chats--chats nil
@@ -1681,7 +1682,7 @@ Speech recognition is only applied to voice messages matching this
 Message Temex.  Applied only if non-nil.
 For example, to recognize speech in a voice messages only in private
 chats, use `(chat (type private))' Message Temex."
-  :type 'list
+  :type 'telega-msg-temex
   :group 'telega-modes)
 
 (defun telega-recognize-voice--on-msg-hover-in (msg)
@@ -1730,7 +1731,7 @@ Recognize only if message is observable."
 (defcustom telega-auto-translate-probe-language-codes nil
   "List of language codes to probe.
 Chat description is used to probe chat's language."
-  :type 'list
+  :type '(repeat (string :tag "Language Code"))
   :group 'telega-modes)
 
 (defun telega-auto-translate--chatbuf-translate-visible-messages ()

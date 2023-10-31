@@ -58,6 +58,7 @@
 (require 'telega-modes)
 
 ;; shutup compiler
+(defvar company-backends)
 (declare-function company-complete "company")
 (declare-function company-begin-backend "company" (backend &optional callback))
 (declare-function company-call-backend "company" (&rest args))
@@ -1875,7 +1876,9 @@ Use this to surrond header with some prefix and suffix."
 
 (defun telega-chatbuf-footer-pinned-stories ()
   (telega-chatbuf--dirtiness-init
-   "pinned-stories")
+   "pinned-stories"
+   "updateChatActiveStories"            ; For story's `seen' status
+   )
 
   (when (and (telega-chatbuf-match-p telega-story-show-pinned-stories-for)
              (not (plist-get telega-chatbuf--hidden-headers :pinned-stories)))

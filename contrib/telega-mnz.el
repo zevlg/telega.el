@@ -65,7 +65,7 @@
   "*Chat filter for `global-telega-mnz-mode'.
 Global mnz mode enables `telega-mnz-mode' only for chats matching
 this chat filter."
-  :type 'list
+  :type 'telega-chat-temex
   :group 'telega-modes)
 
 ;;; ellit-org:
@@ -95,11 +95,15 @@ this chat filter."
 ;;; ellit-org:
 ;; - {{{user-option(telega-mnz-use-language-detection, 2)}}}
 (defcustom telega-mnz-use-language-detection
-  (when (fboundp 'language-detection-string) 50)
+  (when (fboundp 'language-detection-string)
+    '(200 . 4))
   "*Non-nil to use `language-detection' for blocks without specified language.
 Could be also a number, meaning that language detection is done
 only for code larger then this number of chars."
-  :type '(or integer boolean)
+  :type '(choice (boolean :tag "Enable/Disable")
+                 (integer :tag "Minimum number of chars")
+                 (cons (integer :tag "Minimum number of chars")
+                       (integer :tag "Minimum number of lines")))
   :group 'telega-modes)
 
 ;;; ellit-org:
@@ -108,7 +112,7 @@ only for code larger then this number of chars."
   '((display-buffer-below-selected))
   "Action value when poping to code edit buffer.
 See docstring for `display-buffer' for the value meaning."
-  :type 'cons
+  :type (get 'display-buffer-alist 'custom-type)
   :group 'telega-modes)
 
 (defvar telega-mnz-languages
@@ -228,13 +232,18 @@ language-detection is used in this case, used for
                   (car (memq (intern language) modes-list))))))
 
       ;; Try language detection
-      (when (and telega-mnz-use-language-detection
-                 (fboundp 'language-detection-string)
+      (when (and (fboundp 'language-detection-string)
                  code-text
                  ;; NOTE: Check code is large enough in case
-                 ;; `telega-mnz-use-language-detection' is int
-                 (or (not (integerp telega-mnz-use-language-detection))
-                     (>= (length code-text) telega-mnz-use-language-detection)))
+                 ;; `telega-mnz-use-language-detection' is int or cons cell
+                 (cond ((integerp telega-mnz-use-language-detection)
+                        (>= (length code-text) telega-mnz-use-language-detection))
+                       ((consp telega-mnz-use-language-detection)
+                        (and (>= (length code-text)
+                                 (car telega-mnz-use-language-detection))
+                             (>= (length (string-split code-text nil t))
+                                 (cdr telega-mnz-use-language-detection))))
+                       (t telega-mnz-use-language-detection)))
         (alist-get (funcall #'language-detection-string code-text)
                    telega-mnz-languages))))
 
