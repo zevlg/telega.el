@@ -24,8 +24,7 @@
 ;;
 
 ;;; Code:
-(require 'window)     ; `display-buffer-alist'
-(require 'widget)     ; `define-widgebt'
+(require 'widget)     ; `define-widget'
 (require 'cus-edit)   ; `custom-variable-type'
 (require 'dired)      ; `dired-dwim-target'
 (require 'svg)        ; `svg-embed-base-uri-image'
@@ -40,6 +39,11 @@
 (define-widget 'telega-user-temex 'lazy
   "Temex to match a user."
   :tag "User Temex"
+  :type 'sexp)
+
+(define-widget 'telega-msg-temex 'lazy
+  "Temex to match a message."
+  :tag "Message Temex"
   :type 'sexp)
 
 (define-widget 'telega-topic-temex 'lazy
@@ -953,7 +957,7 @@ different topics could have different formatting."
   "Brackets to use for a message sender formatting.
 Each element is in form:
   (<SENDER-TEMEX> <OPEN-BRACKET> <CLOSE-BRACKET>)"
-  :type 'list
+  :type '(repeat (list telega-chat-temex string string))
   :group 'telega-root)
 
 (defcustom telega-status-animate-interval 0.5
@@ -1211,7 +1215,7 @@ Used when showing chat members list."
   "Company backends to use in chat buffers.
 Set to nil to disable company completions in chat buffers."
   :package-version '(telega . "0.8.170")
-  :type 'list
+  :type '(repeat function)
   :group 'telega-company)
 
 (defcustom telega-company-tooltip-always-below t
@@ -1507,7 +1511,6 @@ Non-nil activates syntax:
   ```"
   :type '(choice (const :tag "Disabled" nil)
                  (const :tag "Always" t)
-                 (const :tag "Always" always)
                  (const :tag "Only for languages known by Emacs" known))
   :group 'telega-chat)
 
@@ -1556,7 +1559,7 @@ Should return non-nil if completion occured."
 Messages for these filters are displayed in compact way in chatbuf.
 This is EXPERIMENTAL feature, use on your own risk."
   :package-version '(telega . "0.7.0")
-  :type 'list
+  :type '(repeat string)
   :options '("photo" "photo-video" "gif" "video" "chat-photo")
   :group 'telega-chat)
 
@@ -1748,7 +1751,7 @@ For example:
   '(call telega-notifications-msg-notify-p)
   "Message temex to match messages that needs to be notified."
   :package-version '(telega . "0.8.72")
-  :type 'list
+  :type 'telega-msg-temex
   :group 'telega-notifications)
 
 (defcustom telega-notifications-history-ring-size 30
@@ -1809,7 +1812,7 @@ If nil, the saved path is always asked."
 (defcustom telega-msg-temex-show-reactions '(return t)
   "Message Temex to match messages to show reactions for."
   :package-version '(telega . "0.8.13")
-  :type 'list
+  :type 'telega-msg-temex
   :options '((or (chat (type private))
                  (sender me)
                  has-chosen-reaction))
@@ -2162,12 +2165,12 @@ Third - for selected incorrect option."
   (cons (compose-chars ?\⟦ ?\s)
         (compose-chars ?\⟧ ?\s))
   "Symbols used to emphasize topics."
-  :type 'cons
+  :type '(cons string string)
   :group 'telega-symbol)
 
 (defcustom telega-symbol-attach-brackets (cons "⟬" "⟭")
   "Symbols used to emphasize attachment in chat buffer input."
-  :type 'cons
+  :type '(cons string string)
   :group 'telega-symbol)
 
 (defcustom telega-symbol-webpage-details (cons "▼" "▲")
@@ -2261,7 +2264,7 @@ If nil, then user's online status is not displayed."
 
 (defcustom telega-symbol-dice-list (list "🎲" "⚀" "⚁" "⚂" "⚃" "⚄" "⚅")
   "List of dices to show for \"messageDice\"."
-  :type 'list
+  :type '(list string string string string string string string)
   :group 'telega-symbol)
 
 (defcustom telega-symbol-folder "📁"
