@@ -1536,7 +1536,10 @@ new Chat buffers.")
   'read-only t
   'front-sticky t
 
-  'cursor-intangible t
+  ;; NOTE: aux prompt might have buttons to press, so don't make it
+  ;; intangible, see https://t.me/emacs_telega/42381
+  'cursor-intangible nil
+
   'field 'telega-prompt)
 
 (defun telega-chatbuf--first-msg ()
