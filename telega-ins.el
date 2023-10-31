@@ -2357,7 +2357,8 @@ Return user, chat or string with the sender title."
                             (telega-chat-get from-chat-id))))
           ;; Insert sender origin first
           (if (stringp sender)
-              (telega-ins sender)
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins sender))
             (telega-ins--msg-sender sender
               :with-avatar-p t
               :with-username-p t
@@ -2368,8 +2369,7 @@ Return user, chat or string with the sender title."
 
           (when (and from-chat
                      (not (or (eq sender from-chat)
-                              (and (telega-user-p sender)
-                                   (eq sender (telega-chat-user from-chat))))))
+                              (eq sender (telega-chat-user from-chat)))))
             (telega-ins "→")
             (if telega-chat-show-avatars
                 (telega-ins--image
