@@ -398,6 +398,8 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
             (chat-id (plist-get msg-info :chat_id))
             (thread-id (plist-get msg-info :message_thread_id))
             (msg (plist-get msg-info :message)))
+       (unless msg
+         (error (concat "telega: " (telega-i18n "lng_message_not_found"))))
        (if (zerop thread-id)
            (telega-msg-goto-highlight msg)
          (telega-chat--goto-thread (telega-chat-get chat-id) thread-id

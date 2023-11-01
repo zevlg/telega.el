@@ -1439,7 +1439,6 @@ If NO-PROPS is non-nil, then remove properties from the resulting string."
           ((string= "chatListArchive" pos-list-type)
            'archive))))
 
-
 (defsubst telega-chat-position (chat)
   "Return CHAT position in current `telega-tdlib--chat-list'."
   (cl-find telega-tdlib--chat-list (plist-get chat :positions)

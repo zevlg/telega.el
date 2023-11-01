@@ -1203,8 +1203,8 @@ Return newly created chat."
 
            (telega--createNewSupergroupChat title
              :forum-p (string= chat-type "forum")
-             :channe-p (or (string= chat-type "channel")
-                           (string= chat-type "location-channel"))
+             :channel-p (or (string= chat-type "channel")
+                            (string= chat-type "location-channel"))
              :description desc
              :location loc
              :callback #'telega-chat--pop-to-buffer)))))
@@ -2769,8 +2769,12 @@ otherwise set draft only if chatbuf input is also draft."
          (telega-chatbuf--load-newer-history))
 
         ;; All messages are read
-        ((eq (telega-chatbuf--last-read-inbox-msg-id)
-             (telega-chatbuf--last-message-id))
+        ((let ((last-read-msg-id (telega-chatbuf--last-read-inbox-msg-id)))
+           ;; NOTE: `:last_read_inbox_message_id' == 0 if chat has never
+           ;; been opened before (i.e. new to user), in this case we
+           ;; consider all messages in the chat are read
+           (or (telega-zerop last-read-msg-id)
+               (eq last-read-msg-id (telega-chatbuf--last-message-id))))
          (telega-chatbuf-read-all))
 
         ((and (= 1 (plist-get telega-chatbuf--chat :unread_count))
@@ -4545,7 +4549,7 @@ automatically detected."
   (interactive (list (telega-read-file-name
                       (concat (telega-i18n "lng_attach_photo") ": "))))
   (telega-chatbuf-attach-photo filename nil 'with-spoiler))
-  
+
 (defun telega-chatbuf-attach-ttl-photo (filename tl-ttl)
   "Attach a file as self destructing photo.
 This attachment can be used only in private chats."
@@ -5652,7 +5656,9 @@ CALLBACK is called after point is moved to the message with MSG-ID."
                     ((> msg-id (plist-get last-msg :id))
                      (goto-char (point-max)))
                     (t
-                     (message "Message(ID=%S) not found in chatbuf" msg-id)
+                     (message "telega: %s (MSG-ID=%S)"
+                              (telega-i18n "lng_message_not_found")
+                              msg-id)
 
                      ;; NOTE: Move point to the message before
                      ;; deleted message with MSG-ID

@@ -263,6 +263,7 @@ DIRTINESS specifies additional CHAT dirtiness."
           (cl-delete (plist-get new-pos :list) (plist-get chat :positions)
                      :key (telega--tl-prop :list) :test #'equal)))
     (plist-put chat :positions (vconcat chat-positions (list new-pos)))
+
     (telega-chat--mark-dirty chat event)))
 
 (defun telega--on-updateChatMessageSender (event)

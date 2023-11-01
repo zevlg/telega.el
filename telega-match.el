@@ -488,8 +488,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
              (setq item (plist-get fi :id)
                    key (telega--tl-prop :list :chat_folder_id)))))
     (when-let ((pos (cl-find item (plist-get chat :positions)
-                             :key key
-                             :test #'equal)))
+                             :key key :test #'equal)))
       ;; NOTE: zero order means "chat has no position"
       (not (equal "0" (plist-get pos :order))))))
 
@@ -512,9 +511,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;;   {{{temexdoc(chat, is-known, 2)}}}
 (define-telega-matcher chat is-known (chat)
   "Matches if chat is known, i.e. in \"Main\" or \"Archive\" chat list."
-  (seq-find (lambda (pos)
-              (not (equal "0" (plist-get pos :order))))
-            (plist-get chat :positions)))
+  (telega-chat-match-p chat '(or main archive)))
 
 ;;; ellit-org: chat-temex
 ;; - (folder ~FOLDER-NAME~), {{{where-is(telega-filter-by-folder,telega-root-mode-map)}}} ::

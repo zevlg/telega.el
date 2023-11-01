@@ -1274,4 +1274,7 @@ You can send them an invite link as message instead.")
   :value "Silent broadcast...")
  ("lng_story_reply_ph"
   :value "Reply privately...")
+
+ ("lng_message_not_found"
+  :value "Message doesn't exist.")
  )
