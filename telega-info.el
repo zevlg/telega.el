@@ -589,9 +589,16 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                                               telega-symbol-heavy-checkmark
                                             telega-symbol-blank-button)
                         :value chat
-                        :action (lambda (_chat)
-                                  ;; TODO:
-                                  (user-error "Not yet implemented")))
+                        :action (lambda (chat)
+                                  (cl-case (car perm-spec)
+                                    (:is_anonymous
+                                     (plist-put my-status :is_anonymous
+                                                (if perm-value :false t))
+                                     (telega--setChatMemberStatus
+                                      chat (telega-user-me) my-status))
+                                    (t
+                                     (user-error "Not yet implemented")))))
+
                     (telega-ins (if perm-value
                                     telega-symbol-ballout-check
                                   telega-symbol-ballout-empty)))
