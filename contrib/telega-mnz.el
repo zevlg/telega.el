@@ -512,7 +512,7 @@ ARG is passed directly to function `telega-mnz-mode'."
 ;; For `C-c C-a code RET'
 (unless (assoc "code" telega-chat-attach-commands)
   (add-to-list 'telega-chat-attach-commands
-               (list "code" nil #'telega-mnz-chatbuf-attach-code) 'append))
+               '("code" (return t) #'telega-mnz-chatbuf-attach-code) 'append))
 
 (provide 'telega-mnz)
 

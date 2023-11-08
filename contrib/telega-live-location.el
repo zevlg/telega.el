@@ -98,8 +98,9 @@ Return live location from geo module, otherwise fallback to
         ;; For `C-c C-a live-geo-location RET'
         (unless (assoc "live-geo-location" telega-chat-attach-commands)
           (add-to-list 'telega-chat-attach-commands
-                       (list "live-geo-location" #'geo-last-location
-                             #'telega-live-location-attach-live-geo-location)
+                       '("live-geo-location"
+                         (eval (geo-last-location))
+                         #'telega-live-location-attach-live-geo-location)
                        'append))
 
         ;; Update location on start
