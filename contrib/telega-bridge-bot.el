@@ -473,7 +473,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (body (cadr name-and-body))) ; skip if no body
     (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
       ;; replace sender
-      (plist-put forward-info :origin (list :@type "messageForwardOriginUser" :sender_user_id sender-id))
+      (plist-put forward-info :origin (list :@type "messageOriginUser" :sender_user_id sender-id))
       ;; remove duplicated username in body
       (plist-put
        content :text

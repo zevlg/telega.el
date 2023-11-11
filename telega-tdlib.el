@@ -1603,11 +1603,22 @@ PRIORITY is same as for `telega-file--download'."
    (list :@type "cancelPreliminaryUploadFile"
          :file_id (plist-get file :id))))
 
-(defun telega-msg--tl-messageReplyToMessage (reply-to-msg)
-  "Create messageReplyToMessage structure from message MSG."
-  (list :@type "messageReplyToMessage"
-        :chat_id (plist-get reply-to-msg :chat_id)
-        :message_id (plist-get reply-to-msg :id)))
+(defun telega-msg--tl-inputMessageReplyToMessage (chat msg)
+  "Create inputMessageReplyToMessage structure from CHAT and MSG to be replied."
+  (let* ((msg-chat-id (plist-get msg :chat_id))
+         (chat-id (plist-get chat :id))
+         (reply-chat-id
+          ;; pass 0 if the message to be replied is in the same chat
+          ;; must always be 0 for replies in secret chats
+          (if (= msg-chat-id chat-id)
+              0
+            msg-chat-id))
+         (reply-msg-id (plist-get msg :id)))
+    (list :@type "inputMessageReplyToMessage"
+          :chat_id reply-chat-id
+          :message_id reply-msg-id
+          ;; TODO :quote
+          )))
 
 (cl-defun telega--sendMessage (chat imc &optional reply-to-msg
                                     options &key reply-markup callback sync-p)
@@ -1622,7 +1633,7 @@ message uppon message is created."
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :input_message_content imc)
           (when reply-to-msg
-            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
+            (list :reply_to (telega-msg--tl-inputMessageReplyToMessage chat reply-to-msg)))
           (when options
             (list :options options))
           (when reply-markup
@@ -1640,7 +1651,7 @@ message uppon message is created."
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :input_message_contents (apply 'vector imcs))
           (when reply-to-msg
-            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
+            (list :reply_to (telega-msg--tl-inputMessageReplyToMessage chat reply-to-msg)))
           (when options
             (list :options options)))
    (or callback (unless sync-p #'ignore))))
@@ -1669,7 +1680,7 @@ message uppon message is created."
                 :query_id (plist-get imc :query-id)
                 :result_id (plist-get imc :result-id))
           (when reply-to-msg
-            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
+            (list :reply_to (telega-msg--tl-inputMessageReplyToMessage chat reply-to-msg)))
           (when options
             (list :options options))
           (when (plist-get imc :hide-via-bot)

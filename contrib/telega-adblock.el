@@ -229,7 +229,7 @@ an URL."
 (defun telega-adblock-msg-forwarded-p (msg)
   "Return non-nil if MSG is forwarded from another channel."
   (when-let ((fwd-origin (telega--tl-get msg :forward_info :origin))
-             (orig-chat-id (when (equal "messageForwardOriginChannel"
+             (orig-chat-id (when (equal "messageOriginChannel"
                                         (plist-get fwd-origin :@type))
                              (plist-get fwd-origin :chat_id))))
     ;; Allow self-forwards

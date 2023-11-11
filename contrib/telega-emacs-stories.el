@@ -433,9 +433,9 @@ If STORY-MESSAGES is not specified, unview all story messages."
 Return featured chat id, if MSG is featured."
   (when-let* ((origin (telega--tl-get msg :forward_info :origin))
               (chat-id (cl-case (telega--tl-type origin)
-                         (messageForwardOriginChat
+                         (messageOriginChat
                           (plist-get origin :sender_chat_id))
-                         (messageForwardOriginChannel
+                         (messageOriginChannel
                           (plist-get origin :chat_id)))))
     (car (memq chat-id telega-emacs-stories--featured-chat-ids))))
 

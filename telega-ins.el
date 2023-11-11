@@ -2069,14 +2069,16 @@ Display text using FACE."
      ,@body))
 
 (cl-defun telega-ins--aux-msg-one-line (msg &key with-username
-                                            username-face remove-caption)
+                                            username-face remove-caption
+                                            quote-content)
   "Insert contents for aux message MSG as one line.
 If WITH-USERNAME is non-nil then insert MSG sender as well.
 If WITH-USERNAME is `unread-mention', then outline sender with
 `telega-mention-count' face.
 If WITH-USERNAME is a string, then use it as title of the MSG sender.
 USERNAME-FACE specifies face to use for sender's title.
-REMOVE-CAPTION is passed directly to `telega-ins--content-one-line'."
+REMOVE-CAPTION is passed directly to `telega-ins--content-one-line'.
+If QUOTE-CONTENT is non-nil then insert QUOTE-CONTENT instead of MSG."
   (declare (indent 1))
   (when (and with-username
              (telega-ins--with-face username-face
@@ -2093,7 +2095,9 @@ REMOVE-CAPTION is passed directly to `telega-ins--content-one-line'."
         (telega-ins " → " (telega-symbol 'topic))
         (telega-ins--topic-icon topic)))
     (telega-ins (telega-symbol 'sender-and-text-delim) " "))
-  (telega-ins--content-one-line msg remove-caption))
+  (if quote-content
+      (telega-ins--quote-one-line quote-content msg)
+    (telega-ins--content-one-line msg remove-caption)))
 
 (defun telega-ins--msg-interaction-info (msg &optional msg-chat)
   "Insert interaction info for message MSG.
@@ -2292,16 +2296,16 @@ argument - MSG to insert additional information after header."
   "Return message sender extracted from the forward info ORIGIN.
 Return user, chat or string with the sender title."
   (cl-ecase (telega--tl-type origin)
-    (messageForwardOriginChat
+    (messageOriginChat
      (telega-chat-get (plist-get origin :sender_chat_id)))
 
-    (messageForwardOriginUser
+    (messageOriginUser
      (telega-user-get (plist-get origin :sender_user_id)))
 
-    (messageForwardOriginHiddenUser
+    (messageOriginHiddenUser
      (telega-tl-str origin :sender_name))
 
-    (messageForwardOriginChannel
+    (messageOriginChannel
      (telega-chat-get (plist-get origin :chat_id)))))
 
 (defun telega--fwd-info-action (fwd-info)
@@ -2447,7 +2451,9 @@ Return user, chat or string with the sender title."
                            (if (and (telega-sender-match-p sender 'me)
                                     (plist-get msg :contains_unread_mention))
                                (append faces '(telega-entity-type-mention))
-                             faces)))))
+                             faces))
+                         :quote-content
+                         (plist-get reply-to :quote))))
                     ))))))
 
       (messageReplyToStory
@@ -2844,6 +2850,12 @@ If SHORT-P is non-nil then use short version."
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
      )))
+
+(defun telega-ins--quote-one-line (quote-content &optional for-msg)
+  "Insert reply-to's :quote QUOTE-CONTENT for one line usage.
+FOR-MSG is the reply message we are inserting TEXT for."
+  (telega-ins--fmt-text quote-content for-msg)
+  t)
 
 (defun telega-ins--content-one-line (msg &optional remove-caption)
   "Insert message's MSG content for one line usage.

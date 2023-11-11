@@ -1001,9 +1001,9 @@ preview, having media content, can be opened with media timestamp."
   (let ((fwd-origin (telega--tl-get msg :forward_info :origin)))
     (cl-assert fwd-origin)
     (cl-ecase (telega--tl-type fwd-origin)
-      (messageForwardOriginUser
+      (messageOriginUser
        (telega-user-get (plist-get fwd-origin :sender_user_id)))
-      (messageForwardOriginChat
+      (messageOriginChat
        ;; NOTE: info about `:author_signature' is lost :(
        (telega-chat-get (plist-get fwd-origin :sender_chat_id))))))
 
