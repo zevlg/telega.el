@@ -93,12 +93,6 @@
 Real value is the pending input string.")
 (make-variable-buffer-local 'telega-chatbuf--input-pending)
 
-(defvar telega-chatbuf--aux-button nil
-  "Button that display reply/edit/fwd message above input.
-Also used to control newer history loading.  Newer history is loaded
-only when this button is invisible.")
-(make-variable-buffer-local 'telega-chatbuf--aux-button)
-
 (defvar telega-chatbuf--prompt-button nil "Input prompt button.")
 (make-variable-buffer-local 'telega-chatbuf--prompt-button)
 
@@ -347,7 +341,10 @@ Combines chat permissions and admin/owner permissions."
            (plist-put perms pname pval)))
 
         (chatMemberStatusRestricted
-         (setq perms (plist-get status :permissions)))))
+         (setq perms (plist-get status :permissions)))
+
+        (chatMemberStatusLeft
+         (setq perms nil))))
     perms))
 
 (defun telega-chat-title (chat &optional no-badges)
@@ -1524,22 +1521,7 @@ new Chat buffers.")
   'read-only t
   'front-sticky t
 
-;  'cursor-intangible t
-  'field 'telega-prompt)
-
-(define-button-type 'telega-prompt-aux
-  :supertype 'telega
-  :inserter 'telega-ins
-
-  ;; NOTE: To make input method works under message buttons,
-  ;; See `quail-input-method' for details
-  'read-only t
-  'front-sticky t
-
-  ;; NOTE: aux prompt might have buttons to press, so don't make it
-  ;; intangible, see https://t.me/emacs_telega/42381
-  'cursor-intangible nil
-
+  'cursor-intangible t
   'field 'telega-prompt)
 
 (defun telega-chatbuf--first-msg ()
@@ -1653,11 +1635,13 @@ Takes into account thread/topic."
 (defun telega-chatbuf--msg-view (msg &optional temex)
   "View message MSG in the chatbuf.
 View only if message matches TEMEX or not yet viewed."
-  (when (telega-msg-match-p msg
-          (or temex
-              '(or (prop :contains_unread_mention)
-                   unread-reactions
-                   (not seen))))
+  (unless temex
+    (setq temex '(or (prop :contains_unread_mention)
+                     unread-reactions
+                     (not seen))))
+
+  (when (and (not (telega-msg-internal-p msg))
+             (telega-msg-match-p msg temex))
     (telega--viewMessages telega-chatbuf--chat (list msg)
       :source (cond (telega-chat-preview-mode
                      '(:@type "messageSourceHistoryPreview"))
@@ -1756,7 +1740,7 @@ Use this to surrond header with some prefix and suffix."
            (progn
              ;; (telega-ins (telega-i18n "lng_forum_topic_title") ": ")
              (telega-ins--with-face 'telega-shadow
-               (telega-ins " → " (telega-symbol 'topic)))
+               (telega-ins (telega-symbol 'right-arrow) (telega-symbol 'topic)))
              (telega-ins--topic-title topic 'with-icon))
 
          (telega-ins "Thread: ")
@@ -2046,7 +2030,8 @@ Use this to surrond header with some prefix and suffix."
   (when-let ((markup-msg (telega-chat-reply-markup-msg telega-chatbuf--chat)))
     (unless (telega-msg-match-p markup-msg 'is-deleted)
       (telega-ins--as-string
-       (telega-ins--labeled (concat (telega-symbol 'keyboard) "\u00A0") nil
+       (telega-ins--labeled
+           (concat (telega-symbol 'keyboard) telega-symbol-nbsp) nil
          (telega-ins--reply-markup markup-msg 'force))))))
 
 (defun telega-chatbuf-footer-restriction-reason ()
@@ -2064,15 +2049,16 @@ Use this to surrond header with some prefix and suffix."
 (defun telega-chatbuf-footer-bot-description ()
   "Formatter for the bot description if history is empty."
   (when-let* ((bot-with-no-history-p
-               (telega-chatbuf-match-p
-                '(and (last-message (return nil)) (type bot))))
+               (and (telega-chat-bot-p telega-chatbuf--chat)
+                    (not (plist-get telega-chatbuf--chat :last_message))))
               (ci (telega-chat--info telega-chatbuf--chat t))
               (fi (telega--full-info ci))
-              (desc (telega-tl-str fi :description)))
-    (telega-ins--with-face 'bold
-      (telega-ins-i18n "lng_bot_description"))
-    (telega-ins "\n")
-    (telega-ins desc)))
+              (desc (telega-tl-str (plist-get fi :bot_info) :description)))
+    (telega-ins--as-string
+     (telega-ins--with-face 'bold
+       (telega-ins-i18n "lng_bot_description"))
+     (telega-ins "\n")
+     (telega-ins desc))))
 
 (defun telega-chatbuf-footer-sponsored-messages ()
   "Formatter for the sponsored messages."
@@ -2095,7 +2081,9 @@ Use this to surrond header with some prefix and suffix."
    "updateChatAction")
 
   (telega-ins--as-string
-   (let* ((column (+ telega-chat-fill-column 10 1))
+   (when telega-chatbuf--messages-compact-view
+     (telega-ins "\n"))
+   (let* ((column telega-chat-fill-column)
           (column1 (/ column 2))
           (column2 (- column column1))
           (fill-symbol (if (or (null telega-chatbuf--ewoc)
@@ -2147,7 +2135,7 @@ Use this to surrond header with some prefix and suffix."
             (and (not (telega-chat-match-p telega-chatbuf--chat 'is-known))
                  ;; Not a discussion group for some channel
                  (not (and (telega-chatbuf--thread-msg)
-                           (not (telega-chatbuf-match-p 'me-is-member))))))
+                           (telega-chatbuf-match-p 'can-send-or-post)))))
     (when-let ((button-text
                 (cond ((telega-chat-match-p telega-chatbuf--chat 'is-blocked)
                        (if (telega-chat-bot-p telega-chatbuf--chat)
@@ -2182,28 +2170,57 @@ Use this to surrond header with some prefix and suffix."
                      (telega--joinChat telega-chatbuf--chat))))
        ))))
 
+(defun telega-chat--aux-inline-reply-symbol (&optional aux-quote)
+  "Return symbol to use as reply title."
+  (cond ((and aux-quote (memq 'reply-quote telega-chat-aux-inline-symbols))
+         (telega-symbol 'reply-quote))
+        ((memq 'reply telega-chat-aux-inline-symbols)
+         (telega-symbol 'reply))
+        (t
+         (telega-i18n "lng_in_reply_to"))))
+
+(defun telega-chatbuf-footer-aux-plist ()
+  "Display aux prompt defined by `telega-chatbuf--aux-plist'."
+  (telega-chatbuf--dirtiness-init "aux-plist")
+
+  (when telega-chatbuf--aux-plist
+    (telega-ins--as-string
+     (telega-ins--with-attrs  (list :max (- telega-chat-fill-column 1)
+                                    :elide t
+                                    :face 'telega-chat-prompt)
+       (telega-ins--button (telega-symbol 'button-close)
+         'action (lambda (_ignored)
+                   (telega-chatbuf-cancel-aux))
+         'help-echo (lambda (_ignored)
+                      (telega-help-message--cancel-aux 'aux-prompt)))
+
+       (cl-case (plist-get telega-chatbuf--aux-plist :aux-type)
+         (edit
+          (telega-ins
+           "| " (telega-i18n "lng_edit_message") ": ")
+          (telega-ins--aux-msg-one-line
+              (plist-get telega-chatbuf--aux-plist :aux-msg)))
+
+         (reply
+          (let ((aux-msg (plist-get telega-chatbuf--aux-plist :aux-msg))
+                (aux-quote (plist-get telega-chatbuf--aux-plist
+                                      :aux-reply-quote)))
+            (telega-ins
+             "| " (telega-chat--aux-inline-reply-symbol aux-quote) " ")
+            (telega-ins--aux-msg-one-line aux-msg
+              :with-username t
+              :remove 'message)
+            (if aux-quote
+                (telega-ins--with-face 'telega-entity-type-blockquote
+                  (telega-ins--fmt-text aux-quote aux-msg))
+              (telega-ins--content-one-line aux-msg)))))
+       ))))
+
 (defun telega-chatbuf--footer ()
   "Generate string to be used as ewoc's footer."
-  ;; ------------(sponsored)------------
-  ;; MSG1
-  ;; MSG2
-  ;; --(actions part)---------------[additional status]--
-  ;; [x] Messages Filter: <FILTER> (total: MSG-COUNT)
-  ;; [x] Action Bar: [ action ] [ bar ] [ buttons ]
-  ;; [x] Active Stories: [story] [story] ..
-  ;; [x] Voice Chat: <Title> [Join] [Leave] [Show]
-  ;;     5 participants: (A) (B) <-- recent speakers
-  ;; [x] Users restricted adding them to group:
-  ;;     Vasya Pupkin [Send Invite Link]
-  ;;     user2        [Send Invite Link]
-  ;; 🔥Auto-delete messages: <MESSAGES TTL>
-  ;; [ REPLY-MARKUP] buttons
-  ;; <RESTRICTION if any>
-  ;; <BOT-DESCRIPTION if no last message>
-  ;; (AVA)>>>
   (let ((footer (format-mode-line telega-chat-footer-format
                                   nil nil (current-buffer))))
-    (add-text-properties 0 (length footer) '(read-only t) footer)
+    (add-text-properties 0 (length footer) '(read-only t front-sticky t) footer)
     footer))
 
 (defun telega-chatbuf--footer-update ()
@@ -2263,6 +2280,7 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
               (telega-chatbuf--manage-point pos)
               (telega-chatbuf--filter-msg-position-load msg)
               (run-hook-with-args 'telega-msg-hover-in-hook msg))
+
           (run-hook-with-args 'telega-msg-hover-out-hook msg))
         ))))
 
@@ -2289,6 +2307,9 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
                         (and (not (telega-msg-internal-p prev-msg))
                              (not (telega-msg-internal-p msg))
                              (not (telega-msg-special-p prev-msg))
+                             (< (- (plist-get msg :date)
+                                   (plist-get prev-msg :date))
+                                telega-chat-group-messages-timespan)
                              ;; NOTE: Different senders might have same name
                              (equal (plist-get msg :sender_id)
                                     (plist-get prev-msg :sender_id))
@@ -2307,12 +2328,15 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
     (when msg-inserter
       (telega-button--insert 'telega-msg msg
         :inserter msg-inserter
-        'cursor-sensor-functions '(telega-chatbuf-msg--sensor-func))
-      ;; Compact view inserter for media messages don't need newline
-      (if telega-chatbuf--messages-compact-view
-          (when (>= (current-column) telega-chat-fill-column)
-            (telega-ins "\n"))
-        (telega-ins "\n")))))
+        'cursor-sensor-functions '(telega-chatbuf-msg--sensor-func)))
+
+    ;; NOTE: we insert newline outside the button to provide
+    ;; msg hover-in/hover-out hooks handled by sensor function.
+    ;; Without separator, sensor function won't be triggered
+    (unless telega-chatbuf--messages-compact-view
+      (telega-ins--with-props '(read-only t front-sticky t)
+        (telega-ins "\n")))
+    ))
 
 (define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
   "The mode for telega chat buffer.
@@ -2359,6 +2383,10 @@ Global chat bindings:
   (when (featurep 'dnd)
     (setq-local dnd-protocol-alist
                 (append telega-chat-dnd-protocol-alist dnd-protocol-alist)))
+  
+  ;; To make `M-x visual-fill-column-mode RET' to work out-of-box
+  (setq fill-column telega-chat-fill-column)
+  (visual-line-mode 1)
 
   (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
@@ -2366,15 +2394,14 @@ Global chat bindings:
   ;; See https://github.com/zevlg/telega.el/issues/347
   (setq line-spacing 0)
 
+  (when telega-chat-header-line-underline
+    (setq-local x-underline-at-descent-line t)
+    (face-remap-add-relative 'header-line :underline t))
+
   (setq telega-chatbuf--ewoc
         (ewoc-create (telega-ewoc--gen-pp #'telega-chatbuf-msg--pp) nil nil t))
   (goto-char (point-max))
 
-  ;; Use punctuation as "no-value" button content
-  ;; See https://github.com/zevlg/telega.el/issues/45
-  (setq telega-chatbuf--aux-button
-        (telega-button--insert 'telega-prompt-aux "!aa!"
-          'invisible t))
   (setq telega-chatbuf--prompt-button
         (telega-button--insert 'telega-prompt ">>> "))
 
@@ -2440,49 +2467,29 @@ Recover previous active action after BODY execution."
           (or (and ,actsym (substring ,actsym 10))
               "Cancel"))))))
 
-(defun telega-ins--prompt-aux-msg (title msg &optional with-username)
-  "Inserter for MSG in chatbuf aux prompt."
-  (cl-assert msg)
-  (telega-ins--aux-inline
-      "| "
-      (progn
-        ;; NOTE: hack to insert [x] button (to cancel aux prompt)
-        ;; before title
-        (telega-ins--button "✕"
-          'action (lambda (_ignored)
-                    (telega-chatbuf-cancel-aux))
-          :help-echo (lambda (_ignored)
-                       (telega-help-message--cancel-aux 'aux-prompt)))
-        title)
-      " "
-      'telega-chat-prompt
-    (telega-ins--aux-msg-one-line msg
-      :with-username with-username)))
-
-(defun telega-ins--prompt-aux-edit (edit-msg)
-  "Inserter for EDIT-MSG in chatbuf aux prompt."
-  (telega-ins--prompt-aux-msg
-   (concat (telega-i18n "lng_edit_message") ":") edit-msg))
-
 (defun telega-chatbuf-editing-msg ()
   "Return message currently editing."
-  (and (eq (button-get telega-chatbuf--aux-button :inserter)
-           #'telega-ins--prompt-aux-edit)
-       (button-get telega-chatbuf--aux-button :value)))
-
-(defun telega-ins--prompt-aux-reply (reply-msg)
-  "Inserter for REPLY-MSG in chatbuf aux prompt."
-  (telega-ins--prompt-aux-msg
-   (if (memq 'reply telega-chat-aux-inline-symbols)
-       (telega-symbol 'reply)
-     (telega-i18n "lng_in_reply_to"))
-   reply-msg 'with-username))
+  (when (eq 'edit (plist-get telega-chatbuf--aux-plist :aux-type))
+    (plist-get telega-chatbuf--aux-plist :aux-msg)))
 
 (defun telega-chatbuf-replying-msg ()
   "Return message currently replying."
-  (and (eq (button-get telega-chatbuf--aux-button :inserter)
-           #'telega-ins--prompt-aux-reply)
-       (button-get telega-chatbuf--aux-button :value)))
+  (when (eq 'reply (plist-get telega-chatbuf--aux-plist :aux-type))
+    (plist-get telega-chatbuf--aux-plist :aux-msg)))
+
+(defun telega-chatbuf-replying-imr ()
+  "Return `inputMessageReplyToMessage' structure if replying to a message."
+  (when (eq 'reply (plist-get telega-chatbuf--aux-plist :aux-type))
+    (let ((aux-msg (plist-get telega-chatbuf--aux-plist :aux-msg)))
+      (list :@type "inputMessageReplyToMessage"
+            ;; NOTE: chat_id=0, when replying in the same chat/topic
+            ;; must be 0 in secret chats
+            :chat_id (if (= (plist-get telega-chatbuf--chat :id)
+                            (plist-get aux-msg :chat_id))
+                         0
+                       (plist-get aux-msg :chat_id))
+            :message_id (plist-get aux-msg :id)
+            :quote (plist-get telega-chatbuf--aux-plist :aux-reply-quote)))))
 
 (defun telega-chatbuf--window-scroll (window display-start)
   "Mark some messages as read while scrolling."
@@ -2539,20 +2546,7 @@ Recover previous active action after BODY execution."
                       (car attach) 'telega-attach)))))
 
   ;; If point moves inside prompt, move it at the beginning of input.
-  ;; However inhibit this behaviour in case unblock-start-join button
-  ;; is displayed in the prompt
-  ;;
-  ;; If AUX part is invisible it goes before real prompt, take this
-  ;; into account, in this case prompt looks like:
-  ;;   .----- telega-chatbuf--aux-button
-  ;;   |    .-- telega-chatbuf--prompt-button
-  ;;   v    v
-  ;;   [AUX][PROMPT]
-  ;;                 ^
-  ;;                 `-- telega-chatbuf--input-marker
-  (when (and (>= (point) (if (button-get telega-chatbuf--aux-button 'invisible)
-                             telega-chatbuf--aux-button
-                           telega-chatbuf--prompt-button))
+  (when (and (>= (point) telega-chatbuf--prompt-button)
              (< (point) telega-chatbuf--input-marker))
     (goto-char telega-chatbuf--input-marker))
 
@@ -2670,7 +2664,7 @@ Recover previous active action after BODY execution."
          (telega-i18n "telega_chat_prompt_broadcast"))
 
         ((telega-chatbuf-match-p 'has-default-sender)
-         "→")))
+         (telega-symbol 'right-arrow))))
 
 (defun telega-chatbuf-prompt-chat-avatar ()
   "Return chatbuf's avatar for the one line usage."
@@ -2683,7 +2677,7 @@ Recover previous active action after BODY execution."
      (telega-ins--image
       (telega-msg-sender-avatar-image-one-line chat)))))
 
-(defun telega-chatbuf-prompt-topic (&optional max-width)
+(defun telega-chatbuf-prompt-topic (&optional max-width with-topic-title-p)
   "Return current topic title for the prompt."
   (telega-chatbuf--dirtiness-init "thread")
 
@@ -2692,7 +2686,9 @@ Recover previous active action after BODY execution."
      (telega-ins--with-attrs (list :max max-width :align 'left :elide t
                                    :face 'telega-shadow)
        (telega-ins (telega-symbol 'topic))
-       (telega-ins--topic-title topic telega-use-images)))))
+       (telega-ins--topic-icon topic)
+       (when with-topic-title-p
+         (telega-ins--topic-title topic))))))
 
 (defun telega-chatbuf--prompt-update (&optional reset-aux)
   "Update chatbuf's prompt.
@@ -2700,10 +2696,8 @@ If RESET-AUX is specified, then reset aux prompt."
   (with-telega-buffer-modify
    (telega-save-excursion
      (when reset-aux
-       (telega-button--update-value
-        telega-chatbuf--aux-button "!aa!"
-        :inserter #'telega-ins
-        'invisible t))
+       (setq telega-chatbuf--aux-plist nil)
+       (telega-chatbuf--chat-update "aux-plist"))
 
      (let ((prompt (format-mode-line telega-chat-prompt-format
                                      nil nil (current-buffer))))
@@ -2870,7 +2864,7 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
            (< (- (point-max) (point)) 2000)
          t)
        ;; Not editing or replying
-       (button-get telega-chatbuf--aux-button 'invisible)
+       (not telega-chatbuf--aux-plist)
        (not (telega-chatbuf-has-input-p))))
 
 ;;; chatbuf modeline formatters
@@ -3722,7 +3716,7 @@ CALLBACK if non-nil, then called with total number of loaded messages."
                         telega-chatbuf--thread))
                ;; And no messages are loaded
                (not (telega-chatbuf--first-msg)))
-      (let ((msg (plist-get telega-chatbuf--chat :last_message)))
+      (when-let ((msg (plist-get telega-chatbuf--chat :last_message)))
         (when (telega-chatbuf--append-new-message-p msg)
           (telega-chatbuf--insert-messages (list msg) 'append-new))))
 
@@ -3878,7 +3872,7 @@ use.  For example `C-u RET' will use
 
   (let ((input (telega-chatbuf-input-string))
         (imcs (telega-chatbuf--input-imcs markup-name))
-        (replying-msg (telega-chatbuf-replying-msg))
+        (replying-imr (telega-chatbuf-replying-imr))
         (editing-msg (telega-chatbuf-editing-msg))
         (options nil)
         (send-imcs nil))
@@ -3957,14 +3951,14 @@ use.  For example `C-u RET' will use
                                 imcs)
                                10))))
         (telega--sendMessageAlbum
-         telega-chatbuf--chat send-imcs replying-msg options
+         telega-chatbuf--chat send-imcs replying-imr options
          :sync-p (not telega-chat-send-messages-async)))
 
        ;; NOTE: TDLib will automatically group messages to albums when
        ;; forwarding multiple messages.  Message IDS must be in strictly
        ;; increasing order, otherwise TDLib triggers an error
        ((and (> (length imcs) 1)
-             (not replying-msg)
+             (not replying-imr)
              (let ((msg-id 0)
                    (chat-id (telega--tl-get (car imcs) :message :chat_id))
                    (send-copy (plist-get (car imcs) :send_copy))
@@ -3995,7 +3989,7 @@ use.  For example `C-u RET' will use
         (cl-case (telega--tl-type imc)
           (telegaInlineQuery
            (telega--sendInlineQueryResultMessage
-            telega-chatbuf--chat imc replying-msg options
+            telega-chatbuf--chat imc replying-imr options
             :sync-p (not telega-chat-send-messages-async)))
 
           (telegaForwardMessage
@@ -4007,7 +4001,7 @@ use.  For example `C-u RET' will use
                                 ;; forward copy as reply to a
                                 ;; message
                                 :send_copy
-                                (if (or (plist-get imc :send_copy) replying-msg)
+                                (if (or (plist-get imc :send_copy) replying-imr)
                                     t :false)
                                 :replace_caption
                                 (if (plist-get imc :remove_caption)
@@ -4020,7 +4014,7 @@ use.  For example `C-u RET' will use
                                  :copy_options copy-opts)))
              (telega--sendMessage
               telega-chatbuf--chat
-              fwd-imc replying-msg options
+              fwd-imc replying-imr options
               :sync-p (not telega-chat-send-messages-async))
              (when (plist-get imc :unmark-after-sent)
                (telega-msg-unmark msg))))
@@ -4039,7 +4033,7 @@ use.  For example `C-u RET' will use
            )
 
           (t (telega--sendMessage
-              telega-chatbuf--chat imc replying-msg options
+              telega-chatbuf--chat imc replying-imr options
               :sync-p (not telega-chat-send-messages-async)))))))
 
       ;; NOTE: Cancell all file upload ahead, initiated by
@@ -5070,7 +5064,7 @@ See `telega-chat-attach-commands' for available attachment types."
                  (message (telega-ins--as-string
                            (telega-ins "telega: sent ")
                            (telega-ins invite-link)
-                           (telega-ins " → ")
+                           (telega-ins (telega-symbol 'right-arrow))
                            (telega-ins--msg-sender user
                              :with-avatar-p t
                              :with-username-p 'telega-username)))))
@@ -5273,20 +5267,42 @@ NODE is already calculated ewoc NODE, or nil."
                                    (plist-get msg :id)))))
       (telega-chatbuf--redisplay-node msg-node))))
 
-(defun telega-msg-reply (msg)
-  "Start replying to MSG."
-  (interactive (list (telega-msg-for-interactive)))
+(defun telega-msg-reply (msg &optional other-chat-p quote-fmt-text)
+  "Start replying to MSG.
+If `\\[universal-argument]' is specified, then reply in other chat."
+  (interactive (list (telega-msg-for-interactive)
+                     current-prefix-arg
+                     (when (region-active-p)
+                       (prog1
+                           (telega-string-fmt-text
+                            (buffer-substring (region-beginning) (region-end)))
+                         (deactivate-mark)))))
 
-  (with-telega-chatbuf (telega-msg-chat msg)
-    (telega-button--update-value
-     telega-chatbuf--aux-button msg
-     :inserter #'telega-ins--prompt-aux-reply
-     'invisible nil)
+  (when (and other-chat-p
+             (not (plist-get msg :can_be_replied_in_another_chat)))
+    (user-error "telega: Can't reply to this message in another chat"))
 
-    (telega-chatbuf--prompt-update)
-    (goto-char (point-max))
+  (let ((chat (if other-chat-p
+                  (telega-completing-read-chat
+                   (concat (telega-i18n "lng_reply_in_another_chat") ": "))
+                (telega-msg-chat msg))))
+    (telega-chat--pop-to-buffer chat)   ; Make sure chatbuf is shown
+    (with-telega-chatbuf chat
+      (setq telega-chatbuf--aux-plist (list :aux-type 'reply :aux-msg msg
+                                            :aux-reply-quote quote-fmt-text))
+      (telega-chatbuf--chat-update "aux-plist")
 
-    (telega-help-message--cancel-aux 'reply)))
+      (telega-chatbuf--prompt-update)
+      (goto-char (point-max))
+
+      (telega-help-message--cancel-aux 'reply))))
+
+(defun telega-msg-reply-in-another-chat (msg quote-region)
+  "Reply to a message MSG in another chat."
+  (interactive (list (telega-msg-for-interactive)
+                     (when (region-active-p)
+                       (cons (region-beginning) (region-end)))))
+  (telega-msg-reply msg 'in-another-chat quote-region))
 
 (defconst telega-msg-edit--markup-specs
   '(("markdown1" . telega--fmt-text-markdown1)
@@ -5310,11 +5326,8 @@ use for editing.  For example `C-u RET' will use
     (if (telega-msg-match-p msg 'is-deleted)
         (telega-chatbuf-cancel-aux)
 
-      (telega-button--update-value
-       telega-chatbuf--aux-button msg
-       :inserter #'telega-ins--prompt-aux-edit
-       'invisible nil)
-
+      (setq telega-chatbuf--aux-plist (list :aux-type 'edit :aux-msg msg))
+      (telega-chatbuf--chat-update "aux-plist")
       (telega-chatbuf--prompt-update))
 
     ;; Replace any input text with edited message
@@ -5792,16 +5805,22 @@ CALLBACK is called after point is moved to the message with MSG-ID."
 
     (cl-assert (listp (plist-get msg-filter :tdlib-msg-filter)))
     (setq telega-chatbuf--msg-filter msg-filter)
+
+    (let* ((msg-at-point (telega-msg-at (point)))
+           (msg-id (unless (telega-msg-internal-p msg-at-point)
+                     (plist-get msg-at-point :id))))
+      (telega-chatbuf--clean)
+      (telega-chatbuf--load-history msg-id -1 nil
+        (lambda (total-messages)
+          (when telega-chatbuf--msg-filter
+            (plist-put telega-chatbuf--msg-filter :total-count total-messages)
+            (telega-chatbuf--chat-update "msg-filter"))
+          (when msg-id
+            (telega-chatbuf--goto-loaded-msg msg-id)))))
+
     (when (member (plist-get msg-filter :title)
                   telega-chat-message-filters-as-media)
       (telega-chatbuf--enable-compact-media-view))
-    (telega-chatbuf--clean)
-
-    (telega-chatbuf--load-older-history
-     (lambda (total-messages)
-       (when telega-chatbuf--msg-filter
-         (plist-put telega-chatbuf--msg-filter :total-count total-messages)
-         (telega-chatbuf--chat-update "msg-filter"))))
 
     (telega-help-message 'msg-filter-cancel
         "%s to cancel messages filtering"

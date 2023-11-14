@@ -669,9 +669,14 @@ BE AWARE: This filter will do blocking request for every chat."
 You don't need te be a chat member to be able to send messages.
 Chat might not be known (i.e. in your Main or Archive list) to post
 messages into it. Use `is-known' chat temex to check chat is known."
-  (let ((my-perms (telega-chat-member-my-permissions chat)))
-    (or (plist-get my-perms :can_send_basic_messages)
-        (plist-get my-perms :can_post_messages))))
+  (or (let ((my-perms (telega-chat-member-my-permissions chat)))
+        (or (plist-get my-perms :can_send_basic_messages)
+            (plist-get my-perms :can_post_messages)))
+
+      ;; Also, it is possible to send message to discussion group
+      ;; without joining it
+      (and (telega-chat-match-p chat '(type supergroup))
+           (not (plist-get (telega-chat--info chat) :join_to_send_messages)))))
 
 ;;; ellit-org: chat-temex
 ;; - is-inline-bot ::

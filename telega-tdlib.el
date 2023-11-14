@@ -1603,13 +1603,7 @@ PRIORITY is same as for `telega-file--download'."
    (list :@type "cancelPreliminaryUploadFile"
          :file_id (plist-get file :id))))
 
-(defun telega-msg--tl-messageReplyToMessage (reply-to-msg)
-  "Create messageReplyToMessage structure from message MSG."
-  (list :@type "messageReplyToMessage"
-        :chat_id (plist-get reply-to-msg :chat_id)
-        :message_id (plist-get reply-to-msg :id)))
-
-(cl-defun telega--sendMessage (chat imc &optional reply-to-msg
+(cl-defun telega--sendMessage (chat imc &optional input-reply-to
                                     options &key reply-markup callback sync-p)
   "Send the message content represented by IMC to CHAT.
 If CALLBACK is specified, then call it with one argument - new
@@ -1621,15 +1615,15 @@ message uppon message is created."
                 :chat_id (plist-get chat :id)
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :input_message_content imc)
-          (when reply-to-msg
-            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
+          (when input-reply-to
+            (list :reply_to input-reply-to))
           (when options
             (list :options options))
           (when reply-markup
             (list :reply_markup reply-markup)))
    (or callback (unless sync-p #'ignore))))
 
-(cl-defun telega--sendMessageAlbum (chat imcs &optional reply-to-msg
+(cl-defun telega--sendMessageAlbum (chat imcs &optional input-reply-to
                                          options &key callback sync-p)
   "Send IMCS as media album.
 If CALLBACK is specified, then call it with one argument - new
@@ -1639,8 +1633,8 @@ message uppon message is created."
                 :chat_id (plist-get chat :id)
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :input_message_contents (apply 'vector imcs))
-          (when reply-to-msg
-            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
+          (when input-reply-to
+            (list :reply_to input-reply-to))
           (when options
             (list :options options)))
    (or callback (unless sync-p #'ignore))))
@@ -1657,7 +1651,7 @@ PARAM is additional parameter for deep linking."
             (list :parameter param)))
    ))
 
-(cl-defun telega--sendInlineQueryResultMessage (chat imc &optional reply-to-msg
+(cl-defun telega--sendInlineQueryResultMessage (chat imc &optional input-reply-to
                                                      options &key callback sync-p)
   "Send IMC as inline query result from bot.
 If CALLBACK is specified, then call it with one argument - new
@@ -1668,8 +1662,8 @@ message uppon message is created."
                 :message_thread_id (telega-chat-message-thread-id chat)
                 :query_id (plist-get imc :query-id)
                 :result_id (plist-get imc :result-id))
-          (when reply-to-msg
-            (list :reply_to (telega-msg--tl-messageReplyToMessage reply-to-msg)))
+          (when input-reply-to
+            (list :reply_to input-reply-to))
           (when options
             (list :options options))
           (when (plist-get imc :hide-via-bot)

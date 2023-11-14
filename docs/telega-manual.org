@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.200)
+#+title: Telega Manual (v0.8.210)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -63,7 +63,8 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#chatbuf-fast-navigation][Chatbuf fast navigation]]
     - [[#sending-ordinary-messages][Sending ordinary messages]]
     - [[#attaching-media][Attaching media]]
-    - [[#replying-and-editing-messages][Replying and editing messages]]
+    - [[#replying-to-a-message][Replying to a message]]
+    - [[#editing-previously-sent-message][Editing previously sent message]]
     - [[#forwarding-messages][Forwarding messages]]
     - [[#deleting-messages][Deleting messages]]
     - [[#scheduling-messages-and-reminders][Scheduling messages and reminders]]
@@ -239,7 +240,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.18.
+version greater or equal to 1.8.21.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -1577,13 +1578,7 @@ Use ~telega-story-match-p~ to match a story.
      (:eval
       (telega-chatbuf-prompt-topic 25))
      (:eval
-      (when
-          (and telega-auto-translate-mode telega-chatbuf-language-code telega-translate-to-language-by-default
-    	   (not
-    	    (equal telega-chatbuf-language-code telega-translate-to-language-by-default)))
-        (propertize
-         (format "[%s→%s]" telega-translate-to-language-by-default telega-chatbuf-language-code)
-         'face 'telega-shadow)))
+      (telega-auto-translate--chatbuf-prompt-translation))
      ">>> ")
   #+end_src
 
@@ -2188,27 +2183,31 @@ Customizable options for attaching media:
   #+end_src
 
 
-** Replying and editing messages
+** Replying to a message
 :PROPERTIES:
-:CUSTOM_ID: replying-and-editing-messages
+:CUSTOM_ID: replying-to-a-message
 :END:
 
-To reply/edit the message, put point on the message you want to
-reply/edit and press
-@@html:<kbd>@@r@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <reply>@@html:</kbd>@@ (~telega-msg-reply~) to reply or
-@@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~) to edit.
+To reply to a message, put point on the message you want to reply to
+and press @@html:<kbd>@@r@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <reply>@@html:</kbd>@@ (~telega-msg-reply~).
 
-Aux prompt will be show just above the chatbuf prompt, such as:
-#+begin_example
-  [✕]| Reply: @demash> Trying to install telega  M-x packag…
-  (T)>>>
-#+end_example
+Selected region at reply time will be a reply quote.
 
-To cancel aux prompt press on the cross button, or use
+To cancel reply use
 @@html:<kbd>@@C-c C-k@@html:</kbd>@@, @@html:<kbd>@@C-M-c@@html:</kbd>@@, @@html:<kbd>@@M-ESC@@html:</kbd>@@ (~telega-chatbuf-cancel-aux~)
-binding.
-@@html:<kbd>@@C-c C-k@@html:</kbd>@@, @@html:<kbd>@@C-M-c@@html:</kbd>@@, @@html:<kbd>@@M-ESC@@html:</kbd>@@ (~telega-chatbuf-cancel-aux~) accepts
-@@html:<kbd>@@C-u@@html:</kbd>@@ prefix, if used then chatbuf's input is also canceled.
+binding. @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to this command will clear chatbuf's
+input along with canceling reply.
+
+** Editing previously sent message
+:PROPERTIES:
+:CUSTOM_ID: editing-previously-sent-message
+:END:
+
+To edit a given message, put point on the message you want to edit and
+press @@html:<kbd>@@e@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <edit>@@html:</kbd>@@ (~telega-msg-edit~).
+
+To cancel editing use the same command as for canceling reply to a
+message.
 
 To edit your previously sent message press
 @@html:<kbd>@@M-p@@html:</kbd>@@ (~telega-chatbuf-edit-prev~).
@@ -2224,12 +2223,12 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
-@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
-@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
 
 There are few options how you can affect the way a message is forwarded:
@@ -3557,7 +3556,7 @@ Customizable options:
   Could be also a number, meaning that language detection is done
   only for code larger then this number of chars. 
 
-  Default value: ~50~
+  Default value: ~(200 . 4)~
 
 - User Option: ~telega-mnz-edit-display-buffer-action~ 
 

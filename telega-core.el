@@ -125,6 +125,9 @@
     ("RUB" . "₽"))
   "Alist of currency symbols.")
 
+(defconst telega-symbol-nbsp "\u00a0"
+  "Non-breakable space.")
+
 (defconst telega-emoji-animated-fullscreen-list
   '("🎆" "🎉" "🎈" "👍" "💩" "❤" "👻" "👎" "🤮" "😂" "💸" "🎃" "🍆")
   "List of animated emojis with fullscreen support.")
@@ -430,6 +433,11 @@ display the list.")
 (defvar telega--default-face 'default
   "Bind this to alter size calculation for the images.")
 
+(defvar telega--accent-colors-alist nil
+  "Alist id -> accent-color received by `updateAccentColors' event.")
+(defvar telega--accent-colors-available-ids nil
+  "Accent colors received by `updateAccentColors' event.")
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
@@ -525,6 +533,10 @@ To be used in various TDLib methods as `:message_thread_id` argument."
         (plist-get telega-chatbuf--thread :message_thread_id))
       0))
 
+(defvar telega-chatbuf--aux-plist nil
+  "Supplimentary plist for aux prompt.")
+(make-variable-buffer-local 'telega-chatbuf--aux-plist)
+
 
 (defun telega--init-vars ()
   "Initialize runtime variables.
@@ -618,6 +630,9 @@ Done when telega server is ready to receive queries."
 
   (setq telega--notification-messages-ring
         (make-ring telega-notifications-history-ring-size))
+
+  (setq telega--accent-colors-alist nil
+        telega--accent-colors-available-ids nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -1708,6 +1723,48 @@ Return what BODY returns."
            (progn ,@body)
          (add-text-properties ,spnt-sym (point) ,props)))))
 
+(defun telega--region-by-text-prop (beg prop &optional limit)
+  "Return region after BEG point with text property PROP set."
+  (unless (get-text-property beg prop)
+    (setq beg (next-single-char-property-change beg prop nil limit)))
+  (let ((end (next-single-char-property-change beg prop nil limit)))
+    (when (> end beg)
+      (cons beg end))))
+
+(defmacro telega-ins--line-wrap-prefix (prefix &rest body)
+  "Execute BODY adding `line-prefix' and `wrap-prefix' properties.
+PREFIX evaluates *after* BODY.
+`line-prefix' and `wrap-prefix' are contatenated on subsequent calls to
+`telega-ins--line-wrap-prefix'."
+  (declare (indent 1))
+  (let ((lwprefix-sym (gensym "lwprefix"))
+        (lwprefix-props-sym (gensym "lwprefix-props"))
+        (start-sym (gensym "start"))
+        (region-sym (gensym "region")))
+    `(let* ((,start-sym (point))
+            ,lwprefix-sym ,lwprefix-props-sym ,region-sym)
+       (prog1
+           (progn ,@body)
+         (setq ,lwprefix-sym ,prefix
+               ,lwprefix-props-sym (list :telega-lwprefix ,lwprefix-sym
+                                         'line-prefix ,lwprefix-sym
+                                         'wrap-prefix ,lwprefix-sym))
+
+         (while (setq ,region-sym (telega--region-by-text-prop
+                                   ,start-sym 'line-prefix (point)))
+           (add-text-properties ,start-sym (car ,region-sym)
+                                ,lwprefix-props-sym)
+           (add-text-properties
+            (car ,region-sym) (cdr ,region-sym)
+            (list 'line-prefix (concat ,lwprefix-sym
+                                       (get-text-property (car ,region-sym)
+                                                          'line-prefix))
+                  'wrap-prefix (concat ,lwprefix-sym
+                                       (get-text-property (car ,region-sym)
+                                                          'wrap-prefix))))
+           (setq ,start-sym (cdr ,region-sym)))
+         (add-text-properties ,start-sym (point) ,lwprefix-props-sym)))))
+
 (defmacro telega-ins-prefix (prefix &rest body)
   "In case BODY inserted anything then PREFIX is also inserted before BODY."
   (declare (indent 1))
@@ -1722,17 +1779,15 @@ Return what BODY returns."
 (defun telega-ins--move-to-column (column &optional space-char)
   "Insert space aligned to COLUMN.
 Uses `:align-to' display property."
-  ;; NOTE: Use Pixel Specification for `:align-to' this will take into
-  ;; account `text-scale-mode' into account.
+  ;; NOTE: Use Pixel Specification for `:align-to' this will take
+  ;; `text-scale-mode' into account.
   ;; However, if displaying in the terminal, then use ordinary columns.
   ;; See https://t.me/emacs_telega/32464
-  (let ((nwidth (- column (telega-current-column)))
-        (align-to (if (display-graphic-p)
+  (let ((align-to (if (display-graphic-p)
                       (list (telega-chars-xwidth column))
                     column)))
     (telega-ins--with-props `(display (space :align-to ,align-to))
-      (telega-ins (make-string (if (> nwidth 0) nwidth 1)
-                               (or space-char ?\s))))))
+      (telega-ins " "))))
 
 (defmacro telega-ins--sequence (var-seq sep-ins &rest body-ins)
   "Insert items from sequence using BODY-INS separating them with SEP-INS.

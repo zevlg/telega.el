@@ -1164,7 +1164,7 @@ Set to nil to disable photo in a webpage preview."
                  (list integer integer integer integer))
   :group 'telega-webpage)
 
-(defcustom telega-webpage-preview-description-limit nil
+(defcustom telega-webpage-preview-description-limit 200
   "Maximum length in chars to display webpage preview description.
 Set to 0 to disable description in a webpage preview."
   :package-version '(telega . "0.7.20")
@@ -1314,15 +1314,7 @@ enabled."
                       (telega-chatbuf-match-p 'can-send-or-post))
              (telega-chatbuf-prompt-chat-avatar)))
     (:eval (telega-chatbuf-prompt-topic 25))
-    (:eval (when (and telega-auto-translate-mode
-                      telega-chatbuf-language-code
-                      telega-translate-to-language-by-default
-                      (not (equal telega-chatbuf-language-code
-                                  telega-translate-to-language-by-default)))
-             (propertize (format "[%s→%s]"
-                                 telega-translate-to-language-by-default
-                                 telega-chatbuf-language-code)
-                         'face 'telega-shadow)))
+    (:eval (telega-auto-translate--chatbuf-prompt-translation))
     ">>> ")
   "*Modeline compatible format for the chatbuf input prompt.
 You can use `telega-chatbuf-editing-msg' or
@@ -1590,6 +1582,11 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
+(defcustom telega-chat-header-line-underline t
+  "Non-nil to outline header line with the underline."
+  :type 'boolean
+  :group 'telega-chat)
+
 (defcustom telega-chat-header-line-format
   '((:eval (telega-chatbuf-header-concat
             " " (telega-chatbuf-header-msg-filter 'no-cancel-button)))
@@ -1599,8 +1596,7 @@ See `mode-line-buffer-identification'."
             " " (telega-chatbuf-header-highlight-text)))
     (:eval (telega-mode-line-align-right
             (telega-chatbuf-header-thread 30)
-            (+ telega-chat-fill-column 10)))
-    )
+            telega-chat-fill-column)))
   "*Modeline compatible format for the chatbuf's header line."
   :package-version '(telega . "0.8.170")
   :type 'sexp
@@ -1635,6 +1631,11 @@ See `mode-line-buffer-identification'."
     ;; Chat's START/UNBLOCK/JOIN button
     (:eval (telega-chatbuf-header-concat
             (telega-chatbuf-footer-join-button) "\n"))
+
+    ;; Edit/Reply aux message, defined by `telega-chatbuf--aux-plist'
+    ;; is displayed last
+    (:eval (telega-chatbuf-header-concat
+            (telega-chatbuf-footer-aux-plist) "\n"))
     )
   "*Modeline compatible format for the chatbuf's footer just before the prompt."
   :package-version '(telega . "0.8.170")
@@ -1642,10 +1643,11 @@ See `mode-line-buffer-identification'."
   :group 'telega-chat)
 
 (defcustom telega-chat-aux-inline-symbols (when telega-use-images
-                                            '(forward reply))
+                                            '(forward reply reply-quote))
   "List of symbols to use instead of text in the inline aux."
-  :package-version '(telega . "0.8.180")
+  :package-version '(telega . "0.8.210")
   :type '(repeat (choice (const :tag "Reply to" reply)
+                         (const :tag "Reply with quote" reply-quote)
                          (const :tag "Forwarded from" forward)))
   :group 'telega-chat)
 
@@ -1788,6 +1790,12 @@ Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 
+(defcustom telega-msg-heading-with-date-and-status nil
+  "Non-nil to put message sent date and outgoing status into heading."
+  :package-version '(telega . "0.8.210")
+  :type 'boolean
+  :group 'telega-msg)
+
 (defcustom telega-msg-hack-on-can-get-message-thread t
   "Non-nil to hack on `:can_get_message_thread' message property.
 In case MSG has `:message_thread_id' and has no
@@ -1819,6 +1827,19 @@ If nil, the saved path is always asked."
                  (sender me)
                  has-chosen-reaction))
   :group 'telega-msg)
+
+(defcustom telega-topic-format-alist
+  '((msg-heading . "%s%i%t")
+    (inline-reply . "%s%i")
+    (chat-prompt . "%s%i"))
+  "Formatting for the topic title in different situations.
+Formatting:
+%s - topic symbol, such as #
+%i - topic icon,
+%t - topic title"
+  :package-version '(telega . "0.8.210")
+  :type '(alist :key-type symbol :value-type string)
+  :group 'telega-chat)
 
 (defcustom telega-msg-always-show-topic-info t
   "Non-nil to always show topic info in the message header.
@@ -2066,7 +2087,7 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-star (propertize "★" 'face 'error)
+(defcustom telega-symbol-star (propertize "⭐" 'face 'error)
   "Symbol used to emphasize starred chats."
   :type 'string
   :group 'telega-symbol)
@@ -2294,6 +2315,11 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-reply-quote (compose-chars ?⮪ ?”)
+  "Symbol used to for replies with quotes."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-forward (compose-chars ?🗩 ?🠒)
   "Symbol used to display forwarding."
   :type 'string
@@ -2370,7 +2396,7 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-premium (propertize "★" 'face 'telega-blue)
+(defcustom telega-symbol-premium (propertize "*" 'face 'telega-blue)
   "Symbol used to emphasize premium Telegram users."
   :type 'string
   :group 'telega-symbol)
@@ -2397,6 +2423,18 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-right-arrow "->"
+  "Symbol used as right arrow."
+  :package-version '(telega . "0.8.210")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-button-close "×"
+  "Symbol to use for close buttons."
+  :package-version '(telega . "0.8.210")
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbols-emojify
   '((verified (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "verified.svg" 2)))
@@ -2407,9 +2445,15 @@ Used in one line message inserter."
     (underline-bar (when (and telega-use-images (image-type-available-p 'svg))
                      (telega-svg-create-horizontal-bar
                       1 0.7 telega-symbol-underline-bar)))
-    alarm attachment audio
+    alarm
+    attachment audio
     bell bulp
-    chat-list contact
+    chat-list
+    (checkmark
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-svg-create-checkmark telega-symbol-checkmark
+         :stroke-width 1.0)))
+    contact
     distance
     eye
     failed favorite flames folder
@@ -2418,16 +2462,25 @@ Used in one line message inserter."
     (forward (when (and telega-use-images (image-type-available-p 'svg))
                (telega-etc-file-create-image "symbols/forward.svg" 2)))
     game
+    (heavy-checkmark
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-svg-create-checkmark telega-symbol-heavy-checkmark
+         :double-p t
+         :stroke-width 1.5)))
     invoice
     leave-comment lightning lock location
     member multiple-folders
-    pause phone photo pin poll play
+    pause pending phone photo pin poll play
     (premium (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/premium.svg" 2)))
     (reaction (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/reaction.svg" 2)))
     (reply (when (and telega-use-images (image-type-available-p 'svg))
              (telega-etc-file-create-image "symbols/reply.svg" 2)))
+    (reply-quote (when (and telega-use-images (image-type-available-p 'svg))
+                   (telega-etc-file-create-image "symbols/reply-quote.svg" 2)))
+    (right-arrow (when (and telega-use-images (image-type-available-p 'svg))
+                   (telega-etc-file-create-image "symbols/right-arrow.svg" 2)))
     video video-chat-active video-chat-passive
 
     "⏪" "⏩"
@@ -2625,6 +2678,11 @@ non-nil if symbol gets emojification."
   "Face to display strikethrough text."
   :group 'telega-faces)
 
+(defface telega-entity-type-blockquote
+  '((t :inherit widget-single-line-field :extend t))
+  "Face to display block quote formatting."
+  :group 'telega-faces)
+
 (defface telega-entity-type-code
   '((t :inherit fixed-pitch-serif))
   "Face to display code."
@@ -2655,7 +2713,7 @@ non-nil if symbol gets emojification."
      :background "gray85" :extend t)
     (((class color) (background dark))
      :background "gray25" :extend t)
-    (t :inherit widget-field :extend t))
+    (t :inherit widget-single-line-field :extend t))
   "Face to display messages header."
   :group 'telega-faces)
 
@@ -2677,11 +2735,6 @@ non-nil if symbol gets emojification."
 (defface telega-msg-inline-forward
   '((t :inherit telega-msg-heading))
   "Face to highlight message forwarding header."
-  :group 'telega-faces)
-
-(defface telega-msg-outgoing-status
-  '((t :height 0.8))
-  "Face used to display message outgoing status symbol."
   :group 'telega-faces)
 
 (defface telega-msg-deleted

@@ -1,6 +1,6 @@
 #+EXPORT_FILE_NAME: index.html
 
-#+SETUPFILE: https://fniessen.github.io/org-html-themes/org/theme-readtheorg.setup
+#+SETUPFILE: ../../org-html-themes/org/theme-readtheorg.setup
 #+HTML_HEAD: <style> #content{max-width:1800px;}</style>
 #+HTML_HEAD: <style>h1, h2, h3, h4, h5, h6 { margin: 16px 0px 0px 0px; }</style>
 #+HTML_HEAD: <style>#table-of-contents h2 { margin: 0; }</style>

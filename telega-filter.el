@@ -144,7 +144,7 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
          (umstring
           (telega-ins--as-string
            (telega-ins--with-attrs (list :max 7
-                                         :align-symbol "\u00a0"
+                                         :align-symbol telega-symbol-nbsp
                                          :elide t
                                          :align 'right)
              (unless (zerop unread)
@@ -170,8 +170,7 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
         (telega-ins "[")
         (telega-ins--with-attrs (list :min title-width
                                       :max title-width
-                                      ;; non-break space
-                                      :align-symbol "\u00a0"
+                                      :align-symbol telega-symbol-nbsp
                                       :elide t
                                       :align 'left)
           (telega-ins (number-to-string nchats) ":")
@@ -179,7 +178,7 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
               (telega-ins--with-face 'bold
                 (telega-ins name))
             (telega-ins name)))
-        (telega-ins "\u00a0")
+        (telega-ins telega-symbol-nbsp)
         (telega-ins umstring)
         (telega-ins "]")))))
 

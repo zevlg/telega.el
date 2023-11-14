@@ -127,6 +127,13 @@
                   :enable (let ((msg (telega-msg-at-down-mouse-3)))
                             (plist-get msg :can_be_forwarded))
                   ))
+    (bindings--define-key menu-map [forward]
+      '(menu-item (telega-i18n "lng_reply_in_another_chat")
+                  telega-msg-reply-in-another-chat
+                  :help (telega-i18n "lng_reply_in_another_chat")
+                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
+                            (plist-get msg :can_be_replied_in_another_chat))
+                  ))
     (bindings--define-key menu-map [s2] menu-bar-separator)
     (bindings--define-key menu-map [topic]
       '(menu-item (telega-i18n "lng_replies_view_topic")
@@ -342,6 +349,14 @@ Return nil for deleted messages."
 (defun telega-msg-goto-highlight (msg)
   "Goto message MSG and highlight it."
   (telega-msg-goto msg 'highlight))
+
+(defun telega-msg-goto-reply-to-message (msg)
+  "Goto message denoted by `:reply_to' field of the message MSG."
+  (let* ((reply-to (plist-get msg :reply_to))
+         (chat-id (plist-get reply-to :chat_id))
+         (msg-id (plist-get reply-to :message_id)))
+    (unless (or (telega-zerop chat-id) (telega-zerop msg-id))
+      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id 'highlight))))
 
 (defun telega-msg-open-sticker (msg &optional sticker)
   "Open content for sticker message MSG."
@@ -994,18 +1009,6 @@ preview, having media content, can be opened with media timestamp."
       (telega-file--upload-internal msg-file
         (lambda (_filenotused)
           (telega-msg-redisplay msg))))))
-
-(defun telega-replies-msg-sender (msg)
-  "Return original sender of the message MSG in the \"Replies\" chat."
-  (cl-assert (telega-replies-p (telega-msg-chat msg)))
-  (let ((fwd-origin (telega--tl-get msg :forward_info :origin)))
-    (cl-assert fwd-origin)
-    (cl-ecase (telega--tl-type fwd-origin)
-      (messageForwardOriginUser
-       (telega-user-get (plist-get fwd-origin :sender_user_id)))
-      (messageForwardOriginChat
-       ;; NOTE: info about `:author_signature' is lost :(
-       (telega-chat-get (plist-get fwd-origin :sender_chat_id))))))
 
 (defun telega-msg-sender (tl-obj)
   "Convert given TL-OBJ to message sender (a chat or a user).

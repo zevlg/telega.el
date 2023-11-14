@@ -159,13 +159,6 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                         (telega-tl-str str (telega-i18n-plural-rule count))))
                   (telega-tl-str str :other_value))))
 
-    ;; NOTE: **text** means bold
-    (setq val (replace-regexp-in-string
-               "\\*\\*\\([^*]+\\)\\*\\*"
-               (lambda (match)
-                 (propertize (match-string 1 match) 'face 'bold))
-               val nil 'literal))
-
     (while args
       (setq val (replace-regexp-in-string
                  (regexp-quote
@@ -173,6 +166,13 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                  (format "%s" (cadr args))
                  val nil 'literal))
       (setq args (cddr args)))
+
+    ;; NOTE: **text** means bold
+    (setq val (replace-regexp-in-string
+               "\\*\\*\\([^*]+\\)\\*\\*"
+               (lambda (match)
+                 (propertize (match-string 1 match) 'face 'bold))
+               val nil 'literal))
     val))
 
 (defun telega-i18n-noerror (key)

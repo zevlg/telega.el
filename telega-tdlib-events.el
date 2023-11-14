@@ -775,15 +775,13 @@ Message id could be updated on this update."
       (when node
         (telega-chatbuf--redisplay-node node))
 
-      ;; In case user has active aux-button with message from EVENT,
-      ;; then redisplay aux as well, see
-      ;; https://t.me/emacs_telega/7243
-      (let ((aux-msg (or (telega-chatbuf-replying-msg)
-                         (telega-chatbuf-editing-msg))))
-        (when (and aux-msg (eq (plist-get msg :id) (plist-get aux-msg :id)))
-          (cl-assert (not (button-get telega-chatbuf--aux-button 'invisible)))
-          (telega-save-excursion
-            (telega-button--update-value telega-chatbuf--aux-button msg))))
+      ;; In case user has active aux with a message from EVENT,
+      ;; then redisplay aux as well.
+      ;; See https://t.me/emacs_telega/7243
+      (when-let ((aux-msg (plist-get telega-chatbuf--aux-plist :aux-msg)))
+        (when (telega-msg-id= msg aux-msg)
+          (plist-put telega-chatbuf--aux-plist :aux-msg msg)
+          (telega-chatbuf--chat-update "aux-plist")))
       )))
 
 (defun telega--on-updateMessageIsPinned (event)
@@ -1516,6 +1514,16 @@ Please downgrade TDLib and recompile `telega-server'"
                  (storyListArchive 'archive))
                chat-count)
     ))
+
+(defun telega--on-updateAccentColors (event)
+  "The list of supported accent colors has changed."
+  (setq telega--accent-colors-alist nil)
+  (seq-doseq (color (plist-get event :colors))
+    (setf (alist-get (plist-get color :id) telega--accent-colors-alist)
+          color))
+
+  (setq telega--accent-colors-available-ids
+        (plist-get event :available_accent_color_ids)))
 
 (provide 'telega-tdlib-events)
 

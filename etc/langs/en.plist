@@ -34,6 +34,8 @@
 
  ("lng_profile_loading"
   :value "Loading...")
+ ("lng_cancel"
+  :value "Cancel")
 
  ("lng_saved_messages"
   :value "Saved Messages")
@@ -45,6 +47,8 @@
   :value "View in Topic")
  ("lng_replies_view_thread"
   :value "View Thread")
+ ("lng_reply_in_another_chat"
+  :value "Reply in Another Chat")
  ("lng_profile_settings_section"
   :value "Settings")
  ("lng_profile_participants_section"
@@ -130,6 +134,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Privacy and Security")
  ("lng_settings_section_notify"
   :value "Notifications")
+
+ ;; https://translations.telegram.org/screenshots/11323
+ ("lng_unread_bar_some"
+  :value "Unread messages")
 
  ;; Screenshot #8262 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot8262
  ("lng_settings_new_unknown"
@@ -1277,4 +1285,55 @@ You can send them an invite link as message instead.")
 
  ("lng_message_not_found"
   :value "Message doesn't exist.")
+
+ ;; Giveaway
+ ("lng_action_giveaway_started"
+  :value "{from} just started a giveaway of Telegram Premium subscriptions for its followers.")
+ ;; https://translations.telegram.org/screenshots/14046/phrase/lng_prizes_badge
+ ("lng_prizes_badge"
+  :value "x{amount}")
+ ("lng_prizes_title"
+  :one_value "Giveaway Prize"
+  :other_value "Giveaway Prizes")
+ ("lng_prizes_about"
+  :one_value "**{count}** Telegram Premium Subscription {duration}."
+  :other_value "**{count}** Telegram Premium Subscriptions {duration}.")
+ ("lng_premium_gift_duration_months"
+  :one_value "for {count} month"
+  :other_value "for {count} months")
+ ("lng_prizes_participants"
+  :value "Participants")
+ ("lng_prizes_participants_all"
+  :one_value "All subscribers of the channel:"
+  :other_value "All subscribers of the channels:")
+ ("lng_prizes_participants_new"
+  :one_value "All users who joined the channel below after this date:"
+  :other_value "All users who joined the channels below after this date:")
+ ("lng_prizes_countries"
+  :value "from {countries}")
+ ("lng_prizes_date"
+  :value "Winners Selection Date")
+ ("lng_prizes_how_works"
+  :value "Learn more")
+ ("lng_prizes_how_title"
+  :value "About this giveaway")
+
+ ("lng_prizes_end_title"
+  :value "Giveaway ended")
+ ("lng_prizes_you_didnt"
+  :value "You didn't win a prize in this giveaway.")
+
+ ;; TODO: support messagePremiumGiftCode
+ ("lng_prize_title"
+  :value "Congratulations!")
+ ("lng_prize_about"
+  :value "You won a prize in a giveaway organized by {channel}.")
+ ("lng_prize_open"
+  :value "Open Gift Link")
+ ("lng_prize_duration"
+  :value "Your prize is a **Telegram Premium** subscription {duration}.")
+
+ ;; Game
+ ("lng_game_tag"
+  :value "Game")
  )

@@ -1423,7 +1423,7 @@ EVENT must be \"updateDeleteMessages\"."
       (telega-ins--msg-sender user))
     (when (or (telega-me-p user)
               (not (telega-chat-private-p chat)))
-      (telega-ins "→")
+      (telega-ins (telega-symbol 'right-arrow))
       (when telega-active-locations-show-avatars
         (telega-ins--image
          (telega-msg-sender-avatar-image-one-line chat)))
@@ -1574,7 +1574,7 @@ Set to nil to disable active video chats in the modeline."
           ((null has-participants-p)
            (telega-ins (telega-symbol 'video-chat-passive))))
     (telega-ins " ")
-    (telega-ins "→")
+    (telega-ins (telega-symbol 'right-arrow))
     (telega-ins " ")
     (telega-ins--msg-sender chat
       :with-avatar-p t
@@ -1857,6 +1857,21 @@ Or nil if translation is not needed."
   "Message's content has been updated, rerun translation."
   (plist-put msg :telega-translated nil)
   (telega-auto-translate--on-msg-insert msg))
+
+(defun telega-auto-translate--chatbuf-prompt-translation ()
+  "Addon to chatbuf prompt in case `telega-auto-translate-mode' is enabled."
+  (when (and telega-auto-translate-mode
+             telega-chatbuf-language-code
+             telega-translate-to-language-by-default
+             (not (equal telega-chatbuf-language-code
+                         telega-translate-to-language-by-default)))
+    (telega-ins--as-string
+     (telega-ins--with-face 'telega-shadow
+       (telega-ins "["
+                   telega-translate-to-language-by-default
+                   (telega-symbol 'right-arrow)
+                   telega-chatbuf-language-code
+                   "]")))))
 
 (defvar telega-auto-translate-mode-lighter
   (concat " " (telega-symbol 'mode) "Translate")

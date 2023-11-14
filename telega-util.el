@@ -152,7 +152,8 @@ Could be used as value for `telega-online-status-function'."
 
 (defun telega-chars-in-width (pixels)
   "Return how many characters needed to cover PIXELS width."
-  (ceiling (/ pixels (float (telega-chars-xwidth 1)))))
+  ;; NOTE: Must not return negative result
+  (max 0 (ceiling (/ pixels (float (telega-chars-xwidth 1))))))
 
 (defun telega-strip-newlines (string)
   "Strip STRING newlines from end and beginning."
@@ -179,8 +180,14 @@ returns precise value."
       (telega-window-current-column))))
 
 (defun telega-current-column ()
-  "Same as `current-column', but take into account width of the characters."
-  (string-width (buffer-substring (line-beginning-position) (point))))
+  "Same as `current-column', but take into account `line-prefix' property.
+Also take into account `wrap-prefix' property."
+  (let ((spoint (line-beginning-position)))
+    (+ (current-column)
+       (or (when-let ((lwprefix (or (get-text-property spoint 'line-prefix)
+                                    (get-text-property spoint 'wrap-prefix))))
+             (string-width lwprefix))
+           0))))
 
 (defun telega-canonicalize-number (value from-value)
   "Canonicalize number VALUE.
@@ -846,6 +853,11 @@ See `puny-decode-domain' for details."
           (when-let ((sticker (gethash (plist-get ent-type :custom_emoji_id)
                                        telega--custom-emoji-stickers)))
             (list 'display (telega-sticker--image sticker)))))
+       (textEntityTypeBlockQuote
+        (let ((lwprefix (telega-symbol 'vertical-bar)))
+          (list 'line-prefix lwprefix
+                'wrap-prefix lwprefix
+                'face 'telega-entity-type-blockquote)))
        ))))
 
 ;; https://core.telegram.org/bots/api#markdown-style
@@ -880,9 +892,11 @@ Return now text with markdown syntax."
       (textEntityTypeCustomEmoji
        (apply #'propertize text
               (telega--entity-to-properties (car entity-text) text)))
+      (textEntityTypeBlockQuote
+       (concat "> " text))
       (t text))))
 
-(defsubst telega--entity-to-org (entity-text)
+(defun telega--entity-to-org (entity-text)
   "Convert ENTITY back to markdown syntax applied to TEXT.
 ENTITY-TEXT is cons cell where car is the ENTITY and cdr is the TEXT.
 Return string with org mode syntax."
@@ -915,6 +929,9 @@ Return string with org mode syntax."
       (textEntityTypeCustomEmoji
        (apply #'propertize text
               (telega--entity-to-properties (car entity-text) text)))
+      (textEntityTypeBlockQuote
+       ;; See `org-element-quote-block-interpreter'
+       (format "#+begin_quote\n%s#+end_quote" text))
       (t text))))
 
 (defun telega-string-fmt-text-length (str &optional rstart rend)
@@ -1086,7 +1103,9 @@ Return nil if STR does not specify an org mode link."
           :version 1))))
 
 (defun telega-markup-markdown2-fmt (str)
-  (let ((fmt-text (telega--parseMarkdown (telega-fmt-text str)))
+  (let ((fmt-text (telega--parseTextEntities
+                   str '(:@type "textParseModeMarkdown" :version 2)))
+;         (telega--parseMarkdown (telega-fmt-text str)))
         (offset-shift 0))
     ;; Apply `telega-markdown2-backquotes-as-precode' logic
     (when telega-markdown2-backquotes-as-precode
@@ -1325,14 +1344,6 @@ Return text string with applied faces."
         (when face
           (add-face-text-property beg end face 'append text))))
     text))
-
-(defun telega--region-by-text-prop (beg prop)
-  "Return region after BEG point with text property PROP set."
-  (unless (get-text-property beg prop)
-    (setq beg (next-single-char-property-change beg prop)))
-  (let ((end (next-single-char-property-change beg prop)))
-    (when (> end beg)
-      (cons beg end))))
 
 (defun telega--split-by-text-prop (string prop &optional value-predicate)
   "Split STRING by property PROP changes.
@@ -1960,6 +1971,33 @@ integer values, then absolute value in pixels is used."
                                        :telega-text bar-str))
          (telega-emoji--image-cache-put bar-str image)
          image))))
+
+(cl-defun telega-svg-create-checkmark (checkmark-sym &key double-p
+                                                     (stroke-width 1.0))
+  "Create a checkmark."
+  (declare (indent 1))
+  (or (telega-emoji--image-cache-get checkmark-sym (telega-chars-xheight 1))
+       (let* ((xw (min (telega-chars-xwidth (string-width checkmark-sym))
+                       (telega-chars-xheight 1)))
+              (svg (telega-svg-create xw xw))
+              (check-outline (concat "M1,8 5,14 12,4"
+                                     (when double-p
+                                       "M8,14 15,4")))
+              image)
+         (telega-svg-apply-outline
+          svg check-outline (/ xw 16.0)
+          (nconc (list :fill "none" :stroke "currentColor"
+                       :stroke-linecap "round"
+                       :stroke-linejoin "round"
+                       :stroke-miterlimit (* stroke-width 3)
+                       :stroke-width stroke-width)))
+         (setq image (telega-svg-image svg :scale 1.0
+                                       :width xw :height xw
+                                       :ascent 'center
+                                       :mask 'heuristic
+                                       :telega-text checkmark-sym))
+         (telega-emoji--image-cache-put checkmark-sym image)
+         image)))
 
 (defun telega-symbol-emojify (emoji &optional image-spec)
   "Return a copy of EMOJI with  `display' property of EMOJI svg image.
@@ -2677,6 +2715,7 @@ Also return nil if resulting string is empty."
                                                            methods-for-bots)
                                          #'string=)))
       (with-help-window "*TDLib checks*"
+        (telega-ins-fmt "TDLib %s\n" telega-tdlib-min-version)
         (telega-ins "Obsolete methods:\n"
                     "----------------\n")
         (dolist (method (sort obsolete #'string<))
@@ -2722,6 +2761,7 @@ Also return nil if resulting string is empty."
           (unimplemented (seq-difference td-events
                                          (nconc telega-events events-for-bots))))
       (with-help-window "*TDLib checks*"
+        (telega-ins-fmt "TDLib %s\n" telega-tdlib-min-version)
         (telega-ins "Obsolete events:\n"
                     "----------------\n")
         (dolist (event obsolete)

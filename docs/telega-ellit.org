@@ -727,24 +727,25 @@ Customizable options for attaching media:
 - {{{user-option(telega-chat-upload-attaches-ahead, 2)}}}
 - {{{user-option(telega-chat-markup-functions, 2)}}}
 
-** Replying and editing messages
+** Replying to a message
 
-To reply/edit the message, put point on the message you want to
-reply/edit and press
-{{{where-is(telega-msg-reply,telega-msg-button-map)}}} to reply or
-{{{where-is(telega-msg-edit,telega-msg-button-map)}}} to edit.
+To reply to a message, put point on the message you want to reply to
+and press {{{where-is(telega-msg-reply,telega-msg-button-map)}}}.
 
-Aux prompt will be show just above the chatbuf prompt, such as:
-#+begin_example
-[✕]| Reply: @demash> Trying to install telega  M-x packag…
-(T)>>>
-#+end_example
+Selected region at reply time will be a reply quote.
 
-To cancel aux prompt press on the cross button, or use
+To cancel reply use
 {{{where-is(telega-chatbuf-cancel-aux,telega-chat-mode-map)}}}
-binding.
-{{{where-is(telega-chatbuf-cancel-aux,telega-chat-mode-map)}}} accepts
-{{{kbd(C-u)}}} prefix, if used then chatbuf's input is also canceled.
+binding. {{{kbd(C-u)}}} prefix to this command will clear chatbuf's
+input along with canceling reply.
+
+** Editing previously sent message
+
+To edit a given message, put point on the message you want to edit and
+press {{{where-is(telega-msg-edit,telega-msg-button-map)}}}.
+
+To cancel editing use the same command as for canceling reply to a
+message.
 
 To edit your previously sent message press
 {{{where-is(telega-chatbuf-edit-prev,telega-chat-mode-map)}}}.

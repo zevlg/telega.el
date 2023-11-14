@@ -228,12 +228,13 @@ Actually return STICKER's full type info."
   "Create image for the custom emoji using corresponding STICKER."
   (cond
    ((not img-file)
-    (telega-emoji-create-svg (telega-sticker-emoji sticker)))
+    (telega-emoji-create-svg (telega-sticker-emoji sticker) 1))
    ((equal "webp" (file-name-extension img-file))
     (telega-create-image
      img-file (when (fboundp 'imagemagick-types) 'imagemagick) nil
      :height (- (telega-chars-xheight 1) 2)
-     :scale 1.0 :ascent 'center))
+     :scale 1.0 :ascent 'center
+     :heuristic-mask t))
    (t
     ;; Embed IMG-FILE into 2x1 svg with transparent background
     (let* ((w (telega-chars-xwidth 2))
