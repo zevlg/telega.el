@@ -1776,7 +1776,7 @@ PREFIX evaluates *after* BODY.
            (telega-ins ,prefix))
          t))))
 
-(defun telega-ins--move-to-column (column &optional space-char)
+(defun telega-ins--move-to-column (column)
   "Insert space aligned to COLUMN.
 Uses `:align-to' display property."
   ;; NOTE: Use Pixel Specification for `:align-to' this will take

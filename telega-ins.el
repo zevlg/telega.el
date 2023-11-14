@@ -2765,7 +2765,7 @@ Pass all ARGS directly to `telega-ins--message0'."
 
 (defun telega-ins--message-with-chat-header (msg)
   "Inserter for message MSG showing chat header."
-  (let ((telega-chat-fill-column (- telega-root-fill-column 10 1)))
+  (let ((telega-chat-fill-column telega-root-fill-column))
     (telega-ins--with-face 'telega-msg-heading
       (telega-ins--with-attrs (list :max telega-root-fill-column
                                     :align 'left)
@@ -2968,7 +2968,8 @@ If SHORT-P is non-nil then use short version."
       (telega-ins "Delimiter"))
      (t
       (telega-ins-fmt "<TODO: %S>" (telega--tl-type imc)))
-     )))
+     ))
+  t)
 
 (cl-defun telega-ins--content-one-line (msg &key content remove-caption)
   "Insert message's MSG content for one line usage.
@@ -3156,14 +3157,14 @@ If REMOVE-CAPTION is specified, then do not insert caption."
     t))
 
 
-(defun telega-ins--chat-msg-one-line (chat msg max-width)
+(defun telega-ins--chat-msg-one-line (chat msg)
   "Insert message for the chat button usage."
 ;  (cl-assert (> max-width 11))
-  (let* ((trail (telega-ins--as-string
-                 (telega-ins--date (plist-get msg :date))))
-         (trail-width (string-width trail)))
+  (let* ((date-and-status (telega-ins--as-string
+                           (telega-ins--message-date-and-status msg)))
+         (dwidth (- telega-root-fill-column (string-width date-and-status))))
     (telega-ins--with-attrs (list :align 'left
-                                  :max (- max-width trail-width 1)
+                                  :max (- dwidth (telega-current-column))
                                   :elide t)
       ;; NOTE: Do not show username for:
       ;;;  - Saved Messages
@@ -3182,15 +3183,8 @@ If REMOVE-CAPTION is specified, then do not insert caption."
           :username-face (when sender
                            (telega-msg-sender-title-faces sender)))))
 
-    (telega-ins--move-to-column (- telega-root-fill-column trail-width))
-    (telega-ins trail)
-    (telega-ins--outgoing-status msg)))
-
-(defun telega-ins--chat-pin-msg-one-line (pin-msg)
-  "Inserter for pinned message PIN-MSG."
-  (telega-ins (telega-symbol 'pin) " ")
-  (telega-ins--chat-msg-one-line
-   (telega-msg-chat pin-msg) pin-msg (+ 8 telega-chat-fill-column)))
+    (telega-ins--move-to-column dwidth)
+    (telega-ins date-and-status)))
 
 (defun telega-ins--user-online-status (user)
   "Insert USER's online status."
@@ -3372,13 +3366,15 @@ Return t."
       (telega-ins--chat-status-icons-trail chat))
     t))
 
-(defun telega-ins--chat-status (chat &optional max-width)
+(defun telega-ins--chat-status (chat)
   "Insert CHAT status, limiting it to MAX-WIDTH."
   (let ((actions (telega-chat--actions chat))
         (call (telega-voip--by-user-id (plist-get chat :id)))
         (draft-msg (plist-get chat :draft_message))
         (last-msg (plist-get chat :last_message))
-        (chat-info (telega-chat--info chat)))
+        (chat-info (telega-chat--info chat))
+        (max-width  (- telega-root-fill-column
+                       (telega-current-column))))
     (cond ((and (telega-chat-secret-p chat)
                 (memq (telega--tl-type (plist-get chat-info :state))
                       '(secretChatStatePending secretChatStateClosed)))
@@ -3430,15 +3426,15 @@ Return t."
           (last-msg
            (if (telega-msg-match-p last-msg 'ignored)
                (telega-ins--one-lined (telega-ins--message-ignored last-msg))
-             (telega-ins--chat-msg-one-line chat last-msg max-width)))
+             (telega-ins--chat-msg-one-line chat last-msg)))
 
           ((and (telega-chat-secret-p chat)
                 (eq (telega--tl-type (plist-get chat-info :state))
                     'secretChatStateReady))
            ;; Status of the secret chat
-           (telega-ins (propertize
-                        (substring (telega--tl-get chat-info :state :@type) 15)
-                        'face 'telega-shadow)))
+           (telega-ins--with-face 'telega-shadow
+             (telega-ins
+              (substring (telega--tl-get chat-info :state :@type) 15))))
           )))
 
 (defun telega-ins--chat-compact (chat)
@@ -3451,7 +3447,7 @@ Short version."
   "Full status inserter for CHAT button in root buffer."
   (telega-ins--chat chat)
   (telega-ins "  ")
-  (telega-ins--chat-status chat (- telega-root-fill-column (current-column)))
+  (telega-ins--chat-status chat)
   t)
 
 (defun telega-ins--chat-full-2lines (chat)
@@ -3466,7 +3462,7 @@ Short version."
       (telega-ins--image avatar 1)))
 
   (telega-ins " ")
-  (telega-ins--chat-status chat (- telega-root-fill-column (current-column)))
+  (telega-ins--chat-status chat)
   t)
 
 (defun telega-ins--chat-nearby-2lines (chat)
@@ -3503,12 +3499,11 @@ Short version."
                    (/ 2.0 3)))))
     (telega-ins--chat chat)
     (telega-ins "  ")
-    (let ((max-width (- telega-root-fill-column (current-column))))
-      (telega-ins--chat-msg-one-line chat msg max-width))))
+    (telega-ins--chat-msg-one-line chat msg)))
 
 (defun telega-ins--root-msg-call (msg)
   "Inserter for call message MSG in rootbuf."
-  (let ((telega-chat-fill-column (- telega-root-fill-column 10 1))
+  (let ((telega-chat-fill-column telega-root-fill-column)
         (telega-msg-heading-with-date-and-status t))
     (telega-ins--message msg)))
 
@@ -3776,9 +3771,10 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   (telega-ins (telega-tl-str (plist-get topic :info) :name))
   )
 
-(defun telega-ins--topic-status (topic &optional max-width)
-  ;; TODO:
-  )
+(defun telega-ins--topic-status (topic)
+  (let ((max-width (- telega-root-fill-column (current-column))))
+    ;; TODO:
+    ))
 
 (defun telega-ins--topic (topic)
   "Inserter for the TOPIC button."
@@ -3803,8 +3799,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   "Full status inserter for TOPIC button in root buffer."
   (telega-ins--topic topic)
   (telega-ins "  ")
-  (telega-ins--topic-status
-   topic (- telega-root-fill-column (current-column)))
+  (telega-ins--topic-status topic)
   t)
 
 (defun telega-ins--topic-full-2lines (topic)
@@ -3819,8 +3814,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
       (telega-ins--image avatar 1)))
 
   (telega-ins " ")
-  (telega-ins--topic-status
-   topic (- telega-root-fill-column (current-column)))
+  (telega-ins--topic-status topic)
   t)
 
 (provide 'telega-ins)

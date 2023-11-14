@@ -181,11 +181,33 @@ returns precise value."
 
 (defun telega-current-column ()
   "Same as `current-column', but take into account `line-prefix' property.
-Also take into account `wrap-prefix' property."
-  (let ((spoint (line-beginning-position)))
-    (+ (current-column)
-       (or (when-let ((lwprefix (or (get-text-property spoint 'line-prefix)
-                                    (get-text-property spoint 'wrap-prefix))))
+Also take into account `wrap-prefix' property.
+Also take into account `:align-to' display property, used by
+`telega-ins--move-to-column'."
+  (let* ((bol-point (line-beginning-position))
+         (spoint (point))
+         (dpoint spoint)
+         (ccolumn nil))
+
+    ;; Search the first display with `:align-to' before the point
+    (while (and (not ccolumn)
+                (> dpoint bol-point)
+                (setq dpoint (previous-single-char-property-change
+                              dpoint 'display nil bol-point)))
+      (let ((disp (get-text-property dpoint 'display)))
+        (when (and (listp disp) (> (length disp) 2)
+                   (eq (nth 0 disp) 'space)
+                   (eq (nth 1 disp) :align-to))
+          (setq ccolumn (+ (let ((align-val (nth 2 disp)))
+                             (if (listp align-val)
+                                 ;; specified in pixels
+                                 (/ (car align-val) (telega-chars-xwidth 1))
+                               align-val))
+                           (string-width (buffer-substring dpoint spoint)))))))
+
+    (+ (or ccolumn (current-column))
+       (or (when-let ((lwprefix (or (get-text-property bol-point 'line-prefix)
+                                    (get-text-property bol-point 'wrap-prefix))))
              (string-width lwprefix))
            0))))
 

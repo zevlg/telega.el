@@ -601,12 +601,9 @@ Keep cursor position only if CHAT is visible."
     ;; Also, take into account width occupied by
     ;; `display-line-numbers-mode', see
     ;; https://github.com/zevlg/telega.el/issues/325
-    ;;
-    ;; XXX: 2 - width for outgoing status, such as ✓, ✔, ⌛, etc
-    (let* ((win-char-width (/ (- (window-width win 'pixels)
+    (let ((new-fill-column (/ (- (window-width win 'pixels)
                                  (line-number-display-width 'pixels))
-                              (telega-chars-xwidth 1)))
-           (new-fill-column (- win-char-width 2)))
+                              (telega-chars-xwidth 1))))
       (when (and new-fill-column
                  (> new-fill-column 15)   ;XXX ignore too narrow window
                  (not (eq new-fill-column telega-root-fill-column)))
@@ -2080,8 +2077,7 @@ state kinds to show. By default all kinds are shown."
   "Inserter for favorite MSG in \"Favorite Messages\" root view."
   ;; TODO: implement 2-lines message inserter
   (telega-ins "  ")
-  (telega-ins--chat-msg-one-line
-   (telega-msg-chat msg) msg (- telega-root-fill-column 2))
+  (telega-ins--chat-msg-one-line (telega-msg-chat msg) msg)
   (let ((fav (telega-msg-favorite-p msg)))
     (cl-assert fav)
     (telega-ins-prefix "\n  "
