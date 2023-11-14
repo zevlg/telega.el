@@ -1125,9 +1125,7 @@ Return nil if STR does not specify an org mode link."
           :version 1))))
 
 (defun telega-markup-markdown2-fmt (str)
-  (let ((fmt-text (telega--parseTextEntities
-                   str '(:@type "textParseModeMarkdown" :version 2)))
-;         (telega--parseMarkdown (telega-fmt-text str)))
+  (let ((fmt-text (telega--parseMarkdown (telega-fmt-text str)))
         (offset-shift 0))
     ;; Apply `telega-markdown2-backquotes-as-precode' logic
     (when telega-markdown2-backquotes-as-precode
