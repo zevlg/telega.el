@@ -408,7 +408,7 @@ Sort modes by usage of current Emacs session."
     (candidates
      (all-completions arg (telega-company--language-names)))
     (post-completion
-     (if (save-excursion (re-search-forward "^```"))
+     (if (save-excursion (re-search-forward "^```" nil 'noerror))
          (forward-char)
        (insert "\n")
        (save-excursion (insert "\n```"))))
