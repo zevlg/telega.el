@@ -1317,9 +1317,23 @@ You can send them an invite link as message instead.")
   :value "Learn more")
  ("lng_prizes_how_title"
   :value "About this giveaway")
+ ("lng_prizes_how_text"
+  :value "This giveaway is sponsored by {admins}.")
+ ("lng_prizes_how_when_finish"
+  :value "On {date}, Telegram will automatically select {winners}.")
+ ("lng_prizes_winners_new_of_one"
+  :one_value "{count} random user that joined {channel} after {start_date}"
+  :other_value "{count} random users that joined {channel} after {start_date}")
+ ("lng_prizes_how_no_admin"
+  :value "You are not eligible to participate in this giveaway because you are an admin of a participating channel ({channel}).")
+ ("lng_prizes_admins"
+  :one_value "the admins of {channel}, who acquired **{count} Telegram Premium** subscription {duration} for its followers"
+  :other_value "the admins of {channel}, who acquired **{count} Telegram Premium** subscriptions {duration} for its followers")
 
  ("lng_prizes_end_title"
   :value "Giveaway ended")
+ ("lng_prizes_you_won"
+  :value "You won a prize in this giveaway {cup}")
  ("lng_prizes_you_didnt"
   :value "You didn't win a prize in this giveaway.")
 

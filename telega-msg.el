@@ -877,6 +877,89 @@ non-nil."
                        (plist-get sponsored-msg :sponsor_chat_id) t)))
       (telega-chat--pop-to-buffer schat))))
 
+(defun telega-describe--giveaway-info (msg ga-info)
+  (with-telega-help-win "*Telegram Giveaway Info*"
+    (let* ((content (plist-get msg :content))
+           (ga-params (plist-get content :parameters))
+           (boosted-chat (telega-chat-get
+                          (plist-get ga-params :boosted_chat_id))))
+      (cl-ecase (telega--tl-type ga-info)
+        (premiumGiveawayInfoCompleted
+         (telega-ins--with-face 'bold
+           (telega-ins (telega-i18n "lng_prizes_end_title")))
+         (telega-ins "\n\n")
+         )
+
+        (premiumGiveawayInfoOngoing
+         (telega-ins--with-face 'bold
+           (telega-ins (telega-i18n "lng_prizes_how_title")))
+         (when (plist-get ga-info :is_ended)
+           (telega-ins--with-face 'telega-shadow
+             (telega-ins " (" (telega-i18n "lng_prizes_end_title") ")")))
+         (telega-ins "\n\n")
+
+         (telega-ins
+          (telega-i18n "lng_prizes_how_text"
+            :admins (telega-i18n "lng_prizes_admins"
+                      :channel (telega-ins--as-string
+                                (telega-ins--raw-button
+                                    (telega-link-props 'sender boosted-chat
+                                                       'type 'telega)
+                                  (telega-ins--msg-sender boosted-chat
+                                    :with-avatar-p t
+                                    :with-username-p t
+                                    :with-brackets-p t)))
+                      :count (plist-get content :winner_count)
+                      :duration (telega-i18n "lng_premium_gift_duration_months"
+                                  :count (plist-get content :month_count)))))
+         (telega-ins "\n\n")
+         (telega-ins-i18n "lng_prizes_how_when_finish"
+           :date (telega-ins--as-string
+                  (telega-ins--date-iso8601
+                   (plist-get ga-params :winners_selection_date)))
+           :winners (if (plist-get ga-params :only_new_members)
+                        (telega-i18n "lng_prizes_winners_new_of_one"
+                          :count (plist-get content :winner_count)
+                          :channel (telega-ins--as-string
+                                    (telega-ins--raw-button
+                                        (telega-link-props 'sender boosted-chat
+                                                           'type 'telega)
+                                      (telega-ins--msg-sender boosted-chat
+                                        :with-avatar-p t
+                                        :with-username-p t
+                                        :with-brackets-p t)))
+                          :start_date (telega-ins--as-string
+                                       (telega-ins--date-iso8601
+                                        (plist-get ga-info :creation_date))))
+                      ;; TODO
+                      ""))
+         (telega-ins "\n\n")
+
+         (let ((status (plist-get ga-info :status)))
+           (cl-ecase (telega--tl-type status)
+             (premiumGiveawayParticipantStatusDisallowedCountry
+              )
+             (premiumGiveawayParticipantStatusAdministrator
+              )
+             (premiumGiveawayParticipantStatusAlreadyWasMember
+              )
+             (premiumGiveawayParticipantStatusParticipating
+              )
+             (premiumGiveawayParticipantStatusEligible
+              )))
+         )))
+
+    (fill-region (point-min) (point-max) 'center)
+    ))
+
+(defun telega-msg-open-premium-giveaway (msg)
+  "Open show more details about premium giveaway message MSG."
+  (message "telega: Fetching giveaway info...")
+  (telega--getPremiumGiveawayInfo msg
+    (lambda (result)
+      (message "")
+      (telega-describe--giveaway-info msg result))))
+
 (defun telega-msg-emojis-only-p (msg)
   "Return non-nil if text message MSG contains only emojis."
   (when (telega-msg-match-p msg '(type Text))
@@ -940,6 +1023,8 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
      (telega-msg-open-animated-emoji msg clicked-p))
     (messageStory
      (telega-msg-open-story msg))
+    (messagePremiumGiveaway
+     (telega-msg-open-premium-giveaway msg))
 
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))

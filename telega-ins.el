@@ -86,9 +86,9 @@
     ;; beginning of button, it won't loose its leading space
     (let* ((line-width (plist-get (face-attribute 'telega-button :box)
                                   :line-width))
-           (box-width (- (if (consp line-width)
-                             (car line-width)
-                           (or line-width 0))))
+           (box-width (if (consp line-width)
+                          (car line-width)
+                        (- (or line-width 0))))
            (space (when (> box-width 0)
                     `(space (,(- (telega-chars-xwidth 1) box-width)))))
            (end (if space
@@ -1999,6 +1999,12 @@ Special messages are determined with `telega-msg-special-p'."
                   (plist-get ga-params :winners_selection_date))
            (telega-ins--with-face 'telega-shadow
              (telega-ins " (" (telega-i18n "lng_prizes_end_title") ")")))
+
+         (telega-ins "\n")
+         (telega-ins--button (concat "  "
+                                     (telega-i18n "lng_prizes_how_works")
+                                     "  ")
+           'action 'telega-msg-button--action)
          ))
 
       ;; special message
@@ -2753,7 +2759,8 @@ Pass all ARGS directly to `telega-ins--message0'."
         (when telega-ignored-messages-visible
           (telega-ins--message-ignored msg))
 
-      (funcall telega-inserter-for-msg-button msg nil
+      (funcall telega-inserter-for-msg-button msg
+               :addon-header-inserter
                (lambda (_ignoredmsg)
                  (telega-ins " ")
                  (telega-ins--with-face 'error

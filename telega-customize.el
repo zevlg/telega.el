@@ -2310,12 +2310,12 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-reply "⮪"
+(defcustom telega-symbol-reply "-'"
   "Symbol used to for replies."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-reply-quote (compose-chars ?⮪ ?”)
+(defcustom telega-symbol-reply-quote "-\""
   "Symbol used to for replies with quotes."
   :type 'string
   :group 'telega-symbol)

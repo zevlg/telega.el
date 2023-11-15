@@ -1124,8 +1124,11 @@ Return nil if STR does not specify an org mode link."
     (list :@type "textParseModeMarkdown"
           :version 1))))
 
-(defun telega-markup-markdown2-fmt (str)
-  (let ((fmt-text (telega--parseMarkdown (telega-fmt-text str)))
+(defun telega-markup-markdown2-fmt (str-or-fmt-txt)
+  (let ((fmt-text (telega--parseMarkdown
+                   (if (stringp str-or-fmt-txt)
+                       (telega-fmt-text str-or-fmt-txt)
+                     str-or-fmt-txt)))
         (offset-shift 0))
     ;; Apply `telega-markdown2-backquotes-as-precode' logic
     (when telega-markdown2-backquotes-as-precode
@@ -1164,26 +1167,33 @@ Return nil if STR does not specify an org mode link."
                                  (substring text (+ beg lang-len))))
               )))))
     (telega-fmt-text-desurrogate fmt-text)))
+(put 'telega-markup-markdown2-fmt :telega-accepts-fmt-text t)
 
 (defun telega-string-split-by-tl-entity-type (text default-markup-func)
   "Split TEXT by `:tl-entity-type'.
 Return list of list where first element is markup function, second is
 substring and rest are additional arguments to markup function."
-  (mapcar (lambda (ss)
-            (if-let ((ent-type (get-text-property 0 :tl-entity-type ss)))
-                (list #'telega-fmt-text ss ent-type)
-              (list default-markup-func ss)))
-          (telega--split-by-text-prop text :tl-entity-type
-            ;; NOTE: if markup is applied, then ignore all tl entity
-            ;; types except for custom emojis, so you can cut&paste
-            ;; text already having entity-type and apply new markup to
-            ;; it
-            (unless (eq default-markup-func #'telega-markup-as-is-fmt)
-              (lambda (tl-entity)
-                (when tl-entity
-                  (eq (telega--tl-type tl-entity)
-                      'textEntityTypeCustomEmoji))))
-            )))
+  ;; NOTE: if markup is applied, then ignore all tl entity types
+  ;; except for custom emojis and mentions, so you can cut&paste text
+  ;; already having entity-type and apply new markup to it
+  (let ((result nil)
+        (tomarkup-ss nil))
+    (seq-doseq (ss (telega--split-by-text-prop text :tl-entity-type))
+      (let ((ent-type (get-text-property 0 :tl-entity-type ss)))
+        (if (and ent-type
+                 (memq (telega--tl-type ent-type)
+                       '(textEntityTypeCustomEmoji textEntityTypeMentionName)))
+            (progn
+              (when tomarkup-ss
+                (push (list default-markup-func tomarkup-ss) result)
+                (setq tomarkup-ss nil))
+              (push (list #'telega-fmt-text ss ent-type) result))
+
+          (setq tomarkup-ss (concat tomarkup-ss ss)))))
+
+    (when tomarkup-ss
+      (push (list default-markup-func tomarkup-ss) result))
+    (nreverse result)))
 
 (defun telega-string-split-by-markup (text &optional default-markup-func)
   "Split TEXT by markups.
@@ -1236,9 +1246,12 @@ second is substring."
 DEFAULT-MARKUP-FUNC is passed directly to
 `telega-string-split-by-markup', this markup function is used for TEXT
 parts without explicit markup."
-  (apply #'telega-fmt-text-concat
-         (mapcar (apply-partially #'apply #'funcall)
-                 (telega-string-split-by-markup text default-markup-func))))
+  (if (get default-markup-func :telega-accepts-fmt-text)
+      (funcall default-markup-func (telega-string-fmt-text text))
+
+    (apply #'telega-fmt-text-concat
+           (mapcar (apply-partially #'apply #'funcall)
+                   (telega-string-split-by-markup text default-markup-func)))))
 
 (defun telega--entity-for-substring (ent from to)
   "Return new entity for `telega-fmt-text-substring'."

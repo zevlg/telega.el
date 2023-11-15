@@ -27,12 +27,26 @@
 ;; {{{where-is(telega-describe-message,telega-msg-button-map)}}} to
 ;; get detailed description of the message at point.
 ;;
+;; ~visual-line-mode~ and ~visual-fill-column-mode~ are enabled by
+;; default in chat buffers, to word-wrap and fill message content. You
+;; might want to tune ~visual-fill-column-extra-text-width~ custom
+;; option if message's header does not fit into
+;; ~telega-chat-fill-column~ for some reason.
+;;
+;; Avoid setting ~truncate-lines~ to non-nil value in the chatbufs
+;; (and using modes that does so), unless you know what you are doing,
+;; you will get confusing results.
+;;
 ;; Note for
 ;; [[https://en.wikipedia.org/wiki/Right-to-left_script][RTL]] users:
 ;; unlike rootbuf, chatbufs disables bidirectional display reordering
 ;; by default, so RTL text will look reversed in chatbufs.  To enable
 ;; bidi in chatbufs customize your
 ;; ~telega-chat-bidi-display-reordering~ user option.
+;;
+;; Important customizable options:
+;; - {{{user-option(telega-chat-fill-column, 2)}}}
+;; - {{{user-option(telega-chat-use-date-breaks-for, 2)}}}
 
 ;;; Code:
 (require 'cl-lib)
@@ -56,6 +70,8 @@
 (require 'telega-sort)
 (require 'telega-filter)
 (require 'telega-modes)
+
+(require 'visual-fill-column)
 
 ;; shutup compiler
 (defvar company-backends)
@@ -1460,9 +1476,9 @@ new Chat buffers.")
     (define-key map (kbd "C-l") 'telega-chatbuf-recenter-1)
 
     ;; C-M-[ - cancels edit/reply
-    (define-key map (kbd "\e\e") 'telega-chatbuf-cancel-aux)
-    (define-key map (kbd "C-c C-k") 'telega-chatbuf-cancel-aux)
-    (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-aux)
+    (define-key map (kbd "\e\e") 'telega-chatbuf-cancel-dwim)
+    (define-key map (kbd "C-c C-k") 'telega-chatbuf-cancel-dwim)
+    (define-key map (kbd "C-M-c") 'telega-chatbuf-cancel-dwim)
     (define-key map (kbd "C-M-a") 'telega-chatbuf-beginning-of-thing)
 
     (define-key map (kbd "C-c ?") 'telega-describe-chat)
@@ -2383,10 +2399,16 @@ Global chat bindings:
   (when (featurep 'dnd)
     (setq-local dnd-protocol-alist
                 (append telega-chat-dnd-protocol-alist dnd-protocol-alist)))
-  
+
   ;; To make `M-x visual-fill-column-mode RET' to work out-of-box
   (setq fill-column telega-chat-fill-column)
   (visual-line-mode 1)
+
+  ;; Enable filling by default to resemble old style telega formatting
+  ;; We give a little bit extra space for filling column ot accomodate
+  ;; inaccuracies in message header width calculation
+  (setq visual-fill-column-extra-text-width '(0 . 2))
+  (visual-fill-column-mode 1)
 
   (cursor-sensor-mode 1)
   (cursor-intangible-mode 1)
@@ -3737,6 +3759,16 @@ CALLBACK if non-nil, then called with total number of loaded messages."
       (telega-chatbuf--load-history (plist-get (telega-chatbuf--last-msg) :id)
           (- 1 telega-chat-history-limit) telega-chat-history-limit))))
 
+(defun telega-chatbuf-cancel-markup (begin end)
+  "Cancel markup for the given region in the chatbuf input."
+  (interactive (if (region-active-p)
+                   (list (region-beginning) (region-end))
+                 (list telega-chatbuf--input-marker (point-max))))
+  (unless (and (>= begin telega-chatbuf--input-marker)
+               (> end telega-chatbuf--input-marker))
+    (user-error "telega: Can cancel markup only inside chatbuf input"))
+  (remove-text-properties begin end '(face nil :tl-entity-type nil)))
+
 (defun telega-chatbuf-cancel-aux (&optional arg)
   "Cancel current aux prompt.
 If prefix ARG is given, also delete input."
@@ -3745,13 +3777,26 @@ If prefix ARG is given, also delete input."
   (when arg
     (telega-chatbuf--input-delete)))
 
+(defun telega-chatbuf-cancel-dwim ()
+  "Cancel in Do What I Mean manner.
+Call `telega-chatbuf-cancel-markup' if region is active.
+Call `telega-chatbuf-cancel-aux' if replying/editing to a message.
+Otherwise clear chatbuf input."
+  (interactive)
+  (cond ((region-active-p)
+         (call-interactively #'telega-chatbuf-cancel-markup))
+        (telega-chatbuf--aux-plist
+         (call-interactively #'telega-chatbuf-cancel-aux))
+        (t
+         (telega-chatbuf--input-delete))))
+
 (defun telega-help-message--cancel-aux (what)
   "Show help about canceling reply/edit in echo area."
   (telega-help-message what "%s to cancel %S"
     (telega-keys-description 'telega-chatbuf-cancel-aux telega-chat-mode-map)
     what))
 
-(defun telega-chatbuf--input-imcs (markup-name)
+(defun telega-chatbuf--input-imcs (markup-name &optional input)
   "Convert input to input message contents list.
 MARKUP-NAME names a markup function from
 `telega-chat-markup-functions' to be used for input formatting."
@@ -3759,7 +3804,7 @@ MARKUP-NAME names a markup function from
                  (assoc markup-name telega-chat-markup-functions)))
   (let ((markup-function (cdr (assoc markup-name telega-chat-markup-functions)))
         (attaches (telega--split-by-text-prop
-                   (telega-chatbuf-input-string) 'telega-attach))
+                      (or input (telega-chatbuf-input-string)) 'telega-attach))
         (disable-webpage-preview telega-chat-send-disable-webpage-preview)
         result)
     (while attaches
@@ -3870,12 +3915,12 @@ use.  For example `C-u RET' will use
                               telega-chat-input-markups)
                        (car telega-chat-input-markups))))
 
-  (let ((input (telega-chatbuf-input-string))
-        (imcs (telega-chatbuf--input-imcs markup-name))
-        (replying-imr (telega-chatbuf-replying-imr))
-        (editing-msg (telega-chatbuf-editing-msg))
-        (options nil)
-        (send-imcs nil))
+  (let* ((input (telega-chatbuf-input-string))
+         (imcs (telega-chatbuf--input-imcs markup-name input))
+         (replying-imr (telega-chatbuf-replying-imr))
+         (editing-msg (telega-chatbuf-editing-msg))
+         (options nil)
+         (send-imcs nil))
     ;; NOTE: Allow removing captions, see
     ;; https://github.com/zevlg/telega.el/issues/252
     (when (and (null imcs)

@@ -2897,6 +2897,15 @@ Mode activates for
          :limit (or limit 100))
    callback))
 
+(defun telega--getPremiumGiveawayInfo (msg &optional callback)
+  "Get information about a Telegram Premium giveaway."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getPremiumGiveawayInfo"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))
+   callback))
+
 (provide 'telega-tdlib)
 
 ;;; telega-tdlib.el ends here

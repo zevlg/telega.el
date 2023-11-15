@@ -636,10 +636,6 @@ For other sorting keybindings see below.
 
 #+ELLIT-INCLUDE: ../telega-chat.el :label commentary
 
-Important customizable options:
-- {{{user-option(telega-chat-fill-column, 2)}}}
-- {{{user-option(telega-chat-use-date-breaks-for, 2)}}}
-
 ** Chatbuf fast navigation
 
 {{{kbd(M-g)}}} prefix in chatbuf is used to jump across various chat
@@ -735,7 +731,7 @@ and press {{{where-is(telega-msg-reply,telega-msg-button-map)}}}.
 Selected region at reply time will be a reply quote.
 
 To cancel reply use
-{{{where-is(telega-chatbuf-cancel-aux,telega-chat-mode-map)}}}
+{{{where-is(telega-chatbuf-cancel-dwim,telega-chat-mode-map)}}}
 binding. {{{kbd(C-u)}}} prefix to this command will clear chatbuf's
 input along with canceling reply.
 

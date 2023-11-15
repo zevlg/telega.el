@@ -1608,7 +1608,8 @@ Return t."
         (v-sym (gensym "vsym"))
         (lvars-sym (gensym "lvars")))
     `(if enable-multibyte-characters
-         ;; Fast version
+         ;; Fast version.  ARGUABLE. this version degradates on large
+         ;; buffers
          (let ((,point-sym (point)))
            (with-telega-buffer-modify
             (unwind-protect

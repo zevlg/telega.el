@@ -601,9 +601,9 @@ Keep cursor position only if CHAT is visible."
     ;; Also, take into account width occupied by
     ;; `display-line-numbers-mode', see
     ;; https://github.com/zevlg/telega.el/issues/325
-    (let ((new-fill-column (/ (- (window-width win 'pixels)
-                                 (line-number-display-width 'pixels))
-                              (telega-chars-xwidth 1))))
+    (let ((new-fill-column (1- (/ (- (window-width win 'pixels)
+                                     (line-number-display-width 'pixels))
+                                  (telega-chars-xwidth 1)))))
       (when (and new-fill-column
                  (> new-fill-column 15)   ;XXX ignore too narrow window
                  (not (eq new-fill-column telega-root-fill-column)))

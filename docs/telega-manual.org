@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.210)
+#+title: Telega Manual (v0.8.212)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1886,6 +1886,16 @@ to send.  Press
 @@html:<kbd>@@i@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <describe>@@html:</kbd>@@ (~telega-describe-message~) to
 get detailed description of the message at point.
 
+~visual-line-mode~ and ~visual-fill-column-mode~ are enabled by
+default in chat buffers, to word-wrap and fill message content. You
+might want to tune ~visual-fill-column-extra-text-width~ custom
+option if message's header does not fit into
+~telega-chat-fill-column~ for some reason.
+
+Avoid setting ~truncate-lines~ to non-nil value in the chatbufs
+(and using modes that does so), unless you know what you are doing,
+you will get confusing results.
+
 Note for
 [[https://en.wikipedia.org/wiki/Right-to-left_script][RTL]] users:
 unlike rootbuf, chatbufs disables bidirectional display reordering
@@ -2194,7 +2204,7 @@ and press @@html:<kbd>@@r@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <reply>@@
 Selected region at reply time will be a reply quote.
 
 To cancel reply use
-@@html:<kbd>@@C-c C-k@@html:</kbd>@@, @@html:<kbd>@@C-M-c@@html:</kbd>@@, @@html:<kbd>@@M-ESC@@html:</kbd>@@ (~telega-chatbuf-cancel-aux~)
+@@html:<kbd>@@C-c C-k@@html:</kbd>@@, @@html:<kbd>@@C-M-c@@html:</kbd>@@, @@html:<kbd>@@M-ESC@@html:</kbd>@@ (~telega-chatbuf-cancel-dwim~)
 binding. @@html:<kbd>@@C-u@@html:</kbd>@@ prefix to this command will clear chatbuf's
 input along with canceling reply.
 
