@@ -125,6 +125,9 @@
     ("RUB" . "₽"))
   "Alist of currency symbols.")
 
+(defvar telega--column-offset 0
+  "Additional offset for the `telega-currency-column'.")
+
 (defconst telega-symbol-nbsp "\u00a0"
   "Non-breakable space.")
 
@@ -1734,7 +1737,6 @@ Return what BODY returns."
 
 (defmacro telega-ins--line-wrap-prefix (prefix &rest body)
   "Execute BODY adding `line-prefix' and `wrap-prefix' properties.
-PREFIX evaluates *after* BODY.
 `line-prefix' and `wrap-prefix' are contatenated on subsequent calls to
 `telega-ins--line-wrap-prefix'."
   (declare (indent 1))
@@ -1743,14 +1745,15 @@ PREFIX evaluates *after* BODY.
         (start-sym (gensym "start"))
         (region-sym (gensym "region")))
     `(let* ((,start-sym (point))
-            ,lwprefix-sym ,lwprefix-props-sym ,region-sym)
+            (,lwprefix-sym ,prefix)
+            (,lwprefix-props-sym (list :telega-lwprefix ,lwprefix-sym
+                                       'line-prefix ,lwprefix-sym
+                                       'wrap-prefix ,lwprefix-sym))
+            (telega--column-offset (+ telega--column-offset
+                                      (string-width ,lwprefix-sym)))
+            ,region-sym)
        (prog1
            (progn ,@body)
-         (setq ,lwprefix-sym ,prefix
-               ,lwprefix-props-sym (list :telega-lwprefix ,lwprefix-sym
-                                         'line-prefix ,lwprefix-sym
-                                         'wrap-prefix ,lwprefix-sym))
-
          (while (setq ,region-sym (telega--region-by-text-prop
                                    ,start-sym 'line-prefix (point)))
            (add-text-properties ,start-sym (car ,region-sym)

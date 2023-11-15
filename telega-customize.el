@@ -2222,10 +2222,9 @@ If nil, then user's online status is not displayed."
     (vector #b11111111) nil nil '(top periodic)))
 
 (defcustom telega-symbol-mark
-  (if (fboundp 'define-fringe-bitmap)
-      (propertize "*" 'display  '(left-fringe telega-mark error))
-    (propertize "*" 'face 'error))
+  (propertize " " 'face 'custom-invalid)
   "*Symbol used to denote marked messages/chats."
+  :package-version '(telega . "0.8.213")
   :type 'string
   :group 'telega-symbol)
 
@@ -2261,12 +2260,9 @@ If nil, then user's online status is not displayed."
             )))
 
 (defcustom telega-symbol-mention-mark
-  (if (fboundp 'define-fringe-bitmap)
-      (propertize "\u200B" 'display
-                  '(left-fringe telega-mention telega-mention-count))
-    (propertize "\u200B" 'face 'telega-mention-count))
+  (propertize "@" 'face 'telega-mention-count)
   "*Symbol used to denote massages which contains unread mention."
-  :package-version '(telega . "0.6.30")
+  :package-version '(telega . "0.8.213")
   :type 'string
   :group 'telega-symbol)
 

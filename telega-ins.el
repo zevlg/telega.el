@@ -2661,7 +2661,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            ;; inside `telega--entity-to-properties'
            (telega-msg-contains-unread-mention
             (plist-get msg :contains_unread_mention))
-           ccol)
+           content-prefix)
       (if (and no-header
                (zerop (plist-get msg :edit_date))
                (zerop (plist-get msg :via_bot_user_id)))
@@ -2681,16 +2681,29 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
           (telega-ins--image avatar 1
                              :no-display-if (not telega-chat-show-avatars))))
 
-      (setq ccol (telega-current-column))
+      ;; NOTE: we use `current-column' because line/wrap prefix could
+      ;; be already in use by marked message for example
+      (setq content-prefix (make-string (current-column) ?\s))
       (telega-ins--fwd-info-inline fwd-info)
       ;; NOTE: Three lines avatars in "Replies" chat
       (when msg-for-replies-p
         (telega-ins--image avatar 2
                            :no-display-if (not telega-chat-show-avatars)))
 
-      (telega-ins--line-wrap-prefix (make-string ccol ?\s)
-        (telega-ins--msg-reply-inline msg)
+      ;; NOTE: `line-prefix' applies only if inserting at the
+      ;; beginning of the line, inline reply can be inserted in two
+      ;; different ways:
+      ;;  1. Following the avatar (no fwd info)
+      ;;  2. At the beginning of the line
+      ;; 
+      ;; We need `telega-current-column' to return correct values in
+      ;; both cases
+      (if (bolp)
+          (telega-ins--line-wrap-prefix content-prefix
+            (telega-ins--msg-reply-inline msg))
+        (telega-ins--msg-reply-inline msg))
 
+      (telega-ins--line-wrap-prefix content-prefix
         (telega-ins--content msg)
 
         (telega-ins-prefix "\n"
@@ -2735,15 +2748,14 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   "Inserter for the message MSG.
 Pass all ARGS directly to `telega-ins--message0'."
   (declare (indent 1))
-  (if (telega-msg-marked-p msg)
-      (telega-ins--line-wrap-prefix telega-symbol-mark
-        (apply #'telega-ins--message0 msg args))
-
-    (when (plist-get msg :contains_unread_mention)
-      (telega-ins telega-symbol-mention-mark))
-    (when (telega-msg-match-p msg 'unread-reactions)
-      (telega-ins telega-symbol-reaction-mark))
-    (apply #'telega-ins--message0 msg args)))
+  (telega-ins--line-wrap-prefix
+      (concat (when (telega-msg-marked-p msg)
+                telega-symbol-mark)
+              (when (plist-get msg :contains_unread_mention)
+                telega-symbol-mention-mark))
+      (when (telega-msg-match-p msg 'unread-reactions)
+        (telega-ins telega-symbol-reaction-mark))
+      (apply #'telega-ins--message0 msg args)))
 
 (defun telega-ins--message-no-header (msg)
   "Insert message MSG without header."

@@ -206,6 +206,7 @@ Also take into account `:align-to' display property, used by
                            (string-width (buffer-substring dpoint spoint)))))))
 
     (+ (or ccolumn (current-column))
+       telega--column-offset
        (or (when-let ((lwprefix (or (get-text-property bol-point 'line-prefix)
                                     (get-text-property bol-point 'wrap-prefix))))
              (string-width lwprefix))
@@ -1173,16 +1174,18 @@ Return nil if STR does not specify an org mode link."
   "Split TEXT by `:tl-entity-type'.
 Return list of list where first element is markup function, second is
 substring and rest are additional arguments to markup function."
-  ;; NOTE: if markup is applied, then ignore all tl entity types
-  ;; except for custom emojis and mentions, so you can cut&paste text
-  ;; already having entity-type and apply new markup to it
   (let ((result nil)
         (tomarkup-ss nil))
     (seq-doseq (ss (telega--split-by-text-prop text :tl-entity-type))
       (let ((ent-type (get-text-property 0 :tl-entity-type ss)))
-        (if (and ent-type
-                 (memq (telega--tl-type ent-type)
-                       '(textEntityTypeCustomEmoji textEntityTypeMentionName)))
+        ;; NOTE: if markup is applied, then ignore all tl entity types
+        ;; except for custom emojis and mentions, so you can cut&paste
+        ;; text already having entity-type and apply new markup to it
+        (if (or (eq default-markup-func #'telega-markup-as-is-fmt)
+                (and ent-type
+                     (memq (telega--tl-type ent-type)
+                           '(textEntityTypeCustomEmoji
+                             textEntityTypeMentionName))))
             (progn
               (when tomarkup-ss
                 (push (list default-markup-func tomarkup-ss) result)

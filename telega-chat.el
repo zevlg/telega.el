@@ -2407,7 +2407,7 @@ Global chat bindings:
   ;; Enable filling by default to resemble old style telega formatting
   ;; We give a little bit extra space for filling column ot accomodate
   ;; inaccuracies in message header width calculation
-  (setq visual-fill-column-extra-text-width '(0 . 2))
+  (setq visual-fill-column-extra-text-width '(0 . 1))
   (visual-fill-column-mode 1)
 
   (cursor-sensor-mode 1)
