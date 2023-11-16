@@ -2690,20 +2690,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
         (telega-ins--image avatar 2
                            :no-display-if (not telega-chat-show-avatars)))
 
-      ;; NOTE: `line-prefix' applies only if inserting at the
-      ;; beginning of the line, inline reply can be inserted in two
-      ;; different ways:
-      ;;  1. Following the avatar (no fwd info)
-      ;;  2. At the beginning of the line
-      ;; 
-      ;; We need `telega-current-column' to return correct values in
-      ;; both cases
-      (if (bolp)
-          (telega-ins--line-wrap-prefix content-prefix
-            (telega-ins--msg-reply-inline msg))
-        (telega-ins--msg-reply-inline msg))
-
       (telega-ins--line-wrap-prefix content-prefix
+        (telega-ins--msg-reply-inline msg)
         (telega-ins--content msg)
 
         (telega-ins-prefix "\n"
