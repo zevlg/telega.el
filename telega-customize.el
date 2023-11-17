@@ -498,11 +498,11 @@ See `telega-avatar--create-image' for more info."
                                   (number :tag "Margin factar")))
   :group 'telega)
 
-(defcustom telega-avatar-one-line-in-msg-header nil
-  "Non-nil to use one line avatar version in the message header.
-Workaround avatar gaps."
+(defcustom telega-avatar-workaround-gaps-for nil
+  "Chat temex for chats to enable workaround for gaps in the avatars."
   :package-version '(telega . "0.8.215")
-  :type 'boolean
+  :type 'chat-temex
+  :options '((return t))
   :group 'telega)
 
 (defcustom telega-avatar-text-compose-chars nil
@@ -1861,7 +1861,7 @@ Car of the cons cell is the argument to recenter.
 In case message is still not fully observable after applying it,
 fallback to cdr argument."
   :package-version '(telega . "0.8.215")
-  :type '(cons integer)
+  :type '(cons integer integer)
   :group 'telega-msg)
 
 
@@ -2233,65 +2233,6 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
-(when (fboundp 'define-fringe-bitmap)
-  (define-fringe-bitmap 'telega-mark
-    (vector #b11111111) nil nil '(top periodic)))
-
-(defcustom telega-symbol-mark
-  (propertize " " 'face 'custom-invalid)
-  "*Symbol used to denote marked messages/chats."
-  :package-version '(telega . "0.8.213")
-  :type 'string
-  :group 'telega-symbol)
-
-(when (fboundp 'define-fringe-bitmap)
-  (define-fringe-bitmap 'telega-mention
-    (vector #b01111110
-            #b01111110
-            #b11000011
-            #b11000011
-            #b11001111
-            #b10011111
-            #b10110011
-            #b10110011
-            #b10011111
-            #b11001110
-            #b11000000
-            #b11000001
-            #b01111111
-            #b01111110))
-
-  (define-fringe-bitmap 'telega-reaction
-    (vector #b011000110
-            #b111101111
-            #b111111111
-            #b111111111
-            #b011111110
-            #b011111110
-            #b001111100
-            #b001111100
-            #b000111000
-            #b000111000
-            #b000010000
-            )))
-
-(defcustom telega-symbol-mention-mark
-  (propertize "@" 'face 'telega-mention-count)
-  "*Symbol used to denote massages which contains unread mention."
-  :package-version '(telega . "0.8.213")
-  :type 'string
-  :group 'telega-symbol)
-
-(defcustom telega-symbol-reaction-mark
-  (if (fboundp 'define-fringe-bitmap)
-      (propertize "\u200B" 'display
-                  '(left-fringe telega-reaction telega-mention-count))
-    (propertize "\u200B" 'face 'telega-mention-count))
-  "*Symbol used to denote massages which contains unread reaction."
-  :package-version '(telega . "0.8.13")
-  :type 'string
-  :group 'telega-symbol)
-
 (defcustom telega-symbol-alarm "⏲️"
   "*Symbol used for scheduled messages."
   :type 'string
@@ -2447,6 +2388,62 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
+;; Symbols marking messages of some sort
+(when (fboundp 'define-fringe-bitmap)
+  (define-fringe-bitmap 'telega-mark
+    (vector #b11111111) nil nil '(top periodic)))
+
+(defcustom telega-symbol-mark
+  (propertize " " 'face 'custom-invalid)
+  "*Symbol used to denote marked messages/chats."
+  :package-version '(telega . "0.8.213")
+  :type 'string
+  :group 'telega-symbol)
+
+(when (fboundp 'define-fringe-bitmap)
+  (define-fringe-bitmap 'telega-mention
+    (vector #b01111110
+            #b01111110
+            #b11000011
+            #b11000011
+            #b11001111
+            #b10011111
+            #b10110011
+            #b10110011
+            #b10011111
+            #b11001110
+            #b11000000
+            #b11000001
+            #b01111111
+            #b01111110))
+
+  (define-fringe-bitmap 'telega-reaction
+    (vector #b011000110
+            #b111101111
+            #b111111111
+            #b111111111
+            #b011111110
+            #b011111110
+            #b001111100
+            #b001111100
+            #b000111000
+            #b000111000
+            #b000010000
+            )))
+
+(defcustom telega-symbol-mention-mark
+  (propertize "@" 'face 'telega-mention-count)
+  "*Symbol used to mark messages which contains unread mention."
+  :package-version '(telega . "0.8.213")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-reaction-mark telega-symbol-reaction
+  "*Symbol used to mark messages which contains unread reaction."
+  :package-version '(telega . "0.8.13")
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbols-emojify
   '((verified (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "verified.svg" 2)))
@@ -2487,6 +2484,8 @@ Used in one line message inserter."
                 (telega-etc-file-create-image "symbols/premium.svg" 2)))
     (reaction (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/reaction.svg" 2)))
+    (reaction-mark (when (and telega-use-images (image-type-available-p 'svg))
+                     (telega-etc-file-create-image "symbols/reaction.svg" 2)))
     (reply (when (and telega-use-images (image-type-available-p 'svg))
              (telega-etc-file-create-image "symbols/reply.svg" 2)))
     (reply-quote (when (and telega-use-images (image-type-available-p 'svg))

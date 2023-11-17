@@ -2657,15 +2657,23 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                        (telega-msg-sender-avatar-image-three-lines sender)
                      (telega-msg-sender-avatar-image sender)))
            (awidth (length (telega-image--telega-text avatar 0)))
+           (gaps-workaround-p
+            (telega-chatbuf-match-p telega-avatar-workaround-gaps-for))
            ;; NOTE: `telega-msg-contains-unread-mention' is used
-           ;; inside `telega--entity-to-properties'
+           ;; inside `telega--entity-type-to-text-props'
            (telega-msg-contains-unread-mention
             (plist-get msg :contains_unread_mention))
+           (l1width (if telega-msg-contains-unread-mention
+                        (string-width (telega-symbol 'mention-mark))
+                      0))
            content-prefix)
+
       (if (and no-header
                (zerop (plist-get msg :edit_date))
                (zerop (plist-get msg :via_bot_user_id)))
-          (telega-ins (make-string awidth ?\s))
+          (telega-ins--line-wrap-prefix (when telega-msg-contains-unread-mention
+                                          (telega-symbol 'mention-mark))
+            (telega-ins (make-string awidth ?\s)))
 
         ;; Show user profile when clicked on avatar, header
         (telega-ins--with-props
@@ -2675,30 +2683,55 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                             ;; - via @bot link uses :action
                             (or (telega-button--action button)
                                 (telega-describe-msg-sender sender))))
-          (telega-ins--image avatar 0
-                             :no-display-if (not telega-chat-show-avatars))
-          (telega-ins--message-header msg chat sender addon-header-inserter)
-          (telega-ins--image avatar 1
-                             :no-display-if (not telega-chat-show-avatars))))
+          (telega-ins--line-wrap-prefix (when telega-msg-contains-unread-mention
+                                          (telega-symbol 'mention-mark))
+            (telega-ins--image
+             avatar (if gaps-workaround-p
+                        (list 0 0 (telega-chars-xheight 2))
+                        0)
+             :no-display-if (not telega-chat-show-avatars))
+            (telega-ins--message-header msg chat sender addon-header-inserter))
 
-      ;; NOTE: we use `current-column' because line/wrap prefix could
-      ;; be already in use by marked message for example
-      (setq content-prefix (make-string (current-column) ?\s))
-      (telega-ins--fwd-info-inline fwd-info)
+          (unless gaps-workaround-p
+            (telega-ins--line-wrap-prefix (make-string l1width ?\s)
+              (telega-ins--image
+               avatar 1
+               :no-display-if (not telega-chat-show-avatars))))))
+
+      (setq content-prefix (make-string (+ awidth l1width) ?\s))
+      (telega-ins--line-wrap-prefix content-prefix
+        (telega-ins--fwd-info-inline fwd-info))
       ;; NOTE: Three lines avatars in "Replies" chat
       (when msg-for-replies-p
-        (telega-ins--image avatar 2
-                           :no-display-if (not telega-chat-show-avatars)))
+        (unless gaps-workaround-p
+          (telega-ins--line-wrap-prefix (make-string l1width ?\s)
+            (telega-ins--image
+             avatar 2
+             :no-display-if (not telega-chat-show-avatars)))))
 
       (telega-ins--line-wrap-prefix content-prefix
         (telega-ins--msg-reply-inline msg)
         (telega-ins--content msg)
 
         (telega-ins-prefix "\n"
-          (telega-ins--msg-sending-state-failed msg))
-        (when (telega-msg-match-p msg telega-msg-temex-show-reactions)
+          (telega-ins--msg-sending-state-failed msg)))
+
+      (when (telega-msg-match-p msg telega-msg-temex-show-reactions)
+        (telega-ins--line-wrap-prefix
+            (if (telega-msg-match-p msg 'unread-reactions)
+                (let ((reaction-prefix
+                       (propertize (telega-symbol 'reaction-mark)
+                                   'face (if (telega-chat-muted-p chat)
+                                             'telega-muted-count
+                                           'telega-unmuted-count))))
+                  (concat reaction-prefix
+                          (substring content-prefix
+                                     (string-width reaction-prefix))))
+              content-prefix)
           (telega-ins-prefix "\n"
-            (telega-ins--msg-reaction-list msg)))
+            (telega-ins--msg-reaction-list msg))))
+
+      (telega-ins--line-wrap-prefix content-prefix
         (telega-ins-prefix "\n"
           (telega-ins--reply-markup msg))
         (telega-ins-prefix "\n"
@@ -2736,19 +2769,15 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
   "Inserter for the message MSG.
 Pass all ARGS directly to `telega-ins--message0'."
   (declare (indent 1))
-  (telega-ins--line-wrap-prefix
-      (concat (when (telega-msg-marked-p msg)
-                telega-symbol-mark)
-              (when (plist-get msg :contains_unread_mention)
-                telega-symbol-mention-mark))
-      (when (telega-msg-match-p msg 'unread-reactions)
-        (telega-ins telega-symbol-reaction-mark))
-      (apply #'telega-ins--message0 msg args)))
+  (if (telega-msg-marked-p msg)
+      (telega-ins--line-wrap-prefix (telega-symbol 'mark)
+        (apply #'telega-ins--message0 msg args))
+
+    (apply #'telega-ins--message0 msg args)))
 
 (defun telega-ins--message-no-header (msg)
   "Insert message MSG without header."
-  (funcall telega-inserter-for-msg-button msg
-           :no-header t))
+  (funcall telega-inserter-for-msg-button msg :no-header t))
 
 (defun telega-ins--message-deleted (msg)
   "Inserter for deleted message MSG."
@@ -3607,10 +3636,12 @@ MSG-REACTION is the `messageReaction' TDLib object."
        (telega-msg-sender-avatar-image-one-line (telega-msg-sender rs))))
     t))
 
-(defun telega-ins--msg-reaction-list (msg)
+(defun telega-ins--msg-reaction-list (msg &optional reactions)
   "Inserter for the message's MSG reactions."
   (let (ret)
-    (seq-doseq (msg-reaction (telega--tl-get msg :interaction_info :reactions))
+    (unless reactions
+      (setq reactions (telega--tl-get msg :interaction_info :reactions)))
+    (seq-doseq (msg-reaction reactions)
       (when ret
         (telega-ins "  "))
       (telega-ins--raw-button

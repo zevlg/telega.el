@@ -153,13 +153,12 @@ chats matching this chat filter."
           :ascent center :height ,(telega-chars-xheight 1)
           ,@props))
 
-(defun telega-url-shorten--e-t-p (old-e-t-p entity text)
+(defun telega-url-shorten--e-t-p (old-e-t-p ent-type text)
   "Change resulting `telega-display' property by shortening URL."
-  (let* ((result (funcall old-e-t-p entity text))
+  (let* ((result (funcall old-e-t-p ent-type text))
          (result-td (plist-get result 'telega-display)))
     (when (and result-td
-               (eq 'textEntityTypeUrl
-                   (telega--tl-type (plist-get entity :type))))
+               (eq 'textEntityTypeUrl (telega--tl-type ent-type)))
       (when-let ((pmatch (cdr (cl-find result-td telega-url-shorten-regexps
                                        :test (lambda (res pattern)
                                                (string-match
@@ -184,9 +183,9 @@ chats matching this chat filter."
   "Toggle URLs shortening mode."
   :init-value nil :group 'telega-modes
   (if telega-url-shorten-mode
-      (advice-add 'telega--entity-to-properties
+      (advice-add 'telega--entity-type-to-text-props
                   :around #'telega-url-shorten--e-t-p)
-    (advice-remove 'telega--entity-to-properties
+    (advice-remove 'telega--entity-type-to-text-props
                    #'telega-url-shorten--e-t-p)))
 
 (defun telega-url-shorten-mode--maybe (&optional arg)

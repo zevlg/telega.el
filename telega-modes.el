@@ -1816,18 +1816,19 @@ Or nil if translation is not needed."
              telega-chatbuf-language-code)
     (let ((attaches (telega--split-by-text-prop
                      (telega-chatbuf-input-string) 'telega-attach)))
-      (telega-chatbuf--input-delete)
-      (dolist (text attaches)
-        (if (or (get-text-property 0 'telega-attach text)
-                (get-text-property 0 'telega-translated text))
-            (insert text)
+      (save-excursion
+        (telega-chatbuf--input-delete)
+        (dolist (text attaches)
+          (if (or (get-text-property 0 'telega-attach text)
+                  (get-text-property 0 'telega-translated text))
+              (insert text)
 
-          ;; Plain text, that needs to be translated
-          (setq telega-auto-translate--pending-translations
-                (cons
-                 (telega-auto-translate--chatbuf-ins-translation text)
-                 telega-auto-translate--pending-translations))))
-      telega-auto-translate--pending-translations)))
+            ;; Plain text, that needs to be translated
+            (setq telega-auto-translate--pending-translations
+                  (cons
+                   (telega-auto-translate--chatbuf-ins-translation text)
+                   telega-auto-translate--pending-translations))))
+        telega-auto-translate--pending-translations))))
 
 (defun telega-auto-translate--chatbuf-input-send (origfun &rest args)
   "Send chatbuf input translating text."

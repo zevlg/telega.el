@@ -117,7 +117,7 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_polls_solution_title"
   :value "Explanation")
  ("lng_polls_view_results"
- :value "View results")
+  :value "View results")
 
  ("lng_deleted"
   :value "Deleted Account")
@@ -1059,7 +1059,7 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
  ("lng_media_file_title"
   :value "Files")
  ("lng_media_save_progress"
- :value "{ready} of {total} {mb}")
+  :value "{ready} of {total} {mb}")
 
  ;; media types
  ("lng_in_dlg_photo"
@@ -1215,7 +1215,7 @@ You can send them an invite link as message instead.")
 
  ;; Connected websites
  ("lng_sessions_browser"
- :value "Browser")
+  :value "Browser")
  ("lng_settings_connected_title"
   :value "Connected websites")
  ("lng_settings_logged_in_title"
@@ -1350,4 +1350,29 @@ You can send them an invite link as message instead.")
  ;; Game
  ("lng_game_tag"
   :value "Game")
+
+ ("lng_menu_formatting"
+  :value "Formatting")
+ ("lng_menu_formatting_bold"
+  :value "Bold")
+ ("lng_menu_formatting_clear"
+  :value "Clear formatting")
+ ("lng_menu_formatting_italic"
+  :value "Italic")
+ ("lng_menu_formatting_spoiler"
+  :value "Spoiler")
+ ("lng_menu_formatting_underline"
+  :value "Underline")
+ ("lng_menu_formatting_link_edit"
+  :value "Edit link")
+ ("lng_menu_formatting_monospace"
+  :value "Monospace")
+ ("lng_menu_formatting_blockquote"
+  :value "Quote")
+ ("lng_menu_formatting_strike_out"
+  :value "Strikethrough")
+ ("lng_menu_formatting_link_create"
+  :value "Create link")
+ ("lng_formatting_link_url"
+  :value "URL")
  )

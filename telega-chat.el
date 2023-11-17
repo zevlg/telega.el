@@ -1501,6 +1501,11 @@ new Chat buffers.")
     ;;   {{{fundoc(telega-chatbuf-attach-clipboard,2)}}}
     (define-key map (kbd "C-c C-v") 'telega-chatbuf-attach-clipboard)
 
+    ;;; ellit-org: chatbuf-attach-bindings
+    ;; - {{{where-is(telega-chabuf-input-formatting-set,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chabuf-input-formatting-set,2)}}}
+    (define-key map (kbd "C-c C-e") #'telega-chabuf-input-formatting-set)
+
     ;;; ellit-org: chatbuf-filtering-bindings
     ;; - {{{where-is(telega-chatbuf-filter,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-filter,2)}}}
@@ -3759,14 +3764,38 @@ CALLBACK if non-nil, then called with total number of loaded messages."
       (telega-chatbuf--load-history (plist-get (telega-chatbuf--last-msg) :id)
           (- 1 telega-chat-history-limit) telega-chat-history-limit))))
 
-(defun telega-chatbuf-cancel-markup (begin end)
-  "Cancel markup for the given region in the chatbuf input."
+(defun telega-chabuf-input-formatting-set (begin end ent-type)
+  "Attach formatting to the region in the chatbuf input."
+  (interactive (progn
+                 (unless (region-active-p)
+                   (user-error "Can add formatting to a region only"))
+                 (list (region-beginning) (region-end)
+                       (telega-completing-read-text-formatting-entity
+                        (concat (telega-i18n "lng_menu_formatting") ": ")))))
+
+  (unless (and (>= begin telega-chatbuf--input-marker)
+               (> end telega-chatbuf--input-marker))
+    (user-error "telega: Can add formatting only inside chatbuf input"))
+
+  ;; NOTE: nil ent-type mean clear text
+  (if ent-type
+      (let* ((props (telega--entity-type-to-text-props
+                     ent-type (buffer-substring-no-properties begin end)))
+             (tdisp (plist-get props 'telega-display)))
+        (when tdisp
+          (plist-put props 'display tdisp))
+        (set-text-properties begin end props))
+
+    (telega-chatbuf-input-formatting-cancel begin end)))
+
+(defun telega-chatbuf-input-formatting-cancel (begin end)
+  "Cancel formatting for the given region in the chatbuf input."
   (interactive (if (region-active-p)
                    (list (region-beginning) (region-end))
                  (list telega-chatbuf--input-marker (point-max))))
   (unless (and (>= begin telega-chatbuf--input-marker)
                (> end telega-chatbuf--input-marker))
-    (user-error "telega: Can cancel markup only inside chatbuf input"))
+    (user-error "telega: Can cancel formatting only inside chatbuf input"))
   (remove-text-properties begin end '(face nil :tl-entity-type nil)))
 
 (defun telega-chatbuf-cancel-aux (&optional arg)
@@ -3784,7 +3813,7 @@ Call `telega-chatbuf-cancel-aux' if replying/editing to a message.
 Otherwise clear chatbuf input."
   (interactive)
   (cond ((region-active-p)
-         (call-interactively #'telega-chatbuf-cancel-markup))
+         (call-interactively #'telega-chatbuf-input-formatting-cancel))
         (telega-chatbuf--aux-plist
          (call-interactively #'telega-chatbuf-cancel-aux))
         (t

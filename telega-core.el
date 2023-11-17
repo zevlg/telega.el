@@ -441,6 +441,10 @@ display the list.")
 (defvar telega--accent-colors-available-ids nil
   "Accent colors received by `updateAccentColors' event.")
 
+(defun telega--accent-color-id-built-in-p (color-id)
+  "Return non-nil if accent color denoted by COLOR-ID is built-in."
+  (< color-id 7))
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
@@ -1746,28 +1750,31 @@ Return what BODY returns."
         (region-sym (gensym "region")))
     `(let* ((,start-sym (point))
             (,lwprefix-sym ,prefix)
-            (,lwprefix-props-sym (list :telega-lwprefix ,lwprefix-sym
-                                       'line-prefix ,lwprefix-sym
-                                       'wrap-prefix ,lwprefix-sym))
             (telega--column-offset (+ telega--column-offset
-                                      (string-width ,lwprefix-sym)))
+                                      (if ,lwprefix-sym
+                                          (string-width ,lwprefix-sym)
+                                        0)))
             ,region-sym)
        (prog1
            (progn ,@body)
-         (while (setq ,region-sym (telega--region-by-text-prop
-                                   ,start-sym 'line-prefix (point)))
-           (add-text-properties ,start-sym (car ,region-sym)
-                                ,lwprefix-props-sym)
-           (add-text-properties
-            (car ,region-sym) (cdr ,region-sym)
-            (list 'line-prefix (concat ,lwprefix-sym
-                                       (get-text-property (car ,region-sym)
-                                                          'line-prefix))
-                  'wrap-prefix (concat ,lwprefix-sym
-                                       (get-text-property (car ,region-sym)
-                                                          'wrap-prefix))))
-           (setq ,start-sym (cdr ,region-sym)))
-         (add-text-properties ,start-sym (point) ,lwprefix-props-sym)))))
+         (when (and ,lwprefix-sym (not (string-empty-p ,lwprefix-sym)))
+           (let ((,lwprefix-props-sym (list :telega-lwprefix ,lwprefix-sym
+                                            'line-prefix ,lwprefix-sym
+                                            'wrap-prefix ,lwprefix-sym)))
+             (while (setq ,region-sym (telega--region-by-text-prop
+                                       ,start-sym 'line-prefix (point)))
+               (add-text-properties ,start-sym (car ,region-sym)
+                                    ,lwprefix-props-sym)
+               (add-text-properties
+                (car ,region-sym) (cdr ,region-sym)
+                (list 'line-prefix (concat ,lwprefix-sym
+                                           (get-text-property (car ,region-sym)
+                                                              'line-prefix))
+                      'wrap-prefix (concat ,lwprefix-sym
+                                           (get-text-property (car ,region-sym)
+                                                              'wrap-prefix))))
+               (setq ,start-sym (cdr ,region-sym)))
+             (add-text-properties ,start-sym (point) ,lwprefix-props-sym)))))))
 
 (defmacro telega-ins-prefix (prefix &rest body)
   "In case BODY inserted anything then PREFIX is also inserted before BODY."

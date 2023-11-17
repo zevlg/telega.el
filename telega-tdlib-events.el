@@ -1525,6 +1525,25 @@ Please downgrade TDLib and recompile `telega-server'"
   (setq telega--accent-colors-available-ids
         (plist-get event :available_accent_color_ids)))
 
+(defun telega--on-updateChatAccentColor (event)
+  "A chat accent color has changed."
+  (let ((chat (telega-chat-get (plist-get event :chat_id))))
+    (plist-put chat :accent_color_id
+               (plist-get event :accent_color_id))
+
+    ;; TODO: regenerate chat's colors
+
+    (telega-chat--mark-dirty chat event)))
+
+(defun telega--on-updateChatBackgroundCustomEmoji (event)
+  "A chat's custom emoji for reply background has changed."
+  (let ((chat (telega-chat-get (plist-get event :chat_id))))
+    (plist-put chat :background_custom_emoji_id
+               (plist-get event :background_custom_emoji_id))
+
+    (telega-chat--mark-dirty chat event)
+    ))
+
 (provide 'telega-tdlib-events)
 
 ;;; telega-tdlib-events.el ends here
