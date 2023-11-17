@@ -457,7 +457,7 @@ Will update CHAT-ID MSG-ID when download completed."
   (when-let* ((msg-id (telega--tl-get msg :id))
               (chat-id (telega--tl-get msg :chat_id))
               (forward-info (telega--tl-get msg :forward_info))
-              (fwd-info-p (eq (telega--tl-type forward-info) 'messageForwardInfo))
+              (fwd-info-p (eq (telega--tl-type forward-info) 'messageInfo))
               (bot-id (telega--tl-get forward-info :origin :sender_user_id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
@@ -473,7 +473,7 @@ Will update CHAT-ID MSG-ID when download completed."
               (body (cadr name-and-body))) ; skip if no body
     (let ((sender-id (telega-bridge-bot--update-user-info msg-id chat-id bot-id name)))
       ;; replace sender
-      (plist-put forward-info :origin (list :@type "messageForwardOriginUser" :sender_user_id sender-id))
+      (plist-put forward-info :origin (list :@type "messageOriginUser" :sender_user_id sender-id))
       ;; remove duplicated username in body
       (plist-put
        content :text
