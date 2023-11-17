@@ -1120,6 +1120,8 @@ To explicitly add animation to Saved Animations list, press
 {{{where-is(telega-msg-save,telega-msg-button-map)}}} on the
 corresponding animation message.
 
+* Stories
+#+ELLIT-INCLUDE: ../telega-story.el :label commentary
 * Multiple accounts
 
 =telega= support multiple accounts, however only single account can be

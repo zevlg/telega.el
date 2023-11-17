@@ -498,6 +498,13 @@ See `telega-avatar--create-image' for more info."
                                   (number :tag "Margin factar")))
   :group 'telega)
 
+(defcustom telega-avatar-one-line-in-msg-header nil
+  "Non-nil to use one line avatar version in the message header.
+Workaround avatar gaps."
+  :package-version '(telega . "0.8.215")
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-avatar-text-compose-chars nil
   "Non-nil to compose sender initials with `telega-symbol-circle'.
 Use this to make textual avatars look prettier."
@@ -1846,6 +1853,15 @@ Formatting:
 Otherwise topic info only show if no topic filtering is applied in chatbuf."
   :package-version '(telega . "0.8.170")
   :type 'boolean
+  :group 'telega-msg)
+
+(defcustom telega-msg-make-observable-recenter-arg '(nil . 2)
+  "Arguments to recenter when making message observable.
+Car of the cons cell is the argument to recenter.
+In case message is still not fully observable after applying it,
+fallback to cdr argument."
+  :package-version '(telega . "0.8.215")
+  :type '(cons integer)
   :group 'telega-msg)
 
 

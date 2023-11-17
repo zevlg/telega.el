@@ -19,9 +19,25 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Commentary:
-
+;;; ellit-org: commentary
 ;;
+;; Telegram added [[https://telegram.org/blog/stories][Stories]]
+;; feature on its 10th birthday.
+;;
+;; Story is media content user or channel shares outside chat
+;; contents.  By default active and pinned stories are shown in
+;; chatbuf's footer, this behaviour is controlled by custom options:
+;;
+;; - {{{user-option(telega-story-show-active-stories-for,2)}}}
+;; - {{{user-option(telega-story-show-pinned-stories-for,2)}}}
+;;
+;; =telega= can preload media content for stories from users or
+;; channels of your interest.  This is controlled by custom option:
+;;
+;; - {{{user-option(telega-story-preload-for,2)}}}
+;;
+;; Stories can be matched using [[#list-of-story-temexes][Telega Match
+;; Expressions]].
 
 ;;; Code:
 (require 'telega-core)
