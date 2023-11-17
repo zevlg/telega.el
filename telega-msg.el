@@ -354,9 +354,11 @@ Return nil for deleted messages."
   "Goto message denoted by `:reply_to' field of the message MSG."
   (let* ((reply-to (plist-get msg :reply_to))
          (chat-id (plist-get reply-to :chat_id))
-         (msg-id (plist-get reply-to :message_id)))
+         (msg-id (plist-get reply-to :message_id))
+         (quote (plist-get reply-to :quote))
+         (quote-text (plist-get quote :text)))
     (unless (or (telega-zerop chat-id) (telega-zerop msg-id))
-      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id 'highlight))))
+      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id quote-text))))
 
 (defun telega-msg-open-sticker (msg &optional sticker)
   "Open content for sticker message MSG."

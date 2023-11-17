@@ -5766,7 +5766,16 @@ Return non-nil on success."
         (cl-assert (eq (button-type msg-button) 'telega-msg))
         (with-no-warnings
           (pulse-momentary-highlight-region
-           (button-start msg-button) (button-end msg-button))))
+           (button-start msg-button) (button-end msg-button))
+          (when (stringp highlight)
+            (save-excursion
+              (goto-char (button-start msg-button))
+              (if (search-forward highlight (button-end msg-button) t)
+                  (let ((start-point (match-beginning 0))
+                        (end-point (match-end 0)))
+                    (sit-for 0.5)
+                    (pulse-momentary-highlight-region start-point end-point))
+                (message "The exact quote is not found"))))))
 
       (when callback
         (funcall callback msg-button)))
