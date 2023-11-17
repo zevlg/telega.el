@@ -1169,6 +1169,7 @@ UFILE specifies Telegram file being uploading."
     (676179719  :source opencollective :since_date 1634203432)
     (52573016   :source opencollective :since_date 1643882221)
     (5974516348 :source private        :since_date 1695584567)
+    (86646581   :source private        :since_date 1700213789)
     )
   "Alist of telega patrons.")
 
