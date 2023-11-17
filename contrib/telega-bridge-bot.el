@@ -457,7 +457,7 @@ Will update CHAT-ID MSG-ID when download completed."
   (when-let* ((msg-id (telega--tl-get msg :id))
               (chat-id (telega--tl-get msg :chat_id))
               (forward-info (telega--tl-get msg :forward_info))
-              (fwd-info-p (eq (telega--tl-type forward-info) 'messageInfo))
+              (fwd-info-p (eq (telega--tl-type forward-info) 'messageForwardInfo))
               (bot-id (telega--tl-get forward-info :origin :sender_user_id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
