@@ -618,20 +618,37 @@ SHOW-DETAILS - non-nil to show photo details."
         (telega-ins--file-progress msg hr-file))
       (telega-ins "\n"))
 
-    (if (telega--tl-get msg :content :is_secret)
-        (let ((ttl-in (plist-get msg :self_destruct_in)))
-          (unless (telega-zerop ttl-in)
-            (telega-ins (propertize "Self-descruct in" 'face 'telega-shadow) " "
-                        (telega-duration-human-readable ttl-in) "\n"))
-          (telega-ins--image-slices
-           (telega-self-destruct-create-svg
-            (plist-get photo :minithumbnail)
-            (telega-symbol
-             (if (plist-get msg :self_destruct_type) 'flames 'lock)))))
+    (let ((msg-content (plist-get msg :content)))
+      (cond ((plist-get msg-content :is_secret)
+             (let ((ttl-in (plist-get msg :self_destruct_in)))
+               (unless (telega-zerop ttl-in)
+                 (telega-ins--with-face 'telega-shadow
+                   (telega-ins "Self-descruct in "))
+                 (telega-ins " " (telega-duration-human-readable ttl-in) "\n"))
+               (telega-ins--image-slices
+                   (telega-self-destruct-create-svg
+                    (plist-get photo :minithumbnail)
+                    (telega-symbol
+                     (if (plist-get msg :self_destruct_type) 'flames 'lock))))))
 
-      (telega-ins--image-slices
-       (telega-photo--image photo (or limits telega-photo-size-limits)))
-      )))
+            ((and (plist-get msg-content :has_spoiler)
+                  (not (plist-get msg-content :telega-spoiler-removed)))
+             (telega-ins--image-slices
+                 (telega-spoiler-create-svg
+                  (plist-get photo :minithumbnail)
+                  (plist-get hr :width)
+                  (plist-get hr :height)
+                  telega-thumbnail-size-limits))
+             (telega-ins "\n")
+             (telega-ins--button (telega-i18n "lng_context_disable_spoiler")
+               :action #'telega-msg-remove-media-spoiler)
+             (telega-ins " "))
+
+            (t
+             (telega-ins--image-slices
+                 (telega-photo--image
+                  photo (or limits telega-photo-size-limits))))))
+    t))
 
 (defun telega-ins--audio (msg &optional audio music-symbol)
   "Insert audio message MSG.
@@ -3135,7 +3152,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
             (telega-ins--sticker-image icon-sticker))
           (telega-ins topic-name)))
        (messageStory
-        (telega-ins--story-msg-forwarded-from 
+        (telega-ins--story-msg-forwarded-from
          (telega-chat-get (plist-get content :story_sender_chat_id))))
        (messagePremiumGiveaway
         (telega-ins--with-face '(telega-shadow bold)
@@ -3680,7 +3697,7 @@ argument of `ReactionType' type."
 
 
 ;;; Stories
-(defun telega-ins--story-msg-forwarded-from (chat) 
+(defun telega-ins--story-msg-forwarded-from (chat)
  "Inserter for the header of message story forwarded from CHAT."
  (let ((sender chat))
    (telega-ins--with-face 'telega-shadow
@@ -3780,7 +3797,7 @@ If REMOVE-CAPTION is specified, then do not insert caption."
                  (t
                   (telega-ins (telega-symbol 'story)))))
 
-         (unless remove-caption 
+         (unless remove-caption
            (telega-ins--one-lined
             (telega-ins " ")
             (or (telega-ins--fmt-text (plist-get story :caption) for-msg)
