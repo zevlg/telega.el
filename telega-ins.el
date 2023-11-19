@@ -2515,6 +2515,8 @@ Return user, chat or string with the sender title."
   ;; later by the `telega-msg--replied-message-fetch'
   (let* ((replied-msg (telega-msg--replied-message msg))
          (reply-quote (plist-get reply-to :quote))
+         (content (or (plist-get reply-to :content)
+                      (plist-get replied-msg :content)))
          (origin (plist-get reply-to :origin)))
     ;; Sender and content part
     (telega-ins--aux-inline "| " (telega-chat--aux-inline-reply-symbol
@@ -2535,7 +2537,10 @@ Return user, chat or string with the sender title."
              (telega-ins--with-face 'telega-shadow
                (telega-ins (telega-i18n "lng_deleted_message"))))
             ((telega-msg-match-p replied-msg 'ignored)
-             (telega-ins--message-ignored replied-msg))
+             (telega-ins--message-ignored replied-msg)
+             ;; NOTE: Never show content and/or quote from ignored message
+             (setq reply-quote nil
+                   content nil))
             (t
              ;; NOTE: If forwarded message replies to a forwarded
              ;; message, then use fwd-info origin sender to resemble
@@ -2568,8 +2573,7 @@ Return user, chat or string with the sender title."
                          (telega-msg-topic replied-msg))
                (telega-ins--aux-msg-topic-one-line replied-msg))))
 
-      (when-let ((content (or (plist-get reply-to :content)
-                              (plist-get replied-msg :content))))
+      (when content
         (telega-ins (telega-symbol 'sender-and-text-delim) " ")
         (telega-ins--content-one-line replied-msg
           :content content)))
@@ -2812,9 +2816,14 @@ Pass all ARGS directly to `telega-ins--message0'."
                  (telega-ins--with-face 'error
                    (telega-ins (telega-i18n "lng_deleted_message"))))))))
 
-(defun telega-ins--message-ignored (_msg)
+(defun telega-ins--message-ignored (msg)
   "Inserter for ignored message MSG in chatbuf."
-  (telega-ins (propertize "<Ignored Message>" 'face 'telega-shadow)))
+  (if (functionp telega-ignored-messages-visible)
+      (progn
+        (cl-assert (not (eq telega-ignored-messages-visible
+                            #'telega-ins--message-ignored)))
+        (funcall telega-ignored-messages-visible msg))
+    (telega-ins (propertize "<Ignored Message>" 'face 'telega-shadow))))
 
 (defun telega-ins--message-with-chat-header (msg)
   "Inserter for message MSG showing chat header."

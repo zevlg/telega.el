@@ -1911,9 +1911,11 @@ example @gif `TAB' will popup buffer with inlined photos. "
   :group 'telega)
 
 (defcustom telega-ignored-messages-visible nil
-  "*Non-nil to make ignored messages visible as <ignored message>."
-  :package-version '(telega . "0.6.30")
-  :type 'boolean
+  "*Non-nil to make ignored messages visible as <ignored message>.
+It can be an inserter function accepting one argument - ignored message."
+  :package-version '(telega . "0.8.215")
+  :type '(choice (boolean :tag "Enable/Disable")
+                 (function :tag "Custom inserter for ignored message"))
   :group 'telega-chat)
 
 (defcustom telega-ignored-messages-ring-size 100

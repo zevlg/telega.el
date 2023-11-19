@@ -2349,14 +2349,14 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
     (when msg-inserter
       (telega-button--insert 'telega-msg msg
         :inserter msg-inserter
-        'cursor-sensor-functions '(telega-chatbuf-msg--sensor-func)))
+        'cursor-sensor-functions '(telega-chatbuf-msg--sensor-func))
 
-    ;; NOTE: we insert newline outside the button to provide
-    ;; msg hover-in/hover-out hooks handled by sensor function.
-    ;; Without separator, sensor function won't be triggered
-    (unless telega-chatbuf--messages-compact-view
-      (telega-ins--with-props '(read-only t front-sticky t)
-        (telega-ins "\n")))
+      ;; NOTE: we insert newline outside the button to provide
+      ;; msg hover-in/hover-out hooks handled by sensor function.
+      ;; Without separator, sensor function won't be triggered
+      (unless telega-chatbuf--messages-compact-view
+        (telega-ins--with-props '(read-only t front-sticky t)
+          (telega-ins "\n"))))
     ))
 
 (define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
