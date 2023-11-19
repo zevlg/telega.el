@@ -455,10 +455,10 @@ Will update CHAT-ID MSG-ID when download completed."
 (defun telega-bridge-bot--update-forwarded (msg)
   "Update forwarded sender id and remove duplicated username in MSG."
   (when-let* ((msg-id (telega--tl-get msg :id))
-              (chat-id (telega--tl-get msg :chat_id))
               (forward-info (telega--tl-get msg :forward_info))
               (fwd-info-p (eq (telega--tl-type forward-info) 'messageForwardInfo))
               (bot-id (telega--tl-get forward-info :origin :sender_user_id))
+              (chat-id (telega--tl-get forward-info :from_chat_id))
               (counterparty-info (telega-bridge-bot--counterparty-info chat-id bot-id)) ; check if it is a bridge bot
               (counterparty-type (plist-get counterparty-info :type))
               (content (telega--tl-get msg :content))
@@ -512,9 +512,26 @@ ARGS is the arguments passed the the FUN."
           (apply fun args))
       (apply fun args))))
 
+(defun telega-ins--msg-reply-to-message-inline! (fun &rest args)
+  "Advice function for `telega-ins--msg-reply-to-message-inline'.
+FUN is the original function,
+ARGS is the arguments passed the the FUN."
+  (cl-letf* ((orig-telega-msg-sender-username (symbol-function 'telega-msg-sender-username))
+             ((symbol-function 'telega-msg-sender-username)
+              (lambda (sender &optional with-prefix-p)
+                (if (plist-get sender :telega-bridge-bot-user-signature)
+                    ;; if sender is a bridge bot then we want to display
+                    ;; the user title full-name and the username in the reply message
+                    (concat
+                     (telega-user-title sender 'full-name) " "
+                     (funcall orig-telega-msg-sender-username sender 'with-@))
+                  (funcall orig-telega-msg-sender-username sender with-prefix-p)))))
+    (apply fun args)))
+
 
 
 (advice-add 'telega-ins--aux-msg-one-line :around #'telega-ins--aux-msg-one-line!)
+(advice-add 'telega-ins--msg-reply-to-message-inline :around #'telega-ins--msg-reply-to-message-inline!)
 (advice-add 'telega-chatbuf-msg--pp :before #'telega-bridge-bot--update-msg)
 (advice-add 'telega-msg--replied-message-fetch-callback :before
             (lambda (_msg replied-msg)
