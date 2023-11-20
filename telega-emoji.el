@@ -227,10 +227,9 @@ Actually return STICKER's full type info."
 (defun telega-custom-emoji--create-image (sticker img-file)
   "Create image for the custom emoji using corresponding STICKER."
   (cond
-   ((< (telega-chars-xheight 1) 2)
-    ;; NOTE: on tty `telega-chars-xheight' returns 1
-    nil)
-   ((not img-file)
+   ((or (not img-file)
+        (< (telega-chars-xheight 1) 2))
+    ;; NOTE: Fallback for tty mode with enabled images
     (telega-emoji-create-svg (telega-sticker-emoji sticker) 1))
    ((equal "webp" (file-name-extension img-file))
     (telega-create-image
