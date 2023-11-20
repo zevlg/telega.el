@@ -2679,7 +2679,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                      (telega-msg-sender-avatar-image sender)))
            (awidth (length (telega-image--telega-text avatar 0)))
            (gaps-workaround-p
-            (telega-chatbuf-match-p telega-avatar-workaround-gaps-for))
+            (telega-chat-match-p chat telega-avatar-workaround-gaps-for))
            ;; NOTE: `telega-msg-contains-unread-mention' is used
            ;; inside `telega--entity-type-to-text-props'
            (telega-msg-contains-unread-mention
