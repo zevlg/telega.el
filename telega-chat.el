@@ -5768,18 +5768,33 @@ Return non-nil on success."
           (pulse-momentary-highlight-region
            (button-start msg-button) (button-end msg-button))
           (when (stringp highlight)
-            (save-excursion
-              (goto-char (button-start msg-button))
-              (if (search-forward highlight (button-end msg-button) t)
-                  (let ((start-point (match-beginning 0))
-                        (end-point (match-end 0)))
-                    (sit-for 0.5)
-                    (pulse-momentary-highlight-region start-point end-point))
-                (message "The exact quote is not found"))))))
-
+            (sit-for 0.5)
+            (telega-chatbuf--highlight-quote msg-button highlight))))
       (when callback
         (funcall callback msg-button)))
     t))
+
+(defun telega-chatbuf--remove-highlight-quote (&rest _)
+  "Remove highlighted quote."
+  (remove-overlays nil nil 'telega-chatbuf--highlight-quote t)
+  (remove-hook 'telega-msg-hover-out-hook #'telega-chatbuf--remove-highlight-quote :local))
+
+(defun telega-chatbuf--highlight-quote (msg-button quote-text)
+  "Highlight the QUOTE-TEXT in the MSG-BUTTON."
+  (save-excursion
+    (goto-char (button-start msg-button))
+    (if (search-forward quote-text (button-end msg-button) t)
+        (let* ((start-point (match-beginning 0))
+               (end-point (match-end 0))
+               (overlay (make-overlay start-point end-point)))
+          (overlay-put overlay 'telega-chatbuf--highlight-quote t)
+          (overlay-put overlay 'face 'telega-highlight-text-face)
+          (add-hook
+           'telega-msg-hover-out-hook
+           #'telega-chatbuf--remove-highlight-quote
+           nil
+           :local))
+      (message "The exact quote is not found"))))
 
 (defun telega-chatbuf--goto-msg (msg-id &optional highlight callback)
   "In CHAT goto message denoted by MSG-ID.
