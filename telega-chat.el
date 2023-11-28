@@ -2359,6 +2359,20 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
           (telega-ins "\n"))))
     ))
 
+(defun telega-chatbuf--substring-filter (beg end delete)
+  "Function to be used as `filter-buffer-substring-function' in chatbufs.
+Strips `line-prefix' and `wrap-prefix' text properties from copied text."
+  (let ((bstr (buffer-substring beg end)))
+    (when delete
+      (save-excursion
+        (goto-char beg)
+        (delete-region beg end)))
+
+    (remove-text-properties 0 (length bstr)
+                            '(line-prefix nil wrap-prefix nil)
+                            bstr)
+    bstr))
+
 (define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
   "The mode for telega chat buffer.
 
@@ -2441,6 +2455,11 @@ Global chat bindings:
   (when (boundp 'after-focus-change-function)
     (add-function :after (local 'after-focus-change-function)
                   'telega-chatbuf--check-focus-change))
+
+  ;; Special function to filter out `line-prefix', `wrap-prefix' (and
+  ;; probably other) text properties when copying text from chatbuf
+  (setq-local filter-buffer-substring-function
+              #'telega-chatbuf--substring-filter)
 
   (setq telega--chat-buffers-alist
         (cl-pushnew (cons telega-chatbuf--chat (current-buffer))
@@ -2618,8 +2637,6 @@ Recover previous active action after BODY execution."
                              :with-username-p t
                              :with-brackets-p t
                              :with-title-faces-p nil))
-                          (when (plist-get chat :is_pinned)
-                            (telega-symbol 'pin))
                           (when (plist-get chat :has_scheduled_messages)
                             (telega-symbol 'alarm))))
          (buf (get-buffer bufname)))
@@ -2746,15 +2763,16 @@ If FORCE is specified, then set input draft unconditionally,
 otherwise set draft only if chatbuf input is also draft."
   (let* ((chat telega-chatbuf--chat)
          (draft-msg (plist-get chat :draft_message))
-         (reply-msg-id (plist-get draft-msg :reply_to_message_id)))
+         (reply-to (plist-get draft-msg :reply_to))
+         (reply-msg-id (plist-get reply-to :message_id)))
     (if (and reply-msg-id (not (zerop reply-msg-id)))
         (unless (eq (plist-get (telega-chatbuf-replying-msg) :id)
                     reply-msg-id)
           (telega-msg-get chat reply-msg-id
             (lambda (msg &optional _ignored)
               (save-excursion (telega-msg-reply msg)))))
-      ;; Reset only if replying, but `:reply_to_message_id' is not
-      ;; specified, otherwise keep the aux, for example editing
+      ;; Reset only if replying, but `:reply_to' is not specified,
+      ;; otherwise keep the aux, for example editing
       (when (telega-chatbuf-replying-msg)
         (telega-chatbuf--prompt-reset)))
 
@@ -2787,7 +2805,8 @@ otherwise set draft only if chatbuf input is also draft."
                                      :last_read_inbox_message_id)))
            (zerop thread-last-read-msg-id))
          (telega-chatbuf--older-history-loaded)
-         (telega-chatbuf--load-newer-history))
+         (when (telega-chatbuf--need-newer-history-p)
+           (telega-chatbuf--load-newer-history)))
 
         ;; All messages are read
         ((let ((last-read-msg-id (telega-chatbuf--last-read-inbox-msg-id)))
@@ -2878,7 +2897,10 @@ If NO-HISTORY-LOAD is specified, do not try to load history."
               telega-chatbuf--chat
               (telega-fmt-text (telega-i18n "lng_replies_discussion_started")
                                '(:@type "textEntityTypeBold"))))
-       'prepend))))
+       'prepend)
+      ;; NOTE: inserting message in the chatbuf might affect
+      ;; `telega-chatbuf--last-msg-loaded-p' and prompt
+      (telega-chatbuf--chat-update "history-loading"))))
 
 (defun telega-chatbuf--newer-history-loaded ()
   "In chatbuf set mark, that all newer messages in the history has been loaded."
@@ -4001,7 +4023,18 @@ use.  For example `C-u RET' will use
                 (t
                  (telega--editMessageMedia
                   editing-msg imc
-                  :sync-p (not telega-chat-send-messages-async))))))
+                  :sync-p (not telega-chat-send-messages-async)))))
+
+        ;; NOTE: we put `editing-msg' into messages ring, so user can
+        ;; use `M-g x' to jump to just edited message
+        ;; See https://t.me/emacs_telega/43248
+        (ring-insert telega-chatbuf--messages-pop-ring editing-msg)
+
+        (telega-help-message 'msg-edit-ring-pop
+            "%s to jump to edited message"
+          (telega-keys-description
+           'telega-chatbuf-goto-pop-message telega-chat-mode-map))
+        )
 
        ;; Messages can be sent as album if:
        ;; - All messages are photos or videos
@@ -5210,8 +5243,7 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
       (telega--setChatDraftMessage
        telega-chatbuf--chat
        (list :@type "draftMessage"
-             :reply_to_message_id
-             (or (plist-get (telega-chatbuf-replying-msg) :id) 0)
+             :reply_to (telega-chatbuf-replying-imr)
              :input_message_text
              (list :@type "inputMessageText"
                    :text (telega-string-fmt-text

@@ -1830,6 +1830,7 @@ Return FoundMessages TL structure."
           ;; NOTE: Uncomment when chat list is fully supported
           ;; see https://t.me/tdlibchat/42478
           (when chat-list
+            nil
             ;;   (list :chat_list chat-list)
             ))
    callback))

@@ -471,7 +471,8 @@ when result is received.
 If CALLBACK is specified return `:@extra' value used for the call.
 COMMAND is passed directly to `telega-server--send'."
   (unless (plist-get sexp :@extra)
-    (setq sexp (plist-put sexp :@extra (cl-incf telega-server--extra))))
+    ;; Inject `:@extra' without modifying `sexp'
+    (setq sexp (nconc (list :@extra (cl-incf telega-server--extra)) sexp)))
   (telega-server--send sexp command)
 
   (if callback
