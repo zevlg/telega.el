@@ -207,6 +207,10 @@
                            'telega-company-emoji-fuzzy-match
                            "0.8.170")
 
+(telega-obsolete--variable 'telega-msg-contains-unread-mention
+                           'telega-msg--current
+                           "0.8.217")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

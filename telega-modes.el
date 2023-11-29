@@ -874,13 +874,13 @@ Could be used as condition function in `display-buffer-alist'."
             (if (or (telega--tl-error-p reply)
                     (null found-messages)
                     (telega-msg-id= img-msg (car found-messages)))
-                (user-error "No %s image in %s"
-                            (if backward "previous" "next")
-                            (telega-ins--as-string
-                             (telega-ins--msg-sender chat
-                               :with-avatar-p t
-                               :with-username-p t
-                               :with-brackets-p t)))
+                (message "telega: No %s image in the %s"
+                         (if backward "previous" "next")
+                         (telega-ins--as-string
+                          (telega-ins--msg-sender chat
+                            :with-avatar-p t
+                            :with-username-p t
+                            :with-brackets-p t)))
               ;; Found a message
               (message "")
               (with-current-buffer img-buffer

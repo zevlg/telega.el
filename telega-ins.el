@@ -1884,7 +1884,8 @@ Special messages are determined with `telega-msg-special-p'."
       (telega-ins-i18n "telega_scheduled_when_online"))
     (telega-ins "\n"))
 
-  (let* ((content (plist-get msg :content))
+  (let* ((telega-msg--current msg)
+         (content (plist-get msg :content))
          (translated (plist-get msg :telega-translated))
          (translated-replaces-p (and translated
                                      (not (plist-get translated :loading))
@@ -1895,12 +1896,17 @@ Special messages are determined with `telega-msg-special-p'."
        ;; NOTE: if text message is emojis only and no webpage is
        ;; attached, then display enlarged version according to
        ;; `telega-emoji-large-height'.
-       (let ((emojis-text (when (and telega-emoji-use-images
+       (let ((web-page (telega--tl-get content :web_page))
+             (emojis-text (when (and telega-emoji-use-images
                                      telega-emoji-large-height
                                      (telega-msg-emojis-only-p msg)
                                      (not (plist-get content :web_page)))
                             (telega--desurrogate-apply
                              (telega--tl-get content :text :text)))))
+         (when (and web-page (plist-get web-page :show_above_text))
+           (telega-ins--webpage msg web-page)
+           (telega-ins "\n"))
+
          (cond (emojis-text
                 (telega-ins--image-slices
                     (telega-emoji-create-svg
@@ -1908,9 +1914,11 @@ Special messages are determined with `telega-msg-special-p'."
                ((and translated translated-replaces-p)
                 (telega-ins (telega-tl-str translated :text)))
                (t
-                (telega-ins--fmt-text (plist-get content :text) msg))))
-       (telega-ins-prefix "\n"
-         (telega-ins--webpage msg)))
+                (telega-ins--fmt-text (plist-get content :text) msg)))
+
+         (when (and web-page (not (plist-get web-page :show_above_text)))
+           (telega-ins "\n")
+           (telega-ins--webpage msg web-page))))
       ('messageDocument
        (telega-ins--document msg))
       ('messageGame
@@ -2666,6 +2674,9 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
 
     ;; Message header needed
     (let* ((chat (telega-msg-chat msg))
+           ;; NOTE: `telega-msg--current' is used
+           ;; inside `telega--entity-type-to-text-props'
+           (telega-msg--current msg)
            (fwd-info (plist-get msg :forward_info))
            ;; Is formatting done for "Replies" chat?
            ;; Workaround for case when `:forward_info' is unset (for
@@ -2680,11 +2691,9 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            (awidth (length (telega-image--telega-text avatar 0)))
            (gaps-workaround-p
             (telega-chat-match-p chat telega-avatar-workaround-gaps-for))
-           ;; NOTE: `telega-msg-contains-unread-mention' is used
-           ;; inside `telega--entity-type-to-text-props'
-           (telega-msg-contains-unread-mention
+           (unread-mention-p
             (plist-get msg :contains_unread_mention))
-           (l1width (if telega-msg-contains-unread-mention
+           (l1width (if unread-mention-p
                         (string-width (telega-symbol 'mention-mark))
                       0))
            content-prefix)
@@ -2692,7 +2701,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       (if (and no-header
                (zerop (plist-get msg :edit_date))
                (zerop (plist-get msg :via_bot_user_id)))
-          (telega-ins--line-wrap-prefix (when telega-msg-contains-unread-mention
+          (telega-ins--line-wrap-prefix (when unread-mention-p
                                           (telega-symbol 'mention-mark))
             (telega-ins (make-string awidth ?\s)))
 
@@ -2704,14 +2713,14 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                             ;; - via @bot link uses :action
                             (or (telega-button--action button)
                                 (telega-describe-msg-sender sender))))
-          (telega-ins--line-wrap-prefix (when telega-msg-contains-unread-mention
-                                          (telega-symbol 'mention-mark))
-            (telega-ins--image
-             avatar (if gaps-workaround-p
-                        (list 0 0 (telega-chars-xheight 2))
-                        0)
-             :no-display-if (not telega-chat-show-avatars))
-            (telega-ins--message-header msg chat sender addon-header-inserter))
+          (when unread-mention-p
+            (telega-symbol 'mention-mark))
+          (telega-ins--image
+           avatar (if gaps-workaround-p
+                      (list 0 0 (telega-chars-xheight 2))
+                    0)
+           :no-display-if (not telega-chat-show-avatars))
+          (telega-ins--message-header msg chat sender addon-header-inserter)
 
           (unless gaps-workaround-p
             (telega-ins--line-wrap-prefix (make-string l1width ?\s)
@@ -3038,9 +3047,8 @@ If SHORT-P is non-nil then use short version."
 If REMOVE-CAPTION is specified, then do not insert caption."
   (declare (indent 1))
   (telega-ins--one-lined
-   (let ((content (or content (plist-get msg :content)))
-         (telega-msg-contains-unread-mention
-          (plist-get msg :contains_unread_mention)))
+   (let ((telega-msg--current msg)
+         (content (or content (plist-get msg :content))))
      (cl-case (telega--tl-type content)
        (messageText
         (telega-ins--fmt-text (plist-get content :text) msg))

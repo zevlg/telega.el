@@ -802,7 +802,8 @@ See `puny-decode-domain' for details."
      (textEntityTypeMention
       (telega-link-props 'username text
                          'face
-                         (if (and telega-msg-contains-unread-mention
+                         (if (and (plist-get telega-msg--current
+                                             :contains_unread_mention)
                                   (telega-user-match-p (telega-user-me)
                                     (list 'username
                                           (concat "^"
@@ -813,7 +814,8 @@ See `puny-decode-domain' for details."
      (textEntityTypeMentionName
       (telega-link-props 'user (plist-get ent-type :user_id)
                          'face
-                         (if (and telega-msg-contains-unread-mention
+                         (if (and (plist-get telega-msg--current
+                                             :contains_unread_mention)
                                   (eq (plist-get ent-type :user_id)
                                       telega--me-id))
                              '(telega-entity-type-mention bold)
@@ -833,16 +835,39 @@ See `puny-decode-domain' for details."
      (textEntityTypePre
       '(face telega-entity-type-pre))
      (textEntityTypePreCode
-      '(face telega-entity-type-pre))
+      (if (telega--inhibit-telega-display-p 'telega-core)
+          '(face telega-entity-type-code)
+
+        (let* ((vbar-face (if telega-msg--current
+                              (telega-msg-sender-title-faces
+                               (telega-msg-sender telega-msg--current))
+                            (list 'telega-blue)))
+               (vbar (propertize (telega-symbol 'vertical-bar)
+                                 'face vbar-face))
+               (repr (telega-ins--as-string
+                      (telega-ins vbar)
+                      (telega-ins--with-face (nconc (list 'bold 'underline)
+                                                    vbar-face)
+                        (telega-ins (telega-symbol 'codeblock))
+                        (telega-ins-prefix " "
+                          (telega-ins
+                           (capitalize (telega-tl-str ent-type :language)))))
+                      (telega-ins "\n")
+                      (telega-ins--line-wrap-prefix vbar
+                        (telega-ins--with-face 'telega-entity-type-code
+                          (telega-ins (telega--desurrogate-apply text)))))))
+          (list 'telega-display repr
+                'telega-display-by 'telega-core))))
      (textEntityTypeUrl
       ;; - Unhexify url, using `telega-display' property to be
-      ;; substituted at `telega--desurrogate-apply' time
+      ;;   substituted at `telega--desurrogate-apply' time
       ;; - Convert "xn--" domains to non-ascii version
-      (nconc (list 'telega-display
-                   (telega-puny-decode-url
-                    (decode-coding-string
-                     (url-unhex-string text) 'utf-8)))
-             (telega-link-props 'url text 'face 'telega-entity-type-texturl)))
+      (nconc (unless (telega--inhibit-telega-display-p 'telega-core)
+               (list 'telega-display (telega-puny-decode-url
+                                      (decode-coding-string
+                                       (url-unhex-string text) 'utf-8))))
+             (telega-link-props 'url text
+                                'face 'telega-entity-type-texturl)))
      (textEntityTypeTextUrl
       (telega-link-props 'url (telega-tl-str ent-type :url)
                          'face 'telega-entity-type-texturl))
@@ -855,33 +880,34 @@ See `puny-decode-domain' for details."
                        (plist-get ent-type :media_timestamp)))
             'face 'telega-link))
      (textEntityTypeSpoiler
-      (nconc (list :action #'telega-msg-remove-text-spoiler)
-             (unless (plist-get ent-type :telega-show-spoiler)
-               (list 'telega-display-by 'spoiler
-                     'telega-display
-                     (with-temp-buffer
-                       (insert text)
-                       (translate-region (point-min) (point-max)
-                                         telega-spoiler-translation-table)
-                       (propertize (buffer-string)
-                                   'face 'telega-entity-type-spoiler))))
-             ;; To make `telega-msg-copy-text' keep spoilers being
-             ;; not quite visible
-             (when telega-inhibit-telega-display-by
-               '(face telega-entity-type-spoiler))
-             ))
+      (if (telega--inhibit-telega-display-p 'telega-core)
+          '(face telega-entity-type-spoiler)
+
+        (unless (plist-get ent-type :telega-show-spoiler)
+          (list (list :action #'telega-msg-remove-text-spoiler)
+                'telega-display
+                (with-temp-buffer
+                  (insert text)
+                  (translate-region (point-min) (point-max)
+                                    telega-spoiler-translation-table)
+                  (propertize (buffer-string)
+                              'face 'telega-entity-type-spoiler))
+                'telega-display-by 'telega-core))))
      (textEntityTypeCustomEmoji
       (when telega-use-images
         (when-let ((sticker (gethash (plist-get ent-type :custom_emoji_id)
                                      telega--custom-emoji-stickers)))
           (list 'display (telega-sticker--image sticker)))))
      (textEntityTypeBlockQuote
-      (let* ((lwprefix (telega-symbol 'vertical-bar))
-             (lwprops (list 'line-prefix lwprefix
-                            'wrap-prefix lwprefix
-                            'face 'telega-entity-type-blockquote))
-             (repr (concat "\n" (apply #'propertize text lwprops) "\n")))
-        (list 'telega-display repr)))
+      (if (telega--inhibit-telega-display-p 'telega-core)
+          '(face telega-entity-type-blockquote)
+
+        (list 'telega-display
+              (telega-ins--as-string
+               (telega-ins--line-wrap-prefix (telega-symbol 'vertical-bar)
+                 (telega-ins--with-face 'telega-entity-type-blockquote
+                   (telega-ins text))))
+              'telega-display-by 'telega-core)))
      )))
 
 ;; https://core.telegram.org/bots/api#markdown-style
@@ -1371,12 +1397,12 @@ Return text string with applied faces."
       (let* ((beg (plist-get ent :offset))
              (end (+ (plist-get ent :offset) (plist-get ent :length)))
              (props (telega--entity-type-to-text-props
-                     (plist-get ent :type)
-                     (substring-no-properties text beg end)))
+                     (plist-get ent :type) (substring text beg end)))
              (face (plist-get props 'face)))
         (when props
           (add-text-properties beg end (nconc (list 'rear-nonsticky t
                                                     'front-sticky t)
+                                              (list :tl-entity ent)
                                               (telega-plist-del props 'face))
                                text))
         (when face

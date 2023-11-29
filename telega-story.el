@@ -24,9 +24,9 @@
 ;; Telegram added [[https://telegram.org/blog/stories][Stories]]
 ;; feature on its 10th birthday.
 ;;
-;; Story is media content user or channel shares outside chat
-;; contents.  By default active and pinned stories are shown in
-;; chatbuf's footer, this behaviour is controlled by custom options:
+;; Story is a media content that user or channel shares outside chat
+;; contents.  By default active and pinned stories are shown in a
+;; chatbuf's footer.  This behaviour is controlled by custom options:
 ;;
 ;; - {{{user-option(telega-story-show-active-stories-for,2)}}}
 ;; - {{{user-option(telega-story-show-pinned-stories-for,2)}}}

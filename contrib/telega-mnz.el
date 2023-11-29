@@ -1,6 +1,6 @@
-;;; telega-mnz.el --- Display code (and other Emacs content) inside telega buffers  -*- lexical-binding: t; -*-
+;;; telega-mnz.el --- Highlight code blocks inside messages  -*- lexical-binding: t; -*-
 
-;; Copyright (c) 2020 Evgeny Zajcev.
+;; Copyright (c) 2020-2023 Evgeny Zajcev.
 ;; Copyright (c) 2020 Would (oldosfan).
 ;; Copyright (c) 2020 Brett Gilio.
 
@@ -24,12 +24,12 @@
 ;;; Commentary:
 
 ;;; ellit-org:
-;; ** /telega-mnz.el/ -- Display Emacs content inside Telega messages.
+;; ** /telega-mnz.el/ -- Highlight code blocks inside messages.
 ;;
 ;; Global minor mode to highlight code blocks inside messages.
 ;;
 ;; Can be enabled globally in all chats matching
-;; ~telega-mnz-mode-for~ (see below) chat filter with
+;; ~telega-mnz-mode-for~ (see below) chat temex with
 ;; ~(global-telega-mnz-mode 1)~ or by adding:
 ;;
 ;; #+begin_src emacs-lisp
@@ -38,7 +38,7 @@
 ;; #+end_src
 ;;
 ;; Optionally depends on =language-detection= Emacs package.  If
-;; =language-detection= is available, then laguage could be detected
+;; =language-detection= is available, then language could be detected
 ;; automatically for code blocks without language explicitly
 ;; specified.  Install =language-detection= with {{{kbd(M-x
 ;; package-install RET language-detection RET)}}}
@@ -62,23 +62,15 @@
 ;; Customizable options:
 ;; - {{{user-option(telega-mnz-mode-for, 2)}}}
 (defcustom telega-mnz-mode-for 'all
-  "*Chat filter for `global-telega-mnz-mode'.
+  "*Chat temex for `global-telega-mnz-mode'.
 Global mnz mode enables `telega-mnz-mode' only for chats matching
-this chat filter."
+this chat temex."
   :type 'telega-chat-temex
   :group 'telega-modes)
 
 ;;; ellit-org:
-;; - {{{user-option(telega-mnz-keep-pre-face, 2)}}}
-(defcustom telega-mnz-keep-pre-face t
-  "Non-nil to keep `telega-entity-type-pre' face on the highlighted text."
-  :type 'boolean
-  :group 'telega-modes)
-
-;;; ellit-org:
 ;; - {{{user-option(telega-mnz-entity-types, 2)}}}
-(defcustom telega-mnz-entity-types
-  '(textEntityTypePre textEntityTypePreCode textEntityTypeCode)
+(defcustom telega-mnz-entity-types '(textEntityTypePreCode)
   "List of entity types for which mnz performs highlighting."
   :type '(list symbol)
   :group 'telega-modes)
@@ -94,9 +86,7 @@ this chat filter."
 
 ;;; ellit-org:
 ;; - {{{user-option(telega-mnz-use-language-detection, 2)}}}
-(defcustom telega-mnz-use-language-detection
-  (when (fboundp 'language-detection-string)
-    '(200 . 4))
+(defcustom telega-mnz-use-language-detection nil
   "*Non-nil to use `language-detection' for blocks without specified language.
 Could be also a number, meaning that language detection is done
 only for code larger then this number of chars."
@@ -176,7 +166,7 @@ Most of these languages available for language detection.")
     map)
   "The keymap to be used when editing mnz code blocks.")
 
-(defun telega-mnz--render-text-for-mode (text mode)
+(defun telega-mnz--mode-render-text (mode text)
   "Return a string with TEXT rendered in a buffer with MODE enabled."
   (condition-case-unless-debug nil
       (with-current-buffer (get-buffer-create "*Telega Mnz Fontification*")
@@ -190,7 +180,7 @@ Most of these languages available for language detection.")
             (ignore-errors
               (mapc #'funcall mode))))
         ;; NOTE: font-lock might trigger errors, for example:
-        ;;   (telega-mnz--render-text-for-mode "$ head -n2 /tmp/pechatnaya-forma.doc\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<?mso-application progid=\"Word.Document\"?>" 'xml-mode)
+        ;;   (telega-mnz--mode-render-text 'xml-mode "$ head -n2 /tmp/pechatnaya-forma.doc\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<?mso-application progid=\"Word.Document\"?>")
         ;;   ==>
         ;;   Debugger entered--Lisp error: (error "Invalid search bound (wrong side of point)")
         ;;     search-backward("<" 2 t)
@@ -201,9 +191,6 @@ Most of these languages available for language detection.")
             (jit-lock-fontify-now)))
 
         (let ((ret (propertize (buffer-string) 'syntax-table (syntax-table))))
-          (when telega-mnz-keep-pre-face
-            (add-face-text-property 0 (length ret)
-                                    'telega-entity-type-pre 'append ret))
           (cl-assert (= (length text) (length ret)))
           (prog1 ret
             (kill-buffer (get-buffer "*Telega Mnz Fontification*")))))
@@ -213,7 +200,12 @@ Most of these languages available for language detection.")
 
 (defun telega-mnz--language-for-mode (mode)
   "Return language string for Emacs major MODE."
-  (symbol-name (or (car (cl-find mode telega-mnz-languages :key #'cdr)) mode)))
+  (let ((mode-name (symbol-name
+                    (or (car (cl-find mode telega-mnz-languages :key #'cdr))
+                        mode))))
+    ;; Strip off trailing "-mode" or "-ts-mode"
+    (replace-regexp-in-string "\\(-ts\\)?-mode$" "" mode-name)
+    ))
 
 (defun telega-mnz--mode-for-language (language &optional code-text)
   "Return Emacs mode suitable to edit LANGUAGE code.
@@ -222,42 +214,31 @@ language detection.
 If LANGUAGE is nil, then CODE-TEXT should be provided, and
 language-detection is used in this case, used for
 `textEntityTypePre' and `textEntityTypeCode' entities."
-  (or (when language
-        (cl-assert (stringp language))
-        (or (alist-get (intern language) telega-mnz-languages)
+  (if language
+      (let* ((lang-name (downcase language))
+             (lang-sym (intern lang-name)))
+        (or (alist-get lang-sym telega-mnz-languages)
             (let ((modes-list (mapcar #'cdr telega-mnz-languages)))
               ;; 1. makes language such at "c++" work
               ;; 2. makes language such as "erlang-mode" work
-              (or (car (memq (intern (concat language "-mode")) modes-list))
-                  (car (memq (intern language) modes-list))))))
+              (or (car (memq (intern (concat lang-name "-mode")) modes-list))
+                  (car (memq lang-sym modes-list))))))
 
-      ;; Try language detection
-      (when (and (fboundp 'language-detection-string)
-                 code-text
-                 ;; NOTE: Check code is large enough in case
-                 ;; `telega-mnz-use-language-detection' is int or cons cell
-                 (cond ((integerp telega-mnz-use-language-detection)
-                        (>= (length code-text) telega-mnz-use-language-detection))
-                       ((consp telega-mnz-use-language-detection)
-                        (and (>= (length code-text)
-                                 (car telega-mnz-use-language-detection))
-                             (>= (length (string-split code-text nil t))
-                                 (cdr telega-mnz-use-language-detection))))
-                       (t telega-mnz-use-language-detection)))
-        (alist-get (funcall #'language-detection-string code-text)
-                   telega-mnz-languages))))
-
-(defun telega-mnz--mode-for-entity (ent ent-text)
-  "Return Emacs major mode to highlight code in the entity ENT.
-ENT-TEXT is the entity text.
-Return nil if no highlighting should be done for this entity."
-  (cl-assert ent)
-  (cl-assert (memq (telega--tl-type (plist-get ent :type))
-                   telega-mnz-entity-types))
-  ;; NOTE: use `language-detection' for `textEntityTypePre' entities
-  (telega-mnz--mode-for-language
-   (telega-tl-str (plist-get ent :type) :language)
-   (telega--desurrogate-apply ent-text 'no-props)))
+    ;; Try language detection
+    (when (and (fboundp 'language-detection-string)
+               code-text
+               ;; NOTE: Check code is large enough in case
+               ;; `telega-mnz-use-language-detection' is int or cons cell
+               (cond ((integerp telega-mnz-use-language-detection)
+                      (>= (length code-text) telega-mnz-use-language-detection))
+                     ((consp telega-mnz-use-language-detection)
+                      (and (>= (length code-text)
+                               (car telega-mnz-use-language-detection))
+                           (>= (length (string-split code-text nil t))
+                               (cdr telega-mnz-use-language-detection))))
+                     (t telega-mnz-use-language-detection)))
+      (alist-get (funcall #'language-detection-string code-text)
+                 telega-mnz-languages))))
 
 (defun telega-mnz--formatted-text (text entity-type)
   "Return TEXT as formattedText marking it with ENTITY-TYPE."
@@ -292,29 +273,17 @@ Return nil if no highlighting should be done for this entity."
     (kill-local-variable 'parse-sexp-lookup-properties)
     ))
 
-(defun telega-mnz--fmt-text-faces (oldfun fmt-text &optional msg)
-  "Advice for `telega--fmt-text-faces' to highlight code blocks.
-OLDFUN ##advice-super-doc.
-FMT-TEXT MSG ##advice-doc."
-  (let ((new-text (funcall oldfun fmt-text msg)))
-    (when (and msg
-               (with-telega-chatbuf (telega-msg-chat msg 'offline)
-                 telega-mnz-mode))
-      ;; Apply mnz code blocks highlighting
-      (seq-doseq (ent (plist-get fmt-text :entities))
-        (when (memq (telega--tl-type (plist-get ent :type))
-                    telega-mnz-entity-types)
-          (when-let* ((ent-start (plist-get ent :offset))
-                      (ent-stop (+ ent-start (plist-get ent :length)))
-                      (ent-text (substring new-text ent-start ent-stop))
-                      (mode (telega-mnz--mode-for-entity ent ent-text)))
-            (setq new-text
-                  (concat (substring new-text 0 ent-start)
-                          (propertize
-                           (telega-mnz--render-text-for-mode ent-text mode)
-                           :telega-mnz-cb (list :mode mode :ent ent))
-                          (substring new-text ent-stop)))))))
-    new-text))
+(defun telega-mnz--e-t-p (old-e-t-p ent-type text)
+  "Highligh TEXT in case of code block with defined language."
+  (when (and telega-msg--current
+             (with-telega-chatbuf (telega-msg-chat telega-msg--current 'offline)
+               telega-mnz-mode)
+             (memq (telega--tl-type ent-type) telega-mnz-entity-types))
+    (when-let ((mode (telega-mnz--mode-for-language
+                      (telega-tl-str ent-type :language) text)))
+      (setq text (telega-mnz--mode-render-text mode text))))
+
+  (funcall old-e-t-p ent-type text))
 
 (defun telega-mnz-edit-cancel ()
   "Cancel editing the current message."
@@ -370,53 +339,37 @@ To cancel, hit %s.")
         (kill-buffer buf)))
     ))
 
-(defun telega-mnz--msg-code-block-at (msg &optional pnt)
-  "Return mnz code block at point PNT, extracting data from message MSG.
-If PNT is nil, then current point is used.
-Return nil, if no code block at PNT or `telega-mnz-mode' is not
-enabled in corresponding chatbuf."
-  (when (with-telega-chatbuf (telega-msg-chat msg 'offline)
-          telega-mnz-mode)
-    (unless pnt
-      (setq pnt (if (bolp)
-                    (save-excursion
-                      (back-to-indentation)
-                      (forward-char 1)
-                      (point))
-                  (point))))
-    (cl-assert (eq msg (telega-msg-at pnt)))
-    (get-text-property pnt :telega-mnz-cb)))
-
-(defun telega-mnz--msg-code-block-edit (msg mnz-cb)
-  "Edit mnz code block MNZ-CB for the MSG message.
-Return edited code as string."
-  (let ((mode (plist-get mnz-cb :mode))
-        (ent-start (telega--tl-get mnz-cb :ent :offset))
-        (ent-length (telega--tl-get mnz-cb :ent :length))
-        (msg-text (telega--tl-get msg :content :text :text)))
-    (telega-mnz--recursive-edit-code
-     mode (substring msg-text ent-start (+ ent-start ent-length))
-     nil                                ; TODO: calculate point-offset
-     (not (telega--tl-get msg :can_be_edited)))
-    ))
-
 (defun telega-mnz-msg-edit (msg &optional markup-arg)
   "Command to edit message MSG in a telega-mnz aware way."
   (interactive (list (telega-msg-at (point)) current-prefix-arg))
 
-  (if-let* ((mnz-cb (telega-mnz--msg-code-block-at msg))
+  (if-let* ((cb-ent (when (with-telega-chatbuf (telega-msg-chat msg 'offline)
+                            telega-mnz-mode)
+                      (get-text-property (point) :tl-entity)))
+            (code-block-p (memq (telega--tl-type (plist-get cb-ent :type))
+                                telega-mnz-entity-types))
             (edit-p
              (if (eq telega-mnz-edit-code-block 'query)
                  (y-or-n-p (format "%s «%s» code block? (`n' to edit message)"
                                    (if (plist-get msg :can_be_edited)
                                        "Edit" "View")
-                                   (plist-get mnz-cb :mode)))
+                                   (telega-tl-str (plist-get cb-ent :type)
+                                                  :language)))
                telega-mnz-edit-code-block)))
-      (if-let* ((msg-fmt-text (telega--tl-get msg :content :text))
-                (new-code (telega-mnz--msg-code-block-edit msg mnz-cb))
-                (cb-ent (plist-get mnz-cb :ent))
+      (if-let* ((telega-inhibit-telega-display-by t)
+                (msg-fmt-text (or (telega--tl-get msg :content :text)
+                                  (telega--tl-get msg :content :caption)))
                 (cb-start (plist-get cb-ent :offset))
                 (cb-stop (+ cb-start (plist-get cb-ent :length)))
+                (new-code (telega-mnz--recursive-edit-code
+                           (telega-mnz--mode-for-language
+                            (telega-tl-str (plist-get cb-ent :type) :language))
+                           (telega-tl-str
+                            (telega-fmt-text-substring
+                             msg-fmt-text cb-start cb-stop)
+                            nil 'no-properties)
+                           nil          ; TODO: calculate point-offset
+                           (not (telega--tl-get msg :can_be_edited))))
                 (imc (list :@type "inputMessageText"
                            :text (telega-fmt-text-desurrogate
                                   (telega-fmt-text-concat
@@ -435,17 +388,19 @@ Return edited code as string."
 (defun telega-mnz--chatbuf-attach-internal (language code)
   "Attach CODE of LANGUAGE to the chatbuf input."
   (cl-assert (and (stringp language) (stringp code)))
-  ;; Ensure newline at the end of the code
-  (unless (string-suffix-p "\n" code)
-    (setq code (concat code "\n")))
+
+  ;; NOTE: ensure code block looks nice with starting and trailing
+  ;; newlines
+  (setq code (concat "\n" (telega-strip-newlines code) "\n"))
 
   (telega-chatbuf-input-insert
    (telega-string-as-markup
     code (format "code: %s" language)
     (lambda (code-text)
-      (telega-fmt-text code-text
+      (telega-fmt-text (telega-strip-newlines code-text)
                        (list :@type "textEntityTypePreCode"
-                             :language language))))))
+                             :language language)))))
+  (telega-chatbuf-input-insert "\n"))
 
 (defun telega-mnz-chatbuf-attach-code (language)
   "Interactively attach a code of the LANGUAGE into chatbuf input.
@@ -464,7 +419,7 @@ For non-interactive code attach, use `telega-mnz--chatbuf-attach-internal'."
   ;; canceled
   (when-let ((code (telega-mnz--recursive-edit-code
                     (or (telega-mnz--mode-for-language language)
-                        'fundamental-mode))))
+                        'text-mode))))
     (telega-mnz--chatbuf-attach-internal language code)))
 
 (defun telega-mnz-attach-region-as-code (beg end)
@@ -473,14 +428,15 @@ BEG is the beginning of the region.
 END is the end of the region."
   (interactive "r")
   (let ((lang (telega-mnz--language-for-mode major-mode))
-        (code (buffer-substring-no-properties beg end))
+        ;; NOTE: keep fontification by copying text properties
+        (code (buffer-substring beg end))
         (chat (telega-completing-read-chat "Attach code to chat: ")))
     (with-current-buffer (telega-chat--pop-to-buffer chat)
-      (telega-mnz--chatbuf-attach-internal lang (telega-strip-newlines code)))))
+      (telega-mnz--chatbuf-attach-internal lang code))))
 
 (defun telega-mnz-mode--maybe (&optional arg)
   "Enable `telega-mnz-mode' if the current chatbuf is applicable.
-Current chatbuf is applicable if it matches `telega-mnz-mode-for' chat filter.
+Current chatbuf is applicable if it matches `telega-mnz-mode-for' chat temex.
 ARG is passed directly to function `telega-mnz-mode'."
   (when (telega-chat-match-p telega-chatbuf--chat telega-mnz-mode-for)
     (telega-mnz-mode arg)))
@@ -502,8 +458,8 @@ ARG is passed directly to function `telega-mnz-mode'."
         (telega-mnz-mode -1)))))
 
 
-(advice-add 'telega--fmt-text-faces :around
-            #'telega-mnz--fmt-text-faces)
+(advice-add 'telega--entity-type-to-text-props
+            :around #'telega-mnz--e-t-p)
 
 (define-key telega-prefix-map (kbd "'") #'telega-mnz-attach-region-as-code)
 (define-key telega-chat-mode-map (kbd "C-c '") #'telega-mnz-chatbuf-attach-code)

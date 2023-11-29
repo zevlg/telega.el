@@ -2390,6 +2390,12 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-codeblock "</>"
+  "Symbol to be used in code blocks."
+  :package-version '(telega . "0.8.216")
+  :type 'string
+  :group 'telega-symbol)
+
 ;; Symbols marking messages of some sort
 (when (fboundp 'define-fringe-bitmap)
   (define-fringe-bitmap 'telega-mark

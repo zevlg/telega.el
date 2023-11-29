@@ -182,8 +182,8 @@ Updated on `updateDefaultReactionType' event.")
   "Language codes used for translations.")
 
 ;;; Runtime variables
-(defvar telega-msg-contains-unread-mention nil
-  "Bind this variable when displaying message containing unread mention.")
+(defvar telega-msg--current nil
+  "Bound to currenty inserting message.")
 
 (defvar telega--chat nil
   "Telega chat for the current buffer.
@@ -922,6 +922,14 @@ Can be a list of symbols if you need to inhibit particular transforms.
 Use it to get/copy text ommiting text modifications from plugins, such
 at `telega-url-shorten'.")
 
+(defun telega--inhibit-telega-display-p (display-by)
+  "Return non-nil if `telega-display' property must be inhibited.
+DISPLAY-BY is a symbol."
+  (when telega-inhibit-telega-display-by
+    (if (listp telega-inhibit-telega-display-by)
+        (memq display-by telega-inhibit-telega-display-by)
+      display-by)))
+
 (defsubst telega--desurrogate-apply-part (part &optional keep-properties)
   "Apply PART's `telega-display'"
   (let ((part-display (get-text-property 0 'telega-display part)))
@@ -944,11 +952,8 @@ at `telega-url-shorten'.")
                  ;; Inhibit `telega-display' if created by one of the
                  ;; plugins listen in the
                  ;; `telega-inhibit-telega-display-by'
-                 (when (and telega-inhibit-telega-display-by
-                            (if (listp telega-inhibit-telega-display-by)
-                                (memq (plist-get part-props1 'telega-display-by)
-                                      telega-inhibit-telega-display-by)
-                              (plist-get part-props1 'telega-display-by)))
+                 (when (telega--inhibit-telega-display-p
+                        (plist-get part-props1 'telega-display-by))
                    (setq part-props1 (telega-plist-del
                                       part-props1 'telega-display-by))
                    (setq part-display part))
@@ -982,12 +987,13 @@ If NO-PROPERTIES is specified, then do not keep text properties."
         ((listp obj) (mapcar #'telega--tl-pack obj))
         (t obj)))
 
-(defun telega-tl-str (obj prop &optional no-properties)
+(defun telega-tl-str (obj &optional prop no-properties)
   "Get property PROP from OBJ, desurrogating resulting string.
+If PROP is ommited, use OBJ.
 NO-PROPERTIES is passed directly to `telega--desurrogate-apply'.
 Return nil for empty strings.
 Also supports \"formattedText\" a value of the OBJ's PROP."
-  (let* ((prop-val (plist-get obj prop))
+  (let* ((prop-val (if prop (plist-get obj prop) obj))
          (text (if (and (listp prop-val)
                         (equal (plist-get prop-val :@type) "formattedText"))
                    (telega--fmt-text-faces prop-val)

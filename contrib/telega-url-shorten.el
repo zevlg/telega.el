@@ -1,6 +1,6 @@
 ;;; telega-url-shorten.el --- URL shortening for telega  -*- lexical-binding: t; no-byte-compile: t; -*-
 
-;; Copyright (C) 2020 by Zajcev Evgeny.
+;; Copyright (C) 2020-2023 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Sun Apr  5 12:07:57 2020
@@ -158,7 +158,8 @@ chats matching this chat filter."
   (let* ((result (funcall old-e-t-p ent-type text))
          (result-td (plist-get result 'telega-display)))
     (when (and result-td
-               (eq 'textEntityTypeUrl (telega--tl-type ent-type)))
+               (eq 'textEntityTypeUrl (telega--tl-type ent-type))
+               (not (telega--inhibit-telega-display-p 'telega-url-shorten)))
       (when-let ((pmatch (cdr (cl-find result-td telega-url-shorten-regexps
                                        :test (lambda (res pattern)
                                                (string-match

@@ -1375,4 +1375,12 @@ You can send them an invite link as message instead.")
   :value "Create link")
  ("lng_formatting_link_url"
   :value "URL")
+
+ ;; Copying
+ ("lng_code_copied"
+  :value "Code copied to clipboard.")
+ ("lng_text_copied"
+  :value "Text copied to clipboard.")
+ ("lng_username_copied"
+  :value "Link copied to clipboard.")
  )

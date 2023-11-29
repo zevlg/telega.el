@@ -460,7 +460,7 @@ Return filename with recorded voice note."
         ;; Copy first frame
         (when (= 1 (car frame))
           (let ((first-frame (telega-temp-name "video-note1" ".png")))
-            (copy-file (cdr frame) first-frame)
+            (copy-file (cdr frame) first-frame 'ok-if-exists)
             (plist-put telega-vvnote-video--preview :first-frame first-frame)))
 
         ;; Display frame

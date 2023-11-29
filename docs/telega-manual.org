@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.212)
+#+title: Telega Manual (v0.8.217)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -84,6 +84,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#animated-stickers][Animated stickers]]
     - [[#favorite-and-recently-used-stickers][Favorite and recently used stickers]]
     - [[#animations][Animations]]
+  - [[#stories][Stories]]
   - [[#multiple-accounts][Multiple accounts]]
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
@@ -111,7 +112,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-alertel--notifications-using-alertel][/telega-alert.el/ -- Notifications using =alert.el=]]
     - [[#telega-dired-dwimel--attach-files-from-dired-in-dwim-style][/telega-dired-dwim.el/ -- Attach files from dired in DWIM style]]
     - [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][/telega-live-location.el/ -- Manage live location in Telega using geo.el]]
-    - [[#telega-mnzel--display-emacs-content-inside-telega-messages][/telega-mnz.el/ -- Display Emacs content inside Telega messages.]]
+    - [[#telega-mnzel--highlight-code-blocks-inside-messages][/telega-mnz.el/ -- Highlight code blocks inside messages.]]
     - [[#telega-dashboardel--important-telega-chats-in-the-emacs-dashboard][/telega-dashboard.el/ -- Important telega chats in the Emacs dashboard]]
     - [[#telega-emacs-storiesel--display-emacs-stories-in-the-dashboard][/telega-emacs-stories.el/ -- Display Emacs Stories in the dashboard]]
     - [[#telega-transientel--transient-magit-like-style-commands-for-telega][/telega-transient.el/ -- Transient (magit-like style) commands for telega]]
@@ -366,7 +367,7 @@ in [[https://stable.melpa.org/][MELPA Stable]].  Package configuration for =tele
 might look like:
 #+begin_src emacs-lisp
   (add-to-list 'package-archives
-  	     '("melpa-stable" . "https://stable.melpa.org/packages/"))
+               '("melpa-stable" . "https://stable.melpa.org/packages/"))
   (add-to-list 'package-pinned-packages '(telega . "melpa-stable"))
 #+end_src
 
@@ -380,9 +381,9 @@ Or you could use git repository with this melpa-style recipe for [[https://githu
 
 #+begin_src emacs-lisp
   (quelpa '(telega :fetcher github
-  		 :repo "zevlg/telega.el"
-  		 :branch "master"
-  		 :files (:defaults "contrib" "etc" "server" "Makefile")))
+                   :repo "zevlg/telega.el"
+                   :branch "master"
+                   :files (:defaults "contrib" "etc" "server" "Makefile")))
 #+end_src
 
 ** Installing telega directly from GitHub
@@ -615,11 +616,8 @@ new terms specific to =telega=.  All of them are used in the manual.
 
     Default value: 
     #+begin_src emacs-lisp
-      (("Main" . main)
-       ("Important" . important)
-       ("Online" and
-        (not saved-messages)
-        (user is-online))
+      (("Main" . main) ("Important" . important)
+       ("Online" and (not saved-messages) (user is-online))
        ("lng_filters_type_groups" type basicgroup supergroup)
        ("lng_filters_type_channels" type channel)
        ("lng_filters_type_no_archived" . archive))
@@ -698,8 +696,8 @@ Or if =telega= is not accessible to autoload at start time, then use:
 
 #+begin_src
   (add-hook 'telega-load-hook
-  	  (lambda ()
-  	    (define-key global-map (kbd "C-c t") telega-prefix-map)))
+            (lambda ()
+              (define-key global-map (kbd "C-c t") telega-prefix-map)))
 #+end_src
 
 Telega prefix map bindings:
@@ -918,13 +916,8 @@ view.
 
     Default value: 
     #+begin_src emacs-lisp
-      (("Users" . 10)
-       ("Groups" . 10)
-       ("Channels" . 10)
-       ("Bots" . 10)
-       ("InlineBots" . 10)
-       ("Calls" . 10)
-       ("ForwardChats" . 10))
+      (("Users" . 10) ("Groups" . 10) ("Channels" . 10) ("Bots" . 10)
+       ("InlineBots" . 10) ("Calls" . 10) ("ForwardChats" . 10))
     #+end_src
 
 
@@ -1532,11 +1525,8 @@ Use ~telega-story-match-p~ to match a story.
 
   Default value: 
   #+begin_src emacs-lisp
-    (("Main" . main)
-     ("Important" . important)
-     ("Online" and
-      (not saved-messages)
-      (user is-online))
+    (("Main" . main) ("Important" . important)
+     ("Online" and (not saved-messages) (user is-online))
      ("lng_filters_type_groups" type basicgroup supergroup)
      ("lng_filters_type_channels" type channel)
      ("lng_filters_type_no_archived" . archive))
@@ -1566,33 +1556,22 @@ Use ~telega-story-match-p~ to match a story.
 
   Default value: 
   #+begin_src emacs-lisp
-    ((:eval
-      (telega-chatbuf-prompt-default-sender-avatar))
-     (:eval
-      (telega-chatbuf-prompt-body))
+    ((:eval (telega-chatbuf-prompt-default-sender-avatar))
+     (:eval (telega-chatbuf-prompt-body))
      (:eval
       (when
           (and telega-use-images
-    	   (telega-chatbuf-match-p 'can-send-or-post))
+               (telega-chatbuf-match-p 'can-send-or-post))
         (telega-chatbuf-prompt-chat-avatar)))
-     (:eval
-      (telega-chatbuf-prompt-topic 25))
-     (:eval
-      (telega-auto-translate--chatbuf-prompt-translation))
-     ">>> ")
+     (:eval (telega-chatbuf-prompt-topic 25))
+     (:eval (telega-auto-translate--chatbuf-prompt-translation)) ">>> ")
   #+end_src
 
 - User Option: ~telega-chat-group-messages-for~ 
 
   Chat Filter for chats where to group messages by sender. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    (not
-     (or saved-messages
-         (type channel bot)))
-  #+end_src
-
+  Default value: ~(not (or saved-messages (type channel bot)))~
 - User Option: ~telega-chat-show-deleted-messages-for~ 
 
   Chat Filter for chats where to show deleted messages in chatbuf. 
@@ -1671,33 +1650,13 @@ Customizable options for Chat Folders:
 
   Default value: 
   #+begin_src emacs-lisp
-    (("All" . "💬")
-     ("Unread" . "✅")
-     ("Unmuted" . "🔔")
-     ("Bots" . "🤖️")
-     ("Channels" . "📢")
-     ("Groups" . "👥")
-     ("Private" . "👤")
-     ("Setup" . "📋")
-     ("Cat" . "🐱")
-     ("Crown" . "👑")
-     ("Favorite" . "⭐️")
-     ("Flower" . "🌹")
-     ("Game" . "🎮")
-     ("Home" . "🏠")
-     ("Love" . "❤️")
-     ("Mask" . "🎭")
-     ("Party" . "🍸")
-     ("Sport" . "⚽️")
-     ("Study" . "🎓")
-     ("Trade" . "📊")
-     ("Travel" . "🛫️")
-     ("Work" . "💼")
-     ("Airplane" . "✈️️")
-     ("Book" . "📖")
-     ("Like" . "👍")
-     ("Money" . "💰")
-     ("Note" . "🗒️"))
+    (("All" . "💬") ("Unread" . "✅") ("Unmuted" . "🔔") ("Bots" . "🤖️")
+     ("Channels" . "📢") ("Groups" . "👥") ("Private" . "👤")
+     ("Setup" . "📋") ("Cat" . "🐱") ("Crown" . "👑") ("Favorite" . "⭐️")
+     ("Flower" . "🌹") ("Game" . "🎮") ("Home" . "🏠") ("Love" . "❤️")
+     ("Mask" . "🎭") ("Party" . "🍸") ("Sport" . "⚽️") ("Study" . "🎓")
+     ("Trade" . "📊") ("Travel" . "🛫️") ("Work" . "💼") ("Airplane" . "✈️️")
+     ("Book" . "📖") ("Like" . "👍") ("Money" . "💰") ("Note" . "🗒️"))
   #+end_src
 
 
@@ -1712,12 +1671,7 @@ Customizable options for Chat Folders:
   %F - Replaced with folder's icon from ~telega-folder-icon-names~
        if icon is unique, or equivalent to %I%f. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    #("%F | " 0 5
-      (face bold))
-  #+end_src
-
+  Default value: ~#("%F | " 0 5 (face bold))~
 
 - User Option: ~telega-chat-folders-exclude~ 
 
@@ -2066,8 +2020,7 @@ Important customizable options:
   Default value: 
   #+begin_src emacs-lisp
     (("markdown2" . telega-markup-markdown2-fmt)
-     ("org" . telega-markup-org-fmt)
-     ("html" . telega-markup-html-fmt)
+     ("org" . telega-markup-org-fmt) ("html" . telega-markup-html-fmt)
      ("markdown1" . telega-markup-markdown1-fmt))
   #+end_src
 
@@ -2092,6 +2045,9 @@ You can attach various media into chatbuf input, using next bindings:
 - @@html:<kbd>@@C-c C-v@@html:</kbd>@@ (~telega-chatbuf-attach-clipboard~) :: 
      Attach clipboard image to the chatbuf as photo.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then attach clipboard as document.
+
+- @@html:<kbd>@@C-c C-e@@html:</kbd>@@ (~telega-chabuf-input-formatting-set~) :: 
+     Attach formatting to the region in the chatbuf input.
 
 Text following attached media will be a media caption.
 
@@ -2187,8 +2143,7 @@ Customizable options for attaching media:
   Default value: 
   #+begin_src emacs-lisp
     (("markdown2" . telega-markup-markdown2-fmt)
-     ("org" . telega-markup-org-fmt)
-     ("html" . telega-markup-html-fmt)
+     ("org" . telega-markup-org-fmt) ("html" . telega-markup-html-fmt)
      ("markdown1" . telega-markup-markdown1-fmt))
   #+end_src
 
@@ -2396,7 +2351,14 @@ controlled by:
   Company backends to use in chat buffers.
   Set to nil to disable company completions in chat buffers. 
 
-  Default value: ~(telega-company-emoji telega-company-telegram-emoji telega-company-username telega-company-hashtag telega-company-markdown-precode telega-company-botcmd)~
+  Default value: 
+  #+begin_src emacs-lisp
+    (telega-company-emoji telega-company-telegram-emoji
+                          telega-company-username telega-company-hashtag
+                          telega-company-markdown-precode
+                          telega-company-botcmd)
+  #+end_src
+
 
 You can use completion without enabling =company-mode= in the chat
 buffers, by explicitly pressing
@@ -2439,7 +2401,7 @@ chatbuf, so to enable ~capf~ completions setup could look like:
   (defun my-telega-chat-mode ()
     (require 'company)
     (add-hook 'completion-at-point-functions
-  	    #'telega-chatbuf-complete-at-point nil 'local)
+              #'telega-chatbuf-complete-at-point nil 'local)
     )
 
   (add-hook 'telega-chat-mode-hook 'my-telega-chat-mode)
@@ -2592,9 +2554,9 @@ For example, to play youtube videos using =mpv= player, add this to config:
     (async-shell-command (format "mpv -v %S" url)))
 
   (add-to-list 'telega-browse-url-alist
-  	     '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
+               '("https?://\\(www\\.\\)?youtube.com/watch" . my-watch-in-mpv))
   (add-to-list 'telega-browse-url-alist
-  	     '("https?://youtu.be/" . my-watch-in-mpv))
+               '("https?://youtu.be/" . my-watch-in-mpv))
 #+end_src
 
 ** Client side messages ignoring
@@ -2624,7 +2586,7 @@ Or to ignore messages from blocked senders (users or chats), just add:
 
 #+begin_src emacs-lisp
   (add-hook 'telega-msg-ignore-predicates
-  	  (telega-match-gen-predicate 'msg '(sender is-blocked)))
+            (telega-match-gen-predicate 'msg '(sender is-blocked)))
 #+end_src
 
 To view recently ignored messages use
@@ -2817,6 +2779,40 @@ To explicitly add animation to Saved Animations list, press
 @@html:<kbd>@@S@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <save>@@html:</kbd>@@ (~telega-msg-save~) on the
 corresponding animation message.
 
+* Stories
+:PROPERTIES:
+:CUSTOM_ID: stories
+:END:
+
+Telegram added [[https://telegram.org/blog/stories][Stories]]
+feature on its 10th birthday.
+
+Story is a media content that user or channel shares outside chat
+contents.  By default active and pinned stories are shown in a
+chatbuf's footer.  This behaviour is controlled by custom options:
+
+- User Option: ~telega-story-show-active-stories-for~ 
+
+  Show active stories in the chatbuf's footer for chats matching this temex. 
+
+  Default value: ~all~
+- User Option: ~telega-story-show-pinned-stories-for~ 
+
+  Show pinned stories in the chatbuf's footer for chats matching this temex. 
+
+  Default value: ~all~
+
+=telega= can preload media content for stories from users or
+channels of your interest.  This is controlled by custom option:
+
+- User Option: ~telega-story-preload-for~ 
+
+  Preload stories media files for chats matching this temex. 
+
+  Default value: ~(user is-close-friend)~
+
+Stories can be matched using [[#list-of-story-temexes][Telega Match
+Expressions]].
 * Multiple accounts
 :PROPERTIES:
 :CUSTOM_ID: multiple-accounts
@@ -2928,23 +2924,13 @@ Customizable options:
 
   Default value: 
   #+begin_src emacs-lisp
-    ("   "
-     (:eval
-      (telega-mode-line-icon))
-     (:eval
-      (car
-       (telega-account-current)))
-     (:eval
-      (telega-mode-line-online-status))
-     (:eval
-      (when telega-use-tracking-for
-        (telega-mode-line-tracking)))
-     (:eval
-      (telega-mode-line-unread-unmuted))
-     (:eval
-      (telega-mode-line-mentions 'messages))
-     (:eval
-      (telega-mode-line-active-video-chats)))
+    ("   " (:eval (telega-mode-line-icon))
+     (:eval (car (telega-account-current)))
+     (:eval (telega-mode-line-online-status))
+     (:eval (when telega-use-tracking-for (telega-mode-line-tracking)))
+     (:eval (telega-mode-line-unread-unmuted))
+     (:eval (telega-mode-line-mentions 'messages))
+     (:eval (telega-mode-line-active-video-chats)))
   #+end_src
 
 
@@ -2985,8 +2971,7 @@ Customizable options:
 
   Default value: 
   #+begin_src emacs-lisp
-    ((offline "white" "black" nil)
-     (online "#7739aa" "white" "#00ff00")
+    ((offline "white" "black" nil) (online "#7739aa" "white" "#00ff00")
      (connecting "gray" "white" "white"))
   #+end_src
 
@@ -3008,7 +2993,12 @@ Customizable options:
   Use this labels instead of plain number.
   Set to nil to use plain number. 
 
-  Default value: ~("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿" "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱" "⓲" "⓳" "⓴")~
+  Default value: 
+  #+begin_src emacs-lisp
+    ("❶" "❷" "❸" "❹" "❺" "❻" "❼" "❽" "❾" "❿" "⓫" "⓬" "⓭" "⓮" "⓯" "⓰" "⓱"
+     "⓲" "⓳" "⓴")
+  #+end_src
+
 
 ** telega-autoplay-mode
 :PROPERTIES:
@@ -3204,12 +3194,7 @@ Customizable options:
 
   Chat Temex to match chat with active video chat. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    (and is-known
-         (has-video-chat non-empty))
-  #+end_src
-
+  Default value: ~(and is-known (has-video-chat non-empty))~
 
 ** telega-recognize-voice-message-mode
 :PROPERTIES:
@@ -3290,9 +3275,7 @@ Customizable options:
 
   Default value: 
   #+begin_src emacs-lisp
-    ((roaming-mobile . :disabled)
-     (mobile . :low)
-     (wi-fi . :medium)
+    ((roaming-mobile . :disabled) (mobile . :low) (wi-fi . :medium)
      (other . :high))
   #+end_src
 
@@ -3357,13 +3340,7 @@ Customizable options:
   %u - chat username if any, %t otherwise.
   %t - chat title with brackets. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    #("◀%t" 0 1
-      (face
-       (italic telega-blue)))
-  #+end_src
-
+  Default value: ~#("◀%t" 0 1 (face (italic telega-blue)))~
 - User Option: ~org-telega-msg-link-format~ 
 
   Description format for link to a message.
@@ -3372,13 +3349,7 @@ Customizable options:
   %t - user title without brackets.
   %m - one line message body. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    #("◀%u> %>.32m" 0 1
-      (face
-       (italic telega-blue)))
-  #+end_src
-
+  Default value: ~#("◀%u> %>.32m" 0 1 (face (italic telega-blue)))~
 - User Option: ~org-telega-file-link-format~ 
 
   Description format for link to a message to open message's media file.
@@ -3387,13 +3358,7 @@ Customizable options:
   %t - user title without brackets.
   %m - one line message body. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    #("◀📎%u> %>.32m" 0 1
-      (face
-       (italic telega-blue)))
-  #+end_src
-
+  Default value: ~#("◀📎%u> %>.32m" 0 1 (face (italic telega-blue)))~
 
 ** /telega-status-history.el/ -- Global minore mode to save user's online status history
 :PROPERTIES:
@@ -3449,7 +3414,7 @@ Customizable options:
   shortening pattern use something like:
   #+begin_src
     (plist-put (cdr (assq '<LABEL> telega-url-shorten-regexps))
-    	   :<PROP> <VALUE>)
+               :<PROP> <VALUE>)
   #+end_src
 
 - User Option: ~telega-url-shorten-mode-for~ 
@@ -3502,15 +3467,15 @@ Take into account that using ~geo-simulate~ backend to fake geo
 location data is Telegram API ToS violation.  See 1.4 in
 https://core.telegram.org/api/terms
 
-** /telega-mnz.el/ -- Display Emacs content inside Telega messages.
+** /telega-mnz.el/ -- Highlight code blocks inside messages.
 :PROPERTIES:
-:CUSTOM_ID: telega-mnzel--display-emacs-content-inside-telega-messages
+:CUSTOM_ID: telega-mnzel--highlight-code-blocks-inside-messages
 :END:
 
 Global minor mode to highlight code blocks inside messages.
 
 Can be enabled globally in all chats matching
-~telega-mnz-mode-for~ (see below) chat filter with
+~telega-mnz-mode-for~ (see below) chat temex with
 ~(global-telega-mnz-mode 1)~ or by adding:
 
 #+begin_src emacs-lisp
@@ -3519,7 +3484,7 @@ Can be enabled globally in all chats matching
 #+end_src
 
 Optionally depends on =language-detection= Emacs package.  If
-=language-detection= is available, then laguage could be detected
+=language-detection= is available, then language could be detected
 automatically for code blocks without language explicitly
 specified.  Install =language-detection= with @@html:<kbd>@@M-x package-install RET language-detection RET@@html:</kbd>@@
 
@@ -3536,23 +3501,17 @@ chatbuf.
 Customizable options:
 - User Option: ~telega-mnz-mode-for~ 
 
-  Chat filter for ~global-telega-mnz-mode~.
+  Chat temex for ~global-telega-mnz-mode~.
   Global mnz mode enables ~telega-mnz-mode~ only for chats matching
-  this chat filter. 
+  this chat temex. 
 
   Default value: ~all~
-
-- User Option: ~telega-mnz-keep-pre-face~ 
-
-  Non-nil to keep ~telega-entity-type-pre~ face on the highlighted text. 
-
-  Default value: ~t~
 
 - User Option: ~telega-mnz-entity-types~ 
 
   List of entity types for which mnz performs highlighting. 
 
-  Default value: ~(textEntityTypePre textEntityTypePreCode textEntityTypeCode)~
+  Default value: ~(textEntityTypePreCode)~
 
 - User Option: ~telega-mnz-edit-code-block~ 
 
@@ -3566,7 +3525,7 @@ Customizable options:
   Could be also a number, meaning that language detection is done
   only for code larger then this number of chars. 
 
-  Default value: ~(200 . 4)~
+  Default value: ~nil~
 
 - User Option: ~telega-mnz-edit-display-buffer-action~ 
 
@@ -3595,12 +3554,7 @@ Customizable options:
 
   Chat Filter used to filter chats to display in the Emacs dashboard. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    (or mention
-        (and unread unmuted))
-  #+end_src
-
+  Default value: ~(or mention (and unread unmuted))~
 - User Option: ~telega-dashboard-chat-inserter~ 
 
   Inserter for the chat button in the Emacs dashboard. 
@@ -3695,7 +3649,14 @@ Control keymaps for which to use transient with:
 
   List of keymaps names to apply transient for. 
 
-  Default value: ~(telega-prefix-map telega-sort-map telega-filter-map telega-describe-map telega-folder-map telega-voip-map telega-root-fastnav-map telega-root-view-map telega-chatbuf-fastnav-map)~
+  Default value: 
+  #+begin_src emacs-lisp
+    (telega-prefix-map telega-sort-map telega-filter-map
+                       telega-describe-map telega-folder-map
+                       telega-voip-map telega-root-fastnav-map
+                       telega-root-view-map telega-chatbuf-fastnav-map)
+  #+end_src
+
 
 ** /telega-adblock.el/ -- Block advertisement messages
 :PROPERTIES:
@@ -3717,14 +3678,7 @@ Customizable options:
 
   Chat Temex to match chats for which to apply adblock logic. 
 
-  Default value: 
-  #+begin_src emacs-lisp
-    (and
-     (type channel)
-     (not unmuted)
-     (not verified))
-  #+end_src
-
+  Default value: ~(and (type channel) (not unmuted) (not verified))~
 - User Option: ~telega-adblock-chat-order-if-last-message-ignored~ 
 
   Custom chat order for chats with last message being ignored by adblock.
@@ -3807,9 +3761,9 @@ For example, if you want to replace the bridge bot
 #+begin_src emacs-lisp
   (setq telega-bridge-bot-bridge-info-plist
         '(-1001773572820 ; id of the @emacs_china
-  	(420415423 ; id of the @matrix_t2bot
-  	 ;; will fetch member info with this matrix room id
-  	 (:type :matrix :chat-id "!EGzPXoyqkJdTByDCjD:mozilla.org"))))
+          (420415423 ; id of the @matrix_t2bot
+           ;; will fetch member info with this matrix room id
+           (:type :matrix :chat-id "!EGzPXoyqkJdTByDCjD:mozilla.org"))))
 #+end_src
 
 If you want download avatar from matrix, you should also set

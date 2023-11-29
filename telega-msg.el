@@ -171,7 +171,7 @@
 ;    (define-key map [remap self-insert-command] 'ignore)
 
     (define-key map (kbd "SPC") 'scroll-up-command)
-    (define-key map (kbd "c") 'telega-msg-copy-text)
+    (define-key map (kbd "c") 'telega-msg-copy-dwim)
     (define-key map (kbd "d") 'telega-msg-delete-marked-or-at-point)
     (define-key map (kbd "e") 'telega-msg-edit)
     (define-key map (kbd "f") 'telega-msg-forward-marked-or-at-point)
@@ -1492,7 +1492,7 @@ the saved animations list."
                     (error "Canceled"))))
 
               ;; See https://github.com/tdlib/td/issues/379
-              (copy-file fpath new-fpath)
+              (copy-file fpath new-fpath 1)
               (message (format "Wrote %s" new-fpath))))))))))
 
 (defun telega-msg-copy-link (msg &optional for-thread-p)
@@ -1537,9 +1537,11 @@ recognition text if message is a VoiceNote message."
               (telega--tl-get content :voice_note :speech_recognition_result)
               :text)))))
 
-(defun telega-msg-copy-text (msg)
-  "Copy a text of the message MSG."
-  (interactive (list (telega-msg-for-interactive)))
+(defun telega-msg-copy-text (msg &optional no-properties)
+  "Copy a text of the message MSG.
+If `\\[universal-argument]' is supplied, then copy without text properties."
+  (interactive (list (telega-msg-for-interactive)
+                     current-prefix-arg))
 
   (unless (plist-get msg :can_be_saved)
     (user-error "telega: %s" (telega-i18n (if (plist-get msg :is_channel_post)
@@ -1553,8 +1555,64 @@ recognition text if message is a VoiceNote message."
             (telega-msg-content-text msg 'with-voice-note))))
     (unless msg-text
       (user-error "Nothing to copy"))
-    (kill-new msg-text)
+    (kill-new (if no-properties
+                  (substring-no-properties msg-text)
+                msg-text))
     (message "Copied message text (%d chars)" (length msg-text))))
+
+(defun telega-msg--tl-entity-text (msg &optional tl-entity)
+  "Return entity text at point defined by `:tl-entity' text property."
+  (when-let ((tl-entity (or tl-entity
+                            (get-text-property (point) :tl-entity)))
+             (msg-fmt-text (or (telega--tl-get msg :content :text)
+                               (telega--tl-get msg :content :caption))))
+    (telega-tl-str
+     (telega-fmt-text-substring
+      msg-fmt-text
+      (plist-get tl-entity :offset)
+      (+ (plist-get tl-entity :offset) (plist-get tl-entity :length))))))
+
+(defun telega-msg-copy-dwim (msg &optional no-properties)
+  "Copy text in DWYM manner.
+If region is selected copy a region.
+If point is under url, copy this url.
+If point is inside code block, copy code from this code block.
+Otherwise copy message's text.
+If `\\[universal-argument]' is supplied, then copy without text properties."
+  (interactive (list (telega-msg-for-interactive)
+                     current-prefix-arg))
+
+  (let* ((ent (get-text-property (point) :tl-entity))
+         (ent-type (when ent
+                     (telega--tl-type (plist-get ent :type))))
+         (telega-inhibit-telega-display-by t)
+         (ctext (cond ((region-active-p)
+                       (prog1
+                           (buffer-substring (region-beginning) (region-end))
+                         (deactivate-mark)))
+
+                      ((eq 'textEntityTypeUrl ent-type)
+                       (telega-msg--tl-entity-text msg ent))
+
+                      ((eq 'textEntityTypeTextUrl ent-type)
+                       (telega-tl-str (plist-get ent :type) :url))
+
+                      ((eq 'textEntityTypePreCode ent-type)
+                       (telega-msg--tl-entity-text msg ent))
+
+                      (t
+                       (call-interactively #'telega-msg-copy-text)
+                       ;; NOTE: `telega-msg-copy-text' does all the
+                       ;; job by itself, so no need to do anything
+                       ;; after it
+                       nil))))
+    (when ctext
+      (setq ctext (if no-properties
+                      (substring-no-properties ctext)
+                    ctext))
+      (kill-new ctext)
+      (message "%s (%s)" (telega-i18n "lng_text_copied") ctext))
+    ))
 
 (defun telega-msg-ban-sender (msg)
   "Ban forever MSG sender in the chat.
