@@ -839,8 +839,10 @@ See `puny-decode-domain' for details."
           '(face telega-entity-type-code)
 
         (let* ((vbar-face (if telega-msg--current
-                              (telega-msg-sender-title-faces
-                               (telega-msg-sender telega-msg--current))
+                              ;; NOTE: Use only rainbow color
+                              ;; See https://t.me/emacs_telega/43270
+                              (cdr (telega-msg-sender-title-faces
+                                    (telega-msg-sender telega-msg--current)))
                             (list 'telega-blue)))
                (vbar (propertize (telega-symbol 'vertical-bar)
                                  'face vbar-face))
