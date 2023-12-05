@@ -4,7 +4,7 @@
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Mon Dec 21 00:02:44 2020
-;; Package-Requires: ((dashboard "1.8.0"))
+;; Package-Requires: ((dashboard "1.9.0"))
 ;; Keywords: 
 
 ;; telega is free software: you can redistribute it and/or modify
@@ -97,7 +97,9 @@
             (telega-button--insert 'telega-chat chat
               :inserter telega-dashboard-chat-inserter)))))
     (dashboard-insert-shortcut
-     (dashboard-get-shortcut 'telega-chats) "Telega Chats:")))
+     'telega-chats
+     (dashboard-get-shortcut 'telega-chats)
+     "Telega Chats:")))
 
 (provide 'telega-dashboard)
 

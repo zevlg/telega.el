@@ -1,6 +1,6 @@
 ;;; telega-emacs-stories.el --- Emacs Stories.  -*- lexical-binding: t; no-byte-compile: t; -*-
 
-;; Copyright (C) 2021 by Zajcev Evgeny.
+;; Copyright (C) 2021-2023 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Tue Dec 22 00:47:53 2020
@@ -233,6 +233,7 @@ and cdr is image displayed in the dashboard.")
              (dolist (msg imsgs)
                (telega-emacs-stories--msg-pp msg))))))
   (dashboard-insert-shortcut
+   'telega-emacs-stories
    (dashboard-get-shortcut 'telega-emacs-stories)
    (concat (telega-i18n "telega_stories_heading") ":"))
   )
