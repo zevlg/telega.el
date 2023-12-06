@@ -1484,6 +1484,7 @@ new Chat buffers.")
     (define-key map (kbd "C-c ?") 'telega-describe-chat)
 
     (define-key map (kbd "RET") 'telega-chatbuf-newline-or-input-send)
+    (define-key map (kbd "M-RET") 'telega-chatbuf-input-preview)
     (define-key map (kbd "M-p") 'telega-chatbuf-edit-prev)
     (define-key map (kbd "M-n") 'telega-chatbuf-edit-next)
     (define-key map (kbd "M-r") 'telega-chatbuf-input-search)
@@ -2191,9 +2192,9 @@ Use this to surrond header with some prefix and suffix."
                      (telega--joinChat telega-chatbuf--chat))))
        ))))
 
-(defun telega-chat--aux-inline-reply-symbol (&optional aux-quote)
+(defun telega-chat--aux-inline-reply-symbol (&optional aux-quote-p)
   "Return symbol to use as reply title."
-  (cond ((and aux-quote (memq 'reply-quote telega-chat-aux-inline-symbols))
+  (cond ((and aux-quote-p (memq 'reply-quote telega-chat-aux-inline-symbols))
          (telega-symbol 'reply-quote))
         ((memq 'reply telega-chat-aux-inline-symbols)
          (telega-symbol 'reply))
@@ -2233,7 +2234,7 @@ Use this to surrond header with some prefix and suffix."
               :remove 'message)
             (if aux-quote
                 (telega-ins--with-face 'telega-entity-type-blockquote
-                  (telega-ins--fmt-text aux-quote aux-msg))
+                  (telega-ins--fmt-text (plist-get aux-quote :text) aux-msg))
               (telega-ins--content-one-line aux-msg)))))
        ))))
 
@@ -2305,7 +2306,7 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
           (run-hook-with-args 'telega-msg-hover-out-hook msg))
         ))))
 
-(defun telega-chatbuf-msg--pp (msg)
+(defun telega-chatbuf-msg--pp (msg &optional for-preview-p)
   "Pretty printer for MSG button inserted in a chatbuf."
   (let* ((chat (telega-msg-chat msg))
          (msg-inserter
@@ -2328,6 +2329,12 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
                         (and (not (telega-msg-internal-p prev-msg))
                              (not (telega-msg-internal-p msg))
                              (not (telega-msg-special-p prev-msg))
+                             ;; NOTE: when sending multiple messages
+                             ;; at once sending state might change
+                             ;; leading to messages reordering which
+                             ;; might result in invalid grouping
+                             (equal (plist-get prev-msg :sending_state)
+                                    (plist-get msg :sending_state))
                              (< (- (plist-get msg :date)
                                    (plist-get prev-msg :date))
                                 telega-chat-group-messages-timespan)
@@ -2349,7 +2356,8 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
     (when msg-inserter
       (telega-button--insert 'telega-msg msg
         :inserter msg-inserter
-        'cursor-sensor-functions '(telega-chatbuf-msg--sensor-func))
+        'cursor-sensor-functions (unless for-preview-p
+                                   '(telega-chatbuf-msg--sensor-func)))
 
       ;; NOTE: we insert newline outside the button to provide
       ;; msg hover-in/hover-out hooks handled by sensor function.
@@ -3801,12 +3809,12 @@ CALLBACK if non-nil, then called with total number of loaded messages."
 
   ;; NOTE: nil ent-type mean clear text
   (if ent-type
-      (let* ((props (telega--entity-type-to-text-props
-                     ent-type (buffer-substring-no-properties begin end)))
-             (tdisp (plist-get props 'telega-display)))
-        (when tdisp
-          (plist-put props 'display tdisp))
-        (set-text-properties begin end props))
+      (let ((telega-inhibit-telega-display-by t))
+        (set-text-properties
+         begin end
+         (nconc (list 'rear-nonsticky t)
+                (telega--entity-type-to-text-props
+                 ent-type (buffer-substring-no-properties begin end)))))
 
     (telega-chatbuf-input-formatting-cancel begin end)))
 
@@ -3955,23 +3963,30 @@ Return valid \"messageSendOptions\"."
                                   (plist-get ifile :@type))))
     (telega--cancelPreliminaryUploadFile upload-ahead-file)))
 
-(defun telega-chatbuf-input-send (markup-name)
+(defun telega-chatbuf-input-send (arg &optional preview-p)
   "Send chatbuf input to the chat.
 If called interactively, number of `\\[universal-argument]' before
 command determines index in `telega-chat-input-markups' of markup to
 use.  For example `C-u RET' will use
 `(nth 1 telega-chat-input-markups)' markup."
-  (interactive (list (if (and current-prefix-arg (listp current-prefix-arg))
-                         (nth (round (log (car current-prefix-arg) 4))
-                              telega-chat-input-markups)
-                       (car telega-chat-input-markups))))
+  (interactive (list current-prefix-arg))
 
-  (let* ((input (telega-chatbuf-input-string))
+  (let* ((markup-name (if (and arg (listp arg))
+                          (nth (round (log (car arg) 4))
+                               telega-chat-input-markups)
+                        (car telega-chat-input-markups)))
+         (input (telega-chatbuf-input-string))
          (imcs (telega-chatbuf--input-imcs markup-name input))
          (replying-imr (telega-chatbuf-replying-imr))
          (editing-msg (telega-chatbuf-editing-msg))
-         (options nil)
+         (options (when preview-p
+                    (list :@type "messageSendOptions" :only_preview t)))
          (send-imcs nil))
+    ;; Manage buffer for messages preview
+    (if preview-p
+        (telega-msg-preview--buffer-create)
+      (telega-msg-preview--buffer-kill))
+
     ;; NOTE: Allow removing captions, see
     ;; https://github.com/zevlg/telega.el/issues/252
     (when (and (null imcs)
@@ -4059,6 +4074,7 @@ use.  For example `C-u RET' will use
                                10))))
         (telega--sendMessageAlbum
          telega-chatbuf--chat send-imcs replying-imr options
+         :callback (when preview-p #'telega-msg-preview--add-multiple)
          :sync-p (not telega-chat-send-messages-async)))
 
        ;; NOTE: TDLib will automatically group messages to albums when
@@ -4088,6 +4104,7 @@ use.  For example `C-u RET' will use
          (mapcar (telega--tl-prop :message) send-imcs) options
          (plist-get (car send-imcs) :send_copy)
          (plist-get (car send-imcs) :remove_caption)
+         :callback (when preview-p #'telega-msg-preview--add-multiple)
          :sync-p (not telega-chat-send-messages-async)))
 
      (t
@@ -4097,6 +4114,7 @@ use.  For example `C-u RET' will use
           (telegaInlineQuery
            (telega--sendInlineQueryResultMessage
             telega-chatbuf--chat imc replying-imr options
+            :callback (when preview-p #'telega-msg-preview--add)
             :sync-p (not telega-chat-send-messages-async)))
 
           (telegaForwardMessage
@@ -4122,6 +4140,7 @@ use.  For example `C-u RET' will use
              (telega--sendMessage
               telega-chatbuf--chat
               fwd-imc replying-imr options
+              :callback (when preview-p #'telega-msg-preview--add)
               :sync-p (not telega-chat-send-messages-async))
              (when (plist-get imc :unmark-after-sent)
                (telega-msg-unmark msg))))
@@ -4132,8 +4151,9 @@ use.  For example `C-u RET' will use
              (setq options (plist-put options prop value))))
 
           (telegaChatTheme
-           (telega--setChatTheme
-            telega-chatbuf--chat (or (plist-get imc :name) "")))
+           (unless preview-p
+             (telega--setChatTheme
+              telega-chatbuf--chat (or (plist-get imc :name) ""))))
 
           (telegaDelimiter
            ;; No-op, just delimits messages
@@ -4141,6 +4161,7 @@ use.  For example `C-u RET' will use
 
           (t (telega--sendMessage
               telega-chatbuf--chat imc replying-imr options
+              :callback (when preview-p #'telega-msg-preview--add)
               :sync-p (not telega-chat-send-messages-async)))))))
 
       ;; NOTE: Cancell all file upload ahead, initiated by
@@ -4158,14 +4179,19 @@ use.  For example `C-u RET' will use
             send-imcs nil))
 
     ;; Recover prompt to initial state
-    (telega-chatbuf--input-delete)
-    (telega-chatbuf--prompt-reset)
+    (unless preview-p
+      (telega-chatbuf--input-delete)
+      (telega-chatbuf--prompt-reset)
 
-    ;; Save input to history
-    (unless (string-empty-p input)
-      (ring-insert telega-chatbuf--input-ring input)
-      (setq telega-chatbuf--input-idx nil
-            telega-chatbuf--input-pending nil))))
+      ;; Save input to history
+      (unless (string-empty-p input)
+        (ring-insert telega-chatbuf--input-ring input)
+        (setq telega-chatbuf--input-idx nil
+              telega-chatbuf--input-pending nil)))))
+
+(defun telega-chatbuf-input-preview (arg)
+  (interactive (list current-prefix-arg))
+  (telega-chatbuf-input-send arg 'preview))
 
 (defun telega-chatbuf-newline-or-input-send ()
   "Insert newline or send chatbuf input.
@@ -5135,6 +5161,11 @@ Markups are defined in the `telega-chat-markup-functions' user option."
      (telega-string-as-markup (or markup-text "") markup-name markup-func))
     (backward-char 1)))
 
+(defun telega-chatbuf-attach-delimiter ()
+  "Attach explicit messages delimiter."
+  (interactive)
+  (telega-chatbuf-input-insert '(:@type "telegaDelimiter")))
+
 (defun telega-chatbuf-attach (attach-type)
   "Attach something to the chatbuf input.
 `\\[universal-argument]' is passed directly to the attachment function.
@@ -5373,16 +5404,24 @@ NODE is already calculated ewoc NODE, or nil."
                                    (plist-get msg :id)))))
       (telega-chatbuf--redisplay-node msg-node))))
 
-(defun telega-msg-reply (msg &optional other-chat-p quote-fmt-text)
+(defun telega-chatbuf--input-text-quote ()
+  "Return TL inputTextQuote from currently selected region."
+  (when (region-active-p)
+    (prog1
+        (list :@type "inputTextQuote"
+              :text (telega-string-fmt-text
+                     (buffer-substring (region-beginning) (region-end)))
+              ;; TODO: add `:position' - Quote position in the
+              ;; original message in UTF-16 code units
+              )
+      (deactivate-mark))))
+
+(defun telega-msg-reply (msg &optional other-chat-p input-quote)
   "Start replying to MSG.
 If `\\[universal-argument]' is specified, then reply in other chat."
   (interactive (list (telega-msg-for-interactive)
                      current-prefix-arg
-                     (when (region-active-p)
-                       (prog1
-                           (telega-string-fmt-text
-                            (buffer-substring (region-beginning) (region-end)))
-                         (deactivate-mark)))))
+                     (telega-chatbuf--input-text-quote)))
 
   (when (and other-chat-p
              (not (plist-get msg :can_be_replied_in_another_chat)))
@@ -5395,7 +5434,7 @@ If `\\[universal-argument]' is specified, then reply in other chat."
     (telega-chat--pop-to-buffer chat)   ; Make sure chatbuf is shown
     (with-telega-chatbuf chat
       (setq telega-chatbuf--aux-plist (list :aux-type 'reply :aux-msg msg
-                                            :aux-reply-quote quote-fmt-text))
+                                            :aux-reply-quote input-quote))
       (telega-chatbuf--chat-update "aux-plist")
 
       (telega-chatbuf--prompt-update)
@@ -5403,12 +5442,11 @@ If `\\[universal-argument]' is specified, then reply in other chat."
 
       (telega-help-message--cancel-aux 'reply))))
 
-(defun telega-msg-reply-in-another-chat (msg quote-region)
+(defun telega-msg-reply-in-another-chat (msg &optional input-quote)
   "Reply to a message MSG in another chat."
   (interactive (list (telega-msg-for-interactive)
-                     (when (region-active-p)
-                       (cons (region-beginning) (region-end)))))
-  (telega-msg-reply msg 'in-another-chat quote-region))
+                     (telega-chatbuf--input-text-quote)))
+  (telega-msg-reply msg 'in-another-chat input-quote))
 
 (defconst telega-msg-edit--markup-specs
   '(("markdown1" . telega--fmt-text-markdown1)

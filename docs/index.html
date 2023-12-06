@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2023-11-30 Чт 00:37 -->
+<!-- 2023-12-06 Ср 16:38 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.217)</title>
+<title>Telega Manual (v0.8.220)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.217)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.220)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -337,7 +337,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.21.
+version greater or equal to 1.8.22.
 </p>
 
 <p>
@@ -821,7 +821,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgaf1c017">
+<pre class="example" id="orgc0701a6">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -839,7 +839,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orga1b147d">
+<pre class="example" id="orgf51fc0c">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -928,7 +928,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orge8983ff">
+<pre class="example" id="org2144814">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -966,7 +966,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgfd8cc62">
+<pre class="example" id="org46a686e">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1070,10 +1070,16 @@ Default value: <code>(and main unread)</code>
 </p></li>
 </ul></dd>
 
-<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd>Open the <code>URL</code>.
-If <code>URL</code> can be opened directly inside telega, then do it.
+<dt><kbd>w</kbd> (<code>telega-browse-url</code>)</dt><dd><p>
+Open the URL.
+If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
-If <code>IN-WEB-BROWSER</code> is non-nil then force opening in web browser.</dd>
+If IN-WEB-BROWSER is non-nil then force opening in web browser.
+</p>
+
+<p>
+(fn URL &amp;optional IN-WEB-BROWSER)
+</p></dd>
 </dl>
 </div>
 </div>
@@ -1991,7 +1997,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org7920906">
+<pre class="example" id="org7c1b73d">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2382,7 +2388,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org0794219">
+<pre class="example" id="org935ff50">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2444,7 +2450,9 @@ If <kbd>C-u</kbd> is given, then search forward instead.</dd>
 <p>
 Type a text in the chatbuf input and press <kbd>RET</kbd> to send the
 message.  To insert newline in the middle of the input use ordinary
-<kbd>C-j</kbd> Emacs command.
+<kbd>C-j</kbd> Emacs command.  To preview resulting message before
+sending it, press
+<kbd>M-RET</kbd> (<code>telega-chatbuf-input-preview</code>).
 </p>
 
 <p>
@@ -2518,7 +2526,7 @@ Markup syntax table:
 
 <tr>
 <td class="org-left"><span class="underline">underline text</span></td>
-<td class="org-left"><code>__underline text__</code></td>
+<td class="org-left"><b><b>UNSUPPORTED</b></b></td>
 <td class="org-left"><code>_underline text_</code></td>
 <td class="org-left"><b><b>UNSUPPORTED</b></b></td>
 </tr>
@@ -2571,7 +2579,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org1255998">
+<pre class="example" id="orgb823af7">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2603,7 +2611,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org5b1f458">
+<pre class="example" id="orgb98c4f1">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2759,6 +2767,7 @@ Use this attachment to disable/enable notification on the receiver side.</dd>
 <dt>disable-webpage-preview</dt><dd>Disable webpage preview for the following text message.</dd>
 <dt>send-by</dt><dd>Set sender for the following message.</dd>
 <dt>custom-emoji</dt><dd>Interactively attach a custom emoji.</dd>
+<dt>delimiter</dt><dd>Attach explicit messages delimiter.</dd>
 <dt>code</dt><dd>Interactively attach a code of the <code>LANGUAGE</code> into chatbuf input.
 For non-interactive code attach, use <code>telega-mnz--chatbuf-attach-internal</code>.</dd>
 </dl>
@@ -3518,7 +3527,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgfa52072">
+<pre class="example" id="org7ca138f">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -3526,14 +3535,44 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 </p>
 <dl class="org-dl">
-<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd>Stop playing media message.</dd>
-<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd>Rewind 10 seconds backward.</dd>
-<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd>Rewind 10 seconds forward.</dd>
-<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd>Toggle playback speed for the media message.
-Only two modes are available: normal speed and x2 speed.</dd>
-<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd>Rewind to the N's 10 part of the message duration.
+<dt><kbd>0</kbd> (<code>telega-msg--vvnote-stop</code>)</dt><dd><p>
+Stop playing media message.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&lt;</kbd>, <kbd>,</kbd> (<code>telega-msg--vvnote-rewind-10-backward</code>)</dt><dd><p>
+Rewind 10 seconds backward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>&gt;</kbd>, <kbd>.</kbd> (<code>telega-msg--vvnote-rewind-10-forward</code>)</dt><dd><p>
+Rewind 10 seconds forward.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>x</kbd> (<code>telega-msg--vvnote-play-speed-toggle</code>)</dt><dd><p>
+Toggle playback speed for the media message.
+Only two modes are available: normal speed and x2 speed.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
+<dt><kbd>9</kbd>, <kbd>8</kbd>, <kbd>7</kbd>, <kbd>6</kbd>, <kbd>5</kbd>, <kbd>4</kbd>, <kbd>3</kbd>, <kbd>2</kbd>, <kbd>1</kbd> (<code>telega-msg--vvnote-rewind-part</code>)</dt><dd><p>
+Rewind to the N's 10 part of the message duration.
 I.e. if you press 7, then you will jump to 70% of the message
-duration.</dd>
+duration.
+</p>
+
+<p>
+(fn MSG)
+</p></dd>
 </dl>
 
 <p>
@@ -4689,7 +4728,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org515ba6b">
+<pre class="example" id="org59cf04e">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

@@ -1470,6 +1470,8 @@ different days. Such as:
      (eval
       (telega-user-match-p (telega-user-me) 'is-premium))
      telega-chatbuf-attach-custom-emoji)
+    ("delimiter"
+     (return t) telega-chatbuf-attach-delimiter)
     )
   "*List of the attachments available for `C-c C-a' in chatbuf.
 Each element is a list of three elements:

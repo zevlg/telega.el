@@ -1025,6 +1025,9 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
      (telega-msg-open-story msg))
     (messagePremiumGiveaway
      (telega-msg-open-premium-giveaway msg))
+    (messagePremiumGiveawayCompleted
+     (telega-chat--goto-msg (telega-msg-chat msg)
+         (telega--tl-get msg :content :giveaway_message_id) 'hightlight))
 
     (t (message "TODO: `open-content' for <%S>"
                 (telega--tl-type (plist-get msg :content))))))
@@ -1157,12 +1160,20 @@ ARGS are passed directly to `telega-ins--msg-sender'."
    (telega-ins--with-face 'bold
      (telega-ins--msg-sender msg-sender :with-avatar-p t))))
 
-(defun telega-msg-sender-color (msg-sender)
-  "Return color for the message sender MSG-SENDER."
-  (if (telega-user-p msg-sender)
-      (telega-user-color msg-sender)
-    (cl-assert (telega-chat-p msg-sender))
-    (telega-chat-color msg-sender)))
+(defun telega-msg-sender-color (msg-sender &optional background-mode)
+  "Return color for the message sender MSG-SENDER.
+BACKGROUND-MODE is one of `light' or `dark'.
+If BACKGROUND-MODE is not specified return cons cell with both colors
+for light and dark background modes."
+  (let ((colors (if (telega-user-p msg-sender)
+                    (telega-user-color msg-sender)
+                  (cl-assert (telega-chat-p msg-sender))
+                  (telega-chat-color msg-sender))))
+    (cond ((eq background-mode 'light)
+           (nth 0 colors))
+          ((eq background-mode 'dark)
+           (nth 1 colors))
+          (t colors))))
 
 (defun telega-msg-sender-title-faces (msg-sender)
   "Compute faces list to use for MSG-SENDER title."
@@ -1171,11 +1182,10 @@ ARGS are passed directly to `telega-ins--msg-sender'."
                  'telega-msg-user-title))
          ;; Maybe add some rainbow color to the message title
          (when telega-msg-rainbow-title
-           (let* ((lightp (eq (frame-parameter nil 'background-mode) 'light))
-                  (foreground (nth (if lightp 0 1)
-                                   (telega-msg-sender-color msg-sender))))
-             (when foreground
-               (list (list :foreground foreground)))))))
+           (when-let ((foreground
+                       (telega-msg-sender-color
+                        msg-sender (frame-parameter nil 'background-mode))))
+             (list (list :foreground foreground))))))
 
 (defun telega-msg-sender-block (msg-sender &optional callback)
   "Block the message sender MSG-SENDER."
@@ -2083,6 +2093,30 @@ Return `loading' if replied story starts loading."
   (telega-msg-redisplay msg)
   ;; NOTE: rootbuf also might be affected
   (telega-root-view--update :on-story-update replied-story))
+
+
+;;; Preview Messages
+(defun telega-msg-preview--buffer-kill ()
+  "Kill messages preview buffer."
+  (when-let ((pbuf (get-buffer "*Telegram Messages Preview*")))
+    (when-let ((win (get-buffer-window pbuf)))
+      (delete-window win))
+    (kill-buffer pbuf)))
+
+(defun telega-msg-preview--buffer-create ()
+  "Create buffer to preview messages."
+  (with-telega-help-win "*Telegram Messages Preview*"
+    ))
+
+(defun telega-msg-preview--add (msg)
+  (with-current-buffer "*Telegram Messages Preview*"
+    (with-telega-buffer-modify
+     (telega-save-excursion
+       (telega-chatbuf-msg--pp msg 'for-preview)))))
+
+(defun telega-msg-preview--add-multiple (messages)
+  (seq-doseq (msg (plist-get messages :messages))
+    (telega-msg-preview--add msg)))
 
 (provide 'telega-msg)
 

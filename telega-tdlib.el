@@ -632,13 +632,16 @@ By default TL-STICKER-TYPE is `(:@type \"stickerTypeRegular\")'."
           :name name)
     callback))
 
-(defun telega--searchStickerSets (query &optional callback)
+(cl-defun telega--searchStickerSets (query &key (tl-sticker-type
+                                                 '(:@type "stickerTypeRegular"))
+                                           callback)
   "Searches for ordinary sticker sets by looking for specified QUERY."
   (declare (indent 1))
   (with-telega-server-reply (reply)
       (append (plist-get reply :sets) nil)
 
     (list :@type "searchStickerSets"
+          :sticker_type tl-sticker-type
           :query query)
     callback))
 
@@ -2906,6 +2909,26 @@ Mode activates for
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id))
    callback))
+
+
+;;; Similar Chats
+(defun telega--getChatSimilarChatCount (chat &optional local-p callback)
+  "Return approximate number of chats similar to the given chat."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "getChatSimilarChatCount"
+         :chat_id (plist-get chat :id)
+         :return_local (if local-p t :false))
+   callback))
+
+(defun telega--getChatSimilarChats (chat &optional callback)
+  "Return a list of chats similar to the given CHAT."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "getChatSimilarChats"
+          :chat_id (plist-get chat :id))
+    callback))
 
 (provide 'telega-tdlib)
 

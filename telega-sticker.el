@@ -715,19 +715,32 @@ Return sticker set."
              :key (telega--tl-prop :id))
     ))
 
-(defun telega-stickerset-choose (sset)
+(defun telega-stickerset-choose (sset &optional chat)
   "Interactive choose stickerset."
   (interactive (list (telega-stickerset-completing-read "Sticker set: ")))
-  (let ((tss-buffer (get-buffer "*Telegram Sticker Set*")))
+  (let ((tss-buffer (get-buffer "*Telegram Sticker Set*"))
+        (chat (or chat telega-chatbuf--chat)))
     (if (and (buffer-live-p tss-buffer)
              (with-current-buffer tss-buffer
                (and (eq telega-help-win--stickerset sset)
-                    (eq telega--chat telega-chatbuf--chat))))
+                    (eq telega--chat chat))))
         (select-window
          (temp-buffer-window-show tss-buffer))
 
       (let ((help-window-select t))
-        (telega-describe-stickerset sset telega-chatbuf--chat)))))
+        (telega-describe-stickerset sset chat)))))
+
+(defun telega-stickerset--choose-from-multiple (prompt sticker-sets
+                                                       &optional chat)
+  "Choose single sticker set from multiple STICKER-SETS.
+PROMPT is displayed in case of multiple sticker sets."
+  (telega-stickerset-choose
+   (if (> (length sticker-sets) 1)
+       ;; Multiple sticker sets
+       (telega-stickerset-completing-read prompt sticker-sets)
+     ;; Single sticker set
+     (car sticker-sets))
+   chat))
 
 (defun telega-stickerset-search (query)
   "Search interactively for sticker matching QUERY."
@@ -736,13 +749,7 @@ Return sticker set."
     (unless sticker-sets
       (user-error "No sticker set found for: %s" query))
 
-    (telega-stickerset-choose
-     (if (> (length sticker-sets) 1)
-         ;; Multiple sticker sets
-         (telega-stickerset-completing-read
-          "Sticker set: " sticker-sets)
-       ;; Single sticker set
-       (car sticker-sets)))))
+    (telega-stickerset--choose-from-multiple "Sticker set: " sticker-sets)))
 
 (defun telega-stickerset-trends (&optional premium-p)
   "Show trending stickers.

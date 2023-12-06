@@ -1060,6 +1060,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Files")
  ("lng_media_save_progress"
   :value "{ready} of {total} {mb}")
+ ("lng_media_chat_background"
+  :value "Chat Wallpaper")
 
  ;; media types
  ("lng_in_dlg_photo"
@@ -1289,6 +1291,9 @@ You can send them an invite link as message instead.")
  ;; Giveaway
  ("lng_action_giveaway_started"
   :value "{from} just started a giveaway of Telegram Premium subscriptions for its followers.")
+ ("lng_action_giveaway_results"
+  :one_value "{count} winner of the giveaway was randomly selected by Telegram and received private messages with giftcodes."
+  :other_value "{count} winners of the giveaway were randomly selected by Telegram and received private messages with giftcodes.")
  ;; https://translations.telegram.org/screenshots/14046/phrase/lng_prizes_badge
  ("lng_prizes_badge"
   :value "x{amount}")
@@ -1383,4 +1388,18 @@ You can send them an invite link as message instead.")
   :value "Text copied to clipboard.")
  ("lng_username_copied"
   :value "Link copied to clipboard.")
+
+ ;; Misc
+ ("lng_open_link"
+  :value "Open")
+
+ ;; Chat Background
+ ("lng_action_set_wallpaper"
+  :value "{user} set a new wallpaper for this chat")
+ ("lng_action_set_wallpaper_me"
+  :value "You set a new wallpaper for this chat")
+ ("lng_action_set_same_wallpaper"
+  :value "{user} set the same wallpaper for this chat")
+ ("lng_action_set_wallpaper_both_me"
+  :value "You set a new wallpaper for {user} and you.")
  )

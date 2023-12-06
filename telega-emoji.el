@@ -329,14 +329,32 @@ Do not fetch custom emojis for ignored messages."
 (defun telega-custom-emojis-trends ()
   "Show trending custom emojis."
   (interactive)
-  (let ((sticker-sets (telega--getTrendingStickerSets
-                       :tl-sticker-type '(:@type "stickerTypeCustomEmoji"))))
-    (unless sticker-sets
-      (user-error "No trending custom emojis"))
+  (message "telega: Fetching trending custom emojis..")
+  (telega--getTrendingStickerSets
+   :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
+   :callback
+   (let ((chat telega-chatbuf--chat))
+     (lambda (sticker-sets)
+       (if (seq-empty-p sticker-sets)
+           (message "telega: No trending custom emojis")
 
-    (telega-stickerset-choose
-     (telega-stickerset-completing-read
-      "Custom Emojis set: " sticker-sets))))
+         (telega-stickerset--choose-from-multiple
+          "Trending Custom Emojis set: " sticker-sets chat))))))
+
+(defun telega-custom-emojis-search (query)
+  "Search interactively for custom emoji stickersets matching QUERY."
+  (interactive "sCustom Emoji Set query: ")
+  (message "telega: Searching \"%s\" custom emojis.." query)
+  (telega--searchStickerSets query
+    :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
+    :callback
+    (let ((chat telega-chatbuf--chat))
+      (lambda (sticker-sets)
+        (if (seq-empty-p sticker-sets)
+            (message "telega: No custom emoji set found for: %s" query)
+
+          (telega-stickerset--choose-from-multiple
+           "Custom Emojis set: " sticker-sets chat))))))
 
 
 ;;; Emoji status

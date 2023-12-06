@@ -1532,6 +1532,73 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
         (telega-ins (telega-tl-str venue :address))))
     ))
 
+(defun telega-ins--giveaway-msg-content (content)
+  "Insert CONTENT for the premium giveaway message."
+  (telega-ins--with-face '(telega-shadow bold)
+    (telega-ins-i18n "lng_prizes_title"
+      :count 2))
+  (telega-ins "\n")
+  (when-let ((sticker (plist-get content :sticker)))
+    (telega-ins--sticker-image sticker)
+    (telega-ins "\n"))
+  (telega-ins-i18n "lng_prizes_about"
+    :count (plist-get content :winner_count)
+    :duration (telega-i18n "lng_premium_gift_duration_months"
+                :count (plist-get content :month_count)))
+  (telega-ins "\n")
+
+  (let ((ga-params (plist-get content :parameters)))
+    (telega-ins--with-face 'bold
+      (telega-ins (telega-i18n "lng_prizes_participants") "\n"))
+    (telega-ins--line-wrap-prefix "  "
+      (telega-ins-i18n (if (plist-get ga-params :only_new_members)
+                           "lng_prizes_participants_new"
+                         "lng_prizes_participants_all")
+        :count (1+ (length (plist-get ga-params :additional_chat_ids))))
+      (telega-ins "\n")
+      (let ((boosted-chat (telega-chat-get
+                           (plist-get ga-params :boosted_chat_id))))
+        (telega-ins--raw-button
+            (telega-link-props 'sender boosted-chat 'type 'telega)
+          (telega-ins--msg-sender boosted-chat
+            :with-avatar-p t
+            :with-username-p t
+            :with-brackets-p t)))
+      (seq-doseq (add-chat-id (plist-get ga-params :additional_chat_ids))
+        (let ((addition-chat (telega-chat-get add-chat-id)))
+          (telega-ins "\n")
+          (telega-ins--raw-button
+              (telega-link-props 'sender addition-chat 'type 'telega)
+            (telega-ins--msg-sender addition-chat
+              :with-avatar-p t
+              :with-username-p t
+              :with-brackets-p t))))
+      (telega-ins "\n")
+
+      (let ((countries (plist-get ga-params :country_codes)))
+        (unless (seq-empty-p countries)
+          (telega-ins-i18n "lng_prizes_countries"
+            :countries (mapconcat #'identity countries ", "))
+          (telega-ins "\n"))))
+
+    (telega-ins--with-face 'bold
+      (telega-ins (telega-i18n "lng_prizes_date") "\n"))
+    (telega-ins--line-wrap-prefix "  "
+      (telega-ins--date-iso8601
+       (plist-get ga-params :winners_selection_date)))
+
+    (when (> (telega-time-seconds)
+             (plist-get ga-params :winners_selection_date))
+      (telega-ins--with-face 'telega-shadow
+        (telega-ins " (" (telega-i18n "lng_prizes_end_title") ")")))
+
+    (telega-ins "\n")
+    (telega-ins--button (concat "  "
+                                (telega-i18n "lng_prizes_how_works")
+                                "  ")
+      'action 'telega-msg-button--action)
+    ))
+
 (defun telega-ins--input-file (document &optional attach-symbol trailing-text)
   "Insert input file."
   (telega-ins (or attach-symbol (telega-symbol 'attachment)) " ")
@@ -1590,8 +1657,9 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
           messageForumTopicCreated
           messageForumTopicEdited
           messageForumTopicIsClosedToggled
-
           messagePremiumGiveawayCreated
+          messagePremiumGiveawayCompleted
+          messageChatSetBackground
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -1861,6 +1929,21 @@ Special messages are determined with `telega-msg-special-p'."
       (messagePremiumGiveawayCreated
        (telega-ins-i18n "lng_action_giveaway_started"
          :from sender-name))
+      (messagePremiumGiveawayCompleted
+       (telega-ins-i18n "lng_action_giveaway_results"
+         :count (plist-get content :winner_count)))
+      (messageChatSetBackground
+       (let ((only-self-p (plist-get content :only_for_self))
+             (sender-me-p (telega-me-p sender)))
+         (cond ((and sender-me-p only-self-p)
+                (telega-ins-i18n "lng_action_set_wallpaper_me"))
+               (sender-me-p
+                (telega-ins-i18n "lng_action_set_wallpaper_both_me"
+                  :user (let ((user (telega-chat-user (telega-msg-chat msg))))
+                          (telega-msg-sender-title--special user))))
+               (t
+                (telega-ins-i18n "lng_action_set_wallpaper"
+                  :user sender-name)))))
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
@@ -1967,70 +2050,7 @@ Special messages are determined with `telega-msg-special-p'."
       ('messageStory
        (telega-ins--story-msg msg))
       ('messagePremiumGiveaway
-       (telega-ins--with-face '(telega-shadow bold)
-         (telega-ins-i18n "lng_prizes_title"
-           :count 2))
-       (telega-ins "\n")
-       (when-let ((sticker (plist-get content :sticker)))
-         (telega-ins--sticker-image sticker)
-         (telega-ins "\n"))
-       (telega-ins-i18n "lng_prizes_about"
-         :count (plist-get content :winner_count)
-         :duration (telega-i18n "lng_premium_gift_duration_months"
-                     :count (plist-get content :month_count)))
-       (telega-ins "\n")
-
-       (let ((ga-params (plist-get content :parameters)))
-         (telega-ins--with-face 'bold
-           (telega-ins (telega-i18n "lng_prizes_participants") "\n"))
-         (telega-ins--line-wrap-prefix "  "
-           (telega-ins-i18n (if (plist-get ga-params :only_new_members)
-                                "lng_prizes_participants_new"
-                              "lng_prizes_participants_all")
-             :count (1+ (length (plist-get ga-params :additional_chat_ids))))
-           (telega-ins " ")
-           (let ((boosted-chat (telega-chat-get
-                                (plist-get ga-params :boosted_chat_id))))
-             (telega-ins--raw-button
-                 (telega-link-props 'sender boosted-chat 'type 'telega)
-               (telega-ins--msg-sender boosted-chat
-                 :with-avatar-p t
-                 :with-username-p t
-                 :with-brackets-p t)))
-           (seq-doseq (add-chat-id (plist-get ga-params :additional_chat_ids))
-             (let ((addition-chat (telega-chat-get add-chat-id)))
-               (telega-ins ", ")
-               (telega-ins--raw-button
-                   (telega-link-props 'sender addition-chat 'type 'telega)
-                 (telega-ins--msg-sender addition-chat
-                   :with-avatar-p t
-                   :with-username-p t
-                   :with-brackets-p t))))
-           (telega-ins "\n")
-
-           (let ((countries (plist-get ga-params :country_codes)))
-             (unless (seq-empty-p countries)
-               (telega-ins-i18n "lng_prizes_countries"
-                 :countries (mapconcat #'identity countries ", "))
-               (telega-ins "\n"))))
-
-         (telega-ins--with-face 'bold
-           (telega-ins (telega-i18n "lng_prizes_date") "\n"))
-         (telega-ins--line-wrap-prefix "  "
-           (telega-ins--date-iso8601
-            (plist-get ga-params :winners_selection_date)))
-
-         (when (> (telega-time-seconds)
-                  (plist-get ga-params :winners_selection_date))
-           (telega-ins--with-face 'telega-shadow
-             (telega-ins " (" (telega-i18n "lng_prizes_end_title") ")")))
-
-         (telega-ins "\n")
-         (telega-ins--button (concat "  "
-                                     (telega-i18n "lng_prizes_how_works")
-                                     "  ")
-           'action 'telega-msg-button--action)
-         ))
+       (telega-ins--giveaway-msg-content content))
 
       ;; special message
       ((guard (telega-msg-special-p msg))
@@ -2528,7 +2548,7 @@ Return user, chat or string with the sender title."
          (origin (plist-get reply-to :origin)))
     ;; Sender and content part
     (telega-ins--aux-inline "| " (telega-chat--aux-inline-reply-symbol
-                                  (plist-get reply-to :is_quote_manual))
+                                  (plist-get reply-quote :is_manual))
                             " "
                             'telega-msg-inline-reply
       (cond (origin
@@ -2589,7 +2609,7 @@ Return user, chat or string with the sender title."
     (when reply-quote
       (telega-ins--line-wrap-prefix (telega-symbol 'vertical-bar)
         (telega-ins--with-face 'telega-entity-type-blockquote
-          (telega-ins--fmt-text reply-quote replied-msg))
+          (telega-ins--fmt-text (plist-get reply-quote :text) replied-msg))
         (telega-ins "\n")))
     t))
 

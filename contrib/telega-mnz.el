@@ -150,7 +150,8 @@ See docstring for `display-buffer' for the value meaning."
     (sql . sql-mode)
     (swift . swift-mode)
     (visualbasic . visual-basic-mode)
-    (xml . xml-mode))
+    (xml . xml-mode)
+    (zig . zig-mode))
   "Alist of languages mapping to Emacs modes.
 Most of these languages available for language detection.")
 

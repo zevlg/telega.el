@@ -35,6 +35,7 @@
 (require 'telega-ins)
 (require 'telega-media)
 (require 'telega-tme)
+(require 'telega-sticker)
 (require 'telega-customize)
 
 (defvar telega-webpage-history nil
@@ -128,6 +129,7 @@ Keymap:
   ;; See https://github.com/zevlg/telega.el/issues/347
   (setq line-spacing 0)
   (setq-local nobreak-char-display nil)
+
   (setq header-line-format telega-webpage-header-line-format)
   (set-buffer-modified-p nil))
 
@@ -167,12 +169,15 @@ Keymap:
       (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks)))
     ))
 
-(defun telega-webpage-rticon--image (rt limits)
+(defun telega-webpage-rticon--image (rt &optional limits)
   "Return image representing rich text icon for RT."
   (let* ((doc (plist-get rt :document))
          (width (plist-get rt :width))
          (height (plist-get rt :height))
-         (cheight (telega-media--cheight-for-limits width height limits))
+         (cheight (telega-media--cheight-for-limits
+                   width height
+                   (list 1 1 (nth 2 telega-webpage-photo-size-limits)
+                         (nth 3 telega-webpage-photo-size-limits))))
          (create-image-fun
           (progn
             (cl-assert (<= cheight (nth 3 limits)))
@@ -227,7 +232,7 @@ Keymap:
        (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextIcon
      (telega-ins--image-slices
-      (telega-webpage-rticon--image rt telega-photo-size-limits)))
+      (telega-webpage-rticon--image rt)))
     (richTextPlain
      (telega-ins (funcall (if telega-webpage-strip-nl
                               #'telega-strip-newlines
@@ -309,6 +314,54 @@ Keymap:
       (telega-ins--with-face 'telega-link
         (telega-ins url)))))
 
+(defun telega-webpage--animation-ffplay-callback (proc frame anim)
+  "Callback for inline animation playback."
+  (let ((telega-animation-height (telega-media--cheight-for-limits
+                                  (plist-get anim :width)
+                                  (plist-get anim :height)
+                                  telega-webpage-photo-size-limits)))
+    (telega-animation--ffplay-callback proc frame anim)))
+
+(defun telega-webpage--animation-sensor-func (_window oldpos dir)
+  "Sensor function for the animation to start/stop playing."
+  (let* ((pos (if (eq dir 'entered) (point) oldpos))
+         (anim (get-text-property pos :telega-animation)))
+    (if (eq dir 'entered)
+        (telega-file--download (telega-file--renew anim :animation) 32
+          (lambda (file)
+            (when (telega-file--downloaded-p file)
+              (telega-ffplay-to-png (telega--tl-get file :local :path) "-an"
+                (list #'telega-webpage--animation-ffplay-callback anim)))))
+
+      (telega-ffplay-stop)
+      (telega--cancelDownloadFile (plist-get anim :animation)))))
+
+(defun telega-webpage--animation-inserter (anim)
+  "Inserter for the animation button."
+  (let ((telega-animation-height (telega-media--cheight-for-limits
+                                  (plist-get anim :width)
+                                  (plist-get anim :height)
+                                  telega-webpage-photo-size-limits)))
+    (telega-ins--animation-image anim 'sliced)))
+
+(defun telega-webpage--animation-action (anim)
+  "Action to take when animation button in pressed."
+  (telega-ffplay-stop)
+  (telega--cancelDownloadFile (plist-get anim :animation))
+
+  (telega-file--download (telega-file--renew anim :animation) 32
+    (lambda (afile)
+      (telega-video-player-run (telega--tl-get afile :local :path)))))
+
+(defun telega-webpage--ins-animation (animation)
+  "Insert pageblock with ANIMATION."
+  (telega-button--insert 'telega animation
+    :inserter #'telega-webpage--animation-inserter
+    :action #'telega-webpage--animation-action
+    :telega-animation animation
+    'cursor-sensor-functions '(telega-webpage--animation-sensor-func)
+    'help-echo "RET to play animation"))
+
 (defun telega-webpage--ins-pb (pb)
   "Insert PageBlock PB for the instant view."
   (cl-ecase (telega--tl-type pb)
@@ -374,7 +427,8 @@ Keymap:
        (telega-webpage--ins-rt (plist-get pb :text)))
      (telega-ins "\n"))
     (pageBlockAnimation
-     (telega-ins "<TODO: pageBlockAnimation>\n"))
+     (telega-webpage--ins-animation (plist-get pb :animation))
+     (telega-ins "\n"))
     (pageBlockAudio
      (telega-ins "<TODO: pageBlockAudio>\n"))
     (pageBlockPhoto
@@ -427,7 +481,7 @@ Keymap:
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
        (telega-ins (telega-tl-str pb :title) " "
                    "@" (telega-tl-str pb :username) " ")
-       (telega-ins--button "Open"
+       (telega-ins--button (telega-i18n "lng_open_link")
          :value (telega-tl-str pb :username)
          :action 'telega-tme-open-username)))
     (pageBlockCaption
@@ -503,7 +557,7 @@ instant view for the URL."
     (erase-buffer)
     (mapc #'telega-webpage--ins-pb
           (plist-get telega-webpage--iv :page_blocks))
-    (when telega-debug
+    (when (eq telega-debug 'iv)
       (telega-ins-fmt "\n---DEBUG---\n%S" telega-webpage--iv))
     (goto-char (point-min)))
 
