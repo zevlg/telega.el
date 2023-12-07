@@ -5767,9 +5767,12 @@ Return non-nil on success."
         (with-no-warnings
           (pulse-momentary-highlight-region
            (button-start msg-button) (button-end msg-button))
-          (when (stringp highlight)
+          (when (and (listp highlight)
+                     (equal (plist-get highlight :@type) "textQuote"))
             (sit-for 0.5)
-            (telega-chatbuf--highlight-quote msg-button highlight))))
+            (telega-chatbuf--highlight-quote
+             highlight
+             (button-get msg-button :value)))))
       (when callback
         (funcall callback msg-button)))
     t))
@@ -5777,24 +5780,40 @@ Return non-nil on success."
 (defun telega-chatbuf--remove-highlight-quote (&rest _)
   "Remove highlighted quote."
   (remove-overlays nil nil 'telega-chatbuf--highlight-quote t)
-  (remove-hook 'telega-msg-hover-out-hook #'telega-chatbuf--remove-highlight-quote :local))
+  (remove-hook
+   'telega-msg-hover-out-hook
+   #'telega-chatbuf--remove-highlight-quote
+   :local))
 
-(defun telega-chatbuf--highlight-quote (msg-button quote-text)
-  "Highlight the QUOTE-TEXT in the MSG-BUTTON."
-  (save-excursion
-    (goto-char (button-start msg-button))
-    (if (search-forward quote-text (button-end msg-button) t)
-        (let* ((start-point (match-beginning 0))
-               (end-point (match-end 0))
-               (overlay (make-overlay start-point end-point)))
-          (overlay-put overlay 'telega-chatbuf--highlight-quote t)
-          (overlay-put overlay 'face 'telega-highlight-text-face)
-          (add-hook
-           'telega-msg-hover-out-hook
-           #'telega-chatbuf--remove-highlight-quote
-           nil
-           :local))
-      (message "The exact quote is not found"))))
+(defun telega-chatbuf--highlight-quote (text-quote msg)
+  "Highlight the TEXT-QUOTE in the MSG."
+  (let* ((msg-content-fmt (telega--tl-get msg :content :text))
+         (quote-fmt (telega--tl-get text-quote :text))
+         (quote-position (telega--tl-get text-quote :position))
+         (found-position (telega-server--call
+                          (list :@type "searchQuote"
+                                :text msg-content-fmt
+                                :quote quote-fmt
+                                :quote_position quote-position))))
+    (if (equal 404 (telega--tl-get found-position :code))
+        (message "The exact quote is not found")
+      (let* ((chat (telega-msg-chat msg))
+             (gaps-workaround-p
+              (telega-chat-match-p chat telega-avatar-workaround-gaps-for))
+             ;; FIXME: get the msg content starting point more reliable
+             (msg-start-point (+ (if gaps-workaround-p 0 4) (save-excursion (forward-line 1) (point))))
+             (start-point (+ msg-start-point
+                             (telega--tl-get found-position :position)))
+             (end-point (+ start-point
+                           (length (telega--tl-get quote-fmt :text))))
+             (overlay (make-overlay start-point end-point)))
+        (overlay-put overlay 'telega-chatbuf--highlight-quote t)
+        (overlay-put overlay 'face 'telega-highlight-text-face)
+        (add-hook
+         'telega-msg-hover-out-hook
+         #'telega-chatbuf--remove-highlight-quote
+         nil
+         :local)))))
 
 (defun telega-chatbuf--goto-msg (msg-id &optional highlight callback)
   "In CHAT goto message denoted by MSG-ID.
