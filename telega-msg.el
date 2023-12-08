@@ -1996,8 +1996,9 @@ By default `telega-translate-to-language-default' is used."
   (when-let ((ent-type (get-text-property (point) :tl-entity-type)))
     (when (eq 'textEntityTypeSpoiler (telega--tl-type ent-type))
       (plist-put ent-type :telega-show-spoiler t)
-      (let ((cursor-sensor-inhibit t))
-        (telega-msg-redisplay msg)))))
+      (telega-msg-redisplay msg)
+      ;; NOTE: hide spoiler on next message's redisplay
+      (plist-put ent-type :telega-show-spoiler nil))))
 
 (defun telega-msg-remove-media-spoiler (msg)
   "Remove spoiler for the media message MSG."
