@@ -886,7 +886,7 @@ See `puny-decode-domain' for details."
           '(face telega-entity-type-spoiler)
 
         (unless (plist-get ent-type :telega-show-spoiler)
-          (list (list :action #'telega-msg-remove-text-spoiler)
+          (list :action #'telega-msg-remove-text-spoiler
                 'telega-display
                 (with-temp-buffer
                   (insert text)
