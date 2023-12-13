@@ -908,7 +908,7 @@ See `puny-decode-domain' for details."
               (telega-ins--as-string
                (telega-ins--line-wrap-prefix (telega-symbol 'vertical-bar)
                  (telega-ins--with-face 'telega-entity-type-blockquote
-                   (telega-ins text))))
+                   (telega-ins (telega--desurrogate-apply text)))))
               'telega-display-by 'telega-core)))
      )))
 
