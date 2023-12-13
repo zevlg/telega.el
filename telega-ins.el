@@ -2734,7 +2734,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                             (or (telega-button--action button)
                                 (telega-describe-msg-sender sender))))
           (when unread-mention-p
-            (telega-symbol 'mention-mark))
+            (telega-ins (telega-symbol 'mention-mark)))
           (telega-ins--image
            avatar (if gaps-workaround-p
                       (list 0 0 (telega-chars-xheight 2))
