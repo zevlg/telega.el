@@ -216,31 +216,41 @@ language detection.
 If LANGUAGE is nil, then CODE-TEXT should be provided, and
 language-detection is used in this case, used for
 `textEntityTypePre' and `textEntityTypeCode' entities."
-  (if language
-      (let* ((lang-name (downcase language))
-             (lang-sym (intern lang-name)))
-        (or (alist-get lang-sym telega-mnz-languages)
-            (let ((modes-list (mapcar #'cdr telega-mnz-languages)))
-              ;; 1. makes language such at "c++" work
-              ;; 2. makes language such as "erlang-mode" work
-              (or (car (memq (intern (concat lang-name "-mode")) modes-list))
-                  (car (memq lang-sym modes-list))))))
+  ;; Try language detection in case language is unknown
+  (when (and (not language)
+             (fboundp 'language-detection-string)
+             code-text
+             ;; NOTE: Check code is large enough in case
+             ;; `telega-mnz-use-language-detection' is int or cons cell
+             (cond ((integerp telega-mnz-use-language-detection)
+                    (>= (length code-text) telega-mnz-use-language-detection))
+                   ((consp telega-mnz-use-language-detection)
+                    (and (>= (length code-text)
+                             (car telega-mnz-use-language-detection))
+                         (>= (length (string-split code-text nil t))
+                             (cdr telega-mnz-use-language-detection))))
+                   (t telega-mnz-use-language-detection)))
+    (setq language (funcall #'language-detection-string code-text)))
 
-    ;; Try language detection
-    (when (and (fboundp 'language-detection-string)
-               code-text
-               ;; NOTE: Check code is large enough in case
-               ;; `telega-mnz-use-language-detection' is int or cons cell
-               (cond ((integerp telega-mnz-use-language-detection)
-                      (>= (length code-text) telega-mnz-use-language-detection))
-                     ((consp telega-mnz-use-language-detection)
-                      (and (>= (length code-text)
-                               (car telega-mnz-use-language-detection))
-                           (>= (length (string-split code-text nil t))
-                               (cdr telega-mnz-use-language-detection))))
-                     (t telega-mnz-use-language-detection)))
-      (alist-get (funcall #'language-detection-string code-text)
-                 telega-mnz-languages))))
+  (when language
+    (let* ((lang-name (downcase language))
+           (lang-sym (intern lang-name)))
+      (or (alist-get lang-sym telega-mnz-languages)
+          (let ((modes-list (mapcar #'cdr telega-mnz-languages)))
+            ;; 1. makes language such at "c++" work
+            ;; 2. makes language such as "erlang-mode" work
+            (or (car (memq (intern (concat lang-name "-mode")) modes-list))
+                (car (memq lang-sym modes-list))))
+
+          ;; Fallback for languages not defined in the
+          ;; `telega-mnz-languages'
+          (let ((mode-name (intern (concat lang-name "-mode"))))
+            (when (commandp mode-name)
+              mode-name))
+          (let ((ts-mode-name (intern (concat lang-name "-ts-mode"))))
+            (when (commandp ts-mode-name)
+              ts-mode-name))
+          ))))
 
 (defun telega-mnz--formatted-text (text entity-type)
   "Return TEXT as formattedText marking it with ENTITY-TYPE."
