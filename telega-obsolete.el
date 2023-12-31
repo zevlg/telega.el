@@ -211,6 +211,22 @@
                            'telega-msg--current
                            "0.8.217")
 
+(telega-obsolete--variable 'telega-root-view-topics
+                           'telega-root-view-grouping-alist
+                           "0.8.230")
+(telega-obsolete--variable 'telega-root-view-topics-folders
+                           'telega-root-view-grouping-folders
+                           "0.8.230")
+(telega-obsolete--variable 'telega-root-view-topics-other-chats
+                           'telega-root-view-grouping-other-chats
+                           "0.8.230")
+(telega-obsolete--variable 'telega-button-endings
+                           'telega-box-button-endings
+                           "0.8.230")
+(telega-obsolete--variable 'telega-symbol-blank-button
+                           nil         ; (telega-symbol 'checkbox-off)
+                           "0.8.230")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

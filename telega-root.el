@@ -86,6 +86,11 @@ Use `telega-root-aux-inserters' to customize it.")
 (defvar telega-root-view-map
   (let ((map (make-sparse-keymap)))
     ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-alternative-similar-channels,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-alternative-similar-channels, 2)}}}
+    (define-key map (kbd "a") 'telega-view-alternative-similar-channels)
+
+    ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-search,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-search, 2)}}}
     (define-key map (kbd "s") 'telega-view-search)
@@ -110,14 +115,14 @@ Use `telega-root-aux-inserters' to customize it.")
     ;;   {{{fundoc(telega-view-two-lines, 2)}}}
     (define-key map (kbd "2") 'telega-view-two-lines)
     ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-topics,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-topics, 2)}}}
+    ;; - {{{where-is(telega-view-grouping,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-grouping, 2)}}}
     ;;
     ;;   Customizable options:
-    ;;   - {{{user-option(telega-root-view-topics, 4)}}}
-    ;;   - {{{user-option(telega-root-view-topics-folders, 4)}}}
-    ;;   - {{{user-option(telega-root-view-topics-other-chats, 4)}}}
-    (define-key map (kbd "t") 'telega-view-topics)
+    ;;   - {{{user-option(telega-root-view-grouping-alist, 4)}}}
+    ;;   - {{{user-option(telega-root-view-grouping-folders, 4)}}}
+    ;;   - {{{user-option(telega-root-view-grouping-other-chats, 4)}}}
+    (define-key map (kbd "g") 'telega-view-grouping)
     ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-files,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-files, 2)}}}
@@ -817,7 +822,7 @@ Status values are hold in the `telega--status' and
       (when user-me
         (telega-ins--image
          (telega-msg-sender-avatar-image-one-line user-me)))
-      (telega-ins--button (car account)
+      (telega-ins--text-button (car account)
         'face 'bold
         'action (lambda (_ignored)
                   (call-interactively #'telega-account-switch))
@@ -1018,7 +1023,7 @@ If corresponding chat node does not exists in EWOC, then create new one."
       (telega-save-cursor
         (telega-ewoc--set-footer ewoc
           (telega-ins--as-string
-           (telega-ins--button "Load More"
+           (telega-ins--box-button "Load More"
              :value next-offset
              :action search-func)))))))
 
@@ -1206,7 +1211,7 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
       (telega-ins--with-face 'bold
         (telega-ins (if (listp view-name) (cadr view-name) view-name)))
       (telega-ins " ")
-      (telega-ins--button "Reset"
+      (telega-ins--box-button "Reset"
         :action #'telega-view-reset)
       (telega-ins " "))
     (telega-ins "\n")))
@@ -1561,9 +1566,9 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
 (defun telega-root--topics-on-chat-update (ewoc-name ewoc chat)
   "Handler for chat updates in \"topics\" root view."
-  (let ((topic-filter (plist-get (telega-root-view--ewoc-spec ewoc-name)
-                                 :topic-filter)))
-    (if (telega-chat-match-p chat topic-filter)
+  (let ((group-temex (plist-get (telega-root-view--ewoc-spec ewoc-name)
+                                 :group-temex)))
+    (if (telega-chat-match-p chat group-temex)
         (telega-root--any-on-chat-update ewoc-name ewoc chat)
 
       ;; Possible need a removal from EWOC
@@ -1571,48 +1576,51 @@ If `\\[universal-argument]' is given, then view missed calls only."
         (ewoc-delete ewoc chat-node)))
     ))
 
-(defun telega-view-topics--ewoc-spec (topic-spec &optional no-upcase-p)
-  "Return ewoc spec for topic ewoc labeled with LABEL."
-  (list :name (car topic-spec)
-        :topic-filter (cdr topic-spec)
-        :header (funcall (if no-upcase-p #'identity #'upcase) (car topic-spec))
-        :pretty-printer #'telega-root--chat-known-pp
-        :sorter #'telega-chat>
-        :items (telega-filter-chats telega--ordered-chats (cdr topic-spec))
-        :on-chat-update #'telega-root--topics-on-chat-update))
+(defun telega-view-grouping--ewoc-spec (group-spec &optional no-upcase-p)
+  "Return ewoc spec for grouping ewoc labeled with LABEL."
+  (let ((group-name (car group-spec))
+        (group-temex (cdr group-spec)))
+    (list :name group-name
+          :group-temex group-temex
+          :header (funcall (if no-upcase-p #'identity #'upcase) group-name)
+          :pretty-printer #'telega-root--chat-known-pp
+          :sorter #'telega-chat>
+          :items (telega-filter-chats telega--ordered-chats group-temex)
+          :on-chat-update #'telega-root--topics-on-chat-update)))
 
-(defun telega-view-topics ()
-  "Group chats by `telega-root-view-topics'."
+(defun telega-view-grouping ()
+  "Group chats by `telega-root-view-grouping-alist'."
   (interactive)
   (let* ((folder-names (telega-folder-names))
          (ewoc-specs-for-folders
-          (when telega-root-view-topics-folders
+          (when telega-root-view-grouping-folders
             (mapcar (lambda (folder-name)
-                      (telega-view-topics--ewoc-spec
+                      (telega-view-grouping--ewoc-spec
                        (cons (telega-folder-format "%i%f" folder-name)
                              (list 'folder folder-name))
                        'no-upcase))
                     folder-names))))
     (telega-root-view--apply
-     `(telega-view-topics
-       "Topics"
-       ,@(when (eq telega-root-view-topics-folders 'prepend)
+     `(telega-view-grouping
+       "Grouping"
+       ,@(when (eq telega-root-view-grouping-folders 'prepend)
            ewoc-specs-for-folders)
-       ,@(mapcar #'telega-view-topics--ewoc-spec telega-root-view-topics)
-       ,@(when (eq telega-root-view-topics-folders 'append)
+       ,@(mapcar #'telega-view-grouping--ewoc-spec
+                 telega-root-view-grouping-alist)
+       ,@(when (eq telega-root-view-grouping-folders 'append)
            ewoc-specs-for-folders)
-       ,(when telega-root-view-topics-other-chats
-          (let ((other-filter
-                 `(not (or ,@(mapcar 'cdr telega-root-view-topics)
-                           ,@(when telega-root-view-topics-folders
+       ,(when telega-root-view-grouping-other-chats
+          (let ((other-temex
+                 `(not (or ,@(mapcar 'cdr telega-root-view-grouping-alist)
+                           ,@(when telega-root-view-grouping-folders
                                (mapcar (apply-partially #'list 'folder)
                                        folder-names))))))
-            (list :name "topics-other-chats"
-                  :topic-filter other-filter
+            (list :name "grouping-other-chats"
+                  :group-temex other-temex
                   :header "OTHER CHATS"
                   :pretty-printer #'telega-root--chat-known-pp
                   :sorter #'telega-chat>
-                  :items (telega-filter-chats telega--ordered-chats other-filter)
+                  :items (telega-filter-chats telega--ordered-chats other-temex)
                   :on-chat-update #'telega-root--topics-on-chat-update)))))))
 
 (defun telega-view-top--sorter (chat1 chat2)
@@ -1658,11 +1666,14 @@ If `\\[universal-argument]' is given, then view missed calls only."
                (telega-ins--with-face 'bold
                  (telega-ins (telega-user-title me-user 'full-name)))
                (telega-ins " ")
-               (telega-ins--button "Change"
+               (telega-ins--box-button "Change"
                  'action (lambda (_button)
-                           (let* ((names (split-string (read-from-minibuffer "Your Name: ") " "))
+                           (let* ((names
+                                   (split-string
+                                    (read-from-minibuffer "Your Name: ") " "))
                                   (first-name (car names))
-                                  (last-name (mapconcat #'identity (cdr names) " ")))
+                                  (last-name
+                                   (mapconcat #'identity (cdr names) " ")))
                              (telega--setName first-name last-name)))))
               ((= slice-num 1)
                (telega-ins "+" (telega-tl-str me-user :phone_number)))
@@ -1672,12 +1683,12 @@ If `\\[universal-argument]' is given, then view missed calls only."
                    (progn
                      (telega-ins "@" username)
                      (telega-ins " ")
-                     (telega-ins--button "Change"
+                     (telega-ins--box-button "Change"
                        'action (lambda (_button)
                                  (telega--setUsername
                                   (read-string
                                    "Set username [empty to delete]: ")))))
-                 (telega-ins--button "Set Username"
+                 (telega-ins--box-button "Set Username"
                    'action (lambda (_button)
                              (telega--setUsername
                               (read-string
@@ -1688,52 +1699,53 @@ If `\\[universal-argument]' is given, then view missed calls only."
 
     ;; Emoji status
     (when (telega-user-match-p me-user 'is-premium)
-      (telega-ins "Emoji Status: ")
-      (telega-ins--user-emoji-status me-user)
-      (telega-ins " ")
-      (telega-ins--button "Set Emoji Status"
-        'action (lambda (_button)
-                  (let ((duration (if current-prefix-arg
-                                      (telega-completing-read-emoji-status-duration "Set emoji status for: ")
-                                    0)))
-                    (telega-sticker-choose-emoji-status
-                     (lambda (sticker)
-                       (telega--setEmojiStatus
-                        (telega-custom-emoji-id sticker) duration))))
-                  ;; TODO: set emoji status
-                  ))
-      (telega-ins "\n"))
+      (telega-ins-describe-item "Emoji Status"
+        (telega-ins--user-emoji-status me-user)
+        (telega-ins " ")
+        (telega-ins--box-button "Set Emoji Status"
+          'action (lambda (_button)
+                    (let ((duration
+                           (if current-prefix-arg
+                               (telega-completing-read-emoji-status-duration
+                                "Set emoji status for: ")
+                             0)))
+                      (telega-sticker-choose-emoji-status
+                       (lambda (sticker)
+                         (telega--setEmojiStatus
+                          (telega-custom-emoji-id sticker) duration))))
+                    ;; TODO: set emoji status
+                    ))))
 
-    (telega-ins "Profile Photos: ")
-    (telega-ins--button "Set Profile Photo"
-      'action (lambda (_ignored)
-                (let ((photo (read-file-name "Profile Photo: " nil nil t)))
-                  (telega--setProfilePhoto photo))))
-    (telega-ins "\n")
-    (telega-ins--user-profile-photos me-user nil
-      (lambda ()
-        (with-telega-root-view-ewoc "me" ewoc
-          (ewoc-refresh ewoc))))
-    (telega-ins "\n")
+    (telega-ins-describe-item "Profile Photos"
+      (telega-ins--box-button "Set Profile Photo"
+        'action (lambda (_ignored)
+                  (let ((photo (read-file-name "Profile Photo: " nil nil t)))
+                    (telega--setProfilePhoto photo))))
+      (telega-ins "\n")
+      (telega-ins--line-wrap-prefix "  "
+        (telega-ins--user-profile-photos me-user nil
+          (lambda ()
+            (with-telega-root-view-ewoc "me" ewoc
+              (ewoc-refresh ewoc))))))
 
-    (telega-ins--labeled (concat (telega-i18n "lng_profile_bio") " ") nil
+    (telega-ins-describe-item (telega-i18n "lng_profile_bio")
       (if-let ((bio (telega-tl-str (telega--full-info me-user) :bio)))
           (progn
             (telega-ins bio)
             (telega-ins " ")
-            (telega-ins--button "Change Bio"
+            (telega-ins--box-button "Change Bio"
               'action (lambda (_button)
                         (telega--setBio
-                         (read-string
-                          "Change bio [empty to delete]: " bio)))))
-        (telega-ins--button "Set Bio"
+                         (read-string "Change bio [empty to delete]: " bio)))))
+        (telega-ins--box-button "Set Bio"
           'action (lambda (_button)
                     (telega--setBio
-                     (read-string
-                      "Set bio [empty to delete]: "))))))
-    (telega-ins "\n")
-    (telega-ins--help-message
-     (telega-ins-i18n "lng_settings_about_bio"))
+                     (read-string "Set bio [empty to delete]: ")))))
+      (telega-ins "\n")
+      (telega-ins--help-message
+       (telega-ins-i18n "lng_settings_about_bio")
+       nil))
+
     (telega-ins--account-ttl)))
 
 (defun telega-root--me-on-user-update (_ewoc-name ewoc user)
@@ -1753,9 +1765,10 @@ If `\\[universal-argument]' is given, then view missed calls only."
     ;; Only boolean values are supported
     (cl-assert (memq opt-val '(t nil)))
 
-    (telega-ins--button (if opt-val
-                            telega-symbol-heavy-checkmark
-                          telega-symbol-blank-button)
+    (telega-ins--text-button (if opt-val
+                                 (telega-symbol 'checkbox-on)
+                               (telega-symbol 'checkbox-off))
+      'face 'telega-link
       'action (lambda (_ignored)
                 (telega--setOption opt-name (not opt-val) 'sync)
                 (with-telega-root-view-ewoc "options" opts-ewoc
@@ -1976,12 +1989,12 @@ Default Disable Notification setting"))
 
     (cond ((eq 'telega-file--downloading-p predicate)
            (telega-ins "  ")
-           (telega-ins--button "Cancel"
+           (telega-ins--text-button (telega-i18n "lng_context_cancel_download")
              :value file
              :action #'telega--cancelDownloadFile))
           ((eq 'telega-file--partially-downloaded-p predicate)
            (telega-ins "  ")
-           (telega-ins--button "Resume"
+           (telega-ins--box-button (telega-i18n "telega_media_resume_download")
              :value file
              :action #'telega-file--download)))
     (when telega-debug
@@ -2123,6 +2136,32 @@ state kinds to show. By default all kinds are shown."
                   (telega-filter-chats
                    telega--ordered-chats 'has-favorite-messages)))))
 
+(defun telega-view-alternative-similar-channels (chat)
+  "View channels similar to the given CHAT."
+  (interactive (let ((chat (or (telega-chat-at (point))
+                               (telega-completing-read-chat
+                                (capitalize
+                                 (concat (telega-i18n "lng_channel_badge") ": "))
+                                (telega-filter-chats telega--ordered-chats
+                                  '(and is-known (type channel)))))))
+                 (unless (and chat (telega-chat-channel-p chat))
+                   (user-error "telega: need channel at point"))
+                 (list chat)))
+
+  (telega-root-view--apply
+   (list 'telega-view-favorite-messages
+         (telega-ins--as-string
+          (telega-ins (telega-i18n "lng_similar_channels_title") ": ")
+          (telega-ins--msg-sender chat
+            :with-avatar-p t))
+
+         (list :name "similar"
+               :pretty-printer #'telega-root--global-chat-pp
+               :loading (telega--getChatSimilarChats chat
+                          (apply-partially
+                           #'telega-root-view--ewoc-loading-done "similar")))))
+  )
+
 
 ;; Voice Chats, inspired by https://t.me/designers/177
 (defun telega-root--passive-video-chat-pp (_chat)
@@ -2181,7 +2220,7 @@ If LINK is nil, then link is loading."
          (telega-ins "2. " (telega-i18n "lng_intro_qr_step2") "\n")
          (telega-ins "3. " (telega-i18n "lng_intro_qr_step3") "\n")
          (telega-ins "\n")
-         (telega-ins--button (telega-i18n "lng_intro_qr_skip")
+         (telega-ins--box-button (telega-i18n "lng_intro_qr_skip")
            'action (lambda (_button)
                      ;; Skip QR auth and fallback to phone number as
                      ;; auth method, see

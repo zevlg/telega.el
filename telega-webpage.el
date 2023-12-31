@@ -481,7 +481,7 @@ Keymap:
      (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
        (telega-ins (telega-tl-str pb :title) " "
                    "@" (telega-tl-str pb :username) " ")
-       (telega-ins--button (telega-i18n "lng_open_link")
+       (telega-ins--box-button (telega-i18n "lng_open_link")
          :value (telega-tl-str pb :username)
          :action 'telega-tme-open-username)))
     (pageBlockCaption
@@ -557,7 +557,7 @@ instant view for the URL."
     (erase-buffer)
     (mapc #'telega-webpage--ins-pb
           (plist-get telega-webpage--iv :page_blocks))
-    (when (eq telega-debug 'iv)
+    (when (and (listp telega-debug) (memq 'iv telega-debug))
       (telega-ins-fmt "\n---DEBUG---\n%S" telega-webpage--iv))
     (goto-char (point-min)))
 

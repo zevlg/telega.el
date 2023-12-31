@@ -205,6 +205,10 @@ This function accepts exactly one argument - `telega--help-win-param'.")
 Used for optimisations.")
 (make-variable-buffer-local 'telega--help-win-dirty-p)
 
+(defvar telega--help-win-tdlib-callbacks nil
+  "List of pending callbacks in the help window.")
+(make-variable-buffer-local 'telega--help-win-tdlib-callbacks)
+
 (defvar telega--me-id nil "User id of myself.")
 (defvar telega--replies-id nil "Id of the \"Replies\" chat.")
 (defvar telega--options nil "Options updated from telega-server.")
@@ -220,6 +224,7 @@ Used for optimisations.")
 (defvar telega--story-list-chat-count nil
   "Plist with number of chats having active stories.
 Props are `main' and `archive'.")
+(defvar telega--story-stealth-mode nil)
 (defvar telega--chat-active-stories nil
   "Hash table (chat-id -> chatActiveStories) for chat's stories.")
 
@@ -531,13 +536,16 @@ Thread is either TL `forumTopic' or `message' starting a thread.")
     ;; Must be topic or nil at this point
     telega-chatbuf--thread))
 
-(defun telega-chatbuf--message-thread-id ()
+(defun telega-chatbuf--message-thread-id (&optional only-if-topic-p)
   "Return message thread id for the chatbuf.
-To be used in various TDLib methods as `:message_thread_id` argument."
+To be used in various TDLib methods as `:message_thread_id` argument.
+If ONLY-IF-TOPIC-P is specified, then return thread id only if topic
+is enabled."
   (or (when-let ((topic (telega-chatbuf--thread-topic)))
         (telega-topic-msg-thread-id topic))
-      (when-let ((thread (telega-chatbuf--thread-msg)))
-        (plist-get telega-chatbuf--thread :message_thread_id))
+      (unless only-if-topic-p
+        (when-let ((thread (telega-chatbuf--thread-msg)))
+          (plist-get telega-chatbuf--thread :message_thread_id)))
       0))
 
 (defvar telega-chatbuf--aux-plist nil
@@ -596,6 +604,7 @@ Done when telega server is ready to receive queries."
   (setq telega--unread-message-count nil)
   (setq telega--unread-chat-count nil)
   (setq telega--story-list-chat-count nil)
+  (setq telega--story-stealth-mode nil)
 
   (setq telega--files (make-hash-table :test 'eq))
   (setq telega--files-updates (make-hash-table :test 'eq))
@@ -775,6 +784,20 @@ Inhibits read-only flag."
            (with-telega-buffer-modify
             ,@body))))))
 
+(defun telega-buffer-substring-filter (beg end delete)
+  "Function to be used as `filter-buffer-substring-function' in chatbufs.
+Strips `line-prefix' and `wrap-prefix' text properties from copied text."
+  (let ((bstr (buffer-substring beg end)))
+    (when delete
+      (save-excursion
+        (goto-char beg)
+        (delete-region beg end)))
+
+    (remove-text-properties 0 (length bstr)
+                            '(line-prefix nil wrap-prefix nil)
+                            bstr)
+    bstr))
+
 (defmacro with-telega-help-win (buffer-or-name &rest body)
   "Execute BODY in help BUFFER-OR-NAME."
   (declare (indent 1))
@@ -783,9 +806,28 @@ Inhibits read-only flag."
      (redisplay)
      (with-help-window ,buffer-or-name
        (set-buffer standard-output)
+       (setq-local x-underline-at-descent-line t)
        (setq-local nobreak-char-display nil)
+       ;; Special function to filter out `line-prefix', `wrap-prefix' (and
+       ;; probably other) text properties when copying text from chatbuf
+       (setq-local filter-buffer-substring-function
+                   #'telega-buffer-substring-filter)
+       (cursor-intangible-mode 1)
        (cursor-sensor-mode 1)
+       (visual-line-mode 1)
+       (setq-local fill-column -1)
+       (visual-fill-column-mode 1)
+
        ,@body)))
+
+(defun telega-help-win--add-tdlib-callback (extra)
+  (setq telega--help-win-tdlib-callbacks
+        (cons extra telega--help-win-tdlib-callbacks))
+  extra)
+
+(defun telega-help-win--rm-tdlib-callback (extra)
+  (setq telega--help-win-tdlib-callbacks
+        (delq extra telega--help-win-tdlib-callbacks)))
 
 (defun telega-help-win--maybe-redisplay (buffer-or-name for-param)
   "Possible redisplay help win with BUFFER-OR-NAME.
@@ -799,6 +841,11 @@ If BUFFER-OR-NAME exists and visible then redisplay it."
             (telega-save-window-start (point-min) (point-max)
               (telega-save-cursor
                 (let ((inhibit-read-only t))
+                  ;; Cancel any pending tdlib callbacks
+                  (seq-doseq (extra telega--help-win-tdlib-callbacks)
+                    (telega-server--callback-put extra #'ignore))
+                  (setq telega--help-win-tdlib-callbacks nil)
+
                   (setq telega--help-win-dirty-p nil)
                   (erase-buffer)
                   (funcall telega--help-win-inserter
@@ -1281,21 +1328,6 @@ Return t if `:action' has been called."
     (funcall telega-action (button-get button :value))
     t))
 
-(defun telega-button--sensor-func (_window oldpos dir)
-  "Function to be used in `cursor-sensor-functions' text property.
-Activates button if cursor enter, deactivates if leaves."
-  (let ((inhibit-read-only t)
-        (button-region (telega--region-with-cursor-sensor
-                        (if (eq dir 'entered) (point) oldpos))))
-    (when button-region
-      (put-text-property (car button-region) (cdr button-region)
-                         'face (if (eq dir 'entered)
-                                   'telega-button-active
-                                 'telega-button))
-      (when (eq dir 'entered)
-        (telega-button--help-echo (car button-region)))
-      )))
-
 ;; `:help-echo' is also available for buttons
 (defun telega-button--help-echo (button)
   "Show help message for BUTTON defined by `:help-echo' property."
@@ -1478,6 +1510,21 @@ If NO-PROPS is non-nil, then remove properties from the resulting string."
   (let ((button (button-at (or pos (point)))))
     (when (and button (eq (button-type button) 'telega-chat))
       (button-get button :value))))
+
+(defun telega-chat-at-down-mouse-3 ()
+  "Return chat at down-mouse-3 press.
+Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
+  (when-let* ((ev-key (assq 'down-mouse-3 (append (this-command-keys) nil)))
+              (ev-start (cadr ev-key))
+              (ev-point (posn-point ev-start)))
+    (telega-chat-at ev-point)))
+
+(defun telega-chat-for-interactive ()
+  "Return chat at mouse event or at current point.
+For use by interactive commands."
+  (or (telega-chat-at-down-mouse-3)
+      (telega-chat-at (point))
+      telega-chatbuf--chat))
 
 (defun telega-chat-order (chat &optional ignore-custom)
   "Return CHAT's order as string.
@@ -1712,11 +1759,28 @@ If COLUMN is nil or less then current column, then current column is used."
      (telega-ins--column nil ,fill-col
        ,@body)))
 
+(defmacro telega-ins-describe-item (title &rest body)
+  "Describe item with TITLE."
+  (declare (indent 1))
+  (let ((title-sym (gensym "title")))
+    `(let ((,title-sym ,title))
+       ;; Right align title name to 14th column
+       ;; as in `package--print-help-section' function
+       (telega-ins--line-wrap-prefix
+           (make-string (max 0 (- 12 (string-width ,title-sym))) ?\s)
+         (telega-ins--with-face 'telega-describe-item-title
+           (telega-ins ,title-sym)
+           (if (eq ?: (char-before))
+               (telega-ins " ")
+             (telega-ins ": ")))
+         ,@body)
+       (telega-ins "\n"))))
+
 (defmacro telega-ins--help-message (&rest body)
   "Insert help message using `telega-shadow' face.
 If help message has been inserted, insert newline at the end."
   `(when telega-help-messages
-     (telega-ins--labeled "  " nil
+     (telega-ins--line-wrap-prefix "  "
        (telega-ins--with-face 'telega-shadow
          (when (progn ,@body)
            (telega-ins "\n"))))))

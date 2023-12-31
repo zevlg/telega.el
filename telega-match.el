@@ -763,6 +763,16 @@ By default `blockListMain' is used."
     (eq (telega--tl-type chat-block-list)
         (or block-list 'blockListMain))))
 
+;;; ellit-org: chat-temex
+;; - (boost-level [ ~N~ ]) ::
+;;   {{{temexdoc(chat, boost-level, 2)}}}
+(define-telega-matcher chat boost-level (chat &optional n)
+  "Matches if chat's boost level is greater or equal to N.
+By default N is 1."
+  (when (telega-chat-match-p chat '(type channel))
+    (let ((info (telega-chat--info chat 'local)))
+      (>= (or (plist-get info :boost_level) 0) (or n 1)))))
+
 
 ;;; User Temexes
 ;;; ellit-org: user-temex

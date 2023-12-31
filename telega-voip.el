@@ -391,20 +391,20 @@ If TITLE is not specified, ask user interactively for the new title."
                     (propertize "No title" 'face 'telega-shadow)))
     (telega-ins " ")
     (if (plist-get group-call :is_joined)
-        (telega-ins--button "Leave"
+        (telega-ins--box-button "Leave"
           :value group-call
           :action #'telega-group-call-leave)
-      (telega-ins--button "Join"
+      (telega-ins--box-button "Join"
         :value group-call
         :action #'telega-group-call-join))
 
     (when can-manage-p
       (telega-ins " ")
-      (telega-ins--button (telega-i18n "lng_group_call_end")
+      (telega-ins--box-button (telega-i18n "lng_group_call_end")
         :value group-call
         :action #'telega--endGroupCall)
       (telega-ins " ")
-      (telega-ins--button "Set Title"
+      (telega-ins--box-button "Set Title"
         :value group-call
         :action #'telega-group-call-set-title))
 

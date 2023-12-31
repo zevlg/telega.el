@@ -109,7 +109,9 @@ Only writable options can be set.  See: https://core.telegram.org/tdlib/options"
 
 (defcustom telega-debug nil
   "*Non-nil to enable telega debugging buffer."
-  :type 'boolean
+  :type '(choice (boolean :tag "On/Off")
+                 (list (choice (const :tag "Add debug into IV" iv)
+                               (const :tag "Add debug into info buffers" info))))
   :group 'telega)
 
 (defcustom telega-use-test-dc nil
@@ -229,7 +231,7 @@ performance might suffer."
   :group 'telega-chat)
 
 ;; See https://t.me/emacs_telega/12459
-(defcustom telega-button-endings 'telega-button--endings-func
+(defcustom telega-box-button-endings 'telega-box-button--endings-func
   "*Characters to use as beginning/ending of the button.
 Set to (\"[\" . \"]\") in nox-emacs setup.
 Could be a function of one argument - LABEL, should return cons
@@ -721,27 +723,27 @@ Verbosity levels are from 0 (disabled) to 5 (debug)."
   :type 'string
   :group 'telega-root)
 
-(defcustom telega-root-view-topics
+(defcustom telega-root-view-grouping-alist
   '(("Important" . important))
-  "Alist of topics for \"topics\" root view.
-Car is name of the topic, cdr is chat filter to match chats."
-  :package-version '(telega . "0.6.23")
+  "Alist of chat temexes for \"grouping\" root view.
+Car is name of the chats group, cdr is a chat temex to match chats."
+  :package-version '(telega . "0.8.221")
   :type 'alist
   :group 'telega-root)
 
 ;;; ellit-org: folders-options
-;; - {{{user-option(telega-root-view-topics-folders, 2)}}}
-(defcustom telega-root-view-topics-folders 'append
-  "*Non-nil to add Chat Folders to the list of topics.
+;; - {{{user-option(telega-root-view-grouping-folders, 2)}}}
+(defcustom telega-root-view-grouping-folders 'append
+  "*Non-nil to add Chat Folders in the grouping root view.
 Could be one of `prepend', `append' or nil."
-  :package-version '(telega . "0.6.30")
-  :type '(choice (const :tag "Prepend folders to the topics" prepend)
-                 (const :tag "Append folders to the topics" append)
-                 (const :tag "Do not use folders in the topics" nil))
+  :package-version '(telega . "0.8.221")
+  :type '(choice (const :tag "Prepend folders" prepend)
+                 (const :tag "Append folders" append)
+                 (const :tag "Do not add folders" nil))
   :group 'telega-root)
 
-(defcustom telega-root-view-topics-other-chats t
-  "*Non-nil to show other chats in the \"topics\" root view."
+(defcustom telega-root-view-grouping-other-chats t
+  "*Non-nil to show other chats in the \"grouping\" root view."
   :package-version '(telega . "0.6.30")
   :type 'boolean
   :group 'telega-root)
@@ -1897,6 +1899,12 @@ Limits to (MIN-WIDTH MIN-HEIGHT MAX-WIDTH MAX-HEIGHT) characters."
   :type '(list integer integer integer integer)
   :group 'telega)
 
+(defcustom telega-video-size-limits telega-photo-size-limits
+  "*Limits image size for the video messages."
+  :package-version '(telega . "0.8.221")
+  :type '(list integer integer integer integer)
+  :group 'telega)
+
 (defcustom telega-thumbnail-size-limits telega-photo-size-limits
   "*Same as `telega-photo-size-limits', but for thumbnails.
 Used for such messages as audio/document/etc."
@@ -2055,8 +2063,29 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-blank-button (propertize " " 'display '(space :width 2))
-  "Symbol for blank checkmark buttons."
+(defcustom telega-symbol-checkbox-on "[×]"
+  "Symbol for checked button."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-checkbox-off "[ ]"
+  "Symbol for unchecked button."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-radiobox-on "(*)"
+  "Symbol for checked radio button."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-radiobox-off "( )"
+  "Symbol for unchecked radio button."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-button-close "[×]"
+  "Symbol to use for close buttons."
+  :package-version '(telega . "0.8.210")
   :type 'string
   :group 'telega-symbol)
 
@@ -2386,12 +2415,6 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-button-close "×"
-  "Symbol to use for close buttons."
-  :package-version '(telega . "0.8.210")
-  :type 'string
-  :group 'telega-symbol)
-
 (defcustom telega-symbol-codeblock "</>"
   "Symbol to be used in code blocks."
   :package-version '(telega . "0.8.216")
@@ -2467,7 +2490,18 @@ Used in one line message inserter."
     alarm
     attachment audio
     bell bulp
+    (button-close
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/button-close.svg" 2)))
     chat-list
+    (checkbox-off
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-create-image "unchecked.svg" nil nil
+                            :ascent 'center :scale 1.0 :mask 'heuristic)))
+    (checkbox-on
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-create-image "checked.svg" nil nil
+                            :ascent 'center :scale 1.0 :mask 'heuristic)))
     (checkmark
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-svg-create-checkmark telega-symbol-checkmark
@@ -2492,6 +2526,14 @@ Used in one line message inserter."
     pause pending phone photo pin poll play
     (premium (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/premium.svg" 2)))
+    (radiobox-off
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-create-image "radio.svg" nil nil
+                            :ascent 'center :scale 1.0 :mask 'heuristic)))
+    (radiobox-on
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-create-image "radio-checked.svg" nil nil
+                            :ascent 'center :scale 1.0 :mask 'heuristic)))
     (reaction (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/reaction.svg" 2)))
     (reaction-mark (when (and telega-use-images (image-type-available-p 'svg))
@@ -2540,7 +2582,7 @@ non-nil if symbol gets emojification."
 
 ;; NOTE: better to use :line-width (-2 . -2), but this is only in newer Emacs
 ;; see https://t.me/emacs_telega/22129
-(defface telega-button
+(defface telega-box-button
   `((((class color) (min-colors 88) (background light))
      :foreground "RoyalBlue3"
      :box (:line-width ,(if (version< emacs-version "28.0") -2 (cons -2 -2))
@@ -2553,14 +2595,14 @@ non-nil if symbol gets emojification."
   "Face used for telega buttons."
   :group 'telega-faces)
 
-(defface telega-button-active
+(defface telega-box-button-active
   '((((class color) (min-colors 88) (background light))
-     :inherit telega-button
+     :inherit telega-box-button
      :foreground "white" :background "RoyalBlue3")
     (((class color) (min-colors 88) (background dark))
      :foreground "white" :background "cyan1"
-     :inherit telega-button)
-    (t :inherit telega-button))
+     :inherit telega-box-button)
+    (t :inherit telega-box-button))
   "Face used for active (cursor inside) telega buttons."
   :group 'telega-faces)
 
@@ -2836,6 +2878,21 @@ non-nil if symbol gets emojification."
 (defface telega-topic-button
   '((t :inherit telega-shadow))
   "Face to display topic button in the rootbuf."
+  :group 'telega-faces)
+
+(defface telega-describe-section-title
+  '((t :inherit (bold underline) :extend t))
+  "Face used for section title in help buffers."
+  :group 'telega-faces)
+
+(defface telega-describe-subsection-title
+  '((t :inherit bold))
+  "Face used for subsection title in help buffers."
+  :group 'telega-faces)
+
+(defface telega-describe-item-title
+  '((t :inherit (bold font-lock-function-name-face)))
+  "Face used for item title in help buffers."
   :group 'telega-faces)
 
 

@@ -90,6 +90,7 @@
 ;; telega-root.el depends on telega-chat.el
 (declare-function telega--check-buffer-switch "telega-root")
 (declare-function telega-root--keep-cursor-at-chat "telega-root" (chat))
+(declare-function telega-root--global-chat-pp "telega-root" (chat))
 
 ;;; Chatbuf vars
 (defvar telega-chatbuf--ewoc nil
@@ -275,6 +276,9 @@ without request to the server."
 (defalias 'telega-chat--basicgroup 'telega-chat--info)
 (defalias 'telega-chat--supergroup 'telega-chat--info)
 
+(defun telega-chat--supergroup-locally (chat)
+  (telega-chat--supergroup chat 'locally))
+
 (defun telega-chat--type (chat)
   "Return type of the CHAT.
 Types are: `private', `secret', `bot', `basicgroup', `supergroup' or `channel'."
@@ -383,8 +387,11 @@ end of the title."
               title0
             (concat title0
                     ;; Badges
-                    (when (plist-get info :is_premium)
-                      (telega-symbol 'premium))
+                    (cond ((plist-get chat :emoji_status)
+                           (telega-ins--as-string
+                            (telega-ins--chat-emoji-status chat)))
+                          ((plist-get info :is_premium)
+                           (telega-symbol 'premium)))
                     (when (plist-get info :is_scam)
                       (propertize (telega-i18n "lng_scam_badge") 'face 'error))
                     (when (plist-get info :is_fake)
@@ -551,6 +558,23 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 
 
 ;;; Chat buttons in root buffer
+(defvar telega-chat-button-menu-map
+  (let ((menu-map (make-sparse-keymap "Telega Chat")))
+    (bindings--define-key menu-map [similar-chats]
+      '(menu-item (telega-i18n "lng_similar_channels_title")
+                  telega-view-similar-channels
+                  :help "Show similar channels"
+                  :visible (telega-chat-match-p (telega-chat-at-down-mouse-3)
+                             '(type channel))))
+    (bindings--define-key menu-map [s1] menu-bar-separator)
+    (bindings--define-key menu-map [describe]
+      '(menu-item (telega-i18n "lng_info_about_label")
+                  telega-describe-chat
+                  :help "Describe the message"))
+    ;; TODO: more items
+
+    menu-map))
+
 (defvar telega-chat-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
@@ -565,6 +589,11 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
     (define-key map (kbd "C") 'telega-chat-call)
     (define-key map (kbd "DEL") 'telega-chat-delete)
     (define-key map (kbd "TAB") 'telega-chat-button-toggle-view)
+
+    ;; Menu for right mouse on a chat
+    (define-key map [down-mouse-3] telega-chat-button-menu-map)
+    (define-key map [mouse-3] #'ignore)
+
     map)
   "The key map for telega chat buttons.")
 
@@ -715,7 +744,7 @@ Specify non-nil BAN to ban this user in this CHAT."
 
 (defun telega-describe-chat--inserter (chat)
   "Inserter for the CHAT description."
-  (let ((chat-ava (telega-msg-sender-avatar-image chat)))
+  (let ((chat-ava (telega-msg-sender-avatar-image-three-lines chat)))
     (telega-ins--image chat-ava 0
                        :no-display-if (not telega-chat-show-avatars))
     (telega-ins--msg-sender chat :with-username-p 'telega-username)
@@ -725,30 +754,33 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins "\n")
     (telega-ins--image chat-ava 1
                        :no-display-if (not telega-chat-show-avatars))
-    (telega-ins (if (telega-chat-match-p chat 'is-broadcast-group)
-                    (telega-i18n "lng_rights_gigagroup_title")
-                  (capitalize (symbol-name (telega-chat--type chat))))
-                " ")
-    (telega-ins--button "Open"
+    (telega-ins--with-face 'telega-shadow
+      (telega-ins (if (telega-chat-match-p chat 'is-broadcast-group)
+                      (telega-i18n "lng_rights_gigagroup_title")
+                    (capitalize (symbol-name (telega-chat--type chat))))))
+    (telega-ins "\n")
+    (telega-ins--image chat-ava 2
+                       :no-display-if (not telega-chat-show-avatars))
+    (telega-ins--box-button (telega-i18n "lng_open_link")
       :value chat
       :action #'telega-chat--pop-to-buffer)
     (when (telega-me-p chat)
       (telega-ins " ")
       ;; [Set Profile Photo] button
-      (telega-ins--button (telega-i18n "lng_settings_upload")
-        'action (lambda (_ignored)
+      (telega-ins--box-button (telega-i18n "lng_settings_upload")
+        'action (lambda (_button)
                   (telega--setProfilePhoto
                    (telega-read-file-name "Profile Photo: " nil nil t)))))
     (when (telega-chat-match-p chat '(my-permission :can_invite_users))
       (telega-ins " ")
-      (telega-ins--button "Add Member"
+      (telega-ins--box-button "Add Member"
         :value chat
         :action (lambda (to-chat)
                   (telega-chat-add-member
                    to-chat (telega-completing-read-user "Add member: ")))))
     (when (telega-chat-match-p chat '(my-permission :can_change_info))
       (telega-ins " ")
-      (telega-ins--button (telega-i18n "lng_profile_set_group_photo")
+      (telega-ins--box-button (telega-i18n "lng_profile_set_group_photo")
         :value chat
         :action (lambda (for-chat)
                   (let ((photo (telega-read-file-name "Chat Photo: " nil nil t)))
@@ -759,9 +791,9 @@ Specify non-nil BAN to ban this user in this CHAT."
 
     ;; Archive/Unarchive
     (telega-ins " ")
-    (telega-ins--button (if (telega-chat-match-p chat 'archive)
-                            (telega-i18n "lng_archived_remove")
-                          (telega-i18n "lng_archived_add"))
+    (telega-ins--box-button (if (telega-chat-match-p chat 'archive)
+                                (telega-i18n "lng_archived_remove")
+                              (telega-i18n "lng_archived_add"))
       :value chat
       :action #'telega-chat-toggle-archive)
     (telega-ins "\n"))
@@ -769,28 +801,56 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins--help-message
      (telega-ins-i18n "lng_rights_gigagroup_about")))
 
-  (telega-ins-fmt "Id: %s\n"
-    (if telega-debug
-        (format "(telega-chat-get %d)" (plist-get chat :id))
-      (format "%d" (plist-get chat :id))))
-  (when (telega-chat-match-p chat 'is-public)
-    (let ((link (concat (or (plist-get telega--options :t_me_url)
-                            "https://t.me/")
-                        (telega-chat-username chat))))
-      (insert "Public Link: ")
-      (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
-        (telega-ins link))
-      (insert "\n")))
-  (telega-ins "Internal Link: ")
-  (let ((internal-link (telega-tme-internal-link-to chat)))
-    (telega-ins--raw-button (telega-link-props 'url internal-link 'face 'link)
-      (telega-ins internal-link)))
   (telega-ins "\n")
+  (telega-ins-describe-item "Id"
+    (telega-ins-fmt (if telega-debug
+                        "(telega-chat-get %d)"
+                      "%d")
+      (plist-get chat :id)))
 
-  (telega-ins "Order")
-  (when (telega-chat-uaprop chat :order)
-    (telega-ins " (" (propertize "custom" 'face 'telega-shadow) ")"))
-  (telega-ins ": " (telega-chat-order chat) "\n")
+  (telega-ins-describe-item
+      (concat "Order"
+              (when (telega-chat-uaprop chat :order)
+                (concat " (" (propertize "custom" 'face 'telega-shadow) ")")))
+    (telega-ins (telega-chat-order chat)))
+
+  ;; Stories
+  (when-let* ((active-stories
+               (telega-chat--active-stories chat))
+              (stories (plist-get active-stories :stories)))
+    (unless (seq-empty-p stories)
+      (telega-ins-describe-item (telega-i18n "lng_stories_row_count"
+                                  :count (seq-length stories))
+        (seq-doseq (story-info stories)
+          (if-let* ((chat-id (plist-get chat :id))
+                    (story-id (plist-get story-info :story_id))
+                    (story (telega-story-get chat-id story-id 'offline)))
+              (telega-ins--button-story-one-line-no-caption story)
+
+            ;; NOTE: need to fetch story structure to display it
+            (telega-help-win--add-tdlib-callback
+             (telega--getStory chat-id story-id nil
+               (telega--gen-ins-continuation-callback nil
+                 (lambda (story)
+                   (telega-ins--button-story-one-line-no-caption story))))))
+          (telega-ins " ")))))
+
+  (when (telega-chat-match-p chat 'is-public)
+    (telega-ins-describe-item (telega-i18n "lng_group_invite_permanent")
+      (let ((link (concat (or (plist-get telega--options :t_me_url)
+                              "https://t.me/")
+                          (telega-chat-username chat))))
+        (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
+          (telega-ins link)))))
+
+  (telega-ins-describe-item "Telega Link"
+    (let ((internal-link (telega-tme-internal-link-to chat)))
+      (telega-ins--raw-button (telega-link-props 'url internal-link 'face 'link)
+        (telega-ins internal-link))))
+
+  (when-let ((folders (telega-chat-folders chat)))
+    (telega-ins-describe-item (telega-i18n "lng_filters_title")
+      (telega-ins (mapconcat #'identity folders ", "))))
 
   ;; Messages TTL setting for the chat
   (let ((ttl (or (telega-chat-match-p chat 'has-message-ttl) 0))
@@ -798,185 +858,221 @@ Specify non-nil BAN to ban this user in this CHAT."
                             '(or (type private secret)
                                  (my-permission :can_change_info)))))
     (when (or (> ttl 0) can-change-ttl-p)
-      (telega-ins (concat (telega-i18n "lng_settings_ttl_title") ": ")
-                  (if (> ttl 0)
-                      (telega-duration-human-readable ttl 2)
-                    (telega-i18n "lng_manage_messages_ttl_never")))
-      (when can-change-ttl-p
-        (telega-ins " ")
-        (telega-ins--button (telega-i18n "lng_manage_messages_ttl_after_custom")
-          :value chat
-          :action #'telega-chat-set-message-ttl))
-      (telega-ins "\n")
-      (telega-ins--help-message
-       (cond ((telega-chat-match-p chat '(type private secret))
-              (telega-ins-i18n "lng_ttl_edit_about"
-                :user (telega-chat-title chat)))
-             ((telega-chat-match-p chat '(type channel))
-              (telega-ins-i18n "lng_ttl_edit_about_channel"))
-             (t
-              (telega-ins-i18n "lng_ttl_edit_about_group"))))
-      ))
+      (telega-ins-describe-item (telega-i18n "lng_settings_ttl_title")
+        (telega-ins (if (> ttl 0)
+                        (telega-duration-human-readable ttl 2)
+                      (telega-i18n "lng_manage_messages_ttl_never")))
+        (when can-change-ttl-p
+          (telega-ins " ")
+          (telega-ins--box-button
+              (telega-i18n "lng_manage_messages_ttl_after_custom")
+            :value chat
+            :action #'telega-chat-set-message-ttl))
+        (telega-ins "\n")
+        (telega-ins--help-message
+         (cond ((telega-chat-match-p chat '(type private secret))
+                (telega-ins-i18n "lng_ttl_edit_about"
+                  :user (telega-chat-title chat)))
+               ((telega-chat-match-p chat '(type channel))
+                (telega-ins-i18n "lng_ttl_edit_about_channel"))
+               (t
+                (telega-ins-i18n "lng_ttl_edit_about_group")))
+         ;; NOTE: No trailing newline
+         nil))))
 
-  (telega-ins "\n")
-  ;; Chat notification settings
-  (let* ((notify-cfg (plist-get chat :notification_settings))
-         (muted-p (telega-chat-muted-p chat))
-         (show-preview-p (telega-chat-notification-setting
-                          chat :show_preview))
-         (disable-pin-msg-p (telega-chat-notification-setting
-                             chat :disable_pinned_message_notifications))
-         (disable-mentions-p (telega-chat-notification-setting
-                             chat :disable_mention_notifications)))
-    (telega-ins
-     (propertize (telega-i18n "lng_settings_section_notify") 'face 'bold))
-    ;; If any custom setting is enabled, then show [Reset] button
-    (unless (cl-every (apply-partially #'plist-get notify-cfg)
-                      '(:use_default_mute_for
-                        :use_default_sound
-                        :use_default_show_preview
-                        :use_default_disable_pinned_message_notifications
-                        :use_default_disable_mention_notifications))
-      (telega-ins " ")
-      (telega-ins--button "Reset"
-        :value chat
-        :action (lambda (chat)
-                  (telega--setChatNotificationSettings chat
-                    :use_default_mute_for t
-                    :use_default_sound t
-                    :use_default_show_preview t
-                    :use_default_disable_pinned_message_notifications t
-                    :use_default_disable_mention_notifications t))))
-    (telega-ins "\n")
-    (telega-ins--labeled "  " nil
-      (telega-ins--button (if (not muted-p)
-                              telega-symbol-heavy-checkmark
-                            telega-symbol-blank-button)
-        :value chat
-        :action #'telega-chat-toggle-muted)
-      (telega-ins " ")
-      (telega-ins-fmt "Enabled (%s)"
-        (propertize (if (plist-get notify-cfg :use_default_mute_for)
-                        "default" "custom")
-                    'face 'telega-shadow))
-      (unless muted-p
-        (telega-ins " ")
-        (telega-ins--button "Mute For"
+  ;; NOTIFICATIONS Section
+  (telega-ins-describe-item (telega-i18n "lng_settings_section_notify")
+    (let ((notify-cfg (plist-get chat :notification_settings)))
+      ;; If any custom setting is enabled, then show [Reset] button
+      (unless (cl-every (apply-partially #'plist-get notify-cfg)
+                        '(:use_default_mute_for
+                          :use_default_sound
+                          :use_default_show_preview
+                          :use_default_mute_stories
+                          :use_default_story_sound
+                          :use_default_disable_pinned_message_notifications
+                          :use_default_disable_mention_notifications))
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins "custom "))
+        (telega-ins--box-button "Reset"
           :value chat
           :action (lambda (chat)
-                    (telega-chat-toggle-muted
-                     chat (telega-completing-read-mute-for
-                           "Disable notifications for: ")))))
-      (telega-ins "\n")
+                    (telega--setChatNotificationSettings chat
+                      :use_default_mute_for t
+                      :use_default_sound t
+                      :use_default_show_preview t
+                      :use_default_mute_stories t
+                      :use_default_story_sound t
+                      :use_default_disable_pinned_message_notifications t
+                      :use_default_disable_mention_notifications t))))
 
-      ;; Show Preview
-      (telega-ins--button (if show-preview-p
-                              telega-symbol-heavy-checkmark
-                            telega-symbol-blank-button)
-        :value chat
-        :action (lambda (chat)
-                  (telega--setChatNotificationSettings chat
-                    :use_default_show_preview nil
-                    :show_preview (if show-preview-p :false t))))
-      (telega-ins " ")
-      (telega-ins-fmt "Show Preview (%s)"
-        (propertize (if (plist-get notify-cfg :use_default_show_preview)
-                        "default" "custom")
-                    'face 'telega-shadow))
       (telega-ins "\n")
+      (telega-ins--line-wrap-prefix "  "
+        (let ((muted-p (telega-chat-muted-p chat)))
+          (telega-ins--text-button (if (not muted-p)
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            :value chat
+            :action #'telega-chat-toggle-muted)
+          (telega-ins " ")
+          (telega-ins-fmt "%s (%s)"
+            (telega-i18n "lng_settings_desktop_notify")
+            (propertize (if (plist-get notify-cfg :use_default_mute_for)
+                            "default" "custom")
+                        'face 'telega-shadow))
+          (unless muted-p
+            (telega-ins " ")
+            (telega-ins--box-button "Mute For"
+              :value chat
+              :action (lambda (chat)
+                        (telega-chat-toggle-muted
+                         chat (telega-completing-read-mute-for
+                               "Disable notifications for: ")))))
+          (telega-ins "\n"))
 
-      (telega-ins--button (if disable-pin-msg-p
-                              telega-symbol-heavy-checkmark
-                            telega-symbol-blank-button)
-        :value chat
-        :action (lambda (chat)
-                  (telega--setChatNotificationSettings chat
-                    :use_default_disable_pinned_message_notifications nil
-                    :disable_pinned_message_notifications
-                    (if disable-pin-msg-p :false t))))
-      (telega-ins " ")
-      (telega-ins-fmt "Disable Pinned Message Notification (%s)"
-        (propertize (if (plist-get notify-cfg :use_default_disable_pinned_message_notifications)
-                        "default" "custom")
-                    'face 'telega-shadow))
-      (telega-ins "\n")
+        ;; Show Preview
+        (let ((show-preview-p (telega-chat-notification-setting
+                               chat :show_preview)))
+          (telega-ins--text-button (if show-preview-p
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_button)
+                      (telega--setChatNotificationSettings chat
+                        :use_default_show_preview nil
+                        :show_preview (if show-preview-p :false t))))
+          (telega-ins " ")
+          (telega-ins-fmt "%s (%s)"
+            (telega-i18n "lng_settings_show_preview")
+            (propertize (if (plist-get notify-cfg :use_default_show_preview)
+                            "default" "custom")
+                        'face 'telega-shadow))
+          (telega-ins "\n"))
 
-      (telega-ins--button (if disable-mentions-p
-                              telega-symbol-heavy-checkmark
-                            telega-symbol-blank-button)
-        :value chat
-        :action (lambda (chat)
-                  (telega--setChatNotificationSettings chat
-                    :use_default_disable_mention_notifications nil
-                    :disable_mention_notifications
-                    (if disable-mentions-p :false t))))
-      (telega-ins " ")
-      (telega-ins-fmt "Disable Mention Notification (%s)"
-        (propertize (if (plist-get notify-cfg :use_default_disable_mention_notifications)
-                        "default" "custom")
-                    'face 'telega-shadow))
-      (telega-ins "\n")
+        ;; Stories is a private/channels things
+        (let ((mute-stories-p (telega-chat-notification-setting
+                               chat :mute_stories)))
+          (telega-ins--text-button (if mute-stories-p
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_button)
+                      (telega--setChatNotificationSettings chat
+                        :use_default_mute_stories nil
+                        :mute_stories (if mute-stories-p :false t))))
+          (telega-ins " ")
+          (telega-ins-fmt "Mute Stories (%s)"
+            (propertize (if (plist-get notify-cfg :use_default_mute_stories)
+                            "default" "custom")
+                        'face 'telega-shadow))
+          (telega-ins "\n"))
+
+        (let ((disable-pin-msg-p (telega-chat-notification-setting
+                                  chat :disable_pinned_message_notifications)))
+          (telega-ins--text-button (if disable-pin-msg-p
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_button)
+                      (telega--setChatNotificationSettings chat
+                        :use_default_disable_pinned_message_notifications nil
+                        :disable_pinned_message_notifications
+                        (if disable-pin-msg-p :false t))))
+          (telega-ins " ")
+          (telega-ins "Disable Pinned Message Notification (")
+          (telega-ins--with-face 'telega-shadow
+            (telega-ins
+             (if (plist-get notify-cfg :use_default_disable_pinned_message_notifications)
+                 "default"
+               "custom")))
+          (telega-ins ")")
+          (telega-ins "\n"))
+
+        (let ((disable-mentions-p (telega-chat-notification-setting
+                                   chat :disable_mention_notifications)))
+          (telega-ins--text-button (if disable-mentions-p
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_button)
+                      (telega--setChatNotificationSettings chat
+                        :use_default_disable_mention_notifications nil
+                        :disable_mention_notifications
+                        (if disable-mentions-p :false t))))
+          (telega-ins " ")
+          (telega-ins "Disable Mention Notification (")
+          (telega-ins--with-face 'telega-shadow
+            (telega-ins
+             (if (plist-get notify-cfg :use_default_disable_mention_notifications)
+                 "default"
+               "custom")))
+          (telega-ins ")"))
+
+        (when (telega-chat-match-p chat '(my-permission :can_send_basic_messages))
+          (telega-ins "\n")
+          (telega-ins--text-button
+              (if (plist-get chat :default_disable_notification)
+                  (telega-symbol 'checkbox-on)
+                (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_button)
+                      (telega--toggleChatDefaultDisableNotification
+                       chat
+                       (not (plist-get chat :default_disable_notification)))))
+          (telega-ins " ")
+          (telega-ins "Disable Peer Notification")
+          (telega-ins "\n")
+          (telega-ins--help-message
+           (telega-ins "Used when you send a message to the chat.\n"
+                       "Disables message notification on receiver side.\n"
+                       "Use `C-c C-a "
+                       (if (plist-get chat :default_disable_notification)
+                           "enable-notification"
+                         "disable-notification")
+                       " RET' in chatbuf prompt to temporary "
+                       (if (plist-get chat :default_disable_notification)
+                           "enable"
+                         "disable")
+                       " notifications on receiver side at message send time.")
+           ;; NOTE: no trailing newline
+           nil)))
       ))
-  (when (telega-chat-match-p chat '(my-permission :can_send_basic_messages))
-    (telega-ins "Default Disable Notification: ")
-    (telega-ins--button (if (plist-get chat :default_disable_notification)
-                            telega-symbol-heavy-checkmark
-                          telega-symbol-blank-button)
-      :value chat
-      :action (lambda (for-chat)
-                (telega--toggleChatDefaultDisableNotification
-                 for-chat (not (plist-get chat :default_disable_notification)))))
-    (telega-ins "\n")
-    (telega-ins--help-message
-     (telega-ins "Used when you send a message to the chat.\n"
-                 "Disables message notification on receiver side.\n"
-                 "Use `C-c C-a "
-                 (if (plist-get chat :default_disable_notification)
-                     "enable-notification"
-                   "disable-notification")
-                 " RET' in chatbuf prompt to temporary "
-                 (if (plist-get chat :default_disable_notification)
-                     "enable"
-                   "disable")
-                 " notifications on receiver side at message send time.")))
 
   ;; Permissions for basicgroup and supergroup
   (when (telega-chat-match-p chat '(type basicgroup supergroup))
     (let ((my-perms (telega-chat-member-my-permissions chat)))
-      (telega-ins
-       (propertize (telega-i18n "lng_manage_peer_permissions") 'face 'bold)
-       "\n")
-      (telega-ins
-       (propertize (telega-i18n "lng_rights_default_restrictions_header")
-                   'face 'telega-shadow)
-       "\n")
-      (telega-ins--labeled "  " nil
-        (dolist (perm-spec telega-chat--chat-permissions)
-          (let ((perm-value (telega--tl-get chat :permissions (car perm-spec))))
-            (when (member perm-spec telega-chat--chat-media-permissions)
-              (when (equal perm-spec (car telega-chat--chat-media-permissions))
-                (telega-ins-i18n "lng_rights_chat_send_media")
-                (telega-ins-fmt " %d/%d:\n"
-                  (seq-count (lambda (media-perm-spec)
-                               (telega-chat-match-p chat
-                                 (list 'permission (car media-perm-spec))))
-                             telega-chat--chat-media-permissions)
-                  (length telega-chat--chat-media-permissions)))
-              (telega-ins "  "))
+      (telega-ins-describe-item
+          (telega-i18n "lng_rights_default_restrictions_header")
+        (telega-ins--line-wrap-prefix "  "
+          (dolist (perm-spec telega-chat--chat-permissions)
+            (telega-ins "\n")
+            (let ((perm-value (telega--tl-get chat :permissions (car perm-spec))))
+              (when (member perm-spec telega-chat--chat-media-permissions)
+                (when (equal perm-spec (car telega-chat--chat-media-permissions))
+                  (telega-ins--with-face 'telega-describe-subsection-title
+                    (telega-ins-i18n "lng_rights_chat_send_media")
+                    (telega-ins-fmt " %d/%d:\n"
+                      (seq-count (lambda (media-perm-spec)
+                                   (telega-chat-match-p chat
+                                     (list 'permission (car media-perm-spec))))
+                                 telega-chat--chat-media-permissions)
+                      (length telega-chat--chat-media-permissions))))
+                (telega-ins "  "))
 
-            (if (plist-get my-perms :can_restrict_members)
-                (telega-ins--button (if perm-value
-                                        telega-symbol-heavy-checkmark
-                                      telega-symbol-blank-button)
-                  :value chat
-                  :action (lambda (chat)
-                            (telega--setChatPermissions chat
-                              (car perm-spec) (not perm-value))))
-              (telega-ins (if perm-value
-                              telega-symbol-ballout-check
-                            telega-symbol-ballout-empty)))
-            (telega-ins " " (telega-i18n (cdr perm-spec)))
-            (telega-ins "\n"))))))
+              (let ((active-p (plist-get my-perms :can_restrict_members)))
+                (telega-ins--text-button (if perm-value
+                                             (telega-symbol 'checkbox-on)
+                                           (telega-symbol 'checkbox-off))
+                  'face (if active-p
+                            'telega-link
+                          'telega-shadow)
+                  'action (when active-p
+                            (lambda (_button)
+                              (telega--setChatPermissions chat
+                                (car perm-spec) (not perm-value)))))
+                (telega-ins " " (telega-i18n (cdr perm-spec))))
+              ))))))
 
   (telega-ins "\n")
   (let ((info-spec
@@ -991,17 +1087,21 @@ Specify non-nil BAN to ban this user in this CHAT."
                  (channel ,(telega-i18n "lng_info_channel_title")
                           telega-info--insert-supergroup)))))
     (cl-assert info-spec)
-    (telega-ins--with-face 'bold
-      (telega-ins (nth 1 info-spec)))
-    (telega-ins "\n")
+    (telega-ins--with-face 'telega-describe-section-title
+      (telega-ins (upcase (nth 1 info-spec)) "\n"))
     (funcall (nth 2 info-spec) (telega-chat--info chat) chat))
 
-  (when telega-debug
+  (when (and (listp telega-debug) (memq 'info telega-debug))
     (telega-ins "\n---DEBUG---\n")
-    (telega-ins (propertize "Chat: " 'face 'bold)
-                (format "%S" chat) "\n")
-    (telega-ins (propertize "Info: " 'face 'bold)
-                (format "%S" (telega-chat--info chat))))
+    (telega-ins--with-face 'bold
+      (telega-ins "Chat: "))
+    (telega-ins-fmt "%S" chat)
+    (telega-ins "\n")
+
+    (telega-ins--with-face 'bold
+      (telega-ins "Info: "))
+    (telega-ins-fmt "%S" (telega-chat--info chat))
+    (telega-ins "\n"))
   )
 
 (defun telega-describe-chat (chat)
@@ -1019,6 +1119,71 @@ Specify non-nil BAN to ban this user in this CHAT."
   "If CHAT info buffer exists and visible, then redisplay it."
   (telega-help-win--maybe-redisplay "*Telegram Chat Info*" chat))
 
+(defun telega-describe-chat-similar-channels (chat)
+  "Show all chats similar to the given CHAT.
+CHAT must be a channel."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+  (with-telega-help-win "*Telegram Similar Channels*"
+    (telega-ins--with-face 'telega-describe-section-title
+      (telega-ins (telega-i18n "lng_similar_channels_title") ": ")
+      (telega-ins--msg-sender chat
+        :with-avatar-p t
+        :with-username-p t
+        :with-brackets-p t)
+      (telega-ins "\n"))
+    (telega-ins "\n")
+
+    (telega--getChatSimilarChats chat
+      (telega--gen-ins-continuation-callback 'loading
+        (lambda (similar-chats)
+          (when (seq-empty-p similar-chats)
+            (telega-ins-i18n "lng_profile_similar_channels"
+              :count 0))
+          (seq-doseq (schat similar-chats)
+            (telega-root--global-chat-pp schat)))))))
+
+(defun telega-describe-chat-members (chat)
+  "Show CHAT members."
+  (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
+  (let* ((chat-type (telega-chat--type chat))
+         (info (telega-chat--info chat 'locally))
+         (full-info (telega--full-info info))
+         (member-count (cl-case chat-type
+                         (basicgroup
+                          (plist-get info :member_count))
+                         ((supergroup channel)
+                          (plist-get full-info :member_count))
+                         (t
+                          (user-error "telega: Not a group chat"))
+                         )))
+    (with-telega-help-win "*Telegram Chat Members*"
+      (telega-ins--with-face 'telega-describe-section-title
+        (telega-ins (telega-i18n (if (telega-chat-channel-p chat)
+                                     "lng_chat_status_subscribers"
+                                   "lng_chat_status_members")
+                      :count member-count)
+                    ": ")
+        (telega-ins--msg-sender chat
+          :with-avatar-p t
+          :with-username-p t
+          :with-brackets-p t)
+        (telega-ins "\n"))
+      (telega-ins "\n")
+
+      (cond ((eq chat-type 'basicgroup)
+             (telega-ins--chat-members
+              (append (plist-get full-info :members) nil)))
+
+            ((not (plist-get full-info :can_get_members))
+             (telega-ins "Can't get group members"))
+
+            (t
+             (cl-assert (memq chat-type '(supergroup channel)))
+             (telega--getSupergroupMembers info nil nil nil
+               (telega--gen-ins-continuation-callback 'loading
+                 #'telega-ins--chat-members))))
+      )))
+
 (defun telega-chat-with (chat-or-user)
   "Start messaging with CHAT-OR-USER."
   (interactive
@@ -1032,7 +1197,7 @@ Specify non-nil BAN to ban this user in this CHAT."
            (cl-remove-if-not
             (lambda (user)
               (and (plist-get user :is_contact)
-                   (not (telega-chat-get (plist-get user :id) 'offline))))
+                   (not (telega-user-chat user))))
             (hash-table-values (alist-get 'user telega--info)))))
      (list (telega-completing-read-msg-sender
             "Chat with: " (nconc chats users)))))
@@ -1720,7 +1885,7 @@ Use this to surrond header with some prefix and suffix."
   (when telega-chatbuf--msg-filter
     (telega-ins--as-string
      (unless no-cancel-button-p
-       (telega-ins--button (propertize "✕" 'face 'bold)
+       (telega-ins--text-button (telega-symbol 'button-close)
          'action (lambda (_ignored)
                    (telega-chatbuf-filter-cancel)))
        (telega-ins " "))
@@ -1773,21 +1938,21 @@ Use this to surrond header with some prefix and suffix."
   (declare (indent 1))
   (cl-ecase (telega--tl-type action-bar)
     (chatActionBarReportSpam
-     (telega-ins--button (if (telega-chat-match-p chat
-                               '(type basicgroup supergroup channel))
-                             (telega-i18n "lng_report_spam_and_leave")
-                           (telega-i18n "lng_report_spam"))
+     (telega-ins--box-button (if (telega-chat-match-p chat
+                                   '(type basicgroup supergroup channel))
+                                 (telega-i18n "lng_report_spam_and_leave")
+                               (telega-i18n "lng_report_spam"))
        'action (lambda (_ignore)
                  (telega--reportChat chat "Spam")
                  (telega-chat-delete chat))))
 
     (chatActionBarReportUnrelatedLocation
-     (telega-ins--button (telega-i18n "lng_report_location")
+     (telega-ins--box-button (telega-i18n "lng_report_location")
        'action (lambda (_ignore)
                  (telega--reportChat chat "UnrelatedLocation"))))
 
     (chatActionBarInviteMembers
-     (telega-ins--button "Invite Users"
+     (telega-ins--box-button "Invite Users"
        'action (lambda (_ignored)
                  (let ((new-users (telega-completing-read-user-list
                                       "Invite new users")))
@@ -1801,17 +1966,17 @@ Use this to surrond header with some prefix and suffix."
      (telega-ins--chat-action-bar-button chat
        '(:@type "chatActionBarAddContact"))
      (telega-ins " ")
-     (telega-ins--button (telega-i18n "lng_new_contact_block")
+     (telega-ins--box-button (telega-i18n "lng_new_contact_block")
        :value (telega-chat-user chat)
        :action #'telega-msg-sender-block))
 
     (chatActionBarAddContact
-     (telega-ins--button (telega-i18n "lng_new_contact_add")
+     (telega-ins--box-button (telega-i18n "lng_new_contact_add")
        :value (telega-user-as-contact (telega-chat-user chat))
        :action #'telega--addContact))
 
     (chatActionBarSharePhoneNumber
-     (telega-ins--button (telega-i18n "lng_new_contact_share")
+     (telega-ins--box-button (telega-i18n "lng_new_contact_share")
        :value (telega-chat-user chat)
        :action #'telega--sharePhoneNumber))
 
@@ -1835,7 +2000,8 @@ Use this to surrond header with some prefix and suffix."
 
   (when-let ((action-bar (plist-get telega-chatbuf--chat :action_bar)))
     (telega-ins--as-string
-     (telega-ins--button "✕"
+     (telega-ins--text-button (telega-symbol 'button-close)
+       'face 'telega-link
        :value telega-chatbuf--chat
        :action #'telega--removeChatActionBar)
      (telega-ins " ActionBar: ")
@@ -1855,7 +2021,8 @@ Use this to surrond header with some prefix and suffix."
                 (stories (plist-get active-stories :stories)))
       (unless (seq-empty-p stories)
         (telega-ins--as-string
-         (telega-ins--button "✕"
+         (telega-ins--text-button (telega-symbol 'button-close)
+           'face 'telega-link
            'action (lambda (_ignored)
                      (plist-put telega-chatbuf--hidden-headers :active-stories t)
                      (telega-chatbuf--chat-update "active-stories")))
@@ -1868,13 +2035,7 @@ Use this to surrond header with some prefix and suffix."
                      (story (telega-story-get chat-id story-id 'offline)))
                (progn
                  (telega-ins " ")
-                 (telega-button--insert 'telega story
-                   :inserter #'telega-ins--story-one-line
-                   :action #'telega-story-open
-                   'help-echo
-                   (telega-ins--as-string
-                    (telega-ins--one-lined
-                     (telega-ins--fmt-text (plist-get story :caption))))))
+                 (telega-ins--button-story-one-line-no-caption story))
 
              ;; NOTE: need to fetch story structure to display it
              (telega--getStory chat-id story-id nil
@@ -1894,7 +2055,8 @@ Use this to surrond header with some prefix and suffix."
     (when-let ((pinned-stories
                 (plist-get telega-chatbuf--chat :telega-pinned-stories)))
       (telega-ins--as-string
-       (telega-ins--button "✕"
+       (telega-ins--text-button (telega-symbol 'button-close)
+         'face 'telega-link
          'action (lambda (_ignored)
                    (plist-put telega-chatbuf--hidden-headers :pinned-stories t)
                    (telega-chatbuf--chat-update "active-stories")))
@@ -1920,7 +2082,8 @@ Use this to surrond header with some prefix and suffix."
             (sender (or (telega-msg-sender telega-chatbuf--vvnote-msg)
                         (telega-msg-chat telega-chatbuf--vvnote-msg))))
        (when played ;(memq proc-status '(run stop))
-         (telega-ins--button (propertize "✕" 'face 'bold)
+         (telega-ins--text-button (telega-symbol 'button-close)
+           'face 'telega-link
            'action (lambda (_ignored)
                      (telega-ffplay-stop)))
          (telega-ins " Active vvnote: ")
@@ -1955,7 +2118,8 @@ Use this to surrond header with some prefix and suffix."
               (group-call (telega-group-call-get
                               (plist-get video-chat :group_call_id))))
     (telega-ins--as-string
-     (telega-ins--button (propertize "✕" 'face 'bold)
+     (telega-ins--text-button (telega-symbol 'button-close)
+       'face 'telega-link
        'action (lambda (_ignored)
                  (plist-put telega-chatbuf--hidden-headers :video-chat t)
                  (telega-chatbuf--chat-update "group-call")))
@@ -1966,10 +2130,10 @@ Use this to surrond header with some prefix and suffix."
                      (propertize "No title" 'face 'telega-shadow))
                  " ")
      (if (plist-get group-call :is_joined)
-         (telega-ins--button "Leave"
+         (telega-ins--box-button "Leave"
            :value group-call
            :action #'telega-group-call-leave)
-       (telega-ins--button "Join"
+       (telega-ins--box-button "Join"
          :value group-call
          :action #'telega-group-call-join))
      (telega-ins "\n")
@@ -1982,7 +2146,7 @@ Use this to surrond header with some prefix and suffix."
         (plist-get group-call :scheduled_start_date))
        ;; Start Now
        (telega-ins " ")
-       (telega-ins--button "Start Now"
+       (telega-ins--box-button "Start Now"
          :value group-call
          :action #'telega--startScheduledGroupCall)
        (telega-ins "\n"))
@@ -1996,7 +2160,7 @@ Use this to surrond header with some prefix and suffix."
          (telega-ins--image
           (telega-group-call--participant-image recent-speaker)))
        (telega-ins " ")
-       (telega-ins--button "Show"
+       (telega-ins--box-button "Show"
          :value group-call
          :action #'telega-describe-group-call))
      )))
@@ -2009,7 +2173,8 @@ Use this to surrond header with some prefix and suffix."
              (can-invite-p (telega-chatbuf-match-p
                             '(my-permission :can_invite_users))))
     (telega-ins--as-string
-     (telega-ins--button "✕"
+     (telega-ins--text-button (telega-symbol 'button-close)
+       'face 'telega-link
        'action (lambda (_ignored)
                  (plist-put telega-chatbuf--chat
                             :telega-add-member-forbidden-users nil)
@@ -2030,7 +2195,7 @@ Use this to surrond header with some prefix and suffix."
                :with-username-p 'telega-username
                :with-brackets-p t))))
        (telega-ins " ")
-       (telega-ins--button (telega-i18n "lng_via_link_send")
+       (telega-ins--box-button (telega-i18n "lng_via_link_send")
          :value user
          :action #'telega-chatbuf-invite-user-via-link)
        ))))
@@ -2175,7 +2340,7 @@ Use this to surrond header with some prefix and suffix."
                             (not (telega-chat-secret-p telega-chatbuf--chat)))
                        (upcase (telega-i18n "lng_group_invite_join"))))))
       (telega-ins--as-string
-       (telega-ins--button (concat "   " button-text "   ")
+       (telega-ins--box-button (concat "   " button-text "   ")
          'action (lambda (_ignored)
                    (cl-assert (not (telega-chat-secret-p telega-chatbuf--chat)))
 
@@ -2210,7 +2375,8 @@ Use this to surrond header with some prefix and suffix."
      (telega-ins--with-attrs  (list :max (- telega-chat-fill-column 1)
                                     :elide t
                                     :face 'telega-chat-prompt)
-       (telega-ins--button (telega-symbol 'button-close)
+       (telega-ins--text-button (telega-symbol 'button-close)
+         'face 'telega-link
          'action (lambda (_ignored)
                    (telega-chatbuf-cancel-aux))
          'help-echo (lambda (_ignored)
@@ -2219,7 +2385,8 @@ Use this to surrond header with some prefix and suffix."
        (cl-case (plist-get telega-chatbuf--aux-plist :aux-type)
          (edit
           (telega-ins
-           "| " (telega-i18n "lng_edit_message") ": ")
+           (telega-symbol 'vertical-bar)
+           (telega-i18n "lng_edit_message") ": ")
           (telega-ins--aux-msg-one-line
               (plist-get telega-chatbuf--aux-plist :aux-msg)))
 
@@ -2228,7 +2395,8 @@ Use this to surrond header with some prefix and suffix."
                 (aux-quote (plist-get telega-chatbuf--aux-plist
                                       :aux-reply-quote)))
             (telega-ins
-             "| " (telega-chat--aux-inline-reply-symbol aux-quote) " ")
+             (telega-symbol 'vertical-bar)
+             (telega-chat--aux-inline-reply-symbol aux-quote) " ")
             (telega-ins--aux-msg-one-line aux-msg
               :with-username t
               :remove 'message)
@@ -2367,20 +2535,6 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
           (telega-ins "\n"))))
     ))
 
-(defun telega-chatbuf--substring-filter (beg end delete)
-  "Function to be used as `filter-buffer-substring-function' in chatbufs.
-Strips `line-prefix' and `wrap-prefix' text properties from copied text."
-  (let ((bstr (buffer-substring beg end)))
-    (when delete
-      (save-excursion
-        (goto-char beg)
-        (delete-region beg end)))
-
-    (remove-text-properties 0 (length bstr)
-                            '(line-prefix nil wrap-prefix nil)
-                            bstr)
-    bstr))
-
 (define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
   "The mode for telega chat buffer.
 
@@ -2467,7 +2621,7 @@ Global chat bindings:
   ;; Special function to filter out `line-prefix', `wrap-prefix' (and
   ;; probably other) text properties when copying text from chatbuf
   (setq-local filter-buffer-substring-function
-              #'telega-chatbuf--substring-filter)
+              #'telega-buffer-substring-filter)
 
   (setq telega--chat-buffers-alist
         (cl-pushnew (cons telega-chatbuf--chat (current-buffer))
@@ -4441,9 +4595,13 @@ from message at point."
             (telega--searchChatMessages telega-chatbuf--chat
                 '(:@type "searchMessagesFilterUnreadReaction")
                 0 0
-              :limit 1)))
+              :limit 4)))
          (next-unread-reaction-msg
-          (car (append (plist-get reply :messages) nil))))
+          (car (append (plist-get reply :messages) nil)))
+         (telega-chatbuf--inhibit-filter-reset
+          (when (eq (plist-get next-unread-reaction-msg :message_thread_id)
+                    (telega-chatbuf--message-thread-id))
+            '(msg-filter thread))))
     (unless next-unread-reaction-msg
       (user-error "telega: No messages with unread reaction"))
     (telega-msg-goto next-unread-reaction-msg 'highlight)
@@ -6229,7 +6387,7 @@ containing QUERY sent by specified sender."
         (telega-ins-i18n "lng_chat_theme_title"))
       (when (telega-tl-str for-chat :theme_name)
         (telega-ins " ")
-        (telega-ins--button (telega-i18n "lng_chat_theme_reset")
+        (telega-ins--box-button (telega-i18n "lng_chat_theme_reset")
           :value nil
           :action #'telega-chat-theme--choosen-action))
       (telega-ins "\n")

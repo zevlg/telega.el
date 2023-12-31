@@ -404,6 +404,21 @@ Do not fetch custom emojis for ignored messages."
             (setq image (telega-sticker--image custom-emoji)))))
       image)))
 
+(defun telega-ins--emoji-status (emoji-status)
+  "Inserter for the EMOJI-STATUS."
+  (when emoji-status
+    (telega-ins--image
+     (telega-emoji-status--image emoji-status) nil
+     :telega-text telega-symbol-premium)))
+
+(defun telega-ins--user-emoji-status (user)
+  "Inserter USER's emoji status."
+  (telega-ins--emoji-status (plist-get user :emoji_status)))
+
+(defun telega-ins--chat-emoji-status (chat)
+  "Inserter CHAT's emoji status."
+  (telega-ins--emoji-status (plist-get chat :emoji_status)))
+
 (defun telega-emoji-status--animate (emoji-status)
   "Animate EMOJI-STATUS."
   (let* ((custom-emoji-id (plist-get emoji-status :custom_emoji_id))

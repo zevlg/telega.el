@@ -1085,7 +1085,8 @@ messages."
     (telega--info-update supergroup)
 
     (when-let ((chat (cl-find supergroup telega--ordered-chats
-                              :test 'eq :key 'telega-chat--supergroup)))
+                              :test #'eq
+                              :key #'telega-chat--supergroup-locally)))
       ;; If :is_forum state is toggled, then update topics as well
       (unless (eq (plist-get old-supergroup :is_forum)
                   (plist-get supergroup :is_forum))
@@ -1373,13 +1374,14 @@ Please downgrade TDLib and recompile `telega-server'"
         (telega-ins--content event))
       (when (string-prefix-p "AUTH_KEY_DROP_" (plist-get event :type))
         (telega-ins "\n")
-        (telega-ins--button "Cancel"
+        (telega-ins--box-button (telega-i18n "lng_cancel")
           'action (lambda (_ignored)
                     (quit-window)))
         (telega-ins " ")
-        (telega-ins--button "Logout"
+        (telega-ins--box-button (telega-i18n "lng_settings_logout")
           'action (lambda (_ignored)
-                    (when (yes-or-no-p "Destroy all local data? ")
+                    (when (yes-or-no-p (concat (telega-i18n "lng_sure_logout")
+                                               " "))
                       (telega-server--send (list :@type "destroy")))))))))
 
 (defun telega--on-updateFile (event)
@@ -1508,12 +1510,18 @@ Please downgrade TDLib and recompile `telega-server'"
   (let ((story-list (plist-get event :story_list))
         (chat-count (plist-get event :chat_count)))
 
-    (plist-put telega--story-list-chat-count
-               (cl-ecase (telega--tl-type story-list)
-                 (storyListMain 'main)
-                 (storyListArchive 'archive))
-               chat-count)
+    (setq telega--story-list-chat-count
+          (plist-put telega--story-list-chat-count
+                     (cl-ecase (telega--tl-type story-list)
+                       (storyListMain 'main)
+                       (storyListArchive 'archive))
+                     chat-count))
     ))
+
+(defun telega--on-updateStoryStealthMode (event)
+  "Story stealth mode settings have changed."
+  (setq telega--story-stealth-mode event)
+  )
 
 (defun telega--on-updateAccentColors (event)
   "The list of supported accent colors has changed."
@@ -1525,24 +1533,21 @@ Please downgrade TDLib and recompile `telega-server'"
   (setq telega--accent-colors-available-ids
         (plist-get event :available_accent_color_ids)))
 
-(defun telega--on-updateChatAccentColor (event)
-  "A chat accent color has changed."
+(defun telega--on-updateChatAccentColors (event)
+  "Chat accent colors have changed."
   (let ((chat (telega-chat-get (plist-get event :chat_id))))
     (plist-put chat :accent_color_id
                (plist-get event :accent_color_id))
+    (plist-put chat :background_custom_emoji_id
+               (plist-get event :background_custom_emoji_id))
+    (plist-put chat :profile_accent_color_id
+               (plist-get event :profile_accent_color_id))
+    (plist-put chat :profile_background_custom_emoji_id
+               (plist-get event :profile_background_custom_emoji_id))
 
     ;; TODO: regenerate chat's colors
 
     (telega-chat--mark-dirty chat event)))
-
-(defun telega--on-updateChatBackgroundCustomEmoji (event)
-  "A chat's custom emoji for reply background has changed."
-  (let ((chat (telega-chat-get (plist-get event :chat_id))))
-    (plist-put chat :background_custom_emoji_id
-               (plist-get event :background_custom_emoji_id))
-
-    (telega-chat--mark-dirty chat event)
-    ))
 
 (provide 'telega-tdlib-events)
 

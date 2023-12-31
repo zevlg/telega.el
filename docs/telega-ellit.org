@@ -568,7 +568,7 @@ Use ~telega-story-match-p~ to match a story.
 - {{{user-option(telega-chat-group-messages-for, 2)}}}
 - {{{user-option(telega-chat-show-deleted-messages-for, 2)}}}
 - {{{user-option(telega-chat-use-date-breaks-for, 2)}}}
-- {{{user-option(telega-root-view-topics, 2)}}}
+- {{{user-option(telega-root-view-grouping-alist, 2)}}}
 
 * Chat Folders
 
@@ -665,8 +665,8 @@ Markup syntax table:
 |                  | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~                      | **UNSUPPORTED**                  |
 | ~inlined code~   | ~`inlined code`~                 | ~~inlined code~~                   | ~`inlined code`~                 |
 | =pre text=       | ~```pre text```~                 | ~=pre text=~                       | **UNSUPPORTED**                  |
-| [[http://www.url][text]]             | ~[text](http://www.url)~         | ~[[text][http://www.url]]~         | ~[text](http://www.url)~         |
-| [[http://t.me/user][name]]             | ~[name](tg://user?id=<USER-ID>)~ | ~[[name][tg://user?id=<USER-ID>]]~ | ~[name](tg://user?id=<USER-ID>)~ |
+| [[http://www.url][text]]             | ~[text](http://www.url)~         | ~[[http://www.url][text]]~         | ~[text](http://www.url)~         |
+| [[http://t.me/user][name]]             | ~[name](tg://user?id=<USER-ID>)~ | ~[[tg://user?id=<USER-ID>][name]]~ | ~[name](tg://user?id=<USER-ID>)~ |
 
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:

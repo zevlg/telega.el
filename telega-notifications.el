@@ -20,10 +20,10 @@
 ;; along with telega.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; ellit-org: commentary
-;; 
+;;
 ;; =telega.el= can notify you about incoming messages and calls via
 ;; D-Bus notifications, however notifications are disabled by default.
-;; 
+;;
 ;; Enable it with ~(telega-notifications-mode 1)~ or at =telega= load time:
 ;; #+begin_src emacs-lisp
 ;; (add-hook 'telega-load-hook 'telega-notifications-mode)
@@ -102,70 +102,99 @@ SCOPE-TYPE is same an in `telega-chat-notification-scope'."
   (let* ((sconf (telega-chat-notification-scope scope-type))
          (mute-for (plist-get sconf :mute_for))
          (unmuted-p (zerop mute-for))
-         (sound (plist-get sconf :sound))
-         (preview-p (plist-get sconf :show_preview))
-         (disable-pinned-p
-          (plist-get sconf :disable_pinned_message_notifications))
-         (disable-mentions-p
-          (plist-get sconf :disable_mention_notifications)))
-    (telega-ins--button (if unmuted-p
-                            telega-symbol-heavy-checkmark
-                          telega-symbol-blank-button)
-      :value (if unmuted-p telega-mute-for-ever 0)
-      :action (apply-partially #'telega--setScopeNotificationSettings
-                               scope-type :mute_for))
-    (telega-ins " " "Show Notifications")
+         (sound-id (plist-get sconf :sound_id))
+         (preview-p (plist-get sconf :show_preview)))
+    (telega-ins--text-button (if unmuted-p
+                                 (telega-symbol 'checkbox-on)
+                               (telega-symbol 'checkbox-off))
+      'face 'telega-link
+      'action (lambda (_button)
+                (telega--setScopeNotificationSettings
+                    scope-type :mute_for (if unmuted-p telega-mute-for-ever 0))))
+    (telega-ins " " (telega-i18n "lng_settings_desktop_notify"))
     (telega-ins "\n")
 
-    (telega-ins--button (if preview-p
-                            telega-symbol-heavy-checkmark
-                          telega-symbol-blank-button)
-      :value (if preview-p :false t)
-      :action (apply-partially #'telega--setScopeNotificationSettings
-                               scope-type :show_preview))
-    (telega-ins " " "Show Preview")
+    (telega-ins--text-button (if preview-p
+                                 (telega-symbol 'checkbox-on)
+                               (telega-symbol 'checkbox-off))
+      'face 'telega-link
+      'action (lambda (_button)
+                (telega--setScopeNotificationSettings scope-type
+                  :show_preview (if preview-p :false t))))
+    (telega-ins " " (telega-i18n "lng_settings_show_preview"))
     (telega-ins "\n")
 
-    (telega-ins--button (if disable-pinned-p
-                            telega-symbol-heavy-checkmark
-                          telega-symbol-blank-button)
-      :value (if disable-pinned-p :false t)
-      :action (apply-partially #'telega--setScopeNotificationSettings
-                               scope-type :disable_pinned_message_notifications))
-    (telega-ins " " "Disable Pinned Message Notification")
-    (telega-ins "\n")
+    (let ((mute-stories-p (plist-get sconf :mute_stories)))
+      (telega-ins--text-button (if mute-stories-p
+                                   (telega-symbol 'checkbox-on)
+                                 (telega-symbol 'checkbox-off))
+        'face 'telega-link
+        'action (lambda (_button)
+                  (telega--setScopeNotificationSettings scope-type
+                    :mute_stories (if mute-stories-p :false t))))
+      (telega-ins " " "Mute Stories")
+      (telega-ins "\n"))
 
-    (telega-ins--button (if disable-mentions-p
-                            telega-symbol-heavy-checkmark
-                          telega-symbol-blank-button)
-      :value (if disable-mentions-p :false t)
-      :action (apply-partially #'telega--setScopeNotificationSettings
-                               scope-type :disable_mention_notifications))
-    (telega-ins " " "Disable Mention Notification")
-    (telega-ins "\n")
+    (let ((show-story-sender-p (plist-get sconf :show_story_sender)))
+      (telega-ins--text-button (if show-story-sender-p
+                                   (telega-symbol 'checkbox-on)
+                                 (telega-symbol 'checkbox-off))
+        'face 'telega-link
+        'action (lambda (_button)
+                  (telega--setScopeNotificationSettings scope-type
+                    :show_story_sender (if show-story-sender-p :false t))))
+      (telega-ins " " "Show Story Sender")
+      (telega-ins "\n"))
 
-    (telega-ins "Sound: " (if (string-empty-p sound) "None" sound))
+    (let ((disable-pinned-p
+           (plist-get sconf :disable_pinned_message_notifications)))
+      (telega-ins--text-button (if disable-pinned-p
+                                   (telega-symbol 'checkbox-on)
+                                 (telega-symbol 'checkbox-off))
+        'face 'telega-link
+        'action (lambda (_button)
+                  (telega--setScopeNotificationSettings scope-type
+                    :disable_pinned_message_notifications
+                    (if disable-pinned-p :false t))))
+      (telega-ins " " "Disable Pinned Message Notification")
+      (telega-ins "\n"))
+
+    (let ((disable-mentions-p (plist-get sconf :disable_mention_notifications)))
+      (telega-ins--text-button (if disable-mentions-p
+                                   (telega-symbol 'checkbox-on)
+                                 (telega-symbol 'checkbox-off))
+        'face 'telega-link
+        'action (lambda (_button)
+                  (telega--setScopeNotificationSettings scope-type
+                    :disable_mention_notifications
+                    (if disable-mentions-p :false t))))
+      (telega-ins " " "Disable Mention Notification")
+      (telega-ins "\n"))
+
+    (telega-ins (telega-i18n "lng_notification_sound") ": "
+                sound-id)
     (telega-ins "\n")
 
     ;; Exceptions
     (when-let ((exception-chats
                 (telega--getChatNotificationSettingsExceptions scope-type)))
-      (telega-ins-fmt "Exceptions: %d chats\n" (length exception-chats))
-      (telega-ins--labeled "  " nil
+      (telega-ins-fmt "Exceptions: %d chats" (length exception-chats))
+      (telega-ins--line-wrap-prefix "  "
         (dolist (chat exception-chats)
+          (telega-ins "\n")
           (telega-button--insert 'telega-chat chat
             :inserter #'telega-ins--chat
-            :action #'telega-describe-chat)
-          (telega-ins "\n"))))
+            :action #'telega-describe-chat))))
     ))
 
 (defun telega-describe-notifications--inserter (&rest _ignored)
   "Inserter for notification settings."
-  (telega-ins "telega-notifications-mode: "
-              (if telega-notifications-mode
-                  "Enabled"
-                "Disabled")
-              "\n")
+  (telega-ins "telega-notifications-mode: ")
+  (telega-ins--with-face 'telega-shadow
+    (telega-ins (if telega-notifications-mode
+                    (telega-symbol 'checkbox-on)
+                  (telega-symbol 'checkbox-off))))
+  (telega-ins "\n")
   (unless telega-notifications-mode
     (telega-ins--help-message
      (telega-ins "To enable notifications run \
@@ -173,28 +202,30 @@ M-x telega-notifications-mode RET")))
 
   (telega-ins "\n")
   (telega-ins--with-face 'bold
-    (telega-ins "Private/Secret chats:\n"))
-  (telega-ins--labeled "  " nil
+    (telega-ins (telega-i18n "lng_notification_private_chats") "\n"))
+  (telega-ins--line-wrap-prefix "  "
     (telega-ins--notification-scope
      "notificationSettingsScopePrivateChats"))
-;  (telega-ins "\n")
-  ;; TODO: exceptions
+  (telega-ins "\n")
 
+  (telega-ins "\n")
   (telega-ins--with-face 'bold
-    (telega-ins "Group chats:\n"))
-  (telega-ins--labeled "  " nil
+    (telega-ins (telega-i18n "lng_notification_groups") "\n"))
+  (telega-ins--line-wrap-prefix "  "
     (telega-ins--notification-scope
      "notificationSettingsScopeGroupChats"))
-;  (telega-ins "\n")
+  (telega-ins "\n")
 
+  (telega-ins "\n")
   (telega-ins--with-face 'bold
-    (telega-ins "Channel chats:\n"))
-  (telega-ins--labeled "  " nil
+    (telega-ins (telega-i18n "lng_notification_channels") "\n"))
+  (telega-ins--line-wrap-prefix "  "
     (telega-ins--notification-scope
      "notificationSettingsScopeChannelChats"))
   (telega-ins "\n")
 
-  (telega-ins--button (telega-i18n "telega_reset_notifications")
+  (telega-ins "\n")
+  (telega-ins--box-button (telega-i18n "telega_reset_notifications")
     'action (lambda (_button)
               (when (yes-or-no-p (telega-i18n "telega_query_reset_notifications"))
                 (telega--resetAllNotificationSettings))))

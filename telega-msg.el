@@ -127,13 +127,11 @@
                   :enable (let ((msg (telega-msg-at-down-mouse-3)))
                             (plist-get msg :can_be_forwarded))
                   ))
-    (bindings--define-key menu-map [forward]
-      '(menu-item (telega-i18n "lng_reply_in_another_chat")
-                  telega-msg-reply-in-another-chat
-                  :help (telega-i18n "lng_reply_in_another_chat")
-                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
-                            (plist-get msg :can_be_replied_in_another_chat))
-                  ))
+    (bindings--define-key menu-map [translate]
+      '(menu-item (telega-i18n "lng_context_translate") telega-msg-translate
+                  :help "Translate message's text"
+                  :visible (telega-msg-content-text
+                            (telega-msg-at-down-mouse-3))))
     (bindings--define-key menu-map [s2] menu-bar-separator)
     (bindings--define-key menu-map [topic]
       '(menu-item (telega-i18n "lng_replies_view_topic")
@@ -147,21 +145,24 @@
                   :help "Show message's thread"
                   :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
                              'is-thread)))
-    (bindings--define-key menu-map [translate]
-      '(menu-item (telega-i18n "lng_context_translate") telega-msg-translate
-                  :help "Translate message's text"
-                  :visible (telega-msg-content-text
-                            (telega-msg-at-down-mouse-3))))
     (bindings--define-key menu-map [edit]
       '(menu-item (telega-i18n "lng_context_edit_msg") telega-msg-edit
                   :help "Edit the message"
                   :enable (plist-get
                            (telega-msg-at-down-mouse-3) :can_be_edited)))
+    (bindings--define-key menu-map [reply-another-char]
+      '(menu-item (telega-i18n "lng_reply_in_another_chat")
+                  telega-msg-reply-in-another-chat
+                  :help (telega-i18n "lng_reply_in_another_chat")
+                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
+                            (plist-get msg :can_be_replied_in_another_chat))
+                  ))
     (bindings--define-key menu-map [reply]
       '(menu-item (telega-i18n "lng_context_reply_msg") telega-msg-reply
                   :help "Reply to the message"))
+    (bindings--define-key menu-map [s3] menu-bar-separator)
     (bindings--define-key menu-map [describe]
-      '(menu-item "Describe" telega-describe-message
+      '(menu-item (telega-i18n "lng_info_about_label") telega-describe-message
                   :help "Describe the message"))
     menu-map))
 
@@ -1301,7 +1302,7 @@ Return function by which MSG has been ignored."
     ;; example forwarwarding)
     (unless (= (plist-get msg :id) (telega-chatbuf--last-message-id))
       (telega-button-forward 1 'telega-msg-at))
-    
+
     (telega-chatbuf--chat-update "marked-messages")))
 
 (defun telega-msg-pin-toggle (msg)
@@ -1316,7 +1317,7 @@ For interactive use only."
            (for-self-only
             (or (telega-me-p (telega-msg-chat msg))
                 (when chat-private-p
-                  (not (y-or-n-p (concat 
+                  (not (y-or-n-p (concat
                                   (telega-i18n "lng_pinned_also_for_other"
                                     :user (telega-ins--as-string
                                            (telega-ins--msg-sender chat
@@ -1479,6 +1480,7 @@ the saved animations list."
        (list :@type "inputFileId" :id (plist-get file :id))))
 
      (t
+      (message "Downloading file...")
       (telega-file--download file 32
         (lambda (dfile)
           (telega-msg-redisplay msg)
@@ -1679,19 +1681,26 @@ Requires administrator rights in the chat."
       ;; change on async requests
       (setq telega--help-win-param msg-id)
 
-      (telega-ins "Date(ISO8601): ")
-      (telega-ins--date-iso8601 (plist-get msg :date))
-      (telega-ins "\n")
-      (telega-ins-fmt "Chat-id: %d\n" chat-id)
-      (telega-ins-fmt "Message-id: %d\n" msg-id)
+      (telega-ins-describe-item "Date(ISO8601)"
+        (telega-ins--date-iso8601 (plist-get msg :date)))
+      (telega-ins-describe-item "Chat-id"
+        (telega-ins-fmt "%d" chat-id))
+      (telega-ins-describe-item "Message-id"
+        (telega-ins-fmt "%d" msg-id))
+      (let ((thread-id (plist-get msg :message_thread_id)))
+        (unless (telega-zerop thread-id)
+          (telega-ins-describe-item "Thread-Id"
+            (telega-ins-fmt "%d" thread-id))))
+
       (when-let ((sender (telega-msg-sender msg)))
-        (telega-ins "Sender: ")
-        (telega-ins--raw-button (telega-link-props 'sender sender 'type 'telega)
-          (telega-ins--msg-sender sender
-            :with-avatar-p t
-            :with-username-p 'telega-username
-            :with-brackets-p t))
-        (telega-ins "\n"))
+        (telega-ins-describe-item "Sender"
+          (telega-ins--raw-button
+              (telega-link-props 'sender sender 'type 'telega)
+            (telega-ins--msg-sender sender
+              :with-avatar-p t
+              :with-username-p 'telega-username
+              :with-brackets-p t))))
+
       ;; Link to the message
       (when-let ((link (ignore-errors
                          ;; NOTE: we ignore any errors such as
@@ -1701,17 +1710,15 @@ Requires administrator rights in the chat."
                          ;;   ...
                          (telega--getMessageLink msg
                            :for-thread-p for-thread-p))))
-        (telega-ins "Link: ")
-        (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
-          (telega-ins link))
-        (telega-ins "\n"))
+        (telega-ins-describe-item "Link"
+          (telega-ins--raw-button (telega-link-props 'url link 'face 'link)
+            (telega-ins link))))
 
-      (telega-ins "Internal Link: ")
-      (let ((internal-link (telega-tme-internal-link-to msg)))
-        (telega-ins--raw-button
-            (telega-link-props 'url internal-link 'face 'link)
-          (telega-ins internal-link)))
-      (telega-ins "\n")
+      (telega-ins-describe-item "Internal Link"
+        (let ((internal-link (telega-tme-internal-link-to msg)))
+          (telega-ins--raw-button
+              (telega-link-props 'url internal-link 'face 'link)
+            (telega-ins internal-link))))
 
       ;; Custom emoji stickersets
       (when-let* ((custom-emojis
@@ -1719,76 +1726,72 @@ Requires administrator rights in the chat."
                            (telega-custom-emoji--ids-for-msg msg)))
                   (sset-id-list
                    (seq-uniq (mapcar (telega--tl-prop :set_id) custom-emojis))))
-        (telega-ins "Custom Emoji stickersets: ")
-        (seq-doseq (sset-id (delq nil sset-id-list))
-          (telega-stickerset-get sset-id nil
-            (telega--gen-ins-continuation-callback 'loading
-              (lambda (sset)
-                (telega-ins--button (telega-stickerset-title sset)
-                  :value sset
-                  :action #'telega-describe-stickerset))
-              msg-id))
-          (telega-ins " "))
-        (telega-ins "\n"))
+        (telega-ins-describe-item "Custom Emoji"
+          (seq-doseq (sset-id (delq nil sset-id-list))
+            (telega-stickerset-get sset-id nil
+              (telega--gen-ins-continuation-callback 'loading
+                (lambda (sset)
+                  (telega-ins--box-button (telega-stickerset-title sset)
+                    :value sset
+                    :action #'telega-describe-stickerset))
+                msg-id))
+            (telega-ins " "))))
 
       (when-let ((translated (plist-get msg :telega-translated)))
         (when (with-telega-chatbuf (telega-msg-chat msg)
                 telega-translate-replace-content)
-          (telega-ins "Original Content:\n")
-          (telega-ins--column 2 nil
-            (telega-ins (telega-msg-content-text msg 'with-speech)))
-          (telega-ins "\n")))
+          (telega-ins-describe-item "Original Content"
+            (telega-ins--column 2 nil
+              (telega-ins (telega-msg-content-text msg 'with-speech))))))
 
       (when (plist-get msg :can_get_added_reactions)
-        (telega-ins "Message Reactions: ")
-        ;; Asynchronously fetch added message reactions
-        (telega--getMessageAddedReactions msg
-          :callback
-          (telega--gen-ins-continuation-callback 'loading
-            (lambda (reply)
-              (let ((added-reactions (plist-get reply :reactions)))
-                (telega-ins-fmt "%d (%d shown)"
-                  (plist-get reply :total_count)
-                  (length added-reactions))
-                (seq-doseq (ar added-reactions)
-                  (telega-ins "\n")
-                  (telega-ins "  ")
-                  (telega-ins--msg-reaction-type (plist-get ar :type))
-                  (telega-ins " ")
-                  (telega-ins--msg-sender
-                      (telega-msg-sender (plist-get ar :sender_id))
-                   :with-avatar-p t
-                   :with-username-p t
-                   :with-brackets-p t)
-                  (telega-ins--move-to-column 42)
-                  (telega-ins " ")
-                  (telega-ins--date-relative (plist-get ar :date))
-                  )))
-            msg-id))
-        (telega-ins "\n"))
+        (telega-ins-describe-item "Message Reactions"
+          ;; Asynchronously fetch added message reactions
+          (telega--getMessageAddedReactions msg
+            :callback
+            (telega--gen-ins-continuation-callback 'loading
+              (lambda (reply)
+                (let ((added-reactions (plist-get reply :reactions)))
+                  (telega-ins-fmt "%d (%d shown)"
+                    (plist-get reply :total_count)
+                    (length added-reactions))
+                  (seq-doseq (ar added-reactions)
+                    (telega-ins "\n")
+                    (telega-ins "  ")
+                    (telega-ins--msg-reaction-type (plist-get ar :type))
+                    (telega-ins " ")
+                    (telega-ins--msg-sender
+                        (telega-msg-sender (plist-get ar :sender_id))
+                      :with-avatar-p t
+                      :with-username-p t
+                      :with-brackets-p t)
+                    (telega-ins--move-to-column 42)
+                    (telega-ins " ")
+                    (telega-ins--date-relative (plist-get ar :date))
+                    )))
+              msg-id))))
 
       (when (plist-get msg :can_get_viewers)
-        (telega-ins "Message Viewers: ")
-        ;; Asynchronously fetch message viewers
-        (telega--getMessageViewers msg
-          (telega--gen-ins-continuation-callback 'loading
-            (lambda (viewers)
-              (telega-ins-fmt "%d" (length viewers))
-              (seq-doseq (viewer viewers)
-                (telega-ins "\n")
-                (telega-ins "  ")
-                (telega-ins--msg-sender
-                 (telega-user-get (plist-get viewer :user_id))
-                 :with-avatar-p t
-                 :with-username-p t
-                 :with-brackets-p t)
-                (telega-ins--move-to-column 40)
-                (telega-ins " ")
-                (telega-ins--date-relative (plist-get viewer :view_date))))
-            msg-id))
-        (telega-ins "\n"))
+        (telega-ins-describe-item "Message Viewers"
+          ;; Asynchronously fetch message viewers
+          (telega--getMessageViewers msg
+            (telega--gen-ins-continuation-callback 'loading
+              (lambda (viewers)
+                (telega-ins-fmt "%d" (length viewers))
+                (seq-doseq (viewer viewers)
+                  (telega-ins "\n")
+                  (telega-ins "  ")
+                  (telega-ins--msg-sender
+                      (telega-user-get (plist-get viewer :user_id))
+                    :with-avatar-p t
+                    :with-username-p t
+                    :with-brackets-p t)
+                  (telega-ins--move-to-column 40)
+                  (telega-ins " ")
+                  (telega-ins--date-relative (plist-get viewer :view_date))))
+              msg-id))))
 
-      (when telega-debug
+      (when (and (listp telega-debug) (memq 'info telega-debug))
         (let ((print-length nil))
           (telega-ins "\n---DEBUG---\n")
           (telega-ins-fmt "MsgSexp: (telega-msg-get (telega-chat-get %d) %d)\n"
@@ -1799,14 +1802,13 @@ Requires administrator rights in the chat."
 (defun telega-ignored-messages ()
   "Display all messages that has been ignored."
   (interactive)
-  (with-help-window "*Telegram Ignored Messages*"
-    (set-buffer standard-output)
-    (let ((inhibit-read-only t))
-      (dolist (msg (ring-elements telega--ignored-messages-ring))
-        (telega-button--insert 'telega-msg msg
-          :inserter #'telega-ins--message-with-chat-header)
-        (telega-ins "\n"))
-      (goto-char (point-min)))))
+  (with-telega-help-win "*Telegram Ignored Messages*"
+    (with-telega-buffer-modify
+     (dolist (msg (ring-elements telega--ignored-messages-ring))
+       (telega-button--insert 'telega-msg msg
+         :inserter #'telega-ins--message-with-chat-header)
+       (telega-ins "\n"))
+     (goto-char (point-min)))))
 
 (defun telega-msg-public-forwards (msg)
   "Display public forwards for the message MSG."

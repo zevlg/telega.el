@@ -57,6 +57,8 @@
 ;; Server runtime vars
 (defvar telega-server--buffer nil)
 (defvar telega-server--extra 0 "Value for :@extra used by `telega-server--call'.")
+(defvar telega-server--callback-extra nil
+  "Bound to extra value when callback is called.")
 (defvar telega-server--callbacks nil "Callbacks ruled by extra")
 (defvar telega-server--results nil)
 (defvar telega-server--on-event-func #'telega--on-event
@@ -251,10 +253,11 @@ Return parsed command."
   (telega-debug "%s %s: %S" cmd (propertize "IN" 'face 'bold) value)
 
   (cond ((string= cmd "event")
-         (let* ((extra (plist-get value :@extra))
-                (call-cb (telega-server--callback-get extra)))
+         (let* ((telega-server--callback-extra (plist-get value :@extra))
+                (call-cb (telega-server--callback-get
+                          telega-server--callback-extra)))
            (if call-cb
-               (telega-server--callback-rm extra)
+               (telega-server--callback-rm telega-server--callback-extra)
              (setq call-cb telega-server--on-event-func))
 
            ;; Function call may return errors

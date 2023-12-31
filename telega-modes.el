@@ -1469,7 +1469,8 @@ EVENT must be \"updateDeleteMessages\"."
         :action #'telega-msg-goto-highlight))
       (when (telega-me-p (telega-msg-sender loc-msg))
         (telega-ins " ")
-        (telega-ins--button (telega-i18n "telega_stop_live_location" :count 1)
+        (telega-ins--box-button (telega-i18n "telega_stop_live_location"
+                                  :count 1)
           'action (lambda (_button)
                     (telega--editMessageLiveLocation loc-msg nil)))))
     t))
@@ -1583,7 +1584,8 @@ Set to nil to disable active video chats in the modeline."
       :with-brackets-p t)
     ;; Button to hide this video chat
     (telega-ins " ")
-    (telega-ins--button (propertize "✕" 'face 'bold)
+    (telega-ins--text-button (telega-symbol 'button-close)
+      'face 'telega-link
       'action (lambda (_button)
                 (setq telega-active-video-chats--chats
                       (delq chat telega-active-video-chats--chats))

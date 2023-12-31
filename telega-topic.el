@@ -196,7 +196,7 @@
         (telega-ins--topic-title topic 'with-icon))
       (telega-ins " ")
       ;; TODO: [Open] button
-      ;; (telega-ins--button "Open"
+      ;; (telega-ins--box-button "Open"
       ;;                     )
 
       (telega-ins "\n")
@@ -223,7 +223,7 @@
 
       ;; TODO: more fields
 
-      (when telega-debug
+      (when (and (listp telega-debug) (memq 'info telega-debug))
         (let ((print-length nil))
           (telega-ins "\n---DEBUG---\n")
           (telega-ins-fmt "TopicSexp: (telega-topic-get (telega-chat-get %d) %d)\n"

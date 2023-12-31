@@ -182,7 +182,11 @@ cdr is the URL."
 
 (defun telega-adblock--link-other-channel-p (chat link-spec)
   "Return non-nil if link points to another channel."
-  (when-let ((tme-internal-link (telega-tme-open (cdr link-spec) 'convert)))
+  (when-let* ((tme-internal-link (telega-tme-open (cdr link-spec) 'convert))
+              ;; NOTE: to avoid errors like:
+              ;;  string-prefix-p: Wrong type argument: stringp,
+              ;;  (:@type "internalLinkTypeWebApp" ..)
+              (string-p (stringp tme-internal-link)))
     (or (string-prefix-p "tg:join?" tme-internal-link)
         (string-prefix-p "tg:msg_url?" tme-internal-link)
         (and (string-prefix-p "tg:privatepost?" tme-internal-link)

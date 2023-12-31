@@ -203,8 +203,8 @@
 (defun telega-ins--inline-delim ()
   "Inserter for the delimiter."
   (telega-ins--with-props
-      '(face default display ((space-width 2) (height 0.5)))
-    (telega-ins (make-string 30 ?─) "\n")))
+      '(face underline display ((space-width 2) (height 0.5)))
+    (telega-ins (make-string 30 ?\s) "\n")))
 
 (defun telega-inline-bot--action (qr)
   "Action to take when corresponding query result QR button is pressed."

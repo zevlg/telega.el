@@ -606,6 +606,25 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
                  :fill (or fill "red")
                  :opacity (or opacity "0.75"))))
 
+(defun telega-svg-white-play-triangle-in-circle (svg)
+  "Draw white play triangle in the black circle at the SVG center."
+  (let* ((width (telega-svg-width svg))
+         (height (telega-svg-height svg))
+         (play-size (/ height 8.0))
+         (xoff (/ play-size 8.0)))
+    (svg-circle svg (/ width 2) (/ height 2) play-size
+                :fill "black"
+                :opacity "0.65")
+    (svg-polygon svg (list (cons (+ xoff (/ (- width play-size) 2))
+                                 (/ (- height play-size) 2))
+                           (cons (+ xoff (/ (- width play-size) 2))
+                                 (/ (+ height play-size) 2))
+                           (cons (+ xoff (/ (+ width play-size) 2))
+                                 (/ height 2)))
+                 :fill "white"
+                 :opacity "0.65")
+    svg))
+
 (defun telega-photo-preview--create-svg-one-line (filename data-p width height
                                                            &optional video-p)
   "Function to create svg image for photo preview."
@@ -629,37 +648,6 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
 (defun telega-video-preview--create-svg-one-line (filename data-p width height)
   "Function to create svg image for video preview."
   (telega-photo-preview--create-svg-one-line filename data-p width height t))
-
-(defun telega-video--create-svg (filename width height &optional data-p img-type)
-  "Create image for the VIDEO.
-With circle and triangle in the center."
-  (let* ((img-type (or img-type (telega-image-supported-file-p filename)))
-         (svg (telega-svg-create width height))
-         (play-size (/ height 8.0))
-         (xoff (/ play-size 8.0)))
-    (telega-svg-embed svg (if data-p
-                              filename
-                            (list (file-name-nondirectory filename)
-                                  (file-name-directory filename)))
-                      (format "image/%S" img-type) data-p
-                      :x 0 :y 0
-                      :width width :height height)
-    (svg-circle svg (/ width 2) (/ height 2) play-size
-                :fill "black"
-                :opacity "0.85")
-    (svg-polygon svg (list (cons (+ xoff (/ (- width play-size) 2))
-                                 (/ (- height play-size) 2))
-                           (cons (+ xoff (/ (- width play-size) 2))
-                                 (/ (+ height play-size) 2))
-                           (cons (+ xoff (/ (+ width play-size) 2))
-                                 (/ height 2)))
-                 :fill "white"
-                 :opacity "0.85")
-    (telega-svg-image svg :scale 1.0
-               :base-uri (if data-p "" filename)
-               :width width :height height
-               :ascent 'center)
-    ))
 
 (defun telega-time-seconds (&optional as-is)
   "Return current time as unix timestamp.
@@ -1996,6 +1984,11 @@ integer values, then pixels used."
         (telega-emoji--image-cache-put bar-str image)
         image)))
 
+(defun telega-xbm-create-horizontal-bar (&optional bar-width bar-position)
+  ""
+  ;; TODO: create XBM with horizontal line
+  )
+
 (defun telega-svg-create-horizontal-bar (&optional bar-width bar-position bar-str)
   "Create svg image for a horizontal bar.
 BAR-STR is string value for textual horizontal bar, by default
@@ -2697,12 +2690,14 @@ If FOR-PARAM is specified, then insert only if
           (with-current-buffer marker-buf
             (when (or (null for-param)
                       (eq telega--help-win-param for-param))
-                (let ((inhibit-read-only t))
-                  (when show-loading-p
-                    (delete-region marker (+ marker marker-len)))
-                  (telega-save-excursion
-                    (goto-char marker)
-                    (apply insert-func insert-args))))))))))
+              (telega-help-win--rm-tdlib-callback
+               telega-server--callback-extra)
+              (let ((inhibit-read-only t))
+                (when show-loading-p
+                  (delete-region marker (+ marker marker-len)))
+                (telega-save-excursion
+                  (goto-char marker)
+                  (apply insert-func insert-args))))))))))
 
 (defun telega-translate-region (beg end &optional choose-language-p inplace-p)
   "Translate region using Telegram API.
@@ -2844,7 +2839,8 @@ Also return nil if resulting string is empty."
            "updateNewCustomEvent" "updateNewPreCheckoutQuery"
            "updateNewShippingQuery" "updateNewInlineCallbackQuery"
            "updateNewCallbackQuery" "updateNewChosenInlineResult"
-           "updateNewInlineQuery"))
+           "updateNewInlineQuery" "updateChatBoost"
+           "updateMessageReaction" "updateMessageReactions"))
         telega-events td-events)
     (with-temp-buffer
       (insert-file-contents tdlib-events-file)

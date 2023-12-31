@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.220)
+#+title: Telega Manual (v0.8.230)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -241,7 +241,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.22.
+version greater or equal to 1.8.23.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -772,7 +772,7 @@ rootbuf is the heart of the =telega=.  Switch to rootbuf with
 *folders, active chat filter, active chat sorter
 
 rootbuf lists chats filtered by active chat filter.  Press
-@@html:<kbd>@@h@@html:</kbd>@@, @@html:<kbd>@@i@@html:</kbd>@@ (~telega-describe-chat~) to get
+@@html:<kbd>@@h@@html:</kbd>@@, @@html:<kbd>@@i@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <describe>@@html:</kbd>@@ (~telega-describe-chat~) to get
 detailed description of the chat at point.
 
 Important customizable options:
@@ -831,6 +831,9 @@ default, list of the chats is shown, this is known as default root
 view.
 
 @@html:<kbd>@@v@@html:</kbd>@@ prefix in rootbuf is used to switch root views:
+- @@html:<kbd>@@v a@@html:</kbd>@@ (~telega-view-alternative-similar-channels~) :: 
+     View channels similar to the given ~CHAT~.
+
 - @@html:<kbd>@@s@@html:</kbd>@@, @@html:<kbd>@@v s@@html:</kbd>@@ (~telega-view-search~) :: 
      View ~QUERY~ search results.
 
@@ -849,25 +852,25 @@ view.
 - @@html:<kbd>@@v 2@@html:</kbd>@@ (~telega-view-two-lines~) :: 
      View chat list as 2 lines.
 
-- @@html:<kbd>@@v t@@html:</kbd>@@ (~telega-view-topics~) :: 
-     Group chats by ~telega-root-view-topics~.
+- @@html:<kbd>@@v g@@html:</kbd>@@ (~telega-view-grouping~) :: 
+     Group chats by ~telega-root-view-grouping-alist~.
 
      Customizable options:
-  - User Option: ~telega-root-view-topics~ 
+  - User Option: ~telega-root-view-grouping-alist~ 
 
-    Alist of topics for "topics" root view.
-    Car is name of the topic, cdr is chat filter to match chats. 
+    Alist of chat temexes for "grouping" root view.
+    Car is name of the chats group, cdr is a chat temex to match chats. 
 
     Default value: ~(("Important" . important))~
-  - User Option: ~telega-root-view-topics-folders~ 
+  - User Option: ~telega-root-view-grouping-folders~ 
 
-    Non-nil to add Chat Folders to the list of topics.
+    Non-nil to add Chat Folders in the grouping root view.
     Could be one of ~prepend~, ~append~ or nil. 
 
     Default value: ~append~
-  - User Option: ~telega-root-view-topics-other-chats~ 
+  - User Option: ~telega-root-view-grouping-other-chats~ 
 
-    Non-nil to show other chats in the "topics" root view. 
+    Non-nil to show other chats in the "grouping" root view. 
 
     Default value: ~t~
 
@@ -1285,6 +1288,10 @@ Use ~telega-chat-match-p~ to match a chat.
      ~BLOCK-LIST~ is one of ~blockListMain~ or ~blockListStories~.
      By default ~blockListMain~ is used.
 
+- (boost-level [ ~N~ ]) :: 
+     Matches if chat's boost level is greater or equal to ~N~.
+     By default ~N~ is 1.
+
 ** List of Message Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-message-temexes
@@ -1591,10 +1598,10 @@ Use ~telega-story-match-p~ to match a story.
   #+end_example
 
   Default value: ~all~
-- User Option: ~telega-root-view-topics~ 
+- User Option: ~telega-root-view-grouping-alist~ 
 
-  Alist of topics for "topics" root view.
-  Car is name of the topic, cdr is chat filter to match chats. 
+  Alist of chat temexes for "grouping" root view.
+  Car is name of the chats group, cdr is a chat temex to match chats. 
 
   Default value: ~(("Important" . important))~
 
@@ -1638,9 +1645,9 @@ Folders.  Use @@html:<kbd>@@M-x telega-folders-migrate-custom-labels RET@@html:<
      Remove ~CHAT~ from the folder named ~FOLDER-NAME~.
 
 Customizable options for Chat Folders:
-- User Option: ~telega-root-view-topics-folders~ 
+- User Option: ~telega-root-view-grouping-folders~ 
 
-  Non-nil to add Chat Folders to the list of topics.
+  Non-nil to add Chat Folders in the grouping root view.
   Could be one of ~prepend~, ~append~ or nil. 
 
   Default value: ~append~
@@ -1971,8 +1978,8 @@ Markup syntax table:
 |                            | ~¦¦spoiler¦¦~                    | ~¦¦spoiler¦¦~                      | **UNSUPPORTED**                  |
 | ~inlined code~             | ~`inlined code`~                 | ~~inlined code~~                   | ~`inlined code`~                 |
 | =pre text=                 | ~```pre text```~                 | ~=pre text=~                       | **UNSUPPORTED**                  |
-| [[http://www.url][text]]   | ~[text](http://www.url)~         | ~[[text][http://www.url]]~         | ~[text](http://www.url)~         |
-| [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | ~[[name][tg://user?id=<USER-ID>]]~ | ~[name](tg://user?id=<USER-ID>)~ |
+| [[http://www.url][text]]   | ~[text](http://www.url)~         | ~[[http://www.url][text]]~         | ~[text](http://www.url)~         |
+| [[http://t.me/user][name]] | ~[name](tg://user?id=<USER-ID>)~ | ~[[tg://user?id=<USER-ID>][name]]~ | ~[name](tg://user?id=<USER-ID>)~ |
 
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
@@ -2193,12 +2200,12 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
-@@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
-@@html:<kbd>@@f@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
 
 There are few options how you can affect the way a message is forwarded:

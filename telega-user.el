@@ -107,6 +107,10 @@ user is fetched from server."
   "Return non-nil if USER is online."
   (equal (telega-user--seen user) "Online"))
 
+(defun telega-user-chat (user)
+  "Return private chat with USER."
+  (telega-chat-get (plist-get user :id) 'offline))
+
 (defun telega-user--type (user)
   "Return USER type."
   (intern (downcase (substring (plist-get (plist-get user :type) :@type) 8))))
@@ -267,7 +271,7 @@ Otherwise fallback to `telega-user-cmp-by-status'."
     (if (and chat1 chat2)
         (telega-chat> chat1 chat2)
       (telega-user-cmp-by-status user1 user2))))
-  
+
 (defun telega-user-cmp-by-status (user1 user2)
   "Function to sort users by their online status.
 Return non-nil if USER1 > USER2."
@@ -310,17 +314,25 @@ Return non-nil if USER1 > USER2."
 
 (defun telega-describe-contact--inserter (contact)
   "Inserter for the contact info buffer."
-    (telega-ins--contact contact)
-    (telega-ins "\n")
-    (let ((user (telega-user-get (plist-get contact :user_id))))
+    (let* ((user (telega-user-get (plist-get contact :user_id)))
+           (user-ava (when (and telega-user-show-avatars user)
+                       (telega-msg-sender-avatar-image user))))
+      (when user-ava
+        (telega-ins--image user-ava 0))
+      (telega-ins--contact contact
+        :with-avatar-p nil)
+      (telega-ins "\n")
+
+      (when user-ava
+        (telega-ins--image user-ava 1))
       (if (plist-get user :is_contact)
-          (telega-ins--button "RemoveContact"
+          (telega-ins--box-button (telega-i18n "lng_info_delete_contact")
             :value contact
             :action (lambda (contact)
                       (telega--removeContacts (plist-get contact :user_id))
                       (telega-save-cursor
                         (telega-describe-contact contact))))
-        (telega-ins--button "AddContact"
+        (telega-ins--box-button (telega-i18n "lng_new_contact_add")
           :value contact
           :action (lambda (contact)
                     (telega--addContact contact)
@@ -328,8 +340,12 @@ Return non-nil if USER1 > USER2."
                       (telega-describe-contact contact)))))
       (telega-ins "\n")
 
-      (telega-ins "\n--- Telegram User Info ---\n")
-      (telega-ins "Name: " (telega-user-title user 'full-name) "\n")
+      (telega-ins "\n")
+      (telega-ins--with-face 'telega-describe-section-title
+        (telega-ins (upcase (telega-i18n "lng_info_user_title")) "\n"))
+
+      (telega-ins-describe-item "Name"
+        (telega-ins (telega-user-title user 'full-name)))
       (telega-info--insert-user user))
     )
 

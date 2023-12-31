@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2023-12-06 Ср 16:38 -->
+<!-- 2023-12-31 Вс 13:27 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.220)</title>
+<title>Telega Manual (v0.8.230)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.220)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.230)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -337,7 +337,7 @@ Thanks to <a href="https://t.me/ritsch_master"><code>@ritsch_master</code></a>
 <p>
 <a href="https://core.telegram.org/tdlib">TDLib</a> is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.22.
+version greater or equal to 1.8.23.
 </p>
 
 <p>
@@ -821,7 +821,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgc0701a6">
+<pre class="example" id="orgbea27f9">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -839,7 +839,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orgf51fc0c">
+<pre class="example" id="org74daffa">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -928,7 +928,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org2144814">
+<pre class="example" id="orgeb9f403">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -966,7 +966,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org46a686e">
+<pre class="example" id="orgf4fb53e">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1101,7 +1101,7 @@ rootbuf is the heart of the <code>telega</code>.  Switch to rootbuf with
 
 <p>
 rootbuf lists chats filtered by active chat filter.  Press
-<kbd>h</kbd>, <kbd>i</kbd> (<code>telega-describe-chat</code>) to get
+<kbd>h</kbd>, <kbd>i</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;describe&gt;</kbd> (<code>telega-describe-chat</code>) to get
 detailed description of the chat at point.
 </p>
 
@@ -1189,6 +1189,8 @@ view.
 <kbd>v</kbd> prefix in rootbuf is used to switch root views:
 </p>
 <dl class="org-dl">
+<dt><kbd>v a</kbd> (<code>telega-view-alternative-similar-channels</code>)</dt><dd>View channels similar to the given <code>CHAT</code>.</dd>
+
 <dt><kbd>s</kbd>, <kbd>v s</kbd> (<code>telega-view-search</code>)</dt><dd>View <code>QUERY</code> search results.</dd>
 
 <dt><kbd>v n</kbd> (<code>telega-view-nearby</code>)</dt><dd>View contacts and chats nearby <code>telega-my-location</code>.</dd>
@@ -1201,8 +1203,8 @@ view.
 
 <dt><kbd>v 2</kbd> (<code>telega-view-two-lines</code>)</dt><dd>View chat list as 2 lines.</dd>
 
-<dt><kbd>v t</kbd> (<code>telega-view-topics</code>)</dt><dd><p>
-Group chats by <code>telega-root-view-topics</code>.
+<dt><kbd>v g</kbd> (<code>telega-view-grouping</code>)</dt><dd><p>
+Group chats by <code>telega-root-view-grouping-alist</code>.
 </p>
 
 <p>
@@ -1210,23 +1212,23 @@ Customizable options:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-root-view-topics</code> 
+User Option: <code>telega-root-view-grouping-alist</code> 
 </p>
 
 <p>
-Alist of topics for "topics" root view.
-Car is name of the topic, cdr is chat filter to match chats. 
+Alist of chat temexes for "grouping" root view.
+Car is name of the chats group, cdr is a chat temex to match chats. 
 </p>
 
 <p>
 Default value: <code>(("Important" . important))</code>
 </p></li>
 <li><p>
-User Option: <code>telega-root-view-topics-folders</code> 
+User Option: <code>telega-root-view-grouping-folders</code> 
 </p>
 
 <p>
-Non-nil to add Chat Folders to the list of topics.
+Non-nil to add Chat Folders in the grouping root view.
 Could be one of <code>prepend</code>, <code>append</code> or nil. 
 </p>
 
@@ -1234,11 +1236,11 @@ Could be one of <code>prepend</code>, <code>append</code> or nil.
 Default value: <code>append</code>
 </p></li>
 <li><p>
-User Option: <code>telega-root-view-topics-other-chats</code> 
+User Option: <code>telega-root-view-grouping-other-chats</code> 
 </p>
 
 <p>
-Non-nil to show other chats in the "topics" root view. 
+Non-nil to show other chats in the "grouping" root view. 
 </p>
 
 <p>
@@ -1666,6 +1668,9 @@ non-expired story.</dd>
 <dt>(is-blocked [ <code>BLOCK-LIST</code> ])</dt><dd>Matches chat if chat is blocked in by the <code>BLOCK-LIST</code>.
 <code>BLOCK-LIST</code> is one of <code>blockListMain</code> or <code>blockListStories</code>.
 By default <code>blockListMain</code> is used.</dd>
+
+<dt>(boost-level [ <code>N</code> ])</dt><dd>Matches if chat's boost level is greater or equal to <code>N</code>.
+By default <code>N</code> is 1.</dd>
 </dl>
 </div>
 </div>
@@ -1997,7 +2002,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org7c1b73d">
+<pre class="example" id="org73520e5">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2007,12 +2012,12 @@ MSG2                              &lt;--- msg sent on 28dec
 Default value: <code>all</code>
 </p></li>
 <li><p>
-User Option: <code>telega-root-view-topics</code> 
+User Option: <code>telega-root-view-grouping-alist</code> 
 </p>
 
 <p>
-Alist of topics for "topics" root view.
-Car is name of the topic, cdr is chat filter to match chats. 
+Alist of chat temexes for "grouping" root view.
+Car is name of the chats group, cdr is a chat temex to match chats. 
 </p>
 
 <p>
@@ -2068,11 +2073,11 @@ Customizable options for Chat Folders:
 </p>
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-root-view-topics-folders</code> 
+User Option: <code>telega-root-view-grouping-folders</code> 
 </p>
 
 <p>
-Non-nil to add Chat Folders to the list of topics.
+Non-nil to add Chat Folders in the grouping root view.
 Could be one of <code>prepend</code>, <code>append</code> or nil. 
 </p>
 
@@ -2388,7 +2393,7 @@ Chat Filter for chats where to insert date breaks.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org935ff50">
+<pre class="example" id="org6f4e2f3">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2562,14 +2567,14 @@ Markup syntax table:
 <tr>
 <td class="org-left"><a href="http://www.url">text</a></td>
 <td class="org-left"><code>[text](http://www.url)</code></td>
-<td class="org-left"><code>[[text][http://www.url]]</code></td>
+<td class="org-left"><code>[[http://www.url][text]]</code></td>
 <td class="org-left"><code>[text](http://www.url)</code></td>
 </tr>
 
 <tr>
 <td class="org-left"><a href="http://t.me/user">name</a></td>
 <td class="org-left"><code>[name](tg://user?id=&lt;USER-ID&gt;)</code></td>
-<td class="org-left"><code>[[name][tg://user?id=&lt;USER-ID&gt;]]</code></td>
+<td class="org-left"><code>[[tg://user?id=&lt;USER-ID&gt;][name]]</code></td>
 <td class="org-left"><code>[name](tg://user?id=&lt;USER-ID&gt;)</code></td>
 </tr>
 </tbody>
@@ -2579,7 +2584,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgb823af7">
+<pre class="example" id="org1433c09">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2611,7 +2616,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgb98c4f1">
+<pre class="example" id="org3057d74">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2873,12 +2878,12 @@ It is possible to edit a message using markup syntax.
 <p>
 To forward a message, put cursor under the message which you want to
 forward and press
-<kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
+<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;unmark&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
 press
-<kbd>f</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
+<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-marked-or-at-point</code>)
 on one of the messages.
 </p>
 
@@ -3527,7 +3532,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org7ca138f">
+<pre class="example" id="orgd924e99">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4728,7 +4733,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org59cf04e">
+<pre class="example" id="org3446c74">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

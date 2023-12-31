@@ -134,6 +134,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Privacy and Security")
  ("lng_settings_section_notify"
   :value "Notifications")
+ ("lng_settings_desktop_notify"
+  :value "Desktop notifications")
+ ("lng_settings_show_preview"
+  :value "Show message preview")
 
  ;; https://translations.telegram.org/screenshots/11323
  ("lng_unread_bar_some"
@@ -377,6 +381,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "{user} is an admin of {name}, a channel you requested to join.")
  ("lng_blocked_list_confirm_text"
   :value "Do you want to block {name} from messaging and calling you on Telegram?")
+ ("lng_info_delete_contact"
+  :value "Delete contact")
+ ("lng_sure_delete_contact"
+  :value "Are you sure you want to delete {contact} from your contact list?")
 
  ("lng_manage_linked_channel"
   :value "Linked channel")
@@ -475,6 +483,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Members")
  ("lng_manage_messages_ttl_title"
   :value "Auto-delete messages")
+ ("lng_manage_discussion_group"
+  :value "Discussion")
  ("lng_context_auto_delete_in"
   :value "auto-deletes in {duration}")
  ("lng_ttl_about_tooltip_channel"
@@ -562,6 +572,10 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_random_dice"
   :value "Random Dice")
 
+ ("lng_settings_logout"
+  :value "Log out")
+ ("lng_sure_logout"
+  :value "Are you sure you want to log out?")
  ("lng_settings_faq"
   :value "Telegram FAQ")
  ("lng_settings_ask_question"
@@ -646,8 +660,22 @@ Example: 23 y.o. designer from San Francisco")
   :value "Allow {bot} to send me messages")
 
  ;; Notifications
+ ("lng_settings_notify_title"
+  :value "Notifications for chats")
+ ("lng_notification_private_chats"
+  :value "Private chats")
+ ("lng_notification_groups"
+  :value "Groups")
+ ("lng_notification_channels"
+  :value "Channels")
+
  ("lng_notification_reminder"
   :value "Reminder")
+ ("lng_notification_sound"
+  :value "Sound")
+ ("lng_notification_exceptions"
+  :one_value "{count} exception"
+  :other_value "{count} exceptions")
 
  ;; Folders
  ("lng_settings_section_filters"
@@ -748,6 +776,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Delete")
  ("lng_context_disable_spoiler"
   :value "Remove Spoiler")
+ ("lng_context_cancel_upload"
+  :value "Cancel Upload")
+ ("lng_context_cancel_download"
+  :value "Cancel Download")
 
  ("lng_settings_sensitive_disable_filtering"
   :value "Disable filtering")
@@ -835,6 +867,10 @@ Example: 23 y.o. designer from San Francisco")
 
  ("lng_action_bot_allowed_from_domain"
   :value "You allowed this bot to message you when you logged in on {domain}.")
+ ("lng_action_bot_allowed_from_app"
+  :value "You allowed this bot to message you when you opened {app}.")
+ ("lng_action_attach_menu_bot_allowed"
+  :value "You allowed this bot to message you when you added it to your attachment menu.")
  ("lng_action_topic_created"
   :value "«{topic}» was created")
  ("lng_action_topic_closed"
@@ -886,6 +922,13 @@ to start the topic.")
   :value "Or log in using your phone number")
  ("lng_intro_qr_title"
   :value "Scan From Mobile Telegram")
+
+ ("lng_group_invite_permanent"
+  :value "Permanent link")
+ ("lng_group_invite_add"
+  :value "Create a New Link")
+ ("lng_group_invite_copy"
+  :value "Copy Link")
 
  ("lng_group_invite_qr_title"
   :value "Invite by QR Code")
@@ -943,6 +986,13 @@ to start the topic.")
   :value "Reset Theme")
  ("lng_chat_theme_none"
   :value "No\nTheme")
+
+ ("lng_chat_status_members"
+  :one_value "{count} member"
+  :other_value "{count} members")
+ ("lng_chat_status_subscribers"
+  :one_value "{count} subscriber"
+  :other_value "{count} subscribers")
 
  ;; Restrictions
  ("lng_restricted_list_title"
@@ -1252,6 +1302,18 @@ You can send them an invite link as message instead.")
  ("lng_manage_messages_ttl_after_custom"
   :value "Custom")
 
+ ;; https://translations.telegram.org/screenshots/6214/phrase/lng_manage_history_visibility_hidden_legacy
+ ("lng_manage_history_visibility_title"
+  :value "Chat history for new members")
+ ("lng_manage_history_visibility_shown"
+  :value "Visible")
+ ("lng_manage_history_visibility_shown_about"
+  :value "New members will see messages that were sent before they joined.")
+ ("lng_manage_history_visibility_hidden"
+  :value "Hidden")
+ ("lng_manage_history_visibility_hidden_about"
+  :value "New members won't see earlier messages.")
+
  ("lng_ttl_edit_about_channel"
   :value "Automatically delete new messages sent in this channel after a certain period of time.")
  ("lng_ttl_edit_about"
@@ -1266,6 +1328,11 @@ You can send them an invite link as message instead.")
   :value "Boost Channel")
  ("lng_boost_channel_you_title"
   :value "You boosted {channel}!")
+ ("lng_boosts_title"
+  :value "Boosts")
+ ("lng_boost_level"
+  :one_value "Level {count}"
+  :other_value "Level {count}")
 
  ;; Stickers
  ("lng_mac_touchbar_favorite_stickers"
@@ -1392,6 +1459,25 @@ You can send them an invite link as message instead.")
  ;; Misc
  ("lng_open_link"
   :value "Open")
+ ("lng_channel_badge"
+  :value "channel")
+ ("lng_info_about_label"
+  :value "Description")
+ ("lng_info_username_label"
+  :value "Username")
+ ("lng_create_invite_link_title"
+  :value "Invite link")
+
+ ("lng_usernames_activate_confirm"
+  :value "Show")
+
+ ("lng_similar_channels_title"
+  :value "Similar channels")
+ ("lng_similar_channels_view_all"
+  :value "View all")
+ ("lng_profile_similar_channels"
+  :one_value "{count} similar channel"
+  :other_value "{count} similar channels")
 
  ;; Chat Background
  ("lng_action_set_wallpaper"

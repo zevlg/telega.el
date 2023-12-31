@@ -319,10 +319,30 @@ telega-server has been made."
 ;; root buffer.
 ;;
 ;; ~telega-active-stories-mode~ is enabled by default.
+(declare-function telega-root-aux-append "telega-root" (inserter))
+(declare-function telega-root-aux-remove "telega-root" (inserter))
+(declare-function telega-root-aux-redisplay "telega-root" (&optional inserter))
+
 (define-minor-mode telega-active-stories-mode
   "Global mode to display currently active stories in the root buffer."
   :init-value nil :global t :group 'telega-modes
-  ;; TODO
+  (if telega-active-stories-mode
+      (progn
+        ;telega--on-updateChatActiveStories
+        ;telega--on-updateStoryListChatCount
+
+        (telega-root-aux-append #'telega-ins--active-stories)
+        (when (telega-server-live-p)
+          ;; TODO: invalid func vvv
+          (telega-active-stories--fetch)))
+
+    (telega-root-aux-remove #'telega-ins--active-stories)))
+
+(defun telega-ins--active-stories ()
+  "Inserter for currently active stories"
+  ;; Reset active stories on telega restarts
+  (unless (telega-server-live-p)
+    (setq telega-active-location--messages nil))
   )
 
 (provide 'telega-story)

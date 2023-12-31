@@ -105,18 +105,20 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
 
     (telega-save-cursor
       (telega-button--change button
-        (telega-ins--button (telega--account-ttl-button-value)
+        (telega-ins--box-button (telega--account-ttl-button-value)
           'action #'telega--account-ttl-button-action)))))
 
 (defun telega-ins--account-ttl ()
   "Insert account TTL settings."
-  (telega-ins (telega-i18n "lng_self_destruct_title") ": "
-              (telega-i18n "lng_settings_destroy_if") " ")
-  (telega-ins--button (telega--account-ttl-button-value)
-    'action #'telega--account-ttl-button-action)
-  (telega-ins "\n")
-  (telega-ins--help-message
-   (telega-ins-i18n "lng_self_destruct_description")))
+  (telega-ins-describe-item (telega-i18n "lng_self_destruct_title")
+    (telega-ins (telega-i18n "lng_settings_destroy_if") " ")
+    (telega-ins--box-button (telega--account-ttl-button-value)
+      'action #'telega--account-ttl-button-action)
+    (telega-ins "\n")
+    (telega-ins--help-message
+     (telega-ins-i18n "lng_self_destruct_description")
+     ;; NOTE: no newline
+     nil)))
 
 (defun telega-ins--chat-photo (chat-photo)
   "Inserter for user CHAT-PHOTO (TDLib's ChatPhoto)."
@@ -154,8 +156,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                                           :file (plist-get size1 :photo))
                          :animation (plist-get photo-anim :file))))
 
-      (when (> (telega-current-column) fill-column)
-        (telega-ins "\n"))
+      ;; (when (> (telega-current-column) fill-column)
+      ;;   (telega-ins "\n"))
       (telega-button--insert 'telega photo
         :inserter #'telega-ins--chat-photo
         :action 'telega-photo--open
@@ -184,7 +186,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
 (defun telega-info--insert-user (user &optional chat)
   "Insert USER info into current buffer."
   (unless chat
-    (setq chat (telega-chat-get (plist-get user :id) 'offline)))
+    (setq chat (telega-user-chat user)))
 
   ;; Scam/Fake/Blacklist status
   (telega-ins-prefix telega-symbol-blocked
@@ -198,22 +200,23 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
 
   ;; Buttons line
   ;; I18N: profile_send_message -> Chat With
-  (telega-ins--button (telega-i18n "lng_profile_send_message")
+  (telega-ins--box-button (telega-i18n "lng_profile_send_message")
     :value user
     :action 'telega-user-chat-with)
   (telega-ins " ")
   (unless (or (telega-user-bot-p user)
               (plist-get user :is_contact))
     ;; I18N: profile_share_contact -> Share My Contact
-    (telega-ins--button (telega-i18n "lng_profile_share_contact")
-      :value chat :action 'telega-chat-share-my-contact)
+    (telega-ins--box-button (telega-i18n "lng_profile_share_contact")
+      :value chat
+      :action 'telega-chat-share-my-contact)
     (telega-ins " "))
   ;; NOTE: Secret chat with bots and myself is not possible
   (unless (or (telega-user-bot-p user)
               (telega-me-p user))
     ;; TODO: search for existing secret chat with Ready state and
     ;; create [Open Secret Chat] button instead
-    (telega-ins--button (concat (telega-symbol 'lock) "Start Secret Chat")
+    (telega-ins--box-button (concat (telega-symbol 'lock) "Start Secret Chat")
       :value user
       :action (lambda (user)
                 (telega-chat--pop-to-buffer
@@ -224,13 +227,13 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
          (full-info (telega--full-info user))
          (user-blocked-p (telega-user-match-p user 'is-blocked)))
     (when (plist-get full-info :can_be_called)
-      (telega-ins--button (concat telega-symbol-phone "Call")
+      (telega-ins--box-button (concat (telega-symbol 'phone) "Call")
         :value user
         :action #'telega-voip-call)
       (telega-ins " "))
     (unless (telega-me-p user)
-      (telega-ins--button
-          (concat telega-symbol-blocked
+      (telega-ins--box-button
+          (concat (telega-symbol 'blocked)
                   (if user-blocked-p
                       ;; I18N: profile_unblock_user -> Unblock User
                       (telega-i18n "lng_profile_unblock_user")
@@ -243,191 +246,201 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     (telega-ins "\n")
 
     ;; Clickable user's profile photos
-    (telega-ins "Profile Photos: ")
-    (telega--getUserProfilePhotos user nil nil
-      (telega--gen-ins-continuation-callback 'loading
-        (lambda (profile-photos)
-          (telega-ins-fmt "%d\n" (length profile-photos))
-          (telega-ins--user-profile-photos user profile-photos))))
-    (telega-ins "\n")
+    (telega-ins-describe-item "Profile Photos"
+      (telega-help-win--add-tdlib-callback
+       (telega--getUserProfilePhotos user nil nil
+         (telega--gen-ins-continuation-callback 'loading
+           (lambda (profile-photos)
+             (telega-ins-fmt "%d\n" (length profile-photos))
+             (telega-ins--line-wrap-prefix "  "
+               (telega-ins--user-profile-photos user profile-photos)))
+           telega--help-win-param))))
 
     ;; Status emoji stickerset
     (when-let* ((emoji-status (plist-get user :emoji_status))
                 (emoji-sticker (telega-custom-emoji-get
                                 (plist-get emoji-status :custom_emoji_id)))
                 (sset-id (plist-get emoji-sticker :set_id)))
-      (telega-ins "Emoji Status Stickerset: ")
-      (telega-stickerset-get sset-id nil
-        (telega--gen-ins-continuation-callback 'loading
-          (lambda (sset)
-            (telega-ins--button (telega-stickerset-title sset)
-              :value sset
-              :action #'telega-describe-stickerset))
-          telega--help-win-param))
-      (telega-ins "\n"))
+      (telega-ins-describe-item "Emoji Status Stickerset"
+        (telega-stickerset-get sset-id nil
+          (telega--gen-ins-continuation-callback 'loading
+            (lambda (sset)
+              (telega-ins--box-button (telega-stickerset-title sset)
+                :value sset
+                :action #'telega-describe-stickerset))))))
 
     (when-let ((patron (telega-msg-sender-patron-p user)))
-      (telega-ins "Telega Patron Since: ")
-      (telega-ins--date-full (plist-get patron :since_date))
-      (telega-ins "\n"))
+      (telega-ins-describe-item "Telega Patron Since"
+        (telega-ins--date-full (plist-get patron :since_date))))
 
-    (telega-ins-fmt "Id: %s\n"
-      (if telega-debug
-          (format "(telega-user-get %d)" (plist-get user :id))
-        (format "%d" (plist-get user :id))))
+    (telega-ins-describe-item "Id"
+      (telega-ins-fmt (if telega-debug
+                          "(telega-user-get %d)"
+                        "%d")
+        (plist-get user :id)))
     (when (telega-me-p user)
       ;; Saved Messages
-      (telega-ins "Logged in: ")
-      (telega-ins--date-full (plist-get telega--options :authorization_date))
-      (telega-ins "\n")
+      (telega-ins-describe-item "Logged in"
+        (telega-ins--date-full (plist-get telega--options :authorization_date)))
       (telega-ins--account-ttl))
 
-    (telega-ins-prefix "Relationship: "
-      (when (telega-ins--user-relationship user)
-        (telega-ins "\n")))
+    (let ((relationship (telega-ins--as-string
+                         (telega-ins--user-relationship user))))
+      (unless (string-empty-p relationship)
+        (telega-ins-describe-item "Relationship"
+          (telega-ins relationship))))
 
     (when-let ((username (telega-msg-sender-username user)))
       ;; I18N: profile_username -> Username:
-      (telega-ins (telega-i18n "lng_profile_username")
-                  " @" username)
+      (telega-ins-describe-item (telega-i18n "lng_profile_username")
+        (telega-ins "@" username)
 
-      ;; Also insert other usernames
-      (let ((other-usernames
-             (seq-rest (telega--tl-get user :usernames :active_usernames))))
-        (unless (seq-empty-p other-usernames)
-          (telega-ins--with-face 'telega-shadow
-            (telega-ins " " (telega-i18n "lng_info_usernames_label") " "))
-          (telega-ins--sequence (other-username other-usernames)
+        ;; Also insert other usernames
+        (let ((other-usernames
+               (seq-rest (telega--tl-get user :usernames :active_usernames))))
+          (unless (seq-empty-p other-usernames)
             (telega-ins--with-face 'telega-shadow
-              (telega-ins ", "))
-            (telega-ins "@" other-username))))
-      (telega-ins "\n"))
+              (telega-ins " " (telega-i18n "lng_info_usernames_label") " "))
+            (telega-ins--sequence (other-username other-usernames)
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins ", "))
+              (telega-ins "@" other-username))))))
+
     (when-let ((phone (telega-tl-str user :phone_number)))
       ;; I18N: profile_mobile_number -> Phone:
-      (telega-ins (telega-i18n "lng_profile_mobile_number")
-                  " +" phone "\n"))
+      (telega-ins-describe-item (telega-i18n "lng_profile_mobile_number")
+        (telega-ins "+" phone)))
+
     ;; Online status
-    (telega-ins "Last seen: ")
-    (cond ((telega-user-online-p user)
-           (telega-ins-i18n "lng_status_online"))
-          ((plist-get user :telega-last-online)
-           (telega-ins "in " (telega-duration-human-readable
-                              (- (telega-time-seconds)
-                                 (plist-get user :telega-last-online))
-                              1 'long)))
-          (t (telega-ins (telega-user--seen user))))
-    (telega-ins "\n")
+    (telega-ins-describe-item "Last seen"
+      (cond ((telega-user-online-p user)
+             (telega-ins-i18n "lng_status_online"))
+            ((plist-get user :telega-last-online)
+             (telega-ins (telega-duration-human-readable
+                          (- (telega-time-seconds)
+                             (plist-get user :telega-last-online))
+                          1 'long)
+                         " ago"))
+            (t
+             (telega-ins (telega-user--seen user)))))
 
     (when-let ((bio (telega-tl-str full-info :bio)))
       ;; I18N: profile_bio -> Bio:
-      (telega-ins--labeled (concat (telega-i18n "lng_profile_bio") " ") nil
-        (telega-ins bio))
-      (telega-ins "\n"))
+      (telega-ins-describe-item (telega-i18n "lng_profile_bio")
+        (telega-ins "\n")
+        (telega-ins--line-wrap-prefix "  "
+          (telega-ins bio))))
+
     (when-let ((share-text (telega-tl-str full-info :short_description)))
-      (telega-ins--labeled "Share text: " nil
-        (telega-ins share-text))
-      (telega-ins "\n"))
+      (telega-ins-describe-item "Share text"
+        (telega-ins "\n")
+        (telega-ins--line-wrap-prefix "  "
+          (telega-ins share-text))))
 
     ;; Bot Info & Bot Commands
     (when-let ((bot-info (plist-get full-info :bot_info)))
       ;; TODO: insert info from BOT-INFO
       (when-let ((bot-cmds (append (plist-get bot-info :commands) nil)))
-        (telega-ins "Bot commands: \n")
-        (seq-doseq (cmd bot-cmds)
-          (telega-ins "  ")
-          (telega-ins--with-attrs (list :min 10 :align 'left)
-            (telega-ins "/" (telega-tl-str cmd :command)))
-          (when-let ((cmd-descr (telega-tl-str cmd :description)))
-            (telega-ins--column nil nil
-              (telega-ins " - " cmd-descr)))
-          (telega-ins "\n"))
-        (telega-ins "\n")))
+        (telega-ins-describe-item "Bot commands"
+          (telega-ins--line-wrap-prefix "  "
+            (seq-doseq (cmd bot-cmds)
+              (telega-ins "\n")
+              (telega-ins--with-attrs (list :min 10 :align 'left)
+                (telega-ins "/" (telega-tl-str cmd :command)))
+              (when-let ((cmd-descr (telega-tl-str cmd :description)))
+                (telega-ins--column nil nil
+                  (telega-ins " - " cmd-descr))))))))
 
     ;; Chats common with USER
     (let ((gic-cnt (plist-get full-info :group_in_common_count)))
       (unless (zerop gic-cnt)
-        (telega-ins (telega-i18n "lng_profile_common_groups"
-                      :count gic-cnt)
-                    ": ")
-        (telega--getGroupsInCommon user nil
-          (telega--gen-ins-continuation-callback 'loading
-            (lambda (chats-in-common)
-              (when chats-in-common
-                (dolist (chat chats-in-common)
-                  (telega-ins "\n")
-                  (telega-ins "  ")
-                  (telega-button--insert 'telega-chat chat
-                    :inserter telega-inserter-for-chat-button))))))
-        (telega-ins "\n")))
+        (telega-ins-describe-item (telega-i18n "lng_profile_common_groups"
+                                    :count gic-cnt)
+          (telega-help-win--add-tdlib-callback
+           (telega--getGroupsInCommon user nil
+             (telega--gen-ins-continuation-callback 'loading
+               (lambda (chats-in-common)
+                 (when chats-in-common
+                   (dolist (chat chats-in-common)
+                     (telega-ins "\n")
+                     (telega-ins "  ")
+                     (telega-button--insert 'telega-chat chat
+                       :inserter #'telega-ins--chat))))
+               telega--help-win-param))))))
 
     ;; TODO: view shared media as thumbnails
 
     (let ((call (telega-voip--by-user-id (plist-get user :id))))
-      (when (and call telega-debug)
+      (when (and call (listp telega-debug) (memq 'info telega-debug))
         (telega-ins "\n---DEBUG---\n")
         (telega-ins-fmt "Call: %S\n" call)))
     ))
 
 (defun telega-info--insert-secretchat (secretchat chat)
   "Insert info about SECRETCHAT into current buffer."
-  (telega-ins "State: "
-              (substring (telega--tl-get secretchat :state :@type) 15))
-  (cl-case (telega--tl-type (plist-get secretchat :state))
-    (secretChatStateClosed
-     (telega-ins " ")
-     (telega-ins--button "Delete and Exit"
-       :value chat
-       :action (lambda (chat)
-                 (telega-chat-delete chat)
-                 (quit-window))))
+  (telega-ins-describe-item "State"
+    (telega-ins (substring (telega--tl-get secretchat :state :@type) 15))
+    (cl-case (telega--tl-type (plist-get secretchat :state))
+      (secretChatStateClosed
+       (telega-ins " ")
+       (telega-ins--box-button "Delete and Exit"
+         :value chat
+         :action (lambda (chat)
+                   (telega-chat-delete chat)
+                   (quit-window))))
 
-    ((secretChatStatePending secretChatStateReady)
-     (telega-ins " ")
-     (telega-ins--button "Close Secret Chat"
-       :value chat
-       :action (lambda (chat)
-                 (telega--closeSecretChat secretchat)
-                 (telega-save-cursor
-                   (telega-describe-chat chat))))))
-  (telega-ins "\n")
-  (telega-ins "Created: " (if (plist-get secretchat :is_outbound)
-                              "me" "him") "\n")
-  (telega-ins-fmt "Layer: %d" (plist-get secretchat :layer))
-  (when (>= (plist-get secretchat :layer) 66)
-    (telega-ins " (Video notes are supported)"))
-  (telega-ins "\n")
+      ((secretChatStatePending secretChatStateReady)
+       (telega-ins " ")
+       (telega-ins--box-button "Close Secret Chat"
+         :value chat
+         :action (lambda (chat)
+                   (telega--closeSecretChat secretchat)
+                   (telega-save-cursor
+                     (telega-describe-chat chat)))))))
+
+  (telega-ins-describe-item "Created"
+    (telega-ins (if (plist-get secretchat :is_outbound)
+                    "me"
+                  "him")))
+
+  (telega-ins-describe-item "Layer"
+    (telega-ins-fmt "%d" (plist-get secretchat :layer))
+    (when (>= (plist-get secretchat :layer) 66)
+      (telega-ins " (Video notes are supported)")))
 
   ;; Encryption key
   (let ((enc-key (plist-get secretchat :key_hash)))
     (when (and enc-key (not (string-empty-p enc-key)))
-      (telega-ins--labeled "Key: " nil
-        (let ((ekey (base64-decode-string enc-key))
-              (efaces (list 'telega-enckey-00 'telega-enckey-01
-                            'telega-enckey-10 'telega-enckey-11)))
-          (dotimes (ki (length ekey))
-            (when (and (> ki 0) (= (% ki 3) 0))
-              (telega-ins "\n"))
-            (let* ((kv (aref ekey ki))
-                   (k1 (logand kv 3))
-                   (k2 (ash (logand kv 12) -2))
-                   (k3 (ash (logand kv 48) -4))
-                   (k4 (ash (logand kv 192) -6)))
-              (dolist (kk (list k1 k2 k3 k4))
-                (telega-ins (propertize telega-symbol-square
-                                        'face (nth kk efaces))))))
+      (telega-ins-describe-item "Key"
+        (telega-ins--line-wrap-prefix "  "
           (telega-ins "\n")
+          (let ((ekey (base64-decode-string enc-key))
+                (efaces (list 'telega-enckey-00 'telega-enckey-01
+                              'telega-enckey-10 'telega-enckey-11)))
+            (dotimes (ki (length ekey))
+              (when (and (> ki 0) (= (% ki 3) 0))
+                (telega-ins "\n"))
+              (let* ((kv (aref ekey ki))
+                     (k1 (logand kv 3))
+                     (k2 (ash (logand kv 12) -2))
+                     (k3 (ash (logand kv 48) -4))
+                     (k4 (ash (logand kv 192) -6)))
+                (dolist (kk (list k1 k2 k3 k4))
+                  (telega-ins (propertize telega-symbol-square
+                                          'face (nth kk efaces))))))
+            (telega-ins "\n")
 
-          ;; NOTE: TDLib docs: Alternatively, the first 32 bytes of
-          ;; the hash can be converted to the hexadecimal format and
-          ;; printed as 32 2-digit hex numbers
-          (cl-assert (<= 32 (length ekey)))
-          (dotimes (ki 32)
-            (cond ((and (> ki 0) (= (% ki 8) 0))
-                   (telega-ins "\n"))
-                  ((= (% ki 8) 4)
-                   (telega-ins " ")))
-            (telega-ins-fmt "%02x " (aref ekey ki)))))
-      (telega-ins "\n"))))
+            ;; NOTE: TDLib docs: Alternatively, the first 32 bytes of
+            ;; the hash can be converted to the hexadecimal format and
+            ;; printed as 32 2-digit hex numbers
+            (cl-assert (<= 32 (length ekey)))
+            (dotimes (ki 32)
+              (cond ((and (> ki 0) (= (% ki 8) 0))
+                     (telega-ins "\n"))
+                    ((= (% ki 8) 4)
+                     (telega-ins " ")))
+              (telega-ins-fmt "%02x " (aref ekey ki))))))
+      )))
 
 (defun telega-info--insert-invite-link (chat chat-invite-link)
   "Insert CHAT-INVITE-LINK into current info buffer."
@@ -438,56 +451,60 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                                         :can_invite_users)))
         (invite-link (telega-tl-str chat-invite-link :invite_link)))
     (when (or can-generate-p invite-link)
-      (telega-ins "Invite link:")
-      (when invite-link
-        (telega-ins " ")
-        (telega-ins--raw-button (telega-link-props 'url invite-link 'face 'link)
-          (telega-ins invite-link)))
-      (when can-generate-p
-        (telega-ins " ")
-        (telega-ins--button (if invite-link "Regenerate" "Generate")
-          :value chat
-          :action #'telega-chat-generate-invite-link))
-      (telega-ins "\n"))))
+      (telega-ins-describe-item (telega-i18n "lng_create_invite_link_title")
+        (when invite-link
+          (telega-ins--raw-button (telega-link-props 'url invite-link 'face 'link)
+            (telega-ins invite-link)))
+        (when can-generate-p
+          (telega-ins " ")
+          (telega-ins--box-button (if invite-link
+                                      "Regenerate"
+                                    (telega-i18n "lng_group_invite_add"))
+            :value chat
+            :action #'telega-chat-generate-invite-link))
+        ))))
 
 (defun telega-info--insert-basicgroup (basicgroup chat)
   (let* ((full-info (telega--full-info basicgroup))
          (members (append (plist-get full-info :members) nil))
          (member-status-name (plist-get (plist-get basicgroup :status) :@type)))
-    (telega-ins "Status: " (substring member-status-name 16) "\n")
+    (telega-ins-describe-item "Status"
+      (telega-ins (substring member-status-name 16)))
     (when-let ((creator-id (plist-get full-info :creator_user_id))
                (creator (unless (zerop creator-id)
                           (telega-user-get creator-id))))
-      (telega-ins "Created: ")
-      (telega-ins--msg-sender creator
-        :with-avatar-p t
-        :with-username-p t
-        :with-brackets-p t)
-      (telega-ins "  ")
-      (when-let ((creator-member
-                  (cl-find creator members :key #'telega-msg-sender)))
-        (telega-ins--date (plist-get creator-member :joined_chat_date))
-        (telega-ins "\n")))
+      (telega-ins-describe-item "Created"
+        (telega-ins--msg-sender creator
+          :with-avatar-p t
+          :with-username-p t
+          :with-brackets-p t)
+        (telega-ins "  ")
+        (when-let ((creator-member
+                    (cl-find creator members :key #'telega-msg-sender)))
+          (telega-ins--date (plist-get creator-member :joined_chat_date)))))
 
     (telega-info--insert-invite-link chat (plist-get full-info :invite_link))
 
     (when-let ((descr (telega-tl-str full-info :description)))
-      (telega-ins--labeled "Desc: " nil
-        (telega-ins descr "\n")))
+      (telega-ins-describe-item (telega-i18n "lng_info_about_label")
+        (telega-ins--line-wrap-prefix "  "
+          (telega-ins "\n" descr))))
 
-    (telega-ins "\n")
-    (telega-ins-i18n "lng_profile_participants_section")
-    (telega-ins-fmt ": %d%s (%d online, %d admins)\n"
-      (plist-get basicgroup :member_count)
-      (telega-symbol 'member)
-      (or (plist-get chat :x-online-count) 0)
-      (length (cl-remove-if-not
-               (lambda (member)
-                 (memq (telega--tl-type (plist-get member :status))
-                       '(chatMemberStatusCreator chatMemberStatusAdministrator)))
-               members)))
-    (telega-ins--chat-members members)
-    ))
+    (telega-ins-describe-item (telega-i18n "lng_profile_participants_section")
+      (telega-ins-fmt "%d%s (%d online, %d admins)"
+        (plist-get basicgroup :member_count)
+        (telega-symbol 'member)
+        (or (plist-get chat :x-online-count) 0)
+        (length (cl-remove-if-not
+                 (lambda (member)
+                   (memq (telega--tl-type (plist-get member :status))
+                         '(chatMemberStatusCreator
+                           chatMemberStatusAdministrator)))
+                 members)))
+      (telega-ins " ")
+      (telega-ins--box-button (telega-i18n "telega_show")
+        :value chat
+        :action #'telega-describe-chat-members))))
 
 (defun telega-info--insert-supergroup (supergroup chat)
   (let* ((telega-full-info-offline-p nil)
@@ -505,53 +522,79 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                 (telega-ins (telega-i18n "lng_scam_badge") " "))))
       (telega-ins "\n"))
 
-    (telega-ins (if (telega-chat-match-p chat 'me-is-member)
-                    "Joined at: "
-                  "Created at: "))
-    (telega-ins--date (plist-get supergroup :date))
-    (telega-ins "\n")
+    (telega-ins-describe-item (if (telega-chat-match-p chat 'me-is-member)
+                                  "Joined at"
+                                "Created at")
+      (telega-ins--date (plist-get supergroup :date)))
 
-    (telega-ins "Status: " (substring member-status-name 16))
-    ;; Buttons for the owner of the group
-    (when (telega-chat-match-p chat 'me-is-owner)
-      (let ((channel-p (telega-chat-channel-p chat)))
-        ;; Delete supergroup/channel for everyone
-        (telega-ins " ")
-        (telega-ins--button
-            (telega-i18n (if channel-p
-                             "lng_profile_delete_channel"
-                           "lng_profile_delete_group"))
-          'action (lambda (_ignored)
-                    (when (telega-read-im-sure-p
-                           (telega-i18n (if channel-p
-                                            "lng_sure_delete_channel"
-                                          "lng_sure_delete_group")))
-                      (telega--deleteChat chat))))
+    ;; Supergroup username, only owner can set/change group's username
+    (let* ((usernames (plist-get supergroup :usernames))
+           (username (plist-get usernames :editable_username))
+           (can-set-username-p (telega-chat-match-p chat 'me-is-owner)))
+      (when (or username can-set-username-p)
+        (telega-ins-describe-item (telega-i18n "lng_info_username_label")
+          (when username
+            (telega-ins "@" username " "))
+          (when can-set-username-p
+            (telega-ins--box-button (if username "Change" "Set")
+              'action (lambda (_ignored)
+                        (let ((new-username
+                               (read-string "Set Username to: " "@")))
+                          (when (string-prefix-p "@" new-username)
+                            (setq new-username (substring new-username 1)))
+                          (telega--setSupergroupUsername
+                           supergroup new-username)))))
+          )))
 
-        (telega-ins " ")
-        (telega-ins--button (telega-i18n (if channel-p
-                                             "lng_rights_transfer_channel"
-                                           "lng_rights_transfer_group"))
-          :value chat
-          :action #'telega-chat-transfer-ownership)
-        ))
-    (telega-ins "\n")
+    (let ((boost-level (plist-get supergroup :boost_level)))
+      (unless (telega-zerop boost-level)
+        (telega-ins-describe-item (telega-i18n "lng_boosts_title")
+          (telega-ins-i18n "lng_boost_level"
+            :count boost-level))))
+
+    (telega-ins-describe-item "Status"
+      (telega-ins (substring member-status-name 16))
+      ;; Buttons for the owner of the group
+      (telega-ins--line-wrap-prefix "  "
+        (when (telega-chat-match-p chat 'me-is-owner)
+          (let ((channel-p (telega-chat-channel-p chat)))
+            ;; Delete supergroup/channel for everyone
+            (telega-ins " ")
+            (telega-ins--box-button
+                (telega-i18n (if channel-p
+                                 "lng_profile_delete_channel"
+                               "lng_profile_delete_group"))
+              'action (lambda (_ignored)
+                        (when (telega-read-im-sure-p
+                               (telega-i18n (if channel-p
+                                                "lng_sure_delete_channel"
+                                              "lng_sure_delete_group")))
+                          (telega--deleteChat chat))))
+
+            (telega-ins " ")
+            (telega-ins--box-button (telega-i18n (if channel-p
+                                                 "lng_rights_transfer_channel"
+                                               "lng_rights_transfer_group"))
+              :value chat
+              :action #'telega-chat-transfer-ownership)
+            ))))
+
     ;; Buttons for administrators
     (when (telega-chat-match-p chat '(me-is-owner or-admin))
-      (telega-ins--labeled "  " nil
-        (let* ((owner-p (telega-chat-match-p chat 'me-is-owner))
-               (my-status (telega-chat-member-my-status chat))
-               (my-perms (telega-chat-member-my-permissions chat))
-               (can-edit-p (plist-get my-perms :can_be_edited))
-               (channel-p (telega-chat-channel-p chat))
-               (custom-title (telega-tl-str my-status :custom_title)))
-          ;; Custom Title:
-          (when (or custom-title can-edit-p)
-            (telega-ins (telega-i18n "lng_rights_edit_admin_rank_name") ": ")
+      (let* ((owner-p (telega-chat-match-p chat 'me-is-owner))
+             (my-status (telega-chat-member-my-status chat))
+             (my-perms (telega-chat-member-my-permissions chat))
+             (can-edit-p (plist-get my-perms :can_be_edited))
+             (channel-p (telega-chat-channel-p chat))
+             (custom-title (telega-tl-str my-status :custom_title)))
+        ;; Custom Title:
+        (when (or custom-title can-edit-p)
+          (telega-ins-describe-item
+              (telega-i18n "lng_rights_edit_admin_rank_name")
             (when (telega-ins custom-title)
               (telega-ins " "))
             (when can-edit-p
-              (telega-ins--button "Set"
+              (telega-ins--box-button "Set"
                 'action (lambda (_ignored)
                           (let ((new-title (read-string "My Custom title: ")))
                             (plist-put my-status :custom_title new-title)
@@ -562,18 +605,13 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
              (telega-ins-i18n "lng_rights_edit_admin_rank_about"
                :title (telega-i18n (if owner-p
                                        "lng_owner_badge"
-                                     "lng_admin_badge")))))
+                                     "lng_admin_badge")))
+             ;; NOTE: no newline at the end
+             nil)))
 
-          ;; Admin Permissions:
-          (telega-ins
-           (propertize (telega-i18n "lng_manage_peer_permissions")
-                       'face 'bold)
-           "\n")
-          (telega-ins
-           (propertize (telega-i18n "lng_rights_edit_admin_header")
-                       'face 'telega-shadow)
-           "\n")
-          (telega-ins--labeled "  " nil
+        ;; Admin Permissions:
+        (telega-ins-describe-item (telega-i18n "lng_rights_edit_admin_header")
+          (telega-ins--line-wrap-prefix "  "
             (dolist (perm-spec telega-chat--admin-permissions)
               ;; list only those permissions which has title
               ;; NOTE: special permissions applies for channels only,
@@ -582,108 +620,145 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                          (or channel-p
                              (not (memq (car perm-spec)
                                         telega-chat--admin-permissions-for-channels))))
-                (let ((perm-value (plist-get my-perms (car perm-spec))))
-                  (if (and can-edit-p
-                           (or (not owner-p) (eq :is_anonymous (car perm-spec))))
-                      (telega-ins--button (if perm-value
-                                              telega-symbol-heavy-checkmark
-                                            telega-symbol-blank-button)
-                        :value chat
-                        :action (lambda (chat)
-                                  (cl-case (car perm-spec)
-                                    (:is_anonymous
-                                     (plist-put my-status :is_anonymous
-                                                (if perm-value :false t))
-                                     (telega--setChatMemberStatus
-                                      chat (telega-user-me) my-status))
-                                    (t
-                                     (user-error "Not yet implemented")))))
+                (telega-ins "\n")
+                (let ((perm-value (plist-get my-perms (car perm-spec)))
+                      (active-p (and can-edit-p
+                                     (or (not owner-p)
+                                         (eq :is_anonymous (car perm-spec))))))
+                  (telega-ins--text-button (if perm-value
+                                               (telega-symbol 'checkbox-on)
+                                             (telega-symbol 'checkbox-off))
+                    'face (if active-p
+                              'telega-link
+                            'telega-shadow)
+                    'action (when active-p
+                              (lambda (_button)
+                                (cl-case (car perm-spec)
+                                  (:is_anonymous
+                                   (plist-put my-status :is_anonymous
+                                              (if perm-value :false t))
+                                   (telega--setChatMemberStatus
+                                    chat (telega-user-me) my-status))
+                                  (t
+                                   (user-error "Not yet implemented"))))))
+                  (telega-ins " " (telega-i18n (cdr perm-spec))))))))))
 
-                    (telega-ins (if perm-value
-                                    telega-symbol-ballout-check
-                                  telega-symbol-ballout-empty)))
-                  (telega-ins " " (telega-i18n (cdr perm-spec)))
-                  (telega-ins "\n"))))))))
-
-    ;; Supergroup username, only owner can set/change group's username
-    (let* ((usernames (plist-get supergroup :usernames))
-           (username (plist-get usernames :editable_username))
-           (can-set-username-p (telega-chat-match-p chat 'me-is-owner)))
-      (when (or username can-set-username-p)
-        (telega-ins "Username: ")
-        (when username
-          (telega-ins "@" username " "))
-        (when can-set-username-p
-          (telega-ins--button (if username "Change" "Set")
-            'action (lambda (_ignored)
-                      (let ((new-username (read-string "Set Username to: " "@")))
-                        (when (string-prefix-p "@" new-username)
-                          (setq new-username (substring new-username 1)))
-                        (telega--setSupergroupUsername
-                         supergroup new-username)))))
-        (telega-ins "\n")))
     (when (plist-get my-perms :can_change_info)
       ;; All history setting is available to supergroups only, in
       ;; channels all history is always available
       (unless (telega-chat-channel-p chat)
-        (telega-ins "All history available: ")
-        (let ((all-history-available-p
-               (plist-get full-info :is_all_history_available)))
-          (telega-ins--button (if all-history-available-p
-                                  telega-symbol-heavy-checkmark
-                                telega-symbol-blank-button)
-            'action (lambda (_ignored)
-                      (telega--toggleSupergroupIsAllHistoryAvailable
-                       supergroup (not all-history-available-p)))))
-        (telega-ins "\n"))
+        (let* ((all-history-available-p
+                (plist-get full-info :is_all_history_available))
+               (action-function
+                (lambda (_ignored)
+                  (telega--toggleSupergroupIsAllHistoryAvailable
+                   supergroup (not all-history-available-p)))))
+          (telega-ins-describe-item
+              (telega-i18n "lng_manage_history_visibility_title")
+            (telega-ins "\n")
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--text-button (if all-history-available-p
+                                           (telega-symbol 'radiobox-on)
+                                         (telega-symbol 'radiobox-off))
+                'face (if all-history-available-p
+                          'telega-shadow
+                        'telega-link)
+                'action (unless all-history-available-p
+                          action-function))
+              (telega-ins
+               " " (telega-i18n "lng_manage_history_visibility_shown") "\n")
+              (telega-ins--help-message
+               (telega-ins-i18n "lng_manage_history_visibility_shown_about")
+               nil)
+
+              (telega-ins "\n")
+              (telega-ins--text-button (if all-history-available-p
+                                           (telega-symbol 'radiobox-off)
+                                         (telega-symbol 'radiobox-on))
+                'face (if all-history-available-p
+                          'telega-link
+                        'telega-shadow)
+                'action (when all-history-available-p
+                          action-function))
+              (telega-ins
+               " " (telega-i18n "lng_manage_history_visibility_hidden") "\n")
+              (telega-ins--help-message
+               (telega-ins-i18n "lng_manage_history_visibility_hidden_about")
+               nil)))))
 
       ;; Sign messages is available in channels only
       (when (telega-chat-channel-p chat)
-        (telega-ins (telega-i18n "lng_edit_sign_messages") ": ")
-        (telega-ins--button (if (plist-get supergroup :sign_messages)
-                                telega-symbol-heavy-checkmark
-                              telega-symbol-blank-button)
-          'action (lambda (_ignored)
-                    (telega--toggleSupergroupSignMessages
-                     supergroup (not (plist-get supergroup :sign_messages)))))
-        (telega-ins "\n"))
+        (telega-ins-describe-item (telega-i18n "lng_edit_sign_messages")
+          (telega-ins--text-button (if (plist-get supergroup :sign_messages)
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_ignored)
+                      (telega--toggleSupergroupSignMessages
+                       supergroup (not (plist-get supergroup :sign_messages)))))))
       )
 
     ;; Aggressive anti-spam mode
     (when (plist-get full-info :can_toggle_aggressive_anti_spam)
-      (telega-ins (telega-i18n "lng_manage_peer_antispam") ": ")
-      (let ((anti-spam-p
-             (plist-get full-info :has_aggressive_anti_spam_enabled)))
-        (telega-ins--button (if anti-spam-p
-                                telega-symbol-heavy-checkmark
-                              telega-symbol-blank-button)
-          'action (lambda (_ignored)
-                    (telega--toggleSupergroupHasAggressiveAntiSpamEnabled
-                     supergroup (not anti-spam-p)))))
-      (telega-ins "\n")
-      (telega-ins--help-message
-       (telega-ins-i18n "lng_manage_peer_antispam_about")))
+      (telega-ins-describe-item (telega-i18n "lng_manage_peer_antispam")
+        (let ((anti-spam-p
+               (plist-get full-info :has_aggressive_anti_spam_enabled)))
+          (telega-ins--text-button (if anti-spam-p
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_ignored)
+                      (telega--toggleSupergroupHasAggressiveAntiSpamEnabled
+                       supergroup (not anti-spam-p)))))
+        (telega-ins "\n")
+        (telega-ins--help-message
+         (telega-ins-i18n "lng_manage_peer_antispam_about")
+         ;; NOTE: No trailing newline
+         nil)))
 
     ;; Slow Mode is available only for supergroups
     (unless (telega-chat-channel-p chat)
       (let* ((slow-mode-delay (plist-get full-info :slow_mode_delay))
              (smd-str (if (zerop slow-mode-delay)
                           (telega-i18n "lng_rights_slowmode_off")
-                        (telega-duration-human-readable slow-mode-delay)))
-             (i18n-slowmode-header
-              (concat (telega-i18n "lng_rights_slowmode_header") ": ")))
-        (telega-ins i18n-slowmode-header)
-        (if (plist-get my-perms :can_restrict_members)
-            (telega-ins--button smd-str
-              'action (lambda (_ignored)
-                        (telega--setChatSlowModeDelay
-                         chat
-                         (telega-completing-read-slow-mode-delay
-                          i18n-slowmode-header))))
-          (telega-ins smd-str))
-        (telega-ins "\n")
-        (telega-ins--help-message
-         (telega-ins-i18n "lng_rights_slowmode_about"))))
+                        (telega-duration-human-readable slow-mode-delay nil t))))
+        (telega-ins-describe-item (telega-i18n "lng_rights_slowmode_header")
+          (if (plist-get my-perms :can_restrict_members)
+              (telega-ins--box-button smd-str
+                'action (lambda (_ignored)
+                          (telega--setChatSlowModeDelay
+                           chat
+                           (telega-completing-read-slow-mode-delay
+                            (concat (telega-i18n "lng_rights_slowmode_header")
+                                    ": ")))))
+            (telega-ins smd-str))
+          (telega-ins "\n")
+          (telega-ins--help-message
+           (telega-ins-i18n "lng_rights_slowmode_about")
+           ;; NOTE: No trailing newline
+           nil))))
+
+    ;; Location based chats
+    (when (plist-get supergroup :has_location)
+      (let* ((chat-loc (plist-get full-info :location))
+             (loc (plist-get chat-loc :location))
+             (address (telega-tl-str chat-loc :address)))
+        (telega-ins-describe-item "Location"
+          (telega-ins (telega-location-to-string loc)))
+        (when address
+          (telega-ins-describe-item "Address"
+            (telega-ins address)))))
+
+    ;; Creator and admins can [re]generate invite link
+    (telega-info--insert-invite-link chat (plist-get full-info :invite_link))
+
+    (when-let ((descr (telega-tl-str full-info :description)))
+      (telega-ins-describe-item (telega-i18n "lng_info_about_label")
+        (telega-ins--line-wrap-prefix "  "
+          (telega-ins "\n" descr))))
+    (when-let ((restr-reason (telega-tl-str supergroup :restriction_reason)))
+      (telega-ins--labeled "Restriction: " nil
+        (telega-ins restr-reason "\n")))
 
     ;; Discussion group / Linked Chat
     (let ((linked-chat (telega-chat-linked-chat chat))
@@ -691,74 +766,70 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
            (and (telega-chat-channel-p chat)
                 (plist-get my-perms :can_change_info))))
       (when (or linked-chat can-set-discussion-group-p)
-        (telega-ins (if (telega-chat-channel-p chat)
-                        "Discussion Group: "
-                      "Linked Channel: "))
-        (if linked-chat
-            (telega-button--insert 'telega-chat
-                linked-chat
-              :inserter #'telega-ins--chat)
-          (telega-ins (propertize "None" 'face 'telega-shadow)))
-        (telega-ins " ")
-        (when can-set-discussion-group-p
-          (telega-ins--button (if linked-chat "Unset" "Set")
-            'action (lambda (_ignored)
-                      (telega--setChatDiscussionGroup
-                       chat (unless linked-chat
-                              (telega-read-discussion-chat))))))
-        (telega-ins "\n")))
+        (telega-ins-describe-item
+            (if (telega-chat-channel-p chat)
+                (telega-i18n "lng_manage_discussion_group")
+              (telega-i18n "lng_manage_linked_channel"))
+          (if linked-chat
+              (telega-button--insert 'telega-chat
+                  linked-chat
+                :inserter #'telega-ins--chat)
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins "None")))
+          (when can-set-discussion-group-p
+            (telega-ins " ")
+            (telega-ins--box-button (if linked-chat "Unset" "Set")
+              'action (lambda (_ignored)
+                        (telega--setChatDiscussionGroup
+                         chat (unless linked-chat
+                                (telega-read-discussion-chat)))))))))
 
-    ;; Location based chats
-    (when (plist-get supergroup :has_location)
-      (let* ((chat-loc (plist-get full-info :location))
-             (loc (plist-get chat-loc :location))
-             (address (telega-tl-str chat-loc :address)))
-        (telega-ins "Location: " (telega-location-to-string loc) "\n")
-        (when address
-          (telega-ins "Address: " address "\n"))))
+    ;; Similar channels
+    (when (telega-chat-channel-p chat)
+      (telega-ins-describe-item (telega-i18n "lng_similar_channels_title")
+        (telega-help-win--add-tdlib-callback
+         (telega--getChatSimilarChatCount chat nil
+           (telega--gen-ins-continuation-callback 'loading
+             (lambda (count)
+               (telega-ins-fmt "%d" count)
+               (unless (telega-zerop count)
+                 (telega-ins " ")
+                 (telega-ins--box-button
+                     (telega-i18n "lng_similar_channels_view_all")
+                   :value chat
+                   :action #'telega-describe-chat-similar-channels)))
+             telega--help-win-param)))))
 
-    ;; Creator and admins can [re]generate invite link
-    (telega-info--insert-invite-link chat (plist-get full-info :invite_link))
-
-    (when-let ((descr (telega-tl-str full-info :description)))
-      (telega-ins--labeled "Desc: " nil
-        (telega-ins descr "\n")))
-    (when-let ((restr-reason (telega-tl-str supergroup :restriction_reason)))
-      (telega-ins--labeled "Restriction: " nil
-        (telega-ins restr-reason "\n")))
-
+    ;; Members
     (telega-ins "\n")
     (when (plist-get full-info :can_hide_members)
-      (telega-ins (telega-i18n "lng_profile_hide_participants") ": ")
-      (let ((has-hidden-members-p (plist-get full-info :has_hidden_members)))
-        (telega-ins--button (if has-hidden-members-p
-                                telega-symbol-heavy-checkmark
-                              telega-symbol-blank-button)
-          'action (lambda (_ignored)
-                    (telega--toggleSupergroupHasHiddenMembers
-                     supergroup (not has-hidden-members-p)))))
-      (telega-ins "\n")
-      (telega-ins--help-message
-       (telega-ins-i18n "lng_profile_hide_participants_about")))
-    (telega-ins-i18n "lng_profile_participants_section")
-    (telega-ins-fmt ": %d%s (%d online, %d admins)"
-      (plist-get full-info :member_count)
-      (telega-symbol 'member)
-      (or (plist-get chat :x-online-count) 0)
-      (plist-get full-info :administrator_count))
-    (when (plist-get full-info :can_get_members)
-      ;; Asynchronously fetch/insert supergroup members when [Show]
-      ;; button is pressed.  Button is used to avoid implicit members
-      ;; loading, see https://t.me/emacs_telega/36426
-      (telega--getSupergroupMembers supergroup nil nil nil
-        (telega--gen-ins-continuation-callback 'loading
-          (lambda (members)
-            (when members
-              (telega-ins "\n")
-              (telega-ins--chat-members members)))))
-      (telega-ins "\n"))
+      (telega-ins-describe-item (telega-i18n "lng_profile_hide_participants")
+        (let ((has-hidden-members-p (plist-get full-info :has_hidden_members)))
+          (telega-ins--text-button (if has-hidden-members-p
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_ignored)
+                      (telega--toggleSupergroupHasHiddenMembers
+                       supergroup (not has-hidden-members-p)))))
+        (telega-ins "\n")
+        (telega-ins--help-message
+         (telega-ins-i18n "lng_profile_hide_participants_about")
+         nil)))
 
-    (when telega-debug
+    (telega-ins-describe-item (telega-i18n "lng_profile_participants_section")
+      (telega-ins-fmt "%d%s (%d online, %d admins)"
+        (plist-get full-info :member_count)
+        (telega-symbol 'member)
+        (or (plist-get chat :x-online-count) 0)
+        (plist-get full-info :administrator_count))
+      (when (plist-get full-info :can_get_members)
+        (telega-ins " ")
+        (telega-ins--box-button (telega-i18n "telega_show")
+          :value chat
+          :action #'telega-describe-chat-members)))
+
+    (when (and (listp telega-debug) (memq 'info telega-debug))
       (insert "\n---DEBUG---\n")
       (insert (propertize "Info: " 'face 'bold)
               (format "%S" supergroup) "\n")
@@ -779,7 +850,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega--getConnectedWebsites 'telega-describe-connected-websites)
 
       (telega-ins " ")
-      (telega-ins--button (telega-i18n "lng_settings_disconnect_all")
+      (telega-ins--box-button (telega-i18n "lng_settings_disconnect_all")
         'action (lambda (_ignore)
                   (when (yes-or-no-p
                          (concat (telega-i18n "lng_settings_disconnect_all_sure")
@@ -804,7 +875,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (let ((domain (telega-tl-str website :domain_name)))
           (telega-ins domain)
           (telega-ins " ")
-          (telega-ins--button (telega-i18n "lng_settings_disconnect")
+          (telega-ins--box-button (telega-i18n "lng_settings_disconnect")
             'action (lambda (_ignore)
                       (when (yes-or-no-p
                              (concat (telega-i18n "lng_settings_disconnect_sure"
@@ -828,7 +899,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins ", Last: ")
         (telega-ins--date (plist-get website :last_active_date))
         (telega-ins "\n")
-        
+
         (telega-ins--inline-delim)
         (telega-ins "\n")))
     ))
@@ -874,13 +945,13 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                 (telega-ins--with-face 'bold
                   (telega-ins "(" (telega-i18n "lng_sessions_header") ")"))
                 (telega-ins " ")
-                (telega-ins--button "Logout"
+                (telega-ins--box-button (telega-i18n "lng_settings_logout")
                   'action (lambda (_ignore)
                             (when (yes-or-no-p "Really Logout? ")
                               (telega-logout)))))
 
             (telega-ins " ")
-            (telega-ins--button (telega-i18n "lng_sessions_terminate")
+            (telega-ins--box-button (telega-i18n "lng_sessions_terminate")
               :value session
               :action (lambda (sess)
                         (when (yes-or-no-p
@@ -967,32 +1038,32 @@ Call CALLBACK on updates."
       (telega-ins "--------------\n")
 
       (telega-ins "Use Proxy: ")
-      (telega-ins--button (if enabled
-                              telega-symbol-ballout-check
-                            telega-symbol-ballout-empty)
+      (telega-ins--text-button (if enabled
+                                   (telega-symbol 'checkbox-on)
+                                 (telega-symbol 'checkbox-off))
         'face 'telega-link
         :value (and (not enabled) recent)
-        :action `(lambda (proxy)
-                   (if proxy
-                       (and (telega--enableProxy proxy)
-                            (setq telega--conn-state 'ConnectingToProxy))
-                     (telega--disableProxy))
-                   (telega-describe-network)))
+        :action (lambda (proxy)
+                  (if proxy
+                      (and (telega--enableProxy proxy)
+                           (setq telega--conn-state 'ConnectingToProxy))
+                    (telega--disableProxy))
+                  (telega-describe-network)))
       (telega-ins "\n")
       (dolist (proxy proxies)
         (if (eq proxy enabled)
             (telega-ins telega-symbol-ballout-check)
 
-          (telega-ins--button
+          (telega-ins--text-button
               (if (and (eq proxy recent) (eq proxy enabled))
-                  telega-symbol-ballout-check
-                telega-symbol-ballout-empty)
+                  (telega-symbol 'checkbox-on)
+                (telega-symbol 'checkbox-off))
             'face 'telega-link
             :value proxy
-            :action `(lambda (proxy)
-                       (and (telega--enableProxy proxy)
-                            (setq telega--conn-state 'ConnectingToProxy))
-                       (telega-describe-network))))
+            :action (lambda (proxy)
+                      (and (telega--enableProxy proxy)
+                           (setq telega--conn-state 'ConnectingToProxy))
+                      (telega-describe-network))))
         (telega-ins " ")
         (telega-ins--column nil nil
           (telega-ins-fmt "%s:%d\n"
@@ -1119,7 +1190,7 @@ SETTING is one of `show-status', `allow-chat-invites' or `allow-calls'."
       (telega-ins (telega-i18n "lng_blocked_list_title") ":" "\n")
       (dolist (msg-sender blocked-senders)
         ;; I18N: profile_unblock_user -> Unblock User
-        (telega-ins--button (telega-i18n "lng_profile_unblock_user")
+        (telega-ins--box-button (telega-i18n "lng_profile_unblock_user")
           :value msg-sender
           :action #'telega-msg-sender-unblock)
         (telega-ins " ")
