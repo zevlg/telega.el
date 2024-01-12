@@ -256,6 +256,8 @@ Return parsed command."
          (let* ((telega-server--callback-extra (plist-get value :@extra))
                 (call-cb (telega-server--callback-get
                           telega-server--callback-extra)))
+           ;; NOTE: Some callbacks might stuck in the
+           ;; `telega-server--callbacks' due to runtime errors causing
            (if call-cb
                (telega-server--callback-rm telega-server--callback-extra)
              (setq call-cb telega-server--on-event-func))
@@ -395,7 +397,12 @@ Used to optimize events processing in the `telega-server--parse-commands'."
                   (cl-delete cmd-val parsed-commands
                              :test #'telega-server--commands-equal))))
     (dolist (cmd (nreverse parsed-commands))
-      (apply #'telega-server--dispatch-cmd cmd))
+      ;; NOTE: make sure all commands are processed even if some
+      ;; triggers an error
+      (condition-case-unless-debug nil
+          (apply #'telega-server--dispatch-cmd cmd)
+        (error
+         (message "telega: Error while processing cmd %S" cmd))))
 
     (if telega-server--idle-timer
         (timer-set-time telega-server--idle-timer

@@ -329,6 +329,9 @@ Document message with the #telega_favorite_messages hashtag.")
 Favorite message is a plist with at least `:chat_id', `:id' properties.
 `:timestamp' and `:comment' properties are also supported.")
 
+(defvar telega--speech-recognition-trial nil
+  "The parameters of speech recognition without Telegram Premium.")
+
 ;; Searching
 (defvar telega-search-history nil
   "List of recent search queries.")
@@ -1729,7 +1732,7 @@ Return t."
            (,facesym ,face)
            (,result (progn ,@body)))
        (when ,facesym
-         (add-face-text-property ,startsym (point) ,facesym 'append))
+         (add-face-text-property ,startsym (point) ,facesym))
        ,result)))
 
 (defmacro telega-ins--column (column fill-col &rest body)

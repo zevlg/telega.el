@@ -386,6 +386,11 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_sure_delete_contact"
   :value "Are you sure you want to delete {contact} from your contact list?")
 
+ ("lng_maps_point"
+  :value "Location")
+ ("lng_info_location_label"
+  :value "Location")
+
  ("lng_manage_linked_channel"
   :value "Linked channel")
  ("lng_channel_discuss"
@@ -823,8 +828,12 @@ Example: 23 y.o. designer from San Francisco")
   :value "Leave video chat")
  ("lng_group_call_leave_sure"
   :value "Do you want to leave this video chat?")
+ ("lng_group_call_join"
+  :value "Join")
  ("lng_group_call_join_as_header"
   :value "Join Video Chat as...")
+ ("lng_group_call_leave"
+  :value "Leave")
 
  ("lng_group_call_members"
   :one_value "{count} participant"
@@ -1091,6 +1100,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Live stream")
  ("lng_view_button_request_join"
   :value "Request to Join")
+ ("lng_view_button_external_link"
+  :value "Open link")
  ("lng_unblock_button"
   :value "Unblock")
 
@@ -1339,6 +1350,12 @@ You can send them an invite link as message instead.")
   :value "Favorite stickers")
  ("lng_recent_stickers"
   :value "Recently used")
+ ("lng_stickers_featured_add"
+  :value "Add")
+ ("lng_stickers_remove_pack"
+  :value "Remove \"{sticker_pack}\"?")
+ ("lng_stickers_remove_pack_button"
+  :value "Remove Stickers")
 
  ;; Prompt helpers
  ("lng_message_ph"
@@ -1488,4 +1505,12 @@ You can send them an invite link as message instead.")
   :value "{user} set the same wallpaper for this chat")
  ("lng_action_set_wallpaper_both_me"
   :value "You set a new wallpaper for {user} and you.")
+
+
+ ;; messageGiftedPremium
+ ("lng_action_gift_received"
+  :value "{user} sent you a gift for {cost}")
+ ("lng_action_gift_received_me"
+  :value "You sent to {user} a gift for {cost}")
+
  )

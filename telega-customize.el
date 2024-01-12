@@ -1110,6 +1110,11 @@ See `telega-ins--message' for NO-HEADER argument."
   :type 'function
   :group 'telega-inserter)
 
+(defcustom telega-inserter-for-sponsored-msg-button 'telega-ins--sponsored-message
+  "Inserter for sponsored message button in a chat buffer."
+  :type 'function
+  :group 'telega-inserter)
+
 (defcustom telega-inserter-for-msg-notification 'telega-ins--msg-notification
   "*Inserter used to form body for notification bubble."
   :type 'function
@@ -1614,8 +1619,7 @@ See `mode-line-buffer-identification'."
   :group 'telega-chat)
 
 (defcustom telega-chat-footer-format
-  '((:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-sponsored-messages) "\n"))
+  '((:eval (telega-chatbuf-footer-sponsored-messages))
     (:eval (telega-chatbuf-header-concat
             (telega-chatbuf-footer-prompt-delim t t) "\n"))
     (:eval (telega-chatbuf-header-concat
@@ -1792,12 +1796,6 @@ Use this for Client Side Messages Filtering."
 
 (defcustom telega-msg-rainbow-title t
   "*Non-nil to display user names in chatbuf with their assigned color."
-  :type 'boolean
-  :group 'telega-msg)
-
-(defcustom telega-msg-heading-whole-line nil
-  "*Non-nil to spread `telega-msg-heading' face to full line width.
-Also applies to `telega-msg-inline-reply' face."
   :type 'boolean
   :group 'telega-msg)
 

@@ -43,6 +43,7 @@
 (require 'telega-customize)
 (require 'telega-media)
 (require 'telega-topic)
+(require 'telega-folders)
 
 (declare-function telega-root--buffer "telega-root")
 (declare-function telega-chatbuf--name "telega-chat" (chat))
@@ -661,10 +662,17 @@ If AS-IS is non-nil, then do not apply time adjustment using
 
 (defun telega-distance-human-readable (meters)
   "Convert METERS to human readable string."
-  (cond ((not (integerp meters)) "unknown")
-        ((> meters 10000) (format "%d km" (/ meters 1000)))
-        ((>= meters 1000) (format "%.1f km" (/ meters 1000.0)))
-        (t (format "%d meters" meters))))
+  (cond ((not (integerp meters))
+         "unknown")
+        ((> meters 10000)
+         (telega-i18n "lng_action_proximity_distance_km"
+           :count (/ meters 1000)))
+        ((>= meters 1000)
+         (telega-i18n "lng_action_proximity_distance_km"
+           :count (string-to-number (format "%.1f" (/ meters 1000.0)))))
+        (t
+         (telega-i18n "lng_action_proximity_distance_m"
+           :count meters))))
 
 (defun telega-number-human-readable (num &optional fmt)
   "Convert METERS to human readable string.
@@ -860,7 +868,8 @@ See `puny-decode-domain' for details."
                                 'face 'telega-entity-type-texturl)))
      (textEntityTypeTextUrl
       (telega-link-props 'url (telega-tl-str ent-type :url)
-                         'face 'telega-entity-type-texturl))
+                         'face 'telega-entity-type-texturl
+                         'help-echo (telega-tl-str ent-type :url)))
      (textEntityTypeBotCommand
       '(face telega-entity-type-botcommand))
      (textEntityTypeMediaTimestamp

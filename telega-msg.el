@@ -871,6 +871,28 @@ non-nil."
 
 (defun telega-msg-open-sponsored (sponsored-msg)
   "Open sponsored message SPONSORED-MSG."
+  (telega--clickChatSponsoredMessage telega-chatbuf--chat sponsored-msg)
+  (let* ((sponsor (plist-get sponsored-msg :sponsor))
+         (sponsor-type (plist-get sponsor :type)))
+    (cl-ecase (telega--tl-type sponsor-type)
+      (messageSponsorTypeBot
+       )
+      (messageSponsorTypeWebApp
+       )
+      (messageSponsorTypePublicChannel
+       (let ((chat (telega-chat-get (plist-get sponsor-type :chat_id))))
+         (telega-ins--msg-sender chat
+           :with-avatar-p nil
+           :with-username-p t
+           :with-brackets-p t)))
+
+      (messageSponsorTypePrivateChannel
+       (telega-ins (telega-tl-str sponsor-type :title)))
+
+      (messageSponsorTypeWebsite
+       (telega-browse-url (plist-get sponsor-type :url)))
+       ))
+
   (if-let ((tdlib-link (plist-get sponsored-msg :link)))
       (telega-tme-open-tdlib-link tdlib-link)
 
@@ -1158,8 +1180,11 @@ ARGS are passed directly to `telega-ins--msg-sender'."
 (defun telega-msg-sender-title--special (msg-sender)
   "Return title for message sender MSG-SENDER to be used in special messages."
   (telega-ins--as-string
-   (telega-ins--with-face 'bold
-     (telega-ins--msg-sender msg-sender :with-avatar-p t))))
+   (telega-ins--raw-button
+       (list 'action (lambda (_button)
+                       (telega-describe-msg-sender msg-sender)))
+     (telega-ins--with-face 'bold
+       (telega-ins--msg-sender msg-sender :with-avatar-p t)))))
 
 (defun telega-msg-sender-color (msg-sender &optional background-mode)
   "Return color for the message sender MSG-SENDER.
@@ -1887,21 +1912,30 @@ be added."
           (cl-case (telega--tl-type chat-av-reactions)
             (chatAvailableReactionsSome
              (mapcar (lambda (reaction-type)
-                       (cl-assert (eq (telega--tl-type reaction-type)
-                                      'reactionTypeEmoji))
-                       (telega-tl-str reaction-type :emoji))
+                       (cons (cl-ecase (telega--tl-type reaction-type)
+                               (reactionTypeEmoji
+                                (telega-tl-str reaction-type :emoji))
+                               (reactionTypeCustomEmoji
+                                (telega-ins--as-string
+                                 (telega-ins--sticker-image
+                                  (telega-custom-emoji-get
+                                   (plist-get reaction-type :custom_emoji_id))))))
+                             reaction-type))
                      (plist-get chat-av-reactions :reactions)))
             (chatAvailableReactionsAll
-             telega-emoji-reaction-list)))
-         (choices (if (plist-get msg-av-reactions :allow_custom_emoji)
-                      (append reaction-choices (list custom-label))
-                    reaction-choices))
+             (mapcar (lambda (emoji)
+                       (cons emoji
+                             (list :@type "reactionTypeEmoji" :emoji emoji)))
+                     telega-emoji-reaction-list))))
+         (choices (append (mapcar #'car reaction-choices)
+                          (when (plist-get msg-av-reactions :allow_custom_emoji)
+                            (list custom-label))))
          (choice (funcall telega-completing-read-function
                           (format "Add %sReaction: " (if big-p "BIG " ""))
                           choices nil t)))
     (if (not (equal choice custom-label))
         (telega--addMessageReaction
-         msg (list :@type "reactionTypeEmoji" :emoji choice)
+         msg (cdr (assoc choice reaction-choices))
          big-p 'udate-recent)
 
       (let ((top-av-reactions (plist-get msg-av-reactions :top_reactions))
@@ -2121,9 +2155,89 @@ Return `loading' if replied story starts loading."
   (seq-doseq (msg (plist-get messages :messages))
     (telega-msg-preview--add msg)))
 
-(provide 'telega-msg)
+
+;;; Sponsored messages
+(defvar telega-sponsored-msg-button-menu-map
+  (let ((menu-map (make-sparse-keymap "Telega Sponsored Message")))
+    (bindings--define-key menu-map [describe]
+      '(menu-item (telega-i18n "lng_info_about_label")
+                  telega-describe-sponsored-message
+                  :help "Describe the sponsored message"))
+    menu-map))
+
+(defvar telega-sponsored-msg-button-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map button-map)
+
+    (define-key map (kbd "i") 'telega-describe-sponsored-message)
+
+    ;; Menu for right mouse on a message
+    (define-key map [down-mouse-3] telega-sponsored-msg-button-menu-map)
+    (define-key map [mouse-3] #'ignore)
+
+    map))
+
+(define-button-type 'telega-sponsored-msg
+  :supertype 'telega
+  :inserter telega-inserter-for-sponsored-msg-button
+
+  ;; NOTE: To make input method works under message buttons,
+  ;; See `quail-input-method' for details
+  'read-only t
+  'front-sticky t
+
+  'keymap telega-sponsored-msg-button-map
+  'action 'telega-sponsored-msg--action)
+
+(defun telega-sponsored-msg-at-down-mouse-3 ()
+  "Return sponsored message at down-mouse-3 press.
+Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
+  (when-let* ((ev-key (assq 'down-mouse-3 (append (this-command-keys) nil)))
+              (ev-start (cadr ev-key))
+              (ev-point (posn-point ev-start)))
+    (telega-sponsored-msg-at ev-point)))
+
+(defun telega-sponsored-msg-at (&optional pos)
+  "Return current sponsored message at POS point.
+If POS is ommited, then return massage at current point.
+For interactive commands acting on message at point/mouse-event
+use `telega-sponsored-msg-for-interactive' instead."
+  (when-let* ((button (button-at (or pos (point))))
+              (value (button-get button :value)))
+    (when (and button (eq (button-type button) 'telega-sponsored-msg))
+      (button-get button :value))))
+
+(defun telega-sponsored-msg-for-interactive ()
+  "Return sponsored message at mouse event or at current point."
+  (when-let ((msg (or (telega-sponsored-msg-at-down-mouse-3)
+                      (telega-sponsored-msg-at (point)))))
+    msg))
+
+(defun telega-sponsored-msg--hide (sponsored-msg)
+  "Hide SPONSORED-MSG in the chatbuf footer."
+  (interactive (list (telega-sponsored-msg-for-interactive)))
+  (plist-put sponsored-msg :telega-hidden t)
+  ;; TODO: remove message's node
+  ;(telega-msg-redisplay sponsored-msg)
+  )
+
+(defun telega-describe-sponsored-message (sponsored-msg)
+  "Show info about SPONSORED-MESSAGE at point."
+  (interactive (list (telega-sponsored-msg-for-interactive)))
+  (with-telega-help-win "*Telegram Sponsor Info*"
+    (telega-ins-describe-item "Id"
+      (telega-ins-fmt "%d" (plist-get sponsored-msg :message_id)))
+    (let ((sponsor (plist-get sponsored-msg :sponsor)))
+      ;; TODO
+      )
+    (when-let ((add-info (telega-tl-str sponsored-msg :additional_info)))
+      (telega-ins-describe-item "Additional Info"
+        (telega-ins add-info)))
+    ))
 
 
+(provide 'telega-msg)
+
 ;; Load favorite messages
 (add-hook 'telega-chats-fetched-hook #'telega-msg--favorite-messages-file-fetch)
 

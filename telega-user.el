@@ -223,15 +223,19 @@ If AS-NUMBER is specified, return online status as number:
 (defun telega-describe-user (user)
   "Show info about USER."
   (interactive (list (telega-user-at (point))))
-  (with-telega-help-win "*Telega User*"
-    ;; NOTE: `getUserFullInfo' might generate `updateUserFullInfo'
-    ;; event causing redisplay *Telega User*, so we set
-    ;; `telega--help-win-inserter' *after* possible call to
-    ;; `getUserFullInfo' to avoid double redisplay
-    (telega-describe-user--inserter (plist-get user :id))
+  ;; NOTE: `getUserFullInfo' might generate `updateUserFullInfo' event
+  ;; causing redisplay *Telega User*, so we get user full info before
+  ;; showing *Telega User* buffer
+  (let ((telega-full-info-offline-p nil))
+    (telega--full-info user))
 
+  (with-telega-help-win "*Telega User*"
+    ;; NOTE: Set these params *before* calling inserter, because
+    ;; inserter might use these params.
     (setq telega--help-win-param (plist-get user :id))
     (setq telega--help-win-inserter #'telega-describe-user--inserter)
+
+    (telega-describe-user--inserter (plist-get user :id))
 
     ;; Animate emoji status, if any
     (when-let ((emoji-status (plist-get user :emoji_status)))

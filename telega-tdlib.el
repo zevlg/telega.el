@@ -1176,20 +1176,28 @@ TDLib 1.8.12:
   "Return list of sponsored messages for the CHAT."
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (unless (telega--tl-error-p reply)
+      (when (and reply (not (telega--tl-error-p reply)))
         reply)
 
     (list :@type "getChatSponsoredMessages"
           :chat_id (plist-get chat :id))
     callback))
 
-(defun telega--viewSponsoredMessage (chat sponsored-msg)
-  "Inform that SPONSORED-MSG has been viewed in the CHAT."
-  (cl-assert (eq 'sponsoredMessage (telega--tl-type sponsored-msg)))
+(defun telega--view-sponsored-messages (chat sponsored-messages)
+  "View SPONSORED-MESSAGES in the CHAT."
   (telega-server--send
    (list :@type "viewMessages"
          :chat_id (plist-get chat :id)
-         :message_ids (vector (plist-get sponsored-msg :message_id)))))
+         :message_ids (cl-map #'vector (telega--tl-prop :message_id)
+                              sponsored-messages))))
+
+(defun telega--clickChatSponsoredMessage (chat sponsored-msg)
+  "Inform that SPONSORED-MSG has been viewed in the CHAT."
+  (cl-assert (eq 'sponsoredMessage (telega--tl-type sponsored-msg)))
+  (telega-server--send
+   (list :@type "clickChatSponsoredMessage"
+         :chat_id (plist-get chat :id)
+         :message_id (plist-get sponsored-msg :message_id))))
 
 
 (defun telega--setAuthenticationPhoneNumber (phone-number)
@@ -2896,13 +2904,7 @@ Mode activates for
          :chat_id (plist-get chat :id))
    callback))
 
-(defun telega--canBoostChat (chat &optional callback)
-  (telega-server--call
-   (list :@type "canBoostChat"
-         :chat_id (plist-get chat :id))
-   callback))
-
-(defun telega--boostChat (chat)
+(defun telega--boostChat (chat &rest slot-ids)
   (telega-server--send
    (list :@type "boostChat"
          :chat_id (plist-get chat :id))))

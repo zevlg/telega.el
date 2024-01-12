@@ -1836,7 +1836,8 @@ View only if message matches TEMEX or not yet viewed."
                      '(:@type "messageSourceForumTopicHistory"))
                     ((telega-chatbuf--thread-msg)
                      '(:@type "messageSourceMessageThreadHistory"))
-                    (t '(:@type "messageSourceChatHistory"))))))
+                    (t
+                     '(:@type "messageSourceChatHistory"))))))
 
 (defun telega-chatbuf--manage-point (&optional point only-prompt-p)
   "Manage current chatbuf's point.
@@ -2130,10 +2131,10 @@ Use this to surrond header with some prefix and suffix."
                      (propertize "No title" 'face 'telega-shadow))
                  " ")
      (if (plist-get group-call :is_joined)
-         (telega-ins--box-button "Leave"
+         (telega-ins--box-button (telega-i18n "lng_group_call_leave")
            :value group-call
            :action #'telega-group-call-leave)
-       (telega-ins--box-button "Join"
+       (telega-ins--box-button (telega-i18n "lng_group_call_join")
          :value group-call
          :action #'telega-group-call-join))
      (telega-ins "\n")
@@ -2146,7 +2147,7 @@ Use this to surrond header with some prefix and suffix."
         (plist-get group-call :scheduled_start_date))
        ;; Start Now
        (telega-ins " ")
-       (telega-ins--box-button "Start Now"
+       (telega-ins--box-button (telega-i18n "lng_group_call_start_now")
          :value group-call
          :action #'telega--startScheduledGroupCall)
        (telega-ins "\n"))
@@ -2255,8 +2256,18 @@ Use this to surrond header with some prefix and suffix."
               (plist-get telega-chatbuf--chat :telega-sponsored-messages)))
     (telega-ins--as-string
      (seq-doseq (sponsored-msg (plist-get sponsored-messages :messages))
-       (telega-ins--chat-sponsored-message
-        telega-chatbuf--chat sponsored-msg)))))
+      (telega-ins--text-button (telega-symbol 'button-close)
+        'face 'telega-link
+        :value sponsored-msg
+        :action #'telega-sponsored-msg--hide)
+      (telega-ins " ")
+      (telega-ins--with-face 'telega-shadow
+        (telega-ins (telega-i18n (if (plist-get sponsored-msg :is_recommended)
+                                     "lng_recommended"
+                                   "lng_sponsored")))
+        (telega-ins "\n"))
+      (telega-ins--line-wrap-prefix (concat "   " (telega-symbol 'vertical-bar))
+        (telega-button--insert 'telega-sponsored-msg sponsored-msg))))))
 
 (defun telega-chatbuf-footer-prompt-delim (&optional with-actions-p
                                                      with-loading-p)
@@ -2717,14 +2728,19 @@ Recover previous active action after BODY execution."
     ;; message as viewed as well
     (when-let ((sponsored-messages
                 (plist-get telega-chatbuf--chat :telega-sponsored-messages))
+               (has-messages-p
+                (not (seq-empty-p (plist-get sponsored-messages :messages))))
+               (not-preview-p
+                (not telega-chat-preview-mode))
                (sponsored-views
                 (or (plist-get telega-chatbuf--chat :telega-sponsored-views) 0)))
       (when (and (telega-chatbuf--last-msg-loaded-p)
                  (pos-visible-in-window-p
                   (ewoc-location (ewoc--footer telega-chatbuf--ewoc))))
         (when (zerop sponsored-views)
-          (seq-doseq (sponsored-msg (plist-get sponsored-messages :messages))
-            (telega--viewSponsoredMessage telega-chatbuf--chat sponsored-msg)))
+          (telega--view-sponsored-messages
+           telega-chatbuf--chat
+           (plist-get sponsored-messages :messages)))
 
         (plist-put telega-chatbuf--chat :telega-sponsored-views
                    (1+ sponsored-views))
@@ -4728,7 +4744,7 @@ If `\\[universal-argument]' is given, then attach live location."
   (interactive (list (with-telega-chatbuf-action "ChoosingLocation"
                        (if current-prefix-arg
                            (telega-read-live-location "Live Location")
-                         (telega-read-location "Location")))
+                         (telega-read-location (telega-i18n "lng_maps_point"))))
                      (when current-prefix-arg
                        (let* ((choices `(("1 min" . 60)
                                          ("15 min" . ,(* 15 60))

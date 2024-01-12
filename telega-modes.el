@@ -778,10 +778,11 @@ To be displayed in the modeline.")
     (telega--getChatMessagePosition telega-image--message
         '(:@type "searchMessagesFilterPhoto") nil
       (lambda (count)
-        (with-current-buffer buf
-          (setcar telega-image--position count)
-          (when (cdr telega-image--position)
-            (telega-image-mode--update-modeline)))))
+        (when (buffer-live-p buf)
+          (with-current-buffer buf
+            (setcar telega-image--position count)
+            (when (cdr telega-image--position)
+              (telega-image-mode--update-modeline))))))
     ))
 
 (defvar telega-image-mode-map
@@ -1457,7 +1458,9 @@ EVENT must be \"updateDeleteMessages\"."
     (setq telega-active-location--messages nil))
 
   (when telega-active-location--messages
-    (telega-ins (telega-symbol 'location) "Locations: ")
+    (telega-ins (telega-symbol 'location)
+                (telega-i18n "lng_info_location_label")
+                ": ")
 
     (dolist (loc-msg telega-active-location--messages)
       (telega-ins "\n")
@@ -2086,7 +2089,7 @@ TDLib's autoDownloadSettings structure."
               (msg (plist-get proc-plist :message)))
     (with-telega-chatbuf (telega-msg-chat msg)
       (when telega-play-media-sequence-mode
-        ;; todo
+        ;; TODO
         ))))
 
 ;; Advice for the `telega-msg--

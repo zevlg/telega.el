@@ -645,7 +645,8 @@ Return auto-deletion timer value."
   "Matches if chat has sponsored messages.
 BE AWARE: This filter will do blocking request for every chat."
   (when (telega-chat-match-p chat '(type channel))
-    (telega--getChatSponsoredMessages chat)))
+    (let ((csm (telega--getChatSponsoredMessages chat)))
+      (not (seq-empty-p (plist-get csm :messages))))))
 
 ;;; ellit-org: chat-temex
 ;; - has-protected-content ::

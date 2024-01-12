@@ -95,7 +95,7 @@
                            'telega-chat-scroll-conservatively
                            "0.7.3")
 (telega-obsolete--variable 'telega-week-day-names
-                           telega-i18n-weekday-names
+                           'telega-i18n-weekday-names
                            "0.7.4")
 (telega-obsolete--variable 'telega-chat-use-markdown-version
                            'telega-chat-input-markups
@@ -226,6 +226,10 @@
 (telega-obsolete--variable 'telega-symbol-blank-button
                            nil         ; (telega-symbol 'checkbox-off)
                            "0.8.230")
+
+(telega-obsolete--variable 'telega-msg-heading-whole-line
+                           nil
+                           "0.8.231")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

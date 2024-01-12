@@ -849,10 +849,10 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
    msg-sender (or create-image-fun #'telega-avatar--create-image-three-lines)
    force-update (or cache-prop :telega-avatar-3)))
 
-(defun telega-chat-photo-info-image-one-line (chat-photo-info
-                                              &optional force-update)
+(defun telega-chat-photo-info--image (chat-photo-info
+                                      &optional cheight force-update)
   "Create image for chatPhotoInfo TL structure."
-  (let* ((cheight 1)
+  (let* ((cheight (or cheight 2))
          (create-image-fun
           (lambda (_photoignored &optional _fileignored)
             (let ((small-file (plist-get chat-photo-info :small)))
@@ -869,7 +869,13 @@ By default CREATE-IMAGE-FUN is `telega-avatar--create-image-three-lines'."
     (telega-media--image
      (cons chat-photo-info create-image-fun)
      (cons chat-photo-info :small)
-     force-update)))
+     force-update
+     (intern (format ":telega-%d-lines" cheight)))))
+
+(defun telega-chat-photo-info-image-one-line (chat-photo-info
+                                              &optional force-update)
+  "Create image for chatPhotoInfo TL structure."
+  (telega-chat-photo-info--image chat-photo-info 1 force-update))
 
 
 ;; Location

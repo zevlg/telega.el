@@ -119,6 +119,8 @@ Loaded from \"etc/langs/en.plist\" in `telega-i18n-init'.")
   "Apply plural rule corresponding N value.
 Return one of: `:zero_value', `:one_value', `:two_value',
 `:few_value', `:many_value' or `:other_value'."
+  (when (floatp n)
+    (setq n (floor n)))
   (or (and telega-i18n--plural-func
            (funcall telega-i18n--plural-func n))
       :other_value))
