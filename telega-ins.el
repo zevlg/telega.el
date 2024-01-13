@@ -2770,7 +2770,7 @@ Return user, chat or string with the sender title."
             )
       t)))
 
-(cl-defun telega-ins--message0 (msg &key no-header addon-header-inserter)
+(cl-defun telega-ins--message0 (msg &key no-header sender addon-header-inserter)
   "Insert message MSG.
 If NO-HEADER is non-nil, then do not display message header
 unless message is edited.
@@ -2793,9 +2793,11 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            ;; Workaround for case when `:forward_info' is unset (for
            ;; outgoing messages [what?] for example)
            (msg-for-replies-p (and (telega-replies-p chat) fwd-info))
-           (sender (if msg-for-replies-p
-                       (telega--msg-origin-sender (plist-get fwd-info :origin))
-                     (telega-msg-sender msg)))
+           (sender (or sender
+                       (if msg-for-replies-p
+                           (telega--msg-origin-sender
+                            (plist-get fwd-info :origin))
+                         (telega-msg-sender msg))))
            (avatar (if msg-for-replies-p
                        (telega-msg-sender-avatar-image-three-lines sender)
                      (telega-msg-sender-avatar-image sender)))
@@ -3646,7 +3648,9 @@ Short version."
   "Inserter for call message MSG in rootbuf."
   (let ((telega-chat-fill-column telega-root-fill-column)
         (telega-msg-heading-with-date-and-status t))
-    (telega-ins--message msg)))
+    (telega-ins--message msg
+      :sender (when (telega-msg-match-p msg 'outgoing)
+                (telega-chat-user (telega-msg-chat msg))))))
 
 (defun telega-ins--chat-my-restrictions (chat)
   "Insert my restrictions (if any) in the CHAT.
