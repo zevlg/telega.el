@@ -1732,7 +1732,7 @@ Return t."
            (,facesym ,face)
            (,result (progn ,@body)))
        (when ,facesym
-         (add-face-text-property ,startsym (point) ,facesym))
+         (add-face-text-property ,startsym (point) ,facesym 'append))
        ,result)))
 
 (defmacro telega-ins--column (column fill-col &rest body)
