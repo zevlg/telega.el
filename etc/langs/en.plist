@@ -112,6 +112,10 @@ Example: 23 y.o. designer from San Francisco")
   :zero_value "No answers"
   :one_value "{count} answer"
   :other_value "{count} answers")
+ ("lng_polls_closed"
+  :value "Final results")
+ ("lng_polls_stop"
+  :value "Stop poll")
  ("lng_polls_stop_warning"
   :value "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.")
  ("lng_polls_solution_title"
@@ -743,6 +747,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "Files")
 
  ;; #5584 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5584
+ ("lng_mute_duration_hours"
+  :one_value "For {count} hour"
+  :other_value "For {count} hours")
  ("lng_mute_duration_forever"
   :value "Forever")
  ("lng_mute_box_tip"
@@ -1495,6 +1502,12 @@ You can send them an invite link as message instead.")
  ("lng_profile_similar_channels"
   :one_value "{count} similar channel"
   :other_value "{count} similar channels")
+ ("lng_sent_date"
+  :value "Sent: {date}")
+ ("lng_forwarded_date"
+  :value "Original: {date}")
+ ("lng_inline_bot_via"
+  :value "via {inline_bot}")
 
  ;; Chat Background
  ("lng_action_set_wallpaper"

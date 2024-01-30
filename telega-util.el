@@ -2701,12 +2701,17 @@ If FOR-PARAM is specified, then insert only if
                       (eq telega--help-win-param for-param))
               (telega-help-win--rm-tdlib-callback
                telega-server--callback-extra)
-              (let ((inhibit-read-only t))
+              (let ((inhibit-read-only t)
+                    ;; NOTE: retain text properties of the
+                    ;; "Loading..." label
+                    (text-props (when show-loading-p
+                                  (text-properties-at marker))))
                 (when show-loading-p
                   (delete-region marker (+ marker marker-len)))
                 (telega-save-excursion
                   (goto-char marker)
-                  (apply insert-func insert-args))))))))))
+                  (telega-ins--with-props text-props
+                    (apply insert-func insert-args)))))))))))
 
 (defun telega-translate-region (beg end &optional choose-language-p inplace-p)
   "Translate region using Telegram API.

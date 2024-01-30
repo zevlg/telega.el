@@ -119,7 +119,6 @@ See docstring for `display-buffer' for the value meaning."
     (diff . diff-mode)                  ; not in language-detection
     (elixir . elixir-mode)
     (elisp . emacs-lisp-mode)
-    (emacslisp . emacs-lisp-mode)
     (erlang . erlang-mode)
     (fortran . fortran-mode)
     (go . go-mode)

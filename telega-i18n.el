@@ -46,7 +46,8 @@
 
 (defconst telega-i18n--alias-alist
   '(("telega_show" . "lng_usernames_activate_confirm")
-    ("telega_loading" . "lng_profile_loading"))
+    ("telega_loading" . "lng_profile_loading")
+    ("telega_for_n_hours" . "lng_mute_duration_hours"))
   "i18n names aliases alist.")
 
 (defconst telega-i18n--en-strings nil

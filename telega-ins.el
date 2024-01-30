@@ -239,48 +239,33 @@ single argument - slice number, starting from 0."
   "Insert FILESIZE in human readable format."
   (telega-ins (file-size-human-readable filesize)))
 
-(defun telega-ins--date (timestamp)
+(defun telega-ins--date (timestamp &optional fmt-type)
   "Insert TIMESTAMP.
-Format is:
-- HH:MM      if today
-- Mon/Tue/.. if on this week
-- DD.MM.YY   otherwise (uses `telega-old-date-format')"
-  (let* ((dtime (decode-time timestamp))
-         (current-ts (telega-time-seconds))
-         (ctime (decode-time current-ts))
-         (today00 (telega--time-at00 current-ts ctime)))
-    (if (and (> timestamp today00)
-             (< timestamp (+ today00 (* 24 60 60))))
-        (telega-ins-fmt "%02d:%02d" (nth 2 dtime) (nth 1 dtime))
+Use date format from `telega-date-format-alist' corresponding to FMT-TYPE.
+By default FMT-TYPE is determined by TIMESTAMP value."
+  (unless fmt-type
+    (let* ((current-ts (telega-time-seconds))
+           (ctime (decode-time current-ts))
+           (today00 (telega--time-at00 current-ts ctime)))
+      (if (and (> timestamp today00)
+               (< timestamp (+ today00 (* 24 60 60))))
+          (setq fmt-type 'today)
 
-      (let* ((week-day (nth 6 ctime))
-             (mdays (+ week-day
-                       (- (if (< week-day telega-week-start-day) 7 0)
-                          telega-week-start-day)))
-             (week-start00 (telega--time-at00
-                            (- current-ts (* mdays 24 3600)))))
-        (if (and (> timestamp week-start00)
-                 (< timestamp (+ week-start00 (* 7 24 60 60))))
-            (telega-ins (nth (nth 6 dtime) telega-i18n-weekday-names))
+        (let* ((week-day (nth 6 ctime))
+               (mdays (+ week-day
+                         (- (if (< week-day telega-week-start-day) 7 0)
+                            telega-week-start-day)))
+               (week-start00 (telega--time-at00
+                              (- current-ts (* mdays 24 3600)))))
+          (if (and (> timestamp week-start00)
+                   (< timestamp (+ week-start00 (* 7 24 60 60))))
+              (setq fmt-type 'this-week)
+            (setq fmt-type 'old))))))
 
-          (telega-ins
-           (format-spec telega-old-date-format
-                        (format-spec-make
-                         ?D (format "%02d" (nth 3 dtime))
-                         ?M (format "%02d" (nth 4 dtime))
-                         ?Y (format "%02d" (- (nth 5 dtime) 2000)))))))
-      )))
-
-(defun telega-ins--date-iso8601 (timestamp)
-  "Insert TIMESTAMP in ISO8601 format."
-  (telega-ins (format-time-string "%FT%T%z" timestamp)))
-
-(defun telega-ins--date-full (timestamp)
-  "Insert TIMESTAMP in full format - DAY MONTH YEAR."
-  (cl-destructuring-bind (day month year)
-      (seq-subseq (decode-time timestamp) 3 6)
-    (telega-ins-fmt "%d %s %d"
-      day (nth month (assq 'full telega-i18n-month-names)) year)))
+  (telega-ins
+   (format-time-string (or (cdr (assq fmt-type telega-date-format-alist))
+                           "%FT%T%z")
+                       timestamp)))
 
 (defun telega-ins--date-relative (timestamp)
   "Insert relative date for the timestamp."
@@ -299,7 +284,8 @@ Format is:
              :time formatted-time))
           (t
            (telega-ins-i18n "lng_mediaview_date_time"
-             :date (telega-ins--as-string (telega-ins--date-full timestamp))
+             :date (telega-ins--as-string
+                    (telega-ins--date timestamp 'date-long))
              :time formatted-time)))
     ))
 
@@ -1387,8 +1373,12 @@ Return `non-nil' if WEB-PAGE has been inserted."
                              (anonymous-p "lng_polls_anonymous")
                              (quiz-p "lng_polls_public_quiz")
                              (t "lng_polls_public"))))
-    (when (and quiz-p (plist-get poll-type :explanation))
-      (telega-ins " " (telega-symbol 'bulp)))
+    (when (and quiz-p (telega-tl-str poll-type :explanation))
+      (telega-ins " ")
+      (telega-ins--text-button (telega-symbol 'bulp)
+        'action (lambda (_button)
+                  (message "telega: %s"
+                           (telega-tl-str poll-type :explanation)))))
     ;; I18N: polls_votes_count -> {count} votes
     (telega-ins ", " (telega-i18n (if quiz-p
                                       "lng_polls_answers_count"
@@ -1400,7 +1390,9 @@ Return `non-nil' if WEB-PAGE has been inserted."
         (telega-ins--image (telega-msg-sender-avatar-image-one-line
                             (telega-msg-sender rv)))))
     (when closed-p
-        (telega-ins ", " (propertize "closed" 'face 'error)))
+      (telega-ins ", ")
+      (telega-ins--with-face 'error
+        (telega-ins-i18n "lng_polls_closed")))
     (when (and (not closed-p) (plist-get msg :can_be_edited))
       (telega-ins " ")
       (telega-ins--box-button (concat "Close " (if quiz-p "Quiz" "Poll"))
@@ -1649,8 +1641,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
     (telega-ins--with-face 'bold
       (telega-ins (telega-i18n "lng_prizes_date") "\n"))
     (telega-ins--line-wrap-prefix "  "
-      (telega-ins--date-iso8601
-       (plist-get ga-params :winners_selection_date)))
+      (telega-ins--date
+       (plist-get ga-params :winners_selection_date) 'date-time))
 
     (when (> (telega-time-seconds)
              (plist-get ga-params :winners_selection_date))
@@ -1887,7 +1879,7 @@ Special messages are determined with `telega-msg-special-p'."
                           "lng_action_group_call_scheduled_group")
          :from sender-name
          :date (telega-ins--as-string
-                (telega-ins--date-iso8601 (plist-get content :start_date)))))
+                (telega-ins--date (plist-get content :start_date) 'date-time))))
       (messageVideoChatStarted
        (telega-ins-i18n "lng_action_group_call_started_group"
          :from sender-name))
@@ -1996,8 +1988,12 @@ Special messages are determined with `telega-msg-special-p'."
        (let* ((gifter-user-id (plist-get content :gifter_user_id))
               (gifter (unless (telega-zerop gifter-user-id)
                         (telega-user-get gifter-user-id)))
-              (from-me (telega-me-p sender))
-              (sticker (plist-get content :sticker)))
+              (sticker (plist-get content :sticker))
+              (currency (plist-get content :currency))
+              (cost
+               (format "%.2f%s " (/ (plist-get content :amount) 100.0)
+                       (or (cdr (assoc currency telega-currency-symbols-alist))
+                           currency))))
          (when sticker
            (telega-ins--image
             (telega-sticker--image sticker
@@ -2007,10 +2003,10 @@ Special messages are determined with `telega-msg-special-p'."
              (telega-ins-i18n "lng_action_gift_received_me"
                :user (telega-msg-sender-title--special
                       (telega-chat-user (telega-msg-chat msg)))
-               :cost (propertize "TODO" 'face 'bold))
+               :cost (propertize cost 'face 'bold))
            (telega-ins-i18n "lng_action_gift_received"
              :user sender-name
-             :cost (propertize "TODO" 'face 'bold)))))
+             :cost (propertize cost 'face 'bold)))))
       (messageChatSetBackground
        (let ((only-self-p (plist-get content :only_for_self))
              (sender-me-p (telega-me-p sender)))
@@ -2061,7 +2057,8 @@ Special messages are determined with `telega-msg-special-p'."
     (telega-ins " ")
     (if-let ((send-date (plist-get scheduled :send_date)))
         (telega-ins-i18n "telega_scheduled_at_date"
-          :date (telega-ins--as-string (telega-ins--date-iso8601 send-date)))
+          :date (telega-ins--as-string
+                 (telega-ins--date send-date 'date-time)))
       (telega-ins-i18n "telega_scheduled_when_online"))
     (telega-ins "\n"))
 
@@ -2420,23 +2417,23 @@ argument - MSG to insert additional information after header."
                           ")"))))
 
         ;; via <bot>
-        (let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
-               (via-bot (unless (zerop via-bot-user-id)
-                          (telega-user-get via-bot-user-id))))
-          (when via-bot
-            (telega-ins " via ")
-            ;; Use custom :action for clickable @bot link
-            (telega-ins--text-button (telega-user-title via-bot 'username)
-              'face 'telega-link          ;no button outline please
-              :action (lambda (_msg_ignored)
-                        (telega-describe-user via-bot)))))
+        (when-let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+                    (via-bot (unless (zerop via-bot-user-id)
+                               (telega-user-get via-bot-user-id)))
+                    (bot-title (telega-ins--as-string
+                                ;; Use custom :action for clickable @bot link
+                                (telega-ins--text-button
+                                    (telega-user-title via-bot 'username)
+                                  'face 'telega-username
+                                  :action (lambda (_msg_ignored)
+                                            (telega-describe-user via-bot))))))
+          (telega-ins " " (telega-i18n "lng_inline_bot_via"
+                            :inline_bot bot-title)))
 
         ;; Edited date
         (let ((edited-date (plist-get msg :edit_date)))
           (unless (zerop edited-date)
-            (telega-ins " " (telega-i18n "lng_edited")
-                        " " (telega-i18n "lng_schedule_at")
-                        " ")
+            (telega-ins " " (telega-i18n "lng_edited") " ")
             (telega-ins--date (plist-get msg :edit_date))))
 
         ;; Interaction info
@@ -2574,12 +2571,12 @@ Return user, chat or string with the sender title."
          (origin-chat-id (plist-get origin :chat_id))
          (origin-msg-id (plist-get origin :message_id))
          (origin-sender-id (plist-get origin :sender_user_id))
-         (from-chat-id (plist-get fwd-info :from_chat_id))
-         (from-msg-id (plist-get fwd-info :from_message_id))
-         (chat-id (if (and from-chat-id (not (zerop from-chat-id)))
+         (from-chat-id (telega--tl-get fwd-info :source :chat_id))
+         (chat-id (if (not (telega-zerop from-chat-id))
                       from-chat-id
                     origin-chat-id))
-         (msg-id (if (and from-msg-id (not (zerop from-msg-id)))
+         (from-msg-id (telega--tl-get fwd-info :source :message_id))
+         (msg-id (if (not (telega-zerop from-msg-id))
                      from-msg-id
                    origin-msg-id)))
     (cond ((and chat-id msg-id (not (zerop chat-id)) (not (zerop msg-id)))
@@ -2614,11 +2611,16 @@ Return user, chat or string with the sender title."
         (if (memq 'forward telega-chat-aux-inline-symbols)
             (telega-ins (telega-symbol 'forward) " ")
           (telega-ins-i18n "lng_forwarded" :user ""))
-        (let ((origin (plist-get fwd-info :origin)))
-          (telega-ins--msg-sender-chat-date (telega--msg-origin-sender origin)
-            :from-chat-id (plist-get fwd-info :from_chat_id)
+        (let ((origin (plist-get fwd-info :origin))
+              (source (plist-get fwd-info :source)))
+          (telega-ins--msg-sender-chat-date
+              (or (when-let ((src-sender (plist-get source :sender_id)))
+                    (telega-msg-sender src-sender))
+                  (telega--msg-origin-sender origin))
+            :from-chat-id (plist-get source :chat_id)
             :signature (telega-tl-str origin :author_signature)
-            :date (plist-get fwd-info :date)))
+            :date (or (plist-get source :date)
+                      (plist-get fwd-info :date))))
         (telega-ins "\n")))))
 
 (defun telega-ins--msg-reply-to-message-inline (msg &optional reply-to)
@@ -3659,10 +3661,11 @@ Return non-nil if restrictions has been inserted."
     (when (eq (telega--tl-type my-status) 'chatMemberStatusRestricted)
       (let* ((until (plist-get my-status :restricted_until_date))
              (until-date (unless (zerop until)
-                           (format-time-string
-                            (downcase telega-old-date-format) until)))
+                           (telega-ins--as-string
+                            (telega-ins--date until 'date))))
              (until-time (unless (zerop until)
-                           (format-time-string "%H:%M" until)))
+                           (telega-ins--as-string
+                            (telega-ins--date until 'time))))
              (perms (plist-get my-status :permissions)))
         (cond ((not (plist-get perms :can_send_basic_messages))
                (if (and until-date until-time)
@@ -3780,7 +3783,8 @@ MSG-REACTION is the `messageReaction' TDLib object."
   "Inserter for the message's MSG reactions."
   (let (ret)
     (unless reactions
-      (setq reactions (telega--tl-get msg :interaction_info :reactions)))
+      (setq reactions (telega--tl-get msg :interaction_info :reactions
+                                      :reactions)))
     (seq-doseq (msg-reaction reactions)
       (when ret
         (telega-ins "  "))

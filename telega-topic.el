@@ -206,7 +206,7 @@
         :action #'telega-chat-button-action)
       (telega-ins "\n")
       (telega-ins "Created: ")
-      (telega-ins--date-iso8601 (plist-get topic-info :creation_date))
+      (telega-ins--date (plist-get topic-info :creation_date) 'date-time)
       (telega-ins "\n")
       (telega-ins (telega-i18n "lng_topic_author_badge") ": ")
       (telega-ins--msg-sender

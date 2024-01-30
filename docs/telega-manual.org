@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.230)
+#+title: Telega Manual (v0.8.240)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -241,7 +241,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.23.
+version greater or equal to 1.8.24.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -463,7 +463,12 @@ Default value: "~/.telega"
   add ~:language_pack_id~ option.
   Only writable options can be set.  See: https://core.telegram.org/tdlib/options 
 
-  Default value: ~(:online t :localization_target "tdesktop")~
+  Default value: 
+  #+begin_src emacs-lisp
+    (:online t :localization_target "tdesktop" :use_storage_optimizer
+             :false :ignore_file_names :false)
+  #+end_src
+
 - User Option: ~telega-proxies~ 
 
   List of proxies.
@@ -751,12 +756,10 @@ Telega prefix map bindings:
     Default value: ~(and main unread)~
 
 - @@html:<kbd>@@w@@html:</kbd>@@ (~telega-browse-url~) :: 
-     Open the URL.
-     If URL can be opened directly inside telega, then do it.
+     Open the ~URL~.
+     If ~URL~ can be opened directly inside telega, then do it.
      Invite links and link to users can be directly opened in telega.
-     If IN-WEB-BROWSER is non-nil then force opening in web browser.
-
-     (fn URL &optional IN-WEB-BROWSER)
+     If ~IN-WEB-BROWSER~ is non-nil then force opening in web browser.
 
 * Root Buffer
 :PROPERTIES:
@@ -2643,27 +2646,17 @@ control buttons to control media playback parameters:
 For fast access to media controls you can you next bindings:
 - @@html:<kbd>@@0@@html:</kbd>@@ (~telega-msg--vvnote-stop~) :: 
      Stop playing media message.
-
-     (fn MSG)
 - @@html:<kbd>@@<@@html:</kbd>@@, @@html:<kbd>@@,@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-backward~) :: 
      Rewind 10 seconds backward.
-
-     (fn MSG)
 - @@html:<kbd>@@>@@html:</kbd>@@, @@html:<kbd>@@.@@html:</kbd>@@ (~telega-msg--vvnote-rewind-10-forward~) :: 
      Rewind 10 seconds forward.
-
-     (fn MSG)
 - @@html:<kbd>@@x@@html:</kbd>@@ (~telega-msg--vvnote-play-speed-toggle~) :: 
      Toggle playback speed for the media message.
      Only two modes are available: normal speed and x2 speed.
-
-     (fn MSG)
 - @@html:<kbd>@@9@@html:</kbd>@@, @@html:<kbd>@@8@@html:</kbd>@@, @@html:<kbd>@@7@@html:</kbd>@@, @@html:<kbd>@@6@@html:</kbd>@@, @@html:<kbd>@@5@@html:</kbd>@@, @@html:<kbd>@@4@@html:</kbd>@@, @@html:<kbd>@@3@@html:</kbd>@@, @@html:<kbd>@@2@@html:</kbd>@@, @@html:<kbd>@@1@@html:</kbd>@@ (~telega-msg--vvnote-rewind-part~) :: 
      Rewind to the N's 10 part of the message duration.
      I.e. if you press 7, then you will jump to 70% of the message
      duration.
-
-     (fn MSG)
 
 To play/pause media messages use @@html:<kbd>@@RET@@html:</kbd>@@.  Also,
 @@html:<kbd>@@l@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <copy-link>@@html:</kbd>@@ (~telega-msg-copy-link~) command
@@ -3720,15 +3713,9 @@ Customizable options:
   Set it to less value if you see some advert messages not being blocked. 
 
   Default value: ~4~
-- User Option: ~telega-adblock-forwarded-messages~ 
-
-  Non-nil to block messages forwarded from other channels.
-  Block them even if a message has no links at all. 
-
-  Default value: ~t~
 - User Option: ~telega-adblock-block-msg-temex~ 
 
-  Message's matching this temex will be ignored by adblock. 
+  Message temex for ~telega-adblock-msg-by-temex-p~ predicate. 
 
   Default value: ~nil~
 - User Option: ~telega-adblock-allow-msg-temex~ 
@@ -3736,6 +3723,19 @@ Customizable options:
   Message's matching this temex will be allowed. 
 
   Default value: ~(or is-reply-to-msg is-reply-to-story post-with-comments)~
+- User Option: ~telega-adblock-predicates~ 
+
+  List of predicates to check message for advertisements.
+  Each predicate accepts single argument - message.
+  If any of predicates returns non-nil, then message contains advert. 
+
+  Default value: 
+  #+begin_src emacs-lisp
+    (telega-adblock-msg-by-temex-p telega-adblock-msg-forwarded-p
+                                   telega-adblock-msg-has-erid-p
+                                   telega-adblock-msg-has-advert-links-p)
+  #+end_src
+
 
 ** /telega-channels-export.el/ -- Export Telegam channels to OPML
 :PROPERTIES:

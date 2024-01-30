@@ -307,7 +307,7 @@ Keymap:
         (when (zerop publish-date)
           (setq publish-date (time-to-seconds)))
         (telega-ins " • ")
-        (telega-ins--date-full publish-date))
+        (telega-ins--date publish-date 'date-long))
       (telega-ins "\n")
       (when photo-image
         (telega-ins--image photo-image 2))
@@ -378,7 +378,7 @@ Keymap:
        (let ((publish-date (plist-get pb :publish_date)))
          (when (zerop publish-date)
            (setq publish-date (time-to-seconds)))
-         (telega-ins--date-full publish-date)))
+         (telega-ins--date publish-date 'date-long)))
      (telega-ins "\n"))
     (pageBlockHeader
      (telega-ins--with-face 'telega-webpage-header

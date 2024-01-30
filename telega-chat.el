@@ -1992,7 +1992,7 @@ Use this to surrond header with some prefix and suffix."
                 :with-brackets-p t))
        :name (telega-tl-str action-bar :title))
      (telega-ins " ")
-     (telega-ins--date-full (plist-get action-bar :request_date))
+     (telega-ins--date (plist-get action-bar :request_date) 'date-long)
      )))
 
 (defun telega-chatbuf-footer-action-bar ()
@@ -2143,8 +2143,8 @@ Use this to surrond header with some prefix and suffix."
      (when (> (plist-get group-call :scheduled_start_date) 0)
        (telega-ins "   " (telega-symbol 'alarm)
                    (telega-i18n "lng_group_call_scheduled_status") ": ")
-       (telega-ins--date-iso8601
-        (plist-get group-call :scheduled_start_date))
+       (telega-ins--date
+        (plist-get group-call :scheduled_start_date) 'date-time)
        ;; Start Now
        (telega-ins " ")
        (telega-ins--box-button (telega-i18n "lng_group_call_start_now")
@@ -3738,7 +3738,8 @@ Return last inserted ewoc node."
                              telega-chatbuf--chat
                              (telega-fmt-text
                               (telega-ins--as-string
-                               (telega-ins--date-full (plist-get msg :date)))
+                               (telega-ins--date
+                                (plist-get msg :date) 'date-long))
                               '(:@type "textEntityTypeBold")))))))
 
             (setq node (ewoc-enter-after telega-chatbuf--ewoc node msg))

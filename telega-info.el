@@ -271,7 +271,7 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
 
     (when-let ((patron (telega-msg-sender-patron-p user)))
       (telega-ins-describe-item "Telega Patron Since"
-        (telega-ins--date-full (plist-get patron :since_date))))
+        (telega-ins--date (plist-get patron :since_date) 'date-long)))
 
     (telega-ins-describe-item "Id"
       (telega-ins-fmt (if telega-debug
@@ -281,7 +281,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     (when (telega-me-p user)
       ;; Saved Messages
       (telega-ins-describe-item "Logged in"
-        (telega-ins--date-full (plist-get telega--options :authorization_date)))
+        (telega-ins--date
+         (plist-get telega--options :authorization_date) 'date-long))
       (telega-ins--account-ttl))
 
     (let ((relationship (telega-ins--as-string

@@ -588,31 +588,37 @@ stickers for the EMOJI."
       (setq telega-help-win--emoji emoji)
 
       ;; NOTE: use callbacks for async stickers loading
-      (telega-ins-fmt "Custom Emoji for %s:\n" emoji)
-      (telega--getStickers emoji
-        :chat for-chat
-        :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
-        :callback (telega--gen-ins-continuation-callback 'loading
-                    (lambda (stickers &rest args)
-                      (apply #'telega-ins--sticker-list
-                             (mapcar #'telega-custom-emoji-from-sticker
-                                     stickers)
-                             args))))
+      (telega-ins--with-face 'telega-describe-item-title
+        (telega-ins-fmt "Custom Emoji for %s:\n" emoji))
+      (telega-ins--line-wrap-prefix "  "
+        (telega--getStickers emoji
+          :chat for-chat
+          :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
+          :callback (telega--gen-ins-continuation-callback 'loading
+                      (lambda (stickers &rest args)
+                        (apply #'telega-ins--sticker-list
+                               (mapcar #'telega-custom-emoji-from-sticker
+                                       stickers)
+                               args)))))
 
       (unless custom-emojis-only
         (telega-ins "\n")
-        (telega-ins "\nInstalled Stickers:\n")
-        (telega--getStickers emoji
-          :callback (telega--gen-ins-continuation-callback 'loading
-                      #'telega-ins--sticker-list))
+        (telega-ins--with-face 'telega-describe-item-title
+          (telega-ins "Installed Stickers:\n"))
+        (telega-ins--line-wrap-prefix "  "
+          (telega--getStickers emoji
+            :callback (telega--gen-ins-continuation-callback 'loading
+                        #'telega-ins--sticker-list))
+          (telega-ins "\n"))
 
-        (telega-ins "\n")
-        (telega-ins "\nPublic Stickers:\n")
-        (telega--searchStickers emoji
-          :callback
-          (telega--gen-ins-continuation-callback 'loading
-            #'telega-ins--sticker-list)))
-    )))
+        (telega-ins--with-face 'telega-describe-item-title
+          (telega-ins "Public Stickers:\n"))
+        (telega-ins--line-wrap-prefix "  "
+          (telega--searchStickers emoji
+            :callback
+            (telega--gen-ins-continuation-callback 'loading
+              #'telega-ins--sticker-list))))
+      )))
 
 (defun telega-stickerset--minibuf-post-command ()
   "Function to complete stickerset for `completion-in-region-function'."

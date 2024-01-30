@@ -323,7 +323,8 @@ For use by interactive commands."
   "Return reaction chosen by me for the message MSG."
   (mapcar (telega--tl-prop :type)
           (seq-filter (telega--tl-prop :is_chosen)
-                      (telega--tl-get msg :interaction_info :reactions))))
+                      (telega--tl-get msg :interaction_info :reactions
+                                      :reactions))))
 
 (defun telega-msg-chat (msg &optional offline-p)
   "Return chat for the MSG.
@@ -938,8 +939,8 @@ non-nil."
          (telega-ins "\n\n")
          (telega-ins-i18n "lng_prizes_how_when_finish"
            :date (telega-ins--as-string
-                  (telega-ins--date-iso8601
-                   (plist-get ga-params :winners_selection_date)))
+                  (telega-ins--date
+                   (plist-get ga-params :winners_selection_date) 'date-time))
            :winners (if (plist-get ga-params :only_new_members)
                         (telega-i18n "lng_prizes_winners_new_of_one"
                           :count (plist-get content :winner_count)
@@ -952,8 +953,9 @@ non-nil."
                                         :with-username-p t
                                         :with-brackets-p t)))
                           :start_date (telega-ins--as-string
-                                       (telega-ins--date-iso8601
-                                        (plist-get ga-info :creation_date))))
+                                       (telega-ins--date
+                                        (plist-get ga-info :creation_date)
+                                        'date-time)))
                       ;; TODO
                       ""))
          (telega-ins "\n\n")
@@ -1695,6 +1697,21 @@ Requires administrator rights in the chat."
        (list :@type "chatMemberStatusBanned"
              :banned_until_date 0)))))
 
+(defun telega-ins--message-read-date (msg-read-date)
+  "Inserter for the MessageReadDate structure."
+  (cl-ecase (telega--tl-type msg-read-date)
+    (messageReadDateRead
+     (telega-ins--date (plist-get msg-read-date :read_date) 'date-time))
+    (messageReadDateUnread
+     (telega-ins "Unread"))
+    (messageReadDateTooOld
+     (telega-ins "Too Old"))
+    (messageReadDateUserPrivacyRestricted
+     (telega-ins "User restricted"))
+    (messageReadDateMyPrivacyRestricted
+     (telega-ins "You restricted"))
+     ))
+
 (defun telega-describe-message (msg &optional for-thread-p)
   "Show info about message at point."
   (interactive (list (telega-msg-for-interactive)
@@ -1706,8 +1723,13 @@ Requires administrator rights in the chat."
       ;; change on async requests
       (setq telega--help-win-param msg-id)
 
-      (telega-ins-describe-item "Date(ISO8601)"
-        (telega-ins--date-iso8601 (plist-get msg :date)))
+      (telega-ins-describe-item (telega-i18n "lng_sent_date" :date "")
+        (telega-ins--date (plist-get msg :date) 'date-time))
+      (when (plist-get msg :can_get_read_date)
+        (telega-ins-describe-item "Read Date"
+          (telega--getMessageReadDate msg
+            (telega--gen-ins-continuation-callback 'loading
+              #'telega-ins--message-read-date))))
       (telega-ins-describe-item "Chat-id"
         (telega-ins-fmt "%d" chat-id))
       (telega-ins-describe-item "Message-id"
@@ -1816,6 +1838,11 @@ Requires administrator rights in the chat."
                   (telega-ins--date-relative (plist-get viewer :view_date))))
               msg-id))))
 
+      (when-let ((fwd-info (plist-get msg :forward_info)))
+        (telega-ins "\n")
+        (telega-ins-describe-item (telega-i18n "lng_forwarded_date" :date "")
+          (telega-ins--date (plist-get fwd-info :date) 'date-time)))
+
       (when (and (listp telega-debug) (memq 'info telega-debug))
         (let ((print-length nil))
           (telega-ins "\n---DEBUG---\n")
@@ -1879,13 +1906,13 @@ Requires administrator rights in the chat."
         (telega-ins--with-face 'diff-removed
           (telega-ins "Orig"))
         (telega-ins " message at: ")
-        (telega-ins--date-iso8601 (plist-get msg-old :date))
+        (telega-ins--date (plist-get msg-old :date) 'date-time)
         (telega-ins "\n")
 
         (telega-ins--with-face 'diff-added
           (telega-ins "Edit"))
         (telega-ins " message at: ")
-        (telega-ins--date-iso8601 (plist-get msg-new :edit_date))
+        (telega-ins--date (plist-get msg-new :edit_date) 'date-time)
         (telega-ins "\n")
 
         (telega-ins "-- Diff --\n")

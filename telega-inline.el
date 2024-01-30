@@ -72,6 +72,12 @@
   "Action to take when KBD-BUTTON is pressed."
   (let ((kbd-type (plist-get kbd-button :type)))
     (cl-ecase (telega--tl-type kbd-type)
+      (keyboardButtonTypeWebApp
+       (telega-browse-url
+        (telega--getWebAppUrl (telega-msg-sender msg)
+          :url (telega-tl-str kbd-type :url))
+        'in-browser))
+
       (keyboardButtonTypeText
        ;; A simple button, with text that should be sent
        ;; when the button is pressed

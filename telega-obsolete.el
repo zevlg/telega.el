@@ -231,6 +231,17 @@
                            nil
                            "0.8.231")
 
+(telega-obsolete--variable 'telega-adblock-forwarded-messages
+                           'telega-adblock-predicates
+                           "0.8.232")
+
+(telega-obsolete--variable 'telega-enable-storage-optimizer
+                           'telega-options-plist
+                           "0.8.240")
+(telega-obsolete--variable 'telega-old-date-format
+                           'telega-date-format-alist
+                           "0.8.240")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

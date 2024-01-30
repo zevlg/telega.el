@@ -87,7 +87,7 @@
     (:can_change_info . "lng_rights_group_info")
     (:can_invite_users . "lng_rights_chat_add_members")
     (:can_pin_messages . "lng_rights_group_pin")
-    (:can_manage_topics . "lng_rights_group_topics")))
+    (:can_create_topics . "lng_rights_group_add_topics")))
 
 (defconst telega-chat--admin-permissions
   '((:can_be_edited . "lng_rights_edit_admin")
@@ -1766,16 +1766,14 @@ If COLUMN is nil or less then current column, then current column is used."
   "Describe item with TITLE."
   (declare (indent 1))
   (let ((title-sym (gensym "title")))
-    `(let ((,title-sym ,title))
+    `(let ((,title-sym (string-trim-right ,title ": ?")))
        ;; Right align title name to 14th column
        ;; as in `package--print-help-section' function
        (telega-ins--line-wrap-prefix
            (make-string (max 0 (- 12 (string-width ,title-sym))) ?\s)
          (telega-ins--with-face 'telega-describe-item-title
            (telega-ins ,title-sym)
-           (if (eq ?: (char-before))
-               (telega-ins " ")
-             (telega-ins ": ")))
+           (telega-ins ": "))
          ,@body)
        (telega-ins "\n"))))
 

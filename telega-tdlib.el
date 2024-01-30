@@ -1507,8 +1507,6 @@ New slow mode DELAY for the chat must be one of 0, 10, 30, 60,
          :device_model "Emacs"
          :system_version emacs-version
          :application_version telega-version
-         :enable_storage_optimizer telega-enable-storage-optimizer
-         :ignore_file_names :false
          )))
 
 (defun telega--parseTextEntities (text parse-mode)
@@ -2907,7 +2905,8 @@ Mode activates for
 (defun telega--boostChat (chat &rest slot-ids)
   (telega-server--send
    (list :@type "boostChat"
-         :chat_id (plist-get chat :id))))
+         :chat_id (plist-get chat :id)
+         :slot_ids (apply 'vector reactions))))
 
 (defun telega--getChatBoostLinkInfo (url &optional callback)
   (telega-server--call
@@ -2982,6 +2981,27 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
          :theme theme-params
          :application_name application-name
          :allow_write_access allow-write-access-p)
+   callback))
+
+(cl-defun telega--getWebAppUrl (bot-user &key (url "") tdlib-theme app-name
+                                         callback)
+  "Return an HTTPS URL of a Web App to open."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (telega-tl-str reply :url)
+    (list :@type "getWebAppUrl"
+          :bot_user_id (plist-get bot-user :id)
+          :url url
+          :theme tdlib-theme
+          :app-name app-name)
+    callback))
+
+(defun telega--getMessageReadDate (msg &optional callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getMessageReadDate"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))
    callback))
 
 (provide 'telega-tdlib)

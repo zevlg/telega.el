@@ -99,7 +99,8 @@ At least `telega-database-dir' should be customized for each account."
   :group 'telega)
 
 (defcustom telega-options-plist
-  (list :online t :localization_target "tdesktop")
+  (list :online t :localization_target "tdesktop"
+        :use_storage_optimizer :false :ignore_file_names :false)
   "*Plist of options to set.
 To use custom language pack (from \"tdesktop\" localization target),
 add `:language_pack_id' option.
@@ -136,11 +137,6 @@ Implies `telega-use-chat-info-database' set to non-nil."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-enable-storage-optimizer nil
-  "Non-nil to automatically delete old files in background."
-  :type 'boolean
-  :group 'telega)
-
 (defcustom telega-proxies nil
   "*List of proxies.
 Format is:
@@ -167,15 +163,27 @@ where PROXY-TYPE is one of:
   :type 'integer
   :group 'telega)
 
-(defcustom telega-old-date-format "%D.%M.%Y"
-  "Format for old dates in the chat buffer.
-Date considered \"old\" if older then one week from now.
-Resulting string must be no longer then 8 chars. Format specifiers:
-%D - Two digits for a day.
-%M - Two digits for a month.
-%Y - Two digits for a year relative to 2000."
-  :package-version '(telega . "0.7.22")
-  :type 'string
+(defcustom telega-date-format-alist
+  '((today     . "%H:%M")
+    (this-week . "%a")
+    (old       . "%d.%m.%y")
+    (date      . "%d.%m.%y")
+    (time      . "%H:%M")
+    (date-time . "%d.%m.%y %a %H:%M")
+    (date-long . "%d %B %Y"))
+  "Alist of date and time formats.
+Key is one of `today', `this-week', `old', `full', `full-no-time'.
+Value is a format accepted by `format-time-string'."
+  :package-version '(telega . "0.8.240")
+  :type '(alist :key-type
+                (choice (const :tag "If date is today" today)
+                        (const :tag "If date is on this week" this-week)
+                        (const :tag "If date is older than this week" old)
+                        (const :tag "Format for the date only" date)
+                        (const :tag "Long format for the date only" date-long)
+                        (const :tag "Format for the time only" time)
+                        (const :tag "Full date with time" date-time))
+                :value-type string)
   :group 'telega)
 
 (defcustom telega-help-messages t
@@ -1474,8 +1482,9 @@ different days. Such as:
     ("send-by"
      has-default-sender telega-chatbuf-attach-send-by)
     ("custom-emoji"
-     (eval
-      (telega-user-match-p (telega-user-me) 'is-premium))
+     (or saved-messages
+         (eval
+          (telega-user-match-p (telega-user-me) 'is-premium)))
      telega-chatbuf-attach-custom-emoji)
     ("delimiter"
      (return t) telega-chatbuf-attach-delimiter)

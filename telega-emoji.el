@@ -293,7 +293,8 @@ Actually return STICKER's full type info."
                         (when (eq (telega--tl-type reaction-type)
                                   'reactionTypeCustomEmoji)
                           (plist-get reaction-type :custom_emoji_id))))
-                    (telega--tl-get msg :interaction_info :reactions))
+                    (telega--tl-get msg :interaction_info :reactions
+                                    :reactions))
 
             ;; Custom emojis for special messages
             (cl-case (telega--tl-type content)
@@ -477,15 +478,17 @@ Do not fetch custom emojis for ignored messages."
   (dolist (sset-info telega--stickersets-custom-emojis)
     (cl-assert (eq (telega--tl-type (plist-get sset-info :sticker_type))
                    'stickerTypeCustomEmoji))
-    (telega-ins (telega-stickerset-title sset-info 'raw) ":\n")
-    (let ((cb (telega--gen-ins-continuation-callback 'loading
-                (lambda (stickers)
-                  (telega-ins--sticker-list
-                      stickers :custom-action custom-action)))))
-      (telega-stickerset-get (plist-get sset-info :id) nil
-        (lambda (sset)
-          (funcall cb (mapcar #'telega-custom-emoji-from-sticker
-                              (plist-get sset :stickers))))))
+    (telega-ins--with-face 'telega-describe-item-title
+      (telega-ins (telega-stickerset-title sset-info 'raw) ":\n"))
+    (telega-ins--line-wrap-prefix "  "
+      (let ((cb (telega--gen-ins-continuation-callback 'loading
+                  (lambda (stickers)
+                    (telega-ins--sticker-list
+                        stickers :custom-action custom-action)))))
+        (telega-stickerset-get (plist-get sset-info :id) nil
+          (lambda (sset)
+            (funcall cb (mapcar #'telega-custom-emoji-from-sticker
+                                (plist-get sset :stickers)))))))
     (telega-ins "\n")))
 
 (defun telega-custom-emoji-choose (custom-action)

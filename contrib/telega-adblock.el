@@ -39,9 +39,9 @@
 ;; - {{{user-option(telega-adblock-chat-order-if-last-message-ignored, 2)}}}
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
-;; - {{{user-option(telega-adblock-forwarded-messages, 2)}}}
 ;; - {{{user-option(telega-adblock-block-msg-temex, 2)}}}
 ;; - {{{user-option(telega-adblock-allow-msg-temex, 2)}}}
+;; - {{{user-option(telega-adblock-predicates, 2)}}}
 
 ;; TODO:
 ;; - "invisible" links, example: https://t.me/botoid/1058351
@@ -68,12 +68,6 @@
   :type 'telega-chat-temex
   :group 'telega-adblock)
 
-(defcustom telega-adblock-forwarded-messages t
-  "Non-nil to block messages forwarded from other channels.
-Block them even if a message has no links at all."
-  :type 'boolean
-  :group 'telega-adblock)
-
 (defcustom telega-adblock-max-distance 4
   "Maximum string-distance for self-link.
 Used for heuristics to avoid blocking non-advert messages in some channels.
@@ -94,8 +88,19 @@ the rootbuf."
                  (string :tag "Custom order"))
   :group 'telega-adblock)
 
+(defcustom telega-adblock-predicates
+  '(telega-adblock-msg-by-temex-p
+    telega-adblock-msg-forwarded-p
+    telega-adblock-msg-has-erid-p
+    telega-adblock-msg-has-advert-links-p)
+  "List of predicates to check message for advertisements.
+Each predicate accepts single argument - message.
+If any of predicates returns non-nil, then message contains advert."
+  :type '(list function)
+  :group 'telega-adblock)
+
 (defcustom telega-adblock-block-msg-temex nil
-  "Message's matching this temex will be ignored by adblock."
+  "Message temex for `telega-adblock-msg-by-temex-p' predicate."
   :type 'telega-msg-temex
   :options '((contains "#advert"))
   :group 'telega-adblock)
@@ -111,6 +116,9 @@ the rootbuf."
   "Non-nil to not block messages with links to known chats."
   :type 'boolean
   :group 'telega-adblock)
+
+(defvar telega-adblock-msg-extracted-links nil
+  "Bound to the list of links extracted during `telega-adblock-msg-ignore-p'.")
 
 ;; TODO: heuristics about multiple links to same url
 ;; to block messages like https://t.me/c/1127375190/3747
@@ -219,16 +227,19 @@ another domain."
   "Return non-nil if LINK-SPEC is an advertisement link.
 LINK-SPEC is a cons cell, where car is text under the link and cdr is
 an URL."
-  (when (and
-         (not (telega-adblock--link-internal-p chat link-spec))
-         (or (telega-adblock--link-other-channel-p chat link-spec)
-             (telega-adblock--link-cheating-p link-spec)))
+  (when (and (not (telega-adblock--link-internal-p chat link-spec))
+             (or (telega-adblock--link-other-channel-p chat link-spec)
+                 (telega-adblock--link-cheating-p link-spec)))
     (if telega-adblock-verbose
         (message "telega: Blocking advert link: %s in %s"
                  (cdr link-spec) (telega-chat-title chat))
       (telega-debug "ADBLOCK: Blocking advert link: %s in %s"
                     (cdr link-spec) (telega-chat-title chat)))
     t))
+
+(defun telega-adblock-msg-by-temex-p (msg)
+  "Return non-nil if MSG matches `telega-adblock-block-msg-temex'."
+  (telega-msg-match-p msg telega-adblock-block-msg-temex))
 
 (defun telega-adblock-msg-forwarded-p (msg)
   "Return non-nil if MSG is forwarded from another channel."
@@ -239,24 +250,39 @@ an URL."
     ;; Allow self-forwards
     (not (eq orig-chat-id (plist-get msg :chat_id)))))
 
-(defun telega-adblock-msg-has-advert-links-p (msg chat)
+(defun telega-adblock-msg-has-advert-links-p (msg)
   "Return non-nil if MSG has at least one advert link."
   ;; NOTE: We group links by the URL, and block only if all
   ;; links to the URL are advertisements.
-  (seq-some (lambda (url-group)
-              (seq-every-p (apply-partially #'telega-adblock-link-advert-p chat)
-                           (cdr url-group)))
-            (seq-group-by #'cdr (telega-adblock-msg-extract-links msg))))
+  (let ((msg-chat (telega-msg-chat msg)))
+    (seq-some (lambda (url-group)
+                (seq-every-p (lambda (link-spec)
+                               (telega-adblock-link-advert-p msg-chat link-spec))
+                             (cdr url-group)))
+              (seq-group-by #'cdr (telega-adblock-msg-extract-links msg)))))
+
+(defun telega-adblock-msg-has-erid-p (msg)
+  "Return non-nil if MSG text contains ERID label."
+  (or (telega-msg-match-p msg '(contains "\\<erid: ?[a-zA-Z0-9]+\\>"))
+      ;; NOTE: also check links in the message to have "erid" get
+      ;; parameter
+      (seq-some (lambda (link-spec)
+                  (assoc "erid"
+                         (url-parse-query-string
+                          (or (cdr (url-path-and-query
+                                    (url-generic-parse-url (cdr link-spec))))
+                              ""))))
+                telega-adblock-msg-extracted-links)))
 
 (defun telega-adblock-msg-ignore-p (msg)
   "Return non-nil if message MSG is advert message."
-  (when-let ((chat (telega-msg-chat msg 'offline)))
-    (and (telega-chat-match-p chat telega-adblock-for)
-         (not (telega-msg-match-p msg telega-adblock-allow-msg-temex))
-         (or (and telega-adblock-forwarded-messages
-                  (telega-adblock-msg-forwarded-p msg))
-             (telega-msg-match-p msg telega-adblock-block-msg-temex)
-             (telega-adblock-msg-has-advert-links-p msg chat)))))
+  (and (telega-chat-match-p (telega-msg-chat msg) telega-adblock-for)
+       (not (telega-msg-match-p msg telega-adblock-allow-msg-temex))
+       (let ((telega-adblock-msg-extracted-links
+              (telega-adblock-msg-extract-links msg))
+             (telega-msg-ignore-predicates
+              telega-adblock-predicates))
+         (telega-msg-run-ignore-predicates msg))))
 
 (defun telega-adblock--chat-order-if-last-msg-ignored (orig-fun chat &rest args)
   "Advice for `telega-chat-order' to return custom order.
