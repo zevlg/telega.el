@@ -1,4 +1,4 @@
-[![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![DOCKER image build](https://github.com/zevlg/telega.el/workflows/DOCKER/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1?logo=telegram)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/TDLib-v1.8.22-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.8.230-blue)](https://packages.guix.gnu.org/packages/emacs-telega/) [![Open Collective](https://img.shields.io/opencollective/backers/telega?logo=opencollective)](https://opencollective.com/telega)
+[![CI test](https://github.com/zevlg/telega.el/workflows/CI/badge.svg)](https://github.com/zevlg/telega.el/actions) [![DOCKER image build](https://github.com/zevlg/telega.el/workflows/DOCKER/badge.svg)](https://github.com/zevlg/telega.el/actions) [![Telegram chat](https://img.shields.io/badge/chat-%40emacs__telega-%2335ADE1?logo=telegram)](https://t.me/emacs_telega) [![TDLib](https://img.shields.io/badge/TDLib-v1.8.24-%2335ADE1)](https://github.com/tdlib/td) [![MELPA](https://melpa.org/packages/telega-badge.svg)](https://melpa.org/#/telega) [![MELPA Stable](http://stable.melpa.org/packages/telega-badge.svg)](http://stable.melpa.org/#/telega) [![GNU Guix](https://img.shields.io/badge/GNU%20Guix-0.8.230-blue)](https://packages.guix.gnu.org/packages/emacs-telega/) [![Open Collective](https://img.shields.io/opencollective/backers/telega?logo=opencollective)](https://opencollective.com/telega)
 
 [![Backers](https://opencollective.com/telega/backers.svg?avatarHeight=32&width=600)](https://opencollective.com/telega)
 
@@ -26,50 +26,9 @@ is possible to use `telega.el` for basic chat.
 
 # Features
 
-In some random order:
-
-- [x] Listing chats, reordering chats according to internal Telegram
-      order
-- [x] Getting info about users, groups and supergroups
-- [x] Joining chats by invitation link `M-x telega-chat-join-by-link RET`
-- [x] Fetching chat history, sending messages, replies, edits, deleting
-- [x] Resend failed messages
-- [x] Creating new groups, upgrading basicgroup to supergroup
-- [x] Forwarding messages
-- [x] D-Bus notifications on incoming messages in chats with enabled
-      notifications
-- [ ] Voice/Video calls
-- [x] Downloading files from the cloud
-- [x] Uploading files/media (also pasting images from clipboard) to the cloud
-- [x] Display chat actions, such as "@user is typing..."
-- [x] Display/Update chat's draft message
-- [x] Company backends for emoji (`:<emoji>` syntax), usernames,
-      hashtags, bot commands completions
-- [x] Secret chats
-- [x] Online global searching chats/contacts/messages
-- [x] Avatars, Photos, Stickers, Animated Stickers
-- [x] Animated GIF, via ffplay
-- [x] Special messages such as location/live location, voice/video
-      messages, contacts, self-destruct photo/video, etc
-- [x] Poll messages, Poll creation
-- [x] Games, Game Scores 
-- [x] Handling local links, such as "tg:" or "https://t.me/xxx"
-- [x] ReplyMarkup (inline keyboard buttons) in the messages
-- [x] InstantView for web pages
-- [x] Blocking/Unblocking users, listing blocked users
-- [x] Inline bots requests, via "@bot query<TAB>"
-- [x] Chat Lists, "Archived Chats", see [telega#100](https://github.com/zevlg/telega.el/issues/100)
-- [x] Searching for messages in chat (PARTLY)
-- [x] Shared media
-- [x] Multiple accounts
-- [ ] Traffic control, see [telega#62](https://github.com/zevlg/telega.el/issues/62)
-- [x] [TranslationsPlatform](https://translations.telegram.org) support (PARTLY)
-- [x] Message scheduling, Reminders
-- [ ] Cloud themes, see [TDLib#691](https://github.com/tdlib/td/issues/691)
-- [x] Telegram Folders (since TDLib 1.6.6)
-- [x] Disable/Enable message notification on receiver side
-- [x] Sticker Outlines (since TDLib 1.7.X+), see Emacs Story - https://t.me/emacs_stories/73
-- [ ] Voice Chats (since TDLib 1.7.X+)
+`telega.el` implements most of the features official Telegram clients
+has.  The only major feature `telega.el` lacks is full support for
+voice/video chats.
 
 ## Unique features
 
@@ -79,7 +38,6 @@ In some random order:
 - [x] [Client side messages filtering](https://zevlg.github.io/telega.el/index-master.html#client-side-messages-ignoring)
 - [x] Get diff for the message edits, see [screenshot](https://zevlg.github.io/telega/screen-13.png)
 - [x] [Messages squashing](https://zevlg.github.io/telega.el/#telega-squash-message-mode) minor mode.
-- [x] [Highlight code blocks](https://zevlg.github.io/telega.el/#telega-mnzel--display-emacs-content-inside-telega-messages) minor mode.
 - [x] [Emacs Stories](https://zevlg.github.io/telega.el/#telega-storiesel--display-emacs-stories-in-the-dashboard) - share your Emacs experience with other Emacs users.
 - [x] [AdBlock](https://zevlg.github.io/telega.el/index-master.html#telega-adblockel--block-advertisement-messages) - block advertisement messages in Telegram channels.
 
