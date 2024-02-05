@@ -244,6 +244,13 @@ Have Stoploss 690 Satoshi." :entities []))))
                                 :text)))
   )
 
+(ert-deftest telega-inserters-old-emacs ()
+  ;; NOTE: `telega-ins--text-button' has been in use of
+  ;; `string-replace' that is not in emacs27
+  ;; ref: https://t.me/emacs_telega/44040
+  (should (equal (progn (telega-ins--box-button "test here") 'aa)
+                 'aa)))
+
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; End:
