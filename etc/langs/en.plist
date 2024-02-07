@@ -480,6 +480,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Pin messages")
  ("lng_rights_group_topics"
   :value "Manage topics")
+ ("lng_rights_group_add_topics"
+  :value "Create topics")
  ("lng_rights_group_info"
   :value "Change group info")
  ("lng_manage_peer_exceptions"
@@ -1508,6 +1510,8 @@ You can send them an invite link as message instead.")
   :value "Original: {date}")
  ("lng_inline_bot_via"
   :value "via {inline_bot}")
+ ("lng_export_stop"
+  :value "Stop")
 
  ;; Chat Background
  ("lng_action_set_wallpaper"
@@ -1519,6 +1523,9 @@ You can send them an invite link as message instead.")
  ("lng_action_set_wallpaper_both_me"
   :value "You set a new wallpaper for {user} and you.")
 
+ ;; Calls
+ ("lng_call_start"
+  :value "Start Call")
 
  ;; messageGiftedPremium
  ("lng_action_gift_received"
