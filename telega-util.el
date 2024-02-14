@@ -543,6 +543,24 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
   '((scale . "80"))
   "Attributes to the \"feDisplacementMap\" node.")
 
+(defun telega-svg-append-spoiler-node (svg node-id)
+  "Append spoiler noise node with NODE-ID into SVG."
+  (svg--append
+   svg
+   (dom-node 'filter
+             `((id . ,node-id))
+             (dom-node 'feTurbulence
+                       `((type . "turbulence")
+                         (result . "NOISE")
+                         ,@telega-spoiler-turbulence-attrs))
+             (dom-node 'feDisplacementMap
+                       `((in . "SourceGraphic")
+                         (in2 . "NOISE")
+                         (xChannelSelector . "R")
+                         (yChannelSelector . "G")
+                         ,@telega-spoiler-displacement-attrs))
+             )))
+
 (defun telega-spoiler-create-svg (minithumb &optional width height limits)
   "Create svg image for MINITHUMB that has spoiler."
   (let* ((width (or width (plist-get minithumb :width)))
@@ -552,21 +570,7 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
          (xh (telega-chars-xheight cheight))
          (xw (telega-chars-xwidth (car cwidth-xmargin)))
          (svg (telega-svg-create xw xh)))
-    (svg--append
-     svg
-     (dom-node 'filter
-               `((id . "noise"))
-               (dom-node 'feTurbulence
-                         `((type . "turbulence")
-                           (result . "NOISE")
-                           ,@telega-spoiler-turbulence-attrs))
-               (dom-node 'feDisplacementMap
-                         `((in . "SourceGraphic")
-                           (in2 . "NOISE")
-                           (xChannelSelector . "R")
-                           (yChannelSelector . "G")
-                           ,@telega-spoiler-displacement-attrs))
-               ))
+    (telega-svg-append-spoiler-node svg "noise")
     (svg-embed svg (base64-decode-string (plist-get minithumb :data))
                "image/jpeg" t
                :x 0 :y 0 :width xw :height xh
@@ -669,7 +673,7 @@ If AS-IS is non-nil, then do not apply time adjustment using
            :count (/ meters 1000)))
         ((>= meters 1000)
          (telega-i18n "lng_action_proximity_distance_km"
-           :count (string-to-number (format "%.1f" (/ meters 1000.0)))))
+           :count (telega-float-clamp (/ meters 1000.0) 1)))
         (t
          (telega-i18n "lng_action_proximity_distance_m"
            :count meters))))
@@ -726,6 +730,16 @@ If LONG-P is specified, then use long form."
         (setq intervals (cdr intervals))))
 
     (mapconcat #'identity comps ":")))
+
+(defun telega-time-ago-human-readable (timestamp-ago)
+  (cond ((< timestamp-ago 60)
+         (telega-i18n "lng_mediaview_just_now"))
+        ((< timestamp-ago 3600)
+         (telega-i18n "lng_mediaview_minutes_ago"
+           :count (/ timestamp-ago 60)))
+        (t
+         (telega-i18n "lng_mediaview_hours_ago"
+           :count (telega-float-clamp (/ timestamp-ago 3600.0) 1)))))
 
 (defun telega-link-props (link-type link-to &rest props)
   "Generate props for link button openable with `telega-link--button-action'."
@@ -2702,15 +2716,17 @@ If FOR-PARAM is specified, then insert only if
               (telega-help-win--rm-tdlib-callback
                telega-server--callback-extra)
               (let ((inhibit-read-only t)
-                    ;; NOTE: retain text properties of the
+                    ;; NOTE: retain `line-prefix' and `wrap-prefix'
+                    ;; text properties of the "Loading..." label, so
+                    ;; new text will be inserted at the same place as
                     ;; "Loading..." label
-                    (text-props (when show-loading-p
-                                  (text-properties-at marker))))
+                    (lwprefix (when show-loading-p
+                                (get-text-property marker 'line-prefix))))
                 (when show-loading-p
                   (delete-region marker (+ marker marker-len)))
                 (telega-save-excursion
                   (goto-char marker)
-                  (telega-ins--with-props text-props
+                  (telega-ins--line-wrap-prefix lwprefix
                     (apply insert-func insert-args)))))))))))
 
 (defun telega-translate-region (beg end &optional choose-language-p inplace-p)
@@ -2797,6 +2813,11 @@ Also return nil if resulting string is empty."
                    (concat (telega-i18n "lng_formatting_link_url") ": "))))
       ("lng_menu_formatting_clear"
        nil))))
+
+(defun telega-float-clamp (number digits)
+  "Clamp NUMBER to the number of DIGITS after the dot."
+  (string-to-number
+   (string-trim-right (format (format "%%.%df" digits) number) "\\.0+?")))
 
 ;; Help functions for developers
 (defun telega-check-tdlib-methods ()

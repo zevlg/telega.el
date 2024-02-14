@@ -1886,14 +1886,16 @@ fallback to cdr argument."
   :type 'telega-chat-temex
   :group 'telega-story)
 
-(defcustom telega-story-show-active-stories-for 'all
-  "Show active stories in the chatbuf's footer for chats matching this temex."
+(defcustom telega-story-show-active-stories-for '(return 10)
+  "Show active stories in the chatbuf's footer for chats matching this temex.
+If temex returns a number then limit number of shown active stories."
   :type 'telega-chat-temex
   :options '((type private) (active-stories-list main))
   :group 'telega-story)
 
-(defcustom telega-story-show-pinned-stories-for 'all
-  "Show pinned stories in the chatbuf's footer for chats matching this temex."
+(defcustom telega-story-show-pinned-stories-for '(return 10)
+  "Show pinned stories in the chatbuf's footer for chats matching this temex.
+If temex returns a number then limit number of shown pinned stories."
   :type 'telega-chat-temex
   :options '((and (user is-close-friend) (active-stories-list main)))
   :group 'telega-story)
@@ -2374,8 +2376,13 @@ By default `(?+ . ?>)' is used resulting in +++++> progress bar."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-timer-clock "⏲"
+  "Symbol used as timer clock in live location context."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-distance "📏"
-  "Symbol used to display distance."
+  "Symbol used to display distance in location context."
   :type 'string
   :group 'telega-symbol)
 
@@ -2551,6 +2558,7 @@ Used in one line message inserter."
                    (telega-etc-file-create-image "symbols/reply-quote.svg" 2)))
     (right-arrow (when (and telega-use-images (image-type-available-p 'svg))
                    (telega-etc-file-create-image "symbols/right-arrow.svg" 2)))
+    timer-clock
     video video-chat-active video-chat-passive
 
     "⏪" "⏩"

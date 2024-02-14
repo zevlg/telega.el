@@ -485,7 +485,8 @@ Asynchronously loaded when chatbuf is created.")
 (make-variable-buffer-local 'telega-chatbuf--administrators)
 
 (defvar telega-chatbuf--hidden-headers
-  '(:active-stories nil :pinned-stories nil :video-chat nil)
+  (list :active-stories nil :pinned-stories nil :video-chat nil
+        :active-stories-show-more nil :pinned-stories-show-more nil)
   "Plist to check whether some header is hidden by pressing [x] button.")
 (make-variable-buffer-local 'telega-chatbuf--hidden-headers)
 
@@ -805,8 +806,8 @@ Strips `line-prefix' and `wrap-prefix' text properties from copied text."
   "Execute BODY in help BUFFER-OR-NAME."
   (declare (indent 1))
   `(progn
-     (with-help-window ,buffer-or-name)
-     (redisplay)
+     ;; (with-help-window ,buffer-or-name)
+     ;; (redisplay)
      (with-help-window ,buffer-or-name
        (set-buffer standard-output)
        (setq-local x-underline-at-descent-line t)

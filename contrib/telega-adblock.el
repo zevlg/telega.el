@@ -263,7 +263,7 @@ an URL."
 
 (defun telega-adblock-msg-has-erid-p (msg)
   "Return non-nil if MSG text contains ERID label."
-  (or (telega-msg-match-p msg '(contains "\\<erid: ?[a-zA-Z0-9]+\\>"))
+  (or (telega-msg-match-p msg '(contains "\\<erid:? ?[a-zA-Z0-9]+\\>"))
       ;; NOTE: also check links in the message to have "erid" get
       ;; parameter
       (seq-some (lambda (link-spec)

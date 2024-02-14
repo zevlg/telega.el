@@ -1068,7 +1068,7 @@ Pass REVOKE to try to delete chat history for all users."
                  ;; not set `:message_thread_id', because threads does
                  ;; not have pinned messages, and request with thread
                  ;; id will result in error.
-                 ;; 
+                 ;;
                  ;; NOTE: `searchMessagesFilterUnreadReaction' can
                  ;; only be used with topics, not with ordinary
                  ;; threads
@@ -2088,7 +2088,7 @@ REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
   (telega-server--send
    (list :@type "reportChat"
          :chat_id (plist-get chat :id)
-         :reason (list :@type (concat "chatReportReason" reason))
+         :reason (list :@type (concat "reportReason" reason))
          :message_ids (cl-map 'vector (telega--tl-prop :id) messages)
          :text (or text ""))))
 
@@ -2097,7 +2097,7 @@ REASON is one of: \"Spam\", \"Violence\", \"Pornography\",
    (list :@type "reportChatPhoto"
          :chat_id (plist-get chat :id)
          :file_id (plist-get photo-file :id)
-         :reason (list :@type (concat "chatReportReason" reason))
+         :reason (list :@type (concat "reportReason" reason))
          :text (or text ""))))
 
 (defun telega--removeChatActionBar (chat)
@@ -2902,11 +2902,25 @@ Mode activates for
          :chat_id (plist-get chat :id))
    callback))
 
-(defun telega--boostChat (chat &rest slot-ids)
-  (telega-server--send
-   (list :@type "boostChat"
-         :chat_id (plist-get chat :id)
-         :slot_ids (apply 'vector reactions))))
+(defun telega--getAvailableChatBoostSlots (&optional callback)
+  "Return list of available boost slots."
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :slots) nil)
+
+    '(:@type "getAvailableChatBoostSlots")
+    callback))
+
+(cl-defun telega--boostChat (chat &key boost-slots callback)
+  "Boost a CHAT.
+Return list of available boost slots."
+  (declare (indent 1))
+  (with-telega-server-reply (reply)
+      (append (plist-get reply :slots) nil)
+
+    (list :@type "boostChat"
+          :chat_id (plist-get chat :id)
+          :slot_ids (cl-map 'vector (telega--tl-prop :id) boost-slots))
+    (or callback 'ignore)))
 
 (defun telega--getChatBoostLinkInfo (url &optional callback)
   (telega-server--call
@@ -3003,6 +3017,20 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id))
    callback))
+
+(defun telega--getCloseFriends (&optional callback)
+  "Return all close friends of me."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-user-get (plist-get reply :user_ids))
+
+    (list :@type "getCloseFriends")
+    callback))
+
+(defun telega--setCloseFriends (users)
+  "Changes the list of close friends of me."
+  (telega-server--send
+   (list :@type "setCloseFriends"
+         :user_ids (cl-map #'vector (telega--tl-prop :id) users))))
 
 (provide 'telega-tdlib)
 

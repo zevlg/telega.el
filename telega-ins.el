@@ -895,8 +895,11 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
       (telega-ins-progress-bar played dur 15 ?\# ?\.)
       (telega-ins "]"))
 
-    ;; Duration
+    ;; Duration / self destruct
     (telega-ins " (" (telega-duration-human-readable dur) ")")
+    (when-let ((tl-ttl (plist-get msg :self_destruct_type)))
+      (telega-ins ", ")
+      (telega-ins--self-destruct-type tl-ttl 'short))
 
     ;; ffplay controls to seek/2x/stop
     (when (telega-ffplay-playing-p proc)
@@ -924,7 +927,8 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
          (dur (plist-get note :duration))
          (note-file (telega-file--renew note :video))
          (recognition (plist-get note :speech_recognition_result))
-         (ffplay-proc (plist-get msg :telega-ffplay-proc)))
+         (ffplay-proc (plist-get msg :telega-ffplay-proc))
+         (tl-ttl (plist-get msg :self_destruct_type)))
     (telega-ins (propertize "NOTE" 'face 'telega-shadow))
     (telega-ins-fmt " (%dx%d %s %s)"
       (plist-get note :length) (plist-get note :length)
@@ -932,6 +936,9 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
       (telega-duration-human-readable dur))
     (when (telega--tl-get msg :content :is_viewed)
       (telega-ins (telega-symbol 'eye)))
+    (when tl-ttl
+      (telega-ins ", ")
+      (telega-ins--self-destruct-type tl-ttl 'short))
 
     ;; ffplay controls to seek/2x/stop
     (when (telega-ffplay-playing-p ffplay-proc)
@@ -959,7 +966,10 @@ If NO-2X-BUTTON is specified, then do not display \"2x\" button."
       (when-let ((img (or (plist-get msg :telega-ffplay-frame)
                           (when (or minithumb thumb)
                             (telega-media--image
-                             (cons note 'telega-vvnote-video--create-image)
+                             (cons note
+                                   (if tl-ttl
+                                       #'telega-vvnote-video-ttl--create-image
+                                     #'telega-vvnote-video--create-image))
                              (cons thumb :file))))))
         (telega-ins "\n")
         (telega-ins--image-slices img)
@@ -979,9 +989,10 @@ If NO-ATTACH-SYMBOL is specified, then do not insert attachment symbol."
       (telega-ins (telega-symbol 'attachment) " "))
 
     (if (telega-file--downloaded-p doc-file)
-        (telega-ins--with-face 'telega-link
-          (telega-ins (telega-short-filename
-                       (telega--tl-get doc-file :local :path))))
+        (let ((local-path (telega--tl-get doc-file :local :path)))
+          (telega-ins--raw-button (telega-link-props 'file local-path
+                                                     'face 'telega-link)
+            (telega-ins (telega-short-filename local-path))))
       (telega-ins fname))
     (telega-ins " (" (file-size-human-readable
                       (telega-file--size doc-file))
@@ -1136,25 +1147,33 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (telega-ins-fmt "%fN, %fE"
     (plist-get location :latitude) (plist-get location :longitude)))
 
+(defun telega-ins--location-live-header (live-for updated-ago)
+  "Insert live location header."
+  (telega-ins--with-face 'telega-shadow
+    (telega-ins "Live"))
+  (when (> live-for 0)
+    (telega-ins " " (telega-time-ago-human-readable updated-ago)
+                " " (telega-symbol 'timer-clock)
+                (telega-duration-human-readable
+                 live-for (if (> live-for 3600) 2 1)
+                 (unless (> live-for 3600) 'long))))
+  t)
+
 (defun telega-ins--location-live (msg)
   "Insert live location description for location message MSG."
   ;; NOTE: in case of unexpired live location show last update
   ;; time and expiration period
   (when-let ((live-for-spec (telega-msg-location-live-for msg)))
     (cl-destructuring-bind (live-for updated-ago) live-for-spec
-      (telega-ins " " (propertize "Live" 'face 'telega-shadow))
-      (when (> live-for 0)
-        (telega-ins-fmt " for %s"
-          (telega-duration-human-readable live-for 1 'long))
-        (telega-ins-fmt " (updated %s ago)"
-          (telega-duration-human-readable updated-ago 1 'long))
-        (telega-ins " ")
-        (telega-ins--box-button (telega-i18n "telega_stop_live_location"
-                                  :count 1)
-          'action (lambda (_button)
-                    (telega--editMessageLiveLocation msg nil))))
+      (telega-ins " ")
+      (telega-ins--location-live-header live-for updated-ago)
 
       (when (plist-get msg :can_be_edited)
+        (telega-ins " ")
+        (telega-ins--box-button (telega-i18n "telega_stop")
+          'action (lambda (_button)
+                    (telega--editMessageLiveLocation msg nil)))
+
         (let ((proximity-radius
                (telega--tl-get msg :content :proximity_alert_radius)))
           (telega-ins "\n")
@@ -1178,7 +1197,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
                                        (with-online-status-p t)
                                        (with-username-p t)
                                        (with-phone-p t))
-  "One line variant inserter for CONTACT."
+  "Multiple line variant inserter for CONTACT."
   (declare (indent 1))
   (let* ((user (if (eq (telega--tl-type contact) 'user)
                    contact
@@ -1222,14 +1241,19 @@ Return `non-nil' if WEB-PAGE has been inserted."
          (user-id (plist-get contact :user_id))
          (user (unless (zerop user-id) (telega-user-get user-id)))
          (user-ava (when (and telega-user-show-avatars user)
-                     (telega-msg-sender-avatar-image user))))
+                     (telega-msg-sender-avatar-image-three-lines user))))
     (when user-ava
       (telega-ins--image user-ava 0))
+    (telega-ins--with-face 'telega-shadow
+      (telega-ins-i18n "lng_in_dlg_contact"))
+    (telega-ins "\n")
+    (when user-ava
+      (telega-ins--image user-ava 1))
     (telega-ins--contact (plist-get content :contact)
       :with-avatar-p nil)
     (telega-ins "\n")
     (when user-ava
-      (telega-ins--image user-ava 1))
+      (telega-ins--image user-ava 2))
     (telega-ins--box-button (concat "   VIEW CONTACT   ")
       'action 'telega-msg-button--action)))
 
@@ -1695,6 +1719,8 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
           messageChatSetTtl
           messageExpiredPhoto
           messageExpiredVideo
+          messageExpiredVoiceNote
+          messageExpiredVideoNote
           messageChatChangePhoto
           messageChatDeletePhoto
           messageChatUpgradeTo
@@ -1802,6 +1828,10 @@ Special messages are determined with `telega-msg-special-p'."
        (telega-ins-i18n "lng_ttl_photo_expired"))
       (messageExpiredVideo
        (telega-ins-i18n "lng_ttl_video_expired"))
+      (messageExpiredVoiceNote
+       (telega-ins-i18n "lng_ttl_voice_expired"))
+      (messageExpiredVideoNote
+       (telega-ins-i18n "lng_ttl_round_expired"))
       (messageChatChangePhoto
        (let ((animated-p (telega--tl-get content :photo :animation)))
          (if (plist-get msg :is_channel_post)
@@ -3057,7 +3087,7 @@ If SHORT-P is non-nil then use short version."
           (telega-ins " ")
           (telega-ins--image
            (let ((telega-video-note-height 1))
-             (telega-vvnote-video--svg thumb-filename nil nil 'png))))
+             (telega-vvnote-video--svg thumb-filename))))
         (telega-ins " (" (telega-duration-human-readable duration) ")")))
      (inputMessageSticker
       (telega-ins--input-file (plist-get imc :sticker) "Sticker"))

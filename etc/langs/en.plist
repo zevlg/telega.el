@@ -600,6 +600,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Photo has expired")
  ("lng_ttl_video_expired"
   :value "Video has expired")
+ ("lng_ttl_voice_expired"
+  :value "Voice message expired")
+ ("lng_ttl_round_expired"
+  :value "Round message expired")
  ;; message_ttl_setting
  ("lng_ttl_about_duration1"
   :value "24 hours")
@@ -1205,6 +1209,8 @@ You can send them an invite link as message instead.")
  ;; Stories
  ("lng_stories_my_name"
   :value "My Story")
+ ("lng_stories_show_more"
+  :value "Show more")
  ("lng_view_button_story"
   :value "View story")
  ("lng_contacts_stories_status"

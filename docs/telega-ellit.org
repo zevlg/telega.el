@@ -1223,15 +1223,26 @@ project.
 ** Invalid TDLib version
 **TODO**
 
+** ~[telega bug]~
+
+**Q**: I've got a lot of ~[telega bug]~ things in the rootbuf or
+chatbuf.
+
+**A**: Set ~debug-on-error~ to non-nil and trigger the bug to get the
+backtrace buffer.  Report this backtrace to github issues or to the
+[[https://t.me/emacs_telega][telega.el Telegram Chat]]
+
 ** Stickers are not shown
 
 **Q**: Stickers are not fully shown, I see only outlines for some
 stickers, like on the screenshot:
 [[file:https:/zevlg.github.io/telega/bad-stickers.jpg]]
 
-**A**: =telega= uses =dwebp= tool to convert stickers in the WEBP
-format to the format supported by Emacs.  See
-[[#stickers--animations][Stickers / Animations]] for details.
+**A**: If your Emacs does not have bultin WEBP format
+support. =telega= will use =dwebp= tool to convert stickers from WEBP
+format to the format supported by your Emacs.  See [[#stickers--animations][Stickers /
+Animations]] for details.  So, make sure =dwebp= tool is available on
+your machine.
 
 ** Notifications does not work
 

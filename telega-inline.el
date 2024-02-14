@@ -60,13 +60,15 @@
       (when link
         (telega-browse-url link)))))
 
-(defun telega--getCallbackQueryAnswer (msg payload)
+(cl-defun telega--getCallbackQueryAnswer (msg payload &key (callback #'ignore))
   "Async send callback to bot."
-  (telega-server--send
+  (declare (indent 2))
+  (telega-server--call
    (list :@type "getCallbackQueryAnswer"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
-         :payload payload)))
+         :payload payload)
+   callback))
 
 (defun telega-inline--callback (kbd-button msg)
   "Action to take when KBD-BUTTON is pressed."

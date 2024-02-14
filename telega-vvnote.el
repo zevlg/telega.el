@@ -283,16 +283,20 @@ Each sample is in range [-128;128]."
     (cl-assert (cl-every (apply-partially #'>= 31) n-waves))
     (telega-vvnote--waveform-encode n-waves)))
 
-(defun telega-vvnote-video--svg (framefile &optional progress
-                                           data-p frame-img-type)
+(cl-defun telega-vvnote-video--svg (framefile &key as-data-image-type
+                                              progress with-noise-p)
   "Generate svg image for the video note FRAMEFILE.
 PROGRESS is value from 0 to 1 indicating played content.
 PROGRESS might be nil, meaning video not is not started.
 PROGRESS also can be a cons cell, where car is `paused' and cdr is
 value from 0 to 1, meaning video note is paused at given progress.
-If DATA-P is non-nil then FRAMEFILE is actually an image data.
-If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
-  (let* ((img-type (or frame-img-type (telega-image-supported-file-p framefile)))
+If AS-DATA-IMAGE-TYPE is non-nil, then FRAMEFILE is actually an image
+data and AS-DATA-IMAGE-TYPE specifies type of the image.
+If WITH-NOISE-P is non-nil, then use noise filter above the image."
+  (declare (indent 1))
+  (let* ((data-p (when as-data-image-type t))
+         (img-type (or as-data-image-type
+                       (telega-image-supported-file-p framefile)))
          (size (telega-chars-xheight
                 (if (consp telega-video-note-height)
                     (car telega-video-note-height)
@@ -307,6 +311,8 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
          (clip1 (telega-svg-clip-path svg "clip1"))
          (playing-p (numberp progress)))
     (svg-circle clip (/ w 2) (/ h 2) (/ size 2))
+    (when with-noise-p
+      (telega-svg-append-spoiler-node svg "noise"))
     (telega-svg-embed svg (if data-p
                               framefile
                             (list (file-name-nondirectory framefile)
@@ -314,6 +320,8 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
                       (format "image/%S" img-type) data-p
                       :x xoff :y yoff
                       :width size :height size
+                      :filter (when with-noise-p
+                                "url(#noise)")
                       :clip-path "url(#clip)")
 
     (when progress
@@ -366,24 +374,29 @@ If DATA-P is non-nil then FRAME-IMG-TYPE specifies type of the image."
                :ascent 'center
                :telega-text (make-string aw-chars ?#))))
 
-(defun telega-vvnote-video--create-image (note &optional _file)
+(defun telega-vvnote-video--create-image (note &optional _file with-noise-p)
   "Create image for video NOTE frame."
   (let* ((thumb (plist-get note :thumbnail))
          (thumb-file (telega-file--renew thumb :file))
          (minithumb (plist-get note :minithumbnail)))
     (cond ((telega-file--downloaded-p thumb-file)
            (telega-vvnote-video--svg
-            (telega--tl-get thumb-file :local :path)))
+               (telega--tl-get thumb-file :local :path)
+             :with-noise-p with-noise-p))
           (minithumb
            (telega-vvnote-video--svg
-            (base64-decode-string (plist-get minithumb :data))
-            nil t 'jpeg))
+               (base64-decode-string (plist-get minithumb :data))
+             :as-data-image-type 'jpeg
+             :with-noise-p with-noise-p))
           (t
            (let* ((cheight (if (consp telega-video-note-height)
                                (car telega-video-note-height)
                              telega-video-note-height))
                   (x-size (telega-chars-xheight cheight)))
              (telega-media--progress-svg thumb-file x-size x-size cheight))))))
+
+(defun telega-vvnote-video-ttl--create-image (note &optional file)
+  (telega-vvnote-video--create-image note file :with-noise))
 
 
 ;; Recording notes
@@ -465,7 +478,7 @@ Return filename with recorded voice note."
 
         ;; Display frame
         (telega-ins--image
-         (telega-vvnote-video--svg (cdr frame) nil nil 'png))))))
+         (telega-vvnote-video--svg (cdr frame)))))))
 
 (defun telega-vvnote-video--record ()
   "Record a video note.

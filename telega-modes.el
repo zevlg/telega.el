@@ -1308,6 +1308,8 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
 (declare-function telega-root-aux-remove "telega-root" (inserter))
 (declare-function telega-root-aux-redisplay "telega-root" (&optional inserter))
 
+(defvar telega-active-locations--timer nil
+  "Timer to update active locations.")
 (defvar telega-active-location--messages nil
   "List of recently active live location messages.")
 
@@ -1346,8 +1348,15 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
         (telega-root-aux-append #'telega-ins--active-locations)
         (when (telega-server-live-p)
           (telega-active-locations--fetch))
+
+        ;; Always update all locations once a minute
+        (setq telega-active-locations--timer
+              (run-with-timer 60 60 #'telega-active-locations--check))
         )
 
+    (when telega-active-locations--timer
+      (cancel-timer telega-active-locations--timer)
+      (setq telega-active-locations--timer nil))
     (telega-root-aux-remove #'telega-ins--active-locations)
     (remove-hook 'telega-connection-state-hook
                  #'telega-active-locations--check)
@@ -1433,15 +1442,11 @@ EVENT must be \"updateDeleteMessages\"."
         (telega-ins--msg-sender chat
           :with-username-p t
           :with-brackets-p t)))
-    (telega-ins--with-face 'telega-shadow
-      (telega-ins " Live"))
+
+    (telega-ins " ")
     (cl-destructuring-bind (live-for updated-ago)
         (telega-msg-location-live-for msg)
-      (telega-ins-fmt " for %s"
-        (telega-duration-human-readable live-for 1 'long))
-      (telega-ins-fmt " (%s ago)"
-        (telega-duration-human-readable updated-ago 1 'long)))
-
+      (telega-ins--location-live-header live-for updated-ago))
     (when (and (not (telega-me-p user)) telega-my-location)
       (telega-ins " " (telega-symbol 'distance))
       (telega-ins
@@ -1472,8 +1477,7 @@ EVENT must be \"updateDeleteMessages\"."
         :action #'telega-msg-goto-highlight))
       (when (telega-me-p (telega-msg-sender loc-msg))
         (telega-ins " ")
-        (telega-ins--box-button (telega-i18n "telega_stop_live_location"
-                                  :count 1)
+        (telega-ins--box-button (telega-i18n "telega_stop")
           'action (lambda (_button)
                     (telega--editMessageLiveLocation loc-msg nil)))))
     t))

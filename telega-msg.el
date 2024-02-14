@@ -650,9 +650,9 @@ note finishes."
          (ffplay-frame
           (when frame
             (telega-vvnote-video--svg (cdr frame)
-                                      (if (telega-ffplay-paused-p proc)
-                                          (cons 'paused normalized-progress)
-                                        normalized-progress)))))
+              :progress (if (telega-ffplay-paused-p proc)
+                            (cons 'paused normalized-progress)
+                          normalized-progress)))))
     ;; NOTE: Update proc's `:progress' property to start from correct
     ;; place if [x2] button is pressed
     (set-process-plist proc (plist-put proc-plist :progress played))
@@ -1624,11 +1624,15 @@ If `\\[universal-argument]' is supplied, then copy without text properties."
   (let* ((ent (get-text-property (point) :tl-entity))
          (ent-type (when ent
                      (telega--tl-type (plist-get ent :type))))
+         (telega-link (get-text-property (point) :telega-link))
          (telega-inhibit-telega-display-by t)
          (ctext (cond ((region-active-p)
                        (prog1
                            (buffer-substring (region-beginning) (region-end))
                          (deactivate-mark)))
+
+                      ((memq (car telega-link) '(file url))
+                       (cdr telega-link))
 
                       ((eq 'textEntityTypeUrl ent-type)
                        (telega-msg--tl-entity-text msg ent))
@@ -1747,6 +1751,10 @@ Requires administrator rights in the chat."
               :with-avatar-p t
               :with-username-p 'telega-username
               :with-brackets-p t))))
+
+      (when-let ((ignored-by (telega-msg-match-p msg 'ignored)))
+        (telega-ins-describe-item "Ignored By"
+          (telega-ins-fmt "%S" ignored-by)))
 
       ;; Link to the message
       (when-let ((link (ignore-errors

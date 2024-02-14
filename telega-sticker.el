@@ -381,11 +381,19 @@ Return path to png file."
                         ;; :max-width (* (telega-chars-xwidth 1)
                         ;;               (cdr sticker-size))
                         :scale 1.0 :ascent 'center
-                                        ; :mask 'heuristic
                         :margin (cons (cdr cwidth-xmargin) 0)
                         :telega-text (make-string (car cwidth-xmargin) ?X)
+                        ;; NOTE: For adaptive custom emojis use also
+                        ;; heuristic mask, because it is predicatable
+                        :mask (when-let ((sset (telega-stickerset-get
+                                                   (plist-get sticker :set_id)
+                                                   'locally)))
+                                (when (plist-get sset :needs_repainting)
+                                  'heuristic))
+
                         (when (telega-sticker-favorite-p sticker)
-                          (list :background telega-sticker-favorite-background))))
+                          (list :background telega-sticker-favorite-background))
+                        ))
                 (t
                  ;; Fallback to svg
                  (telega-sticker--progress-svg sticker)))))
@@ -518,6 +526,10 @@ SSET can be either `sticker' or `stickerSetInfo'."
         (telega-ins-fmt "(telega-stickerset-get \"%s\")"
           (plist-get sset :id))))
 
+    (when (plist-get sset :needs_repainting)
+      (telega-ins-describe-item "Adaptive"
+        (telega-ins (telega-symbol 'checkmark))))
+
     ;; NOTE: In case SSET is "stickerSetInfo" fetch real sticker set
     ;; and insert all the stickers
     (let ((sticker-list-ins
@@ -526,7 +538,7 @@ SSET can be either `sticker' or `stickerSetInfo'."
                (telega-ins-describe-item
                  (cl-ecase (telega--tl-type (plist-get sticker-set :sticker_type))
                    (stickerTypeMask "Masks")
-                   (stickerTypeCustomEmoji "Custom Emoji Stickers")
+                   (stickerTypeCustomEmoji "Custom Emojis")
                    (stickerTypeRegular
                     (cl-ecase (telega--tl-type
                                (plist-get sticker-set :sticker_format))
@@ -588,21 +600,23 @@ stickers for the EMOJI."
       (setq telega-help-win--emoji emoji)
 
       ;; NOTE: use callbacks for async stickers loading
-      (telega-ins--with-face 'telega-describe-item-title
-        (telega-ins-fmt "Custom Emoji for %s:\n" emoji))
-      (telega-ins--line-wrap-prefix "  "
-        (telega--getStickers emoji
-          :chat for-chat
-          :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
-          :callback (telega--gen-ins-continuation-callback 'loading
-                      (lambda (stickers &rest args)
-                        (apply #'telega-ins--sticker-list
-                               (mapcar #'telega-custom-emoji-from-sticker
-                                       stickers)
-                               args)))))
+      (when (or (telega-chat-match-p for-chat 'saved-messages)
+                (telega-user-match-p (telega-user-me) 'is-premium))
+        (telega-ins--with-face 'telega-describe-item-title
+          (telega-ins-fmt "Custom Emoji for %s:\n" emoji))
+        (telega-ins--line-wrap-prefix "  "
+          (telega--getStickers emoji
+            :chat for-chat
+            :tl-sticker-type '(:@type "stickerTypeCustomEmoji")
+            :callback (telega--gen-ins-continuation-callback 'loading
+                        (lambda (stickers &rest args)
+                          (apply #'telega-ins--sticker-list
+                                 (mapcar #'telega-custom-emoji-from-sticker
+                                         stickers)
+                                 args)))))
+        (telega-ins "\n"))
 
       (unless custom-emojis-only
-        (telega-ins "\n")
         (telega-ins--with-face 'telega-describe-item-title
           (telega-ins "Installed Stickers:\n"))
         (telega-ins--line-wrap-prefix "  "

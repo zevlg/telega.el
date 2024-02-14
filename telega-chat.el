@@ -2015,35 +2015,52 @@ Use this to surrond header with some prefix and suffix."
    "active-stories"
    "updateChatActiveStories")
 
-  (when (and (telega-chatbuf-match-p telega-story-show-active-stories-for)
-             (not (plist-get telega-chatbuf--hidden-headers :active-stories)))
-    (when-let* ((active-stories
-                 (telega-chat--active-stories telega-chatbuf--chat))
-                (stories (plist-get active-stories :stories)))
-      (unless (seq-empty-p stories)
-        (telega-ins--as-string
-         (telega-ins--text-button (telega-symbol 'button-close)
+  (when-let* ((match-result
+               (telega-chatbuf-match-p telega-story-show-active-stories-for))
+              (shown-p
+               (not (plist-get telega-chatbuf--hidden-headers :active-stories)))
+              (active-stories
+               (telega-chat--active-stories telega-chatbuf--chat))
+              (stories (plist-get active-stories :stories))
+              (show-nstories
+               (if (and (integerp match-result)
+                        (not (plist-get telega-chatbuf--hidden-headers
+                                        :active-stories-show-more)))
+                   match-result
+                 (length stories))))
+    (unless (seq-empty-p stories)
+      (telega-ins--as-string
+       (telega-ins--text-button (telega-symbol 'button-close)
+         'face 'telega-link
+         'action (lambda (_ignored)
+                   (plist-put telega-chatbuf--hidden-headers :active-stories t)
+                   (telega-chatbuf--chat-update "active-stories")))
+       (telega-ins " " (telega-i18n "lng_stories_row_count"
+                         :count (seq-length stories))
+                   ":")
+       (seq-doseq (story-info (seq-take stories show-nstories))
+         (if-let* ((chat-id (plist-get telega-chatbuf--chat :id))
+                   (story-id (plist-get story-info :story_id))
+                   (story (telega-story-get chat-id story-id 'offline)))
+             (progn
+               (telega-ins " ")
+               (telega-ins--button-story-one-line-no-caption story))
+
+           ;; NOTE: need to fetch story structure to display it
+           (telega--getStory chat-id story-id nil
+             (lambda (story)
+               (with-telega-chatbuf (telega-story-chat story)
+                 (telega-chatbuf--chat-update "active-stories"))))))
+
+       (when (> (length stories) show-nstories)
+         (telega-ins (telega-symbol 'eliding))
+         (telega-ins--box-button (telega-i18n "lng_stories_show_more")
            'face 'telega-link
            'action (lambda (_ignored)
-                     (plist-put telega-chatbuf--hidden-headers :active-stories t)
-                     (telega-chatbuf--chat-update "active-stories")))
-         (telega-ins " " (telega-i18n "lng_stories_row_count"
-                           :count (seq-length stories))
-                     ":")
-         (seq-doseq (story-info stories)
-           (if-let* ((chat-id (plist-get telega-chatbuf--chat :id))
-                     (story-id (plist-get story-info :story_id))
-                     (story (telega-story-get chat-id story-id 'offline)))
-               (progn
-                 (telega-ins " ")
-                 (telega-ins--button-story-one-line-no-caption story))
-
-             ;; NOTE: need to fetch story structure to display it
-             (telega--getStory chat-id story-id nil
-               (lambda (story)
-                 (with-telega-chatbuf (telega-story-chat story)
-                   (telega-chatbuf--chat-update "active-stories"))))))
-         )))))
+                     (plist-put telega-chatbuf--hidden-headers
+                                :active-stories-show-more t)
+                     (telega-chatbuf--chat-update "active-stories"))))
+       ))))
 
 (defun telega-chatbuf-footer-pinned-stories ()
   (telega-chatbuf--dirtiness-init
@@ -2051,25 +2068,43 @@ Use this to surrond header with some prefix and suffix."
    "updateChatActiveStories"            ; For story's `seen' status
    )
 
-  (when (and (telega-chatbuf-match-p telega-story-show-pinned-stories-for)
-             (not (plist-get telega-chatbuf--hidden-headers :pinned-stories)))
-    (when-let ((pinned-stories
-                (plist-get telega-chatbuf--chat :telega-pinned-stories)))
-      (telega-ins--as-string
-       (telega-ins--text-button (telega-symbol 'button-close)
+  (when-let* ((match-result
+               (telega-chatbuf-match-p telega-story-show-pinned-stories-for))
+              (shown-p
+               (not (plist-get telega-chatbuf--hidden-headers :pinned-stories)))
+              (pinned-stories
+               (plist-get telega-chatbuf--chat :telega-pinned-stories))
+              (show-nstories
+               (if (and (integerp match-result)
+                        (not (plist-get telega-chatbuf--hidden-headers
+                                        :pinned-stories-show-more)))
+                   match-result
+                 (length pinned-stories))))
+    (telega-ins--as-string
+     (telega-ins--text-button (telega-symbol 'button-close)
+       'face 'telega-link
+       'action (lambda (_ignored)
+                 (plist-put telega-chatbuf--hidden-headers :pinned-stories t)
+                 (telega-chatbuf--chat-update "pinned-stories")))
+     (telega-ins (telega-symbol 'pin) " "
+                 (telega-i18n "lng_stories_row_count"
+                   :count (seq-length pinned-stories))
+                 ": ")
+     (seq-doseq (story (seq-take pinned-stories show-nstories))
+       (telega-button--insert 'telega story
+         :inserter (lambda (story)
+                     (telega-ins--story-content-one-line story nil t))
+         :action #'telega-story-open))
+
+     (when (> (length pinned-stories) show-nstories)
+       (telega-ins (telega-symbol 'eliding))
+       (telega-ins--box-button (telega-i18n "lng_stories_show_more")
          'face 'telega-link
          'action (lambda (_ignored)
-                   (plist-put telega-chatbuf--hidden-headers :pinned-stories t)
-                   (telega-chatbuf--chat-update "active-stories")))
-       (telega-ins (telega-symbol 'pin) " "
-                   (telega-i18n "lng_stories_row_count"
-                     :count (seq-length pinned-stories))
-                   ": ")
-       (seq-doseq (story pinned-stories)
-         (telega-button--insert 'telega story
-           :inserter (lambda (story)
-                       (telega-ins--story-content-one-line story nil t))
-           :action #'telega-story-open))))))
+                   (plist-put telega-chatbuf--hidden-headers
+                              :pinned-stories-show-more t)
+                   (telega-chatbuf--chat-update "pinned-stories"))))
+     )))
 
 (defun telega-chatbuf-footer-active-vvnote ()
   "Formatter for the active voice/video note currently playing in the chatbuf."
@@ -2567,6 +2602,10 @@ Global chat bindings:
         telega-chatbuf--administrators nil
         telega-chatbuf--group-call-users nil
         telega-chatbuf--bot-start-parameter nil
+
+        telega-chatbuf--hidden-headers
+        (list :active-stories nil :pinned-stories nil :video-chat nil
+              :active-stories-show-more nil :pinned-stories-show-more nil)
         )
 
   ;; Make usernames with "_" be completable
@@ -5048,7 +5087,7 @@ Uses `telega-screenshot-function' to take a screenshot."
 (defun telega-chatbuf-sticker-insert (sticker)
   "Attach STICKER to the input."
   (let ((thumb (plist-get sticker :thumbnail))
-        (preview (telega-sticker--image sticker)))
+        (preview (copy-sequence (telega-sticker--image sticker))))
     ;; Scale down preview to single char
     (plist-put (cdr preview) :scale (/ 1.0 (car telega-sticker-size)))
 
@@ -5085,7 +5124,7 @@ EMOJI - emoji string to use instead of emoji associated with the STICKER."
 (defun telega-chatbuf-animation-insert (animation)
   "Attach ANIMATION to the input."
   (let ((thumb (plist-get animation :thumbnail))
-        (preview (telega-animation--create-image animation)))
+        (preview (copy-sequence (telega-animation--create-image animation))))
     ;; Scale down preview to single char
     (plist-put (cdr preview) :scale (/ 1.0 telega-animation-height))
 

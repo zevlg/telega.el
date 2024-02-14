@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.240)
+#+title: Telega Manual (v0.8.241)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -122,6 +122,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
   - [[#troubleshooting][Troubleshooting]]
     - [[#cant-compile-telega-server][Can't compile =telega-server=]]
     - [[#invalid-tdlib-version][Invalid TDLib version]]
+    - [[#telega-bug][~[telega bug]~]]
     - [[#stickers-are-not-shown][Stickers are not shown]]
     - [[#notifications-does-not-work][Notifications does not work]]
 
@@ -2808,14 +2809,16 @@ chatbuf's footer.  This behaviour is controlled by custom options:
 
 - User Option: ~telega-story-show-active-stories-for~ 
 
-  Show active stories in the chatbuf's footer for chats matching this temex. 
+  Show active stories in the chatbuf's footer for chats matching this temex.
+  If temex returns a number then limit number of shown active stories. 
 
-  Default value: ~all~
+  Default value: ~(return 10)~
 - User Option: ~telega-story-show-pinned-stories-for~ 
 
-  Show pinned stories in the chatbuf's footer for chats matching this temex. 
+  Show pinned stories in the chatbuf's footer for chats matching this temex.
+  If temex returns a number then limit number of shown pinned stories. 
 
-  Default value: ~all~
+  Default value: ~(return 10)~
 
 =telega= can preload media content for stories from users or
 channels of your interest.  This is controlled by custom option:
@@ -3814,6 +3817,18 @@ This is required because only user in the room can access the member info.
 
 **TODO**
 
+** ~[telega bug]~
+:PROPERTIES:
+:CUSTOM_ID: telega-bug
+:END:
+
+**Q**: I've got a lot of ~[telega bug]~ things in the rootbuf or
+chatbuf.
+
+**A**: Set ~debug-on-error~ to non-nil and trigger the bug to get the
+backtrace buffer.  Report this backtrace to github issues or to the
+[[https://t.me/emacs_telega][telega.el Telegram Chat]]
+
 ** Stickers are not shown
 :PROPERTIES:
 :CUSTOM_ID: stickers-are-not-shown
@@ -3823,9 +3838,11 @@ This is required because only user in the room can access the member info.
 stickers, like on the screenshot:
 [[file:https:/zevlg.github.io/telega/bad-stickers.jpg]]
 
-**A**: =telega= uses =dwebp= tool to convert stickers in the WEBP
-format to the format supported by Emacs.  See
-[[#stickers--animations][Stickers / Animations]] for details.
+**A**: If your Emacs does not have bultin WEBP format
+support. =telega= will use =dwebp= tool to convert stickers from WEBP
+format to the format supported by your Emacs.  See [[#stickers--animations][Stickers /
+Animations]] for details.  So, make sure =dwebp= tool is available on
+your machine.
 
 ** Notifications does not work
 :PROPERTIES:

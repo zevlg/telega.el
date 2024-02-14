@@ -396,15 +396,13 @@ FORCE is used for testing only, should not be used in real code."
 (defun telega-notifications-history ()
   "Show notifications history, most recent notification goes first."
   (interactive)
-  (with-help-window "*Telegram Notification Messages*"
-    (set-buffer standard-output)
-    (let ((inhibit-read-only t))
+  (with-telega-help-win "*Telegram Notification Messages*"
+    (save-excursion
       (dolist (msg (ring-elements telega--notification-messages-ring))
         (telega-button--insert 'telega-msg msg
           :inserter #'telega-ins--message-with-chat-header
           :action #'telega-msg-goto-highlight)
-        (telega-ins "\n"))
-      (goto-char (point-min)))))
+        (telega-ins "\n")))))
 
 (provide 'telega-notifications)
 

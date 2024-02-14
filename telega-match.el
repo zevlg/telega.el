@@ -1019,7 +1019,8 @@ function."
                                                    :telega-last-ignored)))
                       (when (eq (plist-get msg :id) (car last-ignored))
                         (cdr last-ignored)))))))
-    (eq ignored-by (or reason ignored-by))))
+    (or (and reason (eq reason ignored-by))
+        ignored-by)))
 
 ;;; ellit-org: msg-temex
 ;; - (contains ~REGEXP~ ) ::
