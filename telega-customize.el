@@ -670,11 +670,6 @@ In range [1..3].  Use 1."
   :type 'boolean
   :group 'telega)
 
-(defcustom telega-poll-result-color "#000066"
-  "Color used to draw poll results in poll messages."
-  :type 'string
-  :group 'telega)
-
 
 (defgroup telega-server nil
   "Customisation for telega-server."
@@ -2171,16 +2166,6 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-ballout-empty "☐"
-  "Symbol used for empty ballout."
-  :type 'string
-  :group 'telega-symbol)
-
-(defcustom telega-symbol-ballout-check "☑"
-  "Symbol used for checked ballout."
-  :type 'string
-  :group 'telega-symbol)
-
 (defcustom telega-symbol-member "👤"
   "Symbol used for chat members and non-contact users."
   :type 'string
@@ -2218,18 +2203,18 @@ Good candidates also are 🄌 or ⬤."
   :type 'string
   :group 'telega-symbol)
 
-(defcustom telega-symbol-poll-options (list "○" "●")
+(defcustom telega-symbol-poll-options '(radiobox-off radiobox-on)
   "Symbols used to display poll options with single choice.
 First - for non-selected option.
 Second - for selected option."
-  :type '(list string string)
+  :type '(list (choice string symbol) (choice string symbol))
   :group 'telega-symbol)
 
-(defcustom telega-symbol-poll-multiple-options (list "☐" "☑")
+(defcustom telega-symbol-poll-multiple-options '(checkbox-off checkbox-on)
   "Symbols used to display poll options with multiple answers allowed.
 First - for non-selected option.
 Second - for selected option."
-  :type '(list string string)
+  :type '(list (choice string symbol) (choice string symbol))
   :group 'telega-symbol)
 
 (defcustom telega-symbol-quiz-options (list (compose-chars ?○ ?✓)

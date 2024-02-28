@@ -93,14 +93,26 @@
   (telega--tl-get topic :info :message_thread_id))
 
 (defun telega-topic-notification-setting (topic setting)
-  (telega--tl-get topic :notification_settings setting))
+  (telega-chat-notification-setting (telega-topic-chat topic) setting topic))
 
 (defun telega-topic-muted-p (topic)
   "Return non-nil if TOPIC is muted."
   (> (telega-topic-notification-setting topic :mute_for) 0))
 
-(defun telega-chat-topics (chat)
-  (gethash (plist-get chat :id) telega--chat-topics))
+(defun telega-chat-topics (chat &optional force-update-p)
+  "Get CHAT's topics.
+If FORCE-UPDATE-P is specified, then refetch topics from Telegram server."
+  ;; NOTE: since TDLib (1.8.25) does not yet have update events for
+  ;; the topics, we refetch topics when `TAB' is pressed on the forum
+  ;; chat in the rootbuf
+  (let ((topics (gethash (plist-get chat :id) telega--chat-topics)))
+    (when force-update-p
+      (let ((forum-topics (telega--getForumTopics chat "")))
+        ;; NOTE: `telega--getForumTopics' might return partial list of
+        ;; topics
+        (seq-doseq (topic (plist-get forum-topics :topics))
+          (telega-chat--topic-ensure chat topic))))
+    topics))
 
 (defun telega-topic-get (chat msg-thread-id)
   "Get CHAT's topic by THREAD-ID."
@@ -113,13 +125,13 @@
             (telega-topic-get chat (telega-topic-msg-thread-id topic))))
       ;; Update topic inplace
       (setcdr existing-topic (cdr topic))
-
     (puthash (plist-get chat :id)
              (append (telega-chat-topics chat) (list topic))
-             telega--chat-topics)
-    ;; Store back reference to chat in the `:telega-chat' property
-    (plist-put topic :telega-chat chat)
-    topic))
+             telega--chat-topics))
+
+  ;; Store back reference to chat in the `:telega-chat' property
+  (plist-put topic :telega-chat chat)
+  topic)
 
 (defun telega-topic-chat (topic)
   "Return chat for the TOPIC."
@@ -169,19 +181,19 @@
     (when (and button (eq (button-type button) 'telega-topic))
       (button-get button :value))))
 
-(defun telega-topic-goto (topic &optional reply-msg-id)
-  "Open TOPIC in a chatbuf."
+(defun telega-topic-goto (topic &optional msg-id)
+  "Open TOPIC in a chatbuf.
+If MSG-ID is specified, jump to the this message in the topic."
   (let* ((topic-chat (telega-topic-chat topic))
          (buffer (telega-chatbuf--get-create topic-chat :no-history)))
     ;; NOTE: pop to buffer after starting filtering by topic, to make
-    ;; `telega-root--keep-cursor-at-chat' to the job for keeping
+    ;; `telega-root--keep-cursor-at-chat' do the job for keeping
     ;; cursor at topic position
     (with-current-buffer buffer
       (unless (eq topic (telega-chatbuf--thread-topic))
-        (telega-chatbuf-filter-by-topic topic (when reply-msg-id :no-history))
-        (when reply-msg-id
-          (let ((telega-chatbuf--inhibit-filter-reset '(thread)))
-            (telega-chat--goto-msg topic-chat reply-msg-id 'highlight)))))
+        (telega-chatbuf-filter-by-topic topic (when msg-id :no-history))
+        (when msg-id
+          (telega-chat--goto-msg topic-chat msg-id 'highlight))))
 
     (telega-chat--pop-to-buffer topic-chat :no-history)))
 
@@ -215,12 +227,11 @@
         :with-username-p t
         :with-brackets-p t)
       (telega-ins "\n")
+      (telega-ins-describe-item "Last-Read-Outbox"
+        (telega-ins-fmt "%S" (plist-get topic :last_read_outbox_message_id)))
+      (telega-ins-describe-item "Message-Thread-Id"
+        (telega-ins-fmt "%S" (plist-get topic-info :message_thread_id)))
       
-      (telega-ins "\n")
-
-      (telega-ins-fmt "Message-Thread-Id: %S\n"
-        (plist-get topic-info :message_thread_id))
-
       ;; TODO: more fields
 
       (when (and (listp telega-debug) (memq 'info telega-debug))

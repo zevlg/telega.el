@@ -251,15 +251,17 @@
         (funcall custom-action msg)
       (telega-msg-open-content msg 'clicked))))
 
-(defun telega-msg-create-internal (chat fmt-text)
+(defun telega-msg-create-internal (chat fmt-text &rest props)
   "Create message for internal use.
 Used to add content to chatbuf that is not a regular message.
-FMT-TEXT is formatted text, can be created with `telega-fmt-text'."
-  (list :@type "message"
-        :id -1
-        :chat_id (plist-get chat :id)
-        :content (list :@type "telegaInternal"
-                       :text fmt-text)))
+FMT-TEXT is formatted text, can be created with `telega-fmt-text'.
+PROPS are additional properties to the internal message."
+  (nconc (list :@type "message"
+               :id -1
+               :chat_id (plist-get chat :id)
+               :content (list :@type "telegaInternal"
+                              :text fmt-text))
+         props))
 
 (defun telega-msg-p (obj)
   "Return non-nil if OBJ is a message object."
@@ -864,11 +866,15 @@ non-nil."
               (when-let* ((voters-reply (telega--getPollVoters msg popt-id))
                           (voters (mapcar #'telega-msg-sender
                                           (plist-get voters-reply :senders))))
-                (telega-ins--user-list voters)
-                (telega-ins "\n"))
-              (telega-ins "\n")
-            )))
-    ))))
+                (telega-ins--line-wrap-prefix "  "
+                  (seq-doseq (voter voters)
+                    (telega-ins--raw-button
+                        (telega-link-props 'sender voter 'type 'telega)
+                      (telega-ins--msg-sender voter
+                        :with-avatar-p t
+                        :with-username-p 'telega-username)
+                      (telega-ins "\n")))))
+              (telega-ins "\n"))))))))
 
 (defun telega-msg-open-sponsored (sponsored-msg)
   "Open sponsored message SPONSORED-MSG."
@@ -1750,7 +1756,10 @@ Requires administrator rights in the chat."
             (telega-ins--msg-sender sender
               :with-avatar-p t
               :with-username-p 'telega-username
-              :with-brackets-p t))))
+              :with-brackets-p t))
+          (let ((sender-boosts (plist-get msg :sender_boost_count)))
+            (unless (telega-zerop sender-boosts)
+              (telega-ins-fmt " / %d boosts" sender-boosts)))))
 
       (when-let ((ignored-by (telega-msg-match-p msg 'ignored)))
         (telega-ins-describe-item "Ignored By"
@@ -2079,6 +2088,22 @@ By default `telega-translate-to-language-default' is used."
                (not (plist-get content :telega-spoiler-removed)))
       (plist-put content :telega-spoiler-removed t)
       (telega-msg-redisplay msg))))
+
+(defun telega-msg-disable-webpage-preview (msg)
+  "Disable webpage preview for the given outgoing message."
+  (interactive (list (telega-msg-for-interactive)))
+  (unless (telega-msg-match-p msg '(type Text))
+    (user-error "telega: can disable webpage preview only for text messages"))
+  (unless (telega-msg-match-p msg '(prop :can_be_edited))
+    (user-error "telega: can't edit this message"))
+
+  (telega--editMessageText
+   msg (list :@type "inputMessageText"
+             :text
+             (telega-fmt-text-desurrogate
+              (copy-sequence (telega--tl-get msg :content :text)))
+             :link_preview_options
+             '(:@type "linkPreviewOptions" :is_disabled t))))
 
 (defun telega-msg--replied-message (msg)
   "Return message on which MSG depends."

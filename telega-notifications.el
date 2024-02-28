@@ -60,28 +60,34 @@ SCOPE-TYPE is one of:
             scope))
     scope))
 
-(defun telega-chat-notification-setting (chat setting &optional default-p)
+(defun telega-chat-notification-setting (chat setting &optional topic)
   "For the CHAT return notification SETTING value.
 SETTING could be one of: `:mute_for', `:sound', `:show_preview',
 `:disable_pinned_message_notifications',
 `:disable_mention_notifications'.
-If DEFAULT-P is non-nil, then return default setting for the CHAT."
-  (let ((use-default-name
-         (intern (concat ":use_default_" (substring (symbol-name setting) 1))))
-        (not-cfg (plist-get chat :notification_settings))
-        (default-cfg nil))
-    (when (or default-p (plist-get not-cfg use-default-name))
-      (setq default-cfg
-            (telega-chat-notification-scope
-             (cl-case (telega-chat--type chat)
-               (channel
-                "notificationSettingsScopeChannelChats")
-               ((basicgroup supergroup)
-                "notificationSettingsScopeGroupChats")
-               (t
-                "notificationSettingsScopePrivateChats")))))
-
-    (plist-get (or default-cfg not-cfg) setting)))
+If TOPIC is specified, return notification setting for the given topic."
+  (cl-assert chat)
+  (let* ((use-default-name
+          (intern (concat ":use_default_" (substring (symbol-name setting) 1))))
+         (not-cfg (plist-get (or topic chat) :notification_settings))
+         (use-default-p
+          (plist-get not-cfg use-default-name)))
+    (cond ((and topic use-default-p)
+           ;; Use chat's setting
+           (telega-chat-notification-setting chat setting))
+          (use-default-p
+           ;; Use scope's setting
+           (plist-get (telega-chat-notification-scope
+                       (cl-case (telega-chat--type chat)
+                         (channel
+                          "notificationSettingsScopeChannelChats")
+                         ((basicgroup supergroup)
+                          "notificationSettingsScopeGroupChats")
+                         (t
+                          "notificationSettingsScopePrivateChats")))
+                      setting))
+          (t
+           (plist-get not-cfg setting)))))
 
 (defun telega-ins--msg-notification (msg)
   "Inserter to format MSG to notify about."

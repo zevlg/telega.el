@@ -642,9 +642,11 @@ Keep cursor position only if CHAT is visible."
   "Toogle view for CHAT button."
   (interactive (list (telega-chat-at (point))))
   (if (telega-chat-match-p chat 'is-forum)
-      (progn
-        (plist-put chat :telega-topics-visible
-                   (not (plist-get chat :telega-topics-visible)))
+      (let ((topics-visible-p (not (plist-get chat :telega-topics-visible))))
+        (when topics-visible-p
+          (telega-chat-topics chat 'force-update))
+
+        (plist-put chat :telega-topics-visible topics-visible-p)
         (telega-root-view--update :on-chat-update chat))
 
     ;; TODO: toogle preview for the last message
@@ -674,7 +676,7 @@ If `\\[universal-argument]' is specified, then open chat in a preview mode."
 (defun telega-topic-button-action (topic)
   "Action to take when TOPIC button is pushed in the rootbuf.
 If `\\[universal-argument]' is specified, then open topic in a preview mode."
-  (telega-topic-goto topic (plist-get topic :last_read_outbox_message_id)))
+  (telega-topic-goto topic))
 
 (defun telega-root--chat-topic-pp (topic &optional custom-topic-inserter)
   "Pretty printer for TOPIC button."
@@ -701,8 +703,7 @@ If `\\[universal-argument]' is specified, then open topic in a preview mode."
       ;; NOTE: `ewoc-enter-last' inserts under `save-excursion', but
       ;; we need point to move forward.  So, move point to the end of
       ;; the topic ewocs making topics ewoc part of the chat node
-      (goto-char (ewoc-location (ewoc--footer topics-ewoc))))
-    ))
+      (goto-char (ewoc-location (ewoc--footer topics-ewoc))))))
 
 (defun telega-root--chat-known-pp (chat &optional custom-inserter custom-action)
   "Pretty printer for known CHAT button."

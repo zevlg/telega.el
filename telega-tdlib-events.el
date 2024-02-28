@@ -295,11 +295,14 @@ DIRTINESS specifies additional CHAT dirtiness."
     (telega-chat--mark-dirty chat event)
 
     (with-telega-chatbuf chat
-      ;; NOTE: if all messages are read (in another telegram client),
-      ;; then remove the chatbuf from tracking
-      (when (and (zerop unread-count)
-                 (member (buffer-name) tracking-buffers))
-        (tracking-remove-buffer (current-buffer))))))
+      (when (zerop unread-count)
+        ;; Remove unread messages bar if all messages are read
+        (telega-chatbuf--manage-unread-messages-bar)
+
+        ;; NOTE: if all messages are read (in another telegram
+        ;; client), then remove the chatbuf from tracking
+        (when (member (buffer-name) tracking-buffers)
+          (tracking-remove-buffer (current-buffer)))))))
 
 (defun telega--on-updateChatReadOutbox (event)
   (let* ((chat (telega-chat-get (plist-get event :chat_id) 'offline))

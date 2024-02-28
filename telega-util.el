@@ -51,6 +51,10 @@
 (declare-function telega-folder-names "telega-folders")
 (declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
 
+(declare-function telega-user-list "telega-user" (&optional temex))
+(declare-function telega-user> "telega-user" (user1 user2))
+
+
 (defun telega-file-exists-p (filename)
   "Return non-nil if FILENAME exists.
 Unlike `file-exists-p' this return nil for empty string FILENAME.
@@ -487,18 +491,21 @@ Return resulting x,y,width,height."
   "Create SVG for use in poll options inserter."
   (cl-assert (<= percents 100))
   (let* ((ndashes (ceiling (* cwidth (/ percents 100.0))))
-         (telega-text (propertize
+         (dashes-text (propertize
                        (if (> ndashes 0) (make-string ndashes ?\-) "·")
                        'face (or face 'bold)))
+         (telega-text
+          (concat dashes-text
+                  (make-string (- cwidth (length dashes-text)) ?\s)))
          (xheight (telega-chars-xheight 1))
          (xwidth (telega-chars-xwidth (string-width telega-text)))
-         (stroke-xwidth (/ xheight 10))
+         (stroke-xwidth (/ xheight 5))
          (dashes-xwidth (* (- (telega-chars-xwidth cwidth) (* 2 stroke-xwidth))
                            (/ percents 100.0)))
          (svg (telega-svg-create xwidth xheight)))
     (svg-line svg stroke-xwidth (/ xheight 2)
               (+ stroke-xwidth dashes-xwidth) (/ xheight 2)
-              :stroke-color telega-poll-result-color
+              :stroke-color "currentColor"
               :stroke-width stroke-xwidth
               :stroke-linecap "round")
     (telega-svg-image svg :scale 1
@@ -1401,12 +1408,25 @@ ENTITY-TO-MARKUP-FUN is function to convert TDLib entities to string."
   "Return formatted text FMT-TEXT as string with org mode syntax."
   (telega--fmt-text-markup fmt-text #'telega--entity-to-org))
 
+(defun telega--fmt-text-entities-compare (entity1 entity2)
+  "Compare format text entities to sort them."
+  (let ((ent-type1 (telega--tl-type (plist-get entity1 :type)))
+        (ent-type2 (telega--tl-type (plist-get entity2 :type))))
+    (cond ((eq ent-type2 'textEntityTypeBlockQuote) 
+           (not (eq ent-type1 'textEntityTypeBlockQuote)))
+          ((eq ent-type2 'textEntityTypeSpoiler)
+           (not (eq ent-type1 'textEntityTypeSpoiler))))))
+
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
 Return text string with applied faces."
   (let ((text (copy-sequence (plist-get fmt-text :text))))
-    (seq-doseq (ent (plist-get fmt-text :entities))
+    ;; NOTE: sort entities so complex entities, such as blockquote or
+    ;; secrets are applied last, because they might have another
+    ;; entities inside
+    (seq-doseq (ent (sort (copy-sequence (plist-get fmt-text :entities))
+                          #'telega--fmt-text-entities-compare))
       (let* ((beg (plist-get ent :offset))
              (end (+ (plist-get ent :offset) (plist-get ent :length)))
              (props (telega--entity-type-to-text-props
@@ -1503,27 +1523,27 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   (telega-gen-completing-read-list prompt chats-list #'telega-chatbuf--name
                                    #'telega-completing-read-chat sort-criteria))
 
-(defun telega-completing-read-user (prompt &optional users temex)
+(defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
   (declare (indent 1))
   (let ((choices (mapcar (lambda (user)
                            (list (telega-msg-sender-title-for-completion user)
                                  user))
-                         (cl-remove-if-not
-                          (telega-match-gen-predicate 'user
-                            (or temex telega-user-completing-temex))
-                          (or users (hash-table-values
-                                     (alist-get 'user telega--info)))))))
+                         (or users
+                             (sort (telega-user-list
+                                    telega-user-completing-temex)
+                                   #'telega-user>)))))
     (car (alist-get (funcall telega-completing-read-function
                              prompt choices nil t)
                     choices nil nil 'string=))))
 
-(defun telega-completing-read-user-list (prompt &optional users-list)
-  "Read multiple users from USERS-LIST."
+(defun telega-completing-read-user-list (prompt &optional users)
+  "Read multiple users from USERS."
   (declare (indent 1))
-  (unless users-list
-    (setq users-list (hash-table-values (alist-get 'user telega--info))))
-  (telega-gen-completing-read-list prompt users-list
+  (unless users
+    (setq users (sort (telega-user-list telega-user-completing-temex)
+                      #'telega-user>)))
+  (telega-gen-completing-read-list prompt users
                                    #'telega-msg-sender-title-for-completion
                                    #'telega-completing-read-user))
 
@@ -2373,7 +2393,7 @@ Strips alpha component."
   "Clears assigned colors for all chats and users.
 Use this if you planning to change `telega-rainbow-function'."
   (interactive)
-  (dolist (user (hash-table-values (alist-get 'user telega--info)) )
+  (dolist (user (telega-user-list))
     (plist-put user :color nil))
   (dolist (chat telega--ordered-chats)
     (plist-put (plist-get chat :uaprops) :color nil)))

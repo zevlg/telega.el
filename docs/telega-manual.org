@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.241)
+#+title: Telega Manual (v0.8.250)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1281,6 +1281,10 @@ Use ~telega-chat-match-p~ to match a chat.
 - can-send-stories :: 
      Matches if you can post a story into chat.
 
+- (my-boost [ ~N~ ]) :: 
+     Matches if supergroup or channel has least ~N~ my boosts.
+     By default ~N~ is 1.
+
 - (user ~USER-TEMEX~) :: 
      Matches non-bot private chat where corresponding user matches ~USER-TEMEX~.
 
@@ -1344,6 +1348,9 @@ Use ~telega-msg-match-p~ to match a message.
      Matches if message is an outgoing message.
      This temex differs from ~(sender me)~, matching any outgoing messages,
      including anonymous messages to channels created by me.
+
+- is-failed-to-send :: 
+     Matches outgoing message failed to send.
 
 - (ignored [ ~REASON~ ]) :: 
      Matches if message is an ignored message.
@@ -1914,9 +1921,7 @@ messages:
      from message at point.
 
 - @@html:<kbd>@@M-g u@@html:</kbd>@@ (~telega-chatbuf-next-unread~) :: 
-     Goto next uneard message in chat.
-     ~BUTTON-CALLBACK~ - callback to call with single argument - message
-     button.
+     Goto next unread message in the chatbuf.
 
 - @@html:<kbd>@@M-g ^@@html:</kbd>@@, @@html:<kbd>@@M-g P@@html:</kbd>@@ (~telega-chatbuf-goto-pinned-message~) :: 
      Goto next pinned message for the chatbuffer.

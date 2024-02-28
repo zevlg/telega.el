@@ -242,6 +242,16 @@
                            'telega-date-format-alist
                            "0.8.240")
 
+(telega-obsolete--variable 'telega-poll-result-color
+                           nil
+                           "0.8.250")
+(telega-obsolete--variable 'telega-symbol-ballout-empty
+                           'telega-symbol-checkbox-off
+                           "0.8.250")
+(telega-obsolete--variable 'telega-symbol-ballout-check
+                           'telega-symbol-checkbox-on
+                           "0.8.250")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

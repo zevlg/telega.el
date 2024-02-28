@@ -260,12 +260,12 @@ all messages must have same user sender."
    (list :@type "closeSecretChat"
          :secret_chat_id (plist-get secretchat :id))))
 
-(defun telega-chat-message-thread-id (chat &optional only-if-topic-p)
+(defun telega-chat-message-thread-id (chat &optional only-if-topic-p for-send-p)
   "Return current message_thread_id for the CHAT.
 If ONLY-IF-TOPIC-P is specified, then return thread id only if topic
 is enabled."
   (or (with-telega-chatbuf chat
-        (telega-chatbuf--message-thread-id only-if-topic-p))
+        (telega-chatbuf--message-thread-id only-if-topic-p for-send-p))
       0))
 
 (defun telega--sendChatAction (chat action)
@@ -1061,33 +1061,40 @@ Pass REVOKE to try to delete chat history for all users."
   (declare (indent 4))
   (cl-assert (and tdlib-msg-filter from-msg-id offset))
   (telega-server--call
-    (nconc (list :@type "searchChatMessages"
-                 :chat_id (plist-get chat :id)
-                 :filter tdlib-msg-filter
-                 ;; NOTE: for `searchMessagesFilterPinned' filter do
-                 ;; not set `:message_thread_id', because threads does
-                 ;; not have pinned messages, and request with thread
-                 ;; id will result in error.
-                 ;;
-                 ;; NOTE: `searchMessagesFilterUnreadReaction' can
-                 ;; only be used with topics, not with ordinary
-                 ;; threads
-                 :message_thread_id
-                 (cond  ((eq 'searchMessagesFilterPinned
-                             (telega--tl-type tdlib-msg-filter))
-                         0)
-                        ((eq 'searchMessagesFilterUnreadReaction
-                             (telega--tl-type tdlib-msg-filter))
-                         (telega-chat-message-thread-id chat 'only-topics))
-                        (t
-                         (telega-chat-message-thread-id chat)))
-                 :query (or query "")
-                 :from_message_id from-msg-id
-                 :offset offset
-                 :limit (or limit telega-chat-history-limit))
-           (when sender
-             (list :sender_id (telega--MessageSender sender))))
-    callback))
+   (let* ((msg-filter-type (telega--tl-type tdlib-msg-filter))
+          ;; NOTE: `searchMessagesFilterUnreadReaction', and
+          ;; `searchMessagesFilterUnreadMention' can only be used with
+          ;; topics, not with ordinary threads.  Also additional
+          ;; filters such as query and sender is not allowed
+          (no-additional-filters-p
+           (memq msg-filter-type
+                 '(searchMessagesFilterUnreadReaction
+                   searchMessagesFilterUnreadMention))))
+     (nconc (list :@type "searchChatMessages"
+                  :chat_id (plist-get chat :id)
+                  :filter tdlib-msg-filter
+                  ;; NOTE: for `searchMessagesFilterPinned' filter do
+                  ;; not set `:message_thread_id', because threads does
+                  ;; not have pinned messages, and request with thread
+                  ;; id will result in error.
+                  :message_thread_id
+                  (cond  ((memq msg-filter-type
+                                '(searchMessagesFilterPinned
+                                  ))
+                          0)
+                         (no-additional-filters-p
+                          (telega-chat-message-thread-id chat 'only-topics))
+                         (t
+                          (telega-chat-message-thread-id chat)))
+                  :query (if (and query (not no-additional-filters-p))
+                             query
+                           "")
+                  :from_message_id from-msg-id
+                  :offset offset
+                  :limit (or limit telega-chat-history-limit))
+            (when (and sender (not no-additional-filters-p))
+              (list :sender_id (telega--MessageSender sender)))))
+   callback))
 
 (defun telega--getChatMessageCount (chat tdlib-msg-filter
                                          &optional local-p callback)
@@ -1633,7 +1640,8 @@ message uppon message is created."
   (telega-server--call
    (nconc (list :@type "sendMessage"
                 :chat_id (plist-get chat :id)
-                :message_thread_id (telega-chat-message-thread-id chat)
+                :message_thread_id (telega-chat-message-thread-id
+                                    chat nil 'for-send)
                 :input_message_content imc)
           (when input-reply-to
             (list :reply_to input-reply-to))
@@ -1651,7 +1659,8 @@ message uppon message is created."
   (telega-server--call
    (nconc (list :@type "sendMessageAlbum"
                 :chat_id (plist-get chat :id)
-                :message_thread_id (telega-chat-message-thread-id chat)
+                :message_thread_id (telega-chat-message-thread-id
+                                    chat nil 'for-send)
                 :input_message_contents (apply 'vector imcs))
           (when input-reply-to
             (list :reply_to input-reply-to))
@@ -3026,11 +3035,12 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
     (list :@type "getCloseFriends")
     callback))
 
-(defun telega--setCloseFriends (users)
+(defun telega--setCloseFriends (users &optional callback)
   "Changes the list of close friends of me."
-  (telega-server--send
+  (telega-server--call
    (list :@type "setCloseFriends"
-         :user_ids (cl-map #'vector (telega--tl-prop :id) users))))
+         :user_ids (cl-map #'vector (telega--tl-prop :id) users))
+   callback))
 
 (provide 'telega-tdlib)
 

@@ -43,7 +43,7 @@
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
-(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight))
+(declare-function telega-chat--goto-msg "telega-chat" (chat msg-id &optional highlight callback))
 (declare-function telega-describe-chat "telega-chat" (chat))
 (declare-function telega-chat-secret-p "telega-chat" (chat))
 (declare-function telega-chat-user "telega-chat" (chat))
@@ -1043,6 +1043,12 @@ Return `non-nil' if WEB-PAGE has been inserted."
       (when-let ((sitename (telega-tl-str web-page :site_name)))
         (telega-ins--with-face 'telega-webpage-sitename
           (telega-ins sitename))
+        (when (telega-msg-match-p msg '(prop :can_be_edited))
+          (telega-ins " ")
+          (telega-ins--text-button (telega-symbol 'button-close)
+            'face 'telega-link
+            :action #'telega-msg-disable-webpage-preview
+            'help-echo "telega: Press to disable webpage preview"))
         (telega-ins "\n"))
       (when-let ((title (telega-tl-str web-page :title)))
         (telega-ins--with-face 'telega-webpage-title
@@ -1378,19 +1384,12 @@ Return `non-nil' if WEB-PAGE has been inserted."
                          (plist-get poll-type :correct_option_id)))
          (multiple-answers-p (unless quiz-p
                                (plist-get poll-type :allow_multiple_answers)))
-         (max-opt-len (apply #'max
-                             (mapcar #'length
-                                     (mapcar (telega--tl-prop :text)
-                                             options))))
-         (option-symbols (if quiz-p
-                             telega-symbol-quiz-options
-                           (if multiple-answers-p
-                               telega-symbol-poll-multiple-options
-                             telega-symbol-poll-options)))
-         (opt-sym-len (apply #'max (mapcar #'string-width option-symbols))))
+         (option-symbols
+          (mapcar #'telega-symbol
+                  (cond (quiz-p telega-symbol-quiz-options)
+                        (multiple-answers-p telega-symbol-poll-multiple-options)
+                        (t telega-symbol-poll-options)))))
     ;; Poll header
-    ;; NOTE: Currently all polls are anonymous, this might be changed
-    ;; in future See https://telegram.org/blog/polls
     (telega-ins (telega-symbol 'poll) " ")
     (telega-ins--with-face 'telega-shadow
       (telega-ins-i18n (cond ((and anonymous-p quiz-p) "lng_polls_anonymous_quiz")
@@ -1460,20 +1459,22 @@ Return `non-nil' if WEB-PAGE has been inserted."
                    (propertize (nth 1 option-symbols) 'face 'bold)
                  (nth 0 option-symbols)))))
 
-          (telega-ins " " (telega-tl-str popt :text)))
-        (when (or choices closed-p)
-          (telega-ins "\n")
-          (telega-ins (make-string opt-sym-len ?\s) " ")
-          (telega-ins-fmt "%2d%% " (plist-get popt :vote_percentage))
-          (telega-ins--image
-           (telega-poll-create-svg
-            max-opt-len (plist-get popt :vote_percentage)))
-          (telega-ins--with-face 'telega-shadow
-            (telega-ins " ")
-            (telega-ins-i18n (if quiz-p
-                                 "lng_polls_answers_count"
-                               "lng_polls_votes_count")
-              :count (plist-get popt :voter_count))))
+          (telega-ins " " (telega-tl-str popt :text))
+          (when (or choices closed-p)
+            (telega-ins "\n")
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins-fmt "%3d%% " (plist-get popt :vote_percentage)))
+              (telega-ins--with-face 'telega-link
+                (telega-ins--image
+                 (telega-poll-create-svg (/ telega-chat-fill-column 8)
+                                         (plist-get popt :vote_percentage))))
+              (telega-ins " ")
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins-i18n (if quiz-p
+                                     "lng_polls_answers_count"
+                                   "lng_polls_votes_count")
+                  :count (plist-get popt :voter_count))))))
         ))
 
     (unless anonymous-p
@@ -1744,6 +1745,7 @@ If NO-THUMBNAIL-P is non-nil, then do not insert thumbnail."
           messageGiftedPremium
           messageChatSetBackground
           messageBotWriteAccessAllowed
+          messageChatBoost
           telegaInternal)))
 
 (defun telega-ins--special-replied-msg (msg &optional _attrs)
@@ -2068,6 +2070,10 @@ Special messages are determined with `telega-msg-special-p'."
            (botWriteAccessAllowReasonAcceptedRequest
             (telega-ins "You allowed this bot to message you"))
             )))
+      (messageChatBoost
+       (telega-ins-i18n "lng_action_boost_apply"
+         :count (plist-get content :boost_count)
+         :from sender-name))
 
       (telegaInternal
        (telega-ins--fmt-text (plist-get content :text)))
@@ -3541,12 +3547,15 @@ Return t."
       (telega-ins--chat-status-icons-trail chat))
     t))
 
-(defun telega-ins--chat-status (chat)
-  "Insert CHAT status, limiting it to MAX-WIDTH."
-  (let ((actions (telega-chat--actions chat))
-        (call (telega-voip--by-user-id (plist-get chat :id)))
-        (draft-msg (plist-get chat :draft_message))
-        (last-msg (plist-get chat :last_message))
+(defun telega-ins--chat-status (chat &optional topic)
+  "Insert CHAT status, limiting it to MAX-WIDTH.
+If TOPIC is given, insert chat status for the TOPIC."
+  (let ((actions (telega-chat--actions
+                  chat (when topic (telega-topic-msg-thread-id topic))))
+        (call (unless topic
+                (telega-voip--by-user-id (plist-get chat :id))))
+        (draft-msg (plist-get (or topic chat) :draft_message))
+        (last-msg (plist-get (or topic chat) :last_message))
         (chat-info (telega-chat--info chat))
         (max-width  (- telega-root-fill-column
                        (telega-current-column))))
@@ -3994,26 +4003,48 @@ If REMOVE-CAPTION is specified, then do not insert caption."
   )
 
 (defun telega-ins--topic-status (topic)
-  (let ((max-width (- telega-root-fill-column (current-column))))
-    ;; TODO:
-    ))
+  (let ((telega-root-fill-column (- telega-root-fill-column 2)))
+    (telega-ins--chat-status (telega-topic-chat topic) topic)))
 
 (defun telega-ins--topic (topic)
   "Inserter for the TOPIC button."
-  (let ((fmt-plist
-         (or (telega-topic-match-p topic telega-topic-button-format-temex)
-             telega-topic-button-format-plist))
-        )
-    (telega-ins--with-face 'telega-topic-button
-      (telega-ins (plist-get fmt-plist :prefix-space))
-      (telega-ins--with-face (if (telega-topic-match-p topic 'is-most-recent)
-                                 'bold
-                               'telega-shadow)
-        (telega-ins (telega-symbol 'topic)))
-
+  (let* ((fmt-plist
+          (or (telega-topic-match-p topic telega-topic-button-format-temex)
+              telega-topic-button-format-plist))
+         (inside-trail
+          (telega-ins--as-string
+           (when (plist-get fmt-plist :with-unread-trail-p)
+             (telega-ins--chopic-unread-trail topic))))
+         (prefix-space
+            (or (plist-get fmt-plist :prefix-space) ""))
+         (topic-button-width
+          (telega-canonicalize-number telega-chat-button-width
+                                      telega-root-fill-column))
+         (curr-column (when topic-button-width
+                        (telega-current-column)))
+         (title-width
+          (when topic-button-width
+            (- topic-button-width (string-width inside-trail)
+               1                        ; "#" symbol
+               (string-width prefix-space)))))
+    (telega-ins--with-face
+        (cons 'telega-topic-button
+              (when (telega-topic-match-p topic 'is-most-recent) (list 'bold)))
+      (telega-ins prefix-space)
+      (telega-ins (telega-symbol 'topic))
       (telega-ins--topic-icon topic)
       (telega-ins (car telega-symbol-topic-brackets))
-      (telega-ins--topic-title topic)
+      (telega-ins--with-attrs (list :max title-width
+                                    :align 'left
+                                    :elide t)
+        (telega-ins--topic-title topic))
+
+      (cond ((and curr-column title-width)
+             (telega-ins--move-to-column
+              (+ curr-column 3 1 1 (string-width prefix-space) title-width)))
+            ((not (string-empty-p inside-trail))
+             (telega-ins " ")))
+      (telega-ins inside-trail)
       (telega-ins (cdr telega-symbol-topic-brackets)))
     ))
 

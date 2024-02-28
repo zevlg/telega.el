@@ -142,6 +142,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Desktop notifications")
  ("lng_settings_show_preview"
   :value "Show message preview")
+ ("lng_edit_privacy_close_friends"
+  :value "Close friends")
 
  ;; https://translations.telegram.org/screenshots/11323
  ("lng_unread_bar_some"
@@ -903,6 +905,9 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} renamed the {link} to «{title}»")
  ("lng_action_topic_icon_changed"
   :value "{from} changed the {link} icon to {emoji}")
+ ("lng_action_boost_apply"
+  :one_value "{from} boosted the group"
+  :other_value "{from} boosted the group {count} times")
 
  ("lng_forum_topic_title"
   :value "Topic Name")
@@ -1539,4 +1544,13 @@ You can send them an invite link as message instead.")
  ("lng_action_gift_received_me"
   :value "You sent to {user} a gift for {cost}")
 
+ ;; Link options
+ ("lng_link_options_header"
+  :value "Link Preview Settings")
+ ("lng_link_move_up"
+  :value "Move Up")
+ ("lng_link_shrink_photo"
+  :value "Shrink Photo")
+ ("lng_link_remove"
+  :value "Do Not Preview")
  )

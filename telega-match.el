@@ -736,6 +736,16 @@ LIST is one of `main' or `archive'."
   (memq chat telega--search-chats))
 
 ;;; ellit-org: chat-temex
+;; - (my-boost [ ~N~ ]) ::
+;;   {{{temexdoc(chat, my-boost, 2)}}}
+(define-telega-matcher chat my-boost (chat &optional n)
+  "Matches if supergroup or channel has least N my boosts.
+By default N is 1."
+  (when (telega-chat-match-p chat '(type supergroup channel))
+    (let ((full-info (telega--full-info (telega-chat--info chat))))
+      (>= (or (plist-get full-info :my_boost_count) 0) (or n 1)))))
+
+;;; ellit-org: chat-temex
 ;; - (user ~USER-TEMEX~) ::
 ;;   {{{temexdoc(chat, user, 2)}}}
 (define-telega-matcher chat user (chat user-temex)
@@ -1004,6 +1014,17 @@ including anonymous messages to channels created by me."
        (or any-state-p
            ;; i.e. sent successfully
            (not (plist-get msg :sending_state)))))
+
+;;; ellit-org: msg-temex
+;; - is-failed-to-send ::
+;;   {{{temexdoc(msg, is-failed-to-send, 2)}}}
+(define-telega-matcher msg is-failed-to-send (msg)
+  "Matches outgoing message failed to send."
+  (when-let ((is-outgoing (plist-get msg :is_outgoing))
+             (sending-state (plist-get msg :sending_state)))
+    (and  (eq 'messageSendingStateFailed
+              (telega--tl-type sending-state))
+          sending-state)))
 
 ;;; ellit-org: msg-temex
 ;; - (ignored [ ~REASON~ ]) ::

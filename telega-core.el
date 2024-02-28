@@ -540,13 +540,20 @@ Thread is either TL `forumTopic' or `message' starting a thread.")
     ;; Must be topic or nil at this point
     telega-chatbuf--thread))
 
-(defun telega-chatbuf--message-thread-id (&optional only-if-topic-p)
+(defun telega-chatbuf--message-thread-id (&optional only-if-topic-p
+                                                    for-msg-send-p)
   "Return message thread id for the chatbuf.
 To be used in various TDLib methods as `:message_thread_id` argument.
 If ONLY-IF-TOPIC-P is specified, then return thread id only if topic
-is enabled."
+is enabled.
+If FOR-MSG-SEND-P is specified, then return message thread id for use
+with `sendMessage' and `sendMessageAlbum' functions.  It differs,
+because for General topic 0 message thread id must be used (according
+to note from TDLib dev)."
   (or (when-let ((topic (telega-chatbuf--thread-topic)))
-        (telega-topic-msg-thread-id topic))
+        (if (and for-msg-send-p (telega-topic-match-p topic 'is-general))
+            0
+          (telega-topic-msg-thread-id topic)))
       (unless only-if-topic-p
         (when-let ((thread (telega-chatbuf--thread-msg)))
           (plist-get telega-chatbuf--thread :message_thread_id)))
@@ -1413,18 +1420,20 @@ is visible and top is not, `button' if only BUTTON point is visible."
             (bottom-p 'bottom)
             ((pos-visible-in-window-p button bwin) 'button)))))
 
-(defun telega-button--make-observable (button &optional even-if-visible-p)
-  "Make BUTTON observable in window."
+(defun telega-button--make-observable (button &optional how)
+  "Make BUTTON observable in window.
+HOW specifies how to make button observable, possible values are:
+`top', `center' and `auto'."
   (when (markerp button)
     (when-let ((bstart (button-start button))
                (bend (button-end button))
                (bwin (get-buffer-window (marker-buffer button))))
-      (unless (and (not even-if-visible-p)
+      (unless (and (not how)
                    (pos-visible-in-window-p bstart bwin)
                    (pos-visible-in-window-p bend bwin))
         (let ((win-h (window-height bwin))
               (button-h (count-lines bstart bend)))
-          (if (>= button-h (/ win-h 2))
+          (if (or (eq how 'top) (>= button-h (/ win-h 2)))
               ;; NOTE: Always keep at least 2 lines visible above the
               ;; message
               (telega-window-recenter bwin 2 bstart)
@@ -1455,9 +1464,9 @@ message (if any)."
                       (button-get button 'invisible)
                       (button-get button 'inactive)))))
 
-    ;; NOTE: Non-nil `no-error' is normally given on non-interactive
+    ;; NOTE: Non-nil `no-error' is usually given on non-interactive
     ;; calls, so make button observable only on interactive calls
-    (when (and button (or (not no-error) (eq no-error 'interactive)))
+    (when (and button (not no-error))
       (telega-button--make-observable button)
       (telega-button--help-echo button))
     button))

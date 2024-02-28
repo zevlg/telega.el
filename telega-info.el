@@ -551,7 +551,21 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (unless (telega-zerop boost-level)
         (telega-ins-describe-item (telega-i18n "lng_boosts_title")
           (telega-ins-i18n "lng_boost_level"
-            :count boost-level))))
+            :count boost-level))
+
+        (let ((my-boosts (plist-get full-info :my_boost_count))
+              (unrestrict-boosts (plist-get full-info :unrestrict_boost_count)))
+          (unless (and (telega-zerop my-boosts)
+                       (telega-zerop unrestrict-boosts))
+            (telega-ins-describe-item "My Boosts"
+              (telega-ins-fmt "%d" my-boosts)
+              (telega-ins "\n")
+              (telega-ins--help-message
+               (telega-ins-fmt "Boost more %d times to ignore slow mode \
+and chat permission restrictions"
+                 unrestrict-boosts)
+               ;; NOTE: no newline at the end
+               nil))))))
 
     (telega-ins-describe-item "Status"
       (telega-ins (substring member-status-name 16))
@@ -1035,77 +1049,76 @@ Call CALLBACK on updates."
     (telega--pingProxies proxies 'telega-describe-network)
     (when proxies
       (cl-assert recent nil "No recent proxy")
-      (telega-ins "Proxy Settings\n")
-      (telega-ins "--------------\n")
+      (telega-ins--with-face 'bold
+        (telega-ins "Proxy Settings\n"))
 
-      (telega-ins "Use Proxy: ")
-      (telega-ins--text-button (if enabled
-                                   (telega-symbol 'checkbox-on)
-                                 (telega-symbol 'checkbox-off))
-        'face 'telega-link
-        :value (and (not enabled) recent)
-        :action (lambda (proxy)
-                  (if proxy
-                      (and (telega--enableProxy proxy)
-                           (setq telega--conn-state 'ConnectingToProxy))
-                    (telega--disableProxy))
-                  (telega-describe-network)))
-      (telega-ins "\n")
-      (dolist (proxy proxies)
-        (if (eq proxy enabled)
-            (telega-ins telega-symbol-ballout-check)
+      (telega-ins-describe-item "Use Proxy"
+        (telega-ins--text-button (if enabled
+                                     (telega-symbol 'checkbox-on)
+                                   (telega-symbol 'checkbox-off))
+          'face 'telega-link
+          :value (and (not enabled) recent)
+          :action (lambda (proxy)
+                    (if proxy
+                        (and (telega--enableProxy proxy)
+                             (setq telega--conn-state 'ConnectingToProxy))
+                      (telega--disableProxy))
+                    (telega-describe-network)))
+        (telega-ins "\n")
+        (dolist (proxy proxies)
+          (if (eq proxy enabled)
+              (telega-ins (telega-symbol 'checkbox-on))
 
-          (telega-ins--text-button
-              (if (and (eq proxy recent) (eq proxy enabled))
-                  (telega-symbol 'checkbox-on)
-                (telega-symbol 'checkbox-off))
-            'face 'telega-link
-            :value proxy
-            :action (lambda (proxy)
-                      (and (telega--enableProxy proxy)
-                           (setq telega--conn-state 'ConnectingToProxy))
-                      (telega-describe-network))))
-        (telega-ins " ")
-        (telega-ins--column nil nil
-          (telega-ins-fmt "%s:%d\n"
-            (plist-get proxy :server) (plist-get proxy :port))
+            (telega-ins--text-button
+                (if (and (eq proxy recent) (eq proxy enabled))
+                    (telega-symbol 'checkbox-on)
+                  (telega-symbol 'checkbox-off))
+              'face 'telega-link
+              :value proxy
+              :action (lambda (proxy)
+                        (and (telega--enableProxy proxy)
+                             (setq telega--conn-state 'ConnectingToProxy))
+                        (telega-describe-network))))
+          (telega-ins " ")
+          (telega-ins--column nil nil
+            (telega-ins-fmt "%s:%d, "
+              (plist-get proxy :server) (plist-get proxy :port))
 
-          (let ((ping (alist-get (plist-get proxy :id) telega--proxy-pings)))
-            (telega-ins-fmt "%s, "
-              (upcase (substring (telega--tl-get proxy :type :@type) 9)))
-            (when (eq proxy enabled)
-              (telega-debug "CONNECTION state: %S" telega--conn-state)
-              (cl-case telega--conn-state
-                ((WaitingForNetwork ConnectingToProxy)
-                 (telega-ins "connecting.., ")
-                 (add-hook 'telega-connection-state-hook
-                           'telega-describe-network))
-                (t
-                 (telega-ins "connected, ")
-                 (remove-hook 'telega-connection-state-hook
-                              'telega-describe-network))))
-
-            (cond ((cdr ping)
-                   (telega-ins-fmt "%dms ping"
-                     (round (* (cdr ping) 1000))))
-                  ((> (- (time-to-seconds) (car ping)) 10)
-                   ;; 10 seconds ping timeout
-                   (telega-ins "unavailable"))
+            (let ((ping (alist-get (plist-get proxy :id) telega--proxy-pings)))
+              (telega-ins-fmt "%s, "
+                (upcase (substring (telega--tl-get proxy :type :@type) 9)))
+              (when (eq proxy enabled)
+                (telega-debug "CONNECTION state: %S" telega--conn-state)
+                (cl-case telega--conn-state
+                  ((WaitingForNetwork ConnectingToProxy)
+                   (telega-ins "connecting.., ")
+                   (add-hook 'telega-connection-state-hook
+                             'telega-describe-network))
                   (t
-                   (telega-ins "pinging..")))))
-        (telega-ins "\n"))
-      (telega-ins "\n")))
+                   (telega-ins "connected, ")
+                   (remove-hook 'telega-connection-state-hook
+                                'telega-describe-network))))
 
-  (telega-ins "Network Statistics\n")
-  (telega-ins "------------------\n")
+              (cond ((cdr ping)
+                     (telega-ins-fmt "%dms ping"
+                       (round (* (cdr ping) 1000))))
+                    ((> (- (time-to-seconds) (car ping)) 10)
+                     ;; 10 seconds ping timeout
+                     (telega-ins "unavailable"))
+                    (t
+                     (telega-ins "pinging..")))))
+          (telega-ins "\n")))))
+
+  (telega-ins--with-face 'bold
+    (telega-ins "Network Statistics\n"))
   (let* ((net-stats (telega-server--call
                      (list :@type "getNetworkStatistics"
                            :only_current (or only-current :false))))
          (total-sent 0)
          (total-recv 0))
-    (insert "Since: ")
-    (telega-ins--date (plist-get net-stats :since_date))
-    (insert "\n\n")
+    (telega-ins-describe-item "Since"
+      (telega-ins--date (plist-get net-stats :since_date)))
+    (insert "\n")
     (mapc (lambda (entry)
             (cl-incf total-sent (plist-get entry :sent_bytes))
             (cl-incf total-recv (plist-get entry :received_bytes))
@@ -1136,10 +1149,10 @@ Call CALLBACK on updates."
             (insert "\n"))
           (plist-get net-stats :entries))
     (insert "\n")
-    (telega-ins-fmt "Total sent: %s\n"
-      (file-size-human-readable total-sent))
-    (telega-ins-fmt "Total recv: %s\n"
-      (file-size-human-readable total-recv))
+    (telega-ins-describe-item "Total sent"
+      (telega-ins (file-size-human-readable total-sent)))
+    (telega-ins-describe-item "Total recv"
+      (telega-ins (file-size-human-readable total-recv)))
     ))
 
 (defvar telega-describe-network--only-current nil)

@@ -85,19 +85,26 @@ If BUTTON has custom `:action', then use it, otherwise describe the user."
   "Get user by USER-ID."
   (telega--info 'user user-id locally-p))
 
+(defun telega-user-list (&optional temex)
+  "Return list of users matching TEMEX."
+  (cl-remove-if-not
+   (when temex
+     (telega-match-gen-predicate 'user
+       temex))
+   (hash-table-values (alist-get 'user telega--info))))
+
 (defun telega-user--by-username (username)
-  "Get user by his USERNAME.
-If ASYNC-CALLBACK is specified, then call it, when info about
-user is fetched from server."
+  "Get user by his USERNAME."
   (when (string-prefix-p "@" username)
     (setq username (substring username 1)))
-  (let ((users (hash-table-values (alist-get 'user telega--info))))
-    (seq-find (lambda (user)
-                (let ((usernames (plist-get user :usernames)))
-                  (seq-some (lambda (active-username)
-                              (equal username active-username))
-                            (plist-get usernames :active_usernames))))
-              users)))
+  (catch 'user-found
+    (maphash (lambda (_user-id user)
+               (let ((usernames (plist-get user :usernames)))
+                 (when (seq-some (lambda (active-username)
+                                   (equal username active-username))
+                                 (plist-get usernames :active_usernames))
+                   (throw 'user-found user))))
+             (alist-get 'user telega--info))))
 
 (defun telega-user-me (&optional locally-p)
   "Return me is a user."
@@ -141,10 +148,11 @@ Return nil if given FMT-TYPE is not available."
                      ((eq fmt-type 'full-name)
                       (let ((first-name (telega-tl-str user :first_name))
                             (last-name (telega-tl-str user :last_name)))
-                        (concat first-name
-                                (when (and first-name last-name)
-                                  " ")
-                                last-name)))
+                        (when (or first-name last-name)
+                          (concat first-name
+                                  (when (and first-name last-name)
+                                    " ")
+                                  last-name))))
                      ((eq fmt-type 'username)
                       (when-let ((un (telega-msg-sender-username user)))
                         (concat "@" un)))
@@ -152,25 +160,28 @@ Return nil if given FMT-TYPE is not available."
                       (error "Invalid FMT-TYPE for `telega-user-title': %S"
                              fmt-type)))))
 
-    (if (and (not no-badges) user-p name)
-        ;; Scam/Fake/Blacklist badge, apply for users only
-        ;; see https://t.me/emacs_telega/30318
-        (concat name
-                ;; Badges
-                (when (plist-get user :is_verified)
-                  (telega-symbol 'verified))
-                (cond ((plist-get user :emoji_status)
-                       (telega-ins--as-string
-                        (telega-ins--user-emoji-status user)))
-                      ((plist-get user :is_premium)
-                       (telega-symbol 'premium)))
-                (when (plist-get user :is_scam)
-                  (propertize (telega-i18n "lng_scam_badge") 'face 'error))
-                (when (plist-get user :is_fake)
-                  (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-                (when (telega-user-match-p user 'is-blocked)
-                  (telega-symbol 'blocked)))
-      name)))
+    (cond ((and (not no-badges) user-p name)
+           ;; Scam/Fake/Blacklist badge, apply for users only
+           ;; see https://t.me/emacs_telega/30318
+           (concat name
+                   ;; Badges
+                   (when (plist-get user :is_verified)
+                     (telega-symbol 'verified))
+                   (cond ((plist-get user :emoji_status)
+                          (telega-ins--as-string
+                           (telega-ins--user-emoji-status user)))
+                         ((plist-get user :is_premium)
+                          (telega-symbol 'premium)))
+                   (when (plist-get user :is_scam)
+                     (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+                   (when (plist-get user :is_fake)
+                     (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+                   (when (telega-user-match-p user 'is-blocked)
+                     (telega-symbol 'blocked))))
+          (name name)
+          ((not (eq fmt-type 'username))
+           ;; For some users only ID is known
+           (format "UNKNOWN-%d" (plist-get user :id))))))
 
 (defun telega-user--seen (user &optional as-number)
   "Return last seen status for the USER.
@@ -267,14 +278,40 @@ If UNBLOCK-P is specified, then unblock USER."
       (telega-msg-sender-block user))))
 
 (defun telega-user> (user1 user2)
-  "Compare users using active sort criteria.
-If both users has corresponding chats, then use `telega-chat>'.
-Otherwise fallback to `telega-user-cmp-by-status'."
-  (let ((chat1 (telega-chat-get (plist-get user1 :id) 'offline))
-        (chat2 (telega-chat-get (plist-get user2 :id) 'offline)))
-    (if (and chat1 chat2)
-        (telega-chat> chat1 chat2)
-      (telega-user-cmp-by-status user1 user2))))
+  "Compare two users USER1 and USER2."
+  (let ((chat1 (telega-user-chat user1))
+        (chat2 (telega-user-chat user2)))
+    (cond ((and chat1 chat2)
+           (let ((chatbuf1 (telega-chat-match-p chat1 'has-chatbuf))
+                 (chatbuf2 (telega-chat-match-p chat2 'has-chatbuf)))
+             (cond ((and chatbuf1 (not chatbuf2))
+                    t)
+                   ((and chatbuf2 (not chatbuf1))
+                    nil)
+                   (t
+                    (telega-chats-compare nil chat1 chat2)))))
+          (chat1 t)
+          (chat2 nil)
+          ((and (telega-user-online-p user1)
+                (not (telega-user-online-p user2)))
+           t)
+          ((telega-user-online-p user2)
+           nil)
+          (t
+           (let ((mutual1 (telega-user-match-p user1 '(contact mutual)))
+                 (contact1 (telega-user-match-p user1 'contact))
+                 (mutual2 (telega-user-match-p user2 '(contact mutual)))
+                 (contact2 (telega-user-match-p user2 'contact)))
+             (cond ((or (and mutual1 (not mutual2))
+                        (and contact1 (not contact2)))
+                    t)
+                   ((or (and mutual2 (not mutual1))
+                        (and contact2 (not contact1)))
+                    nil)
+                   (t
+                    (string> (telega-user-title user1 'full-name 'no-badges)
+                             (telega-user-title user2 'full-name 'no-badges))))
+             )))))
 
 (defun telega-user-cmp-by-status (user1 user2)
   "Function to sort users by their online status.
@@ -369,6 +406,47 @@ Return non-nil if USER1 > USER2."
                           telega--help-win-param))))
     (when (eq user-id (plist-get contact :user_id))
       (telega-help-win--maybe-redisplay "*Telega Contact*" contact))))
+
+
+;;; Close Friends
+(defun telega-describe-close-friends ()
+  "List close friends."
+  (interactive)
+  (let ((help-window-select t))
+    (with-telega-help-win "*Telegram Close Friends*"
+      (save-excursion
+        (telega-ins-describe-item (telega-i18n "lng_edit_privacy_close_friends")
+          (telega-ins--box-button "Add"
+            'action (lambda (_button)
+                      (call-interactively #'telega-close-friend-add)
+                      (telega-save-cursor
+                        (telega-describe-close-friends))))
+          (telega-ins " ")
+          (telega-ins--box-button "Remove"
+            'action (lambda (_button)
+                      (call-interactively #'telega-close-friend-remove)
+                      (telega-save-cursor
+                        (telega-describe-close-friends))))
+          (telega-ins "\n")
+          (seq-doseq (friend (telega-user-list 'is-close-friend))
+            (telega-ins--user friend nil :with-phone)
+            (telega-ins "\n")))))))
+
+(defun telega-close-friend-add (user &optional callback)
+  "Add USER to the list of close friends."
+  (interactive (list (telega-completing-read-user "Add Close Friend: "
+                       (telega-user-list '(not is-close-friend)))))
+  (telega--setCloseFriends
+   (cons user (telega-user-list 'is-close-friend))
+   callback))
+
+(defun telega-close-friend-remove (user &optional callback)
+  "Remove USER from list of close friends."
+  (interactive (list (telega-completing-read-user "Remove Close Friend: "
+                       (telega-user-list 'is-close-friend))))
+  (telega--setCloseFriends
+   (delq user (telega-user-list 'is-close-friend))
+   callback))
 
 (provide 'telega-user)
 
