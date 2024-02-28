@@ -2,20 +2,22 @@
 #+TODO: TODO WIP(!) DONE
 #+STARTUP: showall
 
-* telega.el 0.9.0 [2/9]
+* telega.el 0.9.0 [3/9]
 ** WIP Grain control on traffic (see [[https://github.com/zevlg/telega.el/issues/62][telega#62]])
 
-** WIP Support for Telegram Forums [1/3]
+** DONE Support for Telegram Forums [3/3]
+CLOSED: [2024-02-28 Ср 14:16]
 - [X] Display topic info in a chatbuf
-- [ ] Display topic status in the rootbuf
-- [ ] Update last-message, ids, etc.  Not yet in TDLib
+- [X] Display topic status in the rootbuf
+- [X] Update last-message, ids, etc.  Not yet in TDLib, but we did it
+  by fetching topics list when topics are opened in rootbuf
 
-** WIP Support for Telegram Stories, since 1.8.15 [2/5]
+** WIP Support for Telegram Stories, since 1.8.15 [3/5]
 - "WIP" :: [2023-11-03 Пт 10:19]
 - [X] Display Active stories in a chatbuf
 - [X] Display Pinned stories in a chatbuf
 - [ ] Display list of all active stories in the rootbuf
-- [ ] Manage close friends list
+- [X] Manage close friends list
 - [ ] Telegram Stories in the dashboard
 
 ** TODO Use Notifications API
