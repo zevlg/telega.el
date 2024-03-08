@@ -1963,7 +1963,8 @@ Header and Footer are not deleted."
   "Move EWOC's NODE before BEFORE-NODE node, saving point at NODE position.
 If NODE and BEFORE-NODE are the same, then just invalidate the node.
 If BEFORE-NODE is nil, then move NODE to the bottom.
-Save point only if SAVE-POINT is non-nil."
+Save point only if SAVE-POINT is non-nil.
+Return new node."
   (let* ((node-value (ewoc--node-data node))
          (node-start (ewoc-location node))
          (node-next (ewoc-next ewoc node))
@@ -1978,6 +1979,10 @@ Save point only if SAVE-POINT is non-nil."
           (ewoc-invalidate ewoc node)
 
         (ewoc-delete ewoc node)
+        ;; NOTE: pretty printer for node might use position, see
+        ;; `telega-chatbuf-msg--pp'
+        (when before-node
+          (goto-char (ewoc-location before-node)))
         (setq node
               (if before-node
                   (ewoc-enter-before ewoc before-node node-value)
@@ -1990,7 +1995,8 @@ Save point only if SAVE-POINT is non-nil."
                              (ewoc-location next-node)))))
       (goto-char (+ (ewoc-location node) point-off))
       (dolist (win (get-buffer-window-list))
-        (set-window-point win (point))))))
+        (set-window-point win (point))))
+    node))
 
 (defun telega-svg-create-vertical-bar (&optional bar-width bar-position bar-str)
   "Create svg image for vertical bar.

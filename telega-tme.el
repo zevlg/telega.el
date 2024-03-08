@@ -462,6 +462,19 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
                              (error "WebApp username must be bot"))
                          (plist-get tdlib-link :web_app_short_name))))
        (message "found webapp: %S" web-app)))
+
+    (internalLinkTypeAttachmentMenuBot
+     (let ((target-chat (plist-get tdlib-link :target_chat)))
+       (cl-ecase (telega--tl-type target-chat)
+         (targetChatCurrent
+          (let* ((bot-chat (telega--searchPublicChat
+                               (plist-get tdlib-link :bot_username)))
+                 (web-app-info (telega--openWebApp
+                                bot-chat (telega-chat-user bot-chat)
+                                (plist-get tdlib-link :url))))
+            (message "Webapp info: %S" web-app-info)
+            (telega-browse-url (plist-get web-app-info :url))))
+         )))
     ))
 
 (provide 'telega-tme)

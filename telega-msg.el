@@ -231,6 +231,9 @@
 (define-button-type 'telega-msg
   :supertype 'telega
   :inserter telega-inserter-for-msg-button
+  :predicate (lambda (button)
+               (when-let ((msg (telega-msg-at button)))
+                 (not (telega-msg-internal-p msg))))
 
   ;; NOTE: To make input method works under message buttons,
   ;; See `quail-input-method' for details
@@ -256,6 +259,7 @@
 Used to add content to chatbuf that is not a regular message.
 FMT-TEXT is formatted text, can be created with `telega-fmt-text'.
 PROPS are additional properties to the internal message."
+  (declare (indent 1))
   (nconc (list :@type "message"
                :id -1
                :chat_id (plist-get chat :id)
@@ -912,7 +916,17 @@ non-nil."
     (let* ((content (plist-get msg :content))
            (ga-params (plist-get content :parameters))
            (boosted-chat (telega-chat-get
-                          (plist-get ga-params :boosted_chat_id))))
+                          (plist-get ga-params :boosted_chat_id)))
+           (channel-button
+            (telega-ins--as-string
+             (telega-ins--raw-button
+                 (telega-link-props 'sender boosted-chat 'type 'telega)
+               (telega-ins--msg-sender boosted-chat
+                 :with-avatar-p t
+                 :with-username-p t
+                 :with-brackets-p t))))
+           (many-p
+            (not (seq-empty-p (plist-get ga-params :additional_chat_ids)))))
       (cl-ecase (telega--tl-type ga-info)
         (premiumGiveawayInfoCompleted
          (telega-ins--with-face 'bold
@@ -931,14 +945,7 @@ non-nil."
          (telega-ins
           (telega-i18n "lng_prizes_how_text"
             :admins (telega-i18n "lng_prizes_admins"
-                      :channel (telega-ins--as-string
-                                (telega-ins--raw-button
-                                    (telega-link-props 'sender boosted-chat
-                                                       'type 'telega)
-                                  (telega-ins--msg-sender boosted-chat
-                                    :with-avatar-p t
-                                    :with-username-p t
-                                    :with-brackets-p t)))
+                      :channel channel-button
                       :count (plist-get content :winner_count)
                       :duration (telega-i18n "lng_premium_gift_duration_months"
                                   :count (plist-get content :month_count)))))
@@ -947,39 +954,46 @@ non-nil."
            :date (telega-ins--as-string
                   (telega-ins--date
                    (plist-get ga-params :winners_selection_date) 'date-time))
-           :winners (if (plist-get ga-params :only_new_members)
-                        (telega-i18n "lng_prizes_winners_new_of_one"
-                          :count (plist-get content :winner_count)
-                          :channel (telega-ins--as-string
-                                    (telega-ins--raw-button
-                                        (telega-link-props 'sender boosted-chat
-                                                           'type 'telega)
-                                      (telega-ins--msg-sender boosted-chat
-                                        :with-avatar-p t
-                                        :with-username-p t
-                                        :with-brackets-p t)))
-                          :start_date (telega-ins--as-string
-                                       (telega-ins--date
-                                        (plist-get ga-info :creation_date)
-                                        'date-time)))
-                      ;; TODO
-                      ""))
+           :winners (telega-i18n (if (plist-get ga-params :only_new_members)
+                                     (if many-p
+                                         "lng_prizes_winners_new_of_many"
+                                       "lng_prizes_winners_new_of_one")
+                                   (if many-p
+                                       "lng_prizes_winners_all_of_many"
+                                     "lng_prizes_winners_all_of_one"))
+                      :count (plist-get content :winner_count)
+                      :channel channel-button
+                      :start_date (telega-ins--as-string
+                                   (telega-ins--date
+                                    (plist-get ga-info :creation_date)
+                                    'date-time))))
          (telega-ins "\n\n")
 
          (let ((status (plist-get ga-info :status)))
            (cl-ecase (telega--tl-type status)
              (premiumGiveawayParticipantStatusDisallowedCountry
-              )
+              (telega-ins-i18n "lng_prizes_how_no_country"))
              (premiumGiveawayParticipantStatusAdministrator
-              )
+              (telega-ins-i18n "lng_prizes_how_no_admin"
+                :channel channel-button))
              (premiumGiveawayParticipantStatusAlreadyWasMember
-              )
+              (telega-ins-i18n (if (telega-chat-channel-p boosted-chat)
+                                   "lng_prizes_how_no_joined"
+                                 "lng_prizes_how_no_joined_group")
+                ;; TODO: `:date'
+                ))
              (premiumGiveawayParticipantStatusParticipating
-              )
+              (telega-ins-i18n (if many-p
+                                   "lng_prizes_how_yes_joined_many"
+                                 "lng_prizes_how_yes_joined_one")
+                :channel channel-button))
              (premiumGiveawayParticipantStatusEligible
-              )))
+              (telega-ins
+               "You are not eligible to participate in this giveaway."))))
          )))
 
+    ;; NOTE: -1 as fill-column is not suitable for filling
+    (kill-local-variable 'fill-column)
     (fill-region (point-min) (point-max) 'center)
     ))
 
@@ -1334,6 +1348,8 @@ Return function by which MSG has been ignored."
     ;; after marking messages some message command is expected (for
     ;; example forwarwarding)
     (unless (= (plist-get msg :id) (telega-chatbuf--last-message-id))
+      ;; NOTE: maybe use `(button-type-get 'telega-msg :predicate)' as
+      ;; predicate?
       (telega-button-forward 1 'telega-msg-at))
 
     (telega-chatbuf--chat-update "marked-messages")))
@@ -2219,10 +2235,19 @@ Return `loading' if replied story starts loading."
 ;;; Sponsored messages
 (defvar telega-sponsored-msg-button-menu-map
   (let ((menu-map (make-sparse-keymap "Telega Sponsored Message")))
+    (bindings--define-key menu-map [hide]
+      '(menu-item (telega-i18n "lng_sponsored_hide_ads")
+                  telega-sponsored-msg-hide
+                  :help "Hide sponsored message"))
+    (bindings--define-key menu-map [s1] menu-bar-separator)
     (bindings--define-key menu-map [describe]
       '(menu-item (telega-i18n "lng_info_about_label")
                   telega-describe-sponsored-message
                   :help "Describe the sponsored message"))
+    (bindings--define-key menu-map [what]
+      '(menu-item (telega-i18n "lng_sponsored_title")
+                  telega-sponsored-messages-about
+                  :help "Describe what sponsored messages are"))
     menu-map))
 
 (defvar telega-sponsored-msg-button-map
@@ -2273,10 +2298,11 @@ use `telega-sponsored-msg-for-interactive' instead."
                       (telega-sponsored-msg-at (point)))))
     msg))
 
-(defun telega-sponsored-msg--hide (sponsored-msg)
+(defun telega-sponsored-msg-hide (sponsored-msg)
   "Hide SPONSORED-MSG in the chatbuf footer."
   (interactive (list (telega-sponsored-msg-for-interactive)))
   (plist-put sponsored-msg :telega-hidden t)
+  (telega-chatbuf--chat-update "sponsored-messages")
   ;; TODO: remove message's node
   ;(telega-msg-redisplay sponsored-msg)
   )
@@ -2287,13 +2313,63 @@ use `telega-sponsored-msg-for-interactive' instead."
   (with-telega-help-win "*Telegram Sponsor Info*"
     (telega-ins-describe-item "Id"
       (telega-ins-fmt "%d" (plist-get sponsored-msg :message_id)))
-    (let ((sponsor (plist-get sponsored-msg :sponsor)))
-      ;; TODO
-      )
+    (let* ((sponsor (plist-get sponsored-msg :sponsor))
+           (sponsor-type (plist-get sponsor :type)))
+      (telega-ins-describe-item "Sponsor"
+        (telega-ins (substring (plist-get sponsor-type :@type)
+                               (length "messageSponsorType"))))
+      (telega-ins-describe-item "Info"
+        (telega-ins--line-wrap-prefix "      "
+          (telega-ins (telega-tl-str sponsor :info))))
+      (cl-ecase (telega--tl-type sponsor-type)
+        (messageSponsorTypeBot
+         (let ((bot (telega-user-get (plist-get sponsor-type :bot_user_id))))
+           (telega-ins-describe-item "Bot User"
+             (telega-ins--raw-button
+                 (telega-link-props 'sender bot 'type 'telega)
+               (telega-ins--msg-sender bot
+                 :with-avatar-p t
+                 :with-username-p 'telega-username
+                 :with-brackets-p t)))))
+        (messageSponsorTypeWebApp
+         (telega-ins-describe-item "Title"
+           (telega-ins (telega-tl-str sponsor-type :web_app_title))))
+        (messageSponsorTypePublicChannel
+         (let ((channel (telega-chat-get (plist-get sponsor-type :chat_id))))
+           (telega-ins-describe-item "Channel"
+             (telega-ins--raw-button
+                 (telega-link-props 'sender channel 'type 'telega)
+               (telega-ins--msg-sender channel
+                 :with-avatar-p t
+                 :with-username-p 'telega-username
+                 :with-brackets-p t)))))
+        (messageSponsorTypePrivateChannel
+         (telega-ins-describe-item "Channel Title"
+           (telega-ins (telega-tl-str sponsor-type :title)))
+         (telega-ins-describe-item "Invite Link"
+           (telega-ins (telega-tl-str sponsor-type :invite_link))))
+        (messageSponsorTypeWebsite
+         (telega-ins-describe-item "Name"
+           (telega-ins (telega-tl-str sponsor-type :name)))
+         (telega-ins-describe-item "URL"
+           (telega-ins (telega-tl-str sponsor-type :url))))
+        ))
     (when-let ((add-info (telega-tl-str sponsored-msg :additional_info)))
       (telega-ins-describe-item "Additional Info"
         (telega-ins add-info)))
+
+    (when (and (listp telega-debug) (memq 'info telega-debug))
+      (let ((print-length nil))
+        (telega-ins "\n---DEBUG---\n")
+        (telega-ins-fmt "SponsoredMessage: %S\n" sponsored-msg)
+        ))
     ))
+
+(defun telega-sponsored-messages-about ()
+  (interactive)
+  (let ((help-window-select t))
+    (with-telega-help-win "*Telegram Sponsored Mesagges*"
+      (telega-ins-i18n "lng_sponsored_info_description1"))))
 
 
 (provide 'telega-msg)

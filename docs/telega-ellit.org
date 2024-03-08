@@ -558,7 +558,7 @@ Use ~telega-story-match-p~ to match a story.
 
 #+ELLIT-INCLUDE: ../telega-match.el :label story-temex
 
-** Customizable options making use of Telega Match Expressions
+** Some customizable options making use of Telega Match Expressions
 
 - {{{user-option(telega-filter-default, 2)}}}
 - {{{user-option(telega-filters-custom, 2)}}}
@@ -567,7 +567,6 @@ Use ~telega-story-match-p~ to match a story.
 - {{{user-option(telega-chat-prompt-format, 2)}}}
 - {{{user-option(telega-chat-group-messages-for, 2)}}}
 - {{{user-option(telega-chat-show-deleted-messages-for, 2)}}}
-- {{{user-option(telega-chat-use-date-breaks-for, 2)}}}
 - {{{user-option(telega-root-view-grouping-alist, 2)}}}
 
 * Chat Folders
@@ -1178,9 +1177,11 @@ To view recent notifications use
 
 See also [[#telega-alertel--notifications-using-alertel][Notifications using alert.el]]
 
-#+ELLIT-INCLUDE: ../telega-modes.el :label minor-modes
-
 #+ELLIT-INCLUDE: ../telega-root.el :label minor-modes
+
+#+ELLIT-INCLUDE: ../telega-chat.el :label minor-modes
+
+#+ELLIT-INCLUDE: ../telega-modes.el :label minor-modes
 
 #+ELLIT-INCLUDE: ../telega-voip.el :label minor-modes
 

@@ -202,21 +202,31 @@ single argument - slice number, starting from 0."
           (not (display-graphic-p (telega-x-frame))))
       (telega-ins "<IMAGE>")
 
-    (let* ((img-xheight (* (plist-get (cdr image) :height)
-                           (plist-get (cdr image) :scale)))
-           (img-slices (if img-xheight
-                           (telega-chars-in-height img-xheight)
-                         (ceiling
-                          (progn
-                            (warn "`image-size' used for %S" image)
-                            (cdr (image-size image nil (telega-x-frame))))))))
+    ;; NOTE: it is okay to call `image-size' now, because image will
+    ;; be read anyway, and `image-size' puts image to the image cache
+    (let* ((img-height (plist-get (cdr image) :height))
+           (img-slices
+            (cond ((and (consp img-height)
+                        (eq 'em (cdr img-height)))
+                   (car img-height))
+                  (img-height
+                   (telega-chars-in-height
+                    (* img-height (plist-get (cdr image) :scale))))
+                  (t
+                   (warn "`image-size' used for %S" image)
+                   (cdr (image-size image nil (telega-x-frame)))))))
       (dotimes (slice-num img-slices)
-        (apply #'telega-ins--image image slice-num props)
-        (when slice-func
-          (funcall slice-func slice-num))
-        (unless (= slice-num (1- img-slices))
-          (telega-ins--with-props (list 'line-height t)
-            (telega-ins "\n")))))))
+        (let* ((last-slice-p (= slice-num (1- img-slices)))
+               (image (if (plist-get (cdr image) :ascent)
+                          image
+                        (nconc (list 'image :ascent (if last-slice-p 'center 'center))
+                               (cdr image)))))
+          (apply #'telega-ins--image image slice-num props)
+          (when slice-func
+            (funcall slice-func slice-num))
+          (unless last-slice-p
+            (telega-ins--with-props (list 'line-height t)
+              (telega-ins "\n"))))))))
 
 (defun telega-ins--actions (actions)
   "Insert chat ACTIONS alist."
@@ -242,7 +252,8 @@ single argument - slice number, starting from 0."
 (defun telega-ins--date (timestamp &optional fmt-type)
   "Insert TIMESTAMP.
 Use date format from `telega-date-format-alist' corresponding to FMT-TYPE.
-By default FMT-TYPE is determined by TIMESTAMP value."
+By default FMT-TYPE is determined by TIMESTAMP value.
+FMT-TYPE can be a string, directly specifying time format string."
   (unless fmt-type
     (let* ((current-ts (telega-time-seconds))
            (ctime (decode-time current-ts))
@@ -263,7 +274,8 @@ By default FMT-TYPE is determined by TIMESTAMP value."
             (setq fmt-type 'old))))))
 
   (telega-ins
-   (format-time-string (or (cdr (assq fmt-type telega-date-format-alist))
+   (format-time-string (or (and (stringp fmt-type) fmt-type)
+                           (cdr (assq fmt-type telega-date-format-alist))
                            "%FT%T%z")
                        timestamp)))
 
@@ -1039,7 +1051,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
   (unless web-page
     (setq web-page (telega--tl-get msg :content :web_page)))
   (when web-page
-    (telega-ins--line-wrap-prefix (telega-symbol 'vertical-bar)
+    (telega-ins--line-wrap-prefix (propertize (telega-symbol 'vertical-bar)
+                                              'face 'telega-webpage-sitename)
       (when-let ((sitename (telega-tl-str web-page :site_name)))
         (telega-ins--with-face 'telega-webpage-sitename
           (telega-ins sitename))
@@ -1064,9 +1077,10 @@ Return `non-nil' if WEB-PAGE has been inserted."
         (when (telega-ins desc)
           (telega-ins "\n")))
 
-      ;; NOTE: animation uses it's own thumbnails
+      ;; NOTE: animation/video uses it's own thumbnails
       (let ((photo (plist-get web-page :photo)))
-        (when (and photo (not (plist-get web-page :animation))
+        (when (and photo (not (or (plist-get web-page :animation)
+                                  (plist-get web-page :video)))
                    telega-webpage-preview-size-limits)
           (telega-ins--photo photo msg telega-webpage-preview-size-limits)
           (telega-ins "\n"))
@@ -1086,7 +1100,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
                (telega-ins "\n"))
               ((plist-get web-page :video)
                (telega-ins--video
-                msg (plist-get web-page :video) (when photo 'no-thumbnail))
+                msg (plist-get web-page :video))
                (telega-ins "\n"))
               ((plist-get web-page :video_note)
                (telega-ins--video-note msg (plist-get web-page :video_note))
@@ -2427,124 +2441,132 @@ argument - MSG to insert additional information after header."
          (chat (or msg-chat (telega-msg-chat msg)))
          (sender (or msg-sender (telega-msg-sender msg))))
     (cl-assert sender)
-    (telega-ins--with-face 'telega-msg-heading
-      (telega-ins--with-attrs (list :max (- dwidth (telega-current-column))
-                                    :align 'left
-                                    :elide t
-                                    :elide-trail 20)
-        ;; NOTE: if channel post has a signature, then use it instead
-        ;; of username to shorten message header
-        (let ((signature (telega-tl-str msg :author_signature)))
-          (telega-ins--msg-sender sender
-            :with-username-p (not signature))
-          (when signature
-            (telega-ins--with-face (telega-msg-sender-title-faces sender)
-              (telega-ins " --" signature))))
+    (telega-ins--with-props
+        (list 'action (lambda (button)
+                        ;; NOTE: check for custom message :action first
+                        ;; - [RESEND] button uses :action
+                        ;; - via @bot link uses :action
+                        (or (telega-button--action button)
+                            (telega-describe-msg-sender sender))))
+      (telega-ins--with-face 'telega-msg-heading
+        (telega-ins--with-attrs (list :max (- dwidth (telega-current-column))
+                                      :align 'left
+                                      :elide t
+                                      :elide-trail 20)
+          ;; NOTE: if channel post has a signature, then use it instead
+          ;; of username to shorten message header
+          (let ((signature (telega-tl-str msg :author_signature)))
+            (telega-ins--msg-sender sender
+              :with-username-p (not signature))
+            (when signature
+              (telega-ins--with-face (telega-msg-sender-title-faces sender)
+                (telega-ins " --" signature))))
 
-        ;; Admin badge if any
-        (when (telega-user-p sender)
-          (when-let ((admin (telega-chat-admin-get chat sender)))
+          ;; Admin badge if any
+          (when (telega-user-p sender)
+            (when-let ((admin (telega-chat-admin-get chat sender)))
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins " ("
+                            (or (telega-tl-str admin :custom_title)
+                                (if (plist-get admin :is_owner)
+                                    (telega-i18n "lng_owner_badge")
+                                  (telega-i18n "lng_admin_badge")))
+                            ")"))))
+
+          ;; via <bot>
+          (when-let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
+                      (via-bot (unless (zerop via-bot-user-id)
+                                 (telega-user-get via-bot-user-id)))
+                      (bot-title (telega-ins--as-string
+                                  ;; Use custom :action for clickable @bot link
+                                  (telega-ins--text-button
+                                      (telega-user-title via-bot 'username)
+                                    'face 'telega-username
+                                    :action (lambda (_msg_ignored)
+                                              (telega-describe-user via-bot))))))
+            (telega-ins " " (telega-i18n "lng_inline_bot_via"
+                              :inline_bot bot-title)))
+
+          ;; Edited date
+          (let ((edited-date (plist-get msg :edit_date)))
+            (unless (zerop edited-date)
+              (telega-ins " " (telega-i18n "lng_edited") " ")
+              (telega-ins--date (plist-get msg :edit_date))))
+
+          ;; Interaction info
+          (telega-ins--msg-interaction-info msg chat)
+
+          (when-let ((fav (telega-msg-favorite-p msg)))
+            (telega-ins " " (telega-symbol 'favorite))
+            ;; Also show comment to the favorite message
             (telega-ins--with-face 'telega-shadow
-              (telega-ins " ("
-                          (or (telega-tl-str admin :custom_title)
-                              (if (plist-get admin :is_owner)
-                                  (telega-i18n "lng_owner_badge")
-                                (telega-i18n "lng_admin_badge")))
-                          ")"))))
+              (telega-ins-prefix "("
+                (when (telega-ins (plist-get fav :comment))
+                  (telega-ins ")")))))
 
-        ;; via <bot>
-        (when-let* ((via-bot-user-id (plist-get msg :via_bot_user_id))
-                    (via-bot (unless (zerop via-bot-user-id)
-                               (telega-user-get via-bot-user-id)))
-                    (bot-title (telega-ins--as-string
-                                ;; Use custom :action for clickable @bot link
-                                (telega-ins--text-button
-                                    (telega-user-title via-bot 'username)
-                                  'face 'telega-username
-                                  :action (lambda (_msg_ignored)
-                                            (telega-describe-user via-bot))))))
-          (telega-ins " " (telega-i18n "lng_inline_bot_via"
-                            :inline_bot bot-title)))
+          ;; Maybe pinned message?
+          (when (plist-get msg :is_pinned)
+            (telega-ins " " (telega-symbol 'pin)))
 
-        ;; Edited date
-        (let ((edited-date (plist-get msg :edit_date)))
-          (unless (zerop edited-date)
-            (telega-ins " " (telega-i18n "lng_edited") " ")
-            (telega-ins--date (plist-get msg :edit_date))))
+          ;; Copyright if can't be saved
+          (unless (plist-get msg :can_be_saved)
+            (telega-ins " " (telega-symbol 'copyright)))
 
-        ;; Interaction info
-        (telega-ins--msg-interaction-info msg chat)
+          ;; message auto-deletion time
+          (let ((auto-delete-in (plist-get msg :auto_delete_in)))
+            (unless (telega-zerop auto-delete-in)
+              (telega-ins " " (telega-symbol 'flames)
+                          (telega-duration-human-readable auto-delete-in 1))))
 
-        (when-let ((fav (telega-msg-favorite-p msg)))
-          (telega-ins " " (telega-symbol 'favorite))
-          ;; Also show comment to the favorite message
-          (telega-ins--with-face 'telega-shadow
-            (telega-ins-prefix "("
-              (when (telega-ins (plist-get fav :comment))
-                (telega-ins ")")))))
+          ;; Show language code if translation replaces message's content
+          (when-let ((translated (plist-get msg :telega-translated)))
+            (when (with-telega-chatbuf chat
+                    telega-translate-replace-content)
+              (telega-ins--with-face 'telega-shadow
+                (telega-ins " ["
+                            (telega-symbol 'right-arrow)
+                            (plist-get translated :to_language_code)
+                            "]"))))
 
-        ;; Maybe pinned message?
-        (when (plist-get msg :is_pinned)
-          (telega-ins " " (telega-symbol 'pin)))
+          (when (numberp telega-debug)
+            (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
 
-        ;; Copyright if can't be saved
-        (unless (plist-get msg :can_be_saved)
-          (telega-ins " " (telega-symbol 'copyright)))
+          ;; Resend button in case message sent failed
+          ;; Use custom :action to resend message
+          (when-let ((send-state (plist-get msg :sending_state)))
+            (when (and (eq (telega--tl-type send-state)
+                           'messageSendingStateFailed)
+                       (plist-get send-state :can_retry))
+              (telega-ins " ")
+              (telega-ins--box-button "RESEND"
+                :action #'telega--resendMessages)))
 
-        ;; message auto-deletion time
-        (let ((auto-delete-in (plist-get msg :auto_delete_in)))
-          (unless (telega-zerop auto-delete-in)
-            (telega-ins " " (telega-symbol 'flames)
-                        (telega-duration-human-readable auto-delete-in 1))))
+          (when addon-inserter
+            (cl-assert (functionp addon-inserter))
+            (funcall addon-inserter msg))
 
-        ;; Show language code if translation replaces message's content
-        (when-let ((translated (plist-get msg :telega-translated)))
-          (when (with-telega-chatbuf chat
-                  telega-translate-replace-content)
-            (telega-ins--with-face 'telega-shadow
-              (telega-ins " ["
-                          (telega-symbol 'right-arrow)
-                          (plist-get translated :to_language_code)
-                          "]"))))
+          ;; Message's topic aligned to the right
+          (when-let* ((topic (telega-msg-topic msg))
+                      (show-topic-p (or telega-msg-always-show-topic-info
+                                        (not (telega-chatbuf--thread-topic))))
+                      (topic-title (telega-ins--as-string
+                                    (telega-ins (telega-symbol 'right-arrow)
+                                                (telega-symbol 'topic))
+                                    (telega-ins--topic-icon topic)
+                                    (telega-ins--topic-title topic))))
+            (telega-ins--move-to-column
+             (- dwidth (string-width topic-title)))
+            (telega-ins--with-props
+                (list 'face 'telega-topic-button
+                      :action #'telega-msg-show-topic-info
+                      :help-echo "Show topic info")
+              (telega-ins topic-title))))
 
-        (when (numberp telega-debug)
-          (telega-ins-fmt " (ID=%d)" (plist-get msg :id)))
+        (when date-and-status
+          (telega-ins--move-to-column dwidth)
+          (telega-ins date-and-status))
 
-        ;; Resend button in case message sent failed
-        ;; Use custom :action to resend message
-        (when-let ((send-state (plist-get msg :sending_state)))
-          (when (and (eq (telega--tl-type send-state) 'messageSendingStateFailed)
-                     (plist-get send-state :can_retry))
-            (telega-ins " ")
-            (telega-ins--box-button "RESEND"
-              :action #'telega--resendMessages)))
-
-        (when addon-inserter
-          (cl-assert (functionp addon-inserter))
-          (funcall addon-inserter msg))
-
-        ;; Message's topic aligned to the right
-        (when-let* ((topic (telega-msg-topic msg))
-                    (show-topic-p (or telega-msg-always-show-topic-info
-                                      (not (telega-chatbuf--thread-topic))))
-                    (topic-title (telega-ins--as-string
-                                  (telega-ins (telega-symbol 'right-arrow)
-                                              (telega-symbol 'topic))
-                                  (telega-ins--topic-icon topic)
-                                  (telega-ins--topic-title topic))))
-          (telega-ins--move-to-column
-           (- dwidth (string-width topic-title)))
-          (telega-ins--with-props
-              (list 'face 'telega-topic-button
-                    :action #'telega-msg-show-topic-info
-                    :help-echo "Show topic info")
-            (telega-ins topic-title))))
-
-      (when date-and-status
-        (telega-ins--move-to-column dwidth)
-        (telega-ins date-and-status))
-
-      (telega-ins "\n"))))
+        (telega-ins "\n")))))
 
 (defun telega--msg-origin-sender (origin)
   "Return message sender extracted from the ORIGIN.
@@ -2827,19 +2849,19 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            ;; inside `telega--entity-type-to-text-props'
            (telega-msg--current msg)
            (fwd-info (plist-get msg :forward_info))
-           ;; Is formatting done for "Replies" chat?
-           ;; Workaround for case when `:forward_info' is unset (for
-           ;; outgoing messages [what?] for example)
-           (msg-for-replies-p (and (telega-replies-p chat) fwd-info))
            (sender (or sender
-                       (if msg-for-replies-p
+                       ;; For "Replies" chat we need to show original sender.
+                       ;; Workaround for case when `:forward_info' is unset (for
+                       ;; outgoing messages [what?] for example)
+                       (if (and (telega-replies-p chat) fwd-info)
                            (telega--msg-origin-sender
                             (plist-get fwd-info :origin))
                          (telega-msg-sender msg))))
-           (avatar (if msg-for-replies-p
-                       (telega-msg-sender-avatar-image-three-lines sender)
-                     (telega-msg-sender-avatar-image sender)))
-           (awidth (length (telega-image--telega-text avatar 0)))
+           (avatar (telega-msg-sender-avatar-image sender))
+           ;; NOTE: Text for the first slice might be customized via
+           ;; `telega-avatar-text-function', so we use text for the
+           ;; second slice to measure avatar width
+           (awidth (length (telega-image--telega-text avatar 1)))
            (gaps-workaround-p
             (telega-chat-match-p chat telega-avatar-workaround-gaps-for))
            (unread-mention-p
@@ -2847,50 +2869,39 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
            (l1width (if unread-mention-p
                         (string-width (telega-symbol 'mention-mark))
                       0))
-           content-prefix)
+           (header-prefix (when unread-mention-p
+                            (telega-symbol 'mention-mark)))
+           (content-prefix (make-string l1width ?\s))
+           (content-wrap (make-string (+ awidth l1width) ?\s)))
 
       (if (and no-header
                (zerop (plist-get msg :edit_date))
                (zerop (plist-get msg :via_bot_user_id)))
-          (telega-ins--line-wrap-prefix (when unread-mention-p
-                                          (telega-symbol 'mention-mark))
-            (telega-ins (make-string awidth ?\s)))
+          (setq content-prefix (concat header-prefix (make-string awidth ?\s)))
 
-        ;; Show user profile when clicked on avatar, header
-        (telega-ins--with-props
-            (list 'action (lambda (button)
-                            ;; NOTE: check for custom message :action first
-                            ;; - [RESEND] button uses :action
-                            ;; - via @bot link uses :action
-                            (or (telega-button--action button)
-                                (telega-describe-msg-sender sender))))
-          (when unread-mention-p
-            (telega-ins (telega-symbol 'mention-mark)))
-          (telega-ins--image
-           avatar (if gaps-workaround-p
-                      (list 0 0 (telega-chars-xheight 2))
-                    0)
-           :no-display-if (not telega-chat-show-avatars))
-          (telega-ins--message-header msg chat sender addon-header-inserter)
+        ;; Header is required, set it up
+        (setq header-prefix
+              (concat header-prefix
+                      (telega-ins--as-string
+                       (telega-ins--image
+                        avatar (if gaps-workaround-p
+                                   (list 0 0 (telega-chars-xheight 2))
+                                 0)
+                        :no-display-if (not telega-chat-show-avatars))))
+              content-prefix
+              (if gaps-workaround-p
+                  wrap-prefix
+                (concat content-prefix
+                        (telega-ins--as-string
+                         (telega-ins--image
+                          avatar 1
+                          :no-display-if (not telega-chat-show-avatars))))))
+        (telega-ins--line-wrap-prefix (cons header-prefix nil)
+          (telega-ins--message-header msg chat sender addon-header-inserter)))
 
-          (unless gaps-workaround-p
-            (telega-ins--line-wrap-prefix (make-string l1width ?\s)
-              (telega-ins--image
-               avatar 1
-               :no-display-if (not telega-chat-show-avatars))))))
-
-      (setq content-prefix (make-string (+ awidth l1width) ?\s))
-      (telega-ins--line-wrap-prefix content-prefix
-        (telega-ins--fwd-info-inline fwd-info))
-      ;; NOTE: Three lines avatars in "Replies" chat
-      (when msg-for-replies-p
-        (unless gaps-workaround-p
-          (telega-ins--line-wrap-prefix (make-string l1width ?\s)
-            (telega-ins--image
-             avatar 2
-             :no-display-if (not telega-chat-show-avatars)))))
-
-      (telega-ins--line-wrap-prefix content-prefix
+      ;; Message Content
+      (telega-ins--line-wrap-prefix (cons content-prefix content-wrap)
+        (telega-ins--fwd-info-inline fwd-info)
         (telega-ins--msg-reply-inline msg)
         (telega-ins--content msg)
 
@@ -2898,21 +2909,22 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
           (telega-ins--msg-sending-state-failed msg)))
 
       (when (telega-msg-match-p msg telega-msg-temex-show-reactions)
-        (telega-ins--line-wrap-prefix
-            (if (telega-msg-match-p msg 'unread-reactions)
-                (let ((reaction-prefix
-                       (propertize (telega-symbol 'reaction-mark)
-                                   'face (if (telega-chat-muted-p chat)
-                                             'telega-muted-count
-                                           'telega-unmuted-count))))
-                  (concat reaction-prefix
-                          (substring content-prefix
-                                     (string-width reaction-prefix))))
-              content-prefix)
+        (setq content-prefix
+              (if (telega-msg-match-p msg 'unread-reactions)
+                  (let ((reaction-prefix
+                         (propertize (telega-symbol 'reaction-mark)
+                                     'face (if (telega-chat-muted-p chat)
+                                               'telega-muted-count
+                                             'telega-unmuted-count))))
+                    (concat reaction-prefix
+                            (substring content-wrap
+                                       (string-width reaction-prefix))))
+                content-wrap))
+        (telega-ins--line-wrap-prefix (cons content-prefix content-wrap)
           (telega-ins-prefix "\n"
             (telega-ins--msg-reaction-list msg))))
 
-      (telega-ins--line-wrap-prefix content-prefix
+      (telega-ins--line-wrap-prefix content-wrap
         (telega-ins-prefix "\n"
           (telega-ins--reply-markup msg))
         (telega-ins-prefix "\n"
@@ -3173,8 +3185,9 @@ If SHORT-P is non-nil then use short version."
       (telega-ins-i18n (if (plist-get imc :disable_notification)
                            "telega_disable_notification"
                          "telega_enable_notification")))
-     (telegaDisableWebpagePreview
-      (telega-ins-i18n "telega_disable_webpage_preview"))
+     (telegaLinkPreviewOptions
+      (telega-ins "LinkPreviewOptions")
+      (telega-ins-fmt " %S" (plist-get imc :options)))
      (telegaChatTheme
       (telega-ins "Theme: " (or (telega-tl-str imc :name)
                                 "disable")))

@@ -170,9 +170,9 @@ where PROXY-TYPE is one of:
     (date      . "%d.%m.%y")
     (time      . "%H:%M")
     (date-time . "%d.%m.%y %a %H:%M")
-    (date-long . "%d %B %Y"))
+    (date-long . "%d %B %Y")
+    (date-break-bar . "%d %B %Y %a"))
   "Alist of date and time formats.
-Key is one of `today', `this-week', `old', `full', `full-no-time'.
 Value is a format accepted by `format-time-string'."
   :package-version '(telega . "0.8.240")
   :type '(alist :key-type
@@ -180,9 +180,10 @@ Value is a format accepted by `format-time-string'."
                         (const :tag "If date is on this week" this-week)
                         (const :tag "If date is older than this week" old)
                         (const :tag "Format for the date only" date)
-                        (const :tag "Long format for the date only" date-long)
                         (const :tag "Format for the time only" time)
-                        (const :tag "Full date with time" date-time))
+                        (const :tag "Full date with time" date-time)
+                        (const :tag "Long format for the date only" date-long)
+                        (const :tag "Format for date break bar" date-break-bar))
                 :value-type string)
   :group 'telega)
 
@@ -515,10 +516,11 @@ See `telega-avatar--create-image' for more info."
   :options '((return t))
   :group 'telega)
 
-(defcustom telega-avatar-text-compose-chars nil
-  "Non-nil to compose sender initials with `telega-symbol-circle'.
-Use this to make textual avatars look prettier."
-  :type 'boolean
+(defcustom telega-avatar-text-function #'telega-avatar-text-simple
+  "Function to be used to get text for the first slice of the avatar."
+  :package-version '(telega . "0.8.215")
+  :type 'function
+  :options '(telega-avatar-text-composed)
   :group 'telega)
 
 (defcustom telega-vvnote-waves-height-factor 0.75
@@ -1197,7 +1199,8 @@ Set to 0 to disable description in a webpage preview."
 
 (defcustom telega-user-completing-temex
   '(or contact (chat (return t)))
-  "Only users matching this user temex are listed for completion."
+  "Only users matching this user temex are listed when reading user.
+Used by `telega-completing-read-user-list'."
   :package-version '(telega . "0.8.121")
   :type 'telega-user-temex
   :group 'telega-user)
@@ -1212,6 +1215,14 @@ Set to 0 to disable description in a webpage preview."
 Used when showing chat members list."
   :type 'boolean
   :group 'telega-user)
+
+(defcustom telega-user-last-seen-date-format 'relative
+  "*Format for the last seen time for the user.
+Might be a `relative' to show time relative to now."
+  :type '(choice (const :tag "Relative to the current time" relative)
+                 string)
+  :package-version '(telega . "0.8.251")
+  :options '("%d.%m.%y %a %H:%M"))
 
 (defcustom telega-user-photo-size 10
   "*Show profile photos of this number of characters in width and height."
@@ -1311,12 +1322,10 @@ Setting it to non-nil might introduce additional flickering in chatbuf."
   :type 'boolean
   :group 'telega-chat)
 
-(defcustom telega-chat-send-disable-webpage-preview nil
-  "Non-nil to disable web page previews for the outgoing messages.
-There will be no way to enable web page previews until this option is
-enabled."
-  :package-version '(telega . "0.7.2")
-  :type 'boolean
+(defcustom telega-chat-send-link-preview-options nil
+  "Default `linkPreviewOptions' options to use when sending messages."
+  :package-version '(telega . "0.8.251")
+  :type 'plist
   :group 'telega-chat)
 
 (defcustom telega-chat-show-avatars telega-use-images
@@ -1394,8 +1403,8 @@ from the ring."
   :type 'integer
   :group 'telega-chat)
 
-(defcustom telega-chat-use-date-breaks-for 'all
-  "Chat Filter for chats where to insert date breaks.
+(defcustom telega-chat-use-date-breaks t
+  "Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 #+begin_example
@@ -1403,8 +1412,8 @@ different days. Such as:
   -------(28 December 2020)------   <--- date break
   MSG2                              <--- msg sent on 28dec
 #+end_example"
-  :package-version '(telega . "0.7.4")
-  :type 'telega-chat-temex
+  :package-version '(telega . "0.8.251")
+  :type 'boolean
   :group 'telega-chat)
 
 (defcustom telega-chat-attach-commands
@@ -1469,11 +1478,9 @@ different days. Such as:
     ("enable-notification"
      default-disable-notification
      telega-chatbuf-attach-toggle-disable-notification)
-    ("disable-webpage-preview"
-     (eval (if-let ((editing-msg (telega-chatbuf-editing-msg)))
-               (telega-msg-match-p editing-msg 'web-page)
-             (not telega-chat-send-disable-webpage-preview)))
-     telega-chatbuf-attach-disable-webpage-preview)
+    ("link-preview-options"
+     (return t)
+     telega-chatbuf-attach-link-preview-options)
     ("send-by"
      has-default-sender telega-chatbuf-attach-send-by)
     ("custom-emoji"

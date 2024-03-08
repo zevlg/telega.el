@@ -252,6 +252,16 @@
                            'telega-symbol-checkbox-on
                            "0.8.250")
 
+(telega-obsolete--variable 'telega-chat-send-disable-webpage-preview
+                           'telega-chat-send-link-preview-options
+                           "0.8.251")
+(telega-obsolete--variable 'telega-chat-use-date-breaks-for
+                           'telega-chat-use-date-breaks
+                           "0.8.251")
+(telega-obsolete--variable 'telega-avatar-text-compose-chars
+                           'telega-avatar-text-function
+                           "0.8.251")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

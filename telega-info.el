@@ -317,11 +317,15 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (cond ((telega-user-online-p user)
              (telega-ins-i18n "lng_status_online"))
             ((plist-get user :telega-last-online)
-             (telega-ins (telega-duration-human-readable
-                          (- (telega-time-seconds)
-                             (plist-get user :telega-last-online))
-                          1 'long)
-                         " ago"))
+             (if (stringp telega-user-last-seen-date-format)
+                 (telega-ins--date (plist-get user :telega-last-online)
+                                   telega-user-last-seen-date-format)
+               ;; Relative
+               (telega-ins (telega-duration-human-readable
+                            (- (telega-time-seconds)
+                               (plist-get user :telega-last-online))
+                            1 'long)
+                           " ago")))
             (t
              (telega-ins (telega-user--seen user)))))
 

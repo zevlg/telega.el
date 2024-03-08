@@ -1459,8 +1459,9 @@ message (if any)."
       (while (and (setq button (if no-error
                                    (ignore-errors (forward-button (cl-signum n)))
                                  (forward-button (cl-signum n))))
-                  (or (and predicate
-                           (not (funcall predicate button)))
+                  (or (when-let ((button-predicate
+                                  (or predicate (button-get button :predicate))))
+                        (not (funcall button-predicate button)))
                       (button-get button 'invisible)
                       (button-get button 'inactive)))))
 
@@ -1826,32 +1827,58 @@ Return what BODY returns."
 `telega-ins--line-wrap-prefix'."
   (declare (indent 1))
   (let ((lwprefix-sym (gensym "lwprefix"))
+        (prefix-sym (gensym "prefix"))
+        (wrap-sym (gensym "wrap"))
         (lwprefix-props-sym (gensym "lwprefix-props"))
+        (eol-sym (gensym "eol"))
         (start-sym (gensym "start"))
         (region-sym (gensym "region")))
     `(let* ((,start-sym (point))
             (,lwprefix-sym ,prefix)
+            (,prefix-sym (when (consp ,lwprefix-sym)
+                           (car ,lwprefix-sym)))
+            (,wrap-sym (if (consp ,lwprefix-sym)
+                           (cdr ,lwprefix-sym)
+                         ,lwprefix-sym))
             (telega--column-offset (+ telega--column-offset
-                                      (if ,lwprefix-sym
-                                          (string-width ,lwprefix-sym)
-                                        0)))
+                                      (string-width
+                                       (or ,prefix-sym ,wrap-sym ""))))
             ,region-sym)
        (prog1
            (progn ,@body)
-         (when (and ,lwprefix-sym (not (string-empty-p ,lwprefix-sym)))
-           (let ((,lwprefix-props-sym (list :telega-lwprefix ,lwprefix-sym
-                                            'line-prefix ,lwprefix-sym
-                                            'wrap-prefix ,lwprefix-sym)))
+
+         ;; NOTE: if PREFIX is given as cons cell, then prefix only
+         ;; applies to the very first line, for rest of the lines wrap
+         ;; is used as `line-prefix'
+         (when ,prefix-sym
+           (let ((,eol-sym (save-excursion
+                             (goto-char ,start-sym)
+                             (pos-eol))))
+             (when (> ,eol-sym (point))
+               (setq ,eol-sym (point)))
+             (add-text-properties
+              ,start-sym ,eol-sym
+              (list 'line-prefix (concat ,prefix-sym
+                                         (get-text-property ,start-sym
+                                                            'line-prefix))
+                    'wrap-prefix (concat ,wrap-sym
+                                         (get-text-property ,start-sym
+                                                            'wrap-prefix))))
+             (setq ,start-sym ,eol-sym)))
+
+         (when (and ,wrap-sym (not (string-empty-p ,wrap-sym)))
+           (let ((,lwprefix-props-sym (list 'line-prefix ,wrap-sym
+                                            'wrap-prefix ,wrap-sym)))
              (while (setq ,region-sym (telega--region-by-text-prop
                                        ,start-sym 'line-prefix (point)))
                (add-text-properties ,start-sym (car ,region-sym)
                                     ,lwprefix-props-sym)
                (add-text-properties
                 (car ,region-sym) (cdr ,region-sym)
-                (list 'line-prefix (concat ,lwprefix-sym
+                (list 'line-prefix (concat ,wrap-sym
                                            (get-text-property (car ,region-sym)
                                                               'line-prefix))
-                      'wrap-prefix (concat ,lwprefix-sym
+                      'wrap-prefix (concat ,wrap-sym
                                            (get-text-property (car ,region-sym)
                                                               'wrap-prefix))))
                (setq ,start-sym (cdr ,region-sym)))

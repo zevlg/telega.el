@@ -39,6 +39,7 @@
 ;; - {{{user-option(telega-adblock-chat-order-if-last-message-ignored, 2)}}}
 ;; - {{{user-option(telega-adblock-verbose, 2)}}}
 ;; - {{{user-option(telega-adblock-max-distance, 2)}}}
+;; - {{{user-option(telega-adblock-same-link-count, 2)}}}
 ;; - {{{user-option(telega-adblock-block-msg-temex, 2)}}}
 ;; - {{{user-option(telega-adblock-allow-msg-temex, 2)}}}
 ;; - {{{user-option(telega-adblock-predicates, 2)}}}
@@ -75,6 +76,12 @@ Set it to less value if you see some advert messages not being blocked."
   :type 'integer
   :group 'telega-adblock)
 
+(defcustom telega-adblock-same-link-count 3
+  "Number of links to the same resource.
+Used by `telega-adblock-msg-multiple-same-links-p'."
+  :type 'integer
+  :group 'telega-adblock)
+
 (defcustom telega-adblock-verbose nil
   "Non-nil to show (in echo area) reason why message is ignored by adblock."
   :type 'boolean
@@ -92,6 +99,8 @@ the rootbuf."
   '(telega-adblock-msg-by-temex-p
     telega-adblock-msg-forwarded-p
     telega-adblock-msg-has-erid-p
+    telega-adblock-msg-multiple-same-links-p
+    telega-adblock-msg-has-reply-markup-p
     telega-adblock-msg-has-advert-links-p)
   "List of predicates to check message for advertisements.
 Each predicate accepts single argument - message.
@@ -106,7 +115,7 @@ If any of predicates returns non-nil, then message contains advert."
   :group 'telega-adblock)
 
 (defcustom telega-adblock-allow-msg-temex
-  '(or is-reply-to-msg is-reply-to-story post-with-comments)
+  '(or is-reply-to-msg is-reply-to-story)
   "Message's matching this temex will be allowed."
   :type 'telega-msg-temex
   :group 'telega-adblock)
@@ -259,7 +268,7 @@ an URL."
                 (seq-every-p (lambda (link-spec)
                                (telega-adblock-link-advert-p msg-chat link-spec))
                              (cdr url-group)))
-              (seq-group-by #'cdr (telega-adblock-msg-extract-links msg)))))
+              (seq-group-by #'cdr telega-adblock-msg-extracted-links))))
 
 (defun telega-adblock-msg-has-erid-p (msg)
   "Return non-nil if MSG text contains ERID label."
@@ -273,6 +282,46 @@ an URL."
                                     (url-generic-parse-url (cdr link-spec))))
                               ""))))
                 telega-adblock-msg-extracted-links)))
+
+(defun telega-adblock-msg-multiple-same-links-p (msg)
+  "Return non-nil if MSG has multiple links to the same resource."
+  (>= (- (length telega-adblock-msg-extracted-links)
+         (length (seq-uniq (mapcar #'cdr telega-adblock-msg-extracted-links))))
+      3))
+
+(defun telega-adblock-msg-has-reply-markup-p (msg)
+  "Messages with reply markup buttons are usually an advert.
+Because regular user can't send messages with reply markup buttons."
+  (plist-get msg :reply_markup))
+
+;; TODO
+(defun telega-adblock-msg-multiple-messages-with-same-media-p (msg)
+  "Return non-nil if MSG is sent to multiple channels at once.
+To be marked as ignored it need to have at least one external link."
+  ;; NOTE: (from TDLib dev) remote files are the same if `:unique_id'
+  ;; is the same even if `:id' differs
+  (when telega-adblock-msg-extracted-links
+    ;; NOTE: `telega-adblock-msg-extracted-links' is non-nil if there
+    ;; is at least one link
+    ;; Forwarded messages does not count
+    (let* ((chat (telega-msg-chat msg))
+           (last-p (>= (plist-get msg :id)
+                       (or (telega--tl-get chat :last_message :id) 0)))
+           (media-file (telega-msg--content-file msg))
+           (chats-list telega--ordered-chats)
+           (other-messages nil))
+      (when (and last-p media-file (not (plist-get msg :forward_info)))
+        (while (and chats-list
+                    (not (eq chat (car chats-list)))
+                    (< (length other-messages)
+                                  3     ;Trigger number
+                                  ))
+          (when-let* ((ochat (car chats-list))
+                      (olast-msg (plist-get ochat :last_message))
+                      (ofile (telega-msg--content-file olast-msg)))
+            (setq other-messages (cons olast-msg other-messages)))))
+
+      (>= (length other-messages) 3))))
 
 (defun telega-adblock-msg-ignore-p (msg)
   "Return non-nil if message MSG is advert message."

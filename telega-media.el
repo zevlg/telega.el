@@ -724,16 +724,23 @@ Default is `:telega-image'."
      (cons best :photo)
      'force-update)))
 
-(defun telega-avatar--title-text (sender)
+(defun telega-avatar-text-simple (sender wchars)
   "Create textual avatar for the SENDER (chat or user).
-Return string of width 3."
+WCHARS is number of chars in width used for the avatar.
+To be used as `telega-avatar-text-function'."
   (let ((title (telega-msg-sender-title sender)))
-    (if telega-avatar-text-compose-chars
-        (concat (propertize (compose-chars (aref telega-symbol-circle 0)
-                                           (aref title 0))
-                            'face (telega-msg-sender-title-faces sender))
-                " ")
-      (concat "(" (substring title 0 1) ")"))))
+    (concat "(" (substring title 0 1) ")"
+            (when (> wchars 3)
+              (make-string (- wchars 3) ?\s)))))
+
+(defun telega-avatar-text-composed (sender wchars)
+  "Return avatar text as text with composed `telega-symbol-circle' char.
+To be used as `telega-avatar-text-function'."
+  (let ((title (telega-msg-sender-title sender)))
+    (concat (propertize (compose-chars (aref telega-symbol-circle 0)
+                                       (aref title 0))
+                        'face (telega-msg-sender-title-faces sender))
+            (make-string wchars ?\s))))
 
 (defun telega-avatar--create-image (sender file &optional cheight addon-function)
   "Create SENDER (char or user) avatar image.
@@ -753,7 +760,6 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (ch (* cfactor xh))
          (cfull (floor (+ ch margin)))
          (aw-chars (telega-chars-in-width ch))
-         (aw-chars-3 (if (> aw-chars 3) (- aw-chars 3) 0))
          (svg-xw (telega-chars-xwidth aw-chars))
          (svg-xh (cond ((= cheight 1) cfull)
                        ((= cheight 2) (+ cfull (telega-chars-xheight 1)))
@@ -797,15 +803,19 @@ CHEIGHT specifies avatar height in chars, default is 2."
 
     (telega-svg-image svg :scale 1.0
                       :width svg-xw :height svg-xh
+;                      :height (cons cheight 'em)
                       :ascent 'center
                       :mask 'heuristic
                       :base-uri (expand-file-name "dummy" base-dir)
                       ;; Correct text for tty-only avatar display
                       :telega-text
-                      (cons (concat (telega-avatar--title-text sender)
-                                    (make-string aw-chars-3 ?\u00A0))
+                      (cons (let ((ava-text (funcall telega-avatar-text-function
+                                                     sender aw-chars)))
+                              (if (> (length ava-text) aw-chars)
+                                  (substring ava-text 0 aw-chars)
+                                ava-text))
                             (mapcar (lambda (_ignore)
-                                      (make-string (+ 3 aw-chars-3) ?\u00A0))
+                                      (make-string aw-chars ?\u00A0))
                                     (make-list (1- cheight) 'not-used))))
     ))
 

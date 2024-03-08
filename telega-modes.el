@@ -1215,12 +1215,6 @@ Return patron info, or nil if SENDER is not a telega patron."
                     :fill svg-color)))
              addon-fun)))
 
-(defun telega-patrons--avatar-title-text (origfun sender)
-  "Emphasize text variant avatar for patronns."
-  (if-let ((patron (telega-msg-sender-patron-p sender)))
-      (concat "⸨" (substring (telega-msg-sender-title sender) 0 1) "⸩")
-    (funcall origfun sender)))
-
 (define-minor-mode telega-patrons-mode
   "Global mode to emphasize telega patrons."
   :init-value nil :global t :group 'telega-modes
@@ -1228,11 +1222,8 @@ Return patron info, or nil if SENDER is not a telega patron."
       (progn
         (advice-add 'telega-avatar--create-image
                     :around 'telega-patrons--avatar-emphasize)
-        (advice-add 'telega-avatar--title-text
-                    :around 'telega-patrons--avatar-title-text)
         )
-    (advice-remove 'telega-avatar--title-text
-                   'telega-patrons--avatar-title-text)
+
     (advice-remove 'telega-avatar--create-image
                    'telega-patrons--avatar-emphasize)
     ))

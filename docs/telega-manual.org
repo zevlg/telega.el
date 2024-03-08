@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.250)
+#+title: Telega Manual (v0.8.251)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -53,7 +53,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#list-of-message-sender-temexes][List of Message Sender Temexes]]
     - [[#list-of-forum-topic-temexes][List of Forum Topic Temexes]]
     - [[#list-of-story-temexes][List of Story Temexes]]
-    - [[#customizable-options-making-use-of-telega-match-expressions][Customizable options making use of Telega Match Expressions]]
+    - [[#some-customizable-options-making-use-of-telega-match-expressions][Some customizable options making use of Telega Match Expressions]]
   - [[#chat-folders][Chat Folders]]
   - [[#filtering-chats][Filtering chats]]
   - [[#sorting-chats][Sorting chats]]
@@ -88,6 +88,8 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
   - [[#multiple-accounts][Multiple accounts]]
   - [[#minor-modes][Minor Modes]]
     - [[#notifications-for-incoming-messages][Notifications for incoming messages]]
+    - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
+    - [[#telega-chat-auto-fill-mode][telega-chat-auto-fill-mode]]
     - [[#telega-mode-line-mode][telega-mode-line-mode]]
     - [[#telega-appindicator-mode][telega-appindicator-mode]]
     - [[#telega-autoplay-mode][telega-autoplay-mode]]
@@ -103,7 +105,6 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-auto-translate-mode][telega-auto-translate-mode]]
     - [[#telega-auto-download-mode-wip][telega-auto-download-mode (WIP)]]
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
-    - [[#telega-root-auto-fill-mode][telega-root-auto-fill-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
     - [[#ol-telegael--org-mode-links-to-telegram-chats-and-messages][/ol-telega.el/ -- Org mode links to telegram chats and messages]]
@@ -1527,9 +1528,9 @@ Use ~telega-story-match-p~ to match a story.
 - is-photo :: 
      Matches if story has photo content.
 
-** Customizable options making use of Telega Match Expressions
+** Some customizable options making use of Telega Match Expressions
 :PROPERTIES:
-:CUSTOM_ID: customizable-options-making-use-of-telega-match-expressions
+:CUSTOM_ID: some-customizable-options-making-use-of-telega-match-expressions
 :END:
 
 - User Option: ~telega-filter-default~ 
@@ -1597,18 +1598,6 @@ Use ~telega-story-match-p~ to match a story.
   Chat Filter for chats where to show deleted messages in chatbuf. 
 
   Default value: ~nil~
-- User Option: ~telega-chat-use-date-breaks-for~ 
-
-  Chat Filter for chats where to insert date breaks.
-  Date break is a special mark separating two messages received on
-  different days. Such as:
-  #+begin_example
-    MSG1                              <--- msg sent on 27dec
-    -------(28 December 2020)------   <--- date break
-    MSG2                              <--- msg sent on 28dec
-  #+end_example
-
-  Default value: ~all~
 - User Option: ~telega-root-view-grouping-alist~ 
 
   Alist of chat temexes for "grouping" root view.
@@ -1883,9 +1872,9 @@ Important customizable options:
   Column to fill chat messages to. 
 
   Default value: ~70~
-- User Option: ~telega-chat-use-date-breaks-for~ 
+- User Option: ~telega-chat-use-date-breaks~ 
 
-  Chat Filter for chats where to insert date breaks.
+  Non-nil to insert date break bar in chat buffers.
   Date break is a special mark separating two messages received on
   different days. Such as:
   #+begin_example
@@ -1894,7 +1883,7 @@ Important customizable options:
     MSG2                              <--- msg sent on 28dec
   #+end_example
 
-  Default value: ~all~
+  Default value: ~t~
 
 ** Chatbuf fast navigation
 :PROPERTIES:
@@ -2135,7 +2124,7 @@ Attachment types to attach with
      Use this attachment to disable/enable notification on the receiver side.
 - enable-notification :: Toggle disable-notification chat option for the subsequent chatbuf input.
      Use this attachment to disable/enable notification on the receiver side.
-- disable-webpage-preview :: Disable webpage preview for the following text message.
+- link-preview-options :: Change ~telega-chat-send-link-preview-options~ for the following messages.
 - send-by :: Set sender for the following message.
 - custom-emoji :: Interactively attach a custom emoji.
 - delimiter :: Attach explicit messages delimiter.
@@ -2927,6 +2916,26 @@ To view recent notifications use
 
 See also [[#telega-alertel--notifications-using-alertel][Notifications using alert.el]]
 
+** telega-root-auto-fill-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-root-auto-fill-mode
+:END:
+
+Global minor mode to automatically adjust ~telega-root-fill-column~
+to the width of the window displaying rootbuf.
+
+~telega-root-auto-fill-mode~ is enabled by default.
+
+** telega-chat-auto-fill-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-chat-auto-fill-mode
+:END:
+
+Minor mode to automatically adjust ~telega-chat-fill-column~
+to the width of the window displaying chatbuf.
+
+~telega-chat-auto-fill-mode~ is enabled by default.
+
 ** telega-mode-line-mode
 :PROPERTIES:
 :CUSTOM_ID: telega-mode-line-mode
@@ -3309,16 +3318,6 @@ Customizable options:
 :END:
 
 Play media content in subsequent manner.
-
-** telega-root-auto-fill-mode
-:PROPERTIES:
-:CUSTOM_ID: telega-root-auto-fill-mode
-:END:
-
-Global minor mode to automatically adjust ~telega-root-fill-column~
-to the width of the window displaying rootbuf.
-
-~telega-root-auto-fill-mode~ is enabled by default.
 
 ** telega-voip-sounds-mode
 :PROPERTIES:
@@ -3721,6 +3720,12 @@ Customizable options:
   Set it to less value if you see some advert messages not being blocked. 
 
   Default value: ~4~
+- User Option: ~telega-adblock-same-link-count~ 
+
+  Number of links to the same resource.
+  Used by ~telega-adblock-msg-multiple-same-links-p~. 
+
+  Default value: ~3~
 - User Option: ~telega-adblock-block-msg-temex~ 
 
   Message temex for ~telega-adblock-msg-by-temex-p~ predicate. 
@@ -3730,7 +3735,7 @@ Customizable options:
 
   Message's matching this temex will be allowed. 
 
-  Default value: ~(or is-reply-to-msg is-reply-to-story post-with-comments)~
+  Default value: ~(or is-reply-to-msg is-reply-to-story)~
 - User Option: ~telega-adblock-predicates~ 
 
   List of predicates to check message for advertisements.
@@ -3741,6 +3746,8 @@ Customizable options:
   #+begin_src emacs-lisp
     (telega-adblock-msg-by-temex-p telega-adblock-msg-forwarded-p
                                    telega-adblock-msg-has-erid-p
+                                   telega-adblock-msg-multiple-same-links-p
+                                   telega-adblock-msg-has-reply-markup-p
                                    telega-adblock-msg-has-advert-links-p)
   #+end_src
 

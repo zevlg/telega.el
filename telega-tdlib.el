@@ -3042,6 +3042,23 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
          :user_ids (cl-map #'vector (telega--tl-prop :id) users))
    callback))
 
+(defun telega--getAttachmentMenuBot (bot-user &optional callback)
+  "Return information about a bot that can be added to attachment or side menu."
+  (telega-server--call
+   (list :@type "getAttachmentMenuBot"
+         :bot_user_id (plist-get bot-user :id))
+   callback))
+
+(cl-defun telega--openWebApp (chat bot-user url &key
+                                   app-name reply-to callback)
+  "Inform TDLib that a Web App is being opened from the attachment menu."
+  (telega-server--call
+   (list :@type "openWebApp"
+         :chat_id (plist-get chat :id)
+         :bot_user_id (plist-get bot-user :id)
+         :url url)
+   callback))
+
 (provide 'telega-tdlib)
 
 ;;; telega-tdlib.el ends here
