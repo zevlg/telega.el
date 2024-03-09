@@ -582,6 +582,8 @@ CATEGORY is one of `Users', `Bots', `Groups', `Channels',
 (defvar telega-chat-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
+    (define-key map [remap self-insert-command] #'undefined)
+
     (define-key map (kbd "i") 'telega-describe-chat)
     (define-key map (kbd "h") 'telega-describe-chat)
     (define-key map (kbd "a") 'telega-chat-add-member)

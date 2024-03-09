@@ -2920,8 +2920,8 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                             (substring content-wrap
                                        (string-width reaction-prefix))))
                 content-wrap))
-        (telega-ins--line-wrap-prefix (cons content-prefix content-wrap)
-          (telega-ins-prefix "\n"
+        (telega-ins-prefix "\n"
+          (telega-ins--line-wrap-prefix (cons content-prefix content-wrap)
             (telega-ins--msg-reaction-list msg))))
 
       (telega-ins--line-wrap-prefix content-wrap

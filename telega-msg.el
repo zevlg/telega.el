@@ -169,7 +169,7 @@
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map button-map)
-;    (define-key map [remap self-insert-command] 'ignore)
+    (define-key map [remap self-insert-command] #'undefined)
 
     (define-key map (kbd "SPC") 'scroll-up-command)
     (define-key map (kbd "c") 'telega-msg-copy-dwim)
