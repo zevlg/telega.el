@@ -6649,9 +6649,13 @@ containing QUERY sent by specified sender."
   (interactive (list (get-buffer-window)))
 
   (when (or (null win) (eq (selected-window) win))
-    (let ((new-fill-column (1- (/ (- (window-width win 'pixels)
-                                     (line-number-display-width 'pixels))
-                                  (telega-chars-xwidth 1)))))
+    (let ((new-fill-column (- (window-width win)
+                              (with-selected-window win
+                                (line-number-display-width))
+                              (or (car visual-fill-column-extra-text-width)
+                                  0)
+                              (or (cdr visual-fill-column-extra-text-width)
+                                  1))))
       (when (and new-fill-column
                  (> new-fill-column 15)   ;XXX ignore too narrow window
                  (not (eq new-fill-column telega-chat-fill-column)))
