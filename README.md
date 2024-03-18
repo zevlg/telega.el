@@ -71,15 +71,15 @@ Submitting [issues](https://github.com/zevlg/telega.el/issues) is
 exceptionally helpful.
 
 Support `telega.el` by donating to:
-| [![TON](etc/donate_ton.jpg)] |
+| ![TON](etc/donate_ton.jpg) |
 |:--:|
 | TON: UQDLQ-q6Yob4zB7KVpk2xKCPHBwfFrc5JmGCF74NPyB1ViIN |
 
-| [![USDT TRC20](etc/donate_usdt.jpg)] |
+| ![USDT TRC20](etc/donate_usdt.jpg) |
 |:--:|
 | USDT TRC20: TJ9ekHtD1dnZsCAKJoc7Yx1emNmdLwFbzP |
 
-| [![BTC](etc/donate_btc.jpg)] |
+| ![BTC](etc/donate_btc.jpg) |
 |:--:|
 | BTC: 1PeqqU1dGEqXy52yk3XEySaHXREsrtDvCc |
 
