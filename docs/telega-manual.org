@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.251)
+#+title: Telega Manual (v0.8.254)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1322,7 +1322,7 @@ Use ~telega-msg-match-p~ to match a message.
      Matches if message has at least ~N~ unread reactions.
      By default ~N~ is 1.
 
-- has-chosen-reaction :: 
+- (has-chosen-reaction [ ~REACTION-TYPE~ ]) :: 
      Matches if message has a reaction chosen by me.
 
 - is-reply-to-msg :: 
@@ -2462,7 +2462,7 @@ Customizable options for inline bots:
 :END:
 
 Message filtering means to show only some messages matching filter.
-Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =topic=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =unread-reaction=, =failed-to-send=, =pinned=
+Available message filters are: =scheduled=, =search=, =by-sender=, =hashtag=, =topic=, =tag=, =photo=, =photo-video=, =url=, =doc=, =file=, =gif=, =audio=, =video=, =voice-note=, =video-note=, =voice-video-note=, =chat-photo=, =mention=, =unread-mention=, =unread-reaction=, =failed-to-send=, =pinned=
 
 Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c /@@html:</kbd>@@ (~telega-chatbuf-filter~) :: 

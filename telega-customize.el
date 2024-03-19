@@ -1418,15 +1418,15 @@ different days. Such as:
 
 (defcustom telega-chat-attach-commands
   '(("photo"
-     (return t) telega-chatbuf-attach-photo)
+     (my-permission :can_send_photos) telega-chatbuf-attach-photo)
     ("video"
-     (return t) telega-chatbuf-attach-video)
+     (my-permission :can_send_videos) telega-chatbuf-attach-video)
     ("audio"
-     (return t) telega-chatbuf-attach-audio)
+     (my-permission :can_send_audios) telega-chatbuf-attach-audio)
     ("spoiler-photo"
-     (return t) telega-chatbuf-attach-spoiler-photo)
+     (my-permission :can_send_photos) telega-chatbuf-attach-spoiler-photo)
     ("spoiler-video"
-     (return t) telega-chatbuf-attach-spoiler-video)
+     (my-permission :can_send_videos) telega-chatbuf-attach-spoiler-video)
     ("self-destruct-photo"
      (type private bot) telega-chatbuf-attach-ttl-photo)
     ("self-destruct-video"
@@ -1434,13 +1434,13 @@ different days. Such as:
     ("video-note"
      ;; TODO: check video recording possibility, see
      ;; `telega-vvnote-video--record'<f>
-     (return t) telega-chatbuf-attach-video-note)
+     (my-permission :can_send_video_notes) telega-chatbuf-attach-video-note)
     ("voice-note"
-     (return t) telega-chatbuf-attach-voice-note)
+     (my-permission :can_send_voice_notes) telega-chatbuf-attach-voice-note)
     ("file"
-     (return t) telega-chatbuf-attach-file)
+     (my-permission :can_send_documents) telega-chatbuf-attach-file)
     ("gif"
-     (return t) telega-chatbuf-attach-gif)
+     (my-permission :can_send_other_messages) telega-chatbuf-attach-gif)
     ("location"
      (return t) telega-chatbuf-attach-location)
     ("poll"
@@ -1448,21 +1448,24 @@ different days. Such as:
     ("contact"
      (return t) telega-chatbuf-attach-contact)
     ("sticker"
-     (return t) telega-chatbuf-attach-sticker)
+     (my-permission :can_send_other_messages) telega-chatbuf-attach-sticker)
     ("animation"
-     (return t) telega-chatbuf-attach-animation)
+     (my-permission :can_send_other_messages) telega-chatbuf-attach-animation)
     ;; TODO: animations with spoilar are not yet supported
     ;; ("spoiler-animation"
     ;;  (return t) telega-chatbuf-attach-spoiler-animation)
     ("dice"
      (return t) telega-chatbuf-attach-dice)
     ("screenshot"
-     (eval telega-screenshot-function) telega-chatbuf-attach-screenshot)
+     (and (my-permission :can_send_photos)
+          (eval telega-screenshot-function))
+     telega-chatbuf-attach-screenshot)
     ("clipboard"
-     (eval
-      ;; Avoid "Selection owner couldn't convert" error
-      (ignore-errors
-        (gui-get-selection 'CLIPBOARD 'image/png)))
+     (and (my-permission :can_send_photos)
+          (eval
+           ;; Avoid "Selection owner couldn't convert" error
+           (ignore-errors
+             (gui-get-selection 'CLIPBOARD 'image/png))))
      telega-chatbuf-attach-clipboard)
     ("markup"
      (return t) telega-chatbuf-attach-markup)
@@ -1479,7 +1482,7 @@ different days. Such as:
      default-disable-notification
      telega-chatbuf-attach-toggle-disable-notification)
     ("link-preview-options"
-     (return t)
+     (my-permission :can_add_web_page_previews)
      telega-chatbuf-attach-link-preview-options)
     ("send-by"
      has-default-sender telega-chatbuf-attach-send-by)
@@ -2427,6 +2430,12 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-saved-messages-tag-end "▶"
+  "End for the tag in the Saved Messages."
+  :package-version '(telega . "0.8.253")
+  :type 'string
+  :group 'telega-symbol)
+
 ;; Symbols marking messages of some sort
 (when (fboundp 'define-fringe-bitmap)
   (define-fringe-bitmap 'telega-mark
@@ -2550,6 +2559,11 @@ Used in one line message inserter."
                    (telega-etc-file-create-image "symbols/reply-quote.svg" 2)))
     (right-arrow (when (and telega-use-images (image-type-available-p 'svg))
                    (telega-etc-file-create-image "symbols/right-arrow.svg" 2)))
+    (saved-messages-tag-end
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-create-image (telega-etc-file "symbols/tag-end.svg") nil nil
+                            :scale 1.0 :ascent 'center
+                            :height (telega-chars-xheight 1))))
     timer-clock
     video video-chat-active video-chat-passive
 

@@ -1580,6 +1580,16 @@ Please downgrade TDLib and recompile `telega-server'"
   (setq telega--speech-recognition-trial event)
   )
 
+(defun telega--on-updateSavedMessagesTags (event)
+  "SavedMessages tags has been updated."
+  (telega-saved-messages-tags-ensure
+   (plist-get event :tags)
+   (plist-get event :saved_messages_topic_id))
+
+  (with-telega-chatbuf (telega-chat-me)
+    (telega-chatbuf--chat-update "msg-filter"))
+  )
+
 (provide 'telega-tdlib-events)
 
 ;;; telega-tdlib-events.el ends here

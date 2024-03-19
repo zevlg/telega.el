@@ -508,7 +508,12 @@ Return filename of the generated icon."
   "Animate custom emojis for the message MSG."
   (when telega-autoplay-custom-emojis
     (when (or force (telega-msg-observable-p msg))
-      (let* ((custom-emoji-ids (telega-custom-emoji--ids-for-msg msg))
+      (let* ((custom-emoji-ids
+              (nconc (telega-custom-emoji--ids-for-msg msg '(content))
+                     ;; NOTE: reactions in the SavedMessages chat are tags
+                     ;; We don't animate tags
+                     (unless (telega-msg-match-p msg '(chat saved-messages))
+                       (telega-custom-emoji--ids-for-msg msg '(reactions)))))
              (custom-emoji-stickers
               (seq-take (seq-filter
                          (lambda (sticker)
@@ -766,24 +771,20 @@ To be displayed in the modeline.")
 
 (defun telega-image-mode--chat-position-fetch ()
   "Asynchronously fetch message's position in the chat's history."
-  (let ((buf (current-buffer)))
-    (telega--getChatMessageCount (telega-msg-chat telega-image--message)
-        '(:@type "searchMessagesFilterPhoto") nil
-      (lambda (count)
-        (with-current-buffer buf
-          (setcdr telega-image--position count)
-          (when (car telega-image--position)
-            (telega-image-mode--update-modeline)))))
+  (telega--getChatMessageCount (telega-msg-chat telega-image--message)
+      '(:@type "searchMessagesFilterPhoto") nil
+    (lambda-with-current-buffer (count)
+      (setcdr telega-image--position count)
+      (when (car telega-image--position)
+        (telega-image-mode--update-modeline))))
 
-    (telega--getChatMessagePosition telega-image--message
-        '(:@type "searchMessagesFilterPhoto") nil
-      (lambda (count)
-        (when (buffer-live-p buf)
-          (with-current-buffer buf
-            (setcar telega-image--position count)
-            (when (cdr telega-image--position)
-              (telega-image-mode--update-modeline))))))
-    ))
+  (telega--getChatMessagePosition
+      telega-image--message '(:@type "searchMessagesFilterPhoto")
+    :callback
+    (lambda-with-current-buffer (count)
+      (setcar telega-image--position count)
+      (when (cdr telega-image--position)
+        (telega-image-mode--update-modeline)))))
 
 (defvar telega-image-mode-map
   (let ((map (make-sparse-keymap)))
@@ -832,9 +833,9 @@ Could be used as condition function in `display-buffer-alist'."
          (hr (telega-photo--highres photo))
          (hr-file (telega-file--renew hr :photo))
          (oldbuffer (current-buffer)))
-    ;; Jump to corresponding message in the chatbuf on switch-in
+    ;; Jump to corresponding message in the chatbuf
     (with-telega-chatbuf (telega-msg-chat image-msg)
-      (telega-chatbuf--history-state-set :goto-msg image-msg))
+      (telega-msg-goto image-msg))
 
     (telega-file--download hr-file 32
       (lambda (tl-file)
@@ -884,8 +885,9 @@ Could be used as condition function in `display-buffer-alist'."
                             :with-brackets-p t)))
               ;; Found a message
               (message "")
-              (with-current-buffer img-buffer
-                (telega-image-view-msg (car found-messages)))
+              (when (buffer-live-p img-buffer)
+                (with-current-buffer img-buffer
+                  (telega-image-view-msg (car found-messages))))
               )))
         ))))
 
@@ -897,9 +899,6 @@ Could be used as condition function in `display-buffer-alist'."
 (defun telega-image-quit ()
   "Kill image buffer and its window."
   (interactive)
-  (when telega-image--message
-    (with-telega-chatbuf (telega-msg-chat telega-image--message)
-      (telega-chatbuf--history-state-delete :goto-msg)))
   (quit-window 'kill))
 
 
@@ -1133,6 +1132,10 @@ UFILE specifies Telegram file being uploading."
 
 (defun telega-highlight-text (text-regexp)
   "Highlight TEXT-REGEXP in the dynamic buffer."
+  (when telega-highlight-text-mode
+    ;; Remove previously used highlights
+    (telega-highlight-text-mode -1))
+
   (setq telega-highlight-text-regexp text-regexp)
   (telega-highlight-text-mode 1))
 

@@ -946,11 +946,14 @@ By default N is 1."
   (>= (length (plist-get msg :unread_reactions)) (or n 1)))
 
 ;;; ellit-org: msg-temex
-;; - has-chosen-reaction ::
+;; - (has-chosen-reaction [ ~REACTION-TYPE~ ]) ::
 ;;   {{{temexdoc(msg, has-chosen-reaction, 2)}}}
-(define-telega-matcher msg has-chosen-reaction (msg)
+(define-telega-matcher msg has-chosen-reaction (msg &optional reaction-type)
   "Matches if message has a reaction chosen by me."
-  (telega-msg-chosen-reaction-types msg))
+  (let ((chosen-reaction-types (telega-msg-chosen-reaction-types msg)))
+    (or (and reaction-type
+             (cl-find reaction-type chosen-reaction-types :test #'equal))
+        chosen-reaction-types)))
 
 ;;; ellit-org: msg-temex
 ;; - is-reply-to-msg ::

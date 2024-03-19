@@ -129,9 +129,13 @@ Actual value is `:@extra` value of the call to load history.")
 (defvar telega-chatbuf--msg-filter nil
   "Active messages filter in the chatbuf.
 Plist with properties:
-- `:title' displayed in  chatbuf footer
+- `:title' displayed in chatbuf footer. Might be a function returning
+  string.
 - `:tdlib-msg-filter' Could be a function or list representing
   TDLib SearchMessagesFilter.
+- `:msg-temex' - Custom message temex to match against filter.
+- `:saved-messages-topic-id' Topic id in the Saved Messages
+- `:saved-messages-tag' Tag в Saved Messages
 - `:query' - query argument to `telega--searchChatMessages'
 - `:sender' - sender argument to `telega--searchChatMessages'
 - `:msg-position' - Message's at point position across filtered messages.
@@ -1834,7 +1838,7 @@ View only if message matches TEMEX or not yet viewed."
                      unread-reactions
                      (not seen))))
 
-  (when (and (not (telega-msg-internal-p msg))
+  (when (and (telega-msg-from-history-p msg)
              (telega-msg-match-p msg temex))
     (telega--viewMessages telega-chatbuf--chat (list msg)
       :source (cond (telega-chat-preview-mode
@@ -1899,7 +1903,8 @@ Use this to surrond header with some prefix and suffix."
        (telega-ins " "))
      (telega-ins "Messages Filter: ")
      (telega-ins--with-face 'bold
-       (telega-ins (telega-tl-str telega-chatbuf--msg-filter :title)))
+       (let ((title (plist-get telega-chatbuf--msg-filter :title)))
+         (telega-ins (if (functionp title) (funcall title) title))))
      (when-let ((sender (plist-get telega-chatbuf--msg-filter :sender)))
        (telega-ins " by ")
        (telega-ins--raw-button
@@ -3364,13 +3369,16 @@ topic or thread filtering."
 
 (defun telega-chatbuf-mode-line-messages-filter ()
   "Format currently applied messages filter."
+  (telega-chatbuf--dirtiness-init "msg-filter")
+
   (when telega-chatbuf--msg-filter
     (telega-ins--as-string
      (telega-ins--with-face 'error
        (telega-ins "Filter"))
      (telega-ins ": ")
      (telega-ins--with-face 'bold
-       (telega-ins (telega-tl-str telega-chatbuf--msg-filter :title)))
+       (let ((title (plist-get telega-chatbuf--msg-filter :title)))
+         (telega-ins (if (functionp title) (funcall title) title))))
      (when-let ((sender (plist-get telega-chatbuf--msg-filter :sender)))
        (telega-ins " by ")
        (telega-ins--msg-sender sender
@@ -3946,7 +3954,7 @@ argument - total number of loaded messages."
       (setq from-msg-id (plist-get (telega-chatbuf--first-msg) :id)
             offset 0))
     (unless from-msg-id
-      ;; NOTE: Mark newer history is loaded in advance
+      ;; NOTE: Mark newer history as loaded in advance
       (telega-chatbuf--newer-history-loaded)
       (setq from-msg-id (telega-chatbuf--last-message-id)
             offset -1))
@@ -3987,6 +3995,8 @@ argument - total number of loaded messages."
                     ;; `telega-chatbuf--history-loading' is reseted
                     ;; only after all the messages are inserted?
                     (setq telega-chatbuf--history-loading nil)
+                    (when (eq 0 (plist-get history :next_from_message_id))
+                      (telega-chatbuf--older-history-loaded))
                     (cond ((and (>= offset 0)
                                 (or (zerop (length messages))
                                     ;; NOTE: `searchChatMessages'
@@ -3998,26 +4008,52 @@ argument - total number of loaded messages."
                                          (telega-msg-id= (seq-first messages)
                                                          first-msg))))
                            (telega-chatbuf--older-history-loaded))
+
                           ((and (< offset 0)
-                                (zerop (length messages)))
+                                (or (zerop (length messages))
+                                    (and (< offset -1)
+                                         (= 1 (length messages))
+                                         (eq from-msg-id
+                                             (plist-get (seq-first messages) :id)))
+                                    ))
                            (telega-chatbuf--newer-history-loaded)))
+
                     (when callback
                       (funcall callback (plist-get history :total_count)))
                     (telega-chatbuf--chat-update "history-loading"))))))
         (setq telega-chatbuf--history-loading
-              (cond (telega-chatbuf--msg-filter
+              (cond ((plist-get telega-chatbuf--msg-filter
+                                :saved-messages-tag)
+                     (cl-assert (telega-chat-match-p chat 'saved-messages))
+                     (telega--searchSavedMessages
+                      from-msg-id offset
+                      :tag (plist-get telega-chatbuf--msg-filter
+                                      :saved-messages-tag)
+                      :query (plist-get telega-chatbuf--msg-filter :query)
+                      :limit limit
+                      :saved-messages-topic-id (plist-get
+                                                telega-chatbuf--msg-filter
+                                                :saved-messages-topic-id)
+                      :callback history-callback))
+
+                    (telega-chatbuf--msg-filter
                      (telega--searchChatMessages chat
                          (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter)
                          from-msg-id offset
                        :query (plist-get telega-chatbuf--msg-filter :query)
                        :limit limit
                        :sender (plist-get telega-chatbuf--msg-filter :sender)
+                       :saved-messages-topic-id (plist-get
+                                                 telega-chatbuf--msg-filter
+                                                 :saved-messages-topic-id)
                        :callback history-callback))
+
                     ((not (zerop (telega-chatbuf--message-thread-id)))
                      (telega--getMessageThreadHistory
                          chat (telega-chatbuf--message-thread-id)
                          from-msg-id offset limit
                        history-callback))
+
                     (t
                      (telega--getChatHistory
                          chat from-msg-id offset
@@ -4025,9 +4061,8 @@ argument - total number of loaded messages."
                        history-callback)))))
       (telega-chatbuf--chat-update "history-loading"))))
 
-(defun telega-chatbuf--load-older-history (&optional callback)
-  "In chat buffer load older messages.
-CALLBACK if non-nil, then called with total number of loaded messages."
+(defun telega-chatbuf--load-older-history ()
+  "In chat buffer load older messages."
   (if (and telega-chatbuf--msg-filter
            (functionp (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter)))
       ;; no-op: chatbuf messages filter is a function
@@ -4036,8 +4071,6 @@ CALLBACK if non-nil, then called with total number of loaded messages."
     ;; NOTE: if there is no messages in the chatbuf, then show last
     ;; message first and then start loading the history
     (when (and (not telega-chatbuf--history-loading)
-               (not (or telega-chatbuf--msg-filter
-                        telega-chatbuf--thread))
                ;; And no messages are loaded
                (not (telega-chatbuf--first-msg)))
       (when-let ((msg (plist-get telega-chatbuf--chat :last_message)))
@@ -4045,7 +4078,7 @@ CALLBACK if non-nil, then called with total number of loaded messages."
           (telega-chatbuf--insert-messages (list msg) 'append-new))))
 
     (cl-assert (telega-chatbuf--need-older-history-p))
-    (telega-chatbuf--load-history nil nil nil callback)))
+    (telega-chatbuf--load-history)))
 
 (defun telega-chatbuf--load-newer-history ()
   "In chat buffer load newer messages."
@@ -4055,9 +4088,10 @@ CALLBACK if non-nil, then called with total number of loaded messages."
       nil
 
     (cl-assert (telega-chatbuf--need-newer-history-p))
-    (when (and (not telega-chatbuf--history-loading)
-               (telega-chatbuf--last-msg))
-      (telega-chatbuf--load-history (plist-get (telega-chatbuf--last-msg) :id)
+
+    (when-let ((not-loading-p (not telega-chatbuf--history-loading))
+               (from-msg-id (plist-get (telega-chatbuf--last-msg) :id)))
+      (telega-chatbuf--load-history from-msg-id
           (- 1 telega-chat-history-limit) telega-chat-history-limit))))
 
 (defun telega-chabuf-input-formatting-set (begin end ent-type)
@@ -4367,7 +4401,8 @@ use.  For example `C-u RET' will use
         (telega--forwardMessages
          telega-chatbuf--chat
          (telega-msg-chat (plist-get (car send-imcs) :message))
-         (mapcar (telega--tl-prop :message) send-imcs) options
+         (mapcar (telega--tl-prop :message) send-imcs)
+         options
          (plist-get (car send-imcs) :send_copy)
          (plist-get (car send-imcs) :remove_caption)
          :callback (when preview-p #'telega-msg-preview--add-multiple)
@@ -4530,7 +4565,8 @@ For filters from `telega-chat-message-filters-as-media'."
                  (member "msg-filter" telega-chatbuf--dirtiness-prompt)))
     (let ((tdlib-msg-filter
            (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter)))
-      (when (and (listp tdlib-msg-filter)
+      (when (and tdlib-msg-filter
+                 (listp tdlib-msg-filter)
                  ;; NOTE: From TDLib docs:
                  ;; searchMessagesFilterEmpty,
                  ;; searchMessagesFilterUnreadMention,
@@ -4546,7 +4582,11 @@ For filters from `telega-chat-message-filters-as-media'."
         (plist-put telega-chatbuf--msg-filter :msg-position
                    (cons 'loading
                          (telega--getChatMessagePosition
-                             message tdlib-msg-filter nil
+                             message tdlib-msg-filter
+                           :saved-messages-topic-id
+                           (plist-get telega-chatbuf--msg-filter
+                                      :saved-messages-topic-id)
+                           :callback
                            (lambda (position)
                              (with-telega-chatbuf (telega-msg-chat message)
                                (when telega-chatbuf--msg-filter
@@ -4580,9 +4620,13 @@ If NO-CHAT-UPDATE-P, do not trigger chatbuf's headers update."
   (unless no-chat-update-p
     (telega-chatbuf--chat-update "thread")))
 
-(defun telega-chatbuf--clean ()
-  "Remove all messages displayed in chatbuf."
-  (telega-ewoc--clean telega-chatbuf--ewoc)
+(defun telega-chatbuf--clean (&optional keep-predicate)
+  "Remove all messages displayed in the chatbuf.
+If KEEP-PREDICATE is specified, then keep messages for which
+KEEP-PREDICATE return non-nil."
+  (if keep-predicate
+      (ewoc-filter telega-chatbuf--ewoc keep-predicate)
+    (telega-ewoc--clean telega-chatbuf--ewoc))
   (setq telega-chatbuf--history-state-plist nil))
 
 (defun telega-chatbuf-history-beginning ()
@@ -5569,11 +5613,6 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
   (telega-debug "Switch %s: %s" (propertize "IN" 'face 'bold)
                 (buffer-name))
 
-  (when-let ((goto-msg (telega-chatbuf--history-state-get :goto-msg)))
-    (telega-chatbuf--history-state-delete :goto-msg)
-    (telega-chatbuf--history-state-delete :newer-freezed)
-    (telega-chat--goto-msg telega-chatbuf--chat (plist-get goto-msg :id)))
-
   ;; NOTE: Recover freezed state, i.e.
   ;; 1) Keep point as is if it was not in the prompt at the time of
   ;;    newer history freeze
@@ -5593,7 +5632,7 @@ FOCUS-OUT-P is non-nil if called when chatbuf's frame looses focus."
              (telega-chatbuf-next-unread)))
 
            (t
-            (goto-char (plist-get newer-freezed :point))
+;            (goto-char (plist-get newer-freezed :point))
 
             ;; Redetect cursor sensor to hover in any message at point
             (when-let ((chat-win (get-buffer-window)))
@@ -6128,9 +6167,8 @@ CALLBACK is called after point is moved to the message with MSG-ID."
   ;; 2. If message seen in chatbuf, jump to it
   ;; 3. Otherwise, fetch history containing message and jump to it
   (when (ring-p telega-chatbuf--messages-pop-ring)
-    (when-let (msg-at-point (telega-msg-at (point)))
-      (unless (or (telega-msg-internal-p msg-at-point)
-                  (eq msg-id (plist-get msg-at-point :id))
+    (when-let (msg-at-point (telega-msg-at (point) #'telega-msg-from-history-p))
+      (unless (or (eq msg-id (plist-get msg-at-point :id))
                   (telega-chatbuf--messages-pop-ring-last-p msg-at-point))
         (ring-insert telega-chatbuf--messages-pop-ring msg-at-point)
 
@@ -6171,6 +6209,12 @@ CALLBACK is called after point is moved to the message with MSG-ID."
                        (plist-get thread-info :chat_id) 'offline))
          (thread-msg
           (car (last (append (plist-get thread-info :messages) nil)))))
+    ;; NOTE: `thread-msg' itself is not part of the thread, only replies are.
+    ;; So, if `reply-msg-id' is actually `thread-msg' we need to load
+    ;; initial history as usual
+    (when (eq reply-msg-id (plist-get thread-msg :id))
+      (setq reply-msg-id nil))
+
     (with-current-buffer (telega-chat--pop-to-buffer thread-chat :no-history)
       (telega-chatbuf-filter-by-thread
        (plist-put thread-msg :telega-thread-info thread-info)
@@ -6230,6 +6274,8 @@ CALLBACK is called after point is moved to the message with MSG-ID."
      (return t) telega-chatbuf-filter-hashtag)
     ("topic"
      is-forum telega-chatbuf-filter-by-topic)
+    ("tag"
+     saved-messages telega-chatbuf-filter-by-saved-messages-tag)
     ,@telega-chat--tl-message-filters))
 
 (defconst telega-chat--message-filter-temex-alist
@@ -6256,12 +6302,12 @@ CALLBACK is called after point is moved to the message with MSG-ID."
   "Return non-nil if message MSG matches current messages filter."
   (let ((tl-msg-filter (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter))
         (msg-temex (plist-get telega-chatbuf--msg-filter :msg-temex)))
-    (cond ((not tl-msg-filter)
-           ;; No filtering, any msg matches
-           t)
-          (msg-temex
+    (cond (msg-temex
            ;; Custom temex used by filter
            (telega-msg-match-p msg msg-temex))
+          ((not tl-msg-filter)
+           ;; No filtering, any msg matches
+           t)
           ((functionp tl-msg-filter)
            ;; Filtered by function, no messages matches
            nil)
@@ -6305,33 +6351,43 @@ CALLBACK is called after point is moved to the message with MSG-ID."
                       "Chat Messages Filter: "
                       telega-chat--message-filters)))
 
-  (cl-assert (and msg-filter (plist-get msg-filter :tdlib-msg-filter)))
+  (cl-assert (and msg-filter (or (plist-get msg-filter :tdlib-msg-filter)
+                                 (plist-get msg-filter :saved-messages-tag))))
   (if (commandp (plist-get msg-filter :tdlib-msg-filter) 'for-interactive)
       (call-interactively (plist-get msg-filter :tdlib-msg-filter))
 
     (cl-assert (listp (plist-get msg-filter :tdlib-msg-filter)))
     (setq telega-chatbuf--msg-filter msg-filter)
 
-    (let* ((msg-at-point (telega-msg-at (point)))
-           (msg-id (unless (telega-msg-internal-p msg-at-point)
-                     (plist-get msg-at-point :id))))
-      (telega-chatbuf--clean)
-      (telega-chatbuf--load-history msg-id -1 nil
+    (let* ((msg-at-point (telega-msg-at (point) #'telega-msg-from-history-p))
+           (keep-msg-p (telega-chatbuf--filter-match-msg-p msg-at-point)))
+      (telega-chatbuf--clean (when keep-msg-p
+                               (apply-partially #'eq msg-at-point)))
+      ;; Load history around the message
+      (telega-chatbuf--load-history
+          (when keep-msg-p (plist-get msg-at-point :id))
+          (if keep-msg-p (- (/ telega-chat-history-limit 2)) -2)
+          telega-chat-history-limit
         (lambda (total-messages)
           (when telega-chatbuf--msg-filter
             (plist-put telega-chatbuf--msg-filter :total-count total-messages)
             (telega-chatbuf--chat-update "msg-filter"))
-          (when msg-id
-            (telega-chatbuf--goto-loaded-msg msg-id)))))
+          (when (and msg-at-point (not keep-msg-p))
+            (telega-chatbuf--goto-loaded-msg (plist-get msg-at-point :id)))))
 
     (when (member (plist-get msg-filter :title)
                   telega-chat-message-filters-as-media)
       (telega-chatbuf--enable-compact-media-view))
 
+    (when telega-highlight-text-mode
+      (telega-highlight-text-mode -1))
+    (when-let ((query (telega-tl-str msg-filter :query)))
+      (telega-highlight-text (regexp-quote query)))
+
     (telega-help-message 'msg-filter-cancel
         "%s to cancel messages filtering"
       (telega-keys-description
-       'telega-chatbuf-filter-cancel telega-chat-mode-map)))
+       'telega-chatbuf-filter-cancel telega-chat-mode-map))))
 
   (telega-chatbuf--chat-update "msg-filter"))
 
@@ -6380,11 +6436,7 @@ by some chat member, member name is queried."
      (list :title (format "search \"%s\"" query)
            :tdlib-msg-filter '(:@type "searchMessagesFilterEmpty")
            :query query
-           :sender by-sender))
-
-    (when (and query (not (string-empty-p query)))
-      (telega-highlight-text (regexp-quote query)))
-    ))
+           :sender by-sender))))
 
 (defun telega-chatbuf-filter-by-sender ()
   "Show only messages send by some member, member is queried."
@@ -6420,6 +6472,28 @@ sent by some chat member, member name is queried."
 
     (telega-chatbuf--insert-messages (nreverse scheduled-messages) 'prepend)))
 
+(defun telega-chatbuf-filter-by-saved-messages-tag (tag &optional query)
+  "Filter messages by Saved Messages TAG."
+  (interactive (list (telega-completing-read-saved-messages-tag "Tag: ")
+                     (when current-prefix-arg
+                       (read-string "Search Query: "))))
+  (unless (telega-chatbuf-match-p 'saved-messages)
+    (user-error "Can filter by tag only in Saved Messages"))
+
+  (let ((reaction-type (plist-get tag :tag)))
+    (telega-chatbuf-filter
+     (list :title (lambda ()
+                    (telega-ins--as-string
+                     (telega-ins "Tag ")
+                     (telega-ins--saved-messages-tag
+                      (telega-saved-messages-find-tag reaction-type))))
+           :saved-messages-tag tag
+           :total-count (plist-get tag :count)
+           :query query
+           :msg-temex
+           ;; Match messages having `tag' set
+           (list 'has-chosen-reaction reaction-type)))))
+
 (defun telega-chatbuf-filter-cancel (&optional thread-cancel-p)
   "Cancel current messages filtering.
 If point is at some message, then keep point on this message after reseting.
@@ -6427,28 +6501,25 @@ If `\\[universal-argument]' is given, then cancel thread filtering as well."
   (interactive "P")
   (when (or telega-chatbuf--msg-filter
             (and thread-cancel-p telega-chatbuf--thread))
+    (when telega-chatbuf--msg-filter
+      (telega-chatbuf--filter-reset))
+    (when (and thread-cancel-p telega-chatbuf--thread)
+      (telega-chatbuf--thread-reset))
+
     ;; NOTE: if point is at some message, then keep this
     ;; message visible, otherwise load initial history
-    (let ((msg-at-point (or (telega-msg-at (point))
-                            (and thread-cancel-p (telega-chatbuf--thread-msg)))))
-      (when telega-chatbuf--msg-filter
-        (telega-chatbuf--filter-reset))
-      (when (and thread-cancel-p telega-chatbuf--thread)
-        (telega-chatbuf--thread-reset))
-      (telega-chatbuf--clean)
-      (if (and msg-at-point
-               ;; NOTE: Ignore scheduled/internal messages, see
-               ;; https://github.com/zevlg/telega.el/issues/250
-               (not (telega-msg-internal-p msg-at-point))
-               (not (plist-get msg-at-point :sending_state))
-               (not (plist-get msg-at-point :scheduling_state)))
-          (progn
-            (telega-chatbuf--insert-messages (list msg-at-point) 'append)
-            (telega-chatbuf--load-newer-history))
-          ;; (telega-chat--goto-msg
-          ;;     telega-chatbuf--chat (plist-get msg-at-point :id) 'highlight)
+    (let (msg)
+      (cond ((setq msg (telega-msg-at (point) #'telega-msg-from-history-p))
+             (telega-chatbuf--clean (apply-partially #'eq msg))
+             (when (telega-chatbuf--need-newer-history-p)
+               (telega-chatbuf--load-newer-history)))
 
-        (telega-chatbuf--load-initial-history))))
+            ((setq msg (when thread-cancel-p (telega-chatbuf--thread-msg)))
+             (telega-chatbuf--clean)
+             (telega-msg-goto-highlight msg))
+
+            (t
+             (telega-chatbuf--load-initial-history)))))
 
   ;; Make sure text highlighting is disabled, in case
   ;; `telega-chatbuf-filter-search' filter has been used.
@@ -6487,25 +6558,64 @@ If `\\[universal-argument]' is given, then search forward instead."
 
     (message "telega: %s" (telega-i18n "lng_profile_loading"))
     (setq telega-chatbuf--inplace-search-filter isearch-filter)
-    (let ((msg-at-point (telega-msg-at (point))))
-      (telega--searchChatMessages telega-chatbuf--chat
-          (plist-get isearch-filter :tdlib-msg-filter)
-          (or (plist-get msg-at-point :id) 0)
-          (if forward-p -2 0)
-        :query (plist-get isearch-filter :query)
-        :limit 3
-        :sender (plist-get isearch-filter :by-sender)
-        :callback
-        (lambda (reply)
-          (let ((next-msg (car (append (plist-get reply :messages) nil))))
-            (if (or (not next-msg)
-                    (eq (plist-get next-msg :id) (plist-get msg-at-point :id)))
-                (message "telega: \"%s\" not found"
-                         (plist-get isearch-filter :query))
+    (let* ((tl-msg-filter
+            (or (plist-get isearch-filter :tdlib-msg-filter)
+                (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter)))
+           (query (plist-get isearch-filter :query))
+           (by-sender (plist-get isearch-filter :by-sender))
+           (from-msg-id
+            (plist-get (telega-msg-at (point) #'telega-msg-from-history-p) :id))
+           (callback
+            (lambda-with-current-buffer (reply)
+              (let* ((next-msg (car (append (plist-get reply :messages) nil)))
+                     (found-p (and next-msg
+                                   (not (eq (plist-get next-msg :id)
+                                            from-msg-id)))))
+                (when (or (not found-p)
+                          (and telega-highlight-text-mode
+                               (not (equal query
+                                           telega-highlight-text-regexp))))
+                  (telega-highlight-text-mode -1)
+                  (telega-chatbuf--chat-update "highlight-text"))
 
-              (message "")
-              (telega-msg-goto-highlight next-msg))))
-        ))))
+                (if (not found-p)
+                    (message "telega: \"%s\" not found" query)
+                  (when (and query (not (string-empty-p query)))
+                    (telega-highlight-text (regexp-quote query))
+                    (telega-chatbuf--chat-update "highlight-text"))
+                  (message "")
+                  (telega-msg-goto-highlight next-msg))))))
+      (if (plist-get telega-chatbuf--msg-filter :saved-messages-tag)
+          (progn
+            (when tl-msg-filter
+              (user-error "telega: Can't seach for %s in Saved Messages tags"
+                          (plist-get isearch-filter :title)))
+            (when by-sender
+              (user-error
+               "telega: Can't search by sender in Saved Messages tags"))
+            ;; Inplace search inside Saved Message tag filter
+            ;; Use `searchSavedMessages' in this case
+            (telega--searchSavedMessages
+                (or from-msg-id 0) (if forward-p -2 0)
+              :query query
+              :limit 3
+              :tag
+              (plist-get telega-chatbuf--msg-filter :saved-messages-tag)
+              :saved-messages-topic-id
+              (plist-get telega-chatbuf--msg-filter :saved-messages-topic-id)
+              :callback callback))
+
+        (when (and (plist-get isearch-filter :tdlib-msg-filter)
+                   (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter)
+                   (not (equal (plist-get isearch-filter :tdlib-msg-filter)
+                               (plist-get telega-chatbuf--msg-filter
+                                          :tdlib-msg-filter))))
+          (user-error
+           "telega: Can't search inplace while message filter is applied"))
+        (telega--searchChatMessages telega-chatbuf--chat
+            (or tl-msg-filter '(:@type "searchMessagesFilterEmpty"))
+            (or from-msg-id 0) (if forward-p -2 0)
+          :query query :limit 3 :sender by-sender :callback callback)))))
 
 (defun telega-chatbuf-inplace-search-query (query &optional by-sender-p forward-p)
   "Inplace search backward for the QUERY.
@@ -6521,15 +6631,9 @@ bindings."
                       "Sent by: " telega-chatbuf--chat))))
     (telega-chatbuf-inplace-search
      (list :title (format "search for %s" query)
-           :tdlib-msg-filter '(:@type "searchMessagesFilterEmpty")
            :query query
            :by-sender by-sender)
-     forward-p)
-
-    (when (and query (not (string-empty-p query)))
-      (telega-highlight-text (regexp-quote query))
-      (telega-chatbuf--chat-update "highlight-text"))
-    ))
+     forward-p)))
 
 (defun telega-chatbuf-inplace-search-query-forward (query &optional by-sender-p)
   "Inplace search forward for the QUERY.

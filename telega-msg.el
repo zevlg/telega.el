@@ -29,6 +29,7 @@
 (require 'telega-core)
 (require 'telega-tdlib)
 (require 'telega-customize)
+(require 'telega-i18n)
 (require 'telega-media)
 (require 'telega-ffplay)                ; telega-ffplay-run
 (require 'telega-vvnote)
@@ -275,6 +276,15 @@ PROPS are additional properties to the internal message."
   "Return non-nil if MSG is internal, created with `telega-msg-create-internal'."
   (eq -1 (plist-get msg :id)))
 
+(defun telega-msg-from-history-p (msg)
+  "Return non-nil if MSG belongs to chat history."
+  ;; NOTE: Ignore scheduled/internal messages, see
+  ;; https://github.com/zevlg/telega.el/issues/250
+  (and msg
+       (not (telega-msg-internal-p msg))
+       (not (plist-get msg :sending_state))
+       (not (plist-get msg :scheduling_state))))
+
 (defun telega-msg-get (chat msg-id &optional callback)
   "Get message by CHAT-ID and MSG-ID pair.
 If CALLBACK is not specified, then do not perform request to
@@ -306,14 +316,19 @@ Return nil if there is no `down-mouse-3' keys in `this-command-keys'."
               (ev-point (posn-point ev-start)))
     (telega-msg-at ev-point)))
 
-(defun telega-msg-at (&optional pos)
+(defun telega-msg-at (&optional pos msg-predicate)
   "Return current message at POS point.
 If POS is ommited, then return massage at current point.
 For interactive commands acting on message at point/mouse-event
-use `telega-msg-for-interactive' instead."
-  (let ((button (button-at (or pos (point)))))
-    (when (and button (eq (button-type button) 'telega-msg))
-      (button-get button :value))))
+use `telega-msg-for-interactive' instead.
+If MSG-PREDICATE is specified, return non-nil only if resulting
+message matches MSG-PREDICATE."
+  (let* ((button (button-at (or pos (point))))
+         (msg (when (and button (eq (button-type button) 'telega-msg))
+                (button-get button :value))))
+    (when (or (null msg-predicate)
+              (and msg (funcall msg-predicate msg)))
+      msg)))
 
 (defun telega-msg-for-interactive ()
   "Return message at mouse event or at current point.
@@ -1507,16 +1522,31 @@ favorite message."
   (interactive (list (telega-msg-for-interactive)))
   (telega--resendMessages msg))
 
-(defun telega-msg-save (msg)
+(defun telega-msg-save (msg &optional to-saved-messages-p)
   "Save messages's MSG media content to a file.
 If MSG is an animation message, then possibly add animation to
-the saved animations list."
-  (interactive (list (telega-msg-for-interactive)))
+the saved animations list.
+If `\\[universal-argument]' is specified, then save message to the
+Saved Messages."
+  (interactive (list (telega-msg-for-interactive)
+                     current-prefix-arg))
   (let ((file (telega-msg--content-file msg)))
-    (unless file
-      (user-error "No file associated with message"))
-
     (cond
+     (to-saved-messages-p
+      (let ((echo-msg (telega-ins--as-string
+                       (telega-ins "Forwarding to ")
+                       (telega-ins--msg-sender (telega-chat-me)
+                         :with-avatar-p t
+                         :with-brackets-p t)
+                       (telega-ins "..."))))
+        (message echo-msg)
+        (telega--forwardMessages
+         (telega-chat-me) (telega-msg-chat msg) (list msg)
+         nil nil nil
+         :callback (lambda (_reply)
+                     (message (concat echo-msg "DONE"))))))
+     ((not file)
+      (user-error "No file associated with message"))
      ((and (telega-msg-match-p msg '(type Animation))
            (y-or-n-p "Add animation to Saved Animations? "))
       (telega--addSavedAnimation
@@ -1837,19 +1867,41 @@ Requires administrator rights in the chat."
                     (length added-reactions))
                   (seq-doseq (ar added-reactions)
                     (telega-ins "\n")
-                    (telega-ins "  ")
-                    (telega-ins--msg-reaction-type (plist-get ar :type))
-                    (telega-ins " ")
-                    (telega-ins--msg-sender
-                        (telega-msg-sender (plist-get ar :sender_id))
-                      :with-avatar-p t
-                      :with-username-p t
-                      :with-brackets-p t)
-                    (telega-ins--move-to-column 42)
-                    (telega-ins " ")
-                    (telega-ins--date-relative (plist-get ar :date))
+                    (telega-ins--line-wrap-prefix "  "
+                      (telega-ins--msg-reaction-type (plist-get ar :type))
+                      (telega-ins " ")
+                      (telega-ins--msg-sender
+                          (telega-msg-sender (plist-get ar :sender_id))
+                        :with-avatar-p t
+                        :with-username-p t
+                        :with-brackets-p t)
+                      (telega-ins--move-to-column 42)
+                      (telega-ins " ")
+                      (telega-ins--date-relative (plist-get ar :date)))
                     )))
               msg-id))))
+
+      ;; NOTE: For basicgroups all reactions are listed in the
+      ;; interaction info, and `getMessageAddedReactions' is not
+      ;; available
+      ;; See https://github.com/zevlg/telega.el/issues/460
+      (when (not (plist-get msg :can_get_added_reactions))
+        (let ((msg-reactions (telega--tl-get msg :interaction_info
+                                             :reactions :reactions)))
+          (unless (seq-empty-p msg-reactions)
+            (telega-ins-describe-item "Message Reactions"
+              (telega-ins-fmt "%d"
+                (apply #'+ (mapcar (telega--tl-prop :total_count) msg-reactions)))
+              (seq-doseq (msg-reaction msg-reactions)
+                (seq-doseq (sender (plist-get msg-reaction :recent_sender_ids))
+                  (telega-ins "\n")
+                  (telega-ins--line-wrap-prefix "  "
+                    (telega-ins--msg-reaction-type (plist-get msg-reaction :type))
+                    (telega-ins " ")
+                    (telega-ins--msg-sender (telega-msg-sender sender)
+                      :with-avatar-p t
+                      :with-username-p t
+                      :with-brackets-p t))))))))
 
       (when (plist-get msg :can_get_viewers)
         (telega-ins-describe-item "Message Viewers"
@@ -1860,15 +1912,15 @@ Requires administrator rights in the chat."
                 (telega-ins-fmt "%d" (length viewers))
                 (seq-doseq (viewer viewers)
                   (telega-ins "\n")
-                  (telega-ins "  ")
-                  (telega-ins--msg-sender
-                      (telega-user-get (plist-get viewer :user_id))
-                    :with-avatar-p t
-                    :with-username-p t
-                    :with-brackets-p t)
-                  (telega-ins--move-to-column 40)
-                  (telega-ins " ")
-                  (telega-ins--date-relative (plist-get viewer :view_date))))
+                  (telega-ins--line-wrap-prefix "  "
+                    (telega-ins--msg-sender
+                        (telega-user-get (plist-get viewer :user_id))
+                      :with-avatar-p t
+                      :with-username-p t
+                      :with-brackets-p t)
+                    (telega-ins--move-to-column 40)
+                    (telega-ins " ")
+                    (telega-ins--date-relative (plist-get viewer :view_date)))))
               msg-id))))
 
       (when-let ((fwd-info (plist-get msg :forward_info)))
@@ -1963,41 +2015,26 @@ If `\\[universal-argument]' is used, reaction with big animation will
 be added."
   (interactive (list (telega-msg-for-interactive) current-prefix-arg))
 
-  (let* ((custom-label "Custom Reaction")
-         (chat-av-reactions
-          (plist-get (telega-msg-chat msg) :available_reactions))
-         (msg-av-reactions
-          (telega--getMessageAvailableReactions msg))
-         (reaction-choices
-          (cl-case (telega--tl-type chat-av-reactions)
-            (chatAvailableReactionsSome
-             (mapcar (lambda (reaction-type)
-                       (cons (cl-ecase (telega--tl-type reaction-type)
-                               (reactionTypeEmoji
-                                (telega-tl-str reaction-type :emoji))
-                               (reactionTypeCustomEmoji
-                                (telega-ins--as-string
-                                 (telega-ins--sticker-image
-                                  (telega-custom-emoji-get
-                                   (plist-get reaction-type :custom_emoji_id))))))
-                             reaction-type))
-                     (plist-get chat-av-reactions :reactions)))
-            (chatAvailableReactionsAll
-             (mapcar (lambda (emoji)
-                       (cons emoji
-                             (list :@type "reactionTypeEmoji" :emoji emoji)))
-                     telega-emoji-reaction-list))))
-         (choices (append (mapcar #'car reaction-choices)
-                          (when (plist-get msg-av-reactions :allow_custom_emoji)
-                            (list custom-label))))
-         (choice (funcall telega-completing-read-function
-                          (format "Add %sReaction: " (if big-p "BIG " ""))
-                          choices nil t)))
-    (if (not (equal choice custom-label))
-        (telega--addMessageReaction
-         msg (cdr (assoc choice reaction-choices))
-         big-p 'udate-recent)
+  (let* ((sm-tags-p (telega-msg-match-p msg '(chat saved-messages)))
+         (reaction-type
+          (when sm-tags-p
+            (when-let ((tag (telega-completing-read-saved-messages-tag
+                             "Add Tag: ")))
+              (plist-get tag :tag))))
+         (msg-av-reactions nil))
+    (unless reaction-type
+      (setq msg-av-reactions (telega--getMessageAvailableReactions msg))
+      (setq reaction-type
+            (telega-completing-read-msg-reaction msg
+                (if sm-tags-p
+                    "New Tag: "
+                  (format "Add %sReaction: " (if big-p "BIG " "")))
+                msg-av-reactions)))
 
+    (if (not (eq reaction-type 'custom))
+        (telega--addMessageReaction msg reaction-type big-p 'update-recent)
+
+      ;; Custom reaction
       (let ((top-av-reactions (plist-get msg-av-reactions :top_reactions))
             (recent-av-reactions (plist-get msg-av-reactions :recent_reactions))
             (popular-av-reactions (plist-get msg-av-reactions :popular_reactions))

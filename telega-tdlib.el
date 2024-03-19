@@ -1056,7 +1056,8 @@ Pass REVOKE to try to delete chat history for all users."
 
 (cl-defun telega--searchChatMessages (chat tdlib-msg-filter
                                            from-msg-id offset
-                                           &key query limit sender callback)
+                                           &key query limit sender
+                                           saved-messages-topic-id callback)
   "Search messages in CHAT by QUERY."
   (declare (indent 4))
   (cl-assert (and tdlib-msg-filter from-msg-id offset))
@@ -1091,7 +1092,8 @@ Pass REVOKE to try to delete chat history for all users."
                            "")
                   :from_message_id from-msg-id
                   :offset offset
-                  :limit (or limit telega-chat-history-limit))
+                  :limit (or limit telega-chat-history-limit)
+                  :saved_messages_topic_id (or saved-messages-topic-id 0))
             (when (and sender (not no-additional-filters-p))
               (list :sender_id (telega--MessageSender sender)))))
    callback))
@@ -1109,11 +1111,13 @@ Specify non-nil LOCAL-P to avoid network requests."
           :return_local (if local-p t :false))
     callback))
 
-(defun telega--getChatMessagePosition (msg tdlib-msg-filter
-                                           &optional msg-thread-id callback)
+(cl-defun telega--getChatMessagePosition (msg tdlib-msg-filter
+                                              &key msg-thread-id
+                                              saved-messages-topic-id
+                                              callback)
   "Returns approximate 1-based position of a message among found messages.
 Which can be found by the specified FILTER in the chat."
-  (declare (indent 3))
+  (declare (indent 2))
   ;; NOTE: from TDLib docs: Filter for message content;
   ;; searchMessagesFilterEmpty, searchMessagesFilterUnreadMention,
   ;; searchMessagesFilterUnreadReaction, and
@@ -1132,7 +1136,8 @@ Which can be found by the specified FILTER in the chat."
           :filter tdlib-msg-filter
           :message_thread_id
           (or msg-thread-id
-              (telega-chat-message-thread-id (telega-msg-chat msg))))
+              (telega-chat-message-thread-id (telega-msg-chat msg)))
+          :saved_messages_topic_id (or saved-messages-topic-id 0))
     callback))
 
 ;; Threads
@@ -2422,6 +2427,18 @@ Return an ID of group call."
           :is_rtmp_stream (if rtmp-stream-p t :false))
     callback))
 
+(defun telega--getVideoChatRtmpUrl (chat &optional callback)
+  (telega-server--call
+   (list :@type "getVideoChatRtmpUrl"
+         :chat_id (plist-get chat :id))
+   callback))
+
+(defun telega--replaceVideoChatRtmpUrl (chat &optional callback)
+  (telega-server--call
+   (list :@type "replaceVideoChatRtmpUrl"
+         :chat_id (plist-get chat :id))
+   callback))
+
 (defun telega--setGroupCallTitle (group-call title)
   "Set GROUP-CALL TITLE."
   (cl-assert (plist-get group-call :can_be_managed))
@@ -2528,15 +2545,6 @@ ROW-SIZE - Number of reaction per row, 5-25."
          :limit (or limit 100))
    callback))
 
-(defun telega--ReactionType (reaction-type)
-  "Make sure REACTION-TYPE is suitable to be passed to TDLib method."
-  ;; NOTE: emoji needs to be desurrogated
-  ;; before passing to any TDLib method
-  (if (eq (telega--tl-type reaction-type) 'reactionTypeEmoji)
-      (list :@type "reactionTypeEmoji"
-            :emoji (telega-tl-str reaction-type :emoji))
-    reaction-type))
-
 (defun telega--addMessageReaction (msg tl-reaction-type &optional
                                        big-p update-recent-reactions-p)
   "Add a reaction to a message.
@@ -2551,13 +2559,15 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
          :is_big (if big-p t :false)
          :update_recent_reactions (if update-recent-reactions-p t :false))))
 
-(defun telega--removeMessageReaction (msg tl-reaction-type)
+(defun telega--removeMessageReaction (msg tl-reaction-type &optional callback)
   "Remove a reaction from a message."
-  (telega-server--send
+  (declare (indent 2))
+  (telega-server--call
    (list :@type "removeMessageReaction"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
-         :reaction_type (telega--ReactionType tl-reaction-type))))
+         :reaction_type (telega--ReactionType tl-reaction-type))
+   (or callback #'ignore)))
 
 (defun telega--setChatAvailableReactions (chat reactions)
   "Change REACTIONS, available in a CHAT."
@@ -3057,6 +3067,48 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
          :chat_id (plist-get chat :id)
          :bot_user_id (plist-get bot-user :id)
          :url url)
+   callback))
+
+(defun telega--loadSavedMessagesTopics (&optional limit callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "loadSavedMessagesTopics"
+         :limit (or limit 100))
+   callback))
+
+(defun telega--getSavedMessagesTags (&optional sm-topic-id callback)
+  "Return tags used in Saved Messages or a Saved Messages topic.
+Saved Messages topic is specified by SM-TOPIC-ID."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getSavedMessagesTags"
+         :saved_messages_topic_id (or sm-topic-id 0))
+   callback))
+
+(defun telega--setSavedMessagesTagLabel (tag label &optional callback)
+  "Changes label of a Saved Messages tag; for Telegram Premium users only."
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "setSavedMessagesTagLabel"
+         :tag (telega--ReactionType (plist-get tag :tag))
+         :label label)
+   (or callback #'ignore)))
+
+(cl-defun telega--searchSavedMessages (from-msg-id offset
+                                                   &key query limit tag
+                                                   saved-messages-topic-id
+                                                   callback)
+  "Search topic/tag in the Saved Messages."
+  (declare (indent 2))
+  (telega-server--call
+   (nconc (list :@type "searchSavedMessages"
+                :saved_messages_topic_id (or saved-messages-topic-id 0)
+                :query (or query "")
+                :from_message_id from-msg-id
+                :offset offset
+                :limit (or limit telega-chat-history-limit))
+          (when tag
+            (list :tag (telega--ReactionType (plist-get tag :tag)))))
    callback))
 
 (provide 'telega-tdlib)

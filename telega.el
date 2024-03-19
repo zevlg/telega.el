@@ -6,10 +6,10 @@
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Wed Nov 30 19:04:26 2016
 ;; Keywords: comm
-;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2"))
+;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2") (transient "0.3.0"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.253
-(defconst telega-version "0.8.253")
+;; Version: 0.8.254
+(defconst telega-version "0.8.254")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.24")
 (defconst telega-tdlib-max-version nil)
@@ -293,6 +293,9 @@ Works only if current state is `authorizationStateWaitCode'."
   ;; Archive, in general this is not true, we need special callback to
   ;; continue fetching, as with "chatListMain" list
   (telega--loadChats (list :@type "chatListArchive"))
+
+  ;; Load general tags for saved messages
+  (telega--getSavedMessagesTags 0 #'telega-saved-messages-tags-ensure)
 
   (run-hooks 'telega-ready-hook))
 

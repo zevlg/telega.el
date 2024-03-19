@@ -453,6 +453,39 @@ display the list.")
   "Return non-nil if accent color denoted by COLOR-ID is built-in."
   (< color-id 7))
 
+;; saved messages tags
+(defvar telega--saved-messages-tags nil "Hash table topic_id -> tags")
+
+(defun telega--ReactionType (reaction-type)
+  "Make sure REACTION-TYPE is suitable to be passed to TDLib method."
+  ;; NOTE: emoji needs to be desurrogated
+  ;; before passing to any TDLib method
+  (if (eq (telega--tl-type reaction-type) 'reactionTypeEmoji)
+      (list :@type "reactionTypeEmoji"
+            :emoji (telega-tl-str reaction-type :emoji))
+    reaction-type))
+
+(defun telega-saved-messages-tags (&optional sm-topic-id)
+  "Return Saved Messages tags."
+  (gethash (or sm-topic-id 0) telega--saved-messages-tags))
+
+(defun telega-saved-messages-tags-ensure (tags &optional sm-topic-id)
+  (puthash (or sm-topic-id 0) (plist-get tags :tags)
+           telega--saved-messages-tags))
+
+(defun telega-saved-messages-find-tag (reaction-type &optional sm-topic-id)
+  "Find Saved Messages tag by REACTION-TYPE."
+  (seq-find (lambda (tag)
+              (equal (telega--ReactionType reaction-type)
+                     (telega--ReactionType (plist-get tag :tag))))
+            (telega-saved-messages-tags sm-topic-id)))
+
+(defun telega-saved-messages-find-label (label &optional sm-topic-id)
+  "Find Saved Messages tag by LABEL."
+  (seq-find (lambda (tag)
+              (equal label (telega-tl-str tag :label)))
+            (telega-saved-messages-tags sm-topic-id)))
+
 
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
@@ -660,6 +693,8 @@ Done when telega server is ready to receive queries."
 
   (setq telega--accent-colors-alist nil
         telega--accent-colors-available-ids nil)
+
+  (setq telega--saved-messages-tags (make-hash-table :test #'eq))
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -754,6 +789,16 @@ END."
          (forward-line (1- ,line-sym))
          (move-to-column ,col-sym)))))
 
+(defmacro lambda-with-current-buffer (args &rest body)
+  "Same as `lambda' but keep current buffer inside lambda."
+  (declare (indent 1))
+  (let ((buf-sym (gensym "buffer")))
+    `(let ((,buf-sym (current-buffer)))
+       (lambda ,args
+         (when (buffer-live-p ,buf-sym)
+           (with-current-buffer ,buf-sym
+             ,@body))))))
+
 (defmacro with-telega-debug-buffer (&rest body)
   "Execute BODY only if `telega-debug' is non-nil, making debug buffer current."
   `(when telega-debug
@@ -826,8 +871,8 @@ Strips `line-prefix' and `wrap-prefix' text properties from copied text."
        (cursor-intangible-mode 1)
        (cursor-sensor-mode 1)
        (visual-line-mode 1)
-       (setq-local fill-column -1)
-       (visual-fill-column-mode 1)
+       ;; (setq-local fill-column -1)
+       ;; (visual-fill-column-mode 1)
 
        ,@body)))
 

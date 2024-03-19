@@ -38,6 +38,7 @@
 (require 'org)                          ; `org-read-date', `org-do-emphasis-faces'
 (require 'org-element)                  ; for `org-do-emphasis-faces'
 (require 'rainbow-identifiers)
+(require 'transient)
 
 (require 'telega-core)
 (require 'telega-customize)
@@ -1526,16 +1527,11 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
 (defun telega-completing-read-user (prompt &optional users)
   "Read user by his name from USERS list."
   (declare (indent 1))
-  (let ((choices (mapcar (lambda (user)
-                           (list (telega-msg-sender-title-for-completion user)
-                                 user))
-                         (or users
-                             (sort (telega-user-list
-                                    telega-user-completing-temex)
-                                   #'telega-user>)))))
-    (car (alist-get (funcall telega-completing-read-function
-                             prompt choices nil t)
-                    choices nil nil 'string=))))
+  (telega-completing-read-msg-sender
+   prompt
+   (or users
+       (sort (telega-user-list telega-user-completing-temex)
+             #'telega-user>))))
 
 (defun telega-completing-read-user-list (prompt &optional users)
   "Read multiple users from USERS."
@@ -1807,10 +1803,14 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
 (defun telega-completing-read-msg-sender (prompt &optional msg-senders)
   "Read a message sender from list of MSG-SENDERS."
   (let* ((completion-ignore-case t)
-         (choices (mapcar (lambda (sender)
-                            (cons (telega-msg-sender-title-for-completion sender)
-                                  sender))
-                          msg-senders))
+         ;; NOTE: use temporary buffer to format titles, to not
+         ;; degrade if large buffer (such as rootbuf) is current
+         (choices (with-temp-buffer
+                    (mapcar
+                     (lambda (sender)
+                       (cons (telega-msg-sender-title-for-completion sender)
+                             sender))
+                     msg-senders)))
          (choice (funcall telega-completing-read-function
                           prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
@@ -2463,11 +2463,12 @@ Also enforces `:transform-smoothing' property to be non-nil."
     (apply #'create-image file-or-data type data-p
            (nconc props (list :transform-smoothing t)))))
 
-(defun telega-etc-file-create-image (filename cwidth)
+(defun telega-etc-file-create-image (filename cwidth &optional no-mask-p)
   "Create image from etc's FILENAME.
 Width for the resulting image will be of CWIDTH chars."
   (telega-create-image (telega-etc-file filename) nil nil
-                       :scale 1.0 :ascent 'center :mask 'heuristic
+                       :scale 1.0 :ascent 'center
+                       :mask (unless no-mask-p 'heuristic)
                        :width (telega-chars-xwidth cwidth)))
 
 (defconst telega-symbol-animations
@@ -2840,6 +2841,74 @@ Also return nil if resulting string is empty."
       ("lng_menu_formatting_clear"
        nil))))
 
+(defun telega-msg-reaction-title-for-completion (reaction-type)
+  "Return REACTION-TYPE title for completion."
+  (cl-ecase (telega--tl-type reaction-type)
+    (reactionTypeEmoji
+     (telega-tl-str reaction-type :emoji))
+    (reactionTypeCustomEmoji
+     (telega-ins--as-string
+      (telega-ins--sticker-image
+       (telega-custom-emoji-get
+        (plist-get reaction-type :custom_emoji_id)))))))
+
+(defun telega-completing-read-msg-reaction (msg prompt &optional 
+                                                msg-available-reactions
+                                                custom-label)
+  "Read reaction for the message MSG.
+Return `custom' if custom reaction has been chosen.
+Return nil if no reaction is available for the MSG."
+  (declare (indent 1))
+  (let* ((custom-label (propertize (or custom-label "Custom")
+                                   'face 'bold))
+         (chat-av-reactions
+          (plist-get (telega-msg-chat msg) :available_reactions))
+         (msg-av-reactions
+          (or msg-available-reactions
+              (telega--getMessageAvailableReactions msg)))
+         (reaction-choices
+          (cl-case (telega--tl-type chat-av-reactions)
+            (chatAvailableReactionsSome
+             (mapcar (lambda (reaction-type)
+                       (cons (telega-msg-reaction-title-for-completion
+                              reaction-type)
+                             reaction-type))
+                     (plist-get chat-av-reactions :reactions)))
+            (chatAvailableReactionsAll
+             (mapcar (lambda (emoji)
+                       (cons emoji
+                             (list :@type "reactionTypeEmoji" :emoji emoji)))
+                     telega-emoji-reaction-list))))
+         (all-choices
+          (nconc reaction-choices
+                 (when (plist-get msg-av-reactions :allow_custom_emoji)
+                   (list (cons custom-label 'custom)))))
+         (choice (when all-choices
+                   (funcall telega-completing-read-function
+                            prompt (mapcar #'car all-choices) nil t))))
+    (when choice
+      (cdr (assoc choice all-choices)))))
+
+(defun telega-completing-read-saved-messages-tag (prompt &optional sm-topic-id
+                                                         new-tag-label)
+  "Read a Saved Messages tag.
+Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
+  (when-let* ((new-tag-label (propertize (or new-tag-label "New Tag")
+                                         'face 'bold))
+              (tags (telega-saved-messages-tags sm-topic-id))
+              (tag-choices
+               (mapcar (lambda (tag)
+                         (cons (concat (telega-msg-reaction-title-for-completion
+                                        (plist-get tag :tag))
+                                       (telega-tl-str tag :label))
+                               tag))
+                       tags))
+              (choices (nconc (mapcar #'car tag-choices)
+                              (list new-tag-label)))
+              (choice (funcall telega-completing-read-function
+                               prompt choices nil t)))
+    (cdr (assoc choice tag-choices))))
+
 (defun telega-float-clamp (number digits)
   "Clamp NUMBER to the number of DIGITS after the dot."
   (string-to-number
@@ -2933,6 +3002,193 @@ Also return nil if resulting string is empty."
                     "----------------\n")
         (dolist (event unimplemented)
           (telega-ins "  " event "\n"))))))
+
+(defun telega-line-pixel-height (&optional position)
+  "Same as `line-pixel-height' but accept POSITION as argument."
+  (if position
+      (save-excursion
+        (goto-char position)
+        (line-pixel-height))
+    (line-pixel-height)))
+
+
+;;; Transients
+(transient-define-suffix telega-saved-messages-tag-filter ()
+  :key "/"
+  :description (lambda () (telega-i18n "lng_context_filter_by_tag"))
+  (interactive)
+  (let* ((cmd-scope (oref transient-current-prefix scope))
+         (tag (car cmd-scope))
+         (msg (cdr cmd-scope)))
+    (telega-chatbuf-filter-by-saved-messages-tag tag)))
+
+(transient-define-suffix telega-saved-messages-tag-add-name ()
+  :key "n"
+  :description
+  (lambda ()
+    (let ((tag (car (oref transient--prefix scope))))
+      (if (telega-tl-str tag :label)
+          (telega-i18n "lng_context_tag_edit_name")
+        (telega-ins--as-string
+         (telega-ins (telega-i18n "lng_context_tag_add_name") "\n")
+         (telega-ins--help-message
+          (telega-ins-i18n "lng_edit_tag_about"))))))
+  (interactive)
+  (let* ((cmd-scope (oref transient-current-prefix scope))
+         (tag (car cmd-scope))
+         (msg (cdr cmd-scope))
+         (label (read-string
+                 (telega-ins--as-string
+                  (telega-ins-i18n "lng_edit_tag_name")
+                  (telega-ins " ")
+                  (telega-ins--msg-reaction-type (plist-get tag :tag)))
+                 (telega-tl-str tag :label))))
+    (telega--setSavedMessagesTagLabel tag label
+      (when msg
+        (lambda (_ignored)
+          (telega-msg-redisplay msg))))))
+
+(transient-define-suffix telega-saved-messages-tag-remove ()
+  :key "d"
+  :description (lambda () (telega-i18n "lng_context_remove_tag"))
+  (interactive)
+  (let* ((cmd-scope (oref transient-current-prefix scope))
+         (tag (car cmd-scope))
+         (msg (cdr cmd-scope)))
+    (telega--removeMessageReaction msg (plist-get tag :tag)
+      (when msg
+        (lambda (_ignored)
+          ;; NOTE: Removing tag from the message might affect
+          ;; message's visibility if message filter is applied at the
+          ;; moment
+          (let ((msg-node (telega-chatbuf--node-by-msg-id (plist-get msg :id))))
+            (if (telega-chatbuf--filter-match-msg-p msg)
+                (telega-chatbuf--redisplay-node msg-node)
+              (ewoc-delete telega-chatbuf--ewoc msg-node))))))))
+
+;; scope for this commands is cons cell where car is tag and cdr is
+;; msg
+(transient-define-prefix telega-saved-messages-tag-commands (tag)
+  [:description
+   (lambda ()
+     (telega-ins--as-string
+      (telega-ins--saved-messages-tag (car (oref transient--prefix scope)))
+      (telega-ins--with-face 'transient-heading
+        (telega-ins "Tag Commands"))))
+   (telega-saved-messages-tag-filter)
+   (telega-saved-messages-tag-add-name)
+   (telega-saved-messages-tag-remove)
+   ]
+  (lambda (tag)
+    (interactive (list (user-error "Do not call this command directly")))
+    ;; (transient-setup 'telega-saved-messages-tag-commands nil nil :scope (cons tag msg))
+    ))
+
+
+;;; Stipple drawing
+(defvar telega-stipple--cache-alist nil)
+
+(defun telega-stipple-create (w h)
+  (list w h (make-string (* h (/ (+ w 7) 8)) 0)))
+
+;; 
+;; +---> x
+;; |
+;; v
+;; y
+;; w = 30, h = 2,  XX - trailing padding
+;;        byte[1]    byte[2]    byte[3]     byte[0] 
+;; row0: |........| |........| |.......XX| |..........| 
+;;        byte[5]    byte[6]    byte[7]     byte[4]
+;; row1: |........| |........| |.......XX| |..........| 
+;;
+(defsubst telega-stipple-set-pixel (s x y val)
+  (let* ((w (nth 0 s))
+         (h (nth 1 s))
+         (data (nth 2 s))
+         (row-bits (* 8 (/ (+ w 7) 8)))
+         (row-bit-idx (% (+ x 8 (- row-bits w)) row-bits))
+         (bit-off (% (if (> row-bits 8) row-bit-idx x) 8))
+         (byte-mask (ash 1 bit-off))
+         (byte-idx (progn
+                    (cl-assert (and (< x w) (< y h)))
+                    (/ (+ row-bit-idx (* y row-bits)) 8)))
+         (byte-val (aref data byte-idx)))
+    (aset data byte-idx (if val
+                            (logior byte-val byte-mask)
+                          (logand byte-val (lognot byte-mask))))
+    s))
+
+(defun telega-stipple-fill-by-predicate (s predicate &optional no-cache-p)
+  (let* ((w (nth 0 s))
+         (h (nth 1 s))
+         (cache-key (list w h predicate))
+         (s-cached (unless no-cache-p
+                     (cdr (assoc cache-key telega-stipple--cache-alist)))))
+    (unless s-cached
+      (dotimes (y h)
+        (dotimes (x w)
+          (telega-stipple-set-pixel s x y (funcall predicate x y w h))))
+      (unless no-cache-p
+        (setq telega-stipple--cache-alist
+              (cons (cons cache-key s)
+                    telega-stipple--cache-alist)))
+      (setq s-cached s))
+    s-cached))
+
+(defun telega-stipple-arc-p (x y r)
+  ;; Left-Top arc's 4th
+  ;; Check
+  (let* ((r2 (* r r))
+         (delta (+ (* x x) (* y y) (- r2))))
+    (cond ((and (<= x r) (>= x y) (>= delta 0))
+           (let ((delta1 (+ (* (1- x) (1- x)) (* y y) (- r2)))
+                 (delta2 (+ (* (1+ x) (1+ x)) (* y y) (- r2))))
+             (and (< delta1 0)
+                  (> delta2 0))
+             ))
+          ((and (<= y r) (>= y x) (>= delta 0))
+           (let ((delta1 (+ (* x x) (* (1- y) (1- y)) (- r2)))
+                 (delta2 (+ (* x x) (* (1+ y) (1+ y)) (- r2))))
+             (and (< delta1 0)
+                  (> delta2 0))
+             ))
+          )))
+
+(defun telega-stipple-fill-arc (x y w h)
+  (telega-stipple-arc-p x y 20))
+
+(defun telega-stipple-fill-button-left (x y w h)
+  (let ((size (/ w 2)))
+    (cond ((or (= y 1) (= y (- h 2)))
+           (> x size))
+          ((and (> y 1) (< y (- h 2)))
+           (= x size)))))
+
+(defun telega-stipple-fill-button-right (x y w h)
+  (let ((size (/ w 2)))
+    (cond ((or (= y 1) (= y (- h 2)))
+           (< x size))
+          ((and (> y 1) (< y (- h 2)))
+           (= x size)))))
+
+(defun telega-stipple-fill-button-middle (x y w h)
+  (or (= y 1) (= y (- h 2))))
+
+(defun telega-stipple-fill-sm-tag-right (x y w h)
+  (let* ((r (/ w 5))
+         (c-x (+ r r))
+         (c-y (/ h 2))
+         (ratio (* 2 (/ (float w) h))))
+    (when (or (= x 0)
+              (and (<= y (/ h 2))
+                   (<= (/ (float x) y) ratio))
+              (and (>= y (/ h 2))
+                   (<= (/ (float x) (- h y)) ratio)))
+      ;; Check for circle
+      (> (+ (* (- x c-x) (- x c-x))
+            (* (- y c-y) (- y c-y)))
+         (* r r)))))
 
 (provide 'telega-util)
 

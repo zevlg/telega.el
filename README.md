@@ -22,8 +22,6 @@ not implemented, or they are present just as skeleton for future
 implementation. However, the core parts are mature enough so that it
 is possible to use `telega.el` for basic chat.
 
-**WARNING**: Use on your own risk, see [#353](https://github.com/zevlg/telega.el/issues/353)
-
 # Features
 
 `telega.el` implements most of the features official Telegram clients

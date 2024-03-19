@@ -29,6 +29,7 @@
 
 ;;; Code:
 (require 'format-spec)
+(require 'transient)
 
 (require 'telega-core)
 (require 'telega-tdlib)
@@ -2922,7 +2923,9 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
                 content-wrap))
         (telega-ins-prefix "\n"
           (telega-ins--line-wrap-prefix (cons content-prefix content-wrap)
-            (telega-ins--msg-reaction-list msg))))
+            (if (telega-msg-match-p msg '(chat saved-messages))
+                (telega-ins--msg-saved-messages-tags msg)
+              (telega-ins--msg-reaction-list msg)))))
 
       (telega-ins--line-wrap-prefix content-wrap
         (telega-ins-prefix "\n"
@@ -3831,12 +3834,11 @@ MSG-REACTION is the `messageReaction' TDLib object."
        (telega-msg-sender-avatar-image-one-line (telega-msg-sender rs))))
     t))
 
-(defun telega-ins--msg-reaction-list (msg &optional reactions)
+(defun telega-ins--msg-reaction-list (msg)
   "Inserter for the message's MSG reactions."
-  (let (ret)
-    (unless reactions
-      (setq reactions (telega--tl-get msg :interaction_info :reactions
-                                      :reactions)))
+  (let ((reactions (telega--tl-get msg :interaction_info :reactions
+                                   :reactions))
+        ret)
     (seq-doseq (msg-reaction reactions)
       (when ret
         (telega-ins "  "))
@@ -3851,28 +3853,59 @@ MSG-REACTION is the `messageReaction' TDLib object."
       (setq ret t))
     ret))
 
-(defun telega-ins--available-reaction-list (av-reactions custom-action &optional column)
+(defun telega-ins--available-reaction-list (av-reactions custom-action)
   "Insert available reactions.
 AV-REACTIONS - list of `availableReaction' TDLib objects.
 When some reaction is chosen, CUSTOM-ACTION is called with the single
 argument of `ReactionType' type."
   (seq-doseq (av-reaction av-reactions)
-    (telega-ins-prefix (unless (bolp) "\n")
-      (let ((reaction-type (plist-get av-reaction :type)))
-        (telega-button--insert 'telega reaction-type
-          :inserter #'telega-ins--msg-reaction-type
-          :action custom-action
-          'cursor-sensor-functions
-          (when-let ((sticker
-                      (when (eq (telega--tl-type reaction-type)
-                                'reactionTypeCustomEmoji)
-                        (telega-custom-emoji-get
-                         (plist-get reaction-type :custom_emoji_id)))))
-            (when (and (not (telega-sticker-static-p sticker))
-                       telega-sticker-animated-play)
-              (list (telega-sticker--gen-sensor-func sticker))))))
+    (let ((reaction-type (plist-get av-reaction :type)))
+      (telega-button--insert 'telega reaction-type
+        :inserter #'telega-ins--msg-reaction-type
+        :action custom-action
+        'cursor-sensor-functions
+        (when-let ((sticker
+                    (when (eq (telega--tl-type reaction-type)
+                              'reactionTypeCustomEmoji)
+                      (telega-custom-emoji-get
+                       (plist-get reaction-type :custom_emoji_id)))))
+          (when (and (not (telega-sticker-static-p sticker))
+                     telega-sticker-animated-play)
+            (list (telega-sticker--gen-sensor-func sticker))))))))
 
-      (> (current-column) (or column (current-fill-column))))))
+(defun telega-ins--saved-messages-tag (tag)
+  "Inserter for the Saved Messages TAG."
+  (telega-ins--with-face 'telega-box-button-active
+    (telega-ins " ")
+    (telega-ins--msg-reaction-type (plist-get tag :tag))
+    (telega-ins (telega-tl-str tag :label))
+    (telega-ins " "))
+  (telega-ins--with-face
+      (list :foreground (face-background 'telega-box-button-active))
+    (telega-ins (telega-symbol 'saved-messages-tag-end)))
+  t)
+
+(defun telega-ins--msg-saved-messages-tags (msg)
+  "Inserter for Saved Messages tags for the message MSG."
+  (let ((reactions (telega--tl-get msg :interaction_info :reactions
+                                   :reactions))
+        ret)
+    (seq-doseq (msg-reaction reactions)
+      (when ret
+        (telega-ins "  "))
+      (if-let ((tag (telega-saved-messages-find-tag
+                     (plist-get msg-reaction :type))))
+          (telega-ins--raw-button
+              (list 'action (lambda (_button)
+                              (transient-setup
+                               'telega-saved-messages-tag-commands nil nil
+                               :scope (cons tag msg))))
+            (telega-ins--saved-messages-tag tag))
+        ;; NOTE: if Saved Messages are not yet loaded we will
+        ;; fallback to `telega-ins--msg-reaction'
+        (telega-ins--msg-reaction msg-reaction))
+      (setq ret t))
+    ret))
 
 
 ;;; Stories

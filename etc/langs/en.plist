@@ -1542,6 +1542,10 @@ You can send them an invite link as message instead.")
   :value "via {inline_bot}")
  ("lng_export_stop"
   :value "Stop")
+ ("lng_dlg_filter"
+  :value "Search")
+ ("lng_dlg_search_from"
+  :value "From: {user}")
 
  ;; Chat Background
  ("lng_action_set_wallpaper"
@@ -1572,4 +1576,18 @@ You can send them an invite link as message instead.")
   :value "Shrink Photo")
  ("lng_link_remove"
   :value "Do Not Preview")
+
+ ("lng_context_filter_by_tag"
+  :value "Filter by Tag")
+ ("lng_context_tag_add_name"
+  :value "Add Name")
+ ("lng_context_tag_edit_name"
+  :value "Edit Name")
+ ("lng_context_remove_tag"
+  :value "Remove Tag")
+
+ ("lng_edit_tag_name"
+  :value "Name")
+ ("lng_edit_tag_about"
+  :value "You can label your emoji tag with a text name.")
  )

@@ -180,6 +180,15 @@
        (when-let ((user (telega-user-get (plist-get kbd-type :user_id))))
          (telega-chat-with user)))
 
+      (inlineKeyboardButtonTypeWebApp
+       (let ((web-app-info (telega--openWebApp
+                            (telega-msg-chat msg)
+                            (telega-msg-sender msg)
+                            (plist-get kbd-type :url))))
+            (message "Webapp info: %S" web-app-info)
+            (telega-browse-url (plist-get web-app-info :url) 'in-browser)
+         ))
+
       ;; TODO: other types
       )))
 
