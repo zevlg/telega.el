@@ -951,9 +951,9 @@ By default N is 1."
 (define-telega-matcher msg has-chosen-reaction (msg &optional reaction-type)
   "Matches if message has a reaction chosen by me."
   (let ((chosen-reaction-types (telega-msg-chosen-reaction-types msg)))
-    (or (and reaction-type
-             (cl-find reaction-type chosen-reaction-types :test #'equal))
-        chosen-reaction-types)))
+    (if reaction-type
+        (cl-find reaction-type chosen-reaction-types :test #'equal)
+      chosen-reaction-types)))
 
 ;;; ellit-org: msg-temex
 ;; - is-reply-to-msg ::
