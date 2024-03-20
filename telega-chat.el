@@ -2265,8 +2265,7 @@ Use this to surrond header with some prefix and suffix."
   (when-let ((markup-msg (telega-chat-reply-markup-msg telega-chatbuf--chat)))
     (unless (telega-msg-match-p markup-msg 'is-deleted)
       (telega-ins--as-string
-       (telega-ins--labeled
-           (concat (telega-symbol 'keyboard) telega-symbol-nbsp) nil
+       (telega-ins--line-wrap-prefix (cons (telega-symbol 'keyboard) nil)
          (telega-ins--reply-markup markup-msg 'force))))))
 
 (defun telega-chatbuf-footer-restriction-reason ()
