@@ -1898,7 +1898,8 @@ Return what BODY returns."
          (when ,prefix-sym
            (let ((,eol-sym (save-excursion
                              (goto-char ,start-sym)
-                             (pos-eol))))
+                             (let ((inhibit-field-text-motion t))
+                               (line-end-position)))))
              (when (> ,eol-sym (point))
                (setq ,eol-sym (point)))
              (add-text-properties
