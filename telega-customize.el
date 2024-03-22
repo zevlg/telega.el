@@ -1310,8 +1310,6 @@ Increasing this limit increases number of events telega needs to process."
   :type '(choice
           (const :tag "Always send a message" always)
           (const :tag "Send message if point at the end of prompt" if-at-the-end)
-          (const :tag "Send message if C-u is specified \
-or point at the end of prompt" if-at-the-end-or-C-u)
           (const :tag "Send message if C-u is specified" if-C-u))
   :package-version '(telega . "0.8.121")
   :group 'telega-chat)

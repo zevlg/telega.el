@@ -4498,14 +4498,18 @@ use.  For example `C-u RET' will use
 Behaviour depends on point position and value for
 `telega-chat-send-message-on-ret'."
   (interactive)
-  (if (or (eq 'always telega-chat-send-message-on-ret)
+  (if (functionp telega-chat-send-message-on-ret)
+    (if (funcall telega-chat-send-message-on-ret)
+        (call-interactively #'telega-chatbuf-input-send)
+      (call-interactively #'newline))
+    (if (or
+          (eq 'always telega-chat-send-message-on-ret)
           (and (eobp)                   ;point at the end of the prompt
                (not (eq 'if-C-u telega-chat-send-message-on-ret)))
-          (and (or (eq 'if-at-the-end-or-C-u telega-chat-send-message-on-ret)
-                   (eq 'if-C-u telega-chat-send-message-on-ret))
+          (and (eq 'if-C-u telega-chat-send-message-on-ret)
                current-prefix-arg))
-      (call-interactively #'telega-chatbuf-input-send)
-    (call-interactively #'newline)))
+        (call-interactively #'telega-chatbuf-input-send)
+      (call-interactively #'newline))))
 
 (defun telega-chatbuf-input-insert (imc)
   "Insert input content defined by IMC into chatbuf input.
