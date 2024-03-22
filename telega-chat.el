@@ -4499,9 +4499,10 @@ Behaviour depends on point position and value for
 `telega-chat-send-message-on-ret'."
   (interactive)
   (if (or (eq 'always telega-chat-send-message-on-ret)
-          (eobp)                        ;point at the end of the prompt
-          (and (eq 'if-at-the-end-or-C-u telega-chat-send-message-on-ret)
-               current-prefix-arg))
+          (and (eq 'if-at-the-end telega-chat-send-message-on-ret)
+               (eobp))
+          (and (functionp telega-chat-send-message-on-ret)
+               (funcall telega-chat-send-message-on-ret)))
       (call-interactively #'telega-chatbuf-input-send)
     (call-interactively #'newline)))
 

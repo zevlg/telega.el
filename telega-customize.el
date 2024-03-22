@@ -1309,10 +1309,11 @@ Increasing this limit increases number of events telega needs to process."
   "Customization for `\\<telega-chat-mode-map>\\[telega-chatbuf-newline-or-input-send]' behaviour."
   :type '(choice
           (const :tag "Always send a message" always)
+          ;; NOTE: `if-at-the-end' is the same as #'eobp predicate
           (const :tag "Send message if point at the end of prompt" if-at-the-end)
-          (const :tag "Send message if C-u is specified \
-or point at the end of prompt" if-at-the-end-or-C-u))
-  :package-version '(telega . "0.8.121")
+          (function :tag "Predicate returning non-nil to send input"))
+  :package-version '(telega . "0.8.254")
+  :options '(eobp)
   :group 'telega-chat)
 
 (defcustom telega-chat-send-messages-async nil
