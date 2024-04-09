@@ -3849,7 +3849,7 @@ MSG-REACTION is the `messageReaction' TDLib object."
                             (if (plist-get msg-reaction :is_chosen)
                                 (telega--removeMessageReaction msg rtype)
                               (telega--addMessageReaction msg rtype big-p)))))
-        (telega-ins--msg-reaction msg-reaction))
+        (funcall telega-inserter-for-msg-reaction msg-reaction))
       (setq ret t))
     ret))
 
@@ -3903,7 +3903,7 @@ argument of `ReactionType' type."
             (telega-ins--saved-messages-tag tag))
         ;; NOTE: if Saved Messages are not yet loaded we will
         ;; fallback to `telega-ins--msg-reaction'
-        (telega-ins--msg-reaction msg-reaction))
+        (funcall telega-inserter-for-msg-reaction msg-reaction))
       (setq ret t))
     ret))
 
