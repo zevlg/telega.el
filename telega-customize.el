@@ -1125,6 +1125,12 @@ See `telega-ins--message' for NO-HEADER argument."
   :type 'function
   :group 'telega-inserter)
 
+(defcustom telega-inserter-for-msg-reaction 'telega-ins--msg-reaction
+  "Inserter for message reaction."
+  :package-version '(telega . "0.8.254")
+  :type 'function
+  :group 'telega-inserter)
+
 (defcustom telega-inserter-for-root-contact-button 'telega-ins--root-contact-2lines
   "*Inserter for buttons in CONTACTS ewoc in rootbuf."
   :package-version '(telega . "0.6.23")
