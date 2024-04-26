@@ -3069,6 +3069,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
 ;; scope for this commands is cons cell where car is tag and cdr is
 ;; msg
 (transient-define-prefix telega-saved-messages-tag-commands (tag)
+  (interactive)
   [:description
    (lambda ()
      (telega-ins--as-string
