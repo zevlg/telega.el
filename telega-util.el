@@ -3079,7 +3079,11 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
    (telega-saved-messages-tag-filter)
    (telega-saved-messages-tag-add-name)
    (telega-saved-messages-tag-remove)
-   ])
+   ]
+  (lambda (tag)
+    (interactive (list (user-error "Do not call this command directly")))
+    ;; (transient-setup 'telega-saved-messages-tag-commands nil nil :scope (cons tag msg))
+    ))
 
 
 ;;; Stipple drawing
