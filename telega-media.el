@@ -347,37 +347,16 @@ Return nil if `:telega-text' is not specified in IMG."
           cheight))
       )))
 
-(defun telega-media--cwidth-xmargin (width height char-height &optional _max-cwidth)
-  "Calculate width in chars and margins X pixels.
-MAX-CWIDTH is maximum width in chars.
-Return cons cell, where car is width in char and cdr is margin value."
-  ;; NOTE: handle case where WIDTH or HEIGHT can be zero
-  (let* ((pix-h (telega-chars-xheight char-height))
-         (pix-w (if (zerop height)
-                    0
-                  (* (/ (float width) height) pix-h)))
-         (cw (telega-chars-in-width pix-w))
-         (xmargin (/ (- (telega-chars-xwidth cw) pix-w) 2)))
-;    (cl-assert (> cw 0))
-    (cons cw (floor xmargin))))
-
 (defun telega-media--progress-svg (file width height cheight)
   "Generate svg showing downloading progress for FILE."
-  (let* ((xh (telega-chars-xheight cheight))
-         (cwidth-xmargin (telega-media--cwidth-xmargin
-                          (if (zerop width) xh width)
-                          (if (zerop height) xh height) cheight))
-         (w-chars (car cwidth-xmargin))
-         (xw (telega-chars-xwidth w-chars))
-         (svg (telega-svg-create xw xh))
-         (progress (telega-file--downloading-progress file)))
-    (telega-svg-progress svg progress)
-    (telega-svg-image svg :scale 1.0
-                      :width xw :height xh
-                      :ascent 'center
-                      :mask 'heuristic
-                      ;; text of correct width
-                      :telega-text (make-string w-chars ?X))))
+  (let ((svg (telega-svg-create (if (telega-zerop width) 100 width)
+                                (if (telega-zerop height) 100 height))))
+    (telega-svg-progress svg (telega-file--downloading-progress file) t)
+    (telega-svg-image svg
+      :scale 1.0
+      :height (telega-ch-height cheight)
+      :telega-nslices cheight
+      :ascent 'center)))
 
 (defsubst telega-photo--progress-svg (photo cheight)
   "Generate svg for the PHOTO."
@@ -399,8 +378,7 @@ PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
           (and progressive-sizes
                (>= (telega-file--downloaded-size file)
                    (car progressive-sizes))))
-      (let ((cw-xmargin (telega-media--cwidth-xmargin width height cheight))
-            (image-filename (telega--tl-get file :local :path)))
+      (let ((image-filename (telega--tl-get file :local :path)))
         ;; NOTE: Handle case when file is partially downloaded and
         ;; some progressive size is reached. In this case create
         ;; temporary image file writing corresponding progress bytes
@@ -431,32 +409,27 @@ PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
              (telega-etc-file "non-existing.jpg")
            image-filename)
          (when (fboundp 'imagemagick-types) 'imagemagick) nil
-         :height (telega-chars-xheight cheight)
+         :height (telega-ch-height cheight)
+         :telega-nslices cheight
          :scale 1.0
-         :ascent 'center
-         :margin (cons (cdr cw-xmargin) 0)
-         :telega-text (make-string (car cw-xmargin) ?X)))
+         :ascent 'center))
 
     (telega-media--progress-svg file width height cheight)))
 
 (defun telega-minithumb--create-image (minithumb cheight)
   "Create image and use MINITHUMB minithumbnail as data."
-  (let* ((xwidth (plist-get minithumb :width))
-         (xheight (plist-get minithumb :height))
-         (cwidth-xmargin (telega-media--cwidth-xmargin xwidth xheight cheight)))
-    (telega-create-image
-     (base64-decode-string (plist-get minithumb :data))
-     (if (and (fboundp 'image-transforms-p)
-              (funcall 'image-transforms-p))
-         'jpeg
-       (when (fboundp 'imagemagick-types)
-         'imagemagick))
-     t
-     :height (telega-chars-xheight cheight)
-     :scale 1.0
-     :ascent 'center
-     :margin (cons (cdr cwidth-xmargin) 0)
-     :telega-text (make-string (car cwidth-xmargin) ?X))))
+  (telega-create-image
+   (base64-decode-string (plist-get minithumb :data))
+   (if (and (fboundp 'image-transforms-p)
+            (funcall 'image-transforms-p))
+       'jpeg
+     (when (fboundp 'imagemagick-types)
+       'imagemagick))
+   t
+   :height (telega-ch-height cheight)
+   :telega-nslices cheight
+   :scale 1.0
+   :ascent 'center))
 
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.
@@ -610,10 +583,7 @@ Return nil if preview image is unavailable."
            (v-height (plist-get video :height))
            (cheight (telega-media--cheight-for-limits
                      v-width v-height telega-video-size-limits))
-           (cw-xmargin (telega-media--cwidth-xmargin v-width v-height cheight))
-           (xh (telega-chars-xheight cheight))
-           (xw (telega-chars-xwidth (car cw-xmargin)))
-           (svg (telega-svg-create xw xh))
+           (svg (telega-svg-create v-width v-height))
            (base-uri-fname ""))
       (cond ((and (memq (telega--tl-type (plist-get thumb :format))
                         '(thumbnailFormatJpeg thumbnailFormatPng))
@@ -629,11 +599,12 @@ Return nil if preview image is unavailable."
               (plist-get minithumb :width) (plist-get minithumb :height))))
 
       (telega-svg-white-play-triangle-in-circle svg)
-      (telega-svg-image svg :scale 1.0
-                        :base-uri base-uri-fname
-                        :width xw :height xh
-                        :ascent 'center)
-      )))
+      (telega-svg-image svg
+        :scale 1.0
+        :ascent 'center
+        :height (telega-ch-height cheight)
+        :telega-nslices cheight
+        :base-uri base-uri-fname))))
 
 (defun telega-media--image-update (obj-spec file &optional cache-prop)
   "Called to update the image contents for the OBJ-SPEC.
@@ -764,8 +735,7 @@ CHEIGHT specifies avatar height in chars, default is 2."
          (svg-xh (cond ((= cheight 1) cfull)
                        ((= cheight 2) (+ cfull (telega-chars-xheight 1)))
                        (t xh)))
-         (svg (telega-svg-create svg-xw svg-xh))
-         (name (telega-msg-sender-title sender)))
+         (svg (telega-svg-create svg-xw svg-xh)))
     (if (telega-file-exists-p photofile)
         (let ((img-type (telega-image-supported-file-p photofile))
               (clip (telega-svg-clip-path svg "clip")))
@@ -787,36 +757,38 @@ CHEIGHT specifies avatar height in chars, default is 2."
                             (cons ch (telega-color-name-as-hex-2digits
                                       (or (nth 0 colors) "gray25")))))
         (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
-        (svg-text svg (substring name 0 1)
+        (svg-text svg (telega-msg-sender-initials sender)
                   :font-size font-size
                   :font-weight "bold"
                   :fill "white"
                   :font-family "monospace"
-                  ;; XXX insane X/Y calculation
-                  :x (- (/ svg-xw 2) (/ font-size 3))
-                  :y (+ (/ font-size 3) (/ cfull 2)))))
+                  :x "50%"
+                  :text-anchor "middle" ; makes text horizontally centered
+                  ;; XXX: Insane y calculation
+                  :y (+ (/ font-size 3) (/ cfull 2))
+                  )))
 
     ;; XXX: Apply additional function, used by `telega-patrons-mode'
     ;; Also used to outline currently speaking users in voice chats
     (when addon-function
       (funcall addon-function svg (list (/ svg-xw 2) (/ cfull 2) (/ ch 2))))
 
-    (telega-svg-image svg :scale 1.0
-                      :width svg-xw :height svg-xh
-;                      :height (cons cheight 'em)
-                      :ascent 'center
-                      :mask 'heuristic
-                      :base-uri (expand-file-name "dummy" base-dir)
-                      ;; Correct text for tty-only avatar display
-                      :telega-text
-                      (cons (let ((ava-text (funcall telega-avatar-text-function
-                                                     sender aw-chars)))
-                              (if (> (length ava-text) aw-chars)
-                                  (substring ava-text 0 aw-chars)
-                                ava-text))
-                            (mapcar (lambda (_ignore)
-                                      (make-string aw-chars ?\u00A0))
-                                    (make-list (1- cheight) 'not-used))))
+    (telega-svg-image svg
+      :scale 1.0
+      :width (telega-cw-width aw-chars)
+      :ascent 'center
+      :mask 'heuristic
+      :base-uri (expand-file-name "dummy" base-dir)
+      ;; Correct text for tty-only avatar display
+      :telega-text
+      (cons (let ((ava-text (funcall telega-avatar-text-function
+                                     sender aw-chars)))
+              (if (> (length ava-text) aw-chars)
+                  (substring ava-text 0 aw-chars)
+                ava-text))
+            (mapcar (lambda (_ignore)
+                      (make-string aw-chars ?\u00A0))
+                    (make-list (1- cheight) 'not-used))))
     ))
 
 (defun telega-avatar--create-image-one-line (sender file)
@@ -1038,10 +1010,11 @@ SENDER can be a nil, meaning venue location is to be displayed."
     ;; NOTE: map sender can be nil for venue messages
     (telega-map--embed-sender svg map map-sender (plist-get map :user-location))
 
-    (telega-svg-image svg :scale 1.0
-                      :width width :height height
-                      :ascent 'center
-                      :base-uri (expand-file-name "dummy" base-dir))))
+    (telega-svg-image svg
+      :scale 1.0
+      :width width :height height
+      :ascent 'center
+      :base-uri (expand-file-name "dummy" base-dir))))
 
 ;; See
 ;; https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Resolution_and_Scale
@@ -1115,11 +1088,12 @@ Return non-nil if zoom has been changed."
   "Create image for the chat THEME."
   (let ((base-dir (telega-directory-base-uri telega-database-dir))
         (svg (telega-chat-theme--create-svg theme)))
-    (telega-svg-image svg :scale 1.0
-                      :width (alist-get 'width (nth 1 svg))
-                      :height (alist-get 'height (nth 1 svg))
-                      :ascent 'center
-                      :base-uri (expand-file-name "dummy" base-dir))))
+    (telega-svg-image svg
+      :scale 1.0
+      :width (alist-get 'width (nth 1 svg))
+      :height (alist-get 'height (nth 1 svg))
+      :ascent 'center
+      :base-uri (expand-file-name "dummy" base-dir))))
 
 
 ;;; Media layout

@@ -123,6 +123,10 @@ DIRTINESS specifies additional CHAT dirtiness."
   "Some user info has has been changed."
   (let ((user (plist-get event :user)))
     (telega--info-update user)
+    ;; NOTE: Updating user might affect his color, so delete cached
+    ;; color
+    (telega-plist-del user :color)
+
     (telega-user--update user event)))
 
 (defun telega--on-updateUserStatus (event)
@@ -584,6 +588,9 @@ NOTE: we store the number as custom chat property, to use it later."
 ;; Chat filters
 (defun telega--on-updateChatFolders (event)
   "List of chat filters has been updated."
+  (setq telega-tdlib--chat-folder-tags-p
+        (plist-get event :are_tags_enabled))
+
   ;; NOTE: collect folders with changed names and update all chats in
   ;; that folders.  Because folder name might be displayed along the
   ;; side with chat's title in the rootbuf
@@ -1588,6 +1595,18 @@ Please downgrade TDLib and recompile `telega-server'"
 
   (with-telega-chatbuf (telega-chat-me)
     (telega-chatbuf--chat-update "msg-filter"))
+  )
+
+(defun telega--on-updateContactCloseBirthdays (event)
+  "Event to update close birthdays list."
+  (setq telega--close-birthday-users
+        (append (plist-get event :close_birthday_users) nil))
+  )
+
+(defun telega--on-updateChatAddedToList (event)
+  )
+
+(defun telega--on-updateChatRemovedFromList (event)
   )
 
 (provide 'telega-tdlib-events)

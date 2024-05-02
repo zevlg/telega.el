@@ -873,6 +873,29 @@ By default N is 1."
   (plist-get (telega--full-info user) :has_private_forwards))
 
 ;;; ellit-org: user-temex
+;; - has-business-info ::
+;;   {{{temexdoc(user, has-business-info, 2)}}}
+(define-telega-matcher user has-business-info (user &optional info-prop)
+  "Matches if user has business info."
+  (when-let ((binfo (plist-get (telega--full-info user) :business_info)))
+    (or (not info-prop)
+        (plist-get binfo info-prop))))
+
+;;; ellit-org: user-temex
+;; - has-birthdate ::
+;;   {{{temexdoc(user, has-birthdate, 2)}}}
+(define-telega-matcher user has-birthdate (user)
+  "Matches if user has birthdate set."
+  (plist-get (telega--full-info user) :birthdate))
+
+;;; ellit-org: user-temex
+;; - has-personal-chat ::
+;;   {{{temexdoc(user, has-personal-chat, 2)}}}
+(define-telega-matcher user has-personal-chat (user)
+  "Matches if user has personal chat."
+  (not (telega-zerop (plist-get (telega--full-info user) :personal_chat_id))))
+
+;;; ellit-org: user-temex
 ;; - has-emoji-status ::
 ;;   {{{temexdoc(user, has-emoji-status, 2)}}}
 (define-telega-matcher user has-emoji-status (user)

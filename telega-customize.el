@@ -858,30 +858,22 @@ See list of all available icon names in `telega-folder-icon-names'."
   :group 'telega)
 
 ;;; ellit-org: folders-options
-;; - {{{user-option(telega-chat-folder-format, 2)}}}
-(defcustom telega-chat-folder-format (propertize "%F | " 'face 'bold)
-  "*Non-nil to prefix chat's title with chat folder.
-%I - Replaced with folder's icon from `telega-folder-icon-names' or
-     empty string if there is no icon.
-%i - Replaced with folder's icon from `telega-folder-format' or
-     `telega-symbol-folder' if there is no icon.
-%f - Replaced with folder's title.
-%F - Replaced with folder's icon from `telega-folder-icon-names'
-     if icon is unique, or equivalent to %I%f."
-  :package-version '(telega . "0.6.30")
-  :type 'string
-  :group 'telega-root)
+;; - {{{user-option(telega-chat-folders-insexp, 2)}}}
+(defcustom telega-chat-folders-insexp 'telega-folders-insert-default
+  "Inserter sexp for chat folders prefixing chat's title.
+While using this insexp `telega-chat-folders' is bound to the list of
+folder names to be inserted."
+  :package-version '(telega . "0.8.255")
+  :type 'sexp
+  :group 'telega-chat)
 
 ;;; ellit-org: folders-options
 ;; - {{{user-option(telega-chat-folders-exclude, 2)}}}
 (defcustom telega-chat-folders-exclude (list "Unread" "Personal")
-  "Exclude these folders when determining chat's folder.
-When determining which chat folder to use in
-`telega-chat-folders-format', these folders are excluded, if
-single folder is left, then it is used in the formatting."
+  "Exclude these folders from chat folders list to be displayed."
   :package-version '(telega . "0.6.30")
   :type '(repeat (string :tag "Folder"))
-  :group 'telega-root)
+  :group 'telega-chat)
 
 (defcustom telega-chat-title-custom-for
   (list (cons '(or saved-messages replies-messages)
@@ -905,15 +897,15 @@ min and max values for a width calculation using
  `telega-canonicalize-number'."
   :package-version '(telega . "0.7.41")
   :type '(choice number (list number))
-  :group 'telega-root)
+  :group 'telega-chat)
 
 (defcustom telega-chat-button-format-plist
-  (list :with-folder-format telega-chat-folder-format
+  (list :with-folders-insexp 'telega-chat-folders-insexp
         :with-unread-trail-p t
         :with-status-icons-trail-p t)
   "Plist specifies formatting for a chat button in the rootbuf.
 Possible arguments:
-`:with-folder-format'   - To show folder as prefix inside brackets.
+`:with-folders-insexp'  - Use inserter sexp for chat folders.
 `:with-username-p'      - To show username along with title.
                           Could be a face to be used for username.
 `:with-title-faces-p'   - To use chat specific colors for title.
@@ -922,7 +914,19 @@ Possible arguments:
 `:with-status-icons-trail-p' - To show status icons outside brackets."
   :package-version '(telega . "0.8.121")
   :type 'plist
-  :group 'telega-root)
+  :group 'telega-chat)
+
+(defcustom telega-chat-format-plist-for-completion
+  (list ;:with-folders-insexp 'telega-chat-folders-insexp
+        :with-title-faces-p t
+        :with-username-p 'telega-username
+        :with-unread-trail-p t
+        :with-status-icons-trail-p t)
+  "Formatting for the chat button while performing read with completions.
+Used in the `telega-msg-sender-title-for-completion' function."
+  :package-version '(telega . "0.8.255")
+  :type 'plist
+  :group 'telega-chat)
 
 (defcustom telega-chat-button-format-temex nil
   "Non-nil to use temex instead of `telega-chat-button-format-plist'.
@@ -2110,6 +2114,18 @@ cdr is used if custom order is greater then real chat's order."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-button-left "["
+  "Symbol to use for left part of the button."
+  :package-version '(telega . "0.8.255")
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-button-right "]"
+  "Symbol to use for right part of the button."
+  :package-version '(telega . "0.8.255")
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-failed (propertize "⛔" 'face 'error)
   "Mark messages that have sending state failed."
   :type 'string
@@ -2139,11 +2155,6 @@ Horizontal delimiters are used to draw chat filter/sorter bar in rootbuf."
   "Symbol used to draw underline bar in chatbuf with partial history."
   :type 'string
   :options '("🢑" "🢓")
-  :group 'telega-symbol)
-
-(defcustom telega-symbol-draft (propertize "Draft" 'face 'error)
-  "Symbol used for draft formatting."
-  :type 'string
   :group 'telega-symbol)
 
 (defcustom telega-symbol-unread "●"
@@ -2443,6 +2454,12 @@ Used in one line message inserter."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-typing ".."
+  "Symbol to be used as prefix for typing actions."
+  :package-version '(telega . "0.8.255")
+  :type 'string
+  :group 'telega-symbol)
+
 ;; Symbols marking messages of some sort
 (when (fboundp 'define-fringe-bitmap)
   (define-fringe-bitmap 'telega-mark
@@ -2515,15 +2532,31 @@ Used in one line message inserter."
     (button-close
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-etc-file-create-image "symbols/button-close.svg" 2)))
+    (button-left
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (when-let ((bg-color (face-background 'default)))
+         (telega-create-image (telega-etc-file "symbols/button-left.svg") nil nil
+           :scale 1.0
+           :ascent 'center
+           :background bg-color
+           :mask `(heuristic ,(color-values bg-color))
+           :height (telega-ch-height 1)))))
+    (button-right
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (when-let ((bg-color (face-background 'default)))
+         (telega-create-image (telega-etc-file "symbols/button-right.svg") nil nil
+           :scale 1.0
+           :ascent 'center
+           :background bg-color
+           :mask `(heuristic ,(color-values bg-color))
+           :height (telega-ch-height 1)))))
     chat-list
     (checkbox-off
      (when (and telega-use-images (image-type-available-p 'svg))
-       (telega-create-image "unchecked.svg" nil nil
-                            :ascent 'center :scale 1.0 :mask 'heuristic)))
+       (telega-etc-file-create-image "unchecked.svg" 2)))
     (checkbox-on
      (when (and telega-use-images (image-type-available-p 'svg))
-       (telega-create-image "checked.svg" nil nil
-                            :ascent 'center :scale 1.0 :mask 'heuristic)))
+       (telega-etc-file-create-image "checked.svg" 2)))
     (checkmark
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-svg-create-checkmark telega-symbol-checkmark
@@ -2550,12 +2583,10 @@ Used in one line message inserter."
                 (telega-etc-file-create-image "symbols/premium.svg" 2)))
     (radiobox-off
      (when (and telega-use-images (image-type-available-p 'svg))
-       (telega-create-image "radio.svg" nil nil
-                            :ascent 'center :scale 1.0 :mask 'heuristic)))
+       (telega-etc-file-create-image "radio.svg" 2)))
     (radiobox-on
      (when (and telega-use-images (image-type-available-p 'svg))
-       (telega-create-image "radio-checked.svg" nil nil
-                            :ascent 'center :scale 1.0 :mask 'heuristic)))
+       (telega-etc-file-create-image "radio-checked.svg" 2)))
     (reaction (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/reaction.svg" 2)))
     (reaction-mark (when (and telega-use-images (image-type-available-p 'svg))
@@ -2569,9 +2600,13 @@ Used in one line message inserter."
     (saved-messages-tag-end
      (when (and telega-use-images (image-type-available-p 'svg))
        (telega-create-image (telega-etc-file "symbols/tag-end.svg") nil nil
-                            :scale 1.0 :ascent 'center
-                            :height (telega-chars-xheight 1))))
+         :scale 1.0
+         :ascent 'center
+         :height (telega-ch-height 1))))
     timer-clock
+    (typing
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "symbols/typing.svg" 2)))
     video video-chat-active video-chat-passive
 
     "⏪" "⏩"

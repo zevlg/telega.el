@@ -2109,7 +2109,7 @@ state kinds to show. By default all kinds are shown."
     (list :name ewoc-name
           :header (telega-ins--as-string
                    (let ((telega-chat-button-format-plist
-                          (list :with-folder-format telega-chat-folder-format
+                          (list :with-folders-insexp telega-chat-folders-insexp
                                 :with-title-faces-p t
                                 :with-username-p 'telega-username
                                 :with-unread-trail-p t

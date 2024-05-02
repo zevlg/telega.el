@@ -291,7 +291,12 @@ If CALLBACK is not specified, then do not perform request to
 telega-server, check only in messages cache.  If CALLBACK
 is specified, it should accept two argument s - MESSAGE and
 optional OFFLINE-P, non-nil OFFLINE-P means no request to the
-telega-server has been made."
+telega-server has been made.
+
+Return a message or nil if CALLBACK is not specified.
+Return nil if CALLBACK is specified and message is found without
+requests to telega-server, and return `:@extra' value of async request
+if request is made."
   (declare (indent 2))
   ;; - Search in the messages cache
   ;; - [DON'T] Search in chatbuf messages, because message could be
@@ -301,12 +306,13 @@ telega-server has been made."
          (msg (gethash (cons chat-id msg-id) telega--cached-messages)))
     (if (or msg (null callback))
         (if callback
-            (funcall callback msg 'offline-p)
+            (progn
+              (funcall callback msg 'offline-p)
+              nil)
           msg)
 
       (cl-assert callback)
-      (telega--getMessage chat-id msg-id callback)
-      nil)))
+      (telega--getMessage chat-id msg-id callback))))
 
 (defun telega-msg-at-down-mouse-3 ()
   "Return message at down-mouse-3 press.
@@ -1207,6 +1213,15 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
     (concat (when with-prefix-p "@") username)))
 (defalias 'telega-chat-username 'telega-msg-sender-username)
 
+(defun telega-msg-sender-initials (msg-sender)
+  "Return MSG-SENDER's initials for avatar image."
+  (if (telega-user-p msg-sender)
+      (let ((first-name (telega-tl-str msg-sender :first_name))
+            (last-name (telega-tl-str msg-sender :last_name)))
+        (concat (when first-name (substring first-name 0 1))
+                (when last-name (substring last-name 0 1))))
+    (substring (telega-chat-title msg-sender 'no-badges) 0 1)))
+
 (defun telega-msg-sender-title (msg-sender &rest args)
   "Return title for the message sender MSG-SENDER.
 ARGS are passed directly to `telega-ins--msg-sender'."
@@ -1214,14 +1229,16 @@ ARGS are passed directly to `telega-ins--msg-sender'."
   (telega-ins--as-string
    (apply #'telega-ins--msg-sender msg-sender args)))
 
-(defun telega-msg-sender-title--special (msg-sender)
-  "Return title for message sender MSG-SENDER to be used in special messages."
+(defun telega-msg-sender-title--special (msg-sender &rest args)
+  "Return title for message sender MSG-SENDER to be used in special messages.
+ARGS are passed directly to `telega-ins--msg-sender'."
+  (declare (indent 1))
   (telega-ins--as-string
    (telega-ins--raw-button
        (list 'action (lambda (_button)
                        (telega-describe-msg-sender msg-sender)))
      (telega-ins--with-face 'bold
-       (telega-ins--msg-sender msg-sender :with-avatar-p t)))))
+       (apply #'telega-ins--msg-sender msg-sender :with-avatar-p t args)))))
 
 (defun telega-msg-sender-color (msg-sender &optional background-mode)
   "Return color for the message sender MSG-SENDER.
@@ -1363,9 +1380,7 @@ Return function by which MSG has been ignored."
     ;; after marking messages some message command is expected (for
     ;; example forwarwarding)
     (unless (= (plist-get msg :id) (telega-chatbuf--last-message-id))
-      ;; NOTE: maybe use `(button-type-get 'telega-msg :predicate)' as
-      ;; predicate?
-      (telega-button-forward 1 'telega-msg-at))
+      (telega-button-forward 1 (button-type-get 'telega-msg :predicate)))
 
     (telega-chatbuf--chat-update "marked-messages")))
 
@@ -1794,6 +1809,10 @@ Requires administrator rights in the chat."
         (unless (telega-zerop thread-id)
           (telega-ins-describe-item "Thread-Id"
             (telega-ins-fmt "%d" thread-id))))
+      (let ((album-id (plist-get msg :media_album_id)))
+        (unless (telega-zerop album-id)
+          (telega-ins-describe-item "Media-Album-Id"
+            (telega-ins-fmt "%s" album-id))))
 
       (when-let ((sender (telega-msg-sender msg)))
         (telega-ins-describe-item "Sender"
@@ -2026,14 +2045,17 @@ be added."
       (setq msg-av-reactions (telega--getMessageAvailableReactions msg))
       (setq reaction-type
             (telega-completing-read-msg-reaction msg
-                (if sm-tags-p
-                    "New Tag: "
-                  (format "Add %sReaction: " (if big-p "BIG " "")))
-                msg-av-reactions)))
+              (if sm-tags-p
+                  "New Tag: "
+                (format "Add %sReaction: " (if big-p "BIG " "")))
+              msg-av-reactions)))
 
-    (if (not (eq reaction-type 'custom))
-        (telega--addMessageReaction msg reaction-type big-p 'update-recent)
-
+    (cond
+     ((null reaction-type)
+      (user-error "telega: Can't add reaction to this message"))
+     ((not (eq reaction-type 'custom))
+      (telega--addMessageReaction msg reaction-type big-p 'update-recent))
+     (t
       ;; Custom reaction
       (let ((top-av-reactions (plist-get msg-av-reactions :top_reactions))
             (recent-av-reactions (plist-get msg-av-reactions :recent_reactions))
@@ -2070,7 +2092,7 @@ be added."
              (telega--addMessageReaction
               msg (list :@type "reactionTypeCustomEmoji"
                         :custom_emoji_id (telega-custom-emoji-id sticker))
-              big-p 'update-recent-reactions))))))))
+              big-p 'update-recent-reactions)))))))))
 
 (defun telega-msg-translate (msg to-language-code &optional quiet)
   "Translate message at point.

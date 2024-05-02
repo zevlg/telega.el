@@ -440,6 +440,12 @@ new terms specific to =telega=.  All of them are used in the manual.
 
   Chat with me is also known as "Saved Messages".
 
+- Insexp ::
+  S-Expression denoting an inserter.  It could be a function, a symbol or
+  a list to be evaluated.
+
+  Insexp evaluation results in content being inserted.
+
 * Telega prefix map
 
 =telega= has prefix map for common =telega= commands, such as

@@ -291,6 +291,10 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
         (telega-ins-describe-item "Relationship"
           (telega-ins relationship))))
 
+    (when-let ((birthdate (plist-get full-info :birthdate)))
+      (telega-ins-describe-item (telega-i18n "lng_info_birthday_label")
+        (telega-ins--birthdate birthdate 'with-years-old)))
+
     (when-let ((username (telega-msg-sender-username user)))
       ;; I18N: profile_username -> Username:
       (telega-ins-describe-item (telega-i18n "lng_profile_username")

@@ -697,6 +697,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Folders")
  ("lng_filters_title"
   :value "Folders")
+ ("lng_filters_subtitle"
+  :value "My folders")
  ("lng_filters_recommended"
   :value "Recommended folders")
  ("lng_filters_create"
@@ -711,6 +713,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Edit Folder")
  ("lng_filters_recommended"
   :value "Recommended folders")
+ ("lng_filters_recommended_add"
+  :value "Add")
  ("lng_filters_limit"
   :value "Sorry, you can't create more folders.")
  ("lng_filters_default"
@@ -734,6 +738,11 @@ Example: 23 y.o. designer from San Francisco")
   :value "Archived")
  ("lng_filters_type_no_muted"
   :value "Muted")
+ ("lng_filters_chats_count"
+  :one_value "{count} chat"
+  :other_value "{count} chats")
+ ("lng_filters_shareable_status"
+  :value "shareable folder")
 
  ;; Comments
  ("lng_comments_open_none"
@@ -828,6 +837,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Start Now")
  ("lng_group_call_edit_title_header"
   :value "Video chat title")
+ ("lng_group_call_edit_title"
+  :value "Edit Video Chat Title")
  ("lng_group_call_schedule_title"
   :value "Schedule Video Chat")
  ("lng_group_call_scheduled_status"
@@ -847,7 +858,6 @@ Example: 23 y.o. designer from San Francisco")
   :value "Join Video Chat as...")
  ("lng_group_call_leave"
   :value "Leave")
-
  ("lng_group_call_members"
   :one_value "{count} participant"
   :other_value "{count} participants")
@@ -868,6 +878,19 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} invited {users} to {chat}")
  ("lng_action_invite_user_chat"
   :value "the video chat")
+
+ ("lng_group_call_display_as_header"
+  :value "Display me as...")
+ ("lng_menu_start_group_call"
+  :value "Start video chat")
+ ("lng_menu_start_group_call_scheduled"
+  :value "Schedule video chat")
+ ("lng_menu_start_group_call_with"
+  :value "Stream with...")
+ ("lng_group_call_recording_start"
+  :value "Start Recording")
+ ("lng_group_call_settings"
+  :value "Settings")
 
  ("lng_action_theme_changed"
   :value "{from} changed the chat theme to {emoji}")
@@ -893,6 +916,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "You allowed this bot to message you when you opened {app}.")
  ("lng_action_attach_menu_bot_allowed"
   :value "You allowed this bot to message you when you added it to your attachment menu.")
+ ("lng_action_shared_chat_with_bot"
+  :value "You shared {chat} with {bot}")
  ("lng_action_topic_created"
   :value "«{topic}» was created")
  ("lng_action_topic_closed"
@@ -1376,6 +1401,10 @@ You can send them an invite link as message instead.")
   :value "Remove \"{sticker_pack}\"?")
  ("lng_stickers_remove_pack_button"
   :value "Remove Stickers")
+ ("lng_stickers_installed_tab"
+  :value "Stickers")
+ ("lng_stickers_masks_tab"
+  :value "Masks")
 
  ;; Prompt helpers
  ("lng_message_ph"
@@ -1523,6 +1552,8 @@ You can send them an invite link as message instead.")
   :value "Username")
  ("lng_create_invite_link_title"
   :value "Invite link")
+ ("lng_from_draft"
+  :value "Draft")
 
  ("lng_usernames_activate_confirm"
   :value "Show")
@@ -1590,4 +1621,39 @@ You can send them an invite link as message instead.")
   :value "Name")
  ("lng_edit_tag_about"
   :value "You can label your emoji tag with a text name.")
+
+ ;; Actions
+ ("lng_user_typing"
+  :value "{user} is typing")
+ ("lng_users_typing"
+  :value "{user} and {second_user} are typing")
+ ("lng_many_typing"
+  :one_value "{count} person is typing"
+  :other_value "{count} people are typing")
+ ("lng_user_action_record_round"
+  :value "{user} is recording a video message")
+ ("lng_user_action_upload_round"
+  :value "{user} is sending a video message")
+ ("lng_user_action_record_audio"
+  :value "{user} is recording a voice message")
+ ("lng_user_action_upload_audio"
+  :value "{user} is sending a voice message")
+ ("lng_user_action_watching_animations"
+  :value "watching {emoji}")
+
+ ;; Birthday
+ ("lng_info_birthday_label"
+  :value "Date of birth")
+ ("lng_info_birthday_years"
+  :one_value "{date} ({count} year old)"
+  :other_value "{date} ({count} years old)")
+ ("lng_info_birthday_today"
+  :value "{emoji} {date}")
+ ("lng_info_birthday_today_label"
+  :value "Birthday today")
+ ("lng_info_birthday_today_years"
+  :one_value "{date}
+({count} year old)"
+  :other_value "{date}
+({count} years old)")
  )

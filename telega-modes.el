@@ -1198,11 +1198,8 @@ Return patron info, or nil if SENDER is not a telega patron."
                         (ear-w (* 0.4 cr))
                         (x-off (- cx cr))
                         (y-off (- cy cr))
-                        (color
-                         (nth (if (eq (frame-parameter nil 'background-mode)
-                                      'light)
-                                  0 1)
-                              (telega-msg-sender-color sender)))
+                        (color (telega-msg-sender-color
+                                sender (frame-parameter nil 'background-mode)))
                         (svg-color
                          (when color
                            (telega-color-name-as-hex-2digits color))))
@@ -2016,6 +2013,61 @@ TDLib's autoDownloadSettings structure."
        telega-auto-download--disabled-preset))
     (remove-hook 'telega-ready-hook
                  #'telega-auto-download--start)
+    ))
+
+
+;;; ellit-org: minor-modes
+;; ** telega-contact-birthdays-mode
+;;
+;; Mode to display close birthdays of the contacts.
+;; 
+;; ~telega-contact-birthdays-mode~ is enabled by default.
+(defvar telega-contact-birthdays--exclude-users nil)
+
+(defun telega-ins--contact-birthdays ()
+  (when-let ((bd-users-list
+              (cl-remove-if (lambda (bd-user)
+                              (memq (plist-get bd-user :user_id)
+                                    telega-contact-birthdays--exclude-users))
+                            telega--close-birthday-users)))
+    (telega-ins (telega-i18n "lng_info_birthday_label") ": ")
+    (seq-doseq (bd-user bd-users-list)
+      (telega-ins "\n")
+      (telega-ins--line-wrap-prefix "  "
+        (telega-ins--msg-sender (telega-user-get (plist-get bd-user :user_id))
+          :with-avatar-p t)
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins " • "))
+        (telega-ins " ")
+        (telega-ins--birthdate (plist-get bd-user :birthdate) 'with-years-old))
+
+      (telega-ins " ")
+      (telega-ins--text-button (telega-symbol 'button-close)
+        'face 'telega-link
+        'action (lambda (_button)
+                  (setq telega-contact-birthdays--exclude-users
+                        (cons (plist-get bd-user :user_id)
+                              telega-contact-birthdays--exclude-users))
+                  (telega-root-aux-redisplay #'telega-ins--contact-birthdays))))
+    t))
+
+(defun telega-contact-birthdays--on-update (_event)
+  "List of close birthdays has been changed."
+  (telega-root-aux-redisplay #'telega-ins--contact-birthdays))
+
+(define-minor-mode telega-contact-birthdays-mode
+  "Global mode to display close birthdays of the contacts."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-contact-birthdays-mode
+      (progn
+        (advice-add 'telega--on-updateContactCloseBirthdays
+                    :after #'telega-contact-birthdays--on-update)
+        (telega-root-aux-append #'telega-ins--contact-birthdays))
+
+    ;; Disabled
+    (telega-root-aux-remove #'telega-ins--contact-birthdays)
+    (advice-remove 'telega--on-updateContactCloseBirthdays
+                   #'telega-contact-birthdays--on-update)
     ))
 
 

@@ -27,6 +27,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'ring)
+(require 'color)
 (require 'cursor-sensor)
 
 (require 'telega-customize)
@@ -34,14 +35,21 @@
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-window-recenter "telega-util" (win &optional nlines from-point))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
+(declare-function telega-em-width-ratio "telega-util")
+(declare-function telega-em-height-ratio "telega-util")
 (declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
 
 (defvar telega--lib-directory nil
   "The directory from where this library was first loaded.")
 
 (defun telega-etc-file (filename)
-  "Return absolute path to FILENAME from etc/ directory in telega."
-  (expand-file-name (concat "etc/" filename) telega--lib-directory))
+  "Return absolute path to FILENAME from etc/ directory in telega.
+Use FILENAME as is if resulting file does not exist."
+  (let ((abspath (expand-file-name (concat "etc/" filename)
+                                   telega--lib-directory)))
+    (if (file-exists-p abspath)
+        abspath
+      filename)))
 
 (defconst telega-spoiler-translation-table
   (let ((table (make-char-table 'translation-table)))
@@ -332,6 +340,9 @@ Favorite message is a plist with at least `:chat_id', `:id' properties.
 (defvar telega--speech-recognition-trial nil
   "The parameters of speech recognition without Telegram Premium.")
 
+(defvar telega--close-birthday-users nil
+  "List of contact users with close birthdays.")
+
 ;; Searching
 (defvar telega-search-history nil
   "List of recent search queries.")
@@ -403,6 +414,11 @@ alist where key is one of:
 
 (defvar telega-tdlib--chat-folders nil
   "List of chat folders received from TDLib.")
+(defvar telega-tdlib--chat-folder-tags-p nil
+  "Non-nil if chat folder tags are enabled.
+Updated with `updateChatFolders' event.")
+(defvar telega-chat-folders nil
+  "This variable is bound to list of chat folders when formatting.")
 (defvar telega-tdlib--chat-list nil
   "Active tdlib chat list used for ordering.")
 (defvar telega-tdlib--unix-time nil
@@ -449,44 +465,61 @@ display the list.")
 (defvar telega--accent-colors-available-ids nil
   "Accent colors received by `updateAccentColors' event.")
 
-(defun telega--accent-color-id-built-in-p (color-id)
-  "Return non-nil if accent color denoted by COLOR-ID is built-in."
-  (< color-id 7))
+(defun telega--accent-color-by-id (color-id)
+  "Return accentColor structure by COLOR-ID."
+  (cdr (assq color-id telega--accent-colors-alist)))
 
-;; saved messages tags
-(defvar telega--saved-messages-tags nil "Hash table topic_id -> tags")
+(defun telega--accent-color-name-by-id (color-id &optional background-mode)
+  "Get accent color name by COLOR-ID.
+BACKGROUND-MODE is one of `light' or `dark'.
+If BACKGROUND-MODE is omitted, return list of two colors, where first
+element is color for the light theme and second is for dark theme."
+  (when-let ((color-spec (telega--accent-color-by-id color-id)))
+    (let ((light-color
+           (when (or (null background-mode)
+                     (eq background-mode 'light))
+             (format "#%06x" (seq-first
+                              (plist-get color-spec :light_theme_colors)))))
+          (dark-color
+           (when (or (null background-mode)
+                     (eq background-mode 'dark))
+             (format "#%06x" (seq-first
+                              (plist-get color-spec :dark_theme_colors))))))
+      (cond ((eq background-mode 'light) light-color)
+            ((eq background-mode 'dark) dark-color)
+            (t (list light-color dark-color))))))
 
-(defun telega--ReactionType (reaction-type)
-  "Make sure REACTION-TYPE is suitable to be passed to TDLib method."
-  ;; NOTE: emoji needs to be desurrogated
-  ;; before passing to any TDLib method
-  (if (eq (telega--tl-type reaction-type) 'reactionTypeEmoji)
-      (list :@type "reactionTypeEmoji"
-            :emoji (telega-tl-str reaction-type :emoji))
-    reaction-type))
+(defconst telega-builtin-colors-alist
+  '((0 "red")                           ; #c03d33
+    (1 "orange")                        ; #ce671b
+    (2 "purple" "violet")               ; #8544d6
+    (3 "green")                         ; #4fad2d
+    (4 "cyan")                          ; TODO
+    (5 "blue")                          ; #168acd
+    (6 "pink"))                         ; #cd4073
+  "Bultin colors.")
 
-(defun telega-saved-messages-tags (&optional sm-topic-id)
-  "Return Saved Messages tags."
-  (gethash (or sm-topic-id 0) telega--saved-messages-tags))
+(defun telega--builtin-color-by-id (color-id &optional background-mode)
+  "Get builtin color by COLOR-ID.
+BACKGROUND-MODE is one of `light' or `dark'."
+  (when-let ((colors (alist-get color-id telega-builtin-colors-alist)))
+    (let ((color-for-light
+           (when (or (null background-mode)
+                     (eq background-mode 'light))
+             (telega-color-name-set-light-saturation
+              (nth 0 colors) nil 0.3)))
+          (color-for-dark
+           (when (or (null background-mode)
+                     (eq background-mode 'dark))
+             (telega-color-name-set-light-saturation
+              (or (nth 1 colors) (nth 0 colors)) nil 0.7))))
+      (cond ((eq background-mode 'light) color-for-light)
+            ((eq background-mode 'dark)  color-for-dark)
+            (t (list color-for-light color-for-dark))))))
 
-(defun telega-saved-messages-tags-ensure (tags &optional sm-topic-id)
-  (puthash (or sm-topic-id 0) (plist-get tags :tags)
-           telega--saved-messages-tags))
+(defvar telega--saved-messages-tags nil
+  "Hash table saved_message_topic_id -> tags.")
 
-(defun telega-saved-messages-find-tag (reaction-type &optional sm-topic-id)
-  "Find Saved Messages tag by REACTION-TYPE."
-  (seq-find (lambda (tag)
-              (equal (telega--ReactionType reaction-type)
-                     (telega--ReactionType (plist-get tag :tag))))
-            (telega-saved-messages-tags sm-topic-id)))
-
-(defun telega-saved-messages-find-label (label &optional sm-topic-id)
-  "Find Saved Messages tag by LABEL."
-  (seq-find (lambda (tag)
-              (equal label (telega-tl-str tag :label)))
-            (telega-saved-messages-tags sm-topic-id)))
-
-
 ;;; Shared chat buffer local variables
 (defvar telega-chatbuf--chat nil
   "Telega chat for the current chat buffer.")
@@ -678,6 +711,7 @@ Done when telega server is ready to receive queries."
   (setq telega--dice-emojis nil)
 
   (setq telega-tdlib--chat-folders nil)
+  (setq telega-tdlib--chat-folder-tags-p nil)
   (setq telega-tdlib--chat-list nil)
   (setq telega-tdlib--unix-time nil)
 
@@ -695,6 +729,8 @@ Done when telega server is ready to receive queries."
         telega--accent-colors-available-ids nil)
 
   (setq telega--saved-messages-tags (make-hash-table :test #'eq))
+
+  (setq telega--close-birthday-users nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -815,12 +851,12 @@ END."
   "Execute BODY setting current buffer to root buffer.
 Inhibits read-only flag."
   (declare (indent 0))
-  `(when (buffer-live-p (telega-root--buffer))
-     (with-current-buffer telega-root-buffer-name
-       (let ((inhibit-read-only t))
-         (unwind-protect
-             (progn ,@body)
-           (set-buffer-modified-p nil))))))
+  (let ((bufsym (gensym "rootbuf")))
+    `(let ((,bufsym (telega-root--buffer)))
+       (when (buffer-live-p ,bufsym)
+         (with-current-buffer ,bufsym
+           (with-telega-buffer-modify
+            ,@body))))))
 
 (defmacro with-telega-chatbuf (chat &rest body)
   "Execute BODY setting current buffer to chat buffer of CHAT.
@@ -1129,7 +1165,9 @@ Also supports \"formattedText\" a value of the OBJ's PROP."
 
 (defsubst telega-zerop (value)
   "Return non-nil if VALUE is nil or `zerop'."
-  (or (null value) (zerop value)))
+  (or (null value)
+      (and (numberp value) (zerop value))
+      (and (stringp value) (string= value "0"))))
 
 (defsubst telega-replies-p (chat)
   "Return non-nil if CHAT is Replies chat."
@@ -1703,6 +1741,18 @@ Return list of two values - (LIVE-FOR UPDATED-AGO)."
 Return non-nil if something has been inserted."
   (< (prog1 (point) (apply #'insert (delq nil args))) (point)))
 
+(defun telega-ins--insexp (insexp)
+  "Use INSEXP as inserter expression.
+INSEXP could be a symbol, a function or a S-Expression to eval."
+  (cond ((functionp insexp)
+         (funcall insexp))
+        ((symbolp insexp)
+         (telega-ins--insexp (symbol-value insexp)))
+        ((listp insexp)
+         (eval insexp))
+        (t
+         (error "Invalid insexp spec: %S" insexp))))
+
 (defmacro telega-ins-fmt (fmt &rest args)
   "Insert string formatted by FMT and ARGS.
 Return t."
@@ -1966,6 +2016,66 @@ VAR-SEQ is used directly in the `seq-doseq' form."
          (when (progn ,@body-ins)
            (setq ,need-sep-sym t)))
        ,need-sep-sym)))
+
+(defmacro telega-ch-height (n)
+  "Create `:height' image spec for N chars height."
+  (if (string-version-lessp emacs-version "30.1")
+      `(cons (* ,n (telega-em-height-ratio)) 'em)
+    `(cons ,n 'ch)))
+
+(defmacro telega-cw-width (n)
+  "Create `:width' image spec for N chars width."
+  (if (string-version-lessp emacs-version "30.1")
+      `(cons (* ,n (telega-em-width-ratio)) 'em)
+    `(cons ,n 'cw)))
+
+
+;;; Saved Messages
+(defun telega--ReactionType (reaction-type)
+  "Make sure REACTION-TYPE is suitable to be passed to TDLib method."
+  ;; NOTE: emoji needs to be desurrogated
+  ;; before passing to any TDLib method
+  (if (eq (telega--tl-type reaction-type) 'reactionTypeEmoji)
+      (list :@type "reactionTypeEmoji"
+            :emoji (telega-tl-str reaction-type :emoji))
+    reaction-type))
+
+(defun telega-saved-messages-tags (&optional sm-topic-id)
+  "Return Saved Messages tags."
+  (gethash (or sm-topic-id 0) telega--saved-messages-tags))
+
+(defun telega-saved-messages-tags-ensure (tags &optional sm-topic-id)
+  (puthash (or sm-topic-id 0) (plist-get tags :tags)
+           telega--saved-messages-tags)
+
+  ;; Asynchronously fetch custom emojis used in tags
+  (when-let ((custom-emoji-ids
+              (seq-remove #'telega-custom-emoji-get
+                          (seq-map (telega--tl-prop :tag :custom_emoji_id)
+                                   (seq-filter
+                                    (lambda (tag)
+                                      (eq (telega--tl-type (plist-get tag :tag))
+                                          'reactionTypeCustomEmoji))
+                                    (plist-get tags :tags))))))
+    ;; NOTE: Fetch only uncached custom emojis
+    (telega--getCustomEmojiStickers custom-emoji-ids
+      (lambda (stickers)
+        (seq-doseq (sticker stickers)
+          (telega-custom-emoji--ensure sticker))))
+    ))
+
+(defun telega-saved-messages-find-tag (reaction-type &optional sm-topic-id)
+  "Find Saved Messages tag by REACTION-TYPE."
+  (seq-find (lambda (tag)
+              (equal (telega--ReactionType reaction-type)
+                     (telega--ReactionType (plist-get tag :tag))))
+            (telega-saved-messages-tags sm-topic-id)))
+
+(defun telega-saved-messages-find-label (label &optional sm-topic-id)
+  "Find Saved Messages tag by LABEL."
+  (seq-find (lambda (tag)
+              (equal label (telega-tl-str tag :label)))
+            (telega-saved-messages-tags sm-topic-id)))
 
 (provide 'telega-core)
 

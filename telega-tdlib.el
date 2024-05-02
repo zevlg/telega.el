@@ -2428,12 +2428,14 @@ Return an ID of group call."
     callback))
 
 (defun telega--getVideoChatRtmpUrl (chat &optional callback)
+  (declare (indent 1))
   (telega-server--call
    (list :@type "getVideoChatRtmpUrl"
          :chat_id (plist-get chat :id))
    callback))
 
 (defun telega--replaceVideoChatRtmpUrl (chat &optional callback)
+  (declare (indent 1))
   (telega-server--call
    (list :@type "replaceVideoChatRtmpUrl"
          :chat_id (plist-get chat :id))
@@ -3066,7 +3068,10 @@ URL to open after a link of the type internalLinkTypeWebApp is clicked."
    (list :@type "openWebApp"
          :chat_id (plist-get chat :id)
          :bot_user_id (plist-get bot-user :id)
-         :url url)
+         :url url
+         :application_name (or app-name "")
+         :message_thread_id (telega-chat-message-thread-id chat)
+         :reply_to reply-to)
    callback))
 
 (defun telega--loadSavedMessagesTopics (&optional limit callback)
@@ -3110,6 +3115,38 @@ Saved Messages topic is specified by SM-TOPIC-ID."
           (when tag
             (list :tag (telega--ReactionType (plist-get tag :tag)))))
    callback))
+
+(cl-defun telega--shareUsersWithBot (bot-msg button-id users
+                                             &key only-check-p callback)
+  (declare (indent 3))
+  (telega-server--call
+   (list :@type "shareUsersWithBot"
+         :chat_id (plist-get bot-msg :chat_id)
+         :message_id (plist-get bot-msg :id)
+         :button_id button-id
+         :shared_user_ids (cl-map #'vector (telega--tl-prop :id) users)
+         :only_check (if only-check-p t :false))
+   (or callback #'ignore)))
+
+(cl-defun telega--shareChatWithBot (bot-msg button-id chat
+                                            &key only-check-p callback)
+  (declare (indent 3))
+  (telega-server--call
+   (list :@type "shareChatWithBot"
+         :chat_id (plist-get bot-msg :chat_id)
+         :message_id (plist-get bot-msg :id)
+         :button_id button-id
+         :shared_chat_id (plist-get chat :id)
+         :only_check (if only-check-p t :false))
+   (or callback #'ignore)))
+
+(defun telega--toggleChatFolderTags (enabled-p &optional callback)
+  "Toggles whether chat folder tags are enabled."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "toggleChatFolderTags"
+         :are_tags_enabled (if enabled-p t :false))
+   (or callback #'ignore)))
 
 (provide 'telega-tdlib)
 

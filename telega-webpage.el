@@ -638,6 +638,8 @@ If IN-WEB-BROWSER is non-nil then force opening in web browser."
         ;; Fallback to default
         (browse-url url)))))
 
+;;; webview for webapp using xwidgets
+
 (provide 'telega-webpage)
 
 ;;; telega-webpage.el ends here

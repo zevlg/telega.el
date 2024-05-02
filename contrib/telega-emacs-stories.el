@@ -620,8 +620,9 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
                   :font-weight "bold"
                   :fill "black"
                   :font-family "monospace"
-                  ;; XXX insane X/Y calculation
-                  :x (- (/ size 2) (* 2 (/ font-size 3)))
+                  :x "50%"
+                  :text-anchor "middle"
+                  ;; XXX insane Y calculation
                   :y (+ (/ font-size 3) (/ size 2)))))
 
     ;; Draw play triangle
@@ -679,15 +680,18 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
                        (or (get-text-property 0 :color title)
                            (face-foreground 'telega-username)))
                 :font-family "monospace"
-                ;; XXX insane X/Y calculation
-                :x (or title-xoff
-                       (- (/ size 2) (* (length title) (/ font-size 3))))
+                :x "50%"
+                :text-anchor "middle"
+                ;; XXX insane Y calculation
                 :y (- svg-height (/ font-size 1.5))))
 
-    (telega-svg-image svg :scale 1.0 :width size :height svg-height
-                      :ascent 'center
-                      :mask 'heuristic
-                      :base-uri (expand-file-name "dummy" base-dir))))
+    (telega-svg-image svg
+      :scale 1.0
+      :width size
+      :height svg-height
+      :ascent 'center
+      :mask 'heuristic
+      :base-uri (expand-file-name "dummy" base-dir))))
 
 (defun telega-emacs-stories--msg-preload-content (msg)
   "Start downloading MSG story message's content."

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.254)
+#+title: Telega Manual (v0.8.255)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -104,6 +104,7 @@ Do not edit manually.  Modify =telega-ellit.org= or comments in
     - [[#telega-recognize-voice-message-mode][telega-recognize-voice-message-mode]]
     - [[#telega-auto-translate-mode][telega-auto-translate-mode]]
     - [[#telega-auto-download-mode-wip][telega-auto-download-mode (WIP)]]
+    - [[#telega-contact-birthdays-mode][telega-contact-birthdays-mode]]
     - [[#telega-play-media-sequence-mode][telega-play-media-sequence-mode]]
     - [[#telega-voip-sounds-mode][telega-voip-sounds-mode]]
   - [[#contributed-packages][Contributed packages]]
@@ -681,6 +682,12 @@ new terms specific to =telega=.  All of them are used in the manual.
      me means you, not me.
 
      Chat with me is also known as "Saved Messages".
+
+- Insexp :: 
+     S-Expression denoting an inserter.  It could be a function, a symbol or
+     a list to be evaluated.
+
+     Insexp evaluation results in content being inserted.
 
 * Telega prefix map
 :PROPERTIES:
@@ -1422,6 +1429,15 @@ Use ~telega-user-match-p~ to match a user.
 - has-private-forwards :: 
      Matches if user can't be linked in forwarded messages.
 
+- has-business-info :: 
+     Matches if user has business info.
+
+- has-birthdate :: 
+     Matches if user has birthdate set.
+
+- has-personal-chat :: 
+     Matches if user has personal chat.
+
 - has-emoji-status :: 
      Matches if corresponding user set his current emoji status.
 
@@ -1669,25 +1685,17 @@ Customizable options for Chat Folders:
   #+end_src
 
 
-- User Option: ~telega-chat-folder-format~ 
+- User Option: ~telega-chat-folders-insexp~ 
 
-  Non-nil to prefix chat's title with chat folder.
-  %I - Replaced with folder's icon from ~telega-folder-icon-names~ or
-       empty string if there is no icon.
-  %i - Replaced with folder's icon from ~telega-folder-format~ or
-       ~telega-symbol-folder~ if there is no icon.
-  %f - Replaced with folder's title.
-  %F - Replaced with folder's icon from ~telega-folder-icon-names~
-       if icon is unique, or equivalent to %I%f. 
+  Inserter sexp for chat folders prefixing chat's title.
+  While using this insexp ~telega-chat-folders~ is bound to the list of
+  folder names to be inserted. 
 
-  Default value: ~#("%F | " 0 5 (face bold))~
+  Default value: ~telega-folders-insert-default~
 
 - User Option: ~telega-chat-folders-exclude~ 
 
-  Exclude these folders when determining chat's folder.
-  When determining which chat folder to use in
-  ~telega-chat-folders-format~, these folders are excluded, if
-  single folder is left, then it is used in the formatting. 
+  Exclude these folders from chat folders list to be displayed. 
 
   Default value: ~("Unread" "Personal")~
 
@@ -1929,6 +1937,8 @@ messages:
 - @@html:<kbd>@@M-g s@@html:</kbd>@@ (~telega-chatbuf-inplace-search~) :: 
      Search backward in the chatbuf.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, then search forward instead.
+     ~FROM-MSG~ specifies message from where to start searching.  For
+     non-interactive use cases only.
 
 - @@html:<kbd>@@M-g n@@html:</kbd>@@ (~telega-chatbuf-inplace-search-next~) :: 
      Continue inplace searching with last search.
@@ -3311,6 +3321,15 @@ Customizable options:
      (other . :high))
   #+end_src
 
+
+** telega-contact-birthdays-mode
+:PROPERTIES:
+:CUSTOM_ID: telega-contact-birthdays-mode
+:END:
+
+Mode to display close birthdays of the contacts.
+
+~telega-contact-birthdays-mode~ is enabled by default.
 
 ** TODO telega-play-media-sequence-mode
 :PROPERTIES:

@@ -49,8 +49,8 @@
 
     ;; Fallback to svg icon
     (let* ((cheight (or cheight 1))
-           (xh (telega-chars-xheight cheight))
-           (xw (telega-chars-xwidth (* 2 cheight)))
+           (xh (telega-chars-xheight 1))
+           (xw (telega-chars-xwidth 2))
            (svg (telega-svg-create xw xh))
            (title (telega-tl-str (plist-get topic :info) :name))
            (general-p (telega-topic-match-p topic 'is-general))
@@ -79,15 +79,17 @@
                            (face-foreground 'telega-shadow nil t))
                         "white")
                 :font-family "monospace"
-                ;; XXX insane X/Y calculation
-                :x (- (/ xw 2) (/ font-size 3))
+                :x "50%"
+                :text-anchor "middle"
+                ;; XXX insane Y calculation
                 :y (+ (/ font-size 3) (/ xw 2)))
 
-      (telega-svg-image svg :scale 1.0
-                        :width xw :height xh
-                        :ascent 'center
-                        :mask 'heuristic
-                        ))))
+      (telega-svg-image svg
+        :scale 1.0
+        :width (telega-cw-width (* 2 cheight))
+        :max-height (telega-ch-height cheight)
+        :ascent 'center
+        :mask 'heuristic))))
 
 (defun telega-topic-msg-thread-id (topic)
   (telega--tl-get topic :info :message_thread_id))
@@ -181,9 +183,9 @@ If FORCE-UPDATE-P is specified, then refetch topics from Telegram server."
     (when (and button (eq (button-type button) 'telega-topic))
       (button-get button :value))))
 
-(defun telega-topic-goto (topic &optional msg-id)
+(defun telega-topic-goto (topic &optional start-msg-id)
   "Open TOPIC in a chatbuf.
-If MSG-ID is specified, jump to the this message in the topic."
+If START-MSG-ID is specified, jump to the this message in the topic."
   (let* ((topic-chat (telega-topic-chat topic))
          (buffer (telega-chatbuf--get-create topic-chat :no-history)))
     ;; NOTE: pop to buffer after starting filtering by topic, to make
@@ -191,9 +193,7 @@ If MSG-ID is specified, jump to the this message in the topic."
     ;; cursor at topic position
     (with-current-buffer buffer
       (unless (eq topic (telega-chatbuf--thread-topic))
-        (telega-chatbuf-filter-by-topic topic (when msg-id :no-history))
-        (when msg-id
-          (telega-chat--goto-msg topic-chat msg-id 'highlight))))
+        (telega-chatbuf-filter-by-topic topic start-msg-id)))
 
     (telega-chat--pop-to-buffer topic-chat :no-history)))
 

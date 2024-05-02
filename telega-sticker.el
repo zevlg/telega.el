@@ -260,7 +260,8 @@ CALLBACK is called without arguments"
   "Generate svg for STICKER showing download progress."
   (let* ((emoji (telega-sticker-emoji sticker 'no-props))
          (sticker-size (telega-sticker-size sticker))
-         (xh (telega-chars-xheight (car sticker-size)))
+         (cheight (car sticker-size))
+         (xh (telega-chars-xheight cheight))
          (w-chars (telega-chars-in-width xh))
          (xw (telega-chars-xwidth w-chars))
          (svg (telega-svg-create xw xh))
@@ -278,21 +279,18 @@ CALLBACK is called without arguments"
                 :font-weight "bold"
                 :fill "white"
                 :font-family "monospace"
-                :x (/ font-size 2)
-                :y (+ font-size (/ font-size 3)))
+                :x "50%"
+                :text-anchor "middle"
+                ;; Insane Y calculation
+                :y (+ (/ xh 2) (/ font-size 3)))
       (telega-svg-progress svg (telega-file--downloading-progress
                                 (telega-sticker--file sticker))))
-    (telega-svg-image svg :scale 1.0
-                      :width xw :height xh
-                      :ascent 'center
-                      :mask 'heuristic
-                      ;; text of correct width
-                      :telega-text
-                      (make-string
-                       (or (car (plist-get sticker :telega-image-cwidth-xmargin))
-                           w-chars)
-                       ?X))
-    ))
+    (telega-svg-image svg
+      :scale 1.0
+      :height (telega-ch-height cheight)
+      :telega-nslices cheight
+      :ascent 'center
+      :mask 'heuristic)))
 
 (defvar telega-sticker--convert-cmd
   (if (or telega-use-docker
@@ -346,6 +344,7 @@ Return path to png file."
   ;;      Fallback to `telega-sticker--progress-svg', waiting for
   ;;      thumbnail or sticker to be downloaded
   (let* ((sticker-size (telega-sticker-size sticker))
+         (cheight (car sticker-size))
          (sfile (telega-sticker--file sticker))
          (tfile (telega-sticker--thumb-file sticker))
          (filename (or (and (or telega-sticker--use-thumbnail
@@ -361,10 +360,6 @@ Return path to png file."
                                  (not (equal (file-name-extension fn) "webp")))
                              fn
                            (telega-sticker--webp-to-png fn)))))
-         (cwidth-xmargin (telega-media--cwidth-xmargin
-                          (plist-get sticker :width)
-                          (plist-get sticker :height)
-                          (car sticker-size)))
          (custom-create-image-function
           (plist-get sticker :telega-create-image-function))
          (img
@@ -375,14 +370,10 @@ Return path to png file."
                 (img-file
                  (apply #'telega-create-image img-file
                         (when (fboundp 'imagemagick-types) 'imagemagick) nil
-                        :height (telega-chars-xheight (car sticker-size))
-                        ;; NOTE: do not use max-width setting, it will slow
-                        ;; down displaying stickers
-                        ;; :max-width (* (telega-chars-xwidth 1)
-                        ;;               (cdr sticker-size))
-                        :scale 1.0 :ascent 'center
-                        :margin (cons (cdr cwidth-xmargin) 0)
-                        :telega-text (make-string (car cwidth-xmargin) ?X)
+                        :height (telega-ch-height cheight)
+                        :telega-nslices cheight
+                        :scale 1.0
+                        :ascent 'center
                         ;; NOTE: For adaptive custom emojis use also
                         ;; heuristic mask, because it is predicatable
                         :mask (when-let ((sset (telega-stickerset-get
@@ -530,6 +521,10 @@ SSET can be either `sticker' or `stickerSetInfo'."
       (telega-ins-describe-item "Adaptive"
         (telega-ins (telega-symbol 'checkmark))))
 
+    (when (plist-get sset :is_owned)
+      (telega-ins-describe-item "Created by me"
+        (telega-ins (telega-symbol 'checkmark))))
+
     ;; NOTE: In case SSET is "stickerSetInfo" fetch real sticker set
     ;; and insert all the stickers
     (let ((sticker-list-ins
@@ -537,14 +532,12 @@ SSET can be either `sticker' or `stickerSetInfo'."
              (let ((stickers (plist-get sticker-set :stickers)))
                (telega-ins-describe-item
                  (cl-ecase (telega--tl-type (plist-get sticker-set :sticker_type))
-                   (stickerTypeMask "Masks")
-                   (stickerTypeCustomEmoji "Custom Emojis")
+                   (stickerTypeMask
+                    (telega-i18n "lng_stickers_masks_tab"))
+                   (stickerTypeCustomEmoji
+                    "Custom Emojis")
                    (stickerTypeRegular
-                    (cl-ecase (telega--tl-type
-                               (plist-get sticker-set :sticker_format))
-                      (stickerFormatTgs  "Animated Stickers")
-                      (stickerFormatWebm "Video Stickers")
-                      (stickerFormatWebp "Stickers"))))
+                    (telega-i18n "lng_stickers_installed_tab")))
                  (telega-ins-fmt "%d\n" (length stickers))
                  (telega-ins--sticker-list stickers)))))
           (sset-id (plist-get sset :id)))
@@ -795,7 +788,7 @@ If prefix argument is specified, then show trends in Premium stickers."
   ;; (i.e. (cdr frame) is nil)
   (ignore-errors
     (telega-media--image-update
-     (cons sticker 'telega-sticker--create-image) nil))
+     (cons sticker #'telega-sticker--create-image) nil))
   (if for-msg
       (telega-msg-redisplay for-msg)
 
@@ -921,23 +914,16 @@ Install from https://github.com/zevlg/tgs2png"))
 (defun telega-animation--progress-svg (animation)
   "Generate svg for STICKER showing download progress."
   (let* ((xh (telega-chars-xheight telega-animation-height))
-         (w-chars (telega-chars-in-width xh))
-         (xw (telega-chars-xwidth w-chars))
+         (xw (telega-chars-xwidth (telega-chars-in-width xh)))
          (svg (telega-svg-create xw xh)))
     (telega-svg-progress svg (telega-file--downloading-progress
-                              (telega-animation--file animation)))
-    (telega-svg-image
-     svg :scale 1.0
-     :width xw :height xh
-     :ascent 'center
-     :mask 'heuristic
-     ;; text of correct width
-     :telega-text
-     (make-string
-      (or (car (plist-get animation :telega-image-cwidth-xmargin))
-          w-chars)
-      ?X))
-    ))
+                              (telega-animation--file animation))
+                         'with-border)
+    (telega-svg-image svg
+      :scale 1.0
+      :height (telega-ch-height telega-animation-height)
+      :telega-nslices telega-animation-height
+      :ascent 'center)))
 
 (defun telega-animation--create-image (animation &optional _fileignored)
   "Return image for the ANIMATION."
@@ -957,21 +943,12 @@ Install from https://github.com/zevlg/tgs2png"))
   (let* ((anim-frame-filename
           (plist-get animation :telega-ffplay-frame-filename))
          (minithumb (plist-get animation :minithumbnail))
-         (tfile (telega-animation--thumb-file animation))
-         (cwidth-xmargin (plist-get animation :telega-image-cwidth-xmargin)))
-    (unless cwidth-xmargin
-      (setq cwidth-xmargin (telega-media--cwidth-xmargin
-                            (plist-get animation :width)
-                            (plist-get animation :height)
-                            telega-animation-height))
-      (plist-put animation :telega-image-cwidth-xmargin cwidth-xmargin))
-
+         (tfile (telega-animation--thumb-file animation)))
     (let ((img-props
-           (list :height (telega-chars-xheight telega-animation-height)
+           (list :height (telega-ch-height telega-animation-height)
+                 :telega-nslices telega-animation-height
                  :scale 1.0
-                 :ascent 'center
-                 :margin (cons (cdr cwidth-xmargin) 0)
-                 :telega-text (make-string (car cwidth-xmargin) ?X))))
+                 :ascent 'center)))
     (cond ((and anim-frame-filename
                 ;; NOTE: Check file for existance, to avoid errors in
                 ;; `insert-file-contents-literally' if file does not

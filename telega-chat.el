@@ -1099,6 +1099,17 @@ Specify non-nil BAN to ban this user in this CHAT."
       (telega-ins (upcase (nth 1 info-spec)) "\n"))
     (funcall (nth 2 info-spec) (telega-chat--info chat) chat))
 
+  (when-let* ((video-chat (plist-get chat :video_chat))
+              (group-call-id (plist-get video-chat :group_call_id)))
+    (unless (telega-zerop group-call-id)
+      (telega-ins "\n")
+      (telega-ins--with-face 'telega-describe-section-title
+        (telega-ins (upcase (telega-i18n "lng_group_call_title")) "\n"))
+      (telega-group-call-get group-call-id
+        (telega--gen-ins-continuation-callback 'loading
+          (lambda (_ignored)
+            (telega-describe-group-call--inserter group-call-id))))))
+
   (when (and (listp telega-debug) (memq 'info telega-debug))
     (telega-ins "\n---DEBUG---\n")
     (telega-ins--with-face 'bold
@@ -2324,7 +2335,7 @@ Use this to surrond header with some prefix and suffix."
    (when telega-chatbuf--messages-compact-view
      (telega-ins "\n"))
    (let* ((column telega-chat-fill-column)
-          (column1 (/ column 2))
+          (column1 (round (/ column 1.5)))
           (column2 (- column column1))
           (fill-symbol (if (or (null telega-chatbuf--ewoc)
                                (telega-chatbuf--last-msg-loaded-p))
@@ -4694,7 +4705,7 @@ Call `(recenter -1)' if point is at prompt, otherwise call `recenter' as-is."
     (lambda ()
       ;; NOTE:
       ;; - deleted messages can't be marked as read, so point will
-      ;;   stuck at deleted messag, so we just skip such messages
+      ;;   stuck at deleted message, so we just skip such messages
       ;; - `telega-button-forward' returns nil if there is no button
       ;;   matching predicate.  In this case just move to the prompt
       (let ((button (telega-button-forward 1
@@ -4860,12 +4871,28 @@ Return nil if CHAT has no linked chat."
 (defun telega-chatbuf-goto-date (date)
   "Goto last message before DATE timestamp."
   (interactive (list (telega-read-timestamp "History at" 'only-date)))
-  (telega--getChatMessageByDate (plist-get telega-chatbuf--chat :id) date
-    (lambda (msg)
+  ;; NOTE: Search last message on day prior to DATE and jump to the
+  ;; next message
+  (unless (> date 86400)
+    (user-error "Invalid date"))
+
+  (telega--getChatMessageByDate
+      (plist-get telega-chatbuf--chat :id) (- date 86400)
+    (lambda-with-current-buffer (msg)
       (if (not msg)
           (message "telega: No chat history at %s"
                    (format-time-string "%Y-%m-%d" (seconds-to-time date)))
-        (telega-msg-goto-highlight msg)))))
+        ;; NOTE: this `telega-chatbuf-inplace-search' will jump to
+        ;; next to first searched message
+        (telega-chatbuf-inplace-search
+         (list :title (format-time-string "date %Y-%m-%d"
+                                          (seconds-to-time date))
+               :by-sender (plist-get telega-chatbuf--msg-filter :by-sender)
+               :query (plist-get telega-chatbuf--msg-filter :query))
+         'forward
+         msg)
+;        (telega-msg-goto-highlight msg))
+        ))))
 
 ;;; Attaching stuff to the input
 (defun telega-chatbuf-attach-location (location &optional live-secs)
@@ -4929,8 +4956,9 @@ ahead in case `telega-chat-upload-attaches-ahead' is non-nil."
                       filename
                       (when (fboundp 'imagemagick-types) 'imagemagick)
                       nil
-                      :scale 1.0 :ascent 'center
-                      :height (telega-chars-xheight 1))))
+                      :scale 1.0
+                      :ascent 'center
+                      :height (telega-ch-height 1))))
           (upload-ahead-file
            (when telega-chat-upload-attaches-ahead
              (telega-file--upload filename file-type 16 upload-ahead-callback))))
@@ -6100,7 +6128,7 @@ about not found message."
       (message "telega: %s (MSG-ID=%S)"
                (telega-i18n "lng_message_not_found") msg-id))
     ret))
-  
+
 (defun telega-chatbuf--goto-loaded-msg (msg-id &optional highlight callback)
   "In chatbuf goto message denoted by MSG-ID.
 Goto message only if it is already displayed in the chatbuf.
@@ -6147,6 +6175,14 @@ Return non-nil on success."
           ;; confusing user
           ;; (when msg
           ;;   (telega-chatbuf--insert-messages (list msg) 'append-new))
+          ;; 
+          ;; On the other hand, if callback is used, this means we
+          ;; need some operation to be done, such as jumping to the
+          ;; next message.  So if callback is not given, we can insert
+          ;; the message, no operation on it will follow.
+          (when (and msg (not callback))
+            (telega-chatbuf--insert-messages (list msg) 'append-new))
+
           (telega-chatbuf--load-history
               msg-id (- (/ telega-chat-history-limit 2)) nil
             (lambda (_ignored)
@@ -6183,8 +6219,8 @@ CALLBACK is called after point is moved to the message with MSG-ID."
       (when callback
         (funcall callback))
 
-    ;; NOTE: Need to fetch a message before loading a history, to
-    ;; understand reset conditions for the message filter and thread.
+    ;; ARGUABLE: load message under history loading protection? to avoid
+    ;; loading history while fetching the message?
     (telega-msg-get telega-chatbuf--chat msg-id
       (telega-chatbuf--goto-msg-gen-callback msg-id highlight callback))))
 
@@ -6218,9 +6254,7 @@ CALLBACK is called after point is moved to the message with MSG-ID."
     (with-current-buffer (telega-chat--pop-to-buffer thread-chat :no-history)
       (telega-chatbuf-filter-by-thread
        (plist-put thread-msg :telega-thread-info thread-info)
-       (when reply-msg-id :no-history))
-      (when reply-msg-id
-        (telega-chat--goto-msg thread-chat reply-msg-id 'highlight)))))
+       reply-msg-id))))
 
 
 (defconst telega-chat--tl-message-filters
@@ -6360,7 +6394,8 @@ CALLBACK is called after point is moved to the message with MSG-ID."
     (setq telega-chatbuf--msg-filter msg-filter)
 
     (let* ((msg-at-point (telega-msg-at (point) #'telega-msg-from-history-p))
-           (keep-msg-p (telega-chatbuf--filter-match-msg-p msg-at-point)))
+           (keep-msg-p (when msg-at-point
+                         (telega-chatbuf--filter-match-msg-p msg-at-point))))
       (telega-chatbuf--clean (when keep-msg-p
                                (apply-partially #'eq msg-at-point)))
       ;; Load history around the message
@@ -6391,20 +6426,21 @@ CALLBACK is called after point is moved to the message with MSG-ID."
 
   (telega-chatbuf--chat-update "msg-filter"))
 
-(defun telega-chatbuf-filter-by-topic (topic &optional no-history-load)
-  "Show only messages belonging to TOPIC."
+(defun telega-chatbuf-filter-by-topic (topic &optional start-msg-id)
+  "Show only messages belonging to TOPIC.
+If START-MSG-ID is specified, jump to the this message in the topic."
   (interactive
    (if (telega-chat-match-p telega-chatbuf--chat 'is-forum)
        (list (telega-completing-read-topic telega-chatbuf--chat "Topic: ") nil)
    (user-error "Can't read topic for non-forum chat")))
 
-  (telega-chatbuf-filter-by-thread topic no-history-load))
+  (telega-chatbuf-filter-by-thread topic start-msg-id))
 
-(defun telega-chatbuf-filter-by-thread (&optional thread no-history-load)
+(defun telega-chatbuf-filter-by-thread (&optional thread start-msg-id)
   "Start filtering messages showing only messages that belongs to THREAD.
 THREAD is either forum topic or message starting a thread.
 If THREAD is nil, then reset filtering by thread.
-If NO-HISTORY-LOAD is specified, do not load history."
+If START-MSG-ID is specified, jump to the this message in the thread."
   (setq telega-chatbuf--thread thread)
   (telega-chatbuf--chat-update "thread")
 
@@ -6415,9 +6451,27 @@ If NO-HISTORY-LOAD is specified, do not load history."
     (telega--getMessage (plist-get telega-chatbuf--chat :id)
         (telega-chatbuf--message-thread-id)))
 
-  (telega-chatbuf--clean)
-  (unless no-history-load
-    (telega-chatbuf--load-initial-history)))
+  ;; Try to keep message at point after thread filtering is applied
+  (let* ((msg-at-point (telega-msg-at (point) #'telega-msg-from-history-p))
+         (keep-msg-p (when (and msg-at-point
+                                (or (not start-msg-id)
+                                    (eq (plist-get msg-at-point :id)
+                                        start-msg-id)))
+                       (telega-chatbuf--filter-match-msg-p msg-at-point))))
+    (telega-chatbuf--clean (when keep-msg-p
+                             (apply-partially #'eq msg-at-point)))
+    (cond (keep-msg-p
+           ;; Load history around the message
+           (telega-chatbuf--load-history
+               (plist-get msg-at-point :id)
+               (- (/ telega-chat-history-limit 2))
+               telega-chat-history-limit))
+
+          (start-msg-id
+           (telega-chatbuf--goto-msg start-msg-id 'highlight))
+
+          (t
+           (telega-chatbuf--load-initial-history)))))
 
 (defun telega-chatbuf-thread-cancel (&rest _ignored)
   "Cancel filtering by thread."
@@ -6543,9 +6597,12 @@ If `\\[universal-argument]' is given, then cancel thread filtering as well."
   "Plist with inplace searching params.")
 (make-variable-buffer-local 'telega-chatbuf--inplace-search-filter)
 
-(defun telega-chatbuf-inplace-search (isearch-filter &optional forward-p)
+(defun telega-chatbuf-inplace-search (isearch-filter &optional forward-p
+                                                     from-msg)
   "Search backward in the chatbuf.
-If `\\[universal-argument]' is given, then search forward instead."
+If `\\[universal-argument]' is given, then search forward instead.
+FROM-MSG specifies message from where to start searching.  For
+non-interactive use cases only."
   (interactive (let ((is-forward current-prefix-arg))
                  (list (telega-chatbuf--read-filter
                         (format "Telega-search (%s) for: "
@@ -6557,17 +6614,30 @@ If `\\[universal-argument]' is given, then search forward instead."
       (call-interactively (plist-get isearch-filter :tdlib-msg-filter))
 
     (message "telega: %s" (telega-i18n "lng_profile_loading"))
-    (setq telega-chatbuf--inplace-search-filter isearch-filter)
+    (unless from-msg
+      (setq telega-chatbuf--inplace-search-filter isearch-filter))
+
     (let* ((tl-msg-filter
             (or (plist-get isearch-filter :tdlib-msg-filter)
                 (plist-get telega-chatbuf--msg-filter :tdlib-msg-filter)))
            (query (plist-get isearch-filter :query))
            (by-sender (plist-get isearch-filter :by-sender))
            (from-msg-id
-            (plist-get (telega-msg-at (point) #'telega-msg-from-history-p) :id))
+            (plist-get (or from-msg
+                           (telega-msg-at (point) #'telega-msg-from-history-p))
+                       :id))
            (callback
             (lambda-with-current-buffer (reply)
-              (let* ((next-msg (car (append (plist-get reply :messages) nil)))
+              (let* ((next-msg
+                      (let ((messages (plist-get reply :messages)))
+                        (cond ((and from-msg
+                                    (> (seq-length messages) 1)
+                                    (not (telega-msg-id= from-msg
+                                                         (seq-elt messages 1))))
+                               (seq-elt messages 1))
+
+                              ((> (seq-length messages) 0)
+                               (seq-elt messages 0)))))
                      (found-p (and next-msg
                                    (not (eq (plist-get next-msg :id)
                                             from-msg-id)))))
@@ -6579,11 +6649,13 @@ If `\\[universal-argument]' is given, then search forward instead."
                   (telega-chatbuf--chat-update "highlight-text"))
 
                 (if (not found-p)
-                    (message "telega: \"%s\" not found" query)
+                    (message "telega: failed search for %s"
+                             (plist-get isearch-filter :title))
+
+                  (message "")          ; Reset Loading..
                   (when (and query (not (string-empty-p query)))
                     (telega-highlight-text (regexp-quote query))
                     (telega-chatbuf--chat-update "highlight-text"))
-                  (message "")
                   (telega-msg-goto-highlight next-msg))))))
       (if (plist-get telega-chatbuf--msg-filter :saved-messages-tag)
           (progn
@@ -6630,7 +6702,7 @@ bindings."
                      (telega-completing-read-chat-member
                       "Sent by: " telega-chatbuf--chat))))
     (telega-chatbuf-inplace-search
-     (list :title (format "search for %s" query)
+     (list :title (format "query \"%s\"" query)
            :query query
            :by-sender by-sender)
      forward-p)))
@@ -6654,6 +6726,19 @@ containing QUERY sent by specified sender."
   "Continue inplace searching with last search."
   (interactive)
   (telega-chatbuf-inplace-search-prev 'forward))
+
+(defun telega-chatbuf-inplace-search-by-sender (sender &optional forward-p)
+  "Search inplace by SENDER."
+  (interactive (list (telega-completing-read-chat-member
+                      "Sent by: " telega-chatbuf--chat)))
+  (telega-chatbuf-inplace-search
+   (list :title (telega-ins--as-string
+                 (telega-ins "sent by ")
+                 (telega-ins--msg-sender sender
+                   :with-avatar-p t
+                   :with-brackets-p t))
+         :by-sender sender)
+   forward-p))
 
 
 ;;; Chat Themes
@@ -6743,7 +6828,7 @@ containing QUERY sent by specified sender."
 
 ;;; ellit-org: minor-modes
 ;; ** telega-chat-auto-fill-mode
-;; 
+;;
 ;; Minor mode to automatically adjust ~telega-chat-fill-column~
 ;; to the width of the window displaying chatbuf.
 ;;
@@ -6753,8 +6838,11 @@ containing QUERY sent by specified sender."
   (interactive (list (get-buffer-window)))
 
   (when (or (null win) (eq (selected-window) win))
-    (let ((new-fill-column (- (window-width win)
-                              (with-selected-window win
+    (let ((new-fill-column (- (/ (window-width win 'pixels)
+                                 (telega-chars-xwidth 1))
+                              (if win
+                                  (with-selected-window win
+                                    (line-number-display-width))
                                 (line-number-display-width))
                               (or (car visual-fill-column-extra-text-width)
                                   0)
@@ -6770,7 +6858,7 @@ containing QUERY sent by specified sender."
             (setq telega-chat-fill-column new-fill-column
                   fill-column new-fill-column)
             (with-telega-buffer-modify
-             (telega-save-excursion
+             (telega-save-cursor
                (telega-chatbuf--footer-update)
                (ewoc-refresh telega-chatbuf--ewoc))))
           (progress-reporter-done progress))))))

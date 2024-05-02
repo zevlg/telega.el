@@ -224,11 +224,12 @@ telega-server has been made."
   (let ((font-size (/ width 2.75)))
     (svg-text svg symbol
               :font-size font-size
-              ;; :font-weight "bold"
-              :fill "currentColor"
+              :font-weight "bold"
               :font-family "monospace"
-              ;; XXX insane X/Y calculation
-              :x (- (/ width 2) (/ font-size 1.6))
+              :fill "currentColor"
+              :x "50%"
+              :text-anchor "middle"
+              ;; XXX insane Y calculation
               :y (+ (/ font-size 3) (/ width 2))))
   svg)
 
@@ -287,9 +288,14 @@ telega-server has been made."
     (when (telega-story-match-p story 'is-video)
       (telega-svg-red-play-triangle svg (when bw-filter "black")))
 
-    (telega-svg-image svg :scale 1.0 :width svg-w :height svg-h
-                      :ascent 'center :mask 'heuristic
-                      :base-uri (if data-p "" filename))))
+    (telega-svg-image svg
+      :scale 1.0
+      :max-height (telega-ch-height 1)
+      :width (telega-cw-width 2)
+      :telega-text "()"
+      :ascent 'center
+      :mask 'heuristic
+      :base-uri (if data-p "" filename))))
 
 (defun telega-story-preview--create-image-one-line (story &optional for-msg)
   "Create a preview image for the STORY."

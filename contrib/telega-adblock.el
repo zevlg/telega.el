@@ -283,7 +283,7 @@ an URL."
                               ""))))
                 telega-adblock-msg-extracted-links)))
 
-(defun telega-adblock-msg-multiple-same-links-p (msg)
+(defun telega-adblock-msg-multiple-same-links-p (_msg)
   "Return non-nil if MSG has multiple links to the same resource."
   (>= (- (length telega-adblock-msg-extracted-links)
          (length (seq-uniq (mapcar #'cdr telega-adblock-msg-extracted-links))))

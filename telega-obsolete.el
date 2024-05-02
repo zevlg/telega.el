@@ -262,6 +262,12 @@
                            'telega-avatar-text-function
                            "0.8.251")
 
+(telega-obsolete--variable 'telega-symbol-draft
+                           nil
+                           "0.8.255")
+(telega-obsolete--variable 'telega-chat-folder-format
+                           'telega-chat-folders-inserter-sexp "0.8.255")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

@@ -71,41 +71,39 @@ Alist with elements in form (emoji . image)")
                 (not (telega-emoji-p (buffer-substring (point) start))))
       (forward-char 1))))
 
-(defun telega-emoji--image-cache-key (emoji)
+(defun telega-emoji--image-cache-key (emoji cheight)
   "Return cache key for the EMOJI."
-  (if (plist-get emoji :is-premium)
-      (concat emoji "###IS_PREMIUM")
-    emoji))
+  (concat emoji (when (plist-get emoji :is-premium)
+                  "###IS_PREMIUM")
+          (format "###%d" (or cheight 1))))
 
-(defun telega-emoji--image-cache-get (emoji xheight)
+(defun telega-emoji--image-cache-get (emoji cheight)
   "Get EMOJI from `telega-emoji-svg-images'.
-Also checks that height of the cached image equals to XHEIGHT."
-  (when-let ((cached-image (cdr (assoc (telega-emoji--image-cache-key emoji)
-                                       telega-emoji-svg-images))))
-    (when (eq xheight (plist-get (cdr cached-image) :height))
-      cached-image)))
+CHEIGHT is height for emoji to be cached."
+  (cdr (assoc (telega-emoji--image-cache-key emoji cheight)
+              telega-emoji-svg-images)))
 
-(defun telega-emoji--image-cache-put (emoji image)
+(defun telega-emoji--image-cache-put (emoji cheight image)
   "Put EMOJI IMAGE into `telega-emoji-svg-images' cache."
-  (let* ((cache-key (telega-emoji--image-cache-key emoji))
+  (let* ((cache-key (telega-emoji--image-cache-key emoji cheight))
          (cached-image (assoc emoji telega-emoji-svg-images)))
     (if cached-image
         (setcdr cached-image image)
       (setq telega-emoji-svg-images
             (cons (cons cache-key image) telega-emoji-svg-images)))))
 
-(defun telega-emoji-create-svg (emoji &optional cheight)
+(defun telega-emoji-create-svg (emoji &optional cheight no-cache-p)
   "Create svg image for the EMOJI.
 If EMOJI has non-nil `:is-premium' text property, then add Telegram
 Premium logo at the right bottom corner.
 CHEIGHT is height for the svg in characters, default=1."
-  (let* ((emoji-cheight (or cheight 1))
-         (use-cache-p (and (= 1 (length emoji)) (= emoji-cheight 1)))
-         (xh (telega-chars-xheight emoji-cheight))
+  (let* ((cheight (or cheight 1))
+         (use-cache-p (and (not no-cache-p) (= 1 (length emoji)) (= cheight 1)))
+         (xh (telega-chars-xheight cheight))
          (image (when use-cache-p
-                  (telega-emoji--image-cache-get emoji xh))))
+                  (telega-emoji--image-cache-get emoji cheight))))
     (unless image
-      (let* ((font-xh (min xh (telega-chars-xwidth (* 2 emoji-cheight))))
+      (let* ((font-xh (min xh (telega-chars-xwidth (* 2 cheight))))
              (font-size (- font-xh (/ font-xh 5)))
              (font-y (if (> font-xh xh)
                          font-size
@@ -144,13 +142,15 @@ CHEIGHT is height for the svg in characters, default=1."
               :transform (format "translate(%f, %f)"
                                  (- xw wh-size) (- xh wh-size)))))
 
-        (setq image (telega-svg-image svg :scale 1.0
-                                      :width xw :height xh
-                                      :ascent 'center
-                                      :mask 'heuristic
-                                      :telega-text telega-text)))
+        (setq image (telega-svg-image svg
+                      :scale 1.0
+                      :max-height (telega-ch-height cheight)
+                      :width (telega-cw-width aw-chars)
+                      :telega-text telega-text
+                      :ascent 'center
+                      :mask 'heuristic)))
       (when use-cache-p
-        (telega-emoji--image-cache-put emoji image)))
+        (telega-emoji--image-cache-put emoji cheight image)))
     image))
 
 (defun telega-emoji-has-zero-joiner-p (emoji)
@@ -230,18 +230,25 @@ Actually return STICKER's full type info."
    ((or (not img-file)
         (< (telega-chars-xheight 1) 2))
     ;; NOTE: Fallback for tty mode with enabled images
-    (telega-emoji-create-svg (telega-sticker-emoji sticker) 1))
+    ;; NOTE: don't use emoji from cache, because if custom emoji
+    ;; updates, it wil modify image inplace, corrupting emoji image in
+    ;; the cache
+    (telega-emoji-create-svg (telega-sticker-emoji sticker) 1 'no-cache))
+
    ((equal "webp" (file-name-extension img-file))
     (telega-create-image
      img-file (when (fboundp 'imagemagick-types) 'imagemagick) nil
-     :height (- (telega-chars-xheight 1) 2)
-     :scale 1.0 :ascent 'center
+     :max-height (telega-ch-height 1)
+     :width (telega-cw-width 2)
+     :telega-text "()"
+     :scale 1.0
+     :ascent 'center
      :heuristic-mask t))
+
    (t
     ;; Embed IMG-FILE into 2x1 svg with transparent background
     (let* ((w (telega-chars-xwidth 2))
-           ;; NOTE: give 2 pixels gap for the height
-           (h (- (min w (telega-chars-xheight 1)) 2))
+           (h (min w (telega-chars-xheight 1)))
            (base-dir (telega-directory-base-uri telega-database-dir))
            (svg (telega-svg-create w h))
            (img-size h)
@@ -268,8 +275,13 @@ Actually return STICKER's full type info."
           (svg-rectangle svg 0 0 100 100
                          :fill-color (face-foreground 'telega-blue)
                          :mask "url(#mask)"))
-        (telega-svg-image svg :scale 1.0 :width w :height h :ascent 'center
-                          :base-uri (expand-file-name "dummy" base-dir))))))
+        (telega-svg-image svg
+          :scale 1.0
+          :width (telega-cw-width 2)
+          :max-height (telega-ch-height 1)
+          :telega-text "()"           ; (telega-sticker-emoji sticker)
+          :ascent 'center
+          :base-uri (expand-file-name "dummy" base-dir))))))
 
 (defun telega-custom-emoji--ids-for-msg (msg &optional where)
   "Return a list of custom emoji ids extracted from the message MSG.
@@ -414,8 +426,7 @@ Do not fetch custom emojis for ignored messages."
   "Inserter for the EMOJI-STATUS."
   (when emoji-status
     (telega-ins--image
-     (telega-emoji-status--image emoji-status) nil
-     :telega-text telega-symbol-premium)))
+     (telega-emoji-status--image emoji-status) nil)))
 
 (defun telega-ins--user-emoji-status (user)
   "Inserter USER's emoji status."

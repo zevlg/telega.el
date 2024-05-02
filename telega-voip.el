@@ -201,7 +201,7 @@ Discard active call if any."
 
 ;;; ellit-org: minor-modes
 ;; ** telega-voip-sounds-mode
-;; 
+;;
 ;; Mode to notify about VoIP call by playing sounds.
 ;; ~telega-voip-sounds-mode~ is enabled by default.  Disable it with:
 ;; #+begin_src emacs-lisp
@@ -379,17 +379,17 @@ CHEIGHT is height in chars, default is 1."
   "Set GROUP-CALL's title to TITLE.
 If TITLE is not specified, ask user interactively for the new title."
   (unless title
-    (setq title (read-string "Group Call Title: ")))
+    (setq title (read-string
+                 (concat (telega-i18n "lng_group_call_edit_title_header")
+                         ": ")
+                 (telega-tl-str group-call :title))))
   (telega--setGroupCallTitle group-call title))
 
 (defun telega-describe-group-call--inserter (group-call-id)
   "Inserter for the voice chat."
-  (let* ((group-call (telega-group-call-get group-call-id))
-         (can-manage-p (plist-get group-call :can_be_managed)))
-    (telega-ins (telega-i18n "lng_group_call_title") ": "
-                (or (telega-tl-str group-call :title)
-                    (propertize "No title" 'face 'telega-shadow)))
-    (telega-ins " ")
+  (let ((group-call (telega-group-call-get group-call-id))
+        (chat (telega-group-call-get-chat group-call-id)))
+    ;; Buttons section
     (if (plist-get group-call :is_joined)
         (telega-ins--box-button (telega-i18n "lng_group_call_leave")
           :value group-call
@@ -397,16 +397,32 @@ If TITLE is not specified, ask user interactively for the new title."
       (telega-ins--box-button (telega-i18n "lng_group_call_join")
         :value group-call
         :action #'telega-group-call-join))
-
-    (when can-manage-p
+    (when (plist-get group-call :can_be_managed)
       (telega-ins " ")
       (telega-ins--box-button (telega-i18n "lng_group_call_end")
         :value group-call
         :action #'telega--endGroupCall)
       (telega-ins " ")
-      (telega-ins--box-button "Set Title"
+      (telega-ins--box-button (telega-i18n "lng_group_call_edit_title")
         :value group-call
         :action #'telega-group-call-set-title))
+
+    (telega-ins "\n")
+    (telega-ins-describe-item "Id"
+      (telega-ins-fmt "%d" group-call-id))
+    (telega-ins-describe-item (telega-i18n "lng_group_call_edit_title_header")
+      (unless (telega-ins (telega-tl-str group-call :title))
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins "No title"))))
+
+    (when (and (plist-get group-call :is_rtmp_stream)
+               (telega-chat-match-p chat 'me-is-owner))
+      (telega-ins-describe-item "RTMP URL"
+        (telega--getVideoChatRtmpUrl chat
+          (telega--gen-ins-continuation-callback 'loading
+            (lambda (rtmp-url)
+              (telega-ins (plist-get rtmp-url :url)
+                          (plist-get rtmp-url :stream_key)))))))
 
     (telega-ins "\n")
     ))

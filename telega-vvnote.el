@@ -132,12 +132,13 @@
                   :stroke-width (if played-p (1+ wv-width) wv-width)
                   :stroke-linecap "round")
         (cl-incf w-idx)))
-    (telega-svg-image svg :scale 1
-                      :width cw :height height
-                      :mask 'heuristic
-                      :ascent 'center
-                      ;; text of correct width
-                      :telega-text (make-string aw-chars ?#))))
+    (telega-svg-image svg
+      :scale 1
+      :width (telega-cw-width aw-chars)
+      :mask 'heuristic
+      :ascent 'center
+      ;; text of correct width
+      :telega-text (make-string aw-chars ?#))))
 
 ;; Encoding and Decoding splits into two situations:
 ;;     head-bits=5   tail-bits=0
@@ -297,10 +298,10 @@ If WITH-NOISE-P is non-nil, then use noise filter above the image."
   (let* ((data-p (when as-data-image-type t))
          (img-type (or as-data-image-type
                        (telega-image-supported-file-p framefile)))
-         (size (telega-chars-xheight
-                (if (consp telega-video-note-height)
-                    (car telega-video-note-height)
-                  telega-video-note-height)))
+         (ah-chars (if (consp telega-video-note-height)
+                       (car telega-video-note-height)
+                     telega-video-note-height))
+         (size (telega-chars-xheight ah-chars))
          (h size)
          (aw-chars (telega-chars-in-width size))
          (w (telega-chars-xwidth aw-chars))
@@ -367,12 +368,16 @@ If WITH-NOISE-P is non-nil, then use noise filter above the image."
                      :fill "red"
                      :opacity "0.5")))
 
-    (telega-svg-image svg :scale 1.0
-               :base-uri (if data-p "" framefile)
-               :width w :height h
-               :mask 'heuristic
-               :ascent 'center
-               :telega-text (make-string aw-chars ?#))))
+    (telega-svg-image svg
+      :scale 1.0
+      :height (telega-ch-height ah-chars)
+      ;; NOTE: Do not use `:telega-nslices' because when watching
+      ;; video note it grows in size
+;      :telega-nslices ah-chars
+      :mask 'heuristic
+      :ascent 'center
+      :base-uri (if data-p "" framefile)
+      :telega-text (make-string aw-chars ?#))))
 
 (defun telega-vvnote-video--create-image (note &optional _file with-noise-p)
   "Create image for video NOTE frame."

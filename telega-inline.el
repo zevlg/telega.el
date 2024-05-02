@@ -189,6 +189,59 @@
             (telega-browse-url (plist-get web-app-info :url) 'in-browser)
          ))
 
+      (keyboardButtonTypeRequestUsers
+       (let* ((user-temex
+               `(and ,(or telega-user-completing-temex
+                          '(return t))
+                     ,(if (plist-get kbd-type :restrict_user_is_bot)
+                          (if (plist-get kbd-type :user_is_bot)
+                              'is-bot
+                            '(not is-bot))
+                        '(return t))
+                     ,(if (plist-get kbd-type :restrict_user_is_premium)
+                          (if (plist-get kbd-type :user_is_premium)
+                              'is-premium
+                            '(not is-premium))
+                        '(return t))))
+              (users (telega-completing-read-user-list
+                         (telega-tl-str kbd-button :text)
+                       (telega-user-list user-temex))))
+         (when users
+           (telega--shareUsersWithBot msg (plist-get kbd-type :id) users))))
+
+      (keyboardButtonTypeRequestChat
+       (let* ((chat-temex
+               `(and (or is-known has-chatbuf)
+                     (not (type private))
+                     ,(if (plist-get kbd-type :chat_is_channel)
+                          '(type channel)
+                        '(not (type channel)))
+                     ,(if (plist-get kbd-type :restrict_chat_is_forum)
+                          (if (plist-get kbd-type :chat_is_forum)
+                              'is-forum
+                            '(not is-forum))
+                        '(return t))
+                     ,(if (plist-get kbd-type :restrict_chat_has_username)
+                          (if (plist-get kbd-type :chat_is_forum)
+                              'has-username
+                            '(not has-username))
+                        '(return t))
+                     ,(if (plist-get kbd-type :chat_is_created)
+                          'me-is-owner
+                        '(return t))
+                     ;; TODO:
+                     ;;   :user_administrator_rights
+                     ;;   :bot_administrator_rights
+                     ;;   :bot_is_member
+                     ))
+              (chat
+               (telega-completing-read-chat
+                (concat (telega-tl-str kbd-button :text) ": ")
+                (telega-filter-chats telega--ordered-chats
+                  chat-temex))))
+         (when chat
+           (telega--shareChatWithBot msg (plist-get kbd-type :id) chat))))
+
       ;; TODO: other types
       )))
 
@@ -254,8 +307,9 @@
                         (telega-create-image
                          (telega--tl-get thumb-file :local :path)
                          (when (fboundp 'imagemagick-types) 'imagemagick) nil
-                         :scale 1.0 :ascent 'center
-                         :height (telega-chars-xheight 1)))))
+                         :scale 1.0
+                         :ascent 'center
+                         :height (telega-ch-height 1)))))
       (with-telega-chatbuf chat
         (telega-chatbuf--input-delete)
         (telega-chatbuf-input-insert

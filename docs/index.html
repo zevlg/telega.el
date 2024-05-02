@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2024-03-19 Вт 21:44 -->
+<!-- 2024-05-02 Чт 17:14 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.254)</title>
+<title>Telega Manual (v0.8.255)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.254)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.255)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -139,6 +139,7 @@
 <li><a href="#telega-recognize-voice-message-mode">telega-recognize-voice-message-mode</a></li>
 <li><a href="#telega-auto-translate-mode">telega-auto-translate-mode</a></li>
 <li><a href="#telega-auto-download-mode-wip">telega-auto-download-mode (WIP)</a></li>
+<li><a href="#telega-contact-birthdays-mode">telega-contact-birthdays-mode</a></li>
 <li><a href="#telega-play-media-sequence-mode"><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</a></li>
 <li><a href="#telega-voip-sounds-mode">telega-voip-sounds-mode</a></li>
 </ul>
@@ -829,7 +830,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org6daef49">
+<pre class="example" id="orga2069c8">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -847,7 +848,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="orge129fa7">
+<pre class="example" id="org409a0cf">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -936,7 +937,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="orgca227a2">
+<pre class="example" id="org8eeba1e">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -974,7 +975,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgd1014d9">
+<pre class="example" id="orgc90b940">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -988,6 +989,15 @@ me means you, not me.
 
 <p>
 Chat with me is also known as "Saved Messages".
+</p></dd>
+
+<dt>Insexp</dt><dd><p>
+S-Expression denoting an inserter.  It could be a function, a symbol or
+a list to be evaluated.
+</p>
+
+<p>
+Insexp evaluation results in content being inserted.
 </p></dd>
 </dl>
 </div>
@@ -1789,6 +1799,12 @@ By default <code>N</code> is 1.</dd>
 
 <dt>has-private-forwards</dt><dd>Matches if user can't be linked in forwarded messages.</dd>
 
+<dt>has-business-info</dt><dd>Matches if user has business info.</dd>
+
+<dt>has-birthdate</dt><dd>Matches if user has birthdate set.</dd>
+
+<dt>has-personal-chat</dt><dd>Matches if user has personal chat.</dd>
+
 <dt>has-emoji-status</dt><dd>Matches if corresponding user set his current emoji status.</dd>
 
 <dt>(username [ <code>USERNAME-REGEXP</code> ])</dt><dd>Matches if user's username matches <code>USERNAME-REGEXP</code>.</dd>
@@ -2101,22 +2117,17 @@ Default value:
 
 <ul class="org-ul">
 <li><p>
-User Option: <code>telega-chat-folder-format</code> 
+User Option: <code>telega-chat-folders-insexp</code> 
 </p>
 
 <p>
-Non-nil to prefix chat's title with chat folder.
-%I - Replaced with folder's icon from <code>telega-folder-icon-names</code> or
-     empty string if there is no icon.
-%i - Replaced with folder's icon from <code>telega-folder-format</code> or
-     <code>telega-symbol-folder</code> if there is no icon.
-%f - Replaced with folder's title.
-%F - Replaced with folder's icon from <code>telega-folder-icon-names</code>
-     if icon is unique, or equivalent to %I%f. 
+Inserter sexp for chat folders prefixing chat's title.
+While using this insexp <code>telega-chat-folders</code> is bound to the list of
+folder names to be inserted. 
 </p>
 
 <p>
-Default value: <code>#("%F | " 0 5 (face bold))</code>
+Default value: <code>telega-folders-insert-default</code>
 </p></li>
 
 <li><p>
@@ -2124,10 +2135,7 @@ User Option: <code>telega-chat-folders-exclude</code>
 </p>
 
 <p>
-Exclude these folders when determining chat's folder.
-When determining which chat folder to use in
-<code>telega-chat-folders-format</code>, these folders are excluded, if
-single folder is left, then it is used in the formatting. 
+Exclude these folders from chat folders list to be displayed. 
 </p>
 
 <p>
@@ -2382,7 +2390,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org8f5cfc1">
+<pre class="example" id="orgcd12f54">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2427,7 +2435,9 @@ See <a href="#favorite-messages">Favorite Messages</a> for details.</dd>
 See <a href="#video-chats">Video Chats</a> for details.</dd>
 
 <dt><kbd>M-g s</kbd> (<code>telega-chatbuf-inplace-search</code>)</dt><dd>Search backward in the chatbuf.
-If <kbd>C-u</kbd> is given, then search forward instead.</dd>
+If <kbd>C-u</kbd> is given, then search forward instead.
+<code>FROM-MSG</code> specifies message from where to start searching.  For
+non-interactive use cases only.</dd>
 
 <dt><kbd>M-g n</kbd> (<code>telega-chatbuf-inplace-search-next</code>)</dt><dd>Continue inplace searching with last search.</dd>
 
@@ -2571,7 +2581,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orgc833d7b">
+<pre class="example" id="org4c74273">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2603,7 +2613,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org482d555">
+<pre class="example" id="org76c7775">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3519,7 +3529,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org022a576">
+<pre class="example" id="org72782d2">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4583,6 +4593,19 @@ Default value:
 </div>
 
 
+<div id="outline-container-telega-contact-birthdays-mode" class="outline-3">
+<h3 id="telega-contact-birthdays-mode"><a class="self-link" href="#telega-contact-birthdays-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>telega-contact-birthdays-mode</h3>
+<div class="outline-text-3" id="text-telega-contact-birthdays-mode">
+<p>
+Mode to display close birthdays of the contacts.
+</p>
+
+<p>
+<code>telega-contact-birthdays-mode</code> is enabled by default.
+</p>
+</div>
+</div>
+
 <div id="outline-container-telega-play-media-sequence-mode" class="outline-3">
 <h3 id="telega-play-media-sequence-mode"><a class="self-link" href="#telega-play-media-sequence-mode"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a><span class="todo TODO">TODO</span> telega-play-media-sequence-mode</h3>
 <div class="outline-text-3" id="text-telega-play-media-sequence-mode">
@@ -4706,7 +4729,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org1920c51">
+<pre class="example" id="org3df6dac">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU
