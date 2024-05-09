@@ -305,11 +305,10 @@
            (thumb-file (when thumb (telega-file--renew thumb :file)))
            (thumb-img (when (telega-file--downloaded-p thumb-file)
                         (telega-create-image
-                         (telega--tl-get thumb-file :local :path)
-                         (when (fboundp 'imagemagick-types) 'imagemagick) nil
-                         :scale 1.0
-                         :ascent 'center
-                         :height (telega-ch-height 1)))))
+                            (telega--tl-get thumb-file :local :path) nil nil
+                          :scale 1.0
+                          :ascent 'center
+                          :height (telega-ch-height 1)))))
       (with-telega-chatbuf chat
         (telega-chatbuf--input-delete)
         (telega-chatbuf-input-insert

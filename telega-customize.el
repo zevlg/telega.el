@@ -217,12 +217,16 @@ Tracking notifications for telega buffers will use the
 
 (defcustom telega-use-images (or (and (fboundp 'image-transforms-p)
                                       (funcall 'image-transforms-p))
-                                 (fboundp 'imagemagick-types))
+                                 (when (fboundp 'imagemagick-types)
+                                   'imagemagick))
   "Non-nil to show images.
 Explicitly set it to non-nil if using Emacs as a service and
 want to create X frames to show images.
-See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon"
-  :type 'boolean
+See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon
+
+Set to `imagemagick' to use ImageMagick to handle images (not recommended)."
+  :package-version '(telega . "0.8.256")
+  :type 'sexp
   :group 'telega)
 
 (defcustom telega-use-svg-base-uri (fboundp 'svg-embed-base-uri-image)
@@ -1643,42 +1647,32 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
-(defcustom telega-chat-footer-format
-  '((:eval (telega-chatbuf-footer-sponsored-messages))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-prompt-delim t t) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-action-bar) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-active-vvnote) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-active-video-chat) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-active-stories) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-pinned-stories) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-invite-forbidden-users) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-auto-delete-messages) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-reply-markup-buttons) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-restriction-reason) "\n"))
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-bot-description) "\n"))
+(defcustom telega-chat-footer-insexp
+  '(progn
+     (when telega-chatbuf--messages-compact-view
+       (telega-ins "\n"))
+     (telega-chatbuf-footer-ins-sponsored-messages)
+     (telega-chatbuf-footer-ins-prompt-delim t t)
+     (telega-chatbuf-footer-ins-action-bar)
+     (telega-chatbuf-footer-ins-active-vvnote)
+     (telega-chatbuf-footer-ins-active-video-chat)
+     (telega-chatbuf-footer-ins-active-stories)
+     (telega-chatbuf-footer-ins-pinned-stories)
+     (telega-chatbuf-footer-ins-invite-forbidden-users)
+     (telega-chatbuf-footer-ins-auto-delete-messages)
+     (telega-chatbuf-footer-ins-reply-markup-buttons)
+     (telega-chatbuf-footer-ins-restriction-reason)
 
-    ;; Chat's START/UNBLOCK/JOIN button
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-join-button) "\n"))
+     (telega-chatbuf-footer-ins-bot-description)
+     ;; Chat's START/UNBLOCK/JOIN button
+     (telega-chatbuf-footer-ins-join-button)
 
-    ;; Edit/Reply aux message, defined by `telega-chatbuf--aux-plist'
-    ;; is displayed last
-    (:eval (telega-chatbuf-header-concat
-            (telega-chatbuf-footer-aux-plist) "\n"))
+     ;; Edit/Reply aux message, defined by `telega-chatbuf--aux-plist'
+     ;; is displayed last
+     (telega-chatbuf-footer-ins-aux-plist)
     )
-  "*Modeline compatible format for the chatbuf's footer just before the prompt."
-  :package-version '(telega . "0.8.170")
+  "*Inserter sexp for the chatbuf's footer."
+  :package-version '(telega . "0.8.256")
   :type 'sexp
   :group 'telega-chat)
 

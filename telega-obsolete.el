@@ -266,7 +266,13 @@
                            nil
                            "0.8.255")
 (telega-obsolete--variable 'telega-chat-folder-format
-                           'telega-chat-folders-inserter-sexp "0.8.255")
+                           'telega-chat-folders-insexp
+                           "0.8.255")
+
+(telega-obsolete--variable 'telega-chat-footer-format
+                           'telega-chat-footer-insexp
+                           "0.8.256")
+
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

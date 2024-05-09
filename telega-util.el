@@ -477,8 +477,8 @@ PROPS is passed on to `create-image' as its PROPS list."
                     (svg-print svg)
                     (buffer-string))))
     ;; NOTE: Do not check `svg' availability, so it will work when
-    ;; `rsvg' is not compliled in and telega images disabled See
-    ;; https://github.com/zevlg/telega.el/issues/219
+    ;; `rsvg' is not compliled in and telega images is disabled.
+    ;; See https://github.com/zevlg/telega.el/issues/219
     (nconc (list 'image :type 'svg :data svg-data)
            (unless (plist-member props :scale)
              (list :scale
@@ -2522,7 +2522,10 @@ Used as for SVG's `:base-uri' functionality."
 Also enforces `:transform-smoothing' property to be non-nil."
   (declare (indent 3))
   (when telega-use-images
-    (apply #'create-image file-or-data type data-p
+    (apply #'create-image
+           file-or-data
+           (or type (when (eq telega-use-images 'imagemagick) 'imagemagick))
+           data-p
            (nconc props (list :transform-smoothing t)))))
 
 (defun telega-etc-file-create-image (filename cwidth &optional no-mask-p)
@@ -2751,10 +2754,9 @@ not signal an error and just return nil."
                       'try-host-first)))
     (telega-debug "RUN: %s" qrcode-cmd)
     (shell-command-to-string qrcode-cmd)
-    (telega-create-image png-filename
-                         (when (fboundp 'imagemagick-types) 'imagemagick) nil
-                         :scale 1.0 :ascent 'center
-                         :width size :height size)))
+    (telega-create-image png-filename nil nil
+      :scale 1.0 :ascent 'center
+      :width size :height size)))
 
 (defun telega-completing-read-emoji-status-duration (prompt)
   "Read duration for the custom emoji."

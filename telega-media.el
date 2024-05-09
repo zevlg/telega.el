@@ -405,31 +405,31 @@ PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
             (setq image-filename tmp-fname)))
 
         (telega-create-image
-         (if (string-empty-p image-filename)
-             (telega-etc-file "non-existing.jpg")
-           image-filename)
-         (when (fboundp 'imagemagick-types) 'imagemagick) nil
-         :height (telega-ch-height cheight)
-         :telega-nslices cheight
-         :scale 1.0
-         :ascent 'center))
+            (if (string-empty-p image-filename)
+                (telega-etc-file "non-existing.jpg")
+              image-filename)
+            nil nil
+          :height (telega-ch-height cheight)
+          :telega-nslices cheight
+          :scale 1.0
+          :ascent 'center))
 
     (telega-media--progress-svg file width height cheight)))
 
 (defun telega-minithumb--create-image (minithumb cheight)
   "Create image and use MINITHUMB minithumbnail as data."
   (telega-create-image
-   (base64-decode-string (plist-get minithumb :data))
-   (if (and (fboundp 'image-transforms-p)
-            (funcall 'image-transforms-p))
-       'jpeg
-     (when (fboundp 'imagemagick-types)
-       'imagemagick))
-   t
-   :height (telega-ch-height cheight)
-   :telega-nslices cheight
-   :scale 1.0
-   :ascent 'center))
+      (base64-decode-string (plist-get minithumb :data))
+      (if (and (fboundp 'image-transforms-p)
+               (funcall 'image-transforms-p))
+          'jpeg
+        (when (fboundp 'imagemagick-types)
+          'imagemagick))
+      t
+    :height (telega-ch-height cheight)
+    :telega-nslices cheight
+    :scale 1.0
+    :ascent 'center))
 
 (defun telega-thumb--create-image (thumb &optional _file cheight)
   "Create image for the thumbnail THUMB.

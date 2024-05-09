@@ -1215,11 +1215,14 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
 
 (defun telega-msg-sender-initials (msg-sender)
   "Return MSG-SENDER's initials for avatar image."
-  (if (telega-user-p msg-sender)
-      (let ((first-name (telega-tl-str msg-sender :first_name))
-            (last-name (telega-tl-str msg-sender :last_name)))
+  (if-let ((user (if (telega-user-p msg-sender)
+                     msg-sender
+                   (telega-chat-user msg-sender))))
+      (let ((first-name (telega-tl-str user :first_name))
+            (last-name (telega-tl-str user :last_name)))
         (concat (when first-name (substring first-name 0 1))
                 (when last-name (substring last-name 0 1))))
+
     (substring (telega-chat-title msg-sender 'no-badges) 0 1)))
 
 (defun telega-msg-sender-title (msg-sender &rest args)

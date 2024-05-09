@@ -148,8 +148,11 @@ Special property `:no-display-if' is supported in PROPS to
 ommit image display if value is for this property is non-nil."
   ;; NOTE: IMG might be nil if `telega-use-images' is nil
   ;; See https://github.com/zevlg/telega.el/issues/274
-  (if (not img)
-      (telega-ins (or (plist-get props :telega-text) "<IMAGE>"))
+  (if (or (not img) (not telega-use-images)
+          (not (display-graphic-p (telega-x-frame))))
+      (telega-ins (or (plist-get props :telega-text)
+                      (telega-image--telega-text img slice-num)
+                      "<IMAGE>"))
 
     ;; NOTE: do not check SLICE-NUM
     (let ((slice (cond ((numberp slice-num)

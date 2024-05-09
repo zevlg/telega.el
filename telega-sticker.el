@@ -368,8 +368,7 @@ Return path to png file."
                  ;; image function
                  (funcall custom-create-image-function sticker img-file))
                 (img-file
-                 (apply #'telega-create-image img-file
-                        (when (fboundp 'imagemagick-types) 'imagemagick) nil
+                 (apply #'telega-create-image img-file nil nil
                         :height (telega-ch-height cheight)
                         :telega-nslices cheight
                         :scale 1.0
@@ -961,12 +960,12 @@ Install from https://github.com/zevlg/tgs2png"))
                     (set-buffer-multibyte nil)
                     (insert-file-contents-literally anim-frame-filename)
                     (buffer-string))
-                  (when (fboundp 'imagemagick-types) 'imagemagick) t img-props))
+                  nil t
+                  img-props))
 
           ((telega-file--downloaded-p tfile)
            (apply #'telega-create-image
-                  (telega--tl-get tfile :local :path)
-                  (when (fboundp 'imagemagick-types) 'imagemagick) nil img-props))
+                  (telega--tl-get tfile :local :path) nil nil img-props))
 
           (minithumb
            (telega-minithumb--create-image minithumb telega-animation-height))

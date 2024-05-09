@@ -236,14 +236,15 @@ Actually return STICKER's full type info."
     (telega-emoji-create-svg (telega-sticker-emoji sticker) 1 'no-cache))
 
    ((equal "webp" (file-name-extension img-file))
-    (telega-create-image
-     img-file (when (fboundp 'imagemagick-types) 'imagemagick) nil
-     :max-height (telega-ch-height 1)
-     :width (telega-cw-width 2)
-     :telega-text "()"
-     :scale 1.0
-     :ascent 'center
-     :heuristic-mask t))
+    (telega-create-image img-file nil nil
+      :max-height (telega-ch-height 1)
+      :width (telega-cw-width 2)
+      :telega-text "()"
+      :scale 1.0
+      :ascent 'center
+      ;; NOTE: Do not use `:heuristic-mask' because webp supports
+      ;; masking
+      ))
 
    (t
     ;; Embed IMG-FILE into 2x1 svg with transparent background

@@ -35,6 +35,8 @@
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-window-recenter "telega-util" (win &optional nlines from-point))
 (declare-function telega-emoji-create-svg "telega-util" (emoji &optional c-height))
+(declare-function telega-chars-xheight "telega-util" (n))
+(declare-function telega-chars-xwidth "telega-util" (n))
 (declare-function telega-em-width-ratio "telega-util")
 (declare-function telega-em-height-ratio "telega-util")
 (declare-function telega-chats-compare "telega-sort" (criteria chat1 chat2))
@@ -2020,13 +2022,17 @@ VAR-SEQ is used directly in the `seq-doseq' form."
 (defmacro telega-ch-height (n)
   "Create `:height' image spec for N chars height."
   (if (string-version-lessp emacs-version "30.1")
-      `(cons (* ,n (telega-em-height-ratio)) 'em)
+      `(if (eq telega-use-images 'imagemagick)
+           (telega-chars-xheight ,n)
+         (cons (* ,n (telega-em-height-ratio)) 'em))
     `(cons ,n 'ch)))
 
 (defmacro telega-cw-width (n)
   "Create `:width' image spec for N chars width."
   (if (string-version-lessp emacs-version "30.1")
-      `(cons (* ,n (telega-em-width-ratio)) 'em)
+      `(if (eq telega-use-images 'imagemagick)
+           (telega-chars-xwidth ,n)
+         (cons (* ,n (telega-em-width-ratio)) 'em))
     `(cons ,n 'cw)))
 
 
