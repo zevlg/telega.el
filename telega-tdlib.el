@@ -1843,6 +1843,7 @@ REVOKE is always non-nil for supergroups, channels and secret chats."
 (cl-defun telega--searchMessages (query &key offset (limit 100)
                                          chat-list tl-msg-filter
                                         (min-date 0) (max-date 0)
+                                        only-channels-p
                                         callback)
   "Search messages by QUERY.
 OFFSET is th offset of the first entry to return as received from the
@@ -1858,6 +1859,7 @@ Return FoundMessages TL structure."
                 :offset (or offset "")
                 :min_date min-date
                 :max-date max-date
+                :only_in_channels (if only-channels-p t :false)
                 :limit limit)
           (when tl-msg-filter
             (list :filter tl-msg-filter))
@@ -2839,12 +2841,16 @@ Requires owner privileges."
          :story_id (plist-get my-story :id)
          :privacy_settings story-privacy-settings)))
 
-(defun telega--toggleStoryIsPinned (my-story &optional pinned-p)
-  "Toggle whether a MY-STORY is accessible after expiration."
+(defun telega--toggleStoryIsPostedToChatPage (story-sender-chat story &optional
+                                                          posted-to-chat-page-p)
+  "Toggle whether a MY-STORY is accessible after expiration.
+Non-nil POSTED-TO-CHAT-PAGE-P to make the story accessible after
+expiration.  Make it private otherwise."
   (telega-server--send
-   (list :@type "toggleStoryIsPinned"
-         :story_id (plist-get my-story :id)
-         :is_pinned (if pinned-p t :false))))
+   (list :@type "toggleStoryIsPostedToChatPage"
+         :story_sender_chat_id (plist-get story-sender-chat :id)
+         :story_id (plist-get story :id)
+         :is_posted_to_chat_page (if posted-to-chat-page-p t :false))))
 
 (defun telega--deleteStory (story)
   "Delete a previously sent STORY."
@@ -2875,14 +2881,21 @@ The loaded stories will be sent through updates."
          :chat_id (plist-get chat :id))
    callback))
 
-(defun telega--getChatPinnedStories (chat &optional from-story-id limit callback)
+(defun telega--getChatPostedToChatPageStories (chat &optional from-story-id
+                                                    limit callback)
   (declare (indent 3))
   (telega-server--call
-   (list :@type "getChatPinnedStories"
+   (list :@type "getChatPostedToChatPageStories"
          :chat_id (plist-get chat :id)
          :from_story_id (or from-story-id 0)
          :limit (or limit 100))
    callback))
+
+(defun telega--setChatPinnedStories (chat stories)
+  (telega-server--send
+   (list :@type "setChatPinnedStories"
+         :chat_id (plist-get chat :id)
+         :story_ids (cl-map #'vector (telega--tl-prop :id) stories))))
 
 (defun telega--openStory (story)
   (telega-server--call
@@ -2988,6 +3001,14 @@ Return list of available boost slots."
 
     (list :@type "getChatSimilarChats"
           :chat_id (plist-get chat :id))
+    callback))
+
+(defun telega--getRecommendedChats (&optional callback)
+  "Return a list of recommended channels to me."
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-chat-get (plist-get reply :chat_ids))
+
+    (list :@type "getRecommendedChats")
     callback))
 
 ;;; WebApp
@@ -3147,6 +3168,10 @@ Saved Messages topic is specified by SM-TOPIC-ID."
    (list :@type "toggleChatFolderTags"
          :are_tags_enabled (if enabled-p t :false))
    (or callback #'ignore)))
+
+(defun telega--hideContactCloseBirthdays ()
+  (telega-server--send
+   (list :@type "hideContactCloseBirthdays")))
 
 (provide 'telega-tdlib)
 

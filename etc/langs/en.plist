@@ -90,6 +90,8 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_admin_badge"
   :value "admin")
 
+ ("lng_polls_create_title"
+  :value "New poll")
  ("lng_polls_create_multiple_choice"
   :value "Multiple Answers")
  ("lng_polls_create_anonymous"
@@ -396,6 +398,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Location")
  ("lng_info_location_label"
   :value "Location")
+ ("lng_live_location"
+  :value "Live Location")
 
  ("lng_manage_linked_channel"
   :value "Linked channel")
@@ -762,6 +766,10 @@ Example: 23 y.o. designer from San Francisco")
   :value "Files")
 
  ;; #5584 - https://translations.telegram.org/en/search?lang_pack=tdesktop&l=screenshot5584
+ ("lng_mute_menu_duration"
+  :value "Mute for...")
+ ("lng_mute_menu_duration_any"
+  :value "Mute for {duration}")
  ("lng_mute_duration_hours"
   :one_value "For {count} hour"
   :other_value "For {count} hours")
@@ -1353,6 +1361,9 @@ You can send them an invite link as message instead.")
   :one_value "{count} day"
   :other_value "{count} days")
 
+ ("lng_settings_channel_label"
+  :value "Personal channel")
+
  ("lng_manage_messages_ttl_never"
   :value "Off")
  ("lng_manage_messages_ttl_after_custom"
@@ -1656,4 +1667,13 @@ You can send them an invite link as message instead.")
 ({count} year old)"
   :other_value "{date}
 ({count} years old)")
+
+ ;; Business
+ ("lng_business_subtitle_sponsored"
+  :value "Ads in Channels")
+ ("lng_business_button_sponsored"
+  :value "Do Not Hide Ads")
+ ("lng_business_about_sponsored"
+  :value "As a Premium subscriber, you don’t see any ads on Telegram, but you can turn them on, for example, to view your own ads that you launched on the {link}")
+
  )

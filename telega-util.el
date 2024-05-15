@@ -1610,6 +1610,23 @@ Works only with `fido-mode' completion."
                   (telega--searchChatMembers chat prefix)))
     (mapcar #'car telega-completing--chat-member-alist)))
 
+(defun telega-completing-read (prompt collection &optional predicate
+                                      require-match initial-input hist def
+                                      inherit-input-method)
+  "Same as `completing-read', but uses `telega-completing-read-function'."
+  (funcall telega-completing-read-function
+           prompt collection predicate require-match
+           initial-input hist def inherit-input-method))
+
+(defun telega-read-string-with-custom-emojis (prompt &rest args)
+  "Read string allowing to insert custom emojis with `C-c C-e'."
+  (let ((enable-recursive-minibuffers t)
+        (minibuffer-allow-text-properties t))
+    (minibuffer-with-setup-hook
+        (lambda ()
+          (local-set-key (kbd "C-c C-e") #'telega-custom-emoji-choose))
+      (apply #'read-string prompt args))))
+
 (defun telega-completing-read-chat-member (prompt chat)
   "Interactively read member of CHAT.
 Return a user."
@@ -1738,22 +1755,30 @@ Return non-nil only if \"i'm sure\" is typed in."
                           prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
 
-(defun telega-completing-read-mute-for (prompt)
-  "Read mute for notification parameter."
+(defun telega-completing-read-duration (prompt intervals &optional
+                                               interval-to-title-function)
+  "Read duration completing input."
+  (declare (indent 2))
   (let* ((choices (mapcar
-                   (lambda (delay)
-                     (cons (cond ((>= delay telega-mute-for-ever)
-                                  (telega-i18n "lng_mute_duration_forever"))
-                                 ((zerop delay)
-                                  "Disable")
-                                 (t
-                                  (telega-duration-human-readable
-                                   delay 1 'long)))
-                           delay))
-                   telega-mute-for-intervals))
+                   (lambda (interval)
+                     (cons (or (when interval-to-title-function
+                                 (funcall interval-to-title-function interval))
+                               (telega-duration-human-readable
+                                interval 1 'long))
+                           interval))
+                   intervals))
          (choice (funcall telega-completing-read-function
                           prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
+
+(defun telega-completing-read-mute-for (prompt)
+  "Read mute for notification parameter."
+  (telega-completing-read-duration prompt telega-mute-for-intervals
+    (lambda (delay)
+      (cond ((>= delay telega-mute-for-ever)
+             (telega-i18n "lng_mute_duration_forever"))
+            ((zerop delay)
+             "Disable")))))
 
 (defun telega-read-discussion-chat ()
   "Interactively select or create a chat as discussion group for some channel.
@@ -3128,7 +3153,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
          (label (read-string
                  (telega-ins--as-string
                   (telega-ins-i18n "lng_edit_tag_name")
-                  (telega-ins " ")
+                  (telega-ins ": ")
                   (telega-ins--msg-reaction-type (plist-get tag :tag)))
                  (telega-tl-str tag :label))))
     (telega--setSavedMessagesTagLabel tag label
@@ -3161,6 +3186,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
    (lambda ()
      (telega-ins--as-string
       (telega-ins--saved-messages-tag (car (oref transient--prefix scope)))
+      (telega-ins " ")
       (telega-ins--with-face 'transient-heading
         (telega-ins "Tag Commands"))))
    (telega-saved-messages-tag-filter)

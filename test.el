@@ -150,17 +150,17 @@ Have Stoploss 690 Satoshi." :entities []))))
 
 (ert-deftest telega-tme-open ()
   "Test info related functionality."
-  (should (string= (telega-tme-open "https://t.me/joinchat/itshitout" t)
+  (should (string= (telega-tme-open "https://t.me/joinchat/itshitout" 'offline)
                    "tg:join?invite=itshitout"))
-  (should (string= (telega-tme-open "https://t.me/itshit/23423" t)
+  (should (string= (telega-tme-open "https://t.me/itshit/23423" 'offline)
                    "tg:resolve?domain=itshit&post=23423"))
-  (should (string= (telega-tme-open "https://t.me/socks?server=my&port=1234" t)
+  (should (string= (telega-tme-open "https://t.me/socks?server=my&port=1234" 'offline)
                    "tg:socks?server=my&port=1234"))
-  (should (string= (telega-tme-open "https://t.me/c/101110111/286125" t)
+  (should (string= (telega-tme-open "https://t.me/c/101110111/286125" 'offline)
                    "tg:privatepost?channel=101110111&post=286125"))
   ;; Non telegram urls
-  (should (null (telega-tme-open "www.domain.ru" t)))
-  (should (null (telega-tme-open "https://www.domain.ru" t)))
+  (should (null (telega-tme-open "www.domain.ru" 'offline)))
+  (should (null (telega-tme-open "https://www.domain.ru" 'offline)))
   )
 
 (ert-deftest telega-formatting ()

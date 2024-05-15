@@ -226,6 +226,14 @@ Actually return STICKER's full type info."
 
 (defun telega-custom-emoji--create-image (sticker img-file)
   "Create image for the custom emoji using corresponding STICKER."
+  ;; For custom emojis that needs repainting we always use svg, so
+  ;; face's `:foreground' will be used as replacement color
+  ;; (when (and img-file
+  ;;            (equal "webp" (file-name-extension img-file))
+  ;;            (plist-get (telega-custom-emoji-sticker-p sticker)
+  ;;                       :needs_repainting))
+  ;;   (setq img-file (telega-sticker--webp-to-png img-file)))
+
   (cond
    ((or (not img-file)
         (< (telega-chars-xheight 1) 2))
@@ -236,15 +244,15 @@ Actually return STICKER's full type info."
     (telega-emoji-create-svg (telega-sticker-emoji sticker) 1 'no-cache))
 
    ((equal "webp" (file-name-extension img-file))
-    (telega-create-image img-file nil nil
-      :max-height (telega-ch-height 1)
-      :width (telega-cw-width 2)
-      :telega-text "()"
-      :scale 1.0
-      :ascent 'center
-      ;; NOTE: Do not use `:heuristic-mask' because webp supports
-      ;; masking
-      ))
+    (apply #'telega-create-image img-file nil nil
+           :max-height (telega-ch-height 1)
+           :width (telega-cw-width 2)
+           :telega-text "()"
+           :scale 1.0
+           :ascent 'center
+           (when-let ((bg-color (face-background 'default)))
+             (list :mask `(heuristic ,(color-values bg-color))
+                   :background bg-color))))
 
    (t
     ;; Embed IMG-FILE into 2x1 svg with transparent background
@@ -257,7 +265,8 @@ Actually return STICKER's full type info."
            ;; NOTE: Colorize themed emoji with the color of the
            ;; Telegram Premium badge
            ;; XXX this repainting code does not work, so disabled atm
-           (mask (when nil;(telega--tl-get sticker :full_type :needs_repainting)
+           (mask (when nil ;(plist-get (telega-custom-emoji-sticker-p sticker)
+                           ;       :needs_repainting)
                    (let ((node (dom-node 'mask `((id . "mask")
                                                  (x . 0)
                                                  (y . 0)
@@ -508,12 +517,28 @@ Do not fetch custom emojis for ignored messages."
                                 (plist-get sset :stickers)))))))
     (telega-ins "\n")))
 
-(defun telega-custom-emoji-choose (custom-action)
-  "Choose custom emoji and execute CUSTOM-ACTION on it."
+(defun telega-custom-emoji-as-string (sticker &optional emoji)
+  "Return an EMOJI string displaying custom emoji STICKER.
+If EMOJI is omitted, then use STICKER's emoji instead."
+  (propertize
+   (or emoji (telega-tl-str sticker :emoji))
+   :tl-entity-type (list :@type "textEntityTypeCustomEmoji"
+                         :custom_emoji_id (telega-custom-emoji-id sticker))
+   'display (when telega-use-images
+              (telega-sticker--image sticker))
+   'rear-nonsticky t))
+
+(defun telega-custom-emoji-choose (&optional custom-action)
+  "Choose custom emoji and execute CUSTOM-ACTION on it.
+If CUSTOM-ACTION is not given, then insert choosen custom emoji into
+current buffer."
+  (interactive)
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Custom Emojis*"
-      (telega-ins--custom-emoji-stickersets custom-action)
-      )))
+      (telega-ins--custom-emoji-stickersets
+       (or custom-action
+           (lambda (sticker)
+             (telega-ins (telega-custom-emoji-as-string sticker))))))))
 
 ;; Custom emojis in the background of reply and quotes
 (defun telega-custom-emoji--gen-reply-background (sticker img-file)

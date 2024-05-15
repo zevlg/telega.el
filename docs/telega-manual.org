@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.255)
+#+title: Telega Manual (v0.8.290)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -244,7 +244,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.24.
+version greater or equal to 1.8.29.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -523,6 +523,8 @@ for that variables.  Most notable options are:
   Explicitly set it to non-nil if using Emacs as a service and
   want to create X frames to show images.
   See https://zevlg.github.io/telega.el/#settings-for-emacs-as-daemon
+
+  Set to ~imagemagick~ to use ImageMagick to handle images (not recommended).
 
 - User Option: ~telega-emoji-font-family~ 
 
@@ -960,6 +962,9 @@ view.
 
 - @@html:<kbd>@@v *@@html:</kbd>@@ (~telega-view-favorite-messages~) :: 
      View favorite messages in all the chats.
+
+- @@html:<kbd>@@v r@@html:</kbd>@@ (~telega-view-recommended-channels~) :: 
+     View channels recommended to me.
 
 Important customizable options:
 - User Option: ~telega-root-default-view-function~ 

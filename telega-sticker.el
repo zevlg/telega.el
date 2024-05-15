@@ -308,6 +308,8 @@ Return path to png file."
   (let ((png-filename (concat (file-name-sans-extension webp-filename)
                               "_telega.png")))
     (unless (file-exists-p png-filename)
+      (message "telega: Converting %s to png..."
+               (file-name-nondirectory webp-filename))
       (let ((convert-cmd
              (telega-docker-exec-cmd
                (format-spec telega-sticker--convert-cmd
@@ -325,7 +327,9 @@ Return path to png file."
               (t
                (telega-help-message 'no-dwebp-binary
                    "Can't find `%s' binary.  `webp' system package not installed?"
-                 (car (split-string telega-sticker--convert-cmd)))))))
+                 (car (split-string telega-sticker--convert-cmd))))))
+      (message "telega: Converting %s to png...DONE"
+               (file-name-nondirectory webp-filename)))
 
     (when (file-exists-p png-filename)
       png-filename)))
@@ -373,14 +377,6 @@ Return path to png file."
                         :telega-nslices cheight
                         :scale 1.0
                         :ascent 'center
-                        ;; NOTE: For adaptive custom emojis use also
-                        ;; heuristic mask, because it is predicatable
-                        :mask (when-let ((sset (telega-stickerset-get
-                                                   (plist-get sticker :set_id)
-                                                   'locally)))
-                                (when (plist-get sset :needs_repainting)
-                                  'heuristic))
-
                         (when (telega-sticker-favorite-p sticker)
                           (list :background telega-sticker-favorite-background))
                         ))

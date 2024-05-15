@@ -1441,7 +1441,8 @@ Please downgrade TDLib and recompile `telega-server'"
     (setq telega--suggested-actions
           (append (seq-difference telega--suggested-actions removed-actions
                                   #'equal)
-                  added-actions))))
+                  added-actions))
+    (message "TODO: telega--suggested-actions")))
 
 (defun telega--on-updateHavePendingNotifications (_event)
   ;; We define this to avoid

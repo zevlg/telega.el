@@ -1870,6 +1870,13 @@ If COLUMN is nil or less then current column, then current column is used."
      (telega-ins--column nil ,fill-col
        ,@body)))
 
+(defun telega-ins-describe-section (title)
+  "Insert a description section with TITLE."
+  (telega-ins--with-face 'telega-describe-section-title
+    (telega-ins title "\n"))
+  (telega-ins--with-face '(:height 0.25)
+    (telega-ins "\n")))
+
 (defmacro telega-ins-describe-item (title &rest body)
   "Describe item with TITLE."
   (declare (indent 1))

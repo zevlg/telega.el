@@ -176,6 +176,10 @@ Use `telega-root-aux-inserters' to customize it.")
     ;; - {{{where-is(telega-view-favorite-messages,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-favorite-messages, 2)}}}
     (define-key map (kbd "*") 'telega-view-favorite-messages)
+    ;;; ellit-org: rootbuf-view-bindings
+    ;; - {{{where-is(telega-view-recommended-channels,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-recommended-channels, 2)}}}
+    (define-key map (kbd "r") 'telega-view-recommended-channels)
     map)
   "Keymap for Root View commands.")
 
@@ -2150,7 +2154,7 @@ state kinds to show. By default all kinds are shown."
                  (list chat)))
 
   (telega-root-view--apply
-   (list 'telega-view-favorite-messages
+   (list 'telega-view-similar-channels
          (telega-ins--as-string
           (telega-ins (telega-i18n "lng_similar_channels_title") ": ")
           (telega-ins--msg-sender chat
@@ -2162,6 +2166,21 @@ state kinds to show. By default all kinds are shown."
                           (apply-partially
                            #'telega-root-view--ewoc-loading-done "similar")))))
   )
+
+(defun telega-view-recommended-channels ()
+  "View channels recommended to me."
+  (interactive)
+
+  (telega-root-view--apply
+   (list 'telega-view-recommended-channels
+         "Recommended Channels"
+         (list :name "recommended"
+               :pretty-printer #'telega-root--global-chat-pp
+               :loading (telega--getRecommendedChats
+                         (apply-partially
+                          #'telega-root-view--ewoc-loading-done "recommended"))
+               :sorter #'telega-chat>)
+         )))
 
 
 ;; Voice Chats, inspired by https://t.me/designers/177

@@ -796,7 +796,8 @@ to make `telega-root-keep-cursor' always work as expected."
                  (const :tag "Stick to chat at point" t))
   :group 'telega-root)
 
-(defcustom telega-root-show-avatars telega-use-images
+(defcustom telega-root-show-avatars (and telega-use-images
+                                         (image-type-available-p 'svg))
   "*Non-nil to show chat avatars in root buffer."
   :type 'boolean
   :group 'telega-root)
@@ -1219,7 +1220,8 @@ Used by `telega-completing-read-user-list'."
   :type 'telega-user-temex
   :group 'telega-user)
 
-(defcustom telega-user-show-avatars telega-use-images
+(defcustom telega-user-show-avatars (and telega-use-images
+                                         (image-type-available-p 'svg))
   "Non-nil to show avatars for the users."
   :type 'boolean
   :group 'telega-user)
@@ -1343,7 +1345,8 @@ Setting it to non-nil might introduce additional flickering in chatbuf."
   :type 'plist
   :group 'telega-chat)
 
-(defcustom telega-chat-show-avatars telega-use-images
+(defcustom telega-chat-show-avatars (and telega-use-images
+                                         (image-type-available-p 'svg))
   "*Non-nil to show user avatars in chat buffer."
   :type 'boolean
   :group 'telega-chat)

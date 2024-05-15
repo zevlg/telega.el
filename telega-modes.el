@@ -2045,6 +2045,7 @@ TDLib's autoDownloadSettings structure."
       (telega-ins--text-button (telega-symbol 'button-close)
         'face 'telega-link
         'action (lambda (_button)
+                  ;; TODO: maybe use `telega--hideContactCloseBirthdays' ?
                   (setq telega-contact-birthdays--exclude-users
                         (cons (plist-get bd-user :user_id)
                               telega-contact-birthdays--exclude-users))

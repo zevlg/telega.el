@@ -322,9 +322,9 @@ If WITH-YEARS-OLD-P is specified, insert years old as well."
                    (telega-ins--birthdate birthdate))
             :count (- (decoded-time-year nowdate)
                       bd-year
-                      (if (or (< bd-month (decoded-time-month nowdate))
+                      (if (or (> bd-month (decoded-time-month nowdate))
                               (and (= bd-month (decoded-time-month nowdate))
-                                   (< bd-day (decoded-time-day nowdate))))
+                                   (> bd-day (decoded-time-day nowdate))))
                           1
                         0))))
 
@@ -483,7 +483,8 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
         (off-column (telega-current-column)))
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
-    (telega-ins--msg-sender user :with-username-p 'telega-username)
+    (telega-ins--msg-sender user
+      :with-username-p 'telega-username)
     (telega-ins--with-face 'telega-shadow
       (when (and member
                  (telega-ins-prefix " ("
@@ -502,9 +503,6 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
                (not (telega-me-p user)))
       (telega-ins " ")
       (telega-ins--user-relationship user))
-    ;; Block/scam mark, without requesting
-    (when (telega-user-match-p user 'is-blocked)
-      (telega-ins " " (telega-symbol 'blocked)))
 
     (telega-ins "\n")
     (telega-ins (make-string off-column ?\s))
@@ -1175,7 +1173,24 @@ Return `non-nil' if WEB-PAGE has been inserted."
                  'offline)
                 msg)
                (telega-ins "\n"))
-              )))
+              ))
+
+      ;; Stickers/Custom Emojis
+      (when-let ((stickers (append (plist-get web-page :stickers) nil))
+                 (nslices 1))
+        (seq-doseq (sticker stickers)
+          (when (telega-custom-emoji-sticker-p sticker)
+            (telega-custom-emoji--ensure sticker))
+          (when-let ((sslices (car (telega-sticker-size sticker))))
+            (when (> sslices nslices)
+              (setq nslices sslices))))
+
+        (dotimes (slice-num nslices)
+          (seq-doseq (sticker stickers)
+            (telega-ins--image (telega-sticker--image sticker) slice-num)
+            (telega-ins " "))
+          (telega-ins "\n")))
+      )
 
     ;; Additional View button
     (if (zerop (plist-get web-page :instant_view_version))
@@ -1490,7 +1505,10 @@ Return `non-nil' if WEB-PAGE has been inserted."
         (telega-ins-i18n "lng_polls_closed")))
     (when (and (not closed-p) (plist-get msg :can_be_edited))
       (telega-ins " ")
-      (telega-ins--box-button (concat "Close " (if quiz-p "Quiz" "Poll"))
+      (telega-ins--box-button
+          (if quiz-p
+              "Stop Quiz"
+            (telega-i18n "lng_polls_stop"))
         'action (lambda (_ignored)
                   (when (yes-or-no-p (telega-i18n "lng_polls_stop_warning"))
                     (telega--stopPoll msg)))))
@@ -1498,7 +1516,7 @@ Return `non-nil' if WEB-PAGE has been inserted."
 
     ;; Question and options
     (telega-ins--with-face 'bold
-      (telega-ins (telega-tl-str poll :question)))
+      (telega-ins--fmt-text (plist-get poll :question)))
     (dotimes (popt-id (length options))
       (let ((popt (nth popt-id options)))
         (telega-ins "\n")
@@ -1531,7 +1549,8 @@ Return `non-nil' if WEB-PAGE has been inserted."
                    (propertize (nth 1 option-symbols) 'face 'bold)
                  (nth 0 option-symbols)))))
 
-          (telega-ins " " (telega-tl-str popt :text))
+          (telega-ins " ")
+          (telega-ins--fmt-text (plist-get popt :text))
           (when (or choices closed-p)
             (telega-ins "\n")
             (telega-ins--line-wrap-prefix "  "

@@ -307,6 +307,7 @@ Matches only t.me, telegram.me and telegram.dog domains.")
 (defun telega-tme-open (url &optional just-convert)
   "Open any URL with https://t.me prefix.
 If JUST-CONVERT is non-nil, return converted link value.
+JUST-CONVERT can be `offline' to avoid calls to telega-server.
 Return non-nil if url has been handled."
   ;; Convert URL to `tg:' form and call `telega-tme-open-tg'
   (when (string-match telega-tme--url-regexp url)
@@ -353,7 +354,7 @@ Return non-nil if url has been handled."
                              (concat "&post=" (match-string 2 path)))
                            (when query (concat "&" query))))
                   ))
-           (tdlib-link (unless tg
+           (tdlib-link (unless (or tg (eq 'offline just-convert))
                          (telega--getInternalLinkType url))))
       (cond (just-convert (or tg tdlib-link))
             (tg (telega-tme-open-tg tg) t)

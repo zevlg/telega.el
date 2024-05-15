@@ -371,8 +371,11 @@ Combines chat permissions and admin/owner permissions."
         (chatMemberStatusRestricted
          (setq perms (plist-get status :permissions)))
 
-        (chatMemberStatusLeft
-         (setq perms nil))))
+        ;; NOTE: In comments group me might be non-member, but still
+        ;; able to send messages
+        ;; (chatMemberStatusLeft
+        ;;  (setq perms nil))
+        ))
     perms))
 
 (defun telega-chat-title (chat &optional no-badges)
@@ -508,12 +511,17 @@ Pass non-nil OFFLINE-P argument to avoid any async requests."
   "Asynchronously fetch pinned stories for the chatbuf."
   (when (telega-chatbuf-match-p telega-story-show-pinned-stories-for)
     (cond ((telega-chatbuf-match-p 'has-pinned-stories)
-           (telega--getChatPinnedStories telega-chatbuf--chat nil nil
-             (let ((chat telega-chatbuf--chat))
-               (lambda (stories)
-                 (plist-put chat :telega-pinned-stories
-                            (append (plist-get stories :stories) nil))
-                 (with-telega-chatbuf chat
+           (telega--getChatPostedToChatPageStories telega-chatbuf--chat nil nil
+             (lambda-with-current-buffer (stories)
+               (let* ((pinned-ids (plist-get stories :pinned_story_ids))
+                      (pinned-stories
+                       (seq-filter (lambda (story)
+                                     (seq-contains-p
+                                      pinned-ids (plist-get story :id)))
+                                   (plist-get stories :stories))))
+                 (plist-put telega-chatbuf--chat :telega-pinned-stories
+                            pinned-stories)
+                 (when pinned-stories
                    (telega-chatbuf--chat-update "pinned-stories"))))))
 
           ((plist-get telega-chatbuf--chat :telega-pinned-stories)
@@ -931,12 +939,13 @@ Specify non-nil BAN to ban this user in this CHAT."
                         'face 'telega-shadow))
           (unless muted-p
             (telega-ins " ")
-            (telega-ins--box-button "Mute For"
+            (telega-ins--box-button (telega-i18n "lng_mute_menu_duration")
               :value chat
               :action (lambda (chat)
                         (telega-chat-toggle-muted
                          chat (telega-completing-read-mute-for
-                               "Disable notifications for: ")))))
+                               (telega-i18n "lng_mute_menu_duration_any"
+                                 :duration ": "))))))
           (telega-ins "\n"))
 
         ;; Show Preview
@@ -4187,14 +4196,14 @@ MARKUP-NAME names a markup function from
          ((eq (telega--tl-type attach) 'telegaLinkPreviewOptions)
           (setq link-preview-options (plist-get attach :options)))
 
-          ;; Some real attachment:
-          ;; 1) If attachment followed by plain text, then it might be
-          ;; a caption for the attachment, in this case add caption
-          ;; to the attachment.
-          ;; 2) Special case is for forwarded messages, new caption can
-          ;; be supplied for the forwarded message only if forwarded
-          ;; message as copy and original caption is removed (`C-u C-u
-          ;; f' behaviour)
+         ;; Some real attachment:
+         ;; 1) If attachment followed by plain text, then it might be
+         ;; a caption for the attachment, in this case add caption
+         ;; to the attachment.
+         ;; 2) Special case is for forwarded messages, new caption can
+         ;; be supplied for the forwarded message only if forwarded
+         ;; message as copy and original caption is removed (`C-u C-u
+         ;; f' behaviour)
          (t
           (when (and (or (memq (telega--tl-type attach)
                                '(inputMessageAnimation
@@ -4884,19 +4893,14 @@ Return nil if CHAT has no linked chat."
 (defun telega-chatbuf-attach-location (location &optional live-secs)
   "Attach location to the chatbuf input.
 If `\\[universal-argument]' is given, then attach live location."
-  (interactive (list (with-telega-chatbuf-action "ChoosingLocation"
-                       (if current-prefix-arg
-                           (telega-read-live-location "Live Location")
-                         (telega-read-location (telega-i18n "lng_maps_point"))))
-                     (when current-prefix-arg
-                       (let* ((choices `(("1 min" . 60)
-                                         ("15 min" . ,(* 15 60))
-                                         ("1 hour" . ,(* 60 60))
-                                         ("8 hours" . ,(* 8 60 60))))
-                              (live-for (funcall telega-completing-read-function
-                                                 "Live for: "
-                                                 (mapcar 'car choices) nil t)))
-                         (cdr (assoc live-for choices))))))
+  (interactive
+   (list (with-telega-chatbuf-action "ChoosingLocation"
+           (if current-prefix-arg
+               (telega-read-live-location (telega-i18n "lng_live_location"))
+             (telega-read-location (telega-i18n "lng_maps_point"))))
+         (when current-prefix-arg
+           (telega-completing-read-duration "Live for: "
+               `(60 ,(* 15 60) ,(* 60 60) ,(* 8 60 60) #x7FFFFFFF)))))
 
   (telega-chatbuf-input-insert
    (nconc (list :@type "inputMessageLocation"
@@ -5213,13 +5217,7 @@ Uses `telega-screenshot-function' to take a screenshot."
 EMOJI - emoji string to use instead of emoji associated with the STICKER."
   (cl-assert (telega-custom-emoji-sticker-p sticker))
   (telega-chatbuf-input-insert
-   (propertize
-    (or emoji (telega-tl-str sticker :emoji))
-    :tl-entity-type (list :@type "textEntityTypeCustomEmoji"
-                          :custom_emoji_id (telega-custom-emoji-id sticker))
-    'display (when telega-use-images
-               (telega-sticker--image sticker))
-    'rear-nonsticky t)))
+   (telega-custom-emoji-as-string sticker emoji)))
 
 (defun telega-chatbuf-animation-insert (animation)
   "Attach ANIMATION to the input."
@@ -5367,14 +5365,14 @@ ANONYMOUS-P - Non-nil to create anonymous poll.
 ALLOW-MULTIPLE-ANSWERS-P - Non-nil to allow multiple answers.
 OPTIONS - List of strings representing poll options."
   (interactive
-   (let ((poll-q (read-string
+   (let ((poll-q (telega-read-string-with-custom-emojis
                   (concat (telega-i18n "lng_polls_public")
                           " "
                           (telega-i18n "lng_polls_create_question")
                           ": ")))
          (optidx 1) opt poll-opts)
      (while (not (string-empty-p
-                  (setq opt (read-string
+                  (setq opt (telega-read-string-with-custom-emojis
                              (format "Option %d): " optidx)))))
        (setq poll-opts (append poll-opts (list opt)))
        (cl-incf optidx))
@@ -5387,12 +5385,12 @@ OPTIONS - List of strings representing poll options."
 
   (telega-chatbuf-input-insert
    (list :@type "inputMessagePoll"
-         :question question
+         :question (telega-string-fmt-text question)
          :is_anonymous (if anonymous-p t :false)
          :type (list :@type "pollTypeRegular"
                      :allow_multiple_answers
                      (if allow-multiple-answers-p t :false))
-         :options (apply 'vector options))))
+         :options (apply #'vector (mapcar #'telega-string-fmt-text options)))))
 
 (defun telega-chatbuf-attach-scheduled (timestamp)
   "Mark content as scheduled.
