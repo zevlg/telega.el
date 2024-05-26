@@ -1614,9 +1614,24 @@ Works only with `fido-mode' completion."
                                       require-match initial-input hist def
                                       inherit-input-method)
   "Same as `completing-read', but uses `telega-completing-read-function'."
-  (funcall telega-completing-read-function
-           prompt collection predicate require-match
-           initial-input hist def inherit-input-method))
+  ;; NOTE: Use `unicode-name' completion category (see
+  ;; `completion-category-defaults'), because it contains `substring'
+  ;; completion style and can complete any candidate even if it is
+  ;; prefixed with an image
+  (let ((completion-ignore-case t)
+        (candidates
+         (if (eq telega-completing-read-function #'completing-read-default)
+             (lambda (string pred action)
+               (cond ((eq action 'metadata)
+                      `(metadata (category . unicode-name)
+                                 (display-sort-function . ,#'identity)
+                                 (cycle-sort-function . ,#'identity)))
+                     (t
+                      (complete-with-action action collection string pred))))
+           collection)))
+    (funcall telega-completing-read-function
+             prompt candidates predicate require-match
+             initial-input hist def inherit-input-method)))
 
 (defun telega-read-string-with-custom-emojis (prompt &rest args)
   "Read string allowing to insert custom emojis with `C-c C-e'."
@@ -1641,17 +1656,15 @@ Return a user."
                 #'telega-completing--chat-members-collection chat))
 
             ;; Static completion, can complete only 50 chat members
-            (funcall telega-completing-read-function
-                     prompt
-                     (telega-completing--chat-members-collection chat "")
-                     nil t))))
+            (telega-completing-read
+             prompt
+             (telega-completing--chat-members-collection chat "")
+             nil t))))
     (cdr (assoc name telega-completing--chat-member-alist))))
 
 (defun telega-completing-read-folder (prompt &optional folder-names)
   "Read TDLib folder name completing."
-  (funcall telega-completing-read-function
-           prompt (or folder-names (telega-folder-names))
-           nil t))
+  (telega-completing-read prompt (or folder-names (telega-folder-names)) nil t))
 
 (defun telega-completing-read-folder-list (prompt &optional folder-names)
   "Read list of the Telegram folders prompting with PROMPT."
@@ -1662,14 +1675,15 @@ Return a user."
 
 (defun telega-completing-read-folder-icon-name (prompt &optional initial-input)
   "Read folder's icon name."
-  (funcall telega-completing-read-function prompt
-           (mapcar (lambda (icon-name)
-                     (propertize icon-name 'display
-                                 (concat (cdr (assoc icon-name
-                                                     telega-folder-icons-alist))
-                                         icon-name)))
-                   telega-folder-icon-names)
-           nil t initial-input))
+  (telega-completing-read
+   prompt
+   (mapcar (lambda (icon-name)
+             (propertize icon-name 'display
+                         (concat (cdr (assoc icon-name
+                                             telega-folder-icons-alist))
+                                 icon-name)))
+           telega-folder-icon-names)
+   nil t initial-input))
 
 (defun telega-location-distance (loc1 loc2 &optional components-p)
   "Return distance in meters between locations LOC1 and LOC2.
@@ -1751,8 +1765,7 @@ Return non-nil only if \"i'm sure\" is typed in."
                              (telega-duration-human-readable delay))
                            delay))
                    telega--slow-mode-delays))
-         (choice (funcall telega-completing-read-function
-                          prompt (mapcar #'car choices) nil t)))
+         (choice (telega-completing-read prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
 
 (defun telega-completing-read-duration (prompt intervals &optional
@@ -1767,8 +1780,7 @@ Return non-nil only if \"i'm sure\" is typed in."
                                 interval 1 'long))
                            interval))
                    intervals))
-         (choice (funcall telega-completing-read-function
-                          prompt (mapcar #'car choices) nil t)))
+         (choice (telega-completing-read prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
 
 (defun telega-completing-read-mute-for (prompt)
@@ -1851,8 +1863,8 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
                                         (cons (telega-i18n (cdr perm-spec))
                                               (car perm-spec))))
                                     raw-perms)))
-         (perm-choice (funcall telega-completing-read-function
-                               prompt (mapcar #'car i18n-choices) nil t)))
+         (perm-choice (telega-completing-read
+                       prompt (mapcar #'car i18n-choices) nil t)))
     (cdr (assoc perm-choice i18n-choices))))
 
 (defun telega-msg-sender-title-for-completion (msg-sender)
@@ -1886,8 +1898,8 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
                      (eval-when-compile
                        (lambda ()
                          (setq-local nobreak-char-display nil)))
-                   (funcall telega-completing-read-function
-                            prompt (mapcar #'car choices) nil t))))
+                   (telega-completing-read prompt (mapcar #'car choices)
+                                           nil t))))
     (cdr (assoc choice choices))))
 
 (defun telega-completing-read-topic (chat prompt)
@@ -1898,8 +1910,8 @@ If PERMISSIONS is ommited, then `telega-chat--chat-permissions' is used."
                                    (telega-ins--topic-title topic 'with-icon))
                                   topic))
                           (telega-chat-topics chat)))
-         (choice (funcall telega-completing-read-function
-                          prompt (mapcar #'car choices) nil t)))
+         (choice (telega-completing-read
+                  prompt (mapcar #'car choices) nil t)))
     (cdr (assoc choice choices))))
 
 (defun telega--animate-dots (text)
@@ -2544,14 +2556,15 @@ Used as for SVG's `:base-uri' functionality."
 
 (defun telega-create-image (file-or-data &optional type data-p &rest props)
   "Wrapper around `create-image' that takes into account `telega-use-images'.
-Also enforces `:transform-smoothing' property to be non-nil."
+Also, applies `telega-image-transform-smoothing' setting."
   (declare (indent 3))
   (when telega-use-images
     (apply #'create-image
            file-or-data
            (or type (when (eq telega-use-images 'imagemagick) 'imagemagick))
            data-p
-           (nconc props (list :transform-smoothing t)))))
+           (nconc (list :transform-smoothing telega-image-transform-smoothing)
+                  props))))
 
 (defun telega-etc-file-create-image (filename cwidth &optional no-mask-p)
   "Create image from etc's FILENAME.
@@ -2791,8 +2804,7 @@ not signal an error and just return nil."
                                             delay 1 'long)))
                                   delay))
                           '(3600 7200 28800 172800 0)))
-         (choice (funcall telega-completing-read-function
-                          prompt (mapcar #'car choices) nil t))
+         (choice (telega-completing-read prompt (mapcar #'car choices) nil t))
          (duration (cdr (assoc choice choices))))
     (if (zerop duration)
         (- (telega-read-timestamp "Timestamp: ")
@@ -2806,8 +2818,8 @@ not signal an error and just return nil."
                     (cons (concat (car spec) " (" (cdr spec) ")")
                           (cdr spec)))
                   telega-translate-languages-alist))
-         (lang (funcall telega-completing-read-function prompt
-                        (mapcar #'car candidates-alist) nil t)))
+         (lang (telega-completing-read
+                prompt (mapcar #'car candidates-alist) nil t)))
     (cdr (assoc lang candidates-alist))))
 
 (defun telega--gen-ins-continuation-callback (show-loading-p
@@ -2885,19 +2897,24 @@ Also return nil if resulting string is empty."
     (unless (string-empty-p ret-string)
       ret-string)))
 
-(defun telega-mode-line-align-right (with-string &optional column right-margin)
-  "Align to the right side of the header or mode line."
+(defun telega-mode-line-align (how with-string &optional column)
+  "Align WITH-STRING accornding to HOW.
+HOW is either `center' or `right'.
+COLUMN is the column to aligned to."
   (when with-string
     (concat
-     (propertize " " 'display ; spacer -- align right
-                 (list 'space :align-to (- (or column (window-width))
-                                           (or right-margin 0)
-                                           (string-width with-string))))
+     (propertize " " 'display
+                 (list 'space :align-to (/ (- (or column (window-width))
+                                              (string-width with-string))
+                                           (cl-ecase how
+                                             (center 2)
+                                             (right 1)))))
      with-string)))
 
 (defun telega-completing-read-text-formatting-entity (prompt)
   "Interactively read text formatting entity type."
-  (let* ((fmt-alist (mapcar (lambda (fname)
+  (let* ((completion-ignore-case t)
+         (fmt-alist (mapcar (lambda (fname)
                               (cons (telega-i18n fname) fname))
                             '("lng_menu_formatting_bold"
                               "lng_menu_formatting_italic"
@@ -2908,8 +2925,8 @@ Also return nil if resulting string is empty."
                               "lng_menu_formatting_strike_out"
                               "lng_menu_formatting_link_create"
                               "lng_menu_formatting_clear")))
-         (i18n-fmt-name (funcall telega-completing-read-function prompt
-                            (mapcar #'car fmt-alist) nil t))
+         (i18n-fmt-name (telega-completing-read
+                         prompt (mapcar #'car fmt-alist) nil t))
          (fmt-name (cdr (assoc i18n-fmt-name fmt-alist))))
     (pcase fmt-name
       ("lng_menu_formatting_bold"
@@ -2978,9 +2995,9 @@ Return nil if no reaction is available for the MSG."
           (mapcar (lambda (rtype)
                     (cons (telega-msg-reaction-title-for-completion rtype)
                           rtype))
-                  ;; NOTE: sort reactions according making
-                  ;; top-reactions be on top
-                  ;; See https://t.me/emacs_telega/44605
+                  ;; NOTE: sort reactions making top-reactions be on
+                  ;; top.  See https://t.me/emacs_telega/44605
+                  ;; `telega-default-reaction-type' always goes first
                   (sort
                    (cl-case (telega--tl-type chat-av-reactions)
                      (chatAvailableReactionsSome
@@ -2998,8 +3015,8 @@ Return nil if no reaction is available for the MSG."
                  (when (plist-get msg-av-reactions :allow_custom_emoji)
                    (list (cons custom-label 'custom)))))
          (choice (when all-choices
-                   (funcall telega-completing-read-function
-                            prompt (mapcar #'car all-choices) nil t))))
+                   (telega-completing-read
+                    prompt (mapcar #'car all-choices) nil t))))
     (when choice
       (cdr (assoc choice all-choices)))))
 
@@ -3019,8 +3036,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
                        tags))
               (choices (nconc (mapcar #'car tag-choices)
                               (list new-tag-label)))
-              (choice (funcall telega-completing-read-function
-                               prompt choices nil t)))
+              (choice (telega-completing-read prompt choices nil t)))
     (cdr (assoc choice tag-choices))))
 
 (defun telega-float-clamp (number digits)
@@ -3170,7 +3186,7 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
          (msg (cdr cmd-scope)))
     (telega--removeMessageReaction msg (plist-get tag :tag)
       (when msg
-        (lambda (_ignored)
+        (lambda-with-current-buffer (_ignored)
           ;; NOTE: Removing tag from the message might affect
           ;; message's visibility if message filter is applied at the
           ;; moment

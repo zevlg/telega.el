@@ -791,7 +791,7 @@ Specify non-nil BAN to ban this user in this CHAT."
                    (telega-read-file-name "Profile Photo: " nil nil t)))))
     (when (telega-chat-match-p chat '(my-permission :can_invite_users))
       (telega-ins " ")
-      (telega-ins--box-button "Add Member"
+      (telega-ins--box-button (telega-i18n "lng_profile_add_participant")
         'action (lambda (_button)
                   (call-interactively #'telega-chat-add-member))))
     (when (telega-chat-match-p chat '(my-permission :can_change_info))
@@ -1104,8 +1104,7 @@ Specify non-nil BAN to ban this user in this CHAT."
                  (channel ,(telega-i18n "lng_info_channel_title")
                           telega-info--insert-supergroup)))))
     (cl-assert info-spec)
-    (telega-ins--with-face 'telega-describe-section-title
-      (telega-ins (upcase (nth 1 info-spec)) "\n"))
+    (telega-ins-describe-section (upcase (nth 1 info-spec)))
     (funcall (nth 2 info-spec) (telega-chat--info chat) chat))
 
   (when-let* ((video-chat (plist-get chat :video_chat))
@@ -1120,7 +1119,8 @@ Specify non-nil BAN to ban this user in this CHAT."
             (telega-describe-group-call--inserter group-call-id))))))
 
   (when (and (listp telega-debug) (memq 'info telega-debug))
-    (telega-ins "\n---DEBUG---\n")
+    (telega-ins "\n")
+    (telega-ins-describe-section "DEBUG")
     (telega-ins--with-face 'bold
       (telega-ins "Chat: "))
     (telega-ins-fmt "%S" chat)
@@ -1129,6 +1129,11 @@ Specify non-nil BAN to ban this user in this CHAT."
     (telega-ins--with-face 'bold
       (telega-ins "Info: "))
     (telega-ins-fmt "%S" (telega-chat--info chat))
+    (telega-ins "\n")
+
+    (telega-ins--with-face 'bold
+      (telega-ins "Full-Info: "))
+    (telega-ins-fmt "%S" (telega--full-info (telega-chat--info chat)))
     (telega-ins "\n"))
   )
 
@@ -1228,7 +1233,8 @@ CHAT must be a channel."
                    (not (telega-user-chat user))))
             (hash-table-values (alist-get 'user telega--info)))))
      (list (telega-completing-read-msg-sender
-            "Chat with: " (nconc chats users)))))
+            (concat (telega-i18n "lng_saved_open_chat") ": ")
+            (nconc chats users)))))
 
   (when (telega-user-p chat-or-user)
     (setq chat-or-user (or (telega-chat-get (plist-get chat-or-user :id))
@@ -1377,12 +1383,12 @@ Use `telega-chat-leave' to just leave the CHAT."
 CHAT-TYPE is one of \"basicgroup\", \"supergroup\", \"forum\", \"channel\",
 \"secret\", \"location-supergroup\", \"location-channel\".
 Return newly created chat."
-  (interactive (list (funcall telega-completing-read-function
-                              "Chat Type: "
-                              (list "basicgroup" "supergroup" "forum"
-                                    "channel" "secret"
-                                    "location-supergroup" "location-channel")
-                              nil t)))
+  (interactive (list (telega-completing-read
+                      "Chat Type: "
+                      (list "basicgroup" "supergroup" "forum"
+                            "channel" "secret"
+                            "location-supergroup" "location-channel")
+                      nil t)))
 
   (cond ((string= chat-type "basicgroup")
          (let ((title (read-string "Chat Title: "))
@@ -1484,11 +1490,11 @@ Return newly created chat."
   "Report a CHAT having inappropriate content."
   (interactive
    (list (or telega-chatbuf--chat (telega-chat-at (point)))
-         (apply telega-completing-read-function
-                "Report Reason: "
-                '("Spam" "Violence" "Pornography" "ChildAbuse"
-                  "Copyright" "UnrelatedLocation" "Fake" "Custom")
-                nil t)))
+         (telega-completing-read
+          "Report Reason: "
+          '("Spam" "Violence" "Pornography" "ChildAbuse"
+            "Copyright" "UnrelatedLocation" "Fake" "Custom")
+          nil t)))
   (let ((text (when (string= "Custom" reason)
                 (read-string "Custom Report Reason: "))))
     (telega--reportChat chat reason text)))
@@ -1521,7 +1527,7 @@ Switch only if CHAT is opened, i.e. has corresponding chatbuf."
            (unless telega--chat-buffers-alist
              (user-error "No chatbufs to switch"))
            (telega-completing-read-msg-sender
-            "Telega chat: "
+            "Telega chatbuf: "
             ;; NOTE: if current buffer is chatbuf, then exclude it
             ;; from the list, because it is strange if it appers first
             ;; in the list
@@ -1727,7 +1733,7 @@ new Chat buffers.")
 
 (define-button-type 'telega-prompt
   :supertype 'telega
-  :inserter 'telega-ins
+  :inserter 'telega-ins--insexp
   'face 'telega-chat-prompt
   'rear-nonsticky t
 
@@ -1948,6 +1954,18 @@ Use this to surrond header with some prefix and suffix."
             (propertize telega-highlight-text-regexp
                         'face 'telega-highlight-text-face))))
 
+(defun telega-chabuf-header-unread-messages ()
+  "Formatter for the number of unread messages."
+  (telega-chatbuf--dirtiness-init
+   "updateChatReadInbox"                ;unread_count
+   )
+
+  (let ((unread-count (telega-chatbuf--unread-message-count)))
+    (unless (telega-zerop unread-count)
+      (telega-ins--as-string
+       (telega-ins-i18n "lng_unread_bar"
+         :count unread-count)))))
+
 (defun telega-chatbuf-header-thread (&optional max-width)
   "Formatter for the chatbuf's thread."
   (telega-chatbuf--dirtiness-init "thread")
@@ -1963,7 +1981,8 @@ Use this to surrond header with some prefix and suffix."
                (telega-ins (telega-symbol 'right-arrow) (telega-symbol 'topic)))
              (telega-ins--topic-title topic 'with-icon))
 
-         (telega-ins "Thread: ")
+         (telega-ins--with-face 'telega-shadow
+           (telega-ins (telega-symbol 'reply)))
          (telega-ins--content-one-line (telega-chatbuf--thread-msg)))))))
 
 (defun telega-ins--chat-action-bar-button (chat action-bar)
@@ -1985,10 +2004,11 @@ Use this to surrond header with some prefix and suffix."
                  (telega--reportChat chat "UnrelatedLocation"))))
 
     (chatActionBarInviteMembers
-     (telega-ins--box-button "Invite Users"
+     (telega-ins--box-button (telega-i18n "lng_profile_add_participant")
        'action (lambda (_ignored)
-                 (let ((new-users (telega-completing-read-user-list
-                                      "Invite new users")))
+                 (let ((new-users
+                        (telega-completing-read-user-list
+                            (telega-i18n "lng_profile_add_participant"))))
                    (dolist (user new-users)
                      (telega-chat-add-member chat user))))))
 
@@ -2026,6 +2046,26 @@ Use this to surrond header with some prefix and suffix."
      (telega-ins " ")
      (telega-ins--date (plist-get action-bar :request_date) 'date-long)
      )))
+
+(defun telega-chatbuf-footer-ins-pending-join-requests ()
+  "Inserter for the pending join requests."
+  (telega-chatbuf--dirtiness-init "updateChatPendingJoinRequests")
+
+  (when-let* ((pending-join-requests
+               (plist-get telega-chatbuf--chat :pending_join_requests))
+              (nrequests (plist-get pending-join-requests :total_count)))
+    (unless (or (telega-zerop nrequests)
+                (eq nrequests (plist-get telega-chatbuf--hidden-headers
+                                         :pending-join-requests)))
+      (telega-ins--text-button (telega-symbol 'button-close)
+        'face 'telega-link
+        'action (lambda (_ignored)
+                  (plist-put telega-chatbuf--hidden-headers
+                             :pending-join-requests nrequests)
+                  (telega-chatbuf--chat-update "updateChatPendingJoinRequests")))
+      (telega-ins " " (telega-i18n "lng_manage_peer_requests") ": ")
+      (telega-ins--pending-join-requests pending-join-requests)
+      (telega-ins "\n"))))
 
 (defun telega-chatbuf-footer-ins-action-bar ()
   "Formatter for the action bar."
@@ -2403,6 +2443,13 @@ These users can be added to group only via invite link."
                                (when telega-chatbuf--bot-start-parameter
                                  telega-chatbuf--bot-start-parameter)))
 
+                      ((and (eq (telega-chat--type telega-chatbuf--chat)
+                                'supergroup)
+                            (plist-get (telega-chat--supergroup-locally
+                                        telega-chatbuf--chat)
+                                       :join_by_request))
+                       (upcase (telega-i18n "lng_profile_apply_to_join_group")))
+
                       ((and (not (telega-chat-private-p telega-chatbuf--chat))
                             (not (telega-chat-secret-p telega-chatbuf--chat)))
                        (upcase (telega-i18n "lng_group_invite_join"))))))
@@ -2667,7 +2714,7 @@ Global chat bindings:
   (goto-char (point-max))
 
   (setq telega-chatbuf--prompt-button
-        (telega-button--insert 'telega-prompt ">>> "))
+        (telega-button--insert 'telega-prompt '(telega-ins ">>> ")))
 
   ;; user's input starts just after the prompt
   (setq telega-chatbuf--input-marker (point-marker))
@@ -2906,17 +2953,19 @@ Recover previous active action after BODY execution."
               (menu-button (plist-get bot-info :menu_button)))
     (telega-tl-str menu-button :text)))
 
-(defun telega-chatbuf-prompt-default-sender-avatar ()
-  "Return one line avatar for default message sender to the chatbuf."
-  (when (telega-chatbuf-match-p 'has-default-sender)
-    (let ((chat telega-chatbuf--chat))
-      (telega-ins--as-string
-       (telega-ins--image
-        (telega-msg-sender-avatar-image-one-line
-         (telega-msg-sender (plist-get chat :message_sender_id))))))))
+(defun telega-chatbuf-prompt-ins-default-sender-avatar ()
+  "Insert one line avatar for default message sender to the chatbuf."
+  (telega-chatbuf--dirtiness-init
+   "updateChatMessageSender")
 
-(defun telega-chatbuf-prompt-body ()
-  "Return body for the chatbuf input prompt."
+  (when (telega-chatbuf-match-p 'has-default-sender)
+    (telega-ins--image
+     (telega-msg-sender-avatar-image-one-line
+      (telega-msg-sender
+       (plist-get telega-chatbuf--chat :message_sender_id))))))
+
+(defun telega-chatbuf-prompt-ins-body ()
+  "Insert body for the chatbuf's input prompt."
   (telega-chatbuf--dirtiness-init
    "thread"                             ; telega-chatbuf--thread-msg
 
@@ -2924,43 +2973,41 @@ Recover previous active action after BODY execution."
    ;; 'me-is-member and 'me-is-anonymous
    )
 
-  (cond ((telega-chatbuf-match-p 'me-is-anonymous)
-         (telega-i18n "telega_chat_prompt_anonymous"))
+  (telega-ins
+   (cond ((telega-chatbuf-match-p 'me-is-anonymous)
+          (telega-i18n "telega_chat_prompt_anonymous"))
 
-        ((and (telega-chatbuf--thread-msg)
-              (not (telega-chatbuf-match-p 'me-is-member)))
-         (telega-i18n "telega_chat_prompt_comment"))
+         ((and (telega-chatbuf--thread-msg)
+               (not (telega-chatbuf-match-p 'me-is-member)))
+          (telega-i18n "telega_chat_prompt_comment"))
 
-        ((telega-chatbuf-match-p '(and (type channel)
-                                       (my-permission :can_post_messages)))
-         (telega-i18n "telega_chat_prompt_broadcast"))
+         ((telega-chatbuf-match-p '(and (type channel)
+                                        (my-permission :can_post_messages)))
+          (telega-i18n "telega_chat_prompt_broadcast"))
 
-        ((telega-chatbuf-match-p 'has-default-sender)
-         (telega-symbol 'right-arrow))))
+         ((telega-chatbuf-match-p 'has-default-sender)
+          (telega-symbol 'right-arrow)))))
 
-(defun telega-chatbuf-prompt-chat-avatar ()
-  "Return chatbuf's avatar for the one line usage."
+(defun telega-chatbuf-prompt-ins-chat-avatar ()
+  "Inserter for chatbuf's avatar in the input prompt."
   (telega-chatbuf--dirtiness-init
    "updateChatPhoto"
    "updateChatMessageSender")
 
-  (let ((chat telega-chatbuf--chat))
-    (telega-ins--as-string
-     (telega-ins--image
-      (telega-msg-sender-avatar-image-one-line chat)))))
+  (telega-ins--image
+   (telega-msg-sender-avatar-image-one-line telega-chatbuf--chat)))
 
-(defun telega-chatbuf-prompt-topic (&optional max-width with-topic-title-p)
-  "Return current topic title for the prompt."
+(defun telega-chatbuf-prompt-ins-topic (&optional max-width with-topic-title-p)
+  "Inserter for the current topic in the chatbuf's input prompt."
   (telega-chatbuf--dirtiness-init "thread")
 
   (when-let ((topic (telega-chatbuf--thread-topic)))
-    (telega-ins--as-string
-     (telega-ins--with-attrs (list :max max-width :align 'left :elide t
-                                   :face 'telega-shadow)
-       (telega-ins (telega-symbol 'topic))
-       (telega-ins--topic-icon topic)
-       (when with-topic-title-p
-         (telega-ins--topic-title topic))))))
+    (telega-ins--with-attrs (list :max max-width :align 'left :elide t
+                                  :face 'telega-shadow)
+      (telega-ins (telega-symbol 'topic))
+      (telega-ins--topic-icon topic)
+      (when with-topic-title-p
+        (telega-ins--topic-title topic)))))
 
 (defun telega-chatbuf--prompt-update (&optional reset-aux)
   "Update chatbuf's prompt.
@@ -2971,19 +3018,13 @@ If RESET-AUX is specified, then reset aux prompt."
        (setq telega-chatbuf--aux-plist nil)
        (telega-chatbuf--chat-update "aux-plist"))
 
-     (let ((prompt (format-mode-line telega-chat-prompt-format
-                                     nil nil (current-buffer))))
-       (telega-button--update-value
-        telega-chatbuf--prompt-button
-        (if (telega-chatbuf-match-p 'can-send-or-post)
-            prompt
-          (propertize prompt 'face 'telega-shadow)))))))
+     (telega-button--update-value
+      telega-chatbuf--prompt-button
+      telega-chat-prompt-insexp))))
 
 (defun telega-chatbuf--prompt-reset ()
   "Reset prompt to initial state in chat buffer."
-  (let ((inhibit-read-only t)
-        (buffer-undo-list t))
-    (telega-chatbuf--prompt-update 'reset)))
+  (telega-chatbuf--prompt-update 'reset))
 
 (defun telega-chatbuf--input-draft-update (&optional force)
   "Update chatbuf's input to display draft message.
@@ -4919,8 +4960,9 @@ If `\\[universal-argument]' is given, then attach live location."
                                            :with-username-p t)
                                          user))
                                  contacts))
-            (name (funcall telega-completing-read-function
-                           "Contact: " (mapcar 'car names-alist) nil t))
+            (name (telega-completing-read
+                   (concat (telega-i18n "lng_in_dlg_contact") ": ")
+                   (mapcar 'car names-alist) nil t))
             (user (cdr (assoc name names-alist))))
        (cl-assert user)
        (list (telega-user-as-contact user)))))
@@ -5454,9 +5496,9 @@ Use this attachment to disable/enable notification on the receiver side."
 
 (defun telega-chatbuf-attach-dice (emoji)
   "Attach random dice roll message."
-  (interactive (list (funcall telega-completing-read-function
-                              "Dice Emoji: "
-                              telega--dice-emojis nil t)))
+  (interactive (list (telega-completing-read
+                      "Dice Emoji: "
+                      telega--dice-emojis nil t)))
   (telega-chatbuf-input-insert
    (list :@type "inputMessageDice"
          :emoji emoji
@@ -5467,10 +5509,10 @@ Use this attachment to disable/enable notification on the receiver side."
 Using this type of attachment it is possible to intermix multiple
 markups in the chatbuf input.
 Markups are defined in the `telega-chat-markup-functions' user option."
-  (interactive (list (funcall telega-completing-read-function
-                              "Markup: "
-                              (mapcar #'car telega-chat-markup-functions)
-                              nil t)))
+  (interactive (list (telega-completing-read
+                      "Markup: "
+                      (mapcar #'car telega-chat-markup-functions)
+                      nil t)))
   (let ((markup-func (cdr (assoc markup-name telega-chat-markup-functions))))
     (telega-chatbuf-input-insert
      (telega-string-as-markup (or markup-text "") markup-name markup-func))
@@ -5485,14 +5527,13 @@ Markups are defined in the `telega-chat-markup-functions' user option."
   "Attach something to the chatbuf input.
 `\\[universal-argument]' is passed directly to the attachment function.
 See `telega-chat-attach-commands' for available attachment types."
-  (interactive
-   (list (funcall telega-completing-read-function
-                  "Attachment type: "
-                  (mapcar #'car (seq-filter
-                                 (lambda (cmd-spec)
-                                   (telega-chatbuf-match-p (nth 1 cmd-spec)))
-                                 telega-chat-attach-commands))
-                  nil t)))
+  (interactive (list (telega-completing-read
+                      "Attachment type: "
+                      (mapcar #'car (seq-filter
+                                     (lambda (cmd-spec)
+                                       (telega-chatbuf-match-p (nth 1 cmd-spec)))
+                                     telega-chat-attach-commands))
+                      nil t)))
 
   (let ((cmd (nth 2 (assoc attach-type telega-chat-attach-commands))))
     (cl-assert (commandp cmd))
@@ -6348,13 +6389,13 @@ CALLBACK is called after point is moved to the message with MSG-ID."
 (defun telega-chatbuf--read-filter (prompt msg-filter-specs)
   "Read a message filter from MSG-FILTER-SPECS."
   (let ((msg-filter-spec
-         (assoc (funcall telega-completing-read-function
-                         prompt
-                         (mapcar #'car (cl-remove-if-not
-                                        (lambda (spec)
-                                          (telega-chatbuf-match-p (nth 1 spec)))
-                                        msg-filter-specs))
-                         nil t)
+         (assoc (telega-completing-read
+                 prompt
+                 (mapcar #'car (cl-remove-if-not
+                                (lambda (spec)
+                                  (telega-chatbuf-match-p (nth 1 spec)))
+                                msg-filter-specs))
+                 nil t)
                 msg-filter-specs)))
     (list :title (nth 0 msg-filter-spec)
           :tdlib-msg-filter (nth 2 msg-filter-spec))))
@@ -6481,8 +6522,8 @@ by some chat member, member name is queried."
   "Show only messages marked with HASHTAG.
 If `\\[universal-argument]' is given, then search for HASHTAG
 sent by some chat member, member name is queried."
-  (interactive (list (funcall telega-completing-read-function
-                              "Hashtag: #" (telega--searchHashtags ""))
+  (interactive (list (telega-completing-read
+                      "Hashtag: #" (telega--searchHashtags ""))
                      current-prefix-arg))
   (telega-chatbuf-filter-search
    (concat (unless (string-prefix-p "#" hashtag) "#") hashtag)

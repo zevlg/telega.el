@@ -717,8 +717,7 @@ Return sticker set."
               (lambda ()
                 (add-hook 'post-command-hook
                           'telega-stickerset--minibuf-post-command t t))
-            (funcall telega-completing-read-function
-                     prompt telega-minibuffer--choices nil t))))
+            (telega-completing-read prompt telega-minibuffer--choices nil t))))
 
     (cl-find (cadr (assoc sset-name telega-minibuffer--choices)) ssets
              :test #'equal

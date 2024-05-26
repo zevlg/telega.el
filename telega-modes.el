@@ -1080,9 +1080,17 @@ UFILE specifies Telegram file being uploading."
                              t)))
      (unless edit-file-buffers
        (user-error "No files opened from telega"))
-     (list (funcall telega-completing-read-function
-                    "Telega Edit File: " edit-file-buffers
-                    nil t nil 'buffer-name-history))))
+     ;; TODO: Probably use `read-buffer' with a predicate?
+     ;; Something like:
+     ;;   (read-buffer "Telega Edit File: " nil t
+     ;;                (lambda (val)
+     ;;                  (when (consp val)
+     ;;                    (setq val (car val)))
+     ;;                  (cl-assert (stringp val))
+     ;;                  (member val edit-file-buffers)))
+     (list (telega-completing-read
+             "Telega Edit File: " edit-file-buffers
+             nil t nil 'buffer-name-history))))
   (switch-to-buffer buffer))
 
 
@@ -1861,20 +1869,19 @@ Or nil if translation is not needed."
   (plist-put msg :telega-translated nil)
   (telega-auto-translate--on-msg-insert msg))
 
-(defun telega-auto-translate--chatbuf-prompt-translation ()
-  "Addon to chatbuf prompt in case `telega-auto-translate-mode' is enabled."
+(defun telega-auto-translate--chatbuf-prompt-ins-translation ()
+  "Inserter to chatbuf prompt in case `telega-auto-translate-mode' is enabled."
   (when (and telega-auto-translate-mode
              telega-chatbuf-language-code
              telega-translate-to-language-by-default
              (not (equal telega-chatbuf-language-code
                          telega-translate-to-language-by-default)))
-    (telega-ins--as-string
-     (telega-ins--with-face 'telega-shadow
-       (telega-ins "["
-                   telega-translate-to-language-by-default
-                   (telega-symbol 'right-arrow)
-                   telega-chatbuf-language-code
-                   "]")))))
+    (telega-ins--with-face 'telega-shadow
+      (telega-ins "["
+                  telega-translate-to-language-by-default
+                  (telega-symbol 'right-arrow)
+                  telega-chatbuf-language-code
+                  "]"))))
 
 (defvar telega-auto-translate-mode-lighter
   (concat " " (telega-symbol 'mode) "Translate")

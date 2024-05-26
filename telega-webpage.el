@@ -558,7 +558,9 @@ instant view for the URL."
     (mapc #'telega-webpage--ins-pb
           (plist-get telega-webpage--iv :page_blocks))
     (when (and (listp telega-debug) (memq 'iv telega-debug))
-      (telega-ins-fmt "\n---DEBUG---\n%S" telega-webpage--iv))
+      (telega-ins "\n")
+      (telega-ins-describe-section "DEBUG")
+      (telega-ins-fmt "%S" telega-webpage--iv))
     (goto-char (point-min)))
 
   (unless (derived-mode-p 'telega-webpage-mode)

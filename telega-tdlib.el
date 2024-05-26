@@ -86,10 +86,33 @@ If SYNC-P is specified, then set option is sync manner."
                                                      (type-of val))))
                               :value (or val :false)))))
 
-(defun telega--addProxy (proxy-spec)
+(defun telega--addProxy (proxy-spec &optional callback)
   "Add PROXY-SPEC to the list of proxies."
-  (telega-server--send
-   `(:@type "addProxy" ,@proxy-spec)))
+  (telega-server--call
+   `(:@type "addProxy" ,@proxy-spec)
+   (or callback #'ignore)))
+
+(defun telega--enableProxy (proxy &optional callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "enableProxy"
+         :proxy_id (plist-get proxy :id))
+   (or callback #'ignore)))
+
+(defun telega--disableProxy (&optional callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "disableProxy")
+   (or callback #'ignore)))
+
+(defun telega--pingProxy (proxy &optional callback)
+  "Get time needed to receive a response from a Telegram server through a PROXY.
+If PROXY is nil, then ping a Telegram server without a proxy."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "pingProxy"
+         :proxy_id (or (plist-get proxy :id) 0))
+   callback))
 
 (defun telega--searchEmojis (text &optional exact-match-p
                                   language-codes callback)
@@ -229,6 +252,12 @@ Requires owner right."
    (list :@type "toggleSupergroupSignMessages"
          :supergroup_id (plist-get supergroup :id)
          :sign_messages (if sign-messages-p t :false))))
+
+(defun telega--toggleSupergroupJoinByRequest (supergroup join-by-request-p)
+  (telega-server--send
+   (list :@type "toggleSupergroupJoinByRequest"
+         :supergroup_id (plist-get supergroup :id)
+         :join_by_request (if join-by-request-p t :false))))
 
 (defun telega--toggleSupergroupIsAllHistoryAvailable (supergroup all-history-available-p)
   (telega-server--send
@@ -980,11 +1009,9 @@ CHAT must be supergroup or channel."
 
 (defun telega--getProxies (&optional callback)
   "Return list of currently registered proxies."
-  (with-telega-server-reply (reply)
-      (append (plist-get reply :proxies) nil)
-
-    (list :@type "getProxies")
-    callback))
+  (telega-server--call
+   (list :@type "getProxies")
+   callback))
 
 (defun telega--pinChatMessage (msg &optional disable-notifications only-for-self)
   "Pin message MSG.
@@ -1305,11 +1332,12 @@ LIMIT - limit number of photos (default=100)."
          :first_name (or first-name "")
          :last_name (or last-name ""))))
 
-(defun telega--setBio (bio)
+(defun telega--setBio (bio &optional callback)
   "Set me bio to BIO."
-  (telega-server--send
+  (telega-server--call
    (list :@type "setBio"
-         :bio (or bio ""))))
+         :bio (or bio ""))
+   (or callback #'ignore)))
 
 (defun telega--setUsername (username)
   "Set me username to USERNAME.
@@ -2233,13 +2261,12 @@ be marked as read."
    (list :@type "readChatList"
          :chat_list tdlib-chat-list)))
 
-(defun telega--toggleChatHasProtectedContent (chat)
+(defun telega--toggleChatHasProtectedContent (chat has-protected-content-p)
   "Toogle ability of users to save, forward, or copy CHAT content."
   (telega-server--send
    (list :@type "toggleChatHasProtectedContent"
          :chat_id (plist-get chat :id)
-         :has_protected_content
-         (if (plist-get chat :has_protected_content) :false t))))
+         :has_protected_content (if has-protected-content-p t :false))))
 
 (defun telega--toggleChatIsMarkedAsUnread (chat)
   "Toggle marked as read state of the CHAT."
@@ -2694,6 +2721,13 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
    (list :@type "setNetworkType"
          :type tdlib-network-type)
    (or callback 'ignore)))
+
+(defun telega--getNetworkStatistics (&optional only-current-p callback)
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getNetworkStatistics"
+         :only_current (if only-current-p t :false))
+   callback))
 
 ;; Autodownload
 (defun telega--getAutoDownloadSettingsPresets (&optional callback)
@@ -3172,6 +3206,21 @@ Saved Messages topic is specified by SM-TOPIC-ID."
 (defun telega--hideContactCloseBirthdays ()
   (telega-server--send
    (list :@type "hideContactCloseBirthdays")))
+
+(defun telega--toggleHasSponsoredMessagesEnabled (enable-p &optional callback)
+  (telega-server--call
+   (list :@type "toggleHasSponsoredMessagesEnabled"
+         :has_sponsored_messages_enabled (if enable-p t :false))
+   (or callback #'ignore)))
+
+(defun telega--toggleSupergroupCanHaveSponsoredMessages
+    (supergroup enable-p &optional callback)
+  "Toggles whether sponsored messages are shown in the channel chat."
+  (telega-server--call
+   (list :@type "toggleHasSponsoredMessagesEnabled"
+         :supergroup_id (plist-get supergroup :id)
+         :can_have_sponsored_messages (if enable-p t :false))
+   (or callback #'ignore)))
 
 (provide 'telega-tdlib)
 

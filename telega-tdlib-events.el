@@ -1610,6 +1610,14 @@ Please downgrade TDLib and recompile `telega-server'"
 (defun telega--on-updateChatRemovedFromList (event)
   )
 
+(defun telega--on-updateChatPendingJoinRequests (event)
+  (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
+    (cl-assert chat)
+    (plist-put chat :pending_join_requests
+               (plist-get event :pending_join_requests))
+
+    (telega-chat--mark-dirty chat event)))
+
 (provide 'telega-tdlib-events)
 
 ;;; telega-tdlib-events.el ends here

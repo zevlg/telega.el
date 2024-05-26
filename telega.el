@@ -8,8 +8,8 @@
 ;; Keywords: comm
 ;; Package-Requires: ((emacs "27.1") (visual-fill-column "1.9") (rainbow-identifiers "0.2.2") (transient "0.3.0"))
 ;; URL: https://github.com/zevlg/telega.el
-;; Version: 0.8.290
-(defconst telega-version "0.8.290")
+;; Version: 0.8.291
+(defconst telega-version "0.8.291")
 (defconst telega-server-min-version "0.7.7")
 (defconst telega-tdlib-min-version "1.8.29")
 (defconst telega-tdlib-max-version nil)
@@ -152,12 +152,11 @@ can't write to `telega-server-logfile'" logfile-dir)))
   (interactive
    (list (if (not telega-accounts)
              (user-error "telega: Single account setup, see `telega-accounts'")
-           (funcall telega-completing-read-function
-                    "Telegram Account: "
-                    (mapcar #'car
-                            (cl-remove-if #'telega-account--current-p
-                                          telega-accounts))
-                    nil 'require-match))))
+           (telega-completing-read
+            "Telegram Account: "
+            (mapcar #'car (cl-remove-if #'telega-account--current-p
+                                        telega-accounts))
+            nil 'require-match))))
 
   (let ((account (assoc account-name telega-accounts)))
     (cl-assert account)
@@ -186,8 +185,7 @@ Modifies `telega-network-type' by side-effect."
                              (list (substring (plist-get (cdr nt) :@type) 11)
                                    (car nt)))
                            telega-tdlib-network-type-alist))
-          (choice (funcall telega-completing-read-function
-                           "Set Network Type: " choices nil t))
+          (choice (telega-completing-read "Set Network Type: " choices nil t))
           (network-type (car (alist-get choice choices nil nil 'string=))))
      (list network-type)))
 

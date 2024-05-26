@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2024-05-15 Ср 16:26 -->
+<!-- 2024-05-26 Вс 23:54 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.290)</title>
+<title>Telega Manual (v0.8.291)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -36,7 +36,7 @@
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.290)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.291)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -834,7 +834,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="orgb1d9129">
+<pre class="example" id="orgbd14254">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -852,7 +852,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org31b3a6f">
+<pre class="example" id="orgfebaaaf">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -941,7 +941,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org0a6a0b1">
+<pre class="example" id="org002e24c">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -979,7 +979,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="orgc1f3e60">
+<pre class="example" id="org30215fe">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1974,33 +1974,6 @@ Each element is cons cell, where car is Chat Filter, and cdr is color.
 Default value: <code>((saved-messages))</code>
 </p></li>
 <li><p>
-User Option: <code>telega-chat-prompt-format</code> 
-</p>
-
-<p>
-Modeline compatible format for the chatbuf input prompt.
-You can use <code>telega-chatbuf-editing-msg</code> or
-<code>telega-chatbuf-replying-msg</code> in <code>:eval</code> section if you want different
-prompt when editing/replying a message. 
-</p>
-
-<p>
-Default value: 
-</p>
-<div class="org-src-container">
-<pre class="src src-emacs-lisp">((<span style="font-weight: bold;">:eval</span> (telega-chatbuf-prompt-default-sender-avatar))
- (<span style="font-weight: bold;">:eval</span> (telega-chatbuf-prompt-body))
- (<span style="font-weight: bold;">:eval</span>
-  (<span style="font-weight: bold;">when</span>
-      (<span style="font-weight: bold;">and</span> telega-use-images
-           (telega-chatbuf-match-p 'can-send-or-post))
-    (telega-chatbuf-prompt-chat-avatar)))
- (<span style="font-weight: bold;">:eval</span> (telega-chatbuf-prompt-topic 25))
- (<span style="font-weight: bold;">:eval</span> (telega-auto-translate--chatbuf-prompt-translation)) <span style="font-style: italic;">"&gt;&gt;&gt; "</span>)
-</pre>
-</div></li>
-
-<li><p>
 User Option: <code>telega-chat-group-messages-for</code> 
 </p>
 
@@ -2396,7 +2369,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org8cea41b">
+<pre class="example" id="orgfcab8ac">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2587,7 +2560,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="orge568482">
+<pre class="example" id="org1c14e8e">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2619,7 +2592,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="org7aff557">
+<pre class="example" id="org5659002">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -3535,7 +3508,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="orgf73e142">
+<pre class="example" id="org48ebd94">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4735,7 +4708,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org955e1d3">
+<pre class="example" id="orgc33d900">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

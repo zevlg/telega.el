@@ -893,7 +893,8 @@ Strips `line-prefix' and `wrap-prefix' text properties from copied text."
     bstr))
 
 (defmacro with-telega-help-win (buffer-or-name &rest body)
-  "Execute BODY in help BUFFER-OR-NAME."
+  "Execute BODY in help BUFFER-OR-NAME.
+Return a buffer."
   (declare (indent 1))
   `(progn
      ;; (with-help-window ,buffer-or-name)
@@ -912,7 +913,8 @@ Strips `line-prefix' and `wrap-prefix' text properties from copied text."
        ;; (setq-local fill-column -1)
        ;; (visual-fill-column-mode 1)
 
-       ,@body)))
+       ,@body
+       ,buffer-or-name)))
 
 (defun telega-help-win--add-tdlib-callback (extra)
   (setq telega--help-win-tdlib-callbacks
@@ -1457,7 +1459,7 @@ Properties specified in PROPS are retained on
   "Change BUTTON to NEW-BUTTON."
   (declare (indent 1))
   (let ((newbutton (gensym "newbutton")))
-    `(let ((inhibit-read-only t))
+    `(with-telega-buffer-modify
        (goto-char (button-start ,button))
        (let ((,newbutton ,new-button))
          (delete-region (point) (button-end ,button))
@@ -1876,6 +1878,11 @@ If COLUMN is nil or less then current column, then current column is used."
     (telega-ins title "\n"))
   (telega-ins--with-face '(:height 0.25)
     (telega-ins "\n")))
+
+(defun telega-ins-describe-subsection (title)
+  "Insert a description subsection with TITLE."
+  (telega-ins--with-face 'telega-describe-subsection-title
+    (telega-ins title "\n")))
 
 (defmacro telega-ins-describe-item (title &rest body)
   "Describe item with TITLE."

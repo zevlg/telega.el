@@ -188,11 +188,49 @@ PARAMS are additional params."
     (when chat
       (telega-chat--pop-to-buffer chat))))
 
-(defun telega-tme-open-proxy (_type _proxy)
+(defun telega-tme-open-proxy-tdlib-link (tdlib-link)
+  "Add a proxy defined by internal TDLIB-LINK."
+  (let ((help-window-select t))
+    (with-telega-help-win "*Telega Add Proxy*"
+      (telega-ins-describe-section (telega-i18n "lng_proxy_add"))
+      ;; NOTE: Only MTPROTO proxies may add sponsor channel
+      (when (eq 'proxyTypeMtproto
+                (telega--tl-type (plist-get tdlib-link :type)))
+        (telega-ins--help-message
+         (telega-ins-i18n "lng_proxy_sponsor_warning")))
+      (telega-ins-describe-item "Server"
+        (telega-ins (telega-tl-str tdlib-link :server)))
+      (telega-ins-describe-item "Port"
+        (telega-ins-fmt "%d" (plist-get tdlib-link :port)))
+      (telega-ins--box-button (telega-i18n "lng_proxy_add")
+        'action (lambda-with-current-buffer (_button)
+                  (kill-buffer-and-window)
+                  (telega--addProxy
+                   (list :server (telega-tl-str tdlib-link :server)
+                         :port (plist-get tdlib-link :port)
+                         :type (plist-get tdlib-link :type))
+                   (lambda (_proxy)
+                     (telega-describe-network)))))
+      )))
+
+(defun telega-tme-open-proxy (type proxy)
   "Open the PROXY."
   ;; TYPE is "socks" or "proxy"
   ;; :server, :port, :user, :pass, :secret
-  (message "TODO: `telega-tme-open-proxy'")
+  (message "TODO: `telega-tme-open-proxy' %S / %S" type proxy)
+  (telega-tme-open-proxy-tdlib-link
+   (list :@type "internalLinkTypeProxy"
+         :server (plist-get proxy :server)
+         :port (string-to-number (plist-get proxy :port))
+         :type (cond ((string= type "proxy")
+                      (list :@type "proxyTypeMtproto"
+                            :secret (plist-get proxy :secret)))
+                     ((string= type "socks")
+                      (list :@type "proxyTypeSocks5"
+                            :username (plist-get proxy :user)
+                            :password (plist-get proxy :pass)))
+                     (t
+                      (error "Unknown proxy type: %S" type)))))
   )
 
 (defun telega-tme-open-stickerset (setname)
@@ -325,8 +363,6 @@ Return non-nil if url has been handled."
                    (concat "tg:addtheme?slug=" (match-string 1 path)))
                   ((string-match "^/share/url$" path)
                    (concat "tg:msg_url?" query))
-                  ((string-match "^/\\(socks\\|proxy\\)$" path)
-                   (concat "tg:" (match-string 1 path) "?" query))
                   ((string-match
                     (eval-when-compile
                       (rx (and line-start "/c/"
@@ -476,6 +512,9 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
             (message "Webapp info: %S" web-app-info)
             (telega-browse-url (plist-get web-app-info :url))))
          )))
+
+    (internalLinkTypeProxy
+     (telega-tme-open-proxy-tdlib-link tdlib-link))
     ))
 
 (provide 'telega-tme)

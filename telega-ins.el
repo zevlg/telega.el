@@ -393,7 +393,7 @@ If WITH-AVATAR-P is 2, then insert 2 lines version of an avatar."
     (when with-username-p
       (when-let ((username (telega-msg-sender-username msg-sender 'with-@)))
         (telega-ins--with-face 'telega-shadow
-          (telega-ins telega-symbol-nbsp "•" telega-symbol-nbsp))
+          (telega-ins " • "))
         (telega-ins--with-face (if (facep with-username-p)
                                    with-username-p
                                  title-faces)
@@ -480,7 +480,11 @@ If WITH-AVATAR-P is 2, then insert 2 lines version of an avatar."
 MEMBER specifies corresponding \"ChatMember\" object.
 If SHOW-PHONE-P is non-nil, then show USER's phone number."
   (let ((avatar (telega-msg-sender-avatar-image user))
-        (off-column (telega-current-column)))
+        ;; NOTE: Do not use `telega-current-column', because
+        ;; `telega-ins--user' might be used under
+        ;; `telega-ins--line-wrap-prefix' and `telega-current-column'
+        ;; accounts line/wrap prefix
+        (off-column (current-column)))
     (telega-ins--image avatar 0
                        :no-display-if (not telega-user-show-avatars))
     (telega-ins--msg-sender user
@@ -495,7 +499,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
     (when show-phone-p
       (when-let ((phone-number (telega-tl-str user :phone_number)))
         (telega-ins--with-face 'telega-shadow
-          (telega-ins telega-symbol-nbsp "•" telega-symbol-nbsp))
+          (telega-ins " • "))
         (telega-ins "+" phone-number)))
 
     ;; Insert (him)in<-->out(me) relationship
@@ -509,7 +513,7 @@ If SHOW-PHONE-P is non-nil, then show USER's phone number."
     (telega-ins--image avatar 1
                        :no-display-if (not telega-user-show-avatars))
     ;; Setup `off-column' for "invited by" string
-    (setq off-column (telega-current-column))
+    (setq off-column (current-column))
     (telega-ins--user-status user)
 
     (when-let ((join-date (plist-get member :joined_chat_date)))
@@ -1315,14 +1319,14 @@ Return `non-nil' if WEB-PAGE has been inserted."
     (when (and user with-username-p)
       (when-let ((username (telega-msg-sender-username user 'with-@)))
         (telega-ins--with-face 'telega-shadow
-          (telega-ins telega-symbol-nbsp "•" telega-symbol-nbsp))
+          (telega-ins " • "))
         (telega-ins--with-face 'telega-username
           (telega-ins username))))
 
     (when-let* ((with-phone-p with-phone-p)
                 (phone-number (telega-tl-str contact :phone_number)))
       (telega-ins--with-face 'telega-shadow
-        (telega-ins telega-symbol-nbsp "•" telega-symbol-nbsp))
+        (telega-ins " • "))
       (telega-ins (unless (string-prefix-p "+" phone-number) "+") phone-number))
     t))
 
@@ -3785,25 +3789,6 @@ Short version."
     (cl-assert last-msg)
     (telega-ins--message-with-chat-header last-msg)))
 
-(defun telega-ins--root-msg (msg)
-  "Inserter for message MSG shown in `telega-root-messages--ewoc'."
-  (let ((chat (telega-msg-chat msg))
-        (telega-chat-button-width
-         (round (* (telega-canonicalize-number telega-chat-button-width
-                                               telega-root-fill-column)
-                   (/ 2.0 3)))))
-    (telega-ins--chat chat)
-    (telega-ins "  ")
-    (telega-ins--chat-msg-one-line chat msg)))
-
-(defun telega-ins--root-msg-call (msg)
-  "Inserter for call message MSG in rootbuf."
-  (let ((telega-chat-fill-column telega-root-fill-column)
-        (telega-msg-heading-with-date-and-status t))
-    (telega-ins--message msg
-      :sender (when (telega-msg-match-p msg 'outgoing)
-                (telega-chat-user (telega-msg-chat msg))))))
-
 (defun telega-ins--chat-my-restrictions (chat)
   "Insert my restrictions (if any) in the CHAT.
 Return non-nil if restrictions has been inserted."
@@ -3845,64 +3830,55 @@ Return non-nil if restrictions has been inserted."
               )
         t))))
 
+(defun telega-ins--pending-join-requests (pending-join-requests)
+  "Inserter for the PENDING-JOIN-REQUESTS."
+  (seq-doseq (user-id (plist-get pending-join-requests :user_ids))
+    (telega-ins--image
+     (telega-msg-sender-avatar-image-one-line (telega-user-get user-id))))
+  (telega-ins " ")
+  (telega-ins--text-button
+      (telega-i18n "lng_group_requests_pending"
+        :count (plist-get pending-join-requests :total_count))
+    'face 'telega-link
+    'action (lambda (_button)
+              (message "TODO: describe pending requests")))
+  t)
+
+
+(defun telega-ins--root-msg (msg)
+  "Inserter for message MSG shown in `telega-root-messages--ewoc'."
+  (let ((chat (telega-msg-chat msg))
+        (telega-chat-button-width
+         (round (* (telega-canonicalize-number telega-chat-button-width
+                                               telega-root-fill-column)
+                   (/ 2.0 3)))))
+    (telega-ins--chat chat)
+    (telega-ins "  ")
+    (telega-ins--chat-msg-one-line chat msg)))
+
+(defun telega-ins--root-msg-call (msg)
+  "Inserter for call message MSG in rootbuf."
+  (let ((telega-chat-fill-column telega-root-fill-column)
+        (telega-msg-heading-with-date-and-status t))
+    (telega-ins--message msg
+      :sender (when (telega-msg-match-p msg 'outgoing)
+                (telega-chat-user (telega-msg-chat msg))))))
+
 (defun telega-ins--sponsored-message (sponsored-msg)
   "Inserter for the SPONSORED-MSG."
   (let* ((sponsor (plist-get sponsored-msg :sponsor))
-         (sponsor-type (plist-get sponsor :type))
          (chat-photo-info (plist-get sponsor :photo)))
     (when chat-photo-info
       (telega-ins--image
        (telega-chat-photo-info-image-one-line chat-photo-info)))
 
-    (cl-assert sponsor)
-    (cl-ecase (telega--tl-type sponsor-type)
-      (messageSponsorTypeBot
-       (let ((user (telega-user-get (plist-get sponsor-type :bot_user_id))))
-         (telega-ins--msg-sender user
-           :with-avatar-p nil
-           :with-username-p t
-           :with-brackets-p nil)))
-
-      (messageSponsorTypeWebApp
-       (telega-ins (telega-tl-str sponsor-type :web_app_title)))
-
-      (messageSponsorTypePublicChannel
-       (let ((chat (telega-chat-get (plist-get sponsor-type :chat_id))))
-         (telega-ins--msg-sender chat
-           :with-avatar-p nil
-           :with-username-p 'telega-username
-           :with-brackets-p nil)))
-
-      (messageSponsorTypePrivateChannel
-       (telega-ins (telega-tl-str sponsor-type :title)))
-
-      (messageSponsorTypeWebsite
-       (telega-ins--with-face 'telega-webpage-sitename
-         (telega-ins (telega-tl-str sponsor-type :name)))))
-    (telega-ins "\n")
-
     (telega-ins--with-face 'telega-msg-sponsored
       (telega-ins--content sponsored-msg))
     (telega-ins "\n")
 
-    ;; Link
-    (cl-ecase (telega--tl-type sponsor-type)
-      (messageSponsorTypeBot
-       (telega-ins--box-button (telega-i18n "lng_view_button_bot")
-         'action 'telega-msg-open-sponsored))
+    (telega-ins--box-button (telega-i18n "lng_open_link")
+      'action #'telega-sponsored-msg--action)
 
-      (messageSponsorTypeWebApp
-       (telega-ins--box-button (telega-i18n "lng_open_link")
-         'action 'telega-msg-open-sponsored))
-
-      ((messageSponsorTypePublicChannel
-        messageSponsorTypePrivateChannel)
-       (telega-ins--box-button (telega-i18n "lng_view_button_channel")
-         'action 'telega-msg-open-sponsored))
-
-      (messageSponsorTypeWebsite
-       (telega-ins--box-button (telega-i18n "lng_view_button_external_link")
-         'action 'telega-msg-open-sponsored)))
     (telega-ins "\n")))
 
 (defun telega-ins--msg-reaction-type (reaction-type)

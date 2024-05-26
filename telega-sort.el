@@ -120,10 +120,11 @@ CRITERIA could be a lit of sort criterias."
 If prefix ARG is used, then add sort criteria, instead of
 overwriting currently active one."
   (interactive
-   (let ((cname (funcall telega-completing-read-function
-                         "Sort criteria: "
-                         (mapcar 'symbol-name
-                                 (mapcar 'car telega-sort-criteria-alist)))))
+   (let ((cname (telega-completing-read
+                 "Sort criteria: "
+                 (mapcar 'symbol-name
+                         (mapcar 'car telega-sort-criteria-alist))
+                 nil t)))
      (list (intern cname) current-prefix-arg)))
 
   (telega-sort-set-active-criteria

@@ -215,6 +215,14 @@ Tracking notifications for telega buffers will use the
              (or unmuted mention))
   :group 'telega)
 
+(defcustom telega-image-transform-smoothing t
+  "Default value for the `:transform-smoothing' image property.
+If nil, then smoothing is applied only for downscaled images, if image
+is upscaled then nearest neighbor filter is used to show real pixels."
+  :package-version '(telega . "0.8.291")
+  :type 'boolean
+  :group 'telega)
+
 (defcustom telega-use-images (or (and (fboundp 'image-transforms-p)
                                       (funcall 'image-transforms-p))
                                  (when (fboundp 'imagemagick-types)
@@ -1351,20 +1359,22 @@ Setting it to non-nil might introduce additional flickering in chatbuf."
   :type 'boolean
   :group 'telega-chat)
 
-(defcustom telega-chat-prompt-format
-  '((:eval (telega-chatbuf-prompt-default-sender-avatar))
-    (:eval (telega-chatbuf-prompt-body))
-    (:eval (when (and telega-use-images
-                      (telega-chatbuf-match-p 'can-send-or-post))
-             (telega-chatbuf-prompt-chat-avatar)))
-    (:eval (telega-chatbuf-prompt-topic 25))
-    (:eval (telega-auto-translate--chatbuf-prompt-translation))
-    ">>> ")
-  "*Modeline compatible format for the chatbuf input prompt.
+(defcustom telega-chat-prompt-insexp
+  '(telega-ins--with-face (unless (telega-chatbuf-match-p 'can-send-or-post)
+                            'telega-shadow)
+     (telega-chatbuf-prompt-ins-default-sender-avatar)
+     (telega-chatbuf-prompt-ins-body)
+     (when (or (telega-chatbuf-match-p 'has-default-sender)
+               (telega-chatbuf-match-p 'can-send-or-post))
+       (telega-chatbuf-prompt-ins-chat-avatar))
+     (telega-chatbuf-prompt-ins-topic 25)
+     (telega-auto-translate--chatbuf-prompt-ins-translation)
+     (telega-ins ">>> "))
+  "*Inserter sexp for the chatbuf's input prompt.
 You can use `telega-chatbuf-editing-msg' or
-`telega-chatbuf-replying-msg' in `:eval' section if you want different
-prompt when editing/replying a message."
-  :package-version '(telega . "0.7.101")
+`telega-chatbuf-replying-msg' functions if you want different prompt
+when editing/replying a message."
+  :package-version '(telega . "0.8.291")
   :type 'sexp
   :group 'telega-chat)
 
@@ -1642,11 +1652,18 @@ See `mode-line-buffer-identification'."
             " " (telega-chatbuf-header-preview-mode)))
     (:eval (telega-chatbuf-header-concat
             " " (telega-chatbuf-header-highlight-text)))
-    (:eval (telega-mode-line-align-right
-            (telega-chatbuf-header-thread 30)
+    (:eval (telega-mode-line-align
+            'center
+            (telega-chatbuf-header-concat
+             " " (telega-chabuf-header-unread-messages))
+            telega-chat-fill-column))
+    (:eval (telega-mode-line-align
+            'right
+            (telega-chatbuf-header-concat
+             " " (telega-chatbuf-header-thread 30))
             telega-chat-fill-column)))
   "*Modeline compatible format for the chatbuf's header line."
-  :package-version '(telega . "0.8.170")
+  :package-version '(telega . "0.8.291")
   :type 'sexp
   :group 'telega-chat)
 
@@ -1656,6 +1673,7 @@ See `mode-line-buffer-identification'."
        (telega-ins "\n"))
      (telega-chatbuf-footer-ins-sponsored-messages)
      (telega-chatbuf-footer-ins-prompt-delim t t)
+     (telega-chatbuf-footer-ins-pending-join-requests)
      (telega-chatbuf-footer-ins-action-bar)
      (telega-chatbuf-footer-ins-active-vvnote)
      (telega-chatbuf-footer-ins-active-video-chat)
@@ -1956,17 +1974,10 @@ Message is ignored if its `:ignore' option is set to non-nil."
   :type 'number
   :group 'telega-chat)
 
-(defcustom telega-completing-read-function
-  ;; NOTE: `flex' completion style is essential for telega, because it
-  ;; might prefix completions with the images and user won't be able
-  ;; to complete without `flex' completion style
-  (if (or (and (boundp 'ido-mode) (symbol-value 'ido-mode))
-          (and (eq completing-read-function #'completing-read-default)
-               (not (memq 'flex completion-styles))))
-      'ido-completing-read
-    completing-read-function)
+(defcustom telega-completing-read-function completing-read-function
   "Completing read function to use."
   :type 'function
+  :package-version '(telega . "0.8.291")
   :options '(ido-completing-read
              ivy-completing-read
              helm--completing-read-default)
@@ -2305,6 +2316,16 @@ If nil, then user's online status is not displayed."
   :type 'string
   :group 'telega-symbol)
 
+(defcustom telega-symbol-outline-close "▸"
+  "Symbol to be used for closed outlines."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-outline-open "▾"
+  "Symbol to be used for open outlines."
+  :type 'string
+  :group 'telega-symbol)
+
 (defcustom telega-symbol-linked "⭾"
   "Symbol used for linked chats button in modeline."
   :type 'string
@@ -2575,6 +2596,12 @@ Used in one line message inserter."
     invoice
     leave-comment lightning lock location
     member multiple-folders
+    (outline-close
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "outline-close.svg" 1)))
+    (outline-open
+     (when (and telega-use-images (image-type-available-p 'svg))
+       (telega-etc-file-create-image "outline-open.svg" 1)))
     pause pending phone photo pin poll play
     (premium (when (and telega-use-images (image-type-available-p 'svg))
                 (telega-etc-file-create-image "symbols/premium.svg" 2)))

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.290)
+#+title: Telega Manual (v0.8.291)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1589,26 +1589,6 @@ Use ~telega-story-match-p~ to match a story.
   Each element is cons cell, where car is Chat Filter, and cdr is color. 
 
   Default value: ~((saved-messages))~
-- User Option: ~telega-chat-prompt-format~ 
-
-  Modeline compatible format for the chatbuf input prompt.
-  You can use ~telega-chatbuf-editing-msg~ or
-  ~telega-chatbuf-replying-msg~ in ~:eval~ section if you want different
-  prompt when editing/replying a message. 
-
-  Default value: 
-  #+begin_src emacs-lisp
-    ((:eval (telega-chatbuf-prompt-default-sender-avatar))
-     (:eval (telega-chatbuf-prompt-body))
-     (:eval
-      (when
-          (and telega-use-images
-               (telega-chatbuf-match-p 'can-send-or-post))
-        (telega-chatbuf-prompt-chat-avatar)))
-     (:eval (telega-chatbuf-prompt-topic 25))
-     (:eval (telega-auto-translate--chatbuf-prompt-translation)) ">>> ")
-  #+end_src
-
 - User Option: ~telega-chat-group-messages-for~ 
 
   Chat Filter for chats where to group messages by sender. 

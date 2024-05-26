@@ -273,6 +273,9 @@
                            'telega-chat-footer-insexp
                            "0.8.256")
 
+(telega-obsolete--variable 'telega-chat-prompt-format
+                           'telega-chat-prompt-insexp
+                           "0.8.291")
 
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)

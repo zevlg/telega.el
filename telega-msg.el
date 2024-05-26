@@ -69,6 +69,11 @@
                   :help "Unmark the message"
                   :visible (telega-msg-marked-p (telega-msg-at-down-mouse-3))))
     (bindings--define-key menu-map [s0] menu-bar-separator)
+    (bindings--define-key menu-map [add-tags]
+      '(menu-item (telega-i18n "lng_add_tag_button") telega-msg-add-reaction
+                  :help "Add tag to the message"
+                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                             '(chat saved-messages))))
     (bindings--define-key menu-map [add-favorite]
       '(menu-item "Add to Favorites" telega-msg-favorite-toggle
                   :help "Add message to the list of favorite messages"
@@ -901,37 +906,6 @@ non-nil."
                       (telega-ins "\n")))))
               (telega-ins "\n"))))))))
 
-(defun telega-msg-open-sponsored (sponsored-msg)
-  "Open sponsored message SPONSORED-MSG."
-  (telega--clickChatSponsoredMessage telega-chatbuf--chat sponsored-msg)
-  (let* ((sponsor (plist-get sponsored-msg :sponsor))
-         (sponsor-type (plist-get sponsor :type)))
-    (cl-ecase (telega--tl-type sponsor-type)
-      (messageSponsorTypeBot
-       )
-      (messageSponsorTypeWebApp
-       )
-      (messageSponsorTypePublicChannel
-       (let ((chat (telega-chat-get (plist-get sponsor-type :chat_id))))
-         (telega-ins--msg-sender chat
-           :with-avatar-p nil
-           :with-username-p t
-           :with-brackets-p t)))
-
-      (messageSponsorTypePrivateChannel
-       (telega-ins (telega-tl-str sponsor-type :title)))
-
-      (messageSponsorTypeWebsite
-       (telega-browse-url (plist-get sponsor-type :url)))
-       ))
-
-  (if-let ((tdlib-link (plist-get sponsored-msg :link)))
-      (telega-tme-open-tdlib-link tdlib-link)
-
-    (when-let ((schat (telega-chat-get
-                       (plist-get sponsored-msg :sponsor_chat_id) t)))
-      (telega-chat--pop-to-buffer schat))))
-
 (defun telega-describe--giveaway-info (msg ga-info)
   (with-telega-help-win "*Telegram Giveaway Info*"
     (let* ((content (plist-get msg :content))
@@ -1166,16 +1140,14 @@ preview, having media content, can be opened with media timestamp."
 
 (defun telega-msg-sender (tl-obj)
   "Convert given TL-OBJ to message sender (a chat or a user).
-TL-OBJ could be a \"message\", \"sponsoredMessage\", \"chatMember\",
-\"messageSender\" or \"chatMessageSender\".  Return a user or a chat."
+TL-OBJ could be a \"message\", \"chatMember\", \"messageSender\" or
+\"chatMessageSender\".
+Return a user or a chat."
   (let ((sender (cl-ecase (telega--tl-type tl-obj)
                   (chatMessageSender
                    (when (or (not (plist-get tl-obj :needs_premium))
                              (plist-get telega--options :is_premium))
                      (plist-get tl-obj :sender)))
-                  (sponsoredMessage
-                   (list :@type "messageSenderChat"
-                         :chat_id (plist-get tl-obj :sponsor_chat_id)))
                   (message (plist-get tl-obj :sender_id))
                   (chatMember (plist-get tl-obj :member_id))
                   ((messageSenderUser messageSenderChat) tl-obj))))
@@ -1952,10 +1924,15 @@ Requires administrator rights in the chat."
 
       (when (and (listp telega-debug) (memq 'info telega-debug))
         (let ((print-length nil))
-          (telega-ins "\n---DEBUG---\n")
-          (telega-ins-fmt "MsgSexp: (telega-msg-get (telega-chat-get %d) %d)\n"
+          (telega-ins "\n")
+          (telega-ins-describe-section "DEBUG")
+          (telega-ins--with-face 'bold
+            (telega-ins "MsgSexp: "))
+          (telega-ins-fmt "(telega-msg-get (telega-chat-get %d) %d)\n"
             chat-id msg-id)
-          (telega-ins-fmt "Message: %S\n" msg)))
+          (telega-ins--with-face 'bold
+            (telega-ins "Message: "))
+          (telega-ins-fmt "%S\n" msg)))
       )))
 
 (defun telega-ignored-messages ()
@@ -1973,20 +1950,18 @@ Requires administrator rights in the chat."
   "Display public forwards for the message MSG."
   (interactive (list (telega-msg-at (point))))
   (let* ((reply (telega--getMessagePublicForwards msg))
-         (public-fwd-messages (append (plist-get reply :messages) nil)))
-    (unless public-fwd-messages
-      (error "No forwardings to public channels for this message"))
+         (public-fwd-messages (plist-get reply :messages)))
+    (when (seq-empty-p public-fwd-messages)
+      (error "telega: No forwardings to public channels for this message"))
 
-    (with-help-window "*Telegram Public Forwards*"
-      (set-buffer standard-output)
-      (let ((inhibit-read-only t))
-        (telega-ins (propertize "Total Messages:" 'face 'bold) " "
-                    (int-to-string (plist-get reply :total_count)) "\n")
-        (dolist (fwd-msg public-fwd-messages)
+    (with-telega-help-win "*Telegram Public Forwards*"
+      (telega-ins-describe-item "Total Messages"
+        (telega-ins-fmt "%d" (plist-get reply :total_count))
+        (seq-doseq (fwd-msg public-fwd-messages)
+          (telega-ins "\n")
           (telega-button--insert 'telega-msg fwd-msg
             :inserter #'telega-ins--message-with-chat-header)
-          (telega-ins "\n")))
-      (goto-char (point-min)))))
+          )))))
 
 (defun telega-msg-diff-edits (msg)
   "Display edits to MSG user did."
@@ -2360,6 +2335,13 @@ use `telega-sponsored-msg-for-interactive' instead."
                       (telega-sponsored-msg-at (point)))))
     msg))
 
+(defun telega-sponsored-msg--action (button)
+  "Open sponsored message SPONSORED-MSG."
+  (let ((sponsored-msg (telega-sponsored-msg-at button)))
+    (telega--clickChatSponsoredMessage telega-chatbuf--chat sponsored-msg)
+    (let ((sponsor (plist-get sponsored-msg :sponsor)))
+      (telega-browse-url (plist-get sponsor :url)))))
+
 (defun telega-sponsored-msg-hide (sponsored-msg)
   "Hide SPONSORED-MSG in the chatbuf footer."
   (interactive (list (telega-sponsored-msg-for-interactive)))
@@ -2375,47 +2357,13 @@ use `telega-sponsored-msg-for-interactive' instead."
   (with-telega-help-win "*Telegram Sponsor Info*"
     (telega-ins-describe-item "Id"
       (telega-ins-fmt "%d" (plist-get sponsored-msg :message_id)))
-    (let* ((sponsor (plist-get sponsored-msg :sponsor))
-           (sponsor-type (plist-get sponsor :type)))
-      (telega-ins-describe-item "Sponsor"
-        (telega-ins (substring (plist-get sponsor-type :@type)
-                               (length "messageSponsorType"))))
-      (telega-ins-describe-item "Info"
-        (telega-ins--line-wrap-prefix "      "
-          (telega-ins (telega-tl-str sponsor :info))))
-      (cl-ecase (telega--tl-type sponsor-type)
-        (messageSponsorTypeBot
-         (let ((bot (telega-user-get (plist-get sponsor-type :bot_user_id))))
-           (telega-ins-describe-item "Bot User"
-             (telega-ins--raw-button
-                 (telega-link-props 'sender bot 'type 'telega)
-               (telega-ins--msg-sender bot
-                 :with-avatar-p t
-                 :with-username-p 'telega-username
-                 :with-brackets-p t)))))
-        (messageSponsorTypeWebApp
-         (telega-ins-describe-item "Title"
-           (telega-ins (telega-tl-str sponsor-type :web_app_title))))
-        (messageSponsorTypePublicChannel
-         (let ((channel (telega-chat-get (plist-get sponsor-type :chat_id))))
-           (telega-ins-describe-item "Channel"
-             (telega-ins--raw-button
-                 (telega-link-props 'sender channel 'type 'telega)
-               (telega-ins--msg-sender channel
-                 :with-avatar-p t
-                 :with-username-p 'telega-username
-                 :with-brackets-p t)))))
-        (messageSponsorTypePrivateChannel
-         (telega-ins-describe-item "Channel Title"
-           (telega-ins (telega-tl-str sponsor-type :title)))
-         (telega-ins-describe-item "Invite Link"
-           (telega-ins (telega-tl-str sponsor-type :invite_link))))
-        (messageSponsorTypeWebsite
-         (telega-ins-describe-item "Name"
-           (telega-ins (telega-tl-str sponsor-type :name)))
-         (telega-ins-describe-item "URL"
-           (telega-ins (telega-tl-str sponsor-type :url))))
-        ))
+    (let ((sponsor (plist-get sponsored-msg :sponsor)))
+      (when-let ((sponsor-info (telega-tl-str sponsor :info)))
+        (telega-ins-describe-item "Sponsor Info"
+          (telega-ins--line-wrap-prefix "      "
+            (telega-ins sponsor-info))))
+      (telega-ins-describe-item "Sponsor URL"
+        (telega-ins (telega-tl-str sponsor :url))))
     (when-let ((add-info (telega-tl-str sponsored-msg :additional_info)))
       (telega-ins-describe-item "Additional Info"
         (telega-ins add-info)))

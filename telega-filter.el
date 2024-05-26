@@ -640,9 +640,9 @@ If CHAT-TEMEX is ommited, then active chat filter from
                       (substring (symbol-name funsym)
                                  (length "telega-filter-by-")))
                     (apropos-internal "^telega-filter-by-[a-z-]+" 'functionp))))
-      (funcall telega-completing-read-function
-               "Chat Filter: "
-               (seq-uniq (nconc filter-names i-filter-names)) nil t))))
+      (telega-completing-read
+       "Chat Filter: "
+       (seq-uniq (nconc filter-names i-filter-names)) nil t))))
 
   (let ((i-filter-fun-sym (intern (concat "telega-filter-by-" filter-name))))
     (if (fboundp i-filter-fun-sym)
@@ -663,11 +663,10 @@ If `\\[universal-argument]' is specified, then negate whole active filter."
 (defun telega-filter-by-type (ctype)
   "Filter chats by CHAT-TYPE.
 CHAT-TYPE is a symbol, one of `telega-chat-types'."
-  (interactive
-   (list (intern (funcall telega-completing-read-function
-                          "Chat type: "
-                          (mapcar #'symbol-name telega-chat-types)
-                          nil t))))
+  (interactive (list (intern (telega-completing-read
+                              "Chat type: "
+                              (mapcar #'symbol-name telega-chat-types)
+                              nil t))))
   (telega-filter-add (list 'type ctype)))
 
 (defun telega-filter-by-name (regexp)
@@ -693,7 +692,7 @@ Use `telega-filter-by-name' for fuzzy searching."
 (defun telega-filter-by-custom (name)
   "Filter by custom chat filter."
   (interactive (list (let ((completion-ignore-case t))
-                       (funcall telega-completing-read-function
+                       (telega-completing-read
                         "Custom filter: "
                         (mapcar #'telega-filter--custom-name
                                 telega-filters-custom)
@@ -730,7 +729,7 @@ Use `telega-filter-by-name' for fuzzy searching."
 (defun telega-filter-by-online-status (status)
   "Filter private chats by its user online STATUS."
   (interactive (let ((completion-ignore-case t))
-                 (list (funcall telega-completing-read-function
+                 (list (telega-completing-read
                         "User status: "
                         '("Online" "Recently" "LastWeek" "LastMonth"
                           "Offline" "Empty")

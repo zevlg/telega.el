@@ -211,7 +211,7 @@ This won't delete any chat, just a folder."
   "Assign new name and icon to the folder with FOLDER-NAME."
   (interactive (list (telega-completing-read-folder "Rename Folder: ")
                      (read-string "New Folder name: ")
-                     (when (y-or-n-p "Associate icon with the folder? ")
+                     (when (y-or-n-p "Associate new icon with the folder? ")
                        (telega-completing-read-folder-icon-name
                         "Folder icon name: "))))
   (let* ((folder-info (telega-folder--chat-folder-info folder-name))
@@ -342,7 +342,7 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
         :count (length (telega-filter-chats telega--ordered-chats
                          (list 'folder folder-name))))
       (when (plist-get folder-info :is_shareable)
-        (telega-ins telega-symbol-nbsp "•" telega-symbol-nbsp)
+        (telega-ins " • ")
         (telega-ins-i18n "lng_filters_shareable_status"))
       (telega-ins ")"))
     (telega-ins--move-to-column 35)

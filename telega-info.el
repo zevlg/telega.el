@@ -96,10 +96,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
                             :count nmonth)
                           (round (* nmonth 30.4))))
                   '(1 3 6 12)))
-         (nmonth (funcall telega-completing-read-function
-                          (concat (telega-i18n "lng_settings_destroy_if")
-                                  " ")
-                          (mapcar 'car choices) nil t))
+         (nmonth (telega-completing-read
+                  (concat (telega-i18n "lng_settings_destroy_if") " ")
+                  (mapcar 'car choices) nil t))
          (days (cdr (assoc nmonth choices))))
     (telega--setAccountTtl days)
 
@@ -234,7 +233,8 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
          (full-info (telega--full-info user))
          (user-blocked-p (telega-user-match-p user 'is-blocked)))
     (when (plist-get full-info :can_be_called)
-      (telega-ins--box-button (concat (telega-symbol 'phone) "Call")
+      (telega-ins--box-button (concat (telega-symbol 'phone)
+                                      (telega-i18n "lng_call_start"))
         :value user
         :action #'telega-voip-call)
       (telega-ins " "))
@@ -683,7 +683,26 @@ and chat permission restrictions"
                                     chat (telega-user-me) my-status))
                                   (t
                                    (user-error "Not yet implemented"))))))
-                  (telega-ins " " (telega-i18n (cdr perm-spec))))))))))
+                  (telega-ins " " (telega-i18n (cdr perm-spec))))))))
+
+        (when owner-p
+          (telega-ins-describe-item
+              (telega-i18n "lng_manage_peer_no_forwards")
+            (telega-ins--text-button
+                (if (plist-get chat :has_protected_content)
+                    (telega-symbol 'checkbox-on)
+                  (telega-symbol 'checkbox-off))
+              'face 'telega-link
+              'action (lambda (_ignored)
+                        (telega--toggleChatHasProtectedContent
+                         chat (not (plist-get chat :has_protected_content)))))
+            (telega-ins "\n")
+            (telega-ins--help-message
+             (telega-ins-i18n (if channel-p
+                                  "lng_manage_peer_no_forwards_about_channel"
+                                "lng_manage_peer_no_forwards_about"))
+             nil)))
+        ))
 
     (when (plist-get my-perms :can_change_info)
       ;; All history setting is available to supergroups only, in
@@ -728,7 +747,7 @@ and chat permission restrictions"
                (telega-ins-i18n "lng_manage_history_visibility_hidden_about")
                nil)))))
 
-      ;; Sign messages is available in channels only
+      ;; Channel specific settings
       (when (telega-chat-channel-p chat)
         (telega-ins-describe-item (telega-i18n "lng_edit_sign_messages")
           (telega-ins--text-button (if (plist-get supergroup :sign_messages)
@@ -758,8 +777,29 @@ and chat permission restrictions"
          ;; NOTE: No trailing newline
          nil)))
 
-    ;; Slow Mode is available only for supergroups
+    ;; Ordinary supergroup settings
     (unless (telega-chat-channel-p chat)
+      (when (plist-get my-perms :can_restrict_members)
+        (telega-ins-describe-item
+            (telega-i18n "lng_manage_peer_send_approve_members")
+          (telega-ins--text-button (if (plist-get supergroup :join_by_request)
+                                       (telega-symbol 'checkbox-on)
+                                     (telega-symbol 'checkbox-off))
+            'face 'telega-link
+            'action (lambda (_ignored)
+                      (telega--toggleSupergroupJoinByRequest
+                       supergroup
+                       (not (plist-get supergroup :join_by_request)))))
+          (when-let ((join-requests (plist-get chat :pending_join_requests)))
+            (telega-ins " ")
+            (telega-ins--pending-join-requests join-requests))
+          (telega-ins "\n")
+          (telega-ins--help-message
+           (telega-ins-i18n "lng_manage_peer_send_approve_members_about")
+           ;; NOTE: No trailing newline
+           nil))
+        )
+
       (let* ((slow-mode-delay (plist-get full-info :slow_mode_delay))
              (smd-str (if (zerop slow-mode-delay)
                           (telega-i18n "lng_rights_slowmode_off")
@@ -869,13 +909,7 @@ and chat permission restrictions"
         (telega-ins--box-button (telega-i18n "telega_show")
           :value chat
           :action #'telega-describe-chat-members)))
-
-    (when (and (listp telega-debug) (memq 'info telega-debug))
-      (insert "\n---DEBUG---\n")
-      (insert (propertize "Info: " 'face 'bold)
-              (format "%S" supergroup) "\n")
-      (insert (propertize "Full-Info: " 'face 'bold)
-              (format "%S" full-info) "\n"))))
+    ))
 
 (defun telega-describe-connected-websites (&optional websites)
   "Describe connected WEBSITES."
@@ -1045,15 +1079,6 @@ Call CALLBACK on updates."
     (when (and track-timeout callback)
       ;; to track ping timeouts
       (run-with-timer 10 nil callback))))
-
-(defun telega--enableProxy (proxy)
-  (telega-server--call
-   (list :@type "enableProxy"
-         :proxy_id (plist-get proxy :id))))
-
-(defun telega--disableProxy ()
-  (telega-server--send
-   (list :@type "disableProxy")))
 
 (defun telega-proxy-last-used (&optional proxies)
   "Return last time used proxy."

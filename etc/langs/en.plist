@@ -37,6 +37,8 @@
  ("lng_cancel"
   :value "Cancel")
 
+ ("lng_saved_open_chat"
+  :value "Open Chat")
  ("lng_saved_messages"
   :value "Saved Messages")
  ("lng_replies_messages"
@@ -67,19 +69,35 @@
   :value "Phone:")
  ("lng_profile_bio"
   :value "Bio:")
+ ("lng_profile_photos_header"
+  :value "Photos")
  ("lng_settings_about_bio"
   :value "Any details such as age, occupation or city.
 Example: 23 y.o. designer from San Francisco")
+ ("lng_settings_empty_bio"
+  :value "None")
+ ("lng_bio_title"
+  :value "Edit Your Bio")
  ("lng_profile_common_groups"
   :zero_value "No groups in common"
   :one_value "{count} group in common"
   :other_value "{count} groups in common")
  ("lng_settings_upload"
   :value "Set Profile Photo")
+ ("lng_settings_edit"
+  :value "Edit")
+ ("lng_edit_self_title"
+  :value "Edit your name")
+ ("lng_settings_username"
+  :value "Username:")
+ ("lng_settings_choose_username"
+  :value "Choose username")
  ("lng_profile_restart_bot"
   :value "Restart bot")
  ("lng_profile_set_group_photo"
   :value "Set Photo")
+ ("lng_profile_apply_to_join_group"
+  :value "Apply to Join Group")
 
  ("lng_scam_badge"
   :value "SCAM")
@@ -136,6 +154,12 @@ Example: 23 y.o. designer from San Francisco")
   :value "Privacy")
  ("lng_blocked_list_title"
   :value "Blocked Users")
+ ("lng_blocked_list_about"
+  :value "Blocked users can't send you messages or add you to groups. They will not see your profile photos, stories, online and last seen status.")
+ ("lng_blocked_list_add"
+  :value "Block user") 
+ ("lng_blocked_list_add_title"
+  :value "Select user to block")
  ("lng_settings_section_privacy"
   :value "Privacy and Security")
  ("lng_settings_section_notify"
@@ -146,8 +170,15 @@ Example: 23 y.o. designer from San Francisco")
   :value "Show message preview")
  ("lng_edit_privacy_close_friends"
   :value "Close friends")
+ ("lng_edit_privacy_about_header"
+  :value "Who can see my bio")
+ ("lng_edit_privacy_about_title"
+  :value "Bio")
 
  ;; https://translations.telegram.org/screenshots/11323
+ ("lng_unread_bar"
+  :one_value "{count} Unread Message"
+  :other_value "{count} Unread Messages")
  ("lng_unread_bar_some"
   :value "Unread messages")
 
@@ -314,6 +345,8 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_sure_delete_group"
   :value "Are you sure you want to delete this group? All members will be removed, and all messages will be lost.")
 
+ ("lng_profile_add_participant"
+  :value "Add Members")
  ("lng_profile_hide_participants"
   :value "Hide Members")
  ("lng_profile_hide_participants_about"
@@ -498,6 +531,18 @@ Example: 23 y.o. designer from San Francisco")
   :value "Telegram will filter more spam but may occasionally affect ordinary messages. You can report False Positives in Recent Actions.")
  ("lng_manage_peer_members"
   :value "Members")
+ ("lng_manage_peer_send_approve_members"
+  :value "Approve new members")
+ ("lng_manage_peer_send_approve_members_about"
+  :value "Turn this on if you want users to join the group only after they are approved by an admin.")
+ ("lng_manage_peer_no_forwards"
+  :value "Restrict saving content")
+ ("lng_manage_peer_no_forwards_about"
+  :value "Members won't be able to copy, save or forward content from this group.")
+ ("lng_manage_peer_no_forwards_about_channel"
+  :value "Subscribers won't be able to copy, save or forward content from this channel.")
+ ("lng_manage_peer_requests"
+  :value "Join Requests")
  ("lng_manage_messages_ttl_title"
   :value "Auto-delete messages")
  ("lng_manage_discussion_group"
@@ -595,6 +640,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Telegram FAQ")
  ("lng_settings_ask_question"
   :value "Ask a Question")
+ ("lng_telegram_features_url"
+  :value "https://t.me/TelegramTips")
  ("telega_settings_telega_manual"
   :value "Telega.el Manual")
  ("telega_settings_donate"
@@ -809,6 +856,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Forward")
  ("lng_context_delete_msg"
   :value "Delete")
+ ("lng_context_select_msg"
+  :value "Select")
  ("lng_context_disable_spoiler"
   :value "Remove Spoiler")
  ("lng_context_cancel_upload"
@@ -1003,6 +1052,9 @@ to start the topic.")
   :value "Request to Join")
  ("lng_group_request_about_channel"
   :value "This channel accepts new subscribers only after they are approved by its admins.")
+ ("lng_group_requests_pending"
+  :one_value "{count} join request"
+  :other_value "{count} join requests")
 
  ("lng_payments_invoice_label_test"
   :value "Test invoice")
@@ -1196,6 +1248,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Story")
  ("lng_in_dlg_story_expired"
   :value "Expired story")
+ ("lng_in_dlg_contact"
+  :value "Contact")
 
  ;; Edited
  ("lng_edited"
@@ -1619,6 +1673,8 @@ You can send them an invite link as message instead.")
  ("lng_link_remove"
   :value "Do Not Preview")
 
+ ("lng_add_tag_button"
+  :value "Add tags")
  ("lng_context_filter_by_tag"
   :value "Filter by Tag")
  ("lng_context_tag_add_name"
@@ -1667,6 +1723,8 @@ You can send them an invite link as message instead.")
 ({count} year old)"
   :other_value "{date}
 ({count} years old)")
+ ("lng_settings_birthday_about"
+  :value "Choose who can see your birthday in {link}.")
 
  ;; Business
  ("lng_business_subtitle_sponsored"
@@ -1676,4 +1734,31 @@ You can send them an invite link as message instead.")
  ("lng_business_about_sponsored"
   :value "As a Premium subscriber, you don’t see any ads on Telegram, but you can turn them on, for example, to view your own ads that you launched on the {link}")
 
+ ;; Proxy
+ ("lng_proxy_settings"
+  :value "Proxy settings")
+ ("lng_proxy_use"
+  :value "Use proxy")
+ ("lng_proxy_checking"
+  :value "checking…")
+ ("lng_proxy_unavailable"
+  :value "not available")
+ ("lng_proxy_available"
+  :value "available (ping: {ping} ms)")
+ ("lng_proxy_connecting"
+  :value "connecting…")
+ ("lng_proxy_online"
+  :value "online")
+ ("lng_proxy_sponsor_warning"
+  :value "This proxy may display a sponsored channel in your chat list. This doesn't reveal any of your Telegram traffic.")
+ ("lng_proxy_add"
+  :value "Add proxy")
+ ("lng_proxy_address_label"
+  :value "Socket address")
+ ("lng_connection_host_ph"
+  :value "Hostname")
+ ("lng_connection_port_ph"
+  :value "Port")
+ ("lng_proxy_menu_delete"
+  :value "Delete")
  )
