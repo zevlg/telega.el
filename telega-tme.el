@@ -377,6 +377,10 @@ Return non-nil if url has been handled."
                    (concat "tg:addlist?slug=" (match-string 1 path)))
                   ((string-match "^/\\+\\([^/]+\\)$" path)
                    (concat "tg:join?invite=" (match-string 1 path)))
+                  ((string-match "^/\\(socks\\|proxy\\)$" path)
+                   ;; Use getInternalLinkType for proxies
+                   nil)
+
                   ((and just-convert
                         (string-match
                          (eval-when-compile

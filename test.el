@@ -154,8 +154,6 @@ Have Stoploss 690 Satoshi." :entities []))))
                    "tg:join?invite=itshitout"))
   (should (string= (telega-tme-open "https://t.me/itshit/23423" 'offline)
                    "tg:resolve?domain=itshit&post=23423"))
-  (should (string= (telega-tme-open "https://t.me/socks?server=my&port=1234" 'offline)
-                   "tg:socks?server=my&port=1234"))
   (should (string= (telega-tme-open "https://t.me/c/101110111/286125" 'offline)
                    "tg:privatepost?channel=101110111&post=286125"))
   ;; Non telegram urls
