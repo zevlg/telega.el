@@ -2703,9 +2703,12 @@ Binds current symbol to SYM-BIND."
         " --net=host"
         ;; Add host devices to container to allow voice/video
         ;; recording
-        " --device /dev/snd:/dev/snd"
-        " --device /dev/video0:/dev/video0"
-        " --device /dev/video1:/dev/video1"
+        (when (file-exists-p "/dev/snd")
+          " --device /dev/snd:/dev/snd")
+        (when (file-exists-p "/dev/video0")
+          " --device /dev/video0:/dev/video0")
+        (when (file-exists-p "/dev/video1")
+          " --device /dev/video1:/dev/video1")
 
         ;; Export resources for pulseaudio to work
         ;; ref: https://stackoverflow.com/questions/28985714/run-apps-using-audio-in-a-docker-container
