@@ -60,7 +60,7 @@ appindicator_setup(char* icon_path)
         if (!appind) {
                 appind = app_indicator_new("telega", icon_path,
                                            APP_INDICATOR_CATEGORY_COMMUNICATIONS);
-                g_assert(IS_APP_INDICATOR(appind));
+                g_assert(appind != NULL);
 
                 app_indicator_set_status(appind, APP_INDICATOR_STATUS_ACTIVE);
 
