@@ -326,9 +326,10 @@ FORCE is used for testing only, should not be used in real code."
       (telega-notifications--notify notify-args)
       ;; Workaround stuck notifications, force closing after
       ;; `telega-notifications-timeout' timeout
-      (run-with-timer telega-notifications-timeout nil
-                      'telega-notifications--close
-                      telega-notifications--last-id)
+      (when telega-notifications-timeout
+        (run-with-timer telega-notifications-timeout nil
+                        'telega-notifications--close
+                        telega-notifications--last-id))
       )))
 
 ;;; ellit-org: notification-conditions

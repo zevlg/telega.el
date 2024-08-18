@@ -1766,9 +1766,12 @@ already read message.  Set it to 0, to not take any delay."
   :group 'telega-notifications)
 
 (defcustom telega-notifications-timeout 4.0
-  "*How long to show notification in seconds."
-  :type 'float
-  :group 'telega-notifications)
+  "*How long to show notification in seconds.
+Set to nil to not remove notification automatically."
+  :type '(or (float :tag "Remove after")
+             (const :tag "Never remove" nil))
+  :group 'telega-notifications
+  :package-version '(telega . "0.8.293"))
 
 ;; NOTE: standard values for :sound-name
 ;; http://0pointer.de/public/sound-naming-spec.html
