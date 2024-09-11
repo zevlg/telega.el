@@ -15,13 +15,14 @@
 # https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0#faccessat2
 
 FROM alpine:3.13 AS builder
-ARG tdlib_branch=master
+ARG tdlib_branch=12c1689b5
+ARG tdlib_version=v1.8.29
 ARG telega_branch=master
 
 RUN set +x && apk update && apk upgrade && \
     apk add --update alpine-sdk linux-headers git zlib-dev openssl-dev gperf php cmake
 
-RUN echo "TDLib v1.8.29-12c1689b5" > tdlib-version && \
+RUN echo "TDLib ${tdlib_version}-${tdlib_branch}" > tdlib-version && \
     git clone https://github.com/tdlib/td.git && \
     cd td && \
     git checkout ${tdlib_branch} && \
