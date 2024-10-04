@@ -5913,7 +5913,7 @@ then forward message copy without caption."
                            (when-let ((msg-at-point (telega-msg-at (point))))
                              (list msg-at-point)))))
     ;; NOTE: ExcludeEvery
-    (unless (seq-every-p (telega--tl-prop :can_be_forwarded) messages)
+    (unless (seq-every-p (telega--tl-prop :can_be_saved) messages)
       (user-error "telega: Forwarding is not allowed"))
 
     (let ((chat (telega-completing-read-chat
