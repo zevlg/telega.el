@@ -215,6 +215,13 @@ Tracking notifications for telega buffers will use the
              (or unmuted mention))
   :group 'telega)
 
+(defcustom telega-chat-delete-skip-confirmation-for nil
+  "*Specifies Chat Temex for chats which can be deleted without
+typing confirmation."
+  :package-version '(telega . "0.8.293")
+  :type 'telega-chat-temex
+  :group 'telega-chat)
+
 (defcustom telega-image-transform-smoothing t
   "Default value for the `:transform-smoothing' image property.
 If nil, then smoothing is applied only for downscaled images, if image
