@@ -1337,8 +1337,8 @@ If MUTED-FOR is specified, set it as `:mute_for' notification setting."
 
 (defun telega-chat-delete (chat)
   "Delete CHAT.
-Query about everything.  Leaving CHAT, blocking corresponding
-user and delete all the chat history.
+Query about everything: leaving CHAT, blocking corresponding
+user, and deleting all chat history.
 Use `telega-chat-leave' to just leave the CHAT."
   (interactive (list (or telega-chatbuf--chat (telega-chat-at (point)))))
   (when (and chat
@@ -1367,9 +1367,10 @@ Use `telega-chat-leave' to just leave the CHAT."
                (not (telega-chat-match-p chat
                       '(or (type channel)
                            (and (type supergroup) is-public))))
-               (telega-read-im-sure-p
-                (telega-i18n "telega_query_delete_chat_history"
-                  :title (telega-chat-title chat))))
+               (or (telega-chat-match-p chat telega-chat-delete-skip-confirmation-for)
+                   (telega-read-im-sure-p
+                     (telega-i18n "telega_query_delete_chat_history"
+                       :title (telega-chat-title chat)))))
       (let ((revoke-p (and (plist-get chat :can_be_deleted_for_all_users)
                            (y-or-n-p "Delete history for all members? "))))
         (telega--deleteChatHistory chat 'remove-from-list revoke-p)))
