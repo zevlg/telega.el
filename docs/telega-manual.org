@@ -1604,6 +1604,12 @@ Use ~telega-story-match-p~ to match a story.
   Car is name of the chats group, cdr is a chat temex to match chats. 
 
   Default value: ~(("Important" . important))~
+- User Option: ~telega-chat-delete-skip-confirmation-for~ 
+
+  Specifies Chat Temex for chats which can be deleted without
+  typing confirmation. 
+
+  Default value: ~nil~
 
 * Chat Folders
 :PROPERTIES:
