@@ -225,7 +225,7 @@ Actually return STICKER's full type info."
       full-type)))
 
 (defun telega-custom-emoji--create-image (sticker img-file)
-  "Create image for the custom emoji using corresponding STICKER."
+  "Create one line image for the custom emoji using corresponding STICKER."
   ;; For custom emojis that needs repainting we always use svg, so
   ;; face's `:foreground' will be used as replacement color
   ;; (when (and img-file
@@ -239,7 +239,7 @@ Actually return STICKER's full type info."
         (< (telega-chars-xheight 1) 2))
     ;; NOTE: Fallback for tty mode with enabled images
     ;; NOTE: don't use emoji from cache, because if custom emoji
-    ;; updates, it wil modify image inplace, corrupting emoji image in
+    ;; updates, it will modify image inplace, corrupting emoji image in
     ;; the cache
     (telega-emoji-create-svg (telega-sticker-emoji sticker) 1 'no-cache))
 
@@ -292,6 +292,12 @@ Actually return STICKER's full type info."
           :telega-text "()"           ; (telega-sticker-emoji sticker)
           :ascent 'center
           :base-uri (expand-file-name "dummy" base-dir))))))
+
+(defun telega-custom-emoji--image (sticker)
+  "Return one line image for the custom emoji STICKER."
+  ;; TODO: 
+  (telega-sticker--image sticker #'telega-custom-emoji--create-image
+                         :telega-image-ce1))
 
 (defun telega-custom-emoji--ids-for-msg (msg &optional where)
   "Return a list of custom emoji ids extracted from the message MSG.

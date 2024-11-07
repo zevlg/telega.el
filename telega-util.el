@@ -37,7 +37,6 @@
 (require 'url-util)                     ; `url-unhex-string'
 (require 'org)                          ; `org-read-date', `org-do-emphasis-faces'
 (require 'org-element)                  ; for `org-do-emphasis-faces'
-(require 'rainbow-identifiers)
 (require 'transient)
 
 (require 'telega-core)
@@ -377,11 +376,14 @@ X and Y denotes left up corner."
     (apply #'telega-svg-path svg outline args)))
 
 (defun telega-svg-apply-outline (svg outline ratio &optional args)
-  (setq args (plist-put args :transform
-                        (concat (plist-get args :transform)
-                                " "
-                                (format "scale(%s)" ratio))))
-  (apply #'telega-svg-path svg outline args))
+  "To SVG add OUTLINE svg path scaling it by RATIO."
+  (let ((scale-transform (format "scale(%s)" ratio)))
+    (apply #'telega-svg-path svg outline
+           (if-let ((args-transform (plist-get args :transform)))
+               (plist-put (copy-sequence args) :transform
+                          (concat args-transform " " scale-transform))
+             (nconc (list :transform scale-transform)
+                    args)))))
 
 (defun telega-svg-telega-logo (svg width &rest args)
   "Draw telega triangle of WIDTH."
@@ -800,7 +802,7 @@ If LONG-P is specified, then use long form."
 
 (defun telega-link-props (link-type link-to &rest props)
   "Generate props for link button openable with `telega-link--button-action'."
-  (cl-assert (memq link-type '(url file username user sender hashtag)))
+  (cl-assert (memq link-type '(url file username user sender hashtag tdlib-link)))
 
   (nconc (list 'action 'telega-link--button-action
                :telega-link (cons link-type link-to))
@@ -832,6 +834,8 @@ If LONG-P is specified, then use long form."
        (telega-browse-url (cdr link) current-prefix-arg))
       (file
        (telega-open-file (cdr link) (telega-msg-at button)))
+      (tdlib-link
+       (telega-tme-open-tdlib-link (cdr link)))
       )))
 
 (defun telega-escape-underscores (text)
@@ -861,124 +865,278 @@ See `puny-decode-domain' for details."
        (puny-decode-domain (match-string 1 url))))
    url nil 'literal 1))
 
-(defun telega--entity-type-to-text-props (ent-type text)
-  "Convert telegram TextEntityType ENT-TYPE to Emacs text properties."
-  (nconc
-   (list :tl-entity-type ent-type)
-   (cl-case (telega--tl-type ent-type)
-     (textEntityTypeMention
-      (telega-link-props 'username text
-                         'face
-                         (if (and (plist-get telega-msg--current
-                                             :contains_unread_mention)
-                                  (telega-user-match-p (telega-user-me)
-                                    (list 'username
-                                          (concat "^"
-                                                  (substring text 1) ;strip @
-                                                  "$"))))
-                             '(telega-entity-type-mention bold)
-                           'telega-entity-type-mention)))
-     (textEntityTypeMentionName
-      (telega-link-props 'user (plist-get ent-type :user_id)
-                         'face
-                         (if (and (plist-get telega-msg--current
-                                             :contains_unread_mention)
-                                  (eq (plist-get ent-type :user_id)
-                                      telega--me-id))
-                             '(telega-entity-type-mention bold)
-                           'telega-entity-type-mention)))
-     (textEntityTypeHashtag
-      (telega-link-props 'hashtag text 'face 'telega-link))
-     (textEntityTypeBold
-      '(face telega-entity-type-bold))
-     (textEntityTypeItalic
-      '(face telega-entity-type-italic))
-     (textEntityTypeUnderline
-      '(face telega-entity-type-underline))
-     (textEntityTypeStrikethrough
-      '(face telega-entity-type-strikethrough))
-     (textEntityTypeCode
-      '(face telega-entity-type-code))
-     (textEntityTypePre
-      '(face telega-entity-type-pre))
-     (textEntityTypePreCode
-      (if (telega--inhibit-telega-display-p 'telega-core)
-          '(face telega-entity-type-code)
+(defun telega--change-text-property (start end prop value how &optional object)
+  "Change a property of the text from START to END.
+Arguments PROP and VALUE specify the property and value to add/remove
+to the value already in place.  The resulting property values are
+always lists.
+HOW specifies how list is changed, one of: `prepend', `append' or `remove'."
+  (cl-assert (memq how '(prepend append remove)))
+  (let ((val (if (listp value) value (list value)))
+        next prev)
+    (while (/= start end)
+      (setq next (next-single-property-change start prop object end)
+            prev (get-text-property start prop object))
+      (let* ((list-prev (if (listp prev) prev (list prev)))
+             (new-value (cl-ecase how
+                          (prepend (append val list-prev))
+                          (append (append list-prev val))
+                          (remove (delete val list-prev)))))
+        (put-text-property start next prop new-value object))
+      (setq start next))))
 
-        (let* ((vbar-face (if telega-msg--current
-                              ;; NOTE: Use only rainbow color
-                              ;; See https://t.me/emacs_telega/43270
-                              (cdr (telega-msg-sender-title-faces
-                                    (telega-msg-sender telega-msg--current)))
-                            (list 'telega-blue)))
-               (vbar (propertize (telega-symbol 'vertical-bar)
-                                 'face vbar-face))
-               (repr (telega-ins--as-string
-                      (telega-ins vbar)
-                      (telega-ins--with-face (nconc (list 'bold 'underline)
-                                                    vbar-face)
-                        (telega-ins (telega-symbol 'codeblock))
-                        (telega-ins-prefix " "
-                          (telega-ins
-                           (capitalize (telega-tl-str ent-type :language)))))
-                      (telega-ins "\n")
-                      (telega-ins--line-wrap-prefix vbar
-                        (telega-ins--with-face 'telega-entity-type-code
-                          (telega-ins (telega--desurrogate-apply text)))))))
-          (list 'telega-display repr
-                'telega-display-by 'telega-core))))
-     (textEntityTypeUrl
-      ;; - Unhexify url, using `telega-display' property to be
-      ;;   substituted at `telega--desurrogate-apply' time
-      ;; - Convert "xn--" domains to non-ascii version
-      (nconc (unless (telega--inhibit-telega-display-p 'telega-core)
-               (list 'telega-display (telega-puny-decode-url
-                                      (decode-coding-string
-                                       (url-unhex-string text) 'utf-8))))
-             (telega-link-props 'url text
-                                'face 'telega-entity-type-texturl)))
-     (textEntityTypeTextUrl
-      (telega-link-props 'url (telega-tl-str ent-type :url)
-                         'face 'telega-entity-type-texturl
-                         'help-echo (telega-tl-str ent-type :url)))
-     (textEntityTypeBotCommand
-      '(face telega-entity-type-botcommand))
-     (textEntityTypeMediaTimestamp
-      (list 'action (lambda (button)
-                      (telega-msg-open-media-timestamp
-                       (telega-msg-at button)
-                       (plist-get ent-type :media_timestamp)))
-            'face 'telega-link))
-     (textEntityTypeSpoiler
-      (if (telega--inhibit-telega-display-p 'telega-core)
-          '(face telega-entity-type-spoiler)
+(defun telega--text-entity-at-newline-p (ent text)
+  "Return non-nil if textEntity ENT for TEXT starts at newline."
+  (let ((beg (plist-get ent :offset)))
+    (or (zerop beg) (= ?\n (aref text (1- beg))))))
 
-        (unless (plist-get ent-type :telega-show-spoiler)
-          (list :action #'telega-msg-remove-text-spoiler
-                'telega-display
-                (with-temp-buffer
-                  (insert text)
-                  (translate-region (point-min) (point-max)
-                                    telega-spoiler-translation-table)
-                  (propertize (buffer-string)
-                              'face 'telega-entity-type-spoiler))
-                'telega-display-by 'telega-core))))
-     (textEntityTypeCustomEmoji
-      (when telega-use-images
-        (when-let ((sticker (gethash (plist-get ent-type :custom_emoji_id)
-                                     telega--custom-emoji-stickers)))
-          (list 'display (telega-sticker--image sticker)))))
-     (textEntityTypeBlockQuote
-      (if (telega--inhibit-telega-display-p 'telega-core)
-          '(face telega-entity-type-blockquote)
+(defun telega--text-entity-apply (ent &optional object)
+  "Apply textEntity ENT to OBJECT.
+Optional OBJECT could be a buffer (or nil, which means the current
+buffer) or a string."
+  (let* ((ent-type (plist-get ent :type))
+         (beg (plist-get ent :offset))
+         (end (+ (plist-get ent :offset) (plist-get ent :length)))
+         (ent-text (if object
+                       (substring object beg end)
+                     (buffer-substring beg end))))
+    (add-text-properties beg end '(rear-nonsticky t front-sticky t) object)
+    (put-text-property beg end :tl-entity ent object)
+    (put-text-property beg end :tl-entity-type ent-type object)
+    (cl-case (telega--tl-type ent-type)
+      (textEntityTypeMention
+       (add-text-properties
+        beg end (telega-link-props 'username ent-text) object)
+       (add-face-text-property
+        beg end
+        (if (and (plist-get telega-msg--current :contains_unread_mention)
+                 (telega-user-match-p (telega-user-me)
+                   (list 'username
+                         ;; Strip leading "@" from ENT-TEXT
+                         (concat "^" (substring ent-text 1) "$"))))
+            '(telega-entity-type-mention bold)
+          'telega-entity-type-mention)
+       nil object))
+      (textEntityTypeMentionName
+       (add-text-properties
+        beg end (telega-link-props 'user (plist-get ent-type :user_id)) object)
+       (add-face-text-property
+        beg end
+        (if (and (plist-get telega-msg--current
+                            :contains_unread_mention)
+                 (eq (plist-get ent-type :user_id)
+                     telega--me-id))
+            '(telega-entity-type-mention bold)
+          'telega-entity-type-mention)
+        nil object))
+      (textEntityTypeHashtag
+       (add-text-properties
+        beg end (telega-link-props 'hashtag ent-text) object)
+       (add-face-text-property beg end 'telega-link nil object))
+      (textEntityTypeBold
+       (add-face-text-property beg end 'telega-entity-type-bold nil object))
+      (textEntityTypeItalic
+       (add-face-text-property beg end 'telega-entity-type-italic nil object))
+      (textEntityTypeUnderline
+       (add-face-text-property beg end 'telega-entity-type-underline nil object))
+      (textEntityTypeStrikethrough
+       (add-face-text-property
+        beg end 'telega-entity-type-strikethrough nil object))
+      (textEntityTypeCode
+       (add-face-text-property beg end 'telega-entity-type-code nil object))
+      (textEntityTypePre
+       (add-face-text-property beg end 'telega-entity-type-pre nil object))
+      (textEntityTypeUrl
+       (add-text-properties
+        beg end (telega-link-props 'url ent-text) object)
+       (add-face-text-property beg end 'telega-entity-type-texturl nil object)
+       (unless (telega--inhibit-telega-display-p 'telega-core)
+         ;; - Unhexify url, using `telega-display' property to be
+         ;;   substituted at `telega--desurrogate-apply' time
+         ;; - Convert "xn--" domains to non-ascii version
+         (put-text-property
+          beg end 'telega-display (telega-puny-decode-url
+                                   (decode-coding-string
+                                    (url-unhex-string ent-text) 'utf-8))
+          object)))
+      (textEntityTypeTextUrl
+       (add-text-properties
+        beg end
+        (telega-link-props 'url (telega-tl-str ent-type :url)
+                           'help-echo (telega-tl-str ent-type :url))
+        object)
+       (add-face-text-property beg end 'telega-entity-type-texturl nil object))
+      (textEntityTypeBotCommand
+       (add-face-text-property beg end 'telega-entity-type-botcommand nil object))
+      (textEntityTypeMediaTimestamp
+       (add-text-properties
+        beg end
+        (list 'action (lambda (button)
+                       (telega-msg-open-media-timestamp
+                        (telega-msg-at button)
+                        (plist-get ent-type :media_timestamp))))
+        object)
+       (add-face-text-property beg end 'telega-link nil object))
+      (textEntityTypeCustomEmoji
+       (when telega-use-images
+         (when-let ((sticker (telega-custom-emoji-get
+                              (plist-get ent-type :custom_emoji_id))))
+           ;; NOTE: We use `copy-sequence' to make `display' property
+           ;; differ, because consecutive chars has `eq' `display'
+           ;; property it is displayed as single unit (ref: 40.16.1
+           ;; Display Specs That Replace The Text)
+           (put-text-property
+            beg end 'display (copy-sequence (telega-sticker--image sticker))
+            object)
+           )))
+      (textEntityTypePreCode
+       (if (telega--inhibit-telega-display-p 'telega-core)
+           (add-face-text-property
+            beg end 'telega-entity-type-code 'append object)
 
-        (list 'telega-display
-              (telega-ins--as-string
-               (telega-ins--line-wrap-prefix (telega-symbol 'vertical-bar)
-                 (telega-ins--with-face 'telega-entity-type-blockquote
-                   (telega-ins (telega--desurrogate-apply text)))))
-              'telega-display-by 'telega-core)))
-     )))
+         (add-text-properties
+          beg end
+          (list 'telega-display
+                (let* ((telega-palette-context 'precode)
+                       (palette (if telega-msg--current
+                                    (telega-msg-sender-palette
+                                     (telega-msg-sender telega-msg--current))
+                                  ;; id=5 is "blue" palette
+                                  (telega-palette-by-color-id 5))))
+                  (telega-ins--as-string
+                   (unless (telega--text-entity-at-newline-p ent object)
+                     (telega-ins "\n"))
+                   (telega-ins--with-outline-palette palette
+                     (telega-ins--with-face (list 'bold 'underline
+                                                  (assq :foreground palette))
+                       (telega-ins (telega-symbol 'codeblock))
+                       (telega-ins-prefix " "
+                         (telega-ins
+                          (capitalize (telega-tl-str ent-type :language)))))
+                     (telega-ins "\n")
+                     (telega-ins--with-face 'telega-entity-type-code
+                       (telega-ins (telega-strip-newlines
+                                    (telega--desurrogate-apply ent-text))))
+                     (telega-ins "\n"))))
+                'telega-display-by 'telega-core)
+          object)))
+      (textEntityTypeSpoiler
+       (add-face-text-property
+        beg end 'telega-entity-type-spoiler 'append object)
+
+       (cond ((null object)
+              ;; NOTE: For chatbuf's input, when spoiler formatting is
+              ;; applied
+              (add-face-text-property
+               beg end (list :foreground (face-foreground 'default)
+                             :background (face-foreground 'default))
+               'append object))
+
+             ((not (plist-get ent-type :telega-show-spoiler))
+              (add-text-properties
+               beg end (list :action #'telega-msg-remove-text-spoiler
+                             'telega-display
+                             (with-temp-buffer
+                               (insert ent-text)
+                               (translate-region
+                                (point-min) (point-max)
+                                telega-spoiler-translation-table)
+                               (buffer-string))
+                             'telega-display-by 'telega-core)
+               object))))
+      (textEntityTypeBlockQuote
+       (if (and nil (telega--inhibit-telega-display-p 'telega-core))
+           (add-face-text-property
+            beg end 'telega-entity-type-blockquote 'append object)
+
+         (let* ((telega-palette-context 'blockquote)
+                (palette (when telega-msg--current
+                           (telega-msg-sender-palette
+                            (telega-msg-sender telega-msg--current)))))
+           (add-face-text-property
+            beg end
+            (telega-face-with-palette 'telega-entity-type-blockquote
+                palette :background)
+            'append object)
+           (let ((lw-prefix (propertize 
+                             (telega-symbol 'vbar-left)
+                             'face (append (assq :foreground palette)
+                                           (assq :background palette)))))
+             (add-text-properties
+              beg end
+              (list 'line-prefix lw-prefix
+                    'wrap-prefix lw-prefix)
+              object)))
+         ))
+      (textEntityTypeExpandableBlockQuote
+       (if (telega--inhibit-telega-display-p 'telega-core)
+           (add-face-text-property
+            beg end 'telega-entity-type-blockquote 'append object)
+
+         (let* ((telega-palette-context 'blockquote)
+                (palette (when telega-msg--current
+                           (telega-msg-sender-palette
+                            (telega-msg-sender telega-msg--current))))
+                (expanded-p
+                 (plist-get ent-type :telega-blockquote-expanded)))
+           (add-face-text-property
+            beg end
+            (telega-face-with-palette 'telega-entity-type-blockquote
+                palette :background)
+            'append object)
+           (let ((lw-prefix (propertize 
+                             (telega-symbol 'vbar-left)
+                             'face (append (assq :foreground palette)
+                                           (assq :background palette)))))
+             (add-text-properties
+              beg end
+              (list 'line-prefix lw-prefix
+                    'wrap-prefix lw-prefix)
+              object))
+           (put-text-property
+            beg end
+            :action #'telega-msg-blockquote-expand-toggle
+            object)
+           )
+         ;; (add-text-properties
+         ;;  beg end
+         ;;  (list :action #'telega-msg-blockquote-expand-toggle
+         ;;        'telega-display
+         ;;        (let* ((telega-palette-context 'blockquote)
+         ;;               (palette (when telega-msg--current
+         ;;                          (telega-msg-sender-palette
+         ;;                           (telega-msg-sender telega-msg--current))))
+         ;;               (expanded-p
+         ;;                (plist-get ent-type :telega-blockquote-expanded)))
+         ;;          (add-face-text-property
+         ;;           beg end
+         ;;           (telega-face-with-palette 'telega-entity-type-blockquote
+         ;;               palette :background)
+         ;;           'append object)
+         ;;          (telega-ins--as-string
+         ;;           (unless (telega--text-entity-at-newline-p ent object)
+         ;;             (telega-ins "\n"))
+         ;;           (telega-ins--line-wrap-prefix
+         ;;               (propertize (telega-symbol 'vbar-left)
+         ;;                           'face (append (assq :foreground palette)
+         ;;                                         (assq :background palette)))
+         ;;             (telega-ins--with-attrs
+         ;;                 (list :max (unless expanded-p (* 2.5 fill-column))
+         ;;                       :elide t
+         ;;                       :elide-string (propertize telega-symbol-eliding
+         ;;                                                 'face 'telega-shadow))
+         ;;               (telega-ins (telega-strip-newlines
+         ;;                            (telega--desurrogate-apply object))))
+         ;;             (telega-ins--with-face 'telega-shadow
+         ;;               (telega-ins (telega-symbol (if expanded-p
+         ;;                                              'collapse-details
+         ;;                                            'expand-details))))
+         ;;             (telega-ins "\n"))))
+         ;;        'telega-display-by 'telega-core)
+         ;;  object)
+         ))
+      )
+    ))
 
 ;; https://core.telegram.org/bots/api#markdown-style
 (defsubst telega--entity-to-markdown (entity-text)
@@ -1010,8 +1168,11 @@ Return now text with markdown syntax."
       (textEntityTypeTextUrl
        (format "[%s](%s)" text (telega-tl-str ent-type :url)))
       (textEntityTypeCustomEmoji
-       (apply #'propertize text
-              (telega--entity-type-to-text-props ent-type text)))
+       (let ((new-text (substring text)))
+         (telega--text-entity-apply
+          (list :offset 0 :length (length new-text) :type ent-type)
+          new-text)
+         new-text))
       (textEntityTypeBlockQuote
        (concat "> " text))
       (t text))))
@@ -1047,8 +1208,11 @@ Return string with org mode syntax."
       (textEntityTypeTextUrl
        (format "[[%s][%s]]" (telega-tl-str ent-type :url) text))
       (textEntityTypeCustomEmoji
-       (apply #'propertize text
-              (telega--entity-type-to-text-props ent-type text)))
+       (let ((new-text (substring text)))
+         (telega--text-entity-apply
+          (list :offset 0 :length (length new-text) :type ent-type)
+          new-text)
+         new-text))
       (textEntityTypeBlockQuote
        ;; See `org-element-quote-block-interpreter'
        (format "#+begin_quote\n%s#+end_quote" text))
@@ -1276,13 +1440,15 @@ substring and rest are additional arguments to markup function."
     (seq-doseq (ss (telega--split-by-text-prop text :tl-entity-type))
       (let ((ent-type (get-text-property 0 :tl-entity-type ss)))
         ;; NOTE: if markup is applied, then ignore all tl entity types
-        ;; except for custom emojis and mentions, so you can cut&paste
-        ;; text already having entity-type and apply new markup to it
+        ;; except for custom emojis, mentions and explicit formatting
+        ;; done with `C-c C-e', so you can cut&paste text already
+        ;; having entity-type and apply new markup to it
         (if (or (eq default-markup-func #'telega-markup-as-is-fmt)
                 (and ent-type
                      (memq (telega--tl-type ent-type)
                            '(textEntityTypeCustomEmoji
-                             textEntityTypeMentionName))))
+                             textEntityTypeMentionName)))
+                (get-text-property 0 :tl-entity-explicit ss))
             (progn
               (when tomarkup-ss
                 (push (list default-markup-func tomarkup-ss) result)
@@ -1462,34 +1628,30 @@ ENTITY-TO-MARKUP-FUN is function to convert TDLib entities to string."
   "Compare format text entities to sort them."
   (let ((ent-type1 (telega--tl-type (plist-get entity1 :type)))
         (ent-type2 (telega--tl-type (plist-get entity2 :type))))
-    (cond ((eq ent-type2 'textEntityTypeBlockQuote)
-           (not (eq ent-type1 'textEntityTypeBlockQuote)))
+    (cond ((memq ent-type2 '(textEntityTypeBlockQuote
+                             textEntityTypeExpandableBlockQuote))
+           (not (memq ent-type1 '(textEntityTypeBlockQuote
+                                  textEntityTypeExpandableBlockQuote))))
           ((eq ent-type2 'textEntityTypeSpoiler)
-           (not (eq ent-type1 'textEntityTypeSpoiler))))))
+           (not (eq ent-type1 'textEntityTypeSpoiler)))
+          )))
 
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
 Return text string with applied faces."
-  (let ((text (copy-sequence (plist-get fmt-text :text))))
-    ;; NOTE: sort entities so complex entities, such as blockquote or
-    ;; secrets are applied last, because they might have another
-    ;; entities inside
-    (seq-doseq (ent (sort (copy-sequence (plist-get fmt-text :entities))
-                          #'telega--fmt-text-entities-compare))
-      (let* ((beg (plist-get ent :offset))
-             (end (+ (plist-get ent :offset) (plist-get ent :length)))
-             (props (telega--entity-type-to-text-props
-                     (plist-get ent :type) (substring text beg end)))
-             (face (plist-get props 'face)))
-        (when props
-          (add-text-properties beg end (nconc (list 'rear-nonsticky t
-                                                    'front-sticky t)
-                                              (list :tl-entity ent)
-                                              (telega-plist-del props 'face))
-                               text))
-        (when face
-          (add-face-text-property beg end face 'append text))))
+  (let ((text (copy-sequence (plist-get fmt-text :text)))
+        complex-ents)
+    ;; NOTE: First we apply emphasis entities, then we apply
+    ;; formatting for complex entities, such as block quotes
+    (seq-doseq (ent (plist-get fmt-text :entities))
+      (if (memq (telega--tl-type ent) '(textEntityTypeBlockQuote
+                                        textEntityTypeExpandableBlockQuote))
+          (setq complex-ents (cons ent complex-ents))
+        (telega--text-entity-apply ent text)))
+
+    (seq-doseq (ent (nreverse complex-ents))
+      (telega--text-entity-apply ent text))
     text))
 
 (defun telega--split-by-text-prop (string prop &optional value-predicate)
@@ -2085,7 +2247,8 @@ Return new node."
         (set-window-point win (point))))
     node))
 
-(defun telega-svg-create-vertical-bar (&optional bar-width bar-position bar-str)
+(defun telega-svg-create-vertical-bar (&optional bar-width bar-position bar-str
+                                                 mask)
   "Create svg image for vertical bar.
 BAR-STR is string value for textual vertical bar, by default
 `telega-symbol-vertical-bar' is used.
@@ -2094,7 +2257,7 @@ float values then it is relative to bar width in pixels.  If
 integer values, then pixels used."
   (unless bar-str
     (setq bar-str telega-symbol-vertical-bar))
-  (or (telega-emoji--image-cache-get bar-str 1)
+  (or ;(telega-emoji--image-cache-get bar-str 1)
       (let* ((xh (telega-chars-xheight 1))
              (aw-chars (string-width bar-str))
              (xw (telega-chars-xwidth aw-chars))
@@ -2109,17 +2272,15 @@ integer values, then pixels used."
         (when (< bar-xw 1)
           (setq bar-xw 1))
         (svg-rectangle svg bar-xpos 0 bar-xw xh
-                       ;; NOTE: this filling params inherits face's
-                       ;; color this svg is displayed under
                        :fill-opacity 1
-                       :fill-rule "nonzero")
+                       :fill "currentColor")
         (setq image (telega-svg-image svg
                       :scale 1.0
                       :height (telega-ch-height 1)
                       :ascent 'center
-                      :mask 'heuristic
+                      :mask (or mask 'heuristic)
                       :telega-text bar-str))
-        (telega-emoji--image-cache-put bar-str 1 image)
+;        (telega-emoji--image-cache-put bar-str 1 image)
         image)))
 
 (defun telega-svg-create-horizontal-bar (&optional bar-width bar-position bar-str)
@@ -2153,10 +2314,8 @@ integer values, then absolute value in pixels is used."
          (when (< bar-xw 1)
            (setq bar-xw 1))
          (svg-rectangle svg 0 bar-ypos xw bar-xw
-                        ;; NOTE: this filling params inherits face's
-                        ;; color this svg is displayed under
                         :fill-opacity 1
-                        :fill-rule "nonzero")
+                        :fill "currentColor")
          (setq image (telega-svg-image svg
                        :scale 1.0
                        :width (telega-cw-width aw-chars)
@@ -2291,21 +2450,39 @@ Same as `momentary-string-display', but keeps the point."
            (setq faces (delete face faces)))
           ((eq faces face)
            (setq faces nil)))
-    (put-text-property start end 'face faces)))
+    (put-text-property start end 'face faces object)))
 
-(defun telega-button-highlight--sensor-func (_window oldpos dir)
-  "Sensor function to highlight buttons with `telega-button-highlight'."
-  (let ((inhibit-read-only t)
-        (button (button-at (if (eq dir 'entered) (point) oldpos))))
-    (when button
-      (funcall (if (eq dir 'entered)
-                   #'add-face-text-property
-                 #'telega-remove-face-text-property)
-               (button-start button)
-               (button-end button)
-               'telega-button-highlight)
+(defun telega-button-highlight--sensor-func (_win oldpos dir)
+  "Sensor function to highlight button when entered.
+For box buttons use `telega-box-button-active' face, otherwise use
+`telega-button-highlight' face."
+  (let* ((inhibit-read-only t)
+         (button-region (telega--region-with-cursor-sensor
+                         (if (eq dir 'entered) (point) oldpos)))
+         (start (car button-region))
+         (stop (cdr button-region))
+         (box-button-p (when button-region
+                         (let ((face (get-text-property
+                                      (car button-region) 'face)))
+                           (if (listp face)
+                               (memq 'telega-box-button face)
+                             (eq 'telega-box-button face)))))
+         (activate-face (if box-button-p
+                            'telega-box-button-active
+                          'telega-button-highlight)))
+    (when button-region
+      (if (eq dir 'entered)
+          (add-face-text-property start stop activate-face 'append)
+        (telega-remove-face-text-property start stop activate-face))
+
       (when (eq dir 'entered)
-        (telega-button--help-echo button)))))
+        (when-let ((button (button-at start)))
+          (telega-button--help-echo button)))
+
+      ;; NOTE: removing face from face list not always makes button to
+      ;; redisplay, so force redisplay
+;      (redraw-frame (window-frame win))
+      )))
 
 (defun telega-screenshot-with-import (tofile &optional region-p)
   "Make a screenshot into TOFILE using imagemagick's import utility.
@@ -2459,22 +2636,6 @@ If FILE is local, then return expanded FILE."
   "Convert COLOR to #rrggbb form."
   (apply #'color-rgb-to-hex (append (color-name-to-rgb color) '(2))))
 
-(defun telega-color-rainbow-identifier (identifier &optional background-mode)
-  "Return color for IDENTIFIER in BACKGROUND-MODE.
-BACKGROUND-MODE is one of `light' or `dark'."
-  (cl-assert (memq background-mode '(light dark)))
-  (let ((rainbow-identifiers-cie-l*a*b*-lightness
-         (if (eq background-mode 'dark)
-             (cdr telega-rainbow-lightness)
-           (car telega-rainbow-lightness)))
-        (rainbow-identifiers-cie-l*a*b*-saturation
-         (if (eq background-mode 'dark)
-             (cdr telega-rainbow-saturation)
-           (car telega-rainbow-saturation))))
-    (plist-get (car (rainbow-identifiers-cie-l*a*b*-choose-face
-                     (rainbow-identifiers--hash-function identifier)))
-               :foreground)))
-
 (defun telega-color-name-from-rgb24 (rgb24)
   "Convert RGB24 int value to color name."
   (format "#%06x" (+ 8388608 rgb24)))
@@ -2484,23 +2645,15 @@ BACKGROUND-MODE is one of `light' or `dark'."
 Strips alpha component."
   (format "#%06x" (logand (+ 2147483648 argb) 16777215)))
 
-(defun telega-color-name-set-light-saturation (color-name saturation light)
-  "For COLOR-NAME set SATURATION and LIGHT."
+(defun telega-color-name-set-saturation-light (color-name saturation light)
+  "For COLOR-NAME set SATURATION and LIGHT.
+LIGHT and SATURATION could be nil, to not change its value."
   (let ((hsl (apply #'color-rgb-to-hsl (color-name-to-rgb color-name))))
     (apply #'color-rgb-to-hex
            (apply #'color-hsl-to-rgb
                   (list (nth 0 hsl)
                         (or saturation (nth 1 hsl))
                         (or light (nth 2 hsl)))))))
-
-(defun telega-clear-assigned-colors ()
-  "Clears assigned colors for all chats and users.
-Use this if you planning to change `telega-rainbow-function'."
-  (interactive)
-  (dolist (user (telega-user-list))
-    (plist-put user :color nil))
-  (dolist (chat telega--ordered-chats)
-    (plist-put (plist-get chat :uaprops) :color nil)))
 
 (defun telega-keys-description (command &optional keymap)
   "Return string describing binding of the COMMAND in the KEYMAP.
@@ -2566,14 +2719,14 @@ Also, applies `telega-image-transform-smoothing' setting."
            (nconc (list :transform-smoothing telega-image-transform-smoothing)
                   props))))
 
-(defun telega-etc-file-create-image (filename cwidth &optional no-mask-p)
+(defun telega-etc-file-create-image (filename cwidth)
   "Create image from etc's FILENAME.
 Width for the resulting image will be of CWIDTH chars.
 Maximum height for the image is 1."
   (telega-create-image (telega-etc-file filename) nil nil
     :scale 1.0
     :ascent 'center
-    :mask (unless no-mask-p 'heuristic)
+    :mask 'heuristic
     :max-height (telega-ch-height 1)
     :width (telega-cw-width cwidth)))
 
@@ -3027,9 +3180,7 @@ Return nil if no reaction is available for the MSG."
                                                          new-tag-label)
   "Read a Saved Messages tag.
 Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
-  (when-let* ((new-tag-label (propertize (or new-tag-label "New Tag")
-                                         'face 'bold))
-              (tags (telega-saved-messages-tags sm-topic-id))
+  (when-let* ((tags (telega-saved-messages-tags sm-topic-id))
               (tag-choices
                (mapcar (lambda (tag)
                          (cons (concat (telega-msg-reaction-title-for-completion
@@ -3038,7 +3189,11 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
                                tag))
                        tags))
               (choices (nconc (mapcar #'car tag-choices)
-                              (list new-tag-label)))
+                              (when new-tag-label
+                                (list (propertize (if (stringp new-tag-label)
+                                                      new-tag-label
+                                                    "Create New Tag")
+                                                  'face 'bold)))))
               (choice (telega-completing-read prompt choices nil t)))
     (cdr (assoc choice tag-choices))))
 
@@ -3211,6 +3366,24 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
    (telega-saved-messages-tag-filter)
    (telega-saved-messages-tag-add-name)
    (telega-saved-messages-tag-remove)
+   ])
+
+;;; Link Preview Options
+(transient-define-suffix telega-link-preview-options-disable ()
+  :key "d"
+  :description (lambda () (telega-i18n "lng_link_remove"))
+  (interactive)
+  (let ((msg (oref transient-current-prefix scope)))
+    (telega-msg-disable-link-preview msg)))
+
+(transient-define-prefix telega-link-preview-options-transient ()
+  [:description
+   (lambda ()
+     (telega-i18n "lng_link_options_header"))
+
+   ;; (telega-saved-messages-tag-filter)
+   ;; (telega-saved-messages-tag-add-name)
+   ;; (telega-saved-messages-tag-remove)
    ])
 
 

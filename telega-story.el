@@ -47,6 +47,15 @@
 (defun telega-story-chat (story &optional offline-p)
   (telega-chat-get (plist-get story :sender_chat_id) offline-p))
 
+(defun telega-story-sender (story &optional offline-p)
+  "Return STORY message sender."
+  (if-let ((sender (plist-get story :sender_id)))
+      (telega-msg-sender sender)
+    ;; Prefer user as story sender to chat
+    (let ((chat (telega-story-chat story offline-p)))
+      (or (telega-chat-user chat)
+          chat))))
+
 (defun telega-story--content-file (story)
   "Return STORY content file."
   (let ((story-content (plist-get story :content)))
@@ -70,7 +79,9 @@ Both callbacks are called with two arguments - story and file."
                ;; NOTE: if file is already downloading and CALLBACK is
                ;; not provided, there is no need to start downloading
                (or callback (not (telega-file--downloading-p tl-file))))
-      (telega-file--download tl-file priority
+      (telega-file--download tl-file
+        :priority priority
+        :update-callback
         (when (or progress-callback callback)
           (lambda (dfile)
             (cond ((and callback (telega-file--downloaded-p dfile))
@@ -122,18 +133,13 @@ telega-server, check only in messages cache.  If CALLBACK
 is specified, it should accept two argument s - MESSAGE and
 optional OFFLINE-P, non-nil OFFLINE-P means no request to the
 telega-server has been made."
-  ;; Story could be placed in the message itself, or might be a part
-  ;; of web_page
-  (let ((content (plist-get msg :content))
-        chat-id story-id)
-    (cl-case (telega--tl-type content)
-      (messageStory
-       (setq chat-id (plist-get content :story_sender_chat_id)
-             story-id (plist-get content :story_id)))
-      (messageText
-       (let ((web-page (plist-get content :web_page)))
-         (setq chat-id (plist-get web-page :story_sender_chat_id)
-               story-id (plist-get web-page :story_id)))))
+  ;; NOTE: Story could be placed in the message itself, or might be a
+  ;; part of Link Preview.  Take advantage that type/link-preview
+  ;; matcher returns msg content or link preview type
+  (when-let* ((story-spec (telega-msg-match-p msg
+                            '(or (type Story) (link-preview Story))))
+              (chat-id (plist-get story-spec :story_sender_chat_id))
+              (story-id (plist-get story-spec :story_id)))
     (unless (or (telega-zerop chat-id) (telega-zerop story-id))
       (let ((story (telega-story-get chat-id story-id 'offline)))
         (if (or story (null callback))
@@ -206,14 +212,16 @@ telega-server has been made."
         (outline-right "M16.0,4.0 A12.0,12.0 0 0,1 16.0,28.0"))
     (telega-svg-apply-outline
      svg outline-left ratio
-     (nconc (list :fill "none" :stroke "currentColor"
-                  :stroke-width "3")
+     (nconc (list :fill "none" :stroke "currentColor")
+            (unless (plist-get args :stroke-width)
+              (list :stroke-width "2.75"))
             args))
     (telega-svg-apply-outline
      svg outline-right ratio
      (nconc (list :fill "none" :stroke "currentColor"
-                  :stroke-width "3" :stroke-dasharray "5.5"
-                  :stroke-dashoffset "5.5")
+                  :stroke-dasharray "5.5" :stroke-dashoffset "5.5")
+            (unless (plist-get args :stroke-width)
+              (list :stroke-width "2.75"))
             args))
     svg))
 
@@ -221,7 +229,7 @@ telega-server has been made."
   "Generate story icon with SYMBOL inside."
   (apply #'telega-svg-story-icon svg width args)
 
-  (let ((font-size (/ width 2.75)))
+  (let ((font-size (/ width 2.25)))
     (svg-text svg symbol
               :font-size font-size
               :font-weight "bold"
@@ -242,7 +250,12 @@ telega-server has been made."
          (passive-color (telega-color-name-as-hex-2digits
                          (face-foreground 'shadow))))
     (unless viewed-p
-      (cl-destructuring-bind (c1 c2) (telega-msg-sender-color sender)
+      (let* ((telega-palette-context 'story)
+             (palette (telega-msg-sender-palette sender))
+             (c1 (telega-color-name-as-hex-2digits
+                  (telega-palette-attr palette :background)))
+             (c2 (telega-color-name-as-hex-2digits
+                  (telega-palette-attr palette :foreground))))
         (apply #'telega-svg-raw-node
                svg 'linearGradient
                '((id . "a")
@@ -250,10 +263,10 @@ telega-server has been made."
                (mapcar (lambda (stop)
                          (dom-node 'stop `((offset . ,(format "%.1f" (car stop)))
                                            (stop-color . ,(cdr stop)))))
-                       `((0 . ,(telega-color-name-as-hex-2digits c2))
-                         (0.2 . ,(telega-color-name-as-hex-2digits c2))
-                         (0.5 . ,(telega-color-name-as-hex-2digits c1))
-                         (1 . ,(telega-color-name-as-hex-2digits c1)))))))
+                       `((0   . ,c2)
+                         (0.2 . ,c2)
+                         (0.5 . ,c1)
+                         (1   . ,c1))))))
 
     (telega-svg-squircle svg x-shift x-shift
                          (- size x-shift x-shift) (- size x-shift x-shift)

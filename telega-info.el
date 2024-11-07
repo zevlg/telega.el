@@ -126,19 +126,6 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
     :with-username-p 'telega-username
     :with-brackets-p t))
 
-(defun telega-ins--chat-photo (chat-photo)
-  "Inserter for user CHAT-PHOTO (TDLib's ChatPhoto)."
-  (if-let ((fake-anim (plist-get chat-photo :telega-fake-animation)))
-      (telega-ins--animation-image fake-anim)
-
-    (telega-ins--image
-     (telega-photo--image
-      chat-photo
-      (list telega-user-photo-size
-            telega-user-photo-size
-            telega-user-photo-size
-            telega-user-photo-size)))))
-
 (defun telega-ins--user-profile-photos (user &optional profile-photos
                                              redisplay-func)
   "Insert USER's profile photos."

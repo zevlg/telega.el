@@ -46,6 +46,8 @@
 (declare-function telega-chat--info "telega-chat" (chat))
 (declare-function telega-chatbuf--message-thread-id "telega-chat")
 (declare-function telega-chatbuf-attach-inline-bot-query "telega-chat" (&optional no-empty-search))
+(declare-function telega-chat-admin-get "telega-chat" (chat user))
+
 (declare-function telega--full-info "telega-info" (tlobj))
 
 (defun telega-company-grab-single-char (char)
@@ -134,11 +136,12 @@ Matches only if CHAR does not apper in the middle of the word."
            (replace-regexp-in-string
             (regexp-quote "-") " " (substring text 1))
            nil nil
-           (lambda (emojis)
+           (lambda (emoji-keywords)
              (funcall callback
-                      (mapcar (lambda (emoji)
-                                (propertize text 'emoji emoji))
-                              emojis)))))))
+                      (mapcar (lambda (ek)
+                                (propertize (telega-tl-str ek :keyword)
+                                            'emoji (telega-tl-str ek :emoji)))
+                              emoji-keywords)))))))
 
 ;;;###autoload
 (defun telega-company-telegram-emoji (command &optional arg &rest _ignored)
@@ -171,6 +174,8 @@ Matches only if CHAR does not apper in the middle of the word."
 ;;   syntax. Here is the screenshot, showing use of this backend:
 ;;   [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 ;;
+;;   Use ~@@~ prefix to complete chat admins only.
+;;
 ;; Customizable options:
 ;; - {{{user-option(telega-company-username-prefer-name, 2)}}}
 ;; - {{{user-option(telega-company-username-show-avatars, 2)}}}
@@ -195,12 +200,15 @@ Matches only if CHAR does not apper in the middle of the word."
      (let ((members
             (telega--searchChatMembers
              telega-chatbuf--chat (substring arg 1)
-             ;; NOTE: "chatMembersFilterMention" might have some
-             ;; issues (see https://github.com/tdlib/td/issues/1393).
-             ;; However, using "chatMembersFilterMention" is essential
-             ;; because of Topics feature.
-             (list :@type "chatMembersFilterMention"
-                   :message_thread_id (telega-chatbuf--message-thread-id))
+             ;; NOTE: use @@ to mention admin/owner
+             (if (string-prefix-p "@@" arg)
+                 '(:@type "chatMembersFilterAdministrators")
+               ;; NOTE: "chatMembersFilterMention" might have some
+               ;; issues (see https://github.com/tdlib/td/issues/1393).
+               ;; However, using "chatMembersFilterMention" is essential
+               ;; because of Topics feature.
+               (list :@type "chatMembersFilterMention"
+                     :message_thread_id (telega-chatbuf--message-thread-id)))
              )))
        (or (nconc (mapcar (lambda (member)
                             (propertize
@@ -208,7 +216,11 @@ Matches only if CHAR does not apper in the middle of the word."
                                  (telega-msg-sender-title member))
                              'telega-member member
                              'telega-input arg))
-                          members)
+                          ;; NOTE: remove deleted and blocked users
+                          ;; from the completion list
+                          (cl-remove-if (telega-match-gen-predicate 'sender
+                                          '(or is-blocked (user is-deleted)))
+                                        members))
                   (cl-remove-if-not (lambda (botname)
                                       (string-prefix-p arg botname 'ignore-case))
                                     (cl-union telega--recent-inline-bots
@@ -233,7 +245,17 @@ Matches only if CHAR does not apper in the middle of the word."
        (telega-ins--as-string
         (telega-ins "  ")
         (telega-ins--msg-sender member
-          :with-avatar-p telega-company-username-show-avatars))))
+          :with-avatar-p telega-company-username-show-avatars)
+        (when (telega-user-p member)
+          (when-let ((admin (telega-chat-admin-get telega-chatbuf--chat member)))
+            (telega-ins--with-face 'telega-shadow
+              (telega-ins " ("
+                          (or (telega-tl-str admin :custom_title)
+                              (if (plist-get admin :is_owner)
+                                  (telega-i18n "lng_owner_badge")
+                                (telega-i18n "lng_admin_badge")))
+                          ")"))))
+        )))
     (post-completion
      (when-let ((input (get-text-property 0 'telega-input arg))
                 (member (get-text-property 0 'telega-member arg)))

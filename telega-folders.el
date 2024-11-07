@@ -132,19 +132,12 @@ correctly extract folder name."
 
 (defun telega-folder-tag-face (folder-name &optional folder-info)
   "Return face to display folder tag for folder of FOLDER-NAME."
-  (let* ((folder-info (or folder-info
-                          (telega-folder--chat-folder-info folder-name)))
-         (color-id (plist-get folder-info :color_id))
-         (bg-mode (frame-parameter nil 'background-mode))
-         (color-fg
-          (or (telega--accent-color-name-by-id color-id bg-mode)
-              (telega--builtin-color-by-id color-id bg-mode)))
-         (color-bg (telega-color-name-set-light-saturation
-                    color-fg
-                    (if (eq bg-mode 'light) 0.2 0.4)
-                    (if (eq bg-mode 'light) 0.8 0.4))))
-    (list :foreground color-fg
-          :background color-bg)))
+  (unless folder-info
+    (setq folder-info (telega-folder--chat-folder-info folder-name)))
+
+  (when-let ((palette (telega-palette-by-color-id
+                       (plist-get folder-info :color_id))))
+    (append (assq :foreground palette) (assq :background palette))))
 
 (defun telega-folders-insert-as-tags (fmt-spec folders &optional force)
   "Inserter for the FOLDERS list in case folder tags are enabled.

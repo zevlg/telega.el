@@ -101,10 +101,10 @@ Download only if `telega-use-images' is non-nil."
         (thumb-file (telega-sticker--thumb-file sticker)))
     (when telega-use-images
       (when (telega-file--need-download-p thumb-file)
-        (telega-file--download thumb-file 6))
+        (telega-file--download thumb-file :priority 6))
       (unless telega-sticker--use-thumbnail
         (when (telega-file--need-download-p sticker-file)
-          (telega-file--download sticker-file 2))))
+          (telega-file--download sticker-file :priority 2))))
     ))
 
 (defsubst telega-sticker-emoji (sticker &optional no-properties)
@@ -323,6 +323,8 @@ Return path to png file."
                ;; NOTE: If `webp' image is supported by Emacs, use it.
                ;; We use webp->png converter by default, because it
                ;; gives better results, then Emacsen `webp' images.
+               ;; NOTE: Emacs Bug causing bad quality for webp has
+               ;; been fixed.
                (setq png-filename webp-filename))
               (t
                (telega-help-message 'no-dwebp-binary
@@ -842,7 +844,9 @@ Install from https://github.com/zevlg/tgs2png"))
 (defun telega-sticker--animate (sticker &optional for-msg)
   "Start animating animated STICKER."
   (cl-assert (not (telega-sticker-static-p sticker)))
-  (telega-file--download (plist-get sticker :sticker) 32
+  (telega-file--download (plist-get sticker :sticker)
+    :priority 32
+    :update-callback
     (lambda (file)
       (telega-file--renew sticker :sticker)
       (when (telega-file--downloaded-p file)
@@ -899,10 +903,10 @@ Install from https://github.com/zevlg/tgs2png"))
   (let ((animation-file (telega-animation--file animation))
         (thumb-file (telega-animation--thumb-file animation)))
     (when (telega-file--need-download-p thumb-file)
-      (telega-file--download thumb-file 5))
+      (telega-file--download thumb-file :priority 5))
     (when telega-animation-download-saved
       (when (telega-file--need-download-p animation-file)
-        (telega-file--download animation-file 1)))
+        (telega-file--download animation-file)))
     ))
 
 (defun telega-animation--progress-svg (animation)
@@ -996,7 +1000,9 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
   (lambda (_window _oldpos dir)
     (when telega-animation-play-inline
       (if (eq dir 'entered)
-          (telega-file--download (telega-file--renew anim :animation) 32
+          (telega-file--download (telega-file--renew anim :animation)
+            :priority 32
+            :update-callback
             (lambda (file)
               (when (telega-file--downloaded-p file)
                 (telega-ffplay-to-png (telega--tl-get file :local :path) "-an"

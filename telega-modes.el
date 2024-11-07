@@ -489,13 +489,13 @@ Return filename of the generated icon."
 ;; - {{{user-option(telega-autoplay-msg-temex, 2)}}}
 ;; - {{{user-option(telega-autoplay-custom-emojis, 2)}}}
 (defcustom telega-autoplay-msg-temex
-  '(type Animation Sticker AnimatedEmoji)
+  '(type Animation Sticker AnimatedEmoji Gift)
   "Message Temex for messages to automatically play content for."
   :type 'telega-msg-temex
   :options '((and (not outgoing)
-                  (or (type Animation Sticker AnimatedEmoji)
-                      (web-page :animation)
-                      (web-page :sticker))))
+                  (or (type Animation Sticker AnimatedEmoji Gift)
+                      (link-preview Animation)
+                      (link-preview Sticker))))
   :group 'telega-modes)
 
 (defcustom telega-autoplay-custom-emojis 10
@@ -536,31 +536,32 @@ Play in muted mode."
 
     ;; Then animate message's content itself
     (when (telega-msg-match-p msg telega-autoplay-msg-temex)
-      (let* ((content (plist-get msg :content))
-             (content-type (telega--tl-type content))
-             (web-page (plist-get content :web_page)))
-        (cond ((or (eq 'messageAnimation content-type)
-                   (plist-get web-page :animation))
-               ;; NOTE: special case for animations, animate only those
-               ;; which can be animated inline, see
-               ;; `telega-animation-play-inline'
-               (let ((animation (or (plist-get content :animation)
-                                    (plist-get web-page :animation))))
-                 (when (telega-animation-play-inline-p animation)
-                   (telega-msg-open-animation msg animation))))
+      (cond ((telega-msg-match-p msg
+               '(or (type Animation) (link-preview Animation)))
+             ;; NOTE: special case for animations, animate only those
+             ;; which can be animated inline, see
+             ;; `telega-animation-play-inline'
+             (let ((animation
+                    (or (telega--tl-get msg :content :animation)
+                        (telega--tl-get msg :content :link_preview
+                                        :type :animation))))
+               (when (telega-animation-play-inline-p animation)
+                 (telega-msg-open-animation msg animation))))
 
-              ((or (eq 'messageSticker content-type)
-                   (plist-get web-page :sticker))
-               ;; NOTE: special case for sticker messages, play animated
-               ;; sticker only if `telega-sticker-animated-play' is set
-               (let ((sticker (or (plist-get content :sticker)
-                                  (plist-get web-page :sticker))))
-                 (when (and (not (telega-sticker-static-p sticker))
-                            telega-sticker-animated-play)
-                   (telega-sticker--animate sticker))))
+            ((telega-msg-match-p msg
+               '(or (type Sticker Gift) (link-preview Sticker)))
+             ;; NOTE: special case for sticker messages, play animated
+             ;; sticker only if `telega-sticker-animated-play' is set
+             (let ((sticker (or (telega--tl-get msg :content :sticker)
+                                (telega--tl-get msg :content :gift :sticker)
+                                (telega--tl-get msg :content :link_preview
+                                                :type :sticker))))
+               (when (and (not (telega-sticker-static-p sticker))
+                          telega-sticker-animated-play)
+                 (telega-sticker--animate sticker))))
 
-              (t
-               (telega-msg-open-content msg)))))))
+            (t
+             (telega-msg-open-content msg))))))
 
 (defun telega-autoplay-on-msg--hover-out (msg)
   "Handle hover leaving for the message MSG.
@@ -601,7 +602,7 @@ Cancel downloading of the corresporting file."
 ;; 3. Last and new message are both text messages
 ;; 4. Last message can be edited
 ;; 5. Last and new messages are *not* replying to any message
-;; 6. Last message has no associated web-page
+;; 6. Last message has no associated link preview
 ;; 7. New message has no ~messageSendOptions~ to avoid squashing
 ;;    scheduled messages or similar
 ;; 8. New message is sent within ~telega-squash-message-within-seconds~
@@ -690,7 +691,7 @@ squashing is not applied."
                            (not is-reply-to-story)
                            (type Text)))
                    ;; Check for 6.
-                   (not (telega--tl-get last-msg :content :web_page))
+                   (not (telega--tl-get last-msg :content :link_preview))
                    ;; Check for 8.
                    (< (- (telega-time-seconds)
                          (if (zerop (plist-get last-msg :edit_date))
@@ -835,16 +836,22 @@ Could be used as condition function in `display-buffer-alist'."
          (oldbuffer (current-buffer)))
     ;; Jump to corresponding message in the chatbuf
     (with-telega-chatbuf (telega-msg-chat image-msg)
-      (telega-msg-goto image-msg))
+      ;; (telega-msg-goto image-msg)))
+      (telega-chatbuf--history-state-set
+       :newer-freezed (list :at-msg image-msg)))
 
-    (telega-file--download hr-file 32
+    (telega-file--download hr-file
+      :priority 32
+      :update-callback
       (lambda (tl-file)
-        (if (not (telega-file--downloaded-p tl-file))
-            ;; Show downloading progress in modeline
-            (let ((progress (telega-file--downloading-progress tl-file)))
-              (message "Downloading.. %d%%" (* progress 100)))
+        ;; Show downloading progress in modeline
+        (let ((progress (telega-file--downloading-progress tl-file)))
+          (message "telega: %s%d%%" (telega-i18n "telega_loading")
+                   (* progress 100)))
 
-          ;; TL-FILE Downloaded
+        ;; TL-FILE Downloaded
+        (when (telega-file--downloaded-p tl-file)
+          (message "")
           (telega-image-view-file tl-file image-msg)
           (ignore-errors
             (kill-buffer oldbuffer)))))))
@@ -861,7 +868,7 @@ Could be used as condition function in `display-buffer-alist'."
 
     ;; `next-image-msg' is nil (not found)
     ;; Need to fetch older/newer messages from the chat's history
-    (message "telega: %s" (telega-i18n "lng_profile_loading"))
+    (message "telega: %s" (telega-i18n "telega_loading"))
     (let ((chat (telega-msg-chat telega-image--message))
           (img-msg telega-image--message)
           (img-buffer (current-buffer)))
@@ -1206,11 +1213,11 @@ Return patron info, or nil if SENDER is not a telega patron."
                         (ear-w (* 0.4 cr))
                         (x-off (- cx cr))
                         (y-off (- cy cr))
-                        (color (telega-msg-sender-color
-                                sender (frame-parameter nil 'background-mode)))
+                        (telega-palette-context 'avatar)
                         (svg-color
-                         (when color
-                           (telega-color-name-as-hex-2digits color))))
+                         (telega-color-name-as-hex-2digits
+                          (telega-palette-attr
+                           (telega-msg-sender-palette sender) :foreground))))
                    (telega-svg-telega-logo
                     svg ear-w
                     :transform (format "scale(-1, 1) translate(-%f, %f)"
@@ -1241,9 +1248,7 @@ Return patron info, or nil if SENDER is not a telega patron."
 ;; ** telega-my-location-mode
 ;;
 ;; ~telega-my-location~ is used by =telega= to calculate distance to
-;; me for location messages.  Also, ~telega-my-location~ is used to
-;; search chats nearby me.  So, having it set to correct value is
-;; essential.  There is
+;; me for location messages.  There is
 ;; [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][contrib/telega-live-location.el]]
 ;; which uses =geo.el= to actualize ~telega-my-location~, however it
 ;; is not always possible to use it.
@@ -1258,24 +1263,19 @@ Return patron info, or nil if SENDER is not a telega patron."
 ;; #+end_src
 (defun telega-my-location--on-new-message (msg)
   "Set `telega-my-location' if MSG is a location sent to \"Saved Messages\"."
-  (when (eq telega--me-id (plist-get msg :chat_id))
-    (let ((content (plist-get msg :content)))
-      (when (equal (plist-get content :@type)
-                   "messageLocation")
-        (setq telega-my-location (plist-get content :location))
-        (message "telega: telega-my-location → %s"
-                 (telega-ins--as-string
-                  (telega-ins--location telega-my-location)))
+  (when (telega-msg-match-p msg
+          '(and (chat saved-messages) (type Location)))
+    (setq telega-my-location (telega--tl-get msg :content :location))
+    (message "telega: telega-my-location → %s"
+             (telega-ins--as-string
+              (telega-ins--location telega-my-location)))
 
-        ;; Update all my live location messages
-        (telega--getActiveLiveLocationMessages
-         (lambda (messages)
-           (dolist (msg messages)
-             (telega--editMessageLiveLocation msg telega-my-location))))
+    ;; Update all my live location messages
+    (seq-doseq (ll-msg telega--live-location-messages)
+      (telega--editMessageLiveLocation ll-msg telega-my-location))
 
-        ;; Also update all active live locations in the rootbuf
-        (telega-active-locations--check)
-        ))))
+    ;; Also update all active live locations in the rootbuf
+    (telega-active-locations--check)))
 
 (define-minor-mode telega-my-location-mode
   "Global mode to set `telega-my-location' using \"Saved Messages\".
@@ -1308,8 +1308,6 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
 (declare-function telega-root-aux-remove "telega-root" (inserter))
 (declare-function telega-root-aux-redisplay "telega-root" (&optional inserter))
 
-(defvar telega-active-locations--timer nil
-  "Timer to update active locations.")
 (defvar telega-active-location--messages nil
   "List of recently active live location messages.")
 
@@ -1336,27 +1334,25 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
                     :after #'telega-active-locations--msg-edited)
         (advice-add 'telega--on-updateDeleteMessages
                     :after #'telega-active-locations--msg-deleted)
+        (advice-add 'telega--on-updateActiveLiveLocationMessages
+                    :after #'telega-active-locations--llm-updated)
         (add-hook 'telega-chat-post-message-hook
                   #'telega-active-locations--msg-new)
         (add-hook 'telega-chatbuf-pre-msg-insert-hook
                   #'telega-active-locations--msg-new)
-        (add-hook 'telega-chats-fetched-hook
-                  #'telega-active-locations--fetch)
         (add-hook 'telega-connection-state-hook
                   #'telega-active-locations--check)
 
         (telega-root-aux-append #'telega-ins--active-locations)
         (when (telega-server-live-p)
-          (telega-active-locations--fetch))
+          (telega-active-locations--check telega--live-location-messages)
 
-        ;; Always update all locations once a minute
-        (setq telega-active-locations--timer
-              (run-with-timer 60 60 #'telega-active-locations--check))
-        )
+          ;; For all chats having chatbuffer, search for recent live
+          ;; location messages
+          (dolist (chat (mapcar #'car telega--chat-buffers-alist))
+            (telega--searchChatRecentLocationMessages chat
+              #'telega-active-locations--check))))
 
-    (when telega-active-locations--timer
-      (cancel-timer telega-active-locations--timer)
-      (setq telega-active-locations--timer nil))
     (telega-root-aux-remove #'telega-ins--active-locations)
     (remove-hook 'telega-connection-state-hook
                  #'telega-active-locations--check)
@@ -1364,14 +1360,14 @@ your actual location to \"Saved Messages\" using mobile Telegram client."
                  #'telega-active-locations--msg-new)
     (remove-hook 'telega-chatbuf-pre-msg-insert-hook
                  #'telega-active-locations--msg-new)
-    (remove-hook 'telega-chats-fetched-hook
-                 #'telega-active-locations--fetch)
     (advice-remove 'telega--on-updateMessageContent
                    #'telega-active-locations--msg-updated)
     (advice-remove 'telega--on-updateMessageEdited
                    #'telega-active-locations--msg-edited)
     (advice-remove 'telega--on-updateDeleteMessages
-                   #'telega-active-locations--msg-deleted    )
+                   #'telega-active-locations--msg-deleted)
+    (advice-remove 'telega--on-updateActiveLiveLocationMessages
+                   #'telega-active-locations--llm-updated)
     ))
 
 (defun telega-active-location--msg-find (msg-id chat-id)
@@ -1421,6 +1417,9 @@ EVENT must be \"updateDeleteMessages\"."
         (plist-put content :expires_in 0)
         (telega-active-locations--check (list msg))))))
 
+(defun telega-active-locations--llm-updated (event)
+  (telega-active-locations--check (plist-get event :messages)))
+
 (defun telega-ins--active-location-msg (msg)
   "Inserter for active location message MSG in root aux."
   (let* ((user (telega-msg-sender msg))
@@ -1448,7 +1447,7 @@ EVENT must be \"updateDeleteMessages\"."
         (telega-msg-location-live-for msg)
       (telega-ins--location-live-header live-for updated-ago))
     (when (and (not (telega-me-p user)) telega-my-location)
-      (telega-ins " " (telega-symbol 'distance))
+      (telega-ins ", " (telega-symbol 'distance))
       (telega-ins
        (telega-distance-human-readable
         (telega-location-distance
@@ -1487,8 +1486,8 @@ EVENT must be \"updateDeleteMessages\"."
 If MESSAGES is ommited, then check/update currently active location
 messages."
   (let (live-locs-updated-p)
-    (dolist (loc-msg (or messages
-                         (copy-sequence telega-active-location--messages)))
+    (seq-doseq (loc-msg (or messages
+                            (copy-sequence telega-active-location--messages)))
       (cl-assert (telega-msg-match-p loc-msg '(type Location)))
       (let* ((loc-live-for (telega-msg-location-live-for loc-msg))
              (still-live-p (and
@@ -1518,16 +1517,6 @@ messages."
 
     (when live-locs-updated-p
       (telega-root-aux-redisplay #'telega-ins--active-locations))))
-
-(defun telega-active-locations--fetch ()
-  "Fetch my live location messages."
-  (telega--getActiveLiveLocationMessages #'telega-active-locations--check)
-
-  ;; For all chats having chatbuffer, search for recent live location
-  ;; messages
-  (dolist (chat (mapcar #'car telega--chat-buffers-alist))
-    (telega--searchChatRecentLocationMessages chat
-      #'telega-active-locations--check)))
 
 
 ;;; ellit-org: minor-modes
@@ -1573,9 +1562,9 @@ Set to nil to disable active video chats in the modeline."
     (cond ((and has-participants-p
                 group-call
                 (not (zerop (plist-get group-call :participant_count))))
-           (telega-ins (telega-symbol 'video-chat-active))
-           (telega-ins (telega-tl-str group-call :title))
-           (telega-ins " ")
+           (telega-ins (telega-symbol 'video-chat-active)
+                       (telega-tl-str group-call :title)
+                       " ")
            (seq-doseq (recent-speaker (plist-get group-call :recent_speakers))
              (telega-ins--image
               (telega-group-call--participant-image recent-speaker)))
@@ -2041,8 +2030,11 @@ TDLib's autoDownloadSettings structure."
     (seq-doseq (bd-user bd-users-list)
       (telega-ins "\n")
       (telega-ins--line-wrap-prefix "  "
-        (telega-ins--msg-sender (telega-user-get (plist-get bd-user :user_id))
-          :with-avatar-p t)
+        (let ((bd-user (telega-user-get (plist-get bd-user :user_id))))
+          (telega-ins--raw-button
+              (telega-link-props 'sender bd-user 'type 'telega)
+            (telega-ins--msg-sender bd-user
+              :with-avatar-p t)))
         (telega-ins--with-face 'telega-shadow
           (telega-ins " • "))
         (telega-ins " ")

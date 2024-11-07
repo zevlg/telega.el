@@ -94,7 +94,7 @@ If t, then all custom filters are dirty.")
     (define-key map (kbd "e") 'telega-filters-edit)
     (define-key map (kbd "f") 'telega-filter-by-folder)
     (define-key map (kbd "i") 'telega-filter-by-important)
-    (define-key map (kbd "n") 'telega-filter-by-nearby)
+    (define-key map (kbd "n") 'telega-filter-by-name)
     (define-key map (kbd "m") 'telega-filter-by-mention)
     (define-key map (kbd "o") 'telega-filter-by-online-status)
     (define-key map (kbd "^") 'telega-filter-by-pin)
@@ -148,7 +148,8 @@ See `telega-filter--ewoc-spec' for CUSTOM-SPEC description."
                                          :elide t
                                          :align 'right)
              (unless (zerop unread)
-               (telega-ins (telega-number-human-readable unread)))
+               (telega-ins (telega-number-human-readable
+                            unread (when (> unread 10000) "%d"))))
              (unless (zerop mentions)
                (telega-ins-fmt "@%d" mentions)))))
          (filter-button-width
@@ -680,14 +681,6 @@ Use `telega-filter-by-name' for fuzzy searching."
   (interactive (list (read-string "Chat search query: ")))
   (setq telega--search-chats (telega--searchChats query))
   (telega-filter-add (list 'search query)))
-
-(defun telega-filter-by-nearby ()
-  "Filter chats nearby `telega-my-location'."
-  (interactive)
-  (unless telega-my-location
-    (user-error "`telega-my-location' is unset, can't search nearby chats"))
-  (telega--searchChatsNearby telega-my-location)
-  (telega-filter-add 'nearby))
 
 (defun telega-filter-by-custom (name)
   "Filter by custom chat filter."

@@ -202,6 +202,13 @@ Also matches if TEMEX-LIST is empty."
   "Matches if TDLib object's id is in the ID-LIST."
   (memq (plist-get obj :id) id-list))
 
+;;; ellit-org: temex
+;; - (tl-type ~TL-TYPE~...) ::
+;;   {{{temexdoc(nil, tl-type, 2)}}}
+(define-telega-matcher nil tl-type (obj &rest types-list)
+  "Matches if OBJ is a TDLib object and its type is in the TYPES-LIST."
+  (and obj (memq (telega--tl-type obj) types-list)))
+
 
 ;;; Chat Temexes
 ;;; ellit-org: chat-temex
@@ -239,13 +246,6 @@ Also matches if TEMEX-LIST is empty."
 (define-telega-matcher chat search (chat _query)
   "Matches if chat maches search QUERY."
   (memq chat telega--search-chats))
-
-;;; ellit-org: chat-temex
-;; - nearby, {{{where-is(telega-filter-by-nearby,telega-root-mode-map)}}} ::
-;;   {{{temexdoc(chat, nearby, 2)}}}
-(define-telega-matcher chat nearby (chat)
-  "Matches if chat is nearby `telega-my-location'."
-  (telega-chat-nearby-find (plist-get chat :id)))
 
 ;;; ellit-org: chat-temex
 ;; - (custom ~NAME~), {{{where-is(telega-filter-by-custom,telega-root-mode-map)}}} ::
@@ -670,7 +670,7 @@ BE AWARE: This filter will do blocking request for every chat."
 You don't need te be a chat member to be able to send messages.
 Chat might not be known (i.e. in your Main or Archive list) to post
 messages into it. Use `is-known' chat temex to check chat is known."
-  (and (or (telega-chat-match-p chat '(type private secret))
+  (and (or (telega-chat-match-p chat '(type bot private secret))
            (telega-chat-match-p chat 'me-is-member)
            ;; Also, it is possible to send message to discussion group
            ;; without joining it
@@ -946,11 +946,14 @@ By default `blockListMain' is used."
 ;;   are: ~Text~, ~Animation~, ~Audio~, ~Document~, ~Photo~,
 ;;   ~Sticker~, ~Video~, ~VideoNote~, ~VoiceNote~, ~Location~, etc.
 (define-telega-matcher msg type (msg &rest msg-type-list)
-  "Matches if message's content type is one of MSG-TYPE-LIST."
-  (memq (intern (substring (telega--tl-get msg :content :@type)
-                           ;; Strip "Message" prefix
-                           7))
-        msg-type-list))
+  "Matches if message's content type is one of MSG-TYPE-LIST.
+Return message's content if matches."
+  (let ((content (plist-get msg :content)))
+    (when (memq (intern (substring (plist-get content :@type)
+                                   ;; Strip "Message" prefix
+                                   7))
+                msg-type-list)
+      content)))
 
 ;;; ellit-org: msg-temex
 ;; - seen ::
@@ -990,6 +993,15 @@ By default N is 1."
     (eq 'messageReplyToMessage (telega--tl-type reply-to))))
 
 ;;; ellit-org: msg-temex
+;; - is-reply-to-quote ::
+;;   {{{temexdoc(msg, is-reply-to-quote, 2)}}}
+(define-telega-matcher msg is-reply-to-quote (msg)
+  "Matches if message is a reply to a quote from some message."
+  (when-let ((reply-to (plist-get msg :reply_to)))
+    (and (eq 'messageReplyToMessage (telega--tl-type reply-to))
+         (plist-get reply-to :quote))))
+
+;;; ellit-org: msg-temex
 ;; - is-reply-to-story ::
 ;;   {{{temexdoc(msg, is-reply-to-story, 2)}}}
 (define-telega-matcher msg is-reply-to-story (msg)
@@ -998,12 +1010,21 @@ By default N is 1."
     (eq 'messageReplyToStory (telega--tl-type reply-to))))
 
 ;;; ellit-org: msg-temex
+;; - is-forwarded ::
+;;   {{{temexdoc(msg, is-forwarded, 2)}}}
+(define-telega-matcher msg is-forwarded (msg)
+  "Matches if message is a forwarded message."
+  (plist-get msg :forward_info))
+
+;;; ellit-org: msg-temex
 ;; - post-with-comments ::
 ;;   {{{temexdoc(msg, post-with-comments, 2)}}}
 (define-telega-matcher msg post-with-comments (msg)
-  "Matches if message is a channel post that can be commented."
+  "Matches if message is a channel post that can be commented.
+Return messageReplyInfo."
   (and (plist-get msg :is_channel_post)
-       (plist-get msg :can_get_message_thread)))
+       ;; See tg:telega:@tdlib_bot#293884
+       (telega--tl-get msg :interaction_info :reply_info)))
 
 ;;; ellit-org: msg-temex
 ;; - is-topic ::
@@ -1018,24 +1039,29 @@ By default N is 1."
 (define-telega-matcher msg is-thread (msg)
   "Matches if message belongs to or starts a messages thread."
   (and (not (plist-get msg :is_topic_message))
-       (or (plist-get msg :can_get_message_thread)
+       (or (telega--tl-get msg :interaction_info :reply_info)
            (not (telega-zerop (plist-get msg :message_thread_id))))))
 
 ;;; ellit-org: msg-temex
-;; - (web-page [ ~PROPNAME~ ]) ::
-;;   {{{temexdoc(msg, web-page, 2)}}}
-(define-telega-matcher msg web-page (msg &optional propname)
+;; - (link-preview ~LP-TYPES~ ]) ::
+;;   {{{temexdoc(msg, link-preview, 2)}}}
+(define-telega-matcher msg link-preview (msg &rest lp-types)
   "Matches messages with a webpage preview.
 If PROPNAME is specified, then match only message with a webpage
-having PROPNAME property."
-  (when-let ((web-page (telega--tl-get msg :content :web_page)))
-    (or (null propname)
-        (plist-get web-page propname))))
+having PROPNAME property.
+Return LinkPreviewType TL structure if matches."
+  (when-let ((lp-type (telega--tl-get msg :content :link_preview :type)))
+    (when (or (null lp-types)
+              (memq (intern (substring (plist-get lp-type :@type)
+                                       ;; Strip "linkPreviewType" prefix
+                                       15))
+                    lp-types))
+      lp-type)))
 
 ;;; ellit-org: msg-temex
-;; - (outgoing [ ~ANY-STATE-P~ ]) ::
-;;   {{{temexdoc(msg, outgoing, 2)}}}
-(define-telega-matcher msg outgoing (msg &optional any-state-p)
+;; - (is-outgoing [ ~ANY-STATE-P~ ]) ::
+;;   {{{temexdoc(msg, is-outgoing, 2)}}}
+(define-telega-matcher msg is-outgoing (msg &optional any-state-p)
   "Matches if message is an outgoing message.
 This temex differs from `(sender me)', matching any outgoing messages,
 including anonymous messages to channels created by me."
@@ -1043,6 +1069,10 @@ including anonymous messages to channels created by me."
        (or any-state-p
            ;; i.e. sent successfully
            (not (plist-get msg :sending_state)))))
+
+;; NOTE: for backward compatibility
+(define-telega-matcher msg outgoing (msg &rest args)
+  (telega-msg-match-p msg (cons 'is-outgoing args)))
 
 ;;; ellit-org: msg-temex
 ;; - is-failed-to-send ::
@@ -1110,6 +1140,13 @@ Matching ignores case."
   "Matches if message is the last message in chat."
   (telega-chat-match-p (telega-msg-chat msg)
     `(last-message (ids ,(plist-get msg :id)))))
+
+(define-telega-matcher msg message-property (msg prop-name)
+  "Matches if message MSG has message property set.
+This differs from `prop'."
+  (let ((telega-server-call-timeout 3.0)
+        (msg-options (telega--getMessageProperties msg)))
+    (plist-get msg-options prop-name)))
 
 
 ;;; ellit-org: sender-temex
@@ -1256,12 +1293,11 @@ for General topic only."
 
 
 ;;; ellit-org: story-temex
-;; - (chat ~CHAT-TEMEX~) ::
-;;   {{{temexdoc(story, chat, 2)}}}
-(define-telega-matcher story chat (story chat-temex)
-  "Matches if story is sent by CHAT matching CHAT-TEMEX."
-  (when-let ((chat (telega-story-chat story 'offline)))
-    (telega-chat-match-p chat chat-temex)))
+;; - (sender ~SENDER-TEMEX~) ::
+;;   {{{temexdoc(story, sender, 2)}}}
+(define-telega-matcher story sender (story sender-temex)
+  "Matches if story is sent by sender matching SENDER-TEMEX."
+  (telega-sender-match-p (telega-story-sender story) sender-temex))
 
 ;;; ellit-org: story-temex
 ;; - (contains ~REGEXP~) ::

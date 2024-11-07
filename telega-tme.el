@@ -519,6 +519,9 @@ To convert url to TDLib link, use `telega--getInternalLinkType'."
 
     (internalLinkTypeProxy
      (telega-tme-open-proxy-tdlib-link tdlib-link))
+
+    (internalLinkTypeBackground
+     (error "TODO: searchBackground"))
     ))
 
 (provide 'telega-tme)

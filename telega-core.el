@@ -93,7 +93,7 @@ Use FILENAME as is if resulting file does not exist."
 
     (:can_send_polls . "lng_rights_chat_send_polls")
     (:can_send_other_messages . "lng_rights_chat_send_stickers")
-    (:can_add_web_page_previews . "lng_rights_chat_send_links")
+    (:can_add_link_previews . "lng_rights_chat_send_links")
     (:can_change_info . "lng_rights_group_info")
     (:can_invite_users . "lng_rights_chat_add_members")
     (:can_pin_messages . "lng_rights_group_pin")
@@ -339,19 +339,23 @@ Document message with the #telega_favorite_messages hashtag.")
 Favorite message is a plist with at least `:chat_id', `:id' properties.
 `:timestamp' and `:comment' properties are also supported.")
 
+(defvar telega--live-location-messages nil
+  "List of messages with active live locations.")
+
 (defvar telega--speech-recognition-trial nil
   "The parameters of speech recognition without Telegram Premium.")
 
 (defvar telega--close-birthday-users nil
   "List of contact users with close birthdays.")
 
+(defvar telega--owned-stars 0
+  "Number of owned Telegram Stars.")
+
 ;; Searching
 (defvar telega-search-history nil
   "List of recent search queries.")
 (defvar telega--search-chats nil
   "Result of last `telega--searchChats' or `telega--searchChatsOnServer'.")
-(defvar telega--nearby-chats nil
-  "List of nearby chats returned from `telega--searchChatsNearby'.")
 
 (defvar telega--unread-message-count nil
   "Plist with counts for unread/unmuted messages.
@@ -467,57 +471,83 @@ display the list.")
 (defvar telega--accent-colors-available-ids nil
   "Accent colors received by `updateAccentColors' event.")
 
-(defun telega--accent-color-by-id (color-id)
-  "Return accentColor structure by COLOR-ID."
-  (cdr (assq color-id telega--accent-colors-alist)))
+(defvar telega-palette-context nil
+  "Bind this to the context where palette is used.
+Available contexts are: `title', `msg-header', `link-preview', `quote',
+`precode', `codeblock', `blockquote', `edit', `reply', `iv-chat-link',
+`sponsored', `story', `avatar'")
 
-(defun telega--accent-color-name-by-id (color-id &optional background-mode)
-  "Get accent color name by COLOR-ID.
-BACKGROUND-MODE is one of `light' or `dark'.
-If BACKGROUND-MODE is omitted, return list of two colors, where first
-element is color for the light theme and second is for dark theme."
-  (when-let ((color-spec (telega--accent-color-by-id color-id)))
-    (let ((light-color
-           (when (or (null background-mode)
-                     (eq background-mode 'light))
-             (format "#%06x" (seq-first
-                              (plist-get color-spec :light_theme_colors)))))
-          (dark-color
-           (when (or (null background-mode)
-                     (eq background-mode 'dark))
-             (format "#%06x" (seq-first
-                              (plist-get color-spec :dark_theme_colors))))))
-      (cond ((eq background-mode 'light) light-color)
-            ((eq background-mode 'dark) dark-color)
-            (t (list light-color dark-color))))))
+(defun telega-palette-by-color-id (color-id &optional background-mode)
+  "Return palette with accent colors by COLOR-ID.
+Pallete is a plist with the following keys: `:outline', `:foreground',
+`:background' and `:colors'"
+  (unless background-mode
+    (setq background-mode (frame-parameter nil 'background-mode)))
+  (cl-assert (memq background-mode '(light dark)))
 
-(defconst telega-builtin-colors-alist
-  '((0 "red")                           ; #c03d33
-    (1 "orange")                        ; #ce671b
-    (2 "purple" "violet")               ; #8544d6
-    (3 "green")                         ; #4fad2d
-    (4 "cyan")                          ; TODO
-    (5 "blue")                          ; #168acd
-    (6 "pink"))                         ; #cd4073
-  "Bultin colors.")
+  (if (and color-id (< color-id 7))
+      (let ((palette (alist-get background-mode telega-builtin-palettes-alist)))
+        (cl-assert (= (length palette) 7))
+        (nth color-id palette))
 
-(defun telega--builtin-color-by-id (color-id &optional background-mode)
-  "Get builtin color by COLOR-ID.
-BACKGROUND-MODE is one of `light' or `dark'."
-  (when-let ((colors (alist-get color-id telega-builtin-colors-alist)))
-    (let ((color-for-light
-           (when (or (null background-mode)
-                     (eq background-mode 'light))
-             (telega-color-name-set-light-saturation
-              (nth 0 colors) nil 0.3)))
-          (color-for-dark
-           (when (or (null background-mode)
-                     (eq background-mode 'dark))
-             (telega-color-name-set-light-saturation
-              (or (nth 1 colors) (nth 0 colors)) nil 0.7))))
-      (cond ((eq background-mode 'light) color-for-light)
-            ((eq background-mode 'dark)  color-for-dark)
-            (t (list color-for-light color-for-dark))))))
+    (when-let* ((tl-color (alist-get color-id telega--accent-colors-alist))
+                (colors (mapcar (lambda (color-value)
+                                  (format "#%06x" color-value))
+                                (plist-get tl-color
+                                           (if (eq background-mode 'light)
+                                               :light_theme_colors
+                                             :dark_theme_colors))))
+                (fg-color (car colors))
+                (bg-color (telega-color-name-set-saturation-light
+                           fg-color 0.1 (cl-ecase background-mode
+                                          (light 0.8)
+                                          (dark  0.2))))
+                (ol-color (cl-ecase background-mode
+                            (light (color-darken-name fg-color 20))
+                            (dark  (color-lighten-name fg-color 20)))))
+      `((:outline ,ol-color) (:foreground ,fg-color)
+        (:background ,bg-color) (:colors ,colors)))))
+
+(defmacro telega-palette-attr (palette attribute)
+  "From PALETTE return ATTRIBUTE value.
+ATTRIBUTE is one of `:foreground', `:background' or `:outline'."
+  (let ((attrsym (gensym "attr-spec")))
+    `(let ((,attrsym ,attribute))
+       (plist-get (assq ,attrsym ,palette) ,attrsym))))
+
+(defun telega-palette-attr-replace (palette src-attr dst-attr)
+  "For PALETTE, makes DST-ATTR to have value of SRC-ATTR.
+Return new palette.
+Example: `(telega-palette-attr-replace palette :outline :foreground)'
+to make `:outline' be a `:foreground'."
+  (let ((new-palette (copy-sequence palette)))
+    (setcdr (assq dst-attr new-palette)
+            (cdr (assq src-attr new-palette)))))
+
+(defun telega-palette-attr-delete (palette &rest attributes)
+  "Return new palette with ATTRIBUTES being deleted from PALETTE."
+  (let ((new-palette (copy-sequence palette)))
+    (dolist (attr attributes)
+      (setq new-palette (assq-delete-all attr new-palette)))
+    new-palette))
+
+(defun telega-face-with-palette (face palette &rest attributes)
+  "Merge PALETTE ATTRIBUTES into FACE, resulting in a new face."
+  (declare (indent 2))
+  (let ((new-face (cond ((facep face)
+                         (face-spec-choose (face-default-spec face)))
+                        (t
+                         (cl-assert (listp face))
+                         face)))
+        (need-copy-p t))
+    (dolist (attr attributes)
+      (when-let ((value (telega-palette-attr palette attr)))
+        (when need-copy-p
+          ;; Attribute changes, need a copy
+          (setq new-face (copy-sequence new-face)
+                need-copy-p nil))
+        (plist-put new-face attr value)))
+    new-face))
 
 (defvar telega--saved-messages-tags nil
   "Hash table saved_message_topic_id -> tags.")
@@ -653,7 +683,6 @@ Done when telega server is ready to receive queries."
   (setq telega--top-chats nil)
 
   (setq telega--search-chats nil)
-  (setq telega--nearby-chats nil)
 
   (setq telega-deleted-chats nil)
   (setq telega--blocked-user-ids-alist
@@ -733,6 +762,7 @@ Done when telega server is ready to receive queries."
   (setq telega--saved-messages-tags (make-hash-table :test #'eq))
 
   (setq telega--close-birthday-users nil)
+  (setq telega--owned-stars 0)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -901,7 +931,6 @@ Return a buffer."
      ;; (redisplay)
      (with-help-window ,buffer-or-name
        (set-buffer standard-output)
-       (setq-local x-underline-at-descent-line t)
        (setq-local nobreak-char-display nil)
        ;; Special function to filter out `line-prefix', `wrap-prefix' (and
        ;; probably other) text properties when copying text from chatbuf
@@ -1696,24 +1725,6 @@ Draft input is the input that have `:draft-input-p' property on both sides."
   `(setq telega-chatbuf--history-state-plist
          (telega-plist-del telega-chatbuf--history-state-plist ,state)))
 
-(defmacro telega-chat-nearby-find (chat-id)
-  "Find nearby chat in `telega--nearby-chats' by CHAT-ID."
-  `(cl-find ,chat-id telega--nearby-chats :key (telega--tl-prop :chat_id)))
-
-(defun telega-chat-nearby--ensure (nearby-chat)
-  "Ensure NEARBY-CHAT is in `telega--nearby-chats'."
-  (let ((nb-chat (telega-chat-nearby-find (plist-get nearby-chat :chat_id))))
-    (if nb-chat
-        (plist-put nb-chat :distance (plist-get nearby-chat :distance))
-      (setq nb-chat nearby-chat)
-      (setq telega--nearby-chats (cons nearby-chat telega--nearby-chats)))
-    nb-chat))
-
-(defun telega-chat-nearby-distance (chat)
-  "Return distance in meters to the CHAT.
-Return non-nil only if CHAT is nearby."
-  (plist-get (telega-chat-nearby-find (plist-get chat :id)) :distance))
-
 ;; Msg part
 (defun telega-msg-id= (msg1 msg2)
   (= (plist-get msg1 :id) (plist-get msg2 :id)))
@@ -1745,15 +1756,19 @@ Return list of two values - (LIVE-FOR UPDATED-AGO)."
 Return non-nil if something has been inserted."
   (< (prog1 (point) (apply #'insert (delq nil args))) (point)))
 
-(defun telega-ins--insexp (insexp)
+(defvar telega-insexp-args nil
+  "Bind this to insexp arguments.")
+
+(defun telega-ins--insexp (insexp &rest args)
   "Use INSEXP as inserter expression.
 INSEXP could be a symbol, a function or a S-Expression to eval."
   (cond ((functionp insexp)
-         (funcall insexp))
+         (apply #'funcall insexp args))
         ((symbolp insexp)
-         (telega-ins--insexp (symbol-value insexp)))
+         (apply #'telega-ins--insexp (symbol-value insexp) args))
         ((listp insexp)
-         (eval insexp))
+         (let ((telega-insexp-args args))
+           (eval insexp)))
         (t
          (error "Invalid insexp spec: %S" insexp))))
 
@@ -1888,7 +1903,7 @@ If COLUMN is nil or less then current column, then current column is used."
   "Describe item with TITLE."
   (declare (indent 1))
   (let ((title-sym (gensym "title")))
-    `(let ((,title-sym (string-trim-right ,title ": ?")))
+    `(let ((,title-sym (string-trim-right ,title "[ :?\t\n\r]+\\'")))
        ;; Right align title name to 14th column
        ;; as in `package--print-help-section' function
        (telega-ins--line-wrap-prefix
@@ -1996,6 +2011,25 @@ Return what BODY returns."
                (setq ,start-sym (cdr ,region-sym)))
              (add-text-properties ,start-sym (point) ,lwprefix-props-sym)))))))
 
+(defmacro telega-ins--with-outline-palette (palette &rest body)
+  "Insert BODY with vertical bar as line prefix.
+Vertical bar is displayed using COLORS."
+  (declare (indent 1))
+  (let ((palsym (gensym "palette"))
+        (fgsym (gensym "fg-face"))
+        (bgsym (gensym "bg-face")))
+    `(let* ((,palsym ,palette)
+            (,fgsym (assq :foreground ,palsym))
+            (,bgsym (assq :background ,palsym)))
+       (telega-ins--line-wrap-prefix
+           (if (and ,fgsym ,bgsym)
+               (propertize (telega-symbol 'vbar-left)
+                           'face (append ,fgsym ,bgsym))
+             (telega-symbol 'vbar-left))
+         (telega-ins--with-face (when ,bgsym
+                                  (append ,bgsym '(:extend t)))
+           ,@body)))))
+
 (defmacro telega-ins-prefix (prefix &rest body)
   "In case BODY inserted anything then PREFIX is also inserted before BODY."
   (declare (indent 1))
@@ -2006,6 +2040,25 @@ Return what BODY returns."
            (goto-char ,spnt-sym)
            (telega-ins ,prefix))
          t))))
+
+(defmacro telega-ins-from-newline (&rest body)
+  `(telega-ins-prefix (unless (bolp) "\n")
+     ,@body))
+
+;; (defmacro telega-ins--trimming-chars (chars how &rest body)
+;;   (declare (indent 2))
+;;   (let ((chars-sym (gensym "chars"))
+;;         (how-sym (gensym "how"))
+;;         (start-sym (gensym "start"))
+;;         (stop-sym (gensym "stop")))
+;;     `(let ((,start-sym (point)))
+;;        (prog1
+;;            (progn ,@body)
+;;          (let ((,stop-sym (point)))
+;;            (unless (= ,start-sym ,stop-sym)
+;;              (skip-chars-forward chars)
+;;          ((,chars-sym ,chars))
+;;   )
 
 (defun telega-ins--move-to-column (column)
   "Insert space aligned to COLUMN.

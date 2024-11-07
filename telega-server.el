@@ -270,6 +270,13 @@ Return parsed command."
                    (= (plist-get value :code) 406)
                    ;; 404 - webpage or message not found
                    (= (plist-get value :code) 404)
+
+                   ;; 400 - Special case for `downloadFile' to alsways
+                   ;; call it's callback in order to delete update
+                   ;; callback
+                   (and (= (plist-get value :code) 400)
+                        (string= "File download has failed or was canceled" ;XXX
+                                 (plist-get value :message)))
                    )
                (funcall call-cb value)
 
@@ -286,7 +293,6 @@ Return parsed command."
          (telega--on-error value))
 
         (t
-         (telega-debug "%s %s: %S" (propertize "IN" 'face 'bold) cmd value)
          (error "Unknown cmd from telega-server: %s" cmd))))
 
 (defun telega-server--idle-timer-function ()

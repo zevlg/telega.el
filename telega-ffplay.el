@@ -220,7 +220,6 @@ paused."
              proc (plist-put proc-plist :progress new-progress))
             (when (and callback (> new-progress progress))
               (funcall callback proc))))
-
         (unless telega-debug
           (delete-region (point-min) (point-max))))
       )))
@@ -242,10 +241,12 @@ paused."
       (set-process-filter proc #'telega-ffplay--filter)
       proc)))
 
-(defun telega-ffplay-run (filename ffplay-args &optional callback)
+(defun telega-ffplay-run (filename ffplay-args &optional callback
+                                   initial-progress)
   "Start ffplay to play FILENAME.
 FFPLAY-ARGS is additional arguments string for the ffplay.
 CALLBACK is called on updates with single argument - process.
+INITIAL-PROGRESS specifies initial progress, default is 0.0.
 Return newly created process."
   (declare (indent 2))
   ;; Additional args:
@@ -263,10 +264,11 @@ Return newly created process."
     (telega-debug "ffplay START: %s %s"
                   ffplay-bin (mapconcat #'identity args " "))
     (with-current-buffer (get-buffer-create telega-ffplay-buffer-name)
+      (erase-buffer)
       (let ((proc (apply 'start-process "ffplay" (current-buffer)
                          ffplay-bin args)))
         (set-process-plist proc (list :progress-callback callback
-                                      :progress 0.0))
+                                      :progress (or initial-progress 0.0)))
         (set-process-query-on-exit-flag proc nil)
         (set-process-sentinel proc #'telega-ffplay--sentinel)
         (set-process-filter proc #'telega-ffplay--filter)

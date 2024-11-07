@@ -15,8 +15,8 @@
 # https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0#faccessat2
 
 FROM alpine:3.13 AS builder
-ARG tdlib_branch=12c1689b5
-ARG tdlib_version=v1.8.29
+ARG tdlib_version=v1.8.39
+ARG tdlib_branch=056963e48
 ARG telega_branch=master
 
 RUN set +x && apk update && apk upgrade && \

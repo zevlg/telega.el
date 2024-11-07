@@ -277,6 +277,34 @@
                            'telega-chat-prompt-insexp
                            "0.8.291")
 
+(telega-obsolete--variable 'telega-rainbow-lightness
+                           'telega-builtin-palettes-alist
+                           "0.8.390")
+(telega-obsolete--variable 'telega-rainbow-saturation
+                           'telega-builtin-palettes-alist
+                           "0.8.390")
+(telega-obsolete--variable 'telega-rainbow-color-function
+                           'telega-builtin-palettes-alist
+                           "0.8.390")
+(telega-obsolete--variable 'telega-rainbow-color-custom-for
+                           'telega-builtin-palettes-alist
+                           "0.8.390")
+(telega-obsolete--variable 'telega-msg-rainbow-title
+                           'telega-builtin-palettes-alist
+                           "0.8.390")
+(telega-obsolete--variable 'telega-webpage-preview-description-limit
+                           'telega-link-preview-description-limit
+                           "0.8.390")
+(telega-obsolete--variable 'telega-webpage-preview-size-limits
+                           'telega-link-preview-preview-size-limits
+                           "0.8.390")
+(telega-obsolete--variable 'telega-inserter-for-nearby-chat-button
+                           nil
+                           "0.8.390")
+(telega-obsolete--variable 'telega-chat-aux-inline-symbols
+                           'telega-msg-heading-aux-format-plist
+                           "0.8.390")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

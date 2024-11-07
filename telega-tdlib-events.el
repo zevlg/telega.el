@@ -123,9 +123,9 @@ DIRTINESS specifies additional CHAT dirtiness."
   "Some user info has has been changed."
   (let ((user (plist-get event :user)))
     (telega--info-update user)
-    ;; NOTE: Updating user might affect his color, so delete cached
-    ;; color
-    (telega-plist-del user :color)
+    ;; NOTE: Updating user might affect his palette, so delete cached
+    ;; palette
+    (telega-plist-del user :telega-palette)
 
     (telega-user--update user event)))
 
@@ -253,6 +253,10 @@ DIRTINESS specifies additional CHAT dirtiness."
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
     (plist-put chat :title (plist-get event :title))
+
+    ;; NOTE: Updating chat's title might affect its palette, so delete
+    ;; cached palette
+    (telega-plist-del chat :telega-palette)
 
     (telega-chat--mark-dirty chat event)
 
@@ -1021,12 +1025,21 @@ messages."
 
 (defun telega--on-updateTrendingStickerSets (event)
   "The list of trending sticker sets was updated or some of them were viewed."
-  (let* ((trending-sset (plist-get event :sticker_sets))
-         (ssets-info (plist-get trending-sset :sets)))
-    (set (if (plist-get trending-sset :is_premium)
-             'telega--stickersets-trending-premium
-           'telega--stickersets-trending)
-         (append ssets-info nil))))
+  ;; NOTE: Do not cache trending sticker sets to save space,
+  ;; because sticker structures occupies a lot of memory, such as
+  ;; M-x memory-report RET :
+  ;;   Largest Variables
+  ;;     19 MiB  telega--stickersets-trending-premium
+  ;;     15 MiB  telega--stickersets-trending
+
+  ;; 
+  ;; (let* ((trending-sset (plist-get event :sticker_sets))
+  ;;        (ssets-info (plist-get trending-sset :sets)))
+  ;;   (set (if (plist-get trending-sset :is_premium)
+  ;;            'telega--stickersets-trending-premium
+  ;;          'telega--stickersets-trending)
+  ;;        (append ssets-info nil)))
+  )
 
 (defun telega--on-updateRecentStickers (event)
   "Recent stickers has been updated."
@@ -1175,15 +1188,6 @@ messages."
               (equal chat-list (list :@type "chatListMain")))
       (setq telega--unread-chat-count (cddr event)))))
 
-(defun telega--on-updateUsersNearby (event)
-  "Handle EVENT with update for users nearby chats."
-  (seq-doseq (nb-chat (plist-get event :users_nearby))
-    (telega-chat-nearby--ensure nb-chat)
-
-    (when-let ((chat (telega-chat-get (plist-get nb-chat :chat_id) 'offline)))
-      (telega-chat--mark-dirty chat event))
-    ))
-
 (defun telega--on-updateConnectionState (event)
   "Update telega connection state using EVENT."
   (let* ((conn-state (telega--tl-get event :state :@type))
@@ -1256,13 +1260,6 @@ messages."
     (when (and (eq option :suggested_language_pack_id) value
                (not telega-translate-to-language-by-default))
       (setq telega-translate-to-language-by-default value))
-
-    (when (and (eq option :is_location_visible) value)
-      (if telega-my-location
-          (telega--setLocation telega-my-location)
-
-        (warn (concat "telega: Option `:is_location_visible' is set, "
-                      "but `telega-my-location' is nil"))))
 
     (when (and (eq option :version) value)
       ;; Validate TDLib version
@@ -1617,6 +1614,22 @@ Please downgrade TDLib and recompile `telega-server'"
                (plist-get event :pending_join_requests))
 
     (telega-chat--mark-dirty chat event)))
+
+(defun telega--on-updateActiveLiveLocationMessages (event)
+  (setq telega--live-location-messages
+        (plist-get event :messages)))
+
+(defun telega--on-updateLanguagePackStrings (event)
+  (when (and (equal "tdesktop" (plist-get event :localization_target))
+             (equal telega-language (plist-get event :language_pack_id)))
+    (seq-doseq (lps (plist-get event :strings))
+      )
+    ))
+
+(defun telega--on-updateOwnedStarCount (event)
+  (setq telega--owned-stars (plist-get event :star_count))
+  ;; TODO: Update settings
+  )
 
 (provide 'telega-tdlib-events)
 

@@ -53,7 +53,6 @@
     (define-key map (kbd "o") 'telega-sort-by-online-members)
     (define-key map (kbd "m") 'telega-sort-by-member-count)
     (define-key map (kbd "v") 'telega-sort-by-chatbuf-recency)
-    (define-key map (kbd "n") 'telega-sort-by-nearby-distance)
     (define-key map (kbd "!") 'telega-sort-invert)
 
     (define-key map (kbd "d") 'telega-sort-pop-last)
@@ -62,6 +61,7 @@
   "Keymap for sorting commands.")
 
 (defmacro define-telega-sorter (name order-events args &rest body)
+  (declare (indent 3))
   (let ((fsym (intern (format "telega--sort-%S" name)))
         (cmd (intern (format "telega-sort-by-%S" name))))
     `(progn
@@ -243,16 +243,12 @@ See https://github.com/zevlg/telega.el/issues/165"
         retn
       -1)))
 
-;;; ellit-org: chat-sorting-criteria
-;; - ~nearby-distance~ ::
-;;   {{{fundoc(telega--sort-nearby-distance, 2)}}}
-(define-telega-sorter nearby-distance ("updateUsersNearby") (chat)
-  "Sort chats by nearby distance to me.
-See https://github.com/zevlg/telega.el/issues/165"
-  ;; NOTE: assuming 1000000 is max distance
-  (if-let ((distance (telega-chat-nearby-distance chat)))
-      (- 1000000 distance)
-    -1000000))
+(define-telega-sorter chatbuf-current-is-last () (chat)
+  "Sort chats making current chatbuf to be last in the list."
+  (if (eq (current-buffer) (with-telega-chatbuf chat
+                             (current-buffer)))
+      -1
+    0))
 
 ;;; ellit-org: chat-sorting-criteria
 ;; - ~chats-in-common~ ::

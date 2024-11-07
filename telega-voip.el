@@ -411,9 +411,7 @@ If TITLE is not specified, ask user interactively for the new title."
     (telega-ins-describe-item "Id"
       (telega-ins-fmt "%d" group-call-id))
     (telega-ins-describe-item (telega-i18n "lng_group_call_edit_title_header")
-      (unless (telega-ins (telega-tl-str group-call :title))
-        (telega-ins--with-face 'telega-shadow
-          (telega-ins "No title"))))
+      (telega-ins (telega-tl-str group-call :title)))
 
     (when (and (plist-get group-call :is_rtmp_stream)
                (telega-chat-match-p chat 'me-is-owner))

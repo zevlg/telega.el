@@ -1,6 +1,6 @@
 ;;; telega-msg.el --- Messages for telega  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2018-2019 by Zajcev Evgeny.
+;; Copyright (C) 2018-2024 by Zajcev Evgeny.
 
 ;; Author: Zajcev Evgeny <zevlg@yandex.ru>
 ;; Created: Fri May  4 03:49:22 2018
@@ -35,6 +35,7 @@
 (require 'telega-vvnote)
 (require 'telega-util)
 (require 'telega-tme)
+(require 'telega-webpage)
 (require 'telega-story)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
@@ -53,21 +54,21 @@
 
 (declare-function telega--full-info "telega-info" (tlobj &optional _callback))
 
-(declare-function telega-browse-url "telega-webpage" (url &optional in-web-browser))
-
 
 ;; Menu for right-mouse on message
 (defvar telega-msg-button-menu-map
   (let ((menu-map (make-sparse-keymap "Telega Message")))
-    (bindings--define-key menu-map [mark]
-      '(menu-item "Mark" telega-msg-mark-toggle
+    (bindings--define-key menu-map [telega-msg-mark-toggle]
+      '(menu-item (telega-i18n "lng_context_select_msg") telega-msg-mark-toggle
                   :help "Mark the message"
-                  :visible (not (telega-msg-marked-p
-                                 (telega-msg-at-down-mouse-3)))))
-    (bindings--define-key menu-map [unmark]
-      '(menu-item "Unmark" telega-msg-mark-toggle
-                  :help "Unmark the message"
-                  :visible (telega-msg-marked-p (telega-msg-at-down-mouse-3))))
+                  :button (:toggle . (telega-msg-marked-p
+                                      (telega-msg-at-down-mouse-3)))))
+                  ;; :visible (not (telega-msg-marked-p
+                  ;;                (telega-msg-at-down-mouse-3)))))
+    ;; (bindings--define-key menu-map [unmark]
+    ;;   '(menu-item "Unmark" telega-msg-mark-toggle
+    ;;               :help "Unmark the message"
+    ;;               :visible (telega-msg-marked-p (telega-msg-at-down-mouse-3))))
     (bindings--define-key menu-map [s0] menu-bar-separator)
     (bindings--define-key menu-map [add-tags]
       '(menu-item (telega-i18n "lng_add_tag_button") telega-msg-add-reaction
@@ -120,18 +121,25 @@
                   ))
     (bindings--define-key menu-map [delete]
       '(menu-item (propertize (telega-i18n "lng_context_delete_msg") 'face 'error)
-                  telega-msg-delete-marked-or-at-point
-                  :help "Delete message"
-                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
-                            (or (plist-get msg :can_be_deleted_only_for_self)
-                                (plist-get msg :can_be_deleted_for_all_users)))
+                  telega-msg-delete-dwim
+                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                            '(or (message-property :can_be_deleted_for_all_users)
+                                 (message-property :can_be_deleted_only_for_self)))
                   ))
+    ;; TODO: create submenu for reporting a message/chat/reactions/etc
+    ;; (bindings--define-key menu-map [report]
+    ;;   '(menu-item (propertize (telega-i18n "lng_context_report_msg") 'face 'error)
+    ;;               telega-msg-report-dwim
+    ;;               :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
+    ;;                         '(or (message-property :can_be_deleted_for_all_users)
+    ;;                              (message-property :can_be_deleted_only_for_self)))
+    ;;               ))
     (bindings--define-key menu-map [forward]
       '(menu-item (telega-i18n "lng_context_forward_msg")
-                  telega-msg-forward-marked-or-at-point
-                  :help "Forward a message"
-                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
-                            (plist-get msg :can_be_forwarded))
+                  telega-msg-forward-dwim
+                  :help "Forward messages"
+                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                            '(message-property :can_be_forwarded))
                   ))
     (bindings--define-key menu-map [translate]
       '(menu-item (telega-i18n "lng_context_translate") telega-msg-translate
@@ -154,14 +162,14 @@
     (bindings--define-key menu-map [edit]
       '(menu-item (telega-i18n "lng_context_edit_msg") telega-msg-edit
                   :help "Edit the message"
-                  :enable (plist-get
-                           (telega-msg-at-down-mouse-3) :can_be_edited)))
+                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                            '(message-property :can_be_edited))))
     (bindings--define-key menu-map [reply-another-char]
       '(menu-item (telega-i18n "lng_reply_in_another_chat")
                   telega-msg-reply-in-another-chat
                   :help (telega-i18n "lng_reply_in_another_chat")
-                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
-                            (plist-get msg :can_be_replied_in_another_chat))
+                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
+                            '(message-property :can_be_replied_in_another_chat))
                   ))
     (bindings--define-key menu-map [reply]
       '(menu-item (telega-i18n "lng_context_reply_msg") telega-msg-reply
@@ -179,23 +187,23 @@
 
     (define-key map (kbd "SPC") 'scroll-up-command)
     (define-key map (kbd "c") 'telega-msg-copy-dwim)
-    (define-key map (kbd "d") 'telega-msg-delete-marked-or-at-point)
+    (define-key map (kbd "d") 'telega-msg-delete-dwim)
     (define-key map (kbd "e") 'telega-msg-edit)
-    (define-key map (kbd "f") 'telega-msg-forward-marked-or-at-point)
+    (define-key map (kbd "f") 'telega-msg-forward-dwim)
     (define-key map (kbd "i") 'telega-describe-message)
     (define-key map (kbd "l") 'telega-msg-copy-link)
     ;; Marking, `telega-msg-forward' and `telega-msg-delete' can work
     ;; on list of marked messages
     (define-key map (kbd "m") 'telega-msg-mark-toggle)
     (define-key map (kbd "n") 'telega-button-forward)
-    (define-key map (kbd "<tab>") 'telega-button-forward)
+    (define-key map (kbd "<tab>") 'telega-chatbuf-next-link)
     (define-key map (kbd "p") 'telega-button-backward)
-    (define-key map (kbd "<backtab>") 'telega-button-backward)
+    (define-key map (kbd "<backtab>") 'telega-chatbuf-prev-link)
     (define-key map (kbd "r") 'telega-msg-reply)
     (define-key map (kbd "t") 'telega-msg-translate)
 
     (define-key map (kbd "B") 'telega-msg-ban-sender)
-    (define-key map (kbd "F") 'telega-msg-forward-marked-or-at-point-to-multiple-chats)
+    (define-key map (kbd "F") 'telega-msg-forward-dwim-to-many)
     (define-key map (kbd "L") 'telega-msg-redisplay)
     (define-key map (kbd "P") 'telega-msg-pin-toggle)
     (define-key map (kbd "R") 'telega-msg-resend)
@@ -206,7 +214,7 @@
     (define-key map (kbd "!") 'telega-msg-add-reaction)
     (define-key map (kbd "=") 'telega-msg-diff-edits)
     (define-key map (kbd "^") 'telega-msg-pin-toggle)
-    (define-key map (kbd "DEL") 'telega-msg-delete-marked-or-at-point)
+    (define-key map (kbd "DEL") 'telega-msg-delete-dwim)
 
     (define-key map (kbd "*") 'telega-msg-favorite-toggle)
 
@@ -232,6 +240,12 @@
     (define-key map (kbd "8") 'telega-msg--vvnote-rewind-part)
     (define-key map (kbd "9") 'telega-msg--vvnote-rewind-part)
 
+    map))
+
+(defvar telega-msg-button-spoiler-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map telega-msg-button-map)
+    (define-key map (kbd "RET") 'telega-msg-remove-text-spoiler)
     map))
 
 (define-button-type 'telega-msg
@@ -418,23 +432,30 @@ Return nil for deleted messages."
 
 (defun telega-msg-open-animated-emoji (msg &optional clicked-p)
   "Open content for animated emoji message MSG."
-  (let ((sticker (telega--tl-get msg :content :animated_emoji :sticker)))
+  ;; NOTE: Sticker may be nil if yet unknown for a custom emoji
+  (when-let ((sticker (telega--tl-get msg :content :animated_emoji :sticker)))
     ;; NOTE: animated message could be a static sticker, such as in
     ;; the https://t.me/tgbetachat/1319907
     (when (and (not (telega-sticker-static-p sticker))
                telega-sticker-animated-play)
-      (telega-sticker--animate sticker msg))
+      (telega-sticker--animate sticker msg)))
 
-    ;; Try fullscreen animated emoji sticker as well
-    (when clicked-p
-      (telega--clickAnimatedEmojiMessage msg
-        (lambda (fs-sticker)
-          (when (and (not (telega--tl-error-p fs-sticker))
-                     (not (telega-sticker-static-p fs-sticker))
-                     telega-sticker-animated-play)
-            (plist-put msg :telega-sticker-fullscreen fs-sticker)
-            (telega-sticker--animate fs-sticker msg)))))
-    ))
+  ;; Try fullscreen animated emoji sticker as well
+  (when clicked-p
+    (when (eq telega-emoji-animated-play 'with-sound)
+      (when-let ((sfile (telega--tl-get msg :content :animated_emoji :sound)))
+        (when (telega-file--downloaded-p sfile)
+          (telega-ffplay-run (telega--tl-get sfile :local :path)
+              (cdr (assq 'animated-emoji telega-open-message-ffplay-args))))))
+
+    (telega--clickAnimatedEmojiMessage msg
+      (lambda (fs-sticker)
+        (when (and (not (telega--tl-error-p fs-sticker))
+                   (not (telega-sticker-static-p fs-sticker))
+                   telega-sticker-animated-play)
+          (plist-put msg :telega-sticker-fullscreen fs-sticker)
+          ;; TODO: Use tgsplay tool to play fullscreen sticker
+          (telega-sticker--animate fs-sticker msg))))))
 
 (defun telega-msg-open-story (msg)
   "Open content for the forwarded story message MSG."
@@ -455,23 +476,25 @@ Return nil for deleted messages."
     (telega-video-player-run
      (telega--tl-get file :local :path) msg done-callback)))
 
-(defun telega-msg--play-video-incrementally (msg _file)
-  "Start playing video FILE while still downloading FILE."
+(defun telega-msg--play-video-incrementally (msg video _file)
+  "For massage MSG start playing VIDEO file, while still downloading it."
   ;; NOTE: search `moov' atom at the beginning or ending
   ;; Considering 2k of index data per second
-  (let* ((video (or (telega--tl-get msg :content :video)
-                    (telega--tl-get msg :content :web_page :video)))
-         (video-file (telega-file--renew video :video)))
+  (let ((video-file (telega-file--renew video :video)))
     (if (and (telega-file--downloaded-p video-file)
              (plist-get video :telega-video-pending-open))
         (telega-msg--play-video msg video-file)
 
       ;; File is partially downloaded, start playing incrementally if:
-      ;; 1) At least 5 seconds of the video is downloaded
+      ;; 1) At least 5 seconds of the video is downloaded from the
+      ;;    beginning of the file
       ;; 2) `moov' atom is available, we use
       ;;    `telega-ffplay-get-resolution' function to check this
       ;; 3) File downloads faster, than it takes time to play
       (let* ((fsize (telega-file--size video-file))
+             (local-file (plist-get video-file :local))
+             (doffset (plist-get local-file :download_offset))
+             (psize (plist-get local-file :downloaded_prefix_size))
              (dsize (telega-file--downloaded-size video-file))
              (duration (or (plist-get video :duration) 50))
              (probe-size (plist-get video :telega-video-probe-size))
@@ -482,7 +505,10 @@ Return nil for deleted messages."
              (ddur (* duration (/ (float (- dsize (min dsize (or probe-size 0))))
                                   fsize))))
         (when (and ;; Check for 1)
-                   probe-size (> dsize (+ probe-size d5-size))
+                   (zerop doffset)
+                   probe-size
+                   (>= psize probe-size)
+                   (> dsize (+ probe-size d5-size))
                    ;; Check for 3)
                    open-time (> ddur (- (time-to-seconds) open-time)))
           ;; Check for 2)
@@ -492,7 +518,7 @@ Return nil for deleted messages."
               ;; playing it after full download
               (plist-put video :telega-video-probe-size nil)
 
-            ;; NOTE: By canceling downloading process we fix
+            ;; NOTE: By canceling downloading process we lock
             ;; filename, so file won't be updated at video player start
             ;; time.  After video player is started, we continue
             ;; downloading process, canceling it only on video player
@@ -506,14 +532,18 @@ Return nil for deleted messages."
                       (telega--cancelDownloadFile vfile)))
                   ;; Continue downloading file in 0.5 seconds, giving
                   ;; time for video player command to run
-                  (run-with-timer 0.5 nil #'telega-file--download vfile 32
+                  (run-with-timer 0.5 nil #'telega-file--download vfile
+                                  :priority 32
+                                  :update-callback
                                   (lambda (_ignored)
-                                    (telega-msg-redisplay msg))))))))))))
+                                    (telega-msg-redisplay msg)))
+                  )))))))))
 
 (defun telega-msg-open-video (msg &optional video)
   "Open content for video message MSG."
   (cl-assert (or (and msg (not video))
-                 (eq video (telega--tl-get msg :content :web_page :video))))
+                 (eq video (telega--tl-get
+                            msg :content :link_preview :type :video))))
 
   (let* ((video (or video (telega--tl-get msg :content :video)))
          (video-file (telega-file--renew video :video))
@@ -536,24 +566,48 @@ Return nil for deleted messages."
            ;; Play video incrementally
            (plist-put video :telega-video-pending-open (time-to-seconds))
            (plist-put video :telega-video-probe-size (cdr incremental-part))
-           (telega-file--download video-file 32
+           (telega-file--download video-file
+             :priority 32
+             :update-callback
              (lambda (dfile)
                (telega-msg-redisplay msg)
-               (telega-msg--play-video-incrementally msg dfile))
-             ;; download parts: end and then from the beginning
-             incremental-part nil))
+               (telega-msg--play-video-incrementally msg video dfile)))
+           ;; TODO: download incremental-part first, because moov atom
+           ;; might be at the end of the file
+           ;; However, code below does not work for some reason
+           ;; (telega-file--download video-file
+           ;;   :priority 32
+           ;;   :offset (car incremental-part)
+           ;;   :limit (cdr incremental-part)
+           ;;   :update-callback
+           ;;   (lambda (dfile)
+           ;;     (telega-msg-redisplay msg)
+           ;;     (unless (telega-file--downloading-p dfile)
+           ;;       (telega-msg--play-video-incrementally msg video dfile)
+           ;;       ;; Continue downloading whole file
+           ;;       (telega-file--download dfile
+           ;;         :priority 32
+           ;;         :update-callback
+           ;;         (lambda (ddfile)
+           ;;           (telega-msg-redisplay msg)
+           ;;           (telega-msg--play-video-incrementally msg video ddfile)))
+           ;;       )))
+           )
 
           (t
-           (telega-file--download video-file 32
-             (lambda (file)
+           (telega-file--download video-file
+             :priority 32
+             :update-callback
+             (lambda (dfile)
                (telega-msg-redisplay msg)
-               (when (telega-file--downloaded-p file)
-                 (telega-msg--play-video msg file))))))))
+               (when (telega-file--downloaded-p dfile)
+                 (telega-msg--play-video msg dfile))))))))
 
 (defun telega-msg-open-audio (msg &optional audio)
   "Open content for audio message MSG."
   (cl-assert (or (not audio)
-                 (eq audio (telega--tl-get msg :content :web_page :audio))))
+                 (eq audio (telega--tl-get
+                            msg :content :link_preview :type :audio))))
 
   ;; - If already playing, then pause
   ;; - If paused, start from paused position
@@ -565,7 +619,9 @@ Return nil for deleted messages."
                        (telega-ffplay-paused-p proc))))
     (if (telega-ffplay-playing-p proc)
         (telega-ffplay-pause proc)
-      (telega-file--download audio-file 32
+      (telega-file--download audio-file
+        :priority 32
+        :update-callback
         (lambda (file)
           (telega-msg-redisplay msg)
           (when (telega-file--downloaded-p file)
@@ -578,7 +634,8 @@ Return nil for deleted messages."
                                 (format "-ss %.2f " paused-p))
                               (cdr (assq 'audio telega-open-message-ffplay-args)))
                            (lambda (_proc)
-                             (telega-msg-redisplay msg)))))))))))
+                             (telega-msg-redisplay msg))
+                           paused-p)))))))))
 
 (defun telega-msg-voice-note--ffplay-callback (proc msg &optional
                                                     no-progress-adjust)
@@ -622,7 +679,7 @@ note finishes."
   ;; - If paused, start from paused position
   ;; - If not started, start playing
   (let* ((note (or (telega--tl-get msg :content :voice_note)
-                   (telega--tl-get msg :content :web_page :voice_note)))
+                   (telega--tl-get msg :content :link_preview :type :voice_note)))
          (note-file (progn
                       (cl-assert note)
                       (telega-file--renew note :voice)))
@@ -632,7 +689,9 @@ note finishes."
     (if (telega-ffplay-playing-p proc)
         (telega-ffplay-pause proc)
       ;; Start playing or resume from the paused moment
-      (telega-file--download note-file 32
+      (telega-file--download note-file
+        :priority 32
+        :update-callback
         (lambda (file)
           (cond
            ((not (telega-file--downloaded-p file))
@@ -657,7 +716,8 @@ note finishes."
                             (cdr (assq 'voice-note
                                        telega-open-message-ffplay-args)))
                          (lambda (proc)
-                           (telega-msg-voice-note--ffplay-callback proc msg))))
+                           (telega-msg-voice-note--ffplay-callback proc msg))
+                         paused-p))
             (with-telega-chatbuf (telega-msg-chat msg)
               (telega-chatbuf--activate-vvnote-msg msg))))
 
@@ -669,7 +729,7 @@ note finishes."
   "Callback for video note playback."
   (let* ((proc-plist (process-plist proc))
          (note (or (telega--tl-get msg :content :video_note)
-                   (telega--tl-get msg :content :web_page :video_note)))
+                   (telega--tl-get msg :content :link_preview :type :video_note)))
          (duration (plist-get note :duration))
          (nframes (or (float (plist-get proc-plist :nframes))
                       (* 30.0 duration)))
@@ -702,12 +762,13 @@ note finishes."
 
     (telega-msg-voice-note--ffplay-callback proc msg 'no-progress-adjust)))
 
-(defun telega-msg-open-video-note (msg &optional video-note)
+(defun telega-msg-open-video-note (msg)
   "Open content for videoNote message MSG.
 If called with `\\[universal-argument]' prefix, then open with
 external player even if `telega-video-note-play-inline' is
 non-nil."
-  (let* ((note (or video-note (telega--tl-get msg :content :video_note)))
+  (let* ((note (or (telega--tl-get msg :content :video_note)
+                   (telega--tl-get msg :content :link_preview :type :video_note)))
          (note-file (telega-file--renew note :video))
          (proc (plist-get msg :telega-ffplay-proc))
          (paused-p (or telega-ffplay-media-timestamp
@@ -716,7 +777,9 @@ non-nil."
          (saved-current-prefix-arg current-prefix-arg))
     (if (telega-ffplay-playing-p proc)
         (telega-ffplay-pause proc)
-      (telega-file--download note-file 32
+      (telega-file--download note-file
+        :priority 32
+        :update-callback
         (lambda (file)
           (cond
            ((not (telega-file--downloaded-p file))
@@ -774,14 +837,18 @@ non-nil."
 If called with `\\[universal-argument]' prefix, then open with
 external player even if `telega-animation-play-inline' is
 non-nil."
-  (let* ((anim (or animation (telega--tl-get msg :content :animation)))
+  (let* ((anim (or animation
+                   (telega--tl-get msg :content :animation)
+                   (telega--tl-get msg :content :link_preview :type :animation)))
          (anim-file (telega-file--renew anim :animation))
          (proc (plist-get msg :telega-ffplay-proc))
          (saved-this-command this-command)
          (saved-current-prefix-arg current-prefix-arg))
     (if (telega-ffplay-playing-p proc)
         (telega-ffplay-stop proc)
-      (telega-file--download anim-file 32
+      (telega-file--download anim-file
+        :priority 32
+        :update-callback
         (lambda (file)
           (cond
            ((not (telega-file--downloaded-p file))
@@ -812,7 +879,9 @@ non-nil."
   "Open content for document message MSG."
   (let* ((doc (or document (telega--tl-get msg :content :document)))
          (doc-file (telega-file--renew doc :document)))
-    (telega-file--download doc-file 32
+    (telega-file--download doc-file
+      :priority 32
+      :update-callback
       (lambda (file)
         (telega-msg-redisplay msg)
         (when (telega-file--downloaded-p file)
@@ -832,30 +901,59 @@ non-nil."
   (telega-describe-contact
    (telega--tl-get msg :content :contact)))
 
-(defun telega-msg-open-webpage (msg &optional web-page)
+(defun telega-msg-open-link-preview (msg &optional link-preview)
   "Open content for message with webpage message MSG."
-  (unless web-page
-    (setq web-page (telega--tl-get msg :content :web_page)))
+  (unless link-preview
+    (setq link-preview (telega--tl-get msg :content :link_preview)))
 
-  ;; NOTE: "document" webpage might contain :video instead of :document
-  ;; see https://t.me/c/1347510619/43
-  (cond ((plist-get web-page :animation)
-         (telega-msg-open-animation msg (plist-get web-page :animation)))
-        ((plist-get web-page :audio)
-         (telega-msg-open-audio msg (plist-get web-page :audio)))
-        ((plist-get web-page :document)
-         (telega-msg-open-document msg (plist-get web-page :document)))
-        ((plist-get web-page :sticker)
-         (telega-msg-open-sticker msg (plist-get web-page :sticker)))
-        ((plist-get web-page :video)
-         (telega-msg-open-video msg (plist-get web-page :video)))
-        ((plist-get web-page :video_note)
-         (telega-msg-open-video-note msg (plist-get web-page :video_note)))
-        ((and (string= "photo" (plist-get web-page :type))
-              (plist-get web-page :photo))
-         (telega-msg-open-photo msg (plist-get web-page :photo)))
-        (t (when-let ((url (telega-tl-str web-page :url)))
-             (telega-browse-url url)))))
+  (if (telega-zerop (plist-get link-preview :instant_view_version))
+      (let ((lp-type (plist-get link-preview :type)))
+        (cl-case (telega--tl-type lp-type)
+          (linkPreviewTypePhoto
+           (telega-msg-open-photo msg (plist-get lp-type :photo)))
+          (linkPreviewTypeVideo
+           (telega-msg-open-video msg (plist-get lp-type :video)))
+          (linkPreviewTypeVoiceNote
+           (telega-msg-open-voice-note msg))
+          (linkPreviewTypeVideoNote
+           (telega-msg-open-video-note msg))
+          ((linkPreviewTypeBackground
+            linkPreviewTypeDocument)
+           (telega-msg-open-document msg (plist-get lp-type :document)))
+          ((linkPreviewTypeEmbeddedAnimationPlayer
+            linkPreviewTypeEmbeddedAudioPlayer
+            linkPreviewTypeEmbeddedVideoPlayer
+            linkPreviewTypeExternalAudio
+            linkPreviewTypeExternalVideo
+            linkPreviewTypeArticle)
+           ;; External link
+           (telega-browse-url (plist-get link-preview :url)))
+          (t
+           ;; Internal link
+           (telega-tme-open (plist-get link-preview :url)))))
+    (telega-webpage--instant-view
+     (telega-tl-str link-preview :url) (plist-get link-preview :site_name))))
+
+  ;; ;; NOTE: "document" webpage might contain :video instead of :document
+  ;; ;; see https://t.me/c/1347510619/43
+  ;; (cond ((plist-get link-preview :animation)
+  ;;        (telega-msg-open-animation msg (plist-get link-preview :animation)))
+  ;;       ((plist-get link-preview :audio)
+  ;;        (telega-msg-open-audio msg (plist-get link-preview :audio)))
+  ;;       ((plist-get link-preview :document)
+  ;;        (telega-msg-open-document msg (plist-get link-preview :document)))
+  ;;       ((plist-get link-preview :sticker)
+  ;;        (telega-msg-open-sticker msg (plist-get link-preview :sticker)))
+  ;;       ((plist-get link-preview :video)
+  ;;        (telega-msg-open-video msg (plist-get link-preview :video)))
+  ;;       ((plist-get link-preview :video_note)
+  ;;        (telega-msg-open-video-note msg (plist-get link-preview :video_note)))
+  ;;       ((and (string= "photo" (plist-get link-preview :type))
+  ;;             (plist-get link-preview :photo))
+  ;;        (telega-msg-open-photo msg (plist-get link-preview :photo)))
+  ;;       (t
+  ;;        (when-let ((url (telega-tl-str link-preview :url)))
+  ;;          (telega-browse-url url)))))
 
 (defun telega-msg-open-game (msg)
   "Open content for the game message MSG."
@@ -908,7 +1006,9 @@ non-nil."
 
 (defun telega-describe--giveaway-info (msg ga-info)
   (with-telega-help-win "*Telegram Giveaway Info*"
-    (let* ((content (plist-get msg :content))
+    (let* ((hard-newline (propertize "\n" 'hard t))
+           (content (plist-get msg :content))
+           (prize (plist-get content :prize))
            (ga-params (plist-get content :parameters))
            (boosted-chat (telega-chat-get
                           (plist-get ga-params :boosted_chat_id)))
@@ -923,13 +1023,19 @@ non-nil."
            (many-p
             (not (seq-empty-p (plist-get ga-params :additional_chat_ids)))))
       (cl-ecase (telega--tl-type ga-info)
-        (premiumGiveawayInfoCompleted
+        (giveawayInfoCompleted
          (telega-ins--with-face 'bold
            (telega-ins (telega-i18n "lng_prizes_end_title")))
-         (telega-ins "\n\n")
+         (telega-ins hard-newline)
+         (telega-ins--with-face 'bold
+           (if-let ((winner-p (telega-tl-str ga-info :gift_code)))
+               (telega-ins-i18n "lng_prizes_you_won"
+                 :cup "🏆")
+             (telega-ins-i18n "lng_prizes_you_didnt")))
+         (telega-ins hard-newline hard-newline)
          )
 
-        (premiumGiveawayInfoOngoing
+        (giveawayInfoOngoing
          (telega-ins--with-face 'bold
            (telega-ins (telega-i18n "lng_prizes_how_title")))
          (when (plist-get ga-info :is_ended)
@@ -943,7 +1049,7 @@ non-nil."
                       :channel channel-button
                       :count (plist-get content :winner_count)
                       :duration (telega-i18n "lng_premium_gift_duration_months"
-                                  :count (plist-get content :month_count)))))
+                                  :count (plist-get prize :month_count)))))
          (telega-ins "\n\n")
          (telega-ins-i18n "lng_prizes_how_when_finish"
            :date (telega-ins--as-string
@@ -966,23 +1072,23 @@ non-nil."
 
          (let ((status (plist-get ga-info :status)))
            (cl-ecase (telega--tl-type status)
-             (premiumGiveawayParticipantStatusDisallowedCountry
+             (giveawayParticipantStatusDisallowedCountry
               (telega-ins-i18n "lng_prizes_how_no_country"))
-             (premiumGiveawayParticipantStatusAdministrator
+             (giveawayParticipantStatusAdministrator
               (telega-ins-i18n "lng_prizes_how_no_admin"
                 :channel channel-button))
-             (premiumGiveawayParticipantStatusAlreadyWasMember
+             (giveawayParticipantStatusAlreadyWasMember
               (telega-ins-i18n (if (telega-chat-channel-p boosted-chat)
                                    "lng_prizes_how_no_joined"
                                  "lng_prizes_how_no_joined_group")
                 ;; TODO: `:date'
                 ))
-             (premiumGiveawayParticipantStatusParticipating
+             (giveawayParticipantStatusParticipating
               (telega-ins-i18n (if many-p
                                    "lng_prizes_how_yes_joined_many"
                                  "lng_prizes_how_yes_joined_one")
                 :channel channel-button))
-             (premiumGiveawayParticipantStatusEligible
+             (giveawayParticipantStatusEligible
               (telega-ins
                "You are not eligible to participate in this giveaway."))))
          )))
@@ -992,13 +1098,19 @@ non-nil."
     (fill-region (point-min) (point-max) 'center)
     ))
 
-(defun telega-msg-open-premium-giveaway (msg)
-  "Open show more details about premium giveaway message MSG."
+(defun telega-msg-open-giveaway (msg)
+  "Open show more details about giveaway message MSG."
   (message "telega: Fetching giveaway info...")
-  (telega--getPremiumGiveawayInfo msg
+  (telega--getGiveawayInfo msg
     (lambda (result)
       (message "")
       (telega-describe--giveaway-info msg result))))
+
+(defun telega-msg-open-gift (msg)
+  "Open show more details about gift message MSG."
+  (unless (telega-msg-match-p msg 'is-outgoing)
+    (message "TODO: `telega-msg-open-gift'")
+    ))
 
 (defun telega-msg-emojis-only-p (msg)
   "Return non-nil if text message MSG contains only emojis."
@@ -1037,8 +1149,8 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
     (messageContact
      (telega-msg-open-contact msg))
     (messageText
-     (when-let ((web-page (telega--tl-get msg :content :web_page)))
-       (telega-msg-open-webpage msg web-page)))
+     (when-let ((link-preview (telega--tl-get msg :content :link_preview)))
+       (telega-msg-open-link-preview msg link-preview)))
     (messagePoll
      (telega-msg-open-poll msg))
     (messageGame
@@ -1063,9 +1175,9 @@ non-nil CLICKED-P means message explicitly has been clicked by user."
      (telega-msg-open-animated-emoji msg clicked-p))
     (messageStory
      (telega-msg-open-story msg))
-    (messagePremiumGiveaway
-     (telega-msg-open-premium-giveaway msg))
-    (messagePremiumGiveawayCompleted
+    (messageGiveaway
+     (telega-msg-open-giveaway msg))
+    (messageGiveawayCompleted
      (telega-chat--goto-msg (telega-msg-chat msg)
          (telega--tl-get msg :content :giveaway_message_id) 'hightlight))
 
@@ -1096,14 +1208,11 @@ corresponding thread or topic."
 
 (defun telega-msg-can-open-media-timestamp-p (msg)
   "Return non-nil if MSG can be opened with custom media timestamp.
-Only video, audio, video-note, voice-note or a message with web page
+Only video, audio, video-note, voice-note or a message with link
 preview, having media content, can be opened with media timestamp."
-  (or (telega-msg-match-p msg '(type VideoNote VoiceNote Audio Video))
-      (when-let ((web-page (telega--tl-get msg :content :web_page)))
-        (or (plist-get web-page :video)
-            (plist-get web-page :audio)
-            (plist-get web-page :video_note)
-            (plist-get web-page :voice_note)))))
+  (telega-msg-match-p msg
+    '(or (type Audio Video VideoNote VoiceNote)
+         (link-preview Audio Video VideoNote VoiceNote))))
 
 (defun telega-msg-open-media-timestamp (msg timestamp &optional error-p)
   "Open media message MSG (or replied to) at a given TIMESTAMP."
@@ -1134,10 +1243,14 @@ preview, having media content, can be opened with media timestamp."
   "Track uploading progress for the file associated with MSG."
   (let ((msg-file (telega-msg--content-file msg)))
     (when (and msg-file (telega-file--uploading-p msg-file))
-      (telega-file--upload-internal msg-file
-        (lambda (_filenotused)
-          (telega-msg-redisplay msg))))))
+      (telega-file--add-update-callback (plist-get msg-file :id)
+        (lambda (ufile)
+          (telega-msg-redisplay msg)
+          ;; Remove update callback when uploading is completed
+          (telega-file--uploading-p ufile))))))
 
+
+;; Msg Sender
 (defun telega-msg-sender (tl-obj)
   "Convert given TL-OBJ to message sender (a chat or a user).
 TL-OBJ could be a \"message\", \"chatMember\", \"messageSender\" or
@@ -1215,32 +1328,26 @@ ARGS are passed directly to `telega-ins--msg-sender'."
      (telega-ins--with-face 'bold
        (apply #'telega-ins--msg-sender msg-sender :with-avatar-p t args)))))
 
-(defun telega-msg-sender-color (msg-sender &optional background-mode)
-  "Return color for the message sender MSG-SENDER.
-BACKGROUND-MODE is one of `light' or `dark'.
-If BACKGROUND-MODE is not specified return cons cell with both colors
-for light and dark background modes."
-  (let ((colors (if (telega-user-p msg-sender)
-                    (telega-user-color msg-sender)
-                  (cl-assert (telega-chat-p msg-sender))
-                  (telega-chat-color msg-sender))))
-    (cond ((eq background-mode 'light)
-           (nth 0 colors))
-          ((eq background-mode 'dark)
-           (nth 1 colors))
-          (t colors))))
+(defun telega-msg-sender-palette (msg-sender)
+  "Return palette for the message sender MSG-SENDER."
+  (unless (memq telega-palette-context telega-palette-context-ignore-list)
+    (or (plist-get msg-sender :telega-palette)
+        (let ((palette (telega-palette-by-color-id
+                        (plist-get msg-sender :accent_color_id))))
+          (plist-put msg-sender :telega-palette palette)
+          palette))))
 
-(defun telega-msg-sender-title-faces (msg-sender)
+(defun telega-msg-sender-title-faces (msg-sender &optional palette)
   "Compute faces list to use for MSG-SENDER title."
-  (nconc (list (if (telega-me-p msg-sender)
-                   'telega-msg-self-title
-                 'telega-msg-user-title))
-         ;; Maybe add some rainbow color to the message title
-         (when telega-msg-rainbow-title
-           (when-let ((foreground
-                       (telega-msg-sender-color
-                        msg-sender (frame-parameter nil 'background-mode))))
-             (list (list :foreground foreground))))))
+  (unless palette
+    (setq palette (let ((telega-palette-context 'title))
+                    (telega-msg-sender-palette msg-sender))))
+
+  (cons (if (telega-me-p msg-sender)
+            'telega-msg-self-title
+          'telega-msg-user-title)
+        (when palette
+          (list (assq :foreground palette)))))
 
 (defun telega-msg-sender-block (msg-sender &optional callback)
   "Block the message sender MSG-SENDER."
@@ -1354,7 +1461,7 @@ Return function by which MSG has been ignored."
     ;; NOTE: on last message don't move point to the prompt, because
     ;; after marking messages some message command is expected (for
     ;; example forwarwarding)
-    (unless (= (plist-get msg :id) (telega-chatbuf--last-message-id))
+    (unless (eq msg (telega-chatbuf--last-msg))
       (telega-button-forward 1 (button-type-get 'telega-msg :predicate)))
 
     (telega-chatbuf--chat-update "marked-messages")))
@@ -1363,6 +1470,10 @@ Return function by which MSG has been ignored."
   "Toggle pin state of the message MSG.
 For interactive use only."
   (interactive (list (telega-msg-for-interactive)))
+
+  (unless (telega-msg-match-p msg '(chat (my-permission :can_pin_messages)))
+    (user-error "telega: No permissions to pin/unpin messages"))
+
   (if (plist-get msg :is_pinned)
       (telega--unpinChatMessage msg)
 
@@ -1410,16 +1521,19 @@ For interactive use only."
                        telega--favorite-messages-storage-message)))
             (cl-assert file)
             ;; And now load associated file asynchronously
-            (telega-file--download file 32
+            (telega-file--download file
+              :priority 32
+              :update-callback
               (lambda (tl-file)
-                (setq telega--favorite-messages
-                      (with-temp-buffer
-                        (insert-file-contents
-                         (telega--tl-get tl-file :local :path))
-                        (goto-char (point-min))
-                        (read (current-buffer))))
-                (telega-debug "Loaded %d favorite messages"
-                              (length telega--favorite-messages))
+                (when (telega-file--downloaded-p tl-file)
+                  (setq telega--favorite-messages
+                        (with-temp-buffer
+                          (insert-file-contents
+                           (telega--tl-get tl-file :local :path))
+                          (goto-char (point-min))
+                          (read (current-buffer))))
+                  (telega-debug "Loaded %d favorite messages"
+                                (length telega--favorite-messages)))
                 ))))))))
 
 (defun telega-msg--favorite-messages-file-store ()
@@ -1485,11 +1599,11 @@ favorite message."
 (defun telega-msg--content-file (msg)
   "For message MSG return its content file as TDLib object."
   (let* ((content (plist-get msg :content))
-         (webpage (plist-get content :web_page))
+         (lp-type (telega--tl-get content :link_preview :type))
          (file-accessor
           (cl-some (lambda (accessor)
                      (when-let ((place (or (plist-get content (car accessor))
-                                           (plist-get webpage (car accessor)))))
+                                           (plist-get lp-type (car accessor)))))
                        (cons place (cdr accessor))))
                    '((:document   . :document)
                      (:video      . :video)
@@ -1550,7 +1664,9 @@ Saved Messages."
 
      (t
       (message "Downloading file...")
-      (telega-file--download file 32
+      (telega-file--download file
+        :priority 32
+        :update-callback
         (lambda (dfile)
           (telega-msg-redisplay msg)
           (when (telega-file--downloaded-p dfile)
@@ -1591,7 +1707,9 @@ Use \\[yank] command to paste a link."
          ;; message.can_get_media_timestamp_links and a media
          ;; timestamp link is generated. (TDLib docs)
          (link (if (and (or (telega-chat-match-p chat '(type supergroup channel))
-                            (and (plist-get msg :can_get_media_timestamp_links)
+                            (and (telega-msg-match-p msg
+                                   '(message-property
+                                     :can_get_media_timestamp_links))
                                  media-timestamp))
                         (not (plist-get msg :sending_state))
                         (not (plist-get msg :scheduling_state)))
@@ -1624,7 +1742,7 @@ If `\\[universal-argument]' is supplied, then copy without text properties."
   (interactive (list (telega-msg-for-interactive)
                      current-prefix-arg))
 
-  (unless (plist-get msg :can_be_saved)
+  (unless (telega-msg-match-p msg '(message-property :can_be_saved))
     (user-error "telega: %s" (telega-i18n (if (plist-get msg :is_channel_post)
                                               "lng_error_nocopy_channel"
                                             "lng_error_nocopy_group"))))
@@ -1771,14 +1889,14 @@ Requires administrator rights in the chat."
 
       (telega-ins-describe-item (telega-i18n "lng_sent_date" :date "")
         (telega-ins--date (plist-get msg :date) 'date-time))
-      (when (plist-get msg :can_get_read_date)
+      (when (telega-msg-match-p msg '(message-property :can_get_read_date))
         (telega-ins-describe-item "Read Date"
           (telega--getMessageReadDate msg
             (telega--gen-ins-continuation-callback 'loading
               #'telega-ins--message-read-date))))
-      (telega-ins-describe-item "Chat-id"
+      (telega-ins-describe-item "Chat-Id"
         (telega-ins-fmt "%d" chat-id))
-      (telega-ins-describe-item "Message-id"
+      (telega-ins-describe-item "Message-Id"
         (telega-ins-fmt "%d" msg-id))
       (let ((thread-id (plist-get msg :message_thread_id)))
         (unless (telega-zerop thread-id)
@@ -1848,57 +1966,59 @@ Requires administrator rights in the chat."
             (telega-ins--column 2 nil
               (telega-ins (telega-msg-content-text msg 'with-speech))))))
 
-      (when (plist-get msg :can_get_added_reactions)
-        (telega-ins-describe-item "Message Reactions"
-          ;; Asynchronously fetch added message reactions
-          (telega--getMessageAddedReactions msg
-            :callback
-            (telega--gen-ins-continuation-callback 'loading
-              (lambda (reply)
-                (let ((added-reactions (plist-get reply :reactions)))
-                  (telega-ins-fmt "%d (%d shown)"
-                    (plist-get reply :total_count)
-                    (length added-reactions))
-                  (seq-doseq (ar added-reactions)
-                    (telega-ins "\n")
-                    (telega-ins--line-wrap-prefix "  "
-                      (telega-ins--msg-reaction-type (plist-get ar :type))
-                      (telega-ins " ")
-                      (telega-ins--msg-sender
-                          (telega-msg-sender (plist-get ar :sender_id))
-                        :with-avatar-p t
-                        :with-username-p t
-                        :with-brackets-p t)
-                      (telega-ins--move-to-column 42)
-                      (telega-ins " ")
-                      (telega-ins--date-relative (plist-get ar :date)))
-                    )))
-              msg-id))))
+      (let ((msg-reactions (telega--tl-get msg :interaction_info :reactions)))
+        (cond ((plist-get msg-reactions :can_get_added_reactions)
+               (telega-ins-describe-item "Message Reactions"
+                 ;; Asynchronously fetch added message reactions
+                 (telega--getMessageAddedReactions msg
+                   :callback
+                   (telega--gen-ins-continuation-callback 'loading
+                     (lambda (reply)
+                       (let ((added-reactions (plist-get reply :reactions)))
+                         (telega-ins-fmt "%d (%d shown)"
+                           (plist-get reply :total_count)
+                           (length added-reactions))
+                         (seq-doseq (ar added-reactions)
+                           (telega-ins "\n")
+                           (telega-ins--line-wrap-prefix "  "
+                             (telega-ins--msg-reaction-type (plist-get ar :type))
+                             (telega-ins " ")
+                             (telega-ins--msg-sender
+                                 (telega-msg-sender (plist-get ar :sender_id))
+                               :with-avatar-p t
+                               :with-username-p t
+                               :with-brackets-p t)
+                             (telega-ins--move-to-column 42)
+                             (telega-ins " ")
+                             (telega-ins--date-relative (plist-get ar :date)))
+                           )))
+                     msg-id)))
+               )
 
-      ;; NOTE: For basicgroups all reactions are listed in the
-      ;; interaction info, and `getMessageAddedReactions' is not
-      ;; available
-      ;; See https://github.com/zevlg/telega.el/issues/460
-      (when (not (plist-get msg :can_get_added_reactions))
-        (let ((msg-reactions (telega--tl-get msg :interaction_info
-                                             :reactions :reactions)))
-          (unless (seq-empty-p msg-reactions)
-            (telega-ins-describe-item "Message Reactions"
-              (telega-ins-fmt "%d"
-                (apply #'+ (mapcar (telega--tl-prop :total_count) msg-reactions)))
-              (seq-doseq (msg-reaction msg-reactions)
-                (seq-doseq (sender (plist-get msg-reaction :recent_sender_ids))
-                  (telega-ins "\n")
-                  (telega-ins--line-wrap-prefix "  "
-                    (telega-ins--msg-reaction-type (plist-get msg-reaction :type))
-                    (telega-ins " ")
-                    (telega-ins--msg-sender (telega-msg-sender sender)
-                      :with-avatar-p t
-                      :with-username-p t
-                      :with-brackets-p t))))))))
+              ((not (seq-empty-p (plist-get msg-reactions :reactions)))
+               ;; NOTE: For basicgroups all reactions are listed in the
+               ;; interaction info, and `getMessageAddedReactions' is not
+               ;; available
+               ;; See https://github.com/zevlg/telega.el/issues/460
+               (let ((reactions (plist-get msg-reactions :reactions)))
+                 (telega-ins-describe-item "Message Reactions"
+                   (telega-ins-fmt "%d"
+                     (apply #'+ (mapcar (telega--tl-prop :total_count) reactions)))
+                   (seq-doseq (reaction reactions)
+                     (seq-doseq (sender (plist-get reaction :recent_sender_ids))
+                       (telega-ins "\n")
+                       (telega-ins--line-wrap-prefix "  "
+                         (telega-ins--msg-reaction-type
+                          (plist-get reaction :type))
+                         (telega-ins " ")
+                         (telega-ins--msg-sender (telega-msg-sender sender)
+                           :with-avatar-p t
+                           :with-username-p t
+                           :with-brackets-p t)))))))))
 
-      (when (plist-get msg :can_get_viewers)
-        (telega-ins-describe-item "Message Viewers"
+      (when (telega-msg-match-p msg '(message-property :can_get_viewers))
+        (telega-ins-describe-item
+            (telega-i18n "lng_stats_overview_message_views")
           ;; Asynchronously fetch message viewers
           (telega--getMessageViewers msg
             (telega--gen-ins-continuation-callback 'loading
@@ -1919,8 +2039,21 @@ Requires administrator rights in the chat."
 
       (when-let ((fwd-info (plist-get msg :forward_info)))
         (telega-ins "\n")
-        (telega-ins-describe-item (telega-i18n "lng_forwarded_date" :date "")
-          (telega-ins--date (plist-get fwd-info :date) 'date-time)))
+        (telega-ins-describe-item (telega-i18n "lng_forwarded" :user "")
+          (let ((origin-sender
+                 (telega--msg-origin-sender (plist-get fwd-info :origin))))
+            (if (stringp origin-sender)
+                (telega-ins--with-face 'telega-shadow
+                  (telega-ins origin-sender))
+              (telega-ins--msg-sender origin-sender
+                :with-avatar-p t
+                :with-username-p 'telega-username
+                :with-brackets-p t)))
+          (telega-ins " " (telega-i18n "telega_at") " ")
+          (telega-ins--date (plist-get fwd-info :date) 'date-time))
+        (when-let ((fwd-src (plist-get fwd-info :source)))
+          ;; TODO: insert forward source info
+          ))
 
       (when (and (listp telega-debug) (memq 'info telega-debug))
         (let ((print-length nil))
@@ -2016,7 +2149,7 @@ be added."
          (reaction-type
           (when sm-tags-p
             (when-let ((tag (telega-completing-read-saved-messages-tag
-                             "Add Tag: ")))
+                             "Add Tag: " nil 'with-new-tag)))
               (plist-get tag :tag))))
          (msg-av-reactions nil))
     (unless reaction-type
@@ -2133,6 +2266,16 @@ By default `telega-translate-to-language-default' is used."
       ;; NOTE: hide spoiler on next message's redisplay
       (plist-put ent-type :telega-show-spoiler nil))))
 
+(defun telega-msg-blockquote-expand-toggle (msg)
+  "Toggle expandable block quote at point."
+  (interactive (list (telega-msg-for-interactive)))
+
+  (when-let ((ent-type (get-text-property (point) :tl-entity-type)))
+    (when (eq 'textEntityTypeExpandableBlockQuote (telega--tl-type ent-type))
+      (plist-put ent-type :telega-blockquote-expanded
+                 (not (plist-get ent-type :telega-blockquote-expanded)))
+      (telega-msg-redisplay msg))))
+
 (defun telega-msg-remove-media-spoiler (msg)
   "Remove spoiler for the media message MSG."
   (interactive (list (telega-msg-for-interactive)))
@@ -2142,11 +2285,11 @@ By default `telega-translate-to-language-default' is used."
       (plist-put content :telega-spoiler-removed t)
       (telega-msg-redisplay msg))))
 
-(defun telega-msg-disable-webpage-preview (msg)
+(defun telega-msg-disable-link-preview (msg)
   "Disable webpage preview for the given outgoing message."
   (interactive (list (telega-msg-for-interactive)))
   (unless (telega-msg-match-p msg '(type Text))
-    (user-error "telega: can disable webpage preview only for text messages"))
+    (user-error "telega: can disable link preview only for text messages"))
   (unless (telega-msg-match-p msg '(prop :can_be_edited))
     (user-error "telega: can't edit this message"))
 
@@ -2243,6 +2386,25 @@ Return `loading' if replied story starts loading."
   (telega-msg-redisplay msg)
   ;; NOTE: rootbuf also might be affected
   (telega-root-view--update :on-story-update replied-story))
+
+(defun telega-msg--message-properties-fetch (msg)
+  "Fetch message properties"
+  (when (and (not (telega-msg-internal-p msg))
+             (not (telega-msg--replied-story msg))
+             (telega-msg-match-p msg 'is-reply-to-story))
+    (when-let* ((reply-to (plist-get msg :reply_to))
+                (chat-id (plist-get reply-to :story_sender_chat_id))
+                (story-id (plist-get reply-to :story_id)))
+      (telega--getMessageProperties msg
+        (lambda (msg-properties)
+          (plist-put msg :telega-message-properties msg-properties)
+          (telega-msg-redisplay msg)))
+      (plist-put msg :telega-message-properties 'loading))))
+
+(defun telega-msg--message-properties-callback (msg msg-properties)
+  "Callback when the REPLIED-STORY for the MSG has been fetched."
+  (plist-put msg :telega-message-properties msg-properties)
+  (telega-msg-redisplay msg))
 
 
 ;;; Preview Messages

@@ -26,6 +26,8 @@
 ;;; Code:
 (require 'telega-tdlib)
 
+(declare-function telega-root-aux-redisplay "telega-root" (&optional inserter))
+
 (defvar telega-i18n-month-names
   '((full "January" "February" "March" "April" "May" "June" "July"
            "August" "September" "October" "November" "December")
@@ -48,7 +50,11 @@
   '(("telega_show" . "lng_usernames_activate_confirm")
     ("telega_loading" . "lng_profile_loading")
     ("telega_for_n_hours" . "lng_mute_duration_hours")
-    ("telega_stop" . "lng_export_stop"))
+    ("telega_stop" . "lng_export_stop")
+    ("telega_at" . "lng_schedule_at")
+    ("telega_comment" . "lng_photos_comment")
+    ("telega_status" . "lng_proxy_box_status")
+    )
   "i18n names aliases alist.")
 
 (defconst telega-i18n--en-strings nil
@@ -113,7 +119,11 @@ Loaded from \"etc/langs/en.plist\" in `telega-i18n-init'.")
         ;; NOTE: custom filters might use i18n strings, so update
         ;; custom filters as well
         (let ((telega-filters--dirty t))
-          (telega-filters--redisplay))))
+          (telega-filters--redisplay))
+
+        ;; NOTE: root aux might also use i18n strings, such as
+        ;; birthday info label
+        (telega-root-aux-redisplay)))
     ))
 
 ;; See https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html
@@ -185,10 +195,11 @@ Return one of: `:zero_value', `:one_value', `:two_value',
                val nil 'literal))
     val))
 
-(defun telega-i18n-noerror (key)
+(defun telega-i18n-noerror (key &rest args)
   "Same as `telega-i18n', but do not trigger an error if KEY is not found.
 Return KEY if KEY is unknown to i18n."
-  (or (ignore-errors (telega-i18n key))
+  (declare (indent 1))
+  (or (ignore-errors (apply #'telega-i18n key args))
       key))
 
 (provide 'telega-i18n)

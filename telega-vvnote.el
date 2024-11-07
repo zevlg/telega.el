@@ -108,16 +108,16 @@
          (n-factor (/ (- max-o min-o) (apply 'max min-normw))))
     (mapcar (lambda (v) (+ min-o (* v n-factor))) min-normw)))
 
-(defun telega-vvnote--waves-svg (waves height duration &optional played)
-  "From decoded WAVES create svg of HEIGHT for DURATION and PLAYED."
-  (cl-assert (> height 8))
-  (let* ((w-idx 0)
+(defun telega-vvnote--waves-svg (waves duration &optional played)
+  "From decoded WAVES create svg for DURATION and PLAYED."
+  (let* ((w1 20)
+         (height 30)
+         (w-idx 0)
          (wv-width 3) (space-width 2)
          (wv-height (- height 6))
          (w (* (+ wv-width space-width) (length waves)))
-         (aw-chars (telega-chars-in-width w))
-         (cw (telega-chars-xwidth aw-chars))
-         (svg (telega-svg-create cw height)))
+         (aw-chars (max 5 (ceiling (/ w w1))))
+         (svg (telega-svg-create w height)))
     ;; bg - "#e1ffc7", fg - "#93d987", fg-played - "#3fc33b"
     ;;    (svg-rectangle svg 0 0 w h :fill-color "#e1ffc7")
     (dolist (wv waves)
@@ -134,11 +134,15 @@
         (cl-incf w-idx)))
     (telega-svg-image svg
       :scale 1
+      :height (telega-ch-height telega-vvnote-waves-height-factor)
       :width (telega-cw-width aw-chars)
       :mask 'heuristic
       :ascent 'center
-      ;; text of correct width
-      :telega-text (make-string aw-chars ?#))))
+      :telega-text
+      (telega-ins--as-string
+       (telega-ins "[")
+       (telega-ins-progress-bar played duration (- aw-chars 2) ?\# ?\.)
+       (telega-ins "]")))))
 
 ;; Encoding and Decoding splits into two situations:
 ;;     head-bits=5   tail-bits=0
@@ -594,28 +598,25 @@ I.e. if you press 7, then you will jump to 70% of the message
 duration."
   (interactive (list (telega-msg-for-interactive)))
 
-  (when-let ((proc (plist-get msg :telega-ffplay-proc)))
-    (let* ((content (plist-get msg :content))
-           (duration (cl-case (telega--tl-type content)
-                       (messageVoiceNote
-                        (telega--tl-get content :voice_note :duration))
-                       (messageVideoNote
-                        (telega--tl-get content :video_note :duration))
-                       (messageAudio
-                        (telega--tl-get content :audio :duration))
-                       (t
-                        ;; Possibly a element embedded into webpage
-                        (let ((web-page (plist-get content :web_page)))
-                          (plist-get (or (plist-get web-page :audio)
-                                         (plist-get web-page :video_note)
-                                         (plist-get web-page :voice_note))
-                                     :duration)))))
-           (n-part (string-to-number (this-command-keys))))
-      (cl-assert (< 0 n-part 10))
-      (when (and (telega-ffplay-playing-p proc) duration)
-        (telega-ffplay-pause
-         proc (floor (* (/ n-part 10.0) duration)) 'ignore-callback)
-        (telega-msg-open-content msg)))))
+  (when-let ((proc (plist-get msg :telega-ffplay-proc))
+             (duration
+              (plist-get
+               (or (plist-get (telega-msg-match-p msg
+                                '(or (type VoiceNote) (link-preview VoiceNote)))
+                              :voice_note)
+                   (plist-get (telega-msg-match-p msg
+                                '(or (type VideoNote) (link-preview VideoNote)))
+                              :video_note)
+                   (plist-get (telega-msg-match-p msg
+                                '(or (type Audio) (link-preview Audio)))
+                              :audio))
+               :duration))
+             (n-part (string-to-number (this-command-keys))))
+    (cl-assert (< 0 n-part 10))
+    (when (and (telega-ffplay-playing-p proc) duration)
+      (telega-ffplay-pause
+       proc (floor (* (/ n-part 10.0) duration)) 'ignore-callback)
+      (telega-msg-open-content msg))))
 
 (provide 'telega-vvnote)
 

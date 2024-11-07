@@ -34,7 +34,6 @@
 (require 'telega-tdlib)
 
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
-(declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat-title "telega-chat" (chat &optional no-badges))
 
 (declare-function telega-msg-redisplay "telega-msg" (msg))
@@ -70,7 +69,29 @@ As side-effect might update root view, if current root view is \"Files\"."
     (plist-put place prop file)
     file))
 
-(defun telega-file--update (file)
+(defun telega-file--add-update-callback (file-id update-callback)
+  "Ensure FILE-ID is monitored with UPDATE-CALLBACK."
+  (declare (indent 1))
+  (cl-assert update-callback)
+  (let ((cb-list (gethash file-id telega--files-updates)))
+    (unless (memq update-callback cb-list)
+      (puthash file-id (cons update-callback cb-list)
+               telega--files-updates))))
+
+(defun telega-file--del-update-callback (file-id update-callback)
+  "Delete UPDATE-CALLBACK from callbacks for FILE-ID callbacks."
+  (declare (indent 1))
+  (cl-assert update-callback)
+  (let ((left-cbs (delq update-callback
+                        (gethash file-id telega--files-updates))))
+    (if left-cbs
+        (puthash file-id left-cbs telega--files-updates)
+      (remhash file-id telega--files-updates))
+    (telega-debug "%s %d: del CB, left callbacks %d"
+                  (propertize "FILE-UPDATE" 'face 'bold)
+                  file-id (length left-cbs))))
+
+(defun telega-file--update (file &optional omit-throttle-p)
   "FILE has been updated, call any pending callbacks."
   (let* ((file-id (plist-get file :id))
          (old-file (gethash file-id telega--files))
@@ -79,16 +100,17 @@ As side-effect might update root view, if current root view is \"Files\"."
           ;; Throttle only if `:downloaded_size'/`:uploaded_size'
           ;; property advances more then 1/100s part of the file size
           ;; See https://github.com/zevlg/telega.el/issues/164
-          (or (and (telega-file--uploading-p file)
-                   (telega-file--uploading-p old-file)
-                   (< (- (telega-file--uploading-progress file)
-                         (telega-file--uploading-progress old-file))
-                      0.01))
-              (and (telega-file--downloading-p file)
-                   (telega-file--downloading-p old-file)
-                   (< (- (telega-file--downloading-progress file)
-                         (telega-file--downloading-progress old-file))
-                      0.01)))))
+          (and (not omit-throttle-p)
+               (or (and (telega-file--uploading-p file)
+                        (telega-file--uploading-p old-file)
+                        (< (- (telega-file--uploading-progress file)
+                              (telega-file--uploading-progress old-file))
+                           0.01))
+                   (and (telega-file--downloading-p file)
+                        (telega-file--downloading-p old-file)
+                        (< (- (telega-file--downloading-progress file)
+                              (telega-file--downloading-progress old-file))
+                           0.01))))))
     (unless throttle-p
       (telega-file--ensure file)
 
@@ -96,9 +118,10 @@ As side-effect might update root view, if current root view is \"Files\"."
              (left-cbs (cl-loop for cb in callbacks
                                 when (funcall cb file)
                                 collect cb)))
-        (telega-debug "%s %S started with %d callbacks, left %d callbacks"
+        (telega-debug "%s %S started with %d callbacks, left %d callbacks%s"
                       (propertize "FILE-UPDATE" 'face 'bold)
-                      file-id (length callbacks) (length left-cbs))
+                      file-id (length callbacks) (length left-cbs)
+                      (if omit-throttle-p " (forced)" ""))
         (if left-cbs
             (puthash file-id left-cbs telega--files-updates)
           (remhash file-id telega--files-updates))
@@ -108,95 +131,91 @@ As side-effect might update root view, if current root view is \"Files\"."
           (run-hook-with-args 'telega-file-downloaded-hook file))
         ))))
 
-(defun telega-file--callback-wrap (callback check-fun)
-  "Wrapper for CALLBACK.
-Removes callback in case downloading is canceled or completed."
-  (when callback
-    (lambda (file)
-      (funcall callback file)
-      (funcall check-fun file))))
-
-(defun telega-file--ensure-update-callback (file-id update-callback)
-  "Ensure FILE-ID is monitored with UPDATE-CALLBACK."
-  (cl-assert update-callback)
-  (let ((cb-list (gethash file-id telega--files-updates)))
-    (unless (memq update-callback cb-list)
-      (puthash file-id (cons update-callback cb-list)
-               telega--files-updates))))
-
-(defun telega-file--download (file &optional priority callback
-                                   &rest parts)
+(cl-defun telega-file--download (file &key priority offset limit
+                                      update-callback)
   "Download file denoted by FILE-ID.
 PRIORITY - (1-32) the higher the PRIORITY, the earlier the file
 will be downloaded. (default=1)
-Run CALLBACK every time FILE gets updated.
+Run UPDATE-CALLBACK every time FILE gets updated.
 To cancel downloading use `telega--cancelDownloadFile', it will
-remove the callback as well.
-PARTS - list of file parts to download sequentually."
-  (declare (indent 2))
+remove the UPDATE-CALLBACK as well.
+OFFSET and LIMIT specifies file part to download."
+  (declare (indent 1))
   ;; - If file already downloaded, then just call the callback
   ;; - If file already downloading, then just install the callback
   ;; - If file can be downloaded, then start downloading file and
   ;;   install callback after file started downloading
   (let* ((file-id (plist-get file :id))
-         (dfile (telega-file-get file-id))
-         (cbwrap (telega-file--callback-wrap
-                  callback 'telega-file--downloading-p)))
+         (dfile (or (telega-file-get file-id 'locally) file)))
     (cond ((telega-file--downloaded-p dfile)
-           (when cbwrap
-             (funcall cbwrap dfile)))
+           (when update-callback
+             (funcall update-callback dfile)))
 
-          ((or (telega-file--downloading-p dfile)
-               (telega-file--can-download-p dfile))
-           (when cbwrap
-             (telega-file--ensure-update-callback file-id cbwrap))
+          ((telega-file--downloading-p dfile)
+           (when update-callback
+             (telega-file--add-update-callback file-id
+               (lambda (file)
+                 (funcall update-callback file)
+                 (telega-file--downloading-p file)))))
 
-           (unless (telega-file--downloading-p dfile)
-             (let ((next-parts (cdr parts)))
-               (telega--downloadFile file-id
-                 :priority priority
-                 :offset (car (car parts))
-                 :limit (cdr (car parts))
-                 :sync-p next-parts
-                 ;; NOTE: Continue downloading other parts
-                 ;; If downloading is canceled, callback is not called,
-                 ;; this is exactly what we want
-                 :callback
-                 (lambda (downfile)
-                   ;; NOTE: update callback maybe deleted,
-                   ;; before file actually starts
-                   ;; downloading
-                   (when (and cbwrap (not next-parts))
-                     (telega-file--ensure-update-callback file-id cbwrap))
-                   (telega-file--update downfile)
-                   (when next-parts
-                     (apply #'telega-file--download downfile
-                            priority callback next-parts))))))))))
+          ((telega-file--can-download-p dfile)
+           ;; NOTE: There might be pending updateFile event after
+           ;; calling `telega--cancelDownloadFile', and it will remove
+           ;; our newly installed callback, so we install it
+           ;; permanently (by returning t) and remove after
+           ;; `telega--downloadFile' completes
+           (let ((cb (when update-callback
+                       (lambda (file)
+                         (funcall update-callback file)
+                         t))))
+             (when cb
+               (telega-file--add-update-callback file-id cb))
 
-(defun telega-file--upload-internal (file &optional callback)
-  "Monitor FILE uploading progress by installing CALLBACK."
-  (declare (indent 1))
-  (let* ((file-id (plist-get file :id))
-         (cbwrap (telega-file--callback-wrap
-                  callback 'telega-file--uploading-p)))
-    (if (telega-file--uploaded-p file)
-        (when cbwrap
-          (funcall cbwrap file))
+             (telega--downloadFile file-id
+               :priority priority
+               :offset offset
+               :limit limit
+               :sync-p t
+               :callback
+               (when cb
+                 (lambda (file-or-error)
+                   (unless (telega--tl-error-p file-or-error)
+                     (telega-file--update file-or-error 'force))
+                   (telega-file--del-update-callback file-id cb)))))))))
 
-      (when cbwrap
-        (let ((cb-list (gethash file-id telega--files-updates)))
-          (puthash file-id (cons cbwrap cb-list)
-                   telega--files-updates))))
-    file))
+;; NOTE: `telega--downloadFile' downloads data in pretty random order
+;; Use `telega-file--split-to-parts' to split file to parts for
+;; sequentual downloading.
+(defun telega-file--split-to-parts (file chunk-size)
+  "Split FILE by CHUNK-SIZE and return parts list."
+  (let ((size (telega-file--size file))
+        (parts nil))
+    (while (> size 0)
+      (setq size (- size chunk-size))
+      (when (< size 0)
+        (setq chunk-size (+ chunk-size size)
+              size 0))
+      (setq parts (cons (cons size chunk-size) parts)))
+    parts))
 
-(defun telega-file--upload (filename &optional file-type priority callback)
+(cl-defun telega-file--upload (filename &key file-type priority
+                                        update-callback)
   "Upload FILENAME to the cloud.
 Return file object, obtained from `telega--preliminaryUploadFile'."
-  (declare (indent 3))
-  (let ((file (telega--preliminaryUploadFile
-               (expand-file-name filename) file-type priority)))
-    (telega-file--upload-internal file callback)
-    file))
+  (declare (indent 1))
+  (let ((ufile (telega--preliminaryUploadFile (expand-file-name filename)
+                 :file-type file-type
+                 :priority priority)))
+    (if (telega-file--uploaded-p ufile)
+        (when update-callback
+          (funcall update-callback ufile))
+
+      (when update-callback
+        (telega-file--add-update-callback (plist-get ufile :id)
+          (lambda (file)
+            (funcall update-callback file)
+            (telega-file--uploading-p file))))
+      ufile)))
 
 
 ;;; Photos
@@ -292,7 +311,9 @@ By default LIMITS is `telega-photo-size-limits'."
 If FOR-MSG is non-nil, then FOR-MSG is message containing PHOTO."
   (let* ((hr (telega-photo--highres photo))
          (hr-file (telega-file--renew hr :photo)))
-    (telega-file--download hr-file 32
+    (telega-file--download hr-file
+      :priority 32
+      :update-callback
       (lambda (tl-file)
         (when for-msg
           (telega-msg-redisplay for-msg))
@@ -617,9 +638,11 @@ Default is `:telega-image'."
   (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image)))
         (simage (funcall (cdr obj-spec) (car obj-spec) file)))
     ;; NOTE: Sometimes `create' function returns nil results
+    ;; Probably, because Emacs has no access to the image file while
+    ;; trying to convert sticker from webp to png
     (when (and telega-use-images (not simage))
-      (error "telega: [BUG] Image create (%S %S %S) -> nil"
-             (cdr obj-spec) (car obj-spec) file))
+      (error "telega: [BUG] Image create (%S %S) -> nil"
+             (car obj-spec) file))
 
     (unless (equal cached-image simage)
       ;; Update the image
@@ -653,14 +676,16 @@ Default is `:telega-image'."
         (setq cached-image
               (telega-media--image-update obj-spec media-file cache-prop))
 
-        ;; Possible initiate file downloading
+        ;; Possibly initiate file downloading
         (when (and telega-use-images
                    (or (telega-file--need-download-p media-file)
                        (telega-file--downloading-p media-file)))
-          (telega-file--download media-file nil
+          (telega-file--download media-file
+            :update-callback
             (lambda (dfile)
-              (telega-media--image-update obj-spec dfile cache-prop)
-              (force-window-update))))))
+              (when (telega-file--downloaded-p dfile)
+                (telega-media--image-update obj-spec dfile cache-prop)
+                (force-window-update)))))))
     cached-image))
 
 (defun telega-photo--image (photo limits)
@@ -679,16 +704,16 @@ Default is `:telega-image'."
               ;; 2) Thumbnail is downloaded, use it
               ;; 2.5) Minithumbnail is available, use it
               ;; 3) FILE downloading, fallback to progress svg
-              (let ((best-file (telega-file--renew best :photo)))
-                (if (telega-file--downloaded-p best-file)
-                    (telega-thumb--create-image best best-file cheight)
+              (or (let ((best-file (telega-file--renew best :photo)))
+                    (when (telega-file--downloaded-p best-file)
+                      (telega-thumb--create-image best best-file cheight)))
                   (let* ((thumb (telega-photo--thumb photo))
                          (thumb-file (telega-file--renew thumb :photo)))
-                    (if (telega-file--downloaded-p thumb-file)
-                        (telega-thumb--create-image thumb thumb-file cheight)
-                      (if-let ((minithumb (plist-get photo :minithumbnail)))
-                          (telega-minithumb--create-image minithumb cheight)
-                        (telega-photo--progress-svg best cheight))))))))))
+                    (when (telega-file--downloaded-p thumb-file)
+                      (telega-thumb--create-image thumb thumb-file cheight)))
+                  (when-let ((minithumb (plist-get photo :minithumbnail)))
+                    (telega-minithumb--create-image minithumb cheight))
+                  (telega-photo--progress-svg best cheight))))))
 
     (telega-media--image
      (cons photo create-image-fun)
@@ -749,14 +774,15 @@ CHEIGHT specifies avatar height in chars, default is 2."
                             :clip-path "url(#clip)"))
 
       ;; Draw initials
-      (let ((font-size (/ ch 2))
-            (colors (telega-msg-sender-color sender)))
-        (svg-gradient svg "cgrad" 'linear
-                      (list (cons 0 (telega-color-name-as-hex-2digits
-                                     (or (nth 1 colors) "gray75")))
-                            (cons ch (telega-color-name-as-hex-2digits
-                                      (or (nth 0 colors) "gray25")))))
-        (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
+      (let* ((telega-palette-context 'avatar)
+             (palette (telega-msg-sender-palette sender))
+             (c1 (telega-color-name-as-hex-2digits
+                  (or (telega-palette-attr palette :background) "gray75")))
+             (c2 (telega-color-name-as-hex-2digits
+                  (or (telega-palette-attr palette :foreground) "gray25"))))
+        (svg-gradient svg "cgrad" 'linear (list (cons 0 c1) (cons ch c2))))
+      (svg-circle svg (/ svg-xw 2) (/ cfull 2) (/ ch 2) :gradient "cgrad")
+      (let ((font-size (/ ch 2)))
         (svg-text svg (telega-msg-sender-initials sender)
                   :font-size font-size
                   :font-weight "bold"
@@ -1049,7 +1075,9 @@ Update `:svg-image' when new image is received."
       (plist-put map :map-location loc)
       (plist-put map :photo map-file)
 
-      (telega-file--download map-file 32
+      (telega-file--download map-file
+        :priority 24
+        :update-callback
         (lambda (mfile)
           (when (telega-file--downloaded-p mfile)
             (let ((svg-image (plist-get map :svg-image))

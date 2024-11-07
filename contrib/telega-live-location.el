@@ -57,18 +57,15 @@ LOC should be the new location."
       (telega--setLocation telega-my-location))
 
     ;; Asynchronously update all live location messages
-    (telega--getActiveLiveLocationMessages
-     (lambda (messages)
-       (let ((geo-heading (or (geo-last-heading) 0))
-             (loc (nconc (list :@type "location") telega-my-location)))
-         (dolist (msg messages)
-           (telega--editMessageLiveLocation
-            msg loc
-            ;; NOTE: Convert half-circle azimuth (used by geo.el) to
-            ;; full-circle azimuth (used by TDLib)
-            :heading (round (if (< geo-heading 0)
-                                (+ 360 geo-heading)
-                              geo-heading)))))))))
+    (let ((geo-heading (or (geo-last-heading) 0))
+          (loc (nconc (list :@type "location") telega-my-location)))
+    (seq-doseq (ll-msg telega--live-location-messages)
+      (telega--editMessageLiveLocation ll-msg loc
+        ;; NOTE: Convert half-circle azimuth (used by geo.el) to
+        ;; full-circle azimuth (used by TDLib)
+        :heading (round (if (< geo-heading 0)
+                            (+ 360 geo-heading)
+                          geo-heading)))))))
 
 (defun telega-live-location--read-location-advice (prompt &rest args)
   "Advice for `telega-read-live-location'.

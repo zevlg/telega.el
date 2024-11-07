@@ -569,7 +569,6 @@ Use ~telega-story-match-p~ to match a story.
 - {{{user-option(telega-filter-default, 2)}}}
 - {{{user-option(telega-filters-custom, 2)}}}
 - {{{user-option(telega-use-tracking-for, 2)}}}
-- {{{user-option(telega-rainbow-color-custom-for, 2)}}}
 - {{{user-option(telega-chat-group-messages-for, 2)}}}
 - {{{user-option(telega-chat-show-deleted-messages-for, 2)}}}
 - {{{user-option(telega-root-view-grouping-alist, 2)}}}

@@ -119,9 +119,7 @@ If PROXY is nil, then ping a Telegram server without a proxy."
   "Search for emojis by TEXT keywords.
 Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
   (with-telega-server-reply (reply)
-      (mapcar (lambda (emoji)
-                (telega--desurrogate-apply emoji 'no-props))
-              (plist-get reply :emojis))
+      (plist-get reply :emoji_keywords)
 
     (list :@type "searchEmojis"
           :text text
@@ -368,6 +366,15 @@ DATE is a unix timestamp."
           :chat_id chat-id
           :message_ids (apply #'vector message-ids))
     callback))
+
+(defun telega--getMessageProperties (msg &optional callback)
+  "Return properties of a message."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getMessageProperties"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))
+   callback))
 
 (cl-defun telega--getMessageLink (msg &key for-album-p for-thread-p
                                       media-timestamp)
@@ -771,6 +778,16 @@ Photo and Video files have attached sticker sets."
 
     (list :@type "getRecentInlineBots")
     callback))
+
+(defun telega--getLinkPreview (fmt-text link-preview-options &optional callback)
+  "Return a link preview by the text of a message.
+Do not call this function too often. Returns a 404 error if the text
+has no link preview."
+  (telega-server--call
+   (list :@type "getLinkPreview"
+         :text fmt-text
+         :link_preview_options link-preview-options)
+   callback))
 
 (defun telega--getWebPageInstantView (url &optional partial)
   "Return instant view for the URL.
@@ -1609,6 +1626,14 @@ default `telega-file--update' is called."
             (list :synchronous (if sync-p t :false))))
    (or callback (when sync-p 'telega-file--update))))
 
+(defun telega--getFileDownloadedPrefixSize (file &optional offset callback)
+  (declare (indent 2))
+  (telega-server--call
+   (list :@type "getFileDownloadedPrefixSize"
+         :file_id (plist-get file :id)
+         :offset (or offset 0))
+   callback))
+  
 (defun telega--cancelDownloadFile (file &optional only-if-pending callback)
   "Stop downloading the FILE.
 If ONLY-IF-PENDING is non-nil then stop downloading only if it
@@ -1647,15 +1672,19 @@ TDLib 1.8.2"
          :priority (or priority 1))
    callback))
 
-(defun telega--preliminaryUploadFile (filename &optional file-type priority)
+(cl-defun telega--preliminaryUploadFile (filename &key file-type priority
+                                                  callback)
   "Asynchronously upload file denoted by FILENAME.
-FILE-TYPE is one of `photo', `animation', etc
+
+FILE-TYPE is one of `Photo', `Animation', etc.
 PRIORITY is same as for `telega-file--download'."
+  (declare (indent 1))
   (telega-server--call
    (list :@type "preliminaryUploadFile"
          :file (list :@type "inputFileLocal" :path filename)
          :file_type (list :@type (format "fileType%S" (or file-type 'Unknown)))
-         :priority (or priority 1))))
+         :priority (or priority 1))
+   callback))
 
 (defun telega--cancelPreliminaryUploadFile (file)
   "Stop uploading FILE."
@@ -1736,6 +1765,7 @@ message uppon message is created."
                                      options send-copy remove-caption
                                      &key callback sync-p)
   "Forward MESSAGES FROM-CHAT into CHAT."
+  (declare (indent 3))
   (telega-server--call
    (nconc (list :@type "forwardMessages"
                 :chat_id (plist-get chat :id)
@@ -1769,6 +1799,7 @@ HEADING - the new direction in which the location moves, in degrees;
 1-360. Pass 0 if unknown.
 PROXIMITY-ALERT-RADIUS - the new maximum distance for proximity
 alerts, in meters (0-100000). Pass 0 if the notification is disabled."
+  (declare (indent 2))
   (let ((content (plist-get msg :content)))
     ;; Keep heading/proximity-alert-radius values if not explicitly
     ;; specified
@@ -1836,14 +1867,6 @@ MSG must be previously scheduled."
     (list :@type "searchChatRecentLocationMessages"
           :chat_id (plist-get chat :id)
           :limit 20)
-    callback))
-
-(defun telega--getActiveLiveLocationMessages (&optional callback)
-  "Return list of messages with active live locatins."
-  (with-telega-server-reply (reply)
-      (append (plist-get reply :messages) nil)
-
-    (list :@type "getActiveLiveLocationMessages")
     callback))
 
 (defun telega--deleteMessages (messages &optional revoke)
@@ -1984,11 +2007,13 @@ LIMIT defaults to 200."
    (list :@type "sharePhoneNumber"
          :user_id (plist-get user :id))))
 
-(defun telega--searchUserByPhoneNumber (phone-number &optional callback)
+(cl-defun telega--searchUserByPhoneNumber (phone-number &key only-local-p
+                                                        callback)
   "Search a user by their PHONE-NUMBER."
   (declare (indent 1))
   (telega-server--call
    (list :@type "searchUserByPhoneNumber"
+         :only_local (if only-local-p t :false)
          :phone_number phone-number)
    callback))
 
@@ -2037,32 +2062,6 @@ with list of chats received."
     (list :@type "searchChatsOnServer"
           :query query
           :limit (or limit 200))
-    callback))
-
-(defun telega--setLocation (location)
-  "Changes the location of the current user.
-Needs to be called if `:is_location_visible' option from
-`telega--options' is non-nil."
-  (telega-server--send
-   (list :@type "setLocation"
-         :location (cons :@type (cons "location" location)))))
-
-(defun telega--searchChatsNearby (location &optional callback)
-  "Returns a list of chats nearby LOCATION.
-Distance info is stored in `telega--nearby-chats'."
-  (declare (indent 1))
-
-  (setq telega--nearby-chats nil)
-  (with-telega-server-reply (reply)
-      (mapcar (lambda (nbc)
-                (telega-chat-get
-                 (plist-get (telega-chat-nearby--ensure nbc) :chat_id)))
-              (append (plist-get reply :users_nearby)
-                      (plist-get reply :supergroups_nearby)
-                      nil))
-
-    (list :@type "searchChatsNearby"
-          :location (cons :@type (cons "location" location)))
     callback))
 
 (defun telega--getGroupsInCommon (with-user &optional limit callback)
@@ -2564,8 +2563,6 @@ ROW-SIZE - Number of reaction per row, 5-25."
     (msg &key tl-reaction-type offset limit callback)
   "Return reactions added for a message MSG, along with their sender."
   (declare (indent 1))
-  (unless (plist-get msg :can_get_added_reactions)
-    (error "Can't get added reactions for the message"))
 
   (telega-server--call
    (list :@type "getMessageAddedReactions"
@@ -2699,7 +2696,7 @@ TO-LANGUAGE-CODE is a two-letter ISO 639-1 language code. "
          :to_language_code to-language-code)
    callback))
 
-(defun telega--translateMessageText (msg to-language-code &key callback)
+(cl-defun telega--translateMessageText (msg to-language-code &key callback)
   (declare (indent 2))
   (telega-server--call
    (list :@type "translateMessageText"
@@ -3005,11 +3002,11 @@ Return list of available boost slots."
          :limit (or limit 100))
    callback))
 
-(defun telega--getPremiumGiveawayInfo (msg &optional callback)
-  "Get information about a Telegram Premium giveaway."
+(defun telega--getGiveawayInfo (msg &optional callback)
+  "Get information about a Telegram giveaway."
   (declare (indent 1))
   (telega-server--call
-   (list :@type "getPremiumGiveawayInfo"
+   (list :@type "getGiveawayInfo"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id))
    callback))

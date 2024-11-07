@@ -95,10 +95,6 @@ Use `telega-root-aux-inserters' to customize it.")
     ;;   {{{fundoc(telega-view-search, 2)}}}
     (define-key map (kbd "s") 'telega-view-search)
     ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-nearby,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-nearby, 2)}}}
-    (define-key map (kbd "n") 'telega-view-nearby)
-    ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-reset,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-reset, 2)}}}
     (define-key map (kbd "v") 'telega-view-reset)
@@ -283,6 +279,8 @@ Use `telega-root-aux-inserters' to customize it.")
 
 (defvar telega-root-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map "t" 'telega-chat-button-toggle-view)
+
     (define-key map "n" 'telega-button-forward)
     (define-key map "p" 'telega-button-backward)
     (define-key map [?\t] 'telega-button-forward)
@@ -300,6 +298,8 @@ Use `telega-root-aux-inserters' to customize it.")
 
     (define-key map (kbd "J") 'telega-chat-join-by-link)
     (define-key map (kbd "N") 'telega-chat-create)
+    (define-key map (kbd "+") 'telega-chat-create)
+
     ;; Commands to all currently filtered chats
 
     ;; NOTE: Deleting all chats is very-very-very dangerous, so
@@ -375,11 +375,7 @@ Global root bindings:
   ;; Ewoc for rootbuf auxiliary inserters
   (setq telega-root-aux--ewoc
         (ewoc-create (telega-ewoc--gen-pp #'telega-root-aux--pp) nil nil t))
-  ;; Status inserter always goes first
-  (ewoc-enter-last telega-root-aux--ewoc #'telega-ins--status)
-  ;; Then goes additional inserters
-  (dolist (aux-inserter telega-root-aux-inserters)
-    (ewoc-enter-last telega-root-aux--ewoc aux-inserter))
+  (telega-root-aux-redisplay)
   (goto-char (point-max))
 
   ;; Delim between ewocs
@@ -439,6 +435,8 @@ If ITEM is not given, then redisplay whole aux ewoc."
         ;; NOTE: `telega-root-aux-inserters' might have changed, so
         ;; recreate all items
         (telega-ewoc--clean telega-root-aux--ewoc)
+        ;; Status inserter always goes first
+        (ewoc-enter-last telega-root-aux--ewoc #'telega-ins--status)
         (dolist (aux-inserter telega-root-aux-inserters)
           (ewoc-enter-last telega-root-aux--ewoc aux-inserter))))))
 
@@ -645,6 +643,8 @@ Keep cursor position only if CHAT is visible."
 (defun telega-chat-button-toggle-view (chat)
   "Toogle view for CHAT button."
   (interactive (list (telega-chat-at (point))))
+  (unless (telega-chat-p chat)
+    (user-error "telega: No chat at point"))
   (if (telega-chat-match-p chat 'is-forum)
       (let ((topics-visible-p (not (plist-get chat :telega-topics-visible))))
         (when topics-visible-p
@@ -739,18 +739,6 @@ Adds CHAT to recently found chats list."
     (telega-root--chat-known-pp chat custom-inserter
                                 #'telega-root--global-chat-button-action)))
 
-(defun telega-root--nearby-chat-known-pp (chat &optional custom-inserter)
-  "Pretty printers for known CHAT, that is in nearby list."
-  (let ((visible-p (telega-chat-nearby-find (plist-get chat :id))))
-    (when visible-p
-      (telega-root--chat-known-pp
-       chat (or custom-inserter #'telega-ins--chat-nearby-2lines)))))
-
-(defun telega-root--nearby-global-chat-pp (chat &optional custom-inserter)
-  "Pretty printer for some, maybe unknown, nearby CHAT."
-  (telega-root--global-chat-pp
-   chat (or custom-inserter #'telega-ins--chat-nearby-2lines)))
-
 (defun telega-root--contact-pp (contact-user &optional custom-inserter)
   "Pretty printer for CONTACT-USER button shown in root buffer.
 CONTACT is some user you have exchanged contacts with."
@@ -769,15 +757,6 @@ CONTACT is some user you have exchanged contacts with."
                       telega-inserter-for-root-contact-button)
         :action #'telega-user-chat-with)
       (telega-ins "\n"))))
-
-(defun telega-root--nearby-contact-pp (contact-user &optional custom-inserter)
-  "Pretty printer for CONTACT-USER nearby."
-  (let* ((user-chat
-          (telega-chat-get (plist-get contact-user :id) 'offline))
-         (visible-p (when user-chat
-                      (telega-chat-nearby-find (plist-get user-chat :id)))))
-    (when visible-p
-      (telega-root--contact-pp contact-user custom-inserter))))
 
 (defun telega-root--chat-goto-last-message (chat)
   "Goto last message in the CHAT."
@@ -820,7 +799,7 @@ CONTACT is some user you have exchanged contacts with."
   "Inserter for the telega status.
 Status values are hold in the `telega--status' and
 `telega--status-aux' variables."
-  (telega-ins "Status")
+  (telega-ins-i18n "telega_status")
   (when-let (account (telega-account-current))
     (let ((user-me (telega-user-me 'offline)))
       (telega-ins " (")
@@ -1216,7 +1195,7 @@ If IN-P is non-nil then it is `focus-in', otherwise `focus-out'."
       (telega-ins--with-face 'bold
         (telega-ins (if (listp view-name) (cadr view-name) view-name)))
       (telega-ins " ")
-      (telega-ins--box-button "Reset"
+      (telega-ins--box-button (telega-i18n "lng_signin_reset")
         :action #'telega-view-reset)
       (telega-ins " "))
     (telega-ins "\n")))
@@ -1379,7 +1358,7 @@ VIEW-FILTER is additional chat filter for this root view."
 
   (telega-root-view--apply
    (list 'telega-view-search
-         (concat "Search"
+         (concat (telega-i18n "lng_dlg_filter")
                  (unless (string-empty-p query)
                    (format " \"%s\"" query)))
          (list :name "root"
@@ -1402,7 +1381,7 @@ VIEW-FILTER is additional chat filter for this root view."
                :on-user-update #'telega-root--contact-on-user-update)
          (list :name "recent"
                :pretty-printer #'telega-root--global-chat-pp
-               :header "RECENT"
+               :header (upcase (telega-i18n "lng_recent_title"))
                :search-query query
                :sorter #'telega-chat>
                :loading (telega--searchRecentlyFoundChats query nil
@@ -1438,10 +1417,10 @@ VIEW-FILTER is additional chat filter for this root view."
   ;; phone number
   (when (string-match-p "+?[0-9]+" query)
     (telega--searchUserByPhoneNumber query
-      (lambda (user)
-        (unless (telega--tl-error-p user)
-          (with-telega-root-view-ewoc "contacts" ewoc
-            (ewoc-enter-first ewoc user))))))
+      :callback (lambda (user)
+                  (unless (telega--tl-error-p user)
+                    (with-telega-root-view-ewoc "contacts" ewoc
+                      (ewoc-enter-first ewoc user))))))
 
   (telega-root--messages-search)
   (telega-root--outgoing-doc-messages-search)
@@ -1468,58 +1447,6 @@ If QUERY is empty string, then show all contacts."
                :on-chat-update #'telega-root--contact-on-chat-update
                :on-user-update #'telega-root--contact-on-user-update))
    ))
-
-(defun telega-root--nearby-on-chat-update (ewoc-name ewoc chat)
-  "Update nearby CHAT in EWOC, chat dirtiness is cased by EVENTS."
-  (when (telega-chat-nearby-find (plist-get chat :id))
-    (telega-root--on-chat-update0 ewoc-name ewoc chat)))
-
-(defun telega-root--nearby-sorter (chat1 chat2)
-  "Sorter for nearby chats CHAT1 and CHAT2."
-  (let ((telega--sort-criteria
-         (append telega--sort-criteria '(nearby-distance))))
-    (telega-chat> chat1 chat2)))
-
-(defun telega-root--nearby-chats-add (chats)
-  "Mark all nearby chats as dirty and update them."
-  (telega-root-view--ewoc-loading-done "global")
-  (dolist (chat chats)
-    (telega-chat--mark-dirty chat))
-
-  (telega-chats-dirty--update)
-  (telega-filters--redisplay))
-
-(defun telega-view-nearby ()
-  "View contacts and chats nearby `telega-my-location'."
-  (interactive)
-  (unless telega-my-location
-    (user-error "`telega-my-location' is unset, can't search nearby chats"))
-
-  (telega-root-view--apply
-   (list 'telega-view-nearby
-         (concat "Nearby " (telega-location-to-string telega-my-location))
-         (list :name "root"
-               :pretty-printer #'telega-root--nearby-chat-known-pp
-               :sorter #'telega-chat>
-               :items telega--ordered-chats
-               :on-chat-update #'telega-root--any-on-chat-update)
-         (list :name "contacts"
-               :pretty-printer #'telega-root--nearby-contact-pp
-               :header "CONTACTS NEARBY"
-               :sorter #'telega-user-cmp-by-status
-               :loading (telega--getContacts
-                         (apply-partially
-                          #'telega-root-view--ewoc-loading-done "contacts"))
-               :on-chat-update #'telega-root--contact-on-chat-update
-               :on-user-update #'telega-root--contact-on-user-update)
-         (list :name "global"
-               :pretty-printer #'telega-root--nearby-global-chat-pp
-               :header "CHATS NEARBY"
-               :sorter #'telega-root--nearby-sorter
-               :loading (telega--searchChatsNearby telega-my-location
-                          #'telega-root--nearby-chats-add)
-               :on-chat-update #'telega-root--nearby-on-chat-update)
-         )))
 
 (defun telega-view-last-messages ()
   "View last messages in the chats."
@@ -1999,7 +1926,7 @@ Default Disable Notification setting"))
              :action #'telega--cancelDownloadFile))
           ((eq 'telega-file--partially-downloaded-p predicate)
            (telega-ins "  ")
-           (telega-ins--box-button (telega-i18n "telega_media_resume_download")
+           (telega-ins--box-button (telega-i18n "lng_media_download")
              :value file
              :action #'telega-file--download)))
     (when telega-debug

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.291)
+#+title: Telega Manual (v0.8.390)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -244,7 +244,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version greater or equal to 1.8.29.
+version greater or equal to 1.8.39.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
@@ -462,14 +462,13 @@ Default value: "~/.telega"
 - User Option: ~telega-options-plist~ 
 
   Plist of options to set.
-  To use custom language pack (from "tdesktop" localization target),
-  add ~:language_pack_id~ option.
-  Only writable options can be set.  See: https://core.telegram.org/tdlib/options 
+  Only writable options can be set.
+  See https://core.telegram.org/tdlib/options 
 
   Default value: 
   #+begin_src emacs-lisp
-    (:online t :localization_target "tdesktop" :use_storage_optimizer
-             :false :ignore_file_names :false)
+    (:online t :localization_target "tdesktop" :language_pack_id "en"
+             :use_storage_optimizer :false :ignore_file_names :false)
   #+end_src
 
 - User Option: ~telega-proxies~ 
@@ -851,9 +850,6 @@ view.
 - @@html:<kbd>@@s@@html:</kbd>@@, @@html:<kbd>@@v s@@html:</kbd>@@ (~telega-view-search~) :: 
      View ~QUERY~ search results.
 
-- @@html:<kbd>@@v n@@html:</kbd>@@ (~telega-view-nearby~) :: 
-     View contacts and chats nearby ~telega-my-location~.
-
 - @@html:<kbd>@@v v@@html:</kbd>@@ (~telega-view-reset~) :: 
      Reset rootview to the default value.
 
@@ -1070,6 +1066,9 @@ List of temexes you can apply to any TDLib object:
 - (ids ~ID-LIST~...) :: 
      Matches if TDLib object's id is in the ~ID-LIST~.
 
+- (tl-type ~TL-TYPE~...) :: 
+     Matches if ~OBJ~ is a TDLib object and its type is in the ~TYPES-LIST~.
+
 ** List of Chat Temexes
 :PROPERTIES:
 :CUSTOM_ID: list-of-chat-temexes
@@ -1093,9 +1092,6 @@ Use ~telega-chat-match-p~ to match a chat.
 
 - (search ~QUERY~), @@html:<kbd>@@/ s@@html:</kbd>@@ (~telega-filter-by-search~) :: 
      Matches if chat maches search QUERY.
-
-- nearby, @@html:<kbd>@@/ n@@html:</kbd>@@ (~telega-filter-by-nearby~) :: 
-     Matches if chat is nearby ~telega-my-location~.
 
 - (custom ~NAME~), @@html:<kbd>@@/ C@@html:</kbd>@@ (~telega-filter-by-custom~) :: 
      Matches if custom filter with ~NAME~ matches.
@@ -1322,6 +1318,7 @@ Use ~telega-msg-match-p~ to match a message.
 
 - (type ~MSG-TYPE-LIST~) :: 
      Matches if message's content type is one of ~MSG-TYPE-LIST~.
+     Return message's content if matches.
 
      Every message has a content type.  Most notable message types
      are: ~Text~, ~Animation~, ~Audio~, ~Document~, ~Photo~,
@@ -1340,11 +1337,18 @@ Use ~telega-msg-match-p~ to match a message.
 - is-reply-to-msg :: 
      Matches if message is a reply to some message.
 
+- is-reply-to-quote :: 
+     Matches if message is a reply to a quote from some message.
+
 - is-reply-to-story :: 
      Matches if message is a reply to a story.
 
+- is-forwarded :: 
+     Matches if message is a forwarded message.
+
 - post-with-comments :: 
      Matches if message is a channel post that can be commented.
+     Return messageReplyInfo.
 
 - is-topic :: 
      Matches if message is a forum topic message.
@@ -1352,12 +1356,13 @@ Use ~telega-msg-match-p~ to match a message.
 - is-thread :: 
      Matches if message belongs to or starts a messages thread.
 
-- (web-page [ ~PROPNAME~ ]) :: 
+- (link-preview ~LP-TYPES~ ]) :: 
      Matches messages with a webpage preview.
-     If ~PROPNAME~ is specified, then match only message with a webpage
-     having ~PROPNAME~ property.
+     If PROPNAME is specified, then match only message with a webpage
+     having PROPNAME property.
+     Return LinkPreviewType TL structure if matches.
 
-- (outgoing [ ~ANY-STATE-P~ ]) :: 
+- (is-outgoing [ ~ANY-STATE-P~ ]) :: 
      Matches if message is an outgoing message.
      This temex differs from ~(sender me)~, matching any outgoing messages,
      including anonymous messages to channels created by me.
@@ -1534,8 +1539,8 @@ channels.
 
 Use ~telega-story-match-p~ to match a story.
 
-- (chat ~CHAT-TEMEX~) :: 
-     Matches if story is sent by CHAT matching ~CHAT-TEMEX~.
+- (sender ~SENDER-TEMEX~) :: 
+     Matches if story is sent by sender matching ~SENDER-TEMEX~.
 
 - (contains ~REGEXP~) :: 
      Matches if story's caption contains ~REGEXP~.
@@ -1583,20 +1588,14 @@ Use ~telega-story-match-p~ to match a story.
   `telega-tracking` face. 
 
   Default value: ~nil~
-- User Option: ~telega-rainbow-color-custom-for~ 
-
-  List of custom colors for chats.
-  Each element is cons cell, where car is Chat Filter, and cdr is color. 
-
-  Default value: ~((saved-messages))~
 - User Option: ~telega-chat-group-messages-for~ 
 
-  Chat Filter for chats where to group messages by sender. 
+  Chat Temex for chats where to group messages by sender. 
 
   Default value: ~(not (or saved-messages (type channel bot)))~
 - User Option: ~telega-chat-show-deleted-messages-for~ 
 
-  Chat Filter for chats where to show deleted messages in chatbuf. 
+  Chat Temex for chats where to show deleted messages in chatbuf. 
 
   Default value: ~nil~
 - User Option: ~telega-root-view-grouping-alist~ 
@@ -1802,10 +1801,6 @@ For other sorting keybindings see below.
      Sort chats by visibility in other window in DWIM style.
      See https://github.com/zevlg/telega.el/issues/165
 
-- ~nearby-distance~ :: 
-     Sort chats by nearby distance to me.
-     See https://github.com/zevlg/telega.el/issues/165
-
 - ~chats-in-common~ :: 
      Sort by number of chats in common.
      See https://github.com/zevlg/telega.el/issues/218
@@ -1918,6 +1913,9 @@ messages:
 - @@html:<kbd>@@M-g v@@html:</kbd>@@ (~telega-chatbuf-goto-video-chat~) :: 
      Goto video chat associated with the chat.
      See [[#video-chats][Video Chats]] for details.
+
+- @@html:<kbd>@@M-g o@@html:</kbd>@@ (~telega-chatbuf-next-outgoing~) :: 
+     Goto next outgoing (sent by me) message in the chatbuf.
 
 - @@html:<kbd>@@M-g s@@html:</kbd>@@ (~telega-chatbuf-inplace-search~) :: 
      Search backward in the chatbuf.
@@ -2052,6 +2050,7 @@ You can attach various media into chatbuf input, using next bindings:
 
 - @@html:<kbd>@@C-c C-e@@html:</kbd>@@ (~telega-chabuf-input-formatting-set~) :: 
      Attach formatting to the region in the chatbuf input.
+     Use @@html:<kbd>@@C-u@@html:</kbd>@@ to clear formatting from selected region.
 
 Text following attached media will be a media caption.
 
@@ -2193,12 +2192,12 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
-@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+ (~telega-msg-forward-marked-or-at-point~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
+@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <telega-msg-mark-toggle>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
-@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-marked-or-at-point~)
+ (~telega-msg-forward-marked-or-at-point~)
 on one of the messages.
 
 There are few options how you can affect the way a message is forwarded:
@@ -2214,10 +2213,10 @@ There are few options how you can affect the way a message is forwarded:
 :END:
 
 To delete a message, put cursor under the message you want to delete and press
-@@html:<kbd>@@DEL@@html:</kbd>@@, @@html:<kbd>@@d@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <delete>@@html:</kbd>@@ (~telega-msg-delete-marked-or-at-point~).
+ (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
-with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <unmark>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
+with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <telega-msg-mark-toggle>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
 
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
@@ -2229,7 +2228,7 @@ killed. This is controlled using custom variable:
 
 - User Option: ~telega-chat-show-deleted-messages-for~ 
 
-  Chat Filter for chats where to show deleted messages in chatbuf. 
+  Chat Temex for chats where to show deleted messages in chatbuf. 
 
   Default value: ~nil~
 
@@ -2317,11 +2316,13 @@ with
      syntax. Here is the screenshot, showing use of this backend:
      [[file:https://zevlg.github.io/telega/completing-usernames.jpg]]
 
+     Use ~@@~ prefix to complete chat admins only.
+
 Customizable options:
 - User Option: ~telega-company-username-prefer-name~ 
 
   Preferred formatting argument to the ~telega-user-title~ to complete user.
-  Frist giving non-nil result will be used. 
+  First giving non-nil result will be used. 
 
   Default value: ~(username first-name last-name)~
 - User Option: ~telega-company-username-show-avatars~ 
@@ -2471,7 +2472,7 @@ Chatbuf uses next bindings for message filtering:
 - @@html:<kbd>@@C-c C-r@@html:</kbd>@@ (~telega-chatbuf-inplace-search-query~) :: 
      Inplace search backward for the ~QUERY~.
      If @@html:<kbd>@@C-u@@html:</kbd>@@ is given, search for the messages
-     containing ~QUERY~ sent by specified sender.
+     containing ~QUERY~ sent by specified SENDER.
      To navigate across searching results use
      @@html:<kbd>@@M-g p@@html:</kbd>@@ and
      @@html:<kbd>@@M-g n@@html:</kbd>@@
@@ -3047,7 +3048,7 @@ Customizable options:
 
   Message Temex for messages to automatically play content for. 
 
-  Default value: ~(type Animation Sticker AnimatedEmoji)~
+  Default value: ~(type Animation Sticker AnimatedEmoji Gift)~
 - User Option: ~telega-autoplay-custom-emojis~ 
 
   Non-nil to automatically play this number of custom emojis in the message. 
@@ -3073,7 +3074,7 @@ if all next conditions are met:
 3. Last and new message are both text messages
 4. Last message can be edited
 5. Last and new messages are *not* replying to any message
-6. Last message has no associated web-page
+6. Last message has no associated link preview
 7. New message has no ~messageSendOptions~ to avoid squashing
    scheduled messages or similar
 8. New message is sent within ~telega-squash-message-within-seconds~
@@ -3167,9 +3168,7 @@ me]].
 :END:
 
 ~telega-my-location~ is used by =telega= to calculate distance to
-me for location messages.  Also, ~telega-my-location~ is used to
-search chats nearby me.  So, having it set to correct value is
-essential.  There is
+me for location messages.  There is
 [[#telega-live-locationel--manage-live-location-in-telega-using-geoel][contrib/telega-live-location.el]]
 which uses =geo.el= to actualize ~telega-my-location~, however it
 is not always possible to use it.

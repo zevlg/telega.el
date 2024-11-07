@@ -297,14 +297,6 @@ Example: 23 y.o. designer from San Francisco")
   :zero_value "{member_count} members"
   :other_value "{member_count} members, {count} online")
 
- ;; Chatbuf prompt
- ("telega_chat_prompt_broadcast"
-  :value "Broadcast")
- ("telega_chat_prompt_anonymous"
-  :value "Anonymous")
- ("telega_chat_prompt_comment"
-  :value "Comment")
-
  ;; queries to user
  ("telega_action_cant_undone"
   :value "This action cannot be undone")
@@ -616,7 +608,7 @@ Example: 23 y.o. designer from San Francisco")
  ("telega_enable_notification_help"
   :value "This message will pop notification on receiver side")
  ("telega_forward_new_caption_help"
-  :value "New caption for the forwarded message")
+  :value "New caption")
  ("telega_link_preview_options_help"
   :value "This message will have custom link preview options")
  ("telega_reset_notifications_help"
@@ -789,6 +781,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Archived")
  ("lng_filters_type_no_muted"
   :value "Muted")
+ ("lng_filters_name_unread"
+  :value "Unread")
  ("lng_filters_chats_count"
   :one_value "{count} chat"
   :other_value "{count} chats")
@@ -827,8 +821,12 @@ Example: 23 y.o. designer from San Francisco")
 
  ("lng_in_reply_to"
   :value "In reply to")
+ ("lng_reply_header_short"
+  :value "Reply")
  ("lng_edit_message"
   :value "Edit message")
+ ("lng_edit_error"
+  :value "You can't edit this message.")
  ("lng_edit_sign_messages"
   :value "Sign messages")
 
@@ -858,12 +856,16 @@ Example: 23 y.o. designer from San Francisco")
   :value "Delete")
  ("lng_context_select_msg"
   :value "Select")
+ ("lng_context_select_msg_bulk"
+  :value "Select up to this message")
  ("lng_context_disable_spoiler"
   :value "Remove Spoiler")
  ("lng_context_cancel_upload"
   :value "Cancel Upload")
  ("lng_context_cancel_download"
   :value "Cancel Download")
+ ("lng_context_report_msg"
+  :value "Report")
 
  ("lng_settings_sensitive_disable_filtering"
   :value "Disable filtering")
@@ -903,6 +905,8 @@ Example: 23 y.o. designer from San Francisco")
 
  ("lng_group_call_title"
   :value "Video Chat")
+ ("lng_group_call_title_channel"
+  :value "Live Stream")
  ("lng_group_call_end"
   :value "End Video Chat")
  ("lng_group_call_leave_title"
@@ -1050,6 +1054,8 @@ to start the topic.")
   :value "Join")
  ("lng_group_request_to_join"
   :value "Request to Join")
+ ("lng_group_invite_joined_status"
+  :value "joined {date}")
  ("lng_group_request_about_channel"
   :value "This channel accepts new subscribers only after they are approved by its admins.")
  ("lng_group_requests_pending"
@@ -1060,6 +1066,10 @@ to start the topic.")
   :value "Test invoice")
  ("lng_payments_invoice_label"
   :value "Invoice")
+ ("lng_payments_receipt_label"
+  :value "Receipt")
+ ("lng_payments_receipt_button"
+  :value "Receipt")
  ("lng_action_payment_done"
   :value "You successfully transferred {amount} to {user}")
  ("lng_action_payment_init_recurring"
@@ -1197,6 +1207,8 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "View background")
  ("lng_view_button_bot"
   :value "View bot")
+ ("lng_view_button_bot_app"
+  :value "Launch")
  ("lng_view_button_user"
   :value "Send message")
  ("lng_view_button_voice_chat_channel"
@@ -1205,19 +1217,35 @@ Telegram offers a free and unlimited service to hundreds of millions of users, w
   :value "Request to Join")
  ("lng_view_button_external_link"
   :value "Open link")
+ ("lng_view_button_iv"
+  :value "Instant View")
+ ("lng_view_button_giftcode"
+  :value "Open")
+ ("lng_view_button_emojipack"
+  :value "View emoji")
+
  ("lng_unblock_button"
   :value "Unblock")
-
  ("lng_forwarded"
   :value "Forwarded from {user}")
  ("lng_forwarded_channel"
   :value "Forwarded from {channel}")
+ ("lng_forward_title"
+  :value "Forward Message")
+ ("lng_forward_many_title"
+  :one_value "Forward {count} Message"
+  :other_value "Forward {count} Messages")
+ ("lng_share_message_to_many_chats"
+  :one_value "Message forwarded to **{count} chat**."
+  :other_value "Message forwarded to **{count} chats**.")
+ ("lng_share_messages_to_many_chats"
+  :one_value "Messages forwarded to **{count} chat**."
+  :other_value "Messages forwarded to **{count} chats**.")
+
  ("lng_schedule_at"
   :value "at")
  ("lng_media_download"
   :value "Download")
- ("telega_media_resume_download"
-  :value "Resume Download")
  ("lng_media_cancel"
   :value "Cancel")
  ("lng_media_file_title"
@@ -1498,6 +1526,11 @@ You can send them an invite link as message instead.")
  ("lng_prizes_title"
   :one_value "Giveaway Prize"
   :other_value "Giveaway Prizes")
+ ("lng_prizes_additional"
+  :one_value "**{count}** {prize}"
+  :other_value "**{count}** {prize}")
+ ("lng_prizes_additional_with"
+  :value "with")
  ("lng_prizes_about"
   :one_value "**{count}** Telegram Premium Subscription {duration}."
   :other_value "**{count}** Telegram Premium Subscriptions {duration}.")
@@ -1558,6 +1591,36 @@ You can send them an invite link as message instead.")
   :value "You won a prize in this giveaway {cup}")
  ("lng_prizes_you_didnt"
   :value "You didn't win a prize in this giveaway.")
+ ("lng_prizes_end_text"
+  :value "This giveaway was sponsored by {admins}.")
+ ("lng_prizes_admins_group"
+  :one_value "the admins of {channel}, who acquired **{count} Telegram Premium** subscription {duration} for its members"
+  :other_value "the admins of {channel}, who acquired **{count} Telegram Premium** subscriptions {duration} for its members")
+ ("lng_prizes_end_when_finish"
+  :value "On {date}, Telegram automatically selected {winners}.")
+ ("lng_prizes_end_activated"
+  :one_value "**{count}** winner already used their gift link."
+  :other_value "**{count}** of the winners already used their gift links.")
+
+ ("lng_prizes_results_title"
+  :value "Winners Selected!")
+ ("lng_prizes_results_about"
+  :one_value "**{count}** winner of the {link} was randomly selected by Telegram."
+  :other_value "**{count}** winners of the {link} were randomly selected by Telegram.")
+ ("lng_prizes_results_link"
+  :value "Giveaway")
+ ("lng_prizes_results_winners"
+  :value "Winners")
+ ("lng_prizes_results_all"
+  :value "All winners received gift links in private messages.")
+ ("lng_prizes_credits_about"
+  :one_value "**{amount}** will be distributed among {count} winner."
+  :other_value "**{amount}** will be distributed among {count} winners.")
+ ("lng_prizes_credits_about_single"
+  :value "**{amount}** will be distributed to the **1** winner.")
+ ("lng_prize_credits_amount"
+  :one_value "{count} Star"
+  :other_value "{count} Stars")
 
  ;; TODO: support messagePremiumGiftCode
  ("lng_prize_title"
@@ -1607,6 +1670,8 @@ You can send them an invite link as message instead.")
   :value "Link copied to clipboard.")
 
  ;; Misc
+ ("lng_photos_comment"
+  :value "Comment")
  ("lng_open_link"
   :value "Open")
  ("lng_channel_badge"
@@ -1619,6 +1684,13 @@ You can send them an invite link as message instead.")
   :value "Invite link")
  ("lng_from_draft"
   :value "Draft")
+ ("lng_views_tooltip"
+  :one_value "Views: {count}"
+  :other_value "Views: {count}")
+ ("lng_iv_wrong_layout"
+  :value "Wrong layout?")
+ ("lng_photo_caption"
+  :value "Caption")
 
  ("lng_usernames_activate_confirm"
   :value "Show")
@@ -1643,6 +1715,11 @@ You can send them an invite link as message instead.")
  ("lng_dlg_search_from"
   :value "From: {user}")
 
+ ("lng_preview_reply_to"
+  :value "Reply to {name}")
+ ("lng_preview_reply_to_quote"
+  :value "Reply to quote from {name}")
+
  ;; Chat Background
  ("lng_action_set_wallpaper"
   :value "{user} set a new wallpaper for this chat")
@@ -1663,11 +1740,43 @@ You can send them an invite link as message instead.")
  ("lng_action_gift_received_me"
   :value "You sent to {user} a gift for {cost}")
 
+ ;; messageGift
+ ("lng_action_gift_sent"
+  :value "You sent a gift for {cost}")
+ ("lng_action_gift_received"
+  :value "{user} sent you a gift for {cost}")
+ ("lng_action_gift_for_stars"
+  :one_value "{count} Star"
+  :other_value "{count} Stars")
+ ("lng_action_gift_got_subtitle"
+  :value "Gift from {user}")
+ ("lng_action_gift_got_stars_text"
+  :one_value "Display this gift on your page or convert it to **{count}** Star."
+  :other_value "Display this gift on your page or convert it to **{count}** Stars.")
+ ("lng_action_gift_sent_text"
+  :one_value "{user} can display this gift on their page or convert it to {count} Star."
+  :other_value "{user} can display this gift on their page or convert it to {count} Stars.")
+ ("lng_gift_stars_limited"
+  :value "limited")
+ ("lng_gift_limited_of_count"
+  :value "1 of {amount}")
+ ("lng_gift_limited_of_one"
+  :value "unique")
+ ("lng_credits_box_history_entry_gift_converted"
+  :value "Converted Gift")
+
+ ("lng_sticker_premium_view"
+  :value "View")
+
  ;; Link options
+ ("lng_link_header_short"
+  :value "Link")
  ("lng_link_options_header"
   :value "Link Preview Settings")
  ("lng_link_move_up"
   :value "Move Up")
+ ("lng_link_move_down"
+  :value "Move Down")
  ("lng_link_shrink_photo"
   :value "Shrink Photo")
  ("lng_link_remove"
@@ -1707,6 +1816,10 @@ You can send them an invite link as message instead.")
   :value "{user} is sending a voice message")
  ("lng_user_action_watching_animations"
   :value "watching {emoji}")
+ ("lng_user_action_upload_video"
+  :value "{user} is sending a video")
+ ("lng_user_action_choose_sticker"
+  :value "{user} is choosing a sticker")
 
  ;; Birthday
  ("lng_info_birthday_label"
@@ -1761,4 +1874,24 @@ You can send them an invite link as message instead.")
   :value "Port")
  ("lng_proxy_menu_delete"
   :value "Delete")
+ ("lng_proxy_box_status"
+  :value "Status")
+
+ ("lng_connecting"
+  :value "Connecting...")
+ ("lng_recent_title"
+  :value "Recent")
+ ("lng_signin_reset"
+  :value "Reset")
+
+ ("lng_paid_title"
+  :value "Paid Content")
+ ("lng_paid_price"
+  :value "Unlock for {price}")
+ ("lng_credits_box_out_media_user"
+  :one_value "Do you want to unlock {media} from {user} for **{count} Star**?"
+  :other_value "Do you want to unlock {media} from {user} for **{count} Stars**?")
+
+ ("lng_stats_overview_message_views"
+  :value "Views")
  )

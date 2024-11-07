@@ -108,14 +108,19 @@
     :replace "\\1/\\2"
     :svg-icon ("fa-brands/gitlab-rgb.svg" :scale 0.75))
    `(youtube
-     :regexp "^https?://www.youtube.com/watch.*[?&]v=\\([^&]+\\).+"
+     :regexp "^https?://\\(www\\.\\)?youtube.com/watch.*[?&]v=\\([^&]+\\).+"
      :symbol ,(all-the-icons-faicon "youtube-play")
-     :replace "YouTube#\\1"
+     :replace "\\2"
+     :svg-icon ("fa-brands/youtube-rgb.svg" :scale 0.6))
+   `(youtube-shorts
+     :regexp "^https?://\\(www\\.\\)?youtube.com/\\(shorts/[^&]+\\).+"
+     :symbol ,(all-the-icons-faicon "youtube-play")
+     :replace "\\2"
      :svg-icon ("fa-brands/youtube-rgb.svg" :scale 0.6))
    `(youtu-be
      :regexp "^https?://youtu.be/\\(.+\\)"
      :symbol ,(all-the-icons-faicon "youtube-play")
-     :replace "YouTube#\\1"
+     :replace "\\1"
      :svg-icon ("fa-brands/youtube-rgb.svg" :scale 0.6))
    `(wikipedia
      :regexp "^https?://\\(\\w+.\\)\\{0,2\\}wikipedia.org/wiki/\\(.+\\)"
@@ -147,47 +152,54 @@ chats matching this chat filter."
   :group 'telega-url-shorten)
 
 (defun telega-url-shorten--svg-icon (icon-name &rest props)
-  (unless (plist-get props :scale)
-    (setq props (plist-put props :scale 1.0)))
-  `(image :type svg :file ,(telega-etc-file icon-name)
-          :ascent center :height ,(telega-chars-xheight 1)
-          ,@props))
+  (telega-create-image (telega-etc-file icon-name) nil nil
+    :scale 1.0
+    :ascent 'center
+    :mask 'heuristic
+    :max-height (telega-ch-height 0.8)
+    :max-width (telega-cw-width 2)))
 
-(defun telega-url-shorten--e-t-p (old-e-t-p ent-type text)
+(defun telega-url-shorten--text-entity-apply (ent &optional object)
   "Change resulting `telega-display' property by shortening URL."
-  (let* ((result (funcall old-e-t-p ent-type text))
-         (result-td (plist-get result 'telega-display)))
-    (when (and result-td
-               (eq 'textEntityTypeUrl (telega--tl-type ent-type))
-               (not (telega--inhibit-telega-display-p 'telega-url-shorten)))
-      (when-let ((pmatch (cdr (cl-find result-td telega-url-shorten-regexps
-                                       :test (lambda (res pattern)
-                                               (string-match
-                                                (plist-get pattern :regexp)
-                                                res))
-                                       :key #'cdr))))
-        (plist-put result 'telega-display-by 'telega-url-shorten)
-        (plist-put result 'telega-display
-                   (concat (propertize
-                            (plist-get pmatch :symbol)
-                            'display (when (and telega-use-images
-                                                telega-url-shorten-use-images
-                                                (plist-get pmatch :svg-icon))
-                                       (apply #'telega-url-shorten--svg-icon
-                                              (plist-get pmatch :svg-icon))))
-                           (replace-match (plist-get pmatch :replace)
-                                          t nil result-td)))))
-    result))
+  (when (and telega-url-shorten-mode
+             (eq 'textEntityTypeUrl (telega--tl-type (plist-get ent :type)))
+             (not (telega--inhibit-telega-display-p 'telega-url-shorten)))
+    (let* ((beg (plist-get ent :offset))
+           (end (+ (plist-get ent :offset) (plist-get ent :length)))
+           (ent-text (telega--desurrogate-apply
+                      (if object
+                          (substring object beg end)
+                        (buffer-substring beg end))))
+           (su-spec (cdr (cl-find ent-text telega-url-shorten-regexps
+                                  :test (lambda (res pattern)
+                                          (string-match
+                                           (plist-get pattern :regexp) res))
+                                  :key #'cdr))))
+      (when su-spec
+        (put-text-property
+         beg end 'telega-display-by 'telega-url-shorten object)
+        (put-text-property
+         beg end 'telega-display
+         (concat (propertize
+                  (plist-get su-spec :symbol)
+                  'display (when (and telega-use-images
+                                      telega-url-shorten-use-images
+                                      (plist-get su-spec :svg-icon))
+                             (apply #'telega-url-shorten--svg-icon
+                                    (plist-get su-spec :svg-icon))))
+                 (replace-match (plist-get su-spec :replace)
+                                t nil ent-text))
+         object)))))
 
 ;;;###autoload
 (define-minor-mode telega-url-shorten-mode
   "Toggle URLs shortening mode."
   :init-value nil :group 'telega-modes
   (if telega-url-shorten-mode
-      (advice-add 'telega--entity-type-to-text-props
-                  :around #'telega-url-shorten--e-t-p)
-    (advice-remove 'telega--entity-type-to-text-props
-                   #'telega-url-shorten--e-t-p)))
+      (advice-add 'telega--text-entity-apply
+                  :after #'telega-url-shorten--text-entity-apply)
+    (advice-remove 'telega--text-entity-apply
+                   #'telega-url-shorten--text-entity-apply)))
 
 (defun telega-url-shorten-mode--maybe (&optional arg)
   (when (telega-chat-match-p telega-chatbuf--chat telega-url-shorten-mode-for)

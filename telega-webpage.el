@@ -100,13 +100,6 @@
       (error "No previous webpage in history"))
     (telega-webpage--history-show idx)))
 
-(defun telega-msg-button--iv-action (button)
-  "Open instant view when BUTTON is pressed."
-  (let* ((msg (button-get button :value))
-         (web-page (telega--tl-get msg :content :web_page)))
-    (funcall 'telega-webpage--instant-view (telega-tl-str web-page :url)
-             (plist-get web-page :site_name))))
-
 (defvar telega-webpage-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "g" 'telega-webpage-browse-url)
@@ -169,7 +162,7 @@ Keymap:
       (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks)))
     ))
 
-(defun telega-webpage-rticon--image (rt &optional limits)
+(defun telega-webpage-rticon--image (rt)
   "Return image representing rich text icon for RT."
   (let* ((doc (plist-get rt :document))
          (width (plist-get rt :width))
@@ -179,22 +172,19 @@ Keymap:
                    (list 1 1 (nth 2 telega-webpage-photo-size-limits)
                          (nth 3 telega-webpage-photo-size-limits))))
          (create-image-fun
-          (progn
-            (cl-assert (<= cheight (nth 3 limits)))
-            (lambda (_rtignored &optional _fileignored)
-              ;; 1) FILE downloaded, show FILE
-              ;; 2) Thumbnail is downloaded, use it
-              ;; 3) FILE downloading, fallback to progress svg
-              (let ((doc-file (telega-file--renew doc :document)))
-                (if (telega-file--downloaded-p doc-file)
-                    (telega-media--create-image doc-file width height cheight)
-                  (let* ((thumb (plist-get doc :thumbnail))
-                         (thumb-file (telega-file--renew thumb :photo)))
-                    (if (telega-file--downloaded-p thumb-file)
-                        (telega-thumb--create-image thumb thumb-file cheight)
-                      (telega-media--progress-svg
-                       doc-file width height cheight)))))))))
-
+          (lambda (_rtignored &optional _fileignored)
+            ;; 1) FILE downloaded, show FILE
+            ;; 2) Thumbnail is downloaded, use it
+            ;; 3) FILE downloading, fallback to progress svg
+            (let ((doc-file (telega-file--renew doc :document)))
+              (if (telega-file--downloaded-p doc-file)
+                  (telega-media--create-image doc-file width height cheight)
+                (let* ((thumb (plist-get doc :thumbnail))
+                       (thumb-file (telega-file--renew thumb :photo)))
+                  (if (telega-file--downloaded-p thumb-file)
+                      (telega-thumb--create-image thumb thumb-file cheight)
+                    (telega-media--progress-svg
+                     doc-file width height cheight))))))))
     (telega-media--image
      (cons rt create-image-fun)
      (cons doc :document)
@@ -241,19 +231,19 @@ Keymap:
     (richTexts
      (mapc #'telega-webpage--ins-rt (plist-get rt :texts)))
     (richTextBold
-     (telega-ins--with-attrs (list :face 'bold)
+     (telega-ins--with-face 'bold
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextItalic
-     (telega-ins--with-attrs (list :face 'italic)
+     (telega-ins--with-face 'italic
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextUnderline
-     (telega-ins--with-attrs (list :face 'underline)
+     (telega-ins--with-face 'underline
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextStrikethrough
-     (telega-ins--with-attrs (list :face 'telega-webpage-strike-through)
+     (telega-ins--with-face 'telega-webpage-strike-through
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextFixed
-     (telega-ins--with-attrs (list :face 'telega-webpage-fixed)
+     (telega-ins--with-face 'telega-webpage-fixed
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextUrl
      (let ((url (telega-tl-str rt :url)))
@@ -265,7 +255,7 @@ Keymap:
                  :action #'telega-browse-url)
          (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextEmailAddress
-     (telega-ins--with-attrs (list :face 'link)
+     (telega-ins--with-face 'telega-link
        (telega-webpage--ins-rt (plist-get rt :text))))
     (richTextSubscript
      (telega-ins--with-props '(display (raise -0.25))
@@ -276,7 +266,7 @@ Keymap:
        (telega-ins--with-face '(:height 0.5)
          (telega-webpage--ins-rt (plist-get rt :text)))))
     (richTextMarked
-     (telega-ins--with-attrs (list :face 'region)
+     (telega-ins--with-face 'telega-webpage-marked
        (telega-webpage--ins-rt (plist-get rt :text))))
     ))
 
@@ -327,7 +317,9 @@ Keymap:
   (let* ((pos (if (eq dir 'entered) (point) oldpos))
          (anim (get-text-property pos :telega-animation)))
     (if (eq dir 'entered)
-        (telega-file--download (telega-file--renew anim :animation) 32
+        (telega-file--download (telega-file--renew anim :animation)
+          :priority 32
+          :update-callback
           (lambda (file)
             (when (telega-file--downloaded-p file)
               (telega-ffplay-to-png (telega--tl-get file :local :path) "-an"
@@ -349,9 +341,12 @@ Keymap:
   (telega-ffplay-stop)
   (telega--cancelDownloadFile (plist-get anim :animation))
 
-  (telega-file--download (telega-file--renew anim :animation) 32
+  (telega-file--download (telega-file--renew anim :animation)
+    :priority 32
+    :update-callback
     (lambda (afile)
-      (telega-video-player-run (telega--tl-get afile :local :path)))))
+      (when (telega-file--downloaded-p afile)
+        (telega-video-player-run (telega--tl-get afile :local :path))))))
 
 (defun telega-webpage--ins-animation (animation)
   "Insert pageblock with ANIMATION."
@@ -371,27 +366,30 @@ Keymap:
     (pageBlockSubtitle
      (telega-webpage--ins-rt (plist-get pb :subtitle)))
     (pageBlockAuthorDate
-     (telega-ins--with-attrs (list :face 'telega-shadow)
-       (telega-ins "By ")
-       (telega-webpage--ins-rt (plist-get pb :author))
-       (telega-ins " • ")
+     (telega-ins--with-face 'telega-shadow
+       (telega-ins-prefix "By "
+         (when (telega-webpage--ins-rt (plist-get pb :author))
+           (telega-ins " • ")))
        (let ((publish-date (plist-get pb :publish_date)))
          (when (zerop publish-date)
            (setq publish-date (time-to-seconds)))
          (telega-ins--date publish-date 'date-long)))
      (telega-ins "\n"))
     (pageBlockHeader
+     (telega-ins "\n")
      (telega-ins--with-face 'telega-webpage-header
        (telega-webpage--ins-rt (plist-get pb :header))
        (telega-ins "\n")))
     (pageBlockSubheader
+     (telega-ins "\n")
      (telega-ins--with-face 'telega-webpage-subheader
        (telega-webpage--ins-rt (plist-get pb :subheader))
        (telega-ins "\n")))
     (pageBlockParagraph
-     (telega-webpage--ins-rt (plist-get pb :text))
-     (telega-ins "\n"))
+     (telega-ins "\n")
+     (telega-webpage--ins-rt (plist-get pb :text)))
     (pageBlockPreformatted
+     (telega-ins "\n")
      (telega-ins--with-face 'telega-webpage-preformatted
        (telega-webpage--ins-rt (plist-get pb :text))
        (telega-ins "\n")))
@@ -405,19 +403,30 @@ Keymap:
     (pageBlockAnchor
      (telega-webpage--add-anchor (plist-get pb :name)))
     (pageBlockListItem
-     (telega-ins--labeled (concat " " (plist-get pb :label) " ") nil
-       telega-webpage-fill-column
-       (mapc 'telega-webpage--ins-pb (plist-get pb :page_blocks))))
+     (telega-ins-from-newline
+      (let ((label (or (telega-tl-str pb :label) "•")))
+        (telega-ins--line-wrap-prefix
+            (cons (concat (propertize label 'face 'bold) " ")
+                  (concat (make-string (string-width label) ?\s " ") " "))
+          (telega-ins (telega-strip-newlines
+                       (telega-ins--as-string
+                        (mapc #'telega-webpage--ins-pb
+                              (plist-get pb :page_blocks)))))))))
     (pageBlockList
      (let ((telega-webpage-strip-nl t))
        (mapc 'telega-webpage--ins-pb (plist-get pb :items))))
     (pageBlockBlockQuote
-     (let ((vbar-prefix (propertize (telega-symbol 'vertical-bar) 'face 'bold)))
+     (telega-ins "\n")
+     (let ((vbar-prefix (propertize (telega-symbol 'vbar-left) 'face 'bold)))
        (telega-ins vbar-prefix)
        (telega-ins--with-attrs (list :fill 'left
                                      :fill-column telega-webpage-fill-column
                                      :fill-prefix vbar-prefix)
-         (telega-webpage--ins-rt (plist-get pb :text)))
+         (telega-webpage--ins-rt (plist-get pb :text))
+         (when-let ((credit-rt (plist-get pb :credit)))
+           (telega-ins "\n")
+           (telega-ins--with-face 'telega-shadow
+             (telega-webpage--ins-rt credit-rt))))
        (telega-ins "\n")))
     (pageBlockPullQuote
      (telega-ins "\u00A0\u00A0")
@@ -432,6 +441,7 @@ Keymap:
     (pageBlockAudio
      (telega-ins "<TODO: pageBlockAudio>\n"))
     (pageBlockPhoto
+     (telega-ins "\n")
      (telega-button--insert 'telega (plist-get pb :photo)
        :inserter (lambda (photo)
                    (telega-ins--photo photo nil telega-webpage-photo-size-limits))
@@ -459,7 +469,7 @@ Keymap:
                      (when poster-photo
                        (telega-ins--photo
                         poster-photo nil telega-webpage-photo-size-limits))
-                     (telega-ins-prefix "\n"
+                     (telega-ins-from-newline
                        (telega-webpage--ins-pb
                         (plist-get pb-embedded :caption)))
                      ))
@@ -478,12 +488,13 @@ Keymap:
            (telega-webpage--ins-pb (aref page-blocks n)))))
      (telega-webpage--ins-pb (plist-get pb :caption)))
     (pageBlockChatLink
-     (telega-ins--with-attrs (list :face 'telega-webpage-chat-link)
+     (telega-ins--with-face 'telega-webpage-chat-link
        (telega-ins (telega-tl-str pb :title) " "
                    "@" (telega-tl-str pb :username) " ")
        (telega-ins--box-button (telega-i18n "lng_open_link")
          :value (telega-tl-str pb :username)
-         :action 'telega-tme-open-username)))
+         :action 'telega-tme-open-username)
+       (telega-ins "\n")))
     (pageBlockCaption
      (telega-ins--with-face 'telega-shadow
        (telega-webpage--ins-rt (plist-get pb :text))
@@ -519,11 +530,11 @@ Keymap:
      (telega-webpage--ins-rt (plist-get pb :kicker)))
     )
 
-  (unless telega-webpage-strip-nl
-    (unless (memq (telega--tl-type pb)
-                  '(pageBlockAnchor pageBlockCover pageBlockListItem
-                                    pageBlockDetails))
-      (telega-ins "\n")))
+  ;; (unless telega-webpage-strip-nl
+  ;;   (unless (memq (telega--tl-type pb)
+  ;;                 '(pageBlockAnchor pageBlockCover pageBlockListItem
+  ;;                                   pageBlockDetails))
+  ;;     (telega-ins "\n")))
   t)
 
 (defun telega-webpage--ins-pb-nl (pb)
@@ -555,12 +566,31 @@ instant view for the URL."
 
   (with-telega-buffer-modify
     (erase-buffer)
-    (mapc #'telega-webpage--ins-pb
-          (plist-get telega-webpage--iv :page_blocks))
+    (seq-doseq (iv-pb (plist-get telega-webpage--iv :page_blocks))
+      (telega-ins-from-newline
+       (telega-webpage--ins-pb iv-pb)))
+
+    ;; IV status
+    (telega-ins-from-newline
+     (telega-ins--with-face '(:inherit telega-msg-heading :overline t :extend t)
+       (let ((view-count (plist-get telega-webpage--iv :view_count)))
+         (unless (telega-zerop view-count)
+           (telega-ins-i18n "lng_views_tooltip"
+             :count view-count)))
+       (when-let ((tdlib-link (plist-get telega-webpage--iv :feedback_link))
+                  (link-text (telega-i18n "lng_iv_wrong_layout")))
+         (telega-ins--move-to-column (- telega-webpage-fill-column
+                                        (string-width link-text)))
+         (telega-ins--raw-button (telega-link-props 'tdlib-link tdlib-link
+                                                    'face 'link)
+           (telega-ins link-text)))
+       (telega-ins "\n")))
+
     (when (and (listp telega-debug) (memq 'iv telega-debug))
-      (telega-ins "\n")
-      (telega-ins-describe-section "DEBUG")
-      (telega-ins-fmt "%S" telega-webpage--iv))
+      (telega-ins-from-newline
+       (telega-ins "\n")
+       (telega-ins-describe-section "DEBUG")
+       (telega-ins-fmt "%S" telega-webpage--iv)))
     (goto-char (point-min)))
 
   (unless (derived-mode-p 'telega-webpage-mode)
@@ -609,8 +639,7 @@ If called interactively copies url at point to the kill ring."
 If URL can be opened directly inside telega, then do it.
 Invite links and link to users can be directly opened in telega.
 If IN-WEB-BROWSER is non-nil then force opening in web browser."
-  (interactive (list (telega-url-at-point)
-                     current-prefix-arg))
+  (interactive (list (telega-url-at-point) current-prefix-arg))
   (when (or in-web-browser
             (not (cond ((string-prefix-p "tg:" url)
                         (telega-tme-open-tg url))

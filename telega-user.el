@@ -28,7 +28,6 @@
 
 (declare-function telega-chat-get "telega-chat" (chat-id &optional offline-p))
 (declare-function telega-chat-user "telega-chat" (chat))
-(declare-function telega-chat-color "telega-chat" (chat))
 (declare-function telega-chat--pop-to-buffer "telega-chat" (chat))
 
 
@@ -201,36 +200,6 @@ If AS-NUMBER is specified, return online status as number:
                           "LastMonth" "Offline" "Empty")))
       online-status)))
 
-(defun telega-user-color (user)
-  "Return color list associated with USER."
-  (or (plist-get user :color)
-      (let* ((chat (telega-chat-get (plist-get user :id) 'offline))
-             (colors (if chat
-                         (telega-chat-color chat)
-                       (let ((user-title (telega-user-title user 'full-name)))
-                         (list (funcall telega-rainbow-color-function
-                                        user-title 'light)
-                               (funcall telega-rainbow-color-function
-                                        user-title 'dark))))))
-        (plist-put user :color colors)
-        colors)))
-
-(defun telega-user--chats-in-common (with-user &optional callback)
-  "Return CHATS in common WITH-USER."
-  (declare (indent 1))
-  (let ((gic-cnt (plist-get (telega--full-info with-user)
-                            :group_in_common_count)))
-    (unless (zerop gic-cnt)
-      (telega--getGroupsInCommon with-user nil callback))))
-
-(defun telega-describe-user--inserter (user-id)
-  "Inserter for the user info buffer."
-  (let ((user (telega-user-get user-id)))
-    (let ((telega-user-show-relationship nil))
-      (telega-ins--user user nil 'show-phone))
-    (telega-ins "\n")
-    (telega-info--insert-user user)))
-
 (defun telega-describe-user (user)
   "Show info about USER."
   (interactive (list (telega-user-at (point))))
@@ -241,16 +210,26 @@ If AS-NUMBER is specified, return online status as number:
     (telega--full-info user))
 
   (with-telega-help-win "*Telega User*"
-    ;; NOTE: Set these params *before* calling inserter, because
-    ;; inserter might use these params.
-    (setq telega--help-win-param (plist-get user :id))
-    (setq telega--help-win-inserter #'telega-describe-user--inserter)
 
-    (telega-describe-user--inserter (plist-get user :id))
+    (let ((telega-user-show-relationship nil))
+      (telega-ins--user user nil 'show-phone))
+    (telega-ins "\n")
+    (telega-info--insert-user user)
 
     ;; Animate emoji status, if any
     (when-let ((emoji-status (plist-get user :emoji_status)))
       (telega-emoji-status--animate emoji-status))
+
+    (when (and (listp telega-debug) (memq 'info telega-debug))
+      (let ((print-length nil))
+        (telega-ins "\n")
+        (telega-ins-describe-section "DEBUG")
+        (telega-ins--with-face 'bold
+          (telega-ins "UserSexp: "))
+        (telega-ins-fmt "(telega-user-get %d)\n" (plist-get user :id))
+        (telega-ins--with-face 'bold
+          (telega-ins "User: "))
+        (telega-ins-fmt "%S\n" user)))
     ))
 
 (defun telega-describe-user--maybe-redisplay (user-id)

@@ -58,17 +58,18 @@
            (font-size (if general-p xh (/ xh 2))))
       (unless general-p
         ;; Draw topic icon
-        (let ((color1 (telega-color-name-as-hex-2digits
-                       (or (funcall telega-rainbow-color-function title 'light)
-                           "gray25")))
-              (color2 (telega-color-name-as-hex-2digits
-                       (or (funcall telega-rainbow-color-function title 'dark)
-                           "gray75"))))
-          (svg-gradient svg "cgrad" 'linear
-                        (list (cons 0 color2) (cons xh color1)))
+        (let* ((palette (telega-palette-by-color-id
+                         (% (telega-topic-msg-thread-id topic) 7)))
+               (c1 (telega-color-name-as-hex-2digits
+                    (or (telega-palette-attr palette :background) "gray75")))
+               (c2 (telega-color-name-as-hex-2digits
+                    (or (telega-palette-attr palette :foreground) "gray25")))
+               (co (telega-color-name-as-hex-2digits
+                    (or (telega-palette-attr palette :outline) c2))))
+          (svg-gradient svg "cgrad" 'linear (list (cons 0 c1) (cons xh c2)))
           (telega-svg-forum-topic-icon svg xw
             :stroke-width (/ xh 20.0)
-            :stroke-color color1
+            :stroke-color co
             :gradient "cgrad")))
 
       (svg-text svg badge
@@ -203,30 +204,27 @@ If START-MSG-ID is specified, jump to the this message in the topic."
   (with-telega-help-win "*Telegram Topic Info*"
     (let ((chat (telega-topic-chat topic))
           (topic-info (plist-get topic :info)))
-      (telega-ins--with-face 'telega-shadow
-        (telega-ins (telega-symbol 'topic))
-        (telega-ins--topic-title topic 'with-icon))
-      (telega-ins " ")
-      ;; TODO: [Open] button
-      ;; (telega-ins--box-button "Open"
-      ;;                     )
-
-      (telega-ins "\n")
-      (telega-ins "Chat: ")
-      (telega-button--insert 'telega-chat chat
-        :inserter #'telega-ins--chat
-        :action #'telega-chat-button-action)
-      (telega-ins "\n")
-      (telega-ins "Created: ")
-      (telega-ins--date (plist-get topic-info :creation_date) 'date-time)
-      (telega-ins "\n")
-      (telega-ins (telega-i18n "lng_topic_author_badge") ": ")
-      (telega-ins--msg-sender
-          (telega-msg-sender (plist-get topic-info :creator_id))
-        :with-avatar-p t
-        :with-username-p t
-        :with-brackets-p t)
-      (telega-ins "\n")
+      (telega-ins-describe-item (telega-i18n "lng_forum_topic_title")
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins (telega-symbol 'topic))
+          (telega-ins--topic-title topic 'with-icon))
+        (telega-ins " ")
+        ;; TODO: [Open] button
+        ;; (telega-ins--box-button "Open"
+        ;;                     )
+        )
+      (telega-ins-describe-item "Chat"
+        (telega-button--insert 'telega-chat chat
+          :inserter #'telega-ins--chat
+          :action #'telega-chat-button-action))
+      (telega-ins-describe-item "Created"
+        (telega-ins--date (plist-get topic-info :creation_date) 'date-time))
+      (telega-ins-describe-item (telega-i18n "lng_topic_author_badge")
+        (telega-ins--msg-sender
+            (telega-msg-sender (plist-get topic-info :creator_id))
+          :with-avatar-p t
+          :with-username-p t
+          :with-brackets-p t))
       (telega-ins-describe-item "Last-Read-Outbox"
         (telega-ins-fmt "%S" (plist-get topic :last_read_outbox_message_id)))
       (telega-ins-describe-item "Message-Thread-Id"
