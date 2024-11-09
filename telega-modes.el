@@ -1216,8 +1216,9 @@ Return patron info, or nil if SENDER is not a telega patron."
                         (telega-palette-context 'avatar)
                         (svg-color
                          (telega-color-name-as-hex-2digits
-                          (telega-palette-attr
-                           (telega-msg-sender-palette sender) :foreground))))
+                          (or (telega-palette-attr
+                               (telega-msg-sender-palette sender) :foreground)
+                              (face-foreground 'default)))))
                    (telega-svg-telega-logo
                     svg ear-w
                     :transform (format "scale(-1, 1) translate(-%f, %f)"

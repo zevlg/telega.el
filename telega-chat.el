@@ -6745,7 +6745,9 @@ by some chat member, member name is queried."
   (interactive "sSearch Query: \nP")
   (let ((by-sender (when by-sender-p
                      (telega-completing-read-chat-member
-                      "Sent by: " telega-chatbuf--chat))))
+                      "Sent by: " telega-chatbuf--chat
+                      (when-let ((msg (telega-msg-at (point))))
+                        (telega-msg-sender msg))))))
     (telega-chatbuf-filter
      (list :title (format "search \"%s\"" query)
            :tdlib-msg-filter '(:@type "searchMessagesFilterEmpty")
@@ -6960,7 +6962,9 @@ bindings."
   (interactive "sTelega-search (backward): \nP")
   (let ((by-sender (when by-sender-p
                      (telega-completing-read-chat-member
-                      "Sent by: " telega-chatbuf--chat))))
+                      "Sent by: " telega-chatbuf--chat
+                      (when-let ((msg (telega-msg-at (point))))
+                        (telega-msg-sender msg))))))
     (telega-chatbuf-inplace-search
      (list :title (format "query \"%s\"" query)
            :query query
@@ -6990,7 +6994,9 @@ containing QUERY sent by specified sender."
 (defun telega-chatbuf-inplace-search-by-sender (sender &optional forward-p)
   "Search inplace by SENDER."
   (interactive (list (telega-completing-read-chat-member
-                      "Sent by: " telega-chatbuf--chat)))
+                      "Sent by: " telega-chatbuf--chat
+                      (when-let ((msg (telega-msg-at (point))))
+                        (telega-msg-sender msg)))))
   (telega-chatbuf-inplace-search
    (list :title (telega-ins--as-string
                  (telega-ins "sent by ")

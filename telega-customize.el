@@ -302,13 +302,6 @@ cell of endings for the button with LABEL."
                 :value-type (repeat (list string)))
   :group 'telega)
 
-(defcustom telega-palette-light-saturation-alist
-  '((:background (light 0.8 0.1) (dark 0.2 0.1))
-    (:outline (light 0.9 0.1) (dark 0.1 0.1)))
-  "Ligthness and saturation specification for."
-  :type 'alist
-  )
-
 (defcustom telega-palette-context-ignore-list '(msg-header)
   "List of `telega-palette-context' values to ignore."
   :type '(list symbol)

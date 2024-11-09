@@ -1759,18 +1759,21 @@ SORT-CRITERIA is a chat sort criteria to apply. (NOT YET)"
   "Results from last `telega--searchChatMembers'.
 To be used `telega-completing-read-chat-member' to get user.")
 
-(defun telega-completing--chat-members-collection (chat prefix &rest _ignored)
-  "Function used for programmed completing CHAT members.
-Works only with `fido-mode' completion."
-  (when prefix
-    (setq telega-completing--chat-member-alist
-          (mapcar (lambda (user)
-                    (cons (propertize
-                           (telega-msg-sender-title-for-completion user)
-                           :user user)
-                          user))
-                  (telega--searchChatMembers chat prefix)))
-    (mapcar #'car telega-completing--chat-member-alist)))
+(cl-defun telega-completing--chat-member-choices (chat &key (prefix "")
+                                                       default-member)
+  "Return completions list of CHAT members."
+  (declare (indent 1))
+  (setq telega-completing--chat-member-alist
+        (mapcar (lambda (sender)
+                  (cons (propertize
+                         (telega-msg-sender-title-for-completion sender)
+                         :sender sender)
+                        sender))
+                (let ((members (telega--searchChatMembers chat prefix)))
+                  (if default-member
+                      (cons default-member (delq default-member members))
+                    members))))
+  (mapcar #'car telega-completing--chat-member-alist))
 
 (defun telega-completing-read (prompt collection &optional predicate
                                       require-match initial-input hist def
@@ -1804,8 +1807,9 @@ Works only with `fido-mode' completion."
           (local-set-key (kbd "C-c C-e") #'telega-custom-emoji-choose))
       (apply #'read-string prompt args))))
 
-(defun telega-completing-read-chat-member (prompt chat)
+(defun telega-completing-read-chat-member (prompt chat &optional default-member)
   "Interactively read member of CHAT.
+DEFAULT-MEMBER specifies default member to complete.
 Return a user."
   (let* ((telega-completing--chat-member-alist nil)
          (name
@@ -1814,13 +1818,19 @@ Return a user."
               ;; Works ok only in `fido-mode'
               (completing-read
                prompt
-               (apply-partially
-                #'telega-completing--chat-members-collection chat))
+               (lambda (prefix &rest _ignored)
+                 (telega-completing--chat-member-choices chat
+                   :prefix prefix
+                   :default-member (when (or (not prefix)
+                                             (string-empty-p prefix))
+                                     default-member)))
+               nil 'require-match)
 
             ;; Static completion, can complete only 50 chat members
             (telega-completing-read
              prompt
-             (telega-completing--chat-members-collection chat "")
+             (telega-completing--chat-member-choices chat
+               :default-member default-member)
              nil t))))
     (cdr (assoc name telega-completing--chat-member-alist))))
 
@@ -2101,7 +2111,7 @@ Do not trap errors if `debug-on-error' is enabled."
          (telega-debug "--------\n")
 
          (telega-ins "---[telega bug]\n")
-         (telega-ins-fmt "PP-ERROR: (%S %S) ==>\n" pp-fun arg)
+         (telega-ins-fmt "PP-ERROR: %S ==>\n" pp-fun)
          (telega-ins-fmt "  %S\n" pp-err)
          (telega-ins "------\n"))))))
 
@@ -3298,6 +3308,17 @@ Return nil if there is no tags for the SM-TOPIC-ID or new tag is choosen."
         (goto-char position)
         (line-pixel-height))
     (line-pixel-height)))
+
+(defun telega-dockrefile-tdlib-version (&optional dockerfile)
+  "Extract TDLib version from DOCKERFILE."
+  (with-temp-buffer
+    (insert-file-contents (or dockerfile (telega-etc-file "Dockerfile")))
+    (goto-char (point-min))
+    (let ((version (when (re-search-forward "^ARG tdlib_version=\\(.*\\)$")
+                     (match-string 1)))
+          (branch (when (re-search-forward "^ARG tdlib_branch=\\(.*\\)$")
+                    (match-string 1))))
+      (concat version "-" branch))))
 
 
 ;;; Transients
