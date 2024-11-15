@@ -494,8 +494,7 @@ Return filename of the generated icon."
   :type 'telega-msg-temex
   :options '((and (not outgoing)
                   (or (type Animation Sticker AnimatedEmoji Gift)
-                      (link-preview Animation)
-                      (link-preview Sticker))))
+                      (link-preview Animation Sticker))))
   :group 'telega-modes)
 
 (defcustom telega-autoplay-custom-emojis 10

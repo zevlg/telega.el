@@ -486,49 +486,48 @@
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-document
                    :action 'telega-inline-bot--action
-                   'cursor-sensor-functions
-                   '(telega-button-highlight--sensor-func))
+                   :telega-add-sensor-func
+                   #'telega-button-highlight--sensor-func)
                  (telega-ins--inline-delim))
 
                 (inlineQueryResultVideo
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-video
                    :action 'telega-inline-bot--action
-                   'cursor-sensor-functions
-                   '(telega-button-highlight--sensor-func))
+                   :telega-add-sensor-func
+                   #'telega-button-highlight--sensor-func)
                  (telega-ins--inline-delim))
 
                 (inlineQueryResultAudio
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-audio
                    :action 'telega-inline-bot--action
-                   'cursor-sensor-functions
-                   '(telega-button-highlight--sensor-func))
+                   :telega-add-sensor-func
+                   #'telega-button-highlight--sensor-func)
                  (telega-ins--inline-delim))
 
                 (inlineQueryResultVoiceNote
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-voice-note
                    :action 'telega-inline-bot--action
-                   'cursor-sensor-functions
-                   '(telega-button-highlight--sensor-func))
+                   :telega-add-sensor-func
+                   #'telega-button-highlight--sensor-func)
                  (telega-ins--inline-delim))
 
                 (inlineQueryResultArticle
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-article
                    :action 'telega-inline-bot--action
-                   'cursor-sensor-functions
-                   '(telega-button-highlight--sensor-func))
+                   :telega-add-sensor-func
+                   'telega-button-highlight--sensor-func)
                  (telega-ins--inline-delim))
 
                 (inlineQueryResultAnimation
                  (telega-button--insert 'telega qr
                    :inserter 'telega-ins--inline-animation
                    :action 'telega-inline-bot--action
-                   'cursor-sensor-functions
-                   (list (telega-animation--gen-sensor-func
-                          (plist-get qr :animation)))
+                   :telega-add-sensor-func
+                   (telega-animation--gen-sensor-func (plist-get qr :animation))
                    'help-echo (when-let ((title (telega-tl-str qr :title)))
                                 (format "GIF title: %s" title))))
 

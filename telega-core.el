@@ -1471,18 +1471,21 @@ Return t if `:action' has been called."
 Properties specified in PROPS are retained on
 `telega-button--update-value' calls."
   (declare (indent 2))
-  (let ((button (apply 'make-text-button
-                       (prog1 (point)
-                         (funcall (or (plist-get props :inserter)
-                                      (button-type-get button-type :inserter))
-                                  value))
-                       (point)
-                       :type button-type
-                       :value value
-                       :telega-retain-props
-                       (telega-plist-map (lambda (prop _ignored) prop) props)
-                       props)))
-    (button-at button)))
+  (let* ((beg (point))
+         (end (progn
+                (funcall (or (plist-get props :inserter)
+                             (button-type-get button-type :inserter))
+                         value)
+                (point)))
+         (pos
+          (apply #'make-text-button beg end
+                 :type button-type
+                 :value value
+                 props)))
+    (when-let ((add-sensor (plist-get props :telega-add-sensor-func)))
+      (telega--change-text-property
+       beg end 'cursor-sensor-functions add-sensor 'append))
+    (button-at pos)))
 
 (defmacro telega-button--change (button new-button)
   "Change BUTTON to NEW-BUTTON."

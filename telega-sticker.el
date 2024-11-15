@@ -476,11 +476,10 @@ called when some sticker is selected."
                      (concat "Emoji: " emoji " " (telega-emoji-name emoji)))
         'action #'telega-sticker--chosen-action
         :action custom-action
-        'cursor-sensor-functions
+        :telega-add-sensor-func
         (when (and (not (telega-sticker-static-p sticker))
                    telega-sticker-animated-play)
-          (list (telega-sticker--gen-sensor-func sticker)))
-        )
+          (telega-sticker--gen-sensor-func sticker)))
       (when telega-sticker-set-show-emoji
         (telega-ins (telega-sticker-emoji sticker) "  "))
 
@@ -1022,11 +1021,7 @@ If SLICES-P is non-nil, then insert ANIMATION using slices."
         (telega-ins-prefix (unless (bolp) "\n")
           (telega-button--insert 'telega-animation anim
             'action #'telega-animation--choosen-action
-            ;; NOTE: use different sensor functions, so all animations
-            ;; can be places next to each other and still sensor
-            ;; detection will work properly
-            'cursor-sensor-functions
-            (list (telega-animation--gen-sensor-func anim)))
+            :telega-add-sensor-func (telega-animation--gen-sensor-func anim))
           (> (current-column) (current-fill-column))))
       )))
 

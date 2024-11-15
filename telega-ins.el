@@ -4245,7 +4245,7 @@ argument of `ReactionType' type."
       (telega-button--insert 'telega reaction-type
         :inserter #'telega-ins--msg-reaction-type
         :action custom-action
-        'cursor-sensor-functions
+        :telega-add-sensor-func
         (when-let ((sticker
                     (when (eq (telega--tl-type reaction-type)
                               'reactionTypeCustomEmoji)

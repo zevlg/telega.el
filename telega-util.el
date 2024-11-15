@@ -1624,18 +1624,6 @@ ENTITY-TO-MARKUP-FUN is function to convert TDLib entities to string."
   "Return formatted text FMT-TEXT as string with org mode syntax."
   (telega--fmt-text-markup fmt-text #'telega--entity-to-org))
 
-(defun telega--fmt-text-entities-compare (entity1 entity2)
-  "Compare format text entities to sort them."
-  (let ((ent-type1 (telega--tl-type (plist-get entity1 :type)))
-        (ent-type2 (telega--tl-type (plist-get entity2 :type))))
-    (cond ((memq ent-type2 '(textEntityTypeBlockQuote
-                             textEntityTypeExpandableBlockQuote))
-           (not (memq ent-type1 '(textEntityTypeBlockQuote
-                                  textEntityTypeExpandableBlockQuote))))
-          ((eq ent-type2 'textEntityTypeSpoiler)
-           (not (eq ent-type1 'textEntityTypeSpoiler)))
-          )))
-
 ;; NOTE: FOR-MSG might be used by advices, see contrib/telega-mnz.el
 (defun telega--fmt-text-faces (fmt-text &optional _for-msg)
   "Apply faces to formatted text FMT-TEXT.
@@ -3131,13 +3119,17 @@ COLUMN is the column to aligned to."
                  (propertize emoji-name
                              'display (get-text-property 0 'display emoji))))))
     (reactionTypeCustomEmoji
-     (let* ((custom-emoji (telega-custom-emoji-get
-                           (plist-get reaction-type :custom_emoji_id)))
+     (let* ((custom-emoji-id (plist-get reaction-type :custom_emoji_id))
+            (custom-emoji (or (telega-custom-emoji-get custom-emoji-id)
+                              (seq-first (telega--getCustomEmojiStickers
+                                             (list custom-emoji-id)))))
             (emoji (telega-tl-str custom-emoji :emoji)))
        (telega-ins--as-string
         (telega-ins--image
          (telega-sticker--image custom-emoji) nil
-         :telega-text (concat emoji (telega-emoji-name emoji))))))))
+         :telega-text (concat emoji (telega-emoji-name emoji))))))
+    (reactionTypePaid
+     (telega-symbol 'telegram-star))))
 
 (defun telega-completing-read-msg-reaction (msg prompt &optional
                                                 msg-available-reactions

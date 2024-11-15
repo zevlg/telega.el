@@ -765,6 +765,8 @@ Example: 23 y.o. designer from San Francisco")
  ("lng_filters_remove_sure"
   :value "This will remove the folder, chats won't be deleted.")
 
+ ("lng_filters_all"
+  :value "All chats")
  ("lng_filters_type_groups"
   :value "Groups")
  ("lng_filters_type_channels"

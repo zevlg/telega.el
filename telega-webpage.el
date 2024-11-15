@@ -354,7 +354,7 @@ Keymap:
     :inserter #'telega-webpage--animation-inserter
     :action #'telega-webpage--animation-action
     :telega-animation animation
-    'cursor-sensor-functions '(telega-webpage--animation-sensor-func)
+    :telega-add-sensor-func #'telega-webpage--animation-sensor-func
     'help-echo "RET to play animation"))
 
 (defun telega-webpage--ins-pb (pb)

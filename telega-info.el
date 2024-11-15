@@ -154,9 +154,9 @@ If OFFLINE-P is non-nil, then do not send a request to telega-server."
       (telega-button--insert 'telega photo
         :inserter #'telega-ins--chat-photo
         :action 'telega-photo--open
-        'cursor-sensor-functions
+        :telega-add-sensor-func
         (when-let ((fake-anim (plist-get photo :telega-fake-animation)))
-          (list (telega-animation--gen-sensor-func fake-anim)))
+          (telega-animation--gen-sensor-func fake-anim))
         'local-keymap
         (when (telega-me-p user)
           (let ((pp-del (lambda (profile-photo)

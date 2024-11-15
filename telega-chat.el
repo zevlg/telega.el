@@ -2680,12 +2680,13 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
     (when msg-inserter
       (telega-button--insert 'telega-msg msg
         :inserter msg-inserter
-        ;; TODO: Use `font-lock--add-text-property' to add
+        ;; Use `telega--change-text-property' to add
         ;; `cursor-sensor-functions' to not override cursor sensor
         ;; function for buttons (such as [Instant View]) inside a
         ;; message
-        'cursor-sensor-functions (unless for-preview-p
-                                   '(telega-chatbuf-msg--sensor-func)))
+        :telega-add-sensor-func
+        (unless for-preview-p
+          #'telega-chatbuf-msg--sensor-func))
 
       ;; NOTE: we insert newline outside the button to provide
       ;; msg hover-in/hover-out hooks handled by sensor function.
