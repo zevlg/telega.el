@@ -700,7 +700,7 @@ Return list of three elements: (THUMB THUMB-PROP CONTENT-FILE)."
                (not (telega-file--downloading-p cfile)))
       ;; NOTE: Use higher priority for recent stories
       (telega-file--download cfile
-          (max 16 (- 32 (cl-position msg telega-emacs-stories--show-messages)))))))
+        :priority (max 16 (- 32 (cl-position msg telega-emacs-stories--show-messages)))))))
 
 (defun telega-emacs-stories--show-messages-reset ()
   "Re-set `telega-emacs-stories--show-messages' according to `telega-emacs-stories-show'."
