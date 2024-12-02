@@ -342,6 +342,10 @@ telega-server has been made."
 (declare-function telega-root-aux-remove "telega-root" (inserter))
 (declare-function telega-root-aux-redisplay "telega-root" (&optional inserter))
 
+(defun telega-active-stories--fetch ()
+  ;; TODO:
+  )
+
 (define-minor-mode telega-active-stories-mode
   "Global mode to display currently active stories in the root buffer."
   :init-value nil :global t :group 'telega-modes
