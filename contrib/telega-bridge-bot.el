@@ -1,6 +1,6 @@
 ;;; telega-bridge-bot.el --- Replace bridge bot user        -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2023 by Henry Sun.
+;; Copyright (C) 2023-2024 by Henry Sun.
 
 ;; Keywords:
 
@@ -224,9 +224,12 @@ If FORCE-UPDATE is non-nil, force update the file."
   (when-let* ((name (telega--desurrogate-apply display-name 'no-props))
               (avatar-url (gethash name members))
               (mxc-id (telega-bridge-bot--matrix-mxc-id avatar-url))
-              (url (format telega-bridge-bot--matrix-media-thumbnail-endpoint
-                           telega-bridge-bot--matrix-host
-                           mxc-id))
+              (thumbnail-url (format telega-bridge-bot--matrix-media-thumbnail-endpoint
+                                     telega-bridge-bot--matrix-host
+                                     mxc-id))
+              (original-url (format telega-bridge-bot--matrix-media-download-endpoint
+                                    telega-bridge-bot--matrix-host
+                                    mxc-id))
               (url-request-extra-headers '(("Accept" . "image/jpeg"))))
     (when (and
            (file-exists-p file-path)
@@ -237,9 +240,18 @@ If FORCE-UPDATE is non-nil, force update the file."
              (time-subtract (current-time) telega-bridge-bot-matrix-avatar-expires))))
       (delete-file file-path))
     (telega-bridge-bot--download-async
-     url
+     thumbnail-url
      file-path
-     (lambda () (telega-bridge-bot--download-async-callback chat-id msg-id)))))
+     (lambda ()
+       (if (not (zerop (file-attribute-size (file-attributes file-path))))
+           (telega-bridge-bot--download-async-callback chat-id msg-id)
+         ;; server not support thumbnail, use original image
+         (delete-file file-path)
+         (telega-bridge-bot--download-async
+          original-url
+          file-path
+          (lambda ()
+            (telega-bridge-bot--download-async-callback chat-id msg-id))))))))
 
 (defun telega-bridge-bot--matrix-text-spliter (text)
   "Split TEXT into username and message."
@@ -332,6 +344,10 @@ Return a string if STRING is non-nil."
            :@type "user"
            :id bot-id
            :telega-bridge-bot-user-signature (list chat-id bot-id username)
+           ;; https://core.telegram.org/bots/api#accent-colors
+           ;; There are currently 20 available ids
+           :accent_color_id (% (string-to-number (sha1 username) 16) 21)
+           :status '(:@type "userStatusOnline" :expires 2147483647)
            :first_name username
            :last_name ""
            :usernames
@@ -481,7 +497,7 @@ Will update CHAT-ID MSG-ID when download completed."
 
 (defun telega-bridge-bot--update-msg (msg &rest _)
   "Replace the sender in MSG with the other party's sender."
-  (when-let ((no-modify? (not (telega--tl-get msg :telega-bridge-bot-modified))))
+  (when-let* ((no-modify? (not (telega--tl-get msg :telega-bridge-bot-modified))))
     (let ((update-functions '(telega-bridge-bot--update-fmt-text
                               telega-bridge-bot--update-forwarded
                               telega-bridge-bot--update-file))
