@@ -243,7 +243,7 @@ If FORCE-UPDATE is non-nil, force update the file."
      thumbnail-url
      file-path
      (lambda ()
-       (if (not (zerop (nth 7 (file-attributes file-path))))
+       (if (not (zerop (file-attribute-size (file-attributes file-path))))
            (telega-bridge-bot--download-async-callback chat-id msg-id)
          ;; server not support thumbnail, use original image
          (delete-file file-path)
