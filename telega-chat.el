@@ -1626,10 +1626,10 @@ new Chat buffers.")
     ;;   {{{fundoc(telega-chatbuf-goto-pop-message, 2)}}}
     (define-key map (kbd "x") 'telega-chatbuf-goto-pop-message)
     ;;; ellit-org: chatbuf-fastnav-bindings
-    ;; - {{{where-is(telega-chatbuf-next-favorite,telega-chat-mode-map)}}} ::
-    ;;   {{{fundoc(telega-chatbuf-next-favorite, 2)}}}
+    ;; - {{{where-is(telega-chatbuf-prev-favorite,telega-chat-mode-map)}}} ::
+    ;;   {{{fundoc(telega-chatbuf-prev-favorite, 2)}}}
     ;;   See [[#favorite-messages][Favorite Messages]] for details.
-    (define-key map (kbd "*") 'telega-chatbuf-next-favorite)
+    (define-key map (kbd "*") 'telega-chatbuf-prev-favorite)
     ;;; ellit-org: chatbuf-fastnav-bindings
     ;; - {{{where-is(telega-chatbuf-goto-video-chat,telega-chat-mode-map)}}} ::
     ;;   {{{fundoc(telega-chatbuf-goto-video-chat, 2)}}}
@@ -4970,18 +4970,19 @@ from message at point."
   (cl-remove (plist-get chat :id) telega--favorite-messages
              :test-not 'eq :key (telega--tl-prop :chat_id)))
 
-(defun telega-chatbuf-next-favorite ()
-  "Goto next favorite message."
+(defun telega-chatbuf-prev-favorite ()
+  "Goto previous favorite message."
   (interactive)
   (let* ((fav-ids
-          ;; NOTE: Sort favorite messages ids by id decreasing order
+          ;; NOTE: Sort favorite messages ids by id in decreasing order
           (sort (mapcar (telega--tl-prop :id)
                         (telega-chat-favorite-messages telega-chatbuf--chat))
                 #'>))
          (next-fav-id
           (or (cl-find (or (plist-get (telega-msg-at (point)) :id) -1)
-                       fav-ids :test #'<)
-              ;; wrap to first one
+                       fav-ids :test #'>)
+              ;; wrap to the most recent favorite message in the
+              ;; chatbuf
               (car fav-ids))))
     (unless next-fav-id
       (user-error "No favorite messages in the chat"))

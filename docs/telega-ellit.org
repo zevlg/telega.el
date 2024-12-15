@@ -1017,8 +1017,9 @@ messages are labeled with:
 To toggle message at point being favorite, press
 {{{where-is(telega-msg-favorite-toggle,telega-msg-button-map)}}}.
 
-To jump to next favorite message in the chat buffer press
-{{{where-is(telega-chatbuf-next-favorite,telega-chat-mode-map)}}}.
+To jump to a favorite message before message at point in the chat
+buffer, press
+{{{where-is(telega-chatbuf-prev-favorite,telega-chat-mode-map)}}}.
 
 To view all favorite messages in all chats, enable "Favorite Messages"
 Root View, by pressing

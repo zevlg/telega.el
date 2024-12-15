@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.391)
+#+title: Telega Manual (v0.8.393)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -1912,8 +1912,8 @@ messages:
 - @@html:<kbd>@@M-g x@@html:</kbd>@@ (~telega-chatbuf-goto-pop-message~) :: 
      Pop message from ~telega-chatbuf--messages-pop-ring~ and goto it.
 
-- @@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-next-favorite~) :: 
-     Goto next favorite message.
+- @@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-prev-favorite~) :: 
+     Goto previous favorite message.
      See [[#favorite-messages][Favorite Messages]] for details.
 
 - @@html:<kbd>@@M-g v@@html:</kbd>@@ (~telega-chatbuf-goto-video-chat~) :: 
@@ -2620,8 +2620,9 @@ messages are labeled with:
 To toggle message at point being favorite, press
 @@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <rm-favorite>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <add-favorite>@@html:</kbd>@@ (~telega-msg-favorite-toggle~).
 
-To jump to next favorite message in the chat buffer press
-@@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-next-favorite~).
+To jump to a favorite message before message at point in the chat
+buffer, press
+@@html:<kbd>@@M-g *@@html:</kbd>@@ (~telega-chatbuf-prev-favorite~).
 
 To view all favorite messages in all chats, enable "Favorite Messages"
 Root View, by pressing
