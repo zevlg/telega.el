@@ -1514,9 +1514,9 @@ For interactive use only."
     :callback
     (lambda (reply)
       (let ((messages (plist-get reply :messages)))
-        (unless (seq-empty-p messages)
-          (setq telega--favorite-messages-storage-message
-                (seq-first messages))
+        (setq telega--favorite-messages-storage-message
+              (seq-first messages))
+        (when telega--favorite-messages-storage-message
           (let ((file (telega-msg--content-file
                        telega--favorite-messages-storage-message)))
             (cl-assert file)
