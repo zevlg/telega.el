@@ -685,18 +685,21 @@ squashing is not applied."
                    (telega-msg-by-me-p last-msg)
                    (< last-read-id (plist-get last-msg :id))
                    (telega-msg-match-p last-msg
-                     '(and (prop :can_be_edited)
-                           (not is-reply-to-msg)
+                     '(and (not is-reply-to-msg)
                            (not is-reply-to-story)
                            (type Text)))
                    ;; Check for 6.
                    (not (telega--tl-get last-msg :content :link_preview))
+                   ;; TODO: Check for 7.0
                    ;; Check for 8.
                    (< (- (telega-time-seconds)
                          (if (zerop (plist-get last-msg :edit_date))
                              (plist-get last-msg :date)
                            (plist-get last-msg :edit_date)))
                       telega-squash-message-within-seconds)
+                   ;; Last check which makes TDLib request
+                   (telega-msg-match-p last-msg
+                     '(message-property :can_be_edited))
                    )
 
           ;; Squashing IMC with `last-msg' by modifying IMC inplace
@@ -979,7 +982,9 @@ Can be enabled only for content from editable messages."
 
   (if telega-edit-file-mode
       (let ((msg telega--help-win-param))
-        (if (not (plist-get msg :can_be_edited))
+        (if (or (not (telega-msg-p msg)
+                (not (telega-msg-match-p msg
+                       '(message-property :can_be_edited)))))
             (progn
               ;; No message or message can't be edited
               (telega-edit-file-mode -1)
@@ -1060,8 +1065,9 @@ UFILE specifies Telegram file being uploading."
     (save-buffer))
 
   (when-let ((msg telega--help-win-param))
-    (unless (plist-get msg :can_be_edited)
-      (user-error "Telega: message can't be edited"))
+    ;; NOTE: Do not check for `(message-property :can_be_edited)' to
+    ;; avoid request to TDLib. Considering user knows what he is doing
+    ;; See https://github.com/zevlg/telega.el/issues/507
 
     ;; NOTE: `editMessageMedia' always replaces caption, so retain
     ;; existing caption in the call to `editMessageMedia'
