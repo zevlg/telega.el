@@ -4968,14 +4968,14 @@ from message at point."
 (defun telega-chat-favorite-messages (chat)
   "Return entries from the `telega--favorite-messages' for the CHAT."
   (cl-remove (plist-get chat :id) telega--favorite-messages
-             :test-not 'eq :key #'car))
+             :test-not 'eq :key (telega--tl-prop :chat_id)))
 
 (defun telega-chatbuf-next-favorite ()
   "Goto next favorite message."
   (interactive)
   (let* ((fav-ids
           ;; NOTE: Sort favorite messages ids by id decreasing order
-          (sort (mapcar #'cadr
+          (sort (mapcar (telega--tl-prop :id)
                         (telega-chat-favorite-messages telega-chatbuf--chat))
                 #'>))
          (next-fav-id
