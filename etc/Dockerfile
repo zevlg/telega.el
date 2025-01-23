@@ -14,6 +14,8 @@
 # libappindicator-dev and, also due to
 # https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0#faccessat2
 
+# This comment is to trigger ARM64 build
+
 FROM alpine:3.13 AS builder
 ARG tdlib_version=v1.8.39
 ARG tdlib_branch=056963e48
