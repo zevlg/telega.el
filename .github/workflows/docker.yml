@@ -38,7 +38,8 @@ jobs:
           tags: zevlg/telega-server:latest
 
   docker-arm64:
-    if: false
+    # enabled due to https://t.me/emacs_telega/47280
+    if: true
     runs-on: ubuntu-latest
     steps:
       -
