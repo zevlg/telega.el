@@ -14,8 +14,6 @@
 # libappindicator-dev and, also due to
 # https://wiki.alpinelinux.org/wiki/Release_Notes_for_Alpine_3.14.0#faccessat2
 
-# This comment is to trigger ARM64 build
-
 FROM alpine:3.13 AS builder
 ARG tdlib_version=v1.8.39
 ARG tdlib_branch=056963e48
@@ -31,7 +29,13 @@ RUN echo "TDLib ${tdlib_version}-${tdlib_branch}" > tdlib-version && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && \
-    cmake --build . --target install
+    cmake --build . --target prepare_cross_compiling && \
+    cd .. && \
+    php SplitSource.php && \
+    cd build && \
+    cmake --build . --target install && \
+    cd .. && \
+    php SplitSource.php --undo
 
 RUN set +x && apk update && apk upgrade && \
     apk add --update pkgconfig libappindicator-dev libwebp-tools libpng-dev ffmpeg
