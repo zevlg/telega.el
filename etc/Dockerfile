@@ -30,7 +30,13 @@ RUN echo "TDLib ${tdlib_version}-${tdlib_branch}" > tdlib-version && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && \
-    cmake --build . --target install
+    cmake --build . --target prepare_cross_compiling && \
+    cd .. && \
+    php SplitSource.php && \
+    cd build && \
+    cmake --build . --target install && \
+    cd .. && \
+    php SplitSource.php --undo
 
 RUN set +x && apk update && apk upgrade && \
     apk add --update pkgconfig libayatana-appindicator-dev libayatana-indicator-dev ayatana-ido-dev libwebp-tools libpng-dev ffmpeg
