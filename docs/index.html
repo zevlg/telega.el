@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="telega" xml:lang="telega">
 <head>
-<!-- 2024-12-15 Вс 20:48 -->
+<!-- 2025-01-31 Пт 19:17 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Telega Manual (v0.8.393)</title>
+<title>Telega Manual (v0.8.420)</title>
 <meta name="author" content="Zajcev Evgeny" />
 <meta name="generator" content="Org Mode" />
 <link rel="stylesheet" type="text/css" href="https://zevlg.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
@@ -32,11 +32,43 @@
 <style>#links-panel {float: right;} </style>
 <style>#links-panel img {height: 0.75em; margin: 2px;}</style>
 <link rel="icon" href="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg">
+<script>
+  window.MathJax = {
+    tex: {
+      ams: {
+        multlineWidth: '85%'
+      },
+      tags: 'ams',
+      tagSide: 'right',
+      tagIndent: '.8em'
+    },
+    chtml: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    svg: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    output: {
+      font: 'mathjax-modern',
+      displayOverflow: 'overflow'
+    }
+  };
+</script>
+
+<script
+  id="MathJax-script"
+  async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
 </head>
 <body>
 <div id="content" class="content">
 <div id="table-of-contents" role="doc-toc">
-<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.393)</h2>
+<h2><img id="toc-logo" src="https://raw.githubusercontent.com/zevlg/telega.el/master/etc/telega-logo.svg"/>&nbsp;Telega Manual (v0.8.420)</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
 <li><a href="#introduction">Introduction</a></li>
@@ -833,7 +865,7 @@ corresponding chatbuf.
 <p>
 rootbuf lists the chat buttons, such as:
 </p>
-<pre class="example" id="org604e761">
+<pre class="example" id="org31bacd5">
 {🎗Saved Messages            }📌  📹 Video (10s)               Fri✓
 [Emacs | Emacs (english)     ]  @oldosfan: same                Fri
 ...
@@ -851,7 +883,7 @@ Named temex to filter chats in the rootbuf.
 Custom chat filters are displayed as buttons above the chat list in
 the rootbuf, such as:
 </p>
-<pre class="example" id="org654cc0f">
+<pre class="example" id="org65c7ffe">
 [243:📑Main      4890]  [51:Groups       4677]  [27:Channels      210]
 [53:Contacts         ]  [0:Important         ]  [3:📑Archive      670]
 </pre>
@@ -940,7 +972,7 @@ Only chats matching <b><b>all</b></b> temexes in the active chat filter
 are displayed in rootbuf.  Active chat filter is displayed above the
 chat list in rootbuf, such as:
 </p>
-<pre class="example" id="org0684b12">
+<pre class="example" id="orgd93d1e4">
 -/------------------------------(main)--------------------------------
 </pre>
 
@@ -978,7 +1010,7 @@ By default, chats are sorted according to internal Telegram order
 In case active sorter is enabled, it is displayed above the chat
 list in rootbuf, such as:
 </p>
-<pre class="example" id="org76f2780">
+<pre class="example" id="org22de7b3">
 -\---------------------(unread-count join-date)-----------------------
 </pre></dd>
 
@@ -1350,8 +1382,11 @@ Default value:
 <dl class="org-dl">
 <dt><kbd>v S</kbd> (<code>telega-view-settings</code>)</dt><dd>View and edit your Telegram settings.</dd>
 
-<dt><kbd>v c</kbd> (<code>telega-view-contacts</code>)</dt><dd>View contacts searched by <code>QUERY</code>.
+<dt><kbd>v c s</kbd> (<code>telega-view-contacts-search</code>)</dt><dd>View contacts searched by <code>QUERY</code>.
 If <code>QUERY</code> is empty string, then show all contacts.</dd>
+<dt><kbd>v c a</kbd> (<code>telega-view-contacts-all</code>)</dt><dd>View all contacts.</dd>
+<dt><kbd>v c f</kbd> (<code>telega-view-close-friends</code>)</dt><dd>View close friends.</dd>
+<dt><kbd>v c o</kbd> (<code>telega-view-owned-bots</code>)</dt><dd>View owned bots.</dd>
 
 <dt><kbd>v C</kbd>, <kbd>c l</kbd> (<code>telega-view-calls</code>)</dt><dd>View calls.
 If <kbd>C-u</kbd> is given, then view missed calls only.</dd>
@@ -1569,7 +1604,8 @@ For non-nil <code>ANIMATED-P</code> match only if avatar is animated.</dd>
 <code>PERM</code> could be one of in <code>telega-chat--chat-permissions</code> list or in
 <code>telega-chat--admin-permissions</code> list.</dd>
 
-<dt>verified, <kbd>/ v</kbd> (<code>telega-filter-by-verified</code>)</dt><dd>Matches if chat is verified.</dd>
+<dt>verified, <kbd>/ v</kbd> (<code>telega-filter-by-verified</code>)</dt><dd>Matches if chat is verified.
+Return verification status if <code>CHAT</code> is verified.</dd>
 
 <dt>(restriction <code>SUFFIX-LIST</code>&#x2026;), <kbd>/ r</kbd> (<code>telega-filter-by-restriction</code>)</dt><dd><p>
 Matches restricted chats.
@@ -1633,7 +1669,8 @@ Matches if chat has last message and last message matches <code>MSG-TEMEX</code>
 
 <dt>default-disable-notification</dt><dd>Matches if <code>CHAT</code> has non-nil default disable notification setting.</dd>
 
-<dt>fake-or-scam</dt><dd>Matches if chat is fake or scam user or group.</dd>
+<dt>fake-or-scam</dt><dd>Matches if chat is fake or scam user or group.
+Return verification status if chat is fake or scam.</dd>
 
 <dt>(has-video-chat [ <code>NON-EMPTY</code> ])</dt><dd>Matches if chat contains a live video chat.
 If non-nil <code>NON-EMPTY</code> is specified, then match only if video chat is
@@ -1689,6 +1726,8 @@ By default <code>blockListMain</code> is used.</dd>
 
 <dt>(boost-level [ <code>N</code> ])</dt><dd>Matches if chat's boost level is greater or equal to <code>N</code>.
 By default <code>N</code> is 1.</dd>
+
+<dt>is-pinned</dt><dd>Matches if chat is pinned.</dd>
 </dl>
 </div>
 </div>
@@ -2277,6 +2316,8 @@ See <a href="https://github.com/zevlg/telega.el/issues/218">https://github.com/z
 <dt><code>last-seen</code></dt><dd>Sort by last seen activity.
 For private chats user's last seen date is taken.
 For other chats date of the last message is taken.</dd>
+
+<dt><code>important</code></dt><dd>Makes chats matching <code>telega-important-chat-temex</code> on top.</dd>
 </dl>
 </div>
 </div>
@@ -2370,7 +2411,7 @@ Non-nil to insert date break bar in chat buffers.
 Date break is a special mark separating two messages received on
 different days. Such as:
 </p>
-<pre class="example" id="org8e8f8c8">
+<pre class="example" id="org5834d70">
 MSG1                              &lt;--- msg sent on 27dec
 -------(28 December 2020)------   &lt;--- date break
 MSG2                              &lt;--- msg sent on 28dec
@@ -2378,6 +2419,19 @@ MSG2                              &lt;--- msg sent on 28dec
 
 <p>
 Default value: <code>t</code>
+</p></li>
+<li><p>
+User Option: <code>telega-msg-delimiter</code> 
+</p>
+
+<p>
+Delimiter for the messages in a chatbuf.
+Use ~(propertize "\n" \~line-spacing 0.25)' to add extra line space
+between messages. 
+</p>
+
+<p>
+Default value: <code>"\n"</code>
 </p></li>
 </ul>
 </div>
@@ -2563,7 +2617,7 @@ Markup syntax table:
 There is also "markdown1" syntax to insert multiline code blocks of
 specified languge:
 </p>
-<pre class="example" id="org16d8ae7">
+<pre class="example" id="orgb401890">
 ```&lt;language-name&gt;
 first line of multiline preformatted code
 second line
@@ -2595,7 +2649,7 @@ Default value: <code>known</code>
 <p>
 Org syntax for code blocks is <b><b>NOT YET</b></b> supported:
 </p>
-<pre class="example" id="orgd54e39d">
+<pre class="example" id="orgd49ee82">
 #+begin_src &lt;language-name&gt;
 code line
 next code line
@@ -2858,12 +2912,12 @@ It is possible to edit a message using markup syntax.
 <p>
 To forward a message, put cursor under the message which you want to
 forward and press
- (<code>telega-msg-forward-marked-or-at-point</code>)
+<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-dwim</code>)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-<kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;telega-msg-mark-toggle&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
+<kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>) and then
 press
- (<code>telega-msg-forward-marked-or-at-point</code>)
+<kbd>f</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;forward&gt;</kbd> (<code>telega-msg-forward-dwim</code>)
 on one of the messages.
 </p>
 
@@ -2890,7 +2944,7 @@ To delete a message, put cursor under the message you want to delete and press
 
 <p>
 As with <a href="#forwarding-messages">forwarding messages</a>, you can mark multiple messages to delete
-with <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;telega-msg-mark-toggle&gt;</kbd> (<code>telega-msg-mark-toggle</code>).
+with <kbd>m</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;mark&gt;</kbd> (<code>telega-msg-mark-toggle</code>).
 </p>
 
 <p>
@@ -3493,7 +3547,7 @@ Default value: <code>"🔖"</code>
 
 <p>
 To toggle message at point being favorite, press
-<kbd>*</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;rm-favorite&gt;</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;add-favorite&gt;</kbd> (<code>telega-msg-favorite-toggle</code>).
+<kbd>*</kbd>, <kbd>&lt;down-mouse-3&gt; &lt;favorite&gt;</kbd> (<code>telega-msg-favorite-toggle</code>).
 </p>
 
 <p>
@@ -3519,7 +3573,7 @@ Some media messages that are playing inside Emacs (such as "audio",
 "voice-note" or "video-note" messages) will have additional media
 control buttons to control media playback parameters:
 </p>
-<pre class="example" id="org1a5ed3d">
+<pre class="example" id="org85ebbf7">
 [⏪] [⏩] [2×] [Stop] 
 </pre>
 
@@ -4717,7 +4771,7 @@ example, with <code>telega-url-shorten-mode</code> enabled in chatbuf, urls
 like:
 </p>
 
-<pre class="example" id="org7bd1997">
+<pre class="example" id="org86b2d88">
 https://github.com/zevlg/telega.el/issues/105
 https://gitlab.com/jessieh/mood-line/issues/6
 https://www.youtube.com/watch?v=0m2jR6_eMkU

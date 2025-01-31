@@ -273,11 +273,10 @@ By default LIMITS is `telega-photo-size-limits'."
   (unless limits
     (setq limits telega-photo-size-limits))
 
-  (let ((lim-xwidth (telega-chars-xwidth (nth 2 limits)))
-        (lim-xheight (telega-chars-xheight (nth 3 limits)))
+  (let ((lim-tw (telega-chars-xwidth (nth 2 limits)))
+        (lim-th (telega-chars-xheight (nth 3 limits)))
         ret)
-    ;; NOTE: `reverse' is used to start from highes sizes
-    (seq-doseq (thumb (reverse (plist-get photo :sizes)))
+    (seq-doseq (thumb (plist-get photo :sizes))
       (let* ((thumb-file (telega-file--renew thumb :photo))
              (tw (plist-get thumb :width))
              (th (plist-get thumb :height)))
@@ -285,22 +284,23 @@ By default LIMITS is `telega-photo-size-limits'."
         ;; if size does not fits
         ;; Select sizes larger then limits, because downscaling works
         ;; betten then upscaling
-
         (when (and (or (telega-file--downloaded-p thumb-file)
                        (and (telega-file--can-download-p thumb-file)
                             (not (telega-file--downloaded-p
                                   (plist-get ret :photo)))))
-                   (or (not ret)
-                       (and (>= tw lim-xwidth)
-                            (>= th lim-xheight)))
 
-                   ;; NOTE: prefer thumbs with `:progressive_sizes' set
                    (or (not ret)
-                       (and (telega-file--can-download-p (plist-get ret :photo))
-                            (not (plist-get ret :progressive_sizes))
-                            (plist-get thumb :progressive_sizes)))
-                   )
-          (setq ret thumb))))
+                       (and (> tw lim-tw)
+                            (> th lim-th))
+                       ;; NOTE: prefer thumbs with `:progressive_sizes'
+                       (and (= tw lim-tw)
+                            (= tw lim-tw)
+                            (not (seq-empty-p
+                                  (plist-get thumb :progressive_sizes)))
+                            (seq-empty-p (plist-get ret :progressive_sizes)))))
+          (setq ret thumb
+                lim-tw tw
+                lim-th th))))
 
     (or ret
         ;; Fallback to the very first thumbnail
@@ -395,36 +395,43 @@ CHEIGHT is the height in chars to use (default=1).
 PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
   (unless cheight
     (setq cheight 1))
-  (if (or (telega-file--downloaded-p file)
-          (and progressive-sizes
-               (>= (telega-file--downloaded-size file)
-                   (car progressive-sizes))))
-      (let ((image-filename (telega--tl-get file :local :path)))
-        ;; NOTE: Handle case when file is partially downloaded and
-        ;; some progressive size is reached. In this case create
-        ;; temporary image file writing corresponding progress bytes
-        ;; into it and displaying it
-        (unless (telega-file--downloaded-p file)
-          (let* ((tmp-size (cl-find (telega-file--downloaded-size file)
-                                    (reverse progressive-sizes) :test #'>=))
-                 (tmp-fname (expand-file-name
-                             (format "%s-%d.%s"
-                                     (file-name-base image-filename)
-                                     tmp-size
-                                     (file-name-extension image-filename))
-                             telega-temp-dir))
-                 (coding-system-for-write 'binary))
-            (unless (file-exists-p tmp-fname)
-              (telega-debug "Creating progressive img: %d / %S -> %s"
-                            (telega-file--downloaded-size file)
-                            progressive-sizes
-                            tmp-fname)
-              (with-temp-buffer
-                (set-buffer-multibyte nil)
-                (insert-file-contents-literally image-filename)
-                (write-region 1 (+ 1 tmp-size) tmp-fname nil 'quiet)))
-            (setq image-filename tmp-fname)))
-
+  (let* ((local-file (plist-get file :local))
+         (partial-size
+          (when (and (not (seq-empty-p progressive-sizes))
+                     (telega-file--downloading-p file)
+                     (zerop (plist-get local-file :download_offset))
+                     (>= (plist-get local-file :downloaded_prefix_size)
+                         (seq-first progressive-sizes)))
+            (cl-find (plist-get local-file :downloaded_prefix_size)
+                     (seq-reverse progressive-sizes) :test #'>=)))
+         (image-filename
+          (cond ((telega-file--downloaded-p file)
+                 (plist-get local-file :path))
+                (partial-size
+                 ;; NOTE: Handle case when file is partially
+                 ;; downloaded and some progressive size is
+                 ;; reached. In this case create temporary image file
+                 ;; writing corresponding progress bytes into it and
+                 ;; displaying it
+                 (let* ((tl-filepath (plist-get local-file :path))
+                        (tmp-fname (expand-file-name
+                                    (format "%s-%d.%s"
+                                            (file-name-base tl-filepath)
+                                            partial-size
+                                            (file-name-extension tl-filepath))
+                                    telega-temp-dir))
+                       (coding-system-for-write 'binary))
+                   (unless (file-exists-p tmp-fname)
+                     (telega-debug "Creating progressive img: %d / %S -> %s"
+                                   (telega-file--downloaded-size file)
+                                   progressive-sizes
+                                   tmp-fname)
+                     (with-temp-buffer
+                       (set-buffer-multibyte nil)
+                       (insert-file-contents-literally tl-filepath)
+                       (write-region 1 (+ 1 partial-size) tmp-fname nil 'quiet)))
+                   tmp-fname)))))
+    (if image-filename
         (telega-create-image
             (if (string-empty-p image-filename)
                 (telega-etc-file "non-existing.jpg")
@@ -433,9 +440,8 @@ PROGRESSIVE-SIZES specifies list of jpeg's progressive file sizes."
           :height (telega-ch-height cheight)
           :telega-nslices cheight
           :scale 1.0
-          :ascent 'center))
-
-    (telega-media--progress-svg file width height cheight)))
+          :ascent 'center)
+      (telega-media--progress-svg file width height cheight))))
 
 (defun telega-minithumb--create-image (minithumb cheight)
   "Create image and use MINITHUMB minithumbnail as data."
@@ -661,6 +667,7 @@ Default is `:telega-image'."
       ;; and https://t.me/emacs_telega/33101
       (when telega-use-images
         (ignore-errors (image-flush cached-image)))
+
       (plist-put (car obj-spec) (or cache-prop :telega-image) cached-image))
     cached-image))
 
@@ -669,6 +676,62 @@ Default is `:telega-image'."
 File is specified with FILE-SPEC.
 CACHE-PROP specifies property name to cache image at OBJ-SPEC.
 Default is `:telega-image'."
+  (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image))))
+    (when (or force-update (not cached-image))
+      (let ((media-file (telega-file--renew (car file-spec) (cdr file-spec))))
+        ;; First time image is created or update is forced
+        (setq cached-image
+              (telega-media--image-update obj-spec media-file cache-prop))
+
+        ;; Possibly initiate file downloading
+        (when (and telega-use-images
+                   (or (telega-file--need-download-p media-file)
+                       (telega-file--downloading-p media-file)))
+          (telega-file--download media-file
+            :update-callback
+            (lambda (dfile)
+              (when (telega-file--downloaded-p dfile)
+                (telega-media--image-update obj-spec dfile cache-prop)
+                (force-window-update)))))))
+    cached-image))
+
+(cl-defun telega-media--image-updateNEW (obj)
+  "Update media image for the OBJ."
+  (let* ((media-spec (plist-get obj :telega-media-spec))
+         (image-create-func (plist-get media-spec :image-create-func))
+         (cache-prop (plist-get media-spec :cache-prop))
+         (cached-image (plist-get obj cache-prop))
+         (simage (funcall image-create-func obj)))
+    ;; NOTE: Sometimes `create' function returns nil results
+    ;; Probably, because Emacs has no access to the image file while
+    ;; trying to convert sticker from webp to png
+    (when (and telega-use-images (not simage))
+      (error "telega: [BUG] Image create (%S %S) -> nil"
+             image-create-func obj))
+
+    (unless (equal cached-image simage)
+      ;; NOTE: We call `image-flush' because only filename in
+      ;; the image spec can be changed (during animation for
+      ;; example), and image caching won't notice this because
+      ;; `(sxhash cached-image)' and `(sxhash simage)' might
+      ;; return the same!
+      ;;
+      ;; We do it under `ignore-errors' to avoid any image related errors
+      ;; see https://github.com/zevlg/telega.el/issues/349
+      ;; and https://t.me/emacs_telega/33101
+      (when telega-use-images
+        (ignore-errors (image-flush cached-image)))
+
+      ;; Update the image
+      (if cached-image
+          (setcdr cached-image (cdr simage))
+        (setq cached-image simage))
+
+      (plist-put obj cache-prop cached-image))
+    cached-image))
+
+(cl-defun telega-media--imageNEW (obj &key create-image-function cheight
+                                      cache-prop)
   (let ((cached-image (plist-get (car obj-spec) (or cache-prop :telega-image))))
     (when (or force-update (not cached-image))
       (let ((media-file (telega-file--renew (car file-spec) (cdr file-spec))))

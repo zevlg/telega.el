@@ -305,7 +305,7 @@ If FILTER is nil, then active filter is used."
           ((and telega-filter-custom-one-liners
                 folder-p
                 (equal (nth 1 custom-filter)
-                       (telega-tl-str (car telega-tdlib--chat-folders) :title)))
+                       (telega-folder-name (car telega-tdlib--chat-folders))))
            (insert "\n"))
           ((zerop ccolumn)
            ;; no-op
@@ -384,7 +384,7 @@ Actually return active chat filter corresponding to CUSTOM filter."
 
 (defun telega-filter--custom-folder-spec (tdlib-chat-filter)
   "Return custom filter spec for the TDLIB-CHAT-FILTER folder."
-  (let ((fn (telega-tl-str tdlib-chat-filter :title)))
+  (let ((fn (telega-folder-name tdlib-chat-filter)))
     (cons (telega-folder-format "%i%f" fn tdlib-chat-filter)
           (list 'folder (substring-no-properties fn)))))
 

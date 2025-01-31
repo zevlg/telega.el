@@ -80,9 +80,11 @@ Have Stoploss 690 Satoshi." :entities []))))
   (puthash (plist-get chat :id) chat telega--chats))
 
 (setq telega-tdlib--chat-folders
-      '((:@type "chatFolderInfo" :id 2 :title "Emacs"
+      '((:@type "chatFolderInfo" :id 2
+                :name (:@type "chatFolderName" :text (:@type "formattedText" :text "Emacs" :entities []))
                 :icon (list :@type "chatFolderIcon" :name ""))
-        (:@type "chatFolderInfo" :id 3 :title #("\ud83d\ude39\ud83d\ude39\ud83d\ude39" 0 2 (telega-display "ðŸ˜¹" telega-emoji-p t) 2 4 (telega-display "ðŸ˜¹" telega-emoji-p t) 4 6 (telega-display "ðŸ˜¹" telega-emoji-p t))
+        (:@type "chatFolderInfo" :id 3
+                :name (:@type "chatFolderName" :text (:@type "formattedText" :text #("í ½í¸¹í ½í¸¹í ½í¸¹" 0 2 (telega-emoji-p t telega-display "ðŸ˜¹") 2 4 (telega-emoji-p t telega-display "ðŸ˜¹") 4 6 (telega-emoji-p t telega-display "ðŸ˜¹")) :entities []) :animate_custom_emoji t)
                 :icon (list :@type "chatFolderIcon" :name ""))))
 
 

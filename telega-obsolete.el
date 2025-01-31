@@ -305,6 +305,10 @@
                            'telega-msg-heading-aux-format-plist
                            "0.8.390")
 
+(telega-obsolete--variable 'telega-msg-heading-with-date-and-status
+                           'telega-msg-heading-trail
+                           "0.8.393")
+
 ;; Check some obsolete var/fun is used
 (cl-eval-when (eval load)
   (dolist (obsolete-var telega-obsolete--variables)

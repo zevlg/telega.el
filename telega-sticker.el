@@ -202,7 +202,7 @@ CALLBACK is called without arguments"
              ;; Update corresponding sticker image
              (telega-media--image-update
               (cons sticker 'telega-sticker--create-image)
-              (cons sticker :sticker))
+              (plist-get sticker :sticker))
              (force-window-update))))
 
 (defun telega-sticker--svg-outline-path (svg tl-path factor &rest args)
@@ -394,6 +394,16 @@ Return path to png file."
 
 (defun telega-sticker--image (sticker &optional image-create-fun cache-prop)
   "Return image for the STICKER."
+  (unless (plist-get sticker :telega-image)
+    (telega--getStickerOutline (plist-get sticker :file)
+      :callback (lambda (outline)
+                  (unless (telega--tl-error-p outline)
+                    (plist-put sticker :outline outline)
+                    ;; TODO: Update sticker image if sticker is not
+                    ;; yet downloaded
+                    ())
+    (telega-sticker--download sticker))))
+
   (telega-media--image
    (cons sticker (or image-create-fun #'telega-sticker--create-image))
    (if (or (and telega-sticker--use-thumbnail

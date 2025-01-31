@@ -457,7 +457,8 @@ for the `telega-docker-run-arguments'."
 (defcustom telega-emoji-large-height 2
   "*Vertical size in characters for emoji only messages.
 Used only if `telega-emoji-use-images' is non-nil."
-  :type 'integer
+  :type '(choice (const :tag "Disabled" nil)
+                 (integer :tag "Height for emoji only message"))
   :group 'telega-emoji)
 
 
@@ -1719,6 +1720,17 @@ See `mode-line-buffer-identification'."
   :type 'sexp
   :group 'telega-chat)
 
+(defcustom telega-expandable-blockquote-limit '(50 . 150)
+  "*Non-nil to collapse expandable blockquote at this char.
+Can be a cons cell, meaning to show at least car chars, and then
+collapse at newline or at cdr char."
+  :package-version '(telega . "0.8.420")
+  :type '(choice (const :tag "No collapse" nil)
+                 (cons (integer :tag "Min chars before collapsing")
+                       (integer :tag "Collapse at newline before"))
+                 (integer :tag "Collapse at"))
+  :group 'telega-chat)
+
 
 ;; VoIP
 (defgroup telega-voip nil
@@ -1850,10 +1862,12 @@ Use this for Client Side Messages Filtering."
   :type '(repeat function)
   :group 'telega-msg)
 
-(defcustom telega-msg-heading-with-date-and-status nil
+(defcustom telega-msg-heading-trail nil
   "Non-nil to put message sent date and outgoing status into heading."
-  :package-version '(telega . "0.8.210")
-  :type 'boolean
+  :package-version '(telega . "0.8.393")
+  :type '(choice (const :tag "Message's date and status" date-and-status)
+                 (const :tag "Fill with `telega-msg-heading' face" fill)
+                 (const :tag "No trail" nil))
   :group 'telega-msg)
 
 (defcustom telega-msg-heading-aux-format-plist
@@ -1927,6 +1941,15 @@ In case message is still not fully observable after applying it,
 fallback to cdr argument."
   :package-version '(telega . "0.8.215")
   :type '(cons integer integer)
+  :group 'telega-msg)
+
+(defcustom telega-msg-delimiter "\n"
+  "Delimiter for the messages in a chatbuf.
+Use `(propertize \"\\n\" \\'line-spacing 0.25)' to add extra line space
+between messages."
+  :package-version '(telega . "0.8.420")
+  :type 'string
+  :options (list "\n\n" (propertize "\n" 'line-spacing 0.25))
   :group 'telega-msg)
 
 
@@ -2110,12 +2133,18 @@ cdr is used if custom order is greater then real chat's order."
   :group 'telega-symbol)
 
 (defcustom telega-symbol-checkmark "✓" ;\u2713
-  "Symbol for simple check mark."
+  "Symbol for single check mark."
   :type 'string
   :group 'telega-symbol)
 
 (defcustom telega-symbol-heavy-checkmark "✔" ;\u2714
-  "Symbol for heavy check mark."
+  "Symbol for double check mark."
+  :type 'string
+  :group 'telega-symbol)
+
+(defcustom telega-symbol-no-checkmark " "
+  "Status symbol for non-outgoing messages.
+Used for alignment with outgoing messages."
   :type 'string
   :group 'telega-symbol)
 
@@ -3017,6 +3046,18 @@ non-nil if symbol gets emojification."
   "Face to display strike through RichText."
   :group 'telega-faces)
 
+(defface telega-webpage-subtitle
+  '((((type tty pc) (class color)) :weight bold)
+    (t :inherit fixed-pitch-serif :weight bold :height 1.1))
+  "Face to display subtitle in webpage instant view."
+  :group 'telega-faces)
+
+(defface telega-webpage-title
+  '((((type tty pc) (class color)) :weight bold)
+    (t :inherit telega-webpage-subtitle :height 1.1))
+  "Face to display title in webpage instant view."
+  :group 'telega-faces)
+
 (defface telega-webpage-subheader
   '((((type tty pc) (class color)) :weight bold)
     (t :inherit variable-pitch :weight bold :height 1.1))
@@ -3034,8 +3075,13 @@ non-nil if symbol gets emojification."
   "Face to display fixed text in webpage instant view."
   :group 'telega-faces)
 
+(defface telega-webpage-outline
+  '((t :inherit telega-msg-heading :extend t))
+  "Face to display text with different background."
+  :group 'telega-faces)
+
 (defface telega-webpage-preformatted
-  '((t :inherit telega-webpage-fixed :background "gray85"))
+  '((t :inherit telega-webpage-fixed :inherit telega-webpage-outline))
   "Face to display preformatted text in webpage instant view."
   :group 'telega-faces)
 

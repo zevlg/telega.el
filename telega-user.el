@@ -163,18 +163,18 @@ Return nil if given FMT-TYPE is not available."
            ;; Scam/Fake/Blacklist badge, apply for users only
            ;; see https://t.me/emacs_telega/30318
            (concat name
-                   ;; Badges
-                   (when (plist-get user :is_verified)
-                     (telega-symbol 'verified))
+                   ;; Verification Status badges
+                   (telega-msg-sender--verification-badges
+                    (plist-get user :verification_status))
+
+                   ;; Premium Badge
                    (cond ((plist-get user :emoji_status)
                           (telega-ins--as-string
                            (telega-ins--user-emoji-status user)))
                          ((plist-get user :is_premium)
                           (telega-symbol 'premium)))
-                   (when (plist-get user :is_scam)
-                     (propertize (telega-i18n "lng_scam_badge") 'face 'error))
-                   (when (plist-get user :is_fake)
-                     (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+
+                   ;; Blocking Status badge
                    (when (telega-user-match-p user 'is-blocked)
                      (telega-symbol 'blocked))))
           (name name)

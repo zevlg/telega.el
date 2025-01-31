@@ -39,7 +39,8 @@ jobs:
 
   docker-arm64:
     # enabled due to https://t.me/emacs_telega/47280
-    if: true
+    # Disabled due to build failure, see https://t.me/emacs_telega/47396
+    if: false
     runs-on: ubuntu-latest
     steps:
       -

@@ -60,18 +60,42 @@ See `telega-folder-icons-alist'")
             (setq folders (cons list-name folders))))))
     (nreverse folders)))
 
-(defun telega-folder-names (&optional tdlib-filters)
+(defun telega-folder-name--fetch-custom-emojis (folder)
+  "For the FOLDER, ensure all custom emojis in its name are fetched."
+  (when-let* ((fmt-text (telega--tl-get folder :name :text))
+              (name-ce-ids
+               (seq-uniq
+                (delq nil
+                      (mapcar (lambda (entity)
+                                (let ((entity-type (plist-get entity :type)))
+                                  (when (eq 'textEntityTypeCustomEmoji
+                                            (telega--tl-type entity-type))
+                                    (plist-get entity-type :custom_emoji_id))))
+                              (plist-get fmt-text :entities)))))
+              (fetch-ce-ids
+               (seq-remove #'telega-custom-emoji-get name-ce-ids)))
+    ;; NOTE: Fetch only uncached custom emojis
+    (telega--getCustomEmojiStickers fetch-ce-ids
+      (lambda (stickers)
+        (seq-doseq (sticker stickers)
+          (telega-custom-emoji--ensure sticker))))))
+
+(defun telega-folder-name (folder &optional no-properties)
+  "Return FOLDER's name."
+  (telega-tl-str (plist-get folder :name) :text no-properties))
+
+(defun telega-folder-names (&optional tdlib-filters no-properties)
   "Return list of names for all Telegram folders.
 Specify TDLIB-FILTERS list to use alternative TDLib chat filters list."
   (mapcar (lambda (fi)
-            (telega-tl-str fi :title))
+            (telega-folder-name fi no-properties))
           (or tdlib-filters telega-tdlib--chat-folders)))
 
 (defun telega-folder--chat-folder-info (folder-name)
   "Return chatFolderInfo corresponding to FOLDER-NAME."
   (cl-find folder-name telega-tdlib--chat-folders
            :key (lambda (fi)
-                  (telega-tl-str fi :title 'no-props))
+                  (telega-folder-name fi 'no-props))
            :test #'equal))
 
 (defun telega-folder--tdlib-chat-list (folder-name)
@@ -107,7 +131,7 @@ property is used in `telega-folder--tdlib-chat-list' to
 correctly extract folder name."
   (unless folder-info
     (setq folder-info (telega-folder--chat-folder-info folder-name)))
-  (let* ((ftitle (telega-tl-str folder-info :title))
+  (let* ((ftitle (telega-folder-name folder-info))
          (ficon-name (telega-tl-str (plist-get folder-info :icon) :name))
          (ficon (cdr (assoc ficon-name telega-folder-icons-alist)))
          (ficon-emoji (when (and ficon telega-emoji-use-images)
@@ -145,9 +169,12 @@ If FORCE is specified, then `telega-tdlib--chat-folder-tags-p' is ignored."
   (when (and (or force telega-tdlib--chat-folder-tags-p) folders)
     (seq-doseq (folder folders)
       (let ((finfo (telega-folder--chat-folder-info folder)))
-        (telega-ins--with-face (telega-folder-tag-face folder finfo)
-          (telega-ins (telega-folder-format fmt-spec folder finfo)))
-        (telega-ins " ")))
+        ;; NOTE: `:color_id' == -1 means display as tag is disabled
+        ;; for this folder
+        (unless (eq (plist-get finfo :color_id) -1)
+          (telega-ins--with-face (telega-folder-tag-face folder finfo)
+            (telega-ins (telega-folder-format fmt-spec folder finfo)))
+          (telega-ins " "))))
     t))
 
 (defun telega-folders-insert-default (&optional fmt-spec)
@@ -165,17 +192,21 @@ If FORCE is specified, then `telega-tdlib--chat-folder-tags-p' is ignored."
 
 (defun telega-folder-create (folder-name icon-name chats)
   "Create new Telegram folder with name FOLDER-NAME."
-  (interactive (list (read-string "Create Folder with name: ")
-                     (when (y-or-n-p "Associate icon with the folder? ")
-                       (telega-completing-read-folder-icon-name
-                        "Folder icon name: "))
-                     (telega-completing-read-chat-list "Chats to add")))
+  (interactive
+   (list (read-string (concat (telega-i18n "lng_filters_create") ": "))
+         (when (y-or-n-p "Associate icon with the folder? ")
+           (telega-completing-read-folder-icon-name
+            "Folder icon name: "))
+         (telega-completing-read-chat-list
+          (concat (telega-i18n "lng_filters_add_chats") ": "))))
+
   ;; NOTE: Folder must contain at least 1 chat, otherwise error=400 is
   ;; returned
   (when chats
     (telega--createChatFolder
      (nconc (list :@type "chatFolder"
-                  :title folder-name
+                  :name (list :@type "chatFolderName"
+                              :text (telega-fmt-text folder-name))
                   :included_chat_ids (cl-map 'vector (telega--tl-prop :id) chats))
             (when icon-name
               (list :icon (list :@type "chatFolderIcon" :name icon-name)))))))
@@ -209,7 +240,9 @@ This won't delete any chat, just a folder."
                         "Folder icon name: "))))
   (let* ((folder-info (telega-folder--chat-folder-info folder-name))
          (tdlib-folder (telega--getChatFolder (plist-get folder-info :id))))
-    (plist-put tdlib-folder :title new-folder-name)
+    (plist-put tdlib-folder
+               :name (list :@type "chatFolderName"
+                           :text (telega-fmt-text new-folder-name)))
     (when new-icon-name
       (plist-put tdlib-folder
                  :icon (list :@type "chatFolderIcon" :name new-icon-name)))
@@ -262,9 +295,9 @@ You can add chat to multiple folders."
          (exc-cids (append (plist-get tdlib-folder :excluded_chat_ids) nil)))
     (cl-assert tdlib-folder)
 
-    ;; NOTE: Fix `tdlib-folder's `:title' in case it contains
+    ;; NOTE: Fix `tdlib-folder's `:name' in case it contains
     ;; surropagated pairs, to avoid error with code=400
-    (plist-put tdlib-folder :title folder-name)
+    (telega-fmt-text-desurrogate (telega--tl-get tdlib-folder :name :text))
 
     (if (memq chat-id inc-cids)
         (plist-put tdlib-folder :included_chat_ids
@@ -327,7 +360,7 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
 
 (defun telega-folders-settings--ins-folder (folder-info)
   "Inserter for the FOLDER-INFO in the Folders settings buffer."
-  (let ((folder-name (telega-tl-str folder-info :title)))
+  (let ((folder-name (telega-folder-name folder-info)))
     (telega-ins (telega-folder-format "%i %f" folder-name folder-info))
     (telega-ins--with-face 'telega-shadow
       (telega-ins " (")
@@ -339,8 +372,11 @@ migrate your custom labels %S to Telegram Folders." custom-labels))))
         (telega-ins-i18n "lng_filters_shareable_status"))
       (telega-ins ")"))
     (telega-ins--move-to-column 35)
-    (telega-ins--with-face (telega-folder-tag-face folder-name folder-info)
-      (telega-ins "■"))))
+    (if (eq (plist-get folder-info :color_id) -1)
+        (telega-ins--with-face 'telega-shadow
+          (telega-ins-i18n "lng_filters_tag_color_no"))
+      (telega-ins--with-face (telega-folder-tag-face folder-name folder-info)
+        (telega-ins "■")))))
 
 (defun telega-folders-settings--inserter (&rest _ignored)
   "Inserter for the folder settings."

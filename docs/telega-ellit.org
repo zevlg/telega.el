@@ -760,12 +760,12 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
-{{{where-is(telega-msg-forward-marked-or-at-point,telega-msg-button-map)}}}
+{{{where-is(telega-msg-forward-dwim,telega-msg-button-map)}}}
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
 {{{where-is(telega-msg-mark-toggle,telega-msg-button-map)}}} and then
 press
-{{{where-is(telega-msg-forward-marked-or-at-point,telega-msg-button-map)}}}
+{{{where-is(telega-msg-forward-dwim,telega-msg-button-map)}}}
 on one of the messages.
 
 There are few options how you can affect the way a message is forwarded:

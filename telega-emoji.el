@@ -531,7 +531,7 @@ If EMOJI is omitted, then use STICKER's emoji instead."
    :tl-entity-type (list :@type "textEntityTypeCustomEmoji"
                          :custom_emoji_id (telega-custom-emoji-id sticker))
    'display (when telega-use-images
-              (telega-sticker--image sticker))
+              (copy-sequence (telega-sticker--image sticker)))
    'rear-nonsticky t))
 
 (defun telega-custom-emoji-choose (&optional custom-action)

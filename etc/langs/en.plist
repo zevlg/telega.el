@@ -764,6 +764,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Please change at least one rule for this folder.")
  ("lng_filters_remove_sure"
   :value "This will remove the folder, chats won't be deleted.")
+ ("lng_filters_add_chats"
+  :value "Add Chats")
 
  ("lng_filters_all"
   :value "All chats")
@@ -790,6 +792,8 @@ Example: 23 y.o. designer from San Francisco")
   :other_value "{count} chats")
  ("lng_filters_shareable_status"
   :value "shareable folder")
+ ("lng_filters_tag_color_no"
+  :value "No Tag")
 
  ;; Comments
  ("lng_comments_open_none"
@@ -862,6 +866,8 @@ Example: 23 y.o. designer from San Francisco")
   :value "Select up to this message")
  ("lng_context_disable_spoiler"
   :value "Remove Spoiler")
+ ("lng_context_spoiler_effect"
+  :value "Hide with Spoiler")
  ("lng_context_cancel_upload"
   :value "Cancel Upload")
  ("lng_context_cancel_download"
@@ -991,6 +997,11 @@ Example: 23 y.o. designer from San Francisco")
   :value "{from} renamed the {link} to «{title}»")
  ("lng_action_topic_icon_changed"
   :value "{from} changed the {link} icon to {emoji}")
+ ("lng_action_topic_unhidden"
+  :value "«{topic}» was unhidden")
+ ("lng_action_topic_hidden"
+  :value "«{topic}» was hidden")
+
  ("lng_action_boost_apply"
   :one_value "{from} boosted the group"
   :other_value "{from} boosted the group {count} times")
@@ -1008,6 +1019,10 @@ to start the topic.")
   :value "Topic Info")
  ("lng_topic_author_badge"
   :value "Topic Creator")
+ ("lng_admin_log_topics_hidden"
+  :value "{from} hid topic {topic}")
+ ("lng_admin_log_topics_unhidden"
+  :value "{from} unhid topic {topic}")
 
  ("lng_rights_gigagroup_about"
   :value "Broadcast groups can have over 200,000 members, but only admins can send messages in them.")
@@ -1662,6 +1677,12 @@ You can send them an invite link as message instead.")
   :value "Create link")
  ("lng_formatting_link_url"
   :value "URL")
+ ("lng_formatting_code_title"
+  :value "Code Language")
+ ("lng_formatting_code_language"
+  :value "Language for syntax highlighting.")
+ ("lng_formatting_code_auto"
+  :value "Auto-Detect")
 
  ;; Copying
  ("lng_code_copied"
@@ -1893,6 +1914,17 @@ You can send them an invite link as message instead.")
  ("lng_credits_box_out_media_user"
   :one_value "Do you want to unlock {media} from {user} for **{count} Star**?"
   :other_value "Do you want to unlock {media} from {user} for **{count} Stars**?")
+
+ ("lng_paid_react_title"
+  :value "Star Reaction")
+ ("lng_paid_react_undo"
+  :value "Undo")
+ ("lng_paid_react_toast"
+  :one_value "Star Sent!"
+  :other_value "Stars Sent!")
+ ("lng_paid_react_toast_text"
+  :one_value "You reacted with **{count} Star**."
+  :other_value "You reacted with **{count} Stars**.")
 
  ("lng_stats_overview_message_views"
   :value "Views")

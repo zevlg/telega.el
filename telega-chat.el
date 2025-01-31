@@ -47,6 +47,7 @@
 ;; Important customizable options:
 ;; - {{{user-option(telega-chat-fill-column, 2)}}}
 ;; - {{{user-option(telega-chat-use-date-breaks, 2)}}}
+;; - {{{user-option(telega-msg-delimiter, 2)}}}
 
 ;;; Code:
 (require 'cl-lib)
@@ -378,18 +379,18 @@ end of the title."
           (if no-badges
               title0
             (concat title0
-                    ;; Badges
+                    ;; Verification Status badges
+                    (telega-msg-sender--verification-badges
+                     (plist-get info :verification_status))
+
+                    ;; Premium Badge
                     (cond ((plist-get chat :emoji_status)
                            (telega-ins--as-string
                             (telega-ins--chat-emoji-status chat)))
                           ((plist-get info :is_premium)
                            (telega-symbol 'premium)))
-                    (when (plist-get info :is_scam)
-                      (propertize (telega-i18n "lng_scam_badge") 'face 'error))
-                    (when (plist-get info :is_fake)
-                      (propertize (telega-i18n "lng_fake_badge") 'face 'error))
-                    (when (plist-get info :is_verified)
-                      (telega-symbol 'verified))
+
+                    ;; Blocking Status badge
                     (when (telega-chat-match-p chat 'is-blocked)
                       (telega-symbol 'blocked))
                     ))))
@@ -2633,6 +2634,15 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
               (telega-chatbuf--filter-msg-position-load msg)
               (run-hook-with-args 'telega-msg-hover-in-hook msg))
 
+          ;; NOTE: Hide spoilers when point moves out of message
+          (when (or (when (plist-get msg :telega-text-spoiler-removed)
+                      (plist-put msg :telega-text-spoiler-removed nil)
+                      t)
+                    (when (plist-get msg :telega-media-spoiler-removed)
+                      (plist-put msg :telega-media-spoiler-removed nil)
+                      t))
+            (telega-msg-redisplay msg))
+
           (run-hook-with-args 'telega-msg-hover-out-hook msg))
         ))))
 
@@ -2693,7 +2703,7 @@ If NEW-FOCUS-STATE is specified, then focus state is forced."
       ;; Without separator, sensor function won't be triggered
       (unless telega-chatbuf--messages-compact-view
         (telega-ins--with-props '(read-only t front-sticky t)
-          (telega-ins "\n"))))
+          (telega-ins telega-msg-delimiter))))
     ))
 
 (define-derived-mode telega-chat-mode nil '((:eval (telega-symbol 'mode)) "Chat")
@@ -4271,7 +4281,7 @@ Use `\\[universal-argument] to clear formatting from selected region."
     (user-error "telega: Can cancel formatting only inside chatbuf input"))
   (remove-text-properties
    begin end
-   '(face nil :tl-entity nil :tl-entity-type nil :tl-entity-explicit nil
+   '(face nil :tl-entities nil :tl-entity-type nil :tl-entity-explicit nil
           rear-nonsticky nil front-sticky nil)))
 
 (defun telega-chatbuf-cancel-aux (&optional arg)
@@ -4965,19 +4975,20 @@ from message at point."
             (message "telega: Can't find message with unread reaction")
           (telega-msg-goto (seq-first reaction-messages) 'highlight))))))
 
-(defun telega-chat-favorite-messages (chat)
+(defun telega-chat-favorite-messages-ids (chat)
   "Return entries from the `telega--favorite-messages' for the CHAT."
-  (cl-remove (plist-get chat :id) telega--favorite-messages
-             :test-not 'eq :key (telega--tl-prop :chat_id)))
+  (let ((chat-id (plist-get chat :id)))
+    (cl-loop for fav-msg in telega--favorite-messages
+             if (eq chat-id
+                    (plist-get fav-msg :chat_id))
+             collect (plist-get fav-msg :id))))
 
 (defun telega-chatbuf-prev-favorite ()
   "Goto previous favorite message."
   (interactive)
   (let* ((fav-ids
           ;; NOTE: Sort favorite messages ids by id in decreasing order
-          (sort (mapcar (telega--tl-prop :id)
-                        (telega-chat-favorite-messages telega-chatbuf--chat))
-                #'>))
+          (sort (telega-chat-favorite-messages-ids telega-chatbuf--chat) #'>))
          (next-fav-id
           (or (cl-find (or (plist-get (telega-msg-at (point)) :id) -1)
                        fav-ids :test #'>)
@@ -6219,10 +6230,12 @@ REVOKE forced to non-nil for supergroup, channel or a secret chat."
             (telega-help-message 'show-deleted
                 "JFYI see `telega-chat-show-deleted-messages-for'")))))))
 
-(defun telega-msg-report-dwim (reason)
+(defun telega-msg-report-dwim (msg)
   "Report messages in a DWIM manner."
-  (interactive)
+  (interactive (list (telega-msg-for-interactive)))
   (user-error "TODO")
+  ;; telega--reportMessageReaction
+  ;; telega--reportSupergroupSpam
   )
 
 (defun telega-chatbuf-complete ()
@@ -7106,8 +7119,7 @@ containing QUERY sent by specified sender."
   (interactive (list (get-buffer-window)))
 
   (when (or (null win) (eq (selected-window) win))
-    (let ((new-fill-column (- (/ (window-width win 'pixels)
-                                 (telega-chars-xwidth 1))
+    (let ((new-fill-column (- (window-width win)
                               (if win
                                   (with-selected-window win
                                     (line-number-display-width))

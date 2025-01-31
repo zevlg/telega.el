@@ -26,7 +26,7 @@
 ;;; Code:
 (require 'telega-core)
 (require 'telega-tdlib)
-(require 'telega-util)
+;(require 'telega-util)
 (require 'telega-filter)
 (require 'telega-chat)
 

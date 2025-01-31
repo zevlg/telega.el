@@ -26,6 +26,8 @@
 ;;; Code:
 (require 'telega-tdlib)
 
+(defvar telega-filters--dirty)
+(declare-function telega-filters--redisplay "telega-filter")
 (declare-function telega-root-aux-redisplay "telega-root" (&optional inserter))
 
 (defvar telega-i18n-month-names

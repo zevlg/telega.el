@@ -599,11 +599,16 @@ NOTE: we store the number as custom chat property, to use it later."
   ;; that folders.  Because folder name might be displayed along the
   ;; side with chat's title in the rootbuf
   (let* ((new-tdlib-folders (append (plist-get event :chat_folders) nil))
-         (new-names (seq-difference (telega-folder-names new-tdlib-folders)
-                                    (telega-folder-names))))
+         (new-names (seq-difference
+                     (telega-folder-names new-tdlib-folders 'no-props)
+                     (telega-folder-names telega-tdlib--chat-folders 'no-props))))
     (setq telega-tdlib--chat-folders new-tdlib-folders)
 
     (dolist (folder-name new-names)
+      ;; NOTE: Fetch all custom emojis from folder's name
+      (telega-folder-name--fetch-custom-emojis
+       (telega-folder--chat-folder-info folder-name))
+
       (dolist (fchat (telega-filter-chats
                       telega--ordered-chats `(folder ,folder-name)))
         (telega-chat--mark-dirty fchat)))
@@ -1623,11 +1628,13 @@ Please downgrade TDLib and recompile `telega-server'"
   (when (and (equal "tdesktop" (plist-get event :localization_target))
              (equal telega-language (plist-get event :language_pack_id)))
     (seq-doseq (lps (plist-get event :strings))
+      ;; TODO
       )
     ))
 
 (defun telega--on-updateOwnedStarCount (event)
-  (setq telega--owned-stars (plist-get event :star_count))
+  (setq telega--owned-stars
+        (telega--tl-star-amount-as-float (plist-get event :star_amount)))
   ;; TODO: Update settings
   )
 

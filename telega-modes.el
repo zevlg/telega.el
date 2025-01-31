@@ -190,14 +190,6 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
                    'mouse-face 'mode-line-highlight
                    'help-echo "Click to filter chats with mentions")))))
 
-(defun telega-mode-line-update (&rest _ignored)
-  "Update value for `telega-mode-line-string'."
-  (when telega-mode-line-mode
-    (setq telega-mode-line-string
-          (when (telega-server-live-p)
-            (telega-format-mode-line telega-mode-line-string-format)))
-    (force-mode-line-update 'all)))
-
 ;;;###autoload
 (define-minor-mode telega-mode-line-mode
   "Toggle display of the unread chats/mentions in the modeline."
@@ -245,6 +237,14 @@ If MESSAGES-P is non-nil then use number of messages with mentions."
     (advice-remove 'tracking-add-buffer 'telega-mode-line-update)
     (advice-remove 'tracking-remove-buffer 'telega-mode-line-update)
     ))
+
+(defun telega-mode-line-update (&rest _ignored)
+  "Update value for `telega-mode-line-string'."
+  (when telega-mode-line-mode
+    (setq telega-mode-line-string
+          (when (telega-server-live-p)
+            (telega-format-mode-line telega-mode-line-string-format)))
+    (force-mode-line-update 'all)))
 
 ;;; ellit-org: minor-modes
 ;; ** telega-appindicator-mode
@@ -500,7 +500,10 @@ Return filename of the generated icon."
 (defcustom telega-autoplay-custom-emojis 10
   "Non-nil to automatically play this number of custom emojis in the message."
   :type '(choice (const :tag "Autoplay Disabled" nil)
-                 integer)
+                 ;; TODO: add support for maximum number of frames to play
+                 (cons (integer :tag "Maximum number of custom emojis")
+                       (integer :tag "Maximum number of frames to be played"))
+                 (integer :tag "Maximum number of custom emojis to play"))
   :group 'telega-modes)
 
 (defun telega-autoplay-custom-emojis (msg &optional force)
@@ -958,17 +961,6 @@ get message associated with the file."
       '("Turn off minor mode" . telega-edit-file-mode))
     map))
 
-(defun telega-edit-file-message ()
-  "Return message for the currently edited file with `telega-edit-file-mode'."
-  (cl-assert telega-edit-file-mode)
-  telega--help-win-param)
-
-(defun telega-edit-file-buffer-name ()
-  "Return buffer name for a file edited with `telega-edit-file-mode'."
-  (concat (buffer-name) (telega-symbol 'mode)
-          (telega-chatbuf--name
-           (telega-msg-chat (telega-edit-file-message)))))
-
 (defvar telega-edit-file-mode-lighter
   (concat " " (telega-symbol 'mode) "Edit")
   "Lighter for the `telega-edit-file-mode'.")
@@ -1015,6 +1007,17 @@ Can be enabled only for content from editable messages."
 
     (setq mode-line-buffer-identification
           (propertized-buffer-identification "%12b"))))
+
+(defun telega-edit-file-message ()
+  "Return message for the currently edited file with `telega-edit-file-mode'."
+  (cl-assert telega-edit-file-mode)
+  telega--help-win-param)
+
+(defun telega-edit-file-buffer-name ()
+  "Return buffer name for a file edited with `telega-edit-file-mode'."
+  (concat (buffer-name) (telega-symbol 'mode)
+          (telega-chatbuf--name
+           (telega-msg-chat (telega-edit-file-message)))))
 
 (defun telega-edit-file-goto-message ()
   "Goto corresponding message."
@@ -1739,6 +1742,51 @@ Chat description is used to probe chat's language."
   :type '(repeat (string :tag "Language Code"))
   :group 'telega-modes)
 
+(defvar telega-auto-translate-mode-lighter
+  (concat " " (telega-symbol 'mode) "Translate")
+  "Lighter for the `telega-auto-translate-mode'.")
+
+(define-minor-mode telega-auto-translate-mode
+  "Minor mode to automatically translate chat messages."
+  :lighter telega-auto-translate-mode-lighter
+  (if telega-auto-translate-mode
+      (progn
+        (unless telega-translate-to-language-by-default
+          (setq telega-translate-to-language-by-default
+                (telega-completing-read-language-code
+                 "Translate chat messages/input to: "))
+          (telega-help-message 'translate-to-language
+              "Consider customizing `telega-translate-to-language-by-default'"))
+
+        (advice-add 'telega-chatbuf-input-send
+                    :around 'telega-auto-translate--chatbuf-input-send)
+        (add-hook 'telega-msg-hover-in-hook
+                  #'telega-auto-translate--msg nil 'local)
+        (add-hook 'telega-chatbuf-post-msg-insert-hook
+                  #'telega-auto-translate--on-msg-insert nil 'local)
+        (add-hook 'telega-chatbuf-pre-msg-update-hook
+                  #'telega-auto-translate--on-msg-update nil 'local)
+
+        ;; Try to detect chat's language code
+        (if (and (not telega-chatbuf-language-code)
+                 (telega-chatbuf-match-p 'can-send-or-post))
+            (telega-auto-translate--chatbuf-detect-language
+             telega-auto-translate-probe-language-codes)
+          (telega-chatbuf--prompt-update)
+          (telega-auto-translate--chatbuf-translate-visible-messages))
+        )
+
+    (remove-hook 'telega-chatbuf-pre-msg-update-hook
+                 #'telega-auto-translate--on-msg-update 'local)
+    (remove-hook 'telega-chatbuf-post-msg-insert-hook
+                 #'telega-auto-translate--on-msg-insert 'local)
+    (remove-hook 'telega-msg-hover-in-hook
+                 #'telega-auto-translate--msg 'local)
+    (advice-remove 'telega-chatbuf-input-send
+                   'telega-auto-translate--chatbuf-input-send)
+    (telega-chatbuf--prompt-update)
+    ))
+
 (defun telega-auto-translate--chatbuf-translate-visible-messages ()
   "Translate all visible messages in the chatbuf."
   (cl-assert telega-translate-to-language-by-default)
@@ -1878,51 +1926,6 @@ Or nil if translation is not needed."
                   telega-chatbuf-language-code
                   "]"))))
 
-(defvar telega-auto-translate-mode-lighter
-  (concat " " (telega-symbol 'mode) "Translate")
-  "Lighter for the `telega-auto-translate-mode'.")
-
-(define-minor-mode telega-auto-translate-mode
-  "Minor mode to automatically translate chat messages."
-  :lighter telega-auto-translate-mode-lighter
-  (if telega-auto-translate-mode
-      (progn
-        (unless telega-translate-to-language-by-default
-          (setq telega-translate-to-language-by-default
-                (telega-completing-read-language-code
-                 "Translate chat messages/input to: "))
-          (telega-help-message 'translate-to-language
-              "Consider customizing `telega-translate-to-language-by-default'"))
-
-        (advice-add 'telega-chatbuf-input-send
-                    :around 'telega-auto-translate--chatbuf-input-send)
-        (add-hook 'telega-msg-hover-in-hook
-                  #'telega-auto-translate--msg nil 'local)
-        (add-hook 'telega-chatbuf-post-msg-insert-hook
-                  #'telega-auto-translate--on-msg-insert nil 'local)
-        (add-hook 'telega-chatbuf-pre-msg-update-hook
-                  #'telega-auto-translate--on-msg-update nil 'local)
-
-        ;; Try to detect chat's language code
-        (if (and (not telega-chatbuf-language-code)
-                 (telega-chatbuf-match-p 'can-send-or-post))
-            (telega-auto-translate--chatbuf-detect-language
-             telega-auto-translate-probe-language-codes)
-          (telega-chatbuf--prompt-update)
-          (telega-auto-translate--chatbuf-translate-visible-messages))
-        )
-
-    (remove-hook 'telega-chatbuf-pre-msg-update-hook
-                 #'telega-auto-translate--on-msg-update 'local)
-    (remove-hook 'telega-chatbuf-post-msg-insert-hook
-                 #'telega-auto-translate--on-msg-insert 'local)
-    (remove-hook 'telega-msg-hover-in-hook
-                 #'telega-auto-translate--msg 'local)
-    (advice-remove 'telega-chatbuf-input-send
-                   'telega-auto-translate--chatbuf-input-send)
-    (telega-chatbuf--prompt-update)
-    ))
-
 
 ;;; ellit-org: minor-modes
 ;;
@@ -1968,6 +1971,25 @@ TDLib's autoDownloadSettings structure."
   :type 'alist
   :group 'telega-modes)
 
+;;;###autoload
+(define-minor-mode telega-auto-download-mode
+  "Global mode to automatically download media files."
+  :init-value nil :global t :group 'telega-modes
+  (if telega-auto-download-mode
+      (progn
+        (add-hook 'telega-ready-hook
+                  #'telega-auto-download--start)
+        (when (telega-server-live-p)
+          (telega-auto-download--start))
+        )
+
+    (when (telega-server-live-p)
+      (telega-auto-download--apply-settings
+       telega-auto-download--disabled-preset))
+    (remove-hook 'telega-ready-hook
+                 #'telega-auto-download--start)
+    ))
+
 (defun telega-auto-download--apply-settings (settings &optional tl-network-type)
   "Apply auto-downloading SETTINGS for the TL-NETWORK-TYPE."
   (let ((tl-settings
@@ -1997,25 +2019,6 @@ TDLib's autoDownloadSettings structure."
      (lambda (reply)
        (setq telega-auto-download--tdlib-presets reply)
        (telega-auto-download--start)))))
-
-;;;###autoload
-(define-minor-mode telega-auto-download-mode
-  "Global mode to automatically download media files."
-  :init-value nil :global t :group 'telega-modes
-  (if telega-auto-download-mode
-      (progn
-        (add-hook 'telega-ready-hook
-                  #'telega-auto-download--start)
-        (when (telega-server-live-p)
-          (telega-auto-download--start))
-        )
-
-    (when (telega-server-live-p)
-      (telega-auto-download--apply-settings
-       telega-auto-download--disabled-preset))
-    (remove-hook 'telega-ready-hook
-                 #'telega-auto-download--start)
-    ))
 
 
 ;;; ellit-org: minor-modes

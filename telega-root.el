@@ -83,6 +83,13 @@ Use `telega-root-aux-inserters' to customize it.")
 (defvar telega-idle--timer nil
   "Runs when Emacs gets idle.")
 
+(defvar-keymap telega-root-view-contacts-map
+  :doc "Keymap to view contacts."
+  "s" #'telega-view-contacts-search
+  "a" #'telega-view-contacts-all
+  "f" #'telega-view-close-friends
+  "o" #'telega-view-owned-bots)
+
 (defvar telega-root-view-map
   (let ((map (make-sparse-keymap)))
     ;;; ellit-org: rootbuf-view-bindings
@@ -149,9 +156,15 @@ Use `telega-root-aux-inserters' to customize it.")
     ;;   {{{fundoc(telega-view-settings, 2)}}}
     (define-key map (kbd "S") 'telega-view-settings)
     ;;; ellit-org: rootbuf-view-bindings
-    ;; - {{{where-is(telega-view-contacts,telega-root-mode-map)}}} ::
-    ;;   {{{fundoc(telega-view-contacts, 2)}}}
-    (define-key map (kbd "c") 'telega-view-contacts)
+    ;; - {{{where-is(telega-view-contacts-search,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-contacts-search, 2)}}}
+    ;; - {{{where-is(telega-view-contacts-all,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-contacts-all, 2)}}}
+    ;; - {{{where-is(telega-view-close-friends,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-close-friends, 2)}}}
+    ;; - {{{where-is(telega-view-owned-bots,telega-root-mode-map)}}} ::
+    ;;   {{{fundoc(telega-view-owned-bots, 2)}}}
+    (define-key map (kbd "c") telega-root-view-contacts-map)
     ;;; ellit-org: rootbuf-view-bindings
     ;; - {{{where-is(telega-view-calls,telega-root-mode-map)}}} ::
     ;;   {{{fundoc(telega-view-calls, 2)}}}
@@ -1426,7 +1439,7 @@ VIEW-FILTER is additional chat filter for this root view."
   (telega-root--outgoing-doc-messages-search)
   )
 
-(defun telega-view-contacts (query)
+(defun telega-view-contacts-search (query)
   "View contacts searched by QUERY.
 If QUERY is empty string, then show all contacts."
   (interactive
@@ -1447,6 +1460,43 @@ If QUERY is empty string, then show all contacts."
                :on-chat-update #'telega-root--contact-on-chat-update
                :on-user-update #'telega-root--contact-on-user-update))
    ))
+
+(defun telega-view-contacts-all ()
+  "View all contacts."
+  (interactive)
+  (telega-view-contacts-all ""))
+
+(defun telega-view-close-friends ()
+  "View close friends."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-close-friends
+         (telega-i18n "lng_edit_privacy_close_friends")
+         (list :name "close-friends"
+               :pretty-printer #'telega-root--contact-pp
+               :sorter #'telega-user-cmp-by-status
+               :loading (telega--getCloseFriends
+                          (apply-partially
+                           #'telega-root-view--ewoc-loading-done "close-friends"))
+               :on-chat-update #'telega-root--contact-on-chat-update
+               :on-user-update #'telega-root--contact-on-user-update)))
+  )
+
+(defun telega-view-owned-bots ()
+  "View owned bots."
+  (interactive)
+  (telega-root-view--apply
+   (list 'telega-view-owned-bots
+         "Owned Bots"
+         (list :name "owned-bots"
+               :pretty-printer #'telega-root--contact-pp
+               :sorter #'telega-user-cmp-by-status
+               :loading (telega--getOwnedBots
+                          (apply-partially
+                           #'telega-root-view--ewoc-loading-done "owned-bots"))
+               :on-chat-update #'telega-root--contact-on-chat-update
+               :on-user-update #'telega-root--contact-on-user-update)))
+  )
 
 (defun telega-view-last-messages ()
   "View last messages in the chats."
@@ -1821,7 +1871,7 @@ Default Disable Notification setting"))
       (telega-root--any-on-chat-update ewoc-name ewoc chat))))
 
 (defun telega-view-folders--ewoc-spec (folder-spec)
-  (let ((folder-name (telega-tl-str folder-spec :title)))
+  (let ((folder-name (telega-folder-name folder-spec)))
     (list :name folder-name
           :pretty-printer (telega-view-folders--gen-pp folder-name)
           :header (telega-folder-format "%i%f" folder-name)
@@ -2048,11 +2098,7 @@ state kinds to show. By default all kinds are shown."
                      (telega-ins--chat chat)))
           :pretty-printer #'telega-root--favorite-message-pp
           :loading (telega--getMessages (plist-get chat :id)
-                       (mapcar (telega--tl-prop :id)
-                               (seq-filter (lambda (fav)
-                                             (eq (plist-get chat :id)
-                                                 (plist-get fav :chat_id)))
-                                           telega--favorite-messages))
+                       (telega-chat-favorite-messages-ids chat)
                      (apply-partially #'telega-root-view--ewoc-loading-done
                                       ewoc-name))
           :sorter #'telega-root--messages-sorter

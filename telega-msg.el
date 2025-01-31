@@ -25,6 +25,7 @@
 
 ;;; Code:
 (require 'format-spec)
+(require 'easymenu)
 
 (require 'telega-core)
 (require 'telega-tdlib)
@@ -56,129 +57,95 @@
 
 
 ;; Menu for right-mouse on message
-(defvar telega-msg-button-menu-map
-  (let ((menu-map (make-sparse-keymap "Telega Message")))
-    (bindings--define-key menu-map [telega-msg-mark-toggle]
-      '(menu-item (telega-i18n "lng_context_select_msg") telega-msg-mark-toggle
-                  :help "Mark the message"
-                  :button (:toggle . (telega-msg-marked-p
-                                      (telega-msg-at-down-mouse-3)))))
-                  ;; :visible (not (telega-msg-marked-p
-                  ;;                (telega-msg-at-down-mouse-3)))))
-    ;; (bindings--define-key menu-map [unmark]
-    ;;   '(menu-item "Unmark" telega-msg-mark-toggle
-    ;;               :help "Unmark the message"
-    ;;               :visible (telega-msg-marked-p (telega-msg-at-down-mouse-3))))
-    (bindings--define-key menu-map [s0] menu-bar-separator)
-    (bindings--define-key menu-map [add-tags]
-      '(menu-item (telega-i18n "lng_add_tag_button") telega-msg-add-reaction
-                  :help "Add tag to the message"
-                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                             '(chat saved-messages))))
-    (bindings--define-key menu-map [add-favorite]
-      '(menu-item "Add to Favorites" telega-msg-favorite-toggle
-                  :help "Add message to the list of favorite messages"
-                  :visible (not (telega-msg-favorite-p
-                                 (telega-msg-at-down-mouse-3)))))
-    (bindings--define-key menu-map [rm-favorite]
-      '(menu-item "Remove from Favorites" telega-msg-favorite-toggle
-                  :help "Remove message from the list of favorite messages"
-                  :visible (telega-msg-favorite-p (telega-msg-at-down-mouse-3))))
-
-    (bindings--define-key menu-map [save]
-      '(menu-item (telega-i18n "lng_context_save_file") telega-msg-save
-                  :help "Save message's media to a file"))
-    (bindings--define-key menu-map [copy-link]
-      '(menu-item (telega-i18n "lng_context_copy_link") telega-msg-copy-link
-                  :help "Copy link to the message to the kill ring"))
-    (bindings--define-key menu-map [copy-text]
-      '(menu-item (telega-i18n "lng_context_copy_text") telega-msg-copy-text
-                  :visible (let ((msg (telega-msg-at-down-mouse-3)))
-                             (telega-msg-content-text msg 'with-voice-note))
-                  :help "Copy message text to the kill ring"))
-    (bindings--define-key menu-map [unpin]
-      '(menu-item (telega-i18n "lng_context_unpin_msg") telega-msg-pin-toggle
-                  :help "Unpin message"
-                  :visible (let ((msg (telega-msg-at-down-mouse-3)))
-                             (and (telega-chat-match-p (telega-msg-chat msg)
-                                    '(my-permission :can_pin_messages))
-                                  (plist-get msg :is_pinned)))))
-    (bindings--define-key menu-map [pin]
-      '(menu-item (telega-i18n "lng_context_pin_msg") telega-msg-pin-toggle
-                  :help "Pin message"
-                  :visible (let ((msg (telega-msg-at-down-mouse-3)))
-                             (and (telega-chat-match-p (telega-msg-chat msg)
-                                    '(my-permission :can_pin_messages))
-                                  (not (plist-get msg :is_pinned))))))
-    (bindings--define-key menu-map [s1] menu-bar-separator)
-    (bindings--define-key menu-map [ban-sender]
-      '(menu-item (propertize "Ban Sender" 'face 'error)
-                  telega-msg-ban-sender
-                  :help "Ban/report message sender"
-                  :enable (let ((msg (telega-msg-at-down-mouse-3)))
-                             (telega-chat-match-p (telega-msg-chat msg)
-                               '(my-permission :can_restrict_members)))
-                  ))
-    (bindings--define-key menu-map [delete]
-      '(menu-item (propertize (telega-i18n "lng_context_delete_msg") 'face 'error)
-                  telega-msg-delete-dwim
-                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                            '(or (message-property :can_be_deleted_for_all_users)
-                                 (message-property :can_be_deleted_only_for_self)))
-                  ))
-    ;; TODO: create submenu for reporting a message/chat/reactions/etc
-    ;; (bindings--define-key menu-map [report]
-    ;;   '(menu-item (propertize (telega-i18n "lng_context_report_msg") 'face 'error)
-    ;;               telega-msg-report-dwim
-    ;;               :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
-    ;;                         '(or (message-property :can_be_deleted_for_all_users)
-    ;;                              (message-property :can_be_deleted_only_for_self)))
-    ;;               ))
-    (bindings--define-key menu-map [forward]
-      '(menu-item (telega-i18n "lng_context_forward_msg")
-                  telega-msg-forward-dwim
-                  :help "Forward messages"
-                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                            '(message-property :can_be_forwarded))
-                  ))
-    (bindings--define-key menu-map [translate]
-      '(menu-item (telega-i18n "lng_context_translate") telega-msg-translate
-                  :help "Translate message's text"
-                  :visible (telega-msg-content-text
-                            (telega-msg-at-down-mouse-3))))
-    (bindings--define-key menu-map [s2] menu-bar-separator)
-    (bindings--define-key menu-map [topic]
-      '(menu-item (telega-i18n "lng_replies_view_topic")
-                  telega-msg-open-thread-or-topic
-                  :help "Show message's topic"
-                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                             'is-topic)))
-    (bindings--define-key menu-map [thread]
-      '(menu-item (telega-i18n "lng_replies_view_thread")
-                  telega-msg-open-thread-or-topic
-                  :help "Show message's thread"
-                  :visible (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                             'is-thread)))
-    (bindings--define-key menu-map [edit]
-      '(menu-item (telega-i18n "lng_context_edit_msg") telega-msg-edit
-                  :help "Edit the message"
-                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                            '(message-property :can_be_edited))))
-    (bindings--define-key menu-map [reply-another-char]
-      '(menu-item (telega-i18n "lng_reply_in_another_chat")
-                  telega-msg-reply-in-another-chat
-                  :help (telega-i18n "lng_reply_in_another_chat")
-                  :enable (telega-msg-match-p (telega-msg-at-down-mouse-3)
-                            '(message-property :can_be_replied_in_another_chat))
-                  ))
-    (bindings--define-key menu-map [reply]
-      '(menu-item (telega-i18n "lng_context_reply_msg") telega-msg-reply
-                  :help "Reply to the message"))
-    (bindings--define-key menu-map [s3] menu-bar-separator)
-    (bindings--define-key menu-map [describe]
-      '(menu-item (telega-i18n "lng_info_about_label") telega-describe-message
-                  :help "Describe the message"))
-    menu-map))
+(easy-menu-define telega-msg-button-menu nil
+  "Menu for the message."
+  '("Telega Message"
+    ["describe" telega-describe-message
+     :key (kbd "i")
+     :label (telega-i18n "lng_info_about_label")]
+    "---"
+    ["reply" telega-msg-reply
+     :label (telega-i18n "lng_context_reply_msg")]
+    ["reply-in-another-chat" telega-msg-reply-in-another-chat
+      :label (telega-i18n "lng_reply_in_another_chat")
+      :visible (telega-msg-match-p (telega-msg-for-interactive)
+                 '(message-property :can_be_replied_in_another_chat))]
+    ["edit" telega-msg-edit
+     :label (telega-i18n "lng_context_edit_msg")
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(and (not (type Poll))
+                      (message-property :can_be_edited)))]
+    ["stop-poll" telega-msg-stop-poll
+     :label (if (eq 'pollTypeQuiz
+                    (telega--tl-type
+                     (plist-get (telega-msg-match-p (telega-msg-for-interactive)
+                                  '(type Poll))
+                                :poll)))
+                "Stop Quiz"
+              (telega-i18n "lng_polls_stop"))
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(and (type Poll)
+                      (message-property :can_be_edited)))]
+    ["forward" telega-msg-forward-dwim
+     :label (telega-i18n "lng_context_forward_msg")
+     :enable (telega-msg-match-p (telega-msg-for-interactive)
+               '(message-property :can_be_forwarded))]
+    ["add-tag" telega-msg-add-reaction
+     :label (telega-i18n "lng_add_tag_button")
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(chat saved-messages))]
+    ["translate" telega-msg-translate
+     :label (telega-i18n "lng_context_translate")
+     :visible (telega-msg-content-text (telega-msg-for-interactive))]
+    "---"
+    ["pin" telega-msg-pin-toggle
+     :label (telega-i18n "lng_context_pin_msg")
+     :style toggle
+     :selected (telega-msg-match-p (telega-msg-for-interactive)
+                 '(prop :is_pinned))
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(message-property :can_be_pinned))]
+    ["copy" telega-msg-copy-text
+     :label (telega-i18n "lng_context_copy_text")
+     :visible (telega-msg-content-text
+               (telega-msg-for-interactive) 'with-voice-note)]
+    ["copy-link" telega-msg-copy-link
+     :label (telega-i18n "lng_context_copy_link")]
+    ["save" telega-msg-save
+     :label (telega-i18n "lng_context_save_file")]
+    ["favorite" telega-msg-favorite-toggle
+     :label "Toggle Favorite"
+     :style toggle
+     :selected (telega-msg-favorite-p (telega-msg-for-interactive))]
+    "---"
+    ["delete" telega-msg-delete-dwim
+     :label (propertize (telega-i18n "lng_context_delete_msg") 'face 'error)
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(or (message-property :can_be_deleted_for_all_users)
+                    (message-property :can_be_deleted_only_for_self)))]
+    ["ban-sender" telega-msg-ban-sender
+     :label (propertize "Ban Sender" 'face 'error)
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                '(chat (my-permission :can_restrict_members)))]
+    ["report-spam" telega-msg-report-dwim
+     :label (telega-i18n "lng_report_spam")
+      :visible (telega-msg-match-p (telega-msg-for-interactive)
+                 '(message-property :can_report_supergroup_spam))]
+    "---"
+    ["view-thread" telega-msg-open-thread-or-topic
+     :label (telega-i18n "lng_replies_view_thread")
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                'is-thread)]
+    ["view-topic" telega-msg-open-thread-or-topic
+     :label (telega-i18n "lng_replies_view_topic")
+     :visible (telega-msg-match-p (telega-msg-for-interactive)
+                'is-topic)]
+    "---"
+    ["mark" telega-msg-mark-toggle
+     :label (telega-i18n "lng_context_select_msg")
+     :style toggle
+     :selected (telega-msg-marked-p (telega-msg-for-interactive))]
+    ))
 
 (defvar telega-msg-button-map
   (let ((map (make-sparse-keymap)))
@@ -219,7 +186,7 @@
     (define-key map (kbd "*") 'telega-msg-favorite-toggle)
 
     ;; Menu for right mouse on a message
-    (define-key map [down-mouse-3] telega-msg-button-menu-map)
+    (define-key map [down-mouse-3] telega-msg-button-menu)
     (define-key map [mouse-3] #'ignore)
 
     ;; ffplay media controls for some media messages
@@ -240,12 +207,6 @@
     (define-key map (kbd "8") 'telega-msg--vvnote-rewind-part)
     (define-key map (kbd "9") 'telega-msg--vvnote-rewind-part)
 
-    map))
-
-(defvar telega-msg-button-spoiler-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map telega-msg-button-map)
-    (define-key map (kbd "RET") 'telega-msg-remove-text-spoiler)
     map))
 
 (define-button-type 'telega-msg
@@ -1115,9 +1076,12 @@ non-nil."
 (defun telega-msg-emojis-only-p (msg)
   "Return non-nil if text message MSG contains only emojis."
   (when (telega-msg-match-p msg '(type Text))
-    (let ((text (telega--tl-get msg :content :text :text)))
-      (not (text-property-not-all
-            0 (length text) 'telega-emoji-p t text)))))
+    (let* ((content-text (telega--tl-get msg :content :text))
+           (text (plist-get content-text :text)))
+      ;; NOTE: Should not contain custom emojis or other entities
+      (and (seq-empty-p (plist-get content-text :entities))
+           (not (text-property-not-all
+                 0 (length text) 'telega-emoji-p t text))))))
 
 (defun telega-msg-open-content (msg &optional clicked-p)
   "Open message MSG content.
@@ -1309,6 +1273,25 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
                 (when last-name (substring last-name 0 1))))
 
     (substring (telega-chat-title msg-sender 'no-badges) 0 1)))
+
+(defun telega-msg-sender--verification-badges (v-status)
+  "Return verification status bages string."
+  (when v-status
+    (concat 
+     (when (plist-get v-status :is_scam)
+       (propertize (telega-i18n "lng_scam_badge") 'face 'error))
+     (when (plist-get v-status :is_fake)
+       (propertize (telega-i18n "lng_fake_badge") 'face 'error))
+     (when (plist-get v-status :is_verified)
+       (let* ((v-custom-emoji-id
+               (plist-get v-status :bot_verification_icon_custom_emoji_id))
+              (v-sticker
+               (unless (telega-zerop v-custom-emoji-id)
+                 (telega-custom-emoji-get v-custom-emoji-id))))
+         (if v-sticker
+             (telega-ins--as-string
+              (telega-ins--image (telega-sticker--image sticker)))
+           (telega-symbol 'verified)))))))
 
 (defun telega-msg-sender-title (msg-sender &rest args)
   "Return title for the message sender MSG-SENDER.
@@ -1760,11 +1743,9 @@ If `\\[universal-argument]' is supplied, then copy without text properties."
                 msg-text))
     (message "Copied message text (%d chars)" (length msg-text))))
 
-(defun telega-msg--tl-entity-text (msg &optional tl-entity)
-  "Return entity text at point defined by `:tl-entity' text property."
-  (when-let ((tl-entity (or tl-entity
-                            (get-text-property (point) :tl-entity)))
-             (msg-fmt-text (or (telega--tl-get msg :content :text)
+(defun telega-msg--tl-entity-text (msg tl-entity)
+  "Return MSG text at point limited by TL-ENTITY."
+  (when-let ((msg-fmt-text (or (telega--tl-get msg :content :text)
                                (telega--tl-get msg :content :caption))))
     (telega-tl-str
      (telega-fmt-text-substring
@@ -1782,11 +1763,10 @@ If `\\[universal-argument]' is supplied, then copy without text properties."
   (interactive (list (telega-msg-for-interactive)
                      current-prefix-arg))
 
-  (let* ((ent (get-text-property (point) :tl-entity))
-         (ent-type (when ent
-                     (telega--tl-type (plist-get ent :type))))
+  (let* ((entities (get-text-property (point) :tl-entities))
          (telega-link (get-text-property (point) :telega-link))
          (telega-inhibit-telega-display-by t)
+         (ent nil)
          (ctext (cond ((region-active-p)
                        (prog1
                            (buffer-substring (region-beginning) (region-end))
@@ -1795,13 +1775,16 @@ If `\\[universal-argument]' is supplied, then copy without text properties."
                       ((memq (car telega-link) '(file url))
                        (cdr telega-link))
 
-                      ((eq 'textEntityTypeUrl ent-type)
+                      ((setq ent (telega--tl-entity-get
+                                  entities 'textEntityTypeUrl))
                        (telega-msg--tl-entity-text msg ent))
 
-                      ((eq 'textEntityTypeTextUrl ent-type)
+                      ((setq ent (telega--tl-entity-get
+                                  entities 'textEntityTypeTextUrl))
                        (telega-tl-str (plist-get ent :type) :url))
 
-                      ((eq 'textEntityTypePreCode ent-type)
+                      ((setq ent (telega--tl-entity-get
+                                  entities 'textEntityTypePreCode))
                        (telega-msg--tl-entity-text msg ent))
 
                       (t
@@ -1861,6 +1844,12 @@ Requires administrator rights in the chat."
        chat sender
        (list :@type "chatMemberStatusBanned"
              :banned_until_date 0)))))
+
+(defun telega-msg-stop-poll (msg)
+  "Stop poll message MSG."
+  (interactive (list (telega-msg-for-interactive)))
+  (when (yes-or-no-p (telega-i18n "lng_polls_stop_warning"))
+    (telega--stopPoll msg)))
 
 (defun telega-ins--message-read-date (msg-read-date)
   "Inserter for the MessageReadDate structure."
@@ -2165,6 +2154,11 @@ be added."
     (cond
      ((null reaction-type)
       (user-error "telega: Can't add reaction to this message"))
+     ((equal reaction-type '(:@type "reactionTypePaid"))
+      (telega--addPendingPaidMessageReaction msg)
+      (if (y-or-n-p-with-timeout "Undo paid reaction? " 5 nil)
+          (telega--removePendingPaidMessageReactions msg)
+        (telega--commitPendingPaidMessageReactions msg)))
      ((not (eq reaction-type 'custom))
       (telega--addMessageReaction msg reaction-type big-p 'update-recent))
      (t
@@ -2256,42 +2250,40 @@ By default `telega-translate-to-language-default' is used."
       (telega-msg-redisplay msg)
       )))
 
-(defun telega-msg-remove-text-spoiler (msg)
+(defun telega-msg-text-spoiler-toggle (msg)
   "Show spoiler text entity at point."
   (interactive (list (telega-msg-for-interactive)))
 
-  (when-let ((ent-type (get-text-property (point) :tl-entity-type)))
-    (when (eq 'textEntityTypeSpoiler (telega--tl-type ent-type))
-      (plist-put ent-type :telega-show-spoiler t)
-      (telega-msg-redisplay msg)
-      ;; NOTE: hide spoiler on next message's redisplay
-      (plist-put ent-type :telega-show-spoiler nil))))
+  (plist-put msg :telega-text-spoiler-removed
+             (not (plist-get msg :telega-text-spoiler-removed)))
+  (telega-msg-redisplay msg))
 
 (defun telega-msg-blockquote-expand-toggle (msg)
   "Toggle expandable block quote at point."
   (interactive (list (telega-msg-for-interactive)))
 
-  (when-let ((ent-type (get-text-property (point) :tl-entity-type)))
-    (when (eq 'textEntityTypeExpandableBlockQuote (telega--tl-type ent-type))
-      (plist-put ent-type :telega-blockquote-expanded
-                 (not (plist-get ent-type :telega-blockquote-expanded)))
-      (telega-msg-redisplay msg))))
+  (when-let ((ent (telega--tl-entity-get
+                   (get-text-property (point) :tl-entities)
+                   'textEntityTypeExpandableBlockQuote)))
+    (plist-put ent :telega-blockquote-expanded
+               (not (plist-get ent :telega-blockquote-expanded)))
+    (telega-msg-redisplay msg)))
 
-(defun telega-msg-remove-media-spoiler (msg)
-  "Remove spoiler for the media message MSG."
+(defun telega-msg-media-spoiler-toggle (msg)
+  "Toggle spoiler for the media message MSG."
   (interactive (list (telega-msg-for-interactive)))
-  (let ((content (plist-get msg :content)))
-    (when (and (plist-get content :has_spoiler)
-               (not (plist-get content :telega-spoiler-removed)))
-      (plist-put content :telega-spoiler-removed t)
-      (telega-msg-redisplay msg))))
+
+  (when (plist-get (plist-get msg :content) :has_spoiler)
+    (plist-put msg :telega-media-spoiler-removed
+               (not (plist-get msg :telega-media-spoiler-removed)))
+    (telega-msg-redisplay msg)))
 
 (defun telega-msg-disable-link-preview (msg)
   "Disable webpage preview for the given outgoing message."
   (interactive (list (telega-msg-for-interactive)))
   (unless (telega-msg-match-p msg '(type Text))
     (user-error "telega: can disable link preview only for text messages"))
-  (unless (telega-msg-match-p msg '(prop :can_be_edited))
+  (unless (telega-msg-match-p msg '(message-property :can_be_edited))
     (user-error "telega: can't edit this message"))
 
   (telega--editMessageText

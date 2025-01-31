@@ -55,9 +55,9 @@
 ;;     Matches channel's text messages containing "hello" word.
 
 ;;; Code:
-(require 'telega-chat)
-(require 'telega-msg)
-(require 'telega-user)
+;; (require 'telega-chat)
+;; (require 'telega-msg)
+;; (require 'telega-user)
 (require 'telega-info)
 
 (defvar telega-temex-remap-list nil
@@ -105,6 +105,7 @@ Use `define-telega-matcher' to define new matchers."
 (defun telega-match-p (object temex)
   "Return non-nil if TEMEX matches OBJECT.
 Takes `telega-temex-remap-alist' into account."
+  (declare (indent 1))
   (when temex
     ;; Try whole TEMEX remapping
     (setq temex (or (telega-match--temex-remap telega-temex-match-prefix temex)
@@ -401,8 +402,12 @@ PERM could be one of in `telega-chat--chat-permissions' list or in
 ;; - verified, {{{where-is(telega-filter-by-verified,telega-root-mode-map)}}} ::
 ;;   {{{temexdoc(chat, verified, 2)}}}
 (define-telega-matcher chat verified (chat)
-  "Matches if chat is verified."
-  (plist-get (telega-chat--info chat 'locally) :is_verified))
+  "Matches if chat is verified.
+Return verification status if CHAT is verified."
+  (when-let ((verification-status
+              (plist-get (telega-chat--info chat t) :verification_status)))
+    (when (plist-get verification-status :is_verified)
+      verification-status)))
 
 ;;; ellit-org: chat-temex
 ;; - (restriction ~SUFFIX-LIST~...), {{{where-is(telega-filter-by-restriction,telega-root-mode-map)}}} ::
@@ -589,10 +594,13 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;; - fake-or-scam ::
 ;;   {{{temexdoc(chat, fake-or-scam, 2)}}}
 (define-telega-matcher chat fake-or-scam (chat)
-  "Matches if chat is fake or scam user or group."
-  (let ((info (telega-chat--info chat)))
-    (or (plist-get info :is_scam)
-        (plist-get info :is_fake))))
+  "Matches if chat is fake or scam user or group.
+Return verification status if chat is fake or scam."
+  (when-let ((verification-status
+              (plist-get (telega-chat--info chat t) :verification_status)))
+    (when (or (plist-get verification-status :is_scam)
+              (plist-get verification-status :is_fake))
+      verification-status)))
 
 ;;; ellit-org: chat-temex
 ;; - (has-video-chat [ ~NON-EMPTY~ ]) ::
@@ -786,6 +794,13 @@ By default N is 1."
   (when (telega-chat-match-p chat '(type channel))
     (let ((info (telega-chat--info chat 'local)))
       (>= (or (plist-get info :boost_level) 0) (or n 1)))))
+
+;;; ellit-org: chat-temex
+;; - is-pinned ::
+;;   {{{temexdoc(chat, is-pinned, 2)}}}
+(define-telega-matcher chat is-pinned (chat)
+  "Matches if chat is pinned."
+  (plist-get (telega-chat-position chat) :is_pinned))
 
 
 ;;; User Temexes

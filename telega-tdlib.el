@@ -604,19 +604,23 @@ LIMIT defaults to 20."
              (list :chat_id (plist-get chat :id))))
     callback))
 
-(cl-defun telega--searchStickers (emoji &key (tl-sticker-type
+(cl-defun telega--searchStickers (emojis &key (tl-sticker-type
                                               '(:@type "stickerTypeRegular"))
-                                        limit callback)
-  "Search for the public stickers that correspond to a given EMOJI.
+                                        query language-codes limit callback)
+  "Search for the public stickers that correspond to a given EMOJIS.
+EMOJIS is space-separated list of emojis to search for.
 LIMIT defaults to 20."
   (declare (indent 1))
   (with-telega-server-reply (reply)
       (append (plist-get reply :stickers) nil)
 
-    (list :@type "searchStickers"
-          :emojis emoji
-          :sticker_type tl-sticker-type
-          :limit (or limit 100))
+    (nconc (list :@type "searchStickers"
+                 :emojis emojis
+                 :sticker_type tl-sticker-type
+                 :limit (or limit 100))
+           (when (or query language-codes)
+             (list :query (or query "")
+                   :input_language_codes (apply #'vector language-codes))))
     callback))
 
 (cl-defun telega--getInstalledStickerSets (&key (tl-sticker-type
@@ -724,6 +728,17 @@ Pass non-nil ATTACHED-P to return only stickers attached to photos/videos."
   (telega-server--call
    (list :@type "getStickerEmojis"
          :sticker sticker-input-file)
+   callback))
+
+(cl-defun telega--getStickerOutline (sticker-file &key for-animated-emoji-p
+                                                  for-clicked-p callback)
+  "Return outline of a sticker."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "getStickerOutline"
+         :sticker_file_id (plist-get sticker-file :id)
+         :for_animated_emoji (if for-animated-emoji-p t :false)
+         :for_clicked_animated_emoji_message (if for-clicked-p t :false))
    callback))
 
 (defun telega--changeStickerSet (stickerset install-p &optional archive-p)
@@ -1892,17 +1907,20 @@ REVOKE is always non-nil for supergroups, channels and secret chats."
          :sender_id (telega--MessageSender sender))))
 
 (cl-defun telega--searchMessages (query &key offset (limit 100)
-                                         chat-list tl-msg-filter
+                                         chat-list
+                                         tl-msg-filter
+                                         tl-chat-filter
                                         (min-date 0) (max-date 0)
-                                        only-channels-p
                                         callback)
   "Search messages by QUERY.
 OFFSET is th offset of the first entry to return as received from the
 previous request.
 If CHAT-LIST is given, then fetch chats from TDLib's CHAT-LIST.
+TL-MSG-FILTER is a \"SearchMessagesFilter\" TL structure.
+TL-CHAT-FILTER is a \"SearchMessagesChatTypeFilter\" TL structure.
 If CALLBACK is specified, then do async call and run CALLBACK
-with list of chats received.
-Return FoundMessages TL structure."
+with the result.
+Return \"FoundMessages\" TL structure."
   (declare (indent 1))
   (telega-server--call
    (nconc (list :@type "searchMessages"
@@ -1910,7 +1928,6 @@ Return FoundMessages TL structure."
                 :offset (or offset "")
                 :min_date min-date
                 :max-date max-date
-                :only_in_channels (if only-channels-p t :false)
                 :limit limit)
           (when tl-msg-filter
             (list :filter tl-msg-filter))
@@ -1919,7 +1936,9 @@ Return FoundMessages TL structure."
           (when chat-list
             nil
             ;;   (list :chat_list chat-list)
-            ))
+            )
+          (when tl-chat-filter
+            (list :chat_type_filter tl-chat-filter)))
    callback))
 
 (cl-defun telega--searchOutgoingDocumentMessages (&optional query &key limit callback)
@@ -2250,7 +2269,7 @@ be marked as read."
    (list :@type "toggleChatIsPinned"
          :chat_list telega-tdlib--chat-list
          :chat_id (plist-get chat :id)
-         :is_pinned (if (plist-get (telega-chat-position chat) :is_pinned)
+         :is_pinned (if (telega-chat-match-p chat 'is-pinned)
                         :false
                       t))))
 
@@ -2454,6 +2473,14 @@ Return an ID of group call."
           :start_date start-time
           :is_rtmp_stream (if rtmp-stream-p t :false))
     callback))
+
+(defun telega--createGroupCall (call-id &optional callback)
+  "Create a group call from a one-to-one call denoted by CALL-ID."
+  (declare (indent 1))
+  (telega-server--call
+   (list :@type "createGroupCall"
+         :call_id call-id)
+   callback))
 
 (defun telega--getVideoChatRtmpUrl (chat &optional callback)
   (declare (indent 1))
@@ -3218,6 +3245,38 @@ Saved Messages topic is specified by SM-TOPIC-ID."
          :supergroup_id (plist-get supergroup :id)
          :can_have_sponsored_messages (if enable-p t :false))
    (or callback #'ignore)))
+
+(cl-defun telega--addPendingPaidMessageReaction (msg &key (star-count 1)
+                                                     (anonymous-p 'default))
+  (telega-server--send
+   (list :@type "addPendingPaidMessageReaction"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id)
+         :star_count star-count
+         :use_default_is_anonymous (if (eq anonymous-p 'default) t :false)
+         :is_anonymous (if (and anonymous-p (not (eq anonymous-p 'default)))
+                           t
+                         :false)
+         )))
+
+(defun telega--commitPendingPaidMessageReactions (msg)
+  (telega-server--send
+   (list :@type "commitPendingPaidMessageReactions"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))))
+
+(defun telega--removePendingPaidMessageReactions (msg)
+  (telega-server--send
+   (list :@type "removePendingPaidMessageReactions"
+         :chat_id (plist-get msg :chat_id)
+         :message_id (plist-get msg :id))))
+
+(defun telega--getOwnedBots (&optional callback)
+  (with-telega-server-reply (reply)
+      (mapcar #'telega-user-get (plist-get reply :user_ids))
+
+    (list :@type "getOwnedBots")
+    callback))
 
 (provide 'telega-tdlib)
 

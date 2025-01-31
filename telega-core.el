@@ -485,28 +485,31 @@ Pallete is a plist with the following keys: `:outline', `:foreground',
     (setq background-mode (frame-parameter nil 'background-mode)))
   (cl-assert (memq background-mode '(light dark)))
 
-  (if (and color-id (< color-id 7))
-      (let ((palette (alist-get background-mode telega-builtin-palettes-alist)))
-        (cl-assert (= (length palette) 7))
-        (nth color-id palette))
-
-    (when-let* ((tl-color (alist-get color-id telega--accent-colors-alist))
-                (colors (mapcar (lambda (color-value)
-                                  (format "#%06x" color-value))
-                                (plist-get tl-color
-                                           (if (eq background-mode 'light)
-                                               :light_theme_colors
-                                             :dark_theme_colors))))
-                (fg-color (car colors))
-                (bg-color (telega-color-name-set-saturation-light
-                           fg-color 0.1 (cl-ecase background-mode
-                                          (light 0.8)
-                                          (dark  0.2))))
-                (ol-color (cl-ecase background-mode
-                            (light (color-darken-name fg-color 20))
-                            (dark  (color-lighten-name fg-color 20)))))
-      `((:outline ,ol-color) (:foreground ,fg-color)
-        (:background ,bg-color) (:colors ,colors)))))
+  (cond ((or (null color-id) (< color-id 0))
+         nil)
+        ((< color-id 7)
+         (let ((palette (alist-get background-mode
+                                   telega-builtin-palettes-alist)))
+           (cl-assert (= (length palette) 7))
+           (nth color-id palette)))
+        (t
+         (when-let* ((tl-color (alist-get color-id telega--accent-colors-alist))
+                     (colors (mapcar (lambda (color-value)
+                                       (format "#%06x" color-value))
+                                     (plist-get tl-color
+                                                (if (eq background-mode 'light)
+                                                    :light_theme_colors
+                                                  :dark_theme_colors))))
+                     (fg-color (car colors))
+                     (bg-color (telega-color-name-set-saturation-light
+                                fg-color 0.1 (cl-ecase background-mode
+                                               (light 0.8)
+                                               (dark  0.2))))
+                     (ol-color (cl-ecase background-mode
+                                 (light (color-darken-name fg-color 20))
+                                 (dark  (color-lighten-name fg-color 20)))))
+           `((:outline ,ol-color) (:foreground ,fg-color)
+             (:background ,bg-color) (:colors ,colors))))))
 
 (defmacro telega-palette-attr (palette attribute)
   "From PALETTE return ATTRIBUTE value.
@@ -535,7 +538,8 @@ to make `:outline' be a `:foreground'."
   "Merge PALETTE ATTRIBUTES into FACE, resulting in a new face."
   (declare (indent 2))
   (let ((new-face (cond ((facep face)
-                         (face-spec-choose (face-default-spec face)))
+                         (face-spec-choose
+                          (custom-face-get-current-spec-unfiltered face)))
                         (t
                          (cl-assert (listp face))
                          face)))
@@ -740,6 +744,7 @@ Done when telega server is ready to receive queries."
   (setq telega--animations-saved nil)
   (setq telega--chat-themes nil)
   (setq telega--dice-emojis nil)
+  (setq telega--suggested-actions nil)
 
   (setq telega-tdlib--chat-folders nil)
   (setq telega-tdlib--chat-folder-tags-p nil)
@@ -1028,6 +1033,20 @@ BIND is in form ((PROP VAL) PLIST)."
   `(cl-loop for ,(car bind) on ,(cadr bind)
             by #'cddr
             do (progn ,@body)))
+
+(defun telega--tl-entity-get (tl-entities &rest tl-types)
+  "Return first TL text entity from TL-ENTITIES, with entity type from TL-TYPES.
+If TL-TYPES is nil, then return first TL entity from the TL-ENTITIES list."
+  (if tl-types
+      (cl-find-if (lambda (tl-ent)
+                    (memq (telega--tl-type (plist-get tl-ent :type)) tl-types))
+                  tl-entities)
+    (car tl-types)))
+
+(defun telega--tl-star-amount-as-float (tl-star-amount)
+  "Return starAmount TL-STAR-AMOUNT as float number."
+  (+ (plist-get tl-star-amount :star_count)
+     (/ (plist-get tl-star-amount :nanostar_count) 1000000000.0)))
 
 (defsubst telega-file--size (file)
   "Return FILE size."
@@ -1625,10 +1644,10 @@ If NO-PROPS is non-nil, then remove properties from the resulting string."
     (cond ((string= "chatListMain" pos-list-type)
            'main)
           ((string= "chatListFolder" pos-list-type)
-           (telega-tl-str (cl-find (plist-get pos-list :chat_folder_id)
-                                   telega-tdlib--chat-folders
-                                   :key (telega--tl-prop :id))
-                          :title no-props))
+           (telega-folder-name (cl-find (plist-get pos-list :chat_folder_id)
+                                        telega-tdlib--chat-folders
+                                        :key (telega--tl-prop :id))
+                               no-props))
           ((string= "chatListArchive" pos-list-type)
            'archive))))
 
@@ -1941,6 +1960,53 @@ Return what BODY returns."
        (prog1
            (progn ,@body)
          (add-text-properties ,spnt-sym (point) ,props)))))
+
+(defun telega-fmt-eval-eliding (str elide-props)
+  "Apply eliding properties to STR."
+  (let ((str-width (string-width str))
+        (max (plist-get elide-props :max)))
+    (if (or (not max) (<= str-width max))
+        str
+
+      ;; Need to elide string
+      (let* ((elide-str (or (plist-get elide-props :elide-string)
+                            telega-symbol-eliding))
+             (elide-width (string-width elide-str))
+             (elide-pos (or (plist-get elide-props :elide-position) 1))
+             (max (plist-get elide-props :max))
+             (str-len (length str))
+             (elide-trail (progn
+                            (cl-assert (<= 0 elide-pos 1))
+                            (floor (* max (- 1 elide-pos)))))
+             (trail-width
+              (progn
+                ;; Correct `elide-trail' in case of multibyte chars
+                (while (and (> elide-trail 0)
+                            (> (string-width str (- str-len elide-trail))
+                               (floor (* max (- 1 elide-pos)))))
+                  (setq elide-trail (1- elide-trail)))
+                (string-width str (- str-len elide-trail))))
+             (elide-lead (- (min max str-len) elide-width trail-width)))
+
+        ;; Correct `elide-lead' in case of multibyte chars, by chopping
+        ;; char by char from the end of leading chars
+        (while (and (> elide-lead 0)
+                    (> (+ (string-width str 0 elide-lead) elide-width trail-width)
+                       max))
+          (setq elide-lead (1- elide-lead)))
+        (add-text-properties elide-lead (- str-len elide-trail)
+                             (list 'display elide-str
+                                   'rear-nonsticky '(display)
+                                   'face (plist-get elide-props :face))
+                             str)
+        str))))
+
+(defmacro telega-ins--with-eliding (elide-props &rest body)
+  (declare (indent 1))
+  `(telega-ins
+    (telega-fmt-eval-eliding
+     (telega-ins--as-string ,@body)
+     ,elide-props)))
 
 (defun telega--region-by-text-prop (beg prop &optional limit)
   "Return region after BEG point with text property PROP set."

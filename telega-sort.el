@@ -47,6 +47,7 @@
     ;; `a' mnemominc is to "add" some sorter
     (define-key map (kbd "a") 'telega-sort-by-sorter)
     (define-key map (kbd "s") 'telega-sort-by-sorter)
+    (define-key map (kbd "i") 'telega-sort-by-important)
     (define-key map (kbd "u") 'telega-sort-by-unread-count)
     (define-key map (kbd "t") 'telega-sort-by-title)
     (define-key map (kbd "j") 'telega-sort-by-join-date)
@@ -100,16 +101,18 @@ CRITERIA could be a lit of sort criterias."
 
     (let* ((cmpfun (alist-get (car criteria) telega-sort-criteria-alist))
            (c1-val (funcall cmpfun chat1))
-           (c2-val (funcall cmpfun chat2)))
-      (cond ((equal c1-val c2-val)
-             ;; Traverse the criteria list
-             (telega-chats-compare (cdr criteria) chat1 chat2))
-            ((null c1-val) nil)
-            ((null c2-val) t)
-            ((and (stringp c1-val) (stringp c2-val))
-             ;; Make "A" > "Z", so alphabetical order goes out-of-box
-             (string< c1-val c2-val))
-            (t (> c1-val c2-val))))))
+           (c2-val (funcall cmpfun chat2))
+           (result (cond ((equal c1-val c2-val)
+                          ;; Traverse the criteria list
+                          (telega-chats-compare (cdr criteria) chat1 chat2))
+                         ((null c1-val) nil)
+                         ((null c2-val) t)
+                         ((and (stringp c1-val) (stringp c2-val))
+                          (string> c1-val c2-val))
+                         (t (> c1-val c2-val)))))
+      (if (get (car criteria) :telega-sort-inverted)
+          (not result)
+        result))))
 
 (defun telega-sort-chats (criteria chats)
   "Sort CHATS by criteria."
@@ -187,6 +190,9 @@ overwriting currently active one."
 (define-telega-sorter title ("updateChatTitle") (chat)
   "Sort chats alphabetically by chat title."
   (telega-chat-title chat))
+
+;; Make "A" > "Z", so alphabetical order goes out-of-box
+(put 'title :telega-sort-inverted t)
 
 ;;; ellit-org: chat-sorting-criteria
 ;; - ~member-count~, {{{where-is(telega-sort-by-member-count,telega-root-mode-map)}}} ::
@@ -281,8 +287,21 @@ For other chats date of the last message is taken."
               0)))
     (or (telega--tl-get chat :last_message :date) 0)))
 
+;;; ellit-org: chat-sorting-criteria
+;; - ~important~ ::
+;;   {{{fundoc(telega--sort-important, 2)}}}
+(define-telega-sorter important ("updateChatUnreadMentionCount"
+                                 "updateChatUnreadReactionCount"
+                                 "updateChatReadInbox")
+                      (chat)
+  "Makes chats matching `telega-important-chat-temex' on top."
+  (cond ((telega-chat-match-p chat 'important)
+         (telega-chat-order chat))
+        (t "10")))
+
 ;; - TODO Date of last message sent by ~telega-user-me~
 ;; - TODO Date of last mention (thanks to https://t.me/lainposter)
+;; - TODO By custom chat temex, i.e. matching chats goes first
 
 (provide 'telega-sort)
 

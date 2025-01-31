@@ -276,7 +276,8 @@ Keymap:
          (photo-image (when pb-photo
                         (telega-photo--image pb-photo (list 10 3 10 3))))
          (url (telega-tl-str pageblock :url))
-         (title (plist-get pageblock :title))
+         (title (telega-tl-str pageblock :title))
+         (desc (telega-tl-str pageblock :description))
          (author (plist-get pageblock :author))
          (publish-date (plist-get pageblock :publish_date)))
     (telega-ins--with-attrs (list :max telega-webpage-fill-column
@@ -364,7 +365,8 @@ Keymap:
      (telega-ins--with-face 'telega-webpage-title
        (telega-webpage--ins-rt (plist-get pb :title))))
     (pageBlockSubtitle
-     (telega-webpage--ins-rt (plist-get pb :subtitle)))
+     (telega-ins--with-face 'telega-webpage-subtitle
+       (telega-webpage--ins-rt (plist-get pb :subtitle))))
     (pageBlockAuthorDate
      (telega-ins--with-face 'telega-shadow
        (telega-ins-prefix "By "
@@ -522,10 +524,12 @@ Keymap:
                  (telega-browse-url (telega-tl-str pb :url)))
        :help-echo (concat "URL: " (telega-tl-str pb :url))))
     (pageBlockRelatedArticles
-     (telega-ins--with-face '(telega-msg-heading bold)
-       (when (telega-webpage--ins-rt (plist-get pb :header))
-         (telega-ins "\n")))
-     (mapc 'telega-webpage--ins-pb (plist-get pb :articles)))
+     (telega-ins--with-face '(telega-webpage-outline bold)
+       (telega-webpage--ins-rt (plist-get pb :header))
+       (telega-ins "\n"))
+     (seq-doseq (article-pb (plist-get pb :articles))
+       (telega-webpage--ins-pb article-pb)
+       (telega-ins "\n")))
     (pageBlockKicker
      (telega-webpage--ins-rt (plist-get pb :kicker)))
     )
@@ -572,7 +576,8 @@ instant view for the URL."
 
     ;; IV status
     (telega-ins-from-newline
-     (telega-ins--with-face '(:inherit telega-msg-heading :overline t :extend t)
+     (telega-ins "\n")
+     (telega-ins--with-face '(:inherit telega-webpage-outline :overline t)
        (let ((view-count (plist-get telega-webpage--iv :view_count)))
          (unless (telega-zerop view-count)
            (telega-ins-i18n "lng_views_tooltip"

@@ -1,5 +1,5 @@
 #+options: timestamp:nil \n:t num:nil ellit-cid:t
-#+title: Telega Manual (v0.8.393)
+#+title: Telega Manual (v0.8.420)
 #+author: Zajcev Evgeny
 #+startup: showall
 
@@ -939,9 +939,15 @@ view.
 - @@html:<kbd>@@v S@@html:</kbd>@@ (~telega-view-settings~) :: 
      View and edit your Telegram settings.
 
-- @@html:<kbd>@@v c@@html:</kbd>@@ (~telega-view-contacts~) :: 
+- @@html:<kbd>@@v c s@@html:</kbd>@@ (~telega-view-contacts-search~) :: 
      View contacts searched by ~QUERY~.
      If ~QUERY~ is empty string, then show all contacts.
+- @@html:<kbd>@@v c a@@html:</kbd>@@ (~telega-view-contacts-all~) :: 
+     View all contacts.
+- @@html:<kbd>@@v c f@@html:</kbd>@@ (~telega-view-close-friends~) :: 
+     View close friends.
+- @@html:<kbd>@@v c o@@html:</kbd>@@ (~telega-view-owned-bots~) :: 
+     View owned bots.
 
 - @@html:<kbd>@@v C@@html:</kbd>@@, @@html:<kbd>@@c l@@html:</kbd>@@ (~telega-view-calls~) :: 
      View calls.
@@ -1157,6 +1163,7 @@ Use ~telega-chat-match-p~ to match a chat.
 
 - verified, @@html:<kbd>@@/ v@@html:</kbd>@@ (~telega-filter-by-verified~) :: 
      Matches if chat is verified.
+     Return verification status if ~CHAT~ is verified.
 
 - (restriction ~SUFFIX-LIST~...), @@html:<kbd>@@/ r@@html:</kbd>@@ (~telega-filter-by-restriction~) :: 
      Matches restricted chats.
@@ -1233,6 +1240,7 @@ Use ~telega-chat-match-p~ to match a chat.
 
 - fake-or-scam :: 
      Matches if chat is fake or scam user or group.
+     Return verification status if chat is fake or scam.
 
 - (has-video-chat [ ~NON-EMPTY~ ]) :: 
      Matches if chat contains a live video chat.
@@ -1308,6 +1316,9 @@ Use ~telega-chat-match-p~ to match a chat.
 - (boost-level [ ~N~ ]) :: 
      Matches if chat's boost level is greater or equal to ~N~.
      By default ~N~ is 1.
+
+- is-pinned :: 
+     Matches if chat is pinned.
 
 ** List of Message Temexes
 :PROPERTIES:
@@ -1816,6 +1827,9 @@ For other sorting keybindings see below.
      For private chats user's last seen date is taken.
      For other chats date of the last message is taken.
 
+- ~important~ :: 
+     Makes chats matching ~telega-important-chat-temex~ on top.
+
 ** Customizable options making use of sorting criteria
 :PROPERTIES:
 :CUSTOM_ID: customizable-options-making-use-of-sorting-criteria
@@ -1878,6 +1892,13 @@ Important customizable options:
   #+end_example
 
   Default value: ~t~
+- User Option: ~telega-msg-delimiter~ 
+
+  Delimiter for the messages in a chatbuf.
+  Use ~(propertize "\n" \~line-spacing 0.25)' to add extra line space
+  between messages. 
+
+  Default value: ~"\n"~
 
 ** Chatbuf fast navigation
 :PROPERTIES:
@@ -2198,12 +2219,12 @@ It is possible to edit a message using markup syntax.
 
 To forward a message, put cursor under the message which you want to
 forward and press
- (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-dwim~)
 and then select a Chat to forward a message to.  To forward multiple
 messages at once, mark messages with the
-@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <telega-msg-mark-toggle>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
+@@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~) and then
 press
- (~telega-msg-forward-marked-or-at-point~)
+@@html:<kbd>@@f@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <forward>@@html:</kbd>@@ (~telega-msg-forward-dwim~)
 on one of the messages.
 
 There are few options how you can affect the way a message is forwarded:
@@ -2222,7 +2243,7 @@ To delete a message, put cursor under the message you want to delete and press
  (~telega-msg-delete-marked-or-at-point~).
 
 As with [[#forwarding-messages][forwarding messages]], you can mark multiple messages to delete
-with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <telega-msg-mark-toggle>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
+with @@html:<kbd>@@m@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <mark>@@html:</kbd>@@ (~telega-msg-mark-toggle~).
 
 Also, you can ban/report message sender (and delete all messages from
 this sender in the chat) with
@@ -2618,7 +2639,7 @@ messages are labeled with:
   Default value: ~"🔖"~
 
 To toggle message at point being favorite, press
-@@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <rm-favorite>@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <add-favorite>@@html:</kbd>@@ (~telega-msg-favorite-toggle~).
+@@html:<kbd>@@*@@html:</kbd>@@, @@html:<kbd>@@<down-mouse-3> <favorite>@@html:</kbd>@@ (~telega-msg-favorite-toggle~).
 
 To jump to a favorite message before message at point in the chat
 buffer, press

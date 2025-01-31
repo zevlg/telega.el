@@ -54,6 +54,7 @@
 (declare-function telega-user-list "telega-user" (&optional temex))
 (declare-function telega-user> "telega-user" (user1 user2))
 
+(declare-function telega-match-p "telega-match-p" (object temex))
 
 (defun telega-file-exists-p (filename)
   "Return non-nil if FILENAME exists.
@@ -191,12 +192,23 @@ Used to calculate correct image `:width' in `em' elements."
   (telega-chars-in-width
    (car (window-text-pixel-size window (line-beginning-position) (point)))))
 
-(defun telega-window-string-width (str)
+(defun telega-window-string-width (str &optional from to)
   "Return correct width in chars.
 This function is very slow comparing to `string-width', however
 returns precise value."
-  (with-temp-buffer
-    (telega-ins str)
+  ;; Keeping a work buffer around is more efficient than creating a
+  ;; new temporary buffer.
+  (with-current-buffer (get-buffer-create " *telega-string-width*")
+    ;; If `display-line-numbers-mode' is enabled in internal
+    ;; buffers, it breaks width calculation, so disable it (bug#59311)
+    (when (bound-and-true-p display-line-numbers-mode)
+      (display-line-numbers-mode -1))
+    (delete-region (point-min) (point-max))
+    ;; Disable line-prefix and wrap-prefix, for the same reason.
+    (setq line-prefix nil
+          wrap-prefix nil)
+
+    (telega-ins (if (or from to) (substring str from to) str))
     (save-window-excursion
       (set-window-dedicated-p nil nil)
       (set-window-buffer nil (current-buffer))
@@ -740,8 +752,7 @@ If AS-IS is non-nil, then do not apply time adjustment using
 (defun telega-number-human-readable (num &optional fmt)
   "Convert METERS to human readable string.
 By default \"%.1f\" FMT format string is used."
-  (unless fmt
-    (setq fmt "%.1f"))
+  (unless fmt (setq fmt "%.1f"))
   (cond ((and telega-use-short-numbers (>= num 1000000))
          (concat (format fmt (/ num 1000000.0)) "M"))
         ((and telega-use-short-numbers (>= num 1000))
@@ -895,15 +906,28 @@ HOW specifies how list is changed, one of: `prepend', `append' or `remove'."
 Optional OBJECT could be a buffer (or nil, which means the current
 buffer) or a string."
   (let* ((ent-type (plist-get ent :type))
+         (ent-type-tl-type (telega--tl-type ent-type))
          (beg (plist-get ent :offset))
          (end (+ (plist-get ent :offset) (plist-get ent :length)))
          (ent-text (if object
                        (substring object beg end)
                      (buffer-substring beg end))))
     (add-text-properties beg end '(rear-nonsticky t front-sticky t) object)
-    (put-text-property beg end :tl-entity ent object)
+    (telega--change-text-property beg end :tl-entities (list ent) 'append object)
     (put-text-property beg end :tl-entity-type ent-type object)
-    (cl-case (telega--tl-type ent-type)
+
+    ;; NOTE: Include newline for blockquotes even if newline is
+    ;; outside of the blockquote, making
+    ;; `telega-entity-type-blockquote' face to extend to the end of
+    ;; line
+    (when (and (stringp object)
+               (memq ent-type-tl-type '(textEntityTypeBlockQuote
+                                        textEntityTypeExpandableBlockQuote))
+               (< end (length object))
+               (= (aref object end) ?\n))
+      (setq end (1+ end)))
+
+    (cl-case ent-type-tl-type
       (textEntityTypeMention
        (add-text-properties
         beg end (telega-link-props 'username ent-text) object)
@@ -985,8 +1009,15 @@ buffer) or a string."
            ;; differ, because consecutive chars has `eq' `display'
            ;; property it is displayed as single unit (ref: 40.16.1
            ;; Display Specs That Replace The Text)
+           ;; 
+           ;; However, copying image will breake
+           ;; `telega-sticker--animate' functionality, because
+           ;; `telega-media--image-update' updates image inplace
+           ;; (i.e. its cdr).  So we use `(magin nil)' hack to make
+           ;; display property non-eq
            (put-text-property
-            beg end 'display (copy-sequence (telega-sticker--image sticker))
+            beg end 'display (list '(margin nil)
+                                   (telega-sticker--image sticker))
             object)
            )))
       (textEntityTypePreCode
@@ -1024,26 +1055,28 @@ buffer) or a string."
        (add-face-text-property
         beg end 'telega-entity-type-spoiler 'append object)
 
-       (cond ((null object)
-              ;; NOTE: For chatbuf's input, when spoiler formatting is
-              ;; applied
-              (add-face-text-property
-               beg end (list :foreground (face-foreground 'default)
-                             :background (face-foreground 'default))
-               'append object))
+       (if (null object)
+           ;; NOTE: For chatbuf's input, when spoiler formatting is
+           ;; applied
+           (add-face-text-property
+            beg end (list :foreground (face-foreground 'default)
+                          :background (face-foreground 'default))
+            nil object)
 
-             ((not (plist-get ent-type :telega-show-spoiler))
-              (add-text-properties
-               beg end (list :action #'telega-msg-remove-text-spoiler
-                             'telega-display
-                             (with-temp-buffer
-                               (insert ent-text)
-                               (translate-region
-                                (point-min) (point-max)
-                                telega-spoiler-translation-table)
-                               (buffer-string))
-                             'telega-display-by 'telega-core)
-               object))))
+         (when telega-msg--current
+           (add-text-properties
+            beg end (list :action #'telega-msg-text-spoiler-toggle) object))
+         (unless (plist-get telega-msg--current :telega-text-spoiler-removed)
+           (add-text-properties
+            beg end (list 'telega-display
+                          (with-temp-buffer
+                            (insert ent-text)
+                            (translate-region
+                             (point-min) (point-max)
+                             telega-spoiler-translation-table)
+                            (buffer-string))
+                          'telega-display-by 'telega-core)
+            object))))
       (textEntityTypeBlockQuote
        (if (and nil (telega--inhibit-telega-display-p 'telega-core))
            (add-face-text-property
@@ -1058,7 +1091,7 @@ buffer) or a string."
             (telega-face-with-palette 'telega-entity-type-blockquote
                 palette :background)
             'append object)
-           (let ((lw-prefix (propertize 
+           (let ((lw-prefix (propertize
                              (telega-symbol 'vbar-left)
                              'face (append (assq :foreground palette)
                                            (assq :background palette)))))
@@ -1078,13 +1111,13 @@ buffer) or a string."
                            (telega-msg-sender-palette
                             (telega-msg-sender telega-msg--current))))
                 (expanded-p
-                 (plist-get ent-type :telega-blockquote-expanded)))
+                 (plist-get ent :telega-blockquote-expanded)))
            (add-face-text-property
             beg end
             (telega-face-with-palette 'telega-entity-type-blockquote
                 palette :background)
             'append object)
-           (let ((lw-prefix (propertize 
+           (let ((lw-prefix (propertize
                              (telega-symbol 'vbar-left)
                              'face (append (assq :foreground palette)
                                            (assq :background palette)))))
@@ -1097,46 +1130,34 @@ buffer) or a string."
             beg end
             :action #'telega-msg-blockquote-expand-toggle
             object)
-           )
-         ;; (add-text-properties
-         ;;  beg end
-         ;;  (list :action #'telega-msg-blockquote-expand-toggle
-         ;;        'telega-display
-         ;;        (let* ((telega-palette-context 'blockquote)
-         ;;               (palette (when telega-msg--current
-         ;;                          (telega-msg-sender-palette
-         ;;                           (telega-msg-sender telega-msg--current))))
-         ;;               (expanded-p
-         ;;                (plist-get ent-type :telega-blockquote-expanded)))
-         ;;          (add-face-text-property
-         ;;           beg end
-         ;;           (telega-face-with-palette 'telega-entity-type-blockquote
-         ;;               palette :background)
-         ;;           'append object)
-         ;;          (telega-ins--as-string
-         ;;           (unless (telega--text-entity-at-newline-p ent object)
-         ;;             (telega-ins "\n"))
-         ;;           (telega-ins--line-wrap-prefix
-         ;;               (propertize (telega-symbol 'vbar-left)
-         ;;                           'face (append (assq :foreground palette)
-         ;;                                         (assq :background palette)))
-         ;;             (telega-ins--with-attrs
-         ;;                 (list :max (unless expanded-p (* 2.5 fill-column))
-         ;;                       :elide t
-         ;;                       :elide-string (propertize telega-symbol-eliding
-         ;;                                                 'face 'telega-shadow))
-         ;;               (telega-ins (telega-strip-newlines
-         ;;                            (telega--desurrogate-apply object))))
-         ;;             (telega-ins--with-face 'telega-shadow
-         ;;               (telega-ins (telega-symbol (if expanded-p
-         ;;                                              'collapse-details
-         ;;                                            'expand-details))))
-         ;;             (telega-ins "\n"))))
-         ;;        'telega-display-by 'telega-core)
-         ;;  object)
-         ))
-      )
-    ))
+
+           ;; Collapse at point configurable by
+           ;; `telega-expandable-blockquote-limit'
+           (let ((collapse-pos
+                  (when (and (not expanded-p) (stringp object))
+                    (cond ((consp telega-expandable-blockquote-limit)
+                           (let ((lbeg (car telega-expandable-blockquote-limit))
+                                 (lend (cdr telega-expandable-blockquote-limit)))
+                             (cond ((>= (+ beg lbeg) end)
+                                    nil)
+                                   ((and (string-match "\n" object (+ beg lbeg))
+                                         (< (match-beginning 0) (+ beg lend)))
+                                    (match-beginning 0))
+                                   (t
+                                    (+ beg lend)))))
+                          ((integerp telega-expandable-blockquote-limit)
+                           (+ telega-expandable-blockquote-limit beg))))))
+             (when (and collapse-pos (< collapse-pos (- end 10)))
+               (put-text-property
+                collapse-pos end
+                'display (propertize (concat (telega-symbol 'eliding)
+                                             (telega-symbol 'expand-details)
+                                             (when (= (aref object (1- end)) ?\n)
+                                               "\n"))
+                                     'face 'telega-shadow)
+                object)))
+           )))
+      )))
 
 ;; https://core.telegram.org/bots/api#markdown-style
 (defsubst telega--entity-to-markdown (entity-text)
@@ -1631,10 +1652,12 @@ Return text string with applied faces."
   (let ((text (copy-sequence (plist-get fmt-text :text)))
         complex-ents)
     ;; NOTE: First we apply emphasis entities, then we apply
-    ;; formatting for complex entities, such as block quotes
+    ;; formatting for complex entities, such as block quotes, because
+    ;; it might override `display' property
     (seq-doseq (ent (plist-get fmt-text :entities))
-      (if (memq (telega--tl-type ent) '(textEntityTypeBlockQuote
-                                        textEntityTypeExpandableBlockQuote))
+      (if (telega-match-p (plist-get ent :type)
+            '(tl-type textEntityTypeBlockQuote
+                      textEntityTypeExpandableBlockQuote))
           (setq complex-ents (cons ent complex-ents))
         (telega--text-entity-apply ent text)))
 
