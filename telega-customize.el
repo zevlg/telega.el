@@ -304,7 +304,7 @@ cell of endings for the button with LABEL."
 
 (defcustom telega-palette-context-ignore-list '(msg-header)
   "List of `telega-palette-context' values to ignore."
-  :type '(list symbol)
+  :type '(repeat symbol)
   :package-version '(telega . "0.8.292")
   :group 'telega)
 
