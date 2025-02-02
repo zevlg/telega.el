@@ -539,7 +539,7 @@ to make `:outline' be a `:foreground'."
   (declare (indent 2))
   (let ((new-face (cond ((facep face)
                          (face-spec-choose
-                          (custom-face-get-current-spec-unfiltered face)))
+                          (custom-face-get-current-spec face)))
                         (t
                          (cl-assert (listp face))
                          face)))

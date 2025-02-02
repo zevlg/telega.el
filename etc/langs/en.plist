@@ -1928,4 +1928,6 @@ You can send them an invite link as message instead.")
 
  ("lng_stats_overview_message_views"
   :value "Views")
+ ("lng_save_file"
+  :value "Save File")
  )

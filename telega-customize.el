@@ -1899,8 +1899,7 @@ So different messages could have different aux heading formatting."
   :group 'telega-msg)
 
 (defcustom telega-msg-save-dir nil
-  "*Directory for `telega-msg-save' without asking.
-If nil, the saved path is always asked."
+  "*Directory to save files with `telega-msg-save' to."
   :type '(choice (const :tag "Always ask for a directory to save to" nil)
                  string)
   :group 'telega-msg)

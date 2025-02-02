@@ -170,7 +170,8 @@ Return nil if given FMT-TYPE is not available."
                    ;; Premium Badge
                    (cond ((plist-get user :emoji_status)
                           (telega-ins--as-string
-                           (telega-ins--user-emoji-status user)))
+                           (telega-ins--emoji-status
+                            (plist-get user :emoji_status))))
                          ((plist-get user :is_premium)
                           (telega-symbol 'premium)))
 

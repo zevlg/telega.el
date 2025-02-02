@@ -386,7 +386,8 @@ end of the title."
                     ;; Premium Badge
                     (cond ((plist-get chat :emoji_status)
                            (telega-ins--as-string
-                            (telega-ins--chat-emoji-status chat)))
+                            (telega-ins--emoji-status
+                             (plist-get chat :emoji_status))))
                           ((plist-get info :is_premium)
                            (telega-symbol 'premium)))
 

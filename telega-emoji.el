@@ -29,6 +29,7 @@
 (declare-function telega-root-view--update "telega-root" (on-update-prop &rest args))
 (declare-function telega-msg-redisplay "telega-chat" (msg &optional node))
 (declare-function telega-chat--update "telega-tdlib-events" (chat &rest events))
+(declare-function telega-match-p "telega-match-p" (object temex))
 
 (defvar telega-emoji-alist nil)
 (defvar telega-emoji-candidates nil)
@@ -398,9 +399,11 @@ Do not fetch custom emojis for ignored messages."
   (let ((known-stickers nil)
         (unknown-ids nil))
     (seq-doseq (es tl-emoji-statuses)
-      (let* ((ce-id (plist-get es :custom_emoji_id))
-             (ce-sticker (telega-custom-emoji-get ce-id)))
-        (if ce-sticker
+      (when-let* ((es-type (plist-get es :type))
+                  (ce-id (when (telega-match-p es-type
+                                 '(tl-type emojiStatusTypeCustomEmoji))
+                           (plist-get es-type :custom_emoji_id))))
+        (if-let ((ce-sticker (telega-custom-emoji-get ce-id)))
             (setq known-stickers (cons ce-sticker known-stickers))
           (setq unknown-ids (cons ce-id unknown-ids)))))
 
@@ -411,6 +414,7 @@ Do not fetch custom emojis for ignored messages."
                   (mapcar #'telega-custom-emoji--ensure
                           (telega--getCustomEmojiStickers unknown-ids))))
           (t
+           (cl-assert callback)
            (telega--getCustomEmojiStickers unknown-ids
              (lambda (stickers)
                (funcall callback
@@ -421,36 +425,29 @@ Do not fetch custom emojis for ignored messages."
 
 (defun telega-emoji-status--image (emoji-status &optional _ignoredfile)
   "Return image for the user's EMOJI-STATUS."
-  (let* ((custom-emoji-id (plist-get emoji-status :custom_emoji_id))
-         (sticker (telega-custom-emoji-get custom-emoji-id))
-         image)
-    (if sticker
-        (setq image (telega-sticker--image sticker))
+  (let ((es-type (plist-get emoji-status :type)))
+    (cl-ecase (telega--tl-type es-type)
+      (emojiStatusTypeCustomEmoji
+       (let* ((custom-emoji-id (plist-get es-type :custom_emoji_id))
+              (sticker (telega-custom-emoji-get custom-emoji-id)))
+         (if sticker
+             (telega-sticker--image sticker)
 
-      ;; Use Premium Logo as emoji status while downloading actual sticker
-      (setq image (telega-etc-file-create-image "symbols/premium.svg" 2))
-      (telega--getCustomEmojiStickers (list custom-emoji-id)
-        (lambda (stickers)
-          (cl-assert (= 1 (length stickers)))
-          (let ((custom-emoji (car stickers)))
-            (telega-custom-emoji--ensure custom-emoji)
-            ;; NOTE: image could be nil if `telega-use-images' is nil
-            (setq image (telega-sticker--image custom-emoji)))))
-      image)))
+           (telega--getCustomEmojiStickers (list custom-emoji-id)
+             (lambda (stickers)
+               (seq-doseq (custom-emoji stickers)
+                 (telega-custom-emoji--ensure custom-emoji))))
+           (telega-etc-file-create-image "symbols/premium.svg" 2))))
+
+      (emojiStatusTypeUpgradedGift
+       ;; TODO
+       ))))
 
 (defun telega-ins--emoji-status (emoji-status)
   "Inserter for the EMOJI-STATUS."
   (when emoji-status
     (telega-ins--image
      (telega-emoji-status--image emoji-status) nil)))
-
-(defun telega-ins--user-emoji-status (user)
-  "Inserter USER's emoji status."
-  (telega-ins--emoji-status (plist-get user :emoji_status)))
-
-(defun telega-ins--chat-emoji-status (chat)
-  "Inserter CHAT's emoji status."
-  (telega-ins--emoji-status (plist-get chat :emoji_status)))
 
 (defun telega-emoji-status--animate (emoji-status)
   "Animate EMOJI-STATUS."
@@ -459,12 +456,6 @@ Do not fetch custom emojis for ignored messages."
     (when (and telega-sticker-animated-play
                (not (telega-sticker-static-p sticker)))
       (telega-sticker--animate sticker))))
-
-(defun telega-emoji-status-from-sticker (sticker)
-  "Create emoji status from given STICKER."
-  (cl-assert (telega-custom-emoji-sticker-p sticker))
-  (list :@type "emojiStatus"
-        :custom_emoji_id (telega-custom-emoji-id sticker)))
 
 (defun telega-emoji-status-list--gen-ins-callback (custom-action)
   (let ((stickers-callback (telega--gen-ins-continuation-callback 'loading
@@ -480,28 +471,42 @@ Do not fetch custom emojis for ignored messages."
   (let ((help-window-select t))
     (with-telega-help-win "*Telegram Emoji Status*"
       ;; NOTE: use callbacks for async emoji statuses loading
-      (telega-ins "Themed:\n")
-      (telega--getThemedEmojiStatuses
-       (telega-emoji-status-list--gen-ins-callback custom-action))
+      (telega-ins--with-face 'telega-describe-item-title
+        (telega-ins "Themed:\n"))
+      (telega-ins--line-wrap-prefix "  "
+        (telega--getThemedEmojiStatuses
+         (telega-emoji-status-list--gen-ins-callback custom-action)))
 
-      (telega-ins "\nRecent:\n")
-      (telega--getRecentEmojiStatuses
-       (telega-emoji-status-list--gen-ins-callback custom-action))
+      (telega-ins "\n")
+      (telega-ins--with-face 'telega-describe-item-title
+        (telega-ins "Recent:\n"))
+      (telega-ins--line-wrap-prefix "  "
+        (telega--getRecentEmojiStatuses
+         (telega-emoji-status-list--gen-ins-callback custom-action)))
+
+      (telega-ins "\n")
+      (telega-ins--with-face 'telega-describe-item-title
+        (telega-ins "Default:\n"))
+      (telega-ins--line-wrap-prefix "  "
+        (telega--getDefaultEmojiStatuses
+         (telega-emoji-status-list--gen-ins-callback custom-action)))
 
       ;; Sticker sets with custom emojis
+      (telega-ins "\n")
       (dolist (sset-info telega--stickersets-custom-emojis)
         (cl-assert (eq (telega--tl-type (plist-get sset-info :sticker_type))
                        'stickerTypeCustomEmoji))
-        (telega-ins "\n" (telega-stickerset-title sset-info 'raw) ":\n")
-        (let ((cb (telega-emoji-status-list--gen-ins-callback custom-action)))
-          (telega--getStickerSet (plist-get sset-info :id)
-            (lambda (sset)
-              (funcall cb (mapcar #'telega-emoji-status-from-sticker
-                                  (plist-get sset :stickers)))))))
-
-      (telega-ins "\nDefault:\n")
-      (telega--getDefaultEmojiStatuses
-       (telega-emoji-status-list--gen-ins-callback custom-action))
+        (telega-ins "\n")
+        (telega-ins--with-face 'telega-describe-item-title
+          (telega-ins (telega-stickerset-title sset-info 'raw) ":\n"))
+        (telega-ins--line-wrap-prefix "  "
+          (let ((cb (telega-emoji-status-list--gen-ins-callback custom-action)))
+            (telega--getStickerSet (plist-get sset-info :id)
+              (lambda (sset)
+                (funcall cb (mapcar
+                             #'telega--custom-emoji-id-wrap-into-emoji-status
+                             (mapcar #'telega-custom-emoji-id
+                                     (plist-get sset :stickers)))))))))
       )))
 
 

@@ -138,7 +138,7 @@ Non-nil EXACT-MATCH-P to return only emojis that exactly matches TEXT."
   "Returns list of custom emoji stickers by their identifiers."
   (declare (indent 1))
   (with-telega-server-reply (reply)
-      (append (plist-get reply :stickers) nil)
+      (plist-get reply :stickers)
 
     (list :@type "getCustomEmojiStickers"
           :custom_emoji_ids (apply #'vector custom-emoji-ids))
@@ -2645,10 +2645,13 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
 ;; instead of `:emoji_statuses', so we wrap them into emoji status
 ;; alike structure
 (defun telega--custom-emoji-id-wrap-into-emoji-status (custom-emoji-id)
-  (list :custom_emoji_id custom-emoji-id))
+  (list :@type "emojiStatus"
+        :type (list :@type "emojiStatusTypeCustomEmoji"
+                    :custom_emoji_id custom-emoji-id)
+        :expiration_date 0))
 
 (defun telega--getThemedEmojiStatuses (&optional callback)
-  "Returns up to 8 themed emoji statuses."
+  "Returns up to 8 themed custom emoji ids."
   (with-telega-server-reply (reply)
       (mapcar #'telega--custom-emoji-id-wrap-into-emoji-status
               (plist-get reply :custom_emoji_ids))
@@ -2658,8 +2661,7 @@ Pass non-nil UPDATE-RECENT-REACTIONS-P to update recent reactions."
 (defun telega--getRecentEmojiStatuses (&optional callback)
   "Return recent emoji statuses."
   (with-telega-server-reply (reply)
-      (mapcar #'telega--custom-emoji-id-wrap-into-emoji-status
-              (plist-get reply :custom_emoji_ids))
+      (plist-get reply :emoji_statuses)
    (list :@type "getRecentEmojiStatuses")
    callback))
 

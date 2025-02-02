@@ -825,7 +825,8 @@ Status values are hold in the `telega--status' and
                   (call-interactively #'telega-account-switch))
         'help "Switch to another account")
       (when user-me
-        (telega-ins--user-emoji-status user-me))
+        (when-let ((emoji-status (plist-get user-me :emoji_status)))
+          (telega-ins--emoji-status emoji-status)))
       (telega-ins ")")))
   (unless (eq 'other telega-network-type)
     (telega-ins-fmt " [%S]" telega-network-type))
@@ -1682,7 +1683,8 @@ If `\\[universal-argument]' is given, then view missed calls only."
     ;; Emoji status
     (when (telega-user-match-p me-user 'is-premium)
       (telega-ins-describe-item "Emoji Status"
-        (telega-ins--user-emoji-status me-user)
+        (when-let ((emoji-status (plist-get me-user :emoji_status)))
+          (telega-ins--emoji-status emoji-status))
         (telega-ins " ")
         (telega-ins--box-button "Set Emoji Status"
           'action (lambda (_button)

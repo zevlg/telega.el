@@ -1290,7 +1290,7 @@ If WITH-PREFIX-P is non-nil, then prefix username with \"@\" char."
                  (telega-custom-emoji-get v-custom-emoji-id))))
          (if v-sticker
              (telega-ins--as-string
-              (telega-ins--image (telega-sticker--image sticker)))
+              (telega-ins--image (telega-sticker--image v-sticker)))
            (telega-symbol 'verified)))))))
 
 (defun telega-msg-sender-title (msg-sender &rest args)
@@ -1647,34 +1647,41 @@ Saved Messages."
        (list :@type "inputFileId" :id (plist-get file :id))))
 
      (t
-      (message "Downloading file...")
-      (telega-file--download file
-        :priority 32
-        :update-callback
-        (lambda (dfile)
-          (telega-msg-redisplay msg)
-          (when (telega-file--downloaded-p dfile)
-            ;; TODO: This might be executed in process filter, so
-            ;; pressing C-g will trigger "error in process filter: Quit"
-            ;; Need to execute this outside of process filter
-            (let* ((fpath (telega--tl-get dfile :local :path))
-                   (fname (file-name-nondirectory fpath))
-                   (new-fpath (if telega-msg-save-dir
-                                  (expand-file-name fname telega-msg-save-dir)
-                                (read-file-name "Save to file: " default-directory
-                                                nil nil fname nil))))
-              ;; NOTE: Ensure corresponding directory exists
-              (let ((fdir (file-name-directory new-fpath)))
-                (unless (file-exists-p fdir)
-                  (if (y-or-n-p
-                       (format-message
-                        "Directory `%s' does not exist; create? " fdir))
-                      (make-directory fdir t)
-                    (error "Canceled"))))
+      ;; NOTE: Start downloading file in the background while reading
+      ;; filename
+      (unless (telega-file--downloaded-p file)
+        (telega-file--download file
+          :priority 32
+          :update-callback
+          (lambda (_dfile)
+            (telega-msg-redisplay msg))))
 
-              ;; See https://github.com/tdlib/td/issues/379
-              (copy-file fpath new-fpath 1)
-              (message (format "Wrote %s" new-fpath))))))))))
+      (let* ((fpath (telega--tl-get file :local :path))
+             (fname (when fpath (file-name-nondirectory fpath)))
+             (new-fpath
+              (if (and fname telega-msg-save-dir)
+                  (expand-file-name fname telega-msg-save-dir)
+                (read-file-name (concat (telega-i18n "lng_save_file") ": ")
+                                (or telega-msg-save-dir default-directory)
+                                nil nil fname))))
+        ;; NOTE: Ensure corresponding directory exists
+        (let ((fdir (file-name-directory new-fpath)))
+          (unless (file-exists-p fdir)
+            (if (y-or-n-p
+                 (format-message
+                  "Directory `%s' does not exist; create? " fdir))
+                (make-directory fdir t)
+              (error "Canceled"))))
+
+        ;; See https://github.com/tdlib/td/issues/379
+        (telega-file--download file
+          :priority 32
+          :update-callback
+          (lambda (dfile)
+            (when (telega-file--downloaded-p dfile)
+              (copy-file (telega--tl-get dfile :local :path) new-fpath 1)
+              (message (format "Wrote %s" new-fpath)))))
+        )))))
 
 (defun telega-msg-copy-link (msg &optional for-thread-p)
   "Copy link to message to kill ring.
