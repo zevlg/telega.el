@@ -560,7 +560,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;;   {{{temexdoc(chat, has-linked-chat, 2)}}}
 (define-telega-matcher chat has-linked-chat (chat)
   "Matches if chat is a supergroup and has a linked chat."
-  (plist-get (telega-chat--info chat) :has_linked_chat))
+  (plist-get (telega-chat--info chat 'locally) :has_linked_chat))
 
 ;;; ellit-org: chat-temex
 ;; - has-discussion-group ::
@@ -574,7 +574,7 @@ LIST-NAME is `main' or `archive' symbol, or string naming Chat Folder."
 ;;   {{{temexdoc(chat, has-location, 2)}}}
 (define-telega-matcher chat has-location (chat)
   "Matches if chat is a location-based supergroup."
-  (plist-get (telega-chat--info chat) :has_location))
+  (plist-get (telega-chat--info chat 'locally) :has_location))
 
 ;;; ellit-org: chat-temex
 ;; - inactive-supergroups , {{{where-is(telega-filter-by-inactive-supergroups,telega-root-mode-map)}}} ::
@@ -637,14 +637,14 @@ Return auto-deletion timer value."
 ;;   {{{temexdoc(chat, is-broadcast-group, 2)}}}
 (define-telega-matcher chat is-broadcast-group (chat)
   "Matches if chat is a broadcast group."
-  (plist-get (telega-chat--info chat) :is_broadcast_group))
+  (plist-get (telega-chat--info chat 'locally) :is_broadcast_group))
 
 ;;; ellit-org: chat-temex
 ;; - is-forum ::
 ;;   {{{temexdoc(chat, is-forum, 2)}}}
 (define-telega-matcher chat is-forum (chat)
   "Matches if chat is a forum group."
-  (plist-get (telega-chat--info chat) :is_forum))
+  (plist-get (telega-chat--info chat 'locally) :is_forum))
 
 ;;; ellit-org: chat-temex
 ;; - has-sponsored-messages ::
@@ -714,9 +714,10 @@ By default N is 1."
   "Matches if chat has non-expired stories available to you.
 If UNREAD-P is non-nil then match only if there is at least one unread
 non-expired story."
-  (plist-get (telega-chat--info chat) (if unread-p
-                                          :has_unread_active_stories
-                                        :has_active_stories)))
+  (plist-get (telega-chat--info chat 'locally)
+             (if unread-p
+                 :has_unread_active_stories
+               :has_active_stories)))
 
 ;;; ellit-org: chat-temex
 ;; - (active-stories-list ~LIST~) ::
