@@ -425,23 +425,21 @@ Do not fetch custom emojis for ignored messages."
 
 (defun telega-emoji-status--image (emoji-status &optional _ignoredfile)
   "Return image for the user's EMOJI-STATUS."
-  (let ((es-type (plist-get emoji-status :type)))
-    (cl-ecase (telega--tl-type es-type)
-      (emojiStatusTypeCustomEmoji
-       (let* ((custom-emoji-id (plist-get es-type :custom_emoji_id))
-              (sticker (telega-custom-emoji-get custom-emoji-id)))
-         (if sticker
-             (telega-sticker--image sticker)
+  (let* ((es-type (plist-get emoji-status :type))
+         (custom-emoji-id (cl-ecase (telega--tl-type es-type)
+                            (emojiStatusTypeCustomEmoji
+                             (plist-get es-type :custom_emoji_id))
+                            (emojiStatusTypeUpgradedGift
+                             (plist-get es-type :model_custom_emoji_id))))
+         (sticker (telega-custom-emoji-get custom-emoji-id)))
+    (if sticker
+        (telega-sticker--image sticker)
 
-           (telega--getCustomEmojiStickers (list custom-emoji-id)
-             (lambda (stickers)
-               (seq-doseq (custom-emoji stickers)
-                 (telega-custom-emoji--ensure custom-emoji))))
-           (telega-etc-file-create-image "symbols/premium.svg" 2))))
-
-      (emojiStatusTypeUpgradedGift
-       ;; TODO
-       ))))
+      (telega--getCustomEmojiStickers (list custom-emoji-id)
+        (lambda (stickers)
+          (seq-doseq (custom-emoji stickers)
+            (telega-custom-emoji--ensure custom-emoji))))
+      (telega-etc-file-create-image "symbols/premium.svg" 2))))
 
 (defun telega-ins--emoji-status (emoji-status)
   "Inserter for the EMOJI-STATUS."

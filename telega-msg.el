@@ -2182,22 +2182,28 @@ be added."
                                            'update-recent-reactions))))
         (with-telega-help-win "*Telegram Custom Reaction*"
           (unless (seq-empty-p top-av-reactions)
-            (telega-ins "TOP:\n")
-            (telega-ins--available-reaction-list
-             top-av-reactions reaction-type-action)
-            (telega-ins "\n\n"))
+            (telega-ins--with-face 'telega-describe-item-title
+              (telega-ins "TOP:\n"))
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--available-reaction-list
+               top-av-reactions reaction-type-action)
+              (telega-ins "\n\n")))
 
           (unless (seq-empty-p recent-av-reactions)
-            (telega-ins "RECENT:\n")
-            (telega-ins--available-reaction-list
-             recent-av-reactions reaction-type-action)
-            (telega-ins "\n\n"))
+            (telega-ins--with-face 'telega-describe-item-title
+              (telega-ins "RECENT:\n"))
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--available-reaction-list
+               recent-av-reactions reaction-type-action)
+              (telega-ins "\n\n")))
 
           (unless (seq-empty-p popular-av-reactions)
-            (telega-ins "POPULAR:\n")
-            (telega-ins--available-reaction-list
-             popular-av-reactions reaction-type-action)
-            (telega-ins "\n\n"))
+            (telega-ins--with-face 'telega-describe-item-title
+              (telega-ins "POPULAR:\n"))
+            (telega-ins--line-wrap-prefix "  "
+              (telega-ins--available-reaction-list
+               popular-av-reactions reaction-type-action)
+              (telega-ins "\n\n")))
 
           (telega-ins--custom-emoji-stickersets
            (lambda (sticker)

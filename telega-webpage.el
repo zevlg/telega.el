@@ -388,7 +388,8 @@ Keymap:
        (telega-webpage--ins-rt (plist-get pb :subheader))
        (telega-ins "\n")))
     (pageBlockParagraph
-     (telega-ins "\n")
+     (unless (looking-back "\n\n")
+       (telega-ins "\n"))
      (telega-webpage--ins-rt (plist-get pb :text)))
     (pageBlockPreformatted
      (telega-ins "\n")
@@ -431,12 +432,13 @@ Keymap:
              (telega-webpage--ins-rt credit-rt))))
        (telega-ins "\n")))
     (pageBlockPullQuote
-     (telega-ins "\u00A0\u00A0")
-     (telega-ins--with-attrs (list :fill 'center
-                                   :fill-column (- telega-webpage-fill-column 2)
-                                   :fill-prefix "\u00A0\u00A0")
-       (telega-webpage--ins-rt (plist-get pb :text)))
-     (telega-ins "\n"))
+     (telega-ins-from-newline
+      (telega-ins "\u00A0\u00A0")
+      (telega-ins--with-attrs (list :fill 'center
+                                    :fill-column (- telega-webpage-fill-column 2)
+                                    :fill-prefix "\u00A0\u00A0")
+        (telega-webpage--ins-rt (plist-get pb :text)))
+      (telega-ins "\n")))
     (pageBlockAnimation
      (telega-webpage--ins-animation (plist-get pb :animation))
      (telega-ins "\n"))
