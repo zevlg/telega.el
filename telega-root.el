@@ -1465,7 +1465,7 @@ If QUERY is empty string, then show all contacts."
 (defun telega-view-contacts-all ()
   "View all contacts."
   (interactive)
-  (telega-view-contacts-all ""))
+  (telega-view-contacts-search ""))
 
 (defun telega-view-close-friends ()
   "View close friends."
