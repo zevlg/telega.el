@@ -298,8 +298,8 @@ Example: 23 y.o. designer from San Francisco")
   :other_value "{member_count} members, {count} online")
 
  ;; queries to user
- ("telega_action_cant_undone"
-  :value "This action cannot be undone")
+ ("lng_context_mark_read_all_sure_2"
+  :value "**This action cannot be undone.**")
  ("telega_query_delete_chat"
   :value "Delete «{title}» chat? ")
  ("telega_query_delete_chat_history"

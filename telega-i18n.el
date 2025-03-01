@@ -56,6 +56,7 @@
     ("telega_at" . "lng_schedule_at")
     ("telega_comment" . "lng_photos_comment")
     ("telega_status" . "lng_proxy_box_status")
+    ("telega_action_cant_undone" . "lng_context_mark_read_all_sure_2")
     )
   "i18n names aliases alist.")
 

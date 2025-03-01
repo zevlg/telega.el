@@ -919,6 +919,13 @@ is a function accepting title string and returning string."
                 :value-type function)
   :group 'telega-root)
 
+(defcustom telega-chat-custom-order-for nil
+  "Chat temex returning custom order for the chat."
+  :package-version "0.8.450"
+  :type 'telega-chat-temex
+  :options '((and (folder "SOMEFOLDER") (return "10")))
+  :group 'telega-root)
+
 (defcustom telega-chat-button-width '(0.35 15 48)
   "*Width for the chat buttons in root buffer.
 If integer, then use this number of chars.

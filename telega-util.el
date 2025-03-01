@@ -612,7 +612,7 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
                          ,@telega-spoiler-displacement-attrs))
              )))
 
-(defun telega-spoiler-create-svg (minithumb &optional width height limits)
+(defun telega-spoiler-create-svg (minithumb &optional width height limits video-p)
   "Create svg image for MINITHUMB that has spoiler."
   (let* ((width (or width (plist-get minithumb :width)))
          (height (or height (plist-get minithumb :height)))
@@ -623,6 +623,8 @@ EMOJI-SYMBOL is the emoji symbol to be used. (Default is `telega-symbol-flames')
                "image/jpeg" t
                :x 0 :y 0 :width width :height height
                :filter "url(#noise)")
+    (when video-p
+      (telega-svg-white-play-triangle-in-circle svg))
     (telega-svg-image svg
       :scale 1.0
       :height (telega-ch-height cheight)
@@ -1148,6 +1150,12 @@ buffer) or a string."
                           ((integerp telega-expandable-blockquote-limit)
                            (+ telega-expandable-blockquote-limit beg))))))
              (when (and collapse-pos (< collapse-pos (- end 10)))
+               ;; NOTE: Do not put eliding after spaces, so filling
+               ;; won't put eliding on a separate line
+               (while (and (> collapse-pos beg)
+                           (= (char-syntax (aref object (1- collapse-pos))) ?\s))
+                 (cl-decf collapse-pos))
+
                (put-text-property
                 collapse-pos end
                 'display (propertize (concat (telega-symbol 'eliding)

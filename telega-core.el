@@ -152,6 +152,10 @@ Use FILENAME as is if resulting file does not exist."
   "Default reaction for the messages.
 Updated on `updateDefaultReactionType' event.")
 
+(defvar telega-default-paid-reaction-type nil
+  "Default paid reaction type for the messages.
+Updated on `updateDefaultPaidReactionType' event.")
+
 (defconst telega-translate-languages-alist
   '(("Afrikaans" . "af") ("Albanian" . "sq") ("Amharic" . "am")
     ("Arabic" . "ar") ("Armenian" . "hy") ("Azerbaijani" . "az")
@@ -768,6 +772,9 @@ Done when telega server is ready to receive queries."
 
   (setq telega--close-birthday-users nil)
   (setq telega--owned-stars 0)
+
+  (setq telega-default-reaction-type nil)
+  (setq telega-default-paid-reaction-type nil)
   )
 
 (defun telega-test-env (&optional quiet-p)
@@ -1683,7 +1690,8 @@ For use by interactive commands."
 Order from `telega-tdlib--chat-list' position is used.
 If CHAT has custom order, then return its custom order."
   (or (unless ignore-custom
-        (telega-chat-uaprop chat :order))
+        (or (telega-chat-uaprop chat :order)
+            (telega-chat-match-p chat telega-chat-custom-order-for)))
       (plist-get (telega-chat-position chat) :order)
       "0"))
 

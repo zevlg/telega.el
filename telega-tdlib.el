@@ -3249,16 +3249,15 @@ Saved Messages topic is specified by SM-TOPIC-ID."
    (or callback #'ignore)))
 
 (cl-defun telega--addPendingPaidMessageReaction (msg &key (star-count 1)
-                                                     (anonymous-p 'default))
+                                                     tl-paid-reaction-type)
   (telega-server--send
    (list :@type "addPendingPaidMessageReaction"
          :chat_id (plist-get msg :chat_id)
          :message_id (plist-get msg :id)
          :star_count star-count
-         :use_default_is_anonymous (if (eq anonymous-p 'default) t :false)
-         :is_anonymous (if (and anonymous-p (not (eq anonymous-p 'default)))
-                           t
-                         :false)
+         :type (or tl-paid-reaction-type
+                   telega-default-paid-reaction-type
+                   '(list :@type "paidReactionTypeRegular"))
          )))
 
 (defun telega--commitPendingPaidMessageReactions (msg)

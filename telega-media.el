@@ -596,7 +596,6 @@ Return nil if preview image is unavailable."
    (plist-get audio :album_cover_thumbnail)
    (plist-get audio :album_cover_minithumbnail)))
 
-;; TODO: draw tringle inside preview image
 (defun telega-video--create-image (video &optional file)
   "Create image to preview VIDEO content."
   (if (not telega-use-svg-base-uri)

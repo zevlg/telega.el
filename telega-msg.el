@@ -434,8 +434,15 @@ Return nil for deleted messages."
         (cl-assert (telega-file--downloaded-p file))
         (telega-open-file (telega--tl-get file :local :path) msg))
 
-    (telega-video-player-run
-     (telega--tl-get file :local :path) msg done-callback)))
+    (let* ((start-timestamp
+            (or (telega--tl-get msg :content :start_timestamp)
+                (telega--tl-get msg :content :link_preview
+                                :type :start_timestamp)))
+           (telega-ffplay-media-timestamp
+            (unless (telega-zerop start-timestamp)
+              start-timestamp)))
+      (telega-video-player-run
+          (telega--tl-get file :local :path) msg done-callback))))
 
 (defun telega-msg--play-video-incrementally (msg video _file)
   "For massage MSG start playing VIDEO file, while still downloading it."

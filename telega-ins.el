@@ -708,7 +708,8 @@ SHOW-DETAILS - non-nil to show photo details."
       (telega-ins "\n"))
 
     (let ((msg-content (plist-get msg :content)))
-      (cond ((plist-get msg-content :is_secret)
+      (cond ((and (plist-get msg-content :is_secret)
+                  (plist-get photo :minithumbnail))
              (let ((ttl-in (plist-get msg :self_destruct_in)))
                (unless (telega-zerop ttl-in)
                  (telega-ins--with-face 'telega-shadow
@@ -721,7 +722,8 @@ SHOW-DETAILS - non-nil to show photo details."
                      (if (plist-get msg :self_destruct_type) 'flames 'lock))))))
 
             ((and (plist-get msg-content :has_spoiler)
-                  (not (plist-get msg :telega-media-spoiler-removed)))
+                  (not (plist-get msg :telega-media-spoiler-removed))
+                  (plist-get photo :minithumbnail))
              (telega-ins--image-slices
                  (telega-spoiler-create-svg
                   (plist-get photo :minithumbnail)
@@ -852,7 +854,8 @@ and thumbnail are shown."
     ;; Video's thumbnail, if any
     (unless (eq how 'metainfo)
       (telega-ins-from-newline
-       (cond ((plist-get content :is_secret)
+       (cond ((and (plist-get content :is_secret)
+                   (plist-get video :minithumbnail))
               ;; Secret video
               (let ((ttl-in (plist-get msg :self_destruct_in)))
                 (unless (telega-zerop ttl-in)
@@ -868,13 +871,15 @@ and thumbnail are shown."
                 (setq ret t)))
 
              ((and (plist-get content :has_spoiler)
-                   (not (plist-get msg :telega-media-spoiler-removed)))
+                   (not (plist-get msg :telega-media-spoiler-removed))
+                   (plist-get video :minithumbnail))
               (telega-ins--image-slices
                   (telega-spoiler-create-svg
                    (plist-get video :minithumbnail)
                    (plist-get video :width)
                    (plist-get video :height)
-                   telega-thumbnail-size-limits))
+                   telega-thumbnail-size-limits
+                   'video))
               (telega-ins "\n")
               (telega-ins--box-button (telega-i18n "lng_context_disable_spoiler")
                 :action #'telega-msg-media-spoiler-toggle)
@@ -1250,10 +1255,15 @@ and thumbnail are shown."
        (telega-ins "\n"))
       (linkPreviewTypeVideo
        (when-let ((video (plist-get lp-type :video)))
-         (telega-ins--video msg video 'thumbnail)
+         (if-let ((cover (plist-get lp-type :cover)))
+             (telega-ins--photo cover nil telega-video-size-limits)
+           (telega-ins--video msg video 'thumbnail))
          (telega-ins "\n")
          (telega-ins--with-face 'telega-shadow
-           (telega-ins--video msg video 'metainfo))
+           (telega-ins--video msg video 'metainfo)
+           (let ((start-timestamp (plist-get lp-type :start_timestamp)))
+             (unless (telega-zerop start-timestamp)
+               (telega-ins-fmt " start: %ds" start-timestamp))))
          (telega-ins "\n")))
       (linkPreviewTypeVideoNote
        (when-let ((video-note (plist-get lp-type :video_note)))
@@ -2538,7 +2548,12 @@ Special messages are determined with `telega-msg-special-p'."
       ('messageAudio
        (telega-ins--audio msg))
       ('messageVideo
-       (telega-ins--video msg))
+       (if-let ((cover (plist-get content :cover)))
+           (progn
+             (telega-ins--video msg nil 'metainfo)
+             (telega-ins-from-newline
+              (telega-ins--photo cover nil telega-video-size-limits)))
+         (telega-ins--video msg)))
       ('messageVoiceNote
        (telega-ins--voice-note msg))
       ('messageVideoNote
@@ -3290,6 +3305,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
       ;; Align message at the center using `horizontal-bar' symbol
       (let ((start-pos (point)))
         (telega-ins--content msg)
+        (telega-ins--msg-reaction-list msg)
         (let* ((end-column (telega-current-column))
                (align-nchars (/ (- telega-chat-fill-column
                                    end-column)

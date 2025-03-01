@@ -573,6 +573,8 @@ Use ~telega-story-match-p~ to match a story.
 - {{{user-option(telega-chat-show-deleted-messages-for, 2)}}}
 - {{{user-option(telega-root-view-grouping-alist, 2)}}}
 - {{{user-option(telega-chat-delete-skip-confirmation-for, 2)}}}
+- {{{user-option(telega-chat-delete-skip-confirmation-for, 2)}}}
+- {{{user-option(telega-chat-custom-order-for, 2)}}}
 
 * Chat Folders
 

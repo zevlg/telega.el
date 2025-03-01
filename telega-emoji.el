@@ -449,8 +449,8 @@ Do not fetch custom emojis for ignored messages."
 
 (defun telega-emoji-status--animate (emoji-status)
   "Animate EMOJI-STATUS."
-  (let* ((custom-emoji-id (plist-get emoji-status :custom_emoji_id))
-         (sticker (telega-custom-emoji-get custom-emoji-id)))
+  (when-let* ((custom-emoji-id (plist-get emoji-status :custom_emoji_id))
+              (sticker (telega-custom-emoji-get custom-emoji-id)))
     (when (and telega-sticker-animated-play
                (not (telega-sticker-static-p sticker)))
       (telega-sticker--animate sticker))))

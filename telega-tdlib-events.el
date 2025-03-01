@@ -1462,6 +1462,10 @@ Please downgrade TDLib and recompile `telega-server'"
   (setq telega-default-reaction-type
         (plist-get event :reaction_type)))
 
+(defun telega--on-updateDefaultPaidReactionType (event)
+  (setq telega-default-paid-reaction-type
+        (plist-get event :type)))
+
 (defun telega--on-updateChatAvailableReactions (event)
   (let ((chat (telega-chat-get (plist-get event :chat_id) 'offline)))
     (cl-assert chat)
