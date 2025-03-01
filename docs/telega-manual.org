@@ -244,7 +244,7 @@ Thanks to [[https://t.me/ritsch_master][=@ritsch_master=]]
 
 [[https://core.telegram.org/tdlib][TDLib]] is the library for building Telegram clients. It requires a
 large amount of memory to be built.  Make sure you are using TDLib
-version equal to v1.8.44-28c6f2e9c.
+version equal to v1.8.45-521aed8e4.
 
 On MacOS you can install a pre-built =TDLib= package using homebrew
 from [[https://brew.sh][brew.sh]].  Just run:
