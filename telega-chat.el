@@ -6328,13 +6328,7 @@ Use `C-h .' to show URL at point after moving point to a link."
        ))
 
    ;; No link, jump to the next button
-   (telega-button-forward n
-     (lambda (button)
-       (and
-        ;; Skip internal telega messages, such as --(Discussion Started)--
-        (not (when-let ((msg (telega-msg-at button)))
-               (telega-msg-internal-p msg)))
-        (not (eq (button-type button) 'telega-prompt)))))))
+   (telega-msg-next n)))
 
 (defun telega-chatbuf-prev-link (n)
   "Jump to N's previous link in the message.
@@ -6510,10 +6504,12 @@ ensuring point keep being inside message.."
   (when-let* ((msg-button (button-at (point)))
               (start (button-start msg-button))
               (limit (button-end msg-button))
-              (mc-pos (+ (next-single-property-change
-                          start
-                          :message-content nil
-                          limit)
+              (mc-pos (+ (if (get-text-property start :message-content)
+                             start
+                           (next-single-property-change
+                            start
+                            :message-content nil
+                            limit))
                          (or forward-offset 0))))
     (when (< mc-pos limit)
       (goto-char mc-pos))))
