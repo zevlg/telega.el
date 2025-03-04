@@ -1995,6 +1995,10 @@ Return what BODY returns."
                   (setq elide-trail (1- elide-trail)))
                 (string-width str (- str-len elide-trail))))
              (elide-lead (- (min max str-len) elide-width trail-width)))
+        ;; Fix elide-lead in case of negative max
+        ;; See https://github.com/zevlg/telega.el/issues/517
+        (when (< elide-lead 0)
+          (setq elide-lead 0))
 
         ;; Correct `elide-lead' in case of multibyte chars, by chopping
         ;; char by char from the end of leading chars

@@ -1958,6 +1958,12 @@ between messages."
   :options (list "\n\n" (propertize "\n" 'line-spacing 0.25))
   :group 'telega-msg)
 
+(defcustom telega-msg-goto-content t
+  "*Non-nil to to put point to message's content, not messages'h header."
+  :package-version '(telega . "0.8.451")
+  :type 'boolean
+  :group 'telega-msg)
+
 
 (defgroup telega-story nil
   "Customization for Telegram stories."

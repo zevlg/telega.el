@@ -3383,7 +3383,7 @@ ADDON-HEADER-INSERTER is passed directly to `telega-ins--message-header'."
         (telega-ins--msg-reply-inline msg)
         ;; NOTE: We mark actual message content with special
         ;; `:message-content' property.  Used by various commands,
-        ;; such as `telega-msg-edit'
+        ;; such as `telega-chatbuf-beginning-of-thing'
         (telega-ins--with-props '(:message-content t)
           (telega-ins--content msg))
 

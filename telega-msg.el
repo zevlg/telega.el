@@ -365,7 +365,12 @@ Return nil for deleted messages."
          (chat-id (plist-get reply-to :chat_id))
          (msg-id (plist-get reply-to :message_id)))
     (unless (or (telega-zerop chat-id) (telega-zerop msg-id))
-      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id 'highlight))))
+      (telega-chat--goto-msg (telega-chat-get chat-id) msg-id 'highlight
+        ;; Possibly jump to the beginning of the reply quote
+        (when-let ((reply-quote (plist-get reply-to :quote)))
+           (lambda ()
+             (telega-chatbuf--goto-msg-content
+              (plist-get reply-quote :position))))))))
 
 (defun telega-msg-open-sticker (msg &optional sticker)
   "Open content for sticker message MSG."

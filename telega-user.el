@@ -211,7 +211,6 @@ If AS-NUMBER is specified, return online status as number:
     (telega--full-info user))
 
   (with-telega-help-win "*Telega User*"
-
     (let ((telega-user-show-relationship nil))
       (telega-ins--user user nil 'show-phone))
     (telega-ins "\n")

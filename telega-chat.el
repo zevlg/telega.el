@@ -5962,9 +5962,11 @@ Return non-nil if message MSG has been redisplayed."
         (list :@type "inputTextQuote"
               :text (telega-string-fmt-text
                      (buffer-substring (region-beginning) (region-end)))
-              ;; TODO: add `:position' - Quote position in the
-              ;; original message in UTF-16 code units
-              )
+              :position (if-let ((content-begin
+                                  (save-excursion
+                                    (telega-chatbuf--goto-msg-content))))
+                            (- (region-beginning) content-begin)
+                          0))
       (deactivate-mark))))
 
 (defun telega-msg-reply (msg &optional other-chat-p input-quote)
@@ -6420,8 +6422,10 @@ Return non-nil on success."
           (pulse-momentary-highlight-region
            (button-start msg-button) (button-end msg-button))))
 
-      (when callback
-        (funcall callback msg-button)))
+      (cond (callback
+             (funcall callback msg-button))
+            (telega-msg-goto-content
+             (telega-chatbuf--goto-msg-content))))
     t))
 
 (defun telega-chatbuf--goto-msg-gen-callback (msg-id highlight callback)
@@ -6498,6 +6502,21 @@ CALLBACK is called after point is moved to the message with MSG-ID."
     ;; loading history while fetching the message?
     (telega-msg-get telega-chatbuf--chat msg-id
       (telega-chatbuf--goto-msg-gen-callback msg-id highlight callback))))
+
+(defun telega-chatbuf--goto-msg-content (&optional forward-offset)
+  "Goto the beginning of the current message's content.
+If FORWARD-OFFSET is specified, move point forward to this offset
+ensuring point keep being inside message.."
+  (when-let* ((msg-button (button-at (point)))
+              (start (button-start msg-button))
+              (limit (button-end msg-button))
+              (mc-pos (+ (next-single-property-change
+                          start
+                          :message-content nil
+                          limit)
+                         (or forward-offset 0))))
+    (when (< mc-pos limit)
+      (goto-char mc-pos))))
 
 (defun telega-chat--goto-msg (chat msg-id &optional highlight callback)
   "Pop chatbuf for the CHAT and goto message denoted by MSG-ID."
